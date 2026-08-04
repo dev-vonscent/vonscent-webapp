@@ -1,7 +1,10 @@
 import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import type { HeroBannerRow } from "@/db/types";
+import { SHIPPING_ZONES } from "@/lib/constants";
+import { getProductsByIds, getProductsByTag } from "@/features/products/api";
+import type { HeroBannerRow, HomeSectionRow } from "@/db/types";
+import type { ProductListItem } from "@/lib/types";
 
 /**
  * Content / settings data access (admin A8 + A10). Settings live in the
@@ -44,6 +47,17 @@ export interface AboutSettings {
 export interface ShippingZone {
   name: string;
   fee: number;
+  /** false = zone we don't serve; checkout refuses the order. Legacy rows
+   *  without the field are treated as deliverable. */
+  deliverable?: boolean;
+  /** true = countryside; remind the customer to name a transport pickup point. */
+  remote?: boolean;
+  /**
+   * adm2 p-codes (optionally `code:khoroo`) this zone covers, so the server
+   * can derive the zone from the address instead of trusting the dropdown
+   * (todo.md B5b). Empty / absent = the zone is only ever picked by hand.
+   */
+  areas?: string[];
 }
 export interface ShippingSettings {
   zones: ShippingZone[];
@@ -78,10 +92,7 @@ export const DEFAULT_ABOUT: AboutSettings = {
   team: [],
 };
 export const DEFAULT_SHIPPING: ShippingSettings = {
-  zones: [
-    { name: "Улаанбаатар дотор", fee: 5000 },
-    { name: "Орон нутаг", fee: 12000 },
-  ],
+  zones: SHIPPING_ZONES.map((z) => ({ ...z })),
   freeOver: 150000,
 };
 export const DEFAULT_LOYALTY: LoyaltySettings = {
@@ -131,6 +142,69 @@ export interface HeroBanner {
   ctaHref: string;
   imageUrl: string | null;
   sortOrder: number;
+}
+
+/** A curated home rail with its products already resolved (todo.md B7). */
+export interface HomeSection {
+  id: string;
+  title: string;
+  subtitle: string;
+  href: string;
+  products: ProductListItem[];
+}
+
+/**
+ * Home page rails the admin composes (0023_home_sections).
+ *
+ * A 'manual' section keeps the admin's exact order; a 'tag' section is the
+ * old marketing-tag rail expressed as a row, so «Онцлох» and «Шинээр буусан»
+ * can be reordered against each other. Empty sections are dropped rather than
+ * rendering a heading with nothing under it.
+ */
+export async function getHomeSections(): Promise<HomeSection[]> {
+  const supabase = await createClient();
+  if (!supabase) return [];
+
+  const { data } = await supabase
+    .from("home_sections")
+    .select("*, home_section_products ( product_id, sort_order )")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  const rows =
+    (data as unknown as (HomeSectionRow & {
+      home_section_products: { product_id: string; sort_order: number }[];
+    })[] | null) ?? [];
+  if (rows.length === 0) return [];
+
+  const sections: HomeSection[] = [];
+  for (const row of rows) {
+    let products: ProductListItem[];
+    if (row.kind === "tag" && row.tag) {
+      products = await getProductsByTag(row.tag, row.max_items);
+    } else {
+      const ordered = [...row.home_section_products].sort(
+        (a, b) => a.sort_order - b.sort_order,
+      );
+      // getProductsByIds filters out inactive/deleted products, so re-apply
+      // the admin's order (and the cap) on what survived.
+      const found = await getProductsByIds(ordered.map((p) => p.product_id));
+      const byId = new Map(found.map((p) => [p.id, p]));
+      products = ordered
+        .map((p) => byId.get(p.product_id))
+        .filter((p): p is ProductListItem => Boolean(p))
+        .slice(0, row.max_items);
+    }
+    if (products.length === 0) continue;
+    sections.push({
+      id: row.id,
+      title: row.title,
+      subtitle: row.subtitle,
+      href: row.href,
+      products,
+    });
+  }
+  return sections;
 }
 
 export async function getHeroBanners(): Promise<HeroBanner[]> {

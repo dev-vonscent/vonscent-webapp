@@ -73,7 +73,6 @@ export default function WishlistPage() {
         ml: v.ml,
         unitPrice: v.price,
         image: p.image?.url ?? null,
-        isSample: false,
       });
       added += 1;
     }

@@ -1,10 +1,35 @@
 import { z } from "zod";
 
+/**
+ * "all" (бүх улирал) already covers every season, so it cannot sit next to an
+ * individual one — the admin UI enforces this, and so does the schema for any
+ * request that bypasses the UI.
+ */
+const seasonList = z
+  .array(z.enum(["spring", "summer", "autumn", "winter", "all"]))
+  .transform((s) => (s.includes("all") ? ["all" as const] : [...new Set(s)]));
+
+/**
+ * A gallery image. The route additionally checks the URL points at our own
+ * storage bucket (`isStorageUrl`) — that test needs server-side env, so it
+ * can't live in this shared schema.
+ */
+export const productImageSchema = z.object({
+  url: z.string().url().max(2048),
+  alt: z.string().max(200).default(""),
+});
+
+/** The store's whole size list — see ML_SIZES / 0027_manual_pricing.sql. */
+const mlSize = z.union([z.literal(5), z.literal(10), z.literal(20)]);
+
+/**
+ * One decant size as the admin priced it. There is no derived price any more:
+ * `price` is the ₮ figure typed in the form and the figure customers pay.
+ */
 export const variantDraftSchema = z.object({
-  ml: z.number().int().positive(),
-  coefficient: z.number().positive(),
+  ml: mlSize,
+  price: z.number().int().nonnegative(),
   active: z.boolean(),
-  override: z.number().int().nonnegative().nullable(),
 });
 
 export const productInputSchema = z.object({
@@ -12,22 +37,20 @@ export const productInputSchema = z.object({
   brand: z.string().min(1),
   gender: z.enum(["male", "female", "unisex"]),
   concentration: z.enum(["EDP", "EDT", "Parfum", "EDC", "Extrait", "Elixir"]),
-  scentFamily: z.enum([
-    "floral",
-    "woody",
-    "fresh",
-    "oriental",
-    "citrus",
-    "spicy",
-  ]),
-  season: z
-    .enum(["spring", "summer", "autumn", "winter", "all"])
-    .nullable()
-    .optional(),
+  // Families are admin-managed slugs (scent_families table), so they are
+  // validated against the live taxonomy in the route, not by a closed enum.
+  scentFamilies: z.array(z.string().min(1)).default([]),
+  seasons: seasonList.default([]),
   notesTop: z.array(z.string()).default([]),
   notesHeart: z.array(z.string()).default([]),
   notesBase: z.array(z.string()).default([]),
+  // Four-part description (0022); each part is optional on its own.
   description: z.string().default(""),
+  notesDescription: z.string().default(""),
+  usageDescription: z.string().default(""),
+  shortDescription: z.string().default(""),
+  // Images uploaded before the product row existed, in gallery order.
+  images: z.array(productImageSchema).max(12).default([]),
   originCountry: z.string().optional(),
   releaseYear: z.number().int().nullable().optional(),
   onHandMl: z.number().int().nonnegative(),
@@ -45,25 +68,24 @@ export const productEditSchema = z.object({
   brand: z.string().min(1).optional(),
   gender: z.enum(["male", "female", "unisex"]).optional(),
   concentration: z.enum(["EDP", "EDT", "Parfum", "EDC"]).optional(),
-  scentFamily: z
-    .enum(["floral", "woody", "fresh", "oriental", "citrus", "spicy"])
-    .optional(),
-  season: z
-    .enum(["spring", "summer", "autumn", "winter", "all"])
-    .nullable()
-    .optional(),
+  scentFamilies: z.array(z.string().min(1)).optional(),
+  seasons: seasonList.optional(),
   notesTop: z.array(z.string()).optional(),
   notesHeart: z.array(z.string()).optional(),
   notesBase: z.array(z.string()).optional(),
   description: z.string().optional(),
+  notesDescription: z.string().optional(),
+  usageDescription: z.string().optional(),
+  shortDescription: z.string().optional(),
   originCountry: z.string().nullable().optional(),
   releaseYear: z.number().int().nullable().optional(),
-  sampleAvailable: z.boolean().optional(),
   isActive: z.boolean().optional(),
   tags: z.array(z.enum(["new", "hot", "sale"])).optional(),
   bottlePrice: z.number().int().nonnegative().optional(),
   bottleMl: z.number().int().positive().optional(),
   lowStockMl: z.number().int().nonnegative().optional(),
+  /** Per-size edits — `ml` identifies the existing variant to reprice. */
+  variants: z.array(variantDraftSchema).optional(),
 });
 
 export type ProductEditInput = z.infer<typeof productEditSchema>;

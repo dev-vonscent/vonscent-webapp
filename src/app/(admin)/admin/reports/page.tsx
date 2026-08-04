@@ -1,4 +1,5 @@
-import { Download } from "lucide-react";
+import Link from "next/link";
+import { Download, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getReportData, getAdminProducts } from "@/features/admin/api";
@@ -15,7 +16,14 @@ export default async function AdminReportsPage() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-serif text-2xl font-semibold">Тайлан</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm">
+            {/* Opens the print view; the browser's Save-as-PDF is the export
+                (todo.md B8) — same mechanism as the order invoice. */}
+            <Link href="/admin/reports/print" target="_blank">
+              <FileText className="size-4" /> PDF / Хэвлэх
+            </Link>
+          </Button>
           <ExportButton type="sales" label="Борлуулалт" />
           <ExportButton type="products" label="Бараа" />
           <ExportButton type="inventory" label="Үлдэгдэл" />
@@ -44,6 +52,40 @@ export default async function AdminReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardContent className="p-5">
+          <h2 className="mb-4 font-medium">Сар бүрийн борлуулалт</h2>
+          {report.monthly.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Өгөгдөл алга.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[420px] text-sm">
+                <thead className="text-left text-xs text-muted-foreground">
+                  <tr>
+                    <th className="pb-2 font-medium">Сар</th>
+                    <th className="pb-2 font-medium">Захиалга</th>
+                    <th className="pb-2 font-medium">Заралсан ml</th>
+                    <th className="pb-2 text-right font-medium">Борлуулалт</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.monthly.map((m) => (
+                    <tr key={m.month} className="border-t border-border">
+                      <td className="py-2 font-medium">{m.month}</td>
+                      <td className="py-2">{m.orders}</td>
+                      <td className="py-2">{m.ml}ml</td>
+                      <td className="py-2 text-right font-medium">
+                        {formatPrice(m.revenue)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

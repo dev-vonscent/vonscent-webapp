@@ -79,3 +79,74 @@ export function ConfirmDialog({
     </Dialog>
   );
 }
+
+export interface ConfirmOptions {
+  title: string;
+  description?: React.ReactNode;
+  /** Confirm button text. Defaults to "Тийм". */
+  confirmLabel?: string;
+  cancelLabel?: string;
+  /** Paints the confirm button red — use for deletes. */
+  destructive?: boolean;
+}
+
+/**
+ * Promise-based replacement for `window.confirm`, so destructive admin actions
+ * ask in our own themed dialog instead of the browser's chrome.
+ *
+ *   const [confirm, confirmDialog] = useConfirm();
+ *   if (!(await confirm({ title: "Устгах уу?", destructive: true })) return;
+ *   …
+ *   return (<>{confirmDialog}<Button onClick={remove}/></>);
+ */
+export function useConfirm(): [
+  (options: ConfirmOptions) => Promise<boolean>,
+  React.ReactNode,
+] {
+  const [state, setState] = React.useState<ConfirmOptions | null>(null);
+  // Held in a ref so resolving doesn't depend on a re-render landing first.
+  const resolver = React.useRef<((ok: boolean) => void) | null>(null);
+
+  const confirm = React.useCallback((options: ConfirmOptions) => {
+    setState(options);
+    return new Promise<boolean>((resolve) => {
+      resolver.current = resolve;
+    });
+  }, []);
+
+  const settle = React.useCallback((ok: boolean) => {
+    setState(null);
+    resolver.current?.(ok);
+    resolver.current = null;
+  }, []);
+
+  const dialog = (
+    <Dialog
+      open={state !== null}
+      // Covers Escape, the X and outside clicks — all mean "cancel".
+      onOpenChange={(open) => {
+        if (!open) settle(false);
+      }}
+    >
+      <DialogContent>
+        <DialogTitle>{state?.title}</DialogTitle>
+        {state?.description && (
+          <DialogDescription>{state.description}</DialogDescription>
+        )}
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={() => settle(false)}>
+            {state?.cancelLabel ?? "Болих"}
+          </Button>
+          <Button
+            variant={state?.destructive ? "destructive" : "default"}
+            onClick={() => settle(true)}
+          >
+            {state?.confirmLabel ?? "Тийм"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  return [confirm, dialog];
+}

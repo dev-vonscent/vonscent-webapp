@@ -13,6 +13,13 @@ export interface Variant {
   /** Effective charged price in integer ₮ (override ?? auto). */
   price: number;
   isActive: boolean;
+  /**
+   * Can this size actually be filled from the remaining source ml?
+   * (requirement_fb.md: "сав нь дууссан тохиолдолд 20мл-ийг идэвхгүй болгох").
+   * A size the admin left active still sells out on its own once the bottle
+   * can no longer cover it.
+   */
+  inStock: boolean;
 }
 
 export interface ProductImage {
@@ -28,14 +35,15 @@ export interface ProductListItem {
   brand: string;
   gender: Gender;
   concentration: Concentration;
-  scentFamily: ScentFamily | null;
-  season: Season | null;
+  /** Admin-assigned scent families (slugs from `scent_families`). */
+  scentFamilies: ScentFamily[];
+  /** Seasons this scent suits; empty = unspecified, "all" = year-round. */
+  seasons: Season[];
   image: ProductImage | null;
   /** Lowest active variant price (display "from …"). */
   startingPrice: number;
   tags: TagKind[];
   soldOut: boolean;
-  sampleAvailable: boolean;
   ratingAvg: number;
   ratingCount: number;
   createdAt: string;
@@ -43,7 +51,11 @@ export interface ProductListItem {
 
 /** Full product detail page payload. */
 export interface ProductDetail extends ProductListItem {
+  /** Four-part description (0022) — any part may be empty. */
   description: string;
+  notesDescription: string;
+  usageDescription: string;
+  shortDescription: string;
   notesTop: string[];
   notesHeart: string[];
   notesBase: string[];
@@ -54,6 +66,15 @@ export interface ProductDetail extends ProductListItem {
   /** Available source ml (on_hand - reserved). */
   availableMl: number;
   bottleMl: number;
+}
+
+/** One row of the admin-managed scent family taxonomy. */
+export interface ScentFamilyOption {
+  slug: string;
+  label: string;
+  iconUrl: string | null;
+  sortOrder: number;
+  isActive: boolean;
 }
 
 export interface CatalogFilters {

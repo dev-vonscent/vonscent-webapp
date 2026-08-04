@@ -15,9 +15,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  PriceCalculator,
+  VariantPriceTable,
+  emptyVariants,
   type VariantDraft,
-} from "./price-calculator";
+} from "./variant-price-table";
+import { MultiCheck, useToggleList } from "./multi-check";
+import { DescriptionFields } from "./description-fields";
+import { ProductImages, type GalleryImage } from "./product-images";
 import {
   GENDERS,
   GENDER_LABEL,
@@ -25,10 +29,9 @@ import {
   SEASONS,
   SEASON_LABEL,
 } from "@/lib/constants";
+import type { ScentFamilyOption } from "@/lib/types";
 
-const FAMILIES = ["floral", "woody", "fresh", "oriental", "citrus", "spicy"];
-
-export function ProductForm() {
+export function ProductForm({ families }: { families: ScentFamilyOption[] }) {
   const router = useRouter();
   const [submitting, setSubmitting] = React.useState(false);
   const [result, setResult] = React.useState<string | null>(null);
@@ -38,34 +41,27 @@ export function ProductForm() {
     brand: "",
     gender: "unisex",
     concentration: "EDP",
-    scentFamily: "fresh",
     notesTop: "",
     notesHeart: "",
     notesBase: "",
     description: "",
+    notesDescription: "",
+    usageDescription: "",
+    shortDescription: "",
     originCountry: "",
     releaseYear: "",
-    season: "all",
+    bottlePrice: "",
+    bottleMl: "100",
     onHandMl: "100",
     lowStockMl: "20",
   });
 
-  const calcRef = React.useRef<{
-    bottlePrice: number;
-    bottleMl: number;
-    variants: VariantDraft[];
-  }>({ bottlePrice: 0, bottleMl: 0, variants: [] });
-
-  const onCalcChange = React.useCallback(
-    (state: {
-      bottlePrice: number;
-      bottleMl: number;
-      variants: VariantDraft[];
-    }) => {
-      calcRef.current = state;
-    },
-    [],
-  );
+  const [variants, setVariants] = React.useState<VariantDraft[]>(emptyVariants);
+  const [scentFamilies, toggleFamily] = useToggleList([]);
+  const [seasons, toggleSeason] = useToggleList(["all"], { exclusive: "all" });
+  // Uploaded to a staging folder before the product row exists; the create
+  // route attaches them to the new product.
+  const [images, setImages] = React.useState<GalleryImage[]>([]);
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -78,7 +74,13 @@ export function ProductForm() {
     try {
       const payload = {
         ...form,
+        scentFamilies,
+        seasons,
+        variants,
+        images: images.map((img) => ({ url: img.url, alt: img.alt })),
         releaseYear: form.releaseYear ? Number(form.releaseYear) : null,
+        bottlePrice: Number(form.bottlePrice) || 0,
+        bottleMl: Number(form.bottleMl) || 0,
         onHandMl: Number(form.onHandMl),
         lowStockMl: Number(form.lowStockMl),
         notesTop: form.notesTop.split(",").map((s) => s.trim()).filter(Boolean),
@@ -90,7 +92,6 @@ export function ProductForm() {
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean),
-        ...calcRef.current,
       };
       const res = await fetch("/api/admin/products", {
         method: "POST",
@@ -100,7 +101,7 @@ export function ProductForm() {
       const data = await res.json();
       if (data.demo) {
         setResult(
-          "Demo горим: Supabase холбогдсоны дараа бараа бодитоор хадгалагдана. (Үнэ тооцоо ажиллаж байна ✓)",
+          "Demo горим: Supabase холбогдсоны дараа бараа бодитоор хадгалагдана.",
         );
       } else if (res.ok) {
         router.push("/admin/products");
@@ -166,23 +167,6 @@ export function ProductForm() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Үнэрийн төрөл">
-              <Select
-                value={form.scentFamily}
-                onValueChange={(v) => set("scentFamily", v)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FAMILIES.map((f) => (
-                    <SelectItem key={f} value={f}>
-                      {f}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
             <Field label="Гаргасан он">
               <Input
                 type="number"
@@ -190,37 +174,41 @@ export function ProductForm() {
                 onChange={(e) => set("releaseYear", e.target.value)}
               />
             </Field>
-            <Field label="Улирал">
-              <Select value={form.season} onValueChange={(v) => set("season", v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SEASONS.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {SEASON_LABEL[s]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
           </div>
+
+          <MultiCheck
+            label="Үнэрийн төрөл (олон сонголт)"
+            options={families.map((f) => ({ value: f.slug, label: f.label }))}
+            selected={scentFamilies}
+            onToggle={toggleFamily}
+            empty="Тохиргоо → Үнэрийн төрөл хэсэгт эхлээд төрөл нэмнэ үү."
+          />
+          <MultiCheck
+            label="Улирал (олон сонголт)"
+            options={SEASONS.map((s) => ({ value: s, label: SEASON_LABEL[s] }))}
+            selected={seasons}
+            onToggle={toggleSeason}
+          />
           <Field label="Гарал үүсэл (улс)">
             <Input
               value={form.originCountry}
               onChange={(e) => set("originCountry", e.target.value)}
             />
           </Field>
-          <Field label="Тайлбар">
-            <textarea
-              rows={3}
-              value={form.description}
-              onChange={(e) => set("description", e.target.value)}
-              className="flex w-full rounded-md bg-secondary px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </Field>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardContent className="space-y-4 p-6">
+          <h2 className="font-serif text-lg font-semibold">Зураг</h2>
+          <ProductImages onChange={setImages} />
+        </CardContent>
+      </Card>
+
+      <DescriptionFields
+        value={form}
+        onChange={(k, v) => set(k as keyof typeof form, v)}
+      />
 
       <Card>
         <CardContent className="space-y-4 p-6">
@@ -249,12 +237,29 @@ export function ProductForm() {
 
       <Card>
         <CardContent className="space-y-4 p-6">
-          <h2 className="font-serif text-lg font-semibold">
-            Үнэ (ml шатлал авто тооцоо)
-          </h2>
-          <PriceCalculator onChange={onCalcChange} />
+          <h2 className="font-serif text-lg font-semibold">Үнэ</h2>
+          <VariantPriceTable variants={variants} onChange={setVariants} />
           <Separator />
+          <h2 className="font-serif text-lg font-semibold">Эх сав ба үлдэгдэл</h2>
+          <p className="text-sm text-muted-foreground">
+            Эх савны үнэ/багтаамж нь борлуулалт, ашгийн тайланд болон үлдэгдэл
+            тооцоонд ашиглагдана — зарах үнэд нөлөөлөхгүй.
+          </p>
           <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Эх савны үнэ (₮)">
+              <Input
+                type="number"
+                value={form.bottlePrice}
+                onChange={(e) => set("bottlePrice", e.target.value)}
+              />
+            </Field>
+            <Field label="Эх савны багтаамж (ml)">
+              <Input
+                type="number"
+                value={form.bottleMl}
+                onChange={(e) => set("bottleMl", e.target.value)}
+              />
+            </Field>
             <Field label="Эх савны үлдэгдэл (ml)">
               <Input
                 type="number"

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ProductForm } from "@/features/admin/components/product-form";
+import { getScentFamilies } from "@/features/taxonomy/api";
 
-export default function NewProductPage() {
+export default async function NewProductPage() {
+  const families = await getScentFamilies();
   return (
     <div className="space-y-6">
       <Link
@@ -13,7 +15,7 @@ export default function NewProductPage() {
         Бараа руу буцах
       </Link>
       <h1 className="font-serif text-2xl font-semibold">Шинэ бараа нэмэх</h1>
-      <ProductForm />
+      <ProductForm families={families} />
     </div>
   );
 }

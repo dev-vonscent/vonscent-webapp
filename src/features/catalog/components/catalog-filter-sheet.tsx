@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { CatalogFilters } from "./catalog-filters";
 import { useFilterQuery } from "./use-filter-query";
+import type { ScentFamilyOption } from "@/lib/types";
 
 /**
  * Mobile filter sheet — slides down from the top, full width with a rounded
@@ -20,9 +21,11 @@ import { useFilterQuery } from "./use-filter-query";
 export function CatalogFilterSheet({
   brands,
   priceBounds,
+  families,
 }: {
   brands: string[];
   priceBounds: { min: number; max: number };
+  families: ScentFamilyOption[];
 }) {
   const { activeCount } = useFilterQuery();
   const [open, setOpen] = React.useState(false);
@@ -75,7 +78,11 @@ export function CatalogFilterSheet({
       >
         <SheetTitle className="sr-only">Шүүлтүүр</SheetTitle>
         <div className="no-scrollbar -mx-2 flex-1 overflow-y-auto px-2">
-          <CatalogFilters brands={brands} priceBounds={priceBounds} />
+          <CatalogFilters
+            brands={brands}
+            priceBounds={priceBounds}
+            families={families}
+          />
         </div>
         <button
           type="button"

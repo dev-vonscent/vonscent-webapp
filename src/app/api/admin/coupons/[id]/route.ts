@@ -9,6 +9,9 @@ const patchSchema = z.object({
   value: z.number().int().nonnegative().optional(),
   minSubtotal: z.number().int().nonnegative().optional(),
   maxUses: z.number().int().positive().nullable().optional(),
+  maxUsesPerUser: z.number().int().positive().nullable().optional(),
+  /** Re-assign (or un-assign) the customer a coupon belongs to. */
+  userId: z.string().uuid().nullable().optional(),
   endsAt: z.string().nullable().optional(),
 });
 
@@ -42,6 +45,9 @@ export async function PATCH(
   if (parsed.data.minSubtotal !== undefined)
     update.min_subtotal = parsed.data.minSubtotal;
   if (parsed.data.maxUses !== undefined) update.max_uses = parsed.data.maxUses;
+  if (parsed.data.maxUsesPerUser !== undefined)
+    update.max_uses_per_user = parsed.data.maxUsesPerUser;
+  if (parsed.data.userId !== undefined) update.user_id = parsed.data.userId;
   if (parsed.data.endsAt !== undefined) update.ends_at = parsed.data.endsAt;
 
   await g.supabase.from("coupons").update(update).eq("id", id);

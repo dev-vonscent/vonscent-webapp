@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Boxes,
+  Tags,
   Warehouse,
   ShoppingCart,
   Settings,
@@ -14,6 +15,7 @@ import {
   Award,
   FileText,
   BarChart3,
+  LayoutList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/shared/logo";
@@ -21,12 +23,14 @@ import { Logo } from "@/components/shared/logo";
 const LINKS = [
   { href: "/admin", label: "Хяналтын самбар", icon: LayoutDashboard },
   { href: "/admin/products", label: "Бараа", icon: Boxes },
+  { href: "/admin/scent-families", label: "Үнэрийн төрөл", icon: Tags },
   { href: "/admin/inventory", label: "Үлдэгдэл", icon: Warehouse },
   { href: "/admin/orders", label: "Захиалга", icon: ShoppingCart },
   { href: "/admin/customers", label: "Хэрэглэгч", icon: Users },
   { href: "/admin/promotions", label: "Урамшуулал", icon: TicketPercent },
-  { href: "/admin/loyalty", label: "Loyalty", icon: Award },
+  { href: "/admin/loyalty", label: "V point", icon: Award },
   { href: "/admin/content", label: "Контент", icon: FileText },
+  { href: "/admin/home-sections", label: "Нүүрийн хэсэг", icon: LayoutList },
   { href: "/admin/reports", label: "Тайлан", icon: BarChart3 },
   { href: "/admin/settings", label: "Тохиргоо", icon: Settings },
 ];

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { productInputSchema } from "@/lib/validators/product";
-import { calcTierPrice } from "@/lib/pricing/calc";
-import { DEFAULT_ROUND_TO } from "@/lib/constants";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaffUser } from "@/lib/auth/guard";
+import { isStorageUrl } from "@/lib/storage/storage";
+import { sanitizeFamilies } from "@/features/taxonomy/api";
 
 function slugify(name: string, brand: string) {
   return `${brand}-${name}`
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   }
   const input = parsed.data;
 
-  // Demo mode: no DB — confirm the pricing core ran, but don't persist.
+  // Demo mode: no DB — accept the payload, but don't persist.
   if (!isSupabaseConfigured) {
     return NextResponse.json({ demo: true });
   }
@@ -43,26 +43,30 @@ export async function POST(req: Request) {
   }
 
   const slug = slugify(input.name, input.brand);
+  const families = await sanitizeFamilies(input.scentFamilies);
+
+  const base = {
+    slug,
+    name: input.name,
+    brand: input.brand,
+    description: input.description,
+    notes_description: input.notesDescription,
+    usage_description: input.usageDescription,
+    short_description: input.shortDescription,
+    notes_top: input.notesTop,
+    notes_heart: input.notesHeart,
+    notes_base: input.notesBase,
+    gender: input.gender,
+    concentration: input.concentration,
+    origin_country: input.originCountry ?? null,
+    release_year: input.releaseYear ?? null,
+    bottle_price: input.bottlePrice,
+    bottle_ml: input.bottleMl,
+  };
 
   const { data: product, error: pErr } = await supabase
     .from("products")
-    .insert({
-      slug,
-      name: input.name,
-      brand: input.brand,
-      description: input.description,
-      notes_top: input.notesTop,
-      notes_heart: input.notesHeart,
-      notes_base: input.notesBase,
-      gender: input.gender,
-      concentration: input.concentration,
-      scent_family: input.scentFamily,
-      season: input.season ?? null,
-      origin_country: input.originCountry ?? null,
-      release_year: input.releaseYear ?? null,
-      bottle_price: input.bottlePrice,
-      bottle_ml: input.bottleMl,
-    })
+    .insert({ ...base, scent_families: families, seasons: input.seasons })
     .select("id")
     .single();
 
@@ -71,21 +75,28 @@ export async function POST(req: Request) {
   }
   const productId = (product as { id: string }).id;
 
-  // Variants: compute auto price from the same pricing core; keep overrides.
+  // Variants: the admin priced each size by hand, so store the figure as-is.
   const variants = input.variants.map((v) => ({
     product_id: productId,
     ml: v.ml,
-    auto_price: calcTierPrice(
-      input.bottlePrice,
-      input.bottleMl,
-      { ml: v.ml, coefficient: v.coefficient },
-      DEFAULT_ROUND_TO,
-    ),
-    override_price: v.override,
+    price: v.price,
     is_active: v.active,
   }));
 
   await supabase.from("product_variants").insert(variants);
+
+  // Gallery: the form uploads before the product row exists, so the images
+  // arrive as URLs. Only accept ones we host — see isStorageUrl.
+  const images = input.images
+    .filter((img) => isStorageUrl(img.url))
+    .map((img, i) => ({
+      product_id: productId,
+      url: img.url,
+      alt: img.alt || input.name,
+      sort_order: i,
+    }));
+  if (images.length) await supabase.from("product_images").insert(images);
+
   await supabase.from("inventory").insert({
     product_id: productId,
     on_hand_ml: input.onHandMl,

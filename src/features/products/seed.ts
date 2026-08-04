@@ -1,5 +1,4 @@
-import { calcTierPrices, resolveVariantPrice } from "@/lib/pricing/calc";
-import { DEFAULT_PRICE_TIERS, DEFAULT_ROUND_TO } from "@/lib/constants";
+import { ML_SIZES } from "@/lib/constants";
 import type { ProductDetail } from "@/lib/types";
 import type {
   Concentration,
@@ -11,8 +10,7 @@ import type {
 
 /**
  * Seed catalogue used by the demo when Supabase is not configured, and by the
- * DB seed script. Prices are NOT hard-coded — they are derived from the bottle
- * price + ml through the pricing core, exactly like production.
+ * DB seed script.
  */
 interface SeedInput {
   slug: string;
@@ -20,8 +18,9 @@ interface SeedInput {
   brand: string;
   gender: Gender;
   concentration: Concentration;
-  scentFamily: ScentFamily;
-  season?: Season;
+  /** One scent can belong to several families (e.g. дорнын + модлог). */
+  scentFamilies: ScentFamily[];
+  seasons?: Season[];
   originCountry: string;
   releaseYear: number;
   bottlePrice: number; // ₮
@@ -30,12 +29,20 @@ interface SeedInput {
   notesHeart: string[];
   notesBase: string[];
   description: string;
+  /** Optional extra description parts (0022); demo rows may omit them. */
+  notesDescription?: string;
+  usageDescription?: string;
+  shortDescription?: string;
   tags: TagKind[];
   onHandMl: number;
   ratingAvg: number;
   ratingCount: number;
-  /** Optional per-ml overrides keyed by ml size. */
-  overrides?: Partial<Record<number, number>>;
+  /**
+   * Demo shelf price per ml size. Production prices are typed in the admin
+   * form, so these are plain fixture numbers — nothing derives them. A size
+   * left out of the map is simply not offered on that demo product.
+   */
+  prices?: Partial<Record<(typeof ML_SIZES)[number], number>>;
 }
 
 const RAW: SeedInput[] = [
@@ -45,11 +52,12 @@ const RAW: SeedInput[] = [
     brand: "Dior",
     gender: "male",
     concentration: "EDP",
-    scentFamily: "fresh",
+    scentFamilies: ["fresh"],
     originCountry: "Франц",
     releaseYear: 2018,
     bottlePrice: 480000,
     bottleMl: 100,
+    prices: { 5: 38400, 10: 64900, 20: 110400 },
     notesTop: ["Бергамот", "Чинжүү"],
     notesHeart: ["Сычуань чинжүү", "Лаванда", "Гэрийн заамар"],
     notesBase: ["Амбра", "Кедр", "Лабданум"],
@@ -66,11 +74,12 @@ const RAW: SeedInput[] = [
     brand: "Chanel",
     gender: "female",
     concentration: "EDP",
-    scentFamily: "floral",
+    scentFamilies: ["floral"],
     originCountry: "Франц",
     releaseYear: 2001,
     bottlePrice: 620000,
     bottleMl: 100,
+    prices: { 5: 49600, 10: 83700, 20: 142600 },
     notesTop: ["Жүрж", "Бергамот"],
     notesHeart: ["Сарнай", "Жасмин", "Личи"],
     notesBase: ["Пачули", "Ваниль", "Вэтивер"],
@@ -87,11 +96,12 @@ const RAW: SeedInput[] = [
     brand: "Tom Ford",
     gender: "unisex",
     concentration: "EDP",
-    scentFamily: "woody",
+    scentFamilies: ["woody"],
     originCountry: "АНУ",
     releaseYear: 2007,
     bottlePrice: 1150000,
     bottleMl: 100,
+    prices: { 5: 78000, 10: 155300, 20: 264500 },
     notesTop: ["Зүүн модны од", "Розвуд", "Кардамон"],
     notesHeart: ["Сандал", "Палисандр", "Од"],
     notesBase: ["Тонка", "Ваниль", "Амбра"],
@@ -101,7 +111,6 @@ const RAW: SeedInput[] = [
     onHandMl: 30,
     ratingAvg: 4.9,
     ratingCount: 64,
-    overrides: { 5: 78000 },
   },
   {
     slug: "creed-aventus",
@@ -109,11 +118,12 @@ const RAW: SeedInput[] = [
     brand: "Creed",
     gender: "male",
     concentration: "EDP",
-    scentFamily: "fresh",
+    scentFamilies: ["fresh"],
     originCountry: "Их Британи",
     releaseYear: 2010,
     bottlePrice: 1450000,
     bottleMl: 100,
+    prices: { 5: 116000, 10: 195800, 20: 333500 },
     notesTop: ["Хан боргоцой", "Алимны навч", "Бергамот"],
     notesHeart: ["Хус мод", "Пачули", "Сарнай"],
     notesBase: ["Заамар", "Хувь", "Ваниль"],
@@ -130,11 +140,12 @@ const RAW: SeedInput[] = [
     brand: "Yves Saint Laurent",
     gender: "female",
     concentration: "EDP",
-    scentFamily: "floral",
+    scentFamilies: ["floral"],
     originCountry: "Франц",
     releaseYear: 2019,
     bottlePrice: 540000,
     bottleMl: 90,
+    prices: { 5: 48000, 10: 81000, 20: 138000 },
     notesTop: ["Мандарин", "Лаванда", "Үхрийн нүд"],
     notesHeart: ["Лаванда", "Жасмин", "Цэцэгт гэрийн заамар"],
     notesBase: ["Ваниль", "Кедр", "Амбра"],
@@ -151,11 +162,12 @@ const RAW: SeedInput[] = [
     brand: "Maison Margiela",
     gender: "unisex",
     concentration: "EDT",
-    scentFamily: "spicy",
+    scentFamilies: ["spicy"],
     originCountry: "Франц",
     releaseYear: 2015,
     bottlePrice: 430000,
     bottleMl: 100,
+    prices: { 5: 34400, 10: 58100, 20: 98900 },
     notesTop: ["Гваякийн мод", "Цурампи", "Улаан чинжүү"],
     notesHeart: ["Тооно шарсан үнэр", "Гэрийн заамар"],
     notesBase: ["Ваниль", "Кедр", "Шатсан модны утаа"],
@@ -172,11 +184,12 @@ const RAW: SeedInput[] = [
     brand: "Acqua di Parma",
     gender: "unisex",
     concentration: "EDC",
-    scentFamily: "citrus",
+    scentFamilies: ["citrus"],
     originCountry: "Итали",
     releaseYear: 1916,
     bottlePrice: 510000,
     bottleMl: 100,
+    prices: { 5: 40800, 10: 68900, 20: 117300 },
     notesTop: ["Сицилийн нимбэг", "Бергамот", "Жүрж"],
     notesHeart: ["Лаванда", "Розмарин", "Вербена"],
     notesBase: ["Вэтивер", "Сандал", "Заамар"],
@@ -193,11 +206,12 @@ const RAW: SeedInput[] = [
     brand: "Jo Malone",
     gender: "unisex",
     concentration: "EDC",
-    scentFamily: "fresh",
+    scentFamilies: ["fresh"],
     originCountry: "Их Британи",
     releaseYear: 2014,
     bottlePrice: 460000,
     bottleMl: 100,
+    prices: { 5: 36800, 10: 62200, 20: 105800 },
     notesTop: ["Далайн давс", "Шүүслэг улаан анар"],
     notesHeart: ["Шавар", "Гэрийн заамар"],
     notesBase: ["Шарилж", "Замаг", "Цагаан мод"],
@@ -211,19 +225,13 @@ const RAW: SeedInput[] = [
 ];
 
 function buildVariants(input: SeedInput) {
-  const auto = calcTierPrices(
-    input.bottlePrice,
-    input.bottleMl,
-    DEFAULT_PRICE_TIERS,
-    DEFAULT_ROUND_TO,
-  );
-  return auto.map((t, i) => ({
-    id: `${input.slug}-${t.ml}`,
-    ml: t.ml,
-    price: resolveVariantPrice(t.price, input.overrides?.[t.ml] ?? null),
+  return ML_SIZES.filter((ml) => input.prices?.[ml] != null).map((ml) => ({
+    id: `${input.slug}-${ml}`,
+    ml,
+    price: input.prices![ml]!,
     isActive: true,
-    // mark the 5ml variant as the implicit "sample"
-    _index: i,
+    // demo stock: a size is buyable while the bottle can still fill it
+    inStock: input.onHandMl >= ml,
   }));
 }
 
@@ -284,10 +292,7 @@ export function productImageUrls(slug: string): string[] {
 }
 
 export const SEED_PRODUCTS: ProductDetail[] = RAW.map((input) => {
-  const variants = buildVariants(input).map(({ _index, ...v }) => {
-    void _index;
-    return v;
-  });
+  const variants = buildVariants(input);
   const startingPrice = Math.min(...variants.map((v) => v.price));
   const images = productImageUrls(input.slug).map((url) => ({
     url,
@@ -300,18 +305,20 @@ export const SEED_PRODUCTS: ProductDetail[] = RAW.map((input) => {
     brand: input.brand,
     gender: input.gender,
     concentration: input.concentration,
-    scentFamily: input.scentFamily,
-    season: input.season ?? null,
+    scentFamilies: input.scentFamilies,
+    seasons: input.seasons ?? [],
     image: images[0],
     images,
     startingPrice,
     tags: input.tags,
-    soldOut: input.onHandMl <= 0,
-    sampleAvailable: true,
+    soldOut: !variants.some((v) => v.isActive && v.inStock),
     ratingAvg: input.ratingAvg,
     ratingCount: input.ratingCount,
     createdAt: new Date(2024, 0, 1 + RAW.indexOf(input)).toISOString(),
     description: input.description,
+    notesDescription: input.notesDescription ?? "",
+    usageDescription: input.usageDescription ?? "",
+    shortDescription: input.shortDescription ?? "",
     notesTop: input.notesTop,
     notesHeart: input.notesHeart,
     notesBase: input.notesBase,

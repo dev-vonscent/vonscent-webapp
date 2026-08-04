@@ -7,27 +7,18 @@ export const SITE = {
   domain: "vonscent.mn",
   url: "https://vonscent.mn",
   description:
-    "Үнэртэнг бага хэмжээгээр (decant) туршиж сонгох дэлгүүр — 5/10/20ml багц.",
+    "Үнэртэн бага хэмжээгээр (decant) туршиж сонгох дэлгүүр — 5/10/20ml багц.",
   tagline: "Үнэрээ ол",
 } as const;
 
-/** ml decant package sizes the store sells (requirement.md). */
+/**
+ * The ml decant sizes the store sells — the complete list. The client sells
+ * these three and nothing else, so this is a closed set: the admin picks a
+ * price for each size, never a new size (0027_manual_pricing.sql enforces the
+ * same rule in the DB).
+ */
 export const ML_SIZES = [5, 10, 20] as const;
 export type MlSize = (typeof ML_SIZES)[number];
-
-/**
- * Default tiering coefficients for pricing. Smaller decants carry a higher
- * coefficient (extra decanting labour + packaging). In production these are
- * read from the `settings` table (admin A10) — these are only fallbacks.
- */
-export const DEFAULT_PRICE_TIERS = [
-  { ml: 5, coefficient: 1.8 },
-  { ml: 10, coefficient: 1.5 },
-  { ml: 20, coefficient: 1.3 },
-] as const;
-
-/** Round prices up to the nearest ₮ step. */
-export const DEFAULT_ROUND_TO = 100;
 
 /** Reserve hold (minutes) for orders awaiting payment before auto-release. */
 export const RESERVE_TIMEOUT_MINUTES = 30;
@@ -68,11 +59,36 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   cancelled: "Цуцлагдсан",
 };
 
-/** Shipping zones (seed/fallback; production reads settings.shipping). */
-export const SHIPPING_ZONES = [
-  { name: "Улаанбаатар дотор", fee: 5000 },
-  { name: "Орон нутаг", fee: 12000 },
-] as const;
+/**
+ * Shipping zones (seed/fallback only — the storefront reads settings.shipping
+ * so the admin's A10 configuration is what customers actually pay).
+ *
+ * `deliverable: false` marks a zone we cannot serve at all (requirement_fb.md:
+ * "бүс сонговол хүргэлт хийх боломжгүй байдлаар" — Налайх, Шарга морьт, 22
+ * товчоо г.м.). `remote: true` marks countryside zones, where the customer is
+ * reminded to name the bus/transport pickup point.
+ */
+export const SHIPPING_ZONES: readonly ShippingZoneConfig[] = [
+  { name: "А бүс (хотын төв)", fee: 6000, deliverable: true, remote: false },
+  { name: "Б бүс (алслагдсан хороолол)", fee: 10000, deliverable: true, remote: false },
+  { name: "Орон нутаг", fee: 12000, deliverable: true, remote: true },
+  { name: "Налайх / Шарга морьт / 22 товчоо", fee: 0, deliverable: false, remote: false },
+];
+
+export interface ShippingZoneConfig {
+  name: string;
+  fee: number;
+  /** false = we do not deliver here; checkout blocks the order. */
+  deliverable: boolean;
+  /** true = countryside; remind the customer to pick a transport point. */
+  remote: boolean;
+  /**
+   * adm2 p-codes (optionally `code:khoroo`) covered by this zone — the admin
+   * fills these in on the Тохиргоо page and checkout then picks the zone from
+   * the address (todo.md B5b). Absent = manual selection only.
+   */
+  areas?: string[];
+}
 
 /** Free shipping when subtotal ≥ this. */
 export const FREE_SHIP_OVER = 150000;
@@ -80,6 +96,21 @@ export const FREE_SHIP_OVER = 150000;
 export const PAYMENT_METHODS = [
   { value: "qpay", label: "QPay (QR код)" },
   { value: "bank_transfer", label: "Банк шилжүүлэг" },
+] as const;
+
+/**
+ * Seeded scent families. The live list lives in the `scent_families` table and
+ * the admin adds/removes rows there (Тохиргоо → Үнэрийн төрөл); these are the
+ * rows 0018_scent_families.sql inserts, reused as the demo-mode catalogue and
+ * as a label fallback when a product references a family that was deleted.
+ */
+export const DEFAULT_SCENT_FAMILIES = [
+  { slug: "floral", label: "Цэцэгт", iconUrl: "/family-floral.png" },
+  { slug: "woody", label: "Модлог", iconUrl: "/family-woody.png" },
+  { slug: "fresh", label: "Сэргэг", iconUrl: "/family-fresh.png" },
+  { slug: "oriental", label: "Дорнын", iconUrl: "/family-oriental.png" },
+  { slug: "citrus", label: "Цитрус", iconUrl: "/family-citrus.png" },
+  { slug: "spicy", label: "Халуун", iconUrl: "/family-spicy.png" },
 ] as const;
 
 export const SEASONS = ["spring", "summer", "autumn", "winter", "all"] as const;

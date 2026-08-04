@@ -14,6 +14,20 @@ export function publicUrl(path: string): string {
   return `${env.supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${path}`;
 }
 
+/** True when `url` is a public object in our own bucket. */
+export function isStorageUrl(url: string): boolean {
+  return url.startsWith(publicUrl(""));
+}
+
+/**
+ * Object path behind a public URL, or null when it isn't one of ours — the
+ * inverse of publicUrl(), used to delete the object behind a gallery row.
+ */
+export function storagePath(url: string): string | null {
+  const prefix = publicUrl("");
+  return url.startsWith(prefix) ? url.slice(prefix.length) : null;
+}
+
 export interface UploadResult {
   path: string;
   url: string;

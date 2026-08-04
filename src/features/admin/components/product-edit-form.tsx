@@ -22,17 +22,28 @@ import {
   SEASONS,
   SEASON_LABEL,
 } from "@/lib/constants";
+import { useConfirm } from "@/components/shared/confirm-dialog";
+import { VariantPriceTable, type VariantDraft } from "./variant-price-table";
+import { MultiCheck, useToggleList } from "./multi-check";
+import { DescriptionFields } from "./description-fields";
+import { ProductImages } from "./product-images";
 import type { AdminProduct } from "@/features/admin/api";
-
-const FAMILIES = ["floral", "woody", "fresh", "oriental", "citrus", "spicy"];
+import type { ScentFamilyOption } from "@/lib/types";
 const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
   { slug: "new", label: "Шинэ" },
   { slug: "hot", label: "Эрэлттэй" },
   { slug: "sale", label: "Хямдрал" },
 ];
 
-export function ProductEditForm({ product }: { product: AdminProduct }) {
+export function ProductEditForm({
+  product,
+  families,
+}: {
+  product: AdminProduct;
+  families: ScentFamilyOption[];
+}) {
   const router = useRouter();
+  const [confirm, confirmDialog] = useConfirm();
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
   const [form, setForm] = React.useState({
@@ -40,9 +51,10 @@ export function ProductEditForm({ product }: { product: AdminProduct }) {
     brand: product.brand,
     gender: product.gender,
     concentration: product.concentration,
-    scentFamily: product.scentFamily ?? "fresh",
-    season: product.season ?? "all",
     description: product.description,
+    notesDescription: product.notesDescription,
+    usageDescription: product.usageDescription,
+    shortDescription: product.shortDescription,
     notesTop: product.notesTop.join(", "),
     notesHeart: product.notesHeart.join(", "),
     notesBase: product.notesBase.join(", "),
@@ -52,9 +64,19 @@ export function ProductEditForm({ product }: { product: AdminProduct }) {
     bottleMl: String(product.bottleMl),
     lowStockMl: String(product.lowStockMl),
   });
+  const [scentFamilies, toggleFamily] = useToggleList(product.scentFamilies);
+  const [seasons, toggleSeason] = useToggleList(product.seasons, {
+    exclusive: "all",
+  });
+  const [variants, setVariants] = React.useState<VariantDraft[]>(
+    product.variants.map((v) => ({
+      ml: v.ml,
+      price: v.price,
+      active: v.isActive,
+    })),
+  );
   const [tags, setTags] = React.useState<string[]>(product.tags);
   const [isActive, setIsActive] = React.useState(product.isActive);
-  const [sampleAvailable, setSample] = React.useState(product.sampleAvailable);
 
   function set<K extends keyof typeof form>(k: K, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -76,9 +98,12 @@ export function ProductEditForm({ product }: { product: AdminProduct }) {
           brand: form.brand,
           gender: form.gender,
           concentration: form.concentration,
-          scentFamily: form.scentFamily,
-          season: form.season,
+          scentFamilies,
+          seasons,
           description: form.description,
+          notesDescription: form.notesDescription,
+          usageDescription: form.usageDescription,
+          shortDescription: form.shortDescription,
           notesTop: split(form.notesTop),
           notesHeart: split(form.notesHeart),
           notesBase: split(form.notesBase),
@@ -87,8 +112,8 @@ export function ProductEditForm({ product }: { product: AdminProduct }) {
           bottlePrice: Number(form.bottlePrice),
           bottleMl: Number(form.bottleMl),
           lowStockMl: Number(form.lowStockMl),
+          variants,
           isActive,
-          sampleAvailable,
           tags,
         }),
       });
@@ -102,7 +127,14 @@ export function ProductEditForm({ product }: { product: AdminProduct }) {
   }
 
   async function remove() {
-    if (!confirm("Энэ барааг устгах уу?")) return;
+    const ok = await confirm({
+      title: `«${product.name}» барааг устгах уу?`,
+      description:
+        "Бараа, түүний ml багц, үлдэгдэл, зураг бүгд устна. Буцаах боломжгүй.",
+      confirmLabel: "Устгах",
+      destructive: true,
+    });
+    if (!ok) return;
     setBusy(true);
     const res = await fetch(`/api/admin/products/${product.id}`, {
       method: "DELETE",
@@ -113,6 +145,7 @@ export function ProductEditForm({ product }: { product: AdminProduct }) {
 
   return (
     <form onSubmit={save} className="space-y-6">
+      {confirmDialog}
       <Card>
         <CardContent className="space-y-4 p-6">
           <h2 className="font-serif text-lg font-semibold">Үндсэн мэдээлэл</h2>
@@ -143,43 +176,48 @@ export function ProductEditForm({ product }: { product: AdminProduct }) {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Үнэрийн төрөл">
-              <Select value={form.scentFamily} onValueChange={(v) => set("scentFamily", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {FAMILIES.map((f) => (
-                    <SelectItem key={f} value={f}>{f}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
             <Field label="Гаргасан он">
               <Input type="number" value={form.releaseYear} onChange={(e) => set("releaseYear", e.target.value)} />
             </Field>
-            <Field label="Улирал">
-              <Select value={form.season} onValueChange={(v) => set("season", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {SEASONS.map((s) => (
-                    <SelectItem key={s} value={s}>{SEASON_LABEL[s]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
           </div>
+
+          <MultiCheck
+            label="Үнэрийн төрөл (олон сонголт)"
+            options={families.map((f) => ({ value: f.slug, label: f.label }))}
+            selected={scentFamilies}
+            onToggle={toggleFamily}
+            empty="Тохиргоо → Үнэрийн төрөл хэсэгт эхлээд төрөл нэмнэ үү."
+          />
+          <MultiCheck
+            label="Улирал (олон сонголт)"
+            options={SEASONS.map((s) => ({ value: s, label: SEASON_LABEL[s] }))}
+            selected={seasons}
+            onToggle={toggleSeason}
+          />
           <Field label="Гарал үүсэл (улс)">
             <Input value={form.originCountry} onChange={(e) => set("originCountry", e.target.value)} />
           </Field>
-          <Field label="Тайлбар">
-            <textarea
-              rows={3}
-              value={form.description}
-              onChange={(e) => set("description", e.target.value)}
-              className="flex w-full rounded-md bg-secondary px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </Field>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardContent className="space-y-4 p-6">
+          <h2 className="font-serif text-lg font-semibold">Зураг</h2>
+          <ProductImages
+            productId={product.id}
+            initial={product.images.map((img) => ({
+              id: img.id,
+              url: img.url,
+              alt: img.alt ?? "",
+            }))}
+          />
+        </CardContent>
+      </Card>
+
+      <DescriptionFields
+        value={form}
+        onChange={(k, v) => set(k as keyof typeof form, v)}
+      />
 
       <Card>
         <CardContent className="space-y-4 p-6">
@@ -199,12 +237,20 @@ export function ProductEditForm({ product }: { product: AdminProduct }) {
       <Card>
         <CardContent className="space-y-4 p-6">
           <h2 className="font-serif text-lg font-semibold">Үнэ ба үлдэгдэл</h2>
+
+          {variants.length > 0 && (
+            <div className="space-y-2">
+              <Label>Хэмжээ тус бүрийн үнэ</Label>
+              <VariantPriceTable variants={variants} onChange={setVariants} />
+            </div>
+          )}
+
           <p className="text-sm text-muted-foreground">
-            Бүтэн савны үнэ/багтаамжийг өөрчлөхөд 5/10/20ml үнэ автоматаар дахин
-            бодогдоно.
+            Эх савны үнэ/багтаамж нь борлуулалт, ашгийн тайланд болон үлдэгдэл
+            тооцоонд ашиглагдана — зарах үнэд нөлөөлөхгүй.
           </p>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Бүтэн савны үнэ (₮)">
+            <Field label="Эх савны үнэ (₮)">
               <Input type="number" value={form.bottlePrice} onChange={(e) => set("bottlePrice", e.target.value)} />
             </Field>
             <Field label="Багтаамж (ml)">
@@ -214,6 +260,7 @@ export function ProductEditForm({ product }: { product: AdminProduct }) {
               <Input type="number" value={form.lowStockMl} onChange={(e) => set("lowStockMl", e.target.value)} />
             </Field>
           </div>
+
         </CardContent>
       </Card>
 
@@ -231,10 +278,6 @@ export function ProductEditForm({ product }: { product: AdminProduct }) {
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox checked={isActive} onCheckedChange={(v) => setIsActive(Boolean(v))} />
             Идэвхтэй (нийтлэх)
-          </label>
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <Checkbox checked={sampleAvailable} onCheckedChange={(v) => setSample(Boolean(v))} />
-            Sample боломжтой
           </label>
         </CardContent>
       </Card>

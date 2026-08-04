@@ -25,6 +25,8 @@ const REASON_MN: Record<string, string> = {
   NOT_STARTED: "Купон хараахан эхлээгүй байна.",
   EXPIRED: "Купоны хугацаа дууссан байна.",
   MAX_USES: "Купоны ашиглах эрх дууссан байна.",
+  MAX_USES_USER: "Та энэ купоныг аль хэдийн ашигласан байна.",
+  LOGIN_REQUIRED: "Энэ купоныг ашиглахын тулд нэвтэрнэ үү.",
   MIN_SUBTOTAL: "Захиалгын дүн хүрэхгүй байна.",
 };
 
@@ -39,7 +41,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ valid: false, discount: 0, message: "demo" });
   }
 
-  const supabase = createAdminClient() ?? (await createClient());
+  // The session client answers "who is asking"; the admin client does the
+  // lookup so a personal coupon can be checked without exposing the row.
+  const session = await createClient();
+  const {
+    data: { user } = { user: null },
+  } = (await session?.auth.getUser()) ?? { data: { user: null } };
+
+  const supabase = createAdminClient() ?? session;
   if (!supabase) {
     return NextResponse.json({ valid: false, discount: 0 }, { status: 500 });
   }
@@ -47,6 +56,7 @@ export async function POST(req: Request) {
   const { data, error } = await callRpc<CouponResult>(supabase, "validate_coupon", {
     p_code: parsed.data.code,
     p_subtotal: parsed.data.subtotal,
+    p_user: user?.id ?? null,
   });
   if (error || !data) {
     return NextResponse.json({ valid: false, discount: 0 }, { status: 500 });

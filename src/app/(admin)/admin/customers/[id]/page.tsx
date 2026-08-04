@@ -43,7 +43,7 @@ export default async function AdminCustomerDetail({
             <CardContent className="grid grid-cols-3 gap-4 p-5 text-center">
               <Stat label="Захиалга" value={String(orders.length)} />
               <Stat label="Нийт зарцуулсан" value={formatPrice(spent)} />
-              <Stat label="Loyalty" value={String(profile.loyalty_points)} />
+              <Stat label="V point" value={String(profile.loyalty_points)} />
             </CardContent>
           </Card>
 
@@ -89,7 +89,7 @@ export default async function AdminCustomerDetail({
           {ledger.length > 0 && (
             <Card>
               <CardContent className="p-5">
-                <h2 className="mb-3 font-medium">Loyalty гүйлгээ</h2>
+                <h2 className="mb-3 font-medium">V point гүйлгээ</h2>
                 <ul className="divide-y divide-border text-sm">
                   {ledger.map((l) => (
                     <li key={l.id} className="flex items-center justify-between py-2">

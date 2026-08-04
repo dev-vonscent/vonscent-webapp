@@ -3,10 +3,20 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, Heart, Home, Menu, Search, User } from "lucide-react";
+import {
+  ArrowLeft,
+  Heart,
+  Home,
+  LayoutDashboard,
+  Menu,
+  Search,
+  User,
+} from "lucide-react";
 import { Logo } from "./logo";
 import { CartSheet } from "@/features/cart/components/cart-sheet";
 import { ProfileMenu } from "@/features/account/components/profile-menu";
+import { useIsStaff } from "@/features/account/use-staff";
+import { GlobalSearch } from "./global-search";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -61,6 +71,7 @@ function getTitle(pathname: string): string {
 export function SiteHeader() {
   const pathname = usePathname();
   const router = useRouter();
+  const isStaff = useIsStaff();
   const isHome = pathname === "/";
 
   // Hide on scroll down, reveal on scroll up.
@@ -166,6 +177,18 @@ export function SiteHeader() {
                   <User className="size-5" /> Профайл
                 </Link>
               </SheetClose>
+              {/* Staff-only shortcut; the avatar dropdown it mirrors is
+                  desktop-only, so mobile needs its own entry point. */}
+              {isStaff && (
+                <SheetClose asChild>
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium transition-colors hover:bg-accent"
+                  >
+                    <LayoutDashboard className="size-5" /> Админ хэсэг
+                  </Link>
+                </SheetClose>
+              )}
             </SheetContent>
           </Sheet>
 
@@ -200,8 +223,9 @@ export function SiteHeader() {
             />
           </nav>
 
-          {/* Right: cart (mobile only) + profile menu (desktop only) */}
+          {/* Right: search + cart (mobile only) + profile menu (desktop only) */}
           <div className="ml-auto flex items-center gap-1">
+            <GlobalSearch />
             <CartSheet triggerClassName="md:hidden" />
             <div className="hidden md:block">
               <ProfileMenu />

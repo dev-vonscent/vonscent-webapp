@@ -35,6 +35,7 @@ export default function ProfilePage() {
   const [phoneVerified, setPhoneVerified] = React.useState(false);
   const [avatar, setAvatar] = React.useState<string | null>(null);
   const [loyalty, setLoyalty] = React.useState(0);
+  const [pendingPoints, setPendingPoints] = React.useState(0);
   const [ordersCount, setOrdersCount] = React.useState(0);
   const [loaded, setLoaded] = React.useState(false);
   const [configured, setConfigured] = React.useState(true);
@@ -64,19 +65,23 @@ export default function ProfilePage() {
         setEmail(data.user.email ?? "");
         const { data: profile } = await supabase
           .from("profiles")
-          .select("full_name, phone, loyalty_points, avatar_url, phone_verified")
+          .select(
+            "full_name, phone, loyalty_points, pending_points, avatar_url, phone_verified",
+          )
           .eq("id", data.user.id)
           .maybeSingle();
         const p = profile as {
           full_name?: string;
           phone?: string;
           loyalty_points?: number;
+          pending_points?: number;
           avatar_url?: string | null;
           phone_verified?: boolean;
         } | null;
         setFullName(p?.full_name ?? "");
         setPhone(p?.phone ?? "");
         setLoyalty(p?.loyalty_points ?? 0);
+        setPendingPoints(p?.pending_points ?? 0);
         setAvatar(p?.avatar_url ?? null);
         setPhoneVerified(Boolean(p?.phone_verified));
         const { count } = await supabase
@@ -237,6 +242,9 @@ export default function ProfilePage() {
           href="/account/loyalty"
           image="/v-point.png"
           label={String(loyalty)}
+          // Locked points are shown beside the balance so the number the
+          // customer just earned isn't simply missing (todo.md B4).
+          value={pendingPoints > 0 ? `+${pendingPoints} түгжээтэй` : undefined}
         />
         <OptionRow
           href="/account/orders"
@@ -343,6 +351,8 @@ interface PublicCoupon {
   value: number;
   min_subtotal: number;
   ends_at: string | null;
+  /** Set = issued to this customer alone (0020_user_coupons). */
+  user_id: string | null;
 }
 
 function Coupons() {
@@ -350,9 +360,11 @@ function Coupons() {
   React.useEffect(() => {
     const supabase = createClient();
     if (!supabase) return;
+    // RLS narrows this to public coupons plus the ones issued to this
+    // customer — someone else's personal code never reaches the browser.
     supabase
       .from("coupons")
-      .select("id, code, type, value, min_subtotal, ends_at")
+      .select("id, code, type, value, min_subtotal, ends_at, user_id")
       .eq("is_active", true)
       .then(({ data }) => setItems((data as PublicCoupon[] | null) ?? []));
   }, []);
@@ -369,7 +381,14 @@ function Coupons() {
               key={c.id}
               className="flex items-center justify-between rounded-md bg-secondary px-3 py-2 text-sm"
             >
-              <span className="font-mono font-semibold">{c.code}</span>
+              <span className="flex items-center gap-2">
+                <span className="font-mono font-semibold">{c.code}</span>
+                {c.user_id && (
+                  <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] text-primary">
+                    Танд зориулав
+                  </span>
+                )}
+              </span>
               <span className="text-muted-foreground">
                 {c.type === "percent"
                   ? `${c.value}% хямдрал`

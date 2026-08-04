@@ -10,24 +10,24 @@ import type { ProductDetail } from "@/lib/types";
 
 export function ProductPurchase({ product }: { product: ProductDetail }) {
   const activeVariants = product.variants.filter((v) => v.isActive);
+  // Preselect the cheapest size that is actually in stock, so the headline
+  // price is one the customer can buy (requirement_fb.md §"ml-ийн үнэ").
   const [variantId, setVariantId] = React.useState(
-    activeVariants[0]?.id ?? "",
+    (activeVariants.find((v) => v.inStock) ?? activeVariants[0])?.id ?? "",
   );
   const [qty, setQty] = React.useState(1);
-  // Sample option temporarily disabled.
-  const [isSample] = React.useState(false);
   const [added, setAdded] = React.useState(false);
 
   const add = useCart((s) => s.add);
 
   const selected = activeVariants.find((v) => v.id === variantId) ?? null;
-  // Sample = a small fixed-volume try; here billed as the chosen ml variant
-  // flagged as sample (admin can later define a dedicated sample price).
   const unitPrice = selected?.price ?? 0;
   const soldOut = product.soldOut;
+  // The whole product may still be sellable while this particular size is not.
+  const selectedOut = !soldOut && selected != null && !selected.inStock;
 
   function onAdd() {
-    if (!selected || soldOut) return;
+    if (!selected || soldOut || !selected.inStock) return;
     add(
       {
         productId: product.id,
@@ -38,7 +38,6 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
         ml: selected.ml,
         unitPrice,
         image: product.image?.url ?? null,
-        isSample,
       },
       qty,
     );
@@ -75,34 +74,31 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
               <button
                 key={v.id}
                 onClick={() => setVariantId(v.id)}
+                disabled={!v.inStock}
+                aria-label={v.inStock ? `${v.ml}ml` : `${v.ml}ml — дууссан`}
                 className={cn(
                   "flex min-w-20 flex-col items-center rounded-lg px-4 py-2 transition-colors",
-                  active ? "bg-foreground/30" : "bg-secondary hover:bg-accent",
+                  !v.inStock
+                    ? "cursor-not-allowed bg-secondary/50 text-muted-foreground line-through opacity-50"
+                    : active
+                      ? "bg-foreground/30"
+                      : "bg-secondary hover:bg-accent",
                 )}
               >
                 <span className="text-sm font-semibold">{v.ml}ml</span>
                 <span className="text-xs text-muted-foreground">
-                  {formatPrice(v.price)}
+                  {v.inStock ? formatPrice(v.price) : "Дууссан"}
                 </span>
               </button>
             );
           })}
         </div>
+        {selectedOut && (
+          <p className="text-xs text-muted-foreground">
+            Энэ хэмжээ түр дууссан байна. Өөр хэмжээ сонгоно уу.
+          </p>
+        )}
       </div>
-
-      {/* Sample option temporarily disabled.
-      {product.sampleAvailable && (
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={isSample}
-            onChange={(e) => setIsSample(e.target.checked)}
-            className="size-4 accent-[var(--primary)]"
-          />
-          Sample болгож авах (туршилт)
-        </label>
-      )}
-      */}
 
       <div className="flex items-center gap-4">
         <div className="flex items-center rounded-md bg-secondary">
@@ -126,7 +122,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
         <Button
           size="lg"
           className="flex-1 [.black_&]:bg-white [.black_&]:text-black [.black_&]:hover:bg-white/90"
-          disabled={soldOut || !selected}
+          disabled={soldOut || !selected || !selected.inStock}
           onClick={onAdd}
         >
           {added ? (
@@ -135,6 +131,8 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
             </>
           ) : soldOut ? (
             "Дууссан"
+          ) : selectedOut ? (
+            `${selected?.ml}ml дууссан`
           ) : (
             <>
               <ShoppingCart className="size-4" /> Сагсанд нэмэх

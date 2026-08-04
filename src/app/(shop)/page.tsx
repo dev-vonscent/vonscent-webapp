@@ -23,18 +23,16 @@ import {
   getBrands,
 } from "@/features/products/api";
 import { getRecentReviews } from "@/features/reviews/api";
-import { getPopupSettings, getSocialSettings } from "@/features/content/api";
+import {
+  getPopupSettings,
+  getSocialSettings,
+  getHeroBanners,
+  getHomeSections,
+} from "@/features/content/api";
+import { getScentFamilies } from "@/features/taxonomy/api";
+import { HeroCarousel } from "@/features/marketing/components/hero-carousel";
 import { PromoPopup } from "@/features/marketing/components/promo-popup";
 import { GENDERS, GENDER_LABEL } from "@/lib/constants";
-
-const FAMILIES: { slug: string; label: string }[] = [
-  { slug: "floral", label: "Цэцэгт (Floral)" },
-  { slug: "woody", label: "Модлог (Woody)" },
-  { slug: "fresh", label: "Сэргэг (Fresh)" },
-  { slug: "oriental", label: "Дорнын (Oriental)" },
-  { slug: "citrus", label: "Цитрус" },
-  { slug: "spicy", label: "Халуун (Spicy)" },
-];
 
 const TRUST = [
   { icon: BadgeCheck, title: "100% жинхэнэ", desc: "Албан ёсны эх сурвалж" },
@@ -44,16 +42,29 @@ const TRUST = [
 ];
 
 export default async function HomePage() {
-  const [newArrivals, bestSellers, onSale, brands, reviews, popup, social] =
-    await Promise.all([
-      getNewArrivals(8),
-      getBestSellers(8),
-      getOnSale(4),
-      getBrands(),
-      getRecentReviews(3),
-      getPopupSettings(),
-      getSocialSettings(),
-    ]);
+  const [
+    newArrivals,
+    bestSellers,
+    onSale,
+    brands,
+    reviews,
+    popup,
+    social,
+    banners,
+    families,
+    sections,
+  ] = await Promise.all([
+    getNewArrivals(8),
+    getBestSellers(8),
+    getOnSale(4),
+    getBrands(),
+    getRecentReviews(3),
+    getPopupSettings(),
+    getSocialSettings(),
+    getHeroBanners(),
+    getScentFamilies(),
+    getHomeSections(),
+  ]);
 
   return (
     <>
@@ -62,22 +73,30 @@ export default async function HomePage() {
           Pulled up under the floating header (pt-4 16px + h-14 pill = 72px) so
           the image reaches the very top and shows behind the translucent pill. */}
       <section className="relative -mt-[72px] aspect-square w-full overflow-hidden bg-black sm:aspect-[21/9]">
-        <Image
-          src="/hero-mobile.jpg"
-          alt="VON SCENT"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover sm:hidden"
-        />
-        <Image
-          src="/hero-desktop.jpg"
-          alt="VON SCENT"
-          fill
-          priority
-          sizes="100vw"
-          className="hidden object-cover sm:block"
-        />
+        {banners.length > 0 ? (
+          // Admin-managed banners (A8) win; the static pair below is the
+          // fallback for a store that hasn't uploaded any yet.
+          <HeroCarousel banners={banners} />
+        ) : (
+          <>
+            <Image
+              src="/hero-mobile.jpg"
+              alt="VON SCENT"
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover sm:hidden"
+            />
+            <Image
+              src="/hero-desktop.jpg"
+              alt="VON SCENT"
+              fill
+              priority
+              sizes="100vw"
+              className="hidden object-cover sm:block"
+            />
+          </>
+        )}
       </section>
 
       <div className="mx-auto max-w-[88rem] space-y-10 px-4 md:px-8 py-8 sm:space-y-16 sm:py-14">
@@ -114,6 +133,19 @@ export default async function HomePage() {
         />
         <ProductCarousel products={bestSellers} />
       </section>
+
+      {/* Curated sections — «Онцлох», «Багц уснууд» and anything else the
+          admin composed (todo.md B7), in the order they set. */}
+      {sections.map((s) => (
+        <section key={s.id}>
+          <SectionHeading
+            title={s.title}
+            subtitle={s.subtitle || undefined}
+            href={s.href || undefined}
+          />
+          <ProductCarousel products={s.products} />
+        </section>
+      ))}
 
       {/* Shop by gender */}
       <section>
@@ -178,30 +210,40 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Shop by scent family */}
-      <section>
-        <SectionHeading title="Үнэрийн төрлөөр" />
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-          {FAMILIES.map((f) => (
-            <Link
-              key={f.slug}
-              href={`/catalog?family=${f.slug}`}
-              className="group flex flex-col items-center gap-2 rounded-xl bg-card p-4 text-center text-xs font-medium transition-all hover:-translate-y-1 hover:bg-accent hover:shadow-soft"
-            >
-              <div className="relative size-16 transition-transform duration-500 group-hover:scale-105">
-                <Image
-                  src={`/family-${f.slug}.png`}
-                  alt={f.label}
-                  fill
-                  sizes="64px"
-                  className="object-contain"
-                />
-              </div>
-              {f.label}
-            </Link>
-          ))}
-        </div>
-      </section>
+      {/* Shop by scent family — the admin-managed taxonomy, icons included
+          (todo.md B3b), so a family added in the admin shows up here too. */}
+      {families.length > 0 && (
+        <section>
+          <SectionHeading title="Үнэрийн төрлөөр" />
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+            {families.map((f) => (
+              <Link
+                key={f.slug}
+                href={`/catalog?family=${f.slug}`}
+                className="group flex flex-col items-center gap-2 rounded-xl bg-card p-4 text-center text-xs font-medium transition-all hover:-translate-y-1 hover:bg-accent hover:shadow-soft"
+              >
+                <div className="relative size-16 transition-transform duration-500 group-hover:scale-105">
+                  {f.iconUrl ? (
+                    <Image
+                      src={f.iconUrl}
+                      alt={f.label}
+                      fill
+                      sizes="64px"
+                      className="object-contain"
+                    />
+                  ) : (
+                    // No icon uploaded yet: the initial keeps the grid even.
+                    <span className="flex size-full items-center justify-center rounded-full bg-secondary font-serif text-xl">
+                      {f.label.slice(0, 1)}
+                    </span>
+                  )}
+                </div>
+                {f.label}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Brands */}
       <section>
@@ -209,22 +251,22 @@ export default async function HomePage() {
         <BrandMarquee brands={brands} />
       </section>
 
-      {/* Sample CTA */}
+      {/* Small-size CTA */}
       <section className="relative overflow-hidden rounded-2xl border border-border bg-surface-deep px-6 py-12 shadow-lift sm:px-12 sm:py-16">
         <div className="pointer-events-none absolute inset-4 rounded-xl border border-gold-strong/20" />
         <div className="relative max-w-lg space-y-4">
           <span className="text-xs uppercase tracking-[0.3em] text-gold">
-            ✦ Sample багц
+            ✦ 5мл багц
           </span>
           <h2 className="font-serif text-3xl font-semibold sm:text-4xl">
-            Sample-аар туршиж эхлээрэй
+            Багахнаар туршиж эхлээрэй
           </h2>
           <p className="text-muted-foreground">
             Аль үнэр тань илүү таалагдахаа мэдэхгүй байна уу? 5мл багцаар хэд
-            хэдийг туршаад дуртайгаа сонгоорой.
+            хэдийг үнэрлээд дуртайгаа сонгоорой.
           </p>
           <Button asChild size="lg">
-            <Link href="/catalog">Sample сонгох</Link>
+            <Link href="/catalog?ml=5">5мл сонгох</Link>
           </Button>
         </div>
       </section>

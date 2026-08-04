@@ -1,0 +1,2104 @@
+{
+  "_source": "HDX / OCHA — Mongolia Subnational Administrative Boundaries (COD-AB)",
+  "_url": "https://data.humdata.org/dataset/cod-ab-mng",
+  "_license": "CC BY-IGO",
+  "_retrieved": "2026-07-31",
+  "_note": "adm1 = аймаг + Улаанбаатар (22). adm2 = сум + УБ-ийн дүүрэг (339). Хороо/баг энэ эх сурвалжид байхгүй.",
+  "aimags": [
+    {
+      "code": "MN11",
+      "name": "Улаанбаатар",
+      "nameEn": "Ulaanbaatar",
+      "isCapital": true,
+      "children": [
+        {
+          "code": "MN1101",
+          "name": "Багануур",
+          "nameEn": "Baganuur",
+          "khoroos": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "code": "MN1104",
+          "name": "Багахангай",
+          "nameEn": "Bagaxangai",
+          "khoroos": [
+            1,
+            2
+          ]
+        },
+        {
+          "code": "MN1107",
+          "name": "Баянгол",
+          "nameEn": "Bayangol",
+          "khoroos": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34
+          ]
+        },
+        {
+          "code": "MN1110",
+          "name": "Баянзүрх",
+          "nameEn": "Bayanzu'rx",
+          "khoroos": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43
+          ]
+        },
+        {
+          "code": "MN1113",
+          "name": "Налайх",
+          "nameEn": "Nalaix",
+          "khoroos": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "code": "MN1116",
+          "name": "Сонгинохайрхан",
+          "nameEn": "Songinoxairxan",
+          "khoroos": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43
+          ]
+        },
+        {
+          "code": "MN1119",
+          "name": "Сүхбаатар",
+          "nameEn": "Su'xbaatar",
+          "khoroos": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ]
+        },
+        {
+          "code": "MN1122",
+          "name": "Хан-Уул",
+          "nameEn": "Xan-Uul",
+          "khoroos": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25
+          ]
+        },
+        {
+          "code": "MN1125",
+          "name": "Чингэлтэй",
+          "nameEn": "Chingeltei",
+          "khoroos": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24
+          ]
+        }
+      ]
+    },
+    {
+      "code": "MN65",
+      "name": "Архангай",
+      "nameEn": "Arxangai",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN6504",
+          "name": "Батцэнгэл",
+          "nameEn": "Batcengel"
+        },
+        {
+          "code": "MN6507",
+          "name": "Булган",
+          "nameEn": "Bulgan"
+        },
+        {
+          "code": "MN6510",
+          "name": "Жаргалант",
+          "nameEn": "Jargalant"
+        },
+        {
+          "code": "MN6513",
+          "name": "Их тамир",
+          "nameEn": "Ixtamir"
+        },
+        {
+          "code": "MN6516",
+          "name": "Өгийнуур",
+          "nameEn": "O'giinuur"
+        },
+        {
+          "code": "MN6519",
+          "name": "Өлзийт",
+          "nameEn": "O'lziit"
+        },
+        {
+          "code": "MN6522",
+          "name": "Өндөр-Улаан",
+          "nameEn": "O'ndor-Ulaan"
+        },
+        {
+          "code": "MN6525",
+          "name": "Тариат",
+          "nameEn": "Tariat"
+        },
+        {
+          "code": "MN6528",
+          "name": "Төвшрүүлэх",
+          "nameEn": "To'vshru'ulex"
+        },
+        {
+          "code": "MN6531",
+          "name": "Хайрхан",
+          "nameEn": "Xairxan"
+        },
+        {
+          "code": "MN6534",
+          "name": "Хангай",
+          "nameEn": "Xangai"
+        },
+        {
+          "code": "MN6537",
+          "name": "Хашаат",
+          "nameEn": "Xashaat"
+        },
+        {
+          "code": "MN6540",
+          "name": "Хотонт",
+          "nameEn": "Xotont"
+        },
+        {
+          "code": "MN6543",
+          "name": "Цахир",
+          "nameEn": "Caxir"
+        },
+        {
+          "code": "MN6546",
+          "name": "Цэнхэр",
+          "nameEn": "Cenxer"
+        },
+        {
+          "code": "MN6549",
+          "name": "Цэцэрлэг",
+          "nameEn": "Cecerleg"
+        },
+        {
+          "code": "MN6552",
+          "name": "Чулуут",
+          "nameEn": "Chuluut"
+        },
+        {
+          "code": "MN6501",
+          "name": "Эрдэнэбулган",
+          "nameEn": "Erdenebulgan"
+        },
+        {
+          "code": "MN6555",
+          "name": "Эрдэнэмандал",
+          "nameEn": "Erdenemandal"
+        }
+      ]
+    },
+    {
+      "code": "MN83",
+      "name": "Баян-Өлгий",
+      "nameEn": "Bayan-Olgii",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN8304",
+          "name": "Алтай",
+          "nameEn": "Altai"
+        },
+        {
+          "code": "MN8307",
+          "name": "Алтанцөгц",
+          "nameEn": "Altanco'gc"
+        },
+        {
+          "code": "MN8310",
+          "name": "Баяннуур",
+          "nameEn": "Bayannuur"
+        },
+        {
+          "code": "MN8313",
+          "name": "Бугат",
+          "nameEn": "Bugat"
+        },
+        {
+          "code": "MN8316",
+          "name": "Булган",
+          "nameEn": "Bulgan"
+        },
+        {
+          "code": "MN8319",
+          "name": "Буянт",
+          "nameEn": "Buyant"
+        },
+        {
+          "code": "MN8322",
+          "name": "Дэлүүн",
+          "nameEn": "Delu'un"
+        },
+        {
+          "code": "MN8325",
+          "name": "Ногооннуур",
+          "nameEn": "Nogoonnuur"
+        },
+        {
+          "code": "MN8301",
+          "name": "Өлгий",
+          "nameEn": "O'lgii"
+        },
+        {
+          "code": "MN8328",
+          "name": "Сагсай",
+          "nameEn": "Sagsai"
+        },
+        {
+          "code": "MN8331",
+          "name": "Толбо",
+          "nameEn": "Tolbo"
+        },
+        {
+          "code": "MN8334",
+          "name": "Улаанхус",
+          "nameEn": "Ulaanxus"
+        },
+        {
+          "code": "MN8340",
+          "name": "Цэнгэл",
+          "nameEn": "Cengel"
+        }
+      ]
+    },
+    {
+      "code": "MN64",
+      "name": "Баянхонгор",
+      "nameEn": "Bayankhongor",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN6404",
+          "name": "Баацагаан",
+          "nameEn": "Baacagaan"
+        },
+        {
+          "code": "MN6407",
+          "name": "Баянбулаг",
+          "nameEn": "Bayanbulag"
+        },
+        {
+          "code": "MN6410",
+          "name": "Баянговь",
+          "nameEn": "Bayangovi"
+        },
+        {
+          "code": "MN6413",
+          "name": "Баянлиг",
+          "nameEn": "Bayanlig"
+        },
+        {
+          "code": "MN6416",
+          "name": "Баян-Овоо",
+          "nameEn": "Bayan-Ovoo"
+        },
+        {
+          "code": "MN6419",
+          "name": "Баян-Өндөр",
+          "nameEn": "Bayan-O'ndor"
+        },
+        {
+          "code": "MN6401",
+          "name": "Баянхонгор",
+          "nameEn": "Bayanxongor"
+        },
+        {
+          "code": "MN6422",
+          "name": "Баянцагаан",
+          "nameEn": "Bayancagaan"
+        },
+        {
+          "code": "MN6425",
+          "name": "Богд",
+          "nameEn": "Bogd"
+        },
+        {
+          "code": "MN6428",
+          "name": "Бөмбөгөр",
+          "nameEn": "Bo'mbogor"
+        },
+        {
+          "code": "MN6431",
+          "name": "Бууцагаан",
+          "nameEn": "Buucagaan"
+        },
+        {
+          "code": "MN6434",
+          "name": "Галуут",
+          "nameEn": "Galuut"
+        },
+        {
+          "code": "MN6437",
+          "name": "Гурванбулаг",
+          "nameEn": "Gurvanbulag"
+        },
+        {
+          "code": "MN6440",
+          "name": "Жаргалант",
+          "nameEn": "Jargalant"
+        },
+        {
+          "code": "MN6443",
+          "name": "Жинст",
+          "nameEn": "Jinst"
+        },
+        {
+          "code": "MN6446",
+          "name": "Заг",
+          "nameEn": "Zag"
+        },
+        {
+          "code": "MN6449",
+          "name": "Өлзийт",
+          "nameEn": "O'lziit"
+        },
+        {
+          "code": "MN6452",
+          "name": "Хүрээмарал",
+          "nameEn": "Xu'reemaral"
+        },
+        {
+          "code": "MN6455",
+          "name": "Шинэжинст",
+          "nameEn": "Shinejinst"
+        },
+        {
+          "code": "MN6458",
+          "name": "Эрдэнэцогт",
+          "nameEn": "Erdenecogt"
+        }
+      ]
+    },
+    {
+      "code": "MN63",
+      "name": "Булган",
+      "nameEn": "Bulgan",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN6304",
+          "name": "Баян-Агт",
+          "nameEn": "Bayan agt"
+        },
+        {
+          "code": "MN6307",
+          "name": "Баяннуур",
+          "nameEn": "Bayannuur"
+        },
+        {
+          "code": "MN6310",
+          "name": "Бугат",
+          "nameEn": "Bugat"
+        },
+        {
+          "code": "MN6301",
+          "name": "Булган",
+          "nameEn": "Bulgan"
+        },
+        {
+          "code": "MN6313",
+          "name": "Бүрэгхангай",
+          "nameEn": "Bu'regxangai"
+        },
+        {
+          "code": "MN6316",
+          "name": "Гурван булаг",
+          "nameEn": "Gurvanbulag"
+        },
+        {
+          "code": "MN6319",
+          "name": "Дашинчилэн",
+          "nameEn": "Dashinchilen"
+        },
+        {
+          "code": "MN6322",
+          "name": "Могод",
+          "nameEn": "Mogod"
+        },
+        {
+          "code": "MN6325",
+          "name": "Орхон",
+          "nameEn": "Orxon"
+        },
+        {
+          "code": "MN6328",
+          "name": "Рашаант",
+          "nameEn": "Rashaant"
+        },
+        {
+          "code": "MN6331",
+          "name": "Сайхан",
+          "nameEn": "Saixan"
+        },
+        {
+          "code": "MN6334",
+          "name": "Сэлэнгэ",
+          "nameEn": "Selenge"
+        },
+        {
+          "code": "MN6337",
+          "name": "Тэшиг",
+          "nameEn": "Teshig"
+        },
+        {
+          "code": "MN6340",
+          "name": "Хангал",
+          "nameEn": "Xangal"
+        },
+        {
+          "code": "MN6343",
+          "name": "Хишиг-өндөр",
+          "nameEn": "Xishig-O'ndor"
+        },
+        {
+          "code": "MN6346",
+          "name": "Хутаг-Өндөр",
+          "nameEn": "Xutag-O'ndor"
+        }
+      ]
+    },
+    {
+      "code": "MN82",
+      "name": "Говь-Алтай",
+      "nameEn": "Govi-Altai",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN8204",
+          "name": "Алтай",
+          "nameEn": "Altai"
+        },
+        {
+          "code": "MN8207",
+          "name": "Баян-Уул",
+          "nameEn": "Bayan-Uul"
+        },
+        {
+          "code": "MN8210",
+          "name": "Бигэр",
+          "nameEn": "Biger"
+        },
+        {
+          "code": "MN8213",
+          "name": "Бугат",
+          "nameEn": "Bugat"
+        },
+        {
+          "code": "MN8216",
+          "name": "Дарив",
+          "nameEn": "Darvi"
+        },
+        {
+          "code": "MN8219",
+          "name": "Дэлгэр",
+          "nameEn": "Delger"
+        },
+        {
+          "code": "MN8201",
+          "name": "Есөнбулаг",
+          "nameEn": "Yeso'nbulag"
+        },
+        {
+          "code": "MN8222",
+          "name": "Жаргалан",
+          "nameEn": "Jargalan"
+        },
+        {
+          "code": "MN8225",
+          "name": "Тайшир",
+          "nameEn": "Taishir"
+        },
+        {
+          "code": "MN8228",
+          "name": "Тонхил",
+          "nameEn": "Tonkhil"
+        },
+        {
+          "code": "MN8231",
+          "name": "Төгрөг",
+          "nameEn": "To'grog"
+        },
+        {
+          "code": "MN8234",
+          "name": "Халиун",
+          "nameEn": "Xaliun"
+        },
+        {
+          "code": "MN8237",
+          "name": "Хөхморьт",
+          "nameEn": "Xo'xmorit"
+        },
+        {
+          "code": "MN8240",
+          "name": "Цогт",
+          "nameEn": "Cogt"
+        },
+        {
+          "code": "MN8243",
+          "name": "Цээл",
+          "nameEn": "Ceel"
+        },
+        {
+          "code": "MN8246",
+          "name": "Чандмань",
+          "nameEn": "Chandmani"
+        },
+        {
+          "code": "MN8249",
+          "name": "Шарга",
+          "nameEn": "Sharga"
+        },
+        {
+          "code": "MN8252",
+          "name": "Эрдэнэ",
+          "nameEn": "Erdene"
+        }
+      ]
+    },
+    {
+      "code": "MN42",
+      "name": "Говьсүмбэр",
+      "nameEn": "Govisumber",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN4204",
+          "name": "Баянтал",
+          "nameEn": "Bayantal"
+        },
+        {
+          "code": "MN4201",
+          "name": "Сүмбэр",
+          "nameEn": "Su'mber"
+        },
+        {
+          "code": "MN4207",
+          "name": "Шивээговь",
+          "nameEn": "Shiveegovi"
+        }
+      ]
+    },
+    {
+      "code": "MN45",
+      "name": "Дархан-Уул",
+      "nameEn": "Darkhan-Uul",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN4501",
+          "name": "Дархан",
+          "nameEn": "Darxan"
+        },
+        {
+          "code": "MN4504",
+          "name": "Орхон",
+          "nameEn": "Orxon"
+        },
+        {
+          "code": "MN4507",
+          "name": "Хонгор",
+          "nameEn": "Xongor"
+        },
+        {
+          "code": "MN4510",
+          "name": "Шарын гол",
+          "nameEn": "Sharyngol"
+        }
+      ]
+    },
+    {
+      "code": "MN44",
+      "name": "Дорноговь",
+      "nameEn": "Dornogovi",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN4404",
+          "name": "Айраг",
+          "nameEn": "Airag"
+        },
+        {
+          "code": "MN4407",
+          "name": "Алтанширээ",
+          "nameEn": "Altanshiree"
+        },
+        {
+          "code": "MN4410",
+          "name": "Даланжаргалан",
+          "nameEn": "Dalanjargalan"
+        },
+        {
+          "code": "MN4413",
+          "name": "Дэлгэрэх",
+          "nameEn": "Delgerex"
+        },
+        {
+          "code": "MN4416",
+          "name": "Замын-Үүд",
+          "nameEn": "Zamyn U'ud"
+        },
+        {
+          "code": "MN4419",
+          "name": "Иххэт",
+          "nameEn": "Ix xet"
+        },
+        {
+          "code": "MN4422",
+          "name": "Мандах",
+          "nameEn": "Mandax"
+        },
+        {
+          "code": "MN4425",
+          "name": "Өргөн",
+          "nameEn": "O'rgon"
+        },
+        {
+          "code": "MN4401",
+          "name": "Сайншанд",
+          "nameEn": "Sainshand"
+        },
+        {
+          "code": "MN4428",
+          "name": "Сайхандулаан",
+          "nameEn": "Saixandulaan"
+        },
+        {
+          "code": "MN4431",
+          "name": "Улаанбадрах",
+          "nameEn": "Ulaanbadrax"
+        },
+        {
+          "code": "MN4434",
+          "name": "Хатанбулаг",
+          "nameEn": "Xatanbulag"
+        },
+        {
+          "code": "MN4437",
+          "name": "Хөвсгөл",
+          "nameEn": "Xo'vsgol"
+        },
+        {
+          "code": "MN4440",
+          "name": "Эрдэнэ",
+          "nameEn": "Erdene"
+        }
+      ]
+    },
+    {
+      "code": "MN21",
+      "name": "Дорнод",
+      "nameEn": "Dornod",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN2104",
+          "name": "Баяндун",
+          "nameEn": "Bayandun"
+        },
+        {
+          "code": "MN2107",
+          "name": "Баянтүмэн",
+          "nameEn": "Bayantu'men"
+        },
+        {
+          "code": "MN2110",
+          "name": "Баян-Уул",
+          "nameEn": "Bayan-Uul"
+        },
+        {
+          "code": "MN2113",
+          "name": "Булган",
+          "nameEn": "Bulgan"
+        },
+        {
+          "code": "MN2116",
+          "name": "Гурванзагал",
+          "nameEn": "Gurvanzagal"
+        },
+        {
+          "code": "MN2119",
+          "name": "Дашбалбар",
+          "nameEn": "Dashbalbar"
+        },
+        {
+          "code": "MN2122",
+          "name": "Матад",
+          "nameEn": "Matad"
+        },
+        {
+          "code": "MN2125",
+          "name": "Сэргэлэн",
+          "nameEn": "Sergelen"
+        },
+        {
+          "code": "MN2128",
+          "name": "Халхгол",
+          "nameEn": "Xalx gol"
+        },
+        {
+          "code": "MN2131",
+          "name": "Хөлөнбуйр",
+          "nameEn": "Xo'lonbuir"
+        },
+        {
+          "code": "MN2101",
+          "name": "Хэрлэн",
+          "nameEn": "Herlen"
+        },
+        {
+          "code": "MN2134",
+          "name": "Цагаан-Овоо",
+          "nameEn": "Cagaan-Ovoo"
+        },
+        {
+          "code": "MN2137",
+          "name": "Чойбалсан",
+          "nameEn": "Choibalsan"
+        },
+        {
+          "code": "MN2140",
+          "name": "Чулуунхороот",
+          "nameEn": "Chuluunxoroot"
+        }
+      ]
+    },
+    {
+      "code": "MN48",
+      "name": "Дундговь",
+      "nameEn": "Dundgovi",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN4804",
+          "name": "Адаацаг",
+          "nameEn": "Adaacag"
+        },
+        {
+          "code": "MN4807",
+          "name": "Баянжаргалан",
+          "nameEn": "Bayanjargalan"
+        },
+        {
+          "code": "MN4810",
+          "name": "Говь-Угтаал",
+          "nameEn": "Govi-Ugtaal"
+        },
+        {
+          "code": "MN4813",
+          "name": "Гурвансайхан",
+          "nameEn": "Gurvansaixan"
+        },
+        {
+          "code": "MN4816",
+          "name": "Дэлгэрхангай",
+          "nameEn": "Delgerxangai"
+        },
+        {
+          "code": "MN4819",
+          "name": "Дэлгэрцогт",
+          "nameEn": "Delgercogt"
+        },
+        {
+          "code": "MN4822",
+          "name": "Дэрэн",
+          "nameEn": "Deren"
+        },
+        {
+          "code": "MN4825",
+          "name": "Луус",
+          "nameEn": "Luus"
+        },
+        {
+          "code": "MN4828",
+          "name": "Өлзийт",
+          "nameEn": "O'lziit"
+        },
+        {
+          "code": "MN4831",
+          "name": "Өндөршил",
+          "nameEn": "O'ndorshil"
+        },
+        {
+          "code": "MN4801",
+          "name": "Сайнцагаан",
+          "nameEn": "Saintsagaan"
+        },
+        {
+          "code": "MN4834",
+          "name": "Сайхан-Овоо",
+          "nameEn": "Saixan-Ovoo"
+        },
+        {
+          "code": "MN4837",
+          "name": "Хулд",
+          "nameEn": "Xuld"
+        },
+        {
+          "code": "MN4840",
+          "name": "Цагаандэлгэр",
+          "nameEn": "Cagaandelger"
+        },
+        {
+          "code": "MN4843",
+          "name": "Эрдэнэдалай",
+          "nameEn": "Erdenedalai"
+        }
+      ]
+    },
+    {
+      "code": "MN81",
+      "name": "Завхан",
+      "nameEn": "Zavkhan",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN8104",
+          "name": "Алдархаан",
+          "nameEn": "Aldarxaan"
+        },
+        {
+          "code": "MN8107",
+          "name": "Асгат",
+          "nameEn": "Asgat"
+        },
+        {
+          "code": "MN8110",
+          "name": "Баянтэс",
+          "nameEn": "Bayantes"
+        },
+        {
+          "code": "MN8113",
+          "name": "Баянхайрхан",
+          "nameEn": "Bayanxairxan"
+        },
+        {
+          "code": "MN8116",
+          "name": "Дөрвөлжин",
+          "nameEn": "Do'rvoljin"
+        },
+        {
+          "code": "MN8119",
+          "name": "Завханмандал",
+          "nameEn": "Zavxanmandal"
+        },
+        {
+          "code": "MN8122",
+          "name": "Идэр",
+          "nameEn": "Ider"
+        },
+        {
+          "code": "MN8125",
+          "name": "Их-Уул",
+          "nameEn": "Ix-Uul"
+        },
+        {
+          "code": "MN8128",
+          "name": "Нөмрөг",
+          "nameEn": "No'mrog"
+        },
+        {
+          "code": "MN8131",
+          "name": "Отгон",
+          "nameEn": "Otgon"
+        },
+        {
+          "code": "MN8134",
+          "name": "Сантмаргац",
+          "nameEn": "Santmargac"
+        },
+        {
+          "code": "MN8137",
+          "name": "Сонгино",
+          "nameEn": "Songino"
+        },
+        {
+          "code": "MN8140",
+          "name": "Тосонцэнгэл",
+          "nameEn": "Tosoncengel"
+        },
+        {
+          "code": "MN8143",
+          "name": "Түдэвтэй",
+          "nameEn": "Tu'devtei"
+        },
+        {
+          "code": "MN8146",
+          "name": "Тэлмэн",
+          "nameEn": "Telmen"
+        },
+        {
+          "code": "MN8149",
+          "name": "Тэс",
+          "nameEn": "Tes"
+        },
+        {
+          "code": "MN8101",
+          "name": "Улиастай",
+          "nameEn": "Uliastai"
+        },
+        {
+          "code": "MN8152",
+          "name": "Ургамал",
+          "nameEn": "Urgamal"
+        },
+        {
+          "code": "MN8155",
+          "name": "Цагаанхайрхан",
+          "nameEn": "Cagaanxairxan"
+        },
+        {
+          "code": "MN8158",
+          "name": "Цагаанчулуут",
+          "nameEn": "Cagaanchuluut"
+        },
+        {
+          "code": "MN8161",
+          "name": "Цэцэн-Уул",
+          "nameEn": "Cecen-Uul"
+        },
+        {
+          "code": "MN8164",
+          "name": "Шилүүстэй",
+          "nameEn": "Shilu'ustei"
+        },
+        {
+          "code": "MN8167",
+          "name": "Эрдэнэхайрхан",
+          "nameEn": "Erdenexairxan"
+        },
+        {
+          "code": "MN8170",
+          "name": "Яруу",
+          "nameEn": "Yaruu"
+        }
+      ]
+    },
+    {
+      "code": "MN61",
+      "name": "Орхон",
+      "nameEn": "Orkhon",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN6101",
+          "name": "Баян-Өндөр",
+          "nameEn": "Bayan-O'ndor"
+        },
+        {
+          "code": "MN6104",
+          "name": "Жаргалант",
+          "nameEn": "Jargalant"
+        }
+      ]
+    },
+    {
+      "code": "MN62",
+      "name": "Өвөрхангай",
+      "nameEn": "Ovorkhangai",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN6201",
+          "name": "Арвайхээр",
+          "nameEn": "Arvaixeer"
+        },
+        {
+          "code": "MN6204",
+          "name": "Баруунбаян-Улаан",
+          "nameEn": "Baruunbayan-Ulaan"
+        },
+        {
+          "code": "MN6207",
+          "name": "Бат-Өлзий",
+          "nameEn": "Bat-O'lzii"
+        },
+        {
+          "code": "MN6210",
+          "name": "Баянгол",
+          "nameEn": "Bayangol"
+        },
+        {
+          "code": "MN6213",
+          "name": "Баян-Өндөр",
+          "nameEn": "Bayan-O'ndor"
+        },
+        {
+          "code": "MN6216",
+          "name": "Богд",
+          "nameEn": "Bogd"
+        },
+        {
+          "code": "MN6219",
+          "name": "Бүрд",
+          "nameEn": "Bu'rd"
+        },
+        {
+          "code": "MN6222",
+          "name": "Гучин-Ус",
+          "nameEn": "Guchin-Us"
+        },
+        {
+          "code": "MN6225",
+          "name": "Есөн зүйл",
+          "nameEn": "Yeso'nzu'il"
+        },
+        {
+          "code": "MN6228",
+          "name": "Зүүнбаян-Улаан",
+          "nameEn": "Zu'unbayan-Ulaan"
+        },
+        {
+          "code": "MN6231",
+          "name": "Нарийнтээл",
+          "nameEn": "Nariinteel"
+        },
+        {
+          "code": "MN6234",
+          "name": "Өлзийт",
+          "nameEn": "O'lziit"
+        },
+        {
+          "code": "MN6237",
+          "name": "Сант",
+          "nameEn": "Sant"
+        },
+        {
+          "code": "MN6240",
+          "name": "Тарагт",
+          "nameEn": "Taragt"
+        },
+        {
+          "code": "MN6243",
+          "name": "Төгрөг",
+          "nameEn": "To'grog"
+        },
+        {
+          "code": "MN6246",
+          "name": "Уянга",
+          "nameEn": "Uyanga"
+        },
+        {
+          "code": "MN6249",
+          "name": "Хайрхандулаан",
+          "nameEn": "Xairxandulaan"
+        },
+        {
+          "code": "MN6252",
+          "name": "Хархорин",
+          "nameEn": "Xarxorin"
+        },
+        {
+          "code": "MN6255",
+          "name": "Хужирт",
+          "nameEn": "Xujirt"
+        }
+      ]
+    },
+    {
+      "code": "MN46",
+      "name": "Өмнөговь",
+      "nameEn": "Omnogovi",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN4604",
+          "name": "Баяндалай",
+          "nameEn": "Bayandalai"
+        },
+        {
+          "code": "MN4607",
+          "name": "Баян-Овоо",
+          "nameEn": "Bayan-Ovoo"
+        },
+        {
+          "code": "MN4610",
+          "name": "Булган",
+          "nameEn": "Bulgan"
+        },
+        {
+          "code": "MN4613",
+          "name": "Гурвантэс",
+          "nameEn": "Gurvantes"
+        },
+        {
+          "code": "MN4601",
+          "name": "Даланзадгад",
+          "nameEn": "Dalanzadgad"
+        },
+        {
+          "code": "MN4616",
+          "name": "Мандал-Овоо",
+          "nameEn": "Mandal-Ovoo"
+        },
+        {
+          "code": "MN4619",
+          "name": "Манлай",
+          "nameEn": "Manlai"
+        },
+        {
+          "code": "MN4622",
+          "name": "Ноён",
+          "nameEn": "Noyon"
+        },
+        {
+          "code": "MN4625",
+          "name": "Номгон",
+          "nameEn": "Nomgon"
+        },
+        {
+          "code": "MN4628",
+          "name": "Сэврэй",
+          "nameEn": "Sevrei"
+        },
+        {
+          "code": "MN4631",
+          "name": "Ханбогд",
+          "nameEn": "Xanbogd"
+        },
+        {
+          "code": "MN4634",
+          "name": "Ханхонгор",
+          "nameEn": "Xanxongor"
+        },
+        {
+          "code": "MN4637",
+          "name": "Хүрмэн",
+          "nameEn": "Xu'rmen"
+        },
+        {
+          "code": "MN4640",
+          "name": "Цогт-Овоо",
+          "nameEn": "Cogt-Ovoo"
+        },
+        {
+          "code": "MN4643",
+          "name": "Цогтцэций",
+          "nameEn": "Cogt-Cecii"
+        }
+      ]
+    },
+    {
+      "code": "MN22",
+      "name": "Сүхбаатар",
+      "nameEn": "Sukhbaatar",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN2204",
+          "name": "Асгат",
+          "nameEn": "Asgat"
+        },
+        {
+          "code": "MN2201",
+          "name": "Баруун-Урт",
+          "nameEn": "Baruun-Urt"
+        },
+        {
+          "code": "MN2207",
+          "name": "Баяндэлгэр",
+          "nameEn": "Bayandelger"
+        },
+        {
+          "code": "MN2210",
+          "name": "Дарьганга",
+          "nameEn": "Dariganga"
+        },
+        {
+          "code": "MN2213",
+          "name": "Мөнххаан",
+          "nameEn": "Mo'nxxaan"
+        },
+        {
+          "code": "MN2216",
+          "name": "Наран",
+          "nameEn": "Naran"
+        },
+        {
+          "code": "MN2219",
+          "name": "Онгон",
+          "nameEn": "Ongon"
+        },
+        {
+          "code": "MN2222",
+          "name": "Сүхбаатар",
+          "nameEn": "Su'xbaatar"
+        },
+        {
+          "code": "MN2225",
+          "name": "Түвшинширээ",
+          "nameEn": "Tu'vshinshiree"
+        },
+        {
+          "code": "MN2228",
+          "name": "Түмэнцогт",
+          "nameEn": "Tu'mencogt"
+        },
+        {
+          "code": "MN2231",
+          "name": "Уулбаян",
+          "nameEn": "Uulbayan"
+        },
+        {
+          "code": "MN2234",
+          "name": "Халзан",
+          "nameEn": "Xalzan"
+        },
+        {
+          "code": "MN2237",
+          "name": "Эрдэнэцагаан",
+          "nameEn": "Erdenecagaan"
+        }
+      ]
+    },
+    {
+      "code": "MN43",
+      "name": "Сэлэнгэ",
+      "nameEn": "Selenge",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN4304",
+          "name": "Алтанбулаг",
+          "nameEn": "Altanbulag"
+        },
+        {
+          "code": "MN4307",
+          "name": "Баруунбүрэн",
+          "nameEn": "Baruunbu'ren"
+        },
+        {
+          "code": "MN4310",
+          "name": "Баянгол",
+          "nameEn": "Bayangol"
+        },
+        {
+          "code": "MN4313",
+          "name": "Ерөө",
+          "nameEn": "Yero'o"
+        },
+        {
+          "code": "MN4316",
+          "name": "Жавхлант",
+          "nameEn": "Javxlant"
+        },
+        {
+          "code": "MN4319",
+          "name": "Зүүнбүрэн",
+          "nameEn": "Zu'unburen"
+        },
+        {
+          "code": "MN4322",
+          "name": "Мандал",
+          "nameEn": "Mandal"
+        },
+        {
+          "code": "MN4325",
+          "name": "Орхон",
+          "nameEn": "Orxon"
+        },
+        {
+          "code": "MN4328",
+          "name": "Орхонтуул",
+          "nameEn": "Orxontuul"
+        },
+        {
+          "code": "MN4331",
+          "name": "Сайхан",
+          "nameEn": "Saixan"
+        },
+        {
+          "code": "MN4334",
+          "name": "Сант",
+          "nameEn": "Sant"
+        },
+        {
+          "code": "MN4301",
+          "name": "Сүхбаатар",
+          "nameEn": "Su'xbaatar"
+        },
+        {
+          "code": "MN4337",
+          "name": "Түшиг",
+          "nameEn": "Tu'shig"
+        },
+        {
+          "code": "MN4343",
+          "name": "Хушаат",
+          "nameEn": "Xushaat"
+        },
+        {
+          "code": "MN4340",
+          "name": "Хүдэр",
+          "nameEn": "Xu'der"
+        },
+        {
+          "code": "MN4346",
+          "name": "Цагааннуур",
+          "nameEn": "Cagaannuur"
+        },
+        {
+          "code": "MN4349",
+          "name": "Шаамар",
+          "nameEn": "Shaamar"
+        }
+      ]
+    },
+    {
+      "code": "MN41",
+      "name": "Төв",
+      "nameEn": "To'v",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN4104",
+          "name": "Алтанбулаг",
+          "nameEn": "Altanbulag"
+        },
+        {
+          "code": "MN4107",
+          "name": "Аргалант",
+          "nameEn": "Argalant"
+        },
+        {
+          "code": "MN4110",
+          "name": "Архуст",
+          "nameEn": "Arxust"
+        },
+        {
+          "code": "MN4113",
+          "name": "Батсүмбэр",
+          "nameEn": "Batsu'mber"
+        },
+        {
+          "code": "MN4116",
+          "name": "Баян",
+          "nameEn": "Bayan"
+        },
+        {
+          "code": "MN4119",
+          "name": "Баяндэлгэр",
+          "nameEn": "Bayandelger"
+        },
+        {
+          "code": "MN4122",
+          "name": "Баянжаргалан",
+          "nameEn": "Bayanjargalan"
+        },
+        {
+          "code": "MN4125",
+          "name": "Баян-Өнжүүл",
+          "nameEn": "Bayan-O'njuul"
+        },
+        {
+          "code": "MN4128",
+          "name": "Баянхангай",
+          "nameEn": "Bayanxangai"
+        },
+        {
+          "code": "MN4131",
+          "name": "Баянцагаан",
+          "nameEn": "Bayancagaan"
+        },
+        {
+          "code": "MN4134",
+          "name": "Баянцогт",
+          "nameEn": "Bayancogt"
+        },
+        {
+          "code": "MN4137",
+          "name": "Баянчандмань",
+          "nameEn": "Bayanchandmani"
+        },
+        {
+          "code": "MN4140",
+          "name": "Борнуур",
+          "nameEn": "Bornuur"
+        },
+        {
+          "code": "MN4143",
+          "name": "Бүрэн",
+          "nameEn": "Bu'ren"
+        },
+        {
+          "code": "MN4146",
+          "name": "Дэлгэрхаан",
+          "nameEn": "Delgerxaan"
+        },
+        {
+          "code": "MN4149",
+          "name": "Жаргалант",
+          "nameEn": "Jargalant"
+        },
+        {
+          "code": "MN4152",
+          "name": "Заамар",
+          "nameEn": "Zaamar"
+        },
+        {
+          "code": "MN4101",
+          "name": "Зуунмод",
+          "nameEn": "Zuunmod"
+        },
+        {
+          "code": "MN4155",
+          "name": "Лүн",
+          "nameEn": "Lu'n"
+        },
+        {
+          "code": "MN4158",
+          "name": "Мөнгөнморьт",
+          "nameEn": "Mo'ngonmorit"
+        },
+        {
+          "code": "MN4161",
+          "name": "Өндөрширээт",
+          "nameEn": "O'ndorshireet"
+        },
+        {
+          "code": "MN4164",
+          "name": "Сүмбэр",
+          "nameEn": "Su'mber"
+        },
+        {
+          "code": "MN4167",
+          "name": "Сэргэлэн",
+          "nameEn": "Sergelen"
+        },
+        {
+          "code": "MN4170",
+          "name": "Угтаалцайдам",
+          "nameEn": "Ugtaalcaidam"
+        },
+        {
+          "code": "MN4173",
+          "name": "Цээл",
+          "nameEn": "Ceel"
+        },
+        {
+          "code": "MN4176",
+          "name": "Эрдэнэ",
+          "nameEn": "Erdene"
+        },
+        {
+          "code": "MN4179",
+          "name": "Эрдэнэсант",
+          "nameEn": "Erdenesant"
+        }
+      ]
+    },
+    {
+      "code": "MN85",
+      "name": "Увс",
+      "nameEn": "Uvs",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN8504",
+          "name": "Баруунтуруун",
+          "nameEn": "Baruunturuun"
+        },
+        {
+          "code": "MN8507",
+          "name": "Бөхмөрөн",
+          "nameEn": "Bo'xmoron"
+        },
+        {
+          "code": "MN8510",
+          "name": "Давст",
+          "nameEn": "Davst"
+        },
+        {
+          "code": "MN8513",
+          "name": "Завхан",
+          "nameEn": "Zavxan"
+        },
+        {
+          "code": "MN8516",
+          "name": "Зүүнговь",
+          "nameEn": "Zu'ungovi"
+        },
+        {
+          "code": "MN8519",
+          "name": "Зүүнхангай",
+          "nameEn": "Zu'unxangai"
+        },
+        {
+          "code": "MN8522",
+          "name": "Малчин",
+          "nameEn": "Malchin"
+        },
+        {
+          "code": "MN8525",
+          "name": "Наранбулаг",
+          "nameEn": "Naranbulag"
+        },
+        {
+          "code": "MN8528",
+          "name": "Өлгий",
+          "nameEn": "O'lgii"
+        },
+        {
+          "code": "MN8531",
+          "name": "Өмнөгөвь",
+          "nameEn": "O'mnogovi"
+        },
+        {
+          "code": "MN8534",
+          "name": "Өндөрхангай",
+          "nameEn": "O'ndorxangai"
+        },
+        {
+          "code": "MN8537",
+          "name": "Сагил",
+          "nameEn": "Sagil"
+        },
+        {
+          "code": "MN8540",
+          "name": "Тариалан",
+          "nameEn": "Tarialan"
+        },
+        {
+          "code": "MN8543",
+          "name": "Түргэн",
+          "nameEn": "Tu'rgen"
+        },
+        {
+          "code": "MN8546",
+          "name": "Тэс",
+          "nameEn": "Tes"
+        },
+        {
+          "code": "MN8501",
+          "name": "Улаангом",
+          "nameEn": "Ulaangom"
+        },
+        {
+          "code": "MN8549",
+          "name": "Ховд",
+          "nameEn": "Xovd"
+        },
+        {
+          "code": "MN8552",
+          "name": "Хяргас",
+          "nameEn": "Xyargas"
+        },
+        {
+          "code": "MN8555",
+          "name": "Цагаанхайрхан",
+          "nameEn": "Cagaanxairxan"
+        }
+      ]
+    },
+    {
+      "code": "MN84",
+      "name": "Ховд",
+      "nameEn": "Khovd",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN8404",
+          "name": "Алтай",
+          "nameEn": "Altai"
+        },
+        {
+          "code": "MN8407",
+          "name": "Булган",
+          "nameEn": "Bulgan"
+        },
+        {
+          "code": "MN8410",
+          "name": "Буянт",
+          "nameEn": "Buyant"
+        },
+        {
+          "code": "MN8413",
+          "name": "Дарви",
+          "nameEn": "Darvi"
+        },
+        {
+          "code": "MN8416",
+          "name": "Дөргөн",
+          "nameEn": "Do'rgon"
+        },
+        {
+          "code": "MN8419",
+          "name": "Дуут",
+          "nameEn": "Duut"
+        },
+        {
+          "code": "MN8401",
+          "name": "Жаргалант",
+          "nameEn": "Jargalant"
+        },
+        {
+          "code": "MN8422",
+          "name": "Зэрэг",
+          "nameEn": "Zereg"
+        },
+        {
+          "code": "MN8425",
+          "name": "Манхан",
+          "nameEn": "Manxan"
+        },
+        {
+          "code": "MN8428",
+          "name": "Мөнххайрхан",
+          "nameEn": "Mo'nxxairxan"
+        },
+        {
+          "code": "MN8431",
+          "name": "Мөст",
+          "nameEn": "Mo'st"
+        },
+        {
+          "code": "MN8434",
+          "name": "Мянгад",
+          "nameEn": "Myangad"
+        },
+        {
+          "code": "MN8437",
+          "name": "Үенч",
+          "nameEn": "U'yench"
+        },
+        {
+          "code": "MN8440",
+          "name": "Ховд",
+          "nameEn": "Xovd"
+        },
+        {
+          "code": "MN8443",
+          "name": "Цэцэг",
+          "nameEn": "Ceceg"
+        },
+        {
+          "code": "MN8446",
+          "name": "Чандмань",
+          "nameEn": "Chandmani"
+        },
+        {
+          "code": "MN8449",
+          "name": "Эрдэнэбүрэн",
+          "nameEn": "Erdenebu'ren"
+        }
+      ]
+    },
+    {
+      "code": "MN67",
+      "name": "Хөвсгөл",
+      "nameEn": "Khovsgol",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN6704",
+          "name": "Алаг-Эрдэнэ",
+          "nameEn": "Alag-Erdene"
+        },
+        {
+          "code": "MN6707",
+          "name": "Арбулаг",
+          "nameEn": "Arbulag"
+        },
+        {
+          "code": "MN6710",
+          "name": "Баянзүрх",
+          "nameEn": "Bayanzu'rx"
+        },
+        {
+          "code": "MN6713",
+          "name": "Бүрэнтогтох",
+          "nameEn": "Bu'rentogtox"
+        },
+        {
+          "code": "MN6716",
+          "name": "Галт",
+          "nameEn": "Galt"
+        },
+        {
+          "code": "MN6719",
+          "name": "Жаргалант",
+          "nameEn": "Jargalant"
+        },
+        {
+          "code": "MN6722",
+          "name": "Их-Уул",
+          "nameEn": "Ix-Uul"
+        },
+        {
+          "code": "MN6701",
+          "name": "Мөрөн",
+          "nameEn": "Mo'ron"
+        },
+        {
+          "code": "MN6725",
+          "name": "Рашаант",
+          "nameEn": "Rashaant"
+        },
+        {
+          "code": "MN6728",
+          "name": "Рэнчинлхүмбэ",
+          "nameEn": "Renchinlxu'mbe"
+        },
+        {
+          "code": "MN6731",
+          "name": "Тариалан",
+          "nameEn": "Tarialan"
+        },
+        {
+          "code": "MN6734",
+          "name": "Тосонцэнгэл",
+          "nameEn": "Tosoncengel"
+        },
+        {
+          "code": "MN6737",
+          "name": "Төмөрбулаг",
+          "nameEn": "To'morbulag"
+        },
+        {
+          "code": "MN6740",
+          "name": "Түнэл",
+          "nameEn": "Tu'nel"
+        },
+        {
+          "code": "MN6743",
+          "name": "Улаан-Уул",
+          "nameEn": "Ulaan uul"
+        },
+        {
+          "code": "MN6746",
+          "name": "Ханх",
+          "nameEn": "Xanx"
+        },
+        {
+          "code": "MN6749",
+          "name": "Цагааннуур",
+          "nameEn": "Cagaannuur"
+        },
+        {
+          "code": "MN6752",
+          "name": "Цагаан-Уул",
+          "nameEn": "Cagaan-Uul"
+        },
+        {
+          "code": "MN6755",
+          "name": "Цагаан-Үүр",
+          "nameEn": "Cagaan-U'ur"
+        },
+        {
+          "code": "MN6758",
+          "name": "Цэцэрлэг",
+          "nameEn": "Cecerleg"
+        },
+        {
+          "code": "MN6761",
+          "name": "Чандмань-Өндөр",
+          "nameEn": "Chandmani-O'ndor"
+        },
+        {
+          "code": "MN6764",
+          "name": "Шинэ-Идэр",
+          "nameEn": "Shine-Ider"
+        },
+        {
+          "code": "MN6767",
+          "name": "Эрдэнэбулган",
+          "nameEn": "Erdenebulgan"
+        }
+      ]
+    },
+    {
+      "code": "MN23",
+      "name": "Хэнтий",
+      "nameEn": "Hentii",
+      "isCapital": false,
+      "children": [
+        {
+          "code": "MN2304",
+          "name": "Батноров",
+          "nameEn": "Batnorov"
+        },
+        {
+          "code": "MN2307",
+          "name": "Батширээт",
+          "nameEn": "Batshireet"
+        },
+        {
+          "code": "MN2310",
+          "name": "Баян-Адарга",
+          "nameEn": "Bayan-Adraga"
+        },
+        {
+          "code": "MN2313",
+          "name": "Баянмөнх",
+          "nameEn": "Bayanmo'nx"
+        },
+        {
+          "code": "MN2316",
+          "name": "Баян-Овоо",
+          "nameEn": "Bayan-Ovoo"
+        },
+        {
+          "code": "MN2319",
+          "name": "Баянхутаг",
+          "nameEn": "Bayanxutag"
+        },
+        {
+          "code": "MN2322",
+          "name": "Биндэр",
+          "nameEn": "Binder"
+        },
+        {
+          "code": "MN2352",
+          "name": "Бор-Өндөр",
+          "nameEn": "Bor-Ondor"
+        },
+        {
+          "code": "MN2325",
+          "name": "Галшар",
+          "nameEn": "Galshir"
+        },
+        {
+          "code": "MN2328",
+          "name": "Дадал",
+          "nameEn": "Dadal"
+        },
+        {
+          "code": "MN2331",
+          "name": "Дархан",
+          "nameEn": "Darxan"
+        },
+        {
+          "code": "MN2334",
+          "name": "Дэлгэрхаан",
+          "nameEn": "Delgerxaan"
+        },
+        {
+          "code": "MN2337",
+          "name": "Жаргалтхаан",
+          "nameEn": "Jargaltxaan"
+        },
+        {
+          "code": "MN2340",
+          "name": "Мөрөн",
+          "nameEn": "Mo'ron"
+        },
+        {
+          "code": "MN2343",
+          "name": "Норовлин",
+          "nameEn": "Norovlin"
+        },
+        {
+          "code": "MN2346",
+          "name": "Өмнөдэлгэр",
+          "nameEn": "O'mnodelger"
+        },
+        {
+          "code": "MN2301",
+          "name": "Хэрлэн",
+          "nameEn": "Xerlen"
+        },
+        {
+          "code": "MN2349",
+          "name": "Цэнхэрмандал",
+          "nameEn": "Cenxermandal"
+        }
+      ]
+    }
+  ],
+  "_khoroo_source": "en/mn.wikipedia.org 'Districts of Ulaanbaatar' (2020-2022), нийт 204 хороо",
+  "_khoroo_warning": "manaikhoroo.ub.gov.mn албан ёсны сайт 2019 оны өмнөх 152 хороог үзүүлдэг (хуучирсан). Клиентээр баталгаажуулах шаардлагатай."
+}

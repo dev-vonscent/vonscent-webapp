@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SearchX } from "lucide-react";
 import { getCatalog, getBrands, getPriceBounds } from "@/features/products/api";
+import { getScentFamilies } from "@/features/taxonomy/api";
 import { parseFilters } from "@/features/catalog/parse";
 import { CatalogFilters } from "@/features/catalog/components/catalog-filters";
 import { CatalogFilterSheet } from "@/features/catalog/components/catalog-filter-sheet";
@@ -23,10 +24,11 @@ export default async function CatalogPage({
 }) {
   const params = await searchParams;
   const filters = parseFilters(params);
-  const [result, brands, priceBounds] = await Promise.all([
+  const [result, brands, priceBounds, families] = await Promise.all([
     getCatalog(filters),
     getBrands(),
     getPriceBounds(),
+    getScentFamilies(),
   ]);
 
   return (
@@ -44,7 +46,11 @@ export default async function CatalogPage({
 
       {/* Controls — mobile only (on desktop the search sits above the sidebar) */}
       <div className="flex items-center gap-2 border-y border-border py-3 lg:hidden">
-        <CatalogFilterSheet brands={brands} priceBounds={priceBounds} />
+        <CatalogFilterSheet
+          brands={brands}
+          priceBounds={priceBounds}
+          families={families}
+        />
         <CatalogSort iconOnly />
         <CatalogSearch className="flex-1" />
       </div>
@@ -53,7 +59,11 @@ export default async function CatalogPage({
         {/* Desktop sidebar: search above the filter, sharing its width */}
         <aside className="hidden w-96 shrink-0 lg:block">
           <CatalogSearch className="mb-6" />
-          <CatalogFilters brands={brands} priceBounds={priceBounds} />
+          <CatalogFilters
+            brands={brands}
+            priceBounds={priceBounds}
+            families={families}
+          />
         </aside>
 
         <div className="flex-1">

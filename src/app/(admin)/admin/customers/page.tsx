@@ -42,7 +42,7 @@ export default async function AdminCustomersPage({
                   <th className="px-4 py-3 font-medium">Нэр</th>
                   <th className="px-4 py-3 font-medium">Утас</th>
                   <th className="px-4 py-3 font-medium">Эрх</th>
-                  <th className="px-4 py-3 font-medium">Loyalty</th>
+                  <th className="px-4 py-3 font-medium">V point</th>
                   <th className="px-4 py-3 font-medium">Төлөв</th>
                 </tr>
               </thead>

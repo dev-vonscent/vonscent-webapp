@@ -22,8 +22,7 @@ import { createClient } from "@/lib/supabase/server";
 interface DbVariant {
   id: string;
   ml: number;
-  auto_price: number;
-  override_price: number | null;
+  price: number;
   is_active: boolean;
 }
 interface DbImage {
@@ -42,17 +41,19 @@ interface DbProduct {
   name: string;
   brand: string;
   description: string;
+  notes_description: string | null;
+  usage_description: string | null;
+  short_description: string | null;
   notes_top: string[];
   notes_heart: string[];
   notes_base: string[];
   gender: ProductDetail["gender"];
   concentration: ProductDetail["concentration"];
-  scent_family: ScentFamily | null;
-  season: Season | null;
+  scent_families: ScentFamily[] | null;
+  seasons: Season[] | null;
   origin_country: string | null;
   release_year: number | null;
   bottle_ml: number;
-  sample_available: boolean;
   rating_avg: number;
   rating_count: number;
   created_at: string;
@@ -65,27 +66,19 @@ interface DbProduct {
 }
 
 const SELECT = `
-  id, slug, name, brand, description,
+  id, slug, name, brand,
+  description, notes_description, usage_description, short_description,
   notes_top, notes_heart, notes_base,
-  gender, concentration, scent_family, season,
+  gender, concentration, scent_families, seasons,
   origin_country, release_year, bottle_ml,
-  sample_available, rating_avg, rating_count, created_at,
+  rating_avg, rating_count, created_at,
   product_images ( url, alt, sort_order ),
-  product_variants ( id, ml, auto_price, override_price, is_active ),
+  product_variants ( id, ml, price, is_active ),
   inventory ( on_hand_ml, reserved_ml, is_sold_out ),
   product_tags ( tags ( slug, kind ) )
 `;
 
 function mapProduct(row: DbProduct): ProductDetail {
-  const variants = [...row.product_variants]
-    .sort((a, b) => a.ml - b.ml)
-    .map((v) => ({
-      id: v.id,
-      ml: v.ml,
-      price: v.override_price ?? v.auto_price,
-      isActive: v.is_active,
-    }));
-
   const images = [...row.product_images]
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((i) => ({ url: i.url, alt: i.alt ?? row.name }));
@@ -93,8 +86,24 @@ function mapProduct(row: DbProduct): ProductDetail {
   const inv = Array.isArray(row.inventory) ? row.inventory[0] : row.inventory;
   const availableMl = inv ? inv.on_hand_ml - inv.reserved_ml : 0;
 
-  const activePrices = variants.filter((v) => v.isActive).map((v) => v.price);
-  const startingPrice = activePrices.length ? Math.min(...activePrices) : 0;
+  // A size is buyable only when the admin left it active AND the remaining
+  // source ml can still fill it (requirement_fb.md: a sold-out 20ml turns
+  // itself off while 5ml keeps selling).
+  const variants = [...row.product_variants]
+    .sort((a, b) => a.ml - b.ml)
+    .map((v) => ({
+      id: v.id,
+      ml: v.ml,
+      price: v.price,
+      isActive: v.is_active,
+      inStock: !inv?.is_sold_out && availableMl >= v.ml,
+    }));
+
+  // "From" price quotes the cheapest size a customer can actually buy today.
+  const sellable = variants.filter((v) => v.isActive && v.inStock);
+  const priced = (sellable.length ? sellable : variants.filter((v) => v.isActive))
+    .map((v) => v.price);
+  const startingPrice = priced.length ? Math.min(...priced) : 0;
 
   const tags = row.product_tags
     .map((pt) => (Array.isArray(pt.tags) ? pt.tags[0] : pt.tags)?.kind)
@@ -107,18 +116,22 @@ function mapProduct(row: DbProduct): ProductDetail {
     brand: row.brand,
     gender: row.gender,
     concentration: row.concentration,
-    scentFamily: row.scent_family,
-    season: row.season,
+    scentFamilies: row.scent_families ?? [],
+    seasons: row.seasons ?? [],
     image: images[0] ?? null,
     images,
     startingPrice,
     tags,
-    soldOut: inv?.is_sold_out || availableMl <= 0,
-    sampleAvailable: row.sample_available,
+    // Sold out only once *every* size is unbuyable — a bottle with 8ml left
+    // still sells 5ml, so it must not be greyed out in the grid.
+    soldOut: sellable.length === 0,
     ratingAvg: row.rating_avg,
     ratingCount: row.rating_count,
     createdAt: row.created_at,
     description: row.description,
+    notesDescription: row.notes_description ?? "",
+    usageDescription: row.usage_description ?? "",
+    shortDescription: row.short_description ?? "",
     notesTop: row.notes_top,
     notesHeart: row.notes_heart,
     notesBase: row.notes_base,
@@ -156,13 +169,12 @@ function toListItem(p: ProductDetail): ProductListItem {
     brand: p.brand,
     gender: p.gender,
     concentration: p.concentration,
-    scentFamily: p.scentFamily,
-    season: p.season,
+    scentFamilies: p.scentFamilies,
+    seasons: p.seasons,
     image: p.image,
     startingPrice: p.startingPrice,
     tags: p.tags,
     soldOut: p.soldOut,
-    sampleAvailable: p.sampleAvailable,
     ratingAvg: p.ratingAvg,
     ratingCount: p.ratingCount,
     createdAt: p.createdAt,
@@ -214,15 +226,23 @@ export async function getCatalog(
   let items = all.filter((p) => {
     if (brand?.length && !brand.includes(p.brand)) return false;
     if (gender?.length && !gender.includes(p.gender)) return false;
-    if (family?.length && (!p.scentFamily || !family.includes(p.scentFamily)))
+    // Multi-value tags: a product matches when it carries *any* of the picked
+    // families / seasons. "all" means the scent works year-round, so it
+    // answers every season filter.
+    if (family?.length && !family.some((f) => p.scentFamilies.includes(f)))
       return false;
     if (
       season?.length &&
-      (!p.season || !(season.includes(p.season) || p.season === "all"))
+      !(p.seasons.includes("all") || season.some((s) => p.seasons.includes(s)))
     )
       return false;
     if (tags?.length && !tags.some((t) => p.tags.includes(t))) return false;
-    if (ml?.length && !p.variants.some((v) => ml.includes(v.ml))) return false;
+    // "ml боломж" means sizes you can actually order right now.
+    if (
+      ml?.length &&
+      !p.variants.some((v) => ml.includes(v.ml) && v.isActive && v.inStock)
+    )
+      return false;
     if (minPrice != null && p.startingPrice < minPrice) return false;
     if (maxPrice != null && p.startingPrice > maxPrice) return false;
     if (search) {
@@ -274,6 +294,12 @@ export async function getProductDetailsByIds(
   return all.filter((p) => set.has(p.id));
 }
 
+/**
+ * Related products, ranked by how many attributes they share with the current
+ * one (requirement_fb.md: "аль болох олон таг нь таарсан уснууд байх").
+ * Scent family and brand weigh heaviest; gender / season / concentration and
+ * marketing tags break the ties.
+ */
 export async function getRelated(
   slug: string,
   limit = 4,
@@ -281,14 +307,27 @@ export async function getRelated(
   const all = await fetchProducts();
   const product = all.find((p) => p.slug === slug);
   if (!product) return [];
+
+  function score(p: ProductDetail): number {
+    let n = 0;
+    // Each shared family/season counts, so a scent matching two of three
+    // families outranks one that only matches a single family.
+    n += 4 * p.scentFamilies.filter((f) => product!.scentFamilies.includes(f)).length;
+    if (p.brand === product!.brand) n += 3;
+    if (p.gender === product!.gender) n += 2;
+    n += 2 * p.seasons.filter((s) => product!.seasons.includes(s)).length;
+    if (p.concentration === product!.concentration) n += 1;
+    n += p.tags.filter((t) => product!.tags.includes(t)).length;
+    return n;
+  }
+
   return all
-    .filter(
-      (p) =>
-        p.slug !== slug &&
-        (p.scentFamily === product.scentFamily || p.brand === product.brand),
-    )
+    .filter((p) => p.slug !== slug)
+    .map((p) => ({ p, s: score(p) }))
+    .filter((x) => x.s > 0)
+    .sort((a, b) => b.s - a.s || a.p.name.localeCompare(b.p.name))
     .slice(0, limit)
-    .map(toListItem);
+    .map((x) => toListItem(x.p));
 }
 
 export async function getNewArrivals(limit = 8): Promise<ProductListItem[]> {
@@ -296,20 +335,26 @@ export async function getNewArrivals(limit = 8): Promise<ProductListItem[]> {
   return sortProducts(all, "new").slice(0, limit).map(toListItem);
 }
 
-export async function getBestSellers(limit = 8): Promise<ProductListItem[]> {
+/** Everything carrying a marketing tag, newest first (home rails, B7). */
+export async function getProductsByTag(
+  tag: TagKind,
+  limit = 8,
+): Promise<ProductListItem[]> {
   const all = await fetchProducts();
-  return all
-    .filter((p) => p.tags.includes("hot"))
+  return sortProducts(
+    all.filter((p) => p.tags.includes(tag)),
+    "new",
+  )
     .slice(0, limit)
     .map(toListItem);
 }
 
+export async function getBestSellers(limit = 8): Promise<ProductListItem[]> {
+  return getProductsByTag("hot", limit);
+}
+
 export async function getOnSale(limit = 8): Promise<ProductListItem[]> {
-  const all = await fetchProducts();
-  return all
-    .filter((p) => p.tags.includes("sale"))
-    .slice(0, limit)
-    .map(toListItem);
+  return getProductsByTag("sale", limit);
 }
 
 export async function getBrands(): Promise<string[]> {

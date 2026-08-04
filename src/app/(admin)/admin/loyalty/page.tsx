@@ -12,6 +12,7 @@ export default function AdminLoyaltyPage() {
   const [earnPer, setEarnPer] = React.useState(100);
   const [earnPoints, setEarnPoints] = React.useState(1);
   const [redeemRate, setRedeemRate] = React.useState(1);
+  const [lockHours, setLockHours] = React.useState(24);
   const [saved, setSaved] = React.useState(false);
   const [loaded, setLoaded] = React.useState(false);
 
@@ -32,6 +33,7 @@ export default function AdminLoyaltyPage() {
           setEarnPer(v.earnPer ?? 100);
           setEarnPoints(v.earnPoints ?? 1);
           setRedeemRate(v.redeemRate ?? 1);
+          setLockHours(v.lockHours ?? 24);
         }
         setLoaded(true);
       });
@@ -44,7 +46,7 @@ export default function AdminLoyaltyPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         key: "loyalty",
-        value: { earnPer, earnPoints, redeemRate },
+        value: { earnPer, earnPoints, redeemRate, lockHours },
       }),
     });
     setSaved(true);
@@ -55,7 +57,7 @@ export default function AdminLoyaltyPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="font-serif text-2xl font-semibold">Loyalty тохиргоо</h1>
+      <h1 className="font-serif text-2xl font-semibold">V point тохиргоо</h1>
       <Card>
         <CardContent className="space-y-5 p-6">
           <form onSubmit={save} className="space-y-4">
@@ -86,6 +88,19 @@ export default function AdminLoyaltyPage() {
                   value={redeemRate}
                   onChange={(e) => setRedeemRate(Number(e.target.value) || 1)}
                 />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Оноо түгжих хугацаа (цаг)</Label>
+                <Input
+                  type="number"
+                  value={lockHours}
+                  onChange={(e) => setLockHours(Number(e.target.value) || 0)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Шинэ оноо энэ хугацаанд түгжээтэй байна — захиалга
+                  «Хүргэгдсэн» болвол хугацаанаас өмнө ч нээгдэнэ. 0 бол шууд
+                  зарцуулж болно.
+                </p>
               </div>
             </div>
             <Button type="submit">{saved ? "Хадгалагдлаа ✓" : "Хадгалах"}</Button>

@@ -7,7 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { DEFAULT_PRICE_TIERS, DEFAULT_ROUND_TO } from "@/lib/constants";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  SHIPPING_ZONES,
+  type ShippingZoneConfig,
+} from "@/lib/constants";
+import { ZoneAreas } from "@/features/admin/components/zone-areas";
 import { createClient } from "@/lib/supabase/browser";
 
 async function saveSetting(key: string, value: unknown) {
@@ -19,22 +31,25 @@ async function saveSetting(key: string, value: unknown) {
 }
 
 export default function AdminSettingsPage() {
-  const [tiers, setTiers] = React.useState<
-    { ml: number; coefficient: number }[]
-  >(DEFAULT_PRICE_TIERS.map((t) => ({ ml: t.ml, coefficient: t.coefficient })));
-  const [roundTo, setRoundTo] = React.useState(DEFAULT_ROUND_TO);
   const [store, setStore] = React.useState({
     name: "vonscent",
     phone: "",
     email: "hello@vonscent.mn",
     address: "Улаанбаатар",
   });
-  const [zones, setZones] = React.useState<{ name: string; fee: number }[]>([
-    { name: "Улаанбаатар дотор", fee: 5000 },
-    { name: "Орон нутаг", fee: 12000 },
+  const [zones, setZones] = React.useState<ShippingZoneConfig[]>([
+    ...SHIPPING_ZONES,
   ]);
   const [freeOver, setFreeOver] = React.useState(150000);
   const [invoiceCode, setInvoiceCode] = React.useState("");
+  const [autoGrant, setAutoGrant] = React.useState({
+    enabled: false,
+    minTotal: 300000,
+    type: "percent",
+    value: 10,
+    validDays: 30,
+    maxUsesPerUser: 1,
+  });
 
   React.useEffect(() => {
     const supabase = createClient();
@@ -45,15 +60,25 @@ export default function AdminSettingsPage() {
       .then(({ data }) => {
         for (const row of (data as { key: string; value: unknown }[] | null) ?? []) {
           const v = row.value as Record<string, unknown>;
-          if (row.key === "pricing" && v) {
-            if (Array.isArray(v.tiers)) setTiers(v.tiers as typeof tiers);
-            if (v.roundTo) setRoundTo(Number(v.roundTo));
-          }
           if (row.key === "store" && v) setStore((s) => ({ ...s, ...(v as object) }));
           if (row.key === "shipping" && v) {
-            if (Array.isArray(v.zones)) setZones(v.zones as typeof zones);
+            if (Array.isArray(v.zones)) {
+              // Rows saved before deliverable/remote existed default to a
+              // normal, deliverable city zone.
+              setZones(
+                (v.zones as Partial<ShippingZoneConfig>[]).map((z) => ({
+                  name: String(z.name ?? ""),
+                  fee: Number(z.fee) || 0,
+                  deliverable: z.deliverable !== false,
+                  remote: z.remote === true,
+                  areas: Array.isArray(z.areas) ? z.areas : [],
+                })),
+              );
+            }
             if (v.freeOver) setFreeOver(Number(v.freeOver));
           }
+          if (row.key === "coupons" && v && v.autoGrant)
+            setAutoGrant((g) => ({ ...g, ...(v.autoGrant as object) }));
           if (row.key === "payment" && v) setInvoiceCode(String(v.invoiceCode ?? ""));
         }
       });
@@ -62,37 +87,6 @@ export default function AdminSettingsPage() {
   return (
     <div className="space-y-6">
       <h1 className="font-serif text-2xl font-semibold">Тохиргоо</h1>
-
-      {/* Pricing */}
-      <Saver title="Шатлалын коэффициент" onSave={() => saveSetting("pricing", { roundTo, tiers })}>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {tiers.map((t, i) => (
-            <div key={t.ml} className="space-y-1.5">
-              <Label>{t.ml}ml коэффициент</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={t.coefficient}
-                onChange={(e) =>
-                  setTiers((ts) =>
-                    ts.map((x, j) =>
-                      j === i ? { ...x, coefficient: Number(e.target.value) || 0 } : x,
-                    ),
-                  )
-                }
-              />
-            </div>
-          ))}
-        </div>
-        <div className="max-w-xs space-y-1.5">
-          <Label>Бөөрөнхийлөх алхам (₮)</Label>
-          <Input
-            type="number"
-            value={roundTo}
-            onChange={(e) => setRoundTo(Number(e.target.value) || 1)}
-          />
-        </div>
-      </Saver>
 
       {/* Store info */}
       <Saver title="Дэлгүүрийн мэдээлэл" onSave={() => saveSetting("store", store)}>
@@ -117,20 +111,26 @@ export default function AdminSettingsPage() {
         title="Хүргэлтийн бүс ба төлбөр"
         onSave={() => saveSetting("shipping", { zones, freeOver })}
       >
-        <div className="space-y-2">
+        <div className="space-y-3">
           {zones.map((z, i) => (
-            <div key={i} className="flex items-center gap-2">
+            <div
+              key={i}
+              className="space-y-3 rounded-lg border border-border p-2"
+            >
+              <div className="flex flex-wrap items-center gap-2">
               <Input
                 value={z.name}
                 onChange={(e) =>
                   setZones((zs) => zs.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
                 }
                 placeholder="Бүсийн нэр"
+                className="min-w-40 flex-1"
               />
               <Input
                 type="number"
                 className="w-32"
                 value={z.fee}
+                disabled={!z.deliverable}
                 onChange={(e) =>
                   setZones((zs) =>
                     zs.map((x, j) => (j === i ? { ...x, fee: Number(e.target.value) || 0 } : x)),
@@ -138,22 +138,66 @@ export default function AdminSettingsPage() {
                 }
                 placeholder="Төлбөр"
               />
+              <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs">
+                <Checkbox
+                  checked={z.deliverable}
+                  onCheckedChange={(c) =>
+                    setZones((zs) =>
+                      zs.map((x, j) =>
+                        j === i ? { ...x, deliverable: Boolean(c) } : x,
+                      ),
+                    )
+                  }
+                />
+                Хүргэнэ
+              </label>
+              <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs">
+                <Checkbox
+                  checked={z.remote}
+                  onCheckedChange={(c) =>
+                    setZones((zs) =>
+                      zs.map((x, j) => (j === i ? { ...x, remote: Boolean(c) } : x)),
+                    )
+                  }
+                />
+                Орон нутаг
+              </label>
               <button
                 onClick={() => setZones((zs) => zs.filter((_, j) => j !== i))}
                 className="text-muted-foreground hover:text-destructive"
               >
                 <Trash2 className="size-4" />
               </button>
+              </div>
+              <ZoneAreas
+                areas={z.areas ?? []}
+                onChange={(areas) =>
+                  setZones((zs) =>
+                    zs.map((x, j) => (j === i ? { ...x, areas } : x)),
+                  )
+                }
+              />
             </div>
           ))}
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => setZones((zs) => [...zs, { name: "", fee: 0 }])}
+            onClick={() =>
+              setZones((zs) => [
+                ...zs,
+                { name: "", fee: 0, deliverable: true, remote: false, areas: [] },
+              ])
+            }
           >
             <Plus className="size-4" /> Бүс нэмэх
           </Button>
+          <p className="text-xs text-muted-foreground">
+            «Хүргэнэ» тэмдэглэгээг авбал тухайн бүсийг сонгосон хэрэглэгч
+            захиалга өгөх боломжгүй болно. «Орон нутаг» бол унаа явах газраа
+            бичихийг сануулна. Хамрах газар нутгийг бөглөвөл checkout дээр бүс
+            нь хаягаас автоматаар тодорхойлогдоно (хороо нь дүүргээсээ давуу).
+          </p>
         </div>
         <div className="max-w-xs space-y-1.5">
           <Label>Үнэгүй хүргэлтийн босго (₮)</Label>
@@ -163,6 +207,79 @@ export default function AdminSettingsPage() {
             onChange={(e) => setFreeOver(Number(e.target.value) || 0)}
           />
         </div>
+      </Saver>
+
+      {/* Automatic reward coupon */}
+      <Saver
+        title="Автомат купон"
+        onSave={() => saveSetting("coupons", { autoGrant })}
+      >
+        <label className="flex cursor-pointer items-center gap-2 text-sm">
+          <Checkbox
+            checked={autoGrant.enabled}
+            onCheckedChange={(c) =>
+              setAutoGrant({ ...autoGrant, enabled: Boolean(c) })
+            }
+          />
+          Идэвхжүүлэх
+        </label>
+        <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
+          <Field label="Захиалгын доод дүн (₮)">
+            <Input
+              type="number"
+              value={autoGrant.minTotal}
+              onChange={(e) =>
+                setAutoGrant({
+                  ...autoGrant,
+                  minTotal: Number(e.target.value) || 0,
+                })
+              }
+            />
+          </Field>
+          <Field label="Хямдралын төрөл">
+            <Select
+              value={autoGrant.type}
+              onValueChange={(v) => setAutoGrant({ ...autoGrant, type: v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="percent">Хувь (%)</SelectItem>
+                <SelectItem value="fixed">Тогтсон дүн (₮)</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label={autoGrant.type === "percent" ? "Хувь" : "Дүн (₮)"}>
+            <Input
+              type="number"
+              value={autoGrant.value}
+              onChange={(e) =>
+                setAutoGrant({
+                  ...autoGrant,
+                  value: Number(e.target.value) || 0,
+                })
+              }
+            />
+          </Field>
+          <Field label="Хүчинтэй хугацаа (хоног)">
+            <Input
+              type="number"
+              value={autoGrant.validDays}
+              onChange={(e) =>
+                setAutoGrant({
+                  ...autoGrant,
+                  validDays: Number(e.target.value) || 1,
+                })
+              }
+            />
+          </Field>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Төлбөр нь баталгаажсан захиалга энэ дүнгээс давбал худалдан авагчид
+          зөвхөн түүнд зориулсан купон автоматаар үүснэ. Зочны захиалгад
+          үүсэхгүй (хаана хадгалах бүртгэл байхгүй).
+        </p>
       </Saver>
 
       {/* Payment */}

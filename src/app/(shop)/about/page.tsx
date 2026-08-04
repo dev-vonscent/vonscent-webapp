@@ -5,7 +5,7 @@ import { getAboutSettings } from "@/features/content/api";
 
 export const metadata: Metadata = {
   title: "Бидний тухай",
-  description: "vonscent — үнэртэнг decant хэлбэрээр туршиж сонгох дэлгүүр.",
+  description: "vonscent — үнэртэн decant хэлбэрээр туршиж сонгох дэлгүүр.",
 };
 
 const VALUES = [

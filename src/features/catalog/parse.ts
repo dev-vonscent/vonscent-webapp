@@ -10,14 +10,6 @@ function list(v: string | string[] | undefined): string[] {
   return arr.map((s) => s.trim()).filter(Boolean);
 }
 
-const FAMILIES: ScentFamily[] = [
-  "floral",
-  "woody",
-  "fresh",
-  "oriental",
-  "citrus",
-  "spicy",
-];
 const TAGS: TagKind[] = ["new", "hot", "sale"];
 const SORTS = ["new", "price_asc", "price_desc", "name", "popular"] as const;
 
@@ -26,8 +18,11 @@ export function parseFilters(params: Params): CatalogFilters {
   const gender = list(params.gender).filter((g): g is Gender =>
     (GENDERS as readonly string[]).includes(g),
   );
+  // Families are admin-managed slugs, so there is no closed list to validate
+  // against here — accept anything slug-shaped; an unknown slug simply matches
+  // no products.
   const family = list(params.family).filter((f): f is ScentFamily =>
-    FAMILIES.includes(f as ScentFamily),
+    /^[a-z0-9-]+$/.test(f),
   );
   const season = list(params.season).filter((s): s is Season =>
     (SEASONS as readonly string[]).includes(s),

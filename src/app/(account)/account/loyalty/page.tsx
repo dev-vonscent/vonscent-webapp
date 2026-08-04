@@ -2,10 +2,18 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Sparkles, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Sparkles, ArrowDownLeft, ArrowUpRight, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/browser";
 import type { LoyaltyLedgerRow } from "@/db/types";
+
+/** Ledger reasons the RPCs write, in the customer's words. */
+const REASON_LABEL: Record<string, string> = {
+  earn: "Захиалгаас цугларсан",
+  redeem: "Захиалгад ашигласан",
+  cancel_reverse: "Захиалга цуцлагдсан",
+  cancel_pending: "Цуцлагдсан захиалгын оноо",
+};
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("mn-MN", {
@@ -17,6 +25,7 @@ function formatDate(iso: string) {
 
 export default function LoyaltyHistoryPage() {
   const [points, setPoints] = React.useState(0);
+  const [pending, setPending] = React.useState(0);
   const [entries, setEntries] = React.useState<LoyaltyLedgerRow[]>([]);
   const [loaded, setLoaded] = React.useState(false);
 
@@ -33,10 +42,15 @@ export default function LoyaltyHistoryPage() {
       }
       const { data: profile } = await supabase
         .from("profiles")
-        .select("loyalty_points")
+        .select("loyalty_points, pending_points")
         .eq("id", data.user.id)
         .maybeSingle();
-      setPoints((profile as { loyalty_points?: number } | null)?.loyalty_points ?? 0);
+      const p = profile as {
+        loyalty_points?: number;
+        pending_points?: number;
+      } | null;
+      setPoints(p?.loyalty_points ?? 0);
+      setPending(p?.pending_points ?? 0);
 
       const { data: ledger } = await supabase
         .from("loyalty_ledger")
@@ -52,7 +66,7 @@ export default function LoyaltyHistoryPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="font-serif text-2xl font-semibold">Урамшууллын оноо</h1>
+      <h1 className="font-serif text-2xl font-semibold">V point</h1>
 
       {/* Balance */}
       <Card>
@@ -70,6 +84,20 @@ export default function LoyaltyHistoryPage() {
             <p className="text-3xl font-semibold">{points}</p>
             <p className="text-sm text-muted-foreground">Нийт боломжтой оноо</p>
           </div>
+          {/* Points from an order that could still be cancelled aren't
+              spendable yet (todo.md B4) — say so rather than letting the
+              balance look wrong. */}
+          {pending > 0 && (
+            <div className="ml-auto text-right">
+              <p className="flex items-center justify-end gap-1.5 text-2xl font-semibold text-muted-foreground">
+                <Lock className="size-4" />
+                {pending}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Түгжээтэй — хүргэгдсэний дараа нээгдэнэ
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -101,10 +129,13 @@ export default function LoyaltyHistoryPage() {
                   </span>
                   <div className="min-w-0">
                     <p className="truncate font-medium">
-                      {e.reason || (earned ? "Оноо хуримтлуулсан" : "Оноо ашигласан")}
+                      {REASON_LABEL[e.reason] ??
+                        e.reason ??
+                        (earned ? "Оноо хуримтлуулсан" : "Оноо ашигласан")}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {formatDate(e.created_at)}
+                      {e.reason === "earn" && !e.released && " · түгжээтэй"}
                     </p>
                   </div>
                   <span className="ml-auto font-semibold">

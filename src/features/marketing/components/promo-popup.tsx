@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 import type { PopupSettings, PopupSlide } from "@/features/content/api";
 
 const STORAGE_KEY = "vonscent-popup-dismissed";
+/** Per-tab flag: the popup is shown at most once per visit to the site. */
+const SESSION_KEY = "vonscent-popup-seen";
 const AUTOPLAY_MS = 5000;
 
 /** True when `now` falls within the slide's optional [startsAt, endsAt] window. */
@@ -36,9 +38,18 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
     const live = (settings.slides ?? []).filter((s) => s.title && isLive(s, now));
     setSlides(live);
     if (!settings.enabled || live.length === 0) return;
+    // Two gates: the admin's frequency window across visits, and a per-tab flag
+    // so navigating back to Home doesn't re-open it (requirement_fb.md §1 —
+    // "Home руу буцах бүрд гарч ирдгийг болиулах"). The session flag is set as
+    // soon as it opens, not only when dismissed, so leaving the page mid-popup
+    // still counts as "seen".
+    if (sessionStorage.getItem(SESSION_KEY)) return;
     const last = Number(localStorage.getItem(STORAGE_KEY) ?? 0);
     if ((now - last) / 36e5 < settings.frequencyHours) return;
-    const t = setTimeout(() => setOpen(true), 1200);
+    const t = setTimeout(() => {
+      sessionStorage.setItem(SESSION_KEY, "1");
+      setOpen(true);
+    }, 1200);
     return () => clearTimeout(t);
   }, [settings.enabled, settings.frequencyHours, settings.slides]);
 

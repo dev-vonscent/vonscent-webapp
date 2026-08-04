@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { checkoutSchema } from "@/lib/validators/order";
-import { computeSummary } from "@/features/checkout/api";
+import {
+  computeSummary,
+  UndeliverableZoneError,
+} from "@/features/checkout/api";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { callRpc } from "@/lib/supabase/rpc";
@@ -20,7 +23,15 @@ export async function POST(req: Request) {
   const input = parsed.data;
 
   // Authoritative server-side pricing.
-  const summary = await computeSummary(input);
+  let summary;
+  try {
+    summary = await computeSummary(input);
+  } catch (e) {
+    if (e instanceof UndeliverableZoneError) {
+      return NextResponse.json({ error: "ZONE_UNAVAILABLE" }, { status: 400 });
+    }
+    throw e;
+  }
   if (summary.lines.length === 0) {
     return NextResponse.json({ error: "EMPTY_CART" }, { status: 400 });
   }
@@ -50,7 +61,8 @@ export async function POST(req: Request) {
         ship_city: input.shipCity,
         ship_district: input.shipDistrict ?? null,
         ship_detail: input.shipDetail,
-        ship_zone: input.shipZone,
+        // The resolved zone, which may differ from the one the form showed.
+        ship_zone: summary.shipZone,
         note: input.note ?? null,
         shipping_fee: summary.shippingFee,
         coupon_code: input.couponCode ?? null,
@@ -62,7 +74,6 @@ export async function POST(req: Request) {
         variant_id: l.variantId,
         ml: l.ml,
         qty: l.qty,
-        is_sample: l.isSample,
       })),
     };
     const { data, error } = await callRpc<{

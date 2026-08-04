@@ -14,6 +14,7 @@ import { WishlistButton } from "@/features/wishlist/components/wishlist-button";
 import { ProductCarousel } from "@/features/products/components/product-carousel";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { getProductBySlug, getRelated } from "@/features/products/api";
+import { getScentFamilyLabels } from "@/features/taxonomy/api";
 import { ReviewSection } from "@/features/reviews/components/review-section";
 import { GENDER_LABEL, SEASON_LABEL } from "@/lib/constants";
 
@@ -27,7 +28,8 @@ export async function generateMetadata({
   if (!product) return { title: "Бараа олдсонгүй" };
   return {
     title: `${product.name} — ${product.brand}`,
-    description: product.description.slice(0, 160),
+    // The short part is written to stand alone; fall back to the intro.
+    description: (product.shortDescription || product.description).slice(0, 160),
     openGraph: { images: product.image ? [product.image.url] : [] },
   };
 }
@@ -59,7 +61,14 @@ export default async function ProductPage({
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const related = await getRelated(slug);
+  const [related, familyLabelMap] = await Promise.all([
+    getRelated(slug),
+    getScentFamilyLabels(),
+  ]);
+  // A family the admin deleted still shows as its slug rather than vanishing.
+  const familyLabels = product.scentFamilies.map(
+    (f) => familyLabelMap[f] ?? f,
+  );
 
   return (
     <div className="mx-auto max-w-[88rem] px-4 md:px-8 py-4 sm:py-8">
@@ -122,9 +131,40 @@ export default async function ProductPage({
               <NoteColumn title="Зүрх" notes={product.notesHeart} />
               <NoteColumn title="Суурь" notes={product.notesBase} />
             </div>
+            {product.shortDescription && (
+              <p className="text-sm text-muted-foreground">
+                {product.shortDescription}
+              </p>
+            )}
           </div>
 
-          <Accordion type="single" collapsible defaultValue="info">
+          <Accordion type="single" collapsible defaultValue="desc">
+            {/* Four-part description (0022). Parts the admin left blank are
+                skipped rather than opening onto an empty panel. */}
+            {product.description && (
+              <AccordionItem value="desc">
+                <AccordionTrigger>Дэлгэрэнгүй тайлбар</AccordionTrigger>
+                <AccordionContent className="whitespace-pre-line">
+                  {product.description}
+                </AccordionContent>
+              </AccordionItem>
+            )}
+            {product.notesDescription && (
+              <AccordionItem value="notes-desc">
+                <AccordionTrigger>Үнэрийн нотуудын тайлбар</AccordionTrigger>
+                <AccordionContent className="whitespace-pre-line">
+                  {product.notesDescription}
+                </AccordionContent>
+              </AccordionItem>
+            )}
+            {product.usageDescription && (
+              <AccordionItem value="usage">
+                <AccordionTrigger>Хэрэглэх нөхцөл</AccordionTrigger>
+                <AccordionContent className="whitespace-pre-line">
+                  {product.usageDescription}
+                </AccordionContent>
+              </AccordionItem>
+            )}
             <AccordionItem value="info">
               <AccordionTrigger>Барааны мэдээлэл</AccordionTrigger>
               <AccordionContent>
@@ -141,8 +181,16 @@ export default async function ProductPage({
                       value={String(product.releaseYear)}
                     />
                   )}
-                  {product.season && (
-                    <Row label="Улирал" value={SEASON_LABEL[product.season]} />
+                  {familyLabels.length > 0 && (
+                    <Row label="Үнэрийн төрөл" value={familyLabels.join(", ")} />
+                  )}
+                  {product.seasons.length > 0 && (
+                    <Row
+                      label="Улирал"
+                      value={product.seasons
+                        .map((s) => SEASON_LABEL[s])
+                        .join(", ")}
+                    />
                   )}
                 </dl>
               </AccordionContent>

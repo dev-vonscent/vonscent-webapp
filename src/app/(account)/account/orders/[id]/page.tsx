@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
 import { getProductsByIds } from "@/features/products/api";
 import { formatPrice, formatDate } from "@/lib/format";
+import { isOrderEditable, formatDeadline } from "@/lib/time";
 import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/constants";
 import { OrderActions, type ReorderItem } from "@/features/account/components/order-actions";
 import type {
@@ -70,13 +71,17 @@ export default async function OrderDetailPage({
         ml: i.ml,
         unitPrice: i.unit_price,
         image: p?.image?.url ?? null,
-        isSample: i.is_sample,
         qty: i.qty,
       };
     })
     .filter((i) => i.slug);
 
-  const cancellable = order.status === "pending" || order.status === "confirmed";
+  // Cancellable only while the status allows it AND we're still before 10:00
+  // on the dispatch day (requirement_fb.md §9).
+  const openStatus =
+    order.status === "pending" || order.status === "confirmed";
+  const beforeCutoff = isOrderEditable(order.created_at);
+  const cancellable = openStatus && beforeCutoff;
 
   return (
     <div className="space-y-6">
@@ -147,6 +152,14 @@ export default async function OrderDetailPage({
             </Card>
           )}
 
+          {openStatus && !beforeCutoff && (
+            <p className="rounded-xl bg-secondary px-4 py-3 text-sm text-muted-foreground">
+              Захиалга бэлтгэгдэж эхэлсэн тул ({formatDeadline(order.created_at)}{" "}
+              цагийн хугацаа өнгөрсөн) цуцлах, өөрчлөх боломжгүй. Асуудал гарвал
+              пэйж чат эсвэл утсаар холбогдоно уу.
+            </p>
+          )}
+
           {reorderItems.length > 0 && (
             <OrderActions
               orderId={order.id}
@@ -167,7 +180,7 @@ export default async function OrderDetailPage({
               )}
               {order.loyalty_used > 0 && (
                 <Row
-                  label="Loyalty оноо"
+                  label="V point"
                   value={`−${formatPrice(order.loyalty_used)}`}
                 />
               )}

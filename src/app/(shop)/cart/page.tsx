@@ -7,11 +7,11 @@ import { Minus, Plus, Trash2, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatPrice } from "@/lib/format";
 import { FREE_SHIP_OVER } from "@/lib/constants";
 import { useCart, selectSubtotal } from "@/features/cart/store";
+import { CartSizeSelect } from "@/features/cart/components/cart-size-select";
 
 export default function CartPage() {
   const items = useCart((s) => s.items);
@@ -104,12 +104,15 @@ export default function CartPage() {
                       >
                         {item.name}
                       </Link>
-                      <p className="mt-0.5 flex items-center gap-2 text-sm text-muted-foreground">
-                        {item.ml}ml
-                        {item.isSample && (
-                          <Badge variant="secondary">Sample</Badge>
-                        )}
-                      </p>
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <CartSizeSelect
+                          itemKey={item.key}
+                          slug={item.slug}
+                          variantId={item.variantId}
+                          ml={item.ml}
+                          className="h-8 w-36 text-xs"
+                        />
+                      </div>
                     </div>
                     <button
                       onClick={() => remove(item.key)}

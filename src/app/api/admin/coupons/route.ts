@@ -24,6 +24,8 @@ export async function POST(req: Request) {
     value: input.value,
     min_subtotal: input.minSubtotal,
     max_uses: input.maxUses,
+    max_uses_per_user: input.maxUsesPerUser,
+    user_id: input.userId,
     starts_at: input.startsAt,
     ends_at: input.endsAt,
     is_active: input.isActive,

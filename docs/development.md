@@ -121,42 +121,25 @@ Route-level middleware-ээр `(admin)` бүлгийг хамгаална. Route
 
 ---
 
-## 5. ml шатлалын үнэ тооцох цөм (хамгийн чухал)
+## 5. ml багцын үнэ (гар үнэ)
 
-Энэ нь бизнесийн гол функц. Админ **бүтэн савны үнэ** ба **савны багтаамж (ml)** оруулахад
-5/10/20ml багцуудын үнэ автоматаар шатлалттай бодогдоно.
+Үнийг **админ өөрөө бичнэ**. Хэмжээ бүрд (5/10/20ml) `product_variants.price`
+талбарт ₮ дүн шууд хадгалагдана — коэффициент, автомат тооцоо, override гэж
+байхгүй (`0027_manual_pricing.sql`).
 
-```ts
-// lib/pricing/calc.ts
-type Tier = { ml: number; coefficient: number }; // coeff settings-ээс уншина (A10)
-
-function calcTierPrices(
-  bottlePrice: number,   // бүтэн савны үнэ (₮)
-  bottleMl: number,      // савны багтаамж (ml)
-  tiers: Tier[],         // ж: [{ml:5,coef:1.8},{ml:10,coef:1.5},{ml:20,coef:1.3}]
-  roundTo = 100          // ₮ бөөрөнхийлөх алхам
-) {
-  const basePerMl = bottlePrice / bottleMl;
-  return tiers.map(({ ml, coefficient }) => ({
-    ml,
-    price: Math.ceil((basePerMl * ml * coefficient) / roundTo) * roundTo,
-  }));
-}
-```
-
-Логик:
-- `basePerMl = bottlePrice / bottleMl` — эх савны 1ml өртөг.
-- Бага ml багц илүү өндөр коэффициенттэй (decant-ийн ажил/савлагааны нэмэгдэл).
-- Коэффициентууд **тохиргооноос (A10)** уншигдана, hard-code хийхгүй.
-- Үр дүнг бөөрөнхийлнө (`roundTo`).
-- Админ автомат үнийг **override** хийж болно — override хийсэн утга DB-д хадгалагдаж, дахин тооцоход дарагдахгүй.
+- Хэмжээ **зөвхөн 5/10/20ml** — `ML_SIZES` (`src/lib/constants.ts`) болон DB-ийн
+  `product_variants_ml_check` хоёулаа хаалттай жагсаалт болгож барина.
+- Захиалгын RPC-үүд `variant_price(v)` дамжуулж төлбөр тооцох тул нэгж үнэ нэг
+  л эх сурвалжтай.
+- `products.bottle_price` / `bottle_ml` нь **үнэд нөлөөлөхгүй**. Эдгээр нь
+  үлдэгдэл (эх савны ml) болон борлуулалт/ашгийн тайланд ашиглагдана — §6, §7.6.
 
 ---
 
 ## 6. Inventory логик (эх савны ml)
 
 Үлдэгдлийг гурван хэмжигдэхүүнээр хөтөлнө: **on_hand** (бодит байгаа ml),
-**reserved** (захиалгаар түр нөөцилсөн ml), **available = on_hand − reserved**.
+**reserved** (захиалгаар түр нөөцөлсөн ml), **available = on_hand − reserved**.
 
 - Бараа бүр **эх савны ml үлдэгдэлтэй** (ж: 100ml → on_hand).
 - **Reserve (нөөцлөх):** захиалга **өгөх үед** сонгосон ml-ийг `reserved`-д нэмнэ.
@@ -187,7 +170,7 @@ function calcTierPrices(
 - Өнгө/зай/радиусыг **Tailwind theme token**-оор (hardcode хийхгүй). Брэнд өнгийг `tailwind.config`-д тодорхойл (primary navy `#0E1B3B`, дэлгэрэнгүй `design.md`).
 - **Gradient ашиглахгүй** — зөвхөн цул өнгө (design.md).
 - shadcn компонентыг шууд засахгүй — `components/ui`-д үлдээж, дээр нь wrapper хий.
-- **Responsive заавал** mobile-first (`sm: md: lg:`). Бүх дэлгэцэнд шалга.
+- **Responsive заавал** mobile-first (`sm: md: lg:`). Бүх дэлгэцэд шалга.
 - **Dark mode-д бэлэн** (CSS variable + `next-themes`).
 
 **7.3 Data fetching**

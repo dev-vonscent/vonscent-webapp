@@ -16,13 +16,12 @@ export type Concentration =
   | "EDC"
   | "Extrait"
   | "Elixir";
-export type ScentFamily =
-  | "floral"
-  | "woody"
-  | "fresh"
-  | "oriental"
-  | "citrus"
-  | "spicy";
+/**
+ * Scent families are admin-managed rows in `scent_families` (0018), so a
+ * family is just its slug — not a closed union. The six below are only the
+ * seeded defaults, used as demo-mode data and as fallback labels.
+ */
+export type ScentFamily = string;
 export type OrderStatus =
   | "pending"
   | "confirmed"
@@ -49,19 +48,25 @@ export interface ProductRow {
   slug: string;
   name: string;
   brand: string;
+  /** Part 1 of 4: the perfume and the brand behind it (0022). */
   description: string;
+  /** Part 2: what the individual notes smell like. */
+  notes_description: string;
+  /** Part 3: where and when to wear it. */
+  usage_description: string;
+  /** Part 4: one-liner for cards, previews and meta tags. */
+  short_description: string;
   notes_top: string[];
   notes_heart: string[];
   notes_base: string[];
   gender: Gender;
   concentration: Concentration;
-  scent_family: ScentFamily | null;
+  scent_families: ScentFamily[];
   origin_country: string | null;
   release_year: number | null;
-  season: Season | null;
+  seasons: Season[];
   bottle_price: number;
   bottle_ml: number;
-  sample_available: boolean;
   rating_avg: number;
   rating_count: number;
   is_active: boolean;
@@ -81,8 +86,8 @@ export interface ProductVariantRow {
   id: string;
   product_id: string;
   ml: number;
-  auto_price: number;
-  override_price: number | null;
+  /** The ₮ price the admin typed (0027) — nothing derives it. */
+  price: number;
   is_active: boolean;
 }
 
@@ -93,6 +98,16 @@ export interface InventoryRow {
   low_stock_ml: number;
   is_sold_out: boolean;
   updated_at: string;
+}
+
+/** Admin-managed scent family taxonomy (0018_scent_families.sql). */
+export interface ScentFamilyRow {
+  slug: string;
+  label: string;
+  icon_url: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
 }
 
 export interface TagRow {
@@ -109,7 +124,10 @@ export interface ProfileRow {
   phone_verified: boolean;
   avatar_url: string | null;
   role: UserRole;
+  /** Spendable balance. */
   loyalty_points: number;
+  /** Earned but still locked until delivery / the lock window (0024). */
+  pending_points: number;
   is_blocked: boolean;
   created_at: string;
   updated_at: string;
@@ -172,10 +190,16 @@ export interface OrderItemRow {
 export interface CouponRow {
   id: string;
   code: string;
+  /** Non-null = personal coupon, usable only by that customer (0020). */
+  user_id: string | null;
+  /** Set when the coupon was granted automatically for an order (0025). */
+  source_order_id: string | null;
   type: CouponType;
   value: number;
   min_subtotal: number;
   max_uses: number | null;
+  /** Per-account cap, counted from coupon_redemptions (0025). */
+  max_uses_per_user: number | null;
   used_count: number;
   starts_at: string | null;
   ends_at: string | null;
@@ -253,7 +277,41 @@ export interface LoyaltyLedgerRow {
   order_id: string | null;
   delta: number;
   reason: string;
+  /** When a locked 'earn' row becomes spendable (0024). */
+  available_at: string | null;
+  /** false only while an 'earn' row is still locked. */
+  released: boolean;
   created_at: string;
+}
+
+/** One use of a coupon, backing the per-account cap (0025). */
+export interface CouponRedemptionRow {
+  id: string;
+  coupon_id: string;
+  user_id: string | null;
+  order_id: string | null;
+  created_at: string;
+}
+
+/** A curated home page rail (0023_home_sections). */
+export interface HomeSectionRow {
+  id: string;
+  title: string;
+  subtitle: string;
+  href: string;
+  /** 'manual' = hand-picked list, 'tag' = everything carrying `tag`. */
+  kind: "manual" | "tag";
+  tag: TagKind | null;
+  max_items: number;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface HomeSectionProductRow {
+  section_id: string;
+  product_id: string;
+  sort_order: number;
 }
 
 export interface OrderStatusHistoryRow {
@@ -280,11 +338,15 @@ export interface Database {
       product_variants: Table<ProductVariantRow, "id">;
       inventory: Table<InventoryRow, "updated_at">;
       tags: Table<TagRow, "id">;
+      scent_families: Table<ScentFamilyRow, "created_at">;
       profiles: Table<ProfileRow, "created_at" | "updated_at">;
       addresses: Table<AddressRow, "id" | "created_at">;
       orders: Table<OrderRow, "id" | "order_no" | "created_at" | "updated_at">;
       order_items: Table<OrderItemRow, "id">;
       coupons: Table<CouponRow, "id" | "created_at">;
+      coupon_redemptions: Table<CouponRedemptionRow, "id" | "created_at">;
+      home_sections: Table<HomeSectionRow, "id" | "created_at">;
+      home_section_products: Table<HomeSectionProductRow, "sort_order">;
       wishlists: Table<WishlistRow, "created_at">;
       reviews: Table<ReviewRow, "id" | "created_at">;
       settings: Table<SettingRow, "updated_at">;
@@ -307,20 +369,18 @@ export interface Database {
       mark_order_paid: { Args: Record<string, unknown>; Returns: undefined };
       cancel_order: { Args: Record<string, unknown>; Returns: undefined };
       restock_inventory: { Args: Record<string, unknown>; Returns: undefined };
-      recompute_variant_prices: {
-        Args: Record<string, unknown>;
-        Returns: undefined;
-      };
       validate_coupon: { Args: Record<string, unknown>; Returns: unknown };
       update_order_status: { Args: Record<string, unknown>; Returns: undefined };
       mark_order_refunded: { Args: Record<string, unknown>; Returns: undefined };
       recompute_rating: { Args: Record<string, unknown>; Returns: undefined };
+      release_order_points: { Args: Record<string, unknown>; Returns: number };
+      release_due_points: { Args: Record<string, unknown>; Returns: number };
+      grant_reward_coupon: { Args: Record<string, unknown>; Returns: string };
     };
     Enums: {
       user_role: UserRole;
       gender_t: Gender;
       concentration_t: Concentration;
-      scent_family_t: ScentFamily;
       order_status_t: OrderStatus;
       payment_method_t: PaymentMethod;
       payment_status_t: PaymentStatus;

@@ -14,10 +14,10 @@ import {
 } from "@/components/ui/sheet";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { useCart, selectCount, selectSubtotal } from "@/features/cart/store";
+import { CartSizeSelect } from "@/features/cart/components/cart-size-select";
 
 export function CartSheet({
   triggerVariant = "ghost",
@@ -97,14 +97,15 @@ export function CartSheet({
                         <p className="text-sm font-medium leading-tight">
                           {item.name}
                         </p>
-                        <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                          {item.ml}ml
-                          {item.isSample && (
-                            <Badge variant="secondary" className="px-1.5 py-0">
-                              Sample
-                            </Badge>
-                          )}
-                        </p>
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <CartSizeSelect
+                            itemKey={item.key}
+                            slug={item.slug}
+                            variantId={item.variantId}
+                            ml={item.ml}
+                            className="h-7 w-32 text-xs"
+                          />
+                        </div>
                       </div>
                       <button
                         onClick={() => remove(item.key)}

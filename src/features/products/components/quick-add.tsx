@@ -65,7 +65,6 @@ export function QuickAdd({
         ml: selected.ml,
         unitPrice: selected.price,
         image: detail.image?.url ?? null,
-        isSample: false,
       },
       qty,
     );

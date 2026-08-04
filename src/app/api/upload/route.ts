@@ -1,12 +1,32 @@
 import { NextResponse } from "next/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { getStaffUser } from "@/lib/auth/guard";
 import { uploadImage } from "@/lib/storage/storage";
+import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/lib/storage/limits";
 
-const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/avif"];
-const MAX_BYTES = 5 * 1024 * 1024; // 5MB
+/**
+ * Image upload to Supabase Storage. Auth required.
+ *
+ * The upload runs under the service role, which bypasses the bucket's staff
+ * write policy — so the folder decides who may write where rather than being
+ * a free-text field any signed-in customer can point at product content.
+ */
+const FOLDERS = {
+  avatars: "customer",
+  /** Staging area for a product being created; see admin products POST. */
+  "products/new": "staff",
+  /** Scent family icons (todo.md B3b) — shown on the home rail and filters. */
+  families: "staff",
+  blog: "staff",
+} as const;
 
-/** Upload an avatar (or other user image) to Supabase Storage. Auth required. */
+type Folder = keyof typeof FOLDERS;
+
+function isFolder(value: string): value is Folder {
+  return value in FOLDERS;
+}
+
 export async function POST(req: Request) {
   if (!isSupabaseConfigured) {
     return NextResponse.json({ demo: true });
@@ -23,17 +43,23 @@ export async function POST(req: Request) {
   const file = form?.get("file");
   const folder = (form?.get("folder") as string) || "avatars";
 
+  if (!isFolder(folder)) {
+    return NextResponse.json({ error: "BAD_FOLDER" }, { status: 400 });
+  }
+  if (FOLDERS[folder] === "staff" && !(await getStaffUser())) {
+    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "NO_FILE" }, { status: 400 });
   }
-  if (!ALLOWED.includes(file.type)) {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     return NextResponse.json({ error: "BAD_TYPE" }, { status: 400 });
   }
-  if (file.size > MAX_BYTES) {
+  if (file.size > MAX_IMAGE_BYTES) {
     return NextResponse.json({ error: "TOO_LARGE" }, { status: 400 });
   }
 
-  const ext = file.name.split(".").pop() ?? "jpg";
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
   const path = `${folder}/${user.id}-${crypto.randomUUID()}.${ext}`;
   const result = await uploadImage(path, await file.arrayBuffer(), file.type);
   if (!result) {

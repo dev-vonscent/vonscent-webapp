@@ -4,15 +4,10 @@
  *   pnpm db:seed
  *
  * Requires NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in the env.
- * Prices are derived through the pricing core (never hard-coded).
  */
 import { createClient } from "@supabase/supabase-js";
 import { SEED_RAW, productImageUrls } from "../src/features/products/seed";
-import { calcTierPrice } from "../src/lib/pricing/calc";
-import {
-  DEFAULT_PRICE_TIERS,
-  DEFAULT_ROUND_TO,
-} from "../src/lib/constants";
+import { ML_SIZES } from "../src/lib/constants";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -49,7 +44,8 @@ async function main() {
           notes_base: p.notesBase,
           gender: p.gender,
           concentration: p.concentration,
-          scent_family: p.scentFamily,
+          scent_families: p.scentFamilies,
+          seasons: p.seasons,
           origin_country: p.originCountry,
           release_year: p.releaseYear,
           bottle_price: p.bottlePrice,
@@ -79,19 +75,14 @@ async function main() {
       })),
     );
 
-    // Variants (auto price from pricing core + overrides)
+    // Variants — the fixture's per-size prices, exactly as an admin would type
+    // them in the product form.
     await supabase.from("product_variants").delete().eq("product_id", id);
     await supabase.from("product_variants").insert(
-      DEFAULT_PRICE_TIERS.map((t) => ({
+      ML_SIZES.filter((ml) => p.prices?.[ml] != null).map((ml) => ({
         product_id: id,
-        ml: t.ml,
-        auto_price: calcTierPrice(
-          p.bottlePrice,
-          p.bottleMl,
-          { ml: t.ml, coefficient: t.coefficient },
-          DEFAULT_ROUND_TO,
-        ),
-        override_price: p.overrides?.[t.ml] ?? null,
+        ml,
+        price: p.prices![ml]!,
         is_active: true,
       })),
     );

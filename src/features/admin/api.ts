@@ -7,6 +7,7 @@ import type {
   ProfileRow,
   CouponRow,
   HeroBannerRow,
+  HomeSectionRow,
   FaqRow,
   BlogPostRow,
 } from "@/db/types";
@@ -110,6 +111,22 @@ export async function getCustomers(search?: string): Promise<ProfileRow[]> {
   return (data as ProfileRow[] | null) ?? [];
 }
 
+/** One ml size as the admin edits it (product_variants). */
+export interface AdminVariant {
+  ml: number;
+  /** The ₮ price the admin typed — nothing derives it. */
+  price: number;
+  isActive: boolean;
+}
+
+/** A gallery row as the admin edits it (product_images). */
+export interface AdminProductImage {
+  id: string;
+  url: string;
+  alt: string | null;
+  sort_order: number;
+}
+
 export interface AdminProduct {
   id: string;
   slug: string;
@@ -117,9 +134,14 @@ export interface AdminProduct {
   brand: string;
   gender: string;
   concentration: string;
-  scentFamily: string | null;
-  season: string | null;
+  scentFamilies: string[];
+  seasons: string[];
   description: string;
+  notesDescription: string;
+  usageDescription: string;
+  shortDescription: string;
+  images: AdminProductImage[];
+  variants: AdminVariant[];
   notesTop: string[];
   notesHeart: string[];
   notesBase: string[];
@@ -127,7 +149,6 @@ export interface AdminProduct {
   releaseYear: number | null;
   bottlePrice: number;
   bottleMl: number;
-  sampleAvailable: boolean;
   isActive: boolean;
   startingPrice: number;
   availableMl: number;
@@ -136,10 +157,12 @@ export interface AdminProduct {
 }
 
 const ADMIN_PRODUCT_SELECT = `
-  id, slug, name, brand, gender, concentration, scent_family, season, description,
+  id, slug, name, brand, gender, concentration, scent_families, seasons,
+  description, notes_description, usage_description, short_description,
   notes_top, notes_heart, notes_base, origin_country, release_year,
-  bottle_price, bottle_ml, sample_available, is_active,
-  product_variants ( ml, auto_price, override_price, is_active ),
+  bottle_price, bottle_ml, is_active,
+  product_images ( id, url, alt, sort_order ),
+  product_variants ( ml, price, is_active ),
   inventory ( on_hand_ml, reserved_ml, low_stock_ml ),
   product_tags ( tags ( slug ) )
 `;
@@ -151,9 +174,12 @@ interface AdminProductRow {
   brand: string;
   gender: string;
   concentration: string;
-  scent_family: string | null;
-  season: string | null;
+  scent_families: string[] | null;
+  seasons: string[] | null;
   description: string;
+  notes_description: string | null;
+  usage_description: string | null;
+  short_description: string | null;
   notes_top: string[];
   notes_heart: string[];
   notes_base: string[];
@@ -161,12 +187,11 @@ interface AdminProductRow {
   release_year: number | null;
   bottle_price: number;
   bottle_ml: number;
-  sample_available: boolean;
   is_active: boolean;
+  product_images: AdminProductImage[];
   product_variants: {
     ml: number;
-    auto_price: number;
-    override_price: number | null;
+    price: number;
     is_active: boolean;
   }[];
   inventory:
@@ -180,7 +205,7 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
   const inv = Array.isArray(r.inventory) ? r.inventory[0] : r.inventory;
   const prices = r.product_variants
     .filter((v) => v.is_active)
-    .map((v) => v.override_price ?? v.auto_price);
+    .map((v) => v.price);
   const tags = r.product_tags
     .map((pt) => (Array.isArray(pt.tags) ? pt.tags[0] : pt.tags)?.slug)
     .filter((s): s is string => Boolean(s));
@@ -191,9 +216,22 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
     brand: r.brand,
     gender: r.gender,
     concentration: r.concentration,
-    scentFamily: r.scent_family,
-    season: r.season,
+    scentFamilies: r.scent_families ?? [],
+    seasons: r.seasons ?? [],
     description: r.description,
+    notesDescription: r.notes_description ?? "",
+    usageDescription: r.usage_description ?? "",
+    shortDescription: r.short_description ?? "",
+    images: [...(r.product_images ?? [])].sort(
+      (a, b) => a.sort_order - b.sort_order,
+    ),
+    variants: [...r.product_variants]
+      .sort((a, b) => a.ml - b.ml)
+      .map((v) => ({
+        ml: v.ml,
+        price: v.price,
+        isActive: v.is_active,
+      })),
     notesTop: r.notes_top,
     notesHeart: r.notes_heart,
     notesBase: r.notes_base,
@@ -201,7 +239,6 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
     releaseYear: r.release_year,
     bottlePrice: r.bottle_price,
     bottleMl: r.bottle_ml,
-    sampleAvailable: r.sample_available,
     isActive: r.is_active,
     startingPrice: prices.length ? Math.min(...prices) : 0,
     availableMl: inv ? inv.on_hand_ml - inv.reserved_ml : 0,
@@ -286,25 +323,44 @@ export interface ReportData {
   paidOrders: number;
   topProducts: { name: string; brand: string; qty: number; revenue: number }[];
   topBrands: { brand: string; revenue: number }[];
+  /** Paid sales per calendar month, newest first. `month` is "YYYY-MM". */
+  monthly: {
+    month: string;
+    revenue: number;
+    orders: number;
+    /** Source ml sold that month — what the bottles actually gave up. */
+    ml: number;
+  }[];
 }
 
 export async function getReportData(): Promise<ReportData> {
   const supabase = await createClient();
   if (!supabase)
-    return { totalRevenue: 0, paidOrders: 0, topProducts: [], topBrands: [] };
+    return {
+      totalRevenue: 0,
+      paidOrders: 0,
+      topProducts: [],
+      topBrands: [],
+      monthly: [],
+    };
 
   // Only count items from paid orders.
   const { data } = await supabase
     .from("order_items")
-    .select("product_name, brand, qty, line_total, orders!inner ( payment_status )")
+    .select(
+      "order_id, product_name, brand, ml, qty, line_total, orders!inner ( payment_status, created_at )",
+    )
     .eq("orders.payment_status", "paid");
 
   const rows =
     (data as unknown as {
+      order_id: string;
       product_name: string;
       brand: string;
+      ml: number;
       qty: number;
       line_total: number;
+      orders: { created_at: string } | { created_at: string }[] | null;
     }[] | null) ?? [];
 
   const productMap = new Map<
@@ -312,10 +368,30 @@ export async function getReportData(): Promise<ReportData> {
     { name: string; brand: string; qty: number; revenue: number }
   >();
   const brandMap = new Map<string, number>();
+  /** Order ids are collected per month so a multi-line order counts once. */
+  const monthMap = new Map<
+    string,
+    { revenue: number; ml: number; orderIds: Set<string> }
+  >();
   let totalRevenue = 0;
 
   for (const r of rows) {
     totalRevenue += r.line_total;
+
+    const order = Array.isArray(r.orders) ? r.orders[0] : r.orders;
+    if (order?.created_at) {
+      const month = order.created_at.slice(0, 7);
+      const m = monthMap.get(month) ?? {
+        revenue: 0,
+        ml: 0,
+        orderIds: new Set<string>(),
+      };
+      m.revenue += r.line_total;
+      m.ml += r.ml * r.qty;
+      m.orderIds.add(r.order_id);
+      monthMap.set(month, m);
+    }
+
     const key = `${r.brand}|${r.product_name}`;
     const p = productMap.get(key) ?? {
       name: r.product_name,
@@ -343,6 +419,15 @@ export async function getReportData(): Promise<ReportData> {
     topBrands: [...brandMap.entries()]
       .map(([brand, revenue]) => ({ brand, revenue }))
       .sort((a, b) => b.revenue - a.revenue),
+    monthly: [...monthMap.entries()]
+      .map(([month, m]) => ({
+        month,
+        revenue: m.revenue,
+        ml: m.ml,
+        orders: m.orderIds.size,
+      }))
+      // "YYYY-MM" sorts lexicographically, so newest first is a plain reverse.
+      .sort((a, b) => b.month.localeCompare(a.month)),
   };
 }
 
@@ -354,6 +439,31 @@ export async function getAllBanners(): Promise<HeroBannerRow[]> {
     .select("*")
     .order("sort_order", { ascending: true });
   return (data as HeroBannerRow[] | null) ?? [];
+}
+
+/** A home rail as the admin edits it — product ids only, in their order. */
+export interface AdminHomeSection extends HomeSectionRow {
+  productIds: string[];
+}
+
+export async function getAllHomeSections(): Promise<AdminHomeSection[]> {
+  const supabase = await createClient();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("home_sections")
+    .select("*, home_section_products ( product_id, sort_order )")
+    .order("sort_order", { ascending: true });
+
+  return (
+    (data as unknown as (HomeSectionRow & {
+      home_section_products: { product_id: string; sort_order: number }[];
+    })[] | null) ?? []
+  ).map((row) => ({
+    ...row,
+    productIds: [...row.home_section_products]
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((p) => p.product_id),
+  }));
 }
 
 export async function getAllFaqs(): Promise<FaqRow[]> {

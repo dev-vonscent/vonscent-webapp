@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { GENDERS, GENDER_LABEL, ML_SIZES } from "@/lib/constants";
 import { useFilterQuery } from "./use-filter-query";
+import type { ScentFamilyOption } from "@/lib/types";
 
 const PRICE_STEP = 1000;
 
@@ -22,15 +23,6 @@ const BRAND_LOGOS: Record<string, string> = {
   "Tom Ford": "/brands/tom-ford.svg",
   "Yves Saint Laurent": "/brands/yves-saint-laurent.svg",
 };
-
-const FAMILIES: { value: string; label: string }[] = [
-  { value: "floral", label: "Цэцэгт" },
-  { value: "woody", label: "Модлог" },
-  { value: "fresh", label: "Сэргэг" },
-  { value: "oriental", label: "Дорнын" },
-  { value: "citrus", label: "Цитрус" },
-  { value: "spicy", label: "Халуун" },
-];
 
 const TAGS: { value: string; label: string }[] = [
   { value: "new", label: "Шинэ" },
@@ -90,9 +82,12 @@ function Chip({
 export function CatalogFilters({
   brands,
   priceBounds,
+  families,
 }: {
   brands: string[];
   priceBounds: { min: number; max: number };
+  /** Live taxonomy from `scent_families` — the admin owns this list. */
+  families: ScentFamilyOption[];
 }) {
   const { values, toggle, setMany, clearAll, activeCount, searchParams } =
     useFilterQuery();
@@ -143,21 +138,24 @@ export function CatalogFilters({
       <Separator />
 
       <Group title="Үнэрийн төрөл">
-        <div className="grid grid-cols-3 gap-2">
-          {FAMILIES.map((f) => (
+        <div className="grid grid-cols-2 gap-2">
+          {families.map((f) => (
             <Chip
-              key={f.value}
-              active={values("family").includes(f.value)}
-              onClick={() => toggle("family", f.value)}
+              key={f.slug}
+              active={values("family").includes(f.slug)}
+              onClick={() => toggle("family", f.slug)}
             >
               <span className="flex items-center justify-center gap-1.5">
-                <Image
-                  src={`/family-${f.value}.png`}
-                  alt=""
-                  width={18}
-                  height={18}
-                  className="size-[18px] shrink-0 object-contain"
-                />
+                {/* Admin-added families may have no icon yet. */}
+                {f.iconUrl && (
+                  <Image
+                    src={f.iconUrl}
+                    alt=""
+                    width={18}
+                    height={18}
+                    className="size-[18px] shrink-0 object-contain"
+                  />
+                )}
                 {f.label}
               </span>
             </Chip>

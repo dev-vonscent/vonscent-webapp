@@ -5,6 +5,9 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import type { ProductImage } from "@/lib/types";
 
+/** Auto-advance interval — client asked for a 3-5s rotation. */
+const AUTOPLAY_MS = 4000;
+
 export function ProductGallery({
   images,
   name,
@@ -13,6 +16,7 @@ export function ProductGallery({
   name: string;
 }) {
   const [active, setActive] = React.useState(0);
+  const [paused, setPaused] = React.useState(false);
   const current = images[active] ?? images[0];
   const scrollerRef = React.useRef<HTMLDivElement>(null);
 
@@ -23,10 +27,36 @@ export function ProductGallery({
     if (idx !== active) setActive(idx);
   }
 
-  function go(i: number) {
+  const go = React.useCallback((i: number) => {
     setActive(i);
     const el = scrollerRef.current;
     if (el) el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+  }, []);
+
+  // Rotate on its own; any manual interaction stops it for good so we never
+  // yank the image out from under someone who is looking at a specific shot.
+  React.useEffect(() => {
+    if (paused || images.length < 2) return;
+    const t = setInterval(
+      () => setActive((i) => (i + 1) % images.length),
+      AUTOPLAY_MS,
+    );
+    return () => clearInterval(t);
+  }, [paused, images.length]);
+
+  // Keep the mobile scroller in sync with autoplay's index changes.
+  React.useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el || paused) return;
+    const target = active * el.clientWidth;
+    if (Math.abs(el.scrollLeft - target) > 8) {
+      el.scrollTo({ left: target, behavior: "smooth" });
+    }
+  }, [active, paused]);
+
+  function pick(i: number) {
+    setPaused(true);
+    go(i);
   }
 
   return (
@@ -38,6 +68,7 @@ export function ProductGallery({
         <div
           ref={scrollerRef}
           onScroll={onScroll}
+          onPointerDown={() => setPaused(true)}
           className="no-scrollbar flex snap-x snap-mandatory overflow-x-auto"
         >
           {images.map((img, i) => (
@@ -61,7 +92,7 @@ export function ProductGallery({
             {images.map((_, i) => (
               <button
                 key={i}
-                onClick={() => go(i)}
+                onClick={() => pick(i)}
                 aria-label={`Зураг ${i + 1}`}
                 className={cn(
                   "h-1.5 rounded-full transition-all",
@@ -94,7 +125,7 @@ export function ProductGallery({
             {images.map((img, i) => (
               <button
                 key={i}
-                onClick={() => setActive(i)}
+                onClick={() => pick(i)}
                 className={cn(
                   "relative size-20 shrink-0 overflow-hidden rounded-xl bg-muted transition-all",
                   i === active

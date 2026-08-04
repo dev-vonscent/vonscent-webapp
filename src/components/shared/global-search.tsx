@@ -1,0 +1,175 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { Search, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { formatPrice } from "@/lib/format";
+import type { ProductListItem } from "@/lib/types";
+
+/**
+ * Site-wide type-ahead search (requirement_fb.md §"Таг"): results appear as
+ * you type, no Enter needed — "To" already surfaces Tom Ford. Enter jumps to
+ * the full catalog results for the same term.
+ *
+ * Built on Radix Dialog so the palette gets focus trapping, scroll locking,
+ * Escape/outside-click dismissal and `aria-modal` semantics for free.
+ */
+export function GlobalSearch() {
+  const router = useRouter();
+  const [open, setOpen] = React.useState(false);
+  const [value, setValue] = React.useState("");
+  const [items, setItems] = React.useState<ProductListItem[]>([]);
+  const [loading, setLoading] = React.useState(false);
+
+  // ⌘K / Ctrl+K opens the palette from anywhere.
+  React.useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setOpen((v) => !v);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) {
+      setValue("");
+      setItems([]);
+    }
+  }, [open]);
+
+  // Debounced lookup; a stale-response guard keeps out-of-order replies from
+  // overwriting newer results.
+  React.useEffect(() => {
+    const term = value.trim();
+    if (!term) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/products?q=${encodeURIComponent(term)}&limit=6`,
+        );
+        const data = await res.json();
+        if (!cancelled) setItems(data.items ?? []);
+      } catch {
+        if (!cancelled) setItems([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [value]);
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const term = value.trim();
+    if (!term) return;
+    setOpen(false);
+    router.push(`/catalog?q=${encodeURIComponent(term)}`);
+  }
+
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
+      <DialogPrimitive.Trigger
+        aria-label="Хайх"
+        className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+      >
+        <Search className="size-5" />
+      </DialogPrimitive.Trigger>
+
+      <DialogPrimitive.Portal>
+        {/* Spotlight-style scrim: heavy blur carries the separation, with only
+            a whisper of dim so the artwork behind keeps its colour. */}
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/20 backdrop-blur-xl duration-200 data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+
+        <DialogPrimitive.Content className="fixed left-1/2 top-[12vh] z-50 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl duration-200 data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+          <DialogPrimitive.Title className="sr-only">
+            Хайлт
+          </DialogPrimitive.Title>
+
+          <form onSubmit={submit} className="relative">
+            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              autoFocus
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="Үнэртэн, брэнд хайх…"
+              aria-label="Хайх"
+              className="h-14 border-0 bg-transparent px-11 text-base focus-visible:ring-0"
+            />
+            <DialogPrimitive.Close
+              aria-label="Хаах"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-5" />
+            </DialogPrimitive.Close>
+          </form>
+
+          {value.trim() && (
+            <div className="max-h-[60vh] overflow-y-auto border-t border-border">
+              {items.length === 0 ? (
+                <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  {loading ? "Хайж байна…" : "Илэрц олдсонгүй"}
+                </p>
+              ) : (
+                <>
+                  {items.map((p) => (
+                    <Link
+                      key={p.id}
+                      href={`/products/${p.slug}`}
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent"
+                    >
+                      <span className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-muted">
+                        {p.image && (
+                          <Image
+                            src={p.image.url}
+                            alt={p.name}
+                            fill
+                            sizes="48px"
+                            className="object-cover"
+                          />
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">
+                          {p.name}
+                        </span>
+                        <span className="block text-xs uppercase tracking-wide text-muted-foreground">
+                          {p.brand}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-sm">
+                        {p.soldOut ? "Дууссан" : formatPrice(p.startingPrice)}
+                      </span>
+                    </Link>
+                  ))}
+                  <button
+                    onClick={submit}
+                    className="w-full border-t border-border px-4 py-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+                  >
+                    Бүх илэрцийг харах →
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  );
+}

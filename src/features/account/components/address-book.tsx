@@ -4,6 +4,10 @@ import * as React from "react";
 import { MapPin, Plus, Trash2, Star } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  AddressFields,
+  composeDetail,
+} from "@/features/checkout/components/address-fields";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +18,9 @@ import type { AddressRow } from "@/db/types";
 const EMPTY = {
   recipient: "",
   phone: "",
-  city: "Улаанбаатар",
+  city: "",
   district: "",
+  khoroo: null as number | null,
   detail: "",
 };
 
@@ -69,7 +74,7 @@ export function AddressBook() {
       phone: form.phone,
       city: form.city,
       district: form.district || null,
-      detail: form.detail,
+      detail: composeDetail(form.khoroo, form.detail),
       is_default: items.length === 0,
     });
     setForm(EMPTY);
@@ -171,27 +176,28 @@ export function AddressBook() {
                     required
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Хот / Аймаг</Label>
-                  <Input
-                    value={form.city}
-                    onChange={(e) => setForm({ ...form, city: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Дүүрэг / Сум</Label>
-                  <Input
-                    value={form.district}
-                    onChange={(e) =>
-                      setForm({ ...form, district: e.target.value })
-                    }
-                  />
-                </div>
               </div>
+
+              <AddressFields
+                value={{
+                  city: form.city,
+                  district: form.district,
+                  khoroo: form.khoroo,
+                }}
+                onChange={(next) =>
+                  setForm({
+                    ...form,
+                    city: next.city,
+                    district: next.district,
+                    khoroo: next.khoroo,
+                  })
+                }
+              />
               <div className="space-y-1.5">
                 <Label>Дэлгэрэнгүй хаяг</Label>
                 <Input
                   value={form.detail}
+                  placeholder="Байр, орц, тоот"
                   onChange={(e) => setForm({ ...form, detail: e.target.value })}
                   required
                 />

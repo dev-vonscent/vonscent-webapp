@@ -83,7 +83,7 @@ export function CustomerControl({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Loyalty оноо</Label>
+        <Label>V point</Label>
         <div className="flex gap-2">
           <Input
             type="number"

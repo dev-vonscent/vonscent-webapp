@@ -4,7 +4,15 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Package, HelpCircle, LogOut, BookOpen, Info, Mail } from "lucide-react";
+import {
+  Package,
+  HelpCircle,
+  LogOut,
+  BookOpen,
+  Info,
+  Mail,
+  LayoutDashboard,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -13,6 +21,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { createClient } from "@/lib/supabase/browser";
+import { useIsStaff } from "@/features/account/use-staff";
 
 interface Profile {
   name: string;
@@ -24,6 +33,7 @@ export function ProfileMenu() {
   const router = useRouter();
   const [profile, setProfile] = React.useState<Profile | null>(null);
   const [configured, setConfigured] = React.useState(true);
+  const isStaff = useIsStaff();
 
   React.useEffect(() => {
     const supabase = createClient();
@@ -145,6 +155,17 @@ export function ProfileMenu() {
             <Mail /> Холбоо барих
           </Link>
         </DropdownMenuItem>
+
+        {isStaff && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/admin">
+                <LayoutDashboard /> Админ хэсэг
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
 
         {configured && profile && (
           <>

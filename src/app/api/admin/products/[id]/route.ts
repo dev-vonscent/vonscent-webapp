@@ -3,7 +3,7 @@ import { productEditSchema } from "@/lib/validators/product";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { callRpc } from "@/lib/supabase/rpc";
+import { sanitizeFamilies } from "@/features/taxonomy/api";
 
 async function guard() {
   if (!isSupabaseConfigured) return { demo: true as const };
@@ -41,20 +41,24 @@ export async function PATCH(
   if (input.gender !== undefined) productUpdate.gender = input.gender;
   if (input.concentration !== undefined)
     productUpdate.concentration = input.concentration;
-  if (input.scentFamily !== undefined)
-    productUpdate.scent_family = input.scentFamily;
-  if (input.season !== undefined) productUpdate.season = input.season;
+  if (input.scentFamilies !== undefined)
+    productUpdate.scent_families = await sanitizeFamilies(input.scentFamilies);
+  if (input.seasons !== undefined) productUpdate.seasons = input.seasons;
   if (input.notesTop !== undefined) productUpdate.notes_top = input.notesTop;
   if (input.notesHeart !== undefined) productUpdate.notes_heart = input.notesHeart;
   if (input.notesBase !== undefined) productUpdate.notes_base = input.notesBase;
   if (input.description !== undefined)
     productUpdate.description = input.description;
+  if (input.notesDescription !== undefined)
+    productUpdate.notes_description = input.notesDescription;
+  if (input.usageDescription !== undefined)
+    productUpdate.usage_description = input.usageDescription;
+  if (input.shortDescription !== undefined)
+    productUpdate.short_description = input.shortDescription;
   if (input.originCountry !== undefined)
     productUpdate.origin_country = input.originCountry;
   if (input.releaseYear !== undefined)
     productUpdate.release_year = input.releaseYear;
-  if (input.sampleAvailable !== undefined)
-    productUpdate.sample_available = input.sampleAvailable;
   if (input.isActive !== undefined) productUpdate.is_active = input.isActive;
   if (input.bottlePrice !== undefined)
     productUpdate.bottle_price = input.bottlePrice;
@@ -65,12 +69,22 @@ export async function PATCH(
       .from("products")
       .update(productUpdate)
       .eq("id", id);
-    if (error) return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
+
+    if (error) {
+      return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
+    }
   }
 
-  // Recompute variant auto-prices when bottle price/ml changed.
-  if (input.bottlePrice !== undefined || input.bottleMl !== undefined) {
-    await callRpc(supabase, "recompute_variant_prices", { p_product: id });
+  // Per-size price + on-sale flag. Prices are typed by hand, so the bottle
+  // price above never moves them.
+  if (input.variants !== undefined) {
+    for (const v of input.variants) {
+      await supabase
+        .from("product_variants")
+        .update({ price: v.price, is_active: v.active })
+        .eq("product_id", id)
+        .eq("ml", v.ml);
+    }
   }
 
   // Low-stock threshold.
