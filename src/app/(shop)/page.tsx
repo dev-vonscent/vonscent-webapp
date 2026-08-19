@@ -252,26 +252,6 @@ export default async function HomePage() {
           <BrandMarquee brands={brands} />
         </section>
 
-        {/* Small-size CTA */}
-        <section className="border-border bg-surface-deep shadow-lift relative overflow-hidden rounded-2xl border px-6 py-12 sm:px-12 sm:py-16">
-          <div className="border-gold-strong/20 pointer-events-none absolute inset-4 rounded-xl border" />
-          <div className="relative max-w-lg space-y-4">
-            <span className="text-gold text-xs tracking-[0.3em] uppercase">
-              ✦ 5мл багц
-            </span>
-            <h2 className="font-serif text-3xl font-semibold sm:text-4xl">
-              Багахнаар туршиж эхлээрэй
-            </h2>
-            <p className="text-muted-foreground">
-              Аль үнэр тань илүү таалагдахаа мэдэхгүй байна уу? 5мл багцаар хэд
-              хэдийг үнэрлээд дуртайгаа сонгоорой.
-            </p>
-            <Button asChild size="lg">
-              <Link href="/catalog?ml=5">5мл сонгох</Link>
-            </Button>
-          </div>
-        </section>
-
         {/* On sale */}
         {onSale.length > 0 && (
           <section>
