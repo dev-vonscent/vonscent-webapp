@@ -26,7 +26,25 @@ if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
 }
 
 const nextConfig: NextConfig = {
-  images: { remotePatterns },
+  images: {
+    remotePatterns,
+    /**
+     * Vercel bills a transformation on every cache MISS/STALE, so the knobs
+     * below all aim at fewer variants and longer-lived cache entries.
+     */
+    // Product images live at UUID paths and never change in place, so a
+    // month-long TTL is safe. (Default is 4 hours — each image would be
+    // re-transformed ~180×/month.)
+    minimumCacheTTL: 2678400, // 31 days
+    // Uploads are normalised to a 1600px master (process-image.ts), so the
+    // default list's 1920/2048/3840 entries all produce the same 1600px
+    // output under three different cache keys. 1320 covers the 652px
+    // gallery slot at 2× DPR, 1600 is the source bound.
+    deviceSizes: [640, 750, 828, 1080, 1320, 1600],
+    // One format, one quality — each extra value multiplies transformations.
+    formats: ["image/webp"],
+    qualities: [75],
+  },
 };
 
 export default nextConfig;

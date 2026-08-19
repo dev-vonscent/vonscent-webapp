@@ -2,6 +2,13 @@ import type { Metadata } from "next";
 import { Phone, Mail, MapPin, Instagram, Facebook } from "lucide-react";
 import { ContactForm } from "@/features/contact/components/contact-form";
 
+/**
+ * ISR: public data comes from the cookie-less client, so the page is
+ * cacheable. Admin writes purge it via revalidatePublic(); this window
+ * is just the safety net for writes that bypass the admin API.
+ */
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: "Холбоо барих",
   description: "Бидэнтэй холбогдоорой — утас, имэйл, сошиал, мессеж.",

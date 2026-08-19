@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { isSupabaseConfigured } from "@/lib/env";
 import type { FaqRow } from "@/db/types";
 import { FAQ_SEED, type FaqItem } from "./seed";
@@ -11,7 +11,7 @@ import { FAQ_SEED, type FaqItem } from "./seed";
  */
 export const getFaqs = cache(async (): Promise<FaqItem[]> => {
   if (!isSupabaseConfigured) return FAQ_SEED;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   if (!supabase) return FAQ_SEED;
   const { data } = await supabase
     .from("faqs")

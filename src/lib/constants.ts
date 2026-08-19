@@ -69,13 +69,44 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
  * reminded to name the bus/transport pickup point.
  */
 export const SHIPPING_ZONES: readonly ShippingZoneConfig[] = [
-  { name: "А бүс (хотын төв)", fee: 6000, deliverable: true, remote: false },
-  { name: "Б бүс (алслагдсан хороолол)", fee: 10000, deliverable: true, remote: false },
-  { name: "Орон нутаг", fee: 12000, deliverable: true, remote: true },
-  { name: "Налайх / Шарга морьт / 22 товчоо", fee: 0, deliverable: false, remote: false },
+  {
+    code: "A",
+    name: "А бүс (хотын төв)",
+    fee: 7000,
+    deliverable: true,
+    remote: false,
+  },
+  {
+    code: "B",
+    name: "Б бүс (алслагдсан хороолол)",
+    fee: 9000,
+    deliverable: true,
+    remote: false,
+  },
+  {
+    code: "C",
+    name: "В бүс (захын хороолол)",
+    fee: 10000,
+    deliverable: true,
+    remote: false,
+  },
+  { code: "R", name: "Орон нутаг", fee: 9000, deliverable: true, remote: true },
+  {
+    code: "X",
+    name: "Хүргэлт хийхгүй",
+    fee: 0,
+    deliverable: false,
+    remote: false,
+  },
 ];
 
 export interface ShippingZoneConfig {
+  /**
+   * Stable identifier (A/B/C/R/X) — what gets stored on `orders.ship_zone` and
+   * matched against, so the admin can rename or re-price a zone without
+   * breaking historical orders or the checkout lookup. `name` is display only.
+   */
+  code: string;
   name: string;
   fee: number;
   /** false = we do not deliver here; checkout blocks the order. */

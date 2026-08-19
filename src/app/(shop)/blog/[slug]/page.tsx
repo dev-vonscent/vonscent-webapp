@@ -6,6 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/format";
 import { getBlogPost, getRelatedPosts } from "@/features/blog/api";
 
+/**
+ * ISR: public data comes from the cookie-less client, so the page is
+ * cacheable. Admin writes purge it via revalidatePublic(); this window
+ * is just the safety net for writes that bypass the admin API.
+ */
+export const revalidate = 60;
+
+// No prebuilt slugs — each page is generated on first visit, then served from
+// the ISR cache. Without this, a dynamic segment renders on every request.
+export async function generateStaticParams() {
+  return [];
+}
+
 export async function generateMetadata({
   params,
 }: {

@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 
 /**
  * Review data access. Reviews are public content but reviewer names live in
@@ -43,7 +43,7 @@ interface ReviewJoin {
 }
 
 async function readClient() {
-  return createAdminClient() ?? (await createClient());
+  return createAdminClient() ?? createPublicClient();
 }
 
 type DbClient = NonNullable<Awaited<ReturnType<typeof readClient>>>;

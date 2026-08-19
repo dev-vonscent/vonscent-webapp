@@ -5,6 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/format";
 import { getBlogPosts } from "@/features/blog/api";
 
+/**
+ * ISR: public data comes from the cookie-less client, so the page is
+ * cacheable. Admin writes purge it via revalidatePublic(); this window
+ * is just the safety net for writes that bypass the admin API.
+ */
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: "Блог",
   description: "Үнэртний тухай гарын авлага, зөвлөмж, мэдээлэл.",
@@ -14,9 +21,9 @@ export default async function BlogPage() {
   const posts = await getBlogPosts();
   const [featured, ...rest] = posts;
   return (
-    <div className="mx-auto max-w-[88rem] px-4 md:px-8 py-12">
+    <div className="mx-auto max-w-[88rem] px-4 py-12 md:px-8">
       <h1 className="font-serif text-4xl font-semibold tracking-tight">Блог</h1>
-      <p className="mt-2 text-muted-foreground">
+      <p className="text-muted-foreground mt-2">
         Үнэр сонгох гарын авлага, зөвлөмж, түүх.
       </p>
 
@@ -25,12 +32,12 @@ export default async function BlogPage() {
           href={`/blog/${featured.slug}`}
           className="group mt-10 grid gap-6 md:grid-cols-2"
         >
-          <div className="relative aspect-[16/10] overflow-hidden rounded-xl border border-border bg-muted">
+          <div className="border-border bg-muted relative aspect-[16/10] overflow-hidden rounded-xl border">
             <Image
               src={featured.cover}
               alt={featured.title}
               fill
-              sizes="(max-width: 768px) 100vw, 50vw"
+              sizes="(max-width: 768px) 100vw, (max-width: 1408px) 50vw, 660px"
               className="object-cover transition-transform duration-500 group-hover:scale-105"
             />
           </div>
@@ -38,11 +45,11 @@ export default async function BlogPage() {
             <Badge variant="secondary" className="w-fit">
               {featured.category}
             </Badge>
-            <h2 className="font-serif text-2xl font-semibold group-hover:text-primary">
+            <h2 className="group-hover:text-primary font-serif text-2xl font-semibold">
               {featured.title}
             </h2>
             <p className="text-muted-foreground">{featured.excerpt}</p>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-muted-foreground text-sm">
               {formatDate(featured.date)}
             </span>
           </div>
@@ -52,12 +59,12 @@ export default async function BlogPage() {
       <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
         {rest.map((post) => (
           <Link key={post.slug} href={`/blog/${post.slug}`} className="group">
-            <div className="relative aspect-[16/10] overflow-hidden rounded-lg border border-border bg-muted">
+            <div className="border-border bg-muted relative aspect-[16/10] overflow-hidden rounded-lg border">
               <Image
                 src={post.cover}
                 alt={post.title}
                 fill
-                sizes="(max-width: 768px) 100vw, 33vw"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1408px) 33vw, 427px"
                 className="object-cover transition-transform duration-500 group-hover:scale-105"
               />
             </div>
@@ -65,11 +72,11 @@ export default async function BlogPage() {
               <Badge variant="secondary" className="w-fit">
                 {post.category}
               </Badge>
-              <h3 className="font-serif text-lg font-medium group-hover:text-primary">
+              <h3 className="group-hover:text-primary font-serif text-lg font-medium">
                 {post.title}
               </h3>
-              <p className="text-sm text-muted-foreground">{post.excerpt}</p>
-              <span className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-sm">{post.excerpt}</p>
+              <span className="text-muted-foreground text-xs">
                 {formatDate(post.date)}
               </span>
             </div>

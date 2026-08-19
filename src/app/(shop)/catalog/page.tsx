@@ -12,6 +12,13 @@ import { CatalogPagination } from "@/features/catalog/components/catalog-paginat
 import { ProductGrid } from "@/features/products/components/product-grid";
 import { Button } from "@/components/ui/button";
 
+/**
+ * ISR: public data comes from the cookie-less client, so the page is
+ * cacheable. Admin writes purge it via revalidatePublic(); this window
+ * is just the safety net for writes that bypass the admin API.
+ */
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: "Каталог",
   description: "Бүх үнэртэн — брэнд, хүйс, үнэрийн төрлөөр шүүж сонгоорой.",

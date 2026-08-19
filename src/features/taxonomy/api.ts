@@ -3,7 +3,7 @@ import { cache } from "react";
 import type { ScentFamilyOption } from "@/lib/types";
 import { DEFAULT_SCENT_FAMILIES } from "@/lib/constants";
 import { isSupabaseConfigured } from "@/lib/env";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 
 /**
  * Scent family taxonomy (0018_scent_families.sql).
@@ -35,7 +35,7 @@ interface DbScentFamily {
 export const fetchScentFamilies = cache(
   async (): Promise<ScentFamilyOption[]> => {
     if (!isSupabaseConfigured) return DEMO_FAMILIES;
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     if (!supabase) return DEMO_FAMILIES;
 
     const { data, error } = await supabase

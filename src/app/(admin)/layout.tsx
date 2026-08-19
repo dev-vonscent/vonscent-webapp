@@ -1,5 +1,9 @@
 import { AdminSidebar } from "@/features/admin/components/admin-sidebar";
 
+// Admin screens must always show live data — never serve them from the
+// static cache even though their fetchers no longer read cookies.
+export const dynamic = "force-dynamic";
+
 export default function AdminLayout({
   children,
 }: {

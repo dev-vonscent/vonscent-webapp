@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePublic } from "@/lib/cache";
 import { z } from "zod";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
@@ -47,6 +48,7 @@ export async function PATCH(
   if (d.isActive !== undefined) update.is_active = d.isActive;
 
   await g.supabase.from("hero_banners").update(update).eq("id", id);
+  revalidatePublic();
   return NextResponse.json({ ok: true });
 }
 
@@ -60,5 +62,6 @@ export async function DELETE(
   if ("error" in g)
     return NextResponse.json({ error: g.error }, { status: g.error === "FORBIDDEN" ? 403 : 500 });
   await g.supabase.from("hero_banners").delete().eq("id", id);
+  revalidatePublic();
   return NextResponse.json({ ok: true });
 }

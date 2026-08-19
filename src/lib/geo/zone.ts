@@ -17,8 +17,19 @@
 import { AIMAGS } from "./locations";
 
 export interface ZoneAreaRule {
+  /** Stable id (A/B/C/R/X); absent on legacy rows saved before codes existed. */
+  code?: string;
   name: string;
   areas?: string[];
+}
+
+/**
+ * What identifies a zone everywhere else: its code, or its name for rows saved
+ * before codes existed. Keeping the fallback here means one renamed zone can't
+ * silently detach itself from the orders that reference it.
+ */
+export function zoneKey(zone: Pick<ZoneAreaRule, "code" | "name">): string {
+  return zone.code?.trim() || zone.name;
 }
 
 /** Build the area key for an adm2 code (+ khoroo). */
@@ -36,16 +47,13 @@ const ADM2_BY_NAME = new Map<string, string>(
  * adm2 p-code for a Cyrillic (аймаг, сум/дүүрэг) pair — the shape actually
  * stored on an order, since `orders.ship_city` / `ship_district` are text.
  */
-export function adm2CodeFor(
-  city: string,
-  district: string,
-): string | null {
+export function adm2CodeFor(city: string, district: string): string | null {
   return ADM2_BY_NAME.get(`${city}|${district}`) ?? null;
 }
 
 /**
- * The zone covering an address, or null when no rule matches (the customer's
- * own choice then stands).
+ * The zone *key* covering an address, or null when no rule matches (the
+ * customer's own choice then stands).
  */
 export function resolveZone(
   zones: readonly ZoneAreaRule[],
@@ -60,9 +68,9 @@ export function resolveZone(
   for (const zone of zones) {
     if (!zone.areas?.length) continue;
     // The narrower rule wins, so a hit on it can return straight away.
-    if (exact && zone.areas.includes(exact)) return zone.name;
+    if (exact && zone.areas.includes(exact)) return zoneKey(zone);
     if (districtMatch === null && zone.areas.includes(code)) {
-      districtMatch = zone.name;
+      districtMatch = zoneKey(zone);
     }
   }
   return districtMatch;

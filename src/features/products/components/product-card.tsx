@@ -17,53 +17,49 @@ export function ProductCard({ product }: { product: ProductListItem }) {
     <div className="group relative flex flex-col">
       <Link
         href={`/products/${product.slug}`}
-        className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-border bg-muted transition-all duration-300 group-hover:border-gold-strong/40 group-hover:shadow-lift"
+        className="border-border bg-muted group-hover:border-gold-strong/40 group-hover:shadow-lift relative aspect-[4/5] overflow-hidden rounded-2xl border transition-all duration-300"
       >
         {product.image && (
           <Image
             src={product.image.url}
             alt={product.image.alt || product.name}
             fill
-            sizes="(max-width: 768px) 50vw, 25vw"
+            sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1408px) 25vw, 324px"
             className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           />
         )}
-        <div className="absolute left-2.5 top-2.5 flex flex-col gap-1">
+        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
           {product.tags.map((t) => (
-            <Badge
-              key={t}
-              variant={t}
-              className="w-fit backdrop-blur-sm"
-            >
+            <Badge key={t} variant={t} className="w-fit backdrop-blur-sm">
               {TAG_LABEL[t]}
             </Badge>
           ))}
         </div>
         {product.soldOut && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm">
-            <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium uppercase tracking-wide">
+          <div className="bg-background/70 absolute inset-0 flex items-center justify-center backdrop-blur-sm">
+            <span className="border-border bg-card rounded-full border px-3 py-1 text-xs font-medium tracking-wide uppercase">
               Дууссан
             </span>
           </div>
         )}
       </Link>
 
-      <div className="absolute right-2.5 top-2.5 flex flex-col gap-1.5">
+      <div className="absolute top-2.5 right-2.5 flex flex-col gap-1.5">
         <WishlistButton productId={product.id} />
         {!product.soldOut && <QuickAdd product={product} />}
       </div>
 
       <div className="mt-3 flex flex-col gap-0.5">
-        <span className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
+        <span className="text-muted-foreground text-[11px] tracking-[0.15em] uppercase">
           {product.brand}
         </span>
         <Link
           href={`/products/${product.slug}`}
-          className="font-serif text-base font-medium leading-tight transition-colors hover:text-primary"
+          className="hover:text-primary font-serif text-base leading-tight font-medium transition-colors"
         >
           {product.name}
         </Link>
-        <span className="mt-1.5 text-sm font-semibold tracking-tight text-foreground/70">
+        <span className="text-foreground/70 mt-1.5 text-sm font-semibold tracking-tight">
           {formatPrice(product.startingPrice)}
         </span>
       </div>

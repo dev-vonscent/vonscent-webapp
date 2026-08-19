@@ -3,6 +3,13 @@ import Image from "next/image";
 import { BadgeCheck, Sparkles, Truck, Heart } from "lucide-react";
 import { getAboutSettings } from "@/features/content/api";
 
+/**
+ * ISR: public data comes from the cookie-less client, so the page is
+ * cacheable. Admin writes purge it via revalidatePublic(); this window
+ * is just the safety net for writes that bypass the admin API.
+ */
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: "Бидний тухай",
   description: "vonscent — үнэртэн decant хэлбэрээр туршиж сонгох дэлгүүр.",

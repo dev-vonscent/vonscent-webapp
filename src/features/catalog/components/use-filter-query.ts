@@ -75,7 +75,6 @@ export function useFilterQuery() {
     "family",
     "season",
     "tags",
-    "ml",
     "minPrice",
     "maxPrice",
     "q",

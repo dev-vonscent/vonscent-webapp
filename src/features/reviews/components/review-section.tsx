@@ -2,7 +2,6 @@ import Image from "next/image";
 import { Stars } from "@/components/shared/stars";
 import { formatDate } from "@/lib/format";
 import { getProductReviews } from "@/features/reviews/api";
-import { createClient } from "@/lib/supabase/server";
 import { ReviewForm } from "./review-form";
 import { DeleteReviewButton } from "./delete-review-button";
 
@@ -41,10 +40,6 @@ export async function ReviewSection({
   ratingCount: number;
 }) {
   const reviews = await getProductReviews(productId);
-  const supabase = await createClient();
-  const currentUserId = supabase
-    ? (await supabase.auth.getUser()).data.user?.id ?? null
-    : null;
 
   return (
     <section>
@@ -84,12 +79,11 @@ export async function ReviewSection({
                           {formatDate(r.createdAt)}
                         </p>
                       </div>
-                      {currentUserId === r.userId && (
-                        <DeleteReviewButton
-                          reviewId={r.id}
-                          productId={productId}
-                        />
-                      )}
+                      <DeleteReviewButton
+                        reviewId={r.id}
+                        productId={productId}
+                        ownerId={r.userId}
+                      />
                     </div>
                     <Stars rating={r.rating} size={14} className="mt-2" />
                     {r.body && (

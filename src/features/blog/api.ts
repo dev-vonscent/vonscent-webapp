@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { isSupabaseConfigured } from "@/lib/env";
 import type { BlogPostRow } from "@/db/types";
 import { BLOG_POSTS, type BlogPost } from "./seed";
@@ -24,7 +24,7 @@ function mapRow(r: BlogPostRow): BlogPost {
 
 export const getBlogPosts = cache(async (): Promise<BlogPost[]> => {
   if (!isSupabaseConfigured) return BLOG_POSTS;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   if (!supabase) return BLOG_POSTS;
   const { data } = await supabase
     .from("blog_posts")

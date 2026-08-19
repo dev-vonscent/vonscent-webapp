@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePublic } from "@/lib/cache";
 import { z } from "zod";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -32,5 +33,6 @@ export async function POST(req: Request) {
     .from("settings")
     .upsert({ key: parsed.data.key, value: parsed.data.value });
 
+  revalidatePublic();
   return NextResponse.json({ ok: true });
 }

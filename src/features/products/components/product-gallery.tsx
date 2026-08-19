@@ -74,21 +74,21 @@ export function ProductGallery({
           {images.map((img, i) => (
             <div
               key={i}
-              className="relative aspect-[4/5] w-full shrink-0 snap-center bg-muted"
+              className="bg-muted relative aspect-[4/5] w-full shrink-0 snap-center"
             >
               <Image
                 src={img.url}
                 alt={img.alt || `${name} ${i + 1}`}
                 fill
                 priority={i === 0}
-                sizes="100vw"
+                sizes="(max-width: 640px) 100vw, 1px"
                 className="object-cover"
               />
             </div>
           ))}
         </div>
         {images.length > 1 && (
-          <div className="absolute bottom-14 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-secondary/70 px-2.5 py-1.5 backdrop-blur">
+          <div className="bg-secondary/70 absolute bottom-14 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-2.5 py-1.5 backdrop-blur">
             {images.map((_, i) => (
               <button
                 key={i}
@@ -97,8 +97,8 @@ export function ProductGallery({
                 className={cn(
                   "h-1.5 rounded-full transition-all",
                   i === active
-                    ? "w-6 bg-foreground"
-                    : "w-1.5 bg-muted-foreground/60",
+                    ? "bg-foreground w-6"
+                    : "bg-muted-foreground/60 w-1.5",
                 )}
               />
             ))}
@@ -108,14 +108,14 @@ export function ProductGallery({
 
       {/* Desktop: main image + thumbnails */}
       <div className="hidden sm:block">
-        <div className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-border bg-muted shadow-soft">
+        <div className="border-border bg-muted shadow-soft relative aspect-[4/5] overflow-hidden rounded-2xl border">
           {current && (
             <Image
               src={current.url}
               alt={current.alt || name}
               fill
               priority
-              sizes="50vw"
+              sizes="(max-width: 1024px) 100vw, (max-width: 1408px) 50vw, 652px"
               className="object-cover"
             />
           )}
@@ -127,9 +127,9 @@ export function ProductGallery({
                 key={i}
                 onClick={() => pick(i)}
                 className={cn(
-                  "relative size-20 shrink-0 overflow-hidden rounded-xl bg-muted transition-all",
+                  "bg-muted relative size-20 shrink-0 overflow-hidden rounded-xl transition-all",
                   i === active
-                    ? "ring-2 ring-foreground"
+                    ? "ring-foreground ring-2"
                     : "opacity-60 hover:opacity-100",
                 )}
                 aria-label={`Зураг ${i + 1}`}

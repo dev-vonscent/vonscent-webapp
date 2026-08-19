@@ -2,19 +2,19 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Plus, Eye, EyeOff } from "lucide-react";
+import { Plus, Eye, EyeOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useConfirm } from "@/components/shared/confirm-dialog";
 import { IconUpload } from "./icon-upload";
 import type { ScentFamilyOption } from "@/lib/types";
 
 /**
  * Үнэрийн төрөл CRUD. Adding a row here makes the family selectable on the
  * product form; once a product carries it, the chip appears in the catalog
- * filter. Deleting also strips the slug from every product that used it.
+ * filter. There is no hard delete: hiding (is_active=false) is the removal
+ * story, so product tags survive and a family can always be brought back.
  */
 export function ScentFamilyManager({
   families,
@@ -22,7 +22,6 @@ export function ScentFamilyManager({
   families: ScentFamilyOption[];
 }) {
   const router = useRouter();
-  const [confirm, confirmDialog] = useConfirm();
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
   const [slug, setSlug] = React.useState("");
@@ -91,21 +90,13 @@ export function ScentFamilyManager({
     });
   }
 
-  async function remove(f: ScentFamilyOption) {
-    const ok = await confirm({
-      title: `«${f.label}» төрлийг устгах уу?`,
-      description:
-        "Энэ төрлөөр тэмдэглэсэн бүх бараанаас хасагдана. Буцаах боломжгүй.",
-      confirmLabel: "Устгах",
-      destructive: true,
-    });
-    if (!ok) return;
-    await send(`/api/admin/scent-families/${f.slug}`, { method: "DELETE" });
-  }
-
   return (
     <div className="space-y-6">
-      {confirmDialog}
+      {/* Feedback lives above the list — at the bottom it scrolls out of view
+          and a failed/demo-mode click looks like the button did nothing. */}
+      {msg && (
+        <p className="rounded-md bg-secondary px-4 py-3 text-sm">{msg}</p>
+      )}
       <Card>
         <CardContent className="p-0">
           <ul className="divide-y divide-border">
@@ -118,6 +109,7 @@ export function ScentFamilyManager({
                   label={`${f.label} дүрс`}
                   value={f.iconUrl}
                   onChange={(url) => setIcon(f, url)}
+                  allowClear={false}
                 />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">
@@ -146,16 +138,6 @@ export function ScentFamilyManager({
                   ) : (
                     <EyeOff className="size-4 text-muted-foreground" />
                   )}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  disabled={busy}
-                  onClick={() => remove(f)}
-                  aria-label="Устгах"
-                >
-                  <Trash2 className="size-4 text-destructive" />
                 </Button>
               </li>
             ))}
@@ -212,9 +194,6 @@ export function ScentFamilyManager({
         </CardContent>
       </Card>
 
-      {msg && (
-        <p className="rounded-md bg-secondary px-4 py-3 text-sm">{msg}</p>
-      )}
     </div>
   );
 }
