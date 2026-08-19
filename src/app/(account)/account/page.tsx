@@ -16,6 +16,8 @@ import {
   Phone,
   Palette,
 } from "lucide-react";
+import { prepareUpload } from "@/lib/storage/prepare-upload";
+import { IMAGE_ACCEPT } from "@/lib/storage/limits";
 import { ThemeSwitcher } from "@/components/shared/theme-switcher";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -34,6 +36,7 @@ export default function ProfilePage() {
   const [phone, setPhone] = React.useState("");
   const [phoneVerified, setPhoneVerified] = React.useState(false);
   const [avatar, setAvatar] = React.useState<string | null>(null);
+  const [avatarError, setAvatarError] = React.useState<string | null>(null);
   const [loyalty, setLoyalty] = React.useState(0);
   const [pendingPoints, setPendingPoints] = React.useState(0);
   const [ordersCount, setOrdersCount] = React.useState(0);
@@ -109,8 +112,14 @@ export default function ProfilePage() {
   async function onAvatar(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const prepared = await prepareUpload(file, 512);
+    if (!prepared.ok) {
+      setAvatarError(prepared.message);
+      return;
+    }
+    setAvatarError(null);
     const fd = new FormData();
-    fd.append("file", file);
+    fd.append("file", prepared.file);
     fd.append("folder", "avatars");
     const res = await fetch("/api/upload", { method: "POST", body: fd });
     if (!res.ok) return;
@@ -118,7 +127,10 @@ export default function ProfilePage() {
     if (!url) return;
     const supabase = createClient();
     if (supabase && userId) {
-      await supabase.from("profiles").update({ avatar_url: url }).eq("id", userId);
+      await supabase
+        .from("profiles")
+        .update({ avatar_url: url })
+        .eq("id", userId);
     }
     setAvatar(url);
   }
@@ -131,7 +143,7 @@ export default function ProfilePage() {
   return (
     <div className="space-y-8">
       {!configured && (
-        <p className="rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-muted-foreground">
+        <p className="border-border bg-secondary text-muted-foreground rounded-xl border px-4 py-3 text-sm">
           Нэвтрэлт одоогоор тохируулагдаагүй (demo). Supabase холбогдсоны дараа
           таны мэдээлэл энд харагдана.
         </p>
@@ -141,8 +153,8 @@ export default function ProfilePage() {
       <header className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
         {/* Avatar ring */}
         <div className="relative shrink-0">
-          <div className="rounded-full bg-secondary p-[3px]">
-            <div className="group relative size-28 overflow-hidden rounded-full border-2 border-background bg-secondary sm:size-32">
+          <div className="bg-secondary rounded-full p-[3px]">
+            <div className="group border-background bg-secondary relative size-28 overflow-hidden rounded-full border-2 sm:size-32">
               {avatar ? (
                 <Image
                   src={avatar}
@@ -152,7 +164,7 @@ export default function ProfilePage() {
                   className="object-cover"
                 />
               ) : (
-                <div className="flex h-full items-center justify-center font-serif text-4xl text-muted-foreground">
+                <div className="text-muted-foreground flex h-full items-center justify-center font-serif text-4xl">
                   {initial}
                 </div>
               )}
@@ -160,7 +172,7 @@ export default function ProfilePage() {
                 <Camera className="size-6 text-white" />
                 <input
                   type="file"
-                  accept="image/*"
+                  accept={IMAGE_ACCEPT}
                   className="hidden"
                   disabled={!configured}
                   onChange={onAvatar}
@@ -169,9 +181,14 @@ export default function ProfilePage() {
             </div>
           </div>
           {phoneVerified && (
-            <span className="absolute bottom-1 right-1 flex items-center justify-center rounded-full bg-foreground p-1 text-background">
+            <span className="bg-foreground text-background absolute right-1 bottom-1 flex items-center justify-center rounded-full p-1">
               <BadgeCheck className="size-4" />
             </span>
+          )}
+          {avatarError && (
+            <p className="text-destructive absolute top-full left-1/2 mt-2 w-52 -translate-x-1/2 text-center text-xs">
+              {avatarError}
+            </p>
           )}
         </div>
 
@@ -181,7 +198,7 @@ export default function ProfilePage() {
               <h1 className="font-serif text-2xl font-semibold sm:text-3xl">
                 {fullName || "vonscent гишүүн"}
               </h1>
-              <p className="text-sm text-muted-foreground">@{handle}</p>
+              <p className="text-muted-foreground text-sm">@{handle}</p>
             </div>
             <Button
               variant="outline"
@@ -263,8 +280,8 @@ export default function ProfilePage() {
       </div>
 
       {/* Theme */}
-      <div className="flex items-center gap-4 rounded-xl bg-card p-4">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary">
+      <div className="bg-card flex items-center gap-4 rounded-xl p-4">
+        <span className="bg-secondary flex size-10 shrink-0 items-center justify-center rounded-full">
           <Palette className="size-5" />
         </span>
         <span className="font-medium">Загвар</span>
@@ -328,7 +345,7 @@ function OptionRow({
         )}
       </span>
       <span className="font-medium">{label}</span>
-      <span className="ml-auto flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+      <span className="text-muted-foreground ml-auto flex min-w-0 items-center gap-2 text-sm">
         {value !== undefined && <span className="truncate">{value}</span>}
         {href && <ChevronRight className="size-5 shrink-0" />}
       </span>
@@ -336,7 +353,7 @@ function OptionRow({
   );
   const base = "flex items-center gap-4 rounded-xl bg-card p-4";
   return href ? (
-    <Link href={href} className={`${base} transition-colors hover:bg-accent`}>
+    <Link href={href} className={`${base} hover:bg-accent transition-colors`}>
       {content}
     </Link>
   ) : (
@@ -379,12 +396,12 @@ function Coupons() {
           {items.map((c) => (
             <div
               key={c.id}
-              className="flex items-center justify-between rounded-md bg-secondary px-3 py-2 text-sm"
+              className="bg-secondary flex items-center justify-between rounded-md px-3 py-2 text-sm"
             >
               <span className="flex items-center gap-2">
                 <span className="font-mono font-semibold">{c.code}</span>
                 {c.user_id && (
-                  <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] text-primary">
+                  <span className="bg-primary/15 text-primary rounded-full px-2 py-0.5 text-[11px]">
                     Танд зориулав
                   </span>
                 )}

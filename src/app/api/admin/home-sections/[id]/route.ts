@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePublic } from "@/lib/cache";
 import { z } from "zod";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
@@ -92,6 +93,7 @@ export async function PATCH(
     }
   }
 
+  revalidatePublic();
   return NextResponse.json({ ok: true });
 }
 
@@ -105,5 +107,6 @@ export async function DELETE(
   if ("error" in g) return fail(g.error);
   // home_section_products cascades on the FK.
   await g.supabase.from("home_sections").delete().eq("id", id);
+  revalidatePublic();
   return NextResponse.json({ ok: true });
 }

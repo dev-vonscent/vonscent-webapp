@@ -5,11 +5,8 @@ import Image from "next/image";
 import { GripVertical, ImagePlus, Trash2, UploadCloud, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/components/shared/confirm-dialog";
-import {
-  ALLOWED_IMAGE_TYPES,
-  IMAGE_ACCEPT,
-  MAX_IMAGE_BYTES,
-} from "@/lib/storage/limits";
+import { IMAGE_ACCEPT } from "@/lib/storage/limits";
+import { prepareUpload } from "@/lib/storage/prepare-upload";
 
 /**
  * Product gallery editor (todo.md B3).
@@ -126,20 +123,19 @@ export function ProductImages({
 
     const picked = Array.from(files);
     if (picked.length > room) {
-      addError(`Зөвхөн эхний ${room} зургийг авлаа (дээд хязгаар ${MAX_IMAGES}).`);
+      addError(
+        `Зөвхөн эхний ${room} зургийг авлаа (дээд хязгаар ${MAX_IMAGES}).`,
+      );
     }
 
-    const accepted = picked.slice(0, room).filter((file) => {
-      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-        addError(`«${file.name}» — зөвхөн JPG / PNG / WebP / AVIF байна.`);
-        return false;
-      }
-      if (file.size > MAX_IMAGE_BYTES) {
-        addError(`«${file.name}» — 5MB-аас том байна.`);
-        return false;
-      }
-      return true;
-    });
+    // Validate and downscale before any of them go up, so a rejected file is
+    // reported without having left the browser.
+    const accepted: File[] = [];
+    for (const file of picked.slice(0, room)) {
+      const prepared = await prepareUpload(file);
+      if (prepared.ok) accepted.push(prepared.file);
+      else addError(`«${file.name}» — ${prepared.message}`);
+    }
     if (accepted.length === 0) return;
 
     // Count them all up front so the placeholder tiles appear at once.
@@ -328,10 +324,11 @@ export function ProductImages({
         onDrop={(e) => {
           e.preventDefault();
           setDropActive(false);
-          if (!full && e.dataTransfer.files.length) upload(e.dataTransfer.files);
+          if (!full && e.dataTransfer.files.length)
+            upload(e.dataTransfer.files);
         }}
         onClick={() => inputRef.current?.click()}
-        className={`flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-50 ${
+        className={`focus-visible:ring-ring flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:cursor-default disabled:opacity-50 ${
           dropActive
             ? "border-primary bg-primary/5"
             : "border-muted-foreground/30 hover:border-muted-foreground/60 hover:bg-secondary/40"
@@ -347,7 +344,7 @@ export function ProductImages({
             : "Зургаа энд чирж оруулна уу"}
         </span>
         {!full && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-muted-foreground text-xs">
             эсвэл дарж сонгоно уу · JPG / PNG / WebP / AVIF · 5MB хүртэл
           </span>
         )}
@@ -365,7 +362,7 @@ export function ProductImages({
       />
 
       {errors.length > 0 && (
-        <ul className="space-y-1 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <ul className="bg-destructive/10 text-destructive space-y-1 rounded-md px-3 py-2 text-sm">
           {errors.map((msg) => (
             <li key={msg} className="flex items-start gap-2">
               <span className="flex-1">{msg}</span>
@@ -382,7 +379,7 @@ export function ProductImages({
       )}
 
       {(images.length > 0 || uploading > 0) && (
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="text-muted-foreground flex items-center justify-between text-xs">
           <span>
             {images.length} / {MAX_IMAGES} зураг
           </span>
@@ -399,14 +396,14 @@ export function ProductImages({
           {images.map((img, i) => (
             <li
               key={img.id ?? img.url}
-              className={`group relative overflow-hidden rounded-lg border bg-card transition-shadow ${
+              className={`group bg-card relative overflow-hidden rounded-lg border transition-shadow ${
                 dragIndex === i
                   ? // The tile stays as the empty slot the ghost will drop into.
-                    "border-dashed border-primary opacity-30"
+                    "border-primary border-dashed opacity-30"
                   : "border-border"
               }`}
             >
-              <div className="relative aspect-square bg-secondary">
+              <div className="bg-secondary relative aspect-square">
                 <Image
                   src={img.url}
                   alt={img.alt || "Барааны зураг"}
@@ -422,7 +419,7 @@ export function ProductImages({
                   onPointerDown={(e) => startDrag(e, i)}
                   onKeyDown={(e) => onHandleKeyDown(e, i)}
                   aria-label={`${i + 1}-р зураг — чирж эрэмбэ солих (сум товчоор ч болно)`}
-                  className="absolute left-1.5 top-1.5 touch-none rounded-md bg-background/80 p-1.5 text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 max-sm:opacity-100"
+                  className="bg-background/80 text-muted-foreground focus-visible:ring-ring absolute top-1.5 left-1.5 touch-none rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none max-sm:opacity-100"
                   style={{ cursor: dragIndex === i ? "grabbing" : "grab" }}
                 >
                   <GripVertical className="size-4" />
@@ -432,13 +429,13 @@ export function ProductImages({
                   type="button"
                   onClick={() => remove(i)}
                   aria-label={`${i + 1}-р зургийг устгах`}
-                  className="absolute right-1.5 top-1.5 rounded-md bg-background/80 p-1.5 text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 max-sm:opacity-100"
+                  className="bg-background/80 text-muted-foreground hover:text-destructive focus-visible:ring-ring absolute top-1.5 right-1.5 rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none max-sm:opacity-100"
                 >
                   <Trash2 className="size-4" />
                 </button>
 
                 {i === 0 && (
-                  <span className="absolute inset-x-0 bottom-0 bg-primary/90 py-1 text-center text-[11px] font-medium text-primary-foreground">
+                  <span className="bg-primary/90 text-primary-foreground absolute inset-x-0 bottom-0 py-1 text-center text-[11px] font-medium">
                     Үндсэн зураг
                   </span>
                 )}
@@ -447,7 +444,7 @@ export function ProductImages({
               <Input
                 value={img.alt}
                 placeholder="Зургийн тайлбар (alt)"
-                className="h-8 rounded-none border-0 border-t border-border bg-transparent text-xs"
+                className="border-border h-8 rounded-none border-0 border-t bg-transparent text-xs"
                 onChange={(e) => setAlt(i, e.target.value)}
                 onBlur={() => persistOrder(imagesRef.current)}
               />
@@ -458,7 +455,7 @@ export function ProductImages({
           {Array.from({ length: uploading }).map((_, i) => (
             <li
               key={`uploading-${i}`}
-              className="flex aspect-square animate-pulse flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-secondary/50 text-muted-foreground"
+              className="border-border bg-secondary/50 text-muted-foreground flex aspect-square animate-pulse flex-col items-center justify-center gap-2 rounded-lg border border-dashed"
             >
               <ImagePlus className="size-6" />
               <span className="text-xs">Оруулж байна…</span>
@@ -471,7 +468,7 @@ export function ProductImages({
           transparent to hit-testing so the tile beneath still answers. */}
       {ghost && (
         <div
-          className="pointer-events-none fixed z-50 overflow-hidden rounded-lg border-2 border-primary shadow-2xl"
+          className="border-primary pointer-events-none fixed z-50 overflow-hidden rounded-lg border-2 shadow-2xl"
           style={{
             width: ghost.width,
             height: ghost.height,

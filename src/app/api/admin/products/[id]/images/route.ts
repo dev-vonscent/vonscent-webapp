@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { revalidatePublic } from "@/lib/cache";
 import { z } from "zod";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { deleteImage, storagePath, uploadImage } from "@/lib/storage/storage";
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/lib/storage/limits";
+import { processImage, presetForFolder } from "@/lib/storage/process-image";
 
 /**
  * Gallery of an existing product (todo.md B3). POST uploads a file and appends
@@ -58,11 +60,18 @@ export async function POST(
   if (rows.length >= MAX_IMAGES) return fail("TOO_MANY", 400);
   const nextOrder = rows.length ? rows[0].sort_order + 1 : 0;
 
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-  const uploaded = await uploadImage(
-    `products/${id}/${crypto.randomUUID()}.${ext}`,
+  // Re-encoded to a bounded WebP, so the extension comes from the processed
+  // image rather than whatever the client happened to name the file.
+  const image = await processImage(
     await file.arrayBuffer(),
-    file.type,
+    presetForFolder("products"),
+  );
+  if (!image) return fail("BAD_IMAGE", 400);
+
+  const uploaded = await uploadImage(
+    `products/${id}/${crypto.randomUUID()}.${image.ext}`,
+    image.data,
+    image.contentType,
   );
   if (!uploaded) return fail("UPLOAD_FAILED", 500);
 
@@ -117,6 +126,7 @@ export async function PATCH(
       .eq("id", img.id)
       .eq("product_id", id);
   }
+  revalidatePublic();
   return NextResponse.json({ ok: true });
 }
 
@@ -153,5 +163,6 @@ export async function DELETE(
   const path = storagePath(row.url);
   if (path) await deleteImage(path);
 
+  revalidatePublic();
   return NextResponse.json({ ok: true });
 }

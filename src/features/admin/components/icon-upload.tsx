@@ -3,11 +3,8 @@
 import * as React from "react";
 import Image from "next/image";
 import { ImagePlus, Loader2, X } from "lucide-react";
-import {
-  ALLOWED_IMAGE_TYPES,
-  IMAGE_ACCEPT,
-  MAX_IMAGE_BYTES,
-} from "@/lib/storage/limits";
+import { IMAGE_ACCEPT } from "@/lib/storage/limits";
+import { prepareUpload } from "@/lib/storage/prepare-upload";
 
 /**
  * Single-image picker for the small square icons the admin manages (todo.md
@@ -21,11 +18,14 @@ export function IconUpload({
   onChange,
   label = "Дүрс",
   size = 48,
+  allowClear = true,
 }: {
   value: string | null;
   onChange: (url: string | null) => void;
   label?: string;
   size?: number;
+  /** Hide the clear (X) button — click-to-replace stays available. */
+  allowClear?: boolean;
 }) {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -33,18 +33,16 @@ export function IconUpload({
 
   async function upload(file: File) {
     setError(null);
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      setError("Зөвхөн JPG / PNG / WebP / AVIF.");
-      return;
-    }
-    if (file.size > MAX_IMAGE_BYTES) {
-      setError("5MB-аас том байна.");
+    // Icons render at 48px, so they need far less than the default bound.
+    const prepared = await prepareUpload(file, 512);
+    if (!prepared.ok) {
+      setError(prepared.message);
       return;
     }
     setBusy(true);
     try {
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", prepared.file);
       fd.append("folder", "families");
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       const data = await res.json().catch(() => null);
@@ -69,7 +67,7 @@ export function IconUpload({
           disabled={busy}
           onClick={() => inputRef.current?.click()}
           aria-label={value ? `${label} солих` : `${label} оруулах`}
-          className="flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-dashed border-muted-foreground/40 bg-secondary text-muted-foreground transition-colors hover:border-muted-foreground/70 hover:bg-accent disabled:opacity-60"
+          className="border-muted-foreground/40 bg-secondary text-muted-foreground hover:border-muted-foreground/70 hover:bg-accent flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-dashed transition-colors disabled:opacity-60"
           style={{ width: size, height: size }}
         >
           {busy ? (
@@ -86,7 +84,7 @@ export function IconUpload({
             <ImagePlus className="size-4" />
           )}
         </button>
-        {value && !busy && (
+        {allowClear && value && !busy && (
           <button
             type="button"
             onClick={() => onChange(null)}
@@ -108,7 +106,7 @@ export function IconUpload({
           if (file) upload(file);
         }}
       />
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <p className="text-destructive text-xs">{error}</p>}
     </div>
   );
 }

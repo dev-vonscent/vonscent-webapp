@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePublic } from "@/lib/cache";
 import { productInputSchema } from "@/lib/validators/product";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -103,5 +104,6 @@ export async function POST(req: Request) {
     low_stock_ml: input.lowStockMl,
   });
 
+  revalidatePublic();
   return NextResponse.json({ ok: true, id: productId, slug });
 }

@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { SHIPPING_ZONES } from "@/lib/constants";
 import { getProductsByIds, getProductsByTag } from "@/features/products/api";
 import type { HeroBannerRow, HomeSectionRow } from "@/db/types";
@@ -45,6 +45,9 @@ export interface AboutSettings {
   team: TeamMember[];
 }
 export interface ShippingZone {
+  /** Stable id (A/B/C/R/X). Absent on rows saved before codes existed, which
+   *  then fall back to matching on `name` — see zoneKey(). */
+  code?: string;
   name: string;
   fee: number;
   /** false = zone we don't serve; checkout refuses the order. Legacy rows
@@ -109,7 +112,7 @@ export const DEFAULT_STORE: StoreSettings = {
 
 /** Fetch all settings rows once per request and index by key. */
 const fetchSettings = cache(async (): Promise<Record<string, unknown>> => {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   if (!supabase) return {};
   const { data } = await supabase.from("settings").select("key, value");
   const out: Record<string, unknown> = {};
@@ -162,7 +165,7 @@ export interface HomeSection {
  * rendering a heading with nothing under it.
  */
 export async function getHomeSections(): Promise<HomeSection[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   if (!supabase) return [];
 
   const { data } = await supabase
@@ -172,9 +175,11 @@ export async function getHomeSections(): Promise<HomeSection[]> {
     .order("sort_order", { ascending: true });
 
   const rows =
-    (data as unknown as (HomeSectionRow & {
-      home_section_products: { product_id: string; sort_order: number }[];
-    })[] | null) ?? [];
+    (data as unknown as
+      | (HomeSectionRow & {
+          home_section_products: { product_id: string; sort_order: number }[];
+        })[]
+      | null) ?? [];
   if (rows.length === 0) return [];
 
   const sections: HomeSection[] = [];
@@ -208,7 +213,7 @@ export async function getHomeSections(): Promise<HomeSection[]> {
 }
 
 export async function getHeroBanners(): Promise<HeroBanner[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   if (!supabase) return [];
   const { data } = await supabase
     .from("hero_banners")

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePublic } from "@/lib/cache";
 import { productEditSchema } from "@/lib/validators/product";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
@@ -108,6 +109,7 @@ export async function PATCH(
     if (links.length) await supabase.from("product_tags").insert(links);
   }
 
+  revalidatePublic();
   return NextResponse.json({ ok: true });
 }
 
@@ -126,5 +128,6 @@ export async function DELETE(
   }
   const { error } = await g.supabase.from("products").delete().eq("id", id);
   if (error) return NextResponse.json({ error: "DELETE_FAILED" }, { status: 500 });
+  revalidatePublic();
   return NextResponse.json({ ok: true });
 }

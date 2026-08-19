@@ -2,6 +2,13 @@ import type { Metadata } from "next";
 import { getFaqs } from "@/features/faq/api";
 import { FaqSearch } from "@/features/faq/components/faq-search";
 
+/**
+ * ISR: public data comes from the cookie-less client, so the page is
+ * cacheable. Admin writes purge it via revalidatePublic(); this window
+ * is just the safety net for writes that bypass the admin API.
+ */
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: "Түгээмэл асуулт",
   description: "Захиалга, хүргэлт, төлбөр, бараатай холбоотой түгээмэл асуулт.",

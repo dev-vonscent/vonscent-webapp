@@ -18,6 +18,19 @@ import { getScentFamilyLabels } from "@/features/taxonomy/api";
 import { ReviewSection } from "@/features/reviews/components/review-section";
 import { GENDER_LABEL, SEASON_LABEL } from "@/lib/constants";
 
+/**
+ * ISR: public data comes from the cookie-less client, so the page is
+ * cacheable. Admin writes purge it via revalidatePublic(); this window
+ * is just the safety net for writes that bypass the admin API.
+ */
+export const revalidate = 60;
+
+// No prebuilt slugs — each page is generated on first visit, then served from
+// the ISR cache. Without this, a dynamic segment renders on every request.
+export async function generateStaticParams() {
+  return [];
+}
+
 export async function generateMetadata({
   params,
 }: {

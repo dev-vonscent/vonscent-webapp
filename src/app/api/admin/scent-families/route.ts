@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePublic } from "@/lib/cache";
 import { scentFamilyCreateSchema } from "@/lib/validators/scent-family";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
@@ -44,5 +45,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "NOT_MIGRATED" }, { status: 503 });
     return NextResponse.json({ error: "INSERT_FAILED" }, { status: 500 });
   }
+  revalidatePublic();
   return NextResponse.json({ ok: true });
 }

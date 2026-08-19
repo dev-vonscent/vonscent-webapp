@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
-import { GENDERS, GENDER_LABEL, ML_SIZES } from "@/lib/constants";
+import { GENDERS, GENDER_LABEL } from "@/lib/constants";
 import { useFilterQuery } from "./use-filter-query";
 import type { ScentFamilyOption } from "@/lib/types";
 
@@ -114,7 +114,7 @@ export function CatalogFilters({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-serif text-lg font-semibold h-9">Шүүлтүүр</h2>
+        <h2 className="h-9 font-serif text-lg font-semibold">Шүүлтүүр</h2>
         {activeCount > 0 && (
           <Button variant="ghost" size="sm" onClick={clearAll}>
             Цэвэрлэх ({activeCount})
@@ -153,6 +153,7 @@ export function CatalogFilters({
                     alt=""
                     width={18}
                     height={18}
+                    unoptimized
                     className="size-[18px] shrink-0 object-contain"
                   />
                 )}
@@ -173,21 +174,6 @@ export function CatalogFilters({
               onClick={() => toggle("season", s.value)}
             >
               {s.label}
-            </Chip>
-          ))}
-        </div>
-      </Group>
-      <Separator />
-
-      <Group title="Багц (ml)">
-        <div className="grid grid-cols-3 gap-2">
-          {ML_SIZES.map((ml) => (
-            <Chip
-              key={ml}
-              active={values("ml").includes(String(ml))}
-              onClick={() => toggle("ml", String(ml))}
-            >
-              {ml}ml
             </Chip>
           ))}
         </div>
@@ -222,7 +208,7 @@ export function CatalogFilters({
                 onValueChange={(v) => setRange([v[0], v[1]])}
                 onValueCommit={commitRange}
               />
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <div className="text-muted-foreground flex items-center justify-between text-sm">
                 <span>{formatPrice(range[0])}</span>
                 <span>{formatPrice(range[1])}</span>
               </div>

@@ -9,7 +9,7 @@ import type {
 import type { ScentFamily, Season, TagKind } from "@/db/types";
 import { SEED_PRODUCTS } from "./seed";
 import { isSupabaseConfigured } from "@/lib/env";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 
 /**
  * Product data access (development.md §3 — features domain api).
@@ -149,7 +149,7 @@ function mapProduct(row: DbProduct): ProductDetail {
  */
 export const fetchProducts = cache(async (): Promise<ProductDetail[]> => {
   if (!isSupabaseConfigured) return SEED_PRODUCTS;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   if (!supabase) return SEED_PRODUCTS;
 
   const { data, error } = await supabase

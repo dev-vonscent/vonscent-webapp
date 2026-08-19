@@ -26,7 +26,7 @@
         {
           "code": "MN1104",
           "name": "Багахангай",
-          "nameEn": "Bagaxangai",
+          "nameEn": "Bagakhangai",
           "khoroos": [
             1,
             2
@@ -76,7 +76,7 @@
         {
           "code": "MN1110",
           "name": "Баянзүрх",
-          "nameEn": "Bayanzu'rx",
+          "nameEn": "Bayanzurkh",
           "khoroos": [
             1,
             2,
@@ -126,7 +126,7 @@
         {
           "code": "MN1113",
           "name": "Налайх",
-          "nameEn": "Nalaix",
+          "nameEn": "Nalaikh",
           "khoroos": [
             1,
             2,
@@ -141,7 +141,7 @@
         {
           "code": "MN1116",
           "name": "Сонгинохайрхан",
-          "nameEn": "Songinoxairxan",
+          "nameEn": "Songinokhairkhan",
           "khoroos": [
             1,
             2,
@@ -191,7 +191,7 @@
         {
           "code": "MN1119",
           "name": "Сүхбаатар",
-          "nameEn": "Su'xbaatar",
+          "nameEn": "Sukhbaatar",
           "khoroos": [
             1,
             2,
@@ -218,7 +218,7 @@
         {
           "code": "MN1122",
           "name": "Хан-Уул",
-          "nameEn": "Xan-Uul",
+          "nameEn": "Khan-Uul",
           "khoroos": [
             1,
             2,
@@ -283,13 +283,13 @@
     {
       "code": "MN65",
       "name": "Архангай",
-      "nameEn": "Arxangai",
+      "nameEn": "Arkhangai",
       "isCapital": false,
       "children": [
         {
           "code": "MN6504",
           "name": "Батцэнгэл",
-          "nameEn": "Batcengel"
+          "nameEn": "Battsengel"
         },
         {
           "code": "MN6507",
@@ -304,22 +304,22 @@
         {
           "code": "MN6513",
           "name": "Их тамир",
-          "nameEn": "Ixtamir"
+          "nameEn": "Ikh Tamir"
         },
         {
           "code": "MN6516",
           "name": "Өгийнуур",
-          "nameEn": "O'giinuur"
+          "nameEn": "Ugiinuur"
         },
         {
           "code": "MN6519",
           "name": "Өлзийт",
-          "nameEn": "O'lziit"
+          "nameEn": "Ulziit"
         },
         {
           "code": "MN6522",
           "name": "Өндөр-Улаан",
-          "nameEn": "O'ndor-Ulaan"
+          "nameEn": "Undur-Ulaan"
         },
         {
           "code": "MN6525",
@@ -329,42 +329,42 @@
         {
           "code": "MN6528",
           "name": "Төвшрүүлэх",
-          "nameEn": "To'vshru'ulex"
+          "nameEn": "Tuvshruulekh"
         },
         {
           "code": "MN6531",
           "name": "Хайрхан",
-          "nameEn": "Xairxan"
+          "nameEn": "Khairkhan"
         },
         {
           "code": "MN6534",
           "name": "Хангай",
-          "nameEn": "Xangai"
+          "nameEn": "Khangai"
         },
         {
           "code": "MN6537",
           "name": "Хашаат",
-          "nameEn": "Xashaat"
+          "nameEn": "Khashaat"
         },
         {
           "code": "MN6540",
           "name": "Хотонт",
-          "nameEn": "Xotont"
+          "nameEn": "Khotont"
         },
         {
           "code": "MN6543",
           "name": "Цахир",
-          "nameEn": "Caxir"
+          "nameEn": "Tsakhir"
         },
         {
           "code": "MN6546",
           "name": "Цэнхэр",
-          "nameEn": "Cenxer"
+          "nameEn": "Tsenkher"
         },
         {
           "code": "MN6549",
           "name": "Цэцэрлэг",
-          "nameEn": "Cecerleg"
+          "nameEn": "Tsetserleg"
         },
         {
           "code": "MN6552",
@@ -386,7 +386,7 @@
     {
       "code": "MN83",
       "name": "Баян-Өлгий",
-      "nameEn": "Bayan-Olgii",
+      "nameEn": "Bayan-Ulgii",
       "isCapital": false,
       "children": [
         {
@@ -397,7 +397,7 @@
         {
           "code": "MN8307",
           "name": "Алтанцөгц",
-          "nameEn": "Altanco'gc"
+          "nameEn": "Altantsugts"
         },
         {
           "code": "MN8310",
@@ -422,7 +422,7 @@
         {
           "code": "MN8322",
           "name": "Дэлүүн",
-          "nameEn": "Delu'un"
+          "nameEn": "Deluun"
         },
         {
           "code": "MN8325",
@@ -432,7 +432,7 @@
         {
           "code": "MN8301",
           "name": "Өлгий",
-          "nameEn": "O'lgii"
+          "nameEn": "Ulgii"
         },
         {
           "code": "MN8328",
@@ -447,12 +447,12 @@
         {
           "code": "MN8334",
           "name": "Улаанхус",
-          "nameEn": "Ulaanxus"
+          "nameEn": "Ulaankhus"
         },
         {
           "code": "MN8340",
           "name": "Цэнгэл",
-          "nameEn": "Cengel"
+          "nameEn": "Tsengel"
         }
       ]
     },
@@ -465,7 +465,7 @@
         {
           "code": "MN6404",
           "name": "Баацагаан",
-          "nameEn": "Baacagaan"
+          "nameEn": "Baatsagaan"
         },
         {
           "code": "MN6407",
@@ -490,17 +490,17 @@
         {
           "code": "MN6419",
           "name": "Баян-Өндөр",
-          "nameEn": "Bayan-O'ndor"
+          "nameEn": "Bayan-Undur"
         },
         {
           "code": "MN6401",
           "name": "Баянхонгор",
-          "nameEn": "Bayanxongor"
+          "nameEn": "Bayankhongor"
         },
         {
           "code": "MN6422",
           "name": "Баянцагаан",
-          "nameEn": "Bayancagaan"
+          "nameEn": "Bayantsagaan"
         },
         {
           "code": "MN6425",
@@ -510,12 +510,12 @@
         {
           "code": "MN6428",
           "name": "Бөмбөгөр",
-          "nameEn": "Bo'mbogor"
+          "nameEn": "Bumbugur"
         },
         {
           "code": "MN6431",
           "name": "Бууцагаан",
-          "nameEn": "Buucagaan"
+          "nameEn": "Buutsagaan"
         },
         {
           "code": "MN6434",
@@ -545,12 +545,12 @@
         {
           "code": "MN6449",
           "name": "Өлзийт",
-          "nameEn": "O'lziit"
+          "nameEn": "Ulziit"
         },
         {
           "code": "MN6452",
           "name": "Хүрээмарал",
-          "nameEn": "Xu'reemaral"
+          "nameEn": "Khureemaral"
         },
         {
           "code": "MN6455",
@@ -560,7 +560,7 @@
         {
           "code": "MN6458",
           "name": "Эрдэнэцогт",
-          "nameEn": "Erdenecogt"
+          "nameEn": "Erdenetsogt"
         }
       ]
     },
@@ -573,7 +573,7 @@
         {
           "code": "MN6304",
           "name": "Баян-Агт",
-          "nameEn": "Bayan agt"
+          "nameEn": "Bayan-Agt"
         },
         {
           "code": "MN6307",
@@ -593,12 +593,12 @@
         {
           "code": "MN6313",
           "name": "Бүрэгхангай",
-          "nameEn": "Bu'regxangai"
+          "nameEn": "Buregkhangai"
         },
         {
           "code": "MN6316",
           "name": "Гурван булаг",
-          "nameEn": "Gurvanbulag"
+          "nameEn": "Gurvan Bulag"
         },
         {
           "code": "MN6319",
@@ -613,7 +613,7 @@
         {
           "code": "MN6325",
           "name": "Орхон",
-          "nameEn": "Orxon"
+          "nameEn": "Orkhon"
         },
         {
           "code": "MN6328",
@@ -623,7 +623,7 @@
         {
           "code": "MN6331",
           "name": "Сайхан",
-          "nameEn": "Saixan"
+          "nameEn": "Saikhan"
         },
         {
           "code": "MN6334",
@@ -638,17 +638,17 @@
         {
           "code": "MN6340",
           "name": "Хангал",
-          "nameEn": "Xangal"
+          "nameEn": "Khangal"
         },
         {
           "code": "MN6343",
           "name": "Хишиг-өндөр",
-          "nameEn": "Xishig-O'ndor"
+          "nameEn": "Khishig-Undur"
         },
         {
           "code": "MN6346",
           "name": "Хутаг-Өндөр",
-          "nameEn": "Xutag-O'ndor"
+          "nameEn": "Khutag-Undur"
         }
       ]
     },
@@ -681,7 +681,7 @@
         {
           "code": "MN8216",
           "name": "Дарив",
-          "nameEn": "Darvi"
+          "nameEn": "Dariv"
         },
         {
           "code": "MN8219",
@@ -691,7 +691,7 @@
         {
           "code": "MN8201",
           "name": "Есөнбулаг",
-          "nameEn": "Yeso'nbulag"
+          "nameEn": "Esunbulag"
         },
         {
           "code": "MN8222",
@@ -711,27 +711,27 @@
         {
           "code": "MN8231",
           "name": "Төгрөг",
-          "nameEn": "To'grog"
+          "nameEn": "Tugrug"
         },
         {
           "code": "MN8234",
           "name": "Халиун",
-          "nameEn": "Xaliun"
+          "nameEn": "Khaliun"
         },
         {
           "code": "MN8237",
           "name": "Хөхморьт",
-          "nameEn": "Xo'xmorit"
+          "nameEn": "Khukhmorit"
         },
         {
           "code": "MN8240",
           "name": "Цогт",
-          "nameEn": "Cogt"
+          "nameEn": "Tsogt"
         },
         {
           "code": "MN8243",
           "name": "Цээл",
-          "nameEn": "Ceel"
+          "nameEn": "Tseel"
         },
         {
           "code": "MN8246",
@@ -764,7 +764,7 @@
         {
           "code": "MN4201",
           "name": "Сүмбэр",
-          "nameEn": "Su'mber"
+          "nameEn": "Sumber"
         },
         {
           "code": "MN4207",
@@ -782,22 +782,22 @@
         {
           "code": "MN4501",
           "name": "Дархан",
-          "nameEn": "Darxan"
+          "nameEn": "Darkhan"
         },
         {
           "code": "MN4504",
           "name": "Орхон",
-          "nameEn": "Orxon"
+          "nameEn": "Orkhon"
         },
         {
           "code": "MN4507",
           "name": "Хонгор",
-          "nameEn": "Xongor"
+          "nameEn": "Khongor"
         },
         {
           "code": "MN4510",
           "name": "Шарын гол",
-          "nameEn": "Sharyngol"
+          "nameEn": "Sharyn Gol"
         }
       ]
     },
@@ -825,27 +825,27 @@
         {
           "code": "MN4413",
           "name": "Дэлгэрэх",
-          "nameEn": "Delgerex"
+          "nameEn": "Delgerekh"
         },
         {
           "code": "MN4416",
           "name": "Замын-Үүд",
-          "nameEn": "Zamyn U'ud"
+          "nameEn": "Zamyn-Uud"
         },
         {
           "code": "MN4419",
           "name": "Иххэт",
-          "nameEn": "Ix xet"
+          "nameEn": "Ikhkhet"
         },
         {
           "code": "MN4422",
           "name": "Мандах",
-          "nameEn": "Mandax"
+          "nameEn": "Mandakh"
         },
         {
           "code": "MN4425",
           "name": "Өргөн",
-          "nameEn": "O'rgon"
+          "nameEn": "Urgun"
         },
         {
           "code": "MN4401",
@@ -855,22 +855,22 @@
         {
           "code": "MN4428",
           "name": "Сайхандулаан",
-          "nameEn": "Saixandulaan"
+          "nameEn": "Saikhandulaan"
         },
         {
           "code": "MN4431",
           "name": "Улаанбадрах",
-          "nameEn": "Ulaanbadrax"
+          "nameEn": "Ulaanbadrakh"
         },
         {
           "code": "MN4434",
           "name": "Хатанбулаг",
-          "nameEn": "Xatanbulag"
+          "nameEn": "Khatanbulag"
         },
         {
           "code": "MN4437",
           "name": "Хөвсгөл",
-          "nameEn": "Xo'vsgol"
+          "nameEn": "Khuvsgul"
         },
         {
           "code": "MN4440",
@@ -893,7 +893,7 @@
         {
           "code": "MN2107",
           "name": "Баянтүмэн",
-          "nameEn": "Bayantu'men"
+          "nameEn": "Bayantumen"
         },
         {
           "code": "MN2110",
@@ -928,22 +928,22 @@
         {
           "code": "MN2128",
           "name": "Халхгол",
-          "nameEn": "Xalx gol"
+          "nameEn": "Khalkhgol"
         },
         {
           "code": "MN2131",
           "name": "Хөлөнбуйр",
-          "nameEn": "Xo'lonbuir"
+          "nameEn": "Khulunbuir"
         },
         {
           "code": "MN2101",
           "name": "Хэрлэн",
-          "nameEn": "Herlen"
+          "nameEn": "Kherlen"
         },
         {
           "code": "MN2134",
           "name": "Цагаан-Овоо",
-          "nameEn": "Cagaan-Ovoo"
+          "nameEn": "Tsagaan-Ovoo"
         },
         {
           "code": "MN2137",
@@ -953,7 +953,7 @@
         {
           "code": "MN2140",
           "name": "Чулуунхороот",
-          "nameEn": "Chuluunxoroot"
+          "nameEn": "Chuluunkhoroot"
         }
       ]
     },
@@ -966,7 +966,7 @@
         {
           "code": "MN4804",
           "name": "Адаацаг",
-          "nameEn": "Adaacag"
+          "nameEn": "Adaatsag"
         },
         {
           "code": "MN4807",
@@ -981,17 +981,17 @@
         {
           "code": "MN4813",
           "name": "Гурвансайхан",
-          "nameEn": "Gurvansaixan"
+          "nameEn": "Gurvansaikhan"
         },
         {
           "code": "MN4816",
           "name": "Дэлгэрхангай",
-          "nameEn": "Delgerxangai"
+          "nameEn": "Delgerkhangai"
         },
         {
           "code": "MN4819",
           "name": "Дэлгэрцогт",
-          "nameEn": "Delgercogt"
+          "nameEn": "Delgertsogt"
         },
         {
           "code": "MN4822",
@@ -1006,12 +1006,12 @@
         {
           "code": "MN4828",
           "name": "Өлзийт",
-          "nameEn": "O'lziit"
+          "nameEn": "Ulziit"
         },
         {
           "code": "MN4831",
           "name": "Өндөршил",
-          "nameEn": "O'ndorshil"
+          "nameEn": "Undurshil"
         },
         {
           "code": "MN4801",
@@ -1021,17 +1021,17 @@
         {
           "code": "MN4834",
           "name": "Сайхан-Овоо",
-          "nameEn": "Saixan-Ovoo"
+          "nameEn": "Saikhan-Ovoo"
         },
         {
           "code": "MN4837",
           "name": "Хулд",
-          "nameEn": "Xuld"
+          "nameEn": "Khuld"
         },
         {
           "code": "MN4840",
           "name": "Цагаандэлгэр",
-          "nameEn": "Cagaandelger"
+          "nameEn": "Tsagaandelger"
         },
         {
           "code": "MN4843",
@@ -1049,7 +1049,7 @@
         {
           "code": "MN8104",
           "name": "Алдархаан",
-          "nameEn": "Aldarxaan"
+          "nameEn": "Aldarkhaan"
         },
         {
           "code": "MN8107",
@@ -1064,17 +1064,17 @@
         {
           "code": "MN8113",
           "name": "Баянхайрхан",
-          "nameEn": "Bayanxairxan"
+          "nameEn": "Bayankhairkhan"
         },
         {
           "code": "MN8116",
           "name": "Дөрвөлжин",
-          "nameEn": "Do'rvoljin"
+          "nameEn": "Durvuljin"
         },
         {
           "code": "MN8119",
           "name": "Завханмандал",
-          "nameEn": "Zavxanmandal"
+          "nameEn": "Zavkhanmandal"
         },
         {
           "code": "MN8122",
@@ -1084,12 +1084,12 @@
         {
           "code": "MN8125",
           "name": "Их-Уул",
-          "nameEn": "Ix-Uul"
+          "nameEn": "Ikh-Uul"
         },
         {
           "code": "MN8128",
           "name": "Нөмрөг",
-          "nameEn": "No'mrog"
+          "nameEn": "Numrug"
         },
         {
           "code": "MN8131",
@@ -1099,7 +1099,7 @@
         {
           "code": "MN8134",
           "name": "Сантмаргац",
-          "nameEn": "Santmargac"
+          "nameEn": "Santmargats"
         },
         {
           "code": "MN8137",
@@ -1109,12 +1109,12 @@
         {
           "code": "MN8140",
           "name": "Тосонцэнгэл",
-          "nameEn": "Tosoncengel"
+          "nameEn": "Tosontsengel"
         },
         {
           "code": "MN8143",
           "name": "Түдэвтэй",
-          "nameEn": "Tu'devtei"
+          "nameEn": "Tudevtei"
         },
         {
           "code": "MN8146",
@@ -1139,27 +1139,27 @@
         {
           "code": "MN8155",
           "name": "Цагаанхайрхан",
-          "nameEn": "Cagaanxairxan"
+          "nameEn": "Tsagaankhairkhan"
         },
         {
           "code": "MN8158",
           "name": "Цагаанчулуут",
-          "nameEn": "Cagaanchuluut"
+          "nameEn": "Tsagaanchuluut"
         },
         {
           "code": "MN8161",
           "name": "Цэцэн-Уул",
-          "nameEn": "Cecen-Uul"
+          "nameEn": "Tsetsen-Uul"
         },
         {
           "code": "MN8164",
           "name": "Шилүүстэй",
-          "nameEn": "Shilu'ustei"
+          "nameEn": "Shiluustei"
         },
         {
           "code": "MN8167",
           "name": "Эрдэнэхайрхан",
-          "nameEn": "Erdenexairxan"
+          "nameEn": "Erdenekhairkhan"
         },
         {
           "code": "MN8170",
@@ -1177,7 +1177,7 @@
         {
           "code": "MN6101",
           "name": "Баян-Өндөр",
-          "nameEn": "Bayan-O'ndor"
+          "nameEn": "Bayan-Undur"
         },
         {
           "code": "MN6104",
@@ -1189,13 +1189,13 @@
     {
       "code": "MN62",
       "name": "Өвөрхангай",
-      "nameEn": "Ovorkhangai",
+      "nameEn": "Uvurkhangai",
       "isCapital": false,
       "children": [
         {
           "code": "MN6201",
           "name": "Арвайхээр",
-          "nameEn": "Arvaixeer"
+          "nameEn": "Arvaikheer"
         },
         {
           "code": "MN6204",
@@ -1205,7 +1205,7 @@
         {
           "code": "MN6207",
           "name": "Бат-Өлзий",
-          "nameEn": "Bat-O'lzii"
+          "nameEn": "Bat-Ulzii"
         },
         {
           "code": "MN6210",
@@ -1215,7 +1215,7 @@
         {
           "code": "MN6213",
           "name": "Баян-Өндөр",
-          "nameEn": "Bayan-O'ndor"
+          "nameEn": "Bayan-Undur"
         },
         {
           "code": "MN6216",
@@ -1225,7 +1225,7 @@
         {
           "code": "MN6219",
           "name": "Бүрд",
-          "nameEn": "Bu'rd"
+          "nameEn": "Burd"
         },
         {
           "code": "MN6222",
@@ -1235,12 +1235,12 @@
         {
           "code": "MN6225",
           "name": "Есөн зүйл",
-          "nameEn": "Yeso'nzu'il"
+          "nameEn": "Esun Zuil"
         },
         {
           "code": "MN6228",
           "name": "Зүүнбаян-Улаан",
-          "nameEn": "Zu'unbayan-Ulaan"
+          "nameEn": "Zuunbayan-Ulaan"
         },
         {
           "code": "MN6231",
@@ -1250,7 +1250,7 @@
         {
           "code": "MN6234",
           "name": "Өлзийт",
-          "nameEn": "O'lziit"
+          "nameEn": "Ulziit"
         },
         {
           "code": "MN6237",
@@ -1265,7 +1265,7 @@
         {
           "code": "MN6243",
           "name": "Төгрөг",
-          "nameEn": "To'grog"
+          "nameEn": "Tugrug"
         },
         {
           "code": "MN6246",
@@ -1275,24 +1275,24 @@
         {
           "code": "MN6249",
           "name": "Хайрхандулаан",
-          "nameEn": "Xairxandulaan"
+          "nameEn": "Khairkhandulaan"
         },
         {
           "code": "MN6252",
           "name": "Хархорин",
-          "nameEn": "Xarxorin"
+          "nameEn": "Kharkhorin"
         },
         {
           "code": "MN6255",
           "name": "Хужирт",
-          "nameEn": "Xujirt"
+          "nameEn": "Khujirt"
         }
       ]
     },
     {
       "code": "MN46",
       "name": "Өмнөговь",
-      "nameEn": "Omnogovi",
+      "nameEn": "Umnugovi",
       "isCapital": false,
       "children": [
         {
@@ -1348,27 +1348,27 @@
         {
           "code": "MN4631",
           "name": "Ханбогд",
-          "nameEn": "Xanbogd"
+          "nameEn": "Khanbogd"
         },
         {
           "code": "MN4634",
           "name": "Ханхонгор",
-          "nameEn": "Xanxongor"
+          "nameEn": "Khankhongor"
         },
         {
           "code": "MN4637",
           "name": "Хүрмэн",
-          "nameEn": "Xu'rmen"
+          "nameEn": "Khurmen"
         },
         {
           "code": "MN4640",
           "name": "Цогт-Овоо",
-          "nameEn": "Cogt-Ovoo"
+          "nameEn": "Tsogt-Ovoo"
         },
         {
           "code": "MN4643",
           "name": "Цогтцэций",
-          "nameEn": "Cogt-Cecii"
+          "nameEn": "Tsogttsetsii"
         }
       ]
     },
@@ -1401,7 +1401,7 @@
         {
           "code": "MN2213",
           "name": "Мөнххаан",
-          "nameEn": "Mo'nxxaan"
+          "nameEn": "Munkhkhaan"
         },
         {
           "code": "MN2216",
@@ -1416,17 +1416,17 @@
         {
           "code": "MN2222",
           "name": "Сүхбаатар",
-          "nameEn": "Su'xbaatar"
+          "nameEn": "Sukhbaatar"
         },
         {
           "code": "MN2225",
           "name": "Түвшинширээ",
-          "nameEn": "Tu'vshinshiree"
+          "nameEn": "Tuvshinshiree"
         },
         {
           "code": "MN2228",
           "name": "Түмэнцогт",
-          "nameEn": "Tu'mencogt"
+          "nameEn": "Tumentsogt"
         },
         {
           "code": "MN2231",
@@ -1436,12 +1436,12 @@
         {
           "code": "MN2234",
           "name": "Халзан",
-          "nameEn": "Xalzan"
+          "nameEn": "Khalzan"
         },
         {
           "code": "MN2237",
           "name": "Эрдэнэцагаан",
-          "nameEn": "Erdenecagaan"
+          "nameEn": "Erdenetsagaan"
         }
       ]
     },
@@ -1459,7 +1459,7 @@
         {
           "code": "MN4307",
           "name": "Баруунбүрэн",
-          "nameEn": "Baruunbu'ren"
+          "nameEn": "Baruunburen"
         },
         {
           "code": "MN4310",
@@ -1469,17 +1469,17 @@
         {
           "code": "MN4313",
           "name": "Ерөө",
-          "nameEn": "Yero'o"
+          "nameEn": "Eruu"
         },
         {
           "code": "MN4316",
           "name": "Жавхлант",
-          "nameEn": "Javxlant"
+          "nameEn": "Javkhlant"
         },
         {
           "code": "MN4319",
           "name": "Зүүнбүрэн",
-          "nameEn": "Zu'unburen"
+          "nameEn": "Zuunburen"
         },
         {
           "code": "MN4322",
@@ -1489,17 +1489,17 @@
         {
           "code": "MN4325",
           "name": "Орхон",
-          "nameEn": "Orxon"
+          "nameEn": "Orkhon"
         },
         {
           "code": "MN4328",
           "name": "Орхонтуул",
-          "nameEn": "Orxontuul"
+          "nameEn": "Orkhontuul"
         },
         {
           "code": "MN4331",
           "name": "Сайхан",
-          "nameEn": "Saixan"
+          "nameEn": "Saikhan"
         },
         {
           "code": "MN4334",
@@ -1509,27 +1509,27 @@
         {
           "code": "MN4301",
           "name": "Сүхбаатар",
-          "nameEn": "Su'xbaatar"
+          "nameEn": "Sukhbaatar"
         },
         {
           "code": "MN4337",
           "name": "Түшиг",
-          "nameEn": "Tu'shig"
+          "nameEn": "Tushig"
         },
         {
           "code": "MN4343",
           "name": "Хушаат",
-          "nameEn": "Xushaat"
+          "nameEn": "Khushaat"
         },
         {
           "code": "MN4340",
           "name": "Хүдэр",
-          "nameEn": "Xu'der"
+          "nameEn": "Khuder"
         },
         {
           "code": "MN4346",
           "name": "Цагааннуур",
-          "nameEn": "Cagaannuur"
+          "nameEn": "Tsagaannuur"
         },
         {
           "code": "MN4349",
@@ -1541,7 +1541,7 @@
     {
       "code": "MN41",
       "name": "Төв",
-      "nameEn": "To'v",
+      "nameEn": "Tuv",
       "isCapital": false,
       "children": [
         {
@@ -1557,12 +1557,12 @@
         {
           "code": "MN4110",
           "name": "Архуст",
-          "nameEn": "Arxust"
+          "nameEn": "Arkhust"
         },
         {
           "code": "MN4113",
           "name": "Батсүмбэр",
-          "nameEn": "Batsu'mber"
+          "nameEn": "Batsumber"
         },
         {
           "code": "MN4116",
@@ -1582,22 +1582,22 @@
         {
           "code": "MN4125",
           "name": "Баян-Өнжүүл",
-          "nameEn": "Bayan-O'njuul"
+          "nameEn": "Bayan-Unjuul"
         },
         {
           "code": "MN4128",
           "name": "Баянхангай",
-          "nameEn": "Bayanxangai"
+          "nameEn": "Bayankhangai"
         },
         {
           "code": "MN4131",
           "name": "Баянцагаан",
-          "nameEn": "Bayancagaan"
+          "nameEn": "Bayantsagaan"
         },
         {
           "code": "MN4134",
           "name": "Баянцогт",
-          "nameEn": "Bayancogt"
+          "nameEn": "Bayantsogt"
         },
         {
           "code": "MN4137",
@@ -1612,12 +1612,12 @@
         {
           "code": "MN4143",
           "name": "Бүрэн",
-          "nameEn": "Bu'ren"
+          "nameEn": "Buren"
         },
         {
           "code": "MN4146",
           "name": "Дэлгэрхаан",
-          "nameEn": "Delgerxaan"
+          "nameEn": "Delgerkhaan"
         },
         {
           "code": "MN4149",
@@ -1637,22 +1637,22 @@
         {
           "code": "MN4155",
           "name": "Лүн",
-          "nameEn": "Lu'n"
+          "nameEn": "Lun"
         },
         {
           "code": "MN4158",
           "name": "Мөнгөнморьт",
-          "nameEn": "Mo'ngonmorit"
+          "nameEn": "Mungunmorit"
         },
         {
           "code": "MN4161",
           "name": "Өндөрширээт",
-          "nameEn": "O'ndorshireet"
+          "nameEn": "Undurshireet"
         },
         {
           "code": "MN4164",
           "name": "Сүмбэр",
-          "nameEn": "Su'mber"
+          "nameEn": "Sumber"
         },
         {
           "code": "MN4167",
@@ -1662,12 +1662,12 @@
         {
           "code": "MN4170",
           "name": "Угтаалцайдам",
-          "nameEn": "Ugtaalcaidam"
+          "nameEn": "Ugtaaltsaidam"
         },
         {
           "code": "MN4173",
           "name": "Цээл",
-          "nameEn": "Ceel"
+          "nameEn": "Tseel"
         },
         {
           "code": "MN4176",
@@ -1695,7 +1695,7 @@
         {
           "code": "MN8507",
           "name": "Бөхмөрөн",
-          "nameEn": "Bo'xmoron"
+          "nameEn": "Bukhmurun"
         },
         {
           "code": "MN8510",
@@ -1705,17 +1705,17 @@
         {
           "code": "MN8513",
           "name": "Завхан",
-          "nameEn": "Zavxan"
+          "nameEn": "Zavkhan"
         },
         {
           "code": "MN8516",
           "name": "Зүүнговь",
-          "nameEn": "Zu'ungovi"
+          "nameEn": "Zuungovi"
         },
         {
           "code": "MN8519",
           "name": "Зүүнхангай",
-          "nameEn": "Zu'unxangai"
+          "nameEn": "Zuunkhangai"
         },
         {
           "code": "MN8522",
@@ -1730,17 +1730,17 @@
         {
           "code": "MN8528",
           "name": "Өлгий",
-          "nameEn": "O'lgii"
+          "nameEn": "Ulgii"
         },
         {
           "code": "MN8531",
           "name": "Өмнөгөвь",
-          "nameEn": "O'mnogovi"
+          "nameEn": "Umnuguvi"
         },
         {
           "code": "MN8534",
           "name": "Өндөрхангай",
-          "nameEn": "O'ndorxangai"
+          "nameEn": "Undurkhangai"
         },
         {
           "code": "MN8537",
@@ -1755,7 +1755,7 @@
         {
           "code": "MN8543",
           "name": "Түргэн",
-          "nameEn": "Tu'rgen"
+          "nameEn": "Turgen"
         },
         {
           "code": "MN8546",
@@ -1770,17 +1770,17 @@
         {
           "code": "MN8549",
           "name": "Ховд",
-          "nameEn": "Xovd"
+          "nameEn": "Khovd"
         },
         {
           "code": "MN8552",
           "name": "Хяргас",
-          "nameEn": "Xyargas"
+          "nameEn": "Khyargas"
         },
         {
           "code": "MN8555",
           "name": "Цагаанхайрхан",
-          "nameEn": "Cagaanxairxan"
+          "nameEn": "Tsagaankhairkhan"
         }
       ]
     },
@@ -1813,7 +1813,7 @@
         {
           "code": "MN8416",
           "name": "Дөргөн",
-          "nameEn": "Do'rgon"
+          "nameEn": "Durgun"
         },
         {
           "code": "MN8419",
@@ -1833,17 +1833,17 @@
         {
           "code": "MN8425",
           "name": "Манхан",
-          "nameEn": "Manxan"
+          "nameEn": "Mankhan"
         },
         {
           "code": "MN8428",
           "name": "Мөнххайрхан",
-          "nameEn": "Mo'nxxairxan"
+          "nameEn": "Munkhkhairkhan"
         },
         {
           "code": "MN8431",
           "name": "Мөст",
-          "nameEn": "Mo'st"
+          "nameEn": "Must"
         },
         {
           "code": "MN8434",
@@ -1853,17 +1853,17 @@
         {
           "code": "MN8437",
           "name": "Үенч",
-          "nameEn": "U'yench"
+          "nameEn": "Uench"
         },
         {
           "code": "MN8440",
           "name": "Ховд",
-          "nameEn": "Xovd"
+          "nameEn": "Khovd"
         },
         {
           "code": "MN8443",
           "name": "Цэцэг",
-          "nameEn": "Ceceg"
+          "nameEn": "Tsetseg"
         },
         {
           "code": "MN8446",
@@ -1873,14 +1873,14 @@
         {
           "code": "MN8449",
           "name": "Эрдэнэбүрэн",
-          "nameEn": "Erdenebu'ren"
+          "nameEn": "Erdeneburen"
         }
       ]
     },
     {
       "code": "MN67",
       "name": "Хөвсгөл",
-      "nameEn": "Khovsgol",
+      "nameEn": "Khuvsgul",
       "isCapital": false,
       "children": [
         {
@@ -1896,12 +1896,12 @@
         {
           "code": "MN6710",
           "name": "Баянзүрх",
-          "nameEn": "Bayanzu'rx"
+          "nameEn": "Bayanzurkh"
         },
         {
           "code": "MN6713",
           "name": "Бүрэнтогтох",
-          "nameEn": "Bu'rentogtox"
+          "nameEn": "Burentogtokh"
         },
         {
           "code": "MN6716",
@@ -1916,12 +1916,12 @@
         {
           "code": "MN6722",
           "name": "Их-Уул",
-          "nameEn": "Ix-Uul"
+          "nameEn": "Ikh-Uul"
         },
         {
           "code": "MN6701",
           "name": "Мөрөн",
-          "nameEn": "Mo'ron"
+          "nameEn": "Murun"
         },
         {
           "code": "MN6725",
@@ -1931,7 +1931,7 @@
         {
           "code": "MN6728",
           "name": "Рэнчинлхүмбэ",
-          "nameEn": "Renchinlxu'mbe"
+          "nameEn": "Renchinlkhumbe"
         },
         {
           "code": "MN6731",
@@ -1941,52 +1941,52 @@
         {
           "code": "MN6734",
           "name": "Тосонцэнгэл",
-          "nameEn": "Tosoncengel"
+          "nameEn": "Tosontsengel"
         },
         {
           "code": "MN6737",
           "name": "Төмөрбулаг",
-          "nameEn": "To'morbulag"
+          "nameEn": "Tumurbulag"
         },
         {
           "code": "MN6740",
           "name": "Түнэл",
-          "nameEn": "Tu'nel"
+          "nameEn": "Tunel"
         },
         {
           "code": "MN6743",
           "name": "Улаан-Уул",
-          "nameEn": "Ulaan uul"
+          "nameEn": "Ulaan-Uul"
         },
         {
           "code": "MN6746",
           "name": "Ханх",
-          "nameEn": "Xanx"
+          "nameEn": "Khankh"
         },
         {
           "code": "MN6749",
           "name": "Цагааннуур",
-          "nameEn": "Cagaannuur"
+          "nameEn": "Tsagaannuur"
         },
         {
           "code": "MN6752",
           "name": "Цагаан-Уул",
-          "nameEn": "Cagaan-Uul"
+          "nameEn": "Tsagaan-Uul"
         },
         {
           "code": "MN6755",
           "name": "Цагаан-Үүр",
-          "nameEn": "Cagaan-U'ur"
+          "nameEn": "Tsagaan-Uur"
         },
         {
           "code": "MN6758",
           "name": "Цэцэрлэг",
-          "nameEn": "Cecerleg"
+          "nameEn": "Tsetserleg"
         },
         {
           "code": "MN6761",
           "name": "Чандмань-Өндөр",
-          "nameEn": "Chandmani-O'ndor"
+          "nameEn": "Chandmani-Undur"
         },
         {
           "code": "MN6764",
@@ -2003,7 +2003,7 @@
     {
       "code": "MN23",
       "name": "Хэнтий",
-      "nameEn": "Hentii",
+      "nameEn": "Khentii",
       "isCapital": false,
       "children": [
         {
@@ -2019,12 +2019,12 @@
         {
           "code": "MN2310",
           "name": "Баян-Адарга",
-          "nameEn": "Bayan-Adraga"
+          "nameEn": "Bayan-Adarga"
         },
         {
           "code": "MN2313",
           "name": "Баянмөнх",
-          "nameEn": "Bayanmo'nx"
+          "nameEn": "Bayanmunkh"
         },
         {
           "code": "MN2316",
@@ -2034,7 +2034,7 @@
         {
           "code": "MN2319",
           "name": "Баянхутаг",
-          "nameEn": "Bayanxutag"
+          "nameEn": "Bayankhutag"
         },
         {
           "code": "MN2322",
@@ -2044,12 +2044,12 @@
         {
           "code": "MN2352",
           "name": "Бор-Өндөр",
-          "nameEn": "Bor-Ondor"
+          "nameEn": "Bor-Undur"
         },
         {
           "code": "MN2325",
           "name": "Галшар",
-          "nameEn": "Galshir"
+          "nameEn": "Galshar"
         },
         {
           "code": "MN2328",
@@ -2059,22 +2059,22 @@
         {
           "code": "MN2331",
           "name": "Дархан",
-          "nameEn": "Darxan"
+          "nameEn": "Darkhan"
         },
         {
           "code": "MN2334",
           "name": "Дэлгэрхаан",
-          "nameEn": "Delgerxaan"
+          "nameEn": "Delgerkhaan"
         },
         {
           "code": "MN2337",
           "name": "Жаргалтхаан",
-          "nameEn": "Jargaltxaan"
+          "nameEn": "Jargaltkhaan"
         },
         {
           "code": "MN2340",
           "name": "Мөрөн",
-          "nameEn": "Mo'ron"
+          "nameEn": "Murun"
         },
         {
           "code": "MN2343",
@@ -2084,17 +2084,17 @@
         {
           "code": "MN2346",
           "name": "Өмнөдэлгэр",
-          "nameEn": "O'mnodelger"
+          "nameEn": "Umnudelger"
         },
         {
           "code": "MN2301",
           "name": "Хэрлэн",
-          "nameEn": "Xerlen"
+          "nameEn": "Kherlen"
         },
         {
           "code": "MN2349",
           "name": "Цэнхэрмандал",
-          "nameEn": "Cenxermandal"
+          "nameEn": "Tsenkhermandal"
         }
       ]
     }

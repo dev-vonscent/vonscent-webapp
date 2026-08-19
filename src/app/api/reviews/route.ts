@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePublic } from "@/lib/cache";
 import { reviewInputSchema } from "@/lib/validators/review";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
@@ -50,6 +51,7 @@ export async function POST(req: Request) {
   const admin = createAdminClient() ?? supabase;
   await callRpc(admin, "recompute_rating", { p_product: input.productId });
 
+  revalidatePublic();
   return NextResponse.json({ ok: true });
 }
 
@@ -79,5 +81,6 @@ export async function DELETE(req: Request) {
     const admin = createAdminClient() ?? supabase;
     await callRpc(admin, "recompute_rating", { p_product: productId });
   }
+  revalidatePublic();
   return NextResponse.json({ ok: true });
 }

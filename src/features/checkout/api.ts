@@ -2,7 +2,7 @@ import "server-only";
 import { getProductById } from "@/features/products/api";
 import { SHIPPING_ZONES, FREE_SHIP_OVER } from "@/lib/constants";
 import { getShippingSettings } from "@/features/content/api";
-import { resolveZone } from "@/lib/geo/zone";
+import { resolveZone, zoneKey } from "@/lib/geo/zone";
 import type { CheckoutInput, OrderItemInput } from "@/lib/validators/order";
 
 export interface PricedLine {
@@ -90,7 +90,9 @@ export async function resolveShipping(
   });
   const zone = mapped ?? address.shipZone;
 
-  const found = zones.find((z) => z.name === zone);
+  // Match on the stable code so a renamed zone still prices correctly; older
+  // orders/clients that send a zone name are still found through zoneKey().
+  const found = zones.find((z) => zoneKey(z) === zone);
   if (found && found.deliverable === false) {
     throw new UndeliverableZoneError(zone);
   }

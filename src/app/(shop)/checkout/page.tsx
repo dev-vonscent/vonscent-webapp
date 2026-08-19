@@ -38,7 +38,7 @@ import {
   type ShippingZoneConfig,
 } from "@/lib/constants";
 import { shipsToday, SAME_DAY_CUTOFF_HOUR } from "@/lib/time";
-import { resolveZone } from "@/lib/geo/zone";
+import { resolveZone, zoneKey } from "@/lib/geo/zone";
 import {
   AddressFields,
   composeDetail,
@@ -51,6 +51,7 @@ import type { AvailableCoupon } from "@/app/api/coupons/available/route";
 
 interface ShippingSettingsShape {
   zones: {
+    code?: string;
     name: string;
     fee: number;
     deliverable?: boolean;
@@ -117,7 +118,7 @@ export default function CheckoutPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       shipCity: "",
-      shipZone: SHIPPING_ZONES[0].name,
+      shipZone: SHIPPING_ZONES[0].code,
       paymentMethod: "qpay",
     },
   });
@@ -137,6 +138,7 @@ export default function CheckoutPage() {
       if (!v) return;
       if (Array.isArray(v.zones) && v.zones.length) {
         const loaded = v.zones.map((z) => ({
+          code: z.code?.trim() || z.name,
           name: z.name,
           fee: Number(z.fee) || 0,
           // rows saved before this field existed are deliverable by default
@@ -146,7 +148,7 @@ export default function CheckoutPage() {
         }));
         setZones(loaded);
         const first = loaded.find((z) => z.deliverable) ?? loaded[0];
-        if (first) setValue("shipZone", first.name);
+        if (first) setValue("shipZone", zoneKey(first));
       }
       if (typeof v.freeOver === "number") setFreeOver(v.freeOver);
     })();
@@ -174,7 +176,11 @@ export default function CheckoutPage() {
             .select("*")
             .eq("user_id", user.id)
             .order("is_default", { ascending: false }),
-          supabase.from("settings").select("value").eq("key", "loyalty").maybeSingle(),
+          supabase
+            .from("settings")
+            .select("value")
+            .eq("key", "loyalty")
+            .maybeSingle(),
         ]);
       const p = profile as {
         full_name?: string;
@@ -186,8 +192,8 @@ export default function CheckoutPage() {
       if (user.email) setValue("contactEmail", user.email);
       setLoyaltyPoints(p?.loyalty_points ?? 0);
       setAddresses((addrs as AddressRow[] | null) ?? []);
-      const rate = (setting as { value?: { redeemRate?: number } } | null)?.value
-        ?.redeemRate;
+      const rate = (setting as { value?: { redeemRate?: number } } | null)
+        ?.value?.redeemRate;
       if (rate) setRedeemRate(rate);
     })();
   }, [setValue]);
@@ -231,7 +237,7 @@ export default function CheckoutPage() {
   React.useEffect(() => {
     if (autoZone) setValue("shipZone", autoZone);
   }, [autoZone, setValue]);
-  const selectedZone = zones.find((z) => z.name === zone) ?? zones[0];
+  const selectedZone = zones.find((z) => zoneKey(z) === zone) ?? zones[0];
   const zoneBlocked = selectedZone ? !selectedZone.deliverable : false;
   const shippingFee =
     zoneBlocked || !selectedZone
@@ -261,15 +267,15 @@ export default function CheckoutPage() {
 
   if (mounted && items.length === 0) {
     return (
-      <div className="mx-auto flex max-w-md flex-col items-center gap-5 px-4 md:px-8 py-28 text-center">
-        <span className="flex size-16 items-center justify-center rounded-full bg-secondary">
-          <ShoppingCart className="size-7 text-muted-foreground" />
+      <div className="mx-auto flex max-w-md flex-col items-center gap-5 px-4 py-28 text-center md:px-8">
+        <span className="bg-secondary flex size-16 items-center justify-center rounded-full">
+          <ShoppingCart className="text-muted-foreground size-7" />
         </span>
         <div className="space-y-1">
           <h1 className="font-serif text-2xl font-semibold">
             Сагс хоосон байна
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Захиалга өгөхийн тулд эхлээд бараа нэмнэ үү.
           </p>
         </div>
@@ -380,11 +386,11 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[88rem] px-4 md:px-8 py-8">
+    <div className="mx-auto max-w-[88rem] px-4 py-8 md:px-8">
       <div className="mb-8">
         <Link
           href="/cart"
-          className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground text-xs transition-colors"
         >
           ← Сагс руу буцах
         </Link>
@@ -400,8 +406,8 @@ export default function CheckoutPage() {
         <div className="space-y-6">
           {/* Guest prompt: register to earn loyalty points */}
           {mounted && !authed && (
-            <div className="flex items-start gap-3 rounded-2xl bg-secondary px-4 py-3.5 text-sm">
-              <Sparkles className="mt-0.5 size-4 shrink-0 text-gold-strong" />
+            <div className="bg-secondary flex items-start gap-3 rounded-2xl px-4 py-3.5 text-sm">
+              <Sparkles className="text-gold-strong mt-0.5 size-4 shrink-0" />
               <p>
                 <Link
                   href="/register"
@@ -452,7 +458,10 @@ export default function CheckoutPage() {
               label="Имэйл (заавал биш)"
               error={errors.contactEmail?.message}
             >
-              <Input {...register("contactEmail")} placeholder="name@mail.com" />
+              <Input
+                {...register("contactEmail")}
+                placeholder="name@mail.com"
+              />
             </Field>
           </Section>
 
@@ -491,7 +500,7 @@ export default function CheckoutPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {zones.map((z) => (
-                    <SelectItem key={z.name} value={z.name}>
+                    <SelectItem key={zoneKey(z)} value={zoneKey(z)}>
                       {z.name}
                       {z.deliverable
                         ? ` — ${formatPrice(z.fee)}`
@@ -501,20 +510,20 @@ export default function CheckoutPage() {
                 </SelectContent>
               </Select>
               {autoZone && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Бүс нь сонгосон хаягаас автоматаар тодорхойлогдлоо.
                 </p>
               )}
             </Field>
 
             {zoneBlocked && (
-              <p className="rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+              <p className="bg-destructive/10 text-destructive rounded-xl px-3 py-2.5 text-sm">
                 Уучлаарай, энэ бүсэд хүргэлт хийх боломжгүй. Өөр бүс сонгох
                 эсвэл бидэнтэй холбогдоно уу.
               </p>
             )}
             {selectedZone?.remote && !zoneBlocked && (
-              <p className="rounded-xl bg-secondary px-3 py-2.5 text-sm">
+              <p className="bg-secondary rounded-xl px-3 py-2.5 text-sm">
                 Орон нутгийн хүргэлт: <strong>унаа явах газраа</strong> доорх
                 тэмдэглэл хэсэгт заавал бичнэ үү.
               </p>
@@ -577,7 +586,7 @@ export default function CheckoutPage() {
               {PAYMENT_METHODS.map((m) => (
                 <label
                   key={m.value}
-                  className="flex cursor-pointer items-center gap-3 rounded-xl bg-secondary p-4 ring-2 ring-transparent transition-all hover:bg-accent has-checked:ring-foreground"
+                  className="bg-secondary hover:bg-accent has-checked:ring-foreground flex cursor-pointer items-center gap-3 rounded-xl p-4 ring-2 ring-transparent transition-all"
                 >
                   <RadioGroupItem value={m.value} />
                   <span className="text-sm font-medium">{m.label}</span>
@@ -599,7 +608,7 @@ export default function CheckoutPage() {
                 {mounted &&
                   items.map((i) => (
                     <div key={i.key} className="flex items-center gap-3">
-                      <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-muted">
+                      <div className="bg-muted relative size-14 shrink-0 overflow-hidden rounded-xl">
                         {i.image && (
                           <Image
                             src={i.image}
@@ -609,15 +618,15 @@ export default function CheckoutPage() {
                             className="object-cover"
                           />
                         )}
-                        <span className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full bg-foreground text-[10px] font-semibold text-background">
+                        <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[10px] font-semibold">
                           {i.qty}
                         </span>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium leading-tight">
+                        <p className="truncate text-sm leading-tight font-medium">
                           {i.name}
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-muted-foreground text-xs">
                           {i.brand} · {i.ml}ml
                         </p>
                       </div>
@@ -632,7 +641,7 @@ export default function CheckoutPage() {
 
               {/* Coupon — also offered here, not just in the cart. */}
               {coupon ? (
-                <div className="flex items-center justify-between rounded-xl bg-secondary px-3 py-2.5 text-sm">
+                <div className="bg-secondary flex items-center justify-between rounded-xl px-3 py-2.5 text-sm">
                   <span>
                     Купон <strong>{coupon.code}</strong>
                   </span>
@@ -664,11 +673,11 @@ export default function CheckoutPage() {
                 </div>
               )}
               {couponMsg && (
-                <p className="text-xs text-destructive">{couponMsg}</p>
+                <p className="text-destructive text-xs">{couponMsg}</p>
               )}
               {!coupon && offers.length > 0 && (
                 <div className="space-y-1.5">
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-xs">
                     Танд боломжтой купон
                   </p>
                   <div className="flex flex-wrap gap-1.5">
@@ -680,9 +689,11 @@ export default function CheckoutPage() {
                           setCoupon({ code: o.code, discount: o.discount });
                           setCouponMsg(null);
                         }}
-                        className="rounded-full bg-secondary px-3 py-1.5 text-xs transition-colors hover:bg-accent"
+                        className="bg-secondary hover:bg-accent rounded-full px-3 py-1.5 text-xs transition-colors"
                       >
-                        <span className="font-mono font-semibold">{o.code}</span>
+                        <span className="font-mono font-semibold">
+                          {o.code}
+                        </span>
                         {" · −"}
                         {formatPrice(o.discount)}
                         {o.personal && " · танд"}
@@ -708,7 +719,7 @@ export default function CheckoutPage() {
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
-                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
                     <Truck className="size-4" /> Хүргэлт
                   </span>
                   <span>
@@ -719,7 +730,7 @@ export default function CheckoutPage() {
 
               {/* Loyalty */}
               {authed && maxLoyalty > 0 && (
-                <label className="flex cursor-pointer items-center justify-between gap-2 rounded-xl bg-secondary px-3 py-2.5 text-sm">
+                <label className="bg-secondary flex cursor-pointer items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm">
                   <span className="flex items-center gap-2">
                     <Checkbox
                       checked={useLoyalty}
@@ -745,14 +756,14 @@ export default function CheckoutPage() {
               </div>
 
               {serverError && (
-                <p className="rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+                <p className="bg-destructive/10 text-destructive rounded-xl px-3 py-2.5 text-sm">
                   {serverError}
                 </p>
               )}
 
               {/* Dispatch cut-off reminder (requirement_fb.md §5). */}
               {mounted && (
-                <p className="rounded-xl bg-secondary px-3 py-2.5 text-xs leading-relaxed">
+                <p className="bg-secondary rounded-xl px-3 py-2.5 text-xs leading-relaxed">
                   <Clock className="mr-1 inline size-3.5 align-[-2px]" />
                   {shipsToday()
                     ? `Өнөөдрийн ${SAME_DAY_CUTOFF_HOUR}:00 цагаас өмнөх захиалга өнөөдөртөө хүргэгдэнэ.`
@@ -774,7 +785,7 @@ export default function CheckoutPage() {
                     ? "Энэ бүсэд хүргэлт хийхгүй"
                     : "Захиалга баталгаажуулах"}
               </Button>
-              <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
+              <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-center text-xs">
                 <ShieldCheck className="size-3.5" />
                 Баталгаажуулснаар та үйлчилгээний нөхцөлийг зөвшөөрнө.
               </p>
@@ -785,13 +796,13 @@ export default function CheckoutPage() {
 
       {/* Guest consent: V point is forfeited unless they register first. */}
       {showGuestWarning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4">
-          <div className="w-full max-w-sm space-y-4 rounded-2xl bg-card p-6 text-center shadow-xl">
-            <Sparkles className="mx-auto size-7 text-gold-strong" />
+        <div className="bg-foreground/40 fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="bg-card w-full max-w-sm space-y-4 rounded-2xl p-6 text-center shadow-xl">
+            <Sparkles className="text-gold-strong mx-auto size-7" />
             <h2 className="font-serif text-xl font-semibold">
               Оноо цуглуулахгүй байхаар байна
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Зочноор захиалга хийвэл энэ захиалгын{" "}
               <strong>V point хуримтлагдахгүй</strong>. Бүртгүүлбэл үнийн
               дүнгийн 1%-ийг оноогоор буцаан авах боломжтой.
@@ -830,9 +841,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl bg-card p-5 sm:p-6">
+    <section className="bg-card rounded-2xl p-5 sm:p-6">
       <div className="mb-5 flex items-center gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary">
+        <span className="bg-secondary flex size-9 shrink-0 items-center justify-center rounded-full">
           {step > 0 ? (
             <span className="text-sm font-semibold">{step}</span>
           ) : (
@@ -859,7 +870,7 @@ function Field({
     <div className="space-y-1.5">
       <Label>{label}</Label>
       {children}
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <p className="text-destructive text-xs">{error}</p>}
     </div>
   );
 }

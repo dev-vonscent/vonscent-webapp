@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePublic } from "@/lib/cache";
 import { z } from "zod";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
@@ -47,5 +48,6 @@ export async function POST(req: Request) {
     is_published: i.isPublished,
   });
   if (error) return NextResponse.json({ error: "INSERT_FAILED" }, { status: 500 });
+  revalidatePublic();
   return NextResponse.json({ ok: true });
 }

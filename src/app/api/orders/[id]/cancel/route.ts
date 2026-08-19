@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePublic } from "@/lib/cache";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -57,5 +58,6 @@ export async function POST(
     p_by: user.id,
   });
 
+  revalidatePublic();
   return NextResponse.json({ ok: true });
 }

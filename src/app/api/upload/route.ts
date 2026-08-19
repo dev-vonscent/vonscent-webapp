@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getStaffUser } from "@/lib/auth/guard";
 import { uploadImage } from "@/lib/storage/storage";
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/lib/storage/limits";
+import { processImage, presetForFolder } from "@/lib/storage/process-image";
 
 /**
  * Image upload to Supabase Storage. Auth required.
@@ -37,7 +38,8 @@ export async function POST(req: Request) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  if (!user)
+    return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");
@@ -59,9 +61,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "TOO_LARGE" }, { status: 400 });
   }
 
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-  const path = `${folder}/${user.id}-${crypto.randomUUID()}.${ext}`;
-  const result = await uploadImage(path, await file.arrayBuffer(), file.type);
+  // Re-encoded to a bounded WebP, so the extension comes from the processed
+  // image rather than whatever the client happened to name the file.
+  const image = await processImage(
+    await file.arrayBuffer(),
+    presetForFolder(folder),
+  );
+  if (!image) {
+    return NextResponse.json({ error: "BAD_IMAGE" }, { status: 400 });
+  }
+
+  const path = `${folder}/${user.id}-${crypto.randomUUID()}.${image.ext}`;
+  const result = await uploadImage(path, image.data, image.contentType);
   if (!result) {
     return NextResponse.json({ error: "UPLOAD_FAILED" }, { status: 500 });
   }

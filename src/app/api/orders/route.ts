@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePublic } from "@/lib/cache";
 import { checkoutSchema } from "@/lib/validators/order";
 import {
   computeSummary,
@@ -126,6 +127,8 @@ export async function POST(req: Request) {
       }
     }
 
+    // Stock moved — refresh cached product pages so sold-out states stay honest.
+    revalidatePublic();
     return NextResponse.json({
       orderNo,
       total,

@@ -18,6 +18,19 @@ export async function updateSession(request: NextRequest) {
     return response;
   }
 
+  // Public storefront pages read no session on the server (they render from
+  // the cookie-less public client and are ISR-cached), so skip the Supabase
+  // round-trip entirely — it would add latency to every cached page view.
+  // The browser client refreshes its own token; the paths below are the ones
+  // whose server side actually reads the session cookie.
+  const needsSession =
+    isAdmin ||
+    isAccount ||
+    ["/checkout", "/order", "/wishlist", "/cart", "/login", "/api"].some(
+      (prefix) => pathname === prefix || pathname.startsWith(prefix + "/"),
+    );
+  if (!needsSession) return response;
+
   const supabase = createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
     cookies: {
       getAll() {

@@ -47,7 +47,16 @@ export async function uploadImage(
 
   const { error } = await supabase.storage
     .from(STORAGE_BUCKET)
-    .upload(path, file, { contentType, upsert: true });
+    // Every path carries a UUID, so an object is immutable once written — a
+    // year-long Cache-Control is safe and matters twice over: Vercel's image
+    // cache keeps entries for max(this, minimumCacheTTL), and any client
+    // hitting the public URL directly stops costing Supabase egress on
+    // repeat views. (Supabase's default is max-age=3600.)
+    .upload(path, file, {
+      contentType,
+      upsert: true,
+      cacheControl: "31536000",
+    });
   if (error) return null;
 
   return { path, url: publicUrl(path) };
@@ -56,8 +65,6 @@ export async function uploadImage(
 export async function deleteImage(path: string): Promise<boolean> {
   const supabase = createAdminClient();
   if (!supabase) return false;
-  const { error } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .remove([path]);
+  const { error } = await supabase.storage.from(STORAGE_BUCKET).remove([path]);
   return !error;
 }
