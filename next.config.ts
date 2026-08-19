@@ -9,6 +9,13 @@ const remotePatterns: NonNullable<
 > = [
   { protocol: "https", hostname: "images.unsplash.com" },
   { protocol: "https", hostname: "picsum.photos" },
+  // Hardcoded fallback for the production Supabase project so image loading
+  // never depends on env availability at config-evaluation time.
+  {
+    protocol: "https",
+    hostname: "khrjllvayvazqkraeotc.supabase.co",
+    pathname: "/storage/v1/object/public/**",
+  },
 ];
 
 if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
