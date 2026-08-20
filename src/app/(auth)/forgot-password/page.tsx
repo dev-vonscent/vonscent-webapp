@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
-import { ForgotPasswordForm } from "@/features/auth/components/forgot-password-form";
+import { Suspense } from "react";
+import { PhoneAuthForm } from "@/features/auth/components/phone-auth-form";
 
-export const metadata: Metadata = { title: "Нууц үг сэргээх" };
+export const metadata: Metadata = { title: "Passcode сэргээх" };
 
 export default function ForgotPasswordPage() {
-  return <ForgotPasswordForm />;
+  return (
+    <Suspense>
+      <PhoneAuthForm mode="forgot" />
+    </Suspense>
+  );
 }
