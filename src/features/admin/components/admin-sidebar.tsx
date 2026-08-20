@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Boxes,
+  Layers,
   Tags,
   Warehouse,
   ShoppingCart,
@@ -23,6 +24,7 @@ import { Logo } from "@/components/shared/logo";
 const LINKS = [
   { href: "/admin", label: "Хяналтын самбар", icon: LayoutDashboard },
   { href: "/admin/products", label: "Бараа", icon: Boxes },
+  { href: "/admin/collections", label: "Багц", icon: Layers },
   { href: "/admin/scent-families", label: "Үнэрийн төрөл", icon: Tags },
   { href: "/admin/inventory", label: "Үлдэгдэл", icon: Warehouse },
   { href: "/admin/orders", label: "Захиалга", icon: ShoppingCart },

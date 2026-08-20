@@ -1,0 +1,87 @@
+import { NextResponse } from "next/server";
+import { revalidatePublic } from "@/lib/cache";
+import { collectionUpdateSchema } from "@/lib/validators/collection";
+import { isSupabaseConfigured } from "@/lib/env";
+import { getStaffUser } from "@/lib/auth/guard";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const body = await req.json().catch(() => null);
+  const parsed = collectionUpdateSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "VALIDATION", issues: parsed.error.flatten() },
+      { status: 400 },
+    );
+  }
+  if (!isSupabaseConfigured) return NextResponse.json({ demo: true });
+
+  const staff = await getStaffUser();
+  if (!staff) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  const supabase = createAdminClient();
+  if (!supabase) return NextResponse.json({ error: "NO_DB" }, { status: 500 });
+
+  const input = parsed.data;
+  const patch: Record<string, unknown> = {};
+  if (input.name !== undefined) patch.name = input.name;
+  if (input.slug !== undefined) patch.slug = input.slug;
+  if (input.gender !== undefined) patch.gender = input.gender;
+  if (input.description !== undefined) patch.description = input.description;
+  if (input.discountPct !== undefined) patch.discount_pct = input.discountPct;
+  if (input.giftMl !== undefined) patch.gift_ml = input.giftMl;
+  if (input.imageUrl !== undefined) patch.image_url = input.imageUrl;
+  if (input.isActive !== undefined) patch.is_active = input.isActive;
+  if (input.isFeatured !== undefined) patch.is_featured = input.isFeatured;
+
+  if (Object.keys(patch).length) {
+    const { error } = await supabase
+      .from("collections")
+      .update(patch)
+      .eq("id", id)
+      .eq("type", "base");
+    if (error)
+      return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
+  }
+
+  // Replace members when a new roster is supplied.
+  if (input.productIds) {
+    await supabase.from("collection_items").delete().eq("collection_id", id);
+    const items = input.productIds.map((product_id, i) => ({
+      collection_id: id,
+      product_id,
+      sort_order: i + 1,
+    }));
+    const { error } = await supabase.from("collection_items").insert(items);
+    if (error)
+      return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
+  }
+
+  revalidatePublic();
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  if (!isSupabaseConfigured) return NextResponse.json({ demo: true });
+  const staff = await getStaffUser();
+  if (!staff) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  const supabase = createAdminClient();
+  if (!supabase) return NextResponse.json({ error: "NO_DB" }, { status: 500 });
+
+  const { error } = await supabase
+    .from("collections")
+    .delete()
+    .eq("id", id)
+    .eq("type", "base");
+  if (error)
+    return NextResponse.json({ error: "DELETE_FAILED" }, { status: 500 });
+  revalidatePublic();
+  return NextResponse.json({ ok: true });
+}

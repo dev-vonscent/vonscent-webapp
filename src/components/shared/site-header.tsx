@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Boxes,
   Heart,
   Home,
   LayoutDashboard,
@@ -29,6 +30,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/catalog", label: "Каталог" },
+  { href: "/collections", label: "Багц" },
   { href: "/catalog?tags=sale", label: "Хямдрал" },
   { href: "/about", label: "Бидний тухай" },
   { href: "/blog", label: "Блог" },
@@ -39,12 +41,16 @@ const NAV = [
 const PILL_NAV = [
   { href: "/", label: "Нүүр", icon: Home },
   { href: "/catalog", label: "Каталог", icon: Search },
+  { href: "/collections", label: "Багц", icon: Boxes },
   { href: "/wishlist", label: "Хүсэл", icon: Heart },
 ] as const;
 
 /** Page titles for the mobile compact header (exact path or longest prefix). */
 const TITLES: Record<string, string> = {
   "/catalog": "Каталог",
+  "/collections": "Багц",
+  "/collections/build": "Багц угсрах",
+  "/account/collections": "Миний багцууд",
   "/about": "Бидний тухай",
   "/blog": "Блог",
   "/contact": "Холбоо барих",

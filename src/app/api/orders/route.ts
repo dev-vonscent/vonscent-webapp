@@ -70,12 +70,26 @@ export async function POST(req: Request) {
         loyalty_used: userId ? input.loyaltyUsed : 0,
         reserve_minutes: RESERVE_TIMEOUT_MINUTES,
       },
-      p_items: summary.lines.map((l) => ({
-        product_id: l.productId,
-        variant_id: l.variantId,
-        ml: l.ml,
-        qty: l.qty,
-      })),
+      p_items: summary.lines.map((l) => {
+        const base = {
+          product_id: l.productId,
+          variant_id: l.variantId,
+          ml: l.ml,
+          qty: l.qty,
+        };
+        // Bundle lines carry a server-computed unit price + grouping; loose
+        // items send none so place_order charges the variant's list price.
+        if (l.collectionName !== undefined) {
+          return {
+            ...base,
+            unit_price: l.unitPrice,
+            is_gift: l.isGift ?? false,
+            collection_id: l.collectionId ?? null,
+            collection_name: l.collectionName,
+          };
+        }
+        return base;
+      }),
     };
     const { data, error } = await callRpc<{
       order_no: string;

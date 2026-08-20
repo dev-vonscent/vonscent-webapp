@@ -55,9 +55,9 @@ Supabase / QPay / Mobicom-ийн бодит түлхүүр (батлах/нэв�
 - [ ] DB schema: `product_variants` (ml багц, авто үнэ, override үнэ, идэвх)
 - [ ] DB schema: `inventory` (эх савны ml үлдэгдэл, доод хязгаар, restock log)
 - [ ] DB schema: `tags` / hashtag (шинэ / эрэлттэй / хямдрал)
-- [ ] DB schema: `settings` (шатлалын коэффициент, бөөрөнхийлөлт г.м.)
+- [ ] DB schema: `settings` (шатлалын коэффициент, тоймлолт г.м.)
 - [ ] **Pricing цөм** `lib/pricing/calc.ts` — бүтэн савны үнэ+ml → 5/10/20ml авто үнэ 🔴
-- [ ] Pricing-д **unit test** (шатлал, бөөрөнхийлөлт, override) 🔴
+- [ ] Pricing-д **unit test** (шатлал, тоймлолт, override) 🔴
 - [ ] Inventory service: **reserve / commit / release** (on_hand, reserved, available), доод хязгаар (transaction + row lock / RPC)
 - [ ] Seed script — туршилтын бараа
 

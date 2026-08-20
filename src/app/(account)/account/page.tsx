@@ -15,6 +15,7 @@ import {
   Mail,
   Phone,
   Palette,
+  Boxes,
 } from "lucide-react";
 import { prepareUpload } from "@/lib/storage/prepare-upload";
 import { IMAGE_ACCEPT } from "@/lib/storage/limits";
@@ -281,6 +282,7 @@ export default function ProfilePage() {
           label="Хүслүүд"
           value={wishCount}
         />
+        <OptionRow href="/account/collections" icon={Boxes} label="Миний багцууд" />
         <OptionRow icon={Mail} label="Имэйл" value={email || "—"} />
         <OptionRow icon={Phone} label="Утас" value={phone || "—"} />
       </div>

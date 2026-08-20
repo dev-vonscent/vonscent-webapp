@@ -7,6 +7,16 @@ export const orderItemSchema = z.object({
   qty: z.number().int().positive().max(99),
 });
 
+/** A bundle line from the cart — the server re-prices it authoritatively. */
+export const collectionOrderSchema = z.object({
+  collectionId: z.string().nullable().default(null),
+  type: z.enum(["base", "custom"]),
+  ml: z.number().int().positive(),
+  qty: z.number().int().positive().max(99),
+  memberVariantIds: z.array(z.string().min(1)).min(1),
+  giftProductId: z.string().nullable().default(null),
+});
+
 export const checkoutSchema = z.object({
   contactName: z.string().min(2, "Нэрээ оруулна уу"),
   contactPhone: z
@@ -31,8 +41,12 @@ export const checkoutSchema = z.object({
   couponCode: z.string().optional(),
   loyaltyUsed: z.number().int().nonnegative().default(0),
   saveAddress: z.boolean().default(false),
-  items: z.array(orderItemSchema).min(1, "Сагс хоосон байна"),
+  // Either loose items or bundles may be empty; the server rejects a truly
+  // empty cart after pricing (EMPTY_CART).
+  items: z.array(orderItemSchema).default([]),
+  collections: z.array(collectionOrderSchema).default([]),
 });
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 export type OrderItemInput = z.infer<typeof orderItemSchema>;
+export type CollectionOrderInput = z.infer<typeof collectionOrderSchema>;

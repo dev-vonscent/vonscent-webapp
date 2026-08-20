@@ -69,12 +69,13 @@ const NOTE_OPTIONS = [
   "Ажлын цагаар хүргэх",
 ];
 
-const formSchema = checkoutSchema.omit({ items: true });
+const formSchema = checkoutSchema.omit({ items: true, collections: true });
 type FormValues = z.infer<typeof formSchema>;
 
 export default function CheckoutPage() {
   const router = useRouter();
   const items = useCart((s) => s.items);
+  const collections = useCart((s) => s.collections);
   const subtotal = useCart(selectSubtotal);
   const coupon = useCart((s) => s.coupon);
   const clear = useCart((s) => s.clear);
@@ -265,7 +266,7 @@ export default function CheckoutPage() {
     setKhoroo(null); // detail already carries the khoroo text
   }
 
-  if (mounted && items.length === 0) {
+  if (mounted && items.length === 0 && collections.length === 0) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-5 px-4 py-28 text-center md:px-8">
         <span className="bg-secondary flex size-16 items-center justify-center rounded-full">
@@ -352,6 +353,14 @@ export default function CheckoutPage() {
             variantId: i.variantId,
             ml: i.ml,
             qty: i.qty,
+          })),
+          collections: collections.map((c) => ({
+            collectionId: c.collectionId,
+            type: c.type,
+            ml: c.ml,
+            qty: c.qty,
+            memberVariantIds: c.members.map((m) => m.variantId),
+            giftProductId: c.gift?.productId ?? null,
           })),
         }),
       });
@@ -605,6 +614,37 @@ export default function CheckoutPage() {
               </h2>
 
               <div className="space-y-3">
+                {mounted &&
+                  collections.map((c) => (
+                    <div key={c.key} className="flex items-center gap-3">
+                      <div className="bg-muted relative size-14 shrink-0 overflow-hidden rounded-xl">
+                        {c.image && (
+                          <Image
+                            src={c.image}
+                            alt={c.name}
+                            fill
+                            sizes="56px"
+                            className="object-cover"
+                          />
+                        )}
+                        <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[10px] font-semibold">
+                          {c.qty}
+                        </span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm leading-tight font-medium">
+                          {c.name}
+                        </p>
+                        <p className="text-muted-foreground text-xs">
+                          Багц · {c.ml}ml · {c.members.length} үнэртэн
+                          {c.gift ? " · 🎁" : ""}
+                        </p>
+                      </div>
+                      <span className="text-sm font-medium">
+                        {formatPrice(c.unitPrice * c.qty)}
+                      </span>
+                    </div>
+                  ))}
                 {mounted &&
                   items.map((i) => (
                     <div key={i.key} className="flex items-center gap-3">

@@ -13,7 +13,8 @@
     "format": "prettier --write .",
     "db:types": "supabase gen types typescript --local > src/db/types.ts",
     "db:migrate": "node --env-file=.env.local --import tsx scripts/migrate.ts",
-    "db:seed": "node --env-file=.env.local --import tsx scripts/seed.ts"
+    "db:seed": "node --env-file=.env.local --import tsx scripts/seed.ts",
+    "db:import-collections": "node --env-file=.env.local --import tsx scripts/import-collections.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -60,7 +61,8 @@
     "tsx": "^4.19.2",
     "tw-animate-css": "^1.2.4",
     "typescript": "^5",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "xlsx": "^0.18.5"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

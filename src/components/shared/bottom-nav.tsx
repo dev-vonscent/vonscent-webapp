@@ -3,13 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Heart, User } from "lucide-react";
+import { Home, Search, Heart, User, Boxes } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWishlist } from "@/features/wishlist/store";
 
 const LEFT = [
   { href: "/", label: "Нүүр", icon: Home },
   { href: "/catalog", label: "Каталог", icon: Search },
+  { href: "/collections", label: "Багц", icon: Boxes },
 ] as const;
 
 const RIGHT = [

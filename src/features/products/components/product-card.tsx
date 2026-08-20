@@ -36,7 +36,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
           ))}
         </div>
         {product.soldOut && (
-          <div className="bg-background/70 absolute inset-0 flex items-center justify-center backdrop-blur-sm">
+          <div className="bg-background/70 absolute inset-0 flex items-center justify-center">
             <span className="border-border bg-card rounded-full border px-3 py-1 text-xs font-medium tracking-wide uppercase">
               Дууссан
             </span>
