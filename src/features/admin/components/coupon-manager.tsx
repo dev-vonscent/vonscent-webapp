@@ -124,7 +124,9 @@ export function CouponManager({
     <div className="space-y-6">
       {confirmDialog}
       <div className="flex items-center justify-between">
-        <h1 className="font-serif text-2xl font-semibold">Урамшуулал / Купон</h1>
+        <h1 className="font-serif text-2xl font-semibold">
+          Урамшуулал / Купон
+        </h1>
         <Button size="sm" onClick={() => setShowForm((s) => !s)}>
           <Plus className="size-4" /> Купон үүсгэх
         </Button>
@@ -136,12 +138,18 @@ export function CouponManager({
             <form onSubmit={create} className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Код</Label>
-                <Input value={form.code} onChange={(e) => set("code", e.target.value)} required />
+                <Input
+                  value={form.code}
+                  onChange={(e) => set("code", e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Төрөл</Label>
                 <Select value={form.type} onValueChange={(v) => set("type", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="percent">Хувь (%)</SelectItem>
                     <SelectItem value="fixed">Тогтсон дүн (₮)</SelectItem>
@@ -150,15 +158,28 @@ export function CouponManager({
               </div>
               <div className="space-y-1.5">
                 <Label>{form.type === "percent" ? "Хувь" : "Дүн (₮)"}</Label>
-                <Input type="number" value={form.value} onChange={(e) => set("value", e.target.value)} />
+                <Input
+                  type="number"
+                  value={form.value}
+                  onChange={(e) => set("value", e.target.value)}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Доод дүн (₮)</Label>
-                <Input type="number" value={form.minSubtotal} onChange={(e) => set("minSubtotal", e.target.value)} />
+                <Input
+                  type="number"
+                  value={form.minSubtotal}
+                  onChange={(e) => set("minSubtotal", e.target.value)}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Ашиглах хязгаар (нийт)</Label>
-                <Input type="number" value={form.maxUses} onChange={(e) => set("maxUses", e.target.value)} placeholder="Хязгааргүй" />
+                <Input
+                  type="number"
+                  value={form.maxUses}
+                  onChange={(e) => set("maxUses", e.target.value)}
+                  placeholder="Хязгааргүй"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Нэг хүн хэдэн удаа</Label>
@@ -168,17 +189,24 @@ export function CouponManager({
                   onChange={(e) => set("maxUsesPerUser", e.target.value)}
                   placeholder="Хязгааргүй"
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Бөглөвөл зочноор захиалахад ашиглах боломжгүй — нэвтрэх
                   шаардлагатай (тоолохын тулд).
                 </p>
               </div>
               <div className="space-y-1.5">
                 <Label>Хэрэглэгч</Label>
-                <Select value={form.userId} onValueChange={(v) => set("userId", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={form.userId}
+                  onValueChange={(v) => set("userId", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={PUBLIC}>Бүх хэрэглэгч (нийтийн)</SelectItem>
+                    <SelectItem value={PUBLIC}>
+                      Бүх хэрэглэгч (нийтийн)
+                    </SelectItem>
                     {customers.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.full_name || "Нэргүй"}
@@ -187,17 +215,23 @@ export function CouponManager({
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Тодорхой хүнийг сонговол код зөвхөн тэр хүнд харагдаж,
                   ажиллана.
                 </p>
               </div>
               <div className="space-y-1.5">
                 <Label>Дуусах огноо</Label>
-                <Input type="date" value={form.endsAt} onChange={(e) => set("endsAt", e.target.value)} />
+                <Input
+                  type="date"
+                  value={form.endsAt}
+                  onChange={(e) => set("endsAt", e.target.value)}
+                />
               </div>
               <div className="sm:col-span-2">
-                <Button type="submit" disabled={busy}>Хадгалах</Button>
+                <Button type="submit" disabled={busy}>
+                  Хадгалах
+                </Button>
               </div>
             </form>
           </CardContent>
@@ -205,13 +239,13 @@ export function CouponManager({
       )}
 
       {initial.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
+        <p className="border-border text-muted-foreground rounded-lg border border-dashed py-16 text-center text-sm">
           Купон алга.
         </p>
       ) : (
         <Card className="overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
+            <thead className="bg-muted/50 text-muted-foreground text-left text-xs">
               <tr>
                 <th className="px-4 py-3 font-medium">Код</th>
                 <th className="px-4 py-3 font-medium">Хямдрал</th>
@@ -224,12 +258,19 @@ export function CouponManager({
             </thead>
             <tbody>
               {initial.map((c) => (
-                <tr key={c.id} className="border-t border-border">
-                  <td className="px-4 py-3 font-mono font-semibold">{c.code}</td>
+                <tr key={c.id} className="border-border border-t">
+                  <td className="px-4 py-3 font-mono font-semibold">
+                    {c.code}
+                  </td>
                   <td className="px-4 py-3">
-                    {c.type === "percent" ? `${c.value}%` : formatPrice(c.value)}
+                    {c.type === "percent"
+                      ? `${c.value}%`
+                      : formatPrice(c.value)}
                     {c.min_subtotal > 0 && (
-                      <span className="text-muted-foreground"> · {formatPrice(c.min_subtotal)}-аас</span>
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · {formatPrice(c.min_subtotal)}-аас
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -254,7 +295,7 @@ export function CouponManager({
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  <td className="text-muted-foreground px-4 py-3">
                     {c.ends_at ? formatDate(c.ends_at) : "—"}
                   </td>
                   <td className="px-4 py-3">

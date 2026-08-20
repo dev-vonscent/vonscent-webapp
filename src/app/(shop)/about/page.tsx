@@ -41,15 +41,15 @@ const VALUES = [
 export default async function AboutPage() {
   const about = await getAboutSettings();
   return (
-    <div className="mx-auto max-w-4xl px-4 md:px-8 py-16">
+    <div className="mx-auto max-w-4xl px-4 py-16 md:px-8">
       <div className="text-center">
-        <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
+        <p className="text-muted-foreground text-sm font-medium tracking-[0.2em] uppercase">
           Бидний тухай
         </p>
         <h1 className="mt-3 font-serif text-4xl font-semibold tracking-tight">
           Үнэрээ том савыг авалгүй ол
         </h1>
-        <p className="mx-auto mt-5 max-w-2xl text-muted-foreground">
+        <p className="text-muted-foreground mx-auto mt-5 max-w-2xl">
           {about.story ||
             "vonscent нь дэлхийн шилдэг үнэртнүүдийг жижиг (decant) багцаар санал болгодог. Бид итгэдэг — үнэр бол хувь хүний илэрхийлэл. Бүтэн сав худалдан авахаасаа өмнө өөрт тань яг тохирохыг нь олох ёстой."}
         </p>
@@ -59,25 +59,23 @@ export default async function AboutPage() {
         {VALUES.map((v) => (
           <div
             key={v.title}
-            className="flex gap-4 rounded-lg border border-border p-6"
+            className="border-border flex gap-4 rounded-lg border p-6"
           >
-            <v.icon className="size-6 shrink-0 text-primary" />
+            <v.icon className="text-primary size-6 shrink-0" />
             <div>
               <h3 className="font-serif text-lg font-semibold">{v.title}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{v.desc}</p>
+              <p className="text-muted-foreground mt-1 text-sm">{v.desc}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="mt-14 rounded-xl bg-secondary p-8 text-center sm:p-12">
-        <h2 className="font-serif text-2xl font-semibold">
-          Decant гэж юу вэ?
-        </h2>
-        <p className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground">
+      <div className="bg-secondary mt-14 rounded-xl p-8 text-center sm:p-12">
+        <h2 className="font-serif text-2xl font-semibold">Decant гэж юу вэ?</h2>
+        <p className="text-muted-foreground mx-auto mt-3 max-w-2xl text-sm">
           Decant гэдэг нь үйлдвэрийн бүтэн савнаас жижиг саванд хувааж хийсэн эх
-          үнэртэн юм. Найрлага яг адил — зөвхөн хэмжээ нь бага. Ингэснээр та цөөн
-          төгрөгөөр олон үнэр туршиж, дуртайгаа олох боломжтой.
+          үнэртэн юм. Найрлага яг адил — зөвхөн хэмжээ нь бага. Ингэснээр та
+          цөөн төгрөгөөр олон үнэр туршиж, дуртайгаа олох боломжтой.
         </p>
       </div>
 
@@ -89,7 +87,7 @@ export default async function AboutPage() {
           <div className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
             {about.team.map((m) => (
               <div key={m.name} className="text-center">
-                <div className="relative mx-auto aspect-square w-full max-w-[160px] overflow-hidden rounded-full border border-border bg-secondary">
+                <div className="border-border bg-secondary relative mx-auto aspect-square w-full max-w-[160px] overflow-hidden rounded-full border">
                   {m.image ? (
                     <Image
                       src={m.image}
@@ -99,13 +97,13 @@ export default async function AboutPage() {
                       className="object-cover"
                     />
                   ) : (
-                    <div className="flex h-full items-center justify-center font-serif text-2xl text-muted-foreground">
+                    <div className="text-muted-foreground flex h-full items-center justify-center font-serif text-2xl">
                       {m.name.charAt(0)}
                     </div>
                   )}
                 </div>
                 <p className="mt-3 font-medium">{m.name}</p>
-                <p className="text-sm text-muted-foreground">{m.role}</p>
+                <p className="text-muted-foreground text-sm">{m.role}</p>
               </div>
             ))}
           </div>

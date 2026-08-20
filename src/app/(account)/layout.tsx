@@ -10,7 +10,7 @@ export default function AccountLayout({
     <>
       <SiteHeader />
       <main className="flex-1 pb-24 md:pb-0">
-        <div className="mx-auto max-w-3xl px-4 md:px-8 py-10">{children}</div>
+        <div className="mx-auto max-w-3xl px-4 py-10 md:px-8">{children}</div>
       </main>
       <BottomNav />
     </>

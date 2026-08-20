@@ -21,16 +21,16 @@ export default async function ReportPrintPage() {
     getStoreSettings(),
   ]);
   const totalMl = products.reduce((s, p) => s + p.availableMl, 0);
-  const lowStock = products.filter(
-    (p) => p.availableMl <= p.lowStockMl,
-  );
+  const lowStock = products.filter((p) => p.availableMl <= p.lowStockMl);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-2 text-sm">
       <div className="flex items-start justify-between">
         <div>
           <p className="font-serif text-2xl font-semibold">{store.name}</p>
-          <p className="text-muted-foreground">Борлуулалт ба үлдэгдлийн тайлан</p>
+          <p className="text-muted-foreground">
+            Борлуулалт ба үлдэгдлийн тайлан
+          </p>
         </div>
         <div className="text-right">
           <p className="text-muted-foreground">
@@ -40,8 +40,11 @@ export default async function ReportPrintPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3 border-y border-border py-4">
-        <Stat label="Нийт борлуулалт" value={formatPrice(report.totalRevenue)} />
+      <div className="border-border grid grid-cols-3 gap-3 border-y py-4">
+        <Stat
+          label="Нийт борлуулалт"
+          value={formatPrice(report.totalRevenue)}
+        />
         <Stat label="Төлсөн захиалга" value={String(report.paidOrders)} />
         <Stat label="Нийт үлдэгдэл" value={`${totalMl}ml`} />
       </div>
@@ -75,9 +78,9 @@ export default async function ReportPrintPage() {
         empty="Доод хязгаарт хүрсэн бараа алга."
       />
 
-      <p className="text-xs text-muted-foreground print:hidden">
-        PDF болгож хадгалахын тулд «Хэвлэх» дарж, хэвлэгчийн сонголтоос «Save
-        as PDF»-ийг сонгоно уу.
+      <p className="text-muted-foreground text-xs print:hidden">
+        PDF болгож хадгалахын тулд «Хэвлэх» дарж, хэвлэгчийн сонголтоос «Save as
+        PDF»-ийг сонгоно уу.
       </p>
     </div>
   );
@@ -87,7 +90,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="font-serif text-xl font-semibold">{value}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-muted-foreground text-xs">{label}</p>
     </div>
   );
 }
@@ -105,13 +108,13 @@ function Table({
 }) {
   return (
     // break-inside-avoid keeps a short table from being split across pages.
-    <section className="space-y-2 break-inside-avoid">
+    <section className="break-inside-avoid space-y-2">
       <h2 className="font-medium">{title}</h2>
       {rows.length === 0 ? (
         <p className="text-muted-foreground">{empty}</p>
       ) : (
         <table className="w-full">
-          <thead className="border-b border-border text-left text-xs text-muted-foreground">
+          <thead className="border-border text-muted-foreground border-b text-left text-xs">
             <tr>
               {head.map((h, i) => (
                 <th
@@ -125,7 +128,7 @@ function Table({
           </thead>
           <tbody>
             {rows.map((row, i) => (
-              <tr key={i} className="border-b border-border/60">
+              <tr key={i} className="border-border/60 border-b">
                 {row.map((cell, j) => (
                   <td
                     key={j}

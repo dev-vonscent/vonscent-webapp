@@ -90,8 +90,7 @@ export function CartSizeSelect({
               value={o.variantId}
               disabled={!o.inStock}
             >
-              {o.ml}ml ·{" "}
-              {o.inStock ? formatPrice(o.unitPrice) : "дууссан"}
+              {o.ml}ml · {o.inStock ? formatPrice(o.unitPrice) : "дууссан"}
             </SelectItem>
           ))
         )}

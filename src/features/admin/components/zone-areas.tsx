@@ -58,7 +58,7 @@ export function ZoneAreas({
         <ul className="flex flex-wrap gap-1.5">
           {areas.map((key) => (
             <li key={key}>
-              <span className="flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs">
+              <span className="bg-secondary flex items-center gap-1 rounded-full px-2.5 py-1 text-xs">
                 {describeArea(key)}
                 <button
                   type="button"

@@ -19,13 +19,13 @@ export function SectionHeading({
           {title}
         </h2>
         {subtitle && (
-          <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+          <p className="text-muted-foreground mt-1 text-sm">{subtitle}</p>
         )}
       </div>
       {href && (
         <Link
           href={href}
-          className="flex shrink-0 items-center gap-1 text-sm font-medium text-muted-foreground hover:underline"
+          className="text-muted-foreground flex shrink-0 items-center gap-1 text-sm font-medium hover:underline"
         >
           {linkLabel}
           <ArrowRight className="size-4" />

@@ -4,7 +4,10 @@ import { CouponManager } from "@/features/admin/components/coupon-manager";
 export default async function AdminPromotionsPage() {
   // Customers come along so a coupon can be issued to one of them by name
   // (todo.md B4) and so the table can show who owns each personal code.
-  const [coupons, customers] = await Promise.all([getCoupons(), getCustomers()]);
+  const [coupons, customers] = await Promise.all([
+    getCoupons(),
+    getCustomers(),
+  ]);
   return (
     <CouponManager
       initial={coupons}

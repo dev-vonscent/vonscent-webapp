@@ -82,7 +82,7 @@ export function QuickAdd({
           type="button"
           aria-label="Сагсанд нэмэх"
           className={cn(
-            "flex size-8 items-center justify-center rounded-full bg-background/80 text-foreground backdrop-blur transition-colors hover:bg-background",
+            "bg-background/80 text-foreground hover:bg-background flex size-8 items-center justify-center rounded-full backdrop-blur transition-colors",
             className,
           )}
         >
@@ -95,7 +95,7 @@ export function QuickAdd({
 
         {/* Product summary */}
         <div className="space-y-3">
-          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted">
+          <div className="bg-muted relative aspect-[4/3] w-full overflow-hidden rounded-xl">
             {product.image && (
               <Image
                 src={product.image.url}
@@ -107,10 +107,10 @@ export function QuickAdd({
             )}
           </div>
           <div>
-            <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
+            <p className="text-muted-foreground text-[11px] tracking-[0.15em] uppercase">
               {product.brand}
             </p>
-            <p className="font-serif text-base font-medium leading-tight">
+            <p className="font-serif text-base leading-tight font-medium">
               {product.name}
             </p>
             <p className="mt-1 font-semibold tracking-tight">
@@ -118,7 +118,7 @@ export function QuickAdd({
                 ? formatPrice(selected.price)
                 : formatPrice(product.startingPrice)}
               {selected && (
-                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                <span className="text-muted-foreground ml-1 text-xs font-normal">
                   / {selected.ml}ml
                 </span>
               )}
@@ -140,11 +140,13 @@ export function QuickAdd({
                     onClick={() => setVariantId(v.id)}
                     className={cn(
                       "flex min-w-[4.5rem] flex-col items-center rounded-lg px-4 py-2 transition-colors",
-                      active ? "bg-foreground/30" : "bg-secondary hover:bg-accent",
+                      active
+                        ? "bg-foreground/30"
+                        : "bg-secondary hover:bg-accent",
                     )}
                   >
                     <span className="text-sm font-semibold">{v.ml}ml</span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-muted-foreground text-xs">
                       {formatPrice(v.price)}
                     </span>
                   </button>
@@ -162,10 +164,10 @@ export function QuickAdd({
 
         {/* Quantity + add */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center rounded-md bg-secondary">
+          <div className="bg-secondary flex items-center rounded-md">
             <button
               type="button"
-              className="px-3 py-2 hover:text-foreground"
+              className="hover:text-foreground px-3 py-2"
               onClick={() => setQty((q) => Math.max(1, q - 1))}
               aria-label="Хасах"
             >
@@ -174,7 +176,7 @@ export function QuickAdd({
             <span className="w-10 text-center text-sm">{qty}</span>
             <button
               type="button"
-              className="px-3 py-2 hover:text-foreground"
+              className="hover:text-foreground px-3 py-2"
               onClick={() => setQty((q) => q + 1)}
               aria-label="Нэмэх"
             >

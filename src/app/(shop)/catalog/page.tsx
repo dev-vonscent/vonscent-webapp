@@ -39,7 +39,7 @@ export default async function CatalogPage({
   ]);
 
   return (
-    <div className="mx-auto max-w-[88rem] px-4 md:px-8 py-8">
+    <div className="mx-auto max-w-[88rem] px-4 py-8 md:px-8">
       {/* <div className="mb-6">
         <h1 className="font-serif text-3xl font-semibold tracking-tight">
           {filters.search ? `«${filters.search}» хайлтын үр дүн` : "Каталог"}
@@ -52,7 +52,7 @@ export default async function CatalogPage({
       </div> */}
 
       {/* Controls — mobile only (on desktop the search sits above the sidebar) */}
-      <div className="flex items-center gap-2 border-y border-border py-3 lg:hidden">
+      <div className="border-border flex items-center gap-2 border-y py-3 lg:hidden">
         <CatalogFilterSheet
           brands={brands}
           priceBounds={priceBounds}
@@ -80,11 +80,11 @@ export default async function CatalogPage({
           </div>
 
           {result.items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-border py-24 text-center">
-              <SearchX className="size-10 text-muted-foreground" />
+            <div className="border-border flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed py-24 text-center">
+              <SearchX className="text-muted-foreground size-10" />
               <div>
                 <p className="font-medium">Илэрц олдсонгүй</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   Шүүлтүүрээ өөрчилж дахин оролдоно уу.
                 </p>
               </div>

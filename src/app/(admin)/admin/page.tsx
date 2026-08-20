@@ -39,11 +39,13 @@ export default async function AdminDashboard() {
         {sales.map((s) => (
           <Card key={s.label}>
             <CardContent className="p-5">
-              <TrendingUp className="size-5 text-muted-foreground" />
+              <TrendingUp className="text-muted-foreground size-5" />
               <p className="mt-3 font-serif text-2xl font-semibold">
                 {formatPrice(s.value)}
               </p>
-              <p className="text-sm text-muted-foreground">{s.label} борлуулалт</p>
+              <p className="text-muted-foreground text-sm">
+                {s.label} борлуулалт
+              </p>
             </CardContent>
           </Card>
         ))}
@@ -56,7 +58,7 @@ export default async function AdminDashboard() {
             <h2 className="font-medium">Захиалга төлөвөөр</h2>
             <Link
               href="/admin/orders"
-              className="flex items-center gap-1 text-sm text-primary hover:underline"
+              className="text-primary flex items-center gap-1 text-sm hover:underline"
             >
               Бүгд <ArrowRight className="size-3.5" />
             </Link>
@@ -65,12 +67,12 @@ export default async function AdminDashboard() {
             {ORDER_STATUSES.map((st) => (
               <div
                 key={st}
-                className="rounded-lg border border-border p-3 text-center"
+                className="border-border rounded-lg border p-3 text-center"
               >
                 <p className="font-serif text-xl font-semibold">
                   {dash?.statusCounts[st] ?? 0}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   {ORDER_STATUS_LABEL[st]}
                 </p>
               </div>
@@ -92,9 +94,11 @@ export default async function AdminDashboard() {
         ].map((s) => (
           <Card key={s.label}>
             <CardContent className="p-5">
-              <s.icon className="size-5 text-muted-foreground" />
-              <p className="mt-3 font-serif text-2xl font-semibold">{s.value}</p>
-              <p className="text-sm text-muted-foreground">{s.label}</p>
+              <s.icon className="text-muted-foreground size-5" />
+              <p className="mt-3 font-serif text-2xl font-semibold">
+                {s.value}
+              </p>
+              <p className="text-muted-foreground text-sm">{s.label}</p>
             </CardContent>
           </Card>
         ))}
@@ -106,14 +110,17 @@ export default async function AdminDashboard() {
           <CardContent className="p-5">
             <h2 className="mb-4 font-medium">Сүүлийн захиалга</h2>
             {!dash || dash.recentOrders.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Захиалга алга.</p>
+              <p className="text-muted-foreground text-sm">Захиалга алга.</p>
             ) : (
               <ul className="space-y-2">
                 {dash.recentOrders.map((o) => (
-                  <li key={o.id} className="flex items-center justify-between text-sm">
+                  <li
+                    key={o.id}
+                    className="flex items-center justify-between text-sm"
+                  >
                     <Link
                       href={`/admin/orders/${o.id}`}
-                      className="font-mono hover:text-primary"
+                      className="hover:text-primary font-mono"
                     >
                       {o.order_no}
                     </Link>
@@ -135,17 +142,22 @@ export default async function AdminDashboard() {
               <h2 className="font-medium">Үлдэгдэл багассан</h2>
               <Link
                 href="/admin/inventory"
-                className="flex items-center gap-1 text-sm text-primary hover:underline"
+                className="text-primary flex items-center gap-1 text-sm hover:underline"
               >
                 Бүгд <ArrowRight className="size-3.5" />
               </Link>
             </div>
             {lowStock.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Сэрэмжлүүлэг алга.</p>
+              <p className="text-muted-foreground text-sm">
+                Сэрэмжлүүлэг алга.
+              </p>
             ) : (
               <ul className="space-y-2">
                 {lowStock.map((p) => (
-                  <li key={p.id} className="flex items-center justify-between text-sm">
+                  <li
+                    key={p.id}
+                    className="flex items-center justify-between text-sm"
+                  >
                     <span>
                       {p.brand} — {p.name}
                     </span>
@@ -164,7 +176,10 @@ export default async function AdminDashboard() {
           <h2 className="mb-4 font-medium">Эрэлттэй бараа</h2>
           <ul className="space-y-2">
             {topSellers.map((p) => (
-              <li key={p.id} className="flex items-center justify-between text-sm">
+              <li
+                key={p.id}
+                className="flex items-center justify-between text-sm"
+              >
                 <span>
                   {p.brand} — {p.name}
                 </span>

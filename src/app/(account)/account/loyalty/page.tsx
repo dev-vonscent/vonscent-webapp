@@ -82,18 +82,18 @@ export default function LoyaltyHistoryPage() {
           </span>
           <div>
             <p className="text-3xl font-semibold">{points}</p>
-            <p className="text-sm text-muted-foreground">Нийт боломжтой оноо</p>
+            <p className="text-muted-foreground text-sm">Нийт боломжтой оноо</p>
           </div>
           {/* Points from an order that could still be cancelled aren't
               spendable yet (todo.md B4) — say so rather than letting the
               balance look wrong. */}
           {pending > 0 && (
             <div className="ml-auto text-right">
-              <p className="flex items-center justify-end gap-1.5 text-2xl font-semibold text-muted-foreground">
+              <p className="text-muted-foreground flex items-center justify-end gap-1.5 text-2xl font-semibold">
                 <Lock className="size-4" />
                 {pending}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Түгжээтэй — хүргэгдсэний дараа нээгдэнэ
               </p>
             </div>
@@ -105,9 +105,9 @@ export default function LoyaltyHistoryPage() {
       <section className="space-y-3">
         <h2 className="font-serif text-lg font-semibold">Онооны түүх</h2>
         {entries.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-lg bg-secondary py-12 text-center">
-            <Sparkles className="size-9 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
+          <div className="bg-secondary flex flex-col items-center gap-3 rounded-lg py-12 text-center">
+            <Sparkles className="text-muted-foreground size-9" />
+            <p className="text-muted-foreground text-sm">
               Онооны хөдөлгөөн одоогоор алга.
             </p>
           </div>
@@ -118,9 +118,9 @@ export default function LoyaltyHistoryPage() {
               return (
                 <div
                   key={e.id}
-                  className="flex items-center gap-4 rounded-xl bg-card p-4"
+                  className="bg-card flex items-center gap-4 rounded-xl p-4"
                 >
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary">
+                  <span className="bg-secondary flex size-10 shrink-0 items-center justify-center rounded-full">
                     {earned ? (
                       <ArrowUpRight className="size-5" />
                     ) : (
@@ -133,7 +133,7 @@ export default function LoyaltyHistoryPage() {
                         e.reason ??
                         (earned ? "Оноо хуримтлуулсан" : "Оноо ашигласан")}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       {formatDate(e.created_at)}
                       {e.reason === "earn" && !e.released && " · түгжээтэй"}
                     </p>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { SITE } from "@/lib/constants";
 import { Providers } from "@/components/providers";
+import { Toaster } from "@/components/ui/toaster";
 import { Analytics } from "@/components/shared/analytics";
 import "./globals.css";
 
@@ -39,6 +40,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col antialiased">
         <Providers>{children}</Providers>
+        <Toaster />
         <Analytics />
       </body>
     </html>

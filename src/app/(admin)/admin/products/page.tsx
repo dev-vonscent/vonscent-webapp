@@ -24,7 +24,7 @@ export default async function AdminProductsPage() {
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
+            <thead className="bg-muted/50 text-muted-foreground text-left text-xs">
               <tr>
                 <th className="px-4 py-3 font-medium">Нэр</th>
                 <th className="px-4 py-3 font-medium">Брэнд</th>
@@ -37,10 +37,13 @@ export default async function AdminProductsPage() {
             </thead>
             <tbody>
               {products.map((p) => (
-                <tr key={p.id} className="border-t border-border hover:bg-muted/30">
+                <tr
+                  key={p.id}
+                  className="border-border hover:bg-muted/30 border-t"
+                >
                   <td className="px-4 py-3 font-medium">{p.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{p.brand}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  <td className="text-muted-foreground px-4 py-3">{p.brand}</td>
+                  <td className="text-muted-foreground px-4 py-3">
                     {GENDER_LABEL[p.gender as Gender]}
                   </td>
                   <td className="px-4 py-3">{formatPrice(p.startingPrice)}</td>
@@ -59,7 +62,7 @@ export default async function AdminProductsPage() {
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={`/admin/products/${p.id}/edit`}
-                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                      className="text-primary inline-flex items-center gap-1 hover:underline"
                     >
                       <Pencil className="size-3.5" /> Засах
                     </Link>

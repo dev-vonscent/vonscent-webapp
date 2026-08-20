@@ -83,7 +83,10 @@ export function ProductForm({ families }: { families: ScentFamilyOption[] }) {
         bottleMl: Number(form.bottleMl) || 0,
         onHandMl: Number(form.onHandMl),
         lowStockMl: Number(form.lowStockMl),
-        notesTop: form.notesTop.split(",").map((s) => s.trim()).filter(Boolean),
+        notesTop: form.notesTop
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
         notesHeart: form.notesHeart
           .split(",")
           .map((s) => s.trim())
@@ -240,8 +243,10 @@ export function ProductForm({ families }: { families: ScentFamilyOption[] }) {
           <h2 className="font-serif text-lg font-semibold">Үнэ</h2>
           <VariantPriceTable variants={variants} onChange={setVariants} />
           <Separator />
-          <h2 className="font-serif text-lg font-semibold">Эх сав ба үлдэгдэл</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="font-serif text-lg font-semibold">
+            Эх сав ба үлдэгдэл
+          </h2>
+          <p className="text-muted-foreground text-sm">
             Эх савны үнэ/багтаамж нь борлуулалт, ашгийн тайланд болон үлдэгдэл
             тооцоонд ашиглагдана — зарах үнэд нөлөөлөхгүй.
           </p>
@@ -279,7 +284,7 @@ export function ProductForm({ families }: { families: ScentFamilyOption[] }) {
       </Card>
 
       {result && (
-        <p className="rounded-md bg-secondary px-4 py-3 text-sm">{result}</p>
+        <p className="bg-secondary rounded-md px-4 py-3 text-sm">{result}</p>
       )}
 
       <div className="flex gap-3">

@@ -28,6 +28,7 @@ import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/browser";
 import { useWishlist } from "@/features/wishlist/store";
 import { AddressBook } from "@/features/account/components/address-book";
+import { PhoneVerify } from "@/features/account/components/phone-verify";
 
 export default function ProfilePage() {
   const [email, setEmail] = React.useState("");
@@ -244,6 +245,11 @@ export default function ProfilePage() {
                   />
                   {phoneVerified && <Badge variant="new">Баталгаажсан</Badge>}
                 </div>
+                <PhoneVerify
+                  phone={phone}
+                  verified={phoneVerified}
+                  onVerified={() => setPhoneVerified(true)}
+                />
               </div>
               <Button type="submit" disabled={!configured}>
                 {saved ? "Хадгалагдлаа" : "Хадгалах"}

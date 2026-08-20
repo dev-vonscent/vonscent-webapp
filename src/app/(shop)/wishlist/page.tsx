@@ -80,7 +80,7 @@ export default function WishlistPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[88rem] px-4 md:px-8 py-10">
+    <div className="mx-auto max-w-[88rem] px-4 py-10 md:px-8">
       <h1 className="mb-6 hidden font-serif text-3xl font-semibold md:block">
         Хүслийн жагсаалт
       </h1>
@@ -96,13 +96,13 @@ export default function WishlistPage() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border py-24 text-center">
-          <div className="flex size-16 items-center justify-center rounded-full bg-secondary">
-            <Heart className="size-7 text-muted-foreground" />
+        <div className="border-border flex flex-col items-center gap-4 rounded-2xl border border-dashed py-24 text-center">
+          <div className="bg-secondary flex size-16 items-center justify-center rounded-full">
+            <Heart className="text-muted-foreground size-7" />
           </div>
           <div>
             <p className="font-medium">Жагсаалт хоосон байна</p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Дуртай үнэртнээ ❤ дарж хадгалаарай.
             </p>
           </div>
@@ -113,25 +113,25 @@ export default function WishlistPage() {
       ) : (
         <>
           {/* Action bar — summary + bulk actions */}
-          <div className="mb-8 flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div className="border-border bg-card mb-8 flex flex-col gap-4 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div className="flex items-center gap-4">
               <div className="relative flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-500/20 to-pink-500/10">
                 <Heart className="size-5 fill-red-500 text-red-500" />
-                <span className="absolute -right-1 -top-1 flex min-w-5 items-center justify-center rounded-full bg-foreground px-1 text-xs font-semibold text-background">
+                <span className="bg-foreground text-background absolute -top-1 -right-1 flex min-w-5 items-center justify-center rounded-full px-1 text-xs font-semibold">
                   {items.length}
                 </span>
               </div>
               <div>
-                <p className="font-medium leading-tight">
+                <p className="leading-tight font-medium">
                   {items.length} бараа хадгалсан
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   Нийт{" "}
-                  <span className="font-semibold text-foreground">
+                  <span className="text-foreground font-semibold">
                     {formatPrice(totalValue)}
                   </span>
                   {items.length - inStock.length > 0 &&
-                  ` · ${items.length - inStock.length} дууссан`}
+                    ` · ${items.length - inStock.length} дууссан`}
                 </p>
               </div>
             </div>

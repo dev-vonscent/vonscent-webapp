@@ -30,7 +30,7 @@ export function FaqSearch({ items }: { items: FaqItem[] }) {
   return (
     <div>
       <div className="relative mt-8">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -40,7 +40,7 @@ export function FaqSearch({ items }: { items: FaqItem[] }) {
       </div>
 
       {groups.length === 0 ? (
-        <p className="mt-12 text-center text-sm text-muted-foreground">
+        <p className="text-muted-foreground mt-12 text-center text-sm">
           «{query}» — илэрц олдсонгүй.
         </p>
       ) : (

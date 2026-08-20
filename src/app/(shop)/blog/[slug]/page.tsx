@@ -42,8 +42,8 @@ export default async function BlogPostPage({
   const related = await getRelatedPosts(slug, 2);
 
   return (
-    <article className="mx-auto max-w-3xl px-4 md:px-8 py-12">
-      <nav className="mb-6 text-sm text-muted-foreground">
+    <article className="mx-auto max-w-3xl px-4 py-12 md:px-8">
+      <nav className="text-muted-foreground mb-6 text-sm">
         <Link href="/blog" className="hover:text-foreground">
           Блог
         </Link>{" "}
@@ -54,11 +54,11 @@ export default async function BlogPostPage({
       <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
         {post.title}
       </h1>
-      <p className="mt-2 text-sm text-muted-foreground">
+      <p className="text-muted-foreground mt-2 text-sm">
         {formatDate(post.date)}
       </p>
 
-      <div className="relative mt-8 aspect-[16/9] overflow-hidden rounded-xl border border-border bg-muted">
+      <div className="border-border bg-muted relative mt-8 aspect-[16/9] overflow-hidden rounded-xl border">
         <Image
           src={post.cover}
           alt={post.title}
@@ -71,14 +71,14 @@ export default async function BlogPostPage({
 
       <div className="prose mt-8 space-y-5 leading-relaxed">
         {post.body.map((p, i) => (
-          <p key={i} className="text-[15px] text-foreground/90">
+          <p key={i} className="text-foreground/90 text-[15px]">
             {p}
           </p>
         ))}
       </div>
 
       {related.length > 0 && (
-        <div className="mt-16 border-t border-border pt-8">
+        <div className="border-border mt-16 border-t pt-8">
           <h2 className="mb-4 font-serif text-xl font-semibold">
             Холбоотой нийтлэл
           </h2>
@@ -87,7 +87,7 @@ export default async function BlogPostPage({
               <Link
                 key={p.slug}
                 href={`/blog/${p.slug}`}
-                className="rounded-lg border border-border p-4 transition-colors hover:border-primary"
+                className="border-border hover:border-primary rounded-lg border p-4 transition-colors"
               >
                 <Badge variant="secondary">{p.category}</Badge>
                 <h3 className="mt-2 font-serif font-medium">{p.title}</h3>

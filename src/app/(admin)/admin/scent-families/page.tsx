@@ -12,7 +12,7 @@ export default async function ScentFamiliesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-serif text-2xl font-semibold">Үнэрийн төрөл</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-sm">
           Барааны маягт болон каталогийн шүүлтүүр энэ жагсаалтаас уншина.
         </p>
       </div>

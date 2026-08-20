@@ -32,7 +32,7 @@ export function ReviewForm({ productId }: { productId: string }) {
 
   if (!authed) {
     return (
-      <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+      <p className="border-border text-muted-foreground rounded-lg border border-dashed px-4 py-6 text-center text-sm">
         Сэтгэгдэл үлдээхийн тулд{" "}
         <Link
           href={`/login?next=/products`}
@@ -67,14 +67,17 @@ export function ReviewForm({ productId }: { productId: string }) {
 
   if (done) {
     return (
-      <p className="rounded-lg bg-secondary px-4 py-6 text-center text-sm">
+      <p className="bg-secondary rounded-lg px-4 py-6 text-center text-sm">
         Сэтгэгдэл хадгалагдлаа. Баярлалаа!
       </p>
     );
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3 rounded-lg border border-border p-4">
+    <form
+      onSubmit={submit}
+      className="border-border space-y-3 rounded-lg border p-4"
+    >
       <p className="text-sm font-medium">Үнэлгээ өгөх</p>
       <div className="flex items-center gap-1">
         {[1, 2, 3, 4, 5].map((n) => (
@@ -91,7 +94,7 @@ export function ReviewForm({ productId }: { productId: string }) {
                 "size-6 transition-colors",
                 n <= (hover || rating)
                   ? "fill-gold text-gold"
-                  : "fill-transparent text-muted-foreground/40",
+                  : "text-muted-foreground/40 fill-transparent",
               )}
             />
           </button>
@@ -103,9 +106,9 @@ export function ReviewForm({ productId }: { productId: string }) {
         rows={3}
         maxLength={1000}
         placeholder="Энэ үнэрийн талаар бодлоо хуваалцаарай (заавал биш)…"
-        className="w-full rounded-md bg-secondary px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="bg-secondary focus-visible:ring-ring w-full rounded-md px-3 py-2 text-sm outline-none focus-visible:ring-2"
       />
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="text-destructive text-sm">{error}</p>}
       <Button type="submit" disabled={submitting}>
         {submitting ? "Илгээж байна…" : "Сэтгэгдэл илгээх"}
       </Button>

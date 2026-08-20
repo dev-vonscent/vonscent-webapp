@@ -95,11 +95,11 @@ export function ScentFamilyManager({
       {/* Feedback lives above the list — at the bottom it scrolls out of view
           and a failed/demo-mode click looks like the button did nothing. */}
       {msg && (
-        <p className="rounded-md bg-secondary px-4 py-3 text-sm">{msg}</p>
+        <p className="bg-secondary rounded-md px-4 py-3 text-sm">{msg}</p>
       )}
       <Card>
         <CardContent className="p-0">
-          <ul className="divide-y divide-border">
+          <ul className="divide-border divide-y">
             {families.map((f) => (
               <li key={f.slug} className="flex items-center gap-3 px-4 py-3">
                 {/* Uploading writes straight through: an icon is one field, so
@@ -115,7 +115,7 @@ export function ScentFamilyManager({
                   <span className="block truncate text-sm font-medium">
                     {f.label}
                   </span>
-                  <span className="block truncate text-xs text-muted-foreground">
+                  <span className="text-muted-foreground block truncate text-xs">
                     {f.slug}
                     {!f.isActive && " · нуугдсан"}
                   </span>
@@ -136,13 +136,13 @@ export function ScentFamilyManager({
                   {f.isActive ? (
                     <Eye className="size-4" />
                   ) : (
-                    <EyeOff className="size-4 text-muted-foreground" />
+                    <EyeOff className="text-muted-foreground size-4" />
                   )}
                 </Button>
               </li>
             ))}
             {families.length === 0 && (
-              <li className="px-4 py-6 text-center text-sm text-muted-foreground">
+              <li className="text-muted-foreground px-4 py-6 text-center text-sm">
                 Одоогоор үнэрийн төрөл алга.
               </li>
             )}
@@ -182,9 +182,9 @@ export function ScentFamilyManager({
                 />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Slug нь хаягийн мөрөнд ашиглагдана (/catalog?family=gourmand)
-              тул үүсгэсний дараа өөрчлөгдөхгүй.
+            <p className="text-muted-foreground text-xs">
+              Slug нь хаягийн мөрөнд ашиглагдана (/catalog?family=gourmand) тул
+              үүсгэсний дараа өөрчлөгдөхгүй.
             </p>
             <Button type="submit" disabled={busy}>
               <Plus className="mr-1 size-4" />
@@ -193,7 +193,6 @@ export function ScentFamilyManager({
           </form>
         </CardContent>
       </Card>
-
     </div>
   );
 }

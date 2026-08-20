@@ -233,7 +233,8 @@ NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET=product-images
 # Payment / Email / SMS
 QPAY_USERNAME= / QPAY_PASSWORD= / QPAY_INVOICE_CODE=
 RESEND_API_KEY=
-MOBICOM_SMS_API_KEY= / MOBICOM_SMS_SENDER=   # утасны OTP (өөрийн урсгал)
+VERIFY_MN_API_KEY=           # verify.mn MO-SMS баталгаажуулалт (144773 руу SMS)
+AUTH_PASSCODE_PEPPER=        # утас+passcode нэвтрэлтийн нууц pepper (openssl rand -hex 32)
 
 # Analytics
 NEXT_PUBLIC_GA_ID=           # GA4
@@ -247,11 +248,15 @@ NEXT_PUBLIC_META_PIXEL_ID=
 ### 9.1 Нэвтрэлт (шийдсэн)
 Хоёр давхаргаар:
 - **Supabase Auth** — имэйл + нууц үг, **имэйл OTP**, **Google / Facebook** social login.
-- **Утасны OTP — Mobicom SMS service** дээр **өөрийн OTP урсгалаар**
-  (Supabase phone auth Монголын gateway дэмждэггүй тул ашиглахгүй):
-  1. Хэрэглэгч утсаа оруулна → route handler санамсаргүй код үүсгэж Mobicom API-аар илгээнэ.
-  2. Код + дуусах хугацааг (ж: 5 мин) hash хэлбэрээр DB-д хадгална (rate-limit, оролдлогын хязгаартай).
-  3. Код таарвал баталгаажуулж, Supabase session/identity-тэй холбоно.
+- **Утасны баталгаажуулалт — verify.mn MO-SMS** (Supabase phone auth Монголын
+  gateway дэмждэггүй; Mobicom OTP-ийн эхний mock-ийг 0029-д устгасан):
+  1. Сервер verify.mn дээр сесс үүсгэж санамсаргүй 6 оронтой код гаргана
+     (`POST /api/auth/verify-mn/start`).
+  2. Хэрэглэгч кодоо **өөрийн утаснаас 144773 дугаарт** илгээнэ (СМС-ийн
+     төлбөр 150₮-ийг хэрэглэгч төлнө; бидэнд СМС илгээх зардал гарахгүй).
+  3. Клиент 3 сек тутам `status`-ыг шалгана; verify.mn callback-аар дохио өгнө.
+     Callback гарын үсэггүй тул түүнд шууд итгэлгүй төлөвийг үргэлж дахин
+     шалгаж байж `profiles.phone_verified`-ыг тэмдэглэнэ.
 
 ### 9.2 Inventory нөөцлөлт (шийдсэн)
 §6-д **reserve / commit / release** загвараар хэрэгжүүлнэ (oversell-аас сэргийлнэ).

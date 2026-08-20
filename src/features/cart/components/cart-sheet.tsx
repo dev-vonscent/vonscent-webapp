@@ -51,7 +51,7 @@ export function CartSheet({
           <ShoppingCart className="size-5" />
           {label && <span>{label}</span>}
           {mounted && count > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+            <span className="bg-primary text-primary-foreground absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full text-[10px] font-medium">
               {count}
             </span>
           )}
@@ -59,13 +59,15 @@ export function CartSheet({
       </SheetTrigger>
       <SheetContent side="right" className="w-full max-w-md gap-0">
         <SheetHeader>
-          <SheetTitle>Таны сагс {mounted && count > 0 && `(${count})`}</SheetTitle>
+          <SheetTitle>
+            Таны сагс {mounted && count > 0 && `(${count})`}
+          </SheetTitle>
         </SheetHeader>
 
         {!mounted || items.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-            <ShoppingCart className="size-10 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Сагс хоосон байна.</p>
+            <ShoppingCart className="text-muted-foreground size-10" />
+            <p className="text-muted-foreground text-sm">Сагс хоосон байна.</p>
             <SheetClose asChild>
               <Button asChild variant="outline">
                 <Link href="/catalog">Бараа үзэх</Link>
@@ -77,7 +79,7 @@ export function CartSheet({
             <div className="-mx-2 flex-1 space-y-4 overflow-y-auto px-2 py-4">
               {items.map((item) => (
                 <div key={item.key} className="flex gap-3">
-                  <div className="relative size-20 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+                  <div className="border-border bg-muted relative size-20 shrink-0 overflow-hidden rounded-md border">
                     {item.image && (
                       <Image
                         src={item.image}
@@ -91,10 +93,10 @@ export function CartSheet({
                   <div className="flex flex-1 flex-col">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-muted-foreground text-xs">
                           {item.brand}
                         </p>
-                        <p className="text-sm font-medium leading-tight">
+                        <p className="text-sm leading-tight font-medium">
                           {item.name}
                         </p>
                         <div className="mt-1 flex items-center gap-1.5">
@@ -116,9 +118,9 @@ export function CartSheet({
                       </button>
                     </div>
                     <div className="mt-auto flex items-center justify-between">
-                      <div className="flex items-center rounded-md border border-border">
+                      <div className="border-border flex items-center rounded-md border">
                         <button
-                          className="px-2 py-1 hover:text-primary"
+                          className="hover:text-primary px-2 py-1"
                           onClick={() => setQty(item.key, item.qty - 1)}
                           aria-label="Хасах"
                         >
@@ -128,7 +130,7 @@ export function CartSheet({
                           {item.qty}
                         </span>
                         <button
-                          className="px-2 py-1 hover:text-primary"
+                          className="hover:text-primary px-2 py-1"
                           onClick={() => setQty(item.key, item.qty + 1)}
                           aria-label="Нэмэх"
                         >

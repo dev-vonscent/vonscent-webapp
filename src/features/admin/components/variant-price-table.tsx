@@ -36,9 +36,9 @@ export function VariantPriceTable({
 
   return (
     <div className="space-y-2">
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <div className="border-border overflow-x-auto rounded-lg border">
         <table className="w-full min-w-[320px] text-sm">
-          <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
+          <thead className="bg-muted/50 text-muted-foreground text-left text-xs">
             <tr>
               <th className="px-3 py-2 font-medium">Багц</th>
               <th className="px-3 py-2 font-medium">Үнэ (₮)</th>
@@ -48,7 +48,7 @@ export function VariantPriceTable({
           </thead>
           <tbody>
             {variants.map((v) => (
-              <tr key={v.ml} className="border-t border-border">
+              <tr key={v.ml} className="border-border border-t">
                 <td className="px-3 py-2 font-medium">{v.ml}ml</td>
                 <td className="px-3 py-2">
                   <Input
@@ -68,13 +68,15 @@ export function VariantPriceTable({
                 </td>
                 {/* Not a pricing input — just so the admin can eyeball whether
                     the three sizes are priced consistently. */}
-                <td className="px-3 py-2 text-muted-foreground">
+                <td className="text-muted-foreground px-3 py-2">
                   {v.price > 0 ? formatPrice(Math.round(v.price / v.ml)) : "—"}
                 </td>
                 <td className="px-3 py-2">
                   <Checkbox
                     checked={v.active}
-                    onCheckedChange={(c) => update(v.ml, { active: Boolean(c) })}
+                    onCheckedChange={(c) =>
+                      update(v.ml, { active: Boolean(c) })
+                    }
                   />
                 </td>
               </tr>
@@ -82,7 +84,7 @@ export function VariantPriceTable({
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-muted-foreground text-xs">
         Хэмжээ тус бүрийн үнийг гараар бичнэ. «Зарна»-г авбал тухайн хэмжээ
         худалдаанаас түр гарна (үлдэгдэл дуусахаас үл хамааран).
       </p>

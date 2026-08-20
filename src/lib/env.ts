@@ -10,7 +10,8 @@ export const env = {
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
 
   /** Supabase Storage bucket for product/blog images (public bucket). */
-  storageBucket: process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? "product-images",
+  storageBucket:
+    process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? "product-images",
 
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   gaId: process.env.NEXT_PUBLIC_GA_ID ?? "",

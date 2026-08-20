@@ -44,7 +44,7 @@ export function DeleteReviewButton({
     <>
       <button
         onClick={() => setOpen(true)}
-        className="text-muted-foreground transition-colors hover:text-destructive"
+        className="text-muted-foreground hover:text-destructive transition-colors"
         aria-label="Сэтгэгдэл устгах"
       >
         <Trash2 className="size-3.5" />

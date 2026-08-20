@@ -22,11 +22,13 @@ export default async function InvoicePage({
         </div>
         <div className="text-right">
           <p className="font-mono font-semibold">{order.order_no}</p>
-          <p className="text-muted-foreground">{formatDate(order.created_at)}</p>
+          <p className="text-muted-foreground">
+            {formatDate(order.created_at)}
+          </p>
         </div>
       </div>
 
-      <div className="border-y border-border py-3">
+      <div className="border-border border-y py-3">
         <p className="font-medium">{order.contact_name}</p>
         <p className="text-muted-foreground">{order.contact_phone}</p>
         <p className="text-muted-foreground">
@@ -37,7 +39,7 @@ export default async function InvoicePage({
       </div>
 
       <table className="w-full">
-        <thead className="border-b border-border text-left text-xs text-muted-foreground">
+        <thead className="border-border text-muted-foreground border-b text-left text-xs">
           <tr>
             <th className="py-2">Бараа</th>
             <th className="py-2 text-center">Тоо</th>
@@ -47,7 +49,7 @@ export default async function InvoicePage({
         </thead>
         <tbody>
           {items.map((i) => (
-            <tr key={i.id} className="border-b border-border/60">
+            <tr key={i.id} className="border-border/60 border-b">
               <td className="py-2">
                 {i.brand} {i.product_name} ({i.ml}ml)
               </td>
@@ -68,7 +70,7 @@ export default async function InvoicePage({
           <Row label="Loyalty" value={`−${formatPrice(order.loyalty_used)}`} />
         )}
         <Row label="Хүргэлт" value={formatPrice(order.shipping_fee)} />
-        <div className="flex justify-between border-t border-border pt-1 font-semibold">
+        <div className="border-border flex justify-between border-t pt-1 font-semibold">
           <span>Нийт</span>
           <span>{formatPrice(order.total)}</span>
         </div>
@@ -81,7 +83,7 @@ export default async function InvoicePage({
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between text-muted-foreground">
+    <div className="text-muted-foreground flex justify-between">
       <span>{label}</span>
       <span>{value}</span>
     </div>

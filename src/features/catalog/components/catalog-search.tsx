@@ -24,7 +24,7 @@ export function CatalogSearch({ className }: { className?: string }) {
 
   return (
     <div className={cn("relative", className)}>
-      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
       <Input
         type="search"
         value={value}
@@ -38,7 +38,7 @@ export function CatalogSearch({ className }: { className?: string }) {
           type="button"
           onClick={() => setValue("")}
           aria-label="Цэвэрлэх"
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2.5 -translate-y-1/2 transition-colors"
         >
           <X className="size-4" />
         </button>

@@ -79,7 +79,10 @@ export async function PATCH(
   if (d.products) {
     // Replace wholesale: the payload is the complete list in its final order,
     // so reconciling row by row would only add ways to end up half-applied.
-    await g.supabase.from("home_section_products").delete().eq("section_id", id);
+    await g.supabase
+      .from("home_section_products")
+      .delete()
+      .eq("section_id", id);
     if (d.products.length) {
       const { error } = await g.supabase.from("home_section_products").insert(
         d.products.map((productId, i) => ({

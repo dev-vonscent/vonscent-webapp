@@ -18,7 +18,8 @@ const schema = z.object({
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: "VALIDATION" }, { status: 400 });
+  if (!parsed.success)
+    return NextResponse.json({ error: "VALIDATION" }, { status: 400 });
   if (!isSupabaseConfigured) return NextResponse.json({ demo: true });
 
   const staff = await getStaffUser();
@@ -36,7 +37,8 @@ export async function POST(req: Request) {
     sort_order: i.sortOrder,
     is_active: i.isActive,
   });
-  if (error) return NextResponse.json({ error: "INSERT_FAILED" }, { status: 500 });
+  if (error)
+    return NextResponse.json({ error: "INSERT_FAILED" }, { status: 500 });
   revalidatePublic();
   return NextResponse.json({ ok: true });
 }

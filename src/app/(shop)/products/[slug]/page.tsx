@@ -42,7 +42,10 @@ export async function generateMetadata({
   return {
     title: `${product.name} — ${product.brand}`,
     // The short part is written to stand alone; fall back to the intro.
-    description: (product.shortDescription || product.description).slice(0, 160),
+    description: (product.shortDescription || product.description).slice(
+      0,
+      160,
+    ),
     openGraph: { images: product.image ? [product.image.url] : [] },
   };
 }
@@ -57,7 +60,7 @@ function NoteColumn({ title, notes }: { title: string; notes: string[] }) {
   if (!notes.length) return null;
   return (
     <div>
-      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="text-muted-foreground mb-1 text-xs font-semibold tracking-wide uppercase">
         {title}
       </p>
       <p className="text-sm">{notes.join(", ")}</p>
@@ -79,14 +82,12 @@ export default async function ProductPage({
     getScentFamilyLabels(),
   ]);
   // A family the admin deleted still shows as its slug rather than vanishing.
-  const familyLabels = product.scentFamilies.map(
-    (f) => familyLabelMap[f] ?? f,
-  );
+  const familyLabels = product.scentFamilies.map((f) => familyLabelMap[f] ?? f);
 
   return (
-    <div className="mx-auto max-w-[88rem] px-4 md:px-8 py-4 sm:py-8">
+    <div className="mx-auto max-w-[88rem] px-4 py-4 sm:py-8 md:px-8">
       {/* Breadcrumb (hidden on mobile for a fuller hero image) */}
-      <nav className="mb-6 hidden text-sm text-muted-foreground sm:block">
+      <nav className="text-muted-foreground mb-6 hidden text-sm sm:block">
         <Link href="/" className="hover:text-foreground">
           Нүүр
         </Link>{" "}
@@ -107,11 +108,11 @@ export default async function ProductPage({
         {/* On mobile this panel slides up over the bottom of the image with a
             rounded top; resets to a plain column from sm up. Holds everything
             below the add-to-cart: notes, details and reviews. */}
-        <div className="relative z-10 -mx-4 -mt-8 space-y-10 rounded-t-4xl bg-background px-4 pt-8 sm:mx-0 sm:mt-0 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">
+        <div className="bg-background relative z-10 -mx-4 -mt-8 space-y-10 rounded-t-4xl px-4 pt-8 sm:mx-0 sm:mt-0 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">
           <div className="space-y-6">
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm uppercase tracking-wide text-muted-foreground">
+                <span className="text-muted-foreground text-sm tracking-wide uppercase">
                   {product.brand}
                 </span>
                 {product.tags.map((t) => (
@@ -126,7 +127,7 @@ export default async function ProductPage({
                 </h1>
                 <WishlistButton
                   productId={product.id}
-                  className="size-10 shrink-0 bg-secondary hover:bg-accent"
+                  className="bg-secondary hover:bg-accent size-10 shrink-0"
                 />
               </div>
             </div>
@@ -139,13 +140,13 @@ export default async function ProductPage({
             <h2 className="mb-4 font-serif text-xl font-semibold">
               Үнэрийн нот
             </h2>
-            <div className="grid grid-cols-1 gap-3 rounded-lg bg-secondary p-5 sm:grid-cols-3 sm:gap-4">
+            <div className="bg-secondary grid grid-cols-1 gap-3 rounded-lg p-5 sm:grid-cols-3 sm:gap-4">
               <NoteColumn title="Дээд" notes={product.notesTop} />
               <NoteColumn title="Зүрх" notes={product.notesHeart} />
               <NoteColumn title="Суурь" notes={product.notesBase} />
             </div>
             {product.shortDescription && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 {product.shortDescription}
               </p>
             )}
@@ -195,7 +196,10 @@ export default async function ProductPage({
                     />
                   )}
                   {familyLabels.length > 0 && (
-                    <Row label="Үнэрийн төрөл" value={familyLabels.join(", ")} />
+                    <Row
+                      label="Үнэрийн төрөл"
+                      value={familyLabels.join(", ")}
+                    />
                   )}
                   {product.seasons.length > 0 && (
                     <Row

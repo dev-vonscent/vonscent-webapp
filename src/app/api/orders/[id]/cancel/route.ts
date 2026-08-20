@@ -26,7 +26,8 @@ export async function POST(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  if (!user)
+    return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   // RLS lets the owner read their own order; confirm ownership + status.
   const { data } = await supabase

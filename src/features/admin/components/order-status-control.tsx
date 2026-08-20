@@ -12,7 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ORDER_STATUSES, ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/constants";
+import {
+  ORDER_STATUSES,
+  ORDER_STATUS_LABEL,
+  type OrderStatus,
+} from "@/lib/constants";
 
 export function OrderStatusControl({
   orderId,
@@ -45,7 +49,10 @@ export function OrderStatusControl({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Select value={status} onValueChange={(v) => setStatus(v as OrderStatus)}>
+        <Select
+          value={status}
+          onValueChange={(v) => setStatus(v as OrderStatus)}
+        >
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
@@ -95,7 +102,9 @@ export function OrderStatusControl({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => window.open(`/admin/orders/${orderId}/invoice`, "_blank")}
+          onClick={() =>
+            window.open(`/admin/orders/${orderId}/invoice`, "_blank")
+          }
         >
           <Printer className="size-4" /> Нэхэмжлэх
         </Button>

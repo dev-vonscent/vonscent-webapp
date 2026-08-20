@@ -6,11 +6,7 @@ import { ProductCard } from "./product-card";
 import { cn } from "@/lib/utils";
 import type { ProductListItem } from "@/lib/types";
 
-export function ProductCarousel({
-  products,
-}: {
-  products: ProductListItem[];
-}) {
+export function ProductCarousel({ products }: { products: ProductListItem[] }) {
   const ref = React.useRef<HTMLDivElement>(null);
   const [atStart, setAtStart] = React.useState(true);
   const [atEnd, setAtEnd] = React.useState(false);
@@ -44,7 +40,7 @@ export function ProductCarousel({
     <div className="group/carousel relative">
       <div
         ref={ref}
-        className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-px-4 px-4 sm:mx-0 sm:scroll-px-0 sm:px-0"
+        className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 sm:mx-0 sm:scroll-px-0 sm:px-0"
       >
         {products.map((p) => (
           <div
@@ -61,7 +57,11 @@ export function ProductCarousel({
         onClick={() => scrollBy(-1)}
         disabled={atStart}
       />
-      <CarouselArrow side="right" onClick={() => scrollBy(1)} disabled={atEnd} />
+      <CarouselArrow
+        side="right"
+        onClick={() => scrollBy(1)}
+        disabled={atEnd}
+      />
     </div>
   );
 }
@@ -83,8 +83,8 @@ function CarouselArrow({
       disabled={disabled}
       aria-label={side === "left" ? "Өмнөх" : "Дараах"}
       className={cn(
-        "absolute top-[28%] z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-lift transition-all md:flex",
-        "opacity-0 group-hover/carousel:opacity-100 hover:border-gold-strong/50",
+        "border-border bg-card text-foreground shadow-lift absolute top-[28%] z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border transition-all md:flex",
+        "hover:border-gold-strong/50 opacity-0 group-hover/carousel:opacity-100",
         "disabled:pointer-events-none disabled:opacity-0",
         side === "left" ? "-left-5" : "-right-5",
       )}

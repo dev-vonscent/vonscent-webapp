@@ -13,7 +13,10 @@ export function Stars({
 }) {
   const rounded = Math.round(rating);
   return (
-    <div className={cn("flex items-center gap-0.5", className)} aria-label={`${rating} / 5`}>
+    <div
+      className={cn("flex items-center gap-0.5", className)}
+      aria-label={`${rating} / 5`}
+    >
       {[1, 2, 3, 4, 5].map((n) => (
         <Star
           key={n}
@@ -22,7 +25,7 @@ export function Stars({
           className={cn(
             n <= rounded
               ? "fill-gold text-gold"
-              : "fill-transparent text-muted-foreground/40",
+              : "text-muted-foreground/40 fill-transparent",
           )}
         />
       ))}

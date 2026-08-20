@@ -29,7 +29,7 @@ function Track({ items, reverse }: { items: string[]; reverse?: boolean }) {
   const loop = [...half, ...half];
   return (
     <div
-      className={`flex w-max items-center gap-10 pr-10 animate-marquee group-hover:[animation-play-state:paused] ${
+      className={`animate-marquee flex w-max items-center gap-10 pr-10 group-hover:[animation-play-state:paused] ${
         reverse ? "[animation-direction:reverse]" : ""
       }`}
     >
@@ -56,7 +56,7 @@ function Track({ items, reverse }: { items: string[]; reverse?: boolean }) {
                 />
               </span>
             ) : (
-              <span className="whitespace-nowrap font-serif text-xl font-semibold uppercase tracking-[0.18em] sm:text-2xl">
+              <span className="font-serif text-xl font-semibold tracking-[0.18em] whitespace-nowrap uppercase sm:text-2xl">
                 {b}
               </span>
             )}

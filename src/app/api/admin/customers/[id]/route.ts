@@ -43,8 +43,12 @@ export async function PATCH(
     update.is_blocked = parsed.data.isBlocked;
 
   if (Object.keys(update).length > 0) {
-    const { error } = await supabase.from("profiles").update(update).eq("id", id);
-    if (error) return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
+    const { error } = await supabase
+      .from("profiles")
+      .update(update)
+      .eq("id", id);
+    if (error)
+      return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

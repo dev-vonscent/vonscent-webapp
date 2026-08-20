@@ -30,10 +30,10 @@ export function BottomNav() {
     mounted && href === "/wishlist" ? wishCount : 0;
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center pb-safe md:hidden">
+    <div className="pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center md:hidden">
       <nav
         aria-label="Үндсэн цэс"
-        className="pointer-events-auto mb-3 flex items-center gap-1 rounded-full bg-secondary/85 px-2.5 py-2 shadow-lift backdrop-blur"
+        className="bg-secondary/85 shadow-lift pointer-events-auto mb-3 flex items-center gap-1 rounded-full px-2.5 py-2 backdrop-blur"
       >
         {LEFT.map((item) => (
           <Tab
@@ -76,7 +76,9 @@ function Tab({
       aria-label={label}
       className={cn(
         "relative flex size-11 items-center justify-center rounded-full transition-colors",
-        active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+        active
+          ? "text-foreground"
+          : "text-muted-foreground hover:text-foreground",
       )}
     >
       <Icon
@@ -84,12 +86,12 @@ function Tab({
         strokeWidth={active ? 2.3 : 1.8}
       />
       {badge > 0 && (
-        <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-semibold text-background">
+        <span className="bg-foreground text-background absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold">
           {badge}
         </span>
       )}
       {active && (
-        <span className="absolute bottom-1 size-1 rounded-full bg-foreground" />
+        <span className="bg-foreground absolute bottom-1 size-1 rounded-full" />
       )}
     </Link>
   );

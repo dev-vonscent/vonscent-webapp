@@ -7,7 +7,9 @@ import { useRouter } from "next/navigation";
 import {
   Package,
   HelpCircle,
+  LogIn,
   LogOut,
+  UserPlus,
   BookOpen,
   Info,
   Mail,
@@ -48,11 +50,18 @@ export function ProfileMenu() {
         .select("full_name, avatar_url")
         .eq("id", data.user.id)
         .maybeSingle();
-      const p = row as { full_name?: string; avatar_url?: string | null } | null;
+      const p = row as {
+        full_name?: string;
+        avatar_url?: string | null;
+      } | null;
       const email = data.user.email ?? "";
+      // Утас-passcode бүртгэлийн дотоод имэйлээс зөвхөн дугаарыг нь харуулна.
+      const displayId = email.endsWith("@phone.vonscent.mn")
+        ? email.split("@")[0]
+        : email;
       setProfile({
-        name: p?.full_name || email.split("@")[0] || "vonscent гишүүн",
-        email,
+        name: p?.full_name || displayId || "vonscent гишүүн",
+        email: displayId,
         avatar: p?.avatar_url ?? null,
       });
     });
@@ -67,7 +76,9 @@ export function ProfileMenu() {
   }
 
   const name = profile?.name ?? "Зочин";
-  const initial = (profile?.name || profile?.email || "?").charAt(0).toUpperCase();
+  const initial = (profile?.name || profile?.email || "?")
+    .charAt(0)
+    .toUpperCase();
 
   return (
     <DropdownMenu>
@@ -75,7 +86,7 @@ export function ProfileMenu() {
         <button
           type="button"
           aria-label="Профайл цэс"
-          className="relative size-9 shrink-0 overflow-hidden rounded-full bg-secondary text-foreground transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="bg-secondary text-foreground focus-visible:ring-ring relative size-9 shrink-0 overflow-hidden rounded-full transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2"
         >
           {profile?.avatar ? (
             <Image
@@ -94,44 +105,65 @@ export function ProfileMenu() {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end">
+        {/* Нэвтрээгүй зочинд эхлээд нэвтрэх/бүртгүүлэх замыг тод харуулна. */}
+        {configured && !profile && (
+          <>
+            <DropdownMenuItem asChild>
+              <Link href="/login" className="font-semibold">
+                <LogIn /> Нэвтрэх
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/register">
+                <UserPlus /> Бүртгүүлэх
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+
         {/* Header card — avatar + username, links to the profile page. */}
-        <DropdownMenuItem asChild className="gap-3 px-2.5 py-2">
-          <Link href="/account">
-            <span className="relative size-10 shrink-0 overflow-hidden rounded-full bg-secondary">
-              {profile?.avatar ? (
-                <Image
-                  src={profile.avatar}
-                  alt=""
-                  fill
-                  sizes="40px"
-                  className="object-cover"
-                />
-              ) : (
-                <span className="flex h-full items-center justify-center text-sm font-semibold">
-                  {initial}
-                </span>
-              )}
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold">
-                {name}
+        {profile && (
+          <DropdownMenuItem asChild className="gap-3 px-2.5 py-2">
+            <Link href="/account">
+              <span className="bg-secondary relative size-10 shrink-0 overflow-hidden rounded-full">
+                {profile?.avatar ? (
+                  <Image
+                    src={profile.avatar}
+                    alt=""
+                    fill
+                    sizes="40px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <span className="flex h-full items-center justify-center text-sm font-semibold">
+                    {initial}
+                  </span>
+                )}
               </span>
-              {profile?.email && (
-                <span className="block truncate text-xs text-muted-foreground">
-                  {profile.email}
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold">
+                  {name}
                 </span>
-              )}
-            </span>
-          </Link>
-        </DropdownMenuItem>
+                {profile?.email && (
+                  <span className="text-muted-foreground block truncate text-xs">
+                    {profile.email}
+                  </span>
+                )}
+              </span>
+            </Link>
+          </DropdownMenuItem>
+        )}
 
-        <DropdownMenuSeparator />
+        {profile && <DropdownMenuSeparator />}
 
-        <DropdownMenuItem asChild>
-          <Link href="/account/orders">
-            <Package /> Миний захиалга
-          </Link>
-        </DropdownMenuItem>
+        {profile && (
+          <DropdownMenuItem asChild>
+            <Link href="/account/orders">
+              <Package /> Миний захиалга
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem asChild>
           <Link href="/faq">
             <HelpCircle /> Түгээмэл асуулт

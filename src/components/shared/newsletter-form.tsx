@@ -27,7 +27,7 @@ export function NewsletterForm() {
 
   if (done) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         Баярлалаа! Таныг жагсаалтад нэмлээ.
       </p>
     );

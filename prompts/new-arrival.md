@@ -1,6 +1,6 @@
 # Home hero — "New Arrival" banner
 
-**Model:** `gpt-image-2` (OpenAI images *edits* endpoint)
+**Model:** `gpt-image-2` (OpenAI images _edits_ endpoint)
 **Reference image:** the VON SCENT logo (`logo.png`) — sent so the logo stays unchanged.
 **Output:** generated 1536×1024, center-cropped to 21:9 → `public/home-hero.png`.
 

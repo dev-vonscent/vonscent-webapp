@@ -20,7 +20,7 @@ function Avatar({ name, src }: { name: string; src: string | null }) {
     );
   }
   return (
-    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-secondary to-accent text-sm font-semibold uppercase text-foreground">
+    <span className="from-secondary to-accent text-foreground flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-semibold uppercase">
       {name.trim().charAt(0) || "?"}
     </span>
   );
@@ -44,11 +44,13 @@ export async function ReviewSection({
   return (
     <section>
       <div className="mb-6 flex flex-wrap items-center gap-4">
-        <h2 className="font-serif text-xl font-semibold">Үнэлгээ ба сэтгэгдэл</h2>
+        <h2 className="font-serif text-xl font-semibold">
+          Үнэлгээ ба сэтгэгдэл
+        </h2>
         {ratingCount > 0 && (
           <div className="flex items-center gap-2">
             <Stars rating={ratingAvg} />
-            <span className="text-sm text-muted-foreground">
+            <span className="text-muted-foreground text-sm">
               {ratingAvg.toFixed(1)} · {ratingCount} үнэлгээ
             </span>
           </div>
@@ -58,24 +60,24 @@ export async function ReviewSection({
       <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
         <div className="space-y-5">
           {reviews.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Одоогоор сэтгэгдэл алга. Хамгийн түрүүнд үнэлгээ өгөөрэй.
             </p>
           ) : (
             reviews.map((r) => (
               <div
                 key={r.id}
-                className="rounded-2xl border border-border bg-card/40 p-5 transition-colors hover:border-foreground/20"
+                className="border-border bg-card/40 hover:border-foreground/20 rounded-2xl border p-5 transition-colors"
               >
                 <div className="flex items-start gap-3">
                   <Avatar name={r.authorName} src={r.authorAvatar} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold leading-tight">
+                        <p className="truncate text-sm leading-tight font-semibold">
                           {r.authorName}
                         </p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
+                        <p className="text-muted-foreground mt-0.5 text-xs">
                           {formatDate(r.createdAt)}
                         </p>
                       </div>
@@ -87,7 +89,7 @@ export async function ReviewSection({
                     </div>
                     <Stars rating={r.rating} size={14} className="mt-2" />
                     {r.body && (
-                      <p className="mt-3 text-sm leading-relaxed text-foreground/90">
+                      <p className="text-foreground/90 mt-3 text-sm leading-relaxed">
                         {r.body}
                       </p>
                     )}
