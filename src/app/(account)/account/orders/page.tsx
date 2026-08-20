@@ -30,7 +30,10 @@ const STATUS_STYLE: Record<OrderStatus, string> = {
   cancelled: "bg-red-500/20 text-red-400",
 };
 
-const STATUS_ICON: Record<OrderStatus, React.ComponentType<{ className?: string }>> = {
+const STATUS_ICON: Record<
+  OrderStatus,
+  React.ComponentType<{ className?: string }>
+> = {
   pending: Clock,
   confirmed: CheckCircle2,
   shipping: Truck,
@@ -39,7 +42,10 @@ const STATUS_ICON: Record<OrderStatus, React.ComponentType<{ className?: string 
 };
 
 /** Linear fulfilment flow used for the per-order progress stepper. */
-const FLOW: { status: OrderStatus; icon: React.ComponentType<{ className?: string }> }[] = [
+const FLOW: {
+  status: OrderStatus;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
   { status: "pending", icon: Clock },
   { status: "confirmed", icon: CheckCircle2 },
   { status: "shipping", icon: Truck },
@@ -85,13 +91,13 @@ export default async function OrdersPage() {
     return (
       <div className="space-y-6">
         <PageHeader />
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border py-20 text-center">
-          <div className="flex size-16 items-center justify-center rounded-full bg-secondary">
-            <Package className="size-7 text-muted-foreground" />
+        <div className="border-border flex flex-col items-center gap-4 rounded-2xl border border-dashed py-20 text-center">
+          <div className="bg-secondary flex size-16 items-center justify-center rounded-full">
+            <Package className="text-muted-foreground size-7" />
           </div>
           <div>
             <p className="font-medium">Захиалга алга байна</p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Эхний захиалгаа өгөөд энд хянаарай.
             </p>
           </div>
@@ -122,7 +128,7 @@ export default async function OrdersPage() {
           return (
             <Card
               key={o.id}
-              className="group overflow-hidden transition-all hover:border-primary hover:shadow-lift"
+              className="group hover:border-primary hover:shadow-lift overflow-hidden transition-all"
             >
               <Link href={`/account/orders/${o.id}`} className="block">
                 <CardContent className="p-5">
@@ -130,12 +136,14 @@ export default async function OrdersPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-mono font-medium">{o.order_no}</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-muted-foreground text-sm">
                         {formatDate(o.created_at)}
                         {itemCount > 0 && ` · ${itemCount} ширхэг`}
                       </p>
                     </div>
-                    <Badge className={cn("shrink-0 gap-1", STATUS_STYLE[o.status])}>
+                    <Badge
+                      className={cn("shrink-0 gap-1", STATUS_STYLE[o.status])}
+                    >
                       <StatusIcon className="size-3.5" />
                       {ORDER_STATUS_LABEL[o.status]}
                     </Badge>
@@ -151,7 +159,7 @@ export default async function OrdersPage() {
                         return (
                           <div
                             key={idx}
-                            className="relative size-14 shrink-0 overflow-hidden rounded-xl border border-border bg-secondary"
+                            className="border-border bg-secondary relative size-14 shrink-0 overflow-hidden rounded-xl border"
                           >
                             {url ? (
                               <Image
@@ -163,25 +171,26 @@ export default async function OrdersPage() {
                               />
                             ) : (
                               <span className="flex h-full items-center justify-center">
-                                <Package className="size-5 text-muted-foreground" />
+                                <Package className="text-muted-foreground size-5" />
                               </span>
                             )}
                           </div>
                         );
                       })}
                       {extraCount > 0 && (
-                        <div className="flex size-14 shrink-0 items-center justify-center rounded-xl border border-dashed border-border bg-secondary text-sm font-medium text-muted-foreground">
+                        <div className="border-border bg-secondary text-muted-foreground flex size-14 shrink-0 items-center justify-center rounded-xl border border-dashed text-sm font-medium">
                           +{extraCount}
                         </div>
                       )}
                       {firstName && (
                         <div className="ml-1 min-w-0">
-                          <p className="truncate text-sm text-muted-foreground">
+                          <p className="text-muted-foreground truncate text-sm">
                             {firstName}
-                            {items.length > 1 && ` ба бусад ${items.length - 1}`}
+                            {items.length > 1 &&
+                              ` ба бусад ${items.length - 1}`}
                           </p>
                           {firstMl != null && (
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-muted-foreground text-xs">
                               {firstMl}ml
                             </p>
                           )}
@@ -197,10 +206,12 @@ export default async function OrdersPage() {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground">Нийт дүн</p>
-                      <p className="text-lg font-semibold">{formatPrice(o.total)}</p>
+                      <p className="text-muted-foreground text-xs">Нийт дүн</p>
+                      <p className="text-lg font-semibold">
+                        {formatPrice(o.total)}
+                      </p>
                     </div>
-                    <span className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors group-hover:text-foreground">
+                    <span className="text-muted-foreground group-hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors">
                       Дэлгэрэнгүй
                       <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                     </span>
@@ -226,13 +237,13 @@ function PageHeader({ count }: { count?: number }) {
       <Link
         href="/account"
         aria-label="Буцах"
-        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground transition-colors hover:bg-secondary/70"
+        className="bg-secondary text-foreground hover:bg-secondary/70 flex size-9 shrink-0 items-center justify-center rounded-full transition-colors"
       >
         <ArrowLeft className="size-5" />
       </Link>
       <h1 className="font-serif text-2xl font-semibold">Миний захиалга</h1>
       {count != null && count > 0 && (
-        <span className="ml-auto text-sm text-muted-foreground">
+        <span className="text-muted-foreground ml-auto text-sm">
           {count} захиалга
         </span>
       )}

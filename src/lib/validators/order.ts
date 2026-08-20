@@ -12,7 +12,11 @@ export const checkoutSchema = z.object({
   contactPhone: z
     .string()
     .regex(/^\d{8}$/u, "8 оронтой утасны дугаар оруулна уу"),
-  contactEmail: z.string().email("Имэйл буруу байна").optional().or(z.literal("")),
+  contactEmail: z
+    .string()
+    .email("Имэйл буруу байна")
+    .optional()
+    .or(z.literal("")),
   // Both are picked from the аймаг → сум/дүүрэг cascade, so both are required;
   // the values are Cyrillic names (the DB columns are plain text).
   shipCity: z.string().min(1, "Хот / аймгаа сонгоно уу"),

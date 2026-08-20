@@ -14,10 +14,9 @@ export default async function HomeSectionsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-serif text-2xl font-semibold">Нүүрийн хэсэг</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          «Онцлох», «Багц уснууд» зэрэг хэсгийг үүсгэж, дотор нь харагдах
-          барааг гараар сонгож эрэмбэлнэ. Бараагүй хэсэг нүүр хуудсанд
-          харагдахгүй.
+        <p className="text-muted-foreground mt-1 text-sm">
+          «Онцлох», «Багц уснууд» зэрэг хэсгийг үүсгэж, дотор нь харагдах барааг
+          гараар сонгож эрэмбэлнэ. Бараагүй хэсэг нүүр хуудсанд харагдахгүй.
         </p>
       </div>
       <HomeSectionManager

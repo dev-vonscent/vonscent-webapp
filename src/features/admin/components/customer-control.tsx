@@ -61,7 +61,10 @@ export function CustomerControl({
       <div className="space-y-1.5">
         <Label>Эрх</Label>
         <div className="flex gap-2">
-          <Select value={newRole} onValueChange={(v) => setNewRole(v as UserRole)}>
+          <Select
+            value={newRole}
+            onValueChange={(v) => setNewRole(v as UserRole)}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -109,7 +112,7 @@ export function CustomerControl({
         {isBlocked ? "Блокоос гаргах" : "Хориглох"}
       </Button>
 
-      {msg && <p className="text-sm text-destructive">{msg}</p>}
+      {msg && <p className="text-destructive text-sm">{msg}</p>}
     </div>
   );
 }

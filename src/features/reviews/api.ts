@@ -69,7 +69,10 @@ async function profileMap(
   const rows =
     (data as unknown as ({ id: string } & ProfileInfo)[] | null) ?? [];
   return new Map(
-    rows.map((p) => [p.id, { full_name: p.full_name, avatar_url: p.avatar_url }]),
+    rows.map((p) => [
+      p.id,
+      { full_name: p.full_name, avatar_url: p.avatar_url },
+    ]),
   );
 }
 

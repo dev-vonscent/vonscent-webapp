@@ -31,11 +31,15 @@ export async function PATCH(
   const { id } = await params;
   const body = await req.json().catch(() => null);
   const parsed = patchSchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: "VALIDATION" }, { status: 400 });
+  if (!parsed.success)
+    return NextResponse.json({ error: "VALIDATION" }, { status: 400 });
   const g = await guard();
   if ("demo" in g) return NextResponse.json({ demo: true });
   if ("error" in g)
-    return NextResponse.json({ error: g.error }, { status: g.error === "FORBIDDEN" ? 403 : 500 });
+    return NextResponse.json(
+      { error: g.error },
+      { status: g.error === "FORBIDDEN" ? 403 : 500 },
+    );
 
   const d = parsed.data;
   const update: Record<string, unknown> = {};
@@ -60,7 +64,10 @@ export async function DELETE(
   const g = await guard();
   if ("demo" in g) return NextResponse.json({ demo: true });
   if ("error" in g)
-    return NextResponse.json({ error: g.error }, { status: g.error === "FORBIDDEN" ? 403 : 500 });
+    return NextResponse.json(
+      { error: g.error },
+      { status: g.error === "FORBIDDEN" ? 403 : 500 },
+    );
   await g.supabase.from("blog_posts").delete().eq("id", id);
   revalidatePublic();
   return NextResponse.json({ ok: true });

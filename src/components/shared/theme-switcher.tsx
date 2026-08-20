@@ -28,9 +28,9 @@ export function ThemeSwitcher({ className }: { className?: string }) {
             aria-pressed={active}
             title={t.label}
             className={cn(
-              "size-7 rounded-full border border-foreground/20 ring-offset-2 ring-offset-background transition-all",
+              "border-foreground/20 ring-offset-background size-7 rounded-full border ring-offset-2 transition-all",
               active
-                ? "ring-2 ring-foreground"
+                ? "ring-foreground ring-2"
                 : "hover:scale-110 active:scale-95",
             )}
             style={{ backgroundColor: t.swatch }}

@@ -36,19 +36,21 @@ export default async function AdminReportsPage() {
             <p className="font-serif text-2xl font-semibold">
               {formatPrice(report.totalRevenue)}
             </p>
-            <p className="text-sm text-muted-foreground">Нийт борлуулалт</p>
+            <p className="text-muted-foreground text-sm">Нийт борлуулалт</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
-            <p className="font-serif text-2xl font-semibold">{report.paidOrders}</p>
-            <p className="text-sm text-muted-foreground">Төлсөн захиалга</p>
+            <p className="font-serif text-2xl font-semibold">
+              {report.paidOrders}
+            </p>
+            <p className="text-muted-foreground text-sm">Төлсөн захиалга</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
             <p className="font-serif text-2xl font-semibold">{totalMl}ml</p>
-            <p className="text-sm text-muted-foreground">Нийт үлдэгдэл</p>
+            <p className="text-muted-foreground text-sm">Нийт үлдэгдэл</p>
           </CardContent>
         </Card>
       </div>
@@ -57,11 +59,11 @@ export default async function AdminReportsPage() {
         <CardContent className="p-5">
           <h2 className="mb-4 font-medium">Сар бүрийн борлуулалт</h2>
           {report.monthly.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Өгөгдөл алга.</p>
+            <p className="text-muted-foreground text-sm">Өгөгдөл алга.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[420px] text-sm">
-                <thead className="text-left text-xs text-muted-foreground">
+                <thead className="text-muted-foreground text-left text-xs">
                   <tr>
                     <th className="pb-2 font-medium">Сар</th>
                     <th className="pb-2 font-medium">Захиалга</th>
@@ -71,7 +73,7 @@ export default async function AdminReportsPage() {
                 </thead>
                 <tbody>
                   {report.monthly.map((m) => (
-                    <tr key={m.month} className="border-t border-border">
+                    <tr key={m.month} className="border-border border-t">
                       <td className="py-2 font-medium">{m.month}</td>
                       <td className="py-2">{m.orders}</td>
                       <td className="py-2">{m.ml}ml</td>
@@ -92,16 +94,21 @@ export default async function AdminReportsPage() {
           <CardContent className="p-5">
             <h2 className="mb-4 font-medium">Эрэлттэй бараа</h2>
             {report.topProducts.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Өгөгдөл алга.</p>
+              <p className="text-muted-foreground text-sm">Өгөгдөл алга.</p>
             ) : (
               <ul className="space-y-2 text-sm">
                 {report.topProducts.map((p) => (
-                  <li key={`${p.brand}-${p.name}`} className="flex justify-between">
+                  <li
+                    key={`${p.brand}-${p.name}`}
+                    className="flex justify-between"
+                  >
                     <span>
                       {p.brand} — {p.name}{" "}
                       <span className="text-muted-foreground">×{p.qty}</span>
                     </span>
-                    <span className="font-medium">{formatPrice(p.revenue)}</span>
+                    <span className="font-medium">
+                      {formatPrice(p.revenue)}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -113,13 +120,15 @@ export default async function AdminReportsPage() {
           <CardContent className="p-5">
             <h2 className="mb-4 font-medium">Эрэлттэй брэнд</h2>
             {report.topBrands.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Өгөгдөл алга.</p>
+              <p className="text-muted-foreground text-sm">Өгөгдөл алга.</p>
             ) : (
               <ul className="space-y-2 text-sm">
                 {report.topBrands.map((b) => (
                   <li key={b.brand} className="flex justify-between">
                     <span>{b.brand}</span>
-                    <span className="font-medium">{formatPrice(b.revenue)}</span>
+                    <span className="font-medium">
+                      {formatPrice(b.revenue)}
+                    </span>
                   </li>
                 ))}
               </ul>

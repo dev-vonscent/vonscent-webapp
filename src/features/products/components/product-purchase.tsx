@@ -53,14 +53,14 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           {formatPrice(unitPrice)}
         </span>
         {selected && (
-          <span className="pb-1 text-sm text-muted-foreground">
+          <span className="text-muted-foreground pb-1 text-sm">
             / {selected.ml}ml
           </span>
         )}
       </div>
 
       {product.description && (
-        <p className="text-sm leading-relaxed text-foreground/80">
+        <p className="text-foreground/80 text-sm leading-relaxed">
           {product.description}
         </p>
       )}
@@ -79,14 +79,14 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                 className={cn(
                   "flex min-w-20 flex-col items-center rounded-lg px-4 py-2 transition-colors",
                   !v.inStock
-                    ? "cursor-not-allowed bg-secondary/50 text-muted-foreground line-through opacity-50"
+                    ? "bg-secondary/50 text-muted-foreground cursor-not-allowed line-through opacity-50"
                     : active
                       ? "bg-foreground/30"
                       : "bg-secondary hover:bg-accent",
                 )}
               >
                 <span className="text-sm font-semibold">{v.ml}ml</span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-muted-foreground text-xs">
                   {v.inStock ? formatPrice(v.price) : "Дууссан"}
                 </span>
               </button>
@@ -94,16 +94,16 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           })}
         </div>
         {selectedOut && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             Энэ хэмжээ түр дууссан байна. Өөр хэмжээ сонгоно уу.
           </p>
         )}
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="flex items-center rounded-md bg-secondary">
+        <div className="bg-secondary flex items-center rounded-md">
           <button
-            className="px-3 py-2 hover:text-foreground"
+            className="hover:text-foreground px-3 py-2"
             onClick={() => setQty((q) => Math.max(1, q - 1))}
             aria-label="Хасах"
           >
@@ -111,7 +111,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           </button>
           <span className="w-10 text-center text-sm">{qty}</span>
           <button
-            className="px-3 py-2 hover:text-foreground"
+            className="hover:text-foreground px-3 py-2"
             onClick={() => setQty((q) => q + 1)}
             aria-label="Нэмэх"
           >

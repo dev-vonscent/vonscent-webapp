@@ -25,7 +25,9 @@ describe("mn locations", () => {
 
   it("sorts Ө/Ү in Mongolian alphabetical order, ignoring hyphens", () => {
     const names = AIMAGS.slice(1).map((a) => a.name);
-    expect(names.indexOf("Баян-Өлгий")).toBeLessThan(names.indexOf("Баянхонгор"));
+    expect(names.indexOf("Баян-Өлгий")).toBeLessThan(
+      names.indexOf("Баянхонгор"),
+    );
     expect(names.indexOf("Өвөрхангай")).toBeGreaterThan(names.indexOf("Орхон"));
   });
 

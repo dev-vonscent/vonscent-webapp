@@ -106,9 +106,9 @@ export function AddressBook() {
       <h2 className="font-serif text-lg font-semibold">Хүргэлтийн хаягууд</h2>
 
       {loaded && items.length === 0 && !showForm && (
-        <div className="flex flex-col items-center gap-3 rounded-lg bg-secondary py-12 text-center">
-          <MapPin className="size-9 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Хадгалсан хаяг алга.</p>
+        <div className="bg-secondary flex flex-col items-center gap-3 rounded-lg py-12 text-center">
+          <MapPin className="text-muted-foreground size-9" />
+          <p className="text-muted-foreground text-sm">Хадгалсан хаяг алга.</p>
         </div>
       )}
 
@@ -122,7 +122,7 @@ export function AddressBook() {
                     <p className="font-medium">{a.recipient}</p>
                     {a.is_default && <Badge variant="new">Үндсэн</Badge>}
                   </div>
-                  <p className="text-sm text-muted-foreground">{a.phone}</p>
+                  <p className="text-muted-foreground text-sm">{a.phone}</p>
                   <p className="mt-1 text-sm">
                     {a.city}
                     {a.district ? `, ${a.district}` : ""}, {a.detail}
@@ -132,7 +132,7 @@ export function AddressBook() {
                   {!a.is_default && (
                     <button
                       onClick={() => makeDefault(a.id)}
-                      className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+                      className="text-muted-foreground hover:bg-accent hover:text-foreground rounded-md p-2"
                       aria-label="Үндсэн болгох"
                     >
                       <Star className="size-4" />
@@ -140,7 +140,7 @@ export function AddressBook() {
                   )}
                   <button
                     onClick={() => setPendingDeleteId(a.id)}
-                    className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+                    className="text-muted-foreground hover:bg-accent hover:text-foreground rounded-md p-2"
                     aria-label="Устгах"
                   >
                     <Trash2 className="size-4" />
@@ -171,7 +171,9 @@ export function AddressBook() {
                   <Label>Утас</Label>
                   <Input
                     value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, phone: e.target.value })
+                    }
                     inputMode="numeric"
                     required
                   />

@@ -17,8 +17,8 @@ export interface QpayInvoice {
 function isConfigured() {
   return Boolean(
     process.env.QPAY_USERNAME &&
-      process.env.QPAY_PASSWORD &&
-      process.env.QPAY_INVOICE_CODE,
+    process.env.QPAY_PASSWORD &&
+    process.env.QPAY_INVOICE_CODE,
   );
 }
 

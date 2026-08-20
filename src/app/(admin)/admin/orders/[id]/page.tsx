@@ -31,15 +31,17 @@ export default async function AdminOrderDetail({
     <div className="space-y-6">
       <Link
         href="/admin/orders"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
       >
         <ArrowLeft className="size-4" /> Захиалгууд
       </Link>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-serif text-2xl font-semibold">{order.order_no}</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="font-serif text-2xl font-semibold">
+            {order.order_no}
+          </h1>
+          <p className="text-muted-foreground text-sm">
             {formatDate(order.created_at)}
           </p>
         </div>
@@ -51,9 +53,12 @@ export default async function AdminOrderDetail({
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
           <Card>
-            <CardContent className="divide-y divide-border p-0">
+            <CardContent className="divide-border divide-y p-0">
               {items.map((i) => (
-                <div key={i.id} className="flex justify-between gap-3 p-4 text-sm">
+                <div
+                  key={i.id}
+                  className="flex justify-between gap-3 p-4 text-sm"
+                >
                   <span>
                     {i.brand} {i.product_name} · {i.ml}ml × {i.qty}
                     {i.is_sample && (
@@ -62,7 +67,9 @@ export default async function AdminOrderDetail({
                       </Badge>
                     )}
                   </span>
-                  <span className="font-medium">{formatPrice(i.line_total)}</span>
+                  <span className="font-medium">
+                    {formatPrice(i.line_total)}
+                  </span>
                 </div>
               ))}
             </CardContent>
@@ -78,7 +85,8 @@ export default async function AdminOrderDetail({
               <p className="text-muted-foreground">
                 {order.ship_city}
                 {order.ship_district ? `, ${order.ship_district}` : ""},{" "}
-                {order.ship_detail} {order.ship_zone ? `(${order.ship_zone})` : ""}
+                {order.ship_detail}{" "}
+                {order.ship_zone ? `(${order.ship_zone})` : ""}
               </p>
               {customer && (
                 <Link
@@ -101,13 +109,15 @@ export default async function AdminOrderDetail({
                 <ol className="space-y-3">
                   {history.map((h) => (
                     <li key={h.id} className="flex gap-3 text-sm">
-                      <span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary" />
+                      <span className="bg-primary mt-1.5 size-2 shrink-0 rounded-full" />
                       <div>
                         <p className="font-medium">
                           {ORDER_STATUS_LABEL[h.status]}
                         </p>
-                        {h.note && <p className="text-muted-foreground">{h.note}</p>}
-                        <p className="text-xs text-muted-foreground">
+                        {h.note && (
+                          <p className="text-muted-foreground">{h.note}</p>
+                        )}
+                        <p className="text-muted-foreground text-xs">
                           {formatDate(h.created_at)}
                         </p>
                       </div>
@@ -125,10 +135,16 @@ export default async function AdminOrderDetail({
               <h2 className="font-medium">Дүн</h2>
               <Row label="Дэд дүн" value={formatPrice(order.subtotal)} />
               {order.discount > 0 && (
-                <Row label="Хямдрал" value={`−${formatPrice(order.discount)}`} />
+                <Row
+                  label="Хямдрал"
+                  value={`−${formatPrice(order.discount)}`}
+                />
               )}
               {order.loyalty_used > 0 && (
-                <Row label="Loyalty" value={`−${formatPrice(order.loyalty_used)}`} />
+                <Row
+                  label="Loyalty"
+                  value={`−${formatPrice(order.loyalty_used)}`}
+                />
               )}
               <Row label="Хүргэлт" value={formatPrice(order.shipping_fee)} />
               <Separator />
@@ -136,7 +152,9 @@ export default async function AdminOrderDetail({
                 <span>Нийт</span>
                 <span>{formatPrice(order.total)}</span>
               </div>
-              <Badge variant={order.payment_status === "paid" ? "new" : "secondary"}>
+              <Badge
+                variant={order.payment_status === "paid" ? "new" : "secondary"}
+              >
                 {order.payment_status === "paid"
                   ? "Төлсөн"
                   : order.payment_status === "refunded"

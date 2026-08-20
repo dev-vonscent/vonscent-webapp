@@ -23,21 +23,21 @@ export default async function AdminCustomersPage({
             name="q"
             defaultValue={q}
             placeholder="Нэрээр хайх"
-            className="h-9 rounded-md border border-border bg-transparent px-3 text-sm outline-none focus:border-primary"
+            className="border-border focus:border-primary h-9 rounded-md border bg-transparent px-3 text-sm outline-none"
           />
         </form>
       </div>
 
       {customers.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border py-20 text-center">
-          <Users className="size-10 text-muted-foreground" />
+        <div className="border-border flex flex-col items-center gap-3 rounded-lg border border-dashed py-20 text-center">
+          <Users className="text-muted-foreground size-10" />
           <p className="font-medium">Хэрэглэгч алга</p>
         </div>
       ) : (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
+              <thead className="bg-muted/50 text-muted-foreground text-left text-xs">
                 <tr>
                   <th className="px-4 py-3 font-medium">Нэр</th>
                   <th className="px-4 py-3 font-medium">Утас</th>
@@ -48,7 +48,10 @@ export default async function AdminCustomersPage({
               </thead>
               <tbody>
                 {customers.map((c) => (
-                  <tr key={c.id} className="border-t border-border hover:bg-muted/30">
+                  <tr
+                    key={c.id}
+                    className="border-border hover:bg-muted/30 border-t"
+                  >
                     <td className="px-4 py-3 font-medium">
                       <Link
                         href={`/admin/customers/${c.id}`}
@@ -57,7 +60,7 @@ export default async function AdminCustomersPage({
                         {c.full_name || "—"}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    <td className="text-muted-foreground px-4 py-3">
                       {c.phone || "—"}
                     </td>
                     <td className="px-4 py-3">

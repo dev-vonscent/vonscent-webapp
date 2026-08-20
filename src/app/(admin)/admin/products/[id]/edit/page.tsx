@@ -21,7 +21,7 @@ export default async function EditProductPage({
     <div className="space-y-6">
       <Link
         href="/admin/products"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
       >
         <ArrowLeft className="size-4" /> Бараа
       </Link>

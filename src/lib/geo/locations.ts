@@ -71,7 +71,9 @@ export function childLabel(aimagCode: string | null | undefined): string {
 }
 
 const CHILD_BY_CODE = new Map(
-  AIMAGS.flatMap((a) => a.children.map((c) => [c.code, { aimag: a, child: c }])),
+  AIMAGS.flatMap((a) =>
+    a.children.map((c) => [c.code, { aimag: a, child: c }]),
+  ),
 );
 
 /** Resolve an adm2 p-code back to its pair, e.g. for rendering a saved address. */

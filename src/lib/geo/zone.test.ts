@@ -49,11 +49,13 @@ describe("delivery zone resolution", () => {
   });
 
   it("ignores zones the admin has not mapped yet", () => {
-    expect(resolveZone([{ name: "Гар аргаар" }], {
-      city: "Улаанбаатар",
-      district: "Баянгол",
-      khoroo: 1,
-    })).toBeNull();
+    expect(
+      resolveZone([{ name: "Гар аргаар" }], {
+        city: "Улаанбаатар",
+        district: "Баянгол",
+        khoroo: 1,
+      }),
+    ).toBeNull();
   });
 
   it("writes area keys the admin UI stores", () => {

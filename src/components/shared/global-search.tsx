@@ -86,7 +86,7 @@ export function GlobalSearch() {
     <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
       <DialogPrimitive.Trigger
         aria-label="Хайх"
-        className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        className="text-muted-foreground hover:bg-secondary hover:text-foreground flex size-9 items-center justify-center rounded-full transition-colors"
       >
         <Search className="size-5" />
       </DialogPrimitive.Trigger>
@@ -94,15 +94,15 @@ export function GlobalSearch() {
       <DialogPrimitive.Portal>
         {/* Spotlight-style scrim: heavy blur carries the separation, with only
             a whisper of dim so the artwork behind keeps its colour. */}
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/20 backdrop-blur-xl duration-200 data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Overlay className="data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/20 backdrop-blur-xl duration-200" />
 
-        <DialogPrimitive.Content className="fixed left-1/2 top-[12vh] z-50 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl duration-200 data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+        <DialogPrimitive.Content className="border-border/60 bg-card data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[12vh] left-1/2 z-50 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 overflow-hidden rounded-2xl border shadow-2xl duration-200">
           <DialogPrimitive.Title className="sr-only">
             Хайлт
           </DialogPrimitive.Title>
 
           <form onSubmit={submit} className="relative">
-            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2" />
             <Input
               autoFocus
               value={value}
@@ -113,16 +113,16 @@ export function GlobalSearch() {
             />
             <DialogPrimitive.Close
               aria-label="Хаах"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
             >
               <X className="size-5" />
             </DialogPrimitive.Close>
           </form>
 
           {value.trim() && (
-            <div className="max-h-[60vh] overflow-y-auto border-t border-border">
+            <div className="border-border max-h-[60vh] overflow-y-auto border-t">
               {items.length === 0 ? (
-                <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+                <p className="text-muted-foreground px-4 py-6 text-center text-sm">
                   {loading ? "Хайж байна…" : "Илэрц олдсонгүй"}
                 </p>
               ) : (
@@ -132,9 +132,9 @@ export function GlobalSearch() {
                       key={p.id}
                       href={`/products/${p.slug}`}
                       onClick={() => setOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent"
+                      className="hover:bg-accent flex items-center gap-3 px-4 py-3 transition-colors"
                     >
-                      <span className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-muted">
+                      <span className="bg-muted relative size-12 shrink-0 overflow-hidden rounded-lg">
                         {p.image && (
                           <Image
                             src={p.image.url}
@@ -149,7 +149,7 @@ export function GlobalSearch() {
                         <span className="block truncate text-sm font-medium">
                           {p.name}
                         </span>
-                        <span className="block text-xs uppercase tracking-wide text-muted-foreground">
+                        <span className="text-muted-foreground block text-xs tracking-wide uppercase">
                           {p.brand}
                         </span>
                       </span>
@@ -160,7 +160,7 @@ export function GlobalSearch() {
                   ))}
                   <button
                     onClick={submit}
-                    className="w-full border-t border-border px-4 py-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+                    className="border-border text-muted-foreground hover:bg-accent hover:text-foreground w-full border-t px-4 py-3 text-sm"
                   >
                     Бүх илэрцийг харах →
                   </button>

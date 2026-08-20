@@ -35,7 +35,9 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
   // Filter to slides whose schedule is live now, then decide whether to show.
   React.useEffect(() => {
     const now = Date.now();
-    const live = (settings.slides ?? []).filter((s) => s.title && isLive(s, now));
+    const live = (settings.slides ?? []).filter(
+      (s) => s.title && isLive(s, now),
+    );
     setSlides(live);
     if (!settings.enabled || live.length === 0) return;
     // Two gates: the admin's frequency window across visits, and a per-tab flag
@@ -80,11 +82,11 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4"
+      className="bg-foreground/40 fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={dismiss}
     >
       <div
-        className="relative w-full max-w-md overflow-hidden rounded-xl bg-card shadow-xl"
+        className="bg-card relative w-full max-w-md overflow-hidden rounded-xl shadow-xl"
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => {
           dragX.current = e.clientX;
@@ -99,13 +101,13 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
         <button
           onClick={dismiss}
           aria-label="Хаах"
-          className="absolute right-3 top-3 z-10 rounded-md bg-background/70 p-1 text-muted-foreground hover:bg-accent"
+          className="bg-background/70 text-muted-foreground hover:bg-accent absolute top-3 right-3 z-10 rounded-md p-1"
         >
           <X className="size-4" />
         </button>
 
         {slide.imageUrl && (
-          <div className="relative aspect-[16/10] w-full bg-secondary">
+          <div className="bg-secondary relative aspect-[16/10] w-full">
             <Image
               src={slide.imageUrl}
               alt={slide.title}
@@ -119,7 +121,7 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
         <div className="space-y-3 p-8 text-center">
           <h2 className="font-serif text-2xl font-semibold">{slide.title}</h2>
           {slide.body && (
-            <p className="text-sm text-muted-foreground">{slide.body}</p>
+            <p className="text-muted-foreground text-sm">{slide.body}</p>
           )}
           {slide.ctaLabel && (
             <Button asChild className="mt-2" onClick={dismiss}>
@@ -133,14 +135,14 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
             <button
               onClick={() => go(-1)}
               aria-label="Өмнөх"
-              className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-background/70 p-1.5 hover:bg-accent"
+              className="bg-background/70 hover:bg-accent absolute top-1/2 left-2 -translate-y-1/2 rounded-full p-1.5"
             >
               <ChevronLeft className="size-4" />
             </button>
             <button
               onClick={() => go(1)}
               aria-label="Дараах"
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-background/70 p-1.5 hover:bg-accent"
+              className="bg-background/70 hover:bg-accent absolute top-1/2 right-2 -translate-y-1/2 rounded-full p-1.5"
             >
               <ChevronRight className="size-4" />
             </button>

@@ -15,14 +15,15 @@ import { FAQ_SEED } from "../src/features/faq/seed";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) {
-  console.error("Missing NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY.");
+  console.error(
+    "Missing NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY.",
+  );
   process.exit(1);
 }
 const sb = createClient(url, key, { auth: { persistSession: false } });
 
 const rand = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-const daysAgo = (n: number) =>
-  new Date(Date.now() - n * 864e5).toISOString();
+const daysAgo = (n: number) => new Date(Date.now() - n * 864e5).toISOString();
 
 async function getOrCreateUser(
   email: string,
@@ -98,24 +99,45 @@ async function main() {
   const adminId = await getOrCreateUser("admin@vonscent.mn", "Админ");
   const opId = await getOrCreateUser("operator@vonscent.mn", "Оператор");
   const courierId = await getOrCreateUser("courier@vonscent.mn", "Хүргэгч");
-  await sb.from("profiles").update({ role: "super_admin", phone: "80000000" }).eq("id", adminId);
-  await sb.from("profiles").update({ role: "operator", phone: "80000001" }).eq("id", opId);
-  await sb.from("profiles").update({ role: "courier", phone: "80000002" }).eq("id", courierId);
+  await sb
+    .from("profiles")
+    .update({ role: "super_admin", phone: "80000000" })
+    .eq("id", adminId);
+  await sb
+    .from("profiles")
+    .update({ role: "operator", phone: "80000001" })
+    .eq("id", opId);
+  await sb
+    .from("profiles")
+    .update({ role: "courier", phone: "80000002" })
+    .eq("id", courierId);
 
   const customerIds: string[] = [];
   for (const c of CUSTOMERS) {
     const id = await getOrCreateUser(c.email, c.name);
     await sb
       .from("profiles")
-      .update({ full_name: c.name, phone: c.phone, loyalty_points: Math.floor(Math.random() * 300) })
+      .update({
+        full_name: c.name,
+        phone: c.phone,
+        loyalty_points: Math.floor(Math.random() * 300),
+      })
       .eq("id", id);
     customerIds.push(id);
   }
-  console.log(`✓ Users: 1 admin, 1 operator, 1 courier, ${customerIds.length} customers`);
+  console.log(
+    `✓ Users: 1 admin, 1 operator, 1 courier, ${customerIds.length} customers`,
+  );
   console.log("  (login: admin@vonscent.mn / vonscent123)");
 
   // ── 2. Addresses ────────────────────────────────────────────────────────
-  const DISTRICTS = ["Сүхбаатар", "Баянзүрх", "Хан-Уул", "Чингэлтэй", "Сонгино хайрхан"];
+  const DISTRICTS = [
+    "Сүхбаатар",
+    "Баянзүрх",
+    "Хан-Уул",
+    "Чингэлтэй",
+    "Сонгино хайрхан",
+  ];
   for (let i = 0; i < customerIds.length; i++) {
     const uid = customerIds[i];
     const { count } = await sb
@@ -139,7 +161,9 @@ async function main() {
   // ── 3. Reviews ──────────────────────────────────────────────────────────
   for (const p of products) {
     const n = 3 + Math.floor(Math.random() * 3);
-    const reviewers = [...customerIds].sort(() => Math.random() - 0.5).slice(0, n);
+    const reviewers = [...customerIds]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, n);
     for (const uid of reviewers) {
       await sb.from("reviews").upsert(
         {
@@ -165,9 +189,33 @@ async function main() {
     ends_at: string;
     is_active: boolean;
   }> = [
-    { code: "WELCOME10", type: "percent", value: 10, min_subtotal: 0, max_uses: null, ends_at: daysAgo(-60), is_active: true },
-    { code: "SALE5000", type: "fixed", value: 5000, min_subtotal: 50000, max_uses: 100, ends_at: daysAgo(-30), is_active: true },
-    { code: "SUMMER20", type: "percent", value: 20, min_subtotal: 100000, max_uses: 50, ends_at: daysAgo(10), is_active: false },
+    {
+      code: "WELCOME10",
+      type: "percent",
+      value: 10,
+      min_subtotal: 0,
+      max_uses: null,
+      ends_at: daysAgo(-60),
+      is_active: true,
+    },
+    {
+      code: "SALE5000",
+      type: "fixed",
+      value: 5000,
+      min_subtotal: 50000,
+      max_uses: 100,
+      ends_at: daysAgo(-30),
+      is_active: true,
+    },
+    {
+      code: "SUMMER20",
+      type: "percent",
+      value: 20,
+      min_subtotal: 100000,
+      max_uses: 50,
+      ends_at: daysAgo(10),
+      is_active: false,
+    },
   ];
   for (const c of coupons) {
     await sb.from("coupons").upsert(c, { onConflict: "code" });
@@ -180,7 +228,13 @@ async function main() {
     .select("id", { count: "exact", head: true })
     .ilike("note", "%[demo]%");
   if ((orderCount ?? 0) === 0) {
-    const STATUSES = ["pending", "confirmed", "shipping", "delivered", "cancelled"] as const;
+    const STATUSES = [
+      "pending",
+      "confirmed",
+      "shipping",
+      "delivered",
+      "cancelled",
+    ] as const;
     const variants = products.flatMap((p) =>
       p.product_variants
         .filter((v) => v.is_active)
@@ -201,7 +255,9 @@ async function main() {
           is_sample: false,
         };
       });
-      const cust = withUser ? CUSTOMERS[customerIds.indexOf(uid as string)] : rand(CUSTOMERS);
+      const cust = withUser
+        ? CUSTOMERS[customerIds.indexOf(uid as string)]
+        : rand(CUSTOMERS);
 
       const { data: placed, error } = await sb.rpc("place_order", {
         p_order: {
@@ -232,7 +288,11 @@ async function main() {
       if (status !== "pending" && status !== "cancelled") {
         await sb.rpc("mark_order_paid", { p_order: orderId });
       }
-      if (status === "shipping" || status === "delivered" || status === "cancelled") {
+      if (
+        status === "shipping" ||
+        status === "delivered" ||
+        status === "cancelled"
+      ) {
         await sb.rpc("update_order_status", {
           p_order: orderId,
           p_status: status,
@@ -241,7 +301,10 @@ async function main() {
         });
       }
       // Spread the order date into the past.
-      await sb.from("orders").update({ created_at: daysAgo(i * 2) }).eq("id", orderId);
+      await sb
+        .from("orders")
+        .update({ created_at: daysAgo(i * 2) })
+        .eq("id", orderId);
     }
     console.log("✓ Orders (16, mixed status/payment, dated)");
   } else {
@@ -288,8 +351,20 @@ async function main() {
     .select("id", { count: "exact", head: true });
   if ((bannerCount ?? 0) === 0) {
     await sb.from("hero_banners").insert([
-      { title: "Үнэрээ ол", subtitle: "5/10/20мл багцаар туршиж сонгоорой", cta_label: "Бараа үзэх", cta_href: "/catalog", sort_order: 0 },
-      { title: "Шинэ ирэлт", subtitle: "Хамгийн сүүлийн үнэртнүүд", cta_label: "Үзэх", cta_href: "/catalog?tags=new", sort_order: 1 },
+      {
+        title: "Үнэрээ ол",
+        subtitle: "5/10/20мл багцаар туршиж сонгоорой",
+        cta_label: "Бараа үзэх",
+        cta_href: "/catalog",
+        sort_order: 0,
+      },
+      {
+        title: "Шинэ ирэлт",
+        subtitle: "Хамгийн сүүлийн үнэртнүүд",
+        cta_label: "Үзэх",
+        cta_href: "/catalog?tags=new",
+        sort_order: 1,
+      },
     ]);
   }
   console.log("✓ Hero banners");
@@ -301,19 +376,41 @@ async function main() {
       enabled: true,
       frequencyHours: 24,
       slides: [
-        { title: "Шинэ хэрэглэгчдэд 10%", body: "WELCOME10 кодоор эхний захиалгадаа хямдрал аваарай.", ctaLabel: "Дэлгүүр", ctaHref: "/catalog", imageUrl: null, startsAt: null, endsAt: null },
-        { title: "Зуны шинэ цуглуулга", body: "Сэрэг, цитрус үнэртнүүд ирлээ.", ctaLabel: "Үзэх", ctaHref: "/catalog?season=summer", imageUrl: null, startsAt: null, endsAt: null },
+        {
+          title: "Шинэ хэрэглэгчдэд 10%",
+          body: "WELCOME10 кодоор эхний захиалгадаа хямдрал аваарай.",
+          ctaLabel: "Дэлгүүр",
+          ctaHref: "/catalog",
+          imageUrl: null,
+          startsAt: null,
+          endsAt: null,
+        },
+        {
+          title: "Зуны шинэ цуглуулга",
+          body: "Сэрэг, цитрус үнэртнүүд ирлээ.",
+          ctaLabel: "Үзэх",
+          ctaHref: "/catalog?season=summer",
+          imageUrl: null,
+          startsAt: null,
+          endsAt: null,
+        },
       ],
     },
   });
   await sb.from("settings").upsert({
     key: "social",
-    value: { instagram: "https://instagram.com/vonscent.mn", facebook: "https://facebook.com/vonscent.mn", phone: "+976 8000 0000", email: "hello@vonscent.mn" },
+    value: {
+      instagram: "https://instagram.com/vonscent.mn",
+      facebook: "https://facebook.com/vonscent.mn",
+      phone: "+976 8000 0000",
+      email: "hello@vonscent.mn",
+    },
   });
   await sb.from("settings").upsert({
     key: "about",
     value: {
-      story: "vonscent нь дэлхийн шилдэг үнэртнүүдийг жижиг (decant) багцаар санал болгодог. Бид итгэдэг — үнэр бол хувь хүний илэрхийлэл.",
+      story:
+        "vonscent нь дэлхийн шилдэг үнэртнүүдийг жижиг (decant) багцаар санал болгодог. Бид итгэдэг — үнэр бол хувь хүний илэрхийлэл.",
       values: [],
       team: [
         { name: "Б. Тэнгис", role: "Үүсгэн байгуулагч", image: "" },
@@ -324,9 +421,17 @@ async function main() {
   console.log("✓ Content settings (popup/social/about)");
 
   // ── 10. Newsletter subscribers ──────────────────────────────────────────
-  const emails = ["fan1@example.com", "fan2@example.com", "fan3@example.com", "fan4@example.com", "fan5@example.com"];
+  const emails = [
+    "fan1@example.com",
+    "fan2@example.com",
+    "fan3@example.com",
+    "fan4@example.com",
+    "fan5@example.com",
+  ];
   for (const email of emails) {
-    await sb.from("newsletter_subscribers").upsert({ email }, { onConflict: "email" });
+    await sb
+      .from("newsletter_subscribers")
+      .upsert({ email }, { onConflict: "email" });
   }
   console.log("✓ Newsletter subscribers");
 

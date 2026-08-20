@@ -64,7 +64,7 @@ export function CatalogFilterSheet({
         >
           <SlidersHorizontal className="size-4" />
           {activeCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-foreground text-[10px] font-semibold text-background">
+            <span className="bg-foreground text-background absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full text-[10px] font-semibold">
               {activeCount}
             </span>
           )}
@@ -74,7 +74,7 @@ export function CatalogFilterSheet({
         ref={contentRef}
         side="top"
         overlayClassName="bg-black/10"
-        className="flex max-h-[80vh] flex-col gap-4 rounded-b-2xl border-border bg-card/60 pb-3 backdrop-blur-lg lg:hidden"
+        className="border-border bg-card/60 flex max-h-[80vh] flex-col gap-4 rounded-b-2xl pb-3 backdrop-blur-lg lg:hidden"
       >
         <SheetTitle className="sr-only">Шүүлтүүр</SheetTitle>
         <div className="no-scrollbar -mx-2 flex-1 overflow-y-auto px-2">
@@ -93,7 +93,7 @@ export function CatalogFilterSheet({
           aria-label="Хаах"
           className="flex w-full touch-none items-center justify-center pt-2"
         >
-          <span className="h-1.5 w-12 rounded-full bg-muted-foreground/40" />
+          <span className="bg-muted-foreground/40 h-1.5 w-12 rounded-full" />
         </button>
       </SheetContent>
     </Sheet>

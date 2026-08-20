@@ -141,7 +141,7 @@ export function HomeSectionManager({
       ))}
 
       {sections.length === 0 && (
-        <p className="rounded-lg border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
+        <p className="border-border text-muted-foreground rounded-lg border border-dashed py-16 text-center text-sm">
           Хэсэг алга. Доор нэр өгч эхний хэсгээ үүсгэнэ үү.
         </p>
       )}
@@ -247,7 +247,7 @@ function SectionCard({
             {section.is_active ? (
               <Eye className="size-4" />
             ) : (
-              <EyeOff className="size-4 text-muted-foreground" />
+              <EyeOff className="text-muted-foreground size-4" />
             )}
           </Button>
           <Button
@@ -257,7 +257,7 @@ function SectionCard({
             onClick={onRemove}
             aria-label="Устгах"
           >
-            <Trash2 className="size-4 text-destructive" />
+            <Trash2 className="text-destructive size-4" />
           </Button>
         </div>
 
@@ -287,7 +287,7 @@ function SectionCard({
         <div className="space-y-2">
           <Label>Бараа ({picked.length})</Label>
           {picked.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Бараа сонгоогүй тул энэ хэсэг нүүр хуудсанд харагдахгүй.
             </p>
           ) : (
@@ -297,9 +297,9 @@ function SectionCard({
                 return (
                   <li
                     key={id}
-                    className="flex items-center gap-2 rounded-md bg-secondary px-3 py-1.5 text-sm"
+                    className="bg-secondary flex items-center gap-2 rounded-md px-3 py-1.5 text-sm"
                   >
-                    <span className="w-5 text-xs text-muted-foreground">
+                    <span className="text-muted-foreground w-5 text-xs">
                       {i + 1}.
                     </span>
                     <span className="min-w-0 flex-1 truncate">
@@ -325,9 +325,7 @@ function SectionCard({
                     </button>
                     <button
                       type="button"
-                      onClick={() =>
-                        setPicked(picked.filter((x) => x !== id))
-                      }
+                      onClick={() => setPicked(picked.filter((x) => x !== id))}
                       aria-label="Хасах"
                       className="text-muted-foreground hover:text-destructive"
                     >
@@ -358,7 +356,7 @@ function SectionCard({
         </div>
 
         {section.kind === "tag" && section.tag && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             Энэ хэсэг «{TAG_LABEL[section.tag] ?? section.tag}» тагтай барааг
             автоматаар харуулна — гараар сонгосон жагсаалт үйлчлэхгүй.
           </p>
@@ -366,9 +364,7 @@ function SectionCard({
 
         <Button
           disabled={busy}
-          onClick={() =>
-            onPatch({ title, subtitle, href, products: picked })
-          }
+          onClick={() => onPatch({ title, subtitle, href, products: picked })}
         >
           Хадгалах
         </Button>

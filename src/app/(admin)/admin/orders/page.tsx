@@ -80,46 +80,46 @@ export default async function AdminOrdersPage({
       {/* Search + date/time range (A1: "өдөр цагаар, дугаараар, утсаар") */}
       <form
         action="/admin/orders"
-        className="flex flex-wrap items-end gap-3 rounded-lg border border-border p-3"
+        className="border-border flex flex-wrap items-end gap-3 rounded-lg border p-3"
       >
         {status && <input type="hidden" name="status" value={status} />}
-        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+        <label className="text-muted-foreground flex flex-col gap-1 text-xs">
           Хайлт
           <input
             name="q"
             defaultValue={q}
             placeholder="Дугаар / нэр / утас"
-            className="h-9 w-56 rounded-md border border-border bg-transparent px-3 text-sm text-foreground outline-none focus:border-primary"
+            className="border-border text-foreground focus:border-primary h-9 w-56 rounded-md border bg-transparent px-3 text-sm outline-none"
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+        <label className="text-muted-foreground flex flex-col gap-1 text-xs">
           Эхлэх (огноо, цаг)
           <input
             type="datetime-local"
             name="from"
             defaultValue={from}
-            className="h-9 rounded-md border border-border bg-transparent px-3 text-sm text-foreground outline-none focus:border-primary"
+            className="border-border text-foreground focus:border-primary h-9 rounded-md border bg-transparent px-3 text-sm outline-none"
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+        <label className="text-muted-foreground flex flex-col gap-1 text-xs">
           Дуусах (огноо, цаг)
           <input
             type="datetime-local"
             name="to"
             defaultValue={to}
-            className="h-9 rounded-md border border-border bg-transparent px-3 text-sm text-foreground outline-none focus:border-primary"
+            className="border-border text-foreground focus:border-primary h-9 rounded-md border bg-transparent px-3 text-sm outline-none"
           />
         </label>
         <button
           type="submit"
-          className="h-9 rounded-md bg-foreground px-4 text-sm font-medium text-background"
+          className="bg-foreground text-background h-9 rounded-md px-4 text-sm font-medium"
         >
           Шүүх
         </button>
         {(q || from || to) && (
           <Link
             href={status ? `/admin/orders?status=${status}` : "/admin/orders"}
-            className="h-9 rounded-md px-3 text-sm leading-9 text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground h-9 rounded-md px-3 text-sm leading-9"
           >
             Цэвэрлэх
           </Link>
@@ -127,15 +127,15 @@ export default async function AdminOrdersPage({
       </form>
 
       {orders.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border py-20 text-center">
-          <ShoppingCart className="size-10 text-muted-foreground" />
+        <div className="border-border flex flex-col items-center gap-3 rounded-lg border border-dashed py-20 text-center">
+          <ShoppingCart className="text-muted-foreground size-10" />
           <p className="font-medium">Захиалга алга</p>
         </div>
       ) : (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
+              <thead className="bg-muted/50 text-muted-foreground text-left text-xs">
                 <tr>
                   <th className="px-4 py-3 font-medium">Дугаар</th>
                   <th className="px-4 py-3 font-medium">Огноо</th>
@@ -149,7 +149,7 @@ export default async function AdminOrdersPage({
                 {orders.map((o) => (
                   <tr
                     key={o.id}
-                    className="border-t border-border hover:bg-muted/30"
+                    className="border-border hover:bg-muted/30 border-t"
                   >
                     <td className="px-4 py-3 font-mono">
                       <Link
@@ -159,7 +159,7 @@ export default async function AdminOrdersPage({
                         {o.order_no}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    <td className="text-muted-foreground px-4 py-3">
                       {formatDate(o.created_at)}
                     </td>
                     <td className="px-4 py-3">{o.contact_name}</td>
@@ -168,7 +168,9 @@ export default async function AdminOrdersPage({
                     </td>
                     <td className="px-4 py-3">
                       <Badge
-                        variant={o.payment_status === "paid" ? "new" : "secondary"}
+                        variant={
+                          o.payment_status === "paid" ? "new" : "secondary"
+                        }
                       >
                         {o.payment_status === "paid"
                           ? "Төлсөн"

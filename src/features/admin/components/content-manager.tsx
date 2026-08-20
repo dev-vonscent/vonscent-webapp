@@ -9,7 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { PopupSettings, PopupSlide, SocialSettings } from "@/features/content/api";
+import type {
+  PopupSettings,
+  PopupSlide,
+  SocialSettings,
+} from "@/features/content/api";
 import type { HeroBannerRow, FaqRow, BlogPostRow } from "@/db/types";
 
 async function saveSetting(key: string, value: unknown) {
@@ -45,7 +49,13 @@ export function ContentManager({
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <Card>
       <CardContent className="space-y-4 p-6">
@@ -59,7 +69,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function PopupSection({ initial }: { initial: PopupSettings }) {
   const [enabled, setEnabled] = React.useState(initial.enabled);
   const [frequency, setFrequency] = React.useState(initial.frequencyHours);
-  const [slides, setSlides] = React.useState<PopupSlide[]>(initial.slides ?? []);
+  const [slides, setSlides] = React.useState<PopupSlide[]>(
+    initial.slides ?? [],
+  );
   const [saved, setSaved] = React.useState(false);
 
   function setSlide(i: number, patch: Partial<PopupSlide>) {
@@ -68,7 +80,15 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
   function addSlide() {
     setSlides((ss) => [
       ...ss,
-      { title: "", body: "", ctaLabel: "", ctaHref: "/catalog", imageUrl: null, startsAt: null, endsAt: null },
+      {
+        title: "",
+        body: "",
+        ctaLabel: "",
+        ctaHref: "/catalog",
+        imageUrl: null,
+        startsAt: null,
+        endsAt: null,
+      },
     ]);
   }
   async function save() {
@@ -81,7 +101,10 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
     <Section title="Сурталчилгааны popup (олон слайд, swipe + autoplay)">
       <div className="flex flex-wrap items-end gap-4">
         <label className="flex items-center gap-2 text-sm">
-          <Checkbox checked={enabled} onCheckedChange={(v) => setEnabled(Boolean(v))} />
+          <Checkbox
+            checked={enabled}
+            onCheckedChange={(v) => setEnabled(Boolean(v))}
+          />
           Идэвхжүүлэх
         </label>
         <Field label="Давтамж (цаг)">
@@ -96,7 +119,10 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
 
       <div className="space-y-4">
         {slides.map((s, i) => (
-          <div key={i} className="space-y-3 rounded-lg border border-border p-4">
+          <div
+            key={i}
+            className="border-border space-y-3 rounded-lg border p-4"
+          >
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">Слайд {i + 1}</p>
               <button
@@ -108,23 +134,41 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Гарчиг">
-                <Input value={s.title} onChange={(e) => setSlide(i, { title: e.target.value })} />
+                <Input
+                  value={s.title}
+                  onChange={(e) => setSlide(i, { title: e.target.value })}
+                />
               </Field>
               <Field label="Зургийн URL">
-                <Input value={s.imageUrl ?? ""} onChange={(e) => setSlide(i, { imageUrl: e.target.value || null })} />
+                <Input
+                  value={s.imageUrl ?? ""}
+                  onChange={(e) =>
+                    setSlide(i, { imageUrl: e.target.value || null })
+                  }
+                />
               </Field>
               <Field label="CTA текст">
-                <Input value={s.ctaLabel} onChange={(e) => setSlide(i, { ctaLabel: e.target.value })} />
+                <Input
+                  value={s.ctaLabel}
+                  onChange={(e) => setSlide(i, { ctaLabel: e.target.value })}
+                />
               </Field>
               <Field label="CTA холбоос">
-                <Input value={s.ctaHref} onChange={(e) => setSlide(i, { ctaHref: e.target.value })} />
+                <Input
+                  value={s.ctaHref}
+                  onChange={(e) => setSlide(i, { ctaHref: e.target.value })}
+                />
               </Field>
               <Field label="Эхлэх огноо">
                 <Input
                   type="date"
                   value={s.startsAt ? s.startsAt.slice(0, 10) : ""}
                   onChange={(e) =>
-                    setSlide(i, { startsAt: e.target.value ? new Date(e.target.value).toISOString() : null })
+                    setSlide(i, {
+                      startsAt: e.target.value
+                        ? new Date(e.target.value).toISOString()
+                        : null,
+                    })
                   }
                 />
               </Field>
@@ -133,13 +177,20 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
                   type="date"
                   value={s.endsAt ? s.endsAt.slice(0, 10) : ""}
                   onChange={(e) =>
-                    setSlide(i, { endsAt: e.target.value ? new Date(e.target.value).toISOString() : null })
+                    setSlide(i, {
+                      endsAt: e.target.value
+                        ? new Date(e.target.value).toISOString()
+                        : null,
+                    })
                   }
                 />
               </Field>
             </div>
             <Field label="Текст">
-              <Input value={s.body} onChange={(e) => setSlide(i, { body: e.target.value })} />
+              <Input
+                value={s.body}
+                onChange={(e) => setSlide(i, { body: e.target.value })}
+              />
             </Field>
           </div>
         ))}
@@ -165,16 +216,28 @@ function SocialSection({ initial }: { initial: SocialSettings }) {
     <Section title="Сошиал холбоос">
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Instagram URL">
-          <Input value={s.instagram} onChange={(e) => setS({ ...s, instagram: e.target.value })} />
+          <Input
+            value={s.instagram}
+            onChange={(e) => setS({ ...s, instagram: e.target.value })}
+          />
         </Field>
         <Field label="Facebook URL">
-          <Input value={s.facebook} onChange={(e) => setS({ ...s, facebook: e.target.value })} />
+          <Input
+            value={s.facebook}
+            onChange={(e) => setS({ ...s, facebook: e.target.value })}
+          />
         </Field>
         <Field label="Утас">
-          <Input value={s.phone} onChange={(e) => setS({ ...s, phone: e.target.value })} />
+          <Input
+            value={s.phone}
+            onChange={(e) => setS({ ...s, phone: e.target.value })}
+          />
         </Field>
         <Field label="Имэйл">
-          <Input value={s.email} onChange={(e) => setS({ ...s, email: e.target.value })} />
+          <Input
+            value={s.email}
+            onChange={(e) => setS({ ...s, email: e.target.value })}
+          />
         </Field>
       </div>
       <Button onClick={save}>{saved ? "Хадгалагдлаа ✓" : "Хадгалах"}</Button>
@@ -205,20 +268,34 @@ function BannerSection({ initial }: { initial: HeroBannerRow[] }) {
     <Section title="Hero баннер">
       <ul className="space-y-2">
         {initial.map((b) => (
-          <li key={b.id} className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm">
+          <li
+            key={b.id}
+            className="border-border flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+          >
             <span>
               <strong>{b.title}</strong>{" "}
               <span className="text-muted-foreground">{b.subtitle}</span>
             </span>
-            <button onClick={() => del(b.id)} className="text-muted-foreground hover:text-destructive">
+            <button
+              onClick={() => del(b.id)}
+              className="text-muted-foreground hover:text-destructive"
+            >
               <Trash2 className="size-4" />
             </button>
           </li>
         ))}
       </ul>
       <div className="grid gap-2 sm:grid-cols-2">
-        <Input placeholder="Гарчиг" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <Input placeholder="Дэд гарчиг" value={subtitle} onChange={(e) => setSubtitle(e.target.value)} />
+        <Input
+          placeholder="Гарчиг"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+        <Input
+          placeholder="Дэд гарчиг"
+          value={subtitle}
+          onChange={(e) => setSubtitle(e.target.value)}
+        />
       </div>
       <Button variant="outline" onClick={add}>
         <Plus className="size-4" /> Баннер нэмэх
@@ -237,7 +314,12 @@ function FaqSection({ initial }: { initial: FaqRow[] }) {
     await fetch("/api/admin/faqs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category, question, answer, sortOrder: initial.length }),
+      body: JSON.stringify({
+        category,
+        question,
+        answer,
+        sortOrder: initial.length,
+      }),
     });
     setCategory("");
     setQuestion("");
@@ -252,21 +334,41 @@ function FaqSection({ initial }: { initial: FaqRow[] }) {
     <Section title="FAQ">
       <ul className="space-y-2">
         {initial.map((f) => (
-          <li key={f.id} className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm">
+          <li
+            key={f.id}
+            className="border-border flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+          >
             <span>
-              <Badge variant="secondary" className="mr-2">{f.category}</Badge>
+              <Badge variant="secondary" className="mr-2">
+                {f.category}
+              </Badge>
               {f.question}
             </span>
-            <button onClick={() => del(f.id)} className="text-muted-foreground hover:text-destructive">
+            <button
+              onClick={() => del(f.id)}
+              className="text-muted-foreground hover:text-destructive"
+            >
               <Trash2 className="size-4" />
             </button>
           </li>
         ))}
       </ul>
       <div className="grid gap-2">
-        <Input placeholder="Ангилал" value={category} onChange={(e) => setCategory(e.target.value)} />
-        <Input placeholder="Асуулт" value={question} onChange={(e) => setQuestion(e.target.value)} />
-        <Input placeholder="Хариулт" value={answer} onChange={(e) => setAnswer(e.target.value)} />
+        <Input
+          placeholder="Ангилал"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        />
+        <Input
+          placeholder="Асуулт"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+        />
+        <Input
+          placeholder="Хариулт"
+          value={answer}
+          onChange={(e) => setAnswer(e.target.value)}
+        />
       </div>
       <Button variant="outline" onClick={add}>
         <Plus className="size-4" /> FAQ нэмэх
@@ -286,7 +388,13 @@ function BlogSection({ initial }: { initial: BlogPostRow[] }) {
     await fetch("/api/admin/blog", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, category, excerpt, body, isPublished: true }),
+      body: JSON.stringify({
+        title,
+        category,
+        excerpt,
+        body,
+        isPublished: true,
+      }),
     });
     setTitle("");
     setCategory("");
@@ -302,27 +410,45 @@ function BlogSection({ initial }: { initial: BlogPostRow[] }) {
     <Section title="Блог нийтлэл">
       <ul className="space-y-2">
         {initial.map((p) => (
-          <li key={p.id} className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm">
+          <li
+            key={p.id}
+            className="border-border flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+          >
             <span>
               <strong>{p.title}</strong>{" "}
               {!p.is_published && <Badge variant="secondary">Ноорог</Badge>}
             </span>
-            <button onClick={() => del(p.id)} className="text-muted-foreground hover:text-destructive">
+            <button
+              onClick={() => del(p.id)}
+              className="text-muted-foreground hover:text-destructive"
+            >
               <Trash2 className="size-4" />
             </button>
           </li>
         ))}
       </ul>
       <div className="grid gap-2">
-        <Input placeholder="Гарчиг" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <Input placeholder="Ангилал" value={category} onChange={(e) => setCategory(e.target.value)} />
-        <Input placeholder="Товч (excerpt)" value={excerpt} onChange={(e) => setExcerpt(e.target.value)} />
+        <Input
+          placeholder="Гарчиг"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+        <Input
+          placeholder="Ангилал"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        />
+        <Input
+          placeholder="Товч (excerpt)"
+          value={excerpt}
+          onChange={(e) => setExcerpt(e.target.value)}
+        />
         <textarea
           placeholder="Нийтлэлийн агуулга (мөр хооронд хоосон мөр үлдээж догол хуваана)"
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={4}
-          className="w-full rounded-md bg-secondary px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="bg-secondary focus-visible:ring-ring w-full rounded-md px-3 py-2 text-sm outline-none focus-visible:ring-2"
         />
       </div>
       <Button variant="outline" onClick={add}>
@@ -332,7 +458,13 @@ function BlogSection({ initial }: { initial: BlogPostRow[] }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-1.5">
       <Label>{label}</Label>

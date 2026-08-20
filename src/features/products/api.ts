@@ -61,7 +61,10 @@ interface DbProduct {
   product_variants: DbVariant[];
   inventory: DbInventory | DbInventory[] | null;
   product_tags: {
-    tags: { slug: string; kind: TagKind } | { slug: string; kind: TagKind }[] | null;
+    tags:
+      | { slug: string; kind: TagKind }
+      | { slug: string; kind: TagKind }[]
+      | null;
   }[];
 }
 
@@ -101,8 +104,9 @@ function mapProduct(row: DbProduct): ProductDetail {
 
   // "From" price quotes the cheapest size a customer can actually buy today.
   const sellable = variants.filter((v) => v.isActive && v.inStock);
-  const priced = (sellable.length ? sellable : variants.filter((v) => v.isActive))
-    .map((v) => v.price);
+  const priced = (
+    sellable.length ? sellable : variants.filter((v) => v.isActive)
+  ).map((v) => v.price);
   const startingPrice = priced.length ? Math.min(...priced) : 0;
 
   const tags = row.product_tags
@@ -312,7 +316,9 @@ export async function getRelated(
     let n = 0;
     // Each shared family/season counts, so a scent matching two of three
     // families outranks one that only matches a single family.
-    n += 4 * p.scentFamilies.filter((f) => product!.scentFamilies.includes(f)).length;
+    n +=
+      4 *
+      p.scentFamilies.filter((f) => product!.scentFamilies.includes(f)).length;
     if (p.brand === product!.brand) n += 3;
     if (p.gender === product!.gender) n += 2;
     n += 2 * p.seasons.filter((s) => product!.seasons.includes(s)).length;

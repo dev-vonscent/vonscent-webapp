@@ -46,7 +46,8 @@ export async function PATCH(
     productUpdate.scent_families = await sanitizeFamilies(input.scentFamilies);
   if (input.seasons !== undefined) productUpdate.seasons = input.seasons;
   if (input.notesTop !== undefined) productUpdate.notes_top = input.notesTop;
-  if (input.notesHeart !== undefined) productUpdate.notes_heart = input.notesHeart;
+  if (input.notesHeart !== undefined)
+    productUpdate.notes_heart = input.notesHeart;
   if (input.notesBase !== undefined) productUpdate.notes_base = input.notesBase;
   if (input.description !== undefined)
     productUpdate.description = input.description;
@@ -103,9 +104,9 @@ export async function PATCH(
       .select("id, slug")
       .in("slug", input.tags.length ? input.tags : ["__none__"]);
     await supabase.from("product_tags").delete().eq("product_id", id);
-    const links = ((tagRows as { id: string; slug: string }[] | null) ?? []).map(
-      (t) => ({ product_id: id, tag_id: t.id }),
-    );
+    const links = (
+      (tagRows as { id: string; slug: string }[] | null) ?? []
+    ).map((t) => ({ product_id: id, tag_id: t.id }));
     if (links.length) await supabase.from("product_tags").insert(links);
   }
 
@@ -127,7 +128,8 @@ export async function DELETE(
     );
   }
   const { error } = await g.supabase.from("products").delete().eq("id", id);
-  if (error) return NextResponse.json({ error: "DELETE_FAILED" }, { status: 500 });
+  if (error)
+    return NextResponse.json({ error: "DELETE_FAILED" }, { status: 500 });
   revalidatePublic();
   return NextResponse.json({ ok: true });
 }

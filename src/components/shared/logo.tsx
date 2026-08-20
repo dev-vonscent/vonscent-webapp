@@ -7,12 +7,12 @@ export function Logo({ className }: { className?: string }) {
     <Link
       href="/"
       className={cn(
-        "font-serif text-xl font-semibold tracking-tight text-foreground",
+        "text-foreground font-serif text-xl font-semibold tracking-tight",
         className,
       )}
       aria-label={`${SITE.name} нүүр хуудас`}
     >
-von<span className="text-gold">scent</span>
+      von<span className="text-gold">scent</span>
     </Link>
   );
 }

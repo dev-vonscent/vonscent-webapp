@@ -117,7 +117,7 @@ export function SiteHeader() {
             type="button"
             onClick={() => router.back()}
             aria-label="Буцах"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary/85 text-foreground backdrop-blur transition-colors hover:bg-secondary"
+            className="bg-secondary/85 text-foreground hover:bg-secondary flex size-10 shrink-0 items-center justify-center rounded-full backdrop-blur transition-colors"
           >
             <ArrowLeft className="size-5" />
           </button>
@@ -134,13 +134,8 @@ export function SiteHeader() {
       )}
 
       {/* Full header — floating glass pill. Home (all sizes) + inner (desktop). */}
-      <div
-        className={cn(
-          "px-4 pt-4",
-          isHome ? "block" : "hidden md:block",
-        )}
-      >
-        <div className="relative mx-auto flex h-14 max-w-[88rem] items-center gap-2 rounded-full bg-secondary/85 px-3 shadow-lift backdrop-blur">
+      <div className={cn("px-4 pt-4", isHome ? "block" : "hidden md:block")}>
+        <div className="bg-secondary/85 shadow-lift relative mx-auto flex h-14 max-w-[88rem] items-center gap-2 rounded-full px-3 backdrop-blur">
           {/* Left: mobile menu + logo */}
           <Sheet>
             <SheetTrigger asChild>
@@ -155,24 +150,24 @@ export function SiteHeader() {
             </SheetTrigger>
             <SheetContent side="left" className="w-80">
               <SheetTitle className="font-serif text-xl">Цэс</SheetTitle>
-              <div className="my-4 gold-rule" />
+              <div className="gold-rule my-4" />
               <nav className="flex flex-col gap-1">
                 {NAV.map((item) => (
                   <SheetClose asChild key={item.href}>
                     <Link
                       href={item.href}
-                      className="rounded-lg px-3 py-3 text-base font-medium transition-colors hover:bg-accent"
+                      className="hover:bg-accent rounded-lg px-3 py-3 text-base font-medium transition-colors"
                     >
                       {item.label}
                     </Link>
                   </SheetClose>
                 ))}
               </nav>
-              <div className="my-4 gold-rule" />
+              <div className="gold-rule my-4" />
               <SheetClose asChild>
                 <Link
                   href="/account"
-                  className="flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium transition-colors hover:bg-accent"
+                  className="hover:bg-accent flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium transition-colors"
                 >
                   <User className="size-5" /> Профайл
                 </Link>
@@ -183,7 +178,7 @@ export function SiteHeader() {
                 <SheetClose asChild>
                   <Link
                     href="/admin"
-                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium transition-colors hover:bg-accent"
+                    className="hover:bg-accent flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium transition-colors"
                   >
                     <LayoutDashboard className="size-5" /> Админ хэсэг
                   </Link>

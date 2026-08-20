@@ -75,7 +75,11 @@ export async function getOrderDetail(id: string): Promise<{
 } | null> {
   const supabase = await createClient();
   if (!supabase) return null;
-  const { data } = await supabase.from("orders").select("*").eq("id", id).maybeSingle();
+  const { data } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
   const order = data as OrderRow | null;
   if (!order) return null;
 
@@ -87,7 +91,11 @@ export async function getOrderDetail(id: string): Promise<{
       .eq("order_id", id)
       .order("created_at", { ascending: true }),
     order.user_id
-      ? supabase.from("profiles").select("*").eq("id", order.user_id).maybeSingle()
+      ? supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", order.user_id)
+          .maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
 
@@ -254,10 +262,14 @@ export async function getAdminProducts(): Promise<AdminProduct[]> {
     .from("products")
     .select(ADMIN_PRODUCT_SELECT)
     .order("created_at", { ascending: false });
-  return ((data as unknown as AdminProductRow[] | null) ?? []).map(mapAdminProduct);
+  return ((data as unknown as AdminProductRow[] | null) ?? []).map(
+    mapAdminProduct,
+  );
 }
 
-export async function getAdminProduct(id: string): Promise<AdminProduct | null> {
+export async function getAdminProduct(
+  id: string,
+): Promise<AdminProduct | null> {
   const supabase = await createClient();
   if (!supabase) return null;
   const { data } = await supabase
@@ -353,15 +365,17 @@ export async function getReportData(): Promise<ReportData> {
     .eq("orders.payment_status", "paid");
 
   const rows =
-    (data as unknown as {
-      order_id: string;
-      product_name: string;
-      brand: string;
-      ml: number;
-      qty: number;
-      line_total: number;
-      orders: { created_at: string } | { created_at: string }[] | null;
-    }[] | null) ?? [];
+    (data as unknown as
+      | {
+          order_id: string;
+          product_name: string;
+          brand: string;
+          ml: number;
+          qty: number;
+          line_total: number;
+          orders: { created_at: string } | { created_at: string }[] | null;
+        }[]
+      | null) ?? [];
 
   const productMap = new Map<
     string,
@@ -455,9 +469,11 @@ export async function getAllHomeSections(): Promise<AdminHomeSection[]> {
     .order("sort_order", { ascending: true });
 
   return (
-    (data as unknown as (HomeSectionRow & {
-      home_section_products: { product_id: string; sort_order: number }[];
-    })[] | null) ?? []
+    (data as unknown as
+      | (HomeSectionRow & {
+          home_section_products: { product_id: string; sort_order: number }[];
+        })[]
+      | null) ?? []
   ).map((row) => ({
     ...row,
     productIds: [...row.home_section_products]

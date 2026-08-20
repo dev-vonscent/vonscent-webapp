@@ -40,9 +40,8 @@ export async function POST(req: Request) {
   if (!isSupabaseConfigured) return NextResponse.json({ coupons: [] });
 
   const session = await createClient();
-  const {
-    data: { user } = { user: null },
-  } = (await session?.auth.getUser()) ?? { data: { user: null } };
+  const { data: { user } = { user: null } } =
+    (await session?.auth.getUser()) ?? { data: { user: null } };
 
   const supabase = createAdminClient() ?? session;
   if (!supabase) return NextResponse.json({ coupons: [] }, { status: 500 });
@@ -64,15 +63,14 @@ export async function POST(req: Request) {
 
   const coupons: AvailableCoupon[] = [];
   for (const c of rows) {
-    const { data: result } = await callRpc<{ valid: boolean; discount: number }>(
-      supabase,
-      "validate_coupon",
-      {
-        p_code: c.code,
-        p_subtotal: parsed.data.subtotal,
-        p_user: user?.id ?? null,
-      },
-    );
+    const { data: result } = await callRpc<{
+      valid: boolean;
+      discount: number;
+    }>(supabase, "validate_coupon", {
+      p_code: c.code,
+      p_subtotal: parsed.data.subtotal,
+      p_user: user?.id ?? null,
+    });
     if (!result?.valid || (result.discount ?? 0) <= 0) continue;
     coupons.push({
       code: c.code,

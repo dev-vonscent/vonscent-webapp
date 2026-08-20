@@ -37,10 +37,14 @@ export async function PATCH(
   const g = await guard();
   if ("demo" in g) return NextResponse.json({ demo: true });
   if ("error" in g)
-    return NextResponse.json({ error: g.error }, { status: g.error === "FORBIDDEN" ? 403 : 500 });
+    return NextResponse.json(
+      { error: g.error },
+      { status: g.error === "FORBIDDEN" ? 403 : 500 },
+    );
 
   const update: Record<string, unknown> = {};
-  if (parsed.data.isActive !== undefined) update.is_active = parsed.data.isActive;
+  if (parsed.data.isActive !== undefined)
+    update.is_active = parsed.data.isActive;
   if (parsed.data.value !== undefined) update.value = parsed.data.value;
   if (parsed.data.minSubtotal !== undefined)
     update.min_subtotal = parsed.data.minSubtotal;
@@ -62,7 +66,10 @@ export async function DELETE(
   const g = await guard();
   if ("demo" in g) return NextResponse.json({ demo: true });
   if ("error" in g)
-    return NextResponse.json({ error: g.error }, { status: g.error === "FORBIDDEN" ? 403 : 500 });
+    return NextResponse.json(
+      { error: g.error },
+      { status: g.error === "FORBIDDEN" ? 403 : 500 },
+    );
   await g.supabase.from("coupons").delete().eq("id", id);
   return NextResponse.json({ ok: true });
 }

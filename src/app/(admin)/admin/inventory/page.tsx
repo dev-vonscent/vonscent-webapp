@@ -29,7 +29,10 @@ async function getInventory(): Promise<InvRow[]> {
         reserved_ml: number;
         low_stock_ml: number;
         is_sold_out: boolean;
-        products: { name: string; brand: string } | { name: string; brand: string }[] | null;
+        products:
+          | { name: string; brand: string }
+          | { name: string; brand: string }[]
+          | null;
       };
       const rows = (data as Row[] | null) ?? [];
       return rows.map((r) => {
@@ -63,7 +66,7 @@ export default async function AdminInventoryPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-serif text-2xl font-semibold">Үлдэгдэл</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-sm">
           Эх савны ml хяналт (on_hand − reserved = available).
         </p>
       </div>
@@ -71,7 +74,7 @@ export default async function AdminInventoryPage() {
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
+            <thead className="bg-muted/50 text-muted-foreground text-left text-xs">
               <tr>
                 <th className="px-4 py-3 font-medium">Бараа</th>
                 <th className="px-4 py-3 font-medium">On hand</th>
@@ -85,10 +88,10 @@ export default async function AdminInventoryPage() {
               {rows.map((r) => {
                 const available = r.onHand - r.reserved;
                 return (
-                  <tr key={r.productId} className="border-t border-border">
+                  <tr key={r.productId} className="border-border border-t">
                     <td className="px-4 py-3 font-medium">{r.label}</td>
                     <td className="px-4 py-3">{r.onHand}ml</td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    <td className="text-muted-foreground px-4 py-3">
                       {r.reserved}ml
                     </td>
                     <td className="px-4 py-3 font-medium">{available}ml</td>

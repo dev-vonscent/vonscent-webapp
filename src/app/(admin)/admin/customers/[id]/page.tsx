@@ -25,7 +25,7 @@ export default async function AdminCustomerDetail({
     <div className="space-y-6">
       <Link
         href="/admin/customers"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
       >
         <ArrowLeft className="size-4" /> Хэрэглэгчид
       </Link>
@@ -61,14 +61,17 @@ export default async function AdminCustomerDetail({
             <CardContent className="p-5">
               <h2 className="mb-3 font-medium">Захиалгын түүх</h2>
               {orders.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Захиалга алга.</p>
+                <p className="text-muted-foreground text-sm">Захиалга алга.</p>
               ) : (
-                <ul className="divide-y divide-border text-sm">
+                <ul className="divide-border divide-y text-sm">
                   {orders.map((o) => (
-                    <li key={o.id} className="flex items-center justify-between py-2">
+                    <li
+                      key={o.id}
+                      className="flex items-center justify-between py-2"
+                    >
                       <Link
                         href={`/admin/orders/${o.id}`}
-                        className="font-mono hover:text-primary"
+                        className="hover:text-primary font-mono"
                       >
                         {o.order_no}
                       </Link>
@@ -78,7 +81,9 @@ export default async function AdminCustomerDetail({
                       <Badge variant="secondary">
                         {ORDER_STATUS_LABEL[o.status]}
                       </Badge>
-                      <span className="font-medium">{formatPrice(o.total)}</span>
+                      <span className="font-medium">
+                        {formatPrice(o.total)}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -90,14 +95,21 @@ export default async function AdminCustomerDetail({
             <Card>
               <CardContent className="p-5">
                 <h2 className="mb-3 font-medium">V point гүйлгээ</h2>
-                <ul className="divide-y divide-border text-sm">
+                <ul className="divide-border divide-y text-sm">
                   {ledger.map((l) => (
-                    <li key={l.id} className="flex items-center justify-between py-2">
+                    <li
+                      key={l.id}
+                      className="flex items-center justify-between py-2"
+                    >
                       <span className="text-muted-foreground">
                         {l.reason === "earn" ? "Хуримтлал" : "Зарцуулалт"} ·{" "}
                         {formatDate(l.created_at)}
                       </span>
-                      <span className={l.delta >= 0 ? "text-success" : "text-destructive"}>
+                      <span
+                        className={
+                          l.delta >= 0 ? "text-success" : "text-destructive"
+                        }
+                      >
                         {l.delta >= 0 ? "+" : ""}
                         {l.delta}
                       </span>
@@ -129,7 +141,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="font-serif text-xl font-semibold">{value}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-muted-foreground text-xs">{label}</p>
     </div>
   );
 }

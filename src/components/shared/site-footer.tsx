@@ -33,33 +33,33 @@ const COLUMNS = [
 
 export function SiteFooter() {
   return (
-    <footer className="mt-10 border-t border-border bg-surface-deep sm:mt-20">
+    <footer className="border-border bg-surface-deep mt-10 border-t sm:mt-20">
       <div className="mx-auto max-w-[88rem] px-4 py-10 sm:py-16">
         <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
           <div className="space-y-4">
             <Logo className="text-2xl" />
-            <p className="max-w-xs text-sm text-muted-foreground">
+            <p className="text-muted-foreground max-w-xs text-sm">
               {SITE.description}
             </p>
             <div className="flex gap-2 pt-1">
               <Link
                 href="#"
                 aria-label="Instagram"
-                className="rounded-full border border-border p-2.5 text-muted-foreground transition-colors hover:border-gold-strong/50 hover:text-gold"
+                className="border-border text-muted-foreground hover:border-gold-strong/50 hover:text-gold rounded-full border p-2.5 transition-colors"
               >
                 <Instagram className="size-5" />
               </Link>
               <Link
                 href="#"
                 aria-label="Facebook"
-                className="rounded-full border border-border p-2.5 text-muted-foreground transition-colors hover:border-gold-strong/50 hover:text-gold"
+                className="border-border text-muted-foreground hover:border-gold-strong/50 hover:text-gold rounded-full border p-2.5 transition-colors"
               >
                 <Facebook className="size-5" />
               </Link>
               <Link
                 href="/contact"
                 aria-label="Имэйл"
-                className="rounded-full border border-border p-2.5 text-muted-foreground transition-colors hover:border-gold-strong/50 hover:text-gold"
+                className="border-border text-muted-foreground hover:border-gold-strong/50 hover:text-gold rounded-full border p-2.5 transition-colors"
               >
                 <Mail className="size-5" />
               </Link>
@@ -68,7 +68,7 @@ export function SiteFooter() {
 
           {COLUMNS.map((col) => (
             <div key={col.title}>
-              <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-gold">
+              <h4 className="text-gold mb-4 text-xs font-semibold tracking-[0.18em] uppercase">
                 {col.title}
               </h4>
               <ul className="space-y-2.5">
@@ -76,7 +76,7 @@ export function SiteFooter() {
                   <li key={l.href}>
                     <Link
                       href={l.href}
-                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-muted-foreground hover:text-foreground text-sm transition-colors"
                     >
                       {l.label}
                     </Link>
@@ -90,14 +90,14 @@ export function SiteFooter() {
         <div className="mt-10 sm:mt-14">
           <div className="gold-rule" />
           <div className="mt-6 sm:mt-8">
-            <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-gold">
+            <h4 className="text-gold mb-3 text-xs font-semibold tracking-[0.18em] uppercase">
               Мэдээлэл авах
             </h4>
             <NewsletterForm />
           </div>
         </div>
 
-        <p className="mt-8 text-xs text-muted-foreground/70 sm:mt-12">
+        <p className="text-muted-foreground/70 mt-8 text-xs sm:mt-12">
           © {new Date().getFullYear()} {SITE.name}. Бүх эрх хуулиар
           хамгаалагдсан.
         </p>

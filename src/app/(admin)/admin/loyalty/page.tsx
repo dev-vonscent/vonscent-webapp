@@ -69,7 +69,7 @@ export default function AdminLoyaltyPage() {
                   value={earnPer}
                   onChange={(e) => setEarnPer(Number(e.target.value) || 1)}
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Жишээ: 1000 → 1000₮ тутамд оноо хуримтлуулна.
                 </p>
               </div>
@@ -96,18 +96,23 @@ export default function AdminLoyaltyPage() {
                   value={lockHours}
                   onChange={(e) => setLockHours(Number(e.target.value) || 0)}
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Шинэ оноо энэ хугацаанд түгжээтэй байна — захиалга
                   «Хүргэгдсэн» болвол хугацаанаас өмнө ч нээгдэнэ. 0 бол шууд
                   зарцуулж болно.
                 </p>
               </div>
             </div>
-            <Button type="submit">{saved ? "Хадгалагдлаа ✓" : "Хадгалах"}</Button>
+            <Button type="submit">
+              {saved ? "Хадгалагдлаа ✓" : "Хадгалах"}
+            </Button>
           </form>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Хэрэглэгчийн оноо удирдах нь{" "}
-            <Link href="/admin/customers" className="text-primary hover:underline">
+            <Link
+              href="/admin/customers"
+              className="text-primary hover:underline"
+            >
               Хэрэглэгч
             </Link>{" "}
             хэсэгт байна.

@@ -82,7 +82,9 @@ export function ProductEditForm({
     setForm((f) => ({ ...f, [k]: v }));
   }
   function toggleTag(slug: string) {
-    setTags((t) => (t.includes(slug) ? t.filter((x) => x !== slug) : [...t, slug]));
+    setTags((t) =>
+      t.includes(slug) ? t.filter((x) => x !== slug) : [...t, slug],
+    );
   }
 
   async function save(e: React.FormEvent) {
@@ -151,33 +153,59 @@ export function ProductEditForm({
           <h2 className="font-serif text-lg font-semibold">Үндсэн мэдээлэл</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Нэр">
-              <Input value={form.name} onChange={(e) => set("name", e.target.value)} required />
+              <Input
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                required
+              />
             </Field>
             <Field label="Брэнд">
-              <Input value={form.brand} onChange={(e) => set("brand", e.target.value)} required />
+              <Input
+                value={form.brand}
+                onChange={(e) => set("brand", e.target.value)}
+                required
+              />
             </Field>
             <Field label="Хүйс">
-              <Select value={form.gender} onValueChange={(v) => set("gender", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={form.gender}
+                onValueChange={(v) => set("gender", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {GENDERS.map((g) => (
-                    <SelectItem key={g} value={g}>{GENDER_LABEL[g]}</SelectItem>
+                    <SelectItem key={g} value={g}>
+                      {GENDER_LABEL[g]}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
             <Field label="Төрөл">
-              <Select value={form.concentration} onValueChange={(v) => set("concentration", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={form.concentration}
+                onValueChange={(v) => set("concentration", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {CONCENTRATIONS.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
             <Field label="Гаргасан он">
-              <Input type="number" value={form.releaseYear} onChange={(e) => set("releaseYear", e.target.value)} />
+              <Input
+                type="number"
+                value={form.releaseYear}
+                onChange={(e) => set("releaseYear", e.target.value)}
+              />
             </Field>
           </div>
 
@@ -195,7 +223,10 @@ export function ProductEditForm({
             onToggle={toggleSeason}
           />
           <Field label="Гарал үүсэл (улс)">
-            <Input value={form.originCountry} onChange={(e) => set("originCountry", e.target.value)} />
+            <Input
+              value={form.originCountry}
+              onChange={(e) => set("originCountry", e.target.value)}
+            />
           </Field>
         </CardContent>
       </Card>
@@ -223,13 +254,22 @@ export function ProductEditForm({
         <CardContent className="space-y-4 p-6">
           <h2 className="font-serif text-lg font-semibold">Үнэрийн нот</h2>
           <Field label="Дээд нот (таслалаар)">
-            <Input value={form.notesTop} onChange={(e) => set("notesTop", e.target.value)} />
+            <Input
+              value={form.notesTop}
+              onChange={(e) => set("notesTop", e.target.value)}
+            />
           </Field>
           <Field label="Зүрх нот">
-            <Input value={form.notesHeart} onChange={(e) => set("notesHeart", e.target.value)} />
+            <Input
+              value={form.notesHeart}
+              onChange={(e) => set("notesHeart", e.target.value)}
+            />
           </Field>
           <Field label="Суурь нот">
-            <Input value={form.notesBase} onChange={(e) => set("notesBase", e.target.value)} />
+            <Input
+              value={form.notesBase}
+              onChange={(e) => set("notesBase", e.target.value)}
+            />
           </Field>
         </CardContent>
       </Card>
@@ -245,22 +285,33 @@ export function ProductEditForm({
             </div>
           )}
 
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Эх савны үнэ/багтаамж нь борлуулалт, ашгийн тайланд болон үлдэгдэл
             тооцоонд ашиглагдана — зарах үнэд нөлөөлөхгүй.
           </p>
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Эх савны үнэ (₮)">
-              <Input type="number" value={form.bottlePrice} onChange={(e) => set("bottlePrice", e.target.value)} />
+              <Input
+                type="number"
+                value={form.bottlePrice}
+                onChange={(e) => set("bottlePrice", e.target.value)}
+              />
             </Field>
             <Field label="Багтаамж (ml)">
-              <Input type="number" value={form.bottleMl} onChange={(e) => set("bottleMl", e.target.value)} />
+              <Input
+                type="number"
+                value={form.bottleMl}
+                onChange={(e) => set("bottleMl", e.target.value)}
+              />
             </Field>
             <Field label="Доод хязгаар (ml)">
-              <Input type="number" value={form.lowStockMl} onChange={(e) => set("lowStockMl", e.target.value)} />
+              <Input
+                type="number"
+                value={form.lowStockMl}
+                onChange={(e) => set("lowStockMl", e.target.value)}
+              />
             </Field>
           </div>
-
         </CardContent>
       </Card>
 
@@ -269,27 +320,43 @@ export function ProductEditForm({
           <h2 className="font-serif text-lg font-semibold">Таг ба төлөв</h2>
           <div className="flex flex-wrap gap-4">
             {TAGS.map((t) => (
-              <label key={t.slug} className="flex cursor-pointer items-center gap-2 text-sm">
-                <Checkbox checked={tags.includes(t.slug)} onCheckedChange={() => toggleTag(t.slug)} />
+              <label
+                key={t.slug}
+                className="flex cursor-pointer items-center gap-2 text-sm"
+              >
+                <Checkbox
+                  checked={tags.includes(t.slug)}
+                  onCheckedChange={() => toggleTag(t.slug)}
+                />
                 {t.label}
               </label>
             ))}
           </div>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <Checkbox checked={isActive} onCheckedChange={(v) => setIsActive(Boolean(v))} />
+            <Checkbox
+              checked={isActive}
+              onCheckedChange={(v) => setIsActive(Boolean(v))}
+            />
             Идэвхтэй (нийтлэх)
           </label>
         </CardContent>
       </Card>
 
-      {msg && <p className="rounded-md bg-secondary px-4 py-3 text-sm">{msg}</p>}
+      {msg && (
+        <p className="bg-secondary rounded-md px-4 py-3 text-sm">{msg}</p>
+      )}
 
       <div className="flex items-center justify-between">
         <div className="flex gap-3">
           <Button type="submit" size="lg" disabled={busy}>
             {busy ? "Хадгалж байна…" : "Хадгалах"}
           </Button>
-          <Button type="button" variant="outline" size="lg" onClick={() => router.push("/admin/products")}>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            onClick={() => router.push("/admin/products")}
+          >
             Болих
           </Button>
         </div>
@@ -302,10 +369,19 @@ export function ProductEditForm({
 }
 
 function split(s: string) {
-  return s.split(",").map((x) => x.trim()).filter(Boolean);
+  return s
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-1.5">
       <Label>{label}</Label>

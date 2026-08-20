@@ -62,11 +62,11 @@ export default function OrderSuccessPage() {
     }
   }
 
-  if (!loaded) return <div className="mx-auto max-w-xl px-4 md:px-8 py-24" />;
+  if (!loaded) return <div className="mx-auto max-w-xl px-4 py-24 md:px-8" />;
 
   if (!order) {
     return (
-      <div className="mx-auto max-w-xl px-4 md:px-8 py-24 text-center">
+      <div className="mx-auto max-w-xl px-4 py-24 text-center md:px-8">
         <h1 className="font-serif text-2xl font-semibold">
           Захиалга олдсонгүй
         </h1>
@@ -82,9 +82,9 @@ export default function OrderSuccessPage() {
   const showQpayInvoice = order.paymentMethod === "qpay" && qpay;
 
   return (
-    <div className="mx-auto max-w-xl px-4 md:px-8 py-16">
+    <div className="mx-auto max-w-xl px-4 py-16 md:px-8">
       <div className="flex flex-col items-center gap-3 text-center">
-        <CheckCircle2 className="size-14 text-success" />
+        <CheckCircle2 className="text-success size-14" />
         <h1 className="font-serif text-3xl font-semibold">
           {paid ? "Төлбөр амжилттай" : "Захиалга баталгаажлаа"}
         </h1>
@@ -98,13 +98,13 @@ export default function OrderSuccessPage() {
       <Card className="mt-8">
         <CardContent className="space-y-4 p-6">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">
+            <span className="text-muted-foreground text-sm">
               Захиалгын дугаар
             </span>
             <span className="font-mono font-semibold">{order.orderNo}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Нийт дүн</span>
+            <span className="text-muted-foreground text-sm">Нийт дүн</span>
             <span className="font-serif text-lg font-semibold">
               {formatPrice(order.total)}
             </span>
@@ -115,11 +115,11 @@ export default function OrderSuccessPage() {
           {order.paymentMethod === "bank_transfer" ? (
             <div className="space-y-2">
               <p className="text-sm font-medium">Төлбөрийн заавар</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Доорх дансанд шилжүүлэг хийж, гүйлгээний утга дээр захиалгын
                 дугаараа бичнэ үү.
               </p>
-              <div className="rounded-md bg-secondary p-4 text-sm">
+              <div className="bg-secondary rounded-md p-4 text-sm">
                 <Row label="Банк" value={BANK.bank} />
                 <Row label="Данс" value={BANK.account} copy />
                 <Row label="Хүлээн авагч" value={BANK.holder} />
@@ -132,12 +132,12 @@ export default function OrderSuccessPage() {
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-medium">QPay-ээр төлөх</p>
                   {showQpayMock && (
-                    <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    <span className="bg-secondary text-muted-foreground rounded-full px-2 py-0.5 text-xs font-medium">
                       Mock
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   {showQpayMock
                     ? "Хөгжүүлэлтийн орчин — доорх товчоор QPay төлбөрийг симуляц хийнэ."
                     : "QPay QR кодоор төлнө үү. Төлбөр баталгаажмагц захиалга боловсруулагдана."}
@@ -152,19 +152,19 @@ export default function OrderSuccessPage() {
                     alt="QPay QR код"
                     width={200}
                     height={200}
-                    className="rounded-md border border-border"
+                    className="border-border rounded-md border"
                   />
                 </div>
               )}
 
-              <div className="rounded-md bg-secondary p-3 text-xs">
+              <div className="bg-secondary rounded-md p-3 text-xs">
                 <Row label="Invoice ID" value={qpay.invoiceId} copy />
               </div>
 
               {showQpayMock && (
                 <div className="space-y-2">
                   {confirmError && (
-                    <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    <p className="bg-destructive/10 text-destructive rounded-md px-3 py-2 text-sm">
                       {confirmError}
                     </p>
                   )}
@@ -190,7 +190,7 @@ export default function OrderSuccessPage() {
           ) : (
             <div className="space-y-2">
               <p className="text-sm font-medium">QPay-ээр төлөх</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 QPay QR код таны бүртгэлтэй имэйл болон захиалгын хэсэгт
                 илгээгдэнэ. Төлбөр баталгаажмагц захиалга боловсруулагдана.
               </p>

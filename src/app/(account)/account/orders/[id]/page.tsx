@@ -9,12 +9,11 @@ import { getProductsByIds } from "@/features/products/api";
 import { formatPrice, formatDate } from "@/lib/format";
 import { isOrderEditable, formatDeadline } from "@/lib/time";
 import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/constants";
-import { OrderActions, type ReorderItem } from "@/features/account/components/order-actions";
-import type {
-  OrderRow,
-  OrderItemRow,
-  OrderStatusHistoryRow,
-} from "@/db/types";
+import {
+  OrderActions,
+  type ReorderItem,
+} from "@/features/account/components/order-actions";
+import type { OrderRow, OrderItemRow, OrderStatusHistoryRow } from "@/db/types";
 
 /** Distinct chip colour per status (overrides the Badge variant via twMerge). */
 const STATUS_STYLE: Record<OrderStatus, string> = {
@@ -54,7 +53,9 @@ export default async function OrderDetailPage({
   const history = (historyData as OrderStatusHistoryRow[] | null) ?? [];
 
   // Resolve slugs/images for the reorder action.
-  const productIds = [...new Set(items.map((i) => i.product_id).filter(Boolean))] as string[];
+  const productIds = [
+    ...new Set(items.map((i) => i.product_id).filter(Boolean)),
+  ] as string[];
   const products = await getProductsByIds(productIds);
   const byId = new Map(products.map((p) => [p.id, p]));
 
@@ -78,8 +79,7 @@ export default async function OrderDetailPage({
 
   // Cancellable only while the status allows it AND we're still before 10:00
   // on the dispatch day (requirement_fb.md §9).
-  const openStatus =
-    order.status === "pending" || order.status === "confirmed";
+  const openStatus = order.status === "pending" || order.status === "confirmed";
   const beforeCutoff = isOrderEditable(order.created_at);
   const cancellable = openStatus && beforeCutoff;
 
@@ -87,15 +87,17 @@ export default async function OrderDetailPage({
     <div className="space-y-6">
       <Link
         href="/account/orders"
-        className="hidden items-center gap-1 text-sm text-muted-foreground hover:text-foreground md:inline-flex"
+        className="text-muted-foreground hover:text-foreground hidden items-center gap-1 text-sm md:inline-flex"
       >
         <ArrowLeft className="size-4" /> Захиалгууд руу буцах
       </Link>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-serif text-2xl font-semibold">{order.order_no}</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="font-serif text-2xl font-semibold">
+            {order.order_no}
+          </h1>
+          <p className="text-muted-foreground text-sm">
             {formatDate(order.created_at)}
           </p>
         </div>
@@ -108,9 +110,12 @@ export default async function OrderDetailPage({
         <div className="space-y-6">
           {/* Items */}
           <Card>
-            <CardContent className="divide-y divide-border p-0">
+            <CardContent className="divide-border divide-y p-0">
               {items.map((i) => (
-                <div key={i.id} className="flex justify-between gap-3 p-4 text-sm">
+                <div
+                  key={i.id}
+                  className="flex justify-between gap-3 p-4 text-sm"
+                >
                   <span>
                     {i.brand} {i.product_name} · {i.ml}ml × {i.qty}
                     {i.is_sample && (
@@ -119,7 +124,9 @@ export default async function OrderDetailPage({
                       </Badge>
                     )}
                   </span>
-                  <span className="font-medium">{formatPrice(i.line_total)}</span>
+                  <span className="font-medium">
+                    {formatPrice(i.line_total)}
+                  </span>
                 </div>
               ))}
             </CardContent>
@@ -133,7 +140,7 @@ export default async function OrderDetailPage({
                 <ol className="space-y-3">
                   {history.map((h) => (
                     <li key={h.id} className="flex gap-3 text-sm">
-                      <span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary" />
+                      <span className="bg-primary mt-1.5 size-2 shrink-0 rounded-full" />
                       <div>
                         <p className="font-medium">
                           {ORDER_STATUS_LABEL[h.status]}
@@ -141,7 +148,7 @@ export default async function OrderDetailPage({
                         {h.note && (
                           <p className="text-muted-foreground">{h.note}</p>
                         )}
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-muted-foreground text-xs">
                           {formatDate(h.created_at)}
                         </p>
                       </div>
@@ -153,10 +160,11 @@ export default async function OrderDetailPage({
           )}
 
           {openStatus && !beforeCutoff && (
-            <p className="rounded-xl bg-secondary px-4 py-3 text-sm text-muted-foreground">
-              Захиалга бэлтгэгдэж эхэлсэн тул ({formatDeadline(order.created_at)}{" "}
-              цагийн хугацаа өнгөрсөн) цуцлах, өөрчлөх боломжгүй. Асуудал гарвал
-              пэйж чат эсвэл утсаар холбогдоно уу.
+            <p className="bg-secondary text-muted-foreground rounded-xl px-4 py-3 text-sm">
+              Захиалга бэлтгэгдэж эхэлсэн тул (
+              {formatDeadline(order.created_at)} цагийн хугацаа өнгөрсөн)
+              цуцлах, өөрчлөх боломжгүй. Асуудал гарвал пэйж чат эсвэл утсаар
+              холбогдоно уу.
             </p>
           )}
 
@@ -176,7 +184,10 @@ export default async function OrderDetailPage({
               <h2 className="font-medium">Дүн</h2>
               <Row label="Дэд дүн" value={formatPrice(order.subtotal)} />
               {order.discount > 0 && (
-                <Row label="Хямдрал" value={`−${formatPrice(order.discount)}`} />
+                <Row
+                  label="Хямдрал"
+                  value={`−${formatPrice(order.discount)}`}
+                />
               )}
               {order.loyalty_used > 0 && (
                 <Row
@@ -190,7 +201,9 @@ export default async function OrderDetailPage({
                 <span>Нийт</span>
                 <span>{formatPrice(order.total)}</span>
               </div>
-              <Badge variant={order.payment_status === "paid" ? "new" : "secondary"}>
+              <Badge
+                variant={order.payment_status === "paid" ? "new" : "secondary"}
+              >
                 {order.payment_status === "paid"
                   ? "Төлсөн"
                   : order.payment_status === "refunded"
@@ -211,7 +224,9 @@ export default async function OrderDetailPage({
                 {order.ship_detail}
               </p>
               {order.note && (
-                <p className="mt-2 text-muted-foreground">Тэмдэглэл: {order.note}</p>
+                <p className="text-muted-foreground mt-2">
+                  Тэмдэглэл: {order.note}
+                </p>
               )}
             </CardContent>
           </Card>

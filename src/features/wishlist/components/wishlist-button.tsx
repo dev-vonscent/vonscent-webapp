@@ -26,13 +26,11 @@ export function WishlistButton({
       aria-pressed={active}
       onClick={() => toggle(productId)}
       className={cn(
-        "flex size-8 items-center justify-center rounded-full bg-background/80 text-foreground backdrop-blur transition-colors hover:bg-background",
+        "bg-background/80 text-foreground hover:bg-background flex size-8 items-center justify-center rounded-full backdrop-blur transition-colors",
         className,
       )}
     >
-      <Heart
-        className={cn("size-4", active && "fill-red-500 text-red-500")}
-      />
+      <Heart className={cn("size-4", active && "fill-red-500 text-red-500")} />
     </button>
   );
 }

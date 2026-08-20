@@ -23,15 +23,15 @@ pnpm dev                     # http://localhost:3000
 
 ## Скриптүүд
 
-| Команд | Үйлдэл |
-|---|---|
-| `pnpm dev` | Хөгжүүлэлтийн сервер |
-| `pnpm build` | Production build |
-| `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm lint` | ESLint |
-| `pnpm test` | Vitest (pricing цөмийн unit test) |
-| `pnpm db:types` | Supabase-аас TS төрөл үүсгэх |
-| `pnpm db:seed` | Туршилтын бараа DB-д суулгах |
+| Команд           | Үйлдэл                            |
+| ---------------- | --------------------------------- |
+| `pnpm dev`       | Хөгжүүлэлтийн сервер              |
+| `pnpm build`     | Production build                  |
+| `pnpm typecheck` | `tsc --noEmit`                    |
+| `pnpm lint`      | ESLint                            |
+| `pnpm test`      | Vitest (pricing цөмийн unit test) |
+| `pnpm db:types`  | Supabase-аас TS төрөл үүсгэх      |
+| `pnpm db:seed`   | Туршилтын бараа DB-д суулгах      |
 
 ## Database
 

@@ -26,8 +26,7 @@ export const BLOG_POSTS: BlogPost[] = [
   {
     slug: "unerii-not-tailbar",
     title: "Үнэрийн нот: дээд, зүрх, суурь гэж юу вэ?",
-    excerpt:
-      "Үнэр цаг хугацааны явцад хэрхэн өөрчлөгддөг, нот бүрийн үүрэг.",
+    excerpt: "Үнэр цаг хугацааны явцад хэрхэн өөрчлөгддөг, нот бүрийн үүрэг.",
     category: "Боловсрол",
     date: "2025-02-02",
     cover: "https://picsum.photos/seed/blog-notes/1200/630",

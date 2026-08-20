@@ -31,7 +31,8 @@ export async function POST(req: Request) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  if (!user)
+    return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   // Owner-scoped RLS lets the user upsert their own review.
   const { error } = await supabase.from("reviews").upsert(
@@ -68,14 +69,16 @@ export async function DELETE(req: Request) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  if (!user)
+    return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const { error } = await supabase
     .from("reviews")
     .delete()
     .eq("id", id)
     .eq("user_id", user.id);
-  if (error) return NextResponse.json({ error: "DELETE_FAILED" }, { status: 500 });
+  if (error)
+    return NextResponse.json({ error: "DELETE_FAILED" }, { status: 500 });
 
   if (productId) {
     const admin = createAdminClient() ?? supabase;
