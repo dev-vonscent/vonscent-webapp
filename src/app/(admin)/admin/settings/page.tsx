@@ -47,6 +47,15 @@ export default function AdminSettingsPage() {
     validDays: 30,
     maxUsesPerUser: 1,
   });
+  const [collection, setCollection] = React.useState({
+    customEnabled: true,
+    minItems: 4,
+    maxItems: null as number | null,
+    customDiscountPct: 5,
+    baseDefaultDiscountPct: 5,
+    giftEnabled: true,
+    giftMl: 1,
+  });
 
   React.useEffect(() => {
     const supabase = createClient();
@@ -82,6 +91,8 @@ export default function AdminSettingsPage() {
             setAutoGrant((g) => ({ ...g, ...(v.autoGrant as object) }));
           if (row.key === "payment" && v)
             setInvoiceCode(String(v.invoiceCode ?? ""));
+          if (row.key === "collection" && v)
+            setCollection((c) => ({ ...c, ...(v as object) }));
         }
       });
   }, []);
@@ -120,6 +131,111 @@ export default function AdminSettingsPage() {
               onChange={(e) => setStore({ ...store, address: e.target.value })}
             />
           </Field>
+        </div>
+      </Saver>
+
+      {/* Collections (Багц) */}
+      <Saver
+        title="Багц (Collection)"
+        onSave={() =>
+          saveSetting("collection", {
+            ...collection,
+            giftMlOptions: [1, 2],
+            roundTo: 100,
+          })
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-4 text-sm">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={collection.customEnabled}
+                onChange={(e) =>
+                  setCollection({
+                    ...collection,
+                    customEnabled: e.target.checked,
+                  })
+                }
+                className="size-4"
+              />
+              Custom багц идэвхтэй
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={collection.giftEnabled}
+                onChange={(e) =>
+                  setCollection({ ...collection, giftEnabled: e.target.checked })
+                }
+                className="size-4"
+              />
+              Нэмэлт бэлэг идэвхтэй
+            </label>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Доод үнэртэн (min)">
+              <Input
+                type="number"
+                value={collection.minItems}
+                onChange={(e) =>
+                  setCollection({
+                    ...collection,
+                    minItems: Number(e.target.value),
+                  })
+                }
+              />
+            </Field>
+            <Field label="Дээд үнэртэн (max, хоосон = хязгааргүй)">
+              <Input
+                type="number"
+                value={collection.maxItems ?? ""}
+                onChange={(e) =>
+                  setCollection({
+                    ...collection,
+                    maxItems:
+                      e.target.value === "" ? null : Number(e.target.value),
+                  })
+                }
+              />
+            </Field>
+            <Field label="Custom хямдрал %">
+              <Input
+                type="number"
+                value={collection.customDiscountPct}
+                onChange={(e) =>
+                  setCollection({
+                    ...collection,
+                    customDiscountPct: Number(e.target.value),
+                  })
+                }
+              />
+            </Field>
+            <Field label="Base default хямдрал %">
+              <Input
+                type="number"
+                value={collection.baseDefaultDiscountPct}
+                onChange={(e) =>
+                  setCollection({
+                    ...collection,
+                    baseDefaultDiscountPct: Number(e.target.value),
+                  })
+                }
+              />
+            </Field>
+            <Field label="Бэлгийн ml (default)">
+              <Input
+                type="number"
+                value={collection.giftMl}
+                onChange={(e) =>
+                  setCollection({
+                    ...collection,
+                    giftMl: Number(e.target.value),
+                  })
+                }
+              />
+            </Field>
+          </div>
         </div>
       </Saver>
 

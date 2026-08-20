@@ -3,7 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { Gift, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent,
@@ -32,6 +33,9 @@ export function CartSheet({
   const items = useCart((s) => s.items);
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
+  const collections = useCart((s) => s.collections);
+  const setCollectionQty = useCart((s) => s.setCollectionQty);
+  const removeCollection = useCart((s) => s.removeCollection);
   const count = useCart(selectCount);
   const subtotal = useCart(selectSubtotal);
 
@@ -64,7 +68,7 @@ export function CartSheet({
           </SheetTitle>
         </SheetHeader>
 
-        {!mounted || items.length === 0 ? (
+        {!mounted || (items.length === 0 && collections.length === 0) ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <ShoppingCart className="text-muted-foreground size-10" />
             <p className="text-muted-foreground text-sm">Сагс хоосон байна.</p>
@@ -77,6 +81,95 @@ export function CartSheet({
         ) : (
           <>
             <div className="-mx-2 flex-1 space-y-4 overflow-y-auto px-2 py-4">
+              {/* Bundles — rendered as one grouped card each */}
+              {collections.map((c) => (
+                <div
+                  key={c.key}
+                  className="border-border rounded-lg border p-3"
+                >
+                  <div className="flex gap-3">
+                    <div className="border-border bg-muted relative size-16 shrink-0 overflow-hidden rounded-md border">
+                      {c.image && (
+                        <Image
+                          src={c.image}
+                          alt={c.name}
+                          fill
+                          sizes="64px"
+                          className="object-cover"
+                        />
+                      )}
+                    </div>
+                    <div className="flex flex-1 flex-col">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm leading-tight font-medium">
+                            {c.name}
+                          </p>
+                          <div className="mt-0.5 flex items-center gap-1.5">
+                            <span className="text-muted-foreground text-xs">
+                              {c.ml}ml багц
+                            </span>
+                            {c.discountPct > 0 && (
+                              <Badge
+                                variant="sale"
+                                className="h-4 px-1 text-[10px]"
+                              >
+                                −{c.discountPct}%
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removeCollection(c.key)}
+                          className="text-muted-foreground hover:text-destructive"
+                          aria-label="Устгах"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Members + gift */}
+                  <ul className="text-muted-foreground mt-2 space-y-0.5 text-xs">
+                    {c.members.map((m) => (
+                      <li key={m.variantId} className="truncate">
+                        • {m.brand} — {m.name}
+                      </li>
+                    ))}
+                    {c.gift && (
+                      <li className="text-foreground/80 flex items-center gap-1 truncate">
+                        <Gift className="text-gold-strong size-3 shrink-0" />
+                        Бэлэг: {c.gift.brand} — {c.gift.name} ({c.gift.ml}ml)
+                      </li>
+                    )}
+                  </ul>
+
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="border-border flex items-center rounded-md border">
+                      <button
+                        className="hover:text-primary px-2 py-1"
+                        onClick={() => setCollectionQty(c.key, c.qty - 1)}
+                        aria-label="Хасах"
+                      >
+                        <Minus className="size-3" />
+                      </button>
+                      <span className="w-7 text-center text-sm">{c.qty}</span>
+                      <button
+                        className="hover:text-primary px-2 py-1"
+                        onClick={() => setCollectionQty(c.key, c.qty + 1)}
+                        aria-label="Нэмэх"
+                      >
+                        <Plus className="size-3" />
+                      </button>
+                    </div>
+                    <span className="text-sm font-medium">
+                      {formatPrice(c.unitPrice * c.qty)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+
               {items.map((item) => (
                 <div key={item.key} className="flex gap-3">
                   <div className="border-border bg-muted relative size-20 shrink-0 overflow-hidden rounded-md border">

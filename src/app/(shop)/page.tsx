@@ -30,6 +30,8 @@ import {
   getHomeSections,
 } from "@/features/content/api";
 import { getScentFamilies } from "@/features/taxonomy/api";
+import { getFeaturedCollections } from "@/features/collections/api";
+import { CollectionCard } from "@/features/collections/components/collection-card";
 import { HeroCarousel } from "@/features/marketing/components/hero-carousel";
 import { PromoPopup } from "@/features/marketing/components/promo-popup";
 import { GENDERS, GENDER_LABEL } from "@/lib/constants";
@@ -60,6 +62,7 @@ export default async function HomePage() {
     banners,
     families,
     sections,
+    featuredCollections,
   ] = await Promise.all([
     getNewArrivals(8),
     getBestSellers(8),
@@ -71,6 +74,7 @@ export default async function HomePage() {
     getHeroBanners(),
     getScentFamilies(),
     getHomeSections(),
+    getFeaturedCollections(3),
   ]);
 
   return (
@@ -130,6 +134,44 @@ export default async function HomePage() {
         <section>
           <SectionHeading title="Эрэлттэй" href="/catalog?tags=hot" />
           <ProductCarousel products={bestSellers} />
+        </section>
+
+        {/* Featured bundles */}
+        {featuredCollections.length > 0 && (
+          <section>
+            <SectionHeading
+              title="Онцлох багц"
+              subtitle="Сонгож бэлдсэн үнэртний багцууд"
+              href="/collections"
+            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-3">
+              {featuredCollections.map((c) => (
+                <CollectionCard key={c.id} collection={c} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Build-your-own bundle promo */}
+        <section className="border-border relative overflow-hidden rounded-2xl border bg-gradient-to-br from-secondary to-card p-8 md:p-12">
+          <Sparkles className="text-gold-strong/20 pointer-events-none absolute -top-6 -right-6 size-40" />
+          <div className="relative max-w-xl space-y-4">
+            <p className="text-muted-foreground text-sm font-medium tracking-[0.2em] uppercase">
+              Өөрийн багц
+            </p>
+            <h2 className="font-serif text-3xl font-semibold">
+              Дуртай үнэртнүүдээ багцал
+            </h2>
+            <p className="text-muted-foreground">
+              4 ба түүнээс дээш үнэртэн сонгоод хямдралтай үнээр аваарай — дээр нь
+              өөрийн сонгосон нэмэлт бэлэгтэй.
+            </p>
+            <Button asChild size="lg">
+              <Link href="/collections/build">
+                Багц угсарч эхлэх <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </div>
         </section>
 
         {/* Curated sections — «Онцлох», «Багц уснууд» and anything else the

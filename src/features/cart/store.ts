@@ -29,22 +29,76 @@ export interface AppliedCoupon {
   discount: number;
 }
 
+/** One member line inside a bundle sitting in the cart. */
+export interface CartCollectionMember {
+  productId: string;
+  variantId: string;
+  slug: string;
+  name: string;
+  brand: string;
+  image: string | null;
+  /** Member price at the bundle ml (pre-discount snapshot). */
+  price: number;
+}
+
+/** The free gift chosen for a bundle. */
+export interface CartCollectionGift {
+  productId: string;
+  name: string;
+  brand: string;
+  image: string | null;
+  ml: number;
+}
+
+/** A base or custom bundle in the cart — rendered and edited as one group. */
+export interface CartCollection {
+  /** Stable key: bundle identity + ml + gift, so identical configs merge. */
+  key: string;
+  collectionId: string | null;
+  type: "base" | "custom";
+  slug: string;
+  name: string;
+  image: string | null;
+  discountPct: number;
+  ml: number;
+  members: CartCollectionMember[];
+  gift: CartCollectionGift | null;
+  /** Discounted bundle price (excludes the free gift). */
+  unitPrice: number;
+  qty: number;
+}
+
 interface CartState {
   items: CartItem[];
+  collections: CartCollection[];
   coupon: AppliedCoupon | null;
   add: (item: Omit<CartItem, "key" | "qty">, qty?: number) => void;
   remove: (key: string) => void;
   setQty: (key: string, qty: number) => void;
   /** Swap a line to a different ml of the same product (todo.md B5). */
   setVariant: (key: string, variant: CartVariant) => void;
+  addCollection: (
+    collection: Omit<CartCollection, "key" | "qty">,
+    qty?: number,
+  ) => void;
+  removeCollection: (key: string) => void;
+  setCollectionQty: (key: string, qty: number) => void;
   setCoupon: (coupon: AppliedCoupon | null) => void;
   clear: () => void;
+}
+
+/** Identity of a bundle config: same collection + ml + gift folds together. */
+function collectionKey(c: Omit<CartCollection, "key" | "qty">): string {
+  return [c.collectionId ?? "custom", c.ml, c.gift?.productId ?? "nogift"].join(
+    ":",
+  );
 }
 
 export const useCart = create<CartState>()(
   persist(
     (set) => ({
       items: [],
+      collections: [],
       coupon: null,
       add: (item, qty = 1) =>
         set((state) => {
@@ -92,8 +146,33 @@ export const useCart = create<CartState>()(
               .filter((_, n) => n !== dupe),
           };
         }),
+      addCollection: (collection, qty = 1) =>
+        set((state) => {
+          const key = collectionKey(collection);
+          const existing = state.collections.find((c) => c.key === key);
+          if (existing) {
+            return {
+              collections: state.collections.map((c) =>
+                c.key === key ? { ...c, qty: c.qty + qty } : c,
+              ),
+            };
+          }
+          return {
+            collections: [...state.collections, { ...collection, key, qty }],
+          };
+        }),
+      removeCollection: (key) =>
+        set((state) => ({
+          collections: state.collections.filter((c) => c.key !== key),
+        })),
+      setCollectionQty: (key, qty) =>
+        set((state) => ({
+          collections: state.collections
+            .map((c) => (c.key === key ? { ...c, qty: Math.max(1, qty) } : c))
+            .filter((c) => c.qty > 0),
+        })),
       setCoupon: (coupon) => set({ coupon }),
-      clear: () => set({ items: [], coupon: null }),
+      clear: () => set({ items: [], collections: [], coupon: null }),
     }),
     { name: "vonscent-cart" },
   ),
@@ -101,6 +180,8 @@ export const useCart = create<CartState>()(
 
 /** Selectors */
 export const selectCount = (s: CartState) =>
-  s.items.reduce((n, i) => n + i.qty, 0);
+  s.items.reduce((n, i) => n + i.qty, 0) +
+  s.collections.reduce((n, c) => n + c.qty, 0);
 export const selectSubtotal = (s: CartState) =>
-  s.items.reduce((sum, i) => sum + i.unitPrice * i.qty, 0);
+  s.items.reduce((sum, i) => sum + i.unitPrice * i.qty, 0) +
+  s.collections.reduce((sum, c) => sum + c.unitPrice * c.qty, 0);
