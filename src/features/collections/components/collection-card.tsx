@@ -88,7 +88,7 @@ export function CollectionCard({ collection }: { collection: Collection }) {
           </span>
           <Link
             href={`/collections/${collection.slug}`}
-            className="hover:text-primary block truncate font-serif text-base leading-tight font-medium transition-colors"
+            className="hover:text-gold-strong block truncate font-serif text-base leading-tight font-medium transition-colors"
           >
             {collection.name}
           </Link>

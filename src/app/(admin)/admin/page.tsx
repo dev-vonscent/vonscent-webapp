@@ -58,7 +58,7 @@ export default async function AdminDashboard() {
             <h2 className="font-medium">Захиалга төлөвөөр</h2>
             <Link
               href="/admin/orders"
-              className="text-primary flex items-center gap-1 text-sm hover:underline"
+              className="text-gold-strong flex items-center gap-1 text-sm hover:underline"
             >
               Бүгд <ArrowRight className="size-3.5" />
             </Link>
@@ -120,7 +120,7 @@ export default async function AdminDashboard() {
                   >
                     <Link
                       href={`/admin/orders/${o.id}`}
-                      className="hover:text-primary font-mono"
+                      className="hover:text-gold-strong font-mono"
                     >
                       {o.order_no}
                     </Link>
@@ -142,7 +142,7 @@ export default async function AdminDashboard() {
               <h2 className="font-medium">Үлдэгдэл багассан</h2>
               <Link
                 href="/admin/inventory"
-                className="text-primary flex items-center gap-1 text-sm hover:underline"
+                className="text-gold-strong flex items-center gap-1 text-sm hover:underline"
               >
                 Бүгд <ArrowRight className="size-3.5" />
               </Link>

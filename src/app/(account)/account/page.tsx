@@ -409,7 +409,7 @@ function Coupons() {
               <span className="flex items-center gap-2">
                 <span className="font-mono font-semibold">{c.code}</span>
                 {c.user_id && (
-                  <span className="bg-primary/15 text-primary rounded-full px-2 py-0.5 text-[11px]">
+                  <span className="bg-primary/15 text-gold-strong rounded-full px-2 py-0.5 text-[11px]">
                     Танд зориулав
                   </span>
                 )}

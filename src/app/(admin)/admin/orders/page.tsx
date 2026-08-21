@@ -154,7 +154,7 @@ export default async function AdminOrdersPage({
                     <td className="px-4 py-3 font-mono">
                       <Link
                         href={`/admin/orders/${o.id}`}
-                        className="hover:text-primary"
+                        className="hover:text-gold-strong"
                       >
                         {o.order_no}
                       </Link>
@@ -211,7 +211,7 @@ function FilterChip({
         "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
         active
           ? "border-primary bg-primary text-primary-foreground"
-          : "border-border text-muted-foreground hover:border-primary",
+          : "border-border text-muted-foreground hover:border-gold-strong",
       )}
     >
       {label}

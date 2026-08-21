@@ -111,7 +111,7 @@ export default function AdminLoyaltyPage() {
             Хэрэглэгчийн оноо удирдах нь{" "}
             <Link
               href="/admin/customers"
-              className="text-primary hover:underline"
+              className="text-gold-strong hover:underline"
             >
               Хэрэглэгч
             </Link>{" "}

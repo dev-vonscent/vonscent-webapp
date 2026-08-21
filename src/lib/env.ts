@@ -16,12 +16,18 @@ export const env = {
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   gaId: process.env.NEXT_PUBLIC_GA_ID ?? "",
   metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "",
+
+  /** OpenAI (gpt-image-1) — server-only, AI product-image generation. */
+  openaiKey: process.env.OPENAI_API_KEY ?? "",
 } as const;
 
 /** True when Supabase env is present — otherwise the app falls back to seed data. */
 export const isSupabaseConfigured = Boolean(
   env.supabaseUrl && env.supabaseAnonKey,
 );
+
+/** True when an OpenAI key is set — otherwise AI image generation is disabled. */
+export const isImageGenConfigured = Boolean(env.openaiKey);
 
 /** Storage lives in Supabase, so it's ready whenever Supabase is configured. */
 export const isStorageConfigured = isSupabaseConfigured;

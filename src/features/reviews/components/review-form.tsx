@@ -36,7 +36,7 @@ export function ReviewForm({ productId }: { productId: string }) {
         Сэтгэгдэл үлдээхийн тулд{" "}
         <Link
           href={`/login?next=/products`}
-          className="text-primary hover:underline"
+          className="text-gold-strong hover:underline"
         >
           нэвтэрнэ үү
         </Link>

@@ -45,7 +45,7 @@ export default async function BlogPage() {
             <Badge variant="secondary" className="w-fit">
               {featured.category}
             </Badge>
-            <h2 className="group-hover:text-primary font-serif text-2xl font-semibold">
+            <h2 className="group-hover:text-gold-strong font-serif text-2xl font-semibold">
               {featured.title}
             </h2>
             <p className="text-muted-foreground">{featured.excerpt}</p>
@@ -72,7 +72,7 @@ export default async function BlogPage() {
               <Badge variant="secondary" className="w-fit">
                 {post.category}
               </Badge>
-              <h3 className="group-hover:text-primary font-serif text-lg font-medium">
+              <h3 className="group-hover:text-gold-strong font-serif text-lg font-medium">
                 {post.title}
               </h3>
               <p className="text-muted-foreground text-sm">{post.excerpt}</p>

@@ -335,7 +335,7 @@ export function ProductImages({
         }`}
       >
         <UploadCloud
-          className={`size-7 ${dropActive ? "text-primary" : "text-muted-foreground"}`}
+          className={`size-7 ${dropActive ? "text-gold-strong" : "text-muted-foreground"}`}
         />
         {/* Spans, not paragraphs: a <button> may only hold phrasing content. */}
         <span className="text-sm font-medium">

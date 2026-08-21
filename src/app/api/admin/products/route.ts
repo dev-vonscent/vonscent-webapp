@@ -1,11 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { revalidatePublic } from "@/lib/cache";
 import { productInputSchema } from "@/lib/validators/product";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isSupabaseConfigured, isImageGenConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaffUser } from "@/lib/auth/guard";
 import { isStorageUrl } from "@/lib/storage/storage";
 import { sanitizeFamilies } from "@/features/taxonomy/api";
+import {
+  buildImagePrompt,
+  DEFAULT_BASE_PROMPT,
+} from "@/lib/ai/build-image-prompt";
+import { processGeneration } from "@/lib/ai/process-generation";
 
 function slugify(name: string, brand: string) {
   return `${brand}-${name}`
@@ -65,9 +70,18 @@ export async function POST(req: Request) {
     bottle_ml: input.bottleMl,
   };
 
+  // AI-generated images aren't published until the admin approves them (§5b),
+  // so the product starts hidden. Uploaded images publish immediately.
+  const aiMode = input.imageMode === "generate" && isImageGenConfigured;
+
   const { data: product, error: pErr } = await supabase
     .from("products")
-    .insert({ ...base, scent_families: families, seasons: input.seasons })
+    .insert({
+      ...base,
+      scent_families: families,
+      seasons: input.seasons,
+      is_active: !aiMode,
+    })
     .select("id")
     .single();
 
@@ -86,17 +100,59 @@ export async function POST(req: Request) {
 
   await supabase.from("product_variants").insert(variants);
 
-  // Gallery: the form uploads before the product row exists, so the images
-  // arrive as URLs. Only accept ones we host — see isStorageUrl.
-  const images = input.images
-    .filter((img) => isStorageUrl(img.url))
-    .map((img, i) => ({
-      product_id: productId,
-      url: img.url,
-      alt: img.alt || input.name,
-      sort_order: i,
-    }));
-  if (images.length) await supabase.from("product_images").insert(images);
+  const hostedImages = input.images.filter((img) => isStorageUrl(img.url));
+
+  if (aiMode) {
+    // The uploaded image is the AI *reference*, not the gallery. Enqueue a job
+    // with the composed English prompt and kick it off in the background.
+    const { data: setting } = await supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "imageGen")
+      .maybeSingle();
+    const cfg = (setting?.value as { basePrompt?: string } | null) ?? {};
+
+    const prompt = buildImagePrompt(
+      {
+        name: input.name,
+        brand: input.brand,
+        gender: input.gender,
+        shortDescription: input.shortDescription,
+        description: input.description,
+      },
+      cfg.basePrompt || DEFAULT_BASE_PROMPT,
+    );
+
+    const { data: job } = await supabase
+      .from("product_image_generations")
+      .insert({
+        product_id: productId,
+        status: "pending",
+        prompt,
+        reference_url: hostedImages[0]?.url ?? null,
+      })
+      .select("id")
+      .single();
+
+    if (job) {
+      const jobId = (job as { id: string }).id;
+      // Runs after the response is sent — the admin lands on the table while the
+      // image generates; the table polls until it's done (§6.3).
+      after(async () => {
+        await processGeneration(jobId);
+      });
+    }
+  } else if (hostedImages.length) {
+    // Upload mode: the images are the gallery.
+    await supabase.from("product_images").insert(
+      hostedImages.map((img, i) => ({
+        product_id: productId,
+        url: img.url,
+        alt: img.alt || input.name,
+        sort_order: i,
+      })),
+    );
+  }
 
   await supabase.from("inventory").insert({
     product_id: productId,

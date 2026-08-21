@@ -433,7 +433,7 @@ export default async function HomePage() {
                   href={social.instagram}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group border-border bg-secondary text-muted-foreground hover:text-primary relative flex aspect-square items-center justify-center overflow-hidden rounded-lg border transition-colors"
+                  className="group border-border bg-secondary text-muted-foreground hover:text-gold-strong relative flex aspect-square items-center justify-center overflow-hidden rounded-lg border transition-colors"
                 >
                   <Instagram className="size-6 transition-transform group-hover:scale-110" />
                 </a>

@@ -87,7 +87,7 @@ export default async function BlogPostPage({
               <Link
                 key={p.slug}
                 href={`/blog/${p.slug}`}
-                className="border-border hover:border-primary rounded-lg border p-4 transition-colors"
+                className="border-border hover:border-gold-strong rounded-lg border p-4 transition-colors"
               >
                 <Badge variant="secondary">{p.category}</Badge>
                 <h3 className="mt-2 font-serif font-medium">{p.title}</h3>

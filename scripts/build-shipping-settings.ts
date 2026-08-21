@@ -5,7 +5,7 @@
  *   node --env-file=.env.local --import tsx \
  *     scripts/build-shipping-settings.ts --apply                    # + upsert
  *
- * The CSVs are the source of truth (docs/delivery-zones-guide.md); this turns
+ * The CSVs are the source of truth (docs/delivery/delivery-zones-guide.md); this turns
  * them into the shape `getShippingSettings()` / `resolveZone()` expect:
  *   - Улаанбаатар rows become `MN1107:12` area keys (adm2 code + хороо)
  *   - orон нутаг rows are adm1, so each аймаг expands to all of its сум codes
@@ -38,7 +38,7 @@ const BLOCKED_CODE = "X";
 const UNDELIVERABLE = "Хүргэлт хийхгүй";
 
 const root = process.cwd();
-const docs = join(root, "docs");
+const docs = join(root, "docs", "delivery");
 
 // ── CSV ────────────────────────────────────────────────────────────────────
 /** Minimal RFC4180-ish reader: quoted fields + doubled quotes, no embedded \n. */

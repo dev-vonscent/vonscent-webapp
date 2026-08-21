@@ -128,7 +128,7 @@ export default async function OrdersPage() {
           return (
             <Card
               key={o.id}
-              className="group hover:border-primary hover:shadow-lift overflow-hidden transition-all"
+              className="group hover:border-gold-strong hover:shadow-lift overflow-hidden transition-all"
             >
               <Link href={`/account/orders/${o.id}`} className="block">
                 <CardContent className="p-5">

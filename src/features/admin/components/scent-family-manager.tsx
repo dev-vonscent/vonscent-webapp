@@ -46,7 +46,7 @@ export function ScentFamilyManager({
           {
             DUPLICATE: "Энэ slug аль хэдийн бүртгэлтэй байна.",
             NOT_MIGRATED:
-              "Өгөгдлийн сан бэлэн биш байна — 0018_scent_families.sql migration ажиллуулаагүй тул доорх жагсаалт зөвхөн үндсэн утгууд. (docs/todo.md B3b)",
+              "Өгөгдлийн сан бэлэн биш байна — 0018_scent_families.sql migration ажиллуулаагүй тул доорх жагсаалт зөвхөн үндсэн утгууд. (docs/planning/todo.md B3b)",
           }[data.error as string] ?? "Алдаа гарлаа.",
         );
         return false;
