@@ -24,13 +24,27 @@ export interface DashboardData {
   sales30d: number;
   statusCounts: Record<OrderStatus, number>;
   recentOrders: OrderRow[];
+  /** Product ids ranked by paid sales volume (best first). */
+  topSellerIds: string[];
+}
+
+/**
+ * Борлуулалт (client-defined): the goods value of paid orders — shipping fee
+ * excluded, coupon and loyalty deductions excluded. See requirement_final.md
+ * «Борлуулалт бодох арга».
+ */
+export function orderRevenue(o: {
+  subtotal: number;
+  discount: number;
+  loyalty_used: number;
+}): number {
+  return Math.max(0, o.subtotal - o.discount - (o.loyalty_used ?? 0));
 }
 
 export async function getDashboardData(): Promise<DashboardData | null> {
   const supabase = await createClient();
   if (!supabase) return null;
 
-  const since = new Date(Date.now() - 30 * 864e5).toISOString();
   const { data } = await supabase
     .from("orders")
     .select("*")
@@ -46,7 +60,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const sumSince = (ms: number) =>
     paid
       .filter((o) => new Date(o.created_at).getTime() >= ms)
-      .reduce((s, o) => s + o.total, 0);
+      .reduce((s, o) => s + orderRevenue(o), 0);
 
   const statusCounts = {
     pending: 0,
@@ -57,14 +71,52 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   } as Record<OrderStatus, number>;
   for (const o of orders) statusCounts[o.status] += 1;
 
-  void since;
+  // Top sellers by actual paid volume — the same top_seller_products RPC the
+  // storefront uses (audit R4: it excludes free gift lines and aggregates in
+  // SQL, so the ranking never diverges or truncates). Falls back to the hot
+  // tag in the dashboard when there are no sales yet.
+  const topSellerIds: string[] = [];
+  if (paid.length > 0) {
+    const { data: ranked } = await supabase.rpc("top_seller_products", {
+      p_limit: 20,
+    });
+    topSellerIds.push(
+      ...((
+        (ranked as { product_id: string; sold_qty: number }[] | null) ?? []
+      ).map((r) => r.product_id)),
+    );
+  }
+
   return {
     salesToday: sumSince(startToday.getTime()),
     sales7d: sumSince(now - 7 * 864e5),
     sales30d: sumSince(now - 30 * 864e5),
     statusCounts,
     recentOrders: orders.slice(0, 8),
+    topSellerIds,
   };
+}
+
+export interface AdminNotification {
+  id: string;
+  kind: string;
+  order_id: string | null;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+/** Unread admin notifications (order cancellations etc.), newest first. */
+export async function getUnreadNotifications(): Promise<AdminNotification[]> {
+  const supabase = await createClient();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("admin_notifications")
+    .select("*")
+    .eq("is_read", false)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  return (data as unknown as AdminNotification[] | null) ?? [];
 }
 
 export async function getOrderDetail(id: string): Promise<{
@@ -162,6 +214,8 @@ export interface AdminProduct {
   availableMl: number;
   lowStockMl: number;
   tags: string[];
+  /** Free-form internal tag slugs (0035_custom_tags). */
+  customTags: string[];
 }
 
 const ADMIN_PRODUCT_SELECT = `
@@ -252,6 +306,9 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
     availableMl: inv ? inv.on_hand_ml - inv.reserved_ml : 0,
     lowStockMl: inv?.low_stock_ml ?? 20,
     tags,
+    // Filled by the callers' separate custom-tags query (audit R2 — an
+    // embedded select would fail wholesale on a DB without 0035).
+    customTags: [],
   };
 }
 
@@ -278,7 +335,28 @@ export async function getAdminProduct(
     .eq("id", id)
     .maybeSingle();
   if (!data) return null;
-  return mapAdminProduct(data as unknown as AdminProductRow);
+  const product = mapAdminProduct(data as unknown as AdminProductRow);
+
+  // Separate tolerant query (audit R2): a DB without 0035 still edits fine,
+  // just without the custom-tag picker preselection.
+  const { data: ctRows } = await supabase
+    .from("product_custom_tags")
+    .select("custom_tags ( slug )")
+    .eq("product_id", id);
+  if (ctRows) {
+    product.customTags = (
+      ctRows as unknown as {
+        custom_tags: { slug: string } | { slug: string }[] | null;
+      }[]
+    )
+      .map(
+        (r) =>
+          (Array.isArray(r.custom_tags) ? r.custom_tags[0] : r.custom_tags)
+            ?.slug,
+      )
+      .filter((s): s is string => Boolean(s));
+  }
+  return product;
 }
 
 export async function getCustomerDetail(id: string): Promise<{
@@ -332,6 +410,10 @@ export async function getCoupons(): Promise<CouponRow[]> {
 
 export interface ReportData {
   totalRevenue: number;
+  /** Зардал: эх савнуудын үнэ + бүх restock-ийн худалдан авсан үнэ. */
+  totalCost: number;
+  /** Борлуулалт − зардал. */
+  profit: number;
   paidOrders: number;
   topProducts: { name: string; brand: string; qty: number; revenue: number }[];
   topBrands: { brand: string; revenue: number }[];
@@ -350,6 +432,8 @@ export async function getReportData(): Promise<ReportData> {
   if (!supabase)
     return {
       totalRevenue: 0,
+      totalCost: 0,
+      profit: 0,
       paidOrders: 0,
       topProducts: [],
       topBrands: [],
@@ -387,11 +471,8 @@ export async function getReportData(): Promise<ReportData> {
     string,
     { revenue: number; ml: number; orderIds: Set<string> }
   >();
-  let totalRevenue = 0;
 
   for (const r of rows) {
-    totalRevenue += r.line_total;
-
     const order = Array.isArray(r.orders) ? r.orders[0] : r.orders;
     if (order?.created_at) {
       const month = order.created_at.slice(0, 7);
@@ -400,7 +481,6 @@ export async function getReportData(): Promise<ReportData> {
         ml: 0,
         orderIds: new Set<string>(),
       };
-      m.revenue += r.line_total;
       m.ml += r.ml * r.qty;
       m.orderIds.add(r.order_id);
       monthMap.set(month, m);
@@ -419,14 +499,59 @@ export async function getReportData(): Promise<ReportData> {
     brandMap.set(r.brand, (brandMap.get(r.brand) ?? 0) + r.line_total);
   }
 
-  const { count } = await supabase
+  // Борлуулалт is computed per order (subtotal − discount − points), never
+  // from line totals: shipping is excluded and order-level deductions can't
+  // be attributed to individual lines. Per-product/brand figures above keep
+  // raw line totals — they exist for ranking, not accounting.
+  const { data: paidOrderRows } = await supabase
     .from("orders")
-    .select("id", { count: "exact", head: true })
-    .eq("payment_status", "paid");
+    .select("subtotal, discount, loyalty_used, created_at")
+    .eq("payment_status", "paid")
+    .limit(5000);
+  const paidOrders =
+    (paidOrderRows as
+      | {
+          subtotal: number;
+          discount: number;
+          loyalty_used: number;
+          created_at: string;
+        }[]
+      | null) ?? [];
+  let totalRevenue = 0;
+  for (const o of paidOrders) {
+    const rev = orderRevenue(o);
+    totalRevenue += rev;
+    const month = o.created_at.slice(0, 7);
+    const m = monthMap.get(month) ?? {
+      revenue: 0,
+      ml: 0,
+      orderIds: new Set<string>(),
+    };
+    m.revenue += rev;
+    monthMap.set(month, m);
+  }
+
+  // Зардал (requirement «Борлуулалт бодох арга»): every bottle's purchase
+  // price + every restock's recorded cost.
+  const [{ data: bottleRows }, { data: restockRows }] = await Promise.all([
+    supabase.from("products").select("bottle_price").limit(5000),
+    supabase.from("restock_log").select("cost").limit(10000),
+  ]);
+  const totalCost =
+    ((bottleRows as { bottle_price: number }[] | null) ?? []).reduce(
+      (s, r) => s + (r.bottle_price ?? 0),
+      0,
+    ) +
+    ((restockRows as { cost: number }[] | null) ?? []).reduce(
+      (s, r) => s + (r.cost ?? 0),
+      0,
+    );
 
   return {
     totalRevenue,
-    paidOrders: count ?? 0,
+    totalCost,
+    profit: totalRevenue - totalCost,
+    paidOrders: paidOrders.length,
     topProducts: [...productMap.values()]
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 10),

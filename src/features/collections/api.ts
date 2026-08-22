@@ -217,13 +217,15 @@ export async function getCollectionOrderInfo(id: string): Promise<{
   name: string;
   discountPct: number;
   giftMl: number | null;
+  /** Product ids of the collection's roster — the order must match it. */
+  memberProductIds: string[];
 } | null> {
   if (!isSupabaseConfigured) return null;
   const supabase = createPublicClient();
   if (!supabase) return null;
   const { data } = await supabase
     .from("collections")
-    .select("name, discount_pct, gift_ml")
+    .select("name, discount_pct, gift_ml, collection_items ( product_id )")
     .eq("id", id)
     .eq("is_active", true)
     .maybeSingle();
@@ -232,11 +234,13 @@ export async function getCollectionOrderInfo(id: string): Promise<{
     name: string;
     discount_pct: number;
     gift_ml: number | null;
+    collection_items: { product_id: string }[] | null;
   };
   return {
     name: row.name,
     discountPct: Number(row.discount_pct),
     giftMl: row.gift_ml,
+    memberProductIds: (row.collection_items ?? []).map((i) => i.product_id),
   };
 }
 

@@ -84,7 +84,6 @@ export async function ReviewSection({
                       <DeleteReviewButton
                         reviewId={r.id}
                         productId={productId}
-                        ownerId={r.userId}
                       />
                     </div>
                     <Stars rating={r.rating} size={14} className="mt-2" />

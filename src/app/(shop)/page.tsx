@@ -33,6 +33,7 @@ import { getScentFamilies } from "@/features/taxonomy/api";
 import { getFeaturedCollections } from "@/features/collections/api";
 import { CollectionCard } from "@/features/collections/components/collection-card";
 import { HeroCarousel } from "@/features/marketing/components/hero-carousel";
+import { ScentQuiz } from "@/features/quiz/components/scent-quiz";
 import { PromoPopup } from "@/features/marketing/components/promo-popup";
 import { GENDERS, GENDER_LABEL } from "@/lib/constants";
 
@@ -122,6 +123,12 @@ export default async function HomePage() {
               </div>
             </div>
           ))}
+        </section>
+
+        {/* Scent quiz — for visitors who can't pick (client-only, so the ISR
+          page stays cacheable; matching runs in /api/quiz on demand). */}
+        <section>
+          <ScentQuiz />
         </section>
 
         {/* New arrivals */}

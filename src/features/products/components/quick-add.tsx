@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
+import { trackAddToCart } from "@/lib/analytics";
 import type { ProductDetail, ProductListItem } from "@/lib/types";
 
 export function QuickAdd({
@@ -68,6 +69,13 @@ export function QuickAdd({
       },
       qty,
     );
+    trackAddToCart({
+      id: detail.id,
+      name: `${detail.name} ${selected.ml}ml`,
+      brand: detail.brand,
+      price: selected.price,
+      quantity: qty,
+    });
     setAdded(true);
     setTimeout(() => {
       setAdded(false);

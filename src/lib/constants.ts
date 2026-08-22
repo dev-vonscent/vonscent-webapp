@@ -7,21 +7,36 @@ export const SITE = {
   domain: "vonscent.mn",
   url: "https://vonscent.mn",
   description:
-    "Үнэртэн бага хэмжээгээр (decant) туршиж сонгох дэлгүүр — 5/10/20ml багц.",
+    "Үнэртэн бага хэмжээгээр (decant) туршиж сонгох дэлгүүр — 2/5/10/20ml багц.",
   tagline: "Үнэрээ ол",
 } as const;
 
 /**
- * The ml decant sizes the store sells — the complete list. The client sells
- * these three and nothing else, so this is a closed set: the admin picks a
- * price for each size, never a new size (0027_manual_pricing.sql enforces the
- * same rule in the DB).
+ * The ml decant sizes the store sells — the complete list. 2ml is the sample
+ * size, an ordinary purchasable tier like the rest (client decision, see
+ * docs/analysis/questions.md №1); the admin prices each size per product and
+ * leaves a size inactive where it makes no sense. The DB enforces the same
+ * closed set (0031_sample_tier_back.sql).
  */
-export const ML_SIZES = [5, 10, 20] as const;
+export const ML_SIZES = [2, 5, 10, 20] as const;
 export type MlSize = (typeof ML_SIZES)[number];
+
+/**
+ * Bundles stay 5/10/20 — the 2ml sample tier is for single decants only
+ * (collection-requirement.md defines bundles over the three main sizes).
+ */
+export const BUNDLE_ML_SIZES = [5, 10, 20] as const;
 
 /** Reserve hold (minutes) for orders awaiting payment before auto-release. */
 export const RESERVE_TIMEOUT_MINUTES = 30;
+
+/**
+ * Сар бүрийн бэлгийн sample (questions.md №2–3): one 1ml pick per full
+ * 200,000₮ of goods value — coupon discount subtracted, shipping excluded.
+ * 200k → 1 pick, 400k → 2 picks, and so on.
+ */
+export const GIFT_THRESHOLD = 200_000;
+export const GIFT_SAMPLE_ML = 1;
 
 export const GENDERS = ["male", "female", "unisex"] as const;
 export type Gender = (typeof GENDERS)[number];
@@ -120,9 +135,6 @@ export interface ShippingZoneConfig {
    */
   areas?: string[];
 }
-
-/** Free shipping when subtotal ≥ this. */
-export const FREE_SHIP_OVER = 150000;
 
 export const PAYMENT_METHODS = [
   { value: "qpay", label: "QPay (QR код)" },

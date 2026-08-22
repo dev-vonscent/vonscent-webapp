@@ -156,9 +156,9 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
         error?: string;
       } | null;
       if (body?.error === "ALREADY_REGISTERED") {
-        toast.error("Энэ дугаар аль хэдийн бүртгэлтэй байна. Нэвтэрнэ үү.");
+        toast.error("Бүртгэлтэй дугаар байна. Нэвтэрнэ үү.");
       } else if (body?.error === "NOT_REGISTERED") {
-        toast.error("Энэ дугаараар бүртгэл олдсонгүй. Эхлээд бүртгүүлнэ үү.");
+        toast.error("Энэ дугаар бүртгэлгүй байна. Эхлээд бүртгүүлнэ үү.");
       } else if (body?.error === "NOT_VERIFIED") {
         toast.error(
           "Баталгаажуулалт хүчингүй боллоо. Дахин баталгаажуулна уу.",
@@ -269,7 +269,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
           <Reveal delay={180}>
             <Button
               type="submit"
-              className="h-11 w-full"
+              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98]"
               disabled={loading || !validPhone || !validPasscode}
             >
               {loading ? "Түр хүлээнэ үү…" : copy.cta}
@@ -315,7 +315,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
 
             <Button
               type="submit"
-              className="h-11 w-full"
+              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98]"
               disabled={loading || !validPasscode || passcode2.length !== 4}
             >
               {loading ? "Түр хүлээнэ үү…" : copy.cta}
@@ -348,7 +348,10 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
             {verify.session.displayInstruction}
           </p>
 
-          <Button asChild className="h-11 w-full">
+          <Button
+            asChild
+            className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98]"
+          >
             <a href={verify.session.smsUri}>
               <MessageSquareText className="size-4" /> СМС илгээх
             </a>
@@ -419,7 +422,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
           <Reveal delay={mode === "register" ? 180 : 120}>
             <Button
               type="submit"
-              className="h-11 w-full"
+              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98]"
               disabled={!validPhone || verify.stage === "starting"}
             >
               {verify.stage === "starting" ? (

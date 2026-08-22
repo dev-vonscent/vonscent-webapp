@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
 import { isOrderEditable } from "@/lib/time";
+import { sendEmail, STORE_INBOX } from "@/lib/email";
 import type { OrderRow } from "@/db/types";
 
 /**
@@ -45,19 +46,52 @@ export async function POST(
   if (order.status !== "pending" && order.status !== "confirmed") {
     return NextResponse.json({ error: "NOT_CANCELLABLE" }, { status: 409 });
   }
-  // Past 10:00 on the dispatch day the decants are already being prepared
+  // Past 09:00 on the dispatch day the decants are already being prepared
   // (requirement_fb.md §9). Enforced server-side, not just in the UI.
   if (!isOrderEditable(order.created_at)) {
     return NextResponse.json({ error: "PAST_CUTOFF" }, { status: 409 });
   }
 
   const admin = createAdminClient() ?? supabase;
-  await callRpc(admin, "update_order_status", {
+  const { error: cancelError } = await callRpc(admin, "update_order_status", {
     p_order: id,
     p_status: "cancelled",
     p_note: "Хэрэглэгч цуцалсан",
     p_by: user.id,
   });
+  // A failed cancellation must not report success (or email the admin).
+  if (cancelError) {
+    return NextResponse.json({ error: "CANCEL_FAILED" }, { status: 500 });
+  }
+
+  // The DB trigger (0032) already dropped an admin_notifications row; the
+  // email is a best-effort extra channel so the admin hears about it fast
+  // enough to arrange the refund.
+  const { data: full } = await admin
+    .from("orders")
+    .select("order_no, contact_name, contact_phone, total, payment_status")
+    .eq("id", id)
+    .maybeSingle();
+  const o = full as {
+    order_no: string;
+    contact_name: string | null;
+    contact_phone: string | null;
+    total: number;
+    payment_status: string;
+  } | null;
+  if (o) {
+    await sendEmail({
+      to: STORE_INBOX,
+      subject: `Захиалга цуцлагдлаа: ${o.order_no}`,
+      text:
+        `Захиалга ${o.order_no} цуцлагдлаа.\n` +
+        `Хэрэглэгч: ${o.contact_name ?? "—"} (${o.contact_phone ?? "—"})\n` +
+        `Дүн: ${o.total}₮\n` +
+        (o.payment_status === "paid"
+          ? "Төлбөр төлөгдсөн байсан — хэрэглэгчтэй холбогдож мөнгийг нь буцаана уу."
+          : "Төлбөр төлөгдөөгүй байсан."),
+    });
+  }
 
   revalidatePublic();
   return NextResponse.json({ ok: true });

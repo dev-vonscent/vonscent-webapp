@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/accordion";
 import { ProductGallery } from "@/features/products/components/product-gallery";
 import { ProductPurchase } from "@/features/products/components/product-purchase";
+import { TrackViewItem } from "@/features/products/components/track-view-item";
 import { WishlistButton } from "@/features/wishlist/components/wishlist-button";
 import { ProductCarousel } from "@/features/products/components/product-carousel";
 import { SectionHeading } from "@/components/shared/section-heading";
@@ -133,6 +134,12 @@ export default async function ProductPage({
             </div>
 
             <ProductPurchase product={product} />
+            <TrackViewItem
+              id={product.id}
+              name={product.name}
+              brand={product.brand}
+              price={product.startingPrice}
+            />
           </div>
 
           {/* Үнэрийн нот */}

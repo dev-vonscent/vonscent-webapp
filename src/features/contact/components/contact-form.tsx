@@ -59,7 +59,7 @@ export function ContactForm() {
           name="message"
           required
           rows={5}
-          className="bg-secondary focus-visible:ring-ring flex w-full rounded-md px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+          className="bg-secondary focus-visible:ring-ring flex w-full rounded-md px-3 py-2 text-base focus-visible:ring-2 focus-visible:outline-none md:text-sm"
         />
       </div>
       <Button type="submit" className="w-full" disabled={loading}>

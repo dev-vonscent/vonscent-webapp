@@ -9,28 +9,33 @@ import { createClient } from "@/lib/supabase/browser";
 export function DeleteReviewButton({
   reviewId,
   productId,
-  ownerId,
 }: {
   reviewId: string;
   productId: string;
-  /** The review author — the button renders only for their own session. */
-  ownerId: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
-  const [mine, setMine] = React.useState(false);
+  const [staff, setStaff] = React.useState(false);
 
-  // Ownership is resolved in the browser so the product page can stay
-  // statically cached; the API still enforces it server-side on DELETE.
+  // Only the admin deletes reviews (client decision, questions.md №22).
+  // The role is resolved in the browser so the product page can stay
+  // statically cached; the API enforces the same rule server-side.
   React.useEffect(() => {
     const supabase = createClient();
     if (!supabase) return;
-    supabase.auth
-      .getUser()
-      .then(({ data }) => setMine(data.user?.id === ownerId));
-  }, [ownerId]);
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user.id)
+        .maybeSingle();
+      const role = (profile as { role?: string } | null)?.role;
+      setStaff(role === "operator" || role === "super_admin");
+    });
+  }, []);
 
-  if (!mine) return null;
+  if (!staff) return null;
 
   async function remove() {
     const res = await fetch(

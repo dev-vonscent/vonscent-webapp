@@ -144,6 +144,8 @@ function mapProduct(row: DbProduct): ProductDetail {
     variants,
     availableMl,
     bottleMl: row.bottle_ml,
+    // Filled in by fetchProducts' separate custom-tags query (audit R2).
+    customTags: [],
   };
 }
 
@@ -162,7 +164,34 @@ export const fetchProducts = cache(async (): Promise<ProductDetail[]> => {
     .eq("is_active", true);
 
   if (error || !data) return [];
-  return (data as unknown as DbProduct[]).map(mapProduct);
+  const products = (data as unknown as DbProduct[]).map(mapProduct);
+
+  // Custom tags ride a SEPARATE query on purpose (audit R2): embedding them
+  // in SELECT would make the whole catalogue vanish on a database where
+  // 0035_custom_tags.sql hasn't run yet. A failure here just means no
+  // tag-based search matches — never an empty shop.
+  const { data: tagRows } = await supabase
+    .from("product_custom_tags")
+    .select("product_id, custom_tags ( name )");
+  if (tagRows) {
+    const byProduct = new Map<string, string[]>();
+    for (const r of tagRows as unknown as {
+      product_id: string;
+      custom_tags: { name: string } | { name: string }[] | null;
+    }[]) {
+      const name = (
+        Array.isArray(r.custom_tags) ? r.custom_tags[0] : r.custom_tags
+      )?.name;
+      if (!name) continue;
+      const list = byProduct.get(r.product_id) ?? [];
+      list.push(name);
+      byProduct.set(r.product_id, list);
+    }
+    for (const p of products) {
+      p.customTags = byProduct.get(p.id) ?? [];
+    }
+  }
+  return products;
 });
 
 function toListItem(p: ProductDetail): ProductListItem {
@@ -251,7 +280,10 @@ export async function getCatalog(
     if (maxPrice != null && p.startingPrice > maxPrice) return false;
     if (search) {
       const q = search.toLowerCase();
-      if (!`${p.name} ${p.brand}`.toLowerCase().includes(q)) return false;
+      // Free-form internal tags count as search text (A2 «Нэмэлт Tag») —
+      // e.g. "оффис" surfaces every perfume the admin tagged so.
+      const haystack = `${p.name} ${p.brand} ${p.customTags.join(" ")}`;
+      if (!haystack.toLowerCase().includes(q)) return false;
     }
     return true;
   });
@@ -355,7 +387,30 @@ export async function getProductsByTag(
     .map(toListItem);
 }
 
+/**
+ * Best sellers by actual paid sales volume (top_seller_products, security
+ * definer). Falls back to the hot tag while there are no sales yet — a fresh
+ * store still gets a filled rail.
+ */
 export async function getBestSellers(limit = 8): Promise<ProductListItem[]> {
+  const supabase = createPublicClient();
+  if (supabase) {
+    const { data } = await supabase.rpc("top_seller_products", {
+      p_limit: limit * 3,
+    });
+    const ranked =
+      (data as { product_id: string; sold_qty: number }[] | null) ?? [];
+    if (ranked.length > 0) {
+      const all = await fetchProducts();
+      const byId = new Map(all.map((p) => [p.id, p]));
+      const items = ranked
+        .map((r) => byId.get(r.product_id))
+        .filter((p): p is ProductDetail => Boolean(p))
+        .slice(0, limit)
+        .map(toListItem);
+      if (items.length > 0) return items;
+    }
+  }
   return getProductsByTag("hot", limit);
 }
 

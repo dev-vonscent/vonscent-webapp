@@ -59,10 +59,9 @@ export function useVerifyMn(onVerified?: (sessionId: string) => void) {
           } | null;
           const messages: Record<string, string> = {
             NOT_CONFIGURED: "Баталгаажуулалт одоогоор идэвхгүй байна.",
-            ALREADY_REGISTERED:
-              "Энэ дугаар аль хэдийн бүртгэлтэй байна. Нэвтэрнэ үү.",
+            ALREADY_REGISTERED: "Бүртгэлтэй дугаар байна. Нэвтэрнэ үү.",
             NOT_REGISTERED:
-              "Энэ дугаараар бүртгэл олдсонгүй. Эхлээд бүртгүүлнэ үү.",
+              "Энэ дугаар бүртгэлгүй байна. Эхлээд бүртгүүлнэ үү.",
           };
           setError(
             messages[body?.error ?? ""] ??

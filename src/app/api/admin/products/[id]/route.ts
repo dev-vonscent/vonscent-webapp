@@ -4,7 +4,7 @@ import { productEditSchema } from "@/lib/validators/product";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sanitizeFamilies } from "@/features/taxonomy/api";
+import { sanitizeFamilies, sanitizeCustomTags } from "@/features/taxonomy/api";
 
 async function guard() {
   if (!isSupabaseConfigured) return { demo: true as const };
@@ -78,14 +78,16 @@ export async function PATCH(
   }
 
   // Per-size price + on-sale flag. Prices are typed by hand, so the bottle
-  // price above never moves them.
+  // price above never moves them. Upsert so a size the product didn't have
+  // yet (e.g. the 2ml sample tier on an older product) can be added here.
   if (input.variants !== undefined) {
     for (const v of input.variants) {
       await supabase
         .from("product_variants")
-        .update({ price: v.price, is_active: v.active })
-        .eq("product_id", id)
-        .eq("ml", v.ml);
+        .upsert(
+          { product_id: id, ml: v.ml, price: v.price, is_active: v.active },
+          { onConflict: "product_id,ml" },
+        );
     }
   }
 
@@ -108,6 +110,22 @@ export async function PATCH(
       (tagRows as { id: string; slug: string }[] | null) ?? []
     ).map((t) => ({ product_id: id, tag_id: t.id }));
     if (links.length) await supabase.from("product_tags").insert(links);
+  }
+
+  // Free-form internal tags (A2 «Нэмэлт Tag»): replace the whole set.
+  if (input.customTags !== undefined) {
+    const slugs = await sanitizeCustomTags(input.customTags);
+    const { data: ctRows } = await supabase
+      .from("custom_tags")
+      .select("id, slug")
+      .in("slug", slugs.length ? slugs : ["__none__"]);
+    await supabase.from("product_custom_tags").delete().eq("product_id", id);
+    const links = ((ctRows as { id: string }[] | null) ?? []).map((t) => ({
+      product_id: id,
+      tag_id: t.id,
+    }));
+    if (links.length)
+      await supabase.from("product_custom_tags").insert(links);
   }
 
   revalidatePublic();

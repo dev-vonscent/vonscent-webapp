@@ -1,7 +1,12 @@
 import "server-only";
 import { getProductById, fetchProducts } from "@/features/products/api";
-import { SHIPPING_ZONES, FREE_SHIP_OVER } from "@/lib/constants";
-import { getShippingSettings } from "@/features/content/api";
+import {
+  BUNDLE_ML_SIZES,
+  GIFT_SAMPLE_ML,
+  GIFT_THRESHOLD,
+  SHIPPING_ZONES,
+} from "@/lib/constants";
+import { getGiftSettings, getShippingSettings } from "@/features/content/api";
 import {
   getCollectionSettings,
   getCollectionOrderInfo,
@@ -76,8 +81,8 @@ export async function priceLines(
  */
 export async function priceCollectionLines(
   cols: CollectionOrderInput[],
-): Promise<PricedLine[]> {
-  if (!cols.length) return [];
+): Promise<{ lines: PricedLine[]; pricedBundles: number }> {
+  if (!cols.length) return { lines: [], pricedBundles: 0 };
   const [products, settings] = await Promise.all([
     fetchProducts(),
     getCollectionSettings(),
@@ -98,7 +103,15 @@ export async function priceCollectionLines(
   }
 
   const out: PricedLine[] = [];
+  let pricedBundles = 0;
   for (const col of cols) {
+    // A bundle only ever prices over the three main sizes (2ml is decant-only).
+    if (!(BUNDLE_ML_SIZES as readonly number[]).includes(col.ml)) continue;
+    // Duplicated member variants would double-charge one product's discount
+    // weighting — a tampered payload, not something the builder produces.
+    if (new Set(col.memberVariantIds).size !== col.memberVariantIds.length)
+      continue;
+
     const members = col.memberVariantIds
       .map((id) => {
         const e = variantIndex.get(id);
@@ -115,9 +128,26 @@ export async function priceCollectionLines(
     if (col.type === "base" && col.collectionId) {
       const info = await getCollectionOrderInfo(col.collectionId);
       if (!info) continue; // base bundle vanished — drop it
+      // The order's member set must BE the collection's roster — otherwise a
+      // client could put any product under the collection's discount.
+      const roster = new Set(info.memberProductIds);
+      const ordered = new Set(members.map((m) => m.product.id));
+      if (
+        roster.size === 0 ||
+        ordered.size !== roster.size ||
+        [...ordered].some((id) => !roster.has(id))
+      )
+        continue;
       discountPct = info.discountPct;
       name = info.name;
       giftMl = info.giftMl ?? settings.giftMl;
+    } else {
+      // Custom bundles obey the shop-wide builder rules even when the payload
+      // bypasses the UI.
+      if (!settings.customEnabled) continue;
+      if (members.length < settings.minItems) continue;
+      if (settings.maxItems != null && members.length > settings.maxItems)
+        continue;
     }
 
     const memberSum = members.reduce((s, m) => s + m.price, 0);
@@ -149,11 +179,17 @@ export async function priceCollectionLines(
       });
     });
 
-    // Free gift: a product not already in the bundle, with stock for the size.
-    if (col.giftProductId) {
+    // Free gift: a product not already in the bundle, with enough stock for
+    // EVERY copy of the bundle (giftMl × qty — the line reserves that much).
+    if (col.giftProductId && settings.giftEnabled) {
       const gift = products.find((p) => p.id === col.giftProductId);
       const inBundle = members.some((m) => m.product.id === col.giftProductId);
-      if (gift && !inBundle && gift.availableMl >= giftMl && !gift.soldOut) {
+      if (
+        gift &&
+        !inBundle &&
+        gift.availableMl >= giftMl * col.qty &&
+        !gift.soldOut
+      ) {
         out.push({
           productId: gift.id,
           variantId: "",
@@ -169,8 +205,62 @@ export async function priceCollectionLines(
         });
       }
     }
+    pricedBundles += 1;
+  }
+  return { lines: out, pricedBundles };
+}
+
+/**
+ * Validate the buyer's monthly gift-sample picks (questions.md №2–3) and turn
+ * them into 0₮ 1ml lines. `goodsAfterDiscount` is subtotal − coupon discount
+ * (shipping excluded): one pick per full 200,000₮. Picks outside the admin's
+ * pool, duplicates, or picks beyond the allowance are silently dropped — the
+ * order still goes through, just without the invalid gift.
+ */
+export async function priceGiftLines(
+  giftProductIds: string[],
+  goodsAfterDiscount: number,
+): Promise<PricedLine[]> {
+  if (!giftProductIds.length) return [];
+  const allowance = Math.floor(goodsAfterDiscount / GIFT_THRESHOLD);
+  if (allowance <= 0) return [];
+
+  const settings = await getGiftSettings();
+  if (!settings.enabled || settings.productIds.length === 0) return [];
+  const pool = new Set(settings.productIds);
+
+  const products = await fetchProducts();
+  const out: PricedLine[] = [];
+  const seen = new Set<string>();
+  for (const id of giftProductIds) {
+    if (out.length >= allowance) break;
+    if (seen.has(id) || !pool.has(id)) continue;
+    seen.add(id);
+    const p = products.find((x) => x.id === id);
+    if (!p || p.soldOut || p.availableMl < GIFT_SAMPLE_ML) continue;
+    out.push({
+      productId: p.id,
+      variantId: "",
+      name: p.name,
+      brand: p.brand,
+      ml: GIFT_SAMPLE_ML,
+      qty: 1,
+      unitPrice: 0,
+      lineTotal: 0,
+      collectionId: null,
+      collectionName: undefined,
+      isGift: true,
+    });
   }
   return out;
+}
+
+/** A cart bundle no longer prices (deactivated / member missing / tampered). */
+export class BundleUnavailableError extends Error {
+  constructor() {
+    super("Bundle can no longer be ordered");
+    this.name = "BundleUnavailableError";
+  }
 }
 
 export class UndeliverableZoneError extends Error {
@@ -197,7 +287,6 @@ export type ShippingAddress = Pick<
  */
 export async function resolveShipping(
   address: ShippingAddress,
-  subtotal: number,
 ): Promise<{ zone: string; fee: number }> {
   const settings = await getShippingSettings();
   const zones = settings.zones?.length ? settings.zones : [...SHIPPING_ZONES];
@@ -215,8 +304,8 @@ export async function resolveShipping(
   if (found && found.deliverable === false) {
     throw new UndeliverableZoneError(zone);
   }
-  const freeOver = settings.freeOver ?? FREE_SHIP_OVER;
-  if (freeOver > 0 && subtotal >= freeOver) return { zone, fee: 0 };
+  // Every order pays its delivery fee — the free-shipping tier was removed on
+  // the client's instruction (questions.md «Борлуулалт бодох арга»).
   // Unknown zone (stale client, renamed setting) falls back to the first
   // deliverable zone rather than to free shipping.
   const fallback = zones.find((z) => z.deliverable !== false);
@@ -226,13 +315,20 @@ export async function resolveShipping(
 export async function computeSummary(
   input: Pick<CheckoutInput, "items" | "collections"> & ShippingAddress,
 ): Promise<OrderSummary> {
-  const [itemLines, bundleLines] = await Promise.all([
+  const requestedBundles = input.collections ?? [];
+  const [itemLines, bundleResult] = await Promise.all([
     priceLines(input.items),
-    priceCollectionLines(input.collections ?? []),
+    priceCollectionLines(requestedBundles),
   ]);
-  const lines = [...itemLines, ...bundleLines];
+  // A bundle that failed re-validation (deactivated, member gone, tampered)
+  // must fail the order loudly — silently charging for the rest would ship an
+  // order the customer didn't ask for.
+  if (bundleResult.pricedBundles < requestedBundles.length) {
+    throw new BundleUnavailableError();
+  }
+  const lines = [...itemLines, ...bundleResult.lines];
   const subtotal = lines.reduce((s, l) => s + l.lineTotal, 0);
-  const { zone, fee: shippingFee } = await resolveShipping(input, subtotal);
+  const { zone, fee: shippingFee } = await resolveShipping(input);
   // The coupon discount is applied inside place_order, which re-validates the
   // code against the buyer; this preview stays at 0.
   const discount = 0;

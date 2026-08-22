@@ -4,11 +4,48 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { getAdminProducts } from "@/features/admin/api";
+import { ProductsToolbar } from "@/features/admin/components/products-toolbar";
 import { formatPrice } from "@/lib/format";
 import { GENDER_LABEL, type Gender } from "@/lib/constants";
 
-export default async function AdminProductsPage() {
-  const products = await getAdminProducts();
+export default async function AdminProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; status?: string; sort?: string }>;
+}) {
+  const { q, status, sort } = await searchParams;
+  let products = await getAdminProducts();
+
+  if (q) {
+    const needle = q.toLowerCase();
+    products = products.filter((p) =>
+      `${p.name} ${p.brand}`.toLowerCase().includes(needle),
+    );
+  }
+  if (status === "active") products = products.filter((p) => p.isActive);
+  else if (status === "hidden") products = products.filter((p) => !p.isActive);
+  else if (status === "low")
+    products = products.filter(
+      (p) => p.availableMl > 0 && p.availableMl <= p.lowStockMl,
+    );
+  else if (status === "soldout")
+    products = products.filter((p) => p.availableMl <= 0);
+
+  products = [...products].sort((a, b) => {
+    switch (sort) {
+      case "brand":
+        return a.brand.localeCompare(b.brand) || a.name.localeCompare(b.name);
+      case "price-asc":
+        return a.startingPrice - b.startingPrice;
+      case "price-desc":
+        return b.startingPrice - a.startingPrice;
+      case "stock":
+        return a.availableMl - b.availableMl;
+      default:
+        return a.name.localeCompare(b.name);
+    }
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -20,6 +57,8 @@ export default async function AdminProductsPage() {
           </Link>
         </Button>
       </div>
+
+      <ProductsToolbar />
 
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">

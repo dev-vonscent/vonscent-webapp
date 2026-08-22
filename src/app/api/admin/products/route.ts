@@ -5,7 +5,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaffUser } from "@/lib/auth/guard";
 import { isStorageUrl } from "@/lib/storage/storage";
-import { sanitizeFamilies } from "@/features/taxonomy/api";
+import { sanitizeFamilies, sanitizeCustomTags } from "@/features/taxonomy/api";
 
 function slugify(name: string, brand: string) {
   return `${brand}-${name}`
@@ -63,6 +63,7 @@ export async function POST(req: Request) {
     release_year: input.releaseYear ?? null,
     bottle_price: input.bottlePrice,
     bottle_ml: input.bottleMl,
+    is_active: input.isActive,
   };
 
   const { data: product, error: pErr } = await supabase
@@ -103,6 +104,35 @@ export async function POST(req: Request) {
     on_hand_ml: input.onHandMl,
     low_stock_ml: input.lowStockMl,
   });
+
+  // Tags (new / hot / sale) straight from the create form — previously these
+  // could only be set by editing the product afterwards.
+  if (input.tags.length) {
+    const { data: tagRows } = await supabase
+      .from("tags")
+      .select("id, slug")
+      .in("slug", input.tags);
+    const links = ((tagRows as { id: string }[] | null) ?? []).map((t) => ({
+      product_id: productId,
+      tag_id: t.id,
+    }));
+    if (links.length) await supabase.from("product_tags").insert(links);
+  }
+
+  // Free-form internal tags (search / quiz pool, A2 «Нэмэлт Tag»).
+  const customTags = await sanitizeCustomTags(input.customTags);
+  if (customTags.length) {
+    const { data: ctRows } = await supabase
+      .from("custom_tags")
+      .select("id, slug")
+      .in("slug", customTags);
+    const links = ((ctRows as { id: string }[] | null) ?? []).map((t) => ({
+      product_id: productId,
+      tag_id: t.id,
+    }));
+    if (links.length)
+      await supabase.from("product_custom_tags").insert(links);
+  }
 
   revalidatePublic();
   return NextResponse.json({ ok: true, id: productId, slug });

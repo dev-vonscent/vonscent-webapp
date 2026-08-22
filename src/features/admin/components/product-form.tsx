@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -30,8 +31,21 @@ import {
   SEASON_LABEL,
 } from "@/lib/constants";
 import type { ScentFamilyOption } from "@/lib/types";
+import type { CustomTagOption } from "@/features/taxonomy/api";
 
-export function ProductForm({ families }: { families: ScentFamilyOption[] }) {
+const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
+  { slug: "new", label: "Шинэ" },
+  { slug: "hot", label: "Эрэлттэй" },
+  { slug: "sale", label: "Хямдрал" },
+];
+
+export function ProductForm({
+  families,
+  customTagPool = [],
+}: {
+  families: ScentFamilyOption[];
+  customTagPool?: CustomTagOption[];
+}) {
   const router = useRouter();
   const [submitting, setSubmitting] = React.useState(false);
   const [result, setResult] = React.useState<string | null>(null);
@@ -57,6 +71,9 @@ export function ProductForm({ families }: { families: ScentFamilyOption[] }) {
   });
 
   const [variants, setVariants] = React.useState<VariantDraft[]>(emptyVariants);
+  const [tags, toggleTag] = useToggleList([]);
+  const [customTags, toggleCustomTag] = useToggleList([]);
+  const [isActive, setIsActive] = React.useState(true);
   const [scentFamilies, toggleFamily] = useToggleList([]);
   const [seasons, toggleSeason] = useToggleList(["all"], { exclusive: "all" });
   // Uploaded to a staging folder before the product row exists; the create
@@ -77,6 +94,9 @@ export function ProductForm({ families }: { families: ScentFamilyOption[] }) {
         scentFamilies,
         seasons,
         variants,
+        tags,
+        customTags,
+        isActive,
         images: images.map((img) => ({ url: img.url, alt: img.alt })),
         releaseYear: form.releaseYear ? Number(form.releaseYear) : null,
         bottlePrice: Number(form.bottlePrice) || 0,
@@ -280,6 +300,43 @@ export function ProductForm({ families }: { families: ScentFamilyOption[] }) {
               />
             </Field>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-4 p-6">
+          <h2 className="font-serif text-lg font-semibold">Таг ба төлөв</h2>
+          <div className="flex flex-wrap gap-4">
+            {TAGS.map((t) => (
+              <label
+                key={t.slug}
+                className="flex cursor-pointer items-center gap-2 text-sm"
+              >
+                <Checkbox
+                  checked={tags.includes(t.slug)}
+                  onCheckedChange={() => toggleTag(t.slug)}
+                />
+                {t.label}
+              </label>
+            ))}
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Checkbox
+              checked={isActive}
+              onCheckedChange={(v) => setIsActive(Boolean(v))}
+            />
+            Идэвхтэй (нийтлэх)
+          </label>
+          <MultiCheck
+            label="Нэмэлт таг (дотоод — хайлт, quiz-д ашиглагдана)"
+            options={customTagPool.map((t) => ({
+              value: t.slug,
+              label: t.name,
+            }))}
+            selected={customTags}
+            onToggle={toggleCustomTag}
+            empty="«Нэмэлт таг» хуудсанд эхлээд таг нэмнэ үү."
+          />
         </CardContent>
       </Card>
 

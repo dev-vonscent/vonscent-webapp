@@ -19,6 +19,7 @@ import {
   GENDERS,
   GENDER_LABEL,
   CONCENTRATIONS,
+  ML_SIZES,
   SEASONS,
   SEASON_LABEL,
 } from "@/lib/constants";
@@ -28,6 +29,7 @@ import { MultiCheck, useToggleList } from "./multi-check";
 import { DescriptionFields } from "./description-fields";
 import { ProductImages } from "./product-images";
 import type { AdminProduct } from "@/features/admin/api";
+import type { CustomTagOption } from "@/features/taxonomy/api";
 import type { ScentFamilyOption } from "@/lib/types";
 const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
   { slug: "new", label: "Шинэ" },
@@ -38,9 +40,11 @@ const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
 export function ProductEditForm({
   product,
   families,
+  customTagPool = [],
 }: {
   product: AdminProduct;
   families: ScentFamilyOption[];
+  customTagPool?: CustomTagOption[];
 }) {
   const router = useRouter();
   const [confirm, confirmDialog] = useConfirm();
@@ -68,14 +72,19 @@ export function ProductEditForm({
   const [seasons, toggleSeason] = useToggleList(product.seasons, {
     exclusive: "all",
   });
-  const [variants, setVariants] = React.useState<VariantDraft[]>(
-    product.variants.map((v) => ({
-      ml: v.ml,
-      price: v.price,
-      active: v.isActive,
-    })),
+  // Every store size gets a row — sizes the product doesn't have yet (e.g.
+  // the 2ml sample tier on older products) start inactive at 0₮, and saving
+  // them upserts the missing variant.
+  const [variants, setVariants] = React.useState<VariantDraft[]>(() =>
+    ML_SIZES.map((ml) => {
+      const v = product.variants.find((x) => x.ml === ml);
+      return v
+        ? { ml, price: v.price, active: v.isActive }
+        : { ml, price: 0, active: false };
+    }),
   );
   const [tags, setTags] = React.useState<string[]>(product.tags);
+  const [customTags, toggleCustomTag] = useToggleList(product.customTags);
   const [isActive, setIsActive] = React.useState(product.isActive);
 
   function set<K extends keyof typeof form>(k: K, v: string) {
@@ -117,6 +126,7 @@ export function ProductEditForm({
           variants,
           isActive,
           tags,
+          customTags,
         }),
       });
       const data = await res.json();
@@ -339,6 +349,16 @@ export function ProductEditForm({
             />
             Идэвхтэй (нийтлэх)
           </label>
+          <MultiCheck
+            label="Нэмэлт таг (дотоод — хайлт, quiz-д ашиглагдана)"
+            options={customTagPool.map((t) => ({
+              value: t.slug,
+              label: t.name,
+            }))}
+            selected={customTags}
+            onToggle={toggleCustomTag}
+            empty="«Нэмэлт таг» хуудсанд эхлээд таг нэмнэ үү."
+          />
         </CardContent>
       </Card>
 
