@@ -50,7 +50,7 @@ export function NotificationList({
                 {n.order_id ? (
                   <Link
                     href={`/admin/orders/${n.order_id}`}
-                    className="hover:text-primary"
+                    className="hover:text-gold-strong"
                   >
                     {n.message}
                   </Link>

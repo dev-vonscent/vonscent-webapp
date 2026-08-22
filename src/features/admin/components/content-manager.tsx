@@ -573,7 +573,7 @@ function EditableRow({
         <span className="flex shrink-0 items-center gap-2">
           <button
             onClick={() => setEditing((e) => !e)}
-            className="text-muted-foreground hover:text-primary"
+            className="text-muted-foreground hover:text-gold-strong"
             aria-label="Засах"
           >
             <Pencil className="size-4" />

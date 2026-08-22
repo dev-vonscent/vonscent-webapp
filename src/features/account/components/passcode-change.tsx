@@ -60,7 +60,7 @@ export function PasscodeChange() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="hover:text-primary flex items-center gap-2 text-sm"
+        className="hover:text-gold-strong flex items-center gap-2 text-sm"
       >
         <KeyRound className="size-4" /> Нэвтрэх код солих
       </button>
