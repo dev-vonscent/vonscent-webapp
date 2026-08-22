@@ -89,7 +89,7 @@ export function GiftSamplePicker({
                 className={cn(
                   "border-border rounded-lg border p-2 text-left text-xs transition-colors",
                   selected
-                    ? "border-primary ring-primary/40 ring-2"
+                    ? "border-gold-strong ring-gold-strong/60 ring-2"
                     : full
                       ? "opacity-40"
                       : "hover:border-primary/50",

@@ -37,7 +37,8 @@
   --gold-soft: #a1a1a1;
   --gold-strong: #ffffff;
 
-  --destructive: #2a2a2a;
+  /* destructive must stay legible as text on black — not a gray surface */
+  --destructive: #dc2626;
   --destructive-foreground: #ffffff;
   --success: #d4d4d4;
   --warning: #d4d4d4;

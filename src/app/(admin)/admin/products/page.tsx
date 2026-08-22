@@ -118,7 +118,7 @@ export default async function AdminProductsPage({
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={`/admin/products/${p.id}/edit`}
-                      className="text-primary inline-flex items-center gap-1 hover:underline"
+                      className="text-gold-strong inline-flex items-center gap-1 hover:underline"
                     >
                       <Pencil className="size-3.5" /> Засах
                     </Link>

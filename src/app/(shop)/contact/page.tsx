@@ -68,7 +68,7 @@ function Item({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <Icon className="text-primary mt-0.5 size-5" />
+      <Icon className="text-gold-strong mt-0.5 size-5" />
       <div>
         <p className="text-muted-foreground text-sm">{label}</p>
         <p className="font-medium">{value}</p>
@@ -89,7 +89,7 @@ function Social({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="border-border hover:border-primary hover:text-primary rounded-full border p-2.5 transition-colors"
+      className="border-border hover:border-primary hover:text-gold-strong rounded-full border p-2.5 transition-colors"
     >
       <Icon className="size-5" />
     </a>
