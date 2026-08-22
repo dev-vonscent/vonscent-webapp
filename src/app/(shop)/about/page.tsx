@@ -61,7 +61,7 @@ export default async function AboutPage() {
             key={v.title}
             className="border-border flex gap-4 rounded-lg border p-6"
           >
-            <v.icon className="text-primary size-6 shrink-0" />
+            <v.icon className="text-gold-strong size-6 shrink-0" />
             <div>
               <h3 className="font-serif text-lg font-semibold">{v.title}</h3>
               <p className="text-muted-foreground mt-1 text-sm">{v.desc}</p>

@@ -445,7 +445,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
             <Separator className="flex-1" />
             <button
               type="button"
-              className="text-muted-foreground hover:text-primary text-xs"
+              className="text-muted-foreground hover:text-gold-strong text-xs"
               onClick={() => setDevEmailOpen((v) => !v)}
             >
               {devEmailOpen

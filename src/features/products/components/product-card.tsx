@@ -55,7 +55,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         </span>
         <Link
           href={`/products/${product.slug}`}
-          className="hover:text-primary font-serif text-base leading-tight font-medium transition-colors"
+          className="hover:text-gold-strong font-serif text-base leading-tight font-medium transition-colors"
         >
           {product.name}
         </Link>

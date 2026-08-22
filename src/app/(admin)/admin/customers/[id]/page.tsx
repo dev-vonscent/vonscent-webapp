@@ -71,7 +71,7 @@ export default async function AdminCustomerDetail({
                     >
                       <Link
                         href={`/admin/orders/${o.id}`}
-                        className="hover:text-primary font-mono"
+                        className="hover:text-gold-strong font-mono"
                       >
                         {o.order_no}
                       </Link>

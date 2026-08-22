@@ -1,9 +1,9 @@
 /**
  * Import base collections from the Excel template into the database.
  *
- *   pnpm db:import-collections docs/collection-import-template.xlsx
+ *   pnpm db:import-collections docs/import/collection-import-template.xlsx
  *
- * Reads the «Багц» sheet of the .xlsx (see docs/collection-import-guide.md),
+ * Reads the «Багц» sheet of the .xlsx (see docs/import/collection-import-guide.md),
  * resolves each row's 4 member product slugs to product ids, then upserts one
  * `collections` row (type='base') + exactly 4 `collection_items` per collection.
  * Re-running with the same `slug` updates in place (upsert) — never duplicates.
@@ -23,7 +23,7 @@ const file = args[0];
 if (!file) {
   console.error(
     "Usage: pnpm db:import-collections <file.xlsx> [--dry]\n" +
-      "  e.g. pnpm db:import-collections docs/collection-import-template.xlsx",
+      "  e.g. pnpm db:import-collections docs/import/collection-import-template.xlsx",
   );
   process.exit(1);
 }

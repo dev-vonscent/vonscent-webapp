@@ -91,7 +91,7 @@ export default async function AdminOrderDetail({
               {customer && (
                 <Link
                   href={`/admin/customers/${customer.id}`}
-                  className="text-primary hover:underline"
+                  className="text-gold-strong hover:underline"
                 >
                   Бүртгэлтэй хэрэглэгчийн профайл →
                 </Link>

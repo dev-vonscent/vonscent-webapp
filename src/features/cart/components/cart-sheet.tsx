@@ -148,7 +148,7 @@ export function CartSheet({
                   <div className="mt-2 flex items-center justify-between">
                     <div className="border-border flex items-center rounded-md border">
                       <button
-                        className="hover:text-primary px-2 py-1"
+                        className="hover:text-gold-strong px-2 py-1"
                         onClick={() => setCollectionQty(c.key, c.qty - 1)}
                         aria-label="Хасах"
                       >
@@ -156,7 +156,7 @@ export function CartSheet({
                       </button>
                       <span className="w-7 text-center text-sm">{c.qty}</span>
                       <button
-                        className="hover:text-primary px-2 py-1"
+                        className="hover:text-gold-strong px-2 py-1"
                         onClick={() => setCollectionQty(c.key, c.qty + 1)}
                         aria-label="Нэмэх"
                       >
@@ -213,7 +213,7 @@ export function CartSheet({
                     <div className="mt-auto flex items-center justify-between">
                       <div className="border-border flex items-center rounded-md border">
                         <button
-                          className="hover:text-primary px-2 py-1"
+                          className="hover:text-gold-strong px-2 py-1"
                           onClick={() => setQty(item.key, item.qty - 1)}
                           aria-label="Хасах"
                         >
@@ -223,7 +223,7 @@ export function CartSheet({
                           {item.qty}
                         </span>
                         <button
-                          className="hover:text-primary px-2 py-1"
+                          className="hover:text-gold-strong px-2 py-1"
                           onClick={() => setQty(item.key, item.qty + 1)}
                           aria-label="Нэмэх"
                         >

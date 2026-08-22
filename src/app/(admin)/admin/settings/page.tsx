@@ -55,6 +55,13 @@ export default function AdminSettingsPage() {
     giftEnabled: true,
     giftMl: 1,
   });
+  const [imageGen, setImageGen] = React.useState({
+    enabled: true,
+    basePrompt: "",
+    size: "1024x1536",
+    quality: "medium",
+    autoOnCreate: true,
+  });
 
   React.useEffect(() => {
     const supabase = createClient();
@@ -91,6 +98,8 @@ export default function AdminSettingsPage() {
             setInvoiceCode(String(v.invoiceCode ?? ""));
           if (row.key === "collection" && v)
             setCollection((c) => ({ ...c, ...(v as object) }));
+          if (row.key === "imageGen" && v)
+            setImageGen((g) => ({ ...g, ...(v as object) }));
         }
       });
   }, []);
@@ -232,6 +241,65 @@ export default function AdminSettingsPage() {
                   })
                 }
               />
+            </Field>
+          </div>
+        </div>
+      </Saver>
+
+      {/* AI image generation */}
+      <Saver
+        title="AI зураг үүсгэлт"
+        onSave={() => saveSetting("imageGen", imageGen)}
+      >
+        <div className="space-y-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={imageGen.enabled}
+              onChange={(e) =>
+                setImageGen({ ...imageGen, enabled: e.target.checked })
+              }
+              className="size-4"
+            />
+            AI зураг үүсгэлт идэвхтэй
+          </label>
+          <Field label="Үндсэн prompt (англи)">
+            <textarea
+              value={imageGen.basePrompt}
+              onChange={(e) =>
+                setImageGen({ ...imageGen, basePrompt: e.target.value })
+              }
+              rows={4}
+              className="border-border bg-background w-full rounded-md border p-2 text-sm"
+              placeholder="Professional e-commerce product photo of a perfume bottle…"
+            />
+          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Хэмжээ">
+              <select
+                value={imageGen.size}
+                onChange={(e) =>
+                  setImageGen({ ...imageGen, size: e.target.value })
+                }
+                className="border-border bg-background h-9 w-full rounded-md border px-2 text-sm"
+              >
+                <option value="1024x1536">1024×1536 (босоо)</option>
+                <option value="1024x1024">1024×1024 (дөрвөлжин)</option>
+                <option value="1536x1024">1536×1024 (хэвтээ)</option>
+              </select>
+            </Field>
+            <Field label="Чанар">
+              <select
+                value={imageGen.quality}
+                onChange={(e) =>
+                  setImageGen({ ...imageGen, quality: e.target.value })
+                }
+                className="border-border bg-background h-9 w-full rounded-md border px-2 text-sm"
+              >
+                <option value="low">Бага</option>
+                <option value="medium">Дунд</option>
+                <option value="high">Өндөр</option>
+              </select>
             </Field>
           </div>
         </div>
@@ -470,7 +538,7 @@ export default function AdminSettingsPage() {
             Хэрэглэгчдэд оператор / супер админ эрх олгох, хураах үйлдлийг{" "}
             <Link
               href="/admin/customers"
-              className="text-primary hover:underline"
+              className="text-gold-strong hover:underline"
             >
               Хэрэглэгч
             </Link>{" "}

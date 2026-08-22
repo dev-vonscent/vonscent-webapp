@@ -54,8 +54,11 @@ export const productInputSchema = z.object({
   notesDescription: z.string().default(""),
   usageDescription: z.string().default(""),
   shortDescription: z.string().default(""),
-  // Images uploaded before the product row existed, in gallery order.
+  // Images uploaded before the product row existed, in gallery order. In
+  // `generate` mode the first image is the AI reference, not the gallery.
   images: z.array(productImageSchema).max(12).default([]),
+  /** `upload` = use the uploaded image; `generate` = create it with AI (§2). */
+  imageMode: z.enum(["upload", "generate"]).default("upload"),
   originCountry: z.string().optional(),
   releaseYear: z.number().int().nullable().optional(),
   onHandMl: z.number().int().nonnegative(),

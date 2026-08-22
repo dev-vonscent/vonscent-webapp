@@ -189,7 +189,7 @@ export default function CartPage() {
                       </p>
                       <Link
                         href={`/products/${item.slug}`}
-                        className="hover:text-primary font-medium"
+                        className="hover:text-gold-strong font-medium"
                       >
                         {item.name}
                       </Link>
@@ -214,7 +214,7 @@ export default function CartPage() {
                   <div className="mt-auto flex items-center justify-between pt-2">
                     <div className="border-border flex items-center rounded-md border">
                       <button
-                        className="hover:text-primary px-2.5 py-1.5"
+                        className="hover:text-gold-strong px-2.5 py-1.5"
                         onClick={() => setQty(item.key, item.qty - 1)}
                         aria-label="Хасах"
                       >
@@ -224,7 +224,7 @@ export default function CartPage() {
                         {item.qty}
                       </span>
                       <button
-                        className="hover:text-primary px-2.5 py-1.5"
+                        className="hover:text-gold-strong px-2.5 py-1.5"
                         onClick={() => setQty(item.key, item.qty + 1)}
                         aria-label="Нэмэх"
                       >

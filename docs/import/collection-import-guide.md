@@ -54,13 +54,13 @@
 
 ```bash
 # 1) Эхлээд зөвхөн шалгах (DB-д хүрэхгүй) — Excel-ийн бүтэц зөв эсэхийг харна
-pnpm db:import-collections docs/collection-import-template.xlsx --dry
+pnpm db:import-collections docs/import/collection-import-template.xlsx --dry
 
 # 2) Бодитоор DB рүү оруулах
-pnpm db:import-collections docs/collection-import-template.xlsx
+pnpm db:import-collections docs/import/collection-import-template.xlsx
 ```
 
-Скрипт ([`scripts/import-collections.ts`](../scripts/import-collections.ts)) нь:
+Скрипт ([`scripts/import-collections.ts`](../../scripts/import-collections.ts)) нь:
 1. «Багц» хуудсыг уншиж, мөр бүрийг шалгана (нэр, яг 4 давхардахгүй slug, хямдрал 0–100).
 2. Бүх үнэртний slug-ийг `products`-оос id-руу хөрвүүлнэ (олдоогүй бол алдаа зааж зогсоно).
 3. `collections` (type=`base`) мөрийг `slug`-аар **upsert** хийнэ.

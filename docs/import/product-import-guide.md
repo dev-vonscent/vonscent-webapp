@@ -68,4 +68,4 @@ CSV бэлэн болсны дараа импорт скрипт нь дараа
 5. `product_tags` — `tags`-г таг-ийн id-тай холбоно.
 
 > Энэ CSV-г уншиж DB рүү оруулдаг импорт скриптийг (`scripts/import-products.ts`,
-> ж: `pnpm db:import docs/product-import-template.csv`) бэлдэж өгөх боломжтой.
+> ж: `pnpm db:import docs/import/product-import-template.csv`) бэлдэж өгөх боломжтой.

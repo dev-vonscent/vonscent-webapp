@@ -9,9 +9,12 @@ import { env } from "@/lib/env";
  */
 export const STORAGE_BUCKET = env.storageBucket;
 
-/** Public URL for an object path within the bucket. */
+/** Public URL for an object path within the bucket. A trailing slash on
+ * NEXT_PUBLIC_SUPABASE_URL would otherwise produce `host//storage/...`, whose
+ * `//storage` path fails next/image's remotePattern match — strip it. */
 export function publicUrl(path: string): string {
-  return `${env.supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${path}`;
+  const base = env.supabaseUrl.replace(/\/+$/, "");
+  return `${base}/storage/v1/object/public/${STORAGE_BUCKET}/${path}`;
 }
 
 /** True when `url` is a public object in our own bucket. */

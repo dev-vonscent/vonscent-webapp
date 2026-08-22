@@ -111,7 +111,7 @@ CSV бол эх сурвалж. Дараах скрипт нь түүнийг `s
 хөрвүүлнэ — **DB migration шаардахгүй**:
 
 ```bash
-# docs/shipping-settings.json үүсгэх (шалгахад)
+# docs/delivery/shipping-settings.json үүсгэх (шалгахад)
 node --import tsx scripts/build-shipping-settings.ts
 
 # DB дээрх settings.shipping-г шинэчлэх
@@ -148,4 +148,4 @@ CSV шинэчлэгдэх бүрд дахин ажиллуулна.
   дэлгэц — админ засахад хуучин захиалга, үнэ хөндөгдөхгүй
 - Код байхгүй хуучин мөр `name` рүү унана (`zoneKey()`), тул нэг мөр эвдрэхгүй
 - Хөрвүүлэгч: `scripts/build-shipping-settings.ts`, гаралт
-  `docs/shipping-settings.json`
+  `docs/delivery/shipping-settings.json`
