@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { SITE } from "@/lib/constants";
 import { Providers } from "@/components/providers";
@@ -12,6 +12,14 @@ const sans = Inter({
   variable: "--font-sans",
   display: "swap",
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Android: shrink the layout viewport when the keyboard opens, so
+  // min-h-svh layouts re-center themselves above it.
+  interactiveWidget: "resizes-content",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),

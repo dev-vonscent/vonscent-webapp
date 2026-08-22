@@ -21,6 +21,11 @@ export interface PopupSlide {
   /** ISO date strings; null = no bound. Slide shows only inside this window. */
   startsAt: string | null;
   endsAt: string | null;
+  /**
+   * Optional coupon code — the popup renders it as a styled copyable coupon
+   * (questions.md №12: суурь кодыг бэлтгэж, агуулгыг админ бэлдэнэ).
+   */
+  couponCode?: string;
 }
 
 export interface PopupSettings {
@@ -64,12 +69,21 @@ export interface ShippingZone {
 }
 export interface ShippingSettings {
   zones: ShippingZone[];
-  freeOver: number;
 }
 export interface LoyaltySettings {
   earnPer: number;
   earnPoints: number;
   redeemRate: number;
+}
+/**
+ * Сар бүрийн бэлгийн sample (questions.md №2–3): the admin curates 4–8
+ * perfumes; at checkout the buyer picks 1ml samples — one pick per full
+ * 200,000₮ of goods value (after the coupon, before shipping).
+ */
+export interface GiftSettings {
+  enabled: boolean;
+  /** Product ids of this month's giftable perfumes (aim for 4–8). */
+  productIds: string[];
 }
 export interface StoreSettings {
   name: string;
@@ -87,7 +101,7 @@ export const DEFAULT_SOCIAL: SocialSettings = {
   instagram: "",
   facebook: "",
   phone: "",
-  email: "hello@vonscent.mn",
+  email: "vonscent.store@gmail.com",
 };
 export const DEFAULT_ABOUT: AboutSettings = {
   story: "",
@@ -96,17 +110,20 @@ export const DEFAULT_ABOUT: AboutSettings = {
 };
 export const DEFAULT_SHIPPING: ShippingSettings = {
   zones: SHIPPING_ZONES.map((z) => ({ ...z })),
-  freeOver: 150000,
 };
 export const DEFAULT_LOYALTY: LoyaltySettings = {
   earnPer: 100,
   earnPoints: 1,
   redeemRate: 1,
 };
+export const DEFAULT_GIFT: GiftSettings = {
+  enabled: true,
+  productIds: [],
+};
 export const DEFAULT_STORE: StoreSettings = {
   name: "vonscent",
   phone: "",
-  email: "hello@vonscent.mn",
+  email: "vonscent.store@gmail.com",
   address: "Улаанбаатар",
 };
 
@@ -136,6 +153,7 @@ export const getShippingSettings = () =>
   getSetting("shipping", DEFAULT_SHIPPING);
 export const getLoyaltySettings = () => getSetting("loyalty", DEFAULT_LOYALTY);
 export const getStoreSettings = () => getSetting("store", DEFAULT_STORE);
+export const getGiftSettings = () => getSetting("gift", DEFAULT_GIFT);
 
 export interface HeroBanner {
   id: string;

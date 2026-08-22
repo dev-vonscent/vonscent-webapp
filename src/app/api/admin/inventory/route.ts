@@ -10,6 +10,8 @@ const schema = z.object({
   productId: z.string().min(1),
   delta: z.number().int(),
   reason: z.string().default("restock"),
+  /** What the added ml cost to buy (₮) — feeds the profit report. */
+  cost: z.number().int().nonnegative().default(0),
 });
 
 export async function POST(req: Request) {
@@ -36,6 +38,7 @@ export async function POST(req: Request) {
     p_delta: parsed.data.delta,
     p_reason: parsed.data.reason,
     p_by: staff.id,
+    p_cost: parsed.data.cost,
   });
   if (error) {
     return NextResponse.json({ error: "RESTOCK_FAILED" }, { status: 500 });

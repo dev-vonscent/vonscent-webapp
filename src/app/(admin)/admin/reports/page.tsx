@@ -30,13 +30,37 @@ export default async function AdminReportsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <Card>
           <CardContent className="p-5">
             <p className="font-serif text-2xl font-semibold">
               {formatPrice(report.totalRevenue)}
             </p>
-            <p className="text-muted-foreground text-sm">Нийт борлуулалт</p>
+            <p className="text-muted-foreground text-sm">
+              Нийт борлуулалт (хүргэлт, купон, оноогүй)
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="font-serif text-2xl font-semibold">
+              {formatPrice(report.totalCost)}
+            </p>
+            <p className="text-muted-foreground text-sm">
+              Зардал (эх сав + restock)
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p
+              className={`font-serif text-2xl font-semibold ${
+                report.profit < 0 ? "text-destructive" : ""
+              }`}
+            >
+              {formatPrice(report.profit)}
+            </p>
+            <p className="text-muted-foreground text-sm">Ашиг</p>
           </CardContent>
         </Card>
         <Card>

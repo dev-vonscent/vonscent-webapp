@@ -13,9 +13,13 @@ export interface VariantDraft {
   active: boolean;
 }
 
-/** A blank price row per size, for the create form. */
+/**
+ * A blank price row per size, for the create form. The 2ml sample tier starts
+ * inactive — most products sell 5/10/20 and the admin opts a product into
+ * samples deliberately, so a forgotten 0₮ 2ml row can't go live by default.
+ */
 export function emptyVariants(): VariantDraft[] {
-  return ML_SIZES.map((ml) => ({ ml, price: 0, active: true }));
+  return ML_SIZES.map((ml) => ({ ml, price: 0, active: ml !== 2 }));
 }
 
 /**

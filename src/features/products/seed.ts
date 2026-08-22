@@ -327,6 +327,7 @@ export const SEED_PRODUCTS: ProductDetail[] = RAW.map((input) => {
     variants,
     availableMl: input.onHandMl,
     bottleMl: input.bottleMl,
+    customTags: [],
   };
 });
 

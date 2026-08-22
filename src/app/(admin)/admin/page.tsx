@@ -8,21 +8,35 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getAllProducts } from "@/features/products/api";
-import { getDashboardData } from "@/features/admin/api";
+import {
+  getAdminProducts,
+  getDashboardData,
+  getUnreadNotifications,
+} from "@/features/admin/api";
+import { NotificationList } from "@/features/admin/components/notification-list";
 import { formatPrice, formatDate } from "@/lib/format";
 import { ORDER_STATUS_LABEL, ORDER_STATUSES } from "@/lib/constants";
 
 export default async function AdminDashboard() {
-  const [products, dash] = await Promise.all([
-    getAllProducts(),
+  const [products, dash, notifications] = await Promise.all([
+    getAdminProducts(),
     getDashboardData(),
+    getUnreadNotifications(),
   ]);
+  // Alert against each product's own configured threshold (A1) — not a
+  // hardcoded figure.
   const lowStock = products.filter(
-    (p) => p.availableMl > 0 && p.availableMl <= 20,
+    (p) => p.availableMl > 0 && p.availableMl <= p.lowStockMl,
   );
   const soldOut = products.filter((p) => p.availableMl <= 0);
-  const topSellers = products.filter((p) => p.tags.includes("hot")).slice(0, 5);
+  const topSellerIds = dash?.topSellerIds ?? [];
+  const topSellers =
+    topSellerIds.length > 0
+      ? topSellerIds
+          .map((id) => products.find((p) => p.id === id))
+          .filter((p): p is NonNullable<typeof p> => Boolean(p))
+          .slice(0, 5)
+      : products.filter((p) => p.tags.includes("hot")).slice(0, 5);
 
   const sales = [
     { label: "Өнөөдөр", value: dash?.salesToday ?? 0 },
@@ -33,6 +47,8 @@ export default async function AdminDashboard() {
   return (
     <div className="space-y-8">
       <h1 className="font-serif text-2xl font-semibold">Хяналтын самбар</h1>
+
+      <NotificationList notifications={notifications} />
 
       {/* Sales */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

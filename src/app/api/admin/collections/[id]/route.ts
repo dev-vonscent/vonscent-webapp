@@ -47,9 +47,30 @@ export async function PATCH(
       return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
   }
 
-  // Replace members when a new roster is supplied.
+  // Replace members when a new roster is supplied. Validate the new roster
+  // BEFORE deleting the old one (audit R3): the FK failure that used to leave
+  // a collection member-less can now only happen in the narrow window between
+  // this check and the insert.
   if (input.productIds) {
-    await supabase.from("collection_items").delete().eq("collection_id", id);
+    const { data: found, error: checkError } = await supabase
+      .from("products")
+      .select("id")
+      .in("id", input.productIds);
+    if (
+      checkError ||
+      ((found as { id: string }[] | null) ?? []).length !==
+        new Set(input.productIds).size
+    ) {
+      return NextResponse.json({ error: "UNKNOWN_PRODUCT" }, { status: 400 });
+    }
+
+    const { error: delError } = await supabase
+      .from("collection_items")
+      .delete()
+      .eq("collection_id", id);
+    if (delError)
+      return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
+
     const items = input.productIds.map((product_id, i) => ({
       collection_id: id,
       product_id,

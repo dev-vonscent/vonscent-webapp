@@ -70,7 +70,7 @@ export const DigitInput = React.forwardRef<HTMLInputElement, DigitInputProps>(
           onBlur={() => setFocused(false)}
           autoFocus={autoFocus}
           disabled={disabled}
-          className="absolute inset-0 z-10 cursor-pointer opacity-0"
+          className="absolute inset-0 z-10 cursor-pointer text-base opacity-0"
           style={{ caretColor: "transparent" }}
         />
         <div aria-hidden className="flex items-center justify-center gap-1.5">
@@ -84,7 +84,7 @@ export const DigitInput = React.forwardRef<HTMLInputElement, DigitInputProps>(
                 )}
                 <div
                   className={cn(
-                    "bg-secondary flex h-12 w-10 shrink-0 items-center justify-center rounded-xl text-lg font-semibold tabular-nums transition-all duration-150",
+                    "bg-secondary flex h-12 w-full max-w-10 min-w-0 flex-1 items-center justify-center rounded-xl text-lg font-semibold tabular-nums transition-all duration-150",
                     active && "ring-ring bg-accent scale-105 ring-2",
                     disabled && "opacity-50",
                   )}

@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { revalidatePublic } from "@/lib/cache";
 import { checkoutSchema } from "@/lib/validators/order";
 import {
+  BundleUnavailableError,
   computeSummary,
+  priceGiftLines,
   UndeliverableZoneError,
 } from "@/features/checkout/api";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -31,6 +33,12 @@ export async function POST(req: Request) {
     if (e instanceof UndeliverableZoneError) {
       return NextResponse.json({ error: "ZONE_UNAVAILABLE" }, { status: 400 });
     }
+    if (e instanceof BundleUnavailableError) {
+      return NextResponse.json(
+        { error: "BUNDLE_UNAVAILABLE" },
+        { status: 409 },
+      );
+    }
     throw e;
   }
   if (summary.lines.length === 0) {
@@ -51,6 +59,31 @@ export async function POST(req: Request) {
   }
 
   if (supabase) {
+    // Monthly gift samples: the allowance is one 1ml pick per full 200,000₮
+    // of goods value AFTER the coupon (questions.md №3), so validate the
+    // coupon here the same way place_order will and price the picks against
+    // the discounted figure.
+    let giftLines: Awaited<ReturnType<typeof priceGiftLines>> = [];
+    if (input.giftProductIds.length > 0) {
+      let discount = 0;
+      if (input.couponCode) {
+        const { data: couponCheck } = await callRpc<{
+          valid: boolean;
+          discount?: number;
+        }>(supabase, "validate_coupon", {
+          p_code: input.couponCode,
+          p_subtotal: summary.subtotal,
+          p_user: userId,
+        });
+        if (couponCheck?.valid) discount = couponCheck.discount ?? 0;
+      }
+      giftLines = await priceGiftLines(
+        input.giftProductIds,
+        Math.max(summary.subtotal - discount, 0),
+      );
+    }
+    const allLines = [...summary.lines, ...giftLines];
+
     // Reserve inventory + create order atomically via RPC (development.md §6).
     const rpcArgs: Record<string, unknown> = {
       p_order: {
@@ -70,22 +103,23 @@ export async function POST(req: Request) {
         loyalty_used: userId ? input.loyaltyUsed : 0,
         reserve_minutes: RESERVE_TIMEOUT_MINUTES,
       },
-      p_items: summary.lines.map((l) => {
+      p_items: allLines.map((l) => {
         const base = {
           product_id: l.productId,
           variant_id: l.variantId,
           ml: l.ml,
           qty: l.qty,
         };
-        // Bundle lines carry a server-computed unit price + grouping; loose
-        // items send none so place_order charges the variant's list price.
-        if (l.collectionName !== undefined) {
+        // Bundle lines carry a server-computed unit price + grouping, and a
+        // monthly gift sample is a 0₮ line; loose items send none so
+        // place_order charges the variant's list price.
+        if (l.collectionName !== undefined || l.isGift) {
           return {
             ...base,
             unit_price: l.unitPrice,
             is_gift: l.isGift ?? false,
             collection_id: l.collectionId ?? null,
-            collection_name: l.collectionName,
+            collection_name: l.collectionName ?? null,
           };
         }
         return base;

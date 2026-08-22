@@ -45,6 +45,12 @@ export const checkoutSchema = z.object({
   // empty cart after pricing (EMPTY_CART).
   items: z.array(orderItemSchema).default([]),
   collections: z.array(collectionOrderSchema).default([]),
+  /**
+   * Сар бүрийн бэлгийн 1мл sample-ийн сонголтууд. The server re-validates:
+   * one pick per full 200,000₮ of goods (after coupon, before shipping),
+   * products must be in the admin's monthly pool.
+   */
+  giftProductIds: z.array(z.string().min(1)).max(8).default([]),
 });
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;

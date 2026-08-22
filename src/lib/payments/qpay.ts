@@ -108,3 +108,53 @@ export async function createInvoice(params: {
     qrImage: data.qr_image ?? null,
   };
 }
+
+export interface QpayPaymentCheck {
+  paid: boolean;
+  paidAmount: number;
+}
+
+/**
+ * Re-query QPay for the actual payments on an invoice. The webhook must not
+ * trust its caller — anyone who learns an order number can hit the callback
+ * URL — so an order is only marked paid after this check confirms the money.
+ * Returns null when the check itself could not be performed (mock mode, auth
+ * or network failure); callers must treat null as "not verified".
+ */
+export async function checkPayment(
+  invoiceId: string,
+): Promise<QpayPaymentCheck | null> {
+  if (isQpayMockMode()) return null;
+
+  const token = await getToken();
+  if (!token) return null;
+
+  const res = await fetch(`${QPAY_BASE}/payment/check`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      object_type: "INVOICE",
+      object_id: invoiceId,
+      offset: { page_number: 1, page_limit: 100 },
+    }),
+  });
+  if (!res.ok) return null;
+
+  const data = (await res.json()) as {
+    paid_amount?: number | string;
+    rows?: Array<{
+      payment_status?: string;
+      payment_amount?: number | string;
+    }>;
+  };
+
+  const rowSum = (data.rows ?? [])
+    .filter((r) => r.payment_status === "PAID")
+    .reduce((sum, r) => sum + Number(r.payment_amount ?? 0), 0);
+  const paidAmount = rowSum > 0 ? rowSum : Number(data.paid_amount ?? 0);
+
+  return { paid: paidAmount > 0, paidAmount };
+}

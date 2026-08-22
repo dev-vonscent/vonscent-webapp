@@ -66,6 +66,8 @@ export interface ProductDetail extends ProductListItem {
   /** Available source ml (on_hand - reserved). */
   availableMl: number;
   bottleMl: number;
+  /** Free-form internal tag names (0035) — search fodder, never badges. */
+  customTags: string[];
 }
 
 /** One row of the admin-managed scent family taxonomy. */

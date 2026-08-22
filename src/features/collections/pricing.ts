@@ -1,4 +1,4 @@
-import { ML_SIZES } from "@/lib/constants";
+import { BUNDLE_ML_SIZES } from "@/lib/constants";
 import type { CollectionMember, CollectionPriceAtMl } from "./types";
 
 /** Round to the nearest `step` (₮). step ≤ 1 rounds to the nearest whole ₮. */
@@ -29,7 +29,7 @@ export function memberPrices(
   discountPct: number,
   step = 100,
 ): CollectionPriceAtMl[] {
-  return ML_SIZES.map((ml) => {
+  return BUNDLE_ML_SIZES.map((ml) => {
     const rows = members.map((m) => m.variantByMl[ml]);
     const available =
       members.length > 0 && rows.every((r) => r != null && r.inStock);

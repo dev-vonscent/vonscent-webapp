@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -186,12 +186,26 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
                 />
               </Field>
             </div>
-            <Field label="Текст">
-              <Input
-                value={s.body}
-                onChange={(e) => setSlide(i, { body: e.target.value })}
-              />
-            </Field>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Текст">
+                <Input
+                  value={s.body}
+                  onChange={(e) => setSlide(i, { body: e.target.value })}
+                />
+              </Field>
+              <Field label="Купон код (заавал биш — бичвэл хуулах товчтой купон болж харагдана)">
+                <Input
+                  value={s.couponCode ?? ""}
+                  placeholder="SUMMER10"
+                  onChange={(e) =>
+                    setSlide(i, {
+                      couponCode:
+                        e.target.value.trim().toUpperCase() || undefined,
+                    })
+                  }
+                />
+              </Field>
+            </div>
           </div>
         ))}
         <Button variant="outline" onClick={addSlide}>
@@ -268,21 +282,41 @@ function BannerSection({ initial }: { initial: HeroBannerRow[] }) {
     <Section title="Hero баннер">
       <ul className="space-y-2">
         {initial.map((b) => (
-          <li
+          <EditableRow
             key={b.id}
-            className="border-border flex items-center justify-between rounded-md border px-3 py-2 text-sm"
-          >
-            <span>
-              <strong>{b.title}</strong>{" "}
-              <span className="text-muted-foreground">{b.subtitle}</span>
-            </span>
-            <button
-              onClick={() => del(b.id)}
-              className="text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 className="size-4" />
-            </button>
-          </li>
+            summary={
+              <span>
+                <strong>{b.title}</strong>{" "}
+                <span className="text-muted-foreground">{b.subtitle}</span>
+              </span>
+            }
+            onDelete={() => del(b.id)}
+            fields={[
+              { key: "title", label: "Гарчиг", value: b.title },
+              { key: "subtitle", label: "Дэд гарчиг", value: b.subtitle ?? "" },
+              { key: "ctaLabel", label: "CTA текст", value: b.cta_label ?? "" },
+              { key: "ctaHref", label: "CTA холбоос", value: b.cta_href ?? "" },
+              {
+                key: "imageUrl",
+                label: "Зургийн URL",
+                value: b.image_url ?? "",
+              },
+            ]}
+            onSave={async (v) => {
+              await fetch(`/api/admin/banners/${b.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  title: v.title,
+                  subtitle: v.subtitle,
+                  ctaLabel: v.ctaLabel,
+                  ctaHref: v.ctaHref,
+                  imageUrl: v.imageUrl || null,
+                }),
+              });
+              router.refresh();
+            }}
+          />
         ))}
       </ul>
       <div className="grid gap-2 sm:grid-cols-2">
@@ -334,23 +368,40 @@ function FaqSection({ initial }: { initial: FaqRow[] }) {
     <Section title="FAQ">
       <ul className="space-y-2">
         {initial.map((f) => (
-          <li
+          <EditableRow
             key={f.id}
-            className="border-border flex items-center justify-between rounded-md border px-3 py-2 text-sm"
-          >
-            <span>
-              <Badge variant="secondary" className="mr-2">
-                {f.category}
-              </Badge>
-              {f.question}
-            </span>
-            <button
-              onClick={() => del(f.id)}
-              className="text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 className="size-4" />
-            </button>
-          </li>
+            summary={
+              <span>
+                <Badge variant="secondary" className="mr-2">
+                  {f.category}
+                </Badge>
+                {f.question}
+              </span>
+            }
+            onDelete={() => del(f.id)}
+            fields={[
+              { key: "category", label: "Ангилал", value: f.category ?? "" },
+              { key: "question", label: "Асуулт", value: f.question },
+              {
+                key: "answer",
+                label: "Хариулт",
+                value: f.answer,
+                multiline: true,
+              },
+            ]}
+            onSave={async (v) => {
+              await fetch(`/api/admin/faqs/${f.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  category: v.category,
+                  question: v.question,
+                  answer: v.answer,
+                }),
+              });
+              router.refresh();
+            }}
+          />
         ))}
       </ul>
       <div className="grid gap-2">
@@ -410,21 +461,40 @@ function BlogSection({ initial }: { initial: BlogPostRow[] }) {
     <Section title="Блог нийтлэл">
       <ul className="space-y-2">
         {initial.map((p) => (
-          <li
+          <EditableRow
             key={p.id}
-            className="border-border flex items-center justify-between rounded-md border px-3 py-2 text-sm"
-          >
-            <span>
-              <strong>{p.title}</strong>{" "}
-              {!p.is_published && <Badge variant="secondary">Ноорог</Badge>}
-            </span>
-            <button
-              onClick={() => del(p.id)}
-              className="text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 className="size-4" />
-            </button>
-          </li>
+            summary={
+              <span>
+                <strong>{p.title}</strong>{" "}
+                {!p.is_published && <Badge variant="secondary">Ноорог</Badge>}
+              </span>
+            }
+            onDelete={() => del(p.id)}
+            fields={[
+              { key: "title", label: "Гарчиг", value: p.title },
+              { key: "category", label: "Ангилал", value: p.category ?? "" },
+              { key: "excerpt", label: "Товч", value: p.excerpt ?? "" },
+              {
+                key: "body",
+                label: "Агуулга",
+                value: p.body ?? "",
+                multiline: true,
+              },
+            ]}
+            onSave={async (v) => {
+              await fetch(`/api/admin/blog/${p.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  title: v.title,
+                  category: v.category,
+                  excerpt: v.excerpt,
+                  body: v.body,
+                }),
+              });
+              router.refresh();
+            }}
+          />
         ))}
       </ul>
       <div className="grid gap-2">
@@ -455,6 +525,110 @@ function BlogSection({ initial }: { initial: BlogPostRow[] }) {
         <Plus className="size-4" /> Нийтлэл нэмэх
       </Button>
     </Section>
+  );
+}
+
+interface EditableField {
+  key: string;
+  label: string;
+  value: string;
+  multiline?: boolean;
+}
+
+/**
+ * One list row with an inline edit form behind the pencil — feeds the PATCH
+ * routes that previously had no UI (todo №23: баннер/блог/FAQ засах).
+ */
+function EditableRow({
+  summary,
+  fields,
+  onSave,
+  onDelete,
+}: {
+  summary: React.ReactNode;
+  fields: EditableField[];
+  onSave: (values: Record<string, string>) => Promise<void>;
+  onDelete: () => void;
+}) {
+  const [editing, setEditing] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const [values, setValues] = React.useState<Record<string, string>>(() =>
+    Object.fromEntries(fields.map((f) => [f.key, f.value])),
+  );
+
+  async function save() {
+    setBusy(true);
+    try {
+      await onSave(values);
+      setEditing(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <li className="border-border rounded-md border px-3 py-2 text-sm">
+      <div className="flex items-center justify-between gap-2">
+        {summary}
+        <span className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={() => setEditing((e) => !e)}
+            className="text-muted-foreground hover:text-primary"
+            aria-label="Засах"
+          >
+            <Pencil className="size-4" />
+          </button>
+          <button
+            onClick={onDelete}
+            className="text-muted-foreground hover:text-destructive"
+            aria-label="Устгах"
+          >
+            <Trash2 className="size-4" />
+          </button>
+        </span>
+      </div>
+      {editing && (
+        <div className="mt-3 space-y-2">
+          {fields.map((f) =>
+            f.multiline ? (
+              <div key={f.key} className="space-y-1">
+                <Label className="text-xs">{f.label}</Label>
+                <textarea
+                  value={values[f.key]}
+                  onChange={(e) =>
+                    setValues((v) => ({ ...v, [f.key]: e.target.value }))
+                  }
+                  rows={4}
+                  className="bg-secondary focus-visible:ring-ring w-full rounded-md px-3 py-2 text-sm outline-none focus-visible:ring-2"
+                />
+              </div>
+            ) : (
+              <div key={f.key} className="space-y-1">
+                <Label className="text-xs">{f.label}</Label>
+                <Input
+                  value={values[f.key]}
+                  onChange={(e) =>
+                    setValues((v) => ({ ...v, [f.key]: e.target.value }))
+                  }
+                />
+              </div>
+            ),
+          )}
+          <div className="flex gap-2 pt-1">
+            <Button size="sm" onClick={save} disabled={busy}>
+              {busy ? "Хадгалж байна…" : "Хадгалах"}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setEditing(false)}
+            >
+              Болих
+            </Button>
+          </div>
+        </div>
+      )}
+    </li>
   );
 }
 

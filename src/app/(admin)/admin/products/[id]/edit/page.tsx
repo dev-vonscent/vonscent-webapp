@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getAdminProduct } from "@/features/admin/api";
 import { ProductEditForm } from "@/features/admin/components/product-edit-form";
-import { getScentFamilies } from "@/features/taxonomy/api";
+import { getScentFamilies, fetchCustomTags } from "@/features/taxonomy/api";
 
 export default async function EditProductPage({
   params,
@@ -11,9 +11,10 @@ export default async function EditProductPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [product, families] = await Promise.all([
+  const [product, families, customTagPool] = await Promise.all([
     getAdminProduct(id),
     getScentFamilies(),
+    fetchCustomTags(),
   ]);
   if (!product) notFound();
 
@@ -26,7 +27,11 @@ export default async function EditProductPage({
         <ArrowLeft className="size-4" /> Бараа
       </Link>
       <h1 className="font-serif text-2xl font-semibold">Бараа засах</h1>
-      <ProductEditForm product={product} families={families} />
+      <ProductEditForm
+        product={product}
+        families={families}
+        customTagPool={customTagPool}
+      />
     </div>
   );
 }

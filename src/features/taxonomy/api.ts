@@ -31,6 +31,32 @@ interface DbScentFamily {
   is_active: boolean;
 }
 
+/** One entry of the admin-managed free-form tag pool (0035_custom_tags). */
+export interface CustomTagOption {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+/** The whole custom-tag pool, alphabetical. Empty in demo mode. */
+export const fetchCustomTags = cache(async (): Promise<CustomTagOption[]> => {
+  if (!isSupabaseConfigured) return [];
+  const supabase = createPublicClient();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("custom_tags")
+    .select("id, name, slug")
+    .order("name", { ascending: true });
+  return (data as CustomTagOption[] | null) ?? [];
+});
+
+/** Keep only slugs that exist in the pool (product form defense). */
+export async function sanitizeCustomTags(slugs: string[]): Promise<string[]> {
+  if (!slugs.length) return [];
+  const pool = new Set((await fetchCustomTags()).map((t) => t.slug));
+  return [...new Set(slugs)].filter((s) => pool.has(s));
+}
+
 /** Every family, including deactivated ones (admin view). */
 export const fetchScentFamilies = cache(
   async (): Promise<ScentFamilyOption[]> => {

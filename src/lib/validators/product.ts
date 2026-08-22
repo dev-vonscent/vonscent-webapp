@@ -19,8 +19,13 @@ export const productImageSchema = z.object({
   alt: z.string().max(200).default(""),
 });
 
-/** The store's whole size list — see ML_SIZES / 0027_manual_pricing.sql. */
-const mlSize = z.union([z.literal(5), z.literal(10), z.literal(20)]);
+/** The store's whole size list — see ML_SIZES / 0026_sample_tier.sql. */
+const mlSize = z.union([
+  z.literal(2),
+  z.literal(5),
+  z.literal(10),
+  z.literal(20),
+]);
 
 /**
  * One decant size as the admin priced it. There is no derived price any more:
@@ -61,6 +66,10 @@ export const productInputSchema = z.object({
   bottlePrice: z.number().int().nonnegative(),
   bottleMl: z.number().int().positive(),
   variants: z.array(variantDraftSchema).min(1),
+  tags: z.array(z.enum(["new", "hot", "sale"])).default([]),
+  isActive: z.boolean().default(true),
+  /** Free-form internal tags (slugs from the admin pool, 0035_custom_tags). */
+  customTags: z.array(z.string().min(1)).default([]),
 });
 
 export type ProductInput = z.infer<typeof productInputSchema>;
@@ -70,7 +79,9 @@ export const productEditSchema = z.object({
   name: z.string().min(1).optional(),
   brand: z.string().min(1).optional(),
   gender: z.enum(["male", "female", "unisex"]).optional(),
-  concentration: z.enum(["EDP", "EDT", "Parfum", "EDC"]).optional(),
+  concentration: z
+    .enum(["EDP", "EDT", "Parfum", "EDC", "Extrait", "Elixir"])
+    .optional(),
   scentFamilies: z.array(z.string().min(1)).optional(),
   seasons: seasonList.optional(),
   notesTop: z.array(z.string()).optional(),
@@ -89,6 +100,7 @@ export const productEditSchema = z.object({
   lowStockMl: z.number().int().nonnegative().optional(),
   /** Per-size edits — `ml` identifies the existing variant to reprice. */
   variants: z.array(variantDraftSchema).optional(),
+  customTags: z.array(z.string().min(1)).optional(),
 });
 
 export type ProductEditInput = z.infer<typeof productEditSchema>;

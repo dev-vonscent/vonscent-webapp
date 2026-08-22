@@ -29,6 +29,7 @@ import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/browser";
 import { useWishlist } from "@/features/wishlist/store";
 import { AddressBook } from "@/features/account/components/address-book";
+import { PasscodeChange } from "@/features/account/components/passcode-change";
 import { PhoneVerify } from "@/features/account/components/phone-verify";
 
 export default function ProfilePage() {
@@ -295,6 +296,14 @@ export default function ProfilePage() {
         <span className="font-medium">Загвар</span>
         <ThemeSwitcher className="ml-auto" />
       </div>
+
+      {/* Passcode change — phone accounts only (the 4-digit code is theirs;
+          an email/OAuth account would just get a 401 from the route). */}
+      {configured && email.endsWith("@phone.vonscent.mn") && (
+        <div className="bg-card rounded-xl p-4">
+          <PasscodeChange />
+        </div>
+      )}
 
       {/* Delivery addresses */}
       {configured && <AddressBook />}

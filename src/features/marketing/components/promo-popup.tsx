@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { PopupSettings, PopupSlide } from "@/features/content/api";
@@ -18,6 +18,47 @@ function isLive(slide: PopupSlide, now: number): boolean {
   if (slide.startsAt && now < new Date(slide.startsAt).getTime()) return false;
   if (slide.endsAt && now > new Date(slide.endsAt).getTime()) return false;
   return true;
+}
+
+/**
+ * A coupon rendered as a dashed-border ticket with a copy button — the admin
+ * only types the code; the presentation lives in code (questions.md №12).
+ */
+function CouponCode({ code }: { code: string }) {
+  const [copied, setCopied] = React.useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard blocked (e.g. non-secure context) — the code stays visible
+      // to copy by hand.
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      aria-label={`${code} купон хуулах`}
+      className="border-primary/60 bg-secondary/60 hover:bg-secondary mx-auto flex items-center gap-3 rounded-lg border-2 border-dashed px-5 py-2.5 transition-colors"
+    >
+      <span className="font-mono text-lg font-semibold tracking-widest">
+        {code}
+      </span>
+      {copied ? (
+        <span className="text-success flex items-center gap-1 text-xs">
+          <Check className="size-3.5" /> Хуулагдлаа
+        </span>
+      ) : (
+        <span className="text-muted-foreground flex items-center gap-1 text-xs">
+          <Copy className="size-3.5" /> Хуулах
+        </span>
+      )}
+    </button>
+  );
 }
 
 /**
@@ -123,6 +164,7 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
           {slide.body && (
             <p className="text-muted-foreground text-sm">{slide.body}</p>
           )}
+          {slide.couponCode && <CouponCode code={slide.couponCode} />}
           {slide.ctaLabel && (
             <Button asChild className="mt-2" onClick={dismiss}>
               <Link href={slide.ctaHref || "/catalog"}>{slide.ctaLabel}</Link>

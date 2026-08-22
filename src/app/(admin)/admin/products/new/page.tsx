@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ProductForm } from "@/features/admin/components/product-form";
-import { getScentFamilies } from "@/features/taxonomy/api";
+import { getScentFamilies, fetchCustomTags } from "@/features/taxonomy/api";
 
 export default async function NewProductPage() {
-  const families = await getScentFamilies();
+  const [families, customTagPool] = await Promise.all([
+    getScentFamilies(),
+    fetchCustomTags(),
+  ]);
   return (
     <div className="space-y-6">
       <Link
@@ -15,7 +18,7 @@ export default async function NewProductPage() {
         Бараа руу буцах
       </Link>
       <h1 className="font-serif text-2xl font-semibold">Шинэ бараа нэмэх</h1>
-      <ProductForm families={families} />
+      <ProductForm families={families} customTagPool={customTagPool} />
     </div>
   );
 }

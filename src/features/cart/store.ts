@@ -87,11 +87,20 @@ interface CartState {
   clear: () => void;
 }
 
-/** Identity of a bundle config: same collection + ml + gift folds together. */
+/**
+ * Identity of a bundle config: same collection + ml + gift folds together.
+ * A custom bundle has no collectionId, so its identity is its member set —
+ * otherwise two different custom bundles at the same ml/gift would merge and
+ * the second one's members would silently vanish (audit R1).
+ */
 function collectionKey(c: Omit<CartCollection, "key" | "qty">): string {
-  return [c.collectionId ?? "custom", c.ml, c.gift?.productId ?? "nogift"].join(
-    ":",
-  );
+  const identity =
+    c.collectionId ??
+    `custom-${c.members
+      .map((m) => m.variantId)
+      .sort()
+      .join("+")}`;
+  return [identity, c.ml, c.gift?.productId ?? "nogift"].join(":");
 }
 
 export const useCart = create<CartState>()(

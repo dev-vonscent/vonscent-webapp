@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/lib/format";
+import { trackPurchase } from "@/lib/analytics";
 
 interface QpayInfo {
   invoiceId: string;
@@ -41,6 +42,53 @@ export default function OrderSuccessPage() {
     if (raw) setOrder(JSON.parse(raw));
     setLoaded(true);
   }, []);
+
+  // Poll the real payment status while the (non-mock) QPay QR is on screen —
+  // this is what flips the page to "Төлбөр амжилттай" for genuine payments
+  // and lets the purchase event below fire outside mock mode (audit №25).
+  React.useEffect(() => {
+    if (!order || paid) return;
+    if (order.paymentMethod !== "qpay" || order.qpayMock) return;
+    let cancelled = false;
+    const startedAt = Date.now();
+    const t = setInterval(async () => {
+      // Give up after 10 minutes — the invoice window is long gone by then.
+      if (Date.now() - startedAt > 10 * 60_000) {
+        clearInterval(t);
+        return;
+      }
+      try {
+        const res = await fetch(
+          `/api/payments/status?order=${encodeURIComponent(order.orderNo)}`,
+        );
+        const data = await res.json();
+        if (!cancelled && data?.paid) {
+          setPaid(true);
+          clearInterval(t);
+        }
+      } catch {
+        // transient — keep polling
+      }
+    }, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [order, paid]);
+
+  // Purchase event — only once the payment is actually confirmed (an unpaid
+  // QPay invoice on this page is an abandoned checkout, not a purchase).
+  React.useEffect(() => {
+    if (!order || !paid) return;
+    const key = `vonscent-purchase-${order.orderNo}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      // storage blocked — fire anyway, worst case a duplicate event
+    }
+    trackPurchase(order.orderNo, [], order.total);
+  }, [order, paid]);
 
   async function confirmMockPayment() {
     if (!order) return;
@@ -92,6 +140,10 @@ export default function OrderSuccessPage() {
           {paid
             ? "Таны төлбөр баталгаажлаа. Бид захиалгыг боловсруулж эхэлнэ."
             : `Баярлалаа, ${order.contactName}! ${showQpayMock ? "Доорх mock QPay-ээр төлбөрөө баталгаажуулна уу." : "Бид тантай удахгүй холбогдоно."}`}
+        </p>
+        <p className="text-muted-foreground text-sm">
+          Захиалга маргааш 11:00 цагт хүргэлтэд гарна (амралтын өдөр ч хүргэнэ).
+          Маргааш өглөөний 9:00 цаг хүртэл цуцлах боломжтой.
         </p>
       </div>
 

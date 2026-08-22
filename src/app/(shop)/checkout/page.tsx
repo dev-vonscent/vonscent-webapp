@@ -32,12 +32,13 @@ import {
 } from "@/components/ui/select";
 import { checkoutSchema } from "@/lib/validators/order";
 import {
+  GIFT_THRESHOLD,
   SHIPPING_ZONES,
-  FREE_SHIP_OVER,
   PAYMENT_METHODS,
   type ShippingZoneConfig,
 } from "@/lib/constants";
-import { shipsToday, SAME_DAY_CUTOFF_HOUR } from "@/lib/time";
+import { GiftSamplePicker } from "@/features/checkout/components/gift-sample-picker";
+import { DISPATCH_HOUR, ORDER_EDIT_CUTOFF_HOUR } from "@/lib/time";
 import { resolveZone, zoneKey } from "@/lib/geo/zone";
 import {
   AddressFields,
@@ -45,6 +46,7 @@ import {
 } from "@/features/checkout/components/address-fields";
 import { formatPrice } from "@/lib/format";
 import { useCart, selectSubtotal } from "@/features/cart/store";
+import { trackBeginCheckout } from "@/lib/analytics";
 import { createClient } from "@/lib/supabase/browser";
 import type { AddressRow } from "@/db/types";
 import type { AvailableCoupon } from "@/app/api/coupons/available/route";
@@ -58,7 +60,6 @@ interface ShippingSettingsShape {
     remote?: boolean;
     areas?: string[];
   }[];
-  freeOver: number;
 }
 
 /** Ready-made delivery notes the client asked for (gift wrap, call ahead, …). */
@@ -94,8 +95,8 @@ export default function CheckoutPage() {
   const [zones, setZones] = React.useState<ShippingZoneConfig[]>([
     ...SHIPPING_ZONES,
   ]);
-  const [freeOver, setFreeOver] = React.useState(FREE_SHIP_OVER);
   const [noteTags, setNoteTags] = React.useState<string[]>([]);
+  const [giftIds, setGiftIds] = React.useState<string[]>([]);
   // Khoroo lives outside the form: it is folded into shipDetail on submit,
   // since orders has no dedicated column for it.
   const [khoroo, setKhoroo] = React.useState<number | null>(null);
@@ -151,9 +152,35 @@ export default function CheckoutPage() {
         const first = loaded.find((z) => z.deliverable) ?? loaded[0];
         if (first) setValue("shipZone", zoneKey(first));
       }
-      if (typeof v.freeOver === "number") setFreeOver(v.freeOver);
     })();
   }, [setValue]);
+
+  // begin_checkout fires once per visit to this page (todo №25).
+  const checkoutTracked = React.useRef(false);
+  React.useEffect(() => {
+    if (checkoutTracked.current || !mounted) return;
+    const { items: cartItems, collections: cartCols } = useCart.getState();
+    if (cartItems.length === 0 && cartCols.length === 0) return;
+    checkoutTracked.current = true;
+    trackBeginCheckout(
+      [
+        ...cartItems.map((i) => ({
+          id: i.productId,
+          name: `${i.name} ${i.ml}ml`,
+          brand: i.brand,
+          price: i.unitPrice,
+          quantity: i.qty,
+        })),
+        ...cartCols.map((c) => ({
+          id: c.collectionId ?? c.slug,
+          name: c.name,
+          price: c.unitPrice,
+          quantity: c.qty,
+        })),
+      ],
+      selectSubtotal(useCart.getState()),
+    );
+  }, [mounted]);
 
   React.useEffect(() => {
     setMounted(true);
@@ -240,17 +267,18 @@ export default function CheckoutPage() {
   }, [autoZone, setValue]);
   const selectedZone = zones.find((z) => zoneKey(z) === zone) ?? zones[0];
   const zoneBlocked = selectedZone ? !selectedZone.deliverable : false;
-  const shippingFee =
-    zoneBlocked || !selectedZone
-      ? 0
-      : subtotal >= freeOver
-        ? 0
-        : selectedZone.fee;
+  // Every order pays its delivery fee (client rule — no free-shipping tier).
+  const shippingFee = zoneBlocked || !selectedZone ? 0 : selectedZone.fee;
 
   const discount = coupon ? Math.min(coupon.discount, subtotal) : 0;
+  // Points cover the goods only — never the delivery fee (questions.md №9).
   const maxLoyalty = Math.min(
     Math.floor(loyaltyPoints * redeemRate),
-    Math.max(subtotal + shippingFee - discount, 0),
+    Math.max(subtotal - discount, 0),
+  );
+  // Monthly gift samples: one 1ml pick per full 200k of goods after coupon.
+  const giftAllowance = Math.floor(
+    Math.max(subtotal - discount, 0) / GIFT_THRESHOLD,
   );
   const loyaltyApplied = useLoyalty ? maxLoyalty : 0;
   const total = Math.max(subtotal + shippingFee - discount - loyaltyApplied, 0);
@@ -348,6 +376,7 @@ export default function CheckoutPage() {
           couponCode: coupon?.code,
           loyaltyUsed: loyaltyApplied,
           saveAddress: saveAddr,
+          giftProductIds: giftIds,
           items: items.map((i) => ({
             productId: i.productId,
             variantId: i.variantId,
@@ -369,6 +398,8 @@ export default function CheckoutPage() {
         setServerError(
           data.error === "OUT_OF_STOCK"
             ? "Уучлаарай, зарим бараа дууссан байна."
+            : data.error === "BUNDLE_UNAVAILABLE"
+              ? "Сагсан дахь багц худалдаанд байхгүй болсон байна. Багцаа шинэчилнэ үү."
             : data.error === "ZONE_UNAVAILABLE"
               ? "Сонгосон бүсэд хүргэлт хийх боломжгүй байна."
               : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
@@ -603,6 +634,15 @@ export default function CheckoutPage() {
               ))}
             </RadioGroup>
           </Section>
+
+          {/* Monthly gift samples — one pick per full 200k of goods value. */}
+          {mounted && (
+            <GiftSamplePicker
+              allowance={giftAllowance}
+              value={giftIds}
+              onChange={setGiftIds}
+            />
+          )}
         </div>
 
         {/* Summary */}
@@ -763,7 +803,7 @@ export default function CheckoutPage() {
                     <Truck className="size-4" /> Хүргэлт
                   </span>
                   <span>
-                    {shippingFee === 0 ? "Үнэгүй" : formatPrice(shippingFee)}
+                    {shippingFee === 0 ? "—" : formatPrice(shippingFee)}
                   </span>
                 </div>
               </div>
@@ -801,15 +841,15 @@ export default function CheckoutPage() {
                 </p>
               )}
 
-              {/* Dispatch cut-off reminder (requirement_fb.md §5). */}
+              {/* Dispatch cut-off reminder (questions.md №14). */}
               {mounted && (
                 <p className="bg-secondary rounded-xl px-3 py-2.5 text-xs leading-relaxed">
                   <Clock className="mr-1 inline size-3.5 align-[-2px]" />
-                  {shipsToday()
-                    ? `Өнөөдрийн ${SAME_DAY_CUTOFF_HOUR}:00 цагаас өмнөх захиалга өнөөдөртөө хүргэгдэнэ.`
-                    : `${SAME_DAY_CUTOFF_HOUR}:00 цаг өнгөрсөн тул захиалга маргааш хүргэгдэнэ.`}{" "}
-                  Хүргэх өдрийн <strong>10:00</strong> цагаас хойш захиалга
-                  цуцлах, өөрчлөх боломжгүй.
+                  {`Захиалга маргааш ${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна (амралтын өдөр ч хүргэнэ).`}{" "}
+                  Маргааш өглөөний <strong>
+                    {ORDER_EDIT_CUTOFF_HOUR}:00
+                  </strong>{" "}
+                  цагаас хойш захиалга цуцлах, өөрчлөх боломжгүй.
                 </p>
               )}
 

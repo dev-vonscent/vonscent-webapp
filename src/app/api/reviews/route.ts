@@ -4,6 +4,7 @@ import { reviewInputSchema } from "@/lib/validators/review";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getStaffUser } from "@/lib/auth/guard";
 import { callRpc } from "@/lib/supabase/rpc";
 
 /**
@@ -56,33 +57,27 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
-/** Delete the current user's own review (owner RLS enforces ownership). */
+/** Delete a review — staff only (client decision: зөвхөн админ устгана). */
 export async function DELETE(req: Request) {
   const id = new URL(req.url).searchParams.get("id");
   const productId = new URL(req.url).searchParams.get("productId");
   if (!id) return NextResponse.json({ error: "MISSING_ID" }, { status: 400 });
 
   if (!isSupabaseConfigured) return NextResponse.json({ demo: true });
-  const supabase = await createClient();
+
+  const staff = await getStaffUser();
+  if (!staff) {
+    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+  const supabase = createAdminClient();
   if (!supabase) return NextResponse.json({ error: "NO_DB" }, { status: 500 });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user)
-    return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-
-  const { error } = await supabase
-    .from("reviews")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", user.id);
+  const { error } = await supabase.from("reviews").delete().eq("id", id);
   if (error)
     return NextResponse.json({ error: "DELETE_FAILED" }, { status: 500 });
 
   if (productId) {
-    const admin = createAdminClient() ?? supabase;
-    await callRpc(admin, "recompute_rating", { p_product: productId });
+    await callRpc(supabase, "recompute_rating", { p_product: productId });
   }
   revalidatePublic();
   return NextResponse.json({ ok: true });

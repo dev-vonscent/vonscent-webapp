@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
+import { trackAddToCart } from "@/lib/analytics";
 import type { ProductDetail } from "@/lib/types";
 
 export function ProductPurchase({ product }: { product: ProductDetail }) {
@@ -41,6 +42,13 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
       },
       qty,
     );
+    trackAddToCart({
+      id: product.id,
+      name: `${product.name} ${selected.ml}ml`,
+      brand: product.brand,
+      price: unitPrice,
+      quantity: qty,
+    });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   }

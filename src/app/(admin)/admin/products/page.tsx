@@ -4,12 +4,48 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { getAdminProducts } from "@/features/admin/api";
-import { ProductImageCell } from "@/features/admin/components/product-image-cell";
+import { ProductsToolbar } from "@/features/admin/components/products-toolbar";
 import { formatPrice } from "@/lib/format";
 import { GENDER_LABEL, type Gender } from "@/lib/constants";
 
-export default async function AdminProductsPage() {
-  const products = await getAdminProducts();
+export default async function AdminProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; status?: string; sort?: string }>;
+}) {
+  const { q, status, sort } = await searchParams;
+  let products = await getAdminProducts();
+
+  if (q) {
+    const needle = q.toLowerCase();
+    products = products.filter((p) =>
+      `${p.name} ${p.brand}`.toLowerCase().includes(needle),
+    );
+  }
+  if (status === "active") products = products.filter((p) => p.isActive);
+  else if (status === "hidden") products = products.filter((p) => !p.isActive);
+  else if (status === "low")
+    products = products.filter(
+      (p) => p.availableMl > 0 && p.availableMl <= p.lowStockMl,
+    );
+  else if (status === "soldout")
+    products = products.filter((p) => p.availableMl <= 0);
+
+  products = [...products].sort((a, b) => {
+    switch (sort) {
+      case "brand":
+        return a.brand.localeCompare(b.brand) || a.name.localeCompare(b.name);
+      case "price-asc":
+        return a.startingPrice - b.startingPrice;
+      case "price-desc":
+        return b.startingPrice - a.startingPrice;
+      case "stock":
+        return a.availableMl - b.availableMl;
+      default:
+        return a.name.localeCompare(b.name);
+    }
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -22,12 +58,13 @@ export default async function AdminProductsPage() {
         </Button>
       </div>
 
+      <ProductsToolbar />
+
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-muted-foreground text-left text-xs">
               <tr>
-                <th className="px-4 py-3 font-medium">Зураг</th>
                 <th className="px-4 py-3 font-medium">Нэр</th>
                 <th className="px-4 py-3 font-medium">Брэнд</th>
                 <th className="px-4 py-3 font-medium">Хүйс</th>
@@ -43,21 +80,6 @@ export default async function AdminProductsPage() {
                   key={p.id}
                   className="border-border hover:bg-muted/30 border-t"
                 >
-                  <td className="px-4 py-3">
-                    <ProductImageCell
-                      product={{
-                        id: p.id,
-                        name: p.name,
-                        isActive: p.isActive,
-                        imageUrl: p.imageUrl,
-                        imageStatus: p.imageStatus,
-                        imageResultUrl: p.imageResultUrl,
-                        imageGenId: p.imageGenId,
-                        imagePrompt: p.imagePrompt,
-                        imageError: p.imageError,
-                      }}
-                    />
-                  </td>
                   <td className="px-4 py-3 font-medium">{p.name}</td>
                   <td className="text-muted-foreground px-4 py-3">{p.brand}</td>
                   <td className="text-muted-foreground px-4 py-3">
@@ -79,7 +101,7 @@ export default async function AdminProductsPage() {
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={`/admin/products/${p.id}/edit`}
-                      className="text-gold-strong inline-flex items-center gap-1 hover:underline"
+                      className="text-primary inline-flex items-center gap-1 hover:underline"
                     >
                       <Pencil className="size-3.5" /> Засах
                     </Link>

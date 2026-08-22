@@ -77,7 +77,7 @@ export default async function OrderDetailPage({
     })
     .filter((i) => i.slug);
 
-  // Cancellable only while the status allows it AND we're still before 10:00
+  // Cancellable only while the status allows it AND we are still before 09:00
   // on the dispatch day (requirement_fb.md §9).
   const openStatus = order.status === "pending" || order.status === "confirmed";
   const beforeCutoff = isOrderEditable(order.created_at);

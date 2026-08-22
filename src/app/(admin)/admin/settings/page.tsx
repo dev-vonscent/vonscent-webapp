@@ -37,7 +37,6 @@ export default function AdminSettingsPage() {
   const [zones, setZones] = React.useState<ShippingZoneConfig[]>([
     ...SHIPPING_ZONES,
   ]);
-  const [freeOver, setFreeOver] = React.useState(150000);
   const [invoiceCode, setInvoiceCode] = React.useState("");
   const [autoGrant, setAutoGrant] = React.useState({
     enabled: false,
@@ -92,7 +91,6 @@ export default function AdminSettingsPage() {
                 })),
               );
             }
-            if (v.freeOver) setFreeOver(Number(v.freeOver));
           }
           if (row.key === "coupons" && v && v.autoGrant)
             setAutoGrant((g) => ({ ...g, ...(v.autoGrant as object) }));
@@ -310,7 +308,7 @@ export default function AdminSettingsPage() {
       {/* Shipping */}
       <Saver
         title="Хүргэлтийн бүс ба төлбөр"
-        onSave={() => saveSetting("shipping", { zones, freeOver })}
+        onSave={() => saveSetting("shipping", { zones })}
       >
         <div className="space-y-3">
           {zones.map((z, i) => (
@@ -436,14 +434,6 @@ export default function AdminSettingsPage() {
             сануулна. Хамрах газар нутгийг бөглөвөл checkout дээр бүс нь хаягаас
             автоматаар тодорхойлогдоно (хороо нь дүүргээсээ давуу).
           </p>
-        </div>
-        <div className="max-w-xs space-y-1.5">
-          <Label>Үнэгүй хүргэлтийн босго (₮)</Label>
-          <Input
-            type="number"
-            value={freeOver}
-            onChange={(e) => setFreeOver(Number(e.target.value) || 0)}
-          />
         </div>
       </Saver>
 
