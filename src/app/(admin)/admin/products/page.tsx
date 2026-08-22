@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { getAdminProducts } from "@/features/admin/api";
 import { ProductsToolbar } from "@/features/admin/components/products-toolbar";
+import { ProductImageCell } from "@/features/admin/components/product-image-cell";
 import { formatPrice } from "@/lib/format";
 import { GENDER_LABEL, type Gender } from "@/lib/constants";
 
@@ -65,6 +66,7 @@ export default async function AdminProductsPage({
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-muted-foreground text-left text-xs">
               <tr>
+                <th className="px-4 py-3 font-medium">Зураг</th>
                 <th className="px-4 py-3 font-medium">Нэр</th>
                 <th className="px-4 py-3 font-medium">Брэнд</th>
                 <th className="px-4 py-3 font-medium">Хүйс</th>
@@ -80,6 +82,21 @@ export default async function AdminProductsPage({
                   key={p.id}
                   className="border-border hover:bg-muted/30 border-t"
                 >
+                  <td className="px-4 py-3">
+                    <ProductImageCell
+                      product={{
+                        id: p.id,
+                        name: p.name,
+                        isActive: p.isActive,
+                        imageUrl: p.imageUrl,
+                        imageStatus: p.imageStatus,
+                        imageResultUrl: p.imageResultUrl,
+                        imageGenId: p.imageGenId,
+                        imagePrompt: p.imagePrompt,
+                        imageError: p.imageError,
+                      }}
+                    />
+                  </td>
                   <td className="px-4 py-3 font-medium">{p.name}</td>
                   <td className="text-muted-foreground px-4 py-3">{p.brand}</td>
                   <td className="text-muted-foreground px-4 py-3">

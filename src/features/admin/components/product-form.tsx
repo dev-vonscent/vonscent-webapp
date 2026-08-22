@@ -77,8 +77,12 @@ export function ProductForm({
   const [scentFamilies, toggleFamily] = useToggleList([]);
   const [seasons, toggleSeason] = useToggleList(["all"], { exclusive: "all" });
   // Uploaded to a staging folder before the product row exists; the create
-  // route attaches them to the new product.
+  // route attaches them to the new product (or uses the first as the AI
+  // reference in `generate` mode).
   const [images, setImages] = React.useState<GalleryImage[]>([]);
+  const [imageMode, setImageMode] = React.useState<"upload" | "generate">(
+    "generate",
+  );
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -86,6 +90,10 @@ export function ProductForm({
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (imageMode === "generate" && images.length === 0) {
+      setResult("AI-аар үүсгэхэд лавлах зураг заавал оруулна уу.");
+      return;
+    }
     setSubmitting(true);
     setResult(null);
     try {
@@ -97,6 +105,7 @@ export function ProductForm({
         tags,
         customTags,
         isActive,
+        imageMode,
         images: images.map((img) => ({ url: img.url, alt: img.alt })),
         releaseYear: form.releaseYear ? Number(form.releaseYear) : null,
         bottlePrice: Number(form.bottlePrice) || 0,
@@ -224,6 +233,38 @@ export function ProductForm({
       <Card>
         <CardContent className="space-y-4 p-6">
           <h2 className="font-serif text-lg font-semibold">Зураг</h2>
+
+          {/* Mode: use the uploaded image, or generate it with AI (§2). */}
+          <div className="bg-secondary flex w-fit gap-1 rounded-lg p-1 text-sm">
+            {(
+              [
+                ["upload", "Бэлэн зураг"],
+                ["generate", "AI-аар үүсгэх"],
+              ] as const
+            ).map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setImageMode(mode)}
+                className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                  imageMode === mode
+                    ? "bg-background shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {imageMode === "generate" && (
+            <p className="text-muted-foreground text-sm">
+              <strong>Лавлах зураг заавал</strong> — доор үнэртний зураг
+              оруулна. Хадгалахад бараа <strong>идэвхгүй</strong> статустай орж,
+              зураг фоноор үүснэ. Батлагдсаны дараа нийтлэгдэнэ.
+            </p>
+          )}
+
           <ProductImages onChange={setImages} />
         </CardContent>
       </Card>
