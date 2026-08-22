@@ -81,9 +81,9 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       p_limit: 20,
     });
     topSellerIds.push(
-      ...((
+      ...(
         (ranked as { product_id: string; sold_qty: number }[] | null) ?? []
-      ).map((r) => r.product_id)),
+      ).map((r) => r.product_id),
     );
   }
 
@@ -216,6 +216,14 @@ export interface AdminProduct {
   tags: string[];
   /** Free-form internal tag slugs (0035_custom_tags). */
   customTags: string[];
+  /** Published primary image (product_images sort_order 0). */
+  imageUrl: string | null;
+  /** Latest AI generation state (ai-image-generation §8). */
+  imageStatus: "none" | "pending" | "generating" | "done" | "failed";
+  imageResultUrl: string | null;
+  imageGenId: string | null;
+  imagePrompt: string;
+  imageError: string | null;
 }
 
 const ADMIN_PRODUCT_SELECT = `
@@ -226,8 +234,18 @@ const ADMIN_PRODUCT_SELECT = `
   product_images ( id, url, alt, sort_order ),
   product_variants ( ml, price, is_active ),
   inventory ( on_hand_ml, reserved_ml, low_stock_ml ),
-  product_tags ( tags ( slug ) )
+  product_tags ( tags ( slug ) ),
+  product_image_generations ( id, status, result_url, prompt, error, created_at )
 `;
+
+interface GenRow {
+  id: string;
+  status: "pending" | "generating" | "done" | "failed";
+  result_url: string | null;
+  prompt: string;
+  error: string | null;
+  created_at: string;
+}
 
 interface AdminProductRow {
   id: string;
@@ -261,6 +279,7 @@ interface AdminProductRow {
     | { on_hand_ml: number; reserved_ml: number; low_stock_ml: number }[]
     | null;
   product_tags: { tags: { slug: string } | { slug: string }[] | null }[];
+  product_image_generations?: GenRow[];
 }
 
 function mapAdminProduct(r: AdminProductRow): AdminProduct {
@@ -271,6 +290,12 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
   const tags = r.product_tags
     .map((pt) => (Array.isArray(pt.tags) ? pt.tags[0] : pt.tags)?.slug)
     .filter((s): s is string => Boolean(s));
+  const images = [...(r.product_images ?? [])].sort(
+    (a, b) => a.sort_order - b.sort_order,
+  );
+  const gen = [...(r.product_image_generations ?? [])].sort((a, b) =>
+    b.created_at.localeCompare(a.created_at),
+  )[0];
   return {
     id: r.id,
     slug: r.slug,
@@ -284,9 +309,7 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
     notesDescription: r.notes_description ?? "",
     usageDescription: r.usage_description ?? "",
     shortDescription: r.short_description ?? "",
-    images: [...(r.product_images ?? [])].sort(
-      (a, b) => a.sort_order - b.sort_order,
-    ),
+    images,
     variants: [...r.product_variants]
       .sort((a, b) => a.ml - b.ml)
       .map((v) => ({
@@ -309,6 +332,12 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
     // Filled by the callers' separate custom-tags query (audit R2 — an
     // embedded select would fail wholesale on a DB without 0035).
     customTags: [],
+    imageUrl: images[0]?.url ?? null,
+    imageStatus: gen?.status ?? "none",
+    imageResultUrl: gen?.result_url ?? null,
+    imageGenId: gen?.id ?? null,
+    imagePrompt: gen?.prompt ?? "",
+    imageError: gen?.error ?? null,
   };
 }
 
