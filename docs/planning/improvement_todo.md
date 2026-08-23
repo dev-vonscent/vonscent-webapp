@@ -44,7 +44,7 @@
 - [x] **4.4** `cmdk` — `global-search.tsx`-д keyboard navigation ✓ 2026-08-23 — server filter хэвээр (`shouldFilter=false`), ↑/↓ + Enter
 - [x] **4.5** `motion` — cart sheet, жагсаалтын exit анимэйшн, page transition ✓ 2026-08-23 — cart sheet-д AnimatePresence exit, `(shop)/template.tsx` fade-in, `MotionConfig reducedMotion="user"`
 - [x] **4.6** `prefers-reduced-motion` — carousel autoplay, marquee дээр хүндэтгэх ✓ 2026-08-23 — `usePrefersReducedMotion` hook + CSS media query
-- [ ] **4.7** `@testing-library/react` + `jsdom` component тест
+- [x] **4.7** `@testing-library/react` + `jsdom` component тест ✓ 2026-08-23 — `.tsx` тест jsdom, `.ts` тест node орчинд; `.node-version`=22.21.0 (Node 21 нь sanitize-html→htmlparser2 ESM require-д унадаг байсан); RichText + CatalogPagination тест
 - [ ] **4.8** `playwright` E2E: checkout, нэвтрэлт, админы гол урсгал
 - [ ] **4.9** `msw` — Supabase/QPay mock
 - [ ] **4.10** `next-safe-action` эсвэл `lib/validators` схемүүдийг `zodResolver`-оор бүх client form-д дахин ашиглах
