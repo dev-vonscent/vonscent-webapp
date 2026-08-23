@@ -13,6 +13,8 @@ import { callRpc } from "@/lib/supabase/rpc";
 import { RESERVE_TIMEOUT_MINUTES } from "@/lib/constants";
 import { env } from "@/lib/env";
 import { createInvoice, isQpayMockMode } from "@/lib/payments/qpay";
+import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
+import { formatPrice } from "@/lib/format";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -177,6 +179,28 @@ export async function POST(req: Request) {
 
     // Stock moved — refresh cached product pages so sold-out states stay honest.
     revalidatePublic();
+
+    // Best-effort admin ping (no-op until Telegram env is set).
+    const { data: created } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("order_no", orderNo)
+      .maybeSingle();
+    const itemList = allLines
+      .map(
+        (l) =>
+          `• ${tgEscape(l.name)} ${l.ml}ml × ${l.qty}` +
+          (l.isGift ? " 🎁" : ""),
+      )
+      .join("\n");
+    await notifyAdmin(
+      `🛒 <b>Шинэ захиалга</b> — ${tgEscape(orderNo)}\n` +
+        `👤 ${tgEscape(input.contactName)} · ${tgEscape(input.contactPhone)}\n` +
+        `📍 ${tgEscape([input.shipCity, input.shipDistrict, input.shipDetail].filter(Boolean).join(", "))}\n\n` +
+        `${itemList}\n\n` +
+        `💰 ${formatPrice(total)} · ${input.paymentMethod === "qpay" ? "QPay" : "Банкны шилжүүлэг"}` +
+        (created?.id ? `\n🔗 ${env.siteUrl}/admin/orders/${created.id}` : ""),
+    );
     return NextResponse.json({
       orderNo,
       total,

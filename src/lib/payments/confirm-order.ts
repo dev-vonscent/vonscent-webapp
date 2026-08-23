@@ -3,6 +3,9 @@ import "server-only";
 import { checkPayment } from "@/lib/payments/qpay";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
+import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
+import { formatPrice } from "@/lib/format";
+import { env } from "@/lib/env";
 
 export type ConfirmOrderResult =
   | { ok: true; demo?: boolean; alreadyPaid?: boolean }
@@ -28,10 +31,14 @@ export async function markOrderPaidByOrderNo(
 
   const { data } = await supabase
     .from("orders")
-    .select("id, payment_status")
+    .select("id, payment_status, total")
     .eq("order_no", orderNo)
     .maybeSingle();
-  const order = data as { id: string; payment_status: string } | null;
+  const order = data as {
+    id: string;
+    payment_status: string;
+    total: number;
+  } | null;
 
   if (!order) return { ok: false, error: "ORDER_NOT_FOUND" };
   if (order.payment_status === "paid") return { ok: true, alreadyPaid: true };
@@ -41,7 +48,21 @@ export async function markOrderPaidByOrderNo(
   });
   if (error) return { ok: false, error: "COMMIT_FAILED" };
 
+  await notifyPaid(orderNo, order.total, order.id);
   return { ok: true };
+}
+
+/** Best-effort admin ping when a payment lands (no-op until Telegram env set). */
+async function notifyPaid(
+  orderNo: string,
+  total: number,
+  orderId: string,
+): Promise<void> {
+  await notifyAdmin(
+    `✅ <b>Төлбөр төлөгдлөө</b> — ${tgEscape(orderNo)}\n` +
+      `💰 ${formatPrice(total)}\n` +
+      `🔗 ${env.siteUrl}/admin/orders/${orderId}`,
+  );
 }
 
 /**
@@ -87,5 +108,6 @@ export async function verifyAndMarkOrderPaidByOrderNo(
   });
   if (error) return { ok: false, error: "COMMIT_FAILED" };
 
+  await notifyPaid(orderNo, order.total, order.id);
   return { ok: true };
 }
