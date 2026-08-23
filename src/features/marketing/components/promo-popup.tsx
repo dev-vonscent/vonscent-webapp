@@ -4,6 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { X, ChevronLeft, ChevronRight, Copy, Check } from "lucide-react";
+import useEmblaCarousel from "embla-carousel-react";
+import Autoplay from "embla-carousel-autoplay";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { PopupSettings, PopupSlide } from "@/features/content/api";
@@ -69,9 +71,21 @@ function CouponCode({ code }: { code: string }) {
 export function PromoPopup({ settings }: { settings: PopupSettings }) {
   const [open, setOpen] = React.useState(false);
   const [index, setIndex] = React.useState(0);
-  const [paused, setPaused] = React.useState(false);
   const [slides, setSlides] = React.useState<PopupSlide[]>([]);
-  const dragX = React.useRef<number | null>(null);
+  const many = slides.length > 1;
+  const [emblaRef, emblaApi] = useEmblaCarousel(
+    { loop: many, watchDrag: many },
+    many ? [Autoplay({ delay: AUTOPLAY_MS, stopOnInteraction: true })] : [],
+  );
+
+  React.useEffect(() => {
+    if (!emblaApi) return;
+    const onSelect = () => setIndex(emblaApi.selectedScrollSnap());
+    emblaApi.on("select", onSelect);
+    return () => {
+      emblaApi.off("select", onSelect);
+    };
+  }, [emblaApi]);
 
   // Filter to slides whose schedule is live now, then decide whether to show.
   React.useEffect(() => {
@@ -96,30 +110,17 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
     return () => clearTimeout(t);
   }, [settings.enabled, settings.frequencyHours, settings.slides]);
 
-  // Autoplay.
-  React.useEffect(() => {
-    if (!open || paused || slides.length < 2) return;
-    const t = setInterval(
-      () => setIndex((i) => (i + 1) % slides.length),
-      AUTOPLAY_MS,
-    );
-    return () => clearInterval(t);
-  }, [open, paused, slides.length]);
-
   function dismiss() {
     localStorage.setItem(STORAGE_KEY, String(Date.now()));
     setOpen(false);
   }
-  const go = React.useCallback(
-    (dir: number) => {
-      setPaused(true);
-      setIndex((i) => (i + dir + slides.length) % slides.length);
-    },
-    [slides.length],
-  );
+  function go(dir: number) {
+    emblaApi?.plugins().autoplay?.stop();
+    if (dir > 0) emblaApi?.scrollNext();
+    else emblaApi?.scrollPrev();
+  }
 
   if (!open || slides.length === 0) return null;
-  const slide = slides[index];
 
   return (
     <div
@@ -129,15 +130,6 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
       <div
         className="bg-card relative w-full max-w-md overflow-hidden rounded-xl shadow-xl"
         onClick={(e) => e.stopPropagation()}
-        onPointerDown={(e) => {
-          dragX.current = e.clientX;
-        }}
-        onPointerUp={(e) => {
-          if (dragX.current == null) return;
-          const dx = e.clientX - dragX.current;
-          dragX.current = null;
-          if (Math.abs(dx) > 40 && slides.length > 1) go(dx < 0 ? 1 : -1);
-        }}
       >
         <button
           onClick={dismiss}
@@ -147,29 +139,43 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
           <X className="size-4" />
         </button>
 
-        {slide.imageUrl && (
-          <div className="bg-secondary relative aspect-[16/10] w-full">
-            <Image
-              src={slide.imageUrl}
-              alt={slide.title}
-              fill
-              sizes="448px"
-              className="object-cover"
-            />
-          </div>
-        )}
+        <div ref={emblaRef} className="overflow-hidden">
+          <div className="flex items-start">
+            {slides.map((slide, i) => (
+              <div key={i} className="min-w-0 flex-[0_0_100%]">
+                {slide.imageUrl && (
+                  <div className="bg-secondary relative aspect-[16/10] w-full">
+                    <Image
+                      src={slide.imageUrl}
+                      alt={slide.title}
+                      fill
+                      sizes="448px"
+                      className="object-cover"
+                    />
+                  </div>
+                )}
 
-        <div className="space-y-3 p-8 text-center">
-          <h2 className="font-serif text-2xl font-semibold">{slide.title}</h2>
-          {slide.body && (
-            <p className="text-muted-foreground text-sm">{slide.body}</p>
-          )}
-          {slide.couponCode && <CouponCode code={slide.couponCode} />}
-          {slide.ctaLabel && (
-            <Button asChild className="mt-2" onClick={dismiss}>
-              <Link href={slide.ctaHref || "/catalog"}>{slide.ctaLabel}</Link>
-            </Button>
-          )}
+                <div className="space-y-3 p-8 text-center">
+                  <h2 className="font-serif text-2xl font-semibold">
+                    {slide.title}
+                  </h2>
+                  {slide.body && (
+                    <p className="text-muted-foreground text-sm">
+                      {slide.body}
+                    </p>
+                  )}
+                  {slide.couponCode && <CouponCode code={slide.couponCode} />}
+                  {slide.ctaLabel && (
+                    <Button asChild className="mt-2" onClick={dismiss}>
+                      <Link href={slide.ctaHref || "/catalog"}>
+                        {slide.ctaLabel}
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {slides.length > 1 && (
@@ -193,8 +199,8 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
                 <button
                   key={i}
                   onClick={() => {
-                    setPaused(true);
-                    setIndex(i);
+                    emblaApi?.plugins().autoplay?.stop();
+                    emblaApi?.scrollTo(i);
                   }}
                   aria-label={`${i + 1}`}
                   className={cn(

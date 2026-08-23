@@ -2,64 +2,56 @@
 
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import useEmblaCarousel from "embla-carousel-react";
 import { ProductCard } from "./product-card";
 import { cn } from "@/lib/utils";
 import type { ProductListItem } from "@/lib/types";
 
 export function ProductCarousel({ products }: { products: ProductListItem[] }) {
-  const ref = React.useRef<HTMLDivElement>(null);
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    align: "start",
+    containScroll: "trimSnaps",
+    slidesToScroll: "auto",
+  });
   const [atStart, setAtStart] = React.useState(true);
   const [atEnd, setAtEnd] = React.useState(false);
 
-  const update = React.useCallback(() => {
-    const el = ref.current;
-    if (!el) return;
-    setAtStart(el.scrollLeft <= 4);
-    setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
-  }, []);
-
   React.useEffect(() => {
-    update();
-    const el = ref.current;
-    if (!el) return;
-    el.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => {
-      el.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
+    if (!emblaApi) return;
+    const update = () => {
+      setAtStart(!emblaApi.canScrollPrev());
+      setAtEnd(!emblaApi.canScrollNext());
     };
-  }, [update]);
-
-  function scrollBy(dir: 1 | -1) {
-    const el = ref.current;
-    if (!el) return;
-    el.scrollBy({ left: dir * el.clientWidth * 0.85, behavior: "smooth" });
-  }
+    update();
+    emblaApi.on("select", update).on("reInit", update);
+    return () => {
+      emblaApi.off("select", update).off("reInit", update);
+    };
+  }, [emblaApi]);
 
   return (
     <div className="group/carousel relative">
-      <div
-        ref={ref}
-        className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 sm:mx-0 sm:scroll-px-0 sm:px-0"
-      >
-        {products.map((p) => (
-          <div
-            key={p.id}
-            className="w-[44%] shrink-0 snap-start sm:w-[31%] lg:w-[23.5%]"
-          >
-            <ProductCard product={p} />
-          </div>
-        ))}
+      <div ref={emblaRef} className="-mx-4 overflow-hidden sm:mx-0">
+        <div className="flex gap-4 px-4 sm:px-0">
+          {products.map((p) => (
+            <div
+              key={p.id}
+              className="w-[44%] min-w-0 shrink-0 sm:w-[31%] lg:w-[23.5%]"
+            >
+              <ProductCard product={p} />
+            </div>
+          ))}
+        </div>
       </div>
 
       <CarouselArrow
         side="left"
-        onClick={() => scrollBy(-1)}
+        onClick={() => emblaApi?.scrollPrev()}
         disabled={atStart}
       />
       <CarouselArrow
         side="right"
-        onClick={() => scrollBy(1)}
+        onClick={() => emblaApi?.scrollNext()}
         disabled={atEnd}
       />
     </div>

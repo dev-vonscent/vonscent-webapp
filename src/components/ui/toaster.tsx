@@ -1,36 +1,20 @@
 "use client";
 
-import {
-  Toast,
-  ToastClose,
-  ToastDescription,
-  ToastProvider,
-  ToastTitle,
-  ToastViewport,
-} from "@/components/ui/toast";
-import { useToastStore } from "@/lib/toast";
+import { Toaster as SonnerToaster } from "sonner";
 
+/** Site-wide toast outlet (sonner), themed to match the card surface. */
 export function Toaster() {
-  const { toasts, dismiss } = useToastStore();
-
   return (
-    <ToastProvider duration={4500} swipeDirection="up">
-      {toasts.map((t) => (
-        <Toast
-          key={t.id}
-          variant={t.variant}
-          onOpenChange={(open) => {
-            if (!open) dismiss(t.id);
-          }}
-        >
-          <div className="space-y-0.5">
-            {t.title && <ToastTitle>{t.title}</ToastTitle>}
-            <ToastDescription>{t.description}</ToastDescription>
-          </div>
-          <ToastClose />
-        </Toast>
-      ))}
-      <ToastViewport />
-    </ToastProvider>
+    <SonnerToaster
+      position="top-center"
+      duration={4500}
+      toastOptions={{
+        classNames: {
+          toast:
+            "!bg-card !text-card-foreground !border-border !shadow-lift !rounded-xl",
+          description: "!text-muted-foreground",
+        },
+      }}
+    />
   );
 }
