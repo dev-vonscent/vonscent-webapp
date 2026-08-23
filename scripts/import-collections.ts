@@ -12,7 +12,7 @@
  * the 0028_collections.sql migration to have been applied.
  */
 import * as path from "node:path";
-import XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { createClient } from "@supabase/supabase-js";
 
 // `--dry` validates the Excel (read + shape checks) without touching the DB.
@@ -38,8 +38,9 @@ if (!dryRun && (!url || !key)) {
   process.exit(1);
 }
 
+// --dry never touches the DB, so skip client construction entirely there.
 const supabase =
-  url && key
+  !dryRun && url && key
     ? createClient(url, key, { auth: { persistSession: false } })
     : null;
 
@@ -150,25 +151,45 @@ interface Row {
   _rowNo: number;
 }
 
-function readRows(): Row[] {
-  const wb = XLSX.readFile(file);
-  const ws = wb.Sheets[SHEET];
+/** Unwrap ExcelJS cell values (rich text, formulas, hyperlinks) to primitives. */
+function cellValue(v: ExcelJS.CellValue): unknown {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "object") {
+    if (v instanceof Date) return v;
+    if ("richText" in v) return v.richText.map((r) => r.text).join("");
+    if ("result" in v) return v.result ?? "";
+    if ("text" in v) return v.text;
+    if ("hyperlink" in v) return v.hyperlink;
+    return "";
+  }
+  return v;
+}
+
+async function readRows(): Promise<Row[]> {
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.readFile(file);
+  const ws = wb.getWorksheet(SHEET);
   if (!ws) {
     throw new Error(
       `«${SHEET}» нэртэй хуудас олдсонгүй. Загварын нэрийг бүү өөрчил.`,
     );
   }
-  const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
-    defval: "",
+  // Header labels from row 1, by column number.
+  const headers: string[] = [];
+  ws.getRow(1).eachCell({ includeEmpty: true }, (cell, col) => {
+    headers[col] = str(cellValue(cell.value));
   });
   const rows: Row[] = [];
-  raw.forEach((r, idx) => {
+  ws.eachRow((row, rowNo) => {
+    if (rowNo === 1) return;
     // Normalize header labels to internal keys.
     const o: Record<string, unknown> = {};
-    for (const [label, val] of Object.entries(r)) {
+    row.eachCell({ includeEmpty: true }, (cell, col) => {
+      const label = headers[col];
+      if (!label) return;
       const k = HEADER_MAP[label.trim()] ?? label.trim();
-      o[k] = val;
-    }
+      o[k] = cellValue(cell.value);
+    });
     const name = str(o.name);
     const members = MEMBER_KEYS.map((k) => str(o[k]));
     // Skip fully-empty rows.
@@ -184,7 +205,7 @@ function readRows(): Row[] {
       is_active: truthy(o.is_active, true),
       is_featured: truthy(o.is_featured, false),
       members,
-      _rowNo: idx + 2, // +1 header, +1 to 1-index
+      _rowNo: rowNo,
     });
   });
   return rows;
@@ -219,7 +240,7 @@ function validate(rows: Row[]): string[] {
 
 async function main() {
   console.log(`Reading ${path.resolve(file)} …`);
-  const rows = readRows();
+  const rows = await readRows();
   if (rows.length === 0) {
     console.log("Импортлох мөр алга (бүх мөр хоосон).");
     return;

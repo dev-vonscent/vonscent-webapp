@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 /**
  * Allow remote images from Supabase Storage (when configured) plus a couple of
@@ -54,4 +55,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Source-map upload runs only when SENTRY_AUTH_TOKEN + org/project env are set
+// (CI/Vercel); local builds skip it silently.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  silent: true,
+  telemetry: false,
+});

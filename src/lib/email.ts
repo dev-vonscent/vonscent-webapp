@@ -1,4 +1,5 @@
 import "server-only";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * Minimal transactional email via the Resend REST API — no SDK dependency.
@@ -32,8 +33,15 @@ export async function sendEmail(params: {
         text: params.text,
       }),
     });
+    if (!res.ok) {
+      Sentry.captureMessage(
+        `Resend rejected email "${params.subject}" (${res.status})`,
+        "warning",
+      );
+    }
     return res.ok;
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err);
     return false;
   }
 }

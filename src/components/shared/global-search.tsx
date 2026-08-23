@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
+import * as Sentry from "@sentry/nextjs";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/format";
@@ -62,7 +63,8 @@ export function GlobalSearch() {
         );
         const data = await res.json();
         if (!cancelled) setItems(data.items ?? []);
-      } catch {
+      } catch (err) {
+        Sentry.captureException(err);
         if (!cancelled) setItems([]);
       } finally {
         if (!cancelled) setLoading(false);
