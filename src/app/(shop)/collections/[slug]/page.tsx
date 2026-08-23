@@ -28,7 +28,8 @@ export async function generateMetadata({
   return {
     title: `${collection.name} — Багц`,
     description: collection.description.slice(0, 160),
-    openGraph: { images: collection.image ? [collection.image] : [] },
+    // og:image comes from the sibling opengraph-image.tsx file convention.
+    openGraph: { url: `/collections/${collection.slug}` },
   };
 }
 

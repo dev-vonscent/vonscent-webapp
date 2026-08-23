@@ -11,6 +11,27 @@ import {
 } from "@/components/ui/accordion";
 import { groupFaqs, type FaqItem } from "@/features/faq/seed";
 
+/**
+ * Rich-text answers arrive pre-sanitized from the server page (lib/sanitize
+ * is server-only), so rendering them with innerHTML here is safe. Legacy
+ * plain-text answers render as before.
+ */
+function stripTags(html: string): string {
+  return html.replace(/<[^>]*>/gu, " ");
+}
+
+function Answer({ answer }: { answer: string }) {
+  if (/^\s*</u.test(answer)) {
+    return (
+      <div
+        className="prose max-w-none text-sm"
+        dangerouslySetInnerHTML={{ __html: answer }}
+      />
+    );
+  }
+  return <>{answer}</>;
+}
+
 export function FaqSearch({ items }: { items: FaqItem[] }) {
   const [query, setQuery] = React.useState("");
 
@@ -20,7 +41,7 @@ export function FaqSearch({ items }: { items: FaqItem[] }) {
     return items.filter(
       (i) =>
         i.question.toLowerCase().includes(q) ||
-        i.answer.toLowerCase().includes(q) ||
+        stripTags(i.answer).toLowerCase().includes(q) ||
         i.category.toLowerCase().includes(q),
     );
   }, [items, query]);
@@ -54,7 +75,9 @@ export function FaqSearch({ items }: { items: FaqItem[] }) {
                 {g.items.map((item, i) => (
                   <AccordionItem key={i} value={`${g.title}-${i}`}>
                     <AccordionTrigger>{item.question}</AccordionTrigger>
-                    <AccordionContent>{item.answer}</AccordionContent>
+                    <AccordionContent>
+                      <Answer answer={item.answer} />
+                    </AccordionContent>
                   </AccordionItem>
                 ))}
               </Accordion>

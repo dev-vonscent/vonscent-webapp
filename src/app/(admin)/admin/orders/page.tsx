@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
-import { formatPrice, formatDate } from "@/lib/format";
+import { OrdersTable } from "@/features/admin/components/orders-table";
 import {
   ORDER_STATUS_LABEL,
   ORDER_STATUSES,
@@ -132,64 +130,7 @@ export default async function AdminOrdersPage({
           <p className="font-medium">Захиалга алга</p>
         </div>
       ) : (
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-muted-foreground text-left text-xs">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Дугаар</th>
-                  <th className="px-4 py-3 font-medium">Огноо</th>
-                  <th className="px-4 py-3 font-medium">Хэрэглэгч</th>
-                  <th className="px-4 py-3 font-medium">Дүн</th>
-                  <th className="px-4 py-3 font-medium">Төлбөр</th>
-                  <th className="px-4 py-3 font-medium">Төлөв</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((o) => (
-                  <tr
-                    key={o.id}
-                    className="border-border hover:bg-muted/30 border-t"
-                  >
-                    <td className="px-4 py-3 font-mono">
-                      <Link
-                        href={`/admin/orders/${o.id}`}
-                        className="hover:text-gold-strong"
-                      >
-                        {o.order_no}
-                      </Link>
-                    </td>
-                    <td className="text-muted-foreground px-4 py-3">
-                      {formatDate(o.created_at)}
-                    </td>
-                    <td className="px-4 py-3">{o.contact_name}</td>
-                    <td className="px-4 py-3 font-medium">
-                      {formatPrice(o.total)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge
-                        variant={
-                          o.payment_status === "paid" ? "new" : "secondary"
-                        }
-                      >
-                        {o.payment_status === "paid"
-                          ? "Төлсөн"
-                          : o.payment_status === "refunded"
-                            ? "Буцаагдсан"
-                            : "Төлөөгүй"}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant="secondary">
-                        {ORDER_STATUS_LABEL[o.status]}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+        <OrdersTable data={orders} />
       )}
     </div>
   );

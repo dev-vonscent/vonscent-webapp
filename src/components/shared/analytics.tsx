@@ -1,29 +1,18 @@
 import Script from "next/script";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import { env } from "@/lib/env";
 
 /**
  * GA4 + Meta Pixel (requirement.md техникийн шаардлага). Renders nothing until
  * the respective env ids are present, so dev/preview stay clean.
+ *
+ * GA4 loads through @next/third-parties, which schedules the gtag script
+ * off the critical path and still exposes window.gtag for lib/analytics.ts.
  */
 export function Analytics() {
   return (
     <>
-      {env.gaId && (
-        <>
-          <Script
-            src={`https://www.googletagmanager.com/gtag/js?id=${env.gaId}`}
-            strategy="afterInteractive"
-          />
-          <Script id="ga4" strategy="afterInteractive">
-            {`
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', '${env.gaId}');
-            `}
-          </Script>
-        </>
-      )}
+      {env.gaId && <GoogleAnalytics gaId={env.gaId} />}
 
       {env.metaPixelId && (
         <Script id="meta-pixel" strategy="afterInteractive">

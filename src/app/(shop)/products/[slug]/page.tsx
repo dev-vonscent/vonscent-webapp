@@ -15,6 +15,11 @@ import { WishlistButton } from "@/features/wishlist/components/wishlist-button";
 import { ProductCarousel } from "@/features/products/components/product-carousel";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { getProductBySlug, getRelated } from "@/features/products/api";
+import {
+  JsonLd,
+  breadcrumbJsonLd,
+  productJsonLd,
+} from "@/components/shared/json-ld";
 import { getScentFamilyLabels } from "@/features/taxonomy/api";
 import { ReviewSection } from "@/features/reviews/components/review-section";
 import { GENDER_LABEL, SEASON_LABEL } from "@/lib/constants";
@@ -47,7 +52,8 @@ export async function generateMetadata({
       0,
       160,
     ),
-    openGraph: { images: product.image ? [product.image.url] : [] },
+    // og:image comes from the sibling opengraph-image.tsx file convention.
+    openGraph: { url: `/products/${product.slug}` },
   };
 }
 
@@ -87,6 +93,16 @@ export default async function ProductPage({
 
   return (
     <div className="mx-auto max-w-[88rem] px-4 py-4 sm:py-8 md:px-8">
+      <JsonLd
+        data={[
+          productJsonLd(product),
+          breadcrumbJsonLd([
+            { name: "Нүүр", path: "" },
+            { name: "Каталог", path: "/catalog" },
+            { name: product.name, path: `/products/${product.slug}` },
+          ]),
+        ]}
+      />
       {/* Breadcrumb (hidden on mobile for a fuller hero image) */}
       <nav className="text-muted-foreground mb-6 hidden text-sm sm:block">
         <Link href="/" className="hover:text-foreground">

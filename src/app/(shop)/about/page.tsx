@@ -38,6 +38,8 @@ const VALUES = [
   },
 ];
 
+import { RichText } from "@/components/shared/rich-text";
+
 export default async function AboutPage() {
   const about = await getAboutSettings();
   return (
@@ -49,10 +51,13 @@ export default async function AboutPage() {
         <h1 className="mt-3 font-serif text-4xl font-semibold tracking-tight">
           Үнэрээ том савыг авалгүй ол
         </h1>
-        <p className="text-muted-foreground mx-auto mt-5 max-w-2xl">
-          {about.story ||
-            "vonscent нь дэлхийн шилдэг үнэртнүүдийг жижиг (decant) багцаар санал болгодог. Бид итгэдэг — үнэр бол хувь хүний илэрхийлэл. Бүтэн сав худалдан авахаасаа өмнө өөрт тань яг тохирохыг нь олох ёстой."}
-        </p>
+        <RichText
+          content={
+            about.story ||
+            "vonscent нь дэлхийн шилдэг үнэртнүүдийг жижиг (decant) багцаар санал болгодог. Бид итгэдэг — үнэр бол хувь хүний илэрхийлэл. Бүтэн сав худалдан авахаасаа өмнө өөрт тань яг тохирохыг нь олох ёстой."
+          }
+          className="text-muted-foreground mx-auto mt-5 max-w-2xl"
+        />
       </div>
 
       <div className="mt-14 grid gap-6 sm:grid-cols-2">

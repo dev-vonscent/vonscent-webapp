@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/format";
 import { getBlogPost, getRelatedPosts } from "@/features/blog/api";
+import { JsonLd, articleJsonLd } from "@/components/shared/json-ld";
+import { RichText } from "@/components/shared/rich-text";
 
 /**
  * ISR: public data comes from the cookie-less client, so the page is
@@ -27,7 +29,18 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = await getBlogPost(slug);
   if (!post) return { title: "Нийтлэл олдсонгүй" };
-  return { title: post.title, description: post.excerpt };
+  return {
+    title: post.title,
+    description: post.excerpt,
+    // og:image comes from the sibling opengraph-image.tsx file convention.
+    openGraph: {
+      type: "article",
+      title: post.title,
+      description: post.excerpt,
+      publishedTime: post.date,
+      url: `/blog/${post.slug}`,
+    },
+  };
 }
 
 export default async function BlogPostPage({
@@ -43,6 +56,7 @@ export default async function BlogPostPage({
 
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 md:px-8">
+      <JsonLd data={articleJsonLd(post)} />
       <nav className="text-muted-foreground mb-6 text-sm">
         <Link href="/blog" className="hover:text-foreground">
           Блог
@@ -69,13 +83,10 @@ export default async function BlogPostPage({
         />
       </div>
 
-      <div className="prose mt-8 space-y-5 leading-relaxed">
-        {post.body.map((p, i) => (
-          <p key={i} className="text-foreground/90 text-[15px]">
-            {p}
-          </p>
-        ))}
-      </div>
+      <RichText
+        content={post.body}
+        className="text-foreground/90 mt-8 text-[15px] leading-relaxed"
+      />
 
       {related.length > 0 && (
         <div className="border-border mt-16 border-t pt-8">

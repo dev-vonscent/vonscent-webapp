@@ -18,7 +18,7 @@ function mapRow(r: BlogPostRow): BlogPost {
     category: r.category,
     date: r.published_at,
     cover: r.cover_url ?? `https://picsum.photos/seed/${r.slug}/1200/630`,
-    body: r.body ? r.body.split(/\n\n+/u) : [],
+    body: r.body ?? "",
   };
 }
 

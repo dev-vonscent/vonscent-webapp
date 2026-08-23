@@ -318,7 +318,7 @@ async function main() {
         slug: post.slug,
         title: post.title,
         excerpt: post.excerpt,
-        body: post.body.join("\n\n"),
+        body: post.body,
         cover_url: post.cover,
         category: post.category,
         is_published: true,

@@ -26,17 +26,16 @@
 
 ## Үе 3 — SEO / Админ 🟡
 
-- [ ] **3.1** `sitemap.ts` засвар: блогийн URL-ийг DB-ээс авах, коллекц/FAQ/ангиллын URL нэмэх, бодит `lastModified`
-- [ ] **3.2** `next/og` — бүтээгдэхүүн, блог, коллекцод динамик `opengraph-image.tsx`
-- [ ] **3.3** JSON-LD: `Product`+`Offer`+`AggregateRating`, `BreadcrumbList`, `Article`, `FAQPage`
-- [ ] **3.4** Блог постод `openGraph` metadata блок нэмэх
-- [ ] **3.5** `@next/third-parties`-ийн `GoogleAnalytics`-руу шилжих
-- [ ] **3.6** `recharts` — админ reports-д сарын борлуулалтын шугаман график, статусын donut, үлдэгдлийн bar chart
-- [ ] **3.7** shadcn `ui/table` primitive үүсгэх
-- [ ] **3.8** `@tanstack/react-table` — админы хүснэгтүүдийг (products, orders, customers, inventory, reports) нэгтгэх
-- [ ] **3.9** Блог editor: `@tiptap/react` WYSIWYG эсвэл markdown + `react-markdown`+`remark-gfm` рендэр (аль нэгийг сонгох)
-- [ ] **3.10** FAQ, static хуудсуудыг (about, contact) мөн editor-т шилжүүлэх
-
+- [x] **3.1** `sitemap.ts` засвар: блог/бараа/коллекцын URL-ийг DB-ээс, бодит `updated_at` → `lastModified` ✓ 2026-08-23 (ангилал нь `/catalog?…` searchParams тул тусдаа URL байхгүй — алгассан)
+- [x] **3.2** `next/og` — default + бүтээгдэхүүн, блог, коллекцод динамик `opengraph-image.tsx` ✓ 2026-08-23 — кирилл фонтыг Google Fonts-оос runtime-д subset-лэн татдаг (`src/lib/og.tsx`)
+- [x] **3.3** JSON-LD: `Product`+`AggregateOffer`+`AggregateRating`, `BreadcrumbList`, `Article`, `FAQPage` ✓ 2026-08-23 — `src/components/shared/json-ld.tsx`
+- [x] **3.4** Блог постод `openGraph` metadata блок нэмэх ✓ 2026-08-23 — type article + publishedTime
+- [x] **3.5** `@next/third-parties`-ийн `GoogleAnalytics`-руу шилжих ✓ 2026-08-23 — Meta Pixel хэвээр, `lib/analytics.ts` өөрчлөгдөөгүй
+- [x] **3.6** `recharts` — reports-д сарын борлуулалтын шугаман график, статусын donut, бага үлдэгдлийн bar chart ✓ 2026-08-23 — 3 theme-д `--chart-1..5` хувьсагч нэмсэн
+- [x] **3.7** shadcn `ui/table` primitive үүсгэх ✓ 2026-08-23
+- [x] **3.8** `@tanstack/react-table` (v8) — products, orders, customers, inventory хүснэгтүүд нэгдсэн `DataTable`-д (эрэмбэлэлт, pagination, inventory-д хайлт) ✓ 2026-08-23
+- [x] **3.9** Блог editor: `@tiptap/react` WYSIWYG сонгосон ✓ 2026-08-23 — HTML хадгална, `sanitize-html`-ээр server талд цэвэрлэж `<RichText>`-ээр рендэрлэнэ; хуучин plain-text постууд хэвээр ажиллана
+- [x] **3.10** FAQ хариулт + About "түүх" мөн TipTap editor-т ✓ 2026-08-23 — contact-д rich контент байхгүй тул хамрагдаагүй
 ## Үе 4 — Чанар 🟢
 
 - [ ] **4.1** `date-fns` + `@date-fns/tz` — `src/lib/time.ts`-ийн hard-coded UTC+8-г `Asia/Ulaanbaatar` бүсээр солих

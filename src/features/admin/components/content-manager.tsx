@@ -9,10 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import type {
   PopupSettings,
   PopupSlide,
   SocialSettings,
+  AboutSettings,
 } from "@/features/content/api";
 import type { HeroBannerRow, FaqRow, BlogPostRow } from "@/db/types";
 
@@ -30,12 +32,14 @@ export function ContentManager({
   banners,
   faqs,
   posts,
+  about,
 }: {
   popup: PopupSettings;
   social: SocialSettings;
   banners: HeroBannerRow[];
   faqs: FaqRow[];
   posts: BlogPostRow[];
+  about: AboutSettings;
 }) {
   return (
     <div className="space-y-8">
@@ -45,6 +49,7 @@ export function ContentManager({
       <BannerSection initial={banners} />
       <FaqSection initial={faqs} />
       <BlogSection initial={posts} />
+      <AboutSection initial={about} />
     </div>
   );
 }
@@ -386,7 +391,7 @@ function FaqSection({ initial }: { initial: FaqRow[] }) {
                 key: "answer",
                 label: "Хариулт",
                 value: f.answer,
-                multiline: true,
+                richtext: true,
               },
             ]}
             onSave={async (v) => {
@@ -415,10 +420,10 @@ function FaqSection({ initial }: { initial: FaqRow[] }) {
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
         />
-        <Input
+        <RichTextEditor
           placeholder="Хариулт"
           value={answer}
-          onChange={(e) => setAnswer(e.target.value)}
+          onChange={setAnswer}
         />
       </div>
       <Button variant="outline" onClick={add}>
@@ -478,7 +483,7 @@ function BlogSection({ initial }: { initial: BlogPostRow[] }) {
                 key: "body",
                 label: "Агуулга",
                 value: p.body ?? "",
-                multiline: true,
+                richtext: true,
               },
             ]}
             onSave={async (v) => {
@@ -513,16 +518,43 @@ function BlogSection({ initial }: { initial: BlogPostRow[] }) {
           value={excerpt}
           onChange={(e) => setExcerpt(e.target.value)}
         />
-        <textarea
-          placeholder="Нийтлэлийн агуулга (мөр хооронд хоосон мөр үлдээж догол хуваана)"
+        <RichTextEditor
+          placeholder="Нийтлэлийн агуулга"
           value={body}
-          onChange={(e) => setBody(e.target.value)}
-          rows={4}
-          className="bg-secondary focus-visible:ring-ring w-full rounded-md px-3 py-2 text-sm outline-none focus-visible:ring-2"
+          onChange={setBody}
         />
       </div>
       <Button variant="outline" onClick={add}>
         <Plus className="size-4" /> Нийтлэл нэмэх
+      </Button>
+    </Section>
+  );
+}
+
+function AboutSection({ initial }: { initial: AboutSettings }) {
+  const router = useRouter();
+  const [story, setStory] = React.useState(initial.story);
+  const [busy, setBusy] = React.useState(false);
+
+  async function save() {
+    setBusy(true);
+    try {
+      await saveSetting("about", { ...initial, story });
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Section title="Бидний тухай (about хуудасны түүх)">
+      <RichTextEditor
+        placeholder="Дэлгүүрийн түүх…"
+        value={story}
+        onChange={setStory}
+      />
+      <Button variant="outline" onClick={save} disabled={busy}>
+        {busy ? "Хадгалж байна…" : "Хадгалах"}
       </Button>
     </Section>
   );
@@ -533,6 +565,8 @@ interface EditableField {
   label: string;
   value: string;
   multiline?: boolean;
+  /** TipTap editor — the value is HTML rendered by <RichText> publicly. */
+  richtext?: boolean;
 }
 
 /**
@@ -590,7 +624,17 @@ function EditableRow({
       {editing && (
         <div className="mt-3 space-y-2">
           {fields.map((f) =>
-            f.multiline ? (
+            f.richtext ? (
+              <div key={f.key} className="space-y-1">
+                <Label className="text-xs">{f.label}</Label>
+                <RichTextEditor
+                  value={values[f.key]}
+                  onChange={(html) =>
+                    setValues((v) => ({ ...v, [f.key]: html }))
+                  }
+                />
+              </div>
+            ) : f.multiline ? (
               <div key={f.key} className="space-y-1">
                 <Label className="text-xs">{f.label}</Label>
                 <textarea

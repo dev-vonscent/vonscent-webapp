@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@plugin "@tailwindcss/typography";
 
 /*
  * vonscent — three switchable themes (next-themes, attribute="class"):
@@ -50,6 +51,13 @@
 
   --surface-deep: #000000;
 
+  /* recharts series (monochrome, matches the theme) */
+  --chart-1: #ffffff;
+  --chart-2: #a1a1a1;
+  --chart-3: #737373;
+  --chart-4: #525252;
+  --chart-5: #d4d4d4;
+
   --radius: 0.75rem;
 
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -95,6 +103,12 @@
 
   --surface-deep: #f4f4f4;
 
+  --chart-1: #171717;
+  --chart-2: #525252;
+  --chart-3: #8a8a8a;
+  --chart-4: #b5b5b5;
+  --chart-5: #6b6b6b;
+
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.08);
   --shadow-lift: 0 8px 30px -12px rgba(0, 0, 0, 0.18);
   --shadow-gold: none;
@@ -138,6 +152,12 @@
 
   --surface-deep: #ffe0ea;
 
+  --chart-1: #e84a7f;
+  --chart-2: #d36b8c;
+  --chart-3: #a05c74;
+  --chart-4: #f48fb1;
+  --chart-5: #c98aa0;
+
   --shadow-soft: 0 1px 2px rgba(157, 23, 77, 0.1);
   --shadow-lift: 0 8px 30px -12px rgba(157, 23, 77, 0.25);
   --shadow-gold: none;
@@ -162,6 +182,11 @@
   --color-gold-soft: var(--gold-soft);
   --color-gold-strong: var(--gold-strong);
   --color-surface-deep: var(--surface-deep);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
 
   --shadow-soft: var(--shadow-soft);
   --shadow-lift: var(--shadow-lift);
@@ -257,6 +282,36 @@
   height: 1px;
   width: 100%;
   background: color-mix(in oklab, var(--foreground) 12%, transparent);
+}
+
+/* Typography plugin colors follow the active theme (.black/.white/.pink),
+   not prefers-color-scheme — map every prose token to our theme vars. */
+.prose {
+  --tw-prose-body: var(--foreground);
+  --tw-prose-headings: var(--foreground);
+  --tw-prose-lead: var(--muted-foreground);
+  --tw-prose-links: var(--gold-strong);
+  --tw-prose-bold: var(--foreground);
+  --tw-prose-counters: var(--muted-foreground);
+  --tw-prose-bullets: var(--muted-foreground);
+  --tw-prose-hr: var(--muted);
+  --tw-prose-quotes: var(--foreground);
+  --tw-prose-quote-borders: var(--muted);
+  --tw-prose-captions: var(--muted-foreground);
+  --tw-prose-code: var(--foreground);
+  --tw-prose-pre-code: var(--foreground);
+  --tw-prose-pre-bg: var(--muted);
+  --tw-prose-th-borders: var(--muted);
+  --tw-prose-td-borders: var(--muted);
+}
+
+/* TipTap editor: placeholder text for the empty document. */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--muted-foreground);
+  float: left;
+  height: 0;
+  pointer-events: none;
 }
 
 /* Brand wall logos: dark artwork by default (shows on the light themes);

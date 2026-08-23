@@ -1,20 +1,12 @@
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { RestockControl } from "@/features/admin/components/restock-control";
+import {
+  InventoryTable,
+  type InventoryListRow,
+} from "@/features/admin/components/inventory-table";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { SEED_PRODUCTS } from "@/features/products/seed";
 
-interface InvRow {
-  productId: string;
-  label: string;
-  onHand: number;
-  reserved: number;
-  lowStock: number;
-  soldOut: boolean;
-}
-
-async function getInventory(): Promise<InvRow[]> {
+async function getInventory(): Promise<InventoryListRow[]> {
   if (isSupabaseConfigured) {
     const supabase = await createClient();
     if (supabase) {
@@ -71,49 +63,7 @@ export default async function AdminInventoryPage() {
         </p>
       </div>
 
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-muted-foreground text-left text-xs">
-              <tr>
-                <th className="px-4 py-3 font-medium">Бараа</th>
-                <th className="px-4 py-3 font-medium">On hand</th>
-                <th className="px-4 py-3 font-medium">Reserved</th>
-                <th className="px-4 py-3 font-medium">Available</th>
-                <th className="px-4 py-3 font-medium">Төлөв</th>
-                <th className="px-4 py-3 font-medium">Нөхөх</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => {
-                const available = r.onHand - r.reserved;
-                return (
-                  <tr key={r.productId} className="border-border border-t">
-                    <td className="px-4 py-3 font-medium">{r.label}</td>
-                    <td className="px-4 py-3">{r.onHand}ml</td>
-                    <td className="text-muted-foreground px-4 py-3">
-                      {r.reserved}ml
-                    </td>
-                    <td className="px-4 py-3 font-medium">{available}ml</td>
-                    <td className="px-4 py-3">
-                      {r.soldOut || available <= 0 ? (
-                        <Badge variant="sale">Дууссан</Badge>
-                      ) : available <= r.lowStock ? (
-                        <Badge variant="secondary">Бага</Badge>
-                      ) : (
-                        <Badge variant="new">Хэвийн</Badge>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <RestockControl productId={r.productId} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <InventoryTable data={rows} />
     </div>
   );
 }

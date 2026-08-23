@@ -2,15 +2,36 @@ import Link from "next/link";
 import { Download, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getReportData, getAdminProducts } from "@/features/admin/api";
+import {
+  getReportData,
+  getAdminProducts,
+  getDashboardData,
+} from "@/features/admin/api";
+import {
+  MonthlySalesChart,
+  StatusDonut,
+  StockBarChart,
+} from "@/features/admin/components/report-charts";
 import { formatPrice } from "@/lib/format";
 
 export default async function AdminReportsPage() {
-  const [report, products] = await Promise.all([
+  const [report, products, dashboard] = await Promise.all([
     getReportData(),
     getAdminProducts(),
+    getDashboardData(),
   ]);
   const totalMl = products.reduce((s, p) => s + p.availableMl, 0);
+  // getReportData sorts monthly newest-first; the time axis wants oldest-first.
+  const monthlyAsc = [...report.monthly].reverse();
+  const lowestStock = products
+    .filter((p) => p.isActive)
+    .sort((a, b) => a.availableMl - b.availableMl)
+    .slice(0, 10)
+    .map((p) => ({
+      name: `${p.brand} — ${p.name}`,
+      availableMl: p.availableMl,
+      lowStockMl: p.lowStockMl,
+    }));
 
   return (
     <div className="space-y-8">
@@ -85,7 +106,9 @@ export default async function AdminReportsPage() {
           {report.monthly.length === 0 ? (
             <p className="text-muted-foreground text-sm">Өгөгдөл алга.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              <MonthlySalesChart data={monthlyAsc} />
+              <div className="mt-6 overflow-x-auto">
               <table className="w-full min-w-[420px] text-sm">
                 <thead className="text-muted-foreground text-left text-xs">
                   <tr>
@@ -108,10 +131,27 @@ export default async function AdminReportsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardContent className="p-5">
+            <h2 className="mb-4 font-medium">Захиалгын төлөв</h2>
+            <StatusDonut counts={dashboard?.statusCounts ?? {}} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+            <h2 className="mb-4 font-medium">Хамгийн бага үлдэгдэлтэй</h2>
+            <StockBarChart data={lowestStock} />
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
