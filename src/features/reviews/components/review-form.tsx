@@ -7,6 +7,7 @@ import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/browser";
+import { reviewInputSchema } from "@/lib/validators/review";
 
 /** Star + comment form. Requires login; upserts the user's review. */
 export function ReviewForm({ productId }: { productId: string }) {
@@ -47,13 +48,19 @@ export function ReviewForm({ productId }: { productId: string }) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    // Same schema the API route enforces, so a bad payload never leaves here.
+    const parsed = reviewInputSchema.safeParse({ productId, rating, body });
+    if (!parsed.success) {
+      setError("Үнэлгээ 1–5 од, сэтгэгдэл 1000 тэмдэгтээс хэтрэхгүй байна.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
       const res = await fetch("/api/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId, rating, body }),
+        body: JSON.stringify(parsed.data),
       });
       if (!res.ok) throw new Error();
       setDone(true);

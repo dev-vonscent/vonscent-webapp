@@ -1,13 +1,7 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail, STORE_INBOX } from "@/lib/email";
-
-const schema = z.object({
-  name: z.string().min(2),
-  email: z.string().email(),
-  message: z.string().min(5).max(4000),
-});
+import { contactInputSchema } from "@/lib/validators/contact";
 
 /**
  * Contact form (questions.md №24): the message is stored first so nothing is
@@ -15,7 +9,7 @@ const schema = z.object({
  */
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
-  const parsed = schema.safeParse(body);
+  const parsed = contactInputSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "INVALID" }, { status: 400 });
   }

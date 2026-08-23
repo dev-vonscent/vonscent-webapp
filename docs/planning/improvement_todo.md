@@ -47,7 +47,7 @@
 - [x] **4.7** `@testing-library/react` + `jsdom` component тест ✓ 2026-08-23 — `.tsx` тест jsdom, `.ts` тест node орчинд; `.node-version`=22.21.0 (Node 21 нь sanitize-html→htmlparser2 ESM require-д унадаг байсан); RichText + CatalogPagination тест
 - [ ] **4.8** `playwright` E2E: checkout, нэвтрэлт, админы гол урсгал
 - [ ] **4.9** `msw` — Supabase/QPay mock
-- [ ] **4.10** `next-safe-action` эсвэл `lib/validators` схемүүдийг `zodResolver`-оор бүх client form-д дахин ашиглах
+- [x] **4.10** `next-safe-action` эсвэл `lib/validators` схемүүдийг `zodResolver`-оор бүх client form-д дахин ашиглах ✓ 2026-08-23 — `validators/contact.ts` шинээр (API + form хоёулаа), contact-form RHF+zodResolver (өмнө нь алдааг үл тоодог байсан!), review-form клиент талд `reviewInputSchema`-аар шалгадаг боллоо; checkout аль хэдийн zodResolver-той байсан
 - [ ] **4.11** Хайлт: `pg_trgm` + `unaccent` (Supabase extension) + кирилл→латин хөрвүүлэг; FAQ-д `fuse.js`
 - [x] **4.12** Catalog pagination-д ellipsis truncation (одоо 40 хуудас = 40 товч) ✓ 2026-08-23 — `paginationItems` + тест
 

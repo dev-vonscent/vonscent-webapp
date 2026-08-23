@@ -1,31 +1,39 @@
 "use client";
 
 import * as React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import {
+  contactInputSchema,
+  type ContactInput,
+} from "@/lib/validators/contact";
 
 export function ContactForm() {
   const [done, setDone] = React.useState(false);
-  const [loading, setLoading] = React.useState(false);
+  const [serverError, setServerError] = React.useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<ContactInput>({
+    resolver: zodResolver(contactInputSchema),
+  });
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    setLoading(true);
+  async function onSubmit(values: ContactInput) {
+    setServerError(false);
     try {
-      await fetch("/api/contact", {
+      const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.get("name"),
-          email: form.get("email"),
-          message: form.get("message"),
-        }),
+        body: JSON.stringify(values),
       });
+      if (!res.ok) throw new Error();
       setDone(true);
-    } finally {
-      setLoading(false);
+    } catch {
+      setServerError(true);
     }
   }
 
@@ -41,29 +49,53 @@ export function ContactForm() {
 
   return (
     <form
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit(onSubmit)}
+      noValidate
       className="border-border space-y-4 rounded-lg border p-6"
     >
       <div className="space-y-1.5">
         <Label htmlFor="name">Нэр</Label>
-        <Input id="name" name="name" required />
+        <Input
+          id="name"
+          aria-invalid={Boolean(errors.name)}
+          {...register("name")}
+        />
+        {errors.name && (
+          <p className="text-destructive text-xs">{errors.name.message}</p>
+        )}
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="email">Имэйл</Label>
-        <Input id="email" name="email" type="email" required />
+        <Input
+          id="email"
+          type="email"
+          aria-invalid={Boolean(errors.email)}
+          {...register("email")}
+        />
+        {errors.email && (
+          <p className="text-destructive text-xs">{errors.email.message}</p>
+        )}
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="message">Мессеж</Label>
         <textarea
           id="message"
-          name="message"
-          required
           rows={5}
+          aria-invalid={Boolean(errors.message)}
           className="bg-secondary focus-visible:ring-ring flex w-full rounded-md px-3 py-2 text-base focus-visible:ring-2 focus-visible:outline-none md:text-sm"
+          {...register("message")}
         />
+        {errors.message && (
+          <p className="text-destructive text-xs">{errors.message.message}</p>
+        )}
       </div>
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? "Илгээж байна…" : "Илгээх"}
+      {serverError && (
+        <p className="text-destructive text-sm">
+          Илгээхэд алдаа гарлаа. Дахин оролдоно уу.
+        </p>
+      )}
+      <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting ? "Илгээж байна…" : "Илгээх"}
       </Button>
     </form>
   );
