@@ -48,7 +48,7 @@
 - [ ] **4.8** `playwright` E2E: checkout, нэвтрэлт, админы гол урсгал
 - [ ] **4.9** `msw` — Supabase/QPay mock
 - [x] **4.10** `next-safe-action` эсвэл `lib/validators` схемүүдийг `zodResolver`-оор бүх client form-д дахин ашиглах ✓ 2026-08-23 — `validators/contact.ts` шинээр (API + form хоёулаа), contact-form RHF+zodResolver (өмнө нь алдааг үл тоодог байсан!), review-form клиент талд `reviewInputSchema`-аар шалгадаг боллоо; checkout аль хэдийн zodResolver-той байсан
-- [ ] **4.11** Хайлт: `pg_trgm` + `unaccent` (Supabase extension) + кирилл→латин хөрвүүлэг; FAQ-д `fuse.js`
+- [x] **4.11** Хайлт: `pg_trgm` + `unaccent` (Supabase extension) + кирилл→латин хөрвүүлэг; FAQ-д `fuse.js` ✓ 2026-08-23 — каталогийн хайлт SQL биш memory-д тул pg_trgm хэрэггүй болсон: `lib/search.ts` (кирилл→латин + accent-fold, «диор» → Dior) getCatalog-д залгагдсан; FAQ fuse.js fuzzy болсон. Каталог SQL хайлт руу шилжвэл pg_trgm-ийг эргэж харна
 - [x] **4.12** Catalog pagination-д ellipsis truncation (одоо 40 хуудас = 40 товч) ✓ 2026-08-23 — `paginationItems` + тест
 
 ## UI/UX (бүтээгдэхүүний хуудасны аудит, 2026-08-23)

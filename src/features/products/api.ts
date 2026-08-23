@@ -9,6 +9,7 @@ import type {
 import type { ScentFamily, Season, TagKind } from "@/db/types";
 import { SEED_PRODUCTS } from "./seed";
 import { isSupabaseConfigured } from "@/lib/env";
+import { matchesSearch } from "@/lib/search";
 import { createPublicClient } from "@/lib/supabase/public";
 
 /**
@@ -282,11 +283,11 @@ export async function getCatalog(
     if (minPrice != null && p.startingPrice < minPrice) return false;
     if (maxPrice != null && p.startingPrice > maxPrice) return false;
     if (search) {
-      const q = search.toLowerCase();
       // Free-form internal tags count as search text (A2 «Нэмэлт Tag») —
-      // e.g. "оффис" surfaces every perfume the admin tagged so.
+      // e.g. "оффис" surfaces every perfume the admin tagged so. Matching is
+      // transliteration-aware, so "диор" finds Dior (lib/search.ts).
       const haystack = `${p.name} ${p.brand} ${p.customTags.join(" ")}`;
-      if (!haystack.toLowerCase().includes(q)) return false;
+      if (!matchesSearch(haystack, search)) return false;
     }
     return true;
   });

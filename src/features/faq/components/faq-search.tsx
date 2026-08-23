@@ -9,7 +9,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import Fuse from "fuse.js";
 import { groupFaqs, type FaqItem } from "@/features/faq/seed";
+import { normalizeSearchText } from "@/lib/search";
 
 /**
  * Rich-text answers arrive pre-sanitized from the server page (lib/sanitize
@@ -35,16 +37,37 @@ function Answer({ answer }: { answer: string }) {
 export function FaqSearch({ items }: { items: FaqItem[] }) {
   const [query, setQuery] = React.useState("");
 
+  // Fuzzy search (fuse.js): typo-tolerant, transliteration-aware through
+  // normalizeSearchText, so a slightly misspelled question still surfaces.
+  const fuse = React.useMemo(
+    () =>
+      new Fuse(items, {
+        keys: [
+          {
+            name: "question",
+            weight: 2,
+            getFn: (i) => normalizeSearchText(i.question),
+          },
+          {
+            name: "answer",
+            getFn: (i) => normalizeSearchText(stripTags(i.answer)),
+          },
+          {
+            name: "category",
+            getFn: (i) => normalizeSearchText(i.category),
+          },
+        ],
+        threshold: 0.35,
+        ignoreLocation: true,
+      }),
+    [items],
+  );
+
   const filtered = React.useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = query.trim();
     if (!q) return items;
-    return items.filter(
-      (i) =>
-        i.question.toLowerCase().includes(q) ||
-        stripTags(i.answer).toLowerCase().includes(q) ||
-        i.category.toLowerCase().includes(q),
-    );
-  }, [items, query]);
+    return fuse.search(normalizeSearchText(q)).map((r) => r.item);
+  }, [items, fuse, query]);
 
   const groups = groupFaqs(filtered);
 
