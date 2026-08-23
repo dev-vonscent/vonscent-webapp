@@ -66,6 +66,7 @@ export function ProductForm({
     releaseYear: "",
     bottlePrice: "",
     bottleMl: "100",
+    salePct: "0",
     onHandMl: "100",
     lowStockMl: "20",
   });
@@ -110,6 +111,7 @@ export function ProductForm({
         releaseYear: form.releaseYear ? Number(form.releaseYear) : null,
         bottlePrice: Number(form.bottlePrice) || 0,
         bottleMl: Number(form.bottleMl) || 0,
+        salePct: Math.min(100, Math.max(0, Number(form.salePct) || 0)),
         onHandMl: Number(form.onHandMl),
         lowStockMl: Number(form.lowStockMl),
         notesTop: form.notesTop
@@ -303,6 +305,19 @@ export function ProductForm({
         <CardContent className="space-y-4 p-6">
           <h2 className="font-serif text-lg font-semibold">Үнэ</h2>
           <VariantPriceTable variants={variants} onChange={setVariants} />
+          <Field label="Хямдралын % (0 = хямдралгүй)">
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={form.salePct}
+              onChange={(e) => set("salePct", e.target.value)}
+            />
+          </Field>
+          <p className="text-muted-foreground text-sm">
+            Дээрх үнэ бол худалдан авагчийн төлөх үнэ. Хувь оруулбал сайт дээр
+            зураастай «хуучин үнэ» болон -X% тэмдэг харагдана.
+          </p>
           <Separator />
           <h2 className="font-serif text-lg font-semibold">
             Эх сав ба үлдэгдэл

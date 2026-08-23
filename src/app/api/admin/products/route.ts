@@ -68,6 +68,7 @@ export async function POST(req: Request) {
     release_year: input.releaseYear ?? null,
     bottle_price: input.bottlePrice,
     bottle_ml: input.bottleMl,
+    sale_pct: input.salePct,
   };
 
   // AI-generated images aren't published until the admin approves them (§5b),

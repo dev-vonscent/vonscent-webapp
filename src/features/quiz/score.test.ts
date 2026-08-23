@@ -20,6 +20,7 @@ function product(
     soldOut: false,
     ratingAvg: 0,
     ratingCount: 0,
+    salePct: 0,
     createdAt: "2026-01-01T00:00:00Z",
     description: "",
     notesDescription: "",

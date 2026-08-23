@@ -126,6 +126,7 @@ function toListItem(p: ProductDetail): ProductListItem {
     soldOut: p.soldOut,
     ratingAvg: p.ratingAvg,
     ratingCount: p.ratingCount,
+    salePct: p.salePct,
     createdAt: p.createdAt,
   };
 }

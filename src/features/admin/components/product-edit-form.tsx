@@ -66,6 +66,7 @@ export function ProductEditForm({
     releaseYear: product.releaseYear ? String(product.releaseYear) : "",
     bottlePrice: String(product.bottlePrice),
     bottleMl: String(product.bottleMl),
+    salePct: String(product.salePct),
     lowStockMl: String(product.lowStockMl),
   });
   const [scentFamilies, toggleFamily] = useToggleList(product.scentFamilies);
@@ -122,6 +123,7 @@ export function ProductEditForm({
           releaseYear: form.releaseYear ? Number(form.releaseYear) : null,
           bottlePrice: Number(form.bottlePrice),
           bottleMl: Number(form.bottleMl),
+          salePct: Math.min(100, Math.max(0, Number(form.salePct) || 0)),
           lowStockMl: Number(form.lowStockMl),
           variants,
           isActive,
@@ -294,6 +296,20 @@ export function ProductEditForm({
               <VariantPriceTable variants={variants} onChange={setVariants} />
             </div>
           )}
+
+          <Field label="Хямдралын % (0 = хямдралгүй)">
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={form.salePct}
+              onChange={(e) => set("salePct", e.target.value)}
+            />
+          </Field>
+          <p className="text-muted-foreground text-sm">
+            Дээрх үнэ бол худалдан авагчийн төлөх үнэ. Хувь оруулбал сайт дээр
+            зураастай «хуучин үнэ» болон -X% тэмдэг харагдана.
+          </p>
 
           <p className="text-muted-foreground text-sm">
             Эх савны үнэ/багтаамж нь борлуулалт, ашгийн тайланд болон үлдэгдэл

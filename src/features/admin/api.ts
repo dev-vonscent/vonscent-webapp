@@ -209,6 +209,7 @@ export interface AdminProduct {
   releaseYear: number | null;
   bottlePrice: number;
   bottleMl: number;
+  salePct: number;
   isActive: boolean;
   startingPrice: number;
   availableMl: number;
@@ -230,7 +231,7 @@ const ADMIN_PRODUCT_SELECT = `
   id, slug, name, brand, gender, concentration, scent_families, seasons,
   description, notes_description, usage_description, short_description,
   notes_top, notes_heart, notes_base, origin_country, release_year,
-  bottle_price, bottle_ml, is_active,
+  bottle_price, bottle_ml, sale_pct, is_active,
   product_images ( id, url, alt, sort_order ),
   product_variants ( ml, price, is_active ),
   inventory ( on_hand_ml, reserved_ml, low_stock_ml ),
@@ -267,6 +268,7 @@ interface AdminProductRow {
   release_year: number | null;
   bottle_price: number;
   bottle_ml: number;
+  sale_pct: number;
   is_active: boolean;
   product_images: AdminProductImage[];
   product_variants: {
@@ -324,6 +326,7 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
     releaseYear: r.release_year,
     bottlePrice: r.bottle_price,
     bottleMl: r.bottle_ml,
+    salePct: r.sale_pct,
     isActive: r.is_active,
     startingPrice: prices.length ? Math.min(...prices) : 0,
     availableMl: inv ? inv.on_hand_ml - inv.reserved_ml : 0,

@@ -46,6 +46,8 @@ export interface ProductListItem {
   soldOut: boolean;
   ratingAvg: number;
   ratingCount: number;
+  /** Display-only discount % (0038) — 0 means no crossed-out price. */
+  salePct: number;
   createdAt: string;
 }
 

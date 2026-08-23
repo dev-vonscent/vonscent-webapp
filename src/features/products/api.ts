@@ -56,6 +56,7 @@ interface DbProduct {
   bottle_ml: number;
   rating_avg: number;
   rating_count: number;
+  sale_pct: number;
   created_at: string;
   product_images: DbImage[];
   product_variants: DbVariant[];
@@ -74,7 +75,7 @@ const SELECT = `
   notes_top, notes_heart, notes_base,
   gender, concentration, scent_families, seasons,
   origin_country, release_year, bottle_ml,
-  rating_avg, rating_count, created_at,
+  rating_avg, rating_count, sale_pct, created_at,
   product_images ( url, alt, sort_order ),
   product_variants ( id, ml, price, is_active ),
   inventory ( on_hand_ml, reserved_ml, is_sold_out ),
@@ -131,6 +132,7 @@ function mapProduct(row: DbProduct): ProductDetail {
     soldOut: sellable.length === 0,
     ratingAvg: row.rating_avg,
     ratingCount: row.rating_count,
+    salePct: row.sale_pct ?? 0,
     createdAt: row.created_at,
     description: row.description,
     notesDescription: row.notes_description ?? "",
@@ -210,6 +212,7 @@ function toListItem(p: ProductDetail): ProductListItem {
     soldOut: p.soldOut,
     ratingAvg: p.ratingAvg,
     ratingCount: p.ratingCount,
+    salePct: p.salePct,
     createdAt: p.createdAt,
   };
 }

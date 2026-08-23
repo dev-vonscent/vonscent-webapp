@@ -314,6 +314,8 @@ export const SEED_PRODUCTS: ProductDetail[] = RAW.map((input) => {
     soldOut: !variants.some((v) => v.isActive && v.inStock),
     ratingAvg: input.ratingAvg,
     ratingCount: input.ratingCount,
+    // Demo data: sale-tagged seeds show a 10% crossed-out price.
+    salePct: input.tags.includes("sale") ? 10 : 0,
     createdAt: new Date(2024, 0, 1 + RAW.indexOf(input)).toISOString(),
     description: input.description,
     notesDescription: input.notesDescription ?? "",

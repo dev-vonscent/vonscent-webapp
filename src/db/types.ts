@@ -67,6 +67,8 @@ export interface ProductRow {
   seasons: Season[];
   bottle_price: number;
   bottle_ml: number;
+  /** Display-only discount % (0038) — variant prices stay the charged figure. */
+  sale_pct: number;
   rating_avg: number;
   rating_count: number;
   is_active: boolean;
@@ -333,7 +335,7 @@ type Table<Row, Optional extends keyof Row> = {
 export interface Database {
   public: {
     Tables: {
-      products: Table<ProductRow, "id" | "created_at" | "updated_at">;
+      products: Table<ProductRow, "id" | "created_at" | "updated_at" | "sale_pct">;
       product_images: Table<ProductImageRow, "id">;
       product_variants: Table<ProductVariantRow, "id">;
       inventory: Table<InventoryRow, "updated_at">;

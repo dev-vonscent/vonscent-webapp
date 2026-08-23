@@ -23,6 +23,13 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
 
   const selected = activeVariants.find((v) => v.id === variantId) ?? null;
   const unitPrice = selected?.price ?? 0;
+  // sale_pct is display-only: the charged price stays `price`, the crossed-out
+  // "original" is derived from it, rounded to a clean 100₮ (0038).
+  const salePct = product.salePct;
+  const originalPrice =
+    salePct > 0
+      ? Math.round(unitPrice / (1 - salePct / 100) / 100) * 100
+      : null;
   const soldOut = product.soldOut;
   // The whole product may still be sellable while this particular size is not.
   const selectedOut = !soldOut && selected != null && !selected.inStock;
@@ -56,10 +63,20 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   return (
     <div className="space-y-6">
       {/* Live price — updates with ml selection (requirement.md §3) */}
-      <div className="flex items-end gap-3">
+      <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
         <span className="font-serif text-3xl font-semibold">
           {formatPrice(unitPrice)}
         </span>
+        {originalPrice && originalPrice > unitPrice && (
+          <>
+            <span className="text-muted-foreground pb-1 text-base line-through">
+              {formatPrice(originalPrice)}
+            </span>
+            <span className="bg-destructive/15 text-destructive mb-1 rounded-md px-2 py-0.5 text-xs font-semibold">
+              -{salePct}%
+            </span>
+          </>
+        )}
         {selected && (
           <span className="text-muted-foreground pb-1 text-sm">
             / {selected.ml}ml
@@ -148,6 +165,15 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           )}
         </Button>
       </div>
+
+      {/* Availability + delivery promise right where the buying decision
+          happens (Baymard: reassure before the add-to-cart, not after). */}
+      {!soldOut && selected?.inStock && (
+        <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+          <Check className="text-success size-3.5" />
+          Нөөцөд бэлэн · Улаанбаатарт 24 цагийн дотор хүргэнэ
+        </p>
+      )}
     </div>
   );
 }

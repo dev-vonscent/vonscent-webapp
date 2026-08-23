@@ -65,6 +65,7 @@ export async function PATCH(
   if (input.bottlePrice !== undefined)
     productUpdate.bottle_price = input.bottlePrice;
   if (input.bottleMl !== undefined) productUpdate.bottle_ml = input.bottleMl;
+  if (input.salePct !== undefined) productUpdate.sale_pct = input.salePct;
 
   if (Object.keys(productUpdate).length > 0) {
     const { error } = await supabase
