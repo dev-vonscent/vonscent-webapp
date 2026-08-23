@@ -45,7 +45,7 @@
 - [x] **4.5** `motion` — cart sheet, жагсаалтын exit анимэйшн, page transition ✓ 2026-08-23 — cart sheet-д AnimatePresence exit, `(shop)/template.tsx` fade-in, `MotionConfig reducedMotion="user"`
 - [x] **4.6** `prefers-reduced-motion` — carousel autoplay, marquee дээр хүндэтгэх ✓ 2026-08-23 — `usePrefersReducedMotion` hook + CSS media query
 - [x] **4.7** `@testing-library/react` + `jsdom` component тест ✓ 2026-08-23 — `.tsx` тест jsdom, `.ts` тест node орчинд; `.node-version`=22.21.0 (Node 21 нь sanitize-html→htmlparser2 ESM require-д унадаг байсан); RichText + CatalogPagination тест
-- [ ] **4.8** `playwright` E2E: checkout, нэвтрэлт, админы гол урсгал
+- [x] **4.8** `playwright` E2E: checkout, нэвтрэлт, админы гол урсгал ✓ 2026-08-23 — demo горимд (Supabase env хоосолж) production build дээр ажилладаг: зочны бүрэн checkout, каталог кирилл хайлт, сагс→checkout, FAQ, админ dashboard/products smoke; CI-д тусдаа e2e job. Нэвтрэлт Supabase OTP тул demo-д E2E боломжгүй — гараар/staging-д шалгана
 - [ ] **4.9** `msw` — Supabase/QPay mock
 - [x] **4.10** `next-safe-action` эсвэл `lib/validators` схемүүдийг `zodResolver`-оор бүх client form-д дахин ашиглах ✓ 2026-08-23 — `validators/contact.ts` шинээр (API + form хоёулаа), contact-form RHF+zodResolver (өмнө нь алдааг үл тоодог байсан!), review-form клиент талд `reviewInputSchema`-аар шалгадаг боллоо; checkout аль хэдийн zodResolver-той байсан
 - [x] **4.11** Хайлт: `pg_trgm` + `unaccent` (Supabase extension) + кирилл→латин хөрвүүлэг; FAQ-д `fuse.js` ✓ 2026-08-23 — каталогийн хайлт SQL биш memory-д тул pg_trgm хэрэггүй болсон: `lib/search.ts` (кирилл→латин + accent-fold, «диор» → Dior) getCatalog-д залгагдсан; FAQ fuse.js fuzzy болсон. Каталог SQL хайлт руу шилжвэл pg_trgm-ийг эргэж харна
