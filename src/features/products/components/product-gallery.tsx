@@ -10,6 +10,7 @@ import Thumbnails from "yet-another-react-lightbox/plugins/thumbnails";
 import "yet-another-react-lightbox/styles.css";
 import "yet-another-react-lightbox/plugins/thumbnails.css";
 import { cn } from "@/lib/utils";
+import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import type { ProductImage } from "@/lib/types";
 
 /** Auto-advance interval — client asked for a 3-5s rotation. */
@@ -28,9 +29,12 @@ export function ProductGallery({
   name: string;
 }) {
   const many = images.length > 1;
+  const reducedMotion = usePrefersReducedMotion();
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { loop: many, watchDrag: many },
-    many ? [Autoplay({ delay: AUTOPLAY_MS, stopOnInteraction: true })] : [],
+    many && !reducedMotion
+      ? [Autoplay({ delay: AUTOPLAY_MS, stopOnInteraction: true })]
+      : [],
   );
   const [active, setActive] = React.useState(0);
   const [lightboxAt, setLightboxAt] = React.useState<number | null>(null);

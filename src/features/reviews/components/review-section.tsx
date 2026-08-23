@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { Stars } from "@/components/shared/stars";
-import { formatDate } from "@/lib/format";
+import { formatTimeAgo } from "@/lib/format";
 import { getProductReviews } from "@/features/reviews/api";
 import { ReviewForm } from "./review-form";
 import { DeleteReviewButton } from "./delete-review-button";
@@ -78,7 +78,7 @@ export async function ReviewSection({
                           {r.authorName}
                         </p>
                         <p className="text-muted-foreground mt-0.5 text-xs">
-                          {formatDate(r.createdAt)}
+                          {formatTimeAgo(r.createdAt)}
                         </p>
                       </div>
                       <DeleteReviewButton

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { BellRing, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatDate } from "@/lib/format";
+import { formatTimeAgo } from "@/lib/format";
 import type { AdminNotification } from "@/features/admin/api";
 
 /**
@@ -57,8 +57,11 @@ export function NotificationList({
                 ) : (
                   <span>{n.message}</span>
                 )}
-                <p className="text-muted-foreground text-xs">
-                  {formatDate(n.created_at)}
+                <p
+                  className="text-muted-foreground text-xs"
+                  suppressHydrationWarning
+                >
+                  {formatTimeAgo(n.created_at)}
                 </p>
               </div>
               <Button

@@ -8,6 +8,7 @@ import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import type { PopupSettings, PopupSlide } from "@/features/content/api";
 
 const STORAGE_KEY = "vonscent-popup-dismissed";
@@ -73,9 +74,12 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
   const [index, setIndex] = React.useState(0);
   const [slides, setSlides] = React.useState<PopupSlide[]>([]);
   const many = slides.length > 1;
+  const reducedMotion = usePrefersReducedMotion();
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { loop: many, watchDrag: many },
-    many ? [Autoplay({ delay: AUTOPLAY_MS, stopOnInteraction: true })] : [],
+    many && !reducedMotion
+      ? [Autoplay({ delay: AUTOPLAY_MS, stopOnInteraction: true })]
+      : [],
   );
 
   React.useEffect(() => {

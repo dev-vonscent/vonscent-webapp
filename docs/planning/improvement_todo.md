@@ -38,18 +38,18 @@
 - [x] **3.10** FAQ хариулт + About "түүх" мөн TipTap editor-т ✓ 2026-08-23 — contact-д rich контент байхгүй тул хамрагдаагүй
 ## Үе 4 — Чанар 🟢
 
-- [ ] **4.1** `date-fns` + `@date-fns/tz` — `src/lib/time.ts`-ийн hard-coded UTC+8-г `Asia/Ulaanbaatar` бүсээр солих
-- [ ] **4.2** `formatDistanceToNow`-оор relative цаг ("2 өдрийн өмнө") — сэтгэгдэл, мэдэгдэлд
+- [x] **4.1** `date-fns` + `@date-fns/tz` — `src/lib/time.ts`-ийн hard-coded UTC+8-г `Asia/Ulaanbaatar` бүсээр солих ✓ 2026-08-23 — API хэвээр, хуучин 11 тест өөрчлөлтгүй давсан
+- [x] **4.2** `formatDistanceToNow`-оор relative цаг ("2 өдрийн өмнө") — сэтгэгдэл, мэдэгдэлд ✓ 2026-08-23 — `formatTimeAgo` (`lib/format.ts`, mn locale, ирээдүйн цаг → «саяхан»)
 - [ ] **4.3** `dnd-kit` — `product-images.tsx`-ийн ~470 мөр гар бичмэл drag кодыг солих
 - [ ] **4.4** `cmdk` — `global-search.tsx`-д keyboard navigation
 - [ ] **4.5** `motion` — cart sheet, жагсаалтын exit анимэйшн, page transition
-- [ ] **4.6** `prefers-reduced-motion` — carousel autoplay, marquee дээр хүндэтгэх
+- [x] **4.6** `prefers-reduced-motion` — carousel autoplay, marquee дээр хүндэтгэх ✓ 2026-08-23 — `usePrefersReducedMotion` hook + CSS media query
 - [ ] **4.7** `@testing-library/react` + `jsdom` component тест
 - [ ] **4.8** `playwright` E2E: checkout, нэвтрэлт, админы гол урсгал
 - [ ] **4.9** `msw` — Supabase/QPay mock
 - [ ] **4.10** `next-safe-action` эсвэл `lib/validators` схемүүдийг `zodResolver`-оор бүх client form-д дахин ашиглах
 - [ ] **4.11** Хайлт: `pg_trgm` + `unaccent` (Supabase extension) + кирилл→латин хөрвүүлэг; FAQ-д `fuse.js`
-- [ ] **4.12** Catalog pagination-д ellipsis truncation (одоо 40 хуудас = 40 товч)
+- [x] **4.12** Catalog pagination-д ellipsis truncation (одоо 40 хуудас = 40 товч) ✓ 2026-08-23 — `paginationItems` + тест
 
 ## UI/UX (бүтээгдэхүүний хуудасны аудит, 2026-08-23)
 

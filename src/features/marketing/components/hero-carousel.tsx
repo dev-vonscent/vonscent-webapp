@@ -8,6 +8,7 @@ import Autoplay from "embla-carousel-autoplay";
 import Fade from "embla-carousel-fade";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import type { HeroBanner } from "@/features/content/api";
 
 /** Slow rotation — the hero is decorative, not something to chase. */
@@ -20,9 +21,11 @@ const AUTOPLAY_MS = 6000;
  */
 export function HeroCarousel({ banners }: { banners: HeroBanner[] }) {
   const many = banners.length > 1;
+  const reducedMotion = usePrefersReducedMotion();
+  const autoplay = many && !reducedMotion;
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { loop: many, duration: 40, watchDrag: many },
-    many
+    autoplay
       ? [Fade(), Autoplay({ delay: AUTOPLAY_MS, stopOnInteraction: true })]
       : [Fade()],
   );

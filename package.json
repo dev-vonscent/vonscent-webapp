@@ -17,6 +17,7 @@
     "db:import-collections": "node --env-file=.env.local --import tsx scripts/import-collections.ts"
   },
   "dependencies": {
+    "@date-fns/tz": "^1.5.0",
     "@hookform/resolvers": "^3.9.1",
     "@next/third-parties": "^16.3.2",
     "@radix-ui/react-accordion": "^1.2.2",
@@ -41,6 +42,7 @@
     "@tiptap/starter-kit": "^3.30.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
     "embla-carousel-autoplay": "^8.6.0",
     "embla-carousel-fade": "^8.6.0",
     "embla-carousel-react": "^8.6.0",

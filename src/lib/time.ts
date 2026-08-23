@@ -9,22 +9,14 @@
  *   - at 23:00 on the dispatch day deliveries are done (status flips to
  *     delivered by cron — see 0032_order_rules.sql).
  *
- * Servers usually run in UTC, so every comparison here is done on a date
- * shifted into UB time (+08:00, no DST) rather than on the host's local clock.
+ * Servers usually run in UTC, so every calculation is done on a TZDate pinned
+ * to Asia/Ulaanbaatar rather than on the host's local clock.
  */
 
-/** Asia/Ulaanbaatar is a fixed UTC+8 — Mongolia dropped DST in 2017. */
-const UB_OFFSET_MINUTES = 8 * 60;
+import { TZDate } from "@date-fns/tz";
+import { addDays, format } from "date-fns";
 
-/** Same instant, re-expressed so that getUTC* reads as UB wall-clock time. */
-function toUb(date: Date): Date {
-  return new Date(date.getTime() + UB_OFFSET_MINUTES * 60_000);
-}
-
-/** Turn a UB wall-clock time back into a real instant. */
-function fromUb(ub: Date): Date {
-  return new Date(ub.getTime() - UB_OFFSET_MINUTES * 60_000);
-}
+export const UB_TIMEZONE = "Asia/Ulaanbaatar";
 
 /** Every order leaves for delivery at this hour (UB) the day after it was placed. */
 export const DISPATCH_HOUR = 11;
@@ -32,13 +24,16 @@ export const DISPATCH_HOUR = 11;
 /** After this hour (UB) on the dispatch day, no changes or cancellation. */
 export const ORDER_EDIT_CUTOFF_HOUR = 9;
 
+/** 0-ms instant on the day after `placedAt` at `hour`:00 UB wall-clock time. */
+function nextDayAt(placedAt: string | number | Date, hour: number): Date {
+  const ub = addDays(new TZDate(new Date(placedAt).getTime(), UB_TIMEZONE), 1);
+  ub.setHours(hour, 0, 0, 0);
+  return new Date(ub.getTime());
+}
+
 /** The instant an order goes out: 11:00 UB on the day after it was placed. */
 export function orderDispatchAt(placedAt: string | number | Date): Date {
-  const ub = toUb(new Date(placedAt));
-  const dispatch = new Date(ub);
-  dispatch.setUTCDate(dispatch.getUTCDate() + 1);
-  dispatch.setUTCHours(DISPATCH_HOUR, 0, 0, 0);
-  return fromUb(dispatch);
+  return nextDayAt(placedAt, DISPATCH_HOUR);
 }
 
 /**
@@ -46,11 +41,7 @@ export function orderDispatchAt(placedAt: string | number | Date): Date {
  * (always the day after it was placed).
  */
 export function orderEditDeadline(placedAt: string | number | Date): Date {
-  const ub = toUb(new Date(placedAt));
-  const deadline = new Date(ub);
-  deadline.setUTCDate(deadline.getUTCDate() + 1);
-  deadline.setUTCHours(ORDER_EDIT_CUTOFF_HOUR, 0, 0, 0);
-  return fromUb(deadline);
+  return nextDayAt(placedAt, ORDER_EDIT_CUTOFF_HOUR);
 }
 
 /**
@@ -66,8 +57,6 @@ export function isOrderEditable(
 
 /** "08/22 09:00" style label for the deadline, in UB time. */
 export function formatDeadline(placedAt: string | number | Date): string {
-  const ub = toUb(orderEditDeadline(placedAt));
-  const d = String(ub.getUTCDate()).padStart(2, "0");
-  const m = String(ub.getUTCMonth() + 1).padStart(2, "0");
-  return `${m}/${d} ${String(ub.getUTCHours()).padStart(2, "0")}:00`;
+  const deadline = orderEditDeadline(placedAt);
+  return format(new TZDate(deadline.getTime(), UB_TIMEZONE), "MM/dd HH:00");
 }

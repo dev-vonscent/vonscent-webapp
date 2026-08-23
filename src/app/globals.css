@@ -250,6 +250,12 @@
     transform: translateX(-50%);
   }
 }
+/* Respect the OS "reduce motion" preference: freeze the brand marquee. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
+}
 @keyframes shimmer {
   from {
     background-position: 200% 0;
