@@ -40,8 +40,8 @@
 
 - [x] **4.1** `date-fns` + `@date-fns/tz` — `src/lib/time.ts`-ийн hard-coded UTC+8-г `Asia/Ulaanbaatar` бүсээр солих ✓ 2026-08-23 — API хэвээр, хуучин 11 тест өөрчлөлтгүй давсан
 - [x] **4.2** `formatDistanceToNow`-оор relative цаг ("2 өдрийн өмнө") — сэтгэгдэл, мэдэгдэлд ✓ 2026-08-23 — `formatTimeAgo` (`lib/format.ts`, mn locale, ирээдүйн цаг → «саяхан»)
-- [ ] **4.3** `dnd-kit` — `product-images.tsx`-ийн ~470 мөр гар бичмэл drag кодыг солих
-- [ ] **4.4** `cmdk` — `global-search.tsx`-д keyboard navigation
+- [x] **4.3** `dnd-kit` — `product-images.tsx`-ийн ~470 мөр гар бичмэл drag кодыг солих ✓ 2026-08-23 — sortable + DragOverlay, keyboard нь Space+сум стандарт болсон
+- [x] **4.4** `cmdk` — `global-search.tsx`-д keyboard navigation ✓ 2026-08-23 — server filter хэвээр (`shouldFilter=false`), ↑/↓ + Enter
 - [ ] **4.5** `motion` — cart sheet, жагсаалтын exit анимэйшн, page transition
 - [x] **4.6** `prefers-reduced-motion` — carousel autoplay, marquee дээр хүндэтгэх ✓ 2026-08-23 — `usePrefersReducedMotion` hook + CSS media query
 - [ ] **4.7** `@testing-library/react` + `jsdom` component тест

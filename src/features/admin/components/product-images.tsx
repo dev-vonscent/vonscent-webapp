@@ -2,6 +2,25 @@
 
 import * as React from "react";
 import Image from "next/image";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, ImagePlus, Trash2, UploadCloud, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/components/shared/confirm-dialog";
@@ -18,9 +37,9 @@ import { prepareUpload } from "@/lib/storage/prepare-upload";
  *     to the parent via `onChange`; the create route persists them.
  *
  * Order is the admin's to set (the first image is what the catalogue grid
- * shows), so tiles are dragged rather than nudged with buttons. Dragging uses
- * pointer events rather than HTML5 drag-and-drop so it works the same under a
- * finger on a tablet; the keyboard gets arrow keys on the focused handle.
+ * shows), so tiles are dragged rather than nudged with buttons. Reordering is
+ * dnd-kit sortable: pointer + touch via the handle, keyboard via the standard
+ * space-pick / arrow-move / space-drop interaction on the same handle.
  */
 
 export interface GalleryImage {
@@ -32,22 +51,89 @@ export interface GalleryImage {
 
 const MAX_IMAGES = 12;
 
-/**
- * The copy of the tile that rides under the pointer during a drag. Kept as a
- * separate fixed-position element rather than transforming the tile itself:
- * the tile is being re-slotted as the others shuffle, so anything anchored to
- * its layout position jumps around mid-drag.
- */
-interface Ghost {
-  url: string;
-  width: number;
-  height: number;
-  /** Where inside the tile it was grabbed, so it doesn't snap to a corner. */
-  grabX: number;
-  grabY: number;
-  /** Current pointer position. */
-  x: number;
-  y: number;
+/** Stable sortable id — DB id once the row exists, URL for staged uploads. */
+function keyOf(img: GalleryImage): string {
+  return img.id ?? img.url;
+}
+
+function SortableTile({
+  img,
+  index,
+  onRemove,
+  onAlt,
+  onAltBlur,
+}: {
+  img: GalleryImage;
+  index: number;
+  onRemove: () => void;
+  onAlt: (alt: string) => void;
+  onAltBlur: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: keyOf(img) });
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`group bg-card relative overflow-hidden rounded-lg border ${
+        isDragging
+          ? // The tile stays as the empty slot the overlay will drop into.
+            "border-primary border-dashed opacity-30"
+          : "border-border"
+      }`}
+    >
+      <div className="bg-secondary relative aspect-square">
+        <Image
+          src={img.url}
+          alt={img.alt || "Барааны зураг"}
+          fill
+          sizes="(min-width: 640px) 200px, 45vw"
+          className="object-cover"
+          draggable={false}
+        />
+
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label={`${index + 1}-р зураг — чирж эрэмбэ солих (Space дараад сумаар зөөнө)`}
+          className="bg-background/80 text-muted-foreground focus-visible:ring-ring absolute top-1.5 left-1.5 cursor-grab touch-none rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none active:cursor-grabbing max-sm:opacity-100"
+        >
+          <GripVertical className="size-4" />
+        </button>
+
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`${index + 1}-р зургийг устгах`}
+          className="bg-background/80 text-muted-foreground hover:text-destructive focus-visible:ring-ring absolute top-1.5 right-1.5 rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none max-sm:opacity-100"
+        >
+          <Trash2 className="size-4" />
+        </button>
+
+        {index === 0 && (
+          <span className="bg-primary/90 text-primary-foreground absolute inset-x-0 bottom-0 py-1 text-center text-[11px] font-medium">
+            Үндсэн зураг
+          </span>
+        )}
+      </div>
+
+      <Input
+        value={img.alt}
+        placeholder="Зургийн тайлбар (alt)"
+        className="border-border h-8 rounded-none border-0 border-t bg-transparent text-xs"
+        onChange={(e) => onAlt(e.target.value)}
+        onBlur={onAltBlur}
+      />
+    </li>
+  );
 }
 
 export function ProductImages({
@@ -63,24 +149,26 @@ export function ProductImages({
   const [uploading, setUploading] = React.useState(0);
   const [errors, setErrors] = React.useState<string[]>([]);
   const [dropActive, setDropActive] = React.useState(false);
-  const [dragIndex, setDragIndex] = React.useState<number | null>(null);
-  const [ghost, setGhost] = React.useState<Ghost | null>(null);
+  const [activeId, setActiveId] = React.useState<string | null>(null);
   const [confirm, confirmDialog] = useConfirm();
 
   const inputRef = React.useRef<HTMLInputElement>(null);
-  // The tiles are read off the list itself. An index-keyed ref array loses
-  // entries as React re-attaches refs during a reorder — exactly when the
-  // drag needs them.
-  const listRef = React.useRef<HTMLUListElement>(null);
-  // Pointer moves arrive faster than React re-renders, so a handler closure
-  // can still hold the order (and position) from before the last swap. Both
-  // live in refs; the state copies exist only to drive the styling.
+  // Uploads append sequentially while earlier responses may still be landing;
+  // the ref always holds the latest list without waiting for a re-render.
   const imagesRef = React.useRef(images);
-  const dragIndexRef = React.useRef<number | null>(null);
+
+  const sensors = useSensors(
+    // A small activation distance keeps a plain click on the handle from
+    // starting a drag.
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   const persisted = Boolean(productId);
   const full = images.length + uploading >= MAX_IMAGES;
-  const dragging = dragIndex !== null;
+  const activeImage = activeId
+    ? images.find((img) => keyOf(img) === activeId)
+    : null;
 
   const notify = React.useCallback(
     (next: GalleryImage[]) => {
@@ -175,99 +263,20 @@ export function ProductImages({
   }
 
   // ── Reorder ──────────────────────────────────────────────────────────
-  const tileIndexAt = React.useCallback((x: number, y: number) => {
-    const tiles = listRef.current?.children;
-    if (!tiles) return null;
-    // Upload placeholders sit after the images and are not drop targets.
-    const count = Math.min(tiles.length, imagesRef.current.length);
-    for (let i = 0; i < count; i++) {
-      const r = tiles[i].getBoundingClientRect();
-      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return i;
-    }
-    return null;
-  }, []);
-
-  const moveTo = React.useCallback(
-    (from: number, to: number) => {
-      if (to < 0 || to >= imagesRef.current.length || from === to) return;
-      const next = [...imagesRef.current];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      notify(next);
-    },
-    [notify],
-  );
-
-  function startDrag(e: React.PointerEvent, index: number) {
-    e.preventDefault();
-    // Snapshot the tile so the floating copy is the same size and keeps the
-    // exact spot inside it that was grabbed.
-    const tile = listRef.current?.children[index] as HTMLElement | undefined;
-    const r = tile?.getBoundingClientRect();
-    if (r) {
-      setGhost({
-        url: imagesRef.current[index].url,
-        width: r.width,
-        height: r.height,
-        grabX: e.clientX - r.left,
-        grabY: e.clientY - r.top,
-        x: e.clientX,
-        y: e.clientY,
-      });
-    }
-    dragIndexRef.current = index;
-    setDragIndex(index);
+  function onDragStart(e: DragStartEvent) {
+    setActiveId(String(e.active.id));
   }
 
-  /**
-   * Tracked on the window rather than through setPointerCapture: reordering
-   * moves the handle's tile in the DOM, and a captured element that is
-   * re-inserted loses its capture — so the drag would stop after one swap.
-   */
-  React.useEffect(() => {
-    if (!dragging) return;
-
-    const move = (e: PointerEvent) => {
-      const from = dragIndexRef.current;
-      if (from === null) return;
-      setGhost((g) => (g ? { ...g, x: e.clientX, y: e.clientY } : g));
-      const over = tileIndexAt(e.clientX, e.clientY);
-      if (over === null || over === from) return;
-      moveTo(from, over);
-      dragIndexRef.current = over;
-      setDragIndex(over);
-    };
-    const end = () => {
-      if (dragIndexRef.current === null) return;
-      dragIndexRef.current = null;
-      setDragIndex(null);
-      setGhost(null);
-      void persistOrder(imagesRef.current);
-    };
-
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", end);
-    window.addEventListener("pointercancel", end);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", end);
-      window.removeEventListener("pointercancel", end);
-    };
-    // `dragging` only gates the binding; position comes from the ref, so a
-    // swap mid-drag doesn't need to rebind.
-  }, [dragging, moveTo, persistOrder, tileIndexAt]);
-
-  function onHandleKeyDown(e: React.KeyboardEvent, index: number) {
-    const delta =
-      e.key === "ArrowLeft" || e.key === "ArrowUp"
-        ? -1
-        : e.key === "ArrowRight" || e.key === "ArrowDown"
-          ? 1
-          : 0;
-    if (!delta) return;
-    e.preventDefault();
-    moveTo(index, index + delta);
-    void persistOrder(imagesRef.current);
+  function onDragEnd(e: DragEndEvent) {
+    setActiveId(null);
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const from = images.findIndex((img) => keyOf(img) === active.id);
+    const to = images.findIndex((img) => keyOf(img) === over.id);
+    if (from < 0 || to < 0) return;
+    const next = arrayMove(images, from, to);
+    notify(next);
+    void persistOrder(next);
   }
 
   // ── Delete ───────────────────────────────────────────────────────────
@@ -301,9 +310,7 @@ export function ProductImages({
   }
 
   return (
-    // select-none while dragging: otherwise the drag paints a text selection
-    // across the tiles.
-    <div className={`space-y-4 ${dragging ? "select-none" : ""}`}>
+    <div className="space-y-4">
       {confirmDialog}
 
       {/* Dropzone — click or drop files anywhere inside it. A button so it
@@ -392,101 +399,59 @@ export function ProductImages({
       )}
 
       {images.length === 0 && uploading === 0 ? null : (
-        <ul ref={listRef} className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {images.map((img, i) => (
-            <li
-              key={img.id ?? img.url}
-              className={`group bg-card relative overflow-hidden rounded-lg border transition-shadow ${
-                dragIndex === i
-                  ? // The tile stays as the empty slot the ghost will drop into.
-                    "border-primary border-dashed opacity-30"
-                  : "border-border"
-              }`}
-            >
-              <div className="bg-secondary relative aspect-square">
-                <Image
-                  src={img.url}
-                  alt={img.alt || "Барааны зураг"}
-                  fill
-                  sizes="(min-width: 640px) 200px, 45vw"
-                  className="object-cover"
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+          onDragCancel={() => setActiveId(null)}
+        >
+          <SortableContext
+            items={images.map(keyOf)}
+            strategy={rectSortingStrategy}
+          >
+            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {images.map((img, i) => (
+                <SortableTile
+                  key={keyOf(img)}
+                  img={img}
+                  index={i}
+                  onRemove={() => remove(i)}
+                  onAlt={(alt) => setAlt(i, alt)}
+                  onAltBlur={() => persistOrder(imagesRef.current)}
+                />
+              ))}
+
+              {/* Placeholder per in-flight upload. */}
+              {Array.from({ length: uploading }).map((_, i) => (
+                <li
+                  key={`uploading-${i}`}
+                  className="border-border bg-secondary/50 text-muted-foreground flex aspect-square animate-pulse flex-col items-center justify-center gap-2 rounded-lg border border-dashed"
+                >
+                  <ImagePlus className="size-6" />
+                  <span className="text-xs">Оруулж байна…</span>
+                </li>
+              ))}
+            </ul>
+          </SortableContext>
+
+          {/* The image riding under the pointer. */}
+          <DragOverlay>
+            {activeImage ? (
+              <div className="border-primary overflow-hidden rounded-lg border-2 shadow-2xl">
+                {/* A plain img: next/image adds nothing for a copy of a picture
+                    the browser has already fetched. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={activeImage.url}
+                  alt=""
+                  className="size-full rotate-[-2deg] object-cover"
                   draggable={false}
                 />
-
-                {/* Drag handle: pointer events so touch works too. */}
-                <button
-                  type="button"
-                  onPointerDown={(e) => startDrag(e, i)}
-                  onKeyDown={(e) => onHandleKeyDown(e, i)}
-                  aria-label={`${i + 1}-р зураг — чирж эрэмбэ солих (сум товчоор ч болно)`}
-                  className="bg-background/80 text-muted-foreground focus-visible:ring-ring absolute top-1.5 left-1.5 touch-none rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none max-sm:opacity-100"
-                  style={{ cursor: dragIndex === i ? "grabbing" : "grab" }}
-                >
-                  <GripVertical className="size-4" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => remove(i)}
-                  aria-label={`${i + 1}-р зургийг устгах`}
-                  className="bg-background/80 text-muted-foreground hover:text-destructive focus-visible:ring-ring absolute top-1.5 right-1.5 rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none max-sm:opacity-100"
-                >
-                  <Trash2 className="size-4" />
-                </button>
-
-                {i === 0 && (
-                  <span className="bg-primary/90 text-primary-foreground absolute inset-x-0 bottom-0 py-1 text-center text-[11px] font-medium">
-                    Үндсэн зураг
-                  </span>
-                )}
               </div>
-
-              <Input
-                value={img.alt}
-                placeholder="Зургийн тайлбар (alt)"
-                className="border-border h-8 rounded-none border-0 border-t bg-transparent text-xs"
-                onChange={(e) => setAlt(i, e.target.value)}
-                onBlur={() => persistOrder(imagesRef.current)}
-              />
-            </li>
-          ))}
-
-          {/* Placeholder per in-flight upload. */}
-          {Array.from({ length: uploading }).map((_, i) => (
-            <li
-              key={`uploading-${i}`}
-              className="border-border bg-secondary/50 text-muted-foreground flex aspect-square animate-pulse flex-col items-center justify-center gap-2 rounded-lg border border-dashed"
-            >
-              <ImagePlus className="size-6" />
-              <span className="text-xs">Оруулж байна…</span>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* The image under the pointer. Fixed so no ancestor can clip it, and
-          transparent to hit-testing so the tile beneath still answers. */}
-      {ghost && (
-        <div
-          className="border-primary pointer-events-none fixed z-50 overflow-hidden rounded-lg border-2 shadow-2xl"
-          style={{
-            width: ghost.width,
-            height: ghost.height,
-            left: 0,
-            top: 0,
-            transform: `translate(${ghost.x - ghost.grabX}px, ${ghost.y - ghost.grabY}px) rotate(-2deg)`,
-          }}
-        >
-          {/* A plain img: next/image adds nothing for a copy of a picture the
-              browser has already fetched. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={ghost.url}
-            alt=""
-            className="size-full object-cover"
-            draggable={false}
-          />
-        </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
     </div>
   );
