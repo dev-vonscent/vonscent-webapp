@@ -299,10 +299,11 @@ function QuestionBlock({
       <h3 className="mb-6 font-serif text-xl font-semibold tracking-tight sm:text-2xl">
         {title}
       </h3>
+      {/* Capped width keeps the photo tiles compact on wide screens. */}
       <div
         className={cn(
-          "grid grid-cols-2 gap-3",
-          columns === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4",
+          "mx-auto grid grid-cols-2 gap-3",
+          columns === 3 ? "max-w-2xl sm:grid-cols-3" : "max-w-3xl sm:grid-cols-4",
         )}
       >
         {children}
@@ -342,7 +343,7 @@ function OptionTile({
           src={image}
           alt=""
           fill
-          sizes="(max-width: 640px) 50vw, 220px"
+          sizes="(max-width: 640px) 50vw, 190px"
           className="object-cover transition-transform duration-500 group-hover:scale-105"
           onError={() => setImgFailed(true)}
         />
