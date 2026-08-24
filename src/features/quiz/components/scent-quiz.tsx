@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, ArrowRight, RotateCcw, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProductCarousel } from "@/features/products/components/product-carousel";
@@ -118,20 +118,13 @@ export function ScentQuiz() {
       {phase === "intro" && (
         <div className="relative grid md:grid-cols-[1fr_320px]">
           {/* Side imagery (5c) — bleeds to the card edge and fades into the
-              bg-card surface; a warm CSS glow + Sparkles stand in until
+              bg-card surface; a warm CSS glow stands in until
               public/quiz-side.png is generated (prompts/quiz-options.md). */}
           <SideImage
             src="/quiz-side.png"
             sizes="(max-width: 768px) 100vw, 320px"
             className="relative aspect-[5/2] min-h-[280px] w-full md:order-2 md:aspect-auto md:min-h-0"
             fallbackClassName="bg-[radial-gradient(ellipse_65%_70%_at_65%_55%,rgba(92,62,28,.55),rgba(40,28,14,.2)_55%,transparent_80%)]"
-            fallback={
-              <Sparkles
-                className="text-gold-strong/15 absolute top-1/2 left-1/2 size-28 -translate-x-1/2 -translate-y-1/2"
-                strokeWidth={1}
-                aria-hidden
-              />
-            }
           >
             {/* fade into the card surface: upward on mobile, leftward on md+ */}
             <div className="from-card absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t to-transparent md:hidden" />
