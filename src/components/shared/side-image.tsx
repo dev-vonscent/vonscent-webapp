@@ -18,6 +18,7 @@ export function SideImage({
   className,
   imageClassName = "object-cover",
   fallbackClassName,
+  fallback,
   children,
 }: {
   src: string;
@@ -28,14 +29,18 @@ export function SideImage({
   imageClassName?: string;
   /** Background classes for the stand-in panel shown while `src` is missing. */
   fallbackClassName?: string;
+  /** Extra content for the stand-in panel (e.g. a decorative icon). */
+  fallback?: React.ReactNode;
   children?: React.ReactNode;
 }) {
   const [failed, setFailed] = React.useState(false);
-  if (failed && !fallbackClassName) return null;
+  if (failed && !fallbackClassName && !fallback) return null;
   return (
     <div className={className} aria-hidden={alt === ""}>
       {failed ? (
-        <div className={`absolute inset-0 ${fallbackClassName}`} />
+        <div className={`absolute inset-0 ${fallbackClassName ?? ""}`}>
+          {fallback}
+        </div>
       ) : (
         <Image
           src={src}

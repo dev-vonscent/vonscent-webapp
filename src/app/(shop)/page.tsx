@@ -160,21 +160,28 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* Build-your-own bundle promo — side imagery (5c) vanishes while
-            public/bundle-side.png hasn't been generated yet. */}
-        <section className="border-border relative grid items-center overflow-hidden rounded-2xl border bg-gradient-to-br from-secondary to-card md:grid-cols-[320px_1fr]">
-          <Sparkles className="text-gold-strong/20 pointer-events-none absolute -top-6 -right-6 size-40" />
+        {/* Build-your-own bundle promo — the side image (5c) bleeds to the
+            card edge and fades into the bg-card surface; a CSS glow +
+            Sparkles stand in until public/bundle-side.png is generated. */}
+        <section className="border-border bg-card relative grid overflow-hidden rounded-2xl border md:grid-cols-[320px_1fr]">
           <SideImage
             src="/bundle-side.png"
             sizes="(max-width: 768px) 100vw, 320px"
-            className="relative aspect-[3/1] md:aspect-auto md:h-full md:min-h-64"
+            className="relative aspect-[5/2] min-h-[280px] w-full md:aspect-auto md:min-h-0"
             fallbackClassName="bg-[radial-gradient(ellipse_65%_70%_at_35%_55%,rgba(88,92,104,.45),rgba(40,42,50,.18)_55%,transparent_80%)]"
+            fallback={
+              <Sparkles
+                className="text-gold-strong/15 absolute top-1/2 left-1/2 size-28 -translate-x-1/2 -translate-y-1/2"
+                strokeWidth={1}
+                aria-hidden
+              />
+            }
           >
-            {/* fade into the widget body: downward on mobile, rightward on md+ */}
-            <div className="from-secondary absolute inset-0 bg-gradient-to-t to-transparent md:hidden" />
-            <div className="from-secondary absolute inset-0 hidden bg-gradient-to-l to-transparent md:block" />
+            {/* fade into the card surface: upward on mobile, rightward on md+ */}
+            <div className="from-card absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t to-transparent md:hidden" />
+            <div className="from-card absolute inset-y-0 right-0 hidden w-1/2 bg-gradient-to-l to-transparent md:block" />
           </SideImage>
-          <div className="relative max-w-xl space-y-4 p-8 md:p-12">
+          <div className="flex max-w-xl flex-col items-start justify-center gap-4 p-6 sm:p-10">
             <p className="text-muted-foreground text-sm font-medium tracking-[0.2em] uppercase">
               Өөрийн багц
             </p>

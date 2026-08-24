@@ -114,29 +114,31 @@ export function ScentQuiz() {
   const question = step > 0 ? QUIZ_QUESTIONS[step - 1] : null;
 
   return (
-    <div className="border-border from-secondary to-card relative overflow-hidden rounded-2xl border bg-gradient-to-br p-6 sm:p-10">
-      <Sparkles
-        className="text-gold-strong/10 pointer-events-none absolute -top-6 -right-6 size-40"
-        strokeWidth={1}
-        aria-hidden
-      />
-
+    <div className="border-border bg-card relative overflow-hidden rounded-2xl border">
       {phase === "intro" && (
-        <div className="relative grid items-center gap-6 md:grid-cols-[1fr_320px]">
-          {/* Side imagery (5c) — a warm CSS glow stands in until
+        <div className="relative grid md:grid-cols-[1fr_320px]">
+          {/* Side imagery (5c) — bleeds to the card edge and fades into the
+              bg-card surface; a warm CSS glow + Sparkles stand in until
               public/quiz-side.png is generated (prompts/quiz-options.md). */}
           <SideImage
             src="/quiz-side.png"
             sizes="(max-width: 768px) 100vw, 320px"
-            className="relative -mx-6 -mt-6 aspect-[3/1] overflow-hidden sm:-mx-10 sm:-mt-10 md:order-2 md:mx-0 md:my-0 md:aspect-auto md:h-full md:min-h-56 md:rounded-xl"
+            className="relative aspect-[5/2] min-h-[280px] w-full md:order-2 md:aspect-auto md:min-h-0"
             fallbackClassName="bg-[radial-gradient(ellipse_65%_70%_at_65%_55%,rgba(92,62,28,.55),rgba(40,28,14,.2)_55%,transparent_80%)]"
+            fallback={
+              <Sparkles
+                className="text-gold-strong/15 absolute top-1/2 left-1/2 size-28 -translate-x-1/2 -translate-y-1/2"
+                strokeWidth={1}
+                aria-hidden
+              />
+            }
           >
-            {/* fade into the widget body: downward on mobile, leftward on md+ */}
-            <div className="from-card absolute inset-0 bg-gradient-to-t to-transparent md:hidden" />
-            <div className="from-card absolute inset-0 hidden bg-gradient-to-r to-transparent md:block" />
+            {/* fade into the card surface: upward on mobile, leftward on md+ */}
+            <div className="from-card absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t to-transparent md:hidden" />
+            <div className="from-card absolute inset-y-0 left-0 hidden w-1/2 bg-gradient-to-r to-transparent md:block" />
           </SideImage>
 
-          <div className="flex flex-col items-start gap-4 md:order-1">
+          <div className="flex flex-col items-start justify-center gap-4 p-6 sm:p-10 md:order-1">
             <p className="text-muted-foreground text-sm font-medium tracking-[0.2em] uppercase">
               Богино асуулга
             </p>
@@ -158,7 +160,7 @@ export function ScentQuiz() {
       )}
 
       {phase === "quiz" && (
-        <div className="relative min-h-[300px]">
+        <div className="relative min-h-[300px] p-6 sm:p-10">
           <div className="mb-6 flex items-center justify-between">
             <button
               type="button"
@@ -228,7 +230,7 @@ export function ScentQuiz() {
       )}
 
       {phase === "loading" && (
-        <div className="relative">
+        <div className="relative p-6 sm:p-10">
           <p className="text-muted-foreground mb-6 font-serif text-xl">
             Танд тохирох үнэрийг хайж байна…
           </p>
@@ -245,7 +247,7 @@ export function ScentQuiz() {
       )}
 
       {phase === "results" && result && (
-        <div className="relative">
+        <div className="relative p-6 sm:p-10">
           <h3 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
             Танд тохирох үнэртнүүд
           </h3>
@@ -276,7 +278,7 @@ export function ScentQuiz() {
       )}
 
       {phase === "error" && (
-        <div className="relative flex flex-col items-start gap-4">
+        <div className="relative flex flex-col items-start gap-4 p-6 sm:p-10">
           <p className="text-muted-foreground">
             Уучлаарай, алдаа гарлаа. Дахин оролдоно уу.
           </p>
