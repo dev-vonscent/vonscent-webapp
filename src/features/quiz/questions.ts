@@ -27,6 +27,12 @@ export interface QuizWeights {
 export interface QuizOption {
   id: string;
   emoji: string;
+  /**
+   * Tile artwork (3a) — generated from prompts/quiz-options.md. The tile
+   * falls back to the emoji while the file doesn't exist yet, so options can
+   * ship before their imagery.
+   */
+  image?: string;
   label: string;
   weights: QuizWeights;
 }
@@ -41,9 +47,10 @@ export interface QuizQuestion {
 export const GENDER_QUESTION = {
   title: "Хэнд зориулсан үнэр хайж байна вэ?",
   options: [
-    { value: "male", emoji: "🤵", label: "Эрэгтэй" },
-    { value: "female", emoji: "💃", label: "Эмэгтэй" },
-    { value: "any", emoji: "✨", label: "Хамаагүй" },
+    // Reuses the "Хүйсээр" cards (prompts/by-gender.md) — no new artwork.
+    { value: "male", emoji: "🤵", image: "/gender-male.png", label: "Эрэгтэй" },
+    { value: "female", emoji: "💃", image: "/gender-female.png", label: "Эмэгтэй" },
+    { value: "any", emoji: "✨", image: "/gender-unisex.png", label: "Хамаагүй" },
   ],
 } as const;
 
@@ -54,6 +61,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     options: [
       {
         id: "weekend-beach",
+        image: "/quiz/weekend-beach.png",
         emoji: "🏖️",
         label: "Далайн эргээр зугаалж, наранд шарна",
         weights: {
@@ -63,6 +71,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "weekend-forest",
+        image: "/quiz/weekend-forest.png",
         emoji: "🌲",
         label: "Ойн дундуур алхана",
         weights: {
@@ -72,6 +81,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "weekend-cozy",
+        image: "/quiz/weekend-cozy.png",
         emoji: "🕯️",
         label: "Гэртээ лаа асааж, ном уншина",
         weights: {
@@ -82,6 +92,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "weekend-garden",
+        image: "/quiz/weekend-garden.png",
         emoji: "🌸",
         label: "Цэцэглэсэн цэцэрлэгээр зугаална",
         weights: {
@@ -97,6 +108,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     options: [
       {
         id: "time-morning",
+        image: "/quiz/time-morning.png",
         emoji: "🌅",
         label: "Сэрүүн өглөө",
         weights: {
@@ -106,6 +118,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "time-noon",
+        image: "/quiz/time-noon.png",
         emoji: "☀️",
         label: "Нартай үдийн цаг",
         weights: {
@@ -115,6 +128,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "time-sunset",
+        image: "/quiz/time-sunset.png",
         emoji: "🌇",
         label: "Нар жаргах үе",
         weights: {
@@ -124,6 +138,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "time-night",
+        image: "/quiz/time-night.png",
         emoji: "🌙",
         label: "Гүн шөнө",
         weights: {
@@ -139,24 +154,28 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     options: [
       {
         id: "character-energetic",
+        image: "/quiz/character-energetic.png",
         emoji: "⚡",
         label: "Эрч хүчтэй, хөгжилтэй",
         weights: { families: { citrus: 2, fresh: 1 } },
       },
       {
         id: "character-romantic",
+        image: "/quiz/character-romantic.png",
         emoji: "💐",
         label: "Романтик, мэдрэмжтэй",
         weights: { families: { floral: 2 } },
       },
       {
         id: "character-warm",
+        image: "/quiz/character-warm.png",
         emoji: "🔥",
         label: "Дулаан, дотно",
         weights: { families: { spicy: 2, oriental: 1 } },
       },
       {
         id: "character-calm",
+        image: "/quiz/character-calm.png",
         emoji: "🗿",
         label: "Тайван, өөртөө итгэлтэй",
         weights: { families: { woody: 2 } },
@@ -169,24 +188,28 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     options: [
       {
         id: "season-spring",
+        image: "/season-spring.jpg",
         emoji: "🌸",
         label: "Хавар",
         weights: { seasons: { spring: 3 }, families: { floral: 1 } },
       },
       {
         id: "season-summer",
+        image: "/season-summer.jpg",
         emoji: "☀️",
         label: "Зун",
         weights: { seasons: { summer: 3 }, families: { citrus: 1 } },
       },
       {
         id: "season-autumn",
+        image: "/season-autumn.jpg",
         emoji: "🍂",
         label: "Намар",
         weights: { seasons: { autumn: 3 }, families: { woody: 1 } },
       },
       {
         id: "season-winter",
+        image: "/season-winter.jpg",
         emoji: "❄️",
         label: "Өвөл",
         weights: { seasons: { winter: 3 }, families: { oriental: 1 } },
@@ -199,18 +222,21 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     options: [
       {
         id: "impression-whisper",
+        image: "/quiz/impression-whisper.png",
         emoji: "🤫",
         label: "Зөвхөн ойртсон хүнд л мэдрэгдэнэ",
         weights: { intensity: { light: 3 } },
       },
       {
         id: "impression-balanced",
+        image: "/quiz/impression-balanced.png",
         emoji: "🙂",
         label: "Тэнцвэртэй, яг таг",
         weights: { intensity: { medium: 3 } },
       },
       {
         id: "impression-bold",
+        image: "/quiz/impression-bold.png",
         emoji: "💫",
         label: "Хажуугаар өнгөрөхөд эргэж харуулна",
         weights: { intensity: { strong: 3 } },

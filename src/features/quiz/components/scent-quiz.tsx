@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, ArrowRight, RotateCcw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -191,11 +192,15 @@ export function ScentQuiz() {
           </div>
 
           {question === null ? (
-            <QuestionBlock title={GENDER_QUESTION.title}>
+            <QuestionBlock
+              title={GENDER_QUESTION.title}
+              columns={GENDER_QUESTION.options.length}
+            >
               {GENDER_QUESTION.options.map((o) => (
                 <OptionTile
                   key={o.value}
                   emoji={o.emoji}
+                  image={o.image}
                   label={o.label}
                   selected={gender === o.value}
                   onClick={() => pickGender(o.value)}
@@ -203,11 +208,15 @@ export function ScentQuiz() {
               ))}
             </QuestionBlock>
           ) : (
-            <QuestionBlock title={question.title}>
+            <QuestionBlock
+              title={question.title}
+              columns={question.options.length}
+            >
               {question.options.map((o) => (
                 <OptionTile
                   key={o.id}
                   emoji={o.emoji}
+                  image={o.image}
                   label={o.label}
                   selected={picks[question.id] === o.id}
                   onClick={() => pickOption(question.id, o.id)}
@@ -282,9 +291,12 @@ export function ScentQuiz() {
 
 function QuestionBlock({
   title,
+  columns,
   children,
 }: {
   title: string;
+  /** Option count — 3-option questions get a 3-column desktop grid. */
+  columns: number;
   children: React.ReactNode;
 }) {
   return (
@@ -292,35 +304,94 @@ function QuestionBlock({
       <h3 className="mb-6 font-serif text-xl font-semibold tracking-tight sm:text-2xl">
         {title}
       </h3>
-      <div className="grid gap-3 sm:grid-cols-2">{children}</div>
+      <div
+        className={cn(
+          "grid grid-cols-2 gap-3",
+          columns === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4",
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }
 
 function OptionTile({
   emoji,
+  image,
   label,
   selected,
   onClick,
 }: {
   emoji: string;
+  image?: string;
   label: string;
   selected: boolean;
   onClick: () => void;
 }) {
+  // Fall back to the emoji tile while the option's artwork doesn't exist yet
+  // (3a — images are generated separately from prompts/quiz-options.md).
+  const [imgFailed, setImgFailed] = React.useState(false);
+
+  if (image && !imgFailed) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          "group hover:shadow-soft relative aspect-[3/4] overflow-hidden rounded-xl text-left transition-all hover:-translate-y-0.5",
+          selected && "ring-foreground ring-2 ring-inset",
+        )}
+      >
+        <Image
+          src={image}
+          alt=""
+          fill
+          sizes="(max-width: 640px) 50vw, 220px"
+          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          onError={() => setImgFailed(true)}
+        />
+        <div
+          className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/85 to-transparent"
+          aria-hidden
+        />
+        <span
+          className={cn(
+            "absolute inset-x-0 bottom-0 p-3 text-sm leading-snug font-medium text-white",
+            selected && "font-semibold",
+          )}
+        >
+          {label}
+        </span>
+      </button>
+    );
+  }
+
+  // Same card shape as the image tile, so the grid stays uniform while some
+  // options still wait for their artwork.
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "border-border bg-card hover:border-gold-strong/50 hover:shadow-soft flex items-center gap-3 rounded-xl border p-4 text-left text-sm font-medium transition-all hover:-translate-y-0.5",
-        selected && "border-gold-strong ring-gold-strong/30 ring-2",
+        "hover:shadow-soft relative flex aspect-[3/4] flex-col overflow-hidden rounded-xl bg-gradient-to-b from-accent to-card text-left transition-all hover:-translate-y-0.5",
+        selected && "ring-foreground ring-2 ring-inset",
       )}
     >
-      <span className="text-2xl" aria-hidden>
+      <span
+        className="flex flex-1 items-center justify-center text-4xl opacity-80 sm:text-5xl"
+        aria-hidden
+      >
         {emoji}
       </span>
-      {label}
+      <span
+        className={cn(
+          "px-3 pb-3 text-sm leading-snug font-medium",
+          selected && "font-semibold",
+        )}
+      >
+        {label}
+      </span>
     </button>
   );
 }
