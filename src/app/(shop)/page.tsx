@@ -36,6 +36,7 @@ import { HeroCarousel } from "@/features/marketing/components/hero-carousel";
 import { ScentQuiz } from "@/features/quiz/components/scent-quiz";
 import { PromoPopup } from "@/features/marketing/components/promo-popup";
 import { GENDERS, GENDER_LABEL } from "@/lib/constants";
+import { SideImage } from "@/components/shared/side-image";
 
 /**
  * ISR: public data comes from the cookie-less client, so the page is
@@ -159,10 +160,21 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* Build-your-own bundle promo */}
-        <section className="border-border relative overflow-hidden rounded-2xl border bg-gradient-to-br from-secondary to-card p-8 md:p-12">
+        {/* Build-your-own bundle promo — side imagery (5c) vanishes while
+            public/bundle-side.png hasn't been generated yet. */}
+        <section className="border-border relative grid items-center overflow-hidden rounded-2xl border bg-gradient-to-br from-secondary to-card md:grid-cols-[320px_1fr]">
           <Sparkles className="text-gold-strong/20 pointer-events-none absolute -top-6 -right-6 size-40" />
-          <div className="relative max-w-xl space-y-4">
+          <SideImage
+            src="/bundle-side.png"
+            sizes="(max-width: 768px) 100vw, 320px"
+            className="relative aspect-[3/1] md:aspect-auto md:h-full md:min-h-64"
+            fallbackClassName="bg-[radial-gradient(ellipse_65%_70%_at_35%_55%,rgba(88,92,104,.45),rgba(40,42,50,.18)_55%,transparent_80%)]"
+          >
+            {/* fade into the widget body: downward on mobile, rightward on md+ */}
+            <div className="from-secondary absolute inset-0 bg-gradient-to-t to-transparent md:hidden" />
+            <div className="from-secondary absolute inset-0 hidden bg-gradient-to-l to-transparent md:block" />
+          </SideImage>
+          <div className="relative max-w-xl space-y-4 p-8 md:p-12">
             <p className="text-muted-foreground text-sm font-medium tracking-[0.2em] uppercase">
               Өөрийн багц
             </p>

@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, RotateCcw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProductCarousel } from "@/features/products/components/product-carousel";
+import { SideImage } from "@/components/shared/side-image";
 import { cn } from "@/lib/utils";
 import type { ProductListItem } from "@/lib/types";
 import { GENDER_QUESTION, QUIZ_QUESTIONS } from "../questions";
@@ -120,20 +121,38 @@ export function ScentQuiz() {
       />
 
       {phase === "intro" && (
-        <div className="relative flex flex-col items-start gap-4 sm:max-w-xl">
-          <p className="text-muted-foreground text-sm font-medium tracking-[0.2em] uppercase">
-            Богино асуулга
-          </p>
-          <h2 className="font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
-            Үнэрээ ол
-          </h2>
-          <p className="text-muted-foreground">
-            Аль үнэрийг сонгохоо мэдэхгүй байна уу? Хэдхэн хөгжилтэй асуултад
-            хариулаад өөрт тань хамгийн сайн тохирох үнэртнүүдийг олоорой.
-          </p>
-          <Button onClick={() => setPhase("quiz")} className="mt-2">
-            Эхэлцгээе <ArrowRight className="size-4" />
-          </Button>
+        <div className="relative grid items-center gap-6 md:grid-cols-[1fr_320px]">
+          {/* Side imagery (5c) — a warm CSS glow stands in until
+              public/quiz-side.png is generated (prompts/quiz-options.md). */}
+          <SideImage
+            src="/quiz-side.png"
+            sizes="(max-width: 768px) 100vw, 320px"
+            className="relative -mx-6 -mt-6 aspect-[3/1] overflow-hidden sm:-mx-10 sm:-mt-10 md:order-2 md:mx-0 md:my-0 md:aspect-auto md:h-full md:min-h-56 md:rounded-xl"
+            fallbackClassName="bg-[radial-gradient(ellipse_65%_70%_at_65%_55%,rgba(92,62,28,.55),rgba(40,28,14,.2)_55%,transparent_80%)]"
+          >
+            {/* fade into the widget body: downward on mobile, leftward on md+ */}
+            <div className="from-card absolute inset-0 bg-gradient-to-t to-transparent md:hidden" />
+            <div className="from-card absolute inset-0 hidden bg-gradient-to-r to-transparent md:block" />
+          </SideImage>
+
+          <div className="flex flex-col items-start gap-4 md:order-1">
+            <p className="text-muted-foreground text-sm font-medium tracking-[0.2em] uppercase">
+              Богино асуулга
+            </p>
+            <h2 className="font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
+              Үнэрээ ол
+            </h2>
+            <p className="text-muted-foreground">
+              Аль үнэрийг сонгохоо мэдэхгүй байна уу? Хэдхэн хөгжилтэй асуултад
+              хариулаад өөрт тань хамгийн сайн тохирох үнэртнүүдийг олоорой.
+            </p>
+            <p className="text-muted-foreground text-sm font-medium">
+              {TOTAL_STEPS} асуулт · 30 секунд
+            </p>
+            <Button onClick={() => setPhase("quiz")} className="mt-2">
+              Эхэлцгээе <ArrowRight className="size-4" />
+            </Button>
+          </div>
         </div>
       )}
 
