@@ -48,13 +48,10 @@ const isBusy = (s: string) => s === "pending" || s === "generating";
 
 export function ProductImageCell({
   product,
-  promptSeed,
   referenceSeed,
   large,
 }: {
   product: CellProduct;
-  /** Default prompt for a product with no prior generation (edit page). */
-  promptSeed?: string;
   /** Reference image for the first generation (edit page). */
   referenceSeed?: string | null;
   /** Render a larger thumbnail (edit page). */
@@ -95,7 +92,9 @@ export function ProductImageCell({
 
   const thumb = state.published ?? state.resultUrl;
   const unapproved =
-    state.status === "done" && !!state.resultUrl && !state.published;
+    state.status === "done" &&
+    !!state.resultUrl &&
+    state.resultUrl !== state.published;
 
   return (
     <>
@@ -141,7 +140,6 @@ export function ProductImageCell({
           product={product}
           state={state}
           setState={setState}
-          promptSeed={promptSeed}
           referenceSeed={referenceSeed}
           onClose={() => setOpen(false)}
         />
@@ -154,14 +152,12 @@ function ImagePopup({
   product,
   state,
   setState,
-  promptSeed,
   referenceSeed,
   onClose,
 }: {
   product: CellProduct;
   state: CellState;
   setState: React.Dispatch<React.SetStateAction<CellState>>;
-  promptSeed?: string;
   referenceSeed?: string | null;
   onClose: () => void;
 }) {
@@ -201,24 +197,20 @@ function ImagePopup({
   }, [state.status, product.id, setState, loadHistory]);
 
   async function regenerate() {
-    // The textarea holds a small adjustment; the real prompt is the last full
-    // prompt (or the composed seed) with that tweak appended. Empty adjust just
-    // re-rolls the same prompt.
-    const base = state.prompt || promptSeed || "";
-    const tweak = adjust.trim();
-    const finalPrompt = base
-      ? tweak
-        ? `${base}\n\nAdjustment: ${tweak}`
-        : base
-      : tweak;
-    if (!finalPrompt.trim() || busy) return;
+    if (busy) return;
     setBusy(true);
-    // First generation for a non-AI product uses the current image as the
-    // reference; once a job exists the route reuses that job's reference.
-    const body: { prompt: string; referenceUrl?: string } = {
-      prompt: finalPrompt,
-    };
-    if (!state.generationId && referenceSeed) body.referenceUrl = referenceSeed;
+    // The server rebuilds the full prompt from the product + the base prompt in
+    // build-image-prompt.ts; we only send the optional small adjustment. An
+    // empty field regenerates from the reference image + base prompt alone and
+    // appends the result as a new generation.
+    const body: { adjust?: string; referenceUrl?: string } = {};
+    const tweak = adjust.trim();
+    if (tweak) body.adjust = tweak;
+    // Always hand the server a reference so it can preserve the bottle: an
+    // edit-page seed, otherwise the product's current image. The server still
+    // prefers the product's saved original reference when it has one.
+    const ref = referenceSeed ?? state.published ?? state.resultUrl;
+    if (ref) body.referenceUrl = ref;
     const r = await fetch(
       `/api/admin/products/${product.id}/regenerate-image`,
       {
@@ -262,9 +254,13 @@ function ImagePopup({
     }
   }
 
-  const big = state.published ?? state.resultUrl;
+  // Show the newest generation result first so a fresh regenerate is visible
+  // immediately; fall back to the published image when there is no result yet.
+  const big = state.resultUrl ?? state.published;
   const unapproved =
-    state.status === "done" && !!state.resultUrl && !state.published;
+    state.status === "done" &&
+    !!state.resultUrl &&
+    state.resultUrl !== state.published;
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -311,7 +307,7 @@ function ImagePopup({
               />
             </label>
             <p className="text-muted-foreground -mt-1 text-xs">
-              Хоосон бол ижил prompt-оор дахин үүсгэнэ.
+              Хоосон бол лавлах зураг + үндсэн prompt-оор шинээр үүсгэнэ.
             </p>
             <Button
               onClick={regenerate}

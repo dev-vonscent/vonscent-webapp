@@ -76,6 +76,11 @@ export async function POST(req: Request) {
   // Uploaded images publish with whatever the admin chose.
   const aiMode = input.imageMode === "generate" && isImageGenConfigured;
 
+  const hostedImages = input.images.filter((img) => isStorageUrl(img.url));
+  // In AI mode the first uploaded image is the reference bottle — persist it on
+  // the product so every future regeneration can reuse it.
+  const referenceImageUrl = aiMode ? (hostedImages[0]?.url ?? null) : null;
+
   const { data: product, error: pErr } = await supabase
     .from("products")
     .insert({
@@ -83,6 +88,7 @@ export async function POST(req: Request) {
       scent_families: families,
       seasons: input.seasons,
       is_active: aiMode ? false : input.isActive,
+      reference_image_url: referenceImageUrl,
     })
     .select("id")
     .single();
@@ -102,29 +108,20 @@ export async function POST(req: Request) {
 
   await supabase.from("product_variants").insert(variants);
 
-  // The form uploads before the product row exists, so the images arrive as
-  // URLs. Only accept ones we host — see isStorageUrl.
-  const hostedImages = input.images.filter((img) => isStorageUrl(img.url));
-
   if (aiMode) {
-    // The uploaded image is the AI *reference*, not the gallery. Enqueue a job
-    // with the composed English prompt and kick it off in the background.
-    const { data: setting } = await supabase
-      .from("settings")
-      .select("value")
-      .eq("key", "imageGen")
-      .maybeSingle();
-    const cfg = (setting?.value as { basePrompt?: string } | null) ?? {};
-
+    // The uploaded image is the AI *reference*, not the gallery. Compose the
+    // prompt from the current base prompt in build-image-prompt.ts (the file is
+    // the single source of truth), then enqueue + kick off the job.
     const prompt = buildImagePrompt(
       {
         name: input.name,
         brand: input.brand,
         gender: input.gender,
+        scentFamilies: families,
         shortDescription: input.shortDescription,
         description: input.description,
       },
-      cfg.basePrompt || DEFAULT_BASE_PROMPT,
+      DEFAULT_BASE_PROMPT,
     );
 
     const { data: job } = await supabase
@@ -133,7 +130,7 @@ export async function POST(req: Request) {
         product_id: productId,
         status: "pending",
         prompt,
-        reference_url: hostedImages[0]?.url ?? null,
+        reference_url: referenceImageUrl,
       })
       .select("id")
       .single();
