@@ -402,31 +402,36 @@ function OptionTile({
         type="button"
         onClick={onClick}
         className={cn(
-          // The image slightly overfills the rounded clip ([&_img]:scale) so no
-          // white hairline shows along the antialiased corner edge.
-          "group hover:shadow-soft relative isolate aspect-[3/4] overflow-hidden rounded-xl text-left transition-all hover:-translate-y-0.5 [&_img]:scale-[1.02]",
+          "group hover:shadow-soft relative aspect-[3/4] rounded-xl text-left transition-all hover:-translate-y-0.5",
           selected && "outline-foreground outline outline-2 -outline-offset-2",
         )}
       >
-        <Image
-          src={image}
-          alt=""
-          fill
-          sizes="(max-width: 640px) 50vw, 190px"
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
-          onError={() => setImgFailed(true)}
-        />
-        <div
-          className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black/90 via-black/40 to-transparent"
-          aria-hidden
-        />
-        <span
-          className={cn(
-            "absolute inset-x-0 bottom-0 p-3.5 pr-3 text-[15px] leading-snug font-medium text-white",
-            selected && "font-semibold",
-          )}
-        >
-          {label}
+        {/* clip-path (not border-radius + overflow) does the corner clipping:
+            Chromium's rounded-clip antialiasing on a composited image layer
+            leaks a white hairline along the curve; a clip-path inset mask
+            doesn't. It lives on this inner span (not the button) so the hover
+            shadow and selected outline aren't clipped away with it. */}
+        <span className="absolute inset-0 overflow-hidden rounded-xl [clip-path:inset(0_round_var(--radius-xl))]">
+          <Image
+            src={image}
+            alt=""
+            fill
+            sizes="(max-width: 640px) 50vw, 190px"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            onError={() => setImgFailed(true)}
+          />
+          <span
+            className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black/90 via-black/40 to-transparent"
+            aria-hidden
+          />
+          <span
+            className={cn(
+              "absolute inset-x-0 bottom-0 p-3.5 pr-3 text-[15px] leading-snug font-medium text-white",
+              selected && "font-semibold",
+            )}
+          >
+            {label}
+          </span>
         </span>
       </button>
     );
