@@ -162,10 +162,10 @@ export default async function HomePage() {
 
         {/* Build-your-own bundle promo — the side image (5c) bleeds to the
             card edge and fades into the bg-card surface; a CSS glow stands
-            in until public/bundle-side.png is generated. */}
+            in until public/bundle-side-v2.png is generated. */}
         <section className="border-border bg-card relative grid overflow-hidden rounded-2xl border md:grid-cols-[320px_1fr]">
           <SideImage
-            src="/bundle-side.png"
+            src="/bundle-side-v2.png"
             sizes="(max-width: 768px) 100vw, 320px"
             className="relative aspect-[5/2] min-h-[280px] w-full md:aspect-auto md:min-h-0"
             fallbackClassName="bg-[radial-gradient(ellipse_65%_70%_at_35%_55%,rgba(88,92,104,.45),rgba(40,42,50,.18)_55%,transparent_80%)]"

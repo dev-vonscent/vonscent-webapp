@@ -25,8 +25,10 @@ const optionPrompt = (subject) =>
 const widgetPrompt = (subject) =>
   `Luxury fragrance editorial photograph, ${subject}, deep charcoal background, dramatic studio lighting with a warm golden glow from one side, subtle warm accents, generous negative space, premium fragrance advertisement aesthetic, cinematic, vertical composition, warm inviting lighting, rich visible detail, not dark.`;
 
-/** Quiz option tiles → public/quiz/{id}.png. Gender and season questions
- *  reuse existing cards (public/gender-*.png, public/season-*.jpg). */
+/** Quiz option tiles → public/quiz/{id}-v2.png. Filenames are versioned so a
+ *  regeneration ships under fresh URLs (no stale optimizer/browser caches);
+ *  bump the suffix when regenerating. Gender and season questions reuse
+ *  existing cards (public/gender-*.png, public/season-*.jpg). */
 const OPTION_SUBJECTS = {
   "weekend-beach": "turquoise ocean waves rolling onto a sunlit sandy beach under a blue sky",
   "weekend-forest": "a green pine forest path with morning sunrays streaming through the trees",
@@ -55,11 +57,11 @@ const WIDGET_SUBJECTS = {
 
 const TARGETS = [
   ...Object.entries(OPTION_SUBJECTS).map(([id, subject]) => ({
-    file: path.join("public", "quiz", `${id}.png`),
+    file: path.join("public", "quiz", `${id}-v2.png`),
     prompt: optionPrompt(subject),
   })),
   ...Object.entries(WIDGET_SUBJECTS).map(([id, subject]) => ({
-    file: path.join("public", `${id}.png`),
+    file: path.join("public", `${id}-v2.png`),
     prompt: widgetPrompt(subject),
   })),
 ];

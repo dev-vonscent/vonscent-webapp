@@ -61,7 +61,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     options: [
       {
         id: "weekend-beach",
-        image: "/quiz/weekend-beach.png",
+        image: "/quiz/weekend-beach-v2.png",
         emoji: "🏖️",
         label: "Далайн эргээр зугаалж, наранд шарна",
         weights: {
@@ -71,7 +71,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "weekend-forest",
-        image: "/quiz/weekend-forest.png",
+        image: "/quiz/weekend-forest-v2.png",
         emoji: "🌲",
         label: "Ойн дундуур алхана",
         weights: {
@@ -81,7 +81,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "weekend-cozy",
-        image: "/quiz/weekend-cozy.png",
+        image: "/quiz/weekend-cozy-v2.png",
         emoji: "🕯️",
         label: "Гэртээ лаа асааж, ном уншина",
         weights: {
@@ -92,7 +92,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "weekend-garden",
-        image: "/quiz/weekend-garden.png",
+        image: "/quiz/weekend-garden-v2.png",
         emoji: "🌸",
         label: "Цэцэглэсэн цэцэрлэгээр зугаална",
         weights: {
@@ -108,7 +108,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     options: [
       {
         id: "time-morning",
-        image: "/quiz/time-morning.png",
+        image: "/quiz/time-morning-v2.png",
         emoji: "🌅",
         label: "Сэрүүн өглөө",
         weights: {
@@ -118,7 +118,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "time-noon",
-        image: "/quiz/time-noon.png",
+        image: "/quiz/time-noon-v2.png",
         emoji: "☀️",
         label: "Нартай үдийн цаг",
         weights: {
@@ -128,7 +128,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "time-sunset",
-        image: "/quiz/time-sunset.png",
+        image: "/quiz/time-sunset-v2.png",
         emoji: "🌇",
         label: "Нар жаргах үе",
         weights: {
@@ -138,7 +138,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "time-night",
-        image: "/quiz/time-night.png",
+        image: "/quiz/time-night-v2.png",
         emoji: "🌙",
         label: "Гүн шөнө",
         weights: {
@@ -154,28 +154,28 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     options: [
       {
         id: "character-energetic",
-        image: "/quiz/character-energetic.png",
+        image: "/quiz/character-energetic-v2.png",
         emoji: "⚡",
         label: "Эрч хүчтэй, хөгжилтэй",
         weights: { families: { citrus: 2, fresh: 1 } },
       },
       {
         id: "character-romantic",
-        image: "/quiz/character-romantic.png",
+        image: "/quiz/character-romantic-v2.png",
         emoji: "💐",
         label: "Романтик, мэдрэмжтэй",
         weights: { families: { floral: 2 } },
       },
       {
         id: "character-warm",
-        image: "/quiz/character-warm.png",
+        image: "/quiz/character-warm-v2.png",
         emoji: "🔥",
         label: "Дулаан, дотно",
         weights: { families: { spicy: 2, oriental: 1 } },
       },
       {
         id: "character-calm",
-        image: "/quiz/character-calm.png",
+        image: "/quiz/character-calm-v2.png",
         emoji: "🗿",
         label: "Тайван, өөртөө итгэлтэй",
         weights: { families: { woody: 2 } },
@@ -222,21 +222,21 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     options: [
       {
         id: "impression-whisper",
-        image: "/quiz/impression-whisper.png",
+        image: "/quiz/impression-whisper-v2.png",
         emoji: "🤫",
         label: "Зөвхөн ойртсон хүнд л мэдрэгдэнэ",
         weights: { intensity: { light: 3 } },
       },
       {
         id: "impression-balanced",
-        image: "/quiz/impression-balanced.png",
+        image: "/quiz/impression-balanced-v2.png",
         emoji: "🙂",
         label: "Тэнцвэртэй, яг таг",
         weights: { intensity: { medium: 3 } },
       },
       {
         id: "impression-bold",
-        image: "/quiz/impression-bold.png",
+        image: "/quiz/impression-bold-v2.png",
         emoji: "💫",
         label: "Хажуугаар өнгөрөхөд эргэж харуулна",
         weights: { intensity: { strong: 3 } },

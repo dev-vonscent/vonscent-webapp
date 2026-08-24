@@ -1,6 +1,6 @@
 # "Үнэрээ ол" quiz tiles + home widget side imagery
 
-**Model:** `gpt-image-1`, size 1024×1536 (portrait), quality high → `public/quiz/{option-id}.png` (widgets: `public/quiz-side.png`, `public/bundle-side.png`)
+**Model:** `gpt-image-1`, size 1024×1536 (portrait), quality high → `public/quiz/{option-id}-v2.png` (widgets: `public/quiz-side-v2.png`, `public/bundle-side-v2.png`)
 **Style:** option tiles are bright, natural-color, subject-first — the tile shows the OPTION's meaning (a beach, a candle, a rose…), never a perfume product, and must read on both the dark and light theme (the tile's own bottom gradient keeps labels legible). Widget side images keep a brightened fragrance-editorial look.
 **Script:** `node scripts/gen-quiz-images.mjs` (skips files that already exist; delete a file and rerun to regenerate it).
 **Note:** хүйсийн асуулт одоо байгаа `public/gender-{male,female,unisex}.png`-г, улирлын асуулт `public/season-{spring,summer,autumn,winter}.jpg`-г шууд дахин ашигладаг тул шинээр гаргах шаардлагагүй.
@@ -42,5 +42,5 @@ Beautiful atmospheric photograph of {SUBJECT}, the subject large, clearly visibl
 
 Base prompt: Luxury fragrance editorial photograph, {SUBJECT}, deep charcoal background, dramatic studio lighting with a warm golden glow from one side, subtle warm accents, generous negative space, premium fragrance advertisement aesthetic, cinematic, vertical composition, warm inviting lighting, rich visible detail, not dark.
 
-- `quiz-side` (`public/quiz-side.png`, quiz intro, image right) — raw perfume ingredients on black stone — bergamot slices, vanilla pods, sandalwood shavings, a dark rose, amber resin — arranged loosely from above
-- `bundle-side` (`public/bundle-side.png`, bundle promo, image left) — a neat row of small glass perfume decant vials in ascending sizes with minimal black labels on a reflective black surface, shallow depth of field
+- `quiz-side` (`public/quiz-side-v2.png`, quiz intro, image right) — raw perfume ingredients on black stone — bergamot slices, vanilla pods, sandalwood shavings, a dark rose, amber resin — arranged loosely from above
+- `bundle-side` (`public/bundle-side-v2.png`, bundle promo, image left) — a neat row of small glass perfume decant vials in ascending sizes with minimal black labels on a reflective black surface, shallow depth of field

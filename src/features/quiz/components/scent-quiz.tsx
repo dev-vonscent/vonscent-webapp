@@ -119,9 +119,9 @@ export function ScentQuiz() {
         <div className="relative grid md:grid-cols-[1fr_320px]">
           {/* Side imagery (5c) — bleeds to the card edge and fades into the
               bg-card surface; a warm CSS glow stands in until
-              public/quiz-side.png is generated (prompts/quiz-options.md). */}
+              public/quiz-side-v2.png is generated (prompts/quiz-options.md). */}
           <SideImage
-            src="/quiz-side.png"
+            src="/quiz-side-v2.png"
             sizes="(max-width: 768px) 100vw, 320px"
             className="relative aspect-[5/2] min-h-[280px] w-full md:order-2 md:aspect-auto md:min-h-0"
             fallbackClassName="bg-[radial-gradient(ellipse_65%_70%_at_65%_55%,rgba(92,62,28,.55),rgba(40,28,14,.2)_55%,transparent_80%)]"
