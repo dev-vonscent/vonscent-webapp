@@ -5,7 +5,6 @@ import {
   ShieldCheck,
   Truck,
   BadgeCheck,
-  Instagram,
   ArrowRight,
   Quote,
 } from "lucide-react";
@@ -25,7 +24,6 @@ import {
 import { getRecentReviews } from "@/features/reviews/api";
 import {
   getPopupSettings,
-  getSocialSettings,
   getHeroBanners,
   getHomeSections,
 } from "@/features/content/api";
@@ -36,6 +34,7 @@ import { HeroCarousel } from "@/features/marketing/components/hero-carousel";
 import { ScentQuiz } from "@/features/quiz/components/scent-quiz";
 import { PromoPopup } from "@/features/marketing/components/promo-popup";
 import { GENDERS, GENDER_LABEL } from "@/lib/constants";
+import { GRAIN } from "@/lib/textures";
 import { SideImage } from "@/components/shared/side-image";
 
 /**
@@ -47,7 +46,7 @@ export const revalidate = 60;
 
 const TRUST = [
   { icon: BadgeCheck, title: "100% жинхэнэ", desc: "Албан ёсны эх сурвалж" },
-  { icon: Sparkles, title: "5/10/20ml", desc: "Туршиж сонгох багц" },
+  { icon: Sparkles, title: "2/5/10/20ml", desc: "Туршиж сонгох багц" },
   { icon: Truck, title: "Шуурхай хүргэлт", desc: "Хотод 24 цагт" },
   { icon: ShieldCheck, title: "Аюулгүй төлбөр", desc: "QPay & банк" },
 ];
@@ -60,7 +59,6 @@ export default async function HomePage() {
     brands,
     reviews,
     popup,
-    social,
     banners,
     families,
     sections,
@@ -72,7 +70,6 @@ export default async function HomePage() {
     getBrands(),
     getRecentReviews(3),
     getPopupSettings(),
-    getSocialSettings(),
     getHeroBanners(),
     getScentFamilies(),
     getHomeSections(),
@@ -82,33 +79,73 @@ export default async function HomePage() {
   return (
     <>
       <PromoPopup settings={popup} />
-      {/* Hero — responsive art direction: 1:1 on phones, 21:9 on larger screens.
-          Pulled up under the floating header (pt-4 16px + h-14 pill = 72px) so
-          the image reaches the very top and shows behind the translucent pill. */}
-      <section className="relative -mt-[72px] aspect-square w-full overflow-hidden bg-black sm:aspect-[21/9]">
+      {/* Hero — layered: CSS ambience + a contained (never upscaled) image,
+          so low-res admin uploads stay sharp on wide screens. Pulled up under
+          the floating header (pt-4 16px + h-14 pill = 72px) so the backdrop
+          reaches the very top and shows behind the translucent pill. */}
+      <section className="relative -mt-[72px] w-full overflow-hidden bg-black">
+        {/* Ambience is CSS — resolution-independent at any viewport width. */}
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse 60% 75% at 72% 55%, rgba(92,62,28,.5), rgba(40,28,14,.25) 45%, transparent 72%)",
+          }}
+        />
+        <div
+          aria-hidden
+          className="absolute inset-0 opacity-[0.05] mix-blend-overlay"
+          style={{ backgroundImage: GRAIN }}
+        />
         {banners.length > 0 ? (
-          // Admin-managed banners (A8) win; the static pair below is the
+          // Admin-managed banners (A8) win; the static block below is the
           // fallback for a store that hasn't uploaded any yet.
           <HeroCarousel banners={banners} />
         ) : (
-          <>
-            <Image
-              src="/hero-mobile.jpg"
-              alt="VON SCENT"
-              fill
-              priority
-              sizes="100vw"
-              className="object-cover sm:hidden"
-            />
-            <Image
-              src="/hero-desktop.jpg"
-              alt="VON SCENT"
-              fill
-              priority
-              sizes="100vw"
-              className="hidden object-cover sm:block"
-            />
-          </>
+          <div className="mx-auto grid max-w-[88rem] items-center gap-8 px-4 pt-28 pb-16 md:grid-cols-2 md:px-8">
+            <div className="relative z-10 max-w-md space-y-5 max-md:mx-auto max-md:flex max-md:flex-col max-md:items-center max-md:text-center md:order-1">
+              <p className="text-sm font-medium tracking-[0.22em] text-white/60 uppercase">
+                Жинхэнэ үнэртэн · Decant
+              </p>
+              <h1 className="text-4xl font-bold tracking-tight text-balance text-white sm:text-5xl">
+                Бүтэн сав авахаасаа өмнө туршиж үз
+              </h1>
+              <p className="text-white/70">
+                Дэлхийн шилдэг үнэртнүүдийг 2/5/10/20ml багцаар — өөрт тохирохоо
+                олоод дараа нь бүтэн савыг нь аваарай.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  asChild
+                  size="lg"
+                  className="bg-white text-black hover:bg-white/90"
+                >
+                  <Link href="/catalog">Каталог үзэх</Link>
+                </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  className="bg-white/10 text-white hover:bg-white/20"
+                >
+                  <Link href="/collections/build">Багц угсрах</Link>
+                </Button>
+              </div>
+            </div>
+
+            {/* The image never scales past its container, and the mask melts
+                its edges into the CSS backdrop. */}
+            <div className="order-first relative mx-auto aspect-square w-full max-w-[560px] [mask-image:radial-gradient(ellipse_70%_68%_at_50%_50%,#000_55%,transparent_78%)] md:order-2">
+              <Image
+                src="/hero-desktop.jpg"
+                alt="VON SCENT"
+                fill
+                priority
+                sizes="(max-width: 768px) 100vw, 560px"
+                className="object-cover"
+              />
+            </div>
+          </div>
         )}
       </section>
 
@@ -126,16 +163,18 @@ export default async function HomePage() {
           ))}
         </section>
 
+        {/* New arrivals — hidden until it can fill a row (5d). */}
+        {newArrivals.length >= 4 && (
+          <section>
+            <SectionHeading title="Шинээр буусан" href="/catalog?tags=new" />
+            <ProductCarousel products={newArrivals} />
+          </section>
+        )}
+
         {/* Scent quiz — for visitors who can't pick (client-only, so the ISR
           page stays cacheable; matching runs in /api/quiz on demand). */}
         <section>
-          <ScentQuiz />
-        </section>
-
-        {/* New arrivals */}
-        <section>
-          <SectionHeading title="Шинээр буусан" href="/catalog?tags=new" />
-          <ProductCarousel products={newArrivals} />
+          <ScentQuiz families={families} />
         </section>
 
         {/* Best sellers */}
@@ -163,22 +202,22 @@ export default async function HomePage() {
         {/* Build-your-own bundle promo — the side image (5c) bleeds to the
             card edge and fades into the bg-card surface; a CSS glow stands
             in until public/bundle-side-v2.png is generated. */}
-        <section className="border-border bg-card relative grid overflow-hidden rounded-2xl border md:grid-cols-[320px_1fr]">
+        <section className="border-border bg-card relative grid grid-cols-1 overflow-hidden rounded-2xl border md:grid-cols-[320px_1fr]">
           <SideImage
             src="/bundle-side-v2.png"
             sizes="(max-width: 768px) 100vw, 320px"
-            className="relative aspect-[5/2] min-h-[280px] w-full md:aspect-auto md:min-h-0"
+            className="relative order-first aspect-[5/2] min-h-[280px] w-full md:order-none md:aspect-auto md:min-h-0"
             fallbackClassName="bg-[radial-gradient(ellipse_65%_70%_at_35%_55%,rgba(88,92,104,.45),rgba(40,42,50,.18)_55%,transparent_80%)]"
           >
             {/* fade into the card surface: upward on mobile, rightward on md+ */}
             <div className="from-card absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t to-transparent md:hidden" />
             <div className="from-card absolute inset-y-0 right-0 hidden w-1/2 bg-gradient-to-l to-transparent md:block" />
           </SideImage>
-          <div className="flex max-w-xl flex-col items-start justify-center gap-4 p-6 sm:p-10">
+          <div className="flex min-w-0 max-w-xl flex-col items-start justify-center gap-4 p-6 sm:p-10">
             <p className="text-muted-foreground text-sm font-medium tracking-[0.2em] uppercase">
               Өөрийн багц
             </p>
-            <h2 className="font-serif text-3xl font-semibold">
+            <h2 className="font-serif text-2xl font-semibold text-balance break-words sm:text-3xl">
               Дуртай үнэртнүүдээ багцал
             </h2>
             <p className="text-muted-foreground">
@@ -238,37 +277,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Shop by season */}
-        <section>
-          <SectionHeading title="Улирлаар" />
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {[
-              { slug: "spring", label: "Хавар" },
-              { slug: "summer", label: "Зун" },
-              { slug: "autumn", label: "Намар" },
-              { slug: "winter", label: "Өвөл" },
-            ].map((s) => (
-              <Link
-                key={s.slug}
-                href={`/catalog?season=${s.slug}`}
-                className="group bg-secondary hover:shadow-lift relative flex aspect-3/2 items-end overflow-hidden rounded-2xl p-4 transition-all hover:-translate-y-1"
-              >
-                <Image
-                  src={`/season-${s.slug}.jpg`}
-                  alt={s.label}
-                  fill
-                  sizes="(max-width: 640px) 50vw, 280px"
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
-                <span className="relative z-10 font-serif text-lg font-medium text-white">
-                  {s.label}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-
         {/* Shop by scent family — the admin-managed taxonomy, icons included
           (todo.md B3b), so a family added in the admin shows up here too. */}
         {families.length > 0 && (
@@ -307,6 +315,37 @@ export default async function HomePage() {
           </section>
         )}
 
+        {/* Shop by season */}
+        <section>
+          <SectionHeading title="Улирлаар" />
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {[
+              { slug: "spring", label: "Хавар" },
+              { slug: "summer", label: "Зун" },
+              { slug: "autumn", label: "Намар" },
+              { slug: "winter", label: "Өвөл" },
+            ].map((s) => (
+              <Link
+                key={s.slug}
+                href={`/catalog?season=${s.slug}`}
+                className="group bg-secondary hover:shadow-lift relative flex aspect-3/2 items-end overflow-hidden rounded-2xl p-4 transition-all hover:-translate-y-1"
+              >
+                <Image
+                  src={`/season-${s.slug}.jpg`}
+                  alt={s.label}
+                  fill
+                  sizes="(max-width: 640px) 50vw, 280px"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
+                <span className="relative z-10 font-serif text-lg font-medium text-white">
+                  {s.label}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
         {/* Brands */}
         <section>
           <SectionHeading title="Брэндээр" href="/catalog" />
@@ -325,9 +364,10 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* Brand intro */}
-        <section className="border-border grid items-center gap-8 rounded-xl border p-8 md:grid-cols-2 md:p-12">
-          <div className="space-y-4">
+        {/* Brand intro — statless (5d): the counts looked hollow on a small
+            catalogue and the generic claims already live in the trust bar. */}
+        <section className="border-border rounded-xl border p-8 md:p-12">
+          <div className="max-w-2xl space-y-4">
             <p className="text-muted-foreground text-sm font-medium tracking-[0.2em] uppercase">
               Бидний тухай
             </p>
@@ -342,22 +382,6 @@ export default async function HomePage() {
             <Button asChild variant="outline">
               <Link href="/about">Дэлгэрэнгүй</Link>
             </Button>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            {[
-              { v: "100%", l: "Жинхэнэ бараа" },
-              { v: "5/10/20ml", l: "Туршиж сонгох" },
-              { v: "24ц", l: "Хотод хүргэлт" },
-              { v: "QPay", l: "Аюулгүй төлбөр" },
-            ].map((s) => (
-              <div
-                key={s.l}
-                className="border-border bg-secondary rounded-lg border p-5 text-center"
-              >
-                <p className="font-serif text-2xl font-semibold">{s.v}</p>
-                <p className="text-muted-foreground mt-1 text-xs">{s.l}</p>
-              </div>
-            ))}
           </div>
         </section>
 
@@ -441,25 +465,6 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* Instagram / social */}
-        {social.instagram && (
-          <section>
-            <SectionHeading title="Instagram" subtitle="@vonscent.mn" />
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <a
-                  key={i}
-                  href={social.instagram}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group border-border bg-secondary text-muted-foreground hover:text-gold-strong relative flex aspect-square items-center justify-center overflow-hidden rounded-lg border transition-colors"
-                >
-                  <Instagram className="size-6 transition-transform group-hover:scale-110" />
-                </a>
-              ))}
-            </div>
-          </section>
-        )}
       </div>
 
       <SiteFooter />

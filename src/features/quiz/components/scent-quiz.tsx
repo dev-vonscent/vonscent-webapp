@@ -24,7 +24,34 @@ type GenderPick = "male" | "female" | "any";
 
 const TOTAL_STEPS = 1 + QUIZ_QUESTIONS.length;
 
-export function ScentQuiz() {
+const SEASON_LABEL: Record<string, string> = {
+  spring: "Хавар",
+  summer: "Зун",
+  autumn: "Намар",
+  winter: "Өвөл",
+};
+
+const INTENSITY_LABEL: Record<string, string> = {
+  light: "Зөөлөн үнэр",
+  medium: "Дунд зэрэг",
+  strong: "Тод үнэр",
+};
+
+/** Top-N keys of a weight record, heaviest first, zero-weights dropped. */
+function topKeys(rec: Record<string, number | undefined>, n: number): string[] {
+  return Object.entries(rec)
+    .filter((e): e is [string, number] => (e[1] ?? 0) > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([k]) => k);
+}
+
+export function ScentQuiz({
+  families = [],
+}: {
+  /** slug → label source for the profile chips (3b). */
+  families?: { slug: string; label: string }[];
+}) {
   const [phase, setPhase] = React.useState<Phase>("intro");
   const [step, setStep] = React.useState(0);
   const [gender, setGender] = React.useState<GenderPick>("any");
@@ -116,7 +143,7 @@ export function ScentQuiz() {
   return (
     <div className="border-border bg-card relative overflow-hidden rounded-2xl border">
       {phase === "intro" && (
-        <div className="relative grid md:grid-cols-[1fr_320px]">
+        <div className="relative grid grid-cols-1 md:grid-cols-[1fr_320px]">
           {/* Side imagery (5c) — bleeds to the card edge and fades into the
               bg-card surface; a warm CSS glow stands in until
               public/quiz-side-v2.png is generated (prompts/quiz-options.md). */}
@@ -131,11 +158,11 @@ export function ScentQuiz() {
             <div className="from-card absolute inset-y-0 left-0 hidden w-1/2 bg-gradient-to-r to-transparent md:block" />
           </SideImage>
 
-          <div className="flex flex-col items-start justify-center gap-4 p-6 sm:p-10 md:order-1">
+          <div className="flex min-w-0 flex-col items-start justify-center gap-4 p-6 sm:p-10 md:order-1">
             <p className="text-muted-foreground text-sm font-medium tracking-[0.2em] uppercase">
               Богино асуулга
             </p>
-            <h2 className="font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
+            <h2 className="font-serif text-2xl font-semibold tracking-tight text-balance break-words sm:text-3xl">
               Үнэрээ ол
             </h2>
             <p className="text-muted-foreground">
@@ -162,20 +189,20 @@ export function ScentQuiz() {
             >
               <ArrowLeft className="size-4" /> Өмнөх
             </button>
-            <div className="flex items-center gap-1.5" aria-hidden>
-              {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-                <span
-                  key={i}
-                  className={cn(
-                    "h-1.5 rounded-full transition-all",
-                    i === step
-                      ? "bg-gold-strong w-6"
-                      : i < step
-                        ? "bg-gold-strong/50 w-1.5"
-                        : "bg-border w-1.5",
-                  )}
+            <div className="mx-4 flex-1 space-y-1.5" aria-hidden>
+              <p className="text-muted-foreground text-center text-xs">
+                Асуулт{" "}
+                <span className="text-foreground font-semibold">
+                  {step + 1}
+                </span>{" "}
+                / {TOTAL_STEPS}
+              </p>
+              <div className="bg-border mx-auto h-1 max-w-48 overflow-hidden rounded-full">
+                <div
+                  className="bg-foreground h-full rounded-full transition-all"
+                  style={{ width: `${((step + 1) / TOTAL_STEPS) * 100}%` }}
                 />
-              ))}
+              </div>
             </div>
             <button
               type="button"
@@ -241,14 +268,19 @@ export function ScentQuiz() {
 
       {phase === "results" && result && (
         <div className="relative p-6 sm:p-10">
-          <h3 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
-            Танд тохирох үнэртнүүд
-          </h3>
-          <p className="text-muted-foreground mt-1 mb-6 text-sm">
-            {result.fallback
-              ? "Яг таарсан үнэр олдсонгүй тул хамгийн эрэлттэй үнэртнүүдийг санал болгож байна."
-              : "Таны хариултад үндэслэн сонголоо."}
-          </p>
+          <div className="mb-6">
+            <h3 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
+              Танд тохирох үнэртнүүд
+            </h3>
+            <p className="text-muted-foreground mt-1 text-sm">
+              {result.fallback
+                ? "Яг таарсан үнэр олдсонгүй тул хамгийн эрэлттэй үнэртнүүдийг санал болгож байна."
+                : "Таны хариултад үндэслэн сонголоо."}
+            </p>
+            {!result.fallback && (
+              <ProfileChips picks={picks} families={families} />
+            )}
+          </div>
           {result.items.length > 0 ? (
             <ProductCarousel products={result.items} />
           ) : (
@@ -284,6 +316,38 @@ export function ScentQuiz() {
   );
 }
 
+/** «Таны профайл» chips — top-2 families, top season, top intensity (3b). */
+function ProfileChips({
+  picks,
+  families,
+}: {
+  picks: Record<string, string>;
+  families: { slug: string; label: string }[];
+}) {
+  const profile = buildProfile(Object.values(picks));
+  const familyLabel = Object.fromEntries(
+    families.map((f) => [f.slug, f.label]),
+  );
+  const chips = [
+    ...topKeys(profile.families, 2).map((slug) => familyLabel[slug] ?? slug),
+    ...topKeys(profile.seasons, 1).map((s) => SEASON_LABEL[s] ?? s),
+    ...topKeys(profile.intensity, 1).map((i) => INTENSITY_LABEL[i] ?? i),
+  ];
+  if (chips.length === 0) return null;
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      {chips.map((c) => (
+        <span
+          key={c}
+          className="border-border bg-card rounded-full border px-3 py-1 text-xs font-medium"
+        >
+          {c}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function QuestionBlock({
   title,
   columns,
@@ -296,14 +360,17 @@ function QuestionBlock({
 }) {
   return (
     <div>
-      <h3 className="mb-6 font-serif text-xl font-semibold tracking-tight sm:text-2xl">
+      <h3 className="mb-6 text-center font-serif text-xl font-semibold tracking-tight sm:text-2xl">
         {title}
       </h3>
-      {/* Capped width keeps the photo tiles compact on wide screens. */}
+      {/* Capped width keeps the photo tiles compact and centered under the
+          title, with no dead space on one side for 3-option questions. */}
       <div
         className={cn(
           "mx-auto grid grid-cols-2 gap-3",
-          columns === 3 ? "max-w-2xl sm:grid-cols-3" : "max-w-3xl sm:grid-cols-4",
+          columns === 3
+            ? "max-w-[720px] sm:grid-cols-3"
+            : "max-w-[960px] sm:grid-cols-4",
         )}
       >
         {children}
@@ -335,8 +402,10 @@ function OptionTile({
         type="button"
         onClick={onClick}
         className={cn(
-          "group hover:shadow-soft relative aspect-[3/4] overflow-hidden rounded-xl text-left transition-all hover:-translate-y-0.5",
-          selected && "ring-foreground ring-2 ring-inset",
+          // The image slightly overfills the rounded clip ([&_img]:scale) so no
+          // white hairline shows along the antialiased corner edge.
+          "group hover:shadow-soft relative isolate aspect-[3/4] overflow-hidden rounded-xl text-left transition-all hover:-translate-y-0.5 [&_img]:scale-[1.02]",
+          selected && "outline-foreground outline outline-2 -outline-offset-2",
         )}
       >
         <Image
@@ -348,12 +417,12 @@ function OptionTile({
           onError={() => setImgFailed(true)}
         />
         <div
-          className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/85 to-transparent"
+          className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black/90 via-black/40 to-transparent"
           aria-hidden
         />
         <span
           className={cn(
-            "absolute inset-x-0 bottom-0 p-3 text-sm leading-snug font-medium text-white",
+            "absolute inset-x-0 bottom-0 p-3.5 pr-3 text-[15px] leading-snug font-medium text-white",
             selected && "font-semibold",
           )}
         >
@@ -371,7 +440,7 @@ function OptionTile({
       onClick={onClick}
       className={cn(
         "hover:shadow-soft relative flex aspect-[3/4] flex-col overflow-hidden rounded-xl bg-gradient-to-b from-accent to-card text-left transition-all hover:-translate-y-0.5",
-        selected && "ring-foreground ring-2 ring-inset",
+        selected && "outline-foreground outline outline-2 -outline-offset-2",
       )}
     >
       <span
