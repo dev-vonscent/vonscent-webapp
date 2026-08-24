@@ -13,27 +13,36 @@ const MODEL = "gpt-image-1"; // the team may switch this to a newer image model
 const SIZE = "1024x1536";
 const QUALITY = "high";
 
-const prompt = (subject) =>
-  `Dark moody luxury fragrance editorial photograph, ${subject}, deep black background, dramatic low-key studio lighting with a faint warm golden glow from one side, monochrome with subtle warm accents, generous negative space, premium fragrance advertisement aesthetic, cinematic, vertical composition.`;
+/** Option tiles express the OPTION's meaning (a beach, a candle, a rose…) in
+ *  full natural color — never a product shot, never dark-on-dark: the tile's
+ *  own bottom gradient keeps bright images readable on the dark UI, and they
+ *  must also work on the light theme. */
+const optionPrompt = (subject) =>
+  `Beautiful atmospheric photograph of ${subject}, the subject large, clearly visible and filling the frame, natural vibrant colors, bright cinematic lighting, professional editorial photography, shallow depth of field, premium minimalist composition, vertical format. Strictly no perfume bottles, no glass flasks, no cosmetic products, no people holding products, no text, no logos.`;
+
+/** The widget side images legitimately show fragrance subjects (ingredients,
+ *  decant vials) and keep the editorial style — brightened. */
+const widgetPrompt = (subject) =>
+  `Luxury fragrance editorial photograph, ${subject}, deep charcoal background, dramatic studio lighting with a warm golden glow from one side, subtle warm accents, generous negative space, premium fragrance advertisement aesthetic, cinematic, vertical composition, warm inviting lighting, rich visible detail, not dark.`;
 
 /** Quiz option tiles → public/quiz/{id}.png. Gender and season questions
  *  reuse existing cards (public/gender-*.png, public/season-*.jpg). */
 const OPTION_SUBJECTS = {
-  "weekend-beach": "sunlit ocean waves rolling onto dark wet sand, seen from above",
-  "weekend-forest": "a misty dark pine forest path with rays of light between the trees",
-  "weekend-cozy": "a lit candle beside an open book on dark linen sheets",
-  "weekend-garden": "night-blooming white flowers in a dark garden at dusk",
-  "time-morning": "soft dawn light breaking through fog over dark hills",
-  "time-noon": "a bright beam of sunlight falling on fresh citrus slices",
-  "time-sunset": "a warm golden sunset horizon fading into darkness",
-  "time-night": "a crescent moon reflected on dark rippled glass",
-  "character-energetic": "a frozen splash of clear water with citrus zest bursting through it",
-  "character-romantic": "a single dark red rose with dew drops on its petals",
-  "character-warm": "glowing embers with cinnamon sticks and star anise",
-  "character-calm": "smooth dark river stones stacked in perfect balance",
-  "impression-whisper": "a barely visible wisp of perfume mist dissolving into darkness",
-  "impression-balanced": "a fine even veil of mist hanging in calm soft light",
-  "impression-bold": "dense swirling perfume mist caught in a dramatic beam of light",
+  "weekend-beach": "turquoise ocean waves rolling onto a sunlit sandy beach under a blue sky",
+  "weekend-forest": "a green pine forest path with morning sunrays streaming through the trees",
+  "weekend-cozy": "a warm lit candle and an open book on a knitted blanket, cozy golden interior light",
+  "weekend-garden": "a lush blooming flower garden in soft morning light, pink and white blossoms",
+  "time-morning": "golden sunrise light breaking over misty green hills",
+  "time-noon": "bright midday sun over fresh citrus fruits and green leaves",
+  "time-sunset": "a vivid orange and pink sunset sky over a calm horizon",
+  "time-night": "a starry night sky with a bright crescent moon over silhouetted mountains",
+  "character-energetic": "a dynamic splash of orange juice and citrus slices frozen mid-air on a bright background",
+  "character-romantic": "a bouquet of deep red roses with soft warm light",
+  "character-warm": "glowing fireplace embers with cinnamon sticks and star anise, warm amber tones",
+  "character-calm": "smooth grey stones stacked in balance beside calm water, soft neutral light",
+  "impression-whisper": "a delicate wisp of white mist floating in soft pastel light",
+  "impression-balanced": "a serene zen composition of a leaf floating on still clear water",
+  "impression-bold": "a dramatic burst of colorful smoke swirling against a bright backdrop",
 };
 
 /** Home-widget side imagery (scent-quiz.tsx intro / page.tsx bundle promo). */
@@ -47,11 +56,11 @@ const WIDGET_SUBJECTS = {
 const TARGETS = [
   ...Object.entries(OPTION_SUBJECTS).map(([id, subject]) => ({
     file: path.join("public", "quiz", `${id}.png`),
-    subject,
+    prompt: optionPrompt(subject),
   })),
   ...Object.entries(WIDGET_SUBJECTS).map(([id, subject]) => ({
     file: path.join("public", `${id}.png`),
-    subject,
+    prompt: widgetPrompt(subject),
   })),
 ];
 
@@ -71,7 +80,7 @@ const exists = (file) =>
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function generate(subject) {
+async function generate(prompt) {
   const res = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: {
@@ -80,7 +89,7 @@ async function generate(subject) {
     },
     body: JSON.stringify({
       model: MODEL,
-      prompt: prompt(subject),
+      prompt,
       size: SIZE,
       quality: QUALITY,
     }),
@@ -98,13 +107,13 @@ await mkdir(path.join("public", "quiz"), { recursive: true });
 
 let written = 0;
 let skipped = 0;
-for (const { file, subject } of TARGETS) {
+for (const { file, prompt } of TARGETS) {
   if (await exists(file)) {
     skipped++;
     continue;
   }
   if (written > 0) await sleep(1000);
-  const png = await generate(subject);
+  const png = await generate(prompt);
   await writeFile(file, png);
   written++;
   console.log(`wrote ${file} (${(png.length / 1024).toFixed(0)}kB)`);
