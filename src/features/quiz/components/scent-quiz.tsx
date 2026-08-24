@@ -403,7 +403,9 @@ function OptionTile({
         onClick={onClick}
         className={cn(
           "group hover:shadow-soft relative aspect-[3/4] rounded-xl text-left transition-all hover:-translate-y-0.5",
-          selected && "outline-foreground outline outline-2 -outline-offset-2",
+          // A 2px gap between image and outline reads as a deliberate
+          // selection ring, not a stray hairline on the image edge.
+          selected && "outline-foreground outline outline-2 outline-offset-2",
         )}
       >
         {/* clip-path (not border-radius + overflow) does the corner clipping:
@@ -445,7 +447,7 @@ function OptionTile({
       onClick={onClick}
       className={cn(
         "hover:shadow-soft relative flex aspect-[3/4] flex-col overflow-hidden rounded-xl bg-gradient-to-b from-accent to-card text-left transition-all hover:-translate-y-0.5",
-        selected && "outline-foreground outline outline-2 -outline-offset-2",
+        selected && "outline-foreground outline outline-2 outline-offset-2",
       )}
     >
       <span
