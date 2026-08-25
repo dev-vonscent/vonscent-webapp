@@ -156,7 +156,7 @@ export default function ProfilePage() {
       <header className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
         {/* Avatar ring */}
         <div className="relative shrink-0">
-          <div className="bg-secondary rounded-full p-[3px]">
+          <div className="bg-secondary rounded-full p-0.75">
             <div className="group border-background bg-secondary relative size-28 overflow-hidden rounded-full border-2 sm:size-32">
               {avatar ? (
                 <Image

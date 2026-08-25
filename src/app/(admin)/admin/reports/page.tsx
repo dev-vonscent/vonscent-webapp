@@ -109,7 +109,7 @@ export default async function AdminReportsPage() {
             <>
               <MonthlySalesChart data={monthlyAsc} />
               <div className="mt-6 overflow-x-auto">
-              <table className="w-full min-w-[420px] text-sm">
+              <table className="w-full min-w-105 text-sm">
                 <thead className="text-muted-foreground text-left text-xs">
                   <tr>
                     <th className="pb-2 font-medium">Сар</th>

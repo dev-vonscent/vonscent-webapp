@@ -71,7 +71,7 @@ export function ImageUpload({
           disabled={busy}
           onClick={() => inputRef.current?.click()}
           aria-label={value ? `${label} солих` : `${label} оруулах`}
-          className="border-muted-foreground/40 bg-secondary text-muted-foreground hover:border-muted-foreground/70 hover:bg-accent relative flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-md border border-dashed transition-colors disabled:opacity-60"
+          className="border-muted-foreground/40 bg-secondary text-muted-foreground hover:border-muted-foreground/70 hover:bg-accent relative flex aspect-16/10 w-full items-center justify-center overflow-hidden rounded-md border border-dashed transition-colors disabled:opacity-60"
         >
           {busy ? (
             <Loader2 className="size-5 animate-spin" />

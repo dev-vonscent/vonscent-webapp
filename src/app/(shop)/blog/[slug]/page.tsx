@@ -72,7 +72,7 @@ export default async function BlogPostPage({
         {formatDate(post.date)}
       </p>
 
-      <div className="border-border bg-muted relative mt-8 aspect-[16/9] overflow-hidden rounded-xl border">
+      <div className="border-border bg-muted relative mt-8 aspect-video overflow-hidden rounded-xl border">
         <Image
           src={post.cover}
           alt={post.title}

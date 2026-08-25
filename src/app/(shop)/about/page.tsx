@@ -92,7 +92,7 @@ export default async function AboutPage() {
           <div className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
             {about.team.map((m) => (
               <div key={m.name} className="text-center">
-                <div className="border-border bg-secondary relative mx-auto aspect-square w-full max-w-[160px] overflow-hidden rounded-full border">
+                <div className="border-border bg-secondary relative mx-auto aspect-square w-full max-w-40 overflow-hidden rounded-full border">
                   {m.image ? (
                     <Image
                       src={m.image}

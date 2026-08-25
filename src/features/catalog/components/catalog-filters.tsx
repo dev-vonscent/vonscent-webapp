@@ -154,7 +154,7 @@ export function CatalogFilters({
                     width={18}
                     height={18}
                     unoptimized
-                    className="size-[18px] shrink-0 object-contain"
+                    className="size-4.5 shrink-0 object-contain"
                   />
                 )}
                 {f.label}

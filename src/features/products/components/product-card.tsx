@@ -24,7 +24,7 @@ export function ProductCard({
     <div className="group relative flex flex-col">
       <Link
         href={`/products/${product.slug}`}
-        className="border-border bg-muted group-hover:border-gold-strong/40 group-hover:shadow-lift relative aspect-[4/5] overflow-hidden rounded-2xl border transition-all duration-300"
+        className="border-border bg-muted group-hover:border-gold-strong/40 group-hover:shadow-lift relative aspect-4/5 overflow-hidden rounded-2xl border transition-all duration-300"
       >
         {product.image && (
           <Image
@@ -67,7 +67,7 @@ export function ProductCard({
         </span>
         <Link
           href={`/products/${product.slug}`}
-          className="hover:text-gold-strong font-serif text-base leading-tight font-medium transition-colors"
+          className="hover:text-gold-strong font-serif text-base/tight  font-medium transition-colors"
         >
           {product.name}
         </Link>

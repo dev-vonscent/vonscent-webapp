@@ -50,7 +50,7 @@ export function HeroCarousel({ banners }: { banners: HeroBanner[] }) {
             {/* Same layered layout as the static hero: editorial text beside
                 a contained image — the upload is never scaled past 560px, so
                 any admin-supplied resolution stays sharp. */}
-            <div className="mx-auto grid max-w-[88rem] items-center gap-8 px-4 pt-28 pb-16 md:grid-cols-2 md:px-8">
+            <div className="mx-auto grid max-w-352 items-center gap-8 px-4 pt-28 pb-16 md:grid-cols-2 md:px-8">
               <div className="relative z-10 max-w-md space-y-5 max-md:mx-auto max-md:flex max-md:flex-col max-md:items-center max-md:text-center md:order-1">
                 <h2 className="font-serif text-3xl font-semibold tracking-tight text-balance text-white sm:text-5xl">
                   {b.title}
@@ -71,7 +71,7 @@ export function HeroCarousel({ banners }: { banners: HeroBanner[] }) {
                 )}
               </div>
 
-              <div className="order-first relative mx-auto aspect-square w-full max-w-[560px] [mask-image:radial-gradient(ellipse_70%_68%_at_50%_50%,#000_55%,transparent_78%)] md:order-2">
+              <div className="order-first relative mx-auto aspect-square w-full max-w-140 mask-[radial-gradient(ellipse_70%_68%_at_50%_50%,#000_55%,transparent_78%)] md:order-2">
                 {b.imageUrl && (
                   <Image
                     src={b.imageUrl}

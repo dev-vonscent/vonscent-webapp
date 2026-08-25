@@ -80,7 +80,7 @@ export default function WishlistPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[88rem] px-4 py-10 md:px-8">
+    <div className="mx-auto max-w-352 px-4 py-10 md:px-8">
       <h1 className="mb-6 hidden font-serif text-3xl font-semibold md:block">
         Хүслийн жагсаалт
       </h1>
@@ -89,7 +89,7 @@ export default function WishlistPage() {
         <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="space-y-3">
-              <Skeleton className="aspect-[4/5] w-full" />
+              <Skeleton className="aspect-4/5 w-full" />
               <Skeleton className="h-4 w-2/3" />
               <Skeleton className="h-4 w-1/3" />
             </div>
@@ -115,7 +115,7 @@ export default function WishlistPage() {
           {/* Action bar — summary + bulk actions */}
           <div className="border-border bg-card mb-8 flex flex-col gap-4 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div className="flex items-center gap-4">
-              <div className="relative flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-500/20 to-pink-500/10">
+              <div className="relative flex size-12 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-red-500/20 to-pink-500/10">
                 <Heart className="size-5 fill-red-500 text-red-500" />
                 <span className="bg-foreground text-background absolute -top-1 -right-1 flex min-w-5 items-center justify-center rounded-full px-1 text-xs font-semibold">
                   {items.length}

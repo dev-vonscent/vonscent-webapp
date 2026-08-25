@@ -43,7 +43,7 @@ export default function AuthLayout({
           style={{ backgroundImage: AMBIENT }}
         />
         {/* transform-only rotation — stays smooth, unlike animated blurs */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+        <div className="absolute top-1/2 left-1/2 -translate-1/2 ">
           <div
             className="animate-sheen size-[170vmax] rounded-full"
             style={{ backgroundImage: SHEEN }}
@@ -59,7 +59,7 @@ export default function AuthLayout({
       {/* ── Giant watermark wordmark (desktop only) ── */}
       <span
         aria-hidden
-        className="text-foreground/[0.04] pointer-events-none absolute top-1/2 left-1/2 hidden -translate-x-1/2 -translate-y-1/2 text-[19vw] leading-none font-semibold tracking-tighter whitespace-nowrap select-none sm:block"
+        className="text-foreground/4 pointer-events-none absolute top-1/2 left-1/2 hidden -translate-1/2  text-[19vw] leading-none font-semibold tracking-tighter whitespace-nowrap select-none sm:block"
       >
         vonscent
       </span>
@@ -93,7 +93,7 @@ export default function AuthLayout({
           {/* hairline shine along the top edge */}
           <div
             aria-hidden
-            className="via-foreground/25 absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent to-transparent"
+            className="via-foreground/25 absolute inset-x-10 top-0 h-px bg-linear-to-r from-transparent to-transparent"
           />
           {children}
         </div>

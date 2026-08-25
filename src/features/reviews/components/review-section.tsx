@@ -20,7 +20,7 @@ function Avatar({ name, src }: { name: string; src: string | null }) {
     );
   }
   return (
-    <span className="from-secondary to-accent text-foreground flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-semibold uppercase">
+    <span className="from-secondary to-accent text-foreground flex size-10 shrink-0 items-center justify-center rounded-full bg-linear-to-br text-sm font-semibold uppercase">
       {name.trim().charAt(0) || "?"}
     </span>
   );
@@ -74,7 +74,7 @@ export async function ReviewSection({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="truncate text-sm leading-tight font-semibold">
+                        <p className="truncate text-sm/tight  font-semibold">
                           {r.authorName}
                         </p>
                         <p className="text-muted-foreground mt-0.5 text-xs">
@@ -88,7 +88,7 @@ export async function ReviewSection({
                     </div>
                     <Stars rating={r.rating} size={14} className="mt-2" />
                     {r.body && (
-                      <p className="text-foreground/90 mt-3 text-sm leading-relaxed">
+                      <p className="text-foreground/90 mt-3 text-sm/relaxed ">
                         {r.body}
                       </p>
                     )}

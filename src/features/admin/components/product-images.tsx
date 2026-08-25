@@ -445,7 +445,7 @@ export function ProductImages({
                 <img
                   src={activeImage.url}
                   alt=""
-                  className="size-full rotate-[-2deg] object-cover"
+                  className="size-full -rotate-2 object-cover"
                   draggable={false}
                 />
               </div>

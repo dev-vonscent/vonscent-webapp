@@ -103,7 +103,7 @@ export function QuickAdd({
 
         {/* Product summary */}
         <div className="space-y-3">
-          <div className="bg-muted relative aspect-[4/3] w-full overflow-hidden rounded-xl">
+          <div className="bg-muted relative aspect-4/3 w-full overflow-hidden rounded-xl">
             {product.image && (
               <Image
                 src={product.image.url}
@@ -118,7 +118,7 @@ export function QuickAdd({
             <p className="text-muted-foreground text-[11px] tracking-[0.15em] uppercase">
               {product.brand}
             </p>
-            <p className="font-serif text-base leading-tight font-medium">
+            <p className="font-serif text-base/tight  font-medium">
               {product.name}
             </p>
             <p className="mt-1 font-semibold tracking-tight">
@@ -147,7 +147,7 @@ export function QuickAdd({
                     type="button"
                     onClick={() => setVariantId(v.id)}
                     className={cn(
-                      "flex min-w-[4.5rem] flex-col items-center rounded-lg px-4 py-2 transition-colors",
+                      "flex min-w-18 flex-col items-center rounded-lg px-4 py-2 transition-colors",
                       active
                         ? "bg-foreground/30"
                         : "bg-secondary hover:bg-accent",
@@ -163,9 +163,9 @@ export function QuickAdd({
             </div>
           ) : (
             <div className="flex gap-2">
-              <Skeleton className="h-12 w-[4.5rem] rounded-lg" />
-              <Skeleton className="h-12 w-[4.5rem] rounded-lg" />
-              <Skeleton className="h-12 w-[4.5rem] rounded-lg" />
+              <Skeleton className="h-12 w-18 rounded-lg" />
+              <Skeleton className="h-12 w-18 rounded-lg" />
+              <Skeleton className="h-12 w-18 rounded-lg" />
             </div>
           )}
         </div>

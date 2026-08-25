@@ -96,7 +96,7 @@ export function GiftPoolManager({
           className="max-w-sm"
         />
 
-        <div className="border-border max-h-[28rem] overflow-y-auto rounded-lg border">
+        <div className="border-border max-h-112 overflow-y-auto rounded-lg border">
           <ul className="divide-border divide-y">
             {filtered.map((p) => {
               const checked = ids.includes(p.id);

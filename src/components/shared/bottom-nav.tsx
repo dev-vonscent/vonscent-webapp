@@ -83,7 +83,7 @@ function Tab({
       )}
     >
       <Icon
-        className="size-[22px] transition-transform"
+        className="size-5.5 transition-transform"
         strokeWidth={active ? 2.3 : 1.8}
       />
       {badge > 0 && (

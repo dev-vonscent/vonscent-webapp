@@ -92,7 +92,7 @@ export default async function ProductPage({
   const familyLabels = product.scentFamilies.map((f) => familyLabelMap[f] ?? f);
 
   return (
-    <div className="mx-auto max-w-[88rem] px-4 py-4 sm:py-8 md:px-8">
+    <div className="mx-auto max-w-352 p-4  sm:py-8 md:px-8">
       <JsonLd
         data={[
           productJsonLd(product),

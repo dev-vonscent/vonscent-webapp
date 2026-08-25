@@ -202,12 +202,12 @@ export function ScentQuiz({
               <SideImage
                 src="/quiz-side-v2.webp"
                 sizes="(max-width: 768px) 100vw, 320px"
-                className="relative aspect-[5/2] min-h-[280px] w-full md:order-2 md:aspect-auto md:min-h-0"
+                className="relative aspect-5/2 min-h-70 w-full md:order-2 md:aspect-auto md:min-h-0"
                 fallbackClassName="bg-[radial-gradient(ellipse_65%_70%_at_65%_55%,rgba(92,62,28,.55),rgba(40,28,14,.2)_55%,transparent_80%)]"
               >
                 {/* fade into the card surface: upward on mobile, leftward on md+ */}
-                <div className="from-card absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t to-transparent md:hidden" />
-                <div className="from-card absolute inset-y-0 left-0 hidden w-1/2 bg-gradient-to-r to-transparent md:block" />
+                <div className="from-card absolute inset-x-0 bottom-0 h-[60%] bg-linear-to-t to-transparent md:hidden" />
+                <div className="from-card absolute inset-y-0 left-0 hidden w-1/2 bg-linear-to-r to-transparent md:block" />
               </SideImage>
 
               <motion.div
@@ -224,7 +224,7 @@ export function ScentQuiz({
                 </motion.p>
                 <motion.h2
                   variants={itemVariants}
-                  className="font-serif text-2xl font-semibold tracking-tight text-balance break-words sm:text-3xl"
+                  className="font-serif text-2xl font-semibold tracking-tight text-balance wrap-break-word sm:text-3xl"
                 >
                   Үнэрээ ол
                 </motion.h2>
@@ -259,7 +259,7 @@ export function ScentQuiz({
               animate="center"
               exit="exit"
               transition={{ duration: 0.3, ease: "easeOut" }}
-              className="relative min-h-[300px] p-6 sm:p-10"
+              className="relative min-h-75 p-6 sm:p-10"
             >
               <div className="mb-6 flex items-center justify-between">
                 <motion.button
@@ -374,7 +374,7 @@ export function ScentQuiz({
                     transition={{ delay: i * 0.08, duration: 0.3 }}
                     className="w-[44%] shrink-0 sm:w-[31%] lg:w-[23.5%]"
                   >
-                    <Skeleton className="aspect-[3/4] rounded-xl" />
+                    <Skeleton className="aspect-3/4 rounded-xl" />
                     <Skeleton className="mt-3 h-4 w-3/4" />
                     <Skeleton className="mt-2 h-4 w-1/2" />
                   </motion.div>
@@ -536,8 +536,8 @@ function QuestionBlock({
         className={cn(
           "mx-auto grid grid-cols-2 gap-3",
           columns === 3
-            ? "max-w-[720px] sm:grid-cols-3"
-            : "max-w-[960px] sm:grid-cols-4",
+            ? "max-w-180 sm:grid-cols-3"
+            : "max-w-240 sm:grid-cols-4",
         )}
       >
         {children}
@@ -578,7 +578,7 @@ function OptionTile({
         }
         transition={{ duration: 0.3, ease: "easeOut" }}
         className={cn(
-          "group relative aspect-[3/4] rounded-xl text-left",
+          "group relative aspect-3/4 rounded-xl text-left",
         )}
       >
         {/* clip-path (not border-radius + overflow) does the corner clipping:
@@ -595,7 +595,7 @@ function OptionTile({
         {/* bg-card + translateZ(0) + backface-visibility: the span gets its
             own precisely-rasterized GPU layer, and any sub-pixel gap at its
             edge shows the card color instead of white. */}
-        <span className="bg-card absolute inset-0 overflow-hidden rounded-xl [backface-visibility:hidden] [clip-path:inset(1px_round_calc(var(--radius-xl)-1px))] [transform:translateZ(0)]">
+        <span className="bg-card absolute inset-0 overflow-hidden rounded-xl backface-hidden [clip-path:inset(1px_round_calc(var(--radius-xl)-1px))] transform-[translateZ(0)]">
           <Image
             src={image}
             alt=""
@@ -609,7 +609,7 @@ function OptionTile({
           {/* -bottom-px: overlap the clip edge so subpixel rounding never
               exposes a bright image row beneath the gradient. */}
           <span
-            className="absolute inset-x-0 -bottom-px h-[60%] bg-gradient-to-t from-black/90 via-black/40 to-transparent"
+            className="absolute inset-x-0 -bottom-px h-[60%] bg-linear-to-t from-black/90 via-black/40 to-transparent"
             aria-hidden
           />
           <span
@@ -637,7 +637,7 @@ function OptionTile({
       animate={selected ? { opacity: 1, y: 0, scale: [1, 1.04, 1] } : "center"}
       transition={{ duration: 0.3, ease: "easeOut" }}
       className={cn(
-        "from-accent to-card relative flex aspect-[3/4] flex-col overflow-hidden rounded-xl bg-gradient-to-b text-left",
+        "from-accent to-card relative flex aspect-3/4 flex-col overflow-hidden rounded-xl bg-linear-to-b text-left",
         selected && "outline-foreground outline outline-2 outline-offset-2",
       )}
     >
@@ -649,7 +649,7 @@ function OptionTile({
       </span>
       <span
         className={cn(
-          "px-3 pb-3 text-sm leading-snug font-medium",
+          "px-3 pb-3 text-sm/snug  font-medium",
           selected && "font-semibold",
         )}
       >

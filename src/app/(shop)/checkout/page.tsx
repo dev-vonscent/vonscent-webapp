@@ -430,7 +430,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[88rem] px-4 py-8 md:px-8">
+    <div className="mx-auto max-w-352 px-4 py-8 md:px-8">
       <div className="mb-8">
         <Link
           href="/cart"
@@ -690,7 +690,7 @@ export default function CheckoutPage() {
                         </span>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm leading-tight font-medium">
+                        <p className="truncate text-sm/tight  font-medium">
                           {c.name}
                         </p>
                         <p className="text-muted-foreground text-xs">
@@ -721,7 +721,7 @@ export default function CheckoutPage() {
                         </span>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm leading-tight font-medium">
+                        <p className="truncate text-sm/tight  font-medium">
                           {i.name}
                         </p>
                         <p className="text-muted-foreground text-xs">
@@ -861,7 +861,7 @@ export default function CheckoutPage() {
 
               {/* Dispatch cut-off reminder (questions.md №14). */}
               {mounted && (
-                <p className="bg-secondary rounded-xl px-3 py-2.5 text-xs leading-relaxed">
+                <p className="bg-secondary rounded-xl px-3 py-2.5 text-xs/relaxed ">
                   <Clock className="mr-1 inline size-3.5 align-[-2px]" />
                   {`Захиалга маргааш ${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна (амралтын өдөр ч хүргэнэ).`}{" "}
                   Маргааш өглөөний <strong>
@@ -950,7 +950,7 @@ function Section({
           {step > 0 ? (
             <span className="text-sm font-semibold">{step}</span>
           ) : (
-            <Icon className="size-[18px]" />
+            <Icon className="size-4.5" />
           )}
         </span>
         <h2 className="font-serif text-lg font-semibold">{title}</h2>

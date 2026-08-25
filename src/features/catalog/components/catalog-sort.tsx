@@ -39,7 +39,7 @@ export function CatalogSort({
         className={cn(
           iconOnly
             ? "size-10 shrink-0 justify-center p-0 [&>svg:last-child]:hidden"
-            : "w-[180px]",
+            : "w-45",
           className,
         )}
       >

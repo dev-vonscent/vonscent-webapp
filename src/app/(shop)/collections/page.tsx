@@ -18,7 +18,7 @@ export default async function CollectionsPage() {
   const collections = await getBaseCollections();
 
   return (
-    <div className="mx-auto max-w-[88rem] px-4 py-6 md:px-8">
+    <div className="mx-auto max-w-352 px-4 py-6 md:px-8">
       {collections.length === 0 ? (
         <div className="border-border flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed py-24 text-center">
           <PackageOpen className="text-muted-foreground size-10" />

@@ -117,7 +117,7 @@ export default async function AdminOrdersPage({
         {(q || from || to) && (
           <Link
             href={status ? `/admin/orders?status=${status}` : "/admin/orders"}
-            className="text-muted-foreground hover:text-foreground h-9 rounded-md px-3 text-sm leading-9"
+            className="text-muted-foreground hover:text-foreground h-9 rounded-md px-3 text-sm/9 "
           >
             Цэвэрлэх
           </Link>

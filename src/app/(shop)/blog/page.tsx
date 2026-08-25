@@ -21,7 +21,7 @@ export default async function BlogPage() {
   const posts = await getBlogPosts();
   const [featured, ...rest] = posts;
   return (
-    <div className="mx-auto max-w-[88rem] px-4 py-12 md:px-8">
+    <div className="mx-auto max-w-352 px-4 py-12 md:px-8">
       <h1 className="font-serif text-4xl font-semibold tracking-tight">Блог</h1>
       <p className="text-muted-foreground mt-2">
         Үнэр сонгох гарын авлага, зөвлөмж, түүх.
@@ -32,7 +32,7 @@ export default async function BlogPage() {
           href={`/blog/${featured.slug}`}
           className="group mt-10 grid gap-6 md:grid-cols-2"
         >
-          <div className="border-border bg-muted relative aspect-[16/10] overflow-hidden rounded-xl border">
+          <div className="border-border bg-muted relative aspect-16/10 overflow-hidden rounded-xl border">
             <Image
               src={featured.cover}
               alt={featured.title}
@@ -59,7 +59,7 @@ export default async function BlogPage() {
       <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
         {rest.map((post) => (
           <Link key={post.slug} href={`/blog/${post.slug}`} className="group">
-            <div className="border-border bg-muted relative aspect-[16/10] overflow-hidden rounded-lg border">
+            <div className="border-border bg-muted relative aspect-16/10 overflow-hidden rounded-lg border">
               <Image
                 src={post.cover}
                 alt={post.title}

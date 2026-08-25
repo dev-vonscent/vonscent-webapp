@@ -50,7 +50,7 @@ export default async function CollectionPage({
     : [];
 
   return (
-    <div className="mx-auto max-w-[88rem] px-4 py-4 sm:py-8 md:px-8">
+    <div className="mx-auto max-w-352 p-4  sm:py-8 md:px-8">
       <nav className="text-muted-foreground mb-6 hidden text-sm sm:block">
         <Link href="/" className="hover:text-foreground">
           Нүүр
