@@ -243,7 +243,7 @@ export function CollectionBuilder({
   // rides up under the header on scroll.
   const tray = (
     <div className="sticky top-(--header-offset) z-30 mb-4 transition-[top] duration-300 ease-out">
-      <div className="border-border from-card/95 to-card/90 shadow-lift rounded-2xl border bg-gradient-to-b p-3 backdrop-blur sm:p-4">
+      <div className="border-border from-card/95 to-card/90 shadow-lift rounded-2xl border bg-linear-to-b p-3 backdrop-blur sm:p-4">
         {/* Header — bundle size (left) + running count / price (right) */}
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="mb-2 flex w-full items-center justify-between gap-2">
@@ -451,7 +451,7 @@ export function CollectionBuilder({
                   >
                     <div
                       className={cn(
-                        "border-border relative aspect-[4/5] overflow-hidden rounded-2xl border transition-all",
+                        "border-border relative aspect-4/5 overflow-hidden rounded-2xl border transition-all",
                         on && "border-gold-strong ring-gold-strong/40 ring-2",
                       )}
                     >

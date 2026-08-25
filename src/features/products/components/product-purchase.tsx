@@ -170,7 +170,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
 
         <Button
           size="lg"
-          className="flex-1 [.black_&]:bg-white [.black_&]:text-black [.black_&]:hover:bg-white/90"
+          className="flex-1 in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
           disabled={soldOut || !selected || !selected.inStock}
           onClick={onAdd}
         >
@@ -206,13 +206,13 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
             <p className="truncate text-xs font-medium">
               {product.name} · {selected.ml}ml
             </p>
-            <p className="font-serif text-lg leading-tight font-semibold">
+            <p className="font-serif text-lg/tight  font-semibold">
               {formatPrice(unitPrice)}
             </p>
           </div>
           <Button
             onClick={onAdd}
-            className="[.black_&]:bg-white [.black_&]:text-black [.black_&]:hover:bg-white/90"
+            className="in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
           >
             {added ? (
               <>

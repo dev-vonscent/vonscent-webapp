@@ -286,7 +286,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
           <Reveal delay={180}>
             <Button
               type="submit"
-              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] [.black_&]:bg-white [.black_&]:text-black [.black_&]:hover:bg-white/90"
+              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
               disabled={loading || !validPhone || !validPasscode}
             >
               {loading ? "Түр хүлээнэ үү…" : copy.cta}
@@ -332,7 +332,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
 
             <Button
               type="submit"
-              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] [.black_&]:bg-white [.black_&]:text-black [.black_&]:hover:bg-white/90"
+              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
               disabled={loading || !validPasscode || passcode2.length !== 4}
             >
               {loading ? "Түр хүлээнэ үү…" : copy.cta}
@@ -344,7 +344,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
         <div className="animate-fade-up bg-card space-y-5 rounded-2xl p-6 text-center">
           <div className="text-muted-foreground flex items-center justify-center gap-2 text-xs tracking-widest uppercase">
             <span className="relative flex size-2">
-              <span className="bg-foreground absolute inline-flex h-full w-full animate-ping rounded-full opacity-60" />
+              <span className="bg-foreground absolute inline-flex size-full  animate-ping rounded-full opacity-60" />
               <span className="bg-foreground relative inline-flex size-2 rounded-full" />
             </span>
             СМС хүлээж байна
@@ -367,7 +367,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
 
           <Button
             asChild
-            className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] [.black_&]:bg-white [.black_&]:text-black [.black_&]:hover:bg-white/90"
+            className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
           >
             <a href={verify.session.smsUri}>
               <MessageSquareText className="size-4" /> СМС илгээх
@@ -439,7 +439,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
           <Reveal delay={mode === "register" ? 180 : 120}>
             <Button
               type="submit"
-              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] [.black_&]:bg-white [.black_&]:text-black [.black_&]:hover:bg-white/90"
+              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
               disabled={!validPhone || verify.stage === "starting"}
             >
               {verify.stage === "starting" ? (

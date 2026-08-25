@@ -83,6 +83,7 @@
     "@vitejs/plugin-react": "^4.7.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "eslint-plugin-better-tailwindcss": "^4.7.0",
     "exceljs": "^4.4.0",
     "jsdom": "^26.1.0",
     "msw": "^2.15.0",

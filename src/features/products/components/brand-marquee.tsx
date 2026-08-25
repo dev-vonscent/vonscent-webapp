@@ -66,8 +66,8 @@ function Track({ items, reverse }: { items: string[]; reverse?: boolean }) {
   const loop = [...half, ...half];
   return (
     <div
-      className={`animate-marquee flex w-max items-center gap-10 pr-10 group-hover:[animation-play-state:paused] ${
-        reverse ? "[animation-direction:reverse]" : ""
+      className={`animate-marquee flex w-max items-center gap-10 pr-10 group-hover:paused ${
+        reverse ? "direction-[reverse]" : ""
       }`}
     >
       {loop.map((b, i) => (

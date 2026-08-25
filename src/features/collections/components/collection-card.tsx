@@ -29,7 +29,7 @@ export function CollectionCard({ collection }: { collection: Collection }) {
             className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           />
         )}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/65 via-black/5 to-transparent" />
 
         {/* Badges */}
         <div className="absolute top-3 left-3 flex flex-col gap-1.5">
@@ -88,7 +88,7 @@ export function CollectionCard({ collection }: { collection: Collection }) {
           </span>
           <Link
             href={`/collections/${collection.slug}`}
-            className="hover:text-gold-strong block truncate font-serif text-base leading-tight font-medium transition-colors"
+            className="hover:text-gold-strong block truncate font-serif text-base/tight  font-medium transition-colors"
           >
             {collection.name}
           </Link>

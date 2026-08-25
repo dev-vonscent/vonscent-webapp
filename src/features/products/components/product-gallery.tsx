@@ -78,7 +78,7 @@ export function ProductGallery({
                 type="button"
                 onClick={() => openLightbox(i)}
                 aria-label={`${name} — зураг ${i + 1} томруулах`}
-                className="bg-muted relative aspect-[4/5] min-w-0 flex-[0_0_100%] cursor-zoom-in sm:aspect-square"
+                className="bg-muted relative aspect-4/5 min-w-0 flex-[0_0_100%] cursor-zoom-in sm:aspect-square"
               >
                 <Image
                   src={img.url}

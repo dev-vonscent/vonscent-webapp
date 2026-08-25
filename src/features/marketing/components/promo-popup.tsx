@@ -148,7 +148,7 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
             {slides.map((slide, i) => (
               <div key={i} className="min-w-0 flex-[0_0_100%]">
                 {slide.imageUrl && (
-                  <div className="bg-secondary relative aspect-[16/10] w-full">
+                  <div className="bg-secondary relative aspect-16/10 w-full">
                     <Image
                       src={slide.imageUrl}
                       alt={slide.title}

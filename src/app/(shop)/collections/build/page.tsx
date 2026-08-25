@@ -50,7 +50,7 @@ export default async function BuildPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[88rem] px-4 py-6 md:px-8">
+    <div className="mx-auto max-w-352 px-4 py-6 md:px-8">
       <CollectionBuilder
         products={products}
         settings={settings}

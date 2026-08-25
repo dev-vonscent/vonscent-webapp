@@ -86,11 +86,11 @@ export default function CartPage() {
   }
 
   if (!mounted)
-    return <div className="mx-auto max-w-[88rem] px-4 py-16 md:px-8" />;
+    return <div className="mx-auto max-w-352 px-4 py-16 md:px-8" />;
 
   if (items.length === 0 && collections.length === 0) {
     return (
-      <div className="mx-auto flex max-w-[88rem] flex-col items-center gap-4 px-4 py-24 text-center md:px-8">
+      <div className="mx-auto flex max-w-352 flex-col items-center gap-4 px-4 py-24 text-center md:px-8">
         <ShoppingCart className="text-muted-foreground size-12" />
         <h1 className="font-serif text-2xl font-semibold">Сагс хоосон байна</h1>
         <p className="text-muted-foreground">
@@ -104,7 +104,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[88rem] px-4 py-8 md:px-8">
+    <div className="mx-auto max-w-352 px-4 py-8 md:px-8">
       <h1 className="mb-8 font-serif text-3xl font-semibold">Таны сагс</h1>
 
       <div className="grid gap-10 lg:grid-cols-[1fr_360px]">

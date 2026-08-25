@@ -93,7 +93,7 @@ export function CollectionDetail({
       </div>
 
       {collection.description && (
-        <p className="text-foreground/80 text-sm leading-relaxed">
+        <p className="text-foreground/80 text-sm/relaxed ">
           {collection.description}
         </p>
       )}
@@ -188,7 +188,7 @@ export function CollectionDetail({
       {/* Add to cart */}
       <Button
         size="lg"
-        className="w-full [.black_&]:bg-white [.black_&]:text-black [.black_&]:hover:bg-white/90"
+        className="w-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
         disabled={!available || needsGift}
         onClick={onAdd}
       >

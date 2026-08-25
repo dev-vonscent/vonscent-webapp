@@ -83,7 +83,7 @@ export default async function HomePage() {
           so low-res admin uploads stay sharp on wide screens. Pulled up under
           the floating header (pt-4 16px + h-14 pill = 72px) so the backdrop
           reaches the very top and shows behind the translucent pill. */}
-      <section className="relative -mt-[72px] w-full overflow-hidden bg-black">
+      <section className="relative -mt-18 w-full overflow-hidden bg-black">
         {/* Ambience is CSS — resolution-independent at any viewport width. */}
         <div
           aria-hidden
@@ -103,7 +103,7 @@ export default async function HomePage() {
           // fallback for a store that hasn't uploaded any yet.
           <HeroCarousel banners={banners} />
         ) : (
-          <div className="mx-auto grid max-w-[88rem] items-center gap-8 px-4 pt-28 pb-16 md:grid-cols-2 md:px-8">
+          <div className="mx-auto grid max-w-352 items-center gap-8 px-4 pt-28 pb-16 md:grid-cols-2 md:px-8">
             <div className="relative z-10 max-w-md space-y-5 max-md:mx-auto max-md:flex max-md:flex-col max-md:items-center max-md:text-center md:order-1">
               <p className="text-sm font-medium tracking-[0.22em] text-white/60 uppercase">
                 Жинхэнэ үнэртэн · Decant
@@ -152,7 +152,7 @@ export default async function HomePage() {
         )}
       </section>
 
-      <div className="mx-auto max-w-[88rem] space-y-10 px-4 py-8 sm:space-y-16 sm:py-14 md:px-8">
+      <div className="mx-auto max-w-352 space-y-10 px-4 py-8 sm:space-y-16 sm:py-14 md:px-8">
         {/* Trust */}
         <section className="border-border bg-border grid grid-cols-2 gap-px overflow-hidden rounded-2xl border md:grid-cols-4">
           {TRUST.map((t) => (
@@ -209,18 +209,18 @@ export default async function HomePage() {
           <SideImage
             src="/bundle-side-v2.webp"
             sizes="(max-width: 768px) 100vw, 320px"
-            className="relative order-first aspect-[5/2] min-h-[280px] w-full md:order-none md:aspect-auto md:min-h-0"
+            className="relative order-first aspect-5/2 min-h-70 w-full md:order-0 md:aspect-auto md:min-h-0"
             fallbackClassName="bg-[radial-gradient(ellipse_65%_70%_at_35%_55%,rgba(88,92,104,.45),rgba(40,42,50,.18)_55%,transparent_80%)]"
           >
             {/* fade into the card surface: upward on mobile, rightward on md+ */}
-            <div className="from-card absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t to-transparent md:hidden" />
-            <div className="from-card absolute inset-y-0 right-0 hidden w-1/2 bg-gradient-to-l to-transparent md:block" />
+            <div className="from-card absolute inset-x-0 bottom-0 h-[60%] bg-linear-to-t to-transparent md:hidden" />
+            <div className="from-card absolute inset-y-0 right-0 hidden w-1/2 bg-linear-to-l to-transparent md:block" />
           </SideImage>
           <div className="flex max-w-xl min-w-0 flex-col items-start justify-center gap-4 p-6 sm:p-10">
             <p className="text-muted-foreground text-sm font-medium tracking-[0.2em] uppercase">
               Өөрийн багц
             </p>
-            <h2 className="font-serif text-2xl font-semibold text-balance break-words sm:text-3xl">
+            <h2 className="font-serif text-2xl font-semibold text-balance wrap-break-word sm:text-3xl">
               Дуртай үнэртнүүдээ багцал
             </h2>
             <p className="text-muted-foreground">
@@ -256,7 +256,7 @@ export default async function HomePage() {
               <Link
                 key={g}
                 href={`/catalog?gender=${g}`}
-                className="group bg-secondary hover:shadow-lift relative flex aspect-[3/4] flex-col justify-end overflow-hidden rounded-2xl p-5 transition-all hover:-translate-y-1 sm:aspect-[3/2]"
+                className="group bg-secondary hover:shadow-lift relative flex aspect-3/4 flex-col justify-end overflow-hidden rounded-2xl p-5 transition-all hover:-translate-y-1 sm:aspect-3/2"
               >
                 <Image
                   src={`/gender-${g}.webp`}
@@ -265,7 +265,7 @@ export default async function HomePage() {
                   sizes="(max-width: 640px) 33vw, 360px"
                   className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/25 to-black/10" />
                 <span className="absolute top-4 right-4 z-10 font-serif text-3xl text-white/40">
                   0{i + 1}
                 </span>
@@ -340,7 +340,7 @@ export default async function HomePage() {
                   sizes="(max-width: 640px) 50vw, 280px"
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/15 to-transparent" />
                 <span className="relative z-10 font-serif text-lg font-medium text-white">
                   {s.label}
                 </span>

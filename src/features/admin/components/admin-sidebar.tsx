@@ -186,7 +186,7 @@ export function AdminSidebar({
         <l.icon className="size-4" />
         {l.label}
         {badgeCount > 0 && (
-          <span className="bg-foreground text-background ml-auto rounded-full px-1.5 text-[10px] leading-4 font-semibold">
+          <span className="bg-foreground text-background ml-auto rounded-full px-1.5 text-[10px]/4  font-semibold">
             {badgeCount}
           </span>
         )}
@@ -274,7 +274,7 @@ export function AdminSidebar({
                       <q.icon className="size-5" />
                       {q.label}
                       {badgeCount > 0 && (
-                        <span className="bg-foreground text-background absolute top-1.5 right-1.5 rounded-full px-1.5 text-[10px] leading-4 font-semibold">
+                        <span className="bg-foreground text-background absolute top-1.5 right-1.5 rounded-full px-1.5 text-[10px]/4  font-semibold">
                           {badgeCount}
                         </span>
                       )}

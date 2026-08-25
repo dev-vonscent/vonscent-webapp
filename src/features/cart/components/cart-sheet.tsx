@@ -108,7 +108,7 @@ export function CartSheet({
                         <div className="flex flex-1 flex-col">
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <p className="text-sm leading-tight font-medium">
+                              <p className="text-sm/tight  font-medium">
                                 {c.name}
                               </p>
                               <div className="mt-0.5 flex items-center gap-1.5">
@@ -204,7 +204,7 @@ export function CartSheet({
                             <p className="text-muted-foreground text-xs">
                               {item.brand}
                             </p>
-                            <p className="text-sm leading-tight font-medium">
+                            <p className="text-sm/tight  font-medium">
                               {item.name}
                             </p>
                             <div className="mt-1 flex items-center gap-1.5">

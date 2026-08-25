@@ -141,7 +141,7 @@ export function SiteHeader() {
 
       {/* Full header — floating glass pill. Home (all sizes) + inner (desktop). */}
       <div className={cn("px-4 pt-4", isHome ? "block" : "hidden md:block")}>
-        <div className="bg-secondary/85 shadow-lift relative mx-auto flex h-14 max-w-[88rem] items-center gap-2 rounded-full px-3 backdrop-blur">
+        <div className="bg-secondary/85 shadow-lift relative mx-auto flex h-14 max-w-352 items-center gap-2 rounded-full px-3 backdrop-blur">
           {/* Left: mobile menu + logo */}
           <Sheet>
             <SheetTrigger asChild>
@@ -162,7 +162,7 @@ export function SiteHeader() {
                   <SheetClose asChild key={item.href}>
                     <Link
                       href={item.href}
-                      className="hover:bg-accent rounded-lg px-3 py-3 text-base font-medium transition-colors"
+                      className="hover:bg-accent rounded-lg p-3  text-base font-medium transition-colors"
                     >
                       {item.label}
                     </Link>
@@ -173,7 +173,7 @@ export function SiteHeader() {
               <SheetClose asChild>
                 <Link
                   href="/account"
-                  className="hover:bg-accent flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium transition-colors"
+                  className="hover:bg-accent flex items-center gap-3 rounded-lg p-3  text-base font-medium transition-colors"
                 >
                   <User className="size-5" /> Профайл
                 </Link>
@@ -184,7 +184,7 @@ export function SiteHeader() {
                 <SheetClose asChild>
                   <Link
                     href="/admin"
-                    className="hover:bg-accent flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium transition-colors"
+                    className="hover:bg-accent flex items-center gap-3 rounded-lg p-3  text-base font-medium transition-colors"
                   >
                     <LayoutDashboard className="size-5" /> Админ хэсэг
                   </Link>
