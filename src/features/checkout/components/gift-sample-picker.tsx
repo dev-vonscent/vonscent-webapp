@@ -71,8 +71,8 @@ export function GiftSamplePicker({
           Бэлгийн 1мл sample
         </h2>
         <p className="text-muted-foreground text-sm">
-          {formatPrice(GIFT_THRESHOLD)} тутамд 1 sample — та{" "}
-          <strong>{allowance}</strong> ширхэг сонгох эрхтэй (
+          {formatPrice(GIFT_THRESHOLD)} тутамд 1 sample, багц бүр дор хаяж 1
+          — та <strong>{allowance}</strong> ширхэг сонгох эрхтэй (
           {value.length} сонгосон).
         </p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

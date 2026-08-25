@@ -90,6 +90,8 @@ export const SHIPPING_ZONES: readonly ShippingZoneConfig[] = [
     fee: 7000,
     deliverable: true,
     remote: false,
+    // Баянгол, Сүхбаатар, Чингэлтэй, Хан-Уул
+    areas: ["MN1107", "MN1119", "MN1125", "MN1122"],
   },
   {
     code: "B",
@@ -97,6 +99,8 @@ export const SHIPPING_ZONES: readonly ShippingZoneConfig[] = [
     fee: 9000,
     deliverable: true,
     remote: false,
+    // Баянзүрх, Сонгинохайрхан
+    areas: ["MN1110", "MN1116"],
   },
   {
     code: "C",
@@ -104,6 +108,8 @@ export const SHIPPING_ZONES: readonly ShippingZoneConfig[] = [
     fee: 10000,
     deliverable: true,
     remote: false,
+    // Хороо түвшний бүс: админ Тохиргоо хуудсаар тодорхой хороодыг Б-ээс
+    // энд өргөнө (Шарга морьт, 22 товчоо орчмын зуслан бол X рүү).
   },
   { code: "R", name: "Орон нутаг", fee: 9000, deliverable: true, remote: true },
   {
@@ -112,6 +118,8 @@ export const SHIPPING_ZONES: readonly ShippingZoneConfig[] = [
     fee: 0,
     deliverable: false,
     remote: false,
+    // Налайх, Багануур, Багахангай
+    areas: ["MN1113", "MN1101", "MN1104"],
   },
 ];
 

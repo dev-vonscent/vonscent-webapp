@@ -4,6 +4,7 @@ import { checkPayment } from "@/lib/payments/qpay";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
 import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
+import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
 import { formatPrice } from "@/lib/format";
 import { env } from "@/lib/env";
 
@@ -49,6 +50,7 @@ export async function markOrderPaidByOrderNo(
   if (error) return { ok: false, error: "COMMIT_FAILED" };
 
   await notifyPaid(orderNo, order.total, order.id);
+  await sendOrderCustomerEmail(order.id, "paid");
   return { ok: true };
 }
 
@@ -109,5 +111,6 @@ export async function verifyAndMarkOrderPaidByOrderNo(
   if (error) return { ok: false, error: "COMMIT_FAILED" };
 
   await notifyPaid(orderNo, order.total, order.id);
+  await sendOrderCustomerEmail(order.id, "paid");
   return { ok: true };
 }

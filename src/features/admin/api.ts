@@ -97,6 +97,32 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   };
 }
 
+export interface SidebarBadges {
+  newOrders: number;
+  outOfStock: number;
+}
+
+/** Counts shown on the admin sidebar: fresh orders + sold-out active goods. */
+export async function getSidebarBadges(): Promise<SidebarBadges> {
+  const supabase = await createClient();
+  if (!supabase) return { newOrders: 0, outOfStock: 0 };
+  const [{ count }, { data: inv }] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending"),
+    supabase
+      .from("inventory")
+      .select("on_hand_ml, reserved_ml, products!inner(is_active)")
+      .eq("products.is_active", true)
+      .limit(10000),
+  ]);
+  const outOfStock = (
+    (inv as { on_hand_ml: number; reserved_ml: number }[] | null) ?? []
+  ).filter((r) => r.on_hand_ml - r.reserved_ml <= 0).length;
+  return { newOrders: count ?? 0, outOfStock };
+}
+
 export interface AdminNotification {
   id: string;
   kind: string;

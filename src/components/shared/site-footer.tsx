@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Instagram, Facebook, Mail } from "lucide-react";
 import { Logo } from "./logo";
 import { SITE } from "@/lib/constants";
+import { getSocialSettings } from "@/features/content/api";
 import { NewsletterForm } from "./newsletter-form";
 
 const COLUMNS = [
@@ -31,7 +32,8 @@ const COLUMNS = [
   },
 ];
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const social = await getSocialSettings();
   return (
     <footer className="border-border bg-surface-deep mt-10 border-t sm:mt-20">
       <div className="mx-auto max-w-[88rem] px-4 py-10 sm:py-16">
@@ -42,20 +44,28 @@ export function SiteFooter() {
               {SITE.description}
             </p>
             <div className="flex gap-2 pt-1">
-              <Link
-                href="#"
-                aria-label="Instagram"
-                className="border-border text-muted-foreground hover:border-gold-strong/50 hover:text-gold rounded-full border p-2.5 transition-colors"
-              >
-                <Instagram className="size-5" />
-              </Link>
-              <Link
-                href="#"
-                aria-label="Facebook"
-                className="border-border text-muted-foreground hover:border-gold-strong/50 hover:text-gold rounded-full border p-2.5 transition-colors"
-              >
-                <Facebook className="size-5" />
-              </Link>
+              {social.instagram && (
+                <a
+                  href={social.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram"
+                  className="border-border text-muted-foreground hover:border-gold-strong/50 hover:text-gold rounded-full border p-2.5 transition-colors"
+                >
+                  <Instagram className="size-5" />
+                </a>
+              )}
+              {social.facebook && (
+                <a
+                  href={social.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Facebook"
+                  className="border-border text-muted-foreground hover:border-gold-strong/50 hover:text-gold rounded-full border p-2.5 transition-colors"
+                >
+                  <Facebook className="size-5" />
+                </a>
+              )}
               <Link
                 href="/contact"
                 aria-label="Имэйл"

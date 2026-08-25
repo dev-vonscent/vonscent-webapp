@@ -45,8 +45,11 @@ export async function POST(req: Request) {
     password: derivePassword(passcode),
   });
   if (error) {
-    await recordFailedLogin(phone);
-    return NextResponse.json({ error: "WRONG_CREDENTIALS" }, { status: 401 });
+    const left = await recordFailedLogin(phone);
+    return NextResponse.json(
+      { error: "WRONG_CREDENTIALS", ...(left != null ? { left } : {}) },
+      { status: 401 },
+    );
   }
 
   await clearLoginAttempts(phone);

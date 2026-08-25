@@ -36,6 +36,7 @@ function product(
     availableMl: 100,
     bottleMl: 100,
     customTags: [],
+    customTagSlugs: [],
     ...overrides,
   };
 }

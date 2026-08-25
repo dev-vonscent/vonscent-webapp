@@ -43,6 +43,7 @@ const PRESET_BY_FOLDER: Record<string, PresetName> = {
   blog: "photo",
   avatars: "avatar",
   families: "icon",
+  marketing: "photo",
 };
 
 export function presetForFolder(folder: string): ImagePreset {

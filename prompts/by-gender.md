@@ -1,6 +1,6 @@
 # "Хүйсээр" (By gender) cards — model imagery
 
-**Model:** `gpt-image-2`, size 1024×1536 (portrait), quality high → `public/gender-{male,female,unisex}.png`
+**Model:** `gpt-image-2`, size 1024×1536 (portrait), quality high → `public/gender-{male,female,unisex}.webp`
 **Style:** monochrome (grayscale) luxury fragrance editorial to match the black/white/gray UI; dark black background.
 
 ## male

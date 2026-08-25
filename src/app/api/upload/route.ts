@@ -20,6 +20,8 @@ const FOLDERS = {
   /** Scent family icons (todo.md B3b) — shown on the home rail and filters. */
   families: "staff",
   blog: "staff",
+  /** Marketing imagery — hero banners and promo popup slides (admin A8). */
+  marketing: "staff",
 } as const;
 
 type Folder = keyof typeof FOLDERS;
@@ -76,5 +78,11 @@ export async function POST(req: Request) {
   if (!result) {
     return NextResponse.json({ error: "UPLOAD_FAILED" }, { status: 500 });
   }
-  return NextResponse.json(result);
+  // Dimensions let marketing uploads warn when a banner is smaller than its
+  // largest rendered size (560px container × 2 for retina).
+  return NextResponse.json({
+    ...result,
+    width: image.width,
+    height: image.height,
+  });
 }

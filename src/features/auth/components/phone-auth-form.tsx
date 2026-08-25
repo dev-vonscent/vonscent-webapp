@@ -18,7 +18,7 @@ type Mode = "login" | "register" | "forgot";
 const COPY: Record<Mode, { title: string; subtitle: string; cta: string }> = {
   login: {
     title: "Нэвтрэх",
-    subtitle: "Утасны дугаар, passcode-оо оруулна уу",
+    subtitle: "Утасны дугаар, нууц кодоо оруулна уу",
     cta: "Нэвтрэх",
   },
   register: {
@@ -27,9 +27,9 @@ const COPY: Record<Mode, { title: string; subtitle: string; cta: string }> = {
     cta: "Бүртгүүлэх",
   },
   forgot: {
-    title: "Passcode сэргээх",
-    subtitle: "Дугаараа дахин баталгаажуулж шинэ passcode тохируулна",
-    cta: "Passcode солих",
+    title: "Нууц код сэргээх",
+    subtitle: "Дугаараа дахин баталгаажуулж шинэ нууц код тохируулна",
+    cta: "Нууц код солих",
   },
 };
 
@@ -67,6 +67,8 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
   const [passcode, setPasscode] = React.useState("");
   const [passcode2, setPasscode2] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  // Login errors render inline in the form (4a) — a toast is easy to miss.
+  const [formError, setFormError] = React.useState<string | null>(null);
 
   const passcodeRef = React.useRef<HTMLInputElement>(null);
   const passcode2Ref = React.useRef<HTMLInputElement>(null);
@@ -89,6 +91,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
       const pc = code ?? passcode;
       if (loading || !/^\d{8}$/u.test(phone) || !/^\d{4}$/u.test(pc)) return;
       setLoading(true);
+      setFormError(null);
       try {
         const res = await fetch("/api/auth/phone/login", {
           method: "POST",
@@ -103,16 +106,21 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
         const body = (await res.json().catch(() => null)) as {
           error?: string;
           minutes?: number;
+          left?: number;
         } | null;
         if (body?.error === "LOCKED") {
-          toast.error(
+          setFormError(
             `Хэт олон буруу оролдлого. ${body.minutes ?? 15} минутын дараа дахин оролдоно уу.`,
           );
         } else if (body?.error === "WRONG_CREDENTIALS") {
-          toast.error("Дугаар эсвэл passcode буруу байна.");
+          setFormError(
+            `Дугаар эсвэл нууц код буруу байна.${
+              body.left ? ` (${body.left} оролдлого үлдсэн)` : ""
+            }`,
+          );
           setPasscode("");
         } else {
-          toast.error("Нэвтэрч чадсангүй. Дахин оролдоно уу.");
+          setFormError("Нэвтэрч чадсангүй. Дахин оролдоно уу.");
         }
       } catch {
         toast.error("Сүлжээний алдаа гарлаа.");
@@ -126,7 +134,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
   async function submitPasscode(e: React.FormEvent) {
     e.preventDefault();
     if (passcode !== passcode2) {
-      toast.error("Passcode хоорондоо таарахгүй байна.");
+      toast.error("Нууц код хоорондоо таарахгүй байна.");
       setPasscode2("");
       return;
     }
@@ -246,7 +254,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
           <Reveal delay={120} className="space-y-2">
             <div className="flex items-end justify-between">
               <Label className="text-muted-foreground text-xs tracking-widest uppercase">
-                Passcode
+                Нууц код
               </Label>
               <Link
                 href="/forgot-password"
@@ -261,15 +269,24 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
               mask
               value={passcode}
               onChange={setPasscode}
-              label="Passcode"
+              label="Нууц код"
               onComplete={(code) => doLogin(code)}
             />
           </Reveal>
 
+          {formError && (
+            <p
+              role="alert"
+              className="text-destructive -my-2 text-center text-sm"
+            >
+              {formError}
+            </p>
+          )}
+
           <Reveal delay={180}>
             <Button
               type="submit"
-              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98]"
+              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] [.black_&]:bg-white [.black_&]:text-black [.black_&]:hover:bg-white/90"
               disabled={loading || !validPhone || !validPasscode}
             >
               {loading ? "Түр хүлээнэ үү…" : copy.cta}
@@ -287,21 +304,21 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
 
             <div className="space-y-2">
               <Label className="text-muted-foreground text-xs tracking-widest uppercase">
-                Шинэ passcode
+                Шинэ нууц код
               </Label>
               <DigitInput
                 length={4}
                 mask
                 value={passcode}
                 onChange={setPasscode}
-                label="Шинэ passcode"
+                label="Шинэ нууц код"
                 autoFocus
                 onComplete={() => passcode2Ref.current?.focus()}
               />
             </div>
             <div className="space-y-2">
               <Label className="text-muted-foreground text-xs tracking-widest uppercase">
-                Passcode давтах
+                Нууц код давтах
               </Label>
               <DigitInput
                 ref={passcode2Ref}
@@ -309,13 +326,13 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
                 mask
                 value={passcode2}
                 onChange={setPasscode2}
-                label="Passcode давтах"
+                label="Нууц код давтах"
               />
             </div>
 
             <Button
               type="submit"
-              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98]"
+              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] [.black_&]:bg-white [.black_&]:text-black [.black_&]:hover:bg-white/90"
               disabled={loading || !validPasscode || passcode2.length !== 4}
             >
               {loading ? "Түр хүлээнэ үү…" : copy.cta}
@@ -350,7 +367,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
 
           <Button
             asChild
-            className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98]"
+            className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] [.black_&]:bg-white [.black_&]:text-black [.black_&]:hover:bg-white/90"
           >
             <a href={verify.session.smsUri}>
               <MessageSquareText className="size-4" /> СМС илгээх
@@ -422,7 +439,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
           <Reveal delay={mode === "register" ? 180 : 120}>
             <Button
               type="submit"
-              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98]"
+              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] [.black_&]:bg-white [.black_&]:text-black [.black_&]:hover:bg-white/90"
               disabled={!validPhone || verify.stage === "starting"}
             >
               {verify.stage === "starting" ? (

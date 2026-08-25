@@ -82,6 +82,7 @@ export async function POST(req: Request) {
       giftLines = await priceGiftLines(
         input.giftProductIds,
         Math.max(summary.subtotal - discount, 0),
+        summary.bundleQty,
       );
     }
     const allLines = [...summary.lines, ...giftLines];

@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatPrice } from "@/lib/format";
+import { SHIPPING_ZONES } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/browser";
 import { useCart, selectSubtotal } from "@/features/cart/store";
 import { CartSizeSelect } from "@/features/cart/components/cart-size-select";
 
@@ -28,6 +30,30 @@ export default function CartPage() {
   const [couponMsg, setCouponMsg] = React.useState<string | null>(null);
   const [applying, setApplying] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
+
+  // Estimated delivery fee — the admin's default (first deliverable) zone,
+  // i.e. Ulaanbaatar city centre. Checkout still computes the real fee.
+  const [defaultZoneFee, setDefaultZoneFee] = React.useState<number>(
+    SHIPPING_ZONES[0].fee,
+  );
+  React.useEffect(() => {
+    const supabase = createClient();
+    if (!supabase) return;
+    (async () => {
+      const { data } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "shipping")
+        .maybeSingle();
+      const zones = (
+        data as {
+          value?: { zones?: { fee?: number; deliverable?: boolean }[] };
+        } | null
+      )?.value?.zones;
+      const first = zones?.find((z) => z.deliverable !== false);
+      if (first && Number(first.fee) > 0) setDefaultZoneFee(Number(first.fee));
+    })();
+  }, []);
 
   async function applyCoupon(e: React.FormEvent) {
     e.preventDefault();
@@ -293,11 +319,18 @@ export default function CartPage() {
                 <p className="text-destructive text-xs">{couponMsg}</p>
               )}
 
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Хүргэлт</span>
-                <span className="text-muted-foreground">
-                  Checkout дээр тооцно
-                </span>
+              <div className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Хүргэлт · Улаанбаатар
+                  </span>
+                  <span className="font-medium">
+                    {formatPrice(defaultZoneFee)}
+                  </span>
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  Бүсээс хамаарна — эцсийн дүн checkout дээр.
+                </p>
               </div>
               <Separator />
               <div className="flex justify-between">

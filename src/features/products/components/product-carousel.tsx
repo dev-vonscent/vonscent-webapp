@@ -7,7 +7,11 @@ import { ProductCard } from "./product-card";
 import { cn } from "@/lib/utils";
 import type { ProductListItem } from "@/lib/types";
 
-export function ProductCarousel({ products }: { products: ProductListItem[] }) {
+export function ProductCarousel({
+  products,
+}: {
+  products: (ProductListItem & { matchPct?: number })[];
+}) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "start",
     containScroll: "trimSnaps",
@@ -38,7 +42,7 @@ export function ProductCarousel({ products }: { products: ProductListItem[] }) {
               key={p.id}
               className="w-[44%] min-w-0 shrink-0 sm:w-[31%] lg:w-[23.5%]"
             >
-              <ProductCard product={p} />
+              <ProductCard product={p} matchPct={p.matchPct} />
             </div>
           ))}
         </div>
