@@ -99,16 +99,16 @@ export function buildImagePrompt(
   fields: PromptFields,
   basePrompt: string = DEFAULT_BASE_PROMPT,
 ): string {
-  const lines: string[] = [basePrompt.trim(), "", "=== THIS FRAGRANCE ==="];
+  const details: string[] = [];
 
   const nameBrand = [fields.brand, fields.name].filter(Boolean).join(" — ");
-  if (nameBrand) lines.push(`Perfume: ${nameBrand}`);
+  if (nameBrand) details.push(`Perfume: ${nameBrand}`);
 
-  if (fields.gender) lines.push(`Gender: ${fields.gender}`);
+  if (fields.gender) details.push(`Gender: ${fields.gender}`);
 
   const families = (fields.scentFamilies ?? []).filter(Boolean);
   if (families.length)
-    lines.push(
+    details.push(
       `Fragrance family: ${families.join(", ")} — use the matching photoshoot style from RULE 3.`,
     );
 
@@ -118,14 +118,19 @@ export function buildImagePrompt(
   const long = (fields.description || "").trim();
 
   if (short || long) {
-    lines.push(
+    details.push(
       "Description (extract the mood and let it fine-tune the scene — never",
       "depict it literally):",
     );
-    if (short) lines.push(`Summary: ${clip(short, 300)}`);
+    if (short) details.push(`Summary: ${clip(short, 300)}`);
     if (long && long !== short)
-      lines.push(`Full story: ${clip(long, MAX_DESCRIPTION_CHARS)}`);
+      details.push(`Full story: ${clip(long, MAX_DESCRIPTION_CHARS)}`);
   }
 
-  return lines.join("\n").trim();
+  // An empty product gets just the base prompt — no dangling section header.
+  if (!details.length) return basePrompt.trim();
+
+  return [basePrompt.trim(), "", "=== THIS FRAGRANCE ===", ...details].join(
+    "\n",
+  );
 }

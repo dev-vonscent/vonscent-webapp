@@ -148,16 +148,6 @@ export function ScentQuiz({
     advanceFrom(step, gender, next);
   }
 
-  function skip() {
-    const question = QUIZ_QUESTIONS[step - 1];
-    const next = { ...picks };
-    if (question) delete next[question.id];
-    setPicks(next);
-    setDir(1);
-    if (step + 1 < TOTAL_STEPS) setStep(step + 1);
-    else void submit(gender, next);
-  }
-
   function back() {
     if (advanceTimer.current) clearTimeout(advanceTimer.current);
     setDir(-1);

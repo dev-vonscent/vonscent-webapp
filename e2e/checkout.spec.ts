@@ -22,9 +22,11 @@ test("guest places a demo order end to end", async ({ page }) => {
   await phone.fill("99118822");
   await expect(phone).toHaveValue("99118822");
 
-  // Address cascade: city → district → khoroo (UB only).
+  // Address cascade: city → district → khoroo (UB only). The district must be
+  // a deliverable one — the first option, Багануур, is seeded into the
+  // no-delivery X zone (0043_zone_areas_seed.sql) and blocks the submit button.
   await pickOption(page, 0, "Улаанбаатар");
-  await pickOption(page, 1);
+  await pickOption(page, 1, "Баянгол");
   await pickOption(page, 2);
   await page.getByPlaceholder("Байр, орц, тоот").fill("45-р байр 12 тоот");
 
