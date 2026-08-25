@@ -98,8 +98,8 @@ export const DEFAULT_POPUP: PopupSettings = {
   slides: [],
 };
 export const DEFAULT_SOCIAL: SocialSettings = {
-  instagram: "",
-  facebook: "",
+  instagram: "https://www.instagram.com/von_scent/",
+  facebook: "https://www.facebook.com/vonscent",
   phone: "",
   email: "vonscent.store@gmail.com",
 };
@@ -147,7 +147,17 @@ async function getSetting<T>(key: string, fallback: T): Promise<T> {
 }
 
 export const getPopupSettings = () => getSetting("popup", DEFAULT_POPUP);
-export const getSocialSettings = () => getSetting("social", DEFAULT_SOCIAL);
+export const getSocialSettings = async (): Promise<SocialSettings> => {
+  // The 0013 seed left instagram/facebook as "", which would otherwise win
+  // over the defaults in the merge — treat blank fields as unset.
+  const stored = await getSetting("social", DEFAULT_SOCIAL);
+  return {
+    instagram: stored.instagram || DEFAULT_SOCIAL.instagram,
+    facebook: stored.facebook || DEFAULT_SOCIAL.facebook,
+    phone: stored.phone || DEFAULT_SOCIAL.phone,
+    email: stored.email || DEFAULT_SOCIAL.email,
+  };
+};
 export const getAboutSettings = () => getSetting("about", DEFAULT_ABOUT);
 export const getShippingSettings = () =>
   getSetting("shipping", DEFAULT_SHIPPING);

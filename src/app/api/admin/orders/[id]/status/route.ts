@@ -4,6 +4,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
+import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
 
 const schema = z.object({
   status: z
@@ -37,6 +38,8 @@ export async function POST(
   if (parsed.data.paid) {
     // Commit inventory + earn loyalty (idempotent).
     await callRpc(supabase, "mark_order_paid", { p_order: id });
+    // e.g. a bank transfer the admin just verified — same notice as QPay.
+    await sendOrderCustomerEmail(id, "paid");
   }
   if (parsed.data.status) {
     await callRpc(supabase, "update_order_status", {
@@ -45,6 +48,9 @@ export async function POST(
       p_note: parsed.data.note ?? "",
       p_by: staff.id,
     });
+    if (parsed.data.status === "cancelled") {
+      await sendOrderCustomerEmail(id, "cancelled");
+    }
   }
   if (parsed.data.refund) {
     await callRpc(supabase, "mark_order_refunded", {

@@ -43,37 +43,47 @@ export function HeroCarousel({ banners }: { banners: HeroBanner[] }) {
   if (banners.length === 0) return null;
 
   return (
-    <div className="absolute inset-0 overflow-hidden" ref={emblaRef}>
-      <div className="flex h-full">
+    <div className="relative overflow-hidden" ref={emblaRef}>
+      <div className="flex">
         {banners.map((b, i) => (
-          <div key={b.id} className="relative h-full min-w-0 flex-[0_0_100%]">
-            {b.imageUrl && (
-              <Image
-                src={b.imageUrl}
-                alt={b.title}
-                fill
-                priority={i === 0}
-                sizes="100vw"
-                className="object-cover"
-              />
-            )}
-            {(b.title || b.subtitle || b.ctaLabel) && (
-              <div className="absolute inset-0 flex flex-col items-center justify-end gap-3 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-8 text-center sm:justify-center sm:p-12">
-                <h2 className="font-serif text-3xl font-semibold text-white drop-shadow sm:text-5xl">
+          <div key={b.id} className="relative min-w-0 flex-[0_0_100%]">
+            {/* Same layered layout as the static hero: editorial text beside
+                a contained image — the upload is never scaled past 560px, so
+                any admin-supplied resolution stays sharp. */}
+            <div className="mx-auto grid max-w-[88rem] items-center gap-8 px-4 pt-28 pb-16 md:grid-cols-2 md:px-8">
+              <div className="relative z-10 max-w-md space-y-5 max-md:mx-auto max-md:flex max-md:flex-col max-md:items-center max-md:text-center md:order-1">
+                <h2 className="font-serif text-3xl font-semibold tracking-tight text-balance text-white sm:text-5xl">
                   {b.title}
                 </h2>
                 {b.subtitle && (
-                  <p className="max-w-xl text-sm text-white/85 sm:text-base">
+                  <p className="text-sm text-white/70 sm:text-base">
                     {b.subtitle}
                   </p>
                 )}
                 {b.ctaLabel && (
-                  <Button asChild size="lg" className="mt-1">
+                  <Button
+                    asChild
+                    size="lg"
+                    className="bg-white text-black hover:bg-white/90"
+                  >
                     <Link href={b.ctaHref || "/catalog"}>{b.ctaLabel}</Link>
                   </Button>
                 )}
               </div>
-            )}
+
+              <div className="order-first relative mx-auto aspect-square w-full max-w-[560px] [mask-image:radial-gradient(ellipse_70%_68%_at_50%_50%,#000_55%,transparent_78%)] md:order-2">
+                {b.imageUrl && (
+                  <Image
+                    src={b.imageUrl}
+                    alt={b.title}
+                    fill
+                    priority={i === 0}
+                    sizes="(max-width: 768px) 100vw, 560px"
+                    className="object-contain"
+                  />
+                )}
+              </div>
+            </div>
           </div>
         ))}
       </div>

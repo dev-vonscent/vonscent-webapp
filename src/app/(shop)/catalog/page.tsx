@@ -40,16 +40,16 @@ export default async function CatalogPage({
 
   return (
     <div className="mx-auto max-w-[88rem] px-4 py-8 md:px-8">
-      {/* <div className="mb-6">
+      <div className="mb-6">
         <h1 className="font-serif text-3xl font-semibold tracking-tight">
           {filters.search ? `«${filters.search}» хайлтын үр дүн` : "Каталог"}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-sm">
           {filters.search
             ? `${result.total} илэрц олдлоо`
             : `${result.total} бараа олдлоо`}
         </p>
-      </div> */}
+      </div>
 
       {/* Controls — mobile only (on desktop the search sits above the sidebar) */}
       <div className="border-border flex items-center gap-2 border-y py-3 lg:hidden">
@@ -64,7 +64,7 @@ export default async function CatalogPage({
 
       <div className="mt-6 flex gap-10 lg:mt-8">
         {/* Desktop sidebar: search above the filter, sharing its width */}
-        <aside className="hidden w-96 shrink-0 lg:block">
+        <aside className="hidden w-72 shrink-0 lg:block">
           <CatalogSearch className="mb-6" />
           <CatalogFilters
             brands={brands}

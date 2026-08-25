@@ -3,9 +3,9 @@ import { getProductById, fetchProducts } from "@/features/products/api";
 import {
   BUNDLE_ML_SIZES,
   GIFT_SAMPLE_ML,
-  GIFT_THRESHOLD,
   SHIPPING_ZONES,
 } from "@/lib/constants";
+import { giftAllowanceFor } from "@/lib/gift";
 import { getGiftSettings, getShippingSettings } from "@/features/content/api";
 import {
   getCollectionSettings,
@@ -42,6 +42,8 @@ export interface OrderSummary {
   shippingFee: number;
   discount: number;
   total: number;
+  /** Copies of bundles in the order (Σ qty) — drives the gift allowance. */
+  bundleQty: number;
 }
 
 /**
@@ -81,8 +83,8 @@ export async function priceLines(
  */
 export async function priceCollectionLines(
   cols: CollectionOrderInput[],
-): Promise<{ lines: PricedLine[]; pricedBundles: number }> {
-  if (!cols.length) return { lines: [], pricedBundles: 0 };
+): Promise<{ lines: PricedLine[]; pricedBundles: number; bundleQty: number }> {
+  if (!cols.length) return { lines: [], pricedBundles: 0, bundleQty: 0 };
   const [products, settings] = await Promise.all([
     fetchProducts(),
     getCollectionSettings(),
@@ -104,6 +106,7 @@ export async function priceCollectionLines(
 
   const out: PricedLine[] = [];
   let pricedBundles = 0;
+  let bundleQty = 0;
   for (const col of cols) {
     // A bundle only ever prices over the three main sizes (2ml is decant-only).
     if (!(BUNDLE_ML_SIZES as readonly number[]).includes(col.ml)) continue;
@@ -206,23 +209,26 @@ export async function priceCollectionLines(
       }
     }
     pricedBundles += 1;
+    bundleQty += col.qty;
   }
-  return { lines: out, pricedBundles };
+  return { lines: out, pricedBundles, bundleQty };
 }
 
 /**
  * Validate the buyer's monthly gift-sample picks (questions.md №2–3) and turn
  * them into 0₮ 1ml lines. `goodsAfterDiscount` is subtotal − coupon discount
- * (shipping excluded): one pick per full 200,000₮. Picks outside the admin's
+ * (shipping excluded); the allowance also counts bundles — see
+ * giftAllowanceFor() in src/lib/gift.ts. Picks outside the admin's
  * pool, duplicates, or picks beyond the allowance are silently dropped — the
  * order still goes through, just without the invalid gift.
  */
 export async function priceGiftLines(
   giftProductIds: string[],
   goodsAfterDiscount: number,
+  bundleQty = 0,
 ): Promise<PricedLine[]> {
   if (!giftProductIds.length) return [];
-  const allowance = Math.floor(goodsAfterDiscount / GIFT_THRESHOLD);
+  const allowance = giftAllowanceFor(goodsAfterDiscount, bundleQty);
   if (allowance <= 0) return [];
 
   const settings = await getGiftSettings();
@@ -296,7 +302,13 @@ export async function resolveShipping(
     district: address.shipDistrict,
     khoroo: address.shipKhoroo,
   });
-  const zone = mapped ?? address.shipZone;
+  // A countryside address with no explicit rule always prices as the rural
+  // zone — the customer's dropdown pick must not undercut it with a city fee.
+  const ruralFallback =
+    address.shipCity && address.shipCity !== "Улаанбаатар"
+      ? zones.find((z) => z.remote && z.deliverable !== false)
+      : undefined;
+  const zone = mapped ?? (ruralFallback ? zoneKey(ruralFallback) : address.shipZone);
 
   // Match on the stable code so a renamed zone still prices correctly; older
   // orders/clients that send a zone name are still found through zoneKey().
@@ -333,7 +345,15 @@ export async function computeSummary(
   // code against the buyer; this preview stays at 0.
   const discount = 0;
   const total = Math.max(subtotal + shippingFee - discount, 0);
-  return { lines, subtotal, shipZone: zone, shippingFee, discount, total };
+  return {
+    lines,
+    subtotal,
+    shipZone: zone,
+    shippingFee,
+    discount,
+    total,
+    bundleQty: bundleResult.bundleQty,
+  };
 }
 
 export interface PlacedOrder {

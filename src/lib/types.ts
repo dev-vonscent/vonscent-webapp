@@ -70,6 +70,8 @@ export interface ProductDetail extends ProductListItem {
   bottleMl: number;
   /** Free-form internal tag names (0035) — search fodder, never badges. */
   customTags: string[];
+  /** Matching slugs (stable ids) — quiz weights and similarity match on these. */
+  customTagSlugs: string[];
 }
 
 /** One row of the admin-managed scent family taxonomy. */

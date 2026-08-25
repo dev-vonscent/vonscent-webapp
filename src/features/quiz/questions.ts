@@ -22,6 +22,12 @@ export interface QuizWeights {
   families?: Record<string, number>;
   seasons?: Partial<Record<Season, number>>;
   intensity?: Partial<Record<Intensity, number>>;
+  /**
+   * Custom-tag slugs (0044 seed, admin-extendable) — use-case and character
+   * signals the family/season axes can't express. A slug missing from the
+   * admin's pool simply never matches; it doesn't break scoring.
+   */
+  tags?: Record<string, number>;
 }
 
 export interface QuizOption {
@@ -48,9 +54,9 @@ export const GENDER_QUESTION = {
   title: "Хэнд зориулсан үнэр хайж байна вэ?",
   options: [
     // Reuses the "Хүйсээр" cards (prompts/by-gender.md) — no new artwork.
-    { value: "male", emoji: "🤵", image: "/gender-male.png", label: "Эрэгтэй" },
-    { value: "female", emoji: "💃", image: "/gender-female.png", label: "Эмэгтэй" },
-    { value: "any", emoji: "✨", image: "/gender-unisex.png", label: "Хамаагүй" },
+    { value: "male", emoji: "🤵", image: "/gender-male.webp", label: "Эрэгтэй" },
+    { value: "female", emoji: "💃", image: "/gender-female.webp", label: "Эмэгтэй" },
+    { value: "any", emoji: "✨", image: "/gender-unisex.webp", label: "Хамаагүй" },
   ],
 } as const;
 
@@ -61,43 +67,47 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     options: [
       {
         id: "weekend-beach",
-        image: "/quiz/weekend-beach-v2.png",
+        image: "/quiz/weekend-beach-v2.webp",
         emoji: "🏖️",
         label: "Далайн эргээр зугаалж, наранд шарна",
         weights: {
           families: { citrus: 2, fresh: 1 },
           seasons: { summer: 2 },
+          tags: { marine: 2, sport: 1 },
         },
       },
       {
         id: "weekend-forest",
-        image: "/quiz/weekend-forest-v2.png",
+        image: "/quiz/weekend-forest-v2.webp",
         emoji: "🌲",
         label: "Ойн дундуур алхана",
         weights: {
           families: { woody: 2, fresh: 1 },
           seasons: { autumn: 2 },
+          tags: { clean: 1 },
         },
       },
       {
         id: "weekend-cozy",
-        image: "/quiz/weekend-cozy-v2.png",
+        image: "/quiz/weekend-cozy-v2.webp",
         emoji: "🕯️",
         label: "Гэртээ лаа асааж, ном уншина",
         weights: {
           families: { oriental: 2 },
           seasons: { winter: 2 },
           intensity: { strong: 1 },
+          tags: { vanilla: 2, amber: 1 },
         },
       },
       {
         id: "weekend-garden",
-        image: "/quiz/weekend-garden-v2.png",
+        image: "/quiz/weekend-garden-v2.webp",
         emoji: "🌸",
         label: "Цэцэглэсэн цэцэрлэгээр зугаална",
         weights: {
           families: { floral: 2 },
           seasons: { spring: 2 },
+          tags: { rose: 2, powdery: 1 },
         },
       },
     ],
@@ -108,42 +118,46 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     options: [
       {
         id: "time-morning",
-        image: "/quiz/time-morning-v2.png",
+        image: "/quiz/time-morning-v2.webp",
         emoji: "🌅",
         label: "Сэрүүн өглөө",
         weights: {
           families: { fresh: 2, citrus: 1 },
           intensity: { light: 2 },
+          tags: { clean: 2, daily: 1 },
         },
       },
       {
         id: "time-noon",
-        image: "/quiz/time-noon-v2.png",
+        image: "/quiz/time-noon-v2.webp",
         emoji: "☀️",
         label: "Нартай үдийн цаг",
         weights: {
           families: { floral: 1, citrus: 1 },
           intensity: { medium: 1 },
+          tags: { office: 1, daily: 1 },
         },
       },
       {
         id: "time-sunset",
-        image: "/quiz/time-sunset-v2.png",
+        image: "/quiz/time-sunset-v2.webp",
         emoji: "🌇",
         label: "Нар жаргах үе",
         weights: {
           families: { spicy: 1, oriental: 1 },
           intensity: { medium: 1 },
+          tags: { amber: 1, date: 1 },
         },
       },
       {
         id: "time-night",
-        image: "/quiz/time-night-v2.png",
+        image: "/quiz/time-night-v2.webp",
         emoji: "🌙",
         label: "Гүн шөнө",
         weights: {
           families: { oriental: 2, woody: 1 },
           intensity: { strong: 2 },
+          tags: { oud: 2, smoky: 1, party: 1 },
         },
       },
     ],
@@ -154,31 +168,31 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     options: [
       {
         id: "character-energetic",
-        image: "/quiz/character-energetic-v2.png",
+        image: "/quiz/character-energetic-v2.webp",
         emoji: "⚡",
         label: "Эрч хүчтэй, хөгжилтэй",
-        weights: { families: { citrus: 2, fresh: 1 } },
+        weights: { families: { citrus: 2, fresh: 1 }, tags: { sport: 1, youthful: 2 } },
       },
       {
         id: "character-romantic",
-        image: "/quiz/character-romantic-v2.png",
+        image: "/quiz/character-romantic-v2.webp",
         emoji: "💐",
         label: "Романтик, мэдрэмжтэй",
-        weights: { families: { floral: 2 } },
+        weights: { families: { floral: 2 }, tags: { rose: 2, date: 2, sweet: 1 } },
       },
       {
         id: "character-warm",
-        image: "/quiz/character-warm-v2.png",
+        image: "/quiz/character-warm-v2.webp",
         emoji: "🔥",
         label: "Дулаан, дотно",
-        weights: { families: { spicy: 2, oriental: 1 } },
+        weights: { families: { spicy: 2, oriental: 1 }, tags: { vanilla: 1, amber: 2, tobacco: 1 } },
       },
       {
         id: "character-calm",
-        image: "/quiz/character-calm-v2.png",
+        image: "/quiz/character-calm-v2.webp",
         emoji: "🗿",
         label: "Тайван, өөртөө итгэлтэй",
-        weights: { families: { woody: 2 } },
+        weights: { families: { woody: 2 }, tags: { mature: 2, leather: 1, signature: 1 } },
       },
     ],
   },
@@ -188,31 +202,31 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     options: [
       {
         id: "season-spring",
-        image: "/season-spring.jpg",
+        image: "/quiz/season-spring-v2.webp",
         emoji: "🌸",
         label: "Хавар",
-        weights: { seasons: { spring: 3 }, families: { floral: 1 } },
+        weights: { seasons: { spring: 3 }, families: { floral: 1 }, tags: { powdery: 1 } },
       },
       {
         id: "season-summer",
-        image: "/season-summer.jpg",
+        image: "/quiz/season-summer-v2.webp",
         emoji: "☀️",
         label: "Зун",
-        weights: { seasons: { summer: 3 }, families: { citrus: 1 } },
+        weights: { seasons: { summer: 3 }, families: { citrus: 1 }, tags: { marine: 1 } },
       },
       {
         id: "season-autumn",
-        image: "/season-autumn.jpg",
+        image: "/quiz/season-autumn-v2.webp",
         emoji: "🍂",
         label: "Намар",
-        weights: { seasons: { autumn: 3 }, families: { woody: 1 } },
+        weights: { seasons: { autumn: 3 }, families: { woody: 1 }, tags: { tobacco: 1, smoky: 1 } },
       },
       {
         id: "season-winter",
-        image: "/season-winter.jpg",
+        image: "/quiz/season-winter-v2.webp",
         emoji: "❄️",
         label: "Өвөл",
-        weights: { seasons: { winter: 3 }, families: { oriental: 1 } },
+        weights: { seasons: { winter: 3 }, families: { oriental: 1 }, tags: { vanilla: 1, oud: 1 } },
       },
     ],
   },
@@ -222,24 +236,24 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     options: [
       {
         id: "impression-whisper",
-        image: "/quiz/impression-whisper-v2.png",
+        image: "/quiz/impression-whisper-v2.webp",
         emoji: "🤫",
         label: "Зөвхөн ойртсон хүнд л мэдрэгдэнэ",
-        weights: { intensity: { light: 3 } },
+        weights: { intensity: { light: 3 }, tags: { clean: 1, office: 1 } },
       },
       {
         id: "impression-balanced",
-        image: "/quiz/impression-balanced-v2.png",
+        image: "/quiz/impression-balanced-v2.webp",
         emoji: "🙂",
         label: "Тэнцвэртэй, яг таг",
-        weights: { intensity: { medium: 3 } },
+        weights: { intensity: { medium: 3 }, tags: { daily: 1, office: 1 } },
       },
       {
         id: "impression-bold",
-        image: "/quiz/impression-bold-v2.png",
+        image: "/quiz/impression-bold-v2.webp",
         emoji: "💫",
         label: "Хажуугаар өнгөрөхөд эргэж харуулна",
-        weights: { intensity: { strong: 3 } },
+        weights: { intensity: { strong: 3 }, tags: { "long-lasting": 2, party: 1, signature: 1 } },
       },
     ],
   },

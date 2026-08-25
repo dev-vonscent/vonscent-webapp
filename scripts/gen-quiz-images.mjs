@@ -8,6 +8,7 @@
  */
 import { access, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import sharp from "sharp";
 
 const MODEL = "gpt-image-1"; // the team may switch this to a newer image model
 const SIZE = "1024x1536";
@@ -25,10 +26,12 @@ const optionPrompt = (subject) =>
 const widgetPrompt = (subject) =>
   `Luxury fragrance editorial photograph, ${subject}, deep charcoal background, dramatic studio lighting with a warm golden glow from one side, subtle warm accents, generous negative space, premium fragrance advertisement aesthetic, cinematic, vertical composition, warm inviting lighting, rich visible detail, not dark.`;
 
-/** Quiz option tiles → public/quiz/{id}-v2.png. Filenames are versioned so a
+/** Quiz option tiles → public/quiz/{id}-v2.webp. Filenames are versioned so a
  *  regeneration ships under fresh URLs (no stale optimizer/browser caches);
- *  bump the suffix when regenerating. Gender and season questions reuse
- *  existing cards (public/gender-*.png, public/season-*.jpg). */
+ *  bump the suffix when regenerating. The gender question reuses the existing
+ *  cards (public/gender-*.webp); the season question gets its own portrait
+ *  tiles here — the landscape home-page season-*.jpg crops too small in the
+ *  3:4 tile and looks soft. */
 const OPTION_SUBJECTS = {
   "weekend-beach": "turquoise ocean waves rolling onto a sunlit sandy beach under a blue sky",
   "weekend-forest": "a green pine forest path with morning sunrays streaming through the trees",
@@ -42,6 +45,10 @@ const OPTION_SUBJECTS = {
   "character-romantic": "a bouquet of deep red roses with soft warm light",
   "character-warm": "glowing fireplace embers with cinnamon sticks and star anise, warm amber tones",
   "character-calm": "smooth grey stones stacked in balance beside calm water, soft neutral light",
+  "season-spring": "blooming pink cherry blossom branches against a soft blue spring sky",
+  "season-summer": "a sunlit green summer meadow full of colorful wildflowers under a clear blue sky",
+  "season-autumn": "vibrant golden and red maple leaves glowing in warm low autumn sunlight",
+  "season-winter": "snow-covered pine branches sparkling in soft winter sunlight, cool blue tones",
   "impression-whisper": "a delicate wisp of white mist floating in soft pastel light",
   "impression-balanced": "a serene zen composition of a leaf floating on still clear water",
   "impression-bold": "a dramatic burst of colorful smoke swirling against a bright backdrop",
@@ -57,11 +64,11 @@ const WIDGET_SUBJECTS = {
 
 const TARGETS = [
   ...Object.entries(OPTION_SUBJECTS).map(([id, subject]) => ({
-    file: path.join("public", "quiz", `${id}-v2.png`),
+    file: path.join("public", "quiz", `${id}-v2.webp`),
     prompt: optionPrompt(subject),
   })),
   ...Object.entries(WIDGET_SUBJECTS).map(([id, subject]) => ({
-    file: path.join("public", `${id}-v2.png`),
+    file: path.join("public", `${id}-v2.webp`),
     prompt: widgetPrompt(subject),
   })),
 ];
@@ -116,8 +123,11 @@ for (const { file, prompt } of TARGETS) {
   }
   if (written > 0) await sleep(1000);
   const png = await generate(prompt);
-  await writeFile(file, png);
+  // The API returns PNG (~2-3MB at this size); WebP q85 is visually identical
+  // in the small quiz tiles at ~10% of the weight.
+  const webp = await sharp(png).webp({ quality: 85 }).toBuffer();
+  await writeFile(file, webp);
   written++;
-  console.log(`wrote ${file} (${(png.length / 1024).toFixed(0)}kB)`);
+  console.log(`wrote ${file} (${(webp.length / 1024).toFixed(0)}kB)`);
 }
 console.log(`done — ${written} written, ${skipped} already existed.`);

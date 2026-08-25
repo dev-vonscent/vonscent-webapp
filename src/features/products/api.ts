@@ -149,6 +149,7 @@ function mapProduct(row: DbProduct): ProductDetail {
     bottleMl: row.bottle_ml,
     // Filled in by fetchProducts' separate custom-tags query (audit R2).
     customTags: [],
+    customTagSlugs: [],
   };
 }
 
@@ -175,23 +176,29 @@ export const fetchProducts = cache(async (): Promise<ProductDetail[]> => {
   // tag-based search matches — never an empty shop.
   const { data: tagRows } = await supabase
     .from("product_custom_tags")
-    .select("product_id, custom_tags ( name )");
+    .select("product_id, custom_tags ( name, slug )");
   if (tagRows) {
-    const byProduct = new Map<string, string[]>();
+    const byProduct = new Map<string, { names: string[]; slugs: string[] }>();
     for (const r of tagRows as unknown as {
       product_id: string;
-      custom_tags: { name: string } | { name: string }[] | null;
+      custom_tags:
+        | { name: string; slug: string }
+        | { name: string; slug: string }[]
+        | null;
     }[]) {
-      const name = (
-        Array.isArray(r.custom_tags) ? r.custom_tags[0] : r.custom_tags
-      )?.name;
-      if (!name) continue;
-      const list = byProduct.get(r.product_id) ?? [];
-      list.push(name);
-      byProduct.set(r.product_id, list);
+      const tag = Array.isArray(r.custom_tags)
+        ? r.custom_tags[0]
+        : r.custom_tags;
+      if (!tag?.name) continue;
+      const entry = byProduct.get(r.product_id) ?? { names: [], slugs: [] };
+      entry.names.push(tag.name);
+      if (tag.slug) entry.slugs.push(tag.slug);
+      byProduct.set(r.product_id, entry);
     }
     for (const p of products) {
-      p.customTags = byProduct.get(p.id) ?? [];
+      const entry = byProduct.get(p.id);
+      p.customTags = entry?.names ?? [];
+      p.customTagSlugs = entry?.slugs ?? [];
     }
   }
   return products;
@@ -360,6 +367,12 @@ export async function getRelated(
     n += 2 * p.seasons.filter((s) => product!.seasons.includes(s)).length;
     if (p.concentration === product!.concentration) n += 1;
     n += p.tags.filter((t) => product!.tags.includes(t)).length;
+    // Admin-curated custom tags (0044) describe use-case and character —
+    // requirement_final.md §3: «аль болох олон таг нь таарсан уснууд».
+    n +=
+      2 *
+      p.customTagSlugs.filter((t) => product!.customTagSlugs.includes(t))
+        .length;
     return n;
   }
 

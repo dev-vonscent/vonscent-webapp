@@ -32,12 +32,13 @@ import {
 } from "@/components/ui/select";
 import { checkoutSchema } from "@/lib/validators/order";
 import {
-  GIFT_THRESHOLD,
   SHIPPING_ZONES,
   PAYMENT_METHODS,
   type ShippingZoneConfig,
 } from "@/lib/constants";
+import { giftAllowanceFor } from "@/lib/gift";
 import { GiftSamplePicker } from "@/features/checkout/components/gift-sample-picker";
+import { CheckoutStepper } from "@/features/checkout/components/checkout-stepper";
 import { DISPATCH_HOUR, ORDER_EDIT_CUTOFF_HOUR } from "@/lib/time";
 import { resolveZone, zoneKey } from "@/lib/geo/zone";
 import {
@@ -276,9 +277,12 @@ export default function CheckoutPage() {
     Math.floor(loyaltyPoints * redeemRate),
     Math.max(subtotal - discount, 0),
   );
-  // Monthly gift samples: one 1ml pick per full 200k of goods after coupon.
-  const giftAllowance = Math.floor(
-    Math.max(subtotal - discount, 0) / GIFT_THRESHOLD,
+  // Monthly gift samples: one 1ml pick per full 200k of goods after coupon,
+  // and every bundle carries at least one pick of its own (src/lib/gift.ts).
+  const bundleQty = collections.reduce((n, c) => n + c.qty, 0);
+  const giftAllowance = giftAllowanceFor(
+    Math.max(subtotal - discount, 0),
+    bundleQty,
   );
   const loyaltyApplied = useLoyalty ? maxLoyalty : 0;
   const total = Math.max(subtotal + shippingFee - discount - loyaltyApplied, 0);
@@ -439,6 +443,10 @@ export default function CheckoutPage() {
         </h1>
       </div>
 
+      <div className="lg:max-w-[calc(100%-440px)]">
+        <CheckoutStepper />
+      </div>
+
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-10"
@@ -481,7 +489,7 @@ export default function CheckoutPage() {
           )}
 
           {/* Contact */}
-          <Section step={1} icon={User} title="Холбоо барих">
+          <Section step={1} id="step-contact" icon={User} title="Холбоо барих">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Нэр" error={errors.contactName?.message}>
                 <Input {...register("contactName")} placeholder="Таны нэр" />
@@ -506,7 +514,12 @@ export default function CheckoutPage() {
           </Section>
 
           {/* Shipping */}
-          <Section step={2} icon={MapPin} title="Хүргэлтийн хаяг">
+          <Section
+            step={2}
+            id="step-shipping"
+            icon={MapPin}
+            title="Хүргэлтийн хаяг"
+          >
             <AddressFields
               value={{
                 city: watch("shipCity") ?? "",
@@ -615,7 +628,12 @@ export default function CheckoutPage() {
           </Section>
 
           {/* Payment */}
-          <Section step={3} icon={CreditCard} title="Төлбөрийн арга">
+          <Section
+            step={3}
+            id="step-payment"
+            icon={CreditCard}
+            title="Төлбөрийн арга"
+          >
             <RadioGroup
               value={payment}
               onValueChange={(v) =>
@@ -867,6 +885,9 @@ export default function CheckoutPage() {
               </Button>
               <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-center text-xs">
                 <ShieldCheck className="size-3.5" />
+                Аюулгүй төлбөр · QPay
+              </p>
+              <p className="text-muted-foreground text-center text-xs">
                 Баталгаажуулснаар та үйлчилгээний нөхцөлийг зөвшөөрнө.
               </p>
             </CardContent>
@@ -911,17 +932,19 @@ export default function CheckoutPage() {
 
 function Section({
   step,
+  id,
   icon: Icon,
   title,
   children,
 }: {
   step: number;
+  id?: string;
   icon: React.ElementType;
   title: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-card rounded-2xl p-5 sm:p-6">
+    <section id={id} className="bg-card scroll-mt-24 rounded-2xl p-5 sm:p-6">
       <div className="mb-5 flex items-center gap-3">
         <span className="bg-secondary flex size-9 shrink-0 items-center justify-center rounded-full">
           {step > 0 ? (

@@ -115,10 +115,14 @@ export async function checkLoginAttempts(phone: string): Promise<AttemptGate> {
   return { ok: true };
 }
 
-/** Record a wrong passcode; lock the phone after MAX_ATTEMPTS in a row. */
-export async function recordFailedLogin(phone: string): Promise<void> {
+/**
+ * Record a wrong passcode; lock the phone after MAX_ATTEMPTS in a row.
+ * Returns how many attempts remain before the lock (0 when this miss locked
+ * it), or null when attempts aren't being tracked (no admin client).
+ */
+export async function recordFailedLogin(phone: string): Promise<number | null> {
   const admin = createAdminClient();
-  if (!admin) return;
+  if (!admin) return null;
   const { data } = await admin
     .from("phone_login_attempts")
     .select("attempts")
@@ -134,6 +138,7 @@ export async function recordFailedLogin(phone: string): Promise<void> {
       : null,
     updated_at: new Date().toISOString(),
   });
+  return Math.max(0, MAX_ATTEMPTS - attempts);
 }
 
 export async function clearLoginAttempts(phone: string): Promise<void> {

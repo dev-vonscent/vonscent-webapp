@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextEditor } from "@/components/shared/rich-text-editor";
+import { ImageUpload } from "@/features/admin/components/image-upload";
 import type {
   PopupSettings,
   PopupSlide,
@@ -144,12 +145,10 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
                   onChange={(e) => setSlide(i, { title: e.target.value })}
                 />
               </Field>
-              <Field label="Зургийн URL">
-                <Input
-                  value={s.imageUrl ?? ""}
-                  onChange={(e) =>
-                    setSlide(i, { imageUrl: e.target.value || null })
-                  }
+              <Field label="Зураг">
+                <ImageUpload
+                  value={s.imageUrl}
+                  onChange={(url) => setSlide(i, { imageUrl: url })}
                 />
               </Field>
               <Field label="CTA текст">
@@ -303,8 +302,9 @@ function BannerSection({ initial }: { initial: HeroBannerRow[] }) {
               { key: "ctaHref", label: "CTA холбоос", value: b.cta_href ?? "" },
               {
                 key: "imageUrl",
-                label: "Зургийн URL",
+                label: "Зураг",
                 value: b.image_url ?? "",
+                image: true,
               },
             ]}
             onSave={async (v) => {
@@ -567,6 +567,8 @@ interface EditableField {
   multiline?: boolean;
   /** TipTap editor — the value is HTML rendered by <RichText> publicly. */
   richtext?: boolean;
+  /** Image picker — the value is a Storage URL set by <ImageUpload>. */
+  image?: boolean;
 }
 
 /**
@@ -624,7 +626,17 @@ function EditableRow({
       {editing && (
         <div className="mt-3 space-y-2">
           {fields.map((f) =>
-            f.richtext ? (
+            f.image ? (
+              <div key={f.key} className="space-y-1">
+                <Label className="text-xs">{f.label}</Label>
+                <ImageUpload
+                  value={values[f.key] || null}
+                  onChange={(url) =>
+                    setValues((v) => ({ ...v, [f.key]: url ?? "" }))
+                  }
+                />
+              </div>
+            ) : f.richtext ? (
               <div key={f.key} className="space-y-1">
                 <Label className="text-xs">{f.label}</Label>
                 <RichTextEditor

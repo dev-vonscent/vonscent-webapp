@@ -17,10 +17,15 @@ export interface QuizProfile {
   families: Record<string, number>;
   seasons: Partial<Record<Season, number>>;
   intensity: Partial<Record<Intensity, number>>;
+  /** Custom-tag slug affinities (0044 pool) — matched on customTagSlugs. */
+  tags: Record<string, number>;
 }
 
+/** A match's list item plus how well it fit the profile (absent on fallback). */
+export type QuizResultItem = ProductListItem & { matchPct?: number };
+
 export interface QuizResult {
-  items: ProductListItem[];
+  items: QuizResultItem[];
   fallback: boolean;
 }
 
@@ -42,12 +47,19 @@ const OPTION_WEIGHTS = new Map<string, QuizWeights>(
 
 /** Accumulate the weight vectors of the picked options; unknown ids are ignored. */
 export function buildProfile(picks: string[]): QuizProfile {
-  const profile: QuizProfile = { families: {}, seasons: {}, intensity: {} };
+  const profile: QuizProfile = {
+    families: {},
+    seasons: {},
+    intensity: {},
+    tags: {},
+  };
   for (const id of picks) {
     const w = OPTION_WEIGHTS.get(id);
     if (!w) continue;
     for (const [slug, n] of Object.entries(w.families ?? {}))
       profile.families[slug] = (profile.families[slug] ?? 0) + n;
+    for (const [slug, n] of Object.entries(w.tags ?? {}))
+      profile.tags[slug] = (profile.tags[slug] ?? 0) + n;
     for (const [s, n] of Object.entries(w.seasons ?? {}))
       profile.seasons[s as Season] = (profile.seasons[s as Season] ?? 0) + n!;
     for (const [i, n] of Object.entries(w.intensity ?? {}))
@@ -74,6 +86,9 @@ function scoreProduct(
 
   // Family is the strongest signal, matching getRelated's ordering.
   for (const slug of p.scentFamilies) n += 2 * (profile.families[slug] ?? 0);
+
+  // Custom tags carry the use-case/character answers the family axis can't.
+  for (const slug of p.customTagSlugs) n += profile.tags[slug] ?? 0;
 
   const seasonWeights = Object.values(profile.seasons).filter(
     (v): v is number => v != null,
@@ -105,6 +120,7 @@ function maxScore(profile: QuizProfile, gender: QuizAnswers["gender"]): number {
   return (
     2 * sum(profile.families) +
     sum(profile.seasons) +
+    sum(profile.tags) +
     (intensityValues.length ? Math.max(...intensityValues) : 0) +
     (gender === "any" ? 0 : 1)
   );
@@ -162,12 +178,16 @@ export function scoreQuizMatches(
 
   if (hasStrong) {
     // Lead with the strong matches; weaker positive scores pad the rail so a
-    // small catalogue still fills it.
+    // small catalogue still fills it. The percentage is a normalized display
+    // score — 96% ceiling so nothing ever claims a perfect match.
     return {
       items: scored
         .filter((x) => x.s > 0)
         .slice(0, RESULT_LIMIT)
-        .map((x) => toListItem(x.p)),
+        .map((x) => ({
+          ...toListItem(x.p),
+          matchPct: Math.min(96, Math.round((90 * x.s) / best) + 6),
+        })),
       fallback: false,
     };
   }

@@ -60,6 +60,13 @@
 - [ ] Хүслийн товчийг CTA-ийн хажууд ойртуулах
 - [ ] «Дэлгэрэнгүй тайлбар» богино тайлбартай давхардахгүй байх (контент)
 
+## Account / Newsletter аудит (2026-08-24)
+
+- [ ] **A.1** Logout гацдаг bug: `account/page.tsx` болон `profile-menu.tsx`-ийн `signOut()` нь `await supabase.auth.signOut()` гацвал `router.push("/")` хүрдэггүй — `try/finally` + `window.location.assign("/")` hard redirect болгох (router cache ч цэвэрлэгдэнэ)
+- [ ] **A.2** GET/DELETE `/api/newsletter` нэмэх — session-ээр өөрийн бүртгэлийг унших (`{ email, is_active }`) ба хасах (`is_active=false`); RLS staff-only тул browser-оос шууд уншиж болохгүй, POST route-ийн загвараар admin client ашиглана
+- [ ] **A.3** Footer newsletter form: бүртгэлтэй хэрэглэгчид input-ийн оронд бүртгэлтэй имэйл + «Солих»/«Хасах» харуулах (A.2-ийн GET-ээс төлөв татна)
+- [ ] **A.4** Account хуудасны «Имэйл» мөр: `data.user.email`-ийн synthetic `@phone.vonscent.mn` хаягийн оронд newsletter-д бүртгэлтэй имэйл харуулах; солих (POST аль хэдийн хуучин мөрийг сольдог) ба unsubscribe UI нэмэх; `@handle`-д мөн synthetic имэйл гардагийг засах
+
 ## Нэмэлт / хүлээлгэнд
 
 - [ ] `@radix-ui/react-alert-dialog` — `confirm-dialog.tsx`-д зөв role

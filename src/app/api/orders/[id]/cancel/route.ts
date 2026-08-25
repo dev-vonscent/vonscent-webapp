@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
 import { isOrderEditable } from "@/lib/time";
 import { sendEmail, STORE_INBOX } from "@/lib/email";
+import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
 import type { OrderRow } from "@/db/types";
 
 /**
@@ -92,6 +93,8 @@ export async function POST(
           : "Төлбөр төлөгдөөгүй байсан."),
     });
   }
+  // The customer gets their own copy on the email they registered (if any).
+  await sendOrderCustomerEmail(id, "cancelled");
 
   revalidatePublic();
   return NextResponse.json({ ok: true });

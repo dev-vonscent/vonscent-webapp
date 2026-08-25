@@ -56,7 +56,7 @@ export function CartSheet({
           <ShoppingCart className="size-5" />
           {label && <span>{label}</span>}
           {mounted && count > 0 && (
-            <span className="bg-primary text-primary-foreground absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full text-[10px] font-medium">
+            <span className="bg-foreground text-background absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full text-[10px] font-semibold">
               {count}
             </span>
           )}

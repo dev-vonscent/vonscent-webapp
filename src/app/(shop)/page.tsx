@@ -135,13 +135,16 @@ export default async function HomePage() {
 
             {/* The image never scales past its container, and the mask melts
                 its edges into the CSS backdrop. */}
-            <div className="order-first relative mx-auto aspect-square w-full max-w-[560px] [mask-image:radial-gradient(ellipse_70%_68%_at_50%_50%,#000_55%,transparent_78%)] md:order-2">
+            <div className="relative order-first mx-auto aspect-square w-full max-w-140 mask-[radial-gradient(ellipse_70%_68%_at_50%_50%,#000_55%,transparent_78%)] md:order-2">
               <Image
                 src="/hero-desktop.jpg"
                 alt="VON SCENT"
                 fill
                 priority
-                sizes="(max-width: 768px) 100vw, 560px"
+                // The square container + object-cover means the image is
+                // sized by its *height*: the 2.33:1 source must be fetched
+                // ~2.33× wider than the slot or the browser upscales it.
+                sizes="(max-width: 768px) 234vw, 1310px"
                 className="object-cover"
               />
             </div>
@@ -201,10 +204,10 @@ export default async function HomePage() {
 
         {/* Build-your-own bundle promo — the side image (5c) bleeds to the
             card edge and fades into the bg-card surface; a CSS glow stands
-            in until public/bundle-side-v2.png is generated. */}
+            in until public/bundle-side-v2.webp is generated. */}
         <section className="border-border bg-card relative grid grid-cols-1 overflow-hidden rounded-2xl border md:grid-cols-[320px_1fr]">
           <SideImage
-            src="/bundle-side-v2.png"
+            src="/bundle-side-v2.webp"
             sizes="(max-width: 768px) 100vw, 320px"
             className="relative order-first aspect-[5/2] min-h-[280px] w-full md:order-none md:aspect-auto md:min-h-0"
             fallbackClassName="bg-[radial-gradient(ellipse_65%_70%_at_35%_55%,rgba(88,92,104,.45),rgba(40,42,50,.18)_55%,transparent_80%)]"
@@ -213,7 +216,7 @@ export default async function HomePage() {
             <div className="from-card absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t to-transparent md:hidden" />
             <div className="from-card absolute inset-y-0 right-0 hidden w-1/2 bg-gradient-to-l to-transparent md:block" />
           </SideImage>
-          <div className="flex min-w-0 max-w-xl flex-col items-start justify-center gap-4 p-6 sm:p-10">
+          <div className="flex max-w-xl min-w-0 flex-col items-start justify-center gap-4 p-6 sm:p-10">
             <p className="text-muted-foreground text-sm font-medium tracking-[0.2em] uppercase">
               Өөрийн багц
             </p>
@@ -221,8 +224,8 @@ export default async function HomePage() {
               Дуртай үнэртнүүдээ багцал
             </h2>
             <p className="text-muted-foreground">
-              4 ба түүнээс дээш үнэртэн сонгоод хямдралтай үнээр аваарай — дээр нь
-              өөрийн сонгосон нэмэлт бэлэгтэй.
+              4 ба түүнээс дээш үнэртэн сонгоод хямдралтай үнээр аваарай — дээр
+              нь өөрийн сонгосон нэмэлт бэлэгтэй.
             </p>
             <Button asChild size="lg">
               <Link href="/collections/build">
@@ -256,7 +259,7 @@ export default async function HomePage() {
                 className="group bg-secondary hover:shadow-lift relative flex aspect-[3/4] flex-col justify-end overflow-hidden rounded-2xl p-5 transition-all hover:-translate-y-1 sm:aspect-[3/2]"
               >
                 <Image
-                  src={`/gender-${g}.png`}
+                  src={`/gender-${g}.webp`}
                   alt={GENDER_LABEL[g]}
                   fill
                   sizes="(max-width: 640px) 33vw, 360px"
@@ -464,7 +467,6 @@ export default async function HomePage() {
             </div>
           </section>
         )}
-
       </div>
 
       <SiteFooter />
