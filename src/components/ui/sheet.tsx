@@ -59,7 +59,7 @@ export const SheetContent = React.forwardRef<
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="ring-offset-background focus:ring-ring absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:outline-none">
+        <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none">
           <X className="size-4" />
           <span className="sr-only">Хаах</span>
         </DialogPrimitive.Close>

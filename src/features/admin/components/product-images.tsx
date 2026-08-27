@@ -104,7 +104,7 @@ function SortableTile({
           {...attributes}
           {...listeners}
           aria-label={`${index + 1}-р зураг — чирж эрэмбэ солих (Space дараад сумаар зөөнө)`}
-          className="bg-background/80 text-muted-foreground focus-visible:ring-ring absolute top-1.5 left-1.5 cursor-grab touch-none rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none active:cursor-grabbing max-sm:opacity-100"
+          className="bg-background/80 text-muted-foreground absolute top-1.5 left-1.5 cursor-grab touch-none rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none active:cursor-grabbing max-sm:opacity-100"
         >
           <GripVertical className="size-4" />
         </button>
@@ -113,7 +113,7 @@ function SortableTile({
           type="button"
           onClick={onRemove}
           aria-label={`${index + 1}-р зургийг устгах`}
-          className="bg-background/80 text-muted-foreground hover:text-destructive focus-visible:ring-ring absolute top-1.5 right-1.5 rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none max-sm:opacity-100"
+          className="bg-background/80 text-muted-foreground hover:text-destructive absolute top-1.5 right-1.5 rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none max-sm:opacity-100"
         >
           <Trash2 className="size-4" />
         </button>
@@ -335,7 +335,7 @@ export function ProductImages({
             upload(e.dataTransfer.files);
         }}
         onClick={() => inputRef.current?.click()}
-        className={`focus-visible:ring-ring flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:cursor-default disabled:opacity-50 ${
+        className={`flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors focus-visible:outline-none disabled:cursor-default disabled:opacity-50 ${
           dropActive
             ? "border-primary bg-primary/5"
             : "border-muted-foreground/30 hover:border-muted-foreground/60 hover:bg-secondary/40"

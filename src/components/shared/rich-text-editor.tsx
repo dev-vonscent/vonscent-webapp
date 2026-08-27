@@ -248,7 +248,7 @@ export function RichTextEditor({
   return (
     <div
       className={cn(
-        "bg-secondary focus-within:ring-ring rounded-md focus-within:ring-2",
+        "bg-secondary rounded-md",
         className,
       )}
     >
