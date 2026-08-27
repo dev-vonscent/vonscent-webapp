@@ -655,7 +655,7 @@ function EditableRow({
                     setValues((v) => ({ ...v, [f.key]: e.target.value }))
                   }
                   rows={4}
-                  className="bg-secondary focus-visible:ring-ring w-full rounded-md px-3 py-2 text-sm outline-none focus-visible:ring-2"
+                  className="bg-secondary w-full rounded-md px-3 py-2 text-sm outline-none"
                 />
               </div>
             ) : (

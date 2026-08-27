@@ -1,27 +1,13 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 import { KeyboardInset } from "@/components/shared/keyboard-inset";
+import { AuthBackPill } from "@/features/auth/components/auth-back-pill";
 import { SITE } from "@/lib/constants";
 import { GRAIN } from "@/lib/textures";
 
-/* Static ambient glow — pre-blurred radial gradients, no CSS filters. */
-const AMBIENT = `
-  radial-gradient(60% 45% at 50% 0%, color-mix(in oklab, var(--foreground) 9%, transparent), transparent 70%),
-  radial-gradient(45% 40% at 88% 92%, color-mix(in oklab, var(--gold) 10%, transparent), transparent 70%),
-  radial-gradient(38% 34% at 8% 78%, color-mix(in oklab, var(--foreground) 5%, transparent), transparent 70%)
-`;
-
-/* Faint light beams that rotate slowly behind everything. */
-const SHEEN = `conic-gradient(
-  from 0deg,
-  transparent 0deg,
-  color-mix(in oklab, var(--foreground) 4%, transparent) 55deg,
-  transparent 110deg,
-  transparent 180deg,
-  color-mix(in oklab, var(--gold) 3%, transparent) 240deg,
-  transparent 300deg
-)`;
+/* Glass orbs — radial highlight gives a soft 3D ball feel; colors follow the
+   active theme via --orb-a/--orb-b/--orb-c (globals.css). */
+const ORB_A = `radial-gradient(circle at 32% 28%, var(--orb-b) 0%, var(--orb-a) 38%, transparent 72%)`;
+const ORB_B = `radial-gradient(circle at 30% 25%, var(--orb-b) 0%, var(--orb-c) 42%, transparent 74%)`;
 
 export default function AuthLayout({
   children,
@@ -36,19 +22,30 @@ export default function AuthLayout({
       {/* iOS: lift the form above the on-screen keyboard */}
       <KeyboardInset />
 
-      {/* ── Ambient backdrop: static glow + slowly rotating light beams ── */}
+      {/* ── Backdrop: drifting glass orbs + fade to the page background ── */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <div
-          className="absolute inset-0"
-          style={{ backgroundImage: AMBIENT }}
+          className="absolute -left-24 top-24 size-72 rounded-full blur-[2px] sm:-left-36 sm:size-104"
+          style={{
+            backgroundImage: ORB_A,
+            animation: "drift 9s ease-in-out infinite",
+          }}
         />
-        {/* transform-only rotation — stays smooth, unlike animated blurs */}
-        <div className="absolute top-1/2 left-1/2 -translate-1/2 ">
-          <div
-            className="animate-sheen size-[170vmax] rounded-full"
-            style={{ backgroundImage: SHEEN }}
-          />
-        </div>
+        <div
+          className="absolute -right-20 -bottom-28 size-80 rounded-full blur-[3px] sm:-right-24 sm:-bottom-40 sm:size-128"
+          style={{
+            backgroundImage: ORB_B,
+            animation: "drift 12s ease-in-out infinite",
+          }}
+        />
+        <div
+          className="absolute right-16 top-16 hidden size-32 rounded-full blur-[1px] sm:block"
+          style={{
+            backgroundImage: ORB_A,
+            animation: "drift 7s ease-in-out infinite",
+          }}
+        />
+        <div className="from-background absolute inset-x-0 bottom-0 h-[45%] bg-linear-to-t to-transparent" />
         {/* fine grain over everything */}
         <div
           className="absolute inset-0 opacity-[0.05] mix-blend-overlay"
@@ -56,21 +53,8 @@ export default function AuthLayout({
         />
       </div>
 
-      {/* ── Giant watermark wordmark (desktop only) ── */}
-      <span
-        aria-hidden
-        className="text-foreground/4 pointer-events-none absolute top-1/2 left-1/2 hidden -translate-1/2  text-[19vw] leading-none font-semibold tracking-tighter whitespace-nowrap select-none sm:block"
-      >
-        vonscent
-      </span>
-
-      {/* ── Back to shop ── */}
-      <Link
-        href="/"
-        className="glass text-muted-foreground hover:text-foreground shadow-soft absolute top-4 left-4 z-10 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm transition-all hover:-translate-x-0.5 sm:top-6 sm:left-6"
-      >
-        <ArrowLeft className="size-4" /> Дэлгүүр рүү буцах
-      </Link>
+      {/* ── Back pill (contextual: shop, or login on forgot-password) ── */}
+      <AuthBackPill />
 
       {/* ── Brand mark + tagline ── */}
       <div className="animate-fade-up relative z-10 mb-8 flex flex-col items-center gap-3">

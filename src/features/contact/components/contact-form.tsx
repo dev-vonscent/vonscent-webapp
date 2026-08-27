@@ -82,7 +82,7 @@ export function ContactForm() {
           id="message"
           rows={5}
           aria-invalid={Boolean(errors.message)}
-          className="bg-secondary focus-visible:ring-ring flex w-full rounded-md px-3 py-2 text-base focus-visible:ring-2 focus-visible:outline-none md:text-sm"
+          className="bg-secondary flex w-full rounded-md px-3 py-2 text-base focus-visible:outline-none md:text-sm"
           {...register("message")}
         />
         {errors.message && (

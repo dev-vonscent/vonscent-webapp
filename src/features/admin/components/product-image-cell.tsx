@@ -303,7 +303,7 @@ function ImagePopup({
                 onChange={(e) => setAdjust(e.target.value)}
                 rows={3}
                 placeholder="Жишээ: Доор байгаа чулууг илүү бодит болго"
-                className="border-border bg-background placeholder:text-muted-foreground focus-visible:ring-ring mt-1 w-full resize-none rounded-md border p-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+                className="border-border bg-background placeholder:text-muted-foreground mt-1 w-full resize-none rounded-md border p-2 text-sm focus-visible:outline-none"
               />
             </label>
             <p className="text-muted-foreground -mt-1 text-xs">

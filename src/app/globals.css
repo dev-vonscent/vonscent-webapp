@@ -39,8 +39,8 @@
   --gold-strong: #ffffff;
 
   /* destructive must stay legible as text on black — not a gray surface */
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
+  --destructive: #f87171;
+  --destructive-foreground: #450a0a;
   --success: #d4d4d4;
   --warning: #d4d4d4;
 
@@ -63,6 +63,11 @@
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.5);
   --shadow-lift: 0 8px 30px -12px rgba(0, 0, 0, 0.7);
   --shadow-gold: none;
+
+  /* auth backdrop glass orbs (radial highlight → 3D feel) */
+  --orb-a: rgba(255, 255, 255, 0.14);
+  --orb-b: rgba(255, 255, 255, 0.28);
+  --orb-c: rgba(212, 212, 212, 0.1);
 }
 
 /* ── White (light monochrome) ─────────────────────────────────────────── */
@@ -92,7 +97,7 @@
   --gold-soft: #8a8a8a;
   --gold-strong: #171717;
 
-  --destructive: #b91c1c;
+  --destructive: #c92c2c;
   --destructive-foreground: #ffffff;
   --success: #4b5563;
   --warning: #4b5563;
@@ -112,6 +117,10 @@
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.08);
   --shadow-lift: 0 8px 30px -12px rgba(0, 0, 0, 0.18);
   --shadow-gold: none;
+
+  --orb-a: rgba(0, 0, 0, 0.1);
+  --orb-b: rgba(255, 255, 255, 0.95);
+  --orb-c: rgba(160, 129, 69, 0.14);
 }
 
 /* ── Pink ─────────────────────────────────────────────────────────────── */
@@ -141,7 +150,7 @@
   --gold-soft: #c98aa0;
   --gold-strong: #e84a7f;
 
-  --destructive: #d6336c;
+  --destructive: #c92c4e;
   --destructive-foreground: #ffffff;
   --success: #c98aa0;
   --warning: #c98aa0;
@@ -161,6 +170,10 @@
   --shadow-soft: 0 1px 2px rgba(157, 23, 77, 0.1);
   --shadow-lift: 0 8px 30px -12px rgba(157, 23, 77, 0.25);
   --shadow-gold: none;
+
+  --orb-a: rgba(232, 74, 127, 0.35);
+  --orb-b: rgba(255, 255, 255, 0.9);
+  --orb-c: rgba(211, 107, 140, 0.22);
 }
 
 @theme inline {
@@ -273,6 +286,16 @@
     transform: rotate(360deg);
   }
 }
+/* Auth backdrop orbs floating gently — transform-only */
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(0, -14px);
+  }
+}
 
 /* ---- Custom utilities (luxury helpers) ---- */
 @utility no-scrollbar {
@@ -376,6 +399,12 @@
   *::before,
   *::after {
     border-color: transparent !important;
+  }
+  /* No focus ring/outline anywhere — Radix primitives included. */
+  *:focus,
+  *:focus-visible,
+  *:focus-within {
+    outline: none !important;
   }
   body {
     position: relative;

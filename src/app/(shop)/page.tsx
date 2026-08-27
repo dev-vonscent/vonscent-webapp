@@ -83,16 +83,9 @@ export default async function HomePage() {
           so low-res admin uploads stay sharp on wide screens. Pulled up under
           the floating header (pt-4 16px + h-14 pill = 72px) so the backdrop
           reaches the very top and shows behind the translucent pill. */}
-      <section className="relative -mt-18 w-full overflow-hidden bg-black">
-        {/* Ambience is CSS — resolution-independent at any viewport width. */}
-        <div
-          aria-hidden
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 60% 75% at 72% 55%, rgba(92,62,28,.5), rgba(40,28,14,.25) 45%, transparent 72%)",
-          }}
-        />
+      <section className="bg-background relative -mt-18 w-full overflow-hidden">
+        {/* No CSS ambience behind the artwork — the backdrop stays the flat
+            theme background so the bottle's own lighting is the only glow. */}
         <div
           aria-hidden
           className="absolute inset-0 opacity-[0.05] mix-blend-overlay"
@@ -105,13 +98,13 @@ export default async function HomePage() {
         ) : (
           <div className="mx-auto grid max-w-352 items-center gap-8 px-4 pt-28 pb-16 md:grid-cols-2 md:px-8">
             <div className="relative z-10 max-w-md space-y-5 max-md:mx-auto max-md:flex max-md:flex-col max-md:items-center max-md:text-center md:order-1">
-              <p className="text-sm font-medium tracking-[0.22em] text-white/60 uppercase">
+              <p className="text-muted-foreground text-sm font-medium tracking-[0.22em] uppercase">
                 Жинхэнэ үнэртэн · Decant
               </p>
-              <h1 className="text-4xl font-bold tracking-tight text-balance text-white sm:text-5xl">
+              <h1 className="text-foreground text-4xl font-bold tracking-tight text-balance sm:text-5xl">
                 Бүтэн сав авахаасаа өмнө туршиж үз
               </h1>
-              <p className="text-white/70">
+              <p className="text-muted-foreground">
                 Дэлхийн шилдэг үнэртнүүдийг 2/5/10/20ml багцаар — өөрт тохирохоо
                 олоод дараа нь бүтэн савыг нь аваарай.
               </p>
@@ -119,14 +112,15 @@ export default async function HomePage() {
                 <Button
                   asChild
                   size="lg"
-                  className="bg-white text-black hover:bg-white/90"
+                  className="in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
                 >
                   <Link href="/catalog">Каталог үзэх</Link>
                 </Button>
                 <Button
                   asChild
                   size="lg"
-                  className="bg-white/10 text-white hover:bg-white/20"
+                  variant="secondary"
+                  className="in-[.black]:bg-white/10 in-[.black]:text-white in-[.black]:hover:bg-white/20"
                 >
                   <Link href="/collections/build">Багц угсрах</Link>
                 </Button>
@@ -136,16 +130,36 @@ export default async function HomePage() {
             {/* The image never scales past its container, and the mask melts
                 its edges into the CSS backdrop. */}
             <div className="relative order-first mx-auto aspect-square w-full max-w-140 mask-[radial-gradient(ellipse_70%_68%_at_50%_50%,#000_55%,transparent_78%)] md:order-2">
+              {/* One artwork per theme — the dark shot is unreadable on the
+                  light palettes. All three are in the DOM (a display:none
+                  image is never "visible", so lazy-loading would never fire
+                  it); only the active theme's is painted. */}
               <Image
-                src="/hero-desktop.jpg"
+                src="/hero-black.webp"
                 alt="VON SCENT"
                 fill
                 priority
-                // The square container + object-cover means the image is
-                // sized by its *height*: the 2.33:1 source must be fetched
-                // ~2.33× wider than the slot or the browser upscales it.
-                sizes="(max-width: 768px) 234vw, 1310px"
-                className="object-cover"
+                // All three artworks are square — 1:1 with the slot.
+                sizes="(max-width: 768px) 100vw, 560px"
+                // The bottle sits smaller in its frame than the light shots,
+                // so it gets a nudge up in scale to match their presence.
+                className="scale-110 object-cover in-[.pink]:hidden in-[.white]:hidden"
+              />
+              <Image
+                src="/hero-white.webp"
+                alt="VON SCENT"
+                fill
+                loading="eager"
+                sizes="(max-width: 768px) 100vw, 560px"
+                className="hidden object-cover in-[.white]:block"
+              />
+              <Image
+                src="/hero-pink.webp"
+                alt="VON SCENT"
+                fill
+                loading="eager"
+                sizes="(max-width: 768px) 100vw, 560px"
+                className="hidden object-cover in-[.pink]:block"
               />
             </div>
           </div>

@@ -113,7 +113,7 @@ export function ReviewForm({ productId }: { productId: string }) {
         rows={3}
         maxLength={1000}
         placeholder="Энэ үнэрийн талаар бодлоо хуваалцаарай (заавал биш)…"
-        className="bg-secondary focus-visible:ring-ring w-full rounded-md px-3 py-2 text-base outline-none focus-visible:ring-2 md:text-sm"
+        className="bg-secondary w-full rounded-md px-3 py-2 text-base outline-none md:text-sm"
       />
       {error && <p className="text-destructive text-sm">{error}</p>}
       <Button type="submit" disabled={submitting}>

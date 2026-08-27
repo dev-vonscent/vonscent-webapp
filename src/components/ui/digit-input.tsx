@@ -21,6 +21,8 @@ export interface DigitInputProps {
   disabled?: boolean;
   onComplete?: (value: string) => void;
   className?: string;
+  /** Нүдний хэмжээг дарж бичих (жишээ нь дөрвөлжин болгох). */
+  cellClassName?: string;
 }
 
 export const DigitInput = React.forwardRef<HTMLInputElement, DigitInputProps>(
@@ -36,6 +38,7 @@ export const DigitInput = React.forwardRef<HTMLInputElement, DigitInputProps>(
       disabled,
       onComplete,
       className,
+      cellClassName,
     },
     ref,
   ) => {
@@ -82,11 +85,12 @@ export const DigitInput = React.forwardRef<HTMLInputElement, DigitInputProps>(
                 {groupAt !== undefined && i === groupAt && (
                   <span className="bg-muted-foreground/40 h-px w-2 shrink-0 rounded-full" />
                 )}
+                {/* flat cells — the blinking caret alone marks the active one */}
                 <div
                   className={cn(
-                    "bg-secondary flex h-12 w-full max-w-10 min-w-0 flex-1 items-center justify-center rounded-xl text-lg font-semibold tabular-nums transition-all duration-150",
-                    active && "ring-ring bg-accent scale-105 ring-2",
+                    "bg-secondary flex h-12 w-full max-w-10 min-w-0 flex-1 items-center justify-center rounded-xl text-lg font-semibold tabular-nums",
                     disabled && "opacity-50",
+                    cellClassName,
                   )}
                 >
                   {char ? (
