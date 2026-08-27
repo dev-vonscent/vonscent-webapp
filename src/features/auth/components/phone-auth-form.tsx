@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { MessageSquareText, RotateCw } from "lucide-react";
+import { ArrowLeft, MessageSquareText, RotateCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ const COPY: Record<Mode, { title: string; subtitle: string; cta: string }> = {
   },
   register: {
     title: "Бүртгүүлэх",
-    subtitle: "Утасны дугаараа баталгаажуулж бүртгүүлнэ",
+    subtitle: "Утасны дугаараа баталгаажуулна",
     cta: "Бүртгүүлэх",
   },
   forgot: {
@@ -32,6 +32,36 @@ const COPY: Record<Mode, { title: string; subtitle: string; cta: string }> = {
     cta: "Нууц код солих",
   },
 };
+
+/** Бүртгэлийн 1·2·3 алхам заагч — хэрэглэгч хаана явж буйгаа мэднэ. */
+function StepIndicator({ step }: { step: 1 | 2 | 3 }) {
+  return (
+    <div className="flex items-center justify-center gap-2">
+      {([1, 2, 3] as const).map((n) => (
+        <React.Fragment key={n}>
+          {n > 1 && (
+            <span
+              className={`h-px w-6 ${n <= step ? "bg-gold" : "bg-foreground/15"}`}
+            />
+          )}
+          {n < step ? (
+            <span className="text-gold flex size-6.5 items-center justify-center rounded-full border-[1.5px] border-current! text-[13px]">
+              ✓
+            </span>
+          ) : n === step ? (
+            <span className="bg-foreground text-background flex size-6.5 items-center justify-center rounded-full text-xs font-bold">
+              {n}
+            </span>
+          ) : (
+            <span className="text-muted-foreground border-foreground/15! flex size-6.5 items-center justify-center rounded-full border-[1.5px] text-xs font-semibold">
+              {n}
+            </span>
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
 
 /** Staggered entrance for the form blocks. */
 function Reveal({
@@ -67,8 +97,6 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
   const [passcode, setPasscode] = React.useState("");
   const [passcode2, setPasscode2] = React.useState("");
   const [loading, setLoading] = React.useState(false);
-  // Login errors render inline in the form (4a) — a toast is easy to miss.
-  const [formError, setFormError] = React.useState<string | null>(null);
 
   const passcodeRef = React.useRef<HTMLInputElement>(null);
   const passcode2Ref = React.useRef<HTMLInputElement>(null);
@@ -91,7 +119,6 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
       const pc = code ?? passcode;
       if (loading || !/^\d{8}$/u.test(phone) || !/^\d{4}$/u.test(pc)) return;
       setLoading(true);
-      setFormError(null);
       try {
         const res = await fetch("/api/auth/phone/login", {
           method: "POST",
@@ -108,19 +135,20 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
           minutes?: number;
           left?: number;
         } | null;
+        // Алдааг toast-оор — форм дотор зай эзлэхгүй, layout shift үгүй.
         if (body?.error === "LOCKED") {
-          setFormError(
+          toast.error(
             `Хэт олон буруу оролдлого. ${body.minutes ?? 15} минутын дараа дахин оролдоно уу.`,
           );
         } else if (body?.error === "WRONG_CREDENTIALS") {
-          setFormError(
+          toast.error(
             `Дугаар эсвэл нууц код буруу байна.${
               body.left ? ` (${body.left} оролдлого үлдсэн)` : ""
             }`,
           );
           setPasscode("");
         } else {
-          setFormError("Нэвтэрч чадсангүй. Дахин оролдоно уу.");
+          toast.error("Нэвтэрч чадсангүй. Дахин оролдоно уу.");
         }
       } catch {
         toast.error("Сүлжээний алдаа гарлаа.");
@@ -219,14 +247,30 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
     ? (/body=(\d+)/u.exec(verify.session.smsUri)?.[1] ?? "")
     : "";
 
+  const step =
+    verify.stage === "verified" ? 3 : verify.stage === "waiting" ? 2 : 1;
+
   return (
     <div className="space-y-7">
-      <Reveal delay={0} className="text-center">
-        <h1 className="font-serif text-3xl font-semibold tracking-tight">
-          {copy.title}
-        </h1>
-        <p className="text-muted-foreground mt-1.5 text-sm">{copy.subtitle}</p>
-      </Reveal>
+      {mode === "register" && (
+        <Reveal delay={0}>
+          <StepIndicator step={step} />
+        </Reveal>
+      )}
+
+      {/* СМС хүлээх / нууц код тохируулах дэлгэцүүд өөрийн агуулгаараа
+          ойлгомжтой — том гарчгийг зөвхөн эхний алхамд харуулна. */}
+      {(mode === "login" ||
+        (verify.stage !== "waiting" && verify.stage !== "verified")) && (
+        <Reveal delay={0} className="text-center">
+          <h1 className="font-serif text-3xl font-semibold tracking-tight">
+            {copy.title}
+          </h1>
+          <p className="text-muted-foreground mt-1.5 text-sm">
+            {copy.subtitle}
+          </p>
+        </Reveal>
+      )}
 
       {devEmailOpen ? null : mode === "login" ? (
         <form
@@ -274,15 +318,6 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
             />
           </Reveal>
 
-          {formError && (
-            <p
-              role="alert"
-              className="text-destructive -my-2 text-center text-sm"
-            >
-              {formError}
-            </p>
-          )}
-
           <Reveal delay={180}>
             <Button
               type="submit"
@@ -297,9 +332,13 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
         /* Алхам 2 — дугаар баталгаажсан, passcode тохируулна */
         <form onSubmit={submitPasscode} className="space-y-6">
           <div className="animate-fade-up space-y-6">
-            <div className="bg-card space-y-1 rounded-2xl p-4 text-center">
-              <p className="font-serif text-lg">{phone}</p>
-              <p className="text-success text-sm">Дугаар баталгаажлаа ✓</p>
+            <div className="bg-card flex items-center justify-center gap-2 rounded-2xl p-4">
+              <p className="font-serif text-lg">
+                {phone.replace(/^(\d{4})(\d{4})$/u, "$1 $2")}
+              </p>
+              <p className="text-success text-sm font-semibold">
+                Баталгаажлаа ✓
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -337,11 +376,32 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
             >
               {loading ? "Түр хүлээнэ үү…" : copy.cta}
             </Button>
+
+            {/* Ил гарц — бүртгэлээ дуусгалгүй нэвтрэх рүү буцаж болно */}
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-muted-foreground hover:text-foreground h-10 w-full rounded-xl text-[13px] font-normal"
+              onClick={() => {
+                verify.reset();
+                router.push("/login");
+              }}
+            >
+              Болих — нэвтрэх рүү буцах
+            </Button>
           </div>
         </form>
       ) : verify.stage === "waiting" && verify.session ? (
-        /* Алхам 1.5 — СМС хүлээж байна */
-        <div className="animate-fade-up bg-card space-y-5 rounded-2xl p-6 text-center">
+        /* Алхам 2 — СМС хүлээж байна */
+        <div className="animate-fade-up space-y-4">
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-sm transition-colors"
+            onClick={() => verify.reset()}
+          >
+            <ArrowLeft className="size-4" /> Дугаар солих
+          </button>
+          <div className="bg-card space-y-5 rounded-2xl p-6 text-center">
           <div className="text-muted-foreground flex items-center justify-center gap-2 text-xs tracking-widest uppercase">
             <span className="relative flex size-2">
               <span className="bg-foreground absolute inline-flex size-full  animate-ping rounded-full opacity-60" />
@@ -391,6 +451,32 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
           <p className="text-muted-foreground text-xs">
             СМС-ийн төлбөр 150₮-ийг оператор таны дансаас суутгана.
           </p>
+
+          {/* Гарцууд: таймер дуусахыг хүлээх шаардлагагүй */}
+          <div className="flex gap-2.5">
+            <Button
+              type="button"
+              variant="outline"
+              className="ring-foreground/15 h-11 flex-1 rounded-xl ring-1"
+              onClick={() => {
+                verify.reset();
+                router.push("/login");
+              }}
+            >
+              Болих
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="ring-foreground/15 h-11 flex-1 rounded-xl ring-1"
+              onClick={() =>
+                verify.start(phone, mode === "register" ? "register" : "reset")
+              }
+            >
+              <RotateCw className="size-4" /> Дахин илгээх
+            </Button>
+          </div>
+          </div>
         </div>
       ) : (
         /* Алхам 1 — дугаараа өгч баталгаажуулалт эхлүүлнэ */
@@ -430,12 +516,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
               label="Утасны дугаар"
               autoFocus={mode === "forgot"}
             />
-          </Reveal>{" "}
-          {verify.stage === "error" && verify.error && (
-            <p className="text-destructive-foreground bg-destructive/60 rounded-lg px-3 py-2 text-center text-sm">
-              {verify.error}
-            </p>
-          )}
+          </Reveal>
           <Reveal delay={mode === "register" ? 180 : 120}>
             <Button
               type="submit"
@@ -507,6 +588,9 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
         </>
       )}
 
+      {/* СМС хүлээх/нууц код алхамд өөрийн гарцууд бий — доод линк илүүц. */}
+      {(mode === "login" ||
+        (verify.stage !== "waiting" && verify.stage !== "verified")) && (
       <Reveal delay={240}>
         <p className="text-muted-foreground text-center text-sm">
           {mode === "login" ? (
@@ -521,7 +605,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
             </>
           ) : (
             <>
-              Бүртгэлтэй юу?{" "}
+              {mode === "forgot" ? "Санаа орлоо?" : "Бүртгэлтэй юу?"}{" "}
               <Link
                 href="/login"
                 className="text-foreground underline-offset-4 hover:underline"
@@ -532,6 +616,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
           )}
         </p>
       </Reveal>
+      )}
     </div>
   );
 }
