@@ -45,7 +45,9 @@ interface NavLink {
 const GROUPS: { title: string | null; links: NavLink[] }[] = [
   {
     title: null,
-    links: [{ href: "/admin", label: "Хяналтын самбар", icon: LayoutDashboard }],
+    links: [
+      { href: "/admin", label: "Хяналтын самбар", icon: LayoutDashboard },
+    ],
   },
   {
     title: "Борлуулалт",
@@ -63,14 +65,15 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
   {
     title: "Каталог",
     links: [
-      { href: "/admin/products", label: "Бараа", icon: Boxes },
-      { href: "/admin/collections", label: "Багц", icon: Layers },
+      // Үлдэгдэл нь тусдаа хуудас байхаа больсон (0047 / products-table) —
+      // мл-ийн үйлдэл барааны мөр дээр хийгддэг тул «дууссан» тоо ч энд гарна.
       {
-        href: "/admin/inventory",
-        label: "Үлдэгдэл",
-        icon: Warehouse,
+        href: "/admin/products",
+        label: "Бараа",
+        icon: Boxes,
         badge: "outOfStock",
       },
+      { href: "/admin/collections", label: "Багц", icon: Layers },
       { href: "/admin/scent-families", label: "Үнэрийн төрөл", icon: Tags },
       { href: "/admin/tags", label: "Нэмэлт таг", icon: Tag },
     ],
@@ -87,7 +90,11 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
     title: "Сайт",
     links: [
       { href: "/admin/content", label: "Контент", icon: FileText },
-      { href: "/admin/home-sections", label: "Нүүрийн хэсэг", icon: LayoutList },
+      {
+        href: "/admin/home-sections",
+        label: "Нүүрийн хэсэг",
+        icon: LayoutList,
+      },
     ],
   },
   {
@@ -104,12 +111,16 @@ const QUICK: NavLink[] = [
     icon: ShoppingCart,
     badge: "newOrders",
   },
-  { href: "/admin/products", label: "Бараа", icon: Boxes },
   {
-    href: "/admin/inventory",
-    label: "Үлдэгдэл",
-    icon: Warehouse,
+    href: "/admin/products",
+    label: "Бараа",
+    icon: Boxes,
     badge: "outOfStock",
+  },
+  {
+    href: "/admin/products?stock=low&sort=stock",
+    label: "Үлдэгдэл бага",
+    icon: Warehouse,
   },
 ];
 
@@ -137,7 +148,8 @@ export function AdminSidebar({
       const raw = localStorage.getItem(OPEN_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as unknown;
-        if (Array.isArray(parsed)) stored = parsed.filter((v): v is string => typeof v === "string");
+        if (Array.isArray(parsed))
+          stored = parsed.filter((v): v is string => typeof v === "string");
       }
     } catch {
       // ignore — fall back to the defaults
@@ -177,7 +189,7 @@ export function AdminSidebar({
         key={l.href}
         href={l.href}
         className={cn(
-          "flex shrink-0 items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors",
+          "flex min-h-11 shrink-0 items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors lg:min-h-0",
           active
             ? "bg-secondary text-foreground font-medium"
             : "text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -186,7 +198,7 @@ export function AdminSidebar({
         <l.icon className="size-4" />
         {l.label}
         {badgeCount > 0 && (
-          <span className="bg-foreground text-background ml-auto rounded-full px-1.5 text-[10px]/4  font-semibold">
+          <span className="bg-foreground text-background ml-auto rounded-full px-1.5 text-[11px]/4 font-semibold">
             {badgeCount}
           </span>
         )}
@@ -213,7 +225,7 @@ export function AdminSidebar({
             type="button"
             onClick={() => toggle(g.title!)}
             aria-expanded={open.includes(g.title)}
-            className="text-muted-foreground hover:text-foreground flex w-full items-center justify-between px-3 pt-4 pb-1 text-[10px] font-semibold tracking-[0.14em] uppercase transition-colors"
+            className="text-muted-foreground hover:text-foreground flex w-full items-center justify-between px-3 pt-4 pb-1 text-[11px] font-semibold tracking-[0.15em] uppercase transition-colors"
           >
             {g.title}
             <ChevronDown
@@ -240,7 +252,7 @@ export function AdminSidebar({
           <SheetTrigger asChild>
             <button
               type="button"
-              className="hover:bg-accent flex size-10 items-center justify-center rounded-md"
+              className="hover:bg-accent flex size-11 items-center justify-center rounded-md"
               aria-label="Цэс нээх"
             >
               <Menu className="size-5" />
@@ -274,7 +286,7 @@ export function AdminSidebar({
                       <q.icon className="size-5" />
                       {q.label}
                       {badgeCount > 0 && (
-                        <span className="bg-foreground text-background absolute top-1.5 right-1.5 rounded-full px-1.5 text-[10px]/4  font-semibold">
+                        <span className="bg-foreground text-background absolute top-1.5 right-1.5 rounded-full px-1.5 text-[11px]/4 font-semibold">
                           {badgeCount}
                         </span>
                       )}
@@ -297,10 +309,10 @@ export function AdminSidebar({
             </SheetClose>
           </SheetContent>
         </Sheet>
+        {/* No "admin" tag here: on a phone the whole chrome is the admin panel
+            and the label only competed with the page name. It stays on the
+            desktop column, where it sits under the logo as a wordmark. */}
         <span className="text-sm font-medium">{currentLabel}</span>
-        <span className="text-muted-foreground ml-auto text-xs font-medium">
-          admin
-        </span>
       </div>
 
       {/* ── Desktop: grouped accordion column (5b) ── */}
