@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Label } from "@/components/ui/label";
+import { Field } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -138,20 +138,3 @@ export function composeDetail(khoroo: number | null, detail: string): string {
   return rest ? `${formatKhoroo(khoroo)}, ${rest}` : formatKhoroo(khoroo);
 }
 
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
-      {error && <p className="text-destructive text-xs">{error}</p>}
-    </div>
-  );
-}

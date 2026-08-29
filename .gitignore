@@ -43,3 +43,10 @@ next-env.d.ts
 # playwright
 /test-results/
 /playwright-report/
+
+# claude code / impeccable skill (local only)
+/.claude/
+/.impeccable/
+/DESIGN.md
+/PRODUCT.md
+shot.tmp.mjs

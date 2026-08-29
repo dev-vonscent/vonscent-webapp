@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Field } from "@/components/ui/field";
+import { adminFetch } from "@/features/admin/lib/mutate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,7 +26,17 @@ import {
   SEASON_LABEL,
 } from "@/lib/constants";
 import { useConfirm } from "@/components/shared/confirm-dialog";
-import { VariantPriceTable, type VariantDraft } from "./variant-price-table";
+import { toast } from "@/lib/toast";
+import {
+  RETURN_PARAM,
+  listHref,
+  useUnsavedGuard,
+} from "@/features/admin/lib/return-to";
+import {
+  VariantPriceTable,
+  unpricedActiveSizes,
+  type VariantDraft,
+} from "./variant-price-table";
 import { MultiCheck, useToggleList } from "./multi-check";
 import { DescriptionFields } from "./description-fields";
 import { ProductImages } from "./product-images";
@@ -47,9 +59,16 @@ export function ProductEditForm({
   customTagPool?: CustomTagOption[];
 }) {
   const router = useRouter();
+  const params = useSearchParams();
+  // The list's own `?q/status/sort`, carried in so saving returns to the exact
+  // view the operator was working through (return-to.ts).
+  const backHref = listHref(params.get(RETURN_PARAM));
   const [confirm, confirmDialog] = useConfirm();
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
+  const [showVariantErrors, setShowVariantErrors] = React.useState(false);
+  const [dirty, setDirty] = React.useState(false);
+  const errorRef = React.useRef<HTMLParagraphElement | null>(null);
   const [form, setForm] = React.useState({
     name: product.name,
     brand: product.brand,
@@ -69,13 +88,14 @@ export function ProductEditForm({
     salePct: String(product.salePct),
     lowStockMl: String(product.lowStockMl),
   });
-  const [scentFamilies, toggleFamily] = useToggleList(product.scentFamilies);
-  const [seasons, toggleSeason] = useToggleList(product.seasons, {
+  const [scentFamilies, rawToggleFamily] = useToggleList(product.scentFamilies);
+  const [seasons, rawToggleSeason] = useToggleList(product.seasons, {
     exclusive: "all",
   });
-  // Every store size gets a row — sizes the product doesn't have yet (e.g.
-  // the 2ml sample tier on older products) start inactive at 0₮, and saving
-  // them upserts the missing variant.
+  // Every store size gets a row — sizes the product doesn't sell yet start
+  // inactive at 0₮, and saving them upserts the missing variant. (2ml is an
+  // ordinary size like the rest, not a sample: the monthly 1ml gift is a
+  // separate concept entirely.)
   const [variants, setVariants] = React.useState<VariantDraft[]>(() =>
     ML_SIZES.map((ml) => {
       const v = product.variants.find((x) => x.ml === ml);
@@ -85,24 +105,73 @@ export function ProductEditForm({
     }),
   );
   const [tags, setTags] = React.useState<string[]>(product.tags);
-  const [customTags, toggleCustomTag] = useToggleList(product.customTags);
+  const [customTags, rawToggleCustomTag] = useToggleList(product.customTags);
   const [isActive, setIsActive] = React.useState(product.isActive);
 
+  useUnsavedGuard(dirty);
+
+  // Bring a rejection into view and announce it. Without this the message
+  // renders far below the sticky footer the operator just pressed.
+  React.useEffect(() => {
+    if (!msg) return;
+    errorRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    errorRef.current?.focus();
+  }, [msg]);
+
+  /** Every edit path has to mark the form dirty, or the guard lies. */
+  function markDirty<T extends (...args: never[]) => void>(fn: T): T {
+    return ((...args: Parameters<T>) => {
+      setDirty(true);
+      fn(...args);
+    }) as T;
+  }
+  const toggleFamily = markDirty(rawToggleFamily);
+  const toggleSeason = markDirty(rawToggleSeason);
+  const toggleCustomTag = markDirty(rawToggleCustomTag);
+
   function set<K extends keyof typeof form>(k: K, v: string) {
+    setDirty(true);
     setForm((f) => ({ ...f, [k]: v }));
   }
   function toggleTag(slug: string) {
+    setDirty(true);
     setTags((t) =>
       t.includes(slug) ? t.filter((x) => x !== slug) : [...t, slug],
     );
   }
 
+  /** «Болих» throws away ~30 fields, so it asks first once anything changed. */
+  async function cancel() {
+    if (dirty) {
+      const ok = await confirm({
+        title: "Хадгалаагүй өөрчлөлт байна",
+        description:
+          "Одоо гарвал энэ барааны хийсэн засвар бүрэн алдагдана. Гарах уу?",
+        confirmLabel: "Гарах",
+        cancelLabel: "Үргэлжлүүлэх",
+        destructive: true,
+      });
+      if (!ok) return;
+    }
+    router.push(backHref);
+  }
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    // A ticked size with no price publishes a free decant against real ml
+    // stock — refuse before the request, and point at the rows.
+    const unpriced = unpricedActiveSizes(variants);
+    if (unpriced.length > 0) {
+      setShowVariantErrors(true);
+      setMsg(
+        `${unpriced.join(", ")}ml зарахаар тэмдэглэсэн ч үнэгүй байна. Үнэ оруулах эсвэл «Зарна»-г авна уу.`,
+      );
+      return;
+    }
     setBusy(true);
     setMsg(null);
     try {
-      const res = await fetch(`/api/admin/products/${product.id}`, {
+      const res = await adminFetch(`/api/admin/products/${product.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -131,10 +200,20 @@ export function ProductEditForm({
           customTags,
         }),
       });
-      const data = await res.json();
-      if (data.demo) setMsg("Demo горим: өөрчлөлт хадгалагдсангүй.");
-      else if (res.ok) router.push("/admin/products");
-      else setMsg("Алдаа гарлаа.");
+      if (res.ok) {
+        setDirty(false);
+        // Repricing is the highest-stakes thing this form does and it used to
+        // complete in silence, on a list whose filters had been reset.
+        toast.success(
+          isActive
+            ? `«${form.name}» хадгалагдлаа. Шинэ үнэ сайтад шууд харагдана.`
+            : `«${form.name}» хадгалагдлаа. Бараа сайтад харагдахгүй байна.`,
+        );
+        router.push(backHref);
+        return;
+      }
+      // The server's reason, not a content-free "Алдаа гарлаа."
+      setMsg(`Хадгалж чадсангүй: ${res.error}`);
     } finally {
       setBusy(false);
     }
@@ -150,11 +229,20 @@ export function ProductEditForm({
     });
     if (!ok) return;
     setBusy(true);
-    const res = await fetch(`/api/admin/products/${product.id}`, {
-      method: "DELETE",
-    });
-    setBusy(false);
-    if (res.ok) router.push("/admin/products");
+    try {
+      const res = await adminFetch(`/api/admin/products/${product.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setDirty(false);
+        toast.success(`«${product.name}» устгагдлаа.`);
+        router.push(backHref);
+        return;
+      }
+      setMsg(`Устгаж чадсангүй: ${res.error}`);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -226,7 +314,7 @@ export function ProductEditForm({
             options={families.map((f) => ({ value: f.slug, label: f.label }))}
             selected={scentFamilies}
             onToggle={toggleFamily}
-            empty="Тохиргоо → Үнэрийн төрөл хэсэгт эхлээд төрөл нэмнэ үү."
+            empty="Каталог → Үнэрийн төрөл хэсэгт эхлээд төрөл нэмнэ үү."
           />
           <MultiCheck
             label="Улирал (олон сонголт)"
@@ -293,7 +381,15 @@ export function ProductEditForm({
           {variants.length > 0 && (
             <div className="space-y-2">
               <Label>Хэмжээ тус бүрийн үнэ</Label>
-              <VariantPriceTable variants={variants} onChange={setVariants} />
+              <VariantPriceTable
+                variants={variants}
+                onChange={(v) => {
+                  setDirty(true);
+                  setVariants(v);
+                }}
+                showErrors={showVariantErrors}
+                idPrefix={`edit-${product.id}`}
+              />
             </div>
           )}
 
@@ -361,7 +457,10 @@ export function ProductEditForm({
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox
               checked={isActive}
-              onCheckedChange={(v) => setIsActive(Boolean(v))}
+              onCheckedChange={(v) => {
+                setDirty(true);
+                setIsActive(Boolean(v));
+              }}
             />
             Идэвхтэй (нийтлэх)
           </label>
@@ -379,20 +478,31 @@ export function ProductEditForm({
       </Card>
 
       {msg && (
-        <p className="bg-secondary rounded-md px-4 py-3 text-sm">{msg}</p>
+        // role="alert" so a save failure is announced, not just painted. The
+        // ref is what brings it on screen: this sits ~2000px below the fold,
+        // so a rejected save used to look like nothing had happened at all.
+        <p
+          ref={errorRef}
+          role="alert"
+          tabIndex={-1}
+          className="bg-secondary rounded-md px-4 py-3 text-sm"
+        >
+          {msg}
+        </p>
       )}
 
-      <div className="flex items-center justify-between">
-        <div className="flex gap-3">
-          <Button type="submit" size="lg" disabled={busy}>
+      {/* Sticky on a phone — see product-form.tsx. */}
+      <div className="bg-background/85 pb-safe sticky bottom-0 -mx-4 flex items-center justify-between gap-3 px-4 py-3 backdrop-blur md:static md:mx-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+        <div className="flex flex-1 gap-3 md:flex-none">
+          <Button
+            type="submit"
+            size="lg"
+            disabled={busy}
+            className="flex-1 md:flex-none"
+          >
             {busy ? "Хадгалж байна…" : "Хадгалах"}
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            onClick={() => router.push("/admin/products")}
-          >
+          <Button type="button" variant="secondary" size="lg" onClick={cancel}>
             Болих
           </Button>
         </div>
@@ -409,19 +519,4 @@ function split(s: string) {
     .split(",")
     .map((x) => x.trim())
     .filter(Boolean);
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
-    </div>
-  );
 }

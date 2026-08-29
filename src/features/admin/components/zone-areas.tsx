@@ -83,7 +83,7 @@ export function ZoneAreas({
             setKhoroo("");
           }}
         >
-          <SelectTrigger className="h-9 w-44 text-xs">
+          <SelectTrigger className="h-11 w-44 text-xs md:h-9">
             <SelectValue placeholder="Хот / аймаг" />
           </SelectTrigger>
           <SelectContent>
@@ -103,7 +103,7 @@ export function ZoneAreas({
           }}
           disabled={!aimag}
         >
-          <SelectTrigger className="h-9 w-44 text-xs">
+          <SelectTrigger className="h-11 w-44 text-xs md:h-9">
             <SelectValue placeholder={childLabel(aimag)} />
           </SelectTrigger>
           <SelectContent>
@@ -117,7 +117,7 @@ export function ZoneAreas({
 
         {khoroos.length > 0 && (
           <Select value={khoroo} onValueChange={setKhoroo}>
-            <SelectTrigger className="h-9 w-40 text-xs">
+            <SelectTrigger className="h-11 w-40 text-xs md:h-9">
               <SelectValue placeholder="Бүх хороо" />
             </SelectTrigger>
             <SelectContent>
@@ -132,7 +132,7 @@ export function ZoneAreas({
 
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           size="sm"
           disabled={!adm2}
           onClick={add}

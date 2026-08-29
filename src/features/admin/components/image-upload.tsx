@@ -4,6 +4,7 @@ import * as React from "react";
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { IMAGE_ACCEPT } from "@/lib/storage/limits";
 import { prepareUpload } from "@/lib/storage/prepare-upload";
+import { adminFetch } from "@/features/admin/lib/mutate";
 
 /**
  * Wide-format single-image picker for marketing imagery (hero banners, promo
@@ -41,11 +42,14 @@ export function ImageUpload({
       const fd = new FormData();
       fd.append("file", prepared.file);
       fd.append("folder", folder);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      const data = await res.json().catch(() => null);
-      if (data?.demo) {
-        setError("Demo горим: зураг хадгалагдсангүй.");
-      } else if (!res.ok || !data?.url) {
+      const res = await adminFetch<{ url?: string; width?: number }>(
+        "/api/upload",
+        { method: "POST", body: fd },
+      );
+      const data = res.ok ? res.data : null;
+      if (!res.ok) {
+        setError(res.demo ? "Demo горим: зураг хадгалагдсангүй." : res.error);
+      } else if (!data?.url) {
         setError("Оруулахад алдаа гарлаа.");
       } else {
         // The hero renders the banner up to 560px wide (×2 for retina) — a
@@ -55,7 +59,7 @@ export function ImageUpload({
             `Зургийн өргөн ${data.width}px байна — 1120px-ээс өргөн зураг оруулбал илүү тод харагдана.`,
           );
         }
-        onChange(data.url as string);
+        onChange(data.url);
       }
     } finally {
       setBusy(false);

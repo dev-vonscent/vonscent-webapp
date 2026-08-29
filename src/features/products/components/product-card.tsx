@@ -24,7 +24,7 @@ export function ProductCard({
     <div className="group relative flex flex-col">
       <Link
         href={`/products/${product.slug}`}
-        className="border-border bg-muted group-hover:border-gold-strong/40 group-hover:shadow-lift relative aspect-4/5 overflow-hidden rounded-2xl border transition-all duration-300"
+        className="bg-muted group-hover:shadow-lift relative aspect-4/5 overflow-hidden rounded-2xl transition-all duration-300"
       >
         {product.image && (
           <Image
@@ -37,7 +37,7 @@ export function ProductCard({
         )}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
           {product.tags.map((t) => (
-            <Badge key={t} variant={t} className="w-fit backdrop-blur-sm">
+            <Badge key={t} variant={t} className="w-fit bg-background/85! backdrop-blur-sm">
               {TAG_LABEL[t]}
             </Badge>
           ))}
@@ -49,7 +49,7 @@ export function ProductCard({
         )}
         {product.soldOut && (
           <div className="bg-background/70 absolute inset-0 flex items-center justify-center">
-            <span className="border-border bg-card rounded-full border px-3 py-1 text-xs font-medium tracking-wide uppercase">
+            <span className="bg-card rounded-full px-3 py-1 text-xs font-medium tracking-wide uppercase">
               Дууссан
             </span>
           </div>

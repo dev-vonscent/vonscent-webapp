@@ -3,6 +3,10 @@ import { getReportData, getAdminProducts } from "@/features/admin/api";
 import { getStoreSettings } from "@/features/content/api";
 import { PrintButton } from "@/features/admin/components/print-button";
 import { formatPrice, formatDate } from "@/lib/format";
+import {
+  stockState,
+  STOCK_STATE_LABEL,
+} from "@/features/admin/lib/stock-state";
 
 export const metadata: Metadata = { title: "Тайлан — хэвлэх" };
 
@@ -21,10 +25,15 @@ export default async function ReportPrintPage() {
     getStoreSettings(),
   ]);
   const totalMl = products.reduce((s, p) => s + p.availableMl, 0);
-  const lowStock = products.filter((p) => p.availableMl <= p.lowStockMl);
+  // Sold-out rows used to land in here as merely "low"; both still need the
+  // operator's attention on a printed sheet, so they stay together — but the
+  // state column now says which is which.
+  const lowStock = products.filter(
+    (p) => stockState(p.availableMl, p.lowStockMl) !== "ok",
+  );
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-2 text-sm">
+    <div className="print-sheet mx-auto max-w-3xl space-y-6 p-2 text-sm">
       <div className="flex items-start justify-between">
         <div>
           <p className="font-serif text-2xl font-semibold">{store.name}</p>
@@ -67,13 +76,14 @@ export default async function ReportPrintPage() {
       />
 
       <Table
-        title="Дуусах дөхсөн бараа"
-        head={["Брэнд", "Нэр", "Үлдэгдэл", "Доод хязгаар"]}
+        title="Анхаарах үлдэгдэл"
+        head={["Брэнд", "Нэр", "Үлдэгдэл", "Доод хязгаар", "Төлөв"]}
         rows={lowStock.map((p) => [
           p.brand,
           p.name,
           `${p.availableMl}ml`,
           `${p.lowStockMl}ml`,
+          STOCK_STATE_LABEL[stockState(p.availableMl, p.lowStockMl)],
         ])}
         empty="Доод хязгаарт хүрсэн бараа алга."
       />

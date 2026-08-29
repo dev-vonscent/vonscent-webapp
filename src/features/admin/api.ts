@@ -1,22 +1,32 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { callRpc } from "@/lib/supabase/rpc";
 import type {
   OrderRow,
   OrderItemRow,
   OrderStatusHistoryRow,
   ProfileRow,
   CouponRow,
-  HeroBannerRow,
   HomeSectionRow,
   FaqRow,
   BlogPostRow,
 } from "@/db/types";
-import type { OrderStatus } from "@/lib/constants";
+import {
+  ORDER_STATUSES,
+  DEFAULT_LOW_STOCK_ML,
+  type OrderStatus,
+} from "@/lib/constants";
 
 /**
  * Admin read access. Uses the cookie-bound client so staff RLS applies (admins
  * may read all orders / profiles via is_staff()). Returns empty data in demo.
  */
+
+interface RevenueWindows {
+  sales_today: number;
+  sales_7d: number;
+  sales_30d: number;
+}
 
 export interface DashboardData {
   salesToday: number;
@@ -29,54 +39,65 @@ export interface DashboardData {
 }
 
 /**
- * Борлуулалт (client-defined): the goods value of paid orders — shipping fee
- * excluded, coupon and loyalty deductions excluded. See requirement_final.md
- * «Борлуулалт бодох арга».
+ * Борлуулалт (client-defined) — the goods value of paid orders, with shipping,
+ * coupon and loyalty deductions excluded (requirement_final.md «Борлуулалт
+ * бодох арга») — is defined once, in SQL: `greatest(subtotal - discount -
+ * coalesce(loyalty_used, 0), 0)` in migration 0046. It used to also exist as a
+ * TypeScript function here; two definitions of the same money rule drift.
  */
-export function orderRevenue(o: {
-  subtotal: number;
-  discount: number;
-  loyalty_used: number;
-}): number {
-  return Math.max(0, o.subtotal - o.discount - (o.loyalty_used ?? 0));
-}
 
 export async function getDashboardData(): Promise<DashboardData | null> {
   const supabase = await createClient();
   if (!supabase) return null;
 
-  const { data } = await supabase
-    .from("orders")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(500);
-  const orders = (data as OrderRow[] | null) ?? [];
-
   const now = Date.now();
   const startToday = new Date();
   startToday.setHours(0, 0, 0, 0);
+  const since30d = new Date(now - 30 * 864e5).toISOString();
 
-  const paid = orders.filter((o) => o.payment_status === "paid");
-  const sumSince = (ms: number) =>
-    paid
-      .filter((o) => new Date(o.created_at).getTime() >= ms)
-      .reduce((s, o) => s + orderRevenue(o), 0);
+  // Previously this was one `select("*").limit(500)` and everything below was
+  // computed from that slice — so past 500 lifetime orders the revenue figures
+  // and status counts went quietly and permanently wrong. Each number now has
+  // its own bounded query: revenue is scoped by date (not by row count) and
+  // the status tallies are SQL counts.
+  const [{ data: revenue }, { data: recent }, ...statusResults] =
+    await Promise.all([
+      callRpc<RevenueWindows[]>(supabase, "admin_revenue_windows", {
+        p_today: startToday.toISOString(),
+        p_7d: new Date(now - 7 * 864e5).toISOString(),
+        p_30d: since30d,
+      }),
+      supabase
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(8),
+      ...ORDER_STATUSES.map((s) =>
+        supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("status", s),
+      ),
+    ]);
 
-  const statusCounts = {
-    pending: 0,
-    confirmed: 0,
-    shipping: 0,
-    delivered: 0,
-    cancelled: 0,
-  } as Record<OrderStatus, number>;
-  for (const o of orders) statusCounts[o.status] += 1;
+  const windows = revenue?.[0] ?? {
+    sales_today: 0,
+    sales_7d: 0,
+    sales_30d: 0,
+  };
+
+  const statusCounts = Object.fromEntries(
+    ORDER_STATUSES.map((s, i) => [s, statusResults[i]?.count ?? 0]),
+  ) as Record<OrderStatus, number>;
+
+  const hasPaidSales = windows.sales_30d > 0;
 
   // Top sellers by actual paid volume — the same top_seller_products RPC the
   // storefront uses (audit R4: it excludes free gift lines and aggregates in
   // SQL, so the ranking never diverges or truncates). Falls back to the hot
   // tag in the dashboard when there are no sales yet.
   const topSellerIds: string[] = [];
-  if (paid.length > 0) {
+  if (hasPaidSales) {
     const { data: ranked } = await supabase.rpc("top_seller_products", {
       p_limit: 20,
     });
@@ -88,11 +109,11 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   }
 
   return {
-    salesToday: sumSince(startToday.getTime()),
-    sales7d: sumSince(now - 7 * 864e5),
-    sales30d: sumSince(now - 30 * 864e5),
+    salesToday: windows.sales_today,
+    sales7d: windows.sales_7d,
+    sales30d: windows.sales_30d,
     statusCounts,
-    recentOrders: orders.slice(0, 8),
+    recentOrders: (recent as OrderRow[] | null) ?? [],
     topSellerIds,
   };
 }
@@ -106,21 +127,24 @@ export interface SidebarBadges {
 export async function getSidebarBadges(): Promise<SidebarBadges> {
   const supabase = await createClient();
   if (!supabase) return { newOrders: 0, outOfStock: 0 };
-  const [{ count }, { data: inv }] = await Promise.all([
+  // Both are SQL counts. This runs in `(admin)/layout.tsx` — on every admin
+  // navigation — so it used to pull 10,000 inventory rows over the wire to
+  // count them in JS. `available_ml` is a generated column (0046).
+  const [{ count }, { count: outOfStock }] = await Promise.all([
     supabase
       .from("orders")
       .select("id", { count: "exact", head: true })
       .eq("status", "pending"),
     supabase
       .from("inventory")
-      .select("on_hand_ml, reserved_ml, products!inner(is_active)")
+      .select("product_id, products!inner(is_active)", {
+        count: "exact",
+        head: true,
+      })
       .eq("products.is_active", true)
-      .limit(10000),
+      .lte("available_ml", 0),
   ]);
-  const outOfStock = (
-    (inv as { on_hand_ml: number; reserved_ml: number }[] | null) ?? []
-  ).filter((r) => r.on_hand_ml - r.reserved_ml <= 0).length;
-  return { newOrders: count ?? 0, outOfStock };
+  return { newOrders: count ?? 0, outOfStock: outOfStock ?? 0 };
 }
 
 export interface AdminNotification {
@@ -185,16 +209,48 @@ export async function getOrderDetail(id: string): Promise<{
   };
 }
 
-export async function getCustomers(search?: string): Promise<ProfileRow[]> {
+/**
+ * Every customer as a pick-list option (id + display name), for the coupon
+ * targeting Select. Deliberately separate from `getCustomers`: that one is
+ * paginated for the list screen, and paginating a dropdown would silently
+ * hide anyone past the first page.
+ */
+export async function getCustomerOptions(): Promise<
+  { id: string; full_name: string | null; phone: string | null }[]
+> {
   const supabase = await createClient();
   if (!supabase) return [];
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, full_name, phone")
+    .order("full_name", { ascending: true });
+  return (
+    (data as
+      | { id: string; full_name: string | null; phone: string | null }[]
+      | null) ?? []
+  );
+}
+
+/** Rows per page for the customers list — server-side, like orders. */
+export const CUSTOMERS_PER_PAGE = 50;
+
+export async function getCustomers(
+  search?: string,
+  page = 0,
+): Promise<{ rows: ProfileRow[]; total: number | null }> {
+  const supabase = await createClient();
+  if (!supabase) return { rows: [], total: null };
   let query = supabase
     .from("profiles")
-    .select("*")
+    .select("*", { count: "exact" })
     .order("created_at", { ascending: false });
   if (search) query = query.ilike("full_name", `%${search}%`);
-  const { data } = await query.limit(200);
-  return (data as ProfileRow[] | null) ?? [];
+  // The old `.limit(200)` hid every customer past the 200th, search included.
+  const { data, count } = await query.range(
+    page * CUSTOMERS_PER_PAGE,
+    page * CUSTOMERS_PER_PAGE + CUSTOMERS_PER_PAGE - 1,
+  );
+  return { rows: (data as ProfileRow[] | null) ?? [], total: count ?? 0 };
 }
 
 /** One ml size as the admin edits it (product_variants). */
@@ -238,7 +294,12 @@ export interface AdminProduct {
   salePct: number;
   isActive: boolean;
   startingPrice: number;
+  /** on_hand_ml − reserved_ml: what the shop can actually still sell. */
   availableMl: number;
+  /** Physical ml in the source bottle, reservations included. */
+  onHandMl: number;
+  /** ml promised to orders that are placed but not yet committed. */
+  reservedMl: number;
   lowStockMl: number;
   tags: string[];
   /** Free-form internal tag slugs (0035_custom_tags). */
@@ -356,7 +417,12 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
     isActive: r.is_active,
     startingPrice: prices.length ? Math.min(...prices) : 0,
     availableMl: inv ? inv.on_hand_ml - inv.reserved_ml : 0,
-    lowStockMl: inv?.low_stock_ml ?? 20,
+    // Kept alongside `availableMl` because the products list now owns stock
+    // management outright: an operator correcting ml downward has to see how
+    // much is already reserved, or the floor rejection reads as arbitrary.
+    onHandMl: inv?.on_hand_ml ?? 0,
+    reservedMl: inv?.reserved_ml ?? 0,
+    lowStockMl: inv?.low_stock_ml ?? DEFAULT_LOW_STOCK_ML,
     tags,
     // Filled by the callers' separate custom-tags query (audit R2 — an
     // embedded select would fail wholesale on a DB without 0035).
@@ -370,16 +436,35 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
   };
 }
 
+/**
+ * Hard cap on the catalogue fetch. This query had no `.limit()` at all, which
+ * does not mean "everything" — it means PostgREST's `db-max-rows` silently
+ * truncates. An explicit cap plus `productsWereCapped` makes the ceiling
+ * visible instead: the shop is told rather than quietly shown fewer goods.
+ */
+export const ADMIN_PRODUCTS_CAP = 2000;
+
 export async function getAdminProducts(): Promise<AdminProduct[]> {
   const supabase = await createClient();
   if (!supabase) return [];
   const { data } = await supabase
     .from("products")
     .select(ADMIN_PRODUCT_SELECT)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(ADMIN_PRODUCTS_CAP);
   return ((data as unknown as AdminProductRow[] | null) ?? []).map(
     mapAdminProduct,
   );
+}
+
+/** True when the catalogue is larger than one `getAdminProducts()` page. */
+export async function productsWereCapped(): Promise<boolean> {
+  const supabase = await createClient();
+  if (!supabase) return false;
+  const { count } = await supabase
+    .from("products")
+    .select("id", { count: "exact", head: true });
+  return (count ?? 0) > ADMIN_PRODUCTS_CAP;
 }
 
 export async function getAdminProduct(
@@ -487,155 +572,59 @@ export interface ReportData {
 
 export async function getReportData(): Promise<ReportData> {
   const supabase = await createClient();
-  if (!supabase)
-    return {
-      totalRevenue: 0,
-      totalCost: 0,
-      profit: 0,
-      paidOrders: 0,
-      topProducts: [],
-      topBrands: [],
-      monthly: [],
-    };
+  const empty: ReportData = {
+    totalRevenue: 0,
+    totalCost: 0,
+    profit: 0,
+    paidOrders: 0,
+    topProducts: [],
+    topBrands: [],
+    monthly: [],
+  };
+  if (!supabase) return empty;
 
-  // Only count items from paid orders.
-  const { data } = await supabase
-    .from("order_items")
-    .select(
-      "order_id, product_name, brand, ml, qty, line_total, orders!inner ( payment_status, created_at )",
-    )
-    .eq("orders.payment_status", "paid");
-
-  const rows =
-    (data as unknown as
-      | {
-          order_id: string;
-          product_name: string;
-          brand: string;
-          ml: number;
-          qty: number;
-          line_total: number;
-          orders: { created_at: string } | { created_at: string }[] | null;
-        }[]
-      | null) ?? [];
-
-  const productMap = new Map<
-    string,
-    { name: string; brand: string; qty: number; revenue: number }
-  >();
-  const brandMap = new Map<string, number>();
-  /** Order ids are collected per month so a multi-line order counts once. */
-  const monthMap = new Map<
-    string,
-    { revenue: number; ml: number; orderIds: Set<string> }
-  >();
-
-  for (const r of rows) {
-    const order = Array.isArray(r.orders) ? r.orders[0] : r.orders;
-    if (order?.created_at) {
-      const month = order.created_at.slice(0, 7);
-      const m = monthMap.get(month) ?? {
-        revenue: 0,
-        ml: 0,
-        orderIds: new Set<string>(),
-      };
-      m.ml += r.ml * r.qty;
-      m.orderIds.add(r.order_id);
-      monthMap.set(month, m);
-    }
-
-    const key = `${r.brand}|${r.product_name}`;
-    const p = productMap.get(key) ?? {
-      name: r.product_name,
-      brand: r.brand,
-      qty: 0,
-      revenue: 0,
-    };
-    p.qty += r.qty;
-    p.revenue += r.line_total;
-    productMap.set(key, p);
-    brandMap.set(r.brand, (brandMap.get(r.brand) ?? 0) + r.line_total);
-  }
-
-  // Борлуулалт is computed per order (subtotal − discount − points), never
-  // from line totals: shipping is excluded and order-level deductions can't
-  // be attributed to individual lines. Per-product/brand figures above keep
-  // raw line totals — they exist for ranking, not accounting.
-  const { data: paidOrderRows } = await supabase
-    .from("orders")
-    .select("subtotal, discount, loyalty_used, created_at")
-    .eq("payment_status", "paid")
-    .limit(5000);
-  const paidOrders =
-    (paidOrderRows as
-      | {
-          subtotal: number;
-          discount: number;
-          loyalty_used: number;
-          created_at: string;
-        }[]
-      | null) ?? [];
-  let totalRevenue = 0;
-  for (const o of paidOrders) {
-    const rev = orderRevenue(o);
-    totalRevenue += rev;
-    const month = o.created_at.slice(0, 7);
-    const m = monthMap.get(month) ?? {
-      revenue: 0,
-      ml: 0,
-      orderIds: new Set<string>(),
-    };
-    m.revenue += rev;
-    monthMap.set(month, m);
-  }
-
-  // Зардал (requirement «Борлуулалт бодох арга»): every bottle's purchase
-  // price + every restock's recorded cost.
-  const [{ data: bottleRows }, { data: restockRows }] = await Promise.all([
-    supabase.from("products").select("bottle_price").limit(5000),
-    supabase.from("restock_log").select("cost").limit(10000),
+  // Every figure below is a SQL aggregate (0046). Summing these in JS meant
+  // fetching every paid order_item, every order, every product price and every
+  // restock row — each capped by a `.limit()` or by PostgREST's db-max-rows,
+  // so the profit the shop plans on was silently wrong past the cap.
+  const [
+    { data: totals },
+    { data: monthly },
+    { data: products },
+    { data: brands },
+  ] = await Promise.all([
+    callRpc<
+      { total_revenue: number; paid_orders: number; total_cost: number }[]
+    >(supabase, "admin_report_totals", {}),
+    callRpc<{ month: string; revenue: number; orders: number; ml: number }[]>(
+      supabase,
+      "admin_report_monthly",
+      {},
+    ),
+    callRpc<{ name: string; brand: string; qty: number; revenue: number }[]>(
+      supabase,
+      "admin_report_top_products",
+      { p_limit: 10 },
+    ),
+    callRpc<{ brand: string; revenue: number }[]>(
+      supabase,
+      "admin_report_top_brands",
+      {},
+    ),
   ]);
-  const totalCost =
-    ((bottleRows as { bottle_price: number }[] | null) ?? []).reduce(
-      (s, r) => s + (r.bottle_price ?? 0),
-      0,
-    ) +
-    ((restockRows as { cost: number }[] | null) ?? []).reduce(
-      (s, r) => s + (r.cost ?? 0),
-      0,
-    );
+
+  const t = totals?.[0];
+  if (!t) return empty;
 
   return {
-    totalRevenue,
-    totalCost,
-    profit: totalRevenue - totalCost,
-    paidOrders: paidOrders.length,
-    topProducts: [...productMap.values()]
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 10),
-    topBrands: [...brandMap.entries()]
-      .map(([brand, revenue]) => ({ brand, revenue }))
-      .sort((a, b) => b.revenue - a.revenue),
-    monthly: [...monthMap.entries()]
-      .map(([month, m]) => ({
-        month,
-        revenue: m.revenue,
-        ml: m.ml,
-        orders: m.orderIds.size,
-      }))
-      // "YYYY-MM" sorts lexicographically, so newest first is a plain reverse.
-      .sort((a, b) => b.month.localeCompare(a.month)),
+    totalRevenue: t.total_revenue,
+    totalCost: t.total_cost,
+    profit: t.total_revenue - t.total_cost,
+    paidOrders: t.paid_orders,
+    topProducts: products ?? [],
+    topBrands: brands ?? [],
+    monthly: monthly ?? [],
   };
-}
-
-export async function getAllBanners(): Promise<HeroBannerRow[]> {
-  const supabase = await createClient();
-  if (!supabase) return [];
-  const { data } = await supabase
-    .from("hero_banners")
-    .select("*")
-    .order("sort_order", { ascending: true });
-  return (data as HeroBannerRow[] | null) ?? [];
 }
 
 /** A home rail as the admin edits it — product ids only, in their order. */

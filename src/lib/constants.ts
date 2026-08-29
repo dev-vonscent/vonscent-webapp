@@ -22,13 +22,27 @@ export const ML_SIZES = [2, 5, 10, 20] as const;
 export type MlSize = (typeof ML_SIZES)[number];
 
 /**
- * Bundles stay 5/10/20 — the 2ml sample tier is for single decants only
- * (collection-requirement.md defines bundles over the three main sizes).
+ * Bundles price over every size the shop sells — 2ml is an ordinary tier, so a
+ * bundle can be built out of 2ml decants too (client decision).
  */
-export const BUNDLE_ML_SIZES = [5, 10, 20] as const;
+export const BUNDLE_ML_SIZES = ML_SIZES;
+
+/** Size a fresh bundle starts on — the most common decant tier. */
+export const DEFAULT_BUNDLE_ML = 5;
 
 /** Reserve hold (minutes) for orders awaiting payment before auto-release. */
 export const RESERVE_TIMEOUT_MINUTES = 30;
+
+/**
+ * Доод хязгаар (ml) — шинэ бараа энэ утгаас эхэлнэ.
+ *
+ * Боломжит үлдэгдэл нь энэ тооноос доош ороход бараа «Бага» болж, хяналтын
+ * самбарт сэрэмжлүүлэг гарна. 20ml байсныг 50 болгов: 20ml гэдэг нь ганцхан
+ * 20ml decant-ын хэмжээ, өөрөөр хэлбэл сэрэмжлүүлэг нь сүүлчийн захиалга
+ * гарсны дараа асдаг байсан — гааль, тээврийн хугацааг бодоход дахин
+ * захиалахад хэтэрхий орой. Админ бараа тус бүрээр нь өөрчилж болно.
+ */
+export const DEFAULT_LOW_STOCK_ML = 50;
 
 /**
  * Сар бүрийн бэлгийн sample (questions.md №2–3): one 1ml pick per full

@@ -18,11 +18,11 @@ export default async function AdminGiftsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-serif text-2xl font-semibold">
-          Сарын бэлгийн sample
+          Сарын бэлэг — 1мл дээж
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">
           Худалдан авагч 200,000₮ тутамд (купоны дараах, хүргэлтгүй дүнгээр)
-          доорх уснуудаас 1мл sample-аа checkout дээр сонгоно. Сар бүр 4–8 ус
+          доорх уснуудаас 1мл дээжээ захиалга баталгаажуулах үедээ сонгоно. Сар бүр 4–8 ус
           сонгохыг зөвлөнө.
         </p>
       </div>

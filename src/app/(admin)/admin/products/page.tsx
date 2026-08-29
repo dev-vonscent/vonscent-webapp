@@ -1,17 +1,39 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, PackageSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getAdminProducts } from "@/features/admin/api";
+import {
+  ADMIN_PRODUCTS_CAP,
+  getAdminProducts,
+  productsWereCapped,
+} from "@/features/admin/api";
 import { ProductsToolbar } from "@/features/admin/components/products-toolbar";
 import { ProductsTable } from "@/features/admin/components/products-table";
+import { stockState } from "@/features/admin/lib/stock-state";
 
 export default async function AdminProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; sort?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    vis?: string;
+    stock?: string;
+    /** Legacy single filter, kept so old links and bookmarks still land. */
+    status?: string;
+    sort?: string;
+  }>;
 }) {
-  const { q, status, sort } = await searchParams;
-  let products = await getAdminProducts();
+  const { q, vis, stock, status, sort } = await searchParams;
+  const [all, capped] = await Promise.all([
+    getAdminProducts(),
+    productsWereCapped(),
+  ]);
+  let products = all;
+
+  // Visibility and stock used to share one `status` parameter, which made them
+  // mutually exclusive. Old links carrying it are mapped onto whichever of the
+  // two dimensions they actually meant.
+  const visibility = vis ?? legacyVisibility(status);
+  const stockFilter = stock ?? legacyStock(status);
 
   if (q) {
     const needle = q.toLowerCase();
@@ -19,14 +41,14 @@ export default async function AdminProductsPage({
       `${p.name} ${p.brand}`.toLowerCase().includes(needle),
     );
   }
-  if (status === "active") products = products.filter((p) => p.isActive);
-  else if (status === "hidden") products = products.filter((p) => !p.isActive);
-  else if (status === "low")
+  if (visibility === "active") products = products.filter((p) => p.isActive);
+  else if (visibility === "hidden")
+    products = products.filter((p) => !p.isActive);
+
+  if (stockFilter)
     products = products.filter(
-      (p) => p.availableMl > 0 && p.availableMl <= p.lowStockMl,
+      (p) => stockState(p.availableMl, p.lowStockMl) === stockFilter,
     );
-  else if (status === "soldout")
-    products = products.filter((p) => p.availableMl <= 0);
 
   products = [...products].sort((a, b) => {
     switch (sort) {
@@ -43,11 +65,13 @@ export default async function AdminProductsPage({
     }
   });
 
+  const filtering = Boolean(q || visibility || stockFilter);
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h1 className="font-serif text-2xl font-semibold">Бараа</h1>
-        <Button asChild>
+        <Button asChild className="shrink-0">
           <Link href="/admin/products/new">
             <Plus className="size-4" />
             Бараа нэмэх
@@ -57,7 +81,65 @@ export default async function AdminProductsPage({
 
       <ProductsToolbar />
 
-      <ProductsTable data={products} />
+      {capped && (
+        <p
+          role="status"
+          className="bg-warning/15 text-warning rounded-md px-4 py-3 text-sm"
+        >
+          Каталог {ADMIN_PRODUCTS_CAP.toLocaleString("mn-MN")} бараанаас
+          хэтэрсэн тул зөвхөн хамгийн сүүлд нэмэгдсэн{" "}
+          {ADMIN_PRODUCTS_CAP.toLocaleString("mn-MN")} нь энд харагдаж байна.
+        </p>
+      )}
+
+      {products.length === 0 ? (
+        <EmptyState filtering={filtering} />
+      ) : (
+        <ProductsTable data={products} />
+      )}
+    </div>
+  );
+}
+
+function legacyVisibility(status?: string): string {
+  return status === "active" || status === "hidden" ? status : "";
+}
+
+function legacyStock(status?: string): string {
+  return status === "low" || status === "soldout" ? status : "";
+}
+
+/**
+ * Two different nothings. A catalogue with no products at all needs the way in;
+ * a filter that matched nothing needs the way back — the shared table empty
+ * ("Бараа алга") told the operator neither.
+ */
+function EmptyState({ filtering }: { filtering: boolean }) {
+  return (
+    <div className="bg-card rounded-lg px-6 py-14 text-center">
+      <PackageSearch className="text-muted-foreground mx-auto size-8" />
+      <p className="mt-4 font-medium">
+        {filtering ? "Тохирох бараа олдсонгүй" : "Каталог хоосон байна"}
+      </p>
+      <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-sm">
+        {filtering
+          ? "Хайлт, шүүлтүүрээ өөрчилж үзнэ үү."
+          : "Эхний барааг нэмээд хэмжээ тус бүрийн үнийг бичихэд дэлгүүр ажиллаж эхэлнэ."}
+      </p>
+      <div className="mt-5">
+        {filtering ? (
+          <Button variant="secondary" asChild>
+            <Link href="/admin/products">Шүүлтүүр цэвэрлэх</Link>
+          </Button>
+        ) : (
+          <Button asChild>
+            <Link href="/admin/products/new">
+              <Plus className="size-4" />
+              Бараа нэмэх
+            </Link>
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

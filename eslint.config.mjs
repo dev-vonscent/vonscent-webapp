@@ -22,6 +22,27 @@ const eslintConfig = defineConfig([
     },
   },
   {
+    // Admin writes must go through `mutate()` / `mutateJson()` / `saveSetting()`
+    // from `@/features/admin/lib/mutate`, which check `res.ok` and surface a
+    // toast on failure. A bare `fetch` here is how "Хадгалагдлаа ✓" ended up
+    // rendering for rejected writes to shipping fees and ml inventory — twice.
+    files: [
+      "src/features/admin/**/*.{ts,tsx}",
+      "src/app/(admin)/**/*.{ts,tsx}",
+    ],
+    ignores: ["src/features/admin/lib/mutate.ts"],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        {
+          name: "fetch",
+          message:
+            "Админы бичилтийг @/features/admin/lib/mutate-ийн mutate() / mutateJson() / saveSetting()-ээр дамжуул — res.ok шалгаж, алдааг toast-оор харуулна.",
+        },
+      ],
+    },
+  },
+  {
     rules: {
       // The `useEffect(() => setMounted(true), [])` mount guard is the
       // idiomatic way to avoid hydration mismatches with persisted client

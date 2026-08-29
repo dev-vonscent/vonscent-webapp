@@ -114,9 +114,10 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                 key={v.id}
                 onClick={() => setVariantId(v.id)}
                 disabled={!v.inStock}
+                aria-pressed={v.inStock ? active : undefined}
                 aria-label={v.inStock ? `${v.ml}ml` : `${v.ml}ml — дууссан`}
                 className={cn(
-                  "relative flex min-w-20 flex-col items-center rounded-lg px-4 py-2 transition-colors",
+                  "relative flex min-h-11 min-w-20 flex-col items-center justify-center rounded-lg px-4 py-2 transition-colors",
                   !v.inStock
                     ? "bg-secondary/50 text-muted-foreground cursor-not-allowed line-through opacity-50"
                     : active

@@ -100,8 +100,9 @@ export function ProductGallery({
                 key={i}
                 onClick={() => pick(i)}
                 aria-label={`Зураг ${i + 1}`}
+                aria-current={i === active ? "true" : undefined}
                 className={cn(
-                  "h-1.5 rounded-full transition-all",
+                  "relative h-1.5 rounded-full transition-all before:absolute before:top-1/2 before:left-1/2 before:h-11 before:w-6 before:-translate-1/2  before:content-['']",
                   i === active
                     ? "bg-foreground w-6"
                     : "bg-muted-foreground/60 w-1.5",

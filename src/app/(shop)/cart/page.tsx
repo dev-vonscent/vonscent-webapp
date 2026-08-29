@@ -145,7 +145,7 @@ export default function CartPage() {
                       </div>
                       <button
                         onClick={() => removeCollection(c.key)}
-                        className="text-muted-foreground hover:text-destructive"
+                        className="text-muted-foreground hover:text-destructive -mr-2 flex size-11 shrink-0 items-center justify-center rounded-full md:size-9"
                         aria-label="Устгах"
                       >
                         <Trash2 className="size-4" />
@@ -166,21 +166,21 @@ export default function CartPage() {
                       )}
                     </ul>
                     <div className="mt-auto flex items-center justify-between pt-2">
-                      <div className="border-border flex items-center rounded-md border">
+                      <div className="bg-secondary flex items-center rounded-full">
                         <button
-                          className="hover:text-gold-strong px-2.5 py-1.5"
+                          className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full md:size-9"
                           onClick={() => setCollectionQty(c.key, c.qty - 1)}
                           aria-label="Хасах"
                         >
-                          <Minus className="size-3.5" />
+                          <Minus className="size-4 md:size-3.5" />
                         </button>
-                        <span className="w-8 text-center text-sm">{c.qty}</span>
+                        <span className="w-8 text-center text-sm tabular-nums md:w-6">{c.qty}</span>
                         <button
-                          className="hover:text-gold-strong px-2.5 py-1.5"
+                          className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full md:size-9"
                           onClick={() => setCollectionQty(c.key, c.qty + 1)}
                           aria-label="Нэмэх"
                         >
-                          <Plus className="size-3.5" />
+                          <Plus className="size-4 md:size-3.5" />
                         </button>
                       </div>
                       <span className="font-medium">
@@ -231,30 +231,30 @@ export default function CartPage() {
                     </div>
                     <button
                       onClick={() => remove(item.key)}
-                      className="text-muted-foreground hover:text-destructive"
+                      className="text-muted-foreground hover:text-destructive -mr-2 flex size-11 shrink-0 items-center justify-center rounded-full md:size-9"
                       aria-label="Устгах"
                     >
                       <Trash2 className="size-4" />
                     </button>
                   </div>
                   <div className="mt-auto flex items-center justify-between pt-2">
-                    <div className="border-border flex items-center rounded-md border">
+                    <div className="bg-secondary flex items-center rounded-full">
                       <button
-                        className="hover:text-gold-strong px-2.5 py-1.5"
+                        className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full md:size-9"
                         onClick={() => setQty(item.key, item.qty - 1)}
                         aria-label="Хасах"
                       >
-                        <Minus className="size-3.5" />
+                        <Minus className="size-4 md:size-3.5" />
                       </button>
-                      <span className="w-8 text-center text-sm">
+                      <span className="w-8 text-center text-sm tabular-nums md:w-6">
                         {item.qty}
                       </span>
                       <button
-                        className="hover:text-gold-strong px-2.5 py-1.5"
+                        className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full md:size-9"
                         onClick={() => setQty(item.key, item.qty + 1)}
                         aria-label="Нэмэх"
                       >
-                        <Plus className="size-3.5" />
+                        <Plus className="size-4 md:size-3.5" />
                       </button>
                     </div>
                     <span className="font-medium">
@@ -290,7 +290,7 @@ export default function CartPage() {
                     </span>
                     <button
                       onClick={() => setCoupon(null)}
-                      className="text-muted-foreground hover:text-destructive"
+                      className="text-muted-foreground hover:text-destructive -mr-2 flex size-11 shrink-0 items-center justify-center rounded-full md:size-9"
                       aria-label="Купон хасах"
                     >
                       <Trash2 className="size-3.5" />
@@ -338,7 +338,8 @@ export default function CartPage() {
                 <span className="font-serif text-lg font-semibold">
                   {formatPrice(
                     subtotal -
-                      (coupon ? Math.min(coupon.discount, subtotal) : 0),
+                      (coupon ? Math.min(coupon.discount, subtotal) : 0) +
+                      defaultZoneFee,
                   )}
                 </span>
               </div>

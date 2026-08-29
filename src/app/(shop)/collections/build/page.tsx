@@ -51,6 +51,9 @@ export default async function BuildPage() {
 
   return (
     <div className="mx-auto max-w-352 px-4 py-6 md:px-8">
+      <h1 className="font-serif mb-4 text-2xl font-semibold tracking-tight sm:text-3xl">
+        Багц угсрах
+      </h1>
       <CollectionBuilder
         products={products}
         settings={settings}

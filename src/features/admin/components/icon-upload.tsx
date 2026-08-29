@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { IMAGE_ACCEPT } from "@/lib/storage/limits";
 import { prepareUpload } from "@/lib/storage/prepare-upload";
+import { adminFetch } from "@/features/admin/lib/mutate";
 
 /**
  * Single-image picker for the small square icons the admin manages (todo.md
@@ -44,14 +45,16 @@ export function IconUpload({
       const fd = new FormData();
       fd.append("file", prepared.file);
       fd.append("folder", "families");
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      const data = await res.json().catch(() => null);
-      if (data?.demo) {
-        setError("Demo горим: зураг хадгалагдсангүй.");
-      } else if (!res.ok || !data?.url) {
+      const res = await adminFetch<{ url?: string; width?: number }>(
+        "/api/upload",
+        { method: "POST", body: fd },
+      );
+      if (!res.ok) {
+        setError(res.demo ? "Demo горим: зураг хадгалагдсангүй." : res.error);
+      } else if (!res.data?.url) {
         setError("Оруулахад алдаа гарлаа.");
       } else {
-        onChange(data.url as string);
+        onChange(res.data.url);
       }
     } finally {
       setBusy(false);

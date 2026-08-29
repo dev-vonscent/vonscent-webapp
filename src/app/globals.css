@@ -42,21 +42,29 @@
   --destructive: #f87171;
   --destructive-foreground: #450a0a;
   --success: #d4d4d4;
-  --warning: #d4d4d4;
+  /* Warning is the one place the monochrome palette has to break: "энэ мөр
+     анхаар" cannot be said in the same grey as "энэ мөр хэвийн". Amber is the
+     only hue in the system besides destructive red, and it reads at 8.77:1 on
+     `card` — see The 4.5 Rule in DESIGN.md. */
+  --warning: #e0a355;
 
   /* no borders */
   --border: transparent;
   --input: transparent;
-  --ring: #5a5a5a;
+  /* Focus speaks in the theme's accent voice — never a gray browser ring. */
+  --ring: #d4d4d4;
+  /* The system's only hairline: a functional edge so form controls are
+     identifiable on a borderless surface (WCAG 1.4.11, >=3:1 either side). */
+  --field-edge: #6b6b6b;
 
   --surface-deep: #000000;
 
-  /* recharts series (monochrome, matches the theme) */
+  /* recharts series — monochrome ramp, every step >=4.5:1 on the page */
   --chart-1: #ffffff;
-  --chart-2: #a1a1a1;
-  --chart-3: #737373;
-  --chart-4: #525252;
-  --chart-5: #d4d4d4;
+  --chart-2: #d9d9d9;
+  --chart-3: #b3b3b3;
+  --chart-4: #949494;
+  --chart-5: #7a7a7a;
 
   --radius: 0.75rem;
 
@@ -88,31 +96,32 @@
   --secondary-foreground: #0a0a0a;
 
   --muted: #f4f4f4;
-  --muted-foreground: #6b6b6b;
+  --muted-foreground: #5f5f5f;
 
   --accent: #e8e8e8;
   --accent-foreground: #0a0a0a;
 
-  --gold: #6b6b6b;
-  --gold-soft: #8a8a8a;
+  --gold: #4d4d4d;
+  --gold-soft: #6b6b6b;
   --gold-strong: #171717;
 
-  --destructive: #c92c2c;
+  --destructive: #c02626;
   --destructive-foreground: #ffffff;
   --success: #4b5563;
-  --warning: #4b5563;
+  --warning: #8a5200; /* 6.12:1 on card */
 
   --border: transparent;
   --input: transparent;
-  --ring: #a3a3a3;
+  --ring: #171717;
+  --field-edge: #7d7d7d;
 
   --surface-deep: #f4f4f4;
 
-  --chart-1: #171717;
-  --chart-2: #525252;
-  --chart-3: #8a8a8a;
-  --chart-4: #b5b5b5;
-  --chart-5: #6b6b6b;
+  --chart-1: #0a0a0a;
+  --chart-2: #333333;
+  --chart-3: #4f4f4f;
+  --chart-4: #626262;
+  --chart-5: #757575;
 
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.08);
   --shadow-lift: 0 8px 30px -12px rgba(0, 0, 0, 0.18);
@@ -134,38 +143,39 @@
   --popover: #fff5f8;
   --popover-foreground: #3d1f2b;
 
-  --primary: #e84a7f; /* vibrant pink CTA */
+  --primary: #c2245c; /* deep rose CTA — white text reads at 5.67:1 */
   --primary-foreground: #ffffff;
 
   --secondary: #ffd9e5;
   --secondary-foreground: #3d1f2b;
 
   --muted: #ffe2ec;
-  --muted-foreground: #a05c74;
+  --muted-foreground: #8a4a60;
 
   --accent: #ffccdb;
   --accent-foreground: #3d1f2b;
 
-  --gold: #d36b8c;
-  --gold-soft: #c98aa0;
-  --gold-strong: #e84a7f;
+  --gold: #a8425f;
+  --gold-soft: #8f4a63;
+  --gold-strong: #b81f56;
 
-  --destructive: #c92c4e;
+  --destructive: #b3213f;
   --destructive-foreground: #ffffff;
-  --success: #c98aa0;
-  --warning: #c98aa0;
+  --success: #7d4457;
+  --warning: #8a4a12; /* 5.92:1 on card */
 
   --border: transparent;
   --input: transparent;
-  --ring: #f48fb1;
+  --ring: #b81f56;
+  --field-edge: #a05c74;
 
   --surface-deep: #ffe0ea;
 
-  --chart-1: #e84a7f;
-  --chart-2: #d36b8c;
-  --chart-3: #a05c74;
-  --chart-4: #f48fb1;
-  --chart-5: #c98aa0;
+  --chart-1: #4a1a2c;
+  --chart-2: #7a2447;
+  --chart-3: #a81b52;
+  --chart-4: #c2245c;
+  --chart-5: #8f6472;
 
   --shadow-soft: 0 1px 2px rgba(157, 23, 77, 0.1);
   --shadow-lift: 0 8px 30px -12px rgba(157, 23, 77, 0.25);
@@ -211,6 +221,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-field-edge: var(--field-edge);
 
   --font-sans: var(--font-sans);
   /* single minimalist font everywhere — serif utilities resolve to sans */
@@ -220,6 +231,8 @@
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
   --radius-xl: calc(var(--radius) + 6px);
+  /* product cards and media frames */
+  --radius-2xl: calc(var(--radius) + 4px);
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
@@ -378,6 +391,25 @@
   display: none;
 }
 
+/* The single functional hairline in a borderless system: gives form
+   controls an identifiable boundary (WCAG 1.4.11) without reintroducing
+   `border`, which the global rule collapses to transparent. */
+@utility field-edge {
+  box-shadow: inset 0 0 0 1px var(--field-edge);
+}
+
+/* The same hairline in the error voice. */
+@utility field-edge-error {
+  box-shadow: inset 0 0 0 1.5px var(--destructive);
+}
+
+/* A legibility scrim for text or badges sitting directly on a photograph. */
+@utility on-image {
+  background-color: color-mix(in oklab, var(--background) 78%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
 /* Frosted-glass surface for floating chrome (header, bottom nav) */
 @utility glass {
   background-color: color-mix(in oklab, var(--background) 72%, transparent);
@@ -400,11 +432,33 @@
   *::after {
     border-color: transparent !important;
   }
-  /* No focus ring/outline anywhere — Radix primitives included. */
-  *:focus,
-  *:focus-visible,
-  *:focus-within {
-    outline: none !important;
+  /* Focus, the vonscent way.
+     Pointer interaction stays completely clean — no ring on click or tap.
+     Keyboard focus draws a 2px outline in the *theme's accent* (white on
+     black, near-black on white, deep rose on pink) with a 2px gap, so it
+     never reads as the browser's default gray slab. `outline` (not
+     box-shadow) is deliberate: it follows border-radius and is never
+     clipped by an `overflow-hidden` ancestor. */
+  *:focus:not(:focus-visible) {
+    outline: none;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  /* Text fields match :focus-visible even on a mouse click (per spec), so the
+     ring would appear on tap too. `data-focus` (set in the root layout) tells
+     us how focus actually arrived; on pointer focus we stay clean. Keyboard
+     focus — Tab, arrows, Home/End/PageUp/PageDown — keeps the outline, and
+     with JS off the attribute is absent so the ring always shows. */
+  html[data-focus="pointer"] :focus-visible {
+    outline: none;
+  }
+  /* Inside the frosted capsules the page background shows through, so the
+     gap needs the capsule's own surface to stay crisp. */
+  .glass :focus-visible,
+  [data-capsule] :focus-visible {
+    outline-offset: 1px;
   }
   body {
     position: relative;
@@ -424,6 +478,42 @@
   ::selection {
     background-color: #333333;
     color: #ffffff;
+  }
+  /* Paper is the one place the theme system does not serve us. A document is
+     always ink on white — it must not follow `.black`, or the invoice renders
+     white text on white and prints blank. `.print-sheet` opts a document out
+     of the themed palette entirely and back into visible hairlines, on screen
+     and on paper alike. Everything here is a literal colour on purpose: these
+     are paper values, not theme tokens. */
+  .print-sheet {
+    background-color: #ffffff;
+    color: #111111;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .print-sheet
+    :is(
+      [class*="border-border"],
+      [class*="border-y"],
+      [class*="border-t"],
+      [class*="border-b"]
+    ) {
+    border-color: #b0b0b0 !important;
+  }
+  /* Secondary text keeps its hierarchy without going too light to photocopy. */
+  .print-sheet .text-muted-foreground {
+    color: #555555;
+  }
+  @media print {
+    body {
+      background-color: #ffffff;
+    }
+    /* Screen chrome hides itself with Tailwind's `print:hidden`; the sheet
+       just drops its reading measure and takes the whole page. */
+    .print-sheet {
+      max-width: none;
+      margin: 0;
+    }
   }
   /* Respect reduced motion (design.md §7) */
   @media (prefers-reduced-motion: reduce) {

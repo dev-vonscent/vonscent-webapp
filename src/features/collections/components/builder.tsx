@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
-import { BUNDLE_ML_SIZES } from "@/lib/constants";
+import { BUNDLE_ML_SIZES, DEFAULT_BUNDLE_ML } from "@/lib/constants";
 import { useCart } from "@/features/cart/store";
 import { CatalogFilters } from "@/features/catalog/components/catalog-filters";
 import { CatalogFilterSheet } from "@/features/catalog/components/catalog-filter-sheet";
@@ -87,7 +87,7 @@ export function CollectionBuilder({
   const searchParams = useSearchParams();
   const addCollection = useCart((s) => s.addCollection);
 
-  const [ml, setMl] = React.useState<number>(BUNDLE_ML_SIZES[0]);
+  const [ml, setMl] = React.useState<number>(DEFAULT_BUNDLE_ML);
   const [ids, setIds] = React.useState<string[]>([]);
   const [giftId, setGiftId] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState(false);

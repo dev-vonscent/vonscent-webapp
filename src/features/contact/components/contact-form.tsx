@@ -58,10 +58,13 @@ export function ContactForm() {
         <Input
           id="name"
           aria-invalid={Boolean(errors.name)}
+          aria-describedby={errors.name ? "name-error" : undefined}
           {...register("name")}
         />
         {errors.name && (
-          <p className="text-destructive text-xs">{errors.name.message}</p>
+          <p id="name-error" role="alert" className="text-destructive text-xs">
+            {errors.name.message}
+          </p>
         )}
       </div>
       <div className="space-y-1.5">
@@ -70,10 +73,13 @@ export function ContactForm() {
           id="email"
           type="email"
           aria-invalid={Boolean(errors.email)}
+          aria-describedby={errors.email ? "email-error" : undefined}
           {...register("email")}
         />
         {errors.email && (
-          <p className="text-destructive text-xs">{errors.email.message}</p>
+          <p id="email-error" role="alert" className="text-destructive text-xs">
+            {errors.email.message}
+          </p>
         )}
       </div>
       <div className="space-y-1.5">
@@ -82,15 +88,18 @@ export function ContactForm() {
           id="message"
           rows={5}
           aria-invalid={Boolean(errors.message)}
-          className="bg-secondary flex w-full rounded-md px-3 py-2 text-base focus-visible:outline-none md:text-sm"
+          aria-describedby={errors.message ? "message-error" : undefined}
+          className="bg-secondary field-edge flex w-full rounded-md px-3 py-2 text-base md:text-sm"
           {...register("message")}
         />
         {errors.message && (
-          <p className="text-destructive text-xs">{errors.message.message}</p>
+          <p id="message-error" role="alert" className="text-destructive text-xs">
+            {errors.message.message}
+          </p>
         )}
       </div>
       {serverError && (
-        <p className="text-destructive text-sm">
+        <p role="alert" className="text-destructive text-sm">
           Илгээхэд алдаа гарлаа. Дахин оролдоно уу.
         </p>
       )}

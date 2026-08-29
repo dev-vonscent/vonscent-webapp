@@ -108,7 +108,7 @@ export async function priceCollectionLines(
   let pricedBundles = 0;
   let bundleQty = 0;
   for (const col of cols) {
-    // A bundle only ever prices over the three main sizes (2ml is decant-only).
+    // A bundle prices over the sizes the shop sells.
     if (!(BUNDLE_ML_SIZES as readonly number[]).includes(col.ml)) continue;
     // Duplicated member variants would double-charge one product's discount
     // weighting — a tampered payload, not something the builder produces.

@@ -58,8 +58,9 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
 }
 
 function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+  // Default to a column header; a row header passes scope="row" explicitly.
   return (
-    <th className={cn("px-4 py-3 font-medium", className)} {...props} />
+    <th scope="col" className={cn("px-4 py-3 font-medium", className)} {...props} />
   );
 }
 

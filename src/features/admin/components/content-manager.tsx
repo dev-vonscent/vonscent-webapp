@@ -6,6 +6,8 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Field } from "@/components/ui/field";
+import { DatePicker } from "@/features/admin/components/date-picker";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,27 +19,20 @@ import type {
   SocialSettings,
   AboutSettings,
 } from "@/features/content/api";
-import type { HeroBannerRow, FaqRow, BlogPostRow } from "@/db/types";
-
-async function saveSetting(key: string, value: unknown) {
-  await fetch("/api/admin/settings", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key, value }),
-  });
-}
+import type { FaqRow, BlogPostRow } from "@/db/types";
+import { toast } from "@/lib/toast";
+import { mutate, saveSetting } from "@/features/admin/lib/mutate";
+import { useConfirm } from "@/components/shared/confirm-dialog";
 
 export function ContentManager({
   popup,
   social,
-  banners,
   faqs,
   posts,
   about,
 }: {
   popup: PopupSettings;
   social: SocialSettings;
-  banners: HeroBannerRow[];
   faqs: FaqRow[];
   posts: BlogPostRow[];
   about: AboutSettings;
@@ -47,7 +42,6 @@ export function ContentManager({
       <h1 className="font-serif text-2xl font-semibold">Контент удирдах</h1>
       <PopupSection initial={popup} />
       <SocialSection initial={social} />
-      <BannerSection initial={banners} />
       <FaqSection initial={faqs} />
       <BlogSection initial={posts} />
       <AboutSection initial={about} />
@@ -73,12 +67,13 @@ function Section({
 }
 
 function PopupSection({ initial }: { initial: PopupSettings }) {
+  const [confirm, confirmDialog] = useConfirm();
   const [enabled, setEnabled] = React.useState(initial.enabled);
   const [frequency, setFrequency] = React.useState(initial.frequencyHours);
   const [slides, setSlides] = React.useState<PopupSlide[]>(
     initial.slides ?? [],
   );
-  const [saved, setSaved] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
 
   function setSlide(i: number, patch: Partial<PopupSlide>) {
     setSlides((ss) => ss.map((s, j) => (j === i ? { ...s, ...patch } : s)));
@@ -97,14 +92,36 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
       },
     ]);
   }
+  async function removeSlide(i: number) {
+    if (
+      !(await confirm({
+        title: `Слайд ${i + 1}-ийг устгах уу?`,
+        description:
+          "Слайдын гарчиг, зураг, холбоос устна. Хадгалсны дараа сайтад харагдахаа болино.",
+        confirmLabel: "Устгах",
+        destructive: true,
+      }))
+    )
+      return;
+    setSlides((ss) => ss.filter((_, j) => j !== i));
+  }
   async function save() {
-    await saveSetting("popup", { enabled, frequencyHours: frequency, slides });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+    setBusy(true);
+    try {
+      const ok = await saveSetting(
+        "popup",
+        { enabled, frequencyHours: frequency, slides },
+        "Popup хадгалагдсангүй",
+      );
+      if (ok) toast.success("Popup хадгалагдлаа.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <Section title="Сурталчилгааны popup (олон слайд, swipe + autoplay)">
+      {confirmDialog}
       <div className="flex flex-wrap items-end gap-4">
         <label className="flex items-center gap-2 text-sm">
           <Checkbox
@@ -125,15 +142,14 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
 
       <div className="space-y-4">
         {slides.map((s, i) => (
-          <div
-            key={i}
-            className="border-border space-y-3 rounded-lg border p-4"
-          >
+          <div key={i} className="bg-muted/40 space-y-3 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">Слайд {i + 1}</p>
               <button
-                onClick={() => setSlides((ss) => ss.filter((_, j) => j !== i))}
+                type="button"
+                onClick={() => removeSlide(i)}
                 className="text-muted-foreground hover:text-destructive"
+                aria-label={`Слайд ${i + 1} устгах`}
               >
                 <Trash2 className="size-4" />
               </button>
@@ -164,27 +180,23 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
                 />
               </Field>
               <Field label="Эхлэх огноо">
-                <Input
-                  type="date"
+                <DatePicker
                   value={s.startsAt ? s.startsAt.slice(0, 10) : ""}
-                  onChange={(e) =>
+                  placeholder="Хязгааргүй"
+                  onChange={(v) =>
                     setSlide(i, {
-                      startsAt: e.target.value
-                        ? new Date(e.target.value).toISOString()
-                        : null,
+                      startsAt: v ? new Date(v).toISOString() : null,
                     })
                   }
                 />
               </Field>
               <Field label="Дуусах огноо">
-                <Input
-                  type="date"
+                <DatePicker
                   value={s.endsAt ? s.endsAt.slice(0, 10) : ""}
-                  onChange={(e) =>
+                  placeholder="Хязгааргүй"
+                  onChange={(v) =>
                     setSlide(i, {
-                      endsAt: e.target.value
-                        ? new Date(e.target.value).toISOString()
-                        : null,
+                      endsAt: v ? new Date(v).toISOString() : null,
                     })
                   }
                 />
@@ -212,23 +224,33 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
             </div>
           </div>
         ))}
-        <Button variant="outline" onClick={addSlide}>
+        <Button variant="secondary" onClick={addSlide}>
           <Plus className="size-4" /> Слайд нэмэх
         </Button>
       </div>
 
-      <Button onClick={save}>{saved ? "Хадгалагдлаа ✓" : "Хадгалах"}</Button>
+      <Button onClick={save} disabled={busy}>
+        {busy ? "Хадгалж байна…" : "Хадгалах"}
+      </Button>
     </Section>
   );
 }
 
 function SocialSection({ initial }: { initial: SocialSettings }) {
   const [s, setS] = React.useState(initial);
-  const [saved, setSaved] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
   async function save() {
-    await saveSetting("social", s);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+    setBusy(true);
+    try {
+      const ok = await saveSetting(
+        "social",
+        s,
+        "Сошиал холбоос хадгалагдсангүй",
+      );
+      if (ok) toast.success("Сошиал холбоос хадгалагдлаа.");
+    } finally {
+      setBusy(false);
+    }
   }
   return (
     <Section title="Сошиал холбоос">
@@ -258,86 +280,8 @@ function SocialSection({ initial }: { initial: SocialSettings }) {
           />
         </Field>
       </div>
-      <Button onClick={save}>{saved ? "Хадгалагдлаа ✓" : "Хадгалах"}</Button>
-    </Section>
-  );
-}
-
-function BannerSection({ initial }: { initial: HeroBannerRow[] }) {
-  const router = useRouter();
-  const [title, setTitle] = React.useState("");
-  const [subtitle, setSubtitle] = React.useState("");
-  async function add() {
-    if (!title) return;
-    await fetch("/api/admin/banners", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, subtitle, sortOrder: initial.length }),
-    });
-    setTitle("");
-    setSubtitle("");
-    router.refresh();
-  }
-  async function del(id: string) {
-    await fetch(`/api/admin/banners/${id}`, { method: "DELETE" });
-    router.refresh();
-  }
-  return (
-    <Section title="Hero баннер">
-      <ul className="space-y-2">
-        {initial.map((b) => (
-          <EditableRow
-            key={b.id}
-            summary={
-              <span>
-                <strong>{b.title}</strong>{" "}
-                <span className="text-muted-foreground">{b.subtitle}</span>
-              </span>
-            }
-            onDelete={() => del(b.id)}
-            fields={[
-              { key: "title", label: "Гарчиг", value: b.title },
-              { key: "subtitle", label: "Дэд гарчиг", value: b.subtitle ?? "" },
-              { key: "ctaLabel", label: "CTA текст", value: b.cta_label ?? "" },
-              { key: "ctaHref", label: "CTA холбоос", value: b.cta_href ?? "" },
-              {
-                key: "imageUrl",
-                label: "Зураг",
-                value: b.image_url ?? "",
-                image: true,
-              },
-            ]}
-            onSave={async (v) => {
-              await fetch(`/api/admin/banners/${b.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  title: v.title,
-                  subtitle: v.subtitle,
-                  ctaLabel: v.ctaLabel,
-                  ctaHref: v.ctaHref,
-                  imageUrl: v.imageUrl || null,
-                }),
-              });
-              router.refresh();
-            }}
-          />
-        ))}
-      </ul>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <Input
-          placeholder="Гарчиг"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <Input
-          placeholder="Дэд гарчиг"
-          value={subtitle}
-          onChange={(e) => setSubtitle(e.target.value)}
-        />
-      </div>
-      <Button variant="outline" onClick={add}>
-        <Plus className="size-4" /> Баннер нэмэх
+      <Button onClick={save} disabled={busy}>
+        {busy ? "Хадгалж байна…" : "Хадгалах"}
       </Button>
     </Section>
   );
@@ -345,32 +289,55 @@ function BannerSection({ initial }: { initial: HeroBannerRow[] }) {
 
 function FaqSection({ initial }: { initial: FaqRow[] }) {
   const router = useRouter();
+  const [confirm, confirmDialog] = useConfirm();
   const [category, setCategory] = React.useState("");
   const [question, setQuestion] = React.useState("");
   const [answer, setAnswer] = React.useState("");
   async function add() {
     if (!question || !answer) return;
-    await fetch("/api/admin/faqs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        category,
-        question,
-        answer,
-        sortOrder: initial.length,
-      }),
-    });
+    const ok = await mutate(
+      "/api/admin/faqs",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category,
+          question,
+          answer,
+          sortOrder: initial.length,
+        }),
+      },
+      "FAQ нэмэгдсэнгүй",
+    );
+    if (!ok) return;
+    toast.success("FAQ нэмэгдлээ.");
     setCategory("");
     setQuestion("");
     setAnswer("");
     router.refresh();
   }
-  async function del(id: string) {
-    await fetch(`/api/admin/faqs/${id}`, { method: "DELETE" });
+  async function del(id: string, question: string) {
+    if (
+      !(await confirm({
+        title: "Энэ FAQ-г устгах уу?",
+        description: `«${question}» асуулт сайтаас алга болно. Буцаах боломжгүй.`,
+        confirmLabel: "Устгах",
+        destructive: true,
+      }))
+    )
+      return;
+    const ok = await mutate(
+      `/api/admin/faqs/${id}`,
+      { method: "DELETE" },
+      "FAQ устсангүй",
+    );
+    if (!ok) return;
+    toast.success("FAQ устлаа.");
     router.refresh();
   }
   return (
     <Section title="FAQ">
+      {confirmDialog}
       <ul className="space-y-2">
         {initial.map((f) => (
           <EditableRow
@@ -383,7 +350,7 @@ function FaqSection({ initial }: { initial: FaqRow[] }) {
                 {f.question}
               </span>
             }
-            onDelete={() => del(f.id)}
+            onDelete={() => del(f.id, f.question)}
             fields={[
               { key: "category", label: "Ангилал", value: f.category ?? "" },
               { key: "question", label: "Асуулт", value: f.question },
@@ -395,16 +362,23 @@ function FaqSection({ initial }: { initial: FaqRow[] }) {
               },
             ]}
             onSave={async (v) => {
-              await fetch(`/api/admin/faqs/${f.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  category: v.category,
-                  question: v.question,
-                  answer: v.answer,
-                }),
-              });
+              const ok = await mutate(
+                `/api/admin/faqs/${f.id}`,
+                {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    category: v.category,
+                    question: v.question,
+                    answer: v.answer,
+                  }),
+                },
+                "FAQ хадгалагдсангүй",
+              );
+              if (!ok) return false;
+              toast.success("FAQ хадгалагдлаа.");
               router.refresh();
+              return true;
             }}
           />
         ))}
@@ -426,7 +400,7 @@ function FaqSection({ initial }: { initial: FaqRow[] }) {
           onChange={setAnswer}
         />
       </div>
-      <Button variant="outline" onClick={add}>
+      <Button variant="secondary" onClick={add}>
         <Plus className="size-4" /> FAQ нэмэх
       </Button>
     </Section>
@@ -435,35 +409,58 @@ function FaqSection({ initial }: { initial: FaqRow[] }) {
 
 function BlogSection({ initial }: { initial: BlogPostRow[] }) {
   const router = useRouter();
+  const [confirm, confirmDialog] = useConfirm();
   const [title, setTitle] = React.useState("");
   const [category, setCategory] = React.useState("");
   const [excerpt, setExcerpt] = React.useState("");
   const [body, setBody] = React.useState("");
   async function add() {
     if (!title) return;
-    await fetch("/api/admin/blog", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title,
-        category,
-        excerpt,
-        body,
-        isPublished: true,
-      }),
-    });
+    const ok = await mutate(
+      "/api/admin/blog",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          category,
+          excerpt,
+          body,
+          isPublished: true,
+        }),
+      },
+      "Нийтлэл нэмэгдсэнгүй",
+    );
+    if (!ok) return;
+    toast.success("Нийтлэл нэмэгдлээ.");
     setTitle("");
     setCategory("");
     setExcerpt("");
     setBody("");
     router.refresh();
   }
-  async function del(id: string) {
-    await fetch(`/api/admin/blog/${id}`, { method: "DELETE" });
+  async function del(id: string, title: string) {
+    if (
+      !(await confirm({
+        title: "Энэ нийтлэлийг устгах уу?",
+        description: `«${title}» нийтлэл сайтаас алга болно. Буцаах боломжгүй.`,
+        confirmLabel: "Устгах",
+        destructive: true,
+      }))
+    )
+      return;
+    const ok = await mutate(
+      `/api/admin/blog/${id}`,
+      { method: "DELETE" },
+      "Нийтлэл устсангүй",
+    );
+    if (!ok) return;
+    toast.success("Нийтлэл устлаа.");
     router.refresh();
   }
   return (
     <Section title="Блог нийтлэл">
+      {confirmDialog}
       <ul className="space-y-2">
         {initial.map((p) => (
           <EditableRow
@@ -474,7 +471,7 @@ function BlogSection({ initial }: { initial: BlogPostRow[] }) {
                 {!p.is_published && <Badge variant="secondary">Ноорог</Badge>}
               </span>
             }
-            onDelete={() => del(p.id)}
+            onDelete={() => del(p.id, p.title)}
             fields={[
               { key: "title", label: "Гарчиг", value: p.title },
               { key: "category", label: "Ангилал", value: p.category ?? "" },
@@ -487,17 +484,24 @@ function BlogSection({ initial }: { initial: BlogPostRow[] }) {
               },
             ]}
             onSave={async (v) => {
-              await fetch(`/api/admin/blog/${p.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  title: v.title,
-                  category: v.category,
-                  excerpt: v.excerpt,
-                  body: v.body,
-                }),
-              });
+              const ok = await mutate(
+                `/api/admin/blog/${p.id}`,
+                {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    title: v.title,
+                    category: v.category,
+                    excerpt: v.excerpt,
+                    body: v.body,
+                  }),
+                },
+                "Нийтлэл хадгалагдсангүй",
+              );
+              if (!ok) return false;
+              toast.success("Нийтлэл хадгалагдлаа.");
               router.refresh();
+              return true;
             }}
           />
         ))}
@@ -524,7 +528,7 @@ function BlogSection({ initial }: { initial: BlogPostRow[] }) {
           onChange={setBody}
         />
       </div>
-      <Button variant="outline" onClick={add}>
+      <Button variant="secondary" onClick={add}>
         <Plus className="size-4" /> Нийтлэл нэмэх
       </Button>
     </Section>
@@ -539,7 +543,13 @@ function AboutSection({ initial }: { initial: AboutSettings }) {
   async function save() {
     setBusy(true);
     try {
-      await saveSetting("about", { ...initial, story });
+      const ok = await saveSetting(
+        "about",
+        { ...initial, story },
+        "Түүх хадгалагдсангүй",
+      );
+      if (!ok) return;
+      toast.success("Түүх хадгалагдлаа.");
       router.refresh();
     } finally {
       setBusy(false);
@@ -553,7 +563,7 @@ function AboutSection({ initial }: { initial: AboutSettings }) {
         value={story}
         onChange={setStory}
       />
-      <Button variant="outline" onClick={save} disabled={busy}>
+      <Button variant="secondary" onClick={save} disabled={busy}>
         {busy ? "Хадгалж байна…" : "Хадгалах"}
       </Button>
     </Section>
@@ -583,7 +593,8 @@ function EditableRow({
 }: {
   summary: React.ReactNode;
   fields: EditableField[];
-  onSave: (values: Record<string, string>) => Promise<void>;
+  /** Resolves true when the write landed; false keeps the form open. */
+  onSave: (values: Record<string, string>) => Promise<boolean>;
   onDelete: () => void;
 }) {
   const [editing, setEditing] = React.useState(false);
@@ -595,19 +606,20 @@ function EditableRow({
   async function save() {
     setBusy(true);
     try {
-      await onSave(values);
-      setEditing(false);
+      // Keep the form open on failure so the operator's edits survive.
+      if (await onSave(values)) setEditing(false);
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <li className="border-border rounded-md border px-3 py-2 text-sm">
+    <li className="bg-muted/40 rounded-md px-3 py-2 text-sm">
       <div className="flex items-center justify-between gap-2">
         {summary}
         <span className="flex shrink-0 items-center gap-2">
           <button
+            type="button"
             onClick={() => setEditing((e) => !e)}
             className="text-muted-foreground hover:text-gold-strong"
             aria-label="Засах"
@@ -615,6 +627,7 @@ function EditableRow({
             <Pencil className="size-4" />
           </button>
           <button
+            type="button"
             onClick={onDelete}
             className="text-muted-foreground hover:text-destructive"
             aria-label="Устгах"
@@ -655,7 +668,7 @@ function EditableRow({
                     setValues((v) => ({ ...v, [f.key]: e.target.value }))
                   }
                   rows={4}
-                  className="bg-secondary w-full rounded-md px-3 py-2 text-sm outline-none"
+                  className="bg-secondary field-edge w-full rounded-md px-3 py-2 text-base md:text-sm"
                 />
               </div>
             ) : (
@@ -674,31 +687,12 @@ function EditableRow({
             <Button size="sm" onClick={save} disabled={busy}>
               {busy ? "Хадгалж байна…" : "Хадгалах"}
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setEditing(false)}
-            >
+            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
               Болих
             </Button>
           </div>
         </div>
       )}
     </li>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
-    </div>
   );
 }

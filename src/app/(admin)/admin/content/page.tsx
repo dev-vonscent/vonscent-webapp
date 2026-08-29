@@ -1,8 +1,4 @@
-import {
-  getAllBanners,
-  getAllFaqs,
-  getAllBlogPosts,
-} from "@/features/admin/api";
+import { getAllFaqs, getAllBlogPosts } from "@/features/admin/api";
 import {
   getPopupSettings,
   getSocialSettings,
@@ -11,10 +7,9 @@ import {
 import { ContentManager } from "@/features/admin/components/content-manager";
 
 export default async function AdminContentPage() {
-  const [popup, social, banners, faqs, posts, about] = await Promise.all([
+  const [popup, social, faqs, posts, about] = await Promise.all([
     getPopupSettings(),
     getSocialSettings(),
-    getAllBanners(),
     getAllFaqs(),
     getAllBlogPosts(),
     getAboutSettings(),
@@ -24,7 +19,6 @@ export default async function AdminContentPage() {
     <ContentManager
       popup={popup}
       social={social}
-      banners={banners}
       faqs={faqs}
       posts={posts}
       about={about}

@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { Gift, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { Gift, Minus, Plus, ShoppingCart, Trash2, Undo2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
@@ -15,10 +15,14 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { Button, type ButtonProps } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
-import { useCart, selectCount, selectSubtotal } from "@/features/cart/store";
+import {
+  useCart,
+  selectCount,
+  selectSubtotal,
+  type CartItem,
+} from "@/features/cart/store";
 import { CartSizeSelect } from "@/features/cart/components/cart-size-select";
 
 export function CartSheet({
@@ -40,9 +44,43 @@ export function CartSheet({
   const count = useCart(selectCount);
   const subtotal = useCart(selectSubtotal);
 
+  const add = useCart((s) => s.add);
+
   // Avoid hydration mismatch from persisted store.
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
+
+  // Radix focuses the first tabbable child on open — which is line 1's size
+  // select, where two arrow keys silently rewrite the order. Anchor focus on
+  // the title instead, so nothing destructive is one keystroke away.
+  const titleRef = React.useRef<HTMLHeadingElement>(null);
+
+  // Removing a line is irreversible in the store, so the sheet holds the last
+  // removed item for a few seconds and offers it back.
+  const [undo, setUndo] = React.useState<CartItem | null>(null);
+  const undoTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(
+    () => () => {
+      if (undoTimer.current) clearTimeout(undoTimer.current);
+    },
+    [],
+  );
+
+  function removeWithUndo(item: CartItem) {
+    remove(item.key);
+    setUndo(item);
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    undoTimer.current = setTimeout(() => setUndo(null), 6000);
+  }
+
+  function restore() {
+    if (!undo) return;
+    const { qty, ...rest } = undo;
+    add(rest, qty);
+    setUndo(null);
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+  }
 
   return (
     <Sheet>
@@ -62,9 +100,16 @@ export function CartSheet({
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-full max-w-md gap-0">
+      <SheetContent
+        side="right"
+        className="w-full max-w-md gap-0"
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          titleRef.current?.focus();
+        }}
+      >
         <SheetHeader>
-          <SheetTitle>
+          <SheetTitle ref={titleRef} tabIndex={-1}>
             Таны сагс {mounted && count > 0 && `(${count})`}
           </SheetTitle>
         </SheetHeader>
@@ -72,12 +117,21 @@ export function CartSheet({
         {!mounted || (items.length === 0 && collections.length === 0) ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <ShoppingCart className="text-muted-foreground size-10" />
-            <p className="text-muted-foreground text-sm">Сагс хоосон байна.</p>
-            <SheetClose asChild>
-              <Button asChild variant="outline">
-                <Link href="/catalog">Бараа үзэх</Link>
-              </Button>
-            </SheetClose>
+            <p className="text-muted-foreground text-sm text-balance">
+              Сагс хоосон байна. Дуртай үнэртнээ 2ml-ээс эхлэн туршиж үзээрэй.
+            </p>
+            <div className="flex flex-col items-center gap-2">
+              <SheetClose asChild>
+                <Button asChild variant="secondary">
+                  <Link href="/catalog">Бараа үзэх</Link>
+                </Button>
+              </SheetClose>
+              <SheetClose asChild>
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/collections">Багц үзэх</Link>
+                </Button>
+              </SheetClose>
+            </div>
           </div>
         ) : (
           <>
@@ -91,10 +145,10 @@ export function CartSheet({
                       layout
                       exit={{ opacity: 0, x: 48 }}
                       transition={{ duration: 0.2 }}
-                      className="border-border rounded-lg border p-3"
+                      className="bg-secondary/50 rounded-lg p-3"
                     >
                       <div className="flex gap-3">
-                        <div className="border-border bg-muted relative size-16 shrink-0 overflow-hidden rounded-md border">
+                        <div className="bg-muted relative size-20 shrink-0 overflow-hidden rounded-md">
                           {c.image && (
                             <Image
                               src={c.image}
@@ -127,7 +181,7 @@ export function CartSheet({
                             </div>
                             <button
                               onClick={() => removeCollection(c.key)}
-                              className="text-muted-foreground hover:text-destructive"
+                              className="text-muted-foreground hover:text-destructive -mr-2 flex size-11 shrink-0 items-center justify-center rounded-full md:size-9"
                               aria-label="Устгах"
                             >
                               <Trash2 className="size-4" />
@@ -153,23 +207,23 @@ export function CartSheet({
                       </ul>
 
                       <div className="mt-2 flex items-center justify-between">
-                        <div className="border-border flex items-center rounded-md border">
+                        <div className="bg-secondary flex items-center rounded-full">
                           <button
-                            className="hover:text-gold-strong px-2 py-1"
+                            className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full md:size-9"
                             onClick={() => setCollectionQty(c.key, c.qty - 1)}
                             aria-label="Хасах"
                           >
-                            <Minus className="size-3" />
+                            <Minus className="size-4 md:size-3.5" />
                           </button>
-                          <span className="w-7 text-center text-sm">
+                          <span className="w-8 text-center text-sm tabular-nums md:w-6">
                             {c.qty}
                           </span>
                           <button
-                            className="hover:text-gold-strong px-2 py-1"
+                            className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full md:size-9"
                             onClick={() => setCollectionQty(c.key, c.qty + 1)}
                             aria-label="Нэмэх"
                           >
-                            <Plus className="size-3" />
+                            <Plus className="size-4 md:size-3.5" />
                           </button>
                         </div>
                         <span className="text-sm font-medium">
@@ -187,7 +241,7 @@ export function CartSheet({
                       transition={{ duration: 0.2 }}
                       className="flex gap-3"
                     >
-                      <div className="border-border bg-muted relative size-20 shrink-0 overflow-hidden rounded-md border">
+                      <div className="bg-muted relative size-20 shrink-0 overflow-hidden rounded-md">
                         {item.image && (
                           <Image
                             src={item.image}
@@ -207,7 +261,7 @@ export function CartSheet({
                             <p className="text-sm/tight  font-medium">
                               {item.name}
                             </p>
-                            <div className="mt-1 flex items-center gap-1.5">
+                            <div className="mt-1.5 flex items-center gap-1.5">
                               <CartSizeSelect
                                 itemKey={item.key}
                                 slug={item.slug}
@@ -218,34 +272,34 @@ export function CartSheet({
                             </div>
                           </div>
                           <button
-                            onClick={() => remove(item.key)}
-                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => removeWithUndo(item)}
+                            className="text-muted-foreground hover:text-destructive -mr-2 flex size-11 shrink-0 items-center justify-center rounded-full md:size-9"
                             aria-label="Устгах"
                           >
                             <Trash2 className="size-4" />
                           </button>
                         </div>
-                        <div className="mt-auto flex items-center justify-between">
-                          <div className="border-border flex items-center rounded-md border">
+                        <div className="mt-auto flex items-center justify-between pt-2">
+                          <div className="bg-secondary flex items-center rounded-full">
                             <button
-                              className="hover:text-gold-strong px-2 py-1"
+                              className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full md:size-9"
                               onClick={() => setQty(item.key, item.qty - 1)}
                               aria-label="Хасах"
                             >
-                              <Minus className="size-3" />
+                              <Minus className="size-4 md:size-3.5" />
                             </button>
-                            <span className="w-7 text-center text-sm">
+                            <span className="w-8 text-center text-sm tabular-nums md:w-6">
                               {item.qty}
                             </span>
                             <button
-                              className="hover:text-gold-strong px-2 py-1"
+                              className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full md:size-9"
                               onClick={() => setQty(item.key, item.qty + 1)}
                               aria-label="Нэмэх"
                             >
-                              <Plus className="size-3" />
+                              <Plus className="size-4 md:size-3.5" />
                             </button>
                           </div>
-                          <span className="text-sm font-medium">
+                          <span className="text-sm font-medium tabular-nums">
                             {formatPrice(item.unitPrice * item.qty)}
                           </span>
                         </div>
@@ -256,14 +310,43 @@ export function CartSheet({
               </div>
             </MotionConfig>
 
-            <Separator />
-            <div className="space-y-4 pt-4">
+            {/* Borders collapse to transparent, so the rule that separates the
+                list from the money area has to be a real surface. */}
+            <div className="bg-secondary -mx-6 h-px" />
+            <div className="pb-safe space-y-4 pt-4">
+              {undo && (
+                <div className="bg-secondary flex items-center justify-between gap-2 rounded-lg pr-1 pl-3">
+                  <span className="text-muted-foreground truncate text-xs">
+                    «{undo.name}» устгагдлаа
+                  </span>
+                  <button
+                    type="button"
+                    onClick={restore}
+                    className="text-foreground flex h-11 shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-medium md:h-9"
+                  >
+                    <Undo2 className="size-3.5" />
+                    Буцаах
+                  </button>
+                </div>
+              )}
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Дэд дүн</span>
-                <span className="font-medium">{formatPrice(subtotal)}</span>
+                <span className="font-medium tabular-nums">
+                  {formatPrice(subtotal)}
+                </span>
               </div>
+              {/* No figure here on purpose: the fee depends on the delivery
+                  zone, which is only known once an address is chosen. */}
+              <p className="text-muted-foreground text-xs text-balance">
+                Хүргэлтийн төлбөр хаягийн бүсээс хамаарч нэмэгдэнэ — эцсийн
+                дүнг захиалгын хуудсанд харна.
+              </p>
               <SheetClose asChild>
-                <Button asChild className="w-full" size="lg">
+                <Button
+                  asChild
+                  className="in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90 w-full"
+                  size="lg"
+                >
                   <Link href="/checkout">Захиалах</Link>
                 </Button>
               </SheetClose>

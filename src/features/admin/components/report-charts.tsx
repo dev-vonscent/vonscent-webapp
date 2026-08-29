@@ -17,6 +17,10 @@ import {
 } from "recharts";
 import { formatPrice } from "@/lib/format";
 import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/constants";
+import {
+  stockState,
+  STOCK_STATE_LABEL,
+} from "@/features/admin/lib/stock-state";
 
 /**
  * Report/dashboard charts (recharts). Series colors come from the theme's
@@ -26,7 +30,8 @@ import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/constants";
 const AXIS_TICK = { fill: "var(--muted-foreground)", fontSize: 12 };
 const TOOLTIP_STYLE = {
   backgroundColor: "var(--popover)",
-  border: "1px solid var(--ring)",
+  // `border` is collapsed globally; a box-shadow gives the tooltip its edge.
+  boxShadow: "0 0 0 1px var(--ring), var(--shadow-lift)",
   borderRadius: 8,
   color: "var(--popover-foreground)",
   fontSize: 12,
@@ -45,10 +50,60 @@ export interface MonthlyPoint {
   ml: number;
 }
 
+/**
+ * Every chart ships the same numbers as a real table for screen readers
+ * (WCAG 1.1.1). It is visually hidden but fully in the accessibility tree —
+ * `hidden` or `display:none` would defeat the purpose.
+ */
+function ChartTable({
+  caption,
+  columns,
+  rows,
+}: {
+  caption: string;
+  columns: string[];
+  rows: (string | number)[][];
+}) {
+  return (
+    <table className="sr-only">
+      <caption>{caption}</caption>
+      <thead>
+        <tr>
+          {columns.map((c) => (
+            <th key={c} scope="col">
+              {c}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i}>
+            {r.map((cell, j) =>
+              j === 0 ? (
+                <th key={j} scope="row">
+                  {cell}
+                </th>
+              ) : (
+                <td key={j}>{cell}</td>
+              ),
+            )}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 /** Line chart of monthly revenue; expects points oldest-first. */
 export function MonthlySalesChart({ data }: { data: MonthlyPoint[] }) {
   return (
     <div className="h-72 w-full">
+      <ChartTable
+        caption="Сарын борлуулалт"
+        columns={["Сар", "Орлого (₮)", "Захиалга", "ml"]}
+        rows={data.map((d) => [d.month, d.revenue, d.orders, d.ml])}
+      />
       <ResponsiveContainer>
         <LineChart data={data} margin={{ left: 8, right: 16, top: 8 }}>
           <CartesianGrid stroke="var(--muted)" vertical={false} />
@@ -124,6 +179,11 @@ export function StatusDonut({
 
   return (
     <div className="h-64 w-full">
+      <ChartTable
+        caption="Захиалгын төлөв"
+        columns={["Төлөв", "Тоо"]}
+        rows={data.map((d) => [d.name, d.value])}
+      />
       <ResponsiveContainer>
         <PieChart>
           <Pie
@@ -160,6 +220,15 @@ export function StockBarChart({ data }: { data: StockPoint[] }) {
   }
   return (
     <div className="w-full" style={{ height: Math.max(180, data.length * 34) }}>
+      <ChartTable
+        caption="Үлдэгдэл багатай бараа"
+        columns={["Бараа", "Үлдэгдэл (ml)", "Төлөв"]}
+        rows={data.map((d) => [
+          d.name,
+          d.availableMl,
+          STOCK_STATE_LABEL[stockState(d.availableMl, d.lowStockMl)],
+        ])}
+      />
       <ResponsiveContainer>
         <BarChart data={data} layout="vertical" margin={{ left: 8, right: 16 }}>
           <CartesianGrid stroke="var(--muted)" horizontal={false} />
@@ -177,6 +246,14 @@ export function StockBarChart({ data }: { data: StockPoint[] }) {
             tickLine={false}
             axisLine={false}
             width={160}
+            tickFormatter={(name: string) => {
+              const row = data.find((d) => d.name === name);
+              if (!row) return name;
+              const state = stockState(row.availableMl, row.lowStockMl);
+              return state === "ok"
+                ? name
+                : `${name} · ${STOCK_STATE_LABEL[state]}`;
+            }}
           />
           <Tooltip
             contentStyle={TOOLTIP_STYLE}
@@ -186,10 +263,15 @@ export function StockBarChart({ data }: { data: StockPoint[] }) {
             {data.map((d, i) => (
               <Cell
                 key={i}
+                // Low is a warning, sold out is a failure — the chart painted
+                // both `--destructive`, which is the same conflation the
+                // dashboard had.
                 fill={
-                  d.availableMl <= d.lowStockMl
-                    ? "var(--destructive)"
-                    : "var(--chart-2)"
+                  {
+                    soldout: "var(--destructive)",
+                    low: "var(--warning)",
+                    ok: "var(--chart-2)",
+                  }[stockState(d.availableMl, d.lowStockMl)]
                 }
               />
             ))}

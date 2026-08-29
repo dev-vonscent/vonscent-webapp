@@ -2,12 +2,23 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { mutate, mutateJson } from "@/features/admin/lib/mutate";
+import { useConfirm } from "@/components/shared/confirm-dialog";
+import { toast } from "@/lib/toast";
 import { Check, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Field } from "@/components/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { GENDER_LABEL } from "@/lib/constants";
+import { GENDERS, GENDER_LABEL } from "@/lib/constants";
 
 export interface AdminProduct {
   id: string;
@@ -49,6 +60,7 @@ export function CollectionAdmin({
   products: AdminProduct[];
 }) {
   const router = useRouter();
+  const [confirm, confirmDialog] = useConfirm();
   const [editing, setEditing] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState(false);
   const [form, setForm] = React.useState({ ...EMPTY });
@@ -114,25 +126,42 @@ export function CollectionAdmin({
       isFeatured: form.isFeatured,
       productIds: form.productIds,
     };
-    const res = await fetch(
+    const ok = await mutateJson(
       editing ? `/api/admin/collections/${editing}` : "/api/admin/collections",
-      {
-        method: editing ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      },
+      editing ? "PATCH" : "POST",
+      body,
+      "Багц хадгалагдсангүй",
     );
     setBusy(false);
-    if (!res.ok) {
+    if (!ok) {
       setError("Хадгалахад алдаа гарлаа.");
       return;
     }
+    toast.success(editing ? "Багц шинэчлэгдлээ." : "Багц үүслээ.");
     setOpen(false);
     router.refresh();
   }
 
-  async function remove(id: string) {
-    await fetch(`/api/admin/collections/${id}`, { method: "DELETE" });
+  async function remove(id: string, collectionName: string) {
+    if (
+      !(await confirm({
+        title: `«${collectionName}» багцыг устгах уу?`,
+        description:
+          "Багц болон түүний барааны жагсаалт устна. Багц дэлгүүрээс алга болно. Буцаах боломжгүй.",
+        confirmLabel: "Устгах",
+        destructive: true,
+      }))
+    )
+      return;
+    if (
+      !(await mutate(
+        `/api/admin/collections/${id}`,
+        { method: "DELETE" },
+        "Багц устсангүй",
+      ))
+    )
+      return;
+    toast.success("Багц устлаа.");
     router.refresh();
   }
 
@@ -144,6 +173,7 @@ export function CollectionAdmin({
 
   return (
     <div className="space-y-6">
+      {confirmDialog}
       <div className="flex items-center justify-between">
         <p className="text-muted-foreground text-sm">
           {collections.length} багц
@@ -158,7 +188,7 @@ export function CollectionAdmin({
         {collections.map((c) => (
           <div
             key={c.id}
-            className="border-border bg-card flex items-center gap-3 rounded-xl border p-3"
+            className="bg-card flex items-center gap-3 rounded-xl p-3"
           >
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
@@ -179,7 +209,7 @@ export function CollectionAdmin({
               <Pencil className="size-4" />
             </button>
             <button
-              onClick={() => remove(c.id)}
+              onClick={() => remove(c.id, c.name)}
               className="text-muted-foreground hover:text-destructive p-2"
               aria-label="Устгах"
             >
@@ -212,23 +242,28 @@ export function CollectionAdmin({
             </label>
 
             <div className="grid grid-cols-2 gap-3">
-              <label className="block text-sm font-medium">
-                Хүйс
-                <select
+              {/* The last native <select> in the panel: it drew the browser's
+                  own grey list over a themed page and ignored all three
+                  themes. */}
+              <Field label="Хүйс">
+                <Select
                   value={form.gender}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      gender: e.target.value as typeof form.gender,
-                    })
+                  onValueChange={(v) =>
+                    setForm({ ...form, gender: v as typeof form.gender })
                   }
-                  className="border-border bg-background mt-1 h-9 w-full rounded-md border px-2 text-sm"
                 >
-                  <option value="male">Эрэгтэй</option>
-                  <option value="female">Эмэгтэй</option>
-                  <option value="unisex">Unisex</option>
-                </select>
-              </label>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GENDERS.map((g) => (
+                      <SelectItem key={g} value={g}>
+                        {GENDER_LABEL[g]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
               <label className="block text-sm font-medium">
                 Хямдрал %
                 <Input
@@ -335,7 +370,7 @@ export function CollectionAdmin({
                   className="pl-9"
                 />
               </div>
-              <div className="border-border mt-2 max-h-48 space-y-1 overflow-y-auto rounded-lg border p-1">
+              <div className="bg-muted/40 mt-2 max-h-48 space-y-1 overflow-y-auto rounded-lg p-1">
                 {filtered.map((p) => {
                   const on = form.productIds.includes(p.id);
                   return (

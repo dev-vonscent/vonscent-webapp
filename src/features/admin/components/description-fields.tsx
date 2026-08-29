@@ -73,7 +73,7 @@ export function DescriptionFields({
               rows={part.rows}
               value={value[part.key]}
               onChange={(e) => onChange(part.key, e.target.value)}
-              className="bg-secondary flex w-full rounded-md px-3 py-2 text-sm focus-visible:outline-none"
+              className="bg-secondary field-edge flex w-full rounded-md px-3 py-2 text-base md:text-sm"
             />
             <p className="text-muted-foreground text-xs">{part.hint}</p>
           </div>

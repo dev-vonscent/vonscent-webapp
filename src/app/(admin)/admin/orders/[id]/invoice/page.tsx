@@ -14,7 +14,7 @@ export default async function InvoicePage({
   const { order, items } = detail;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 bg-white p-2 text-sm">
+    <div className="print-sheet mx-auto max-w-2xl space-y-6 p-2 text-sm">
       <div className="flex items-start justify-between">
         <div>
           <p className="font-serif text-2xl font-semibold">vonscent</p>
@@ -67,7 +67,7 @@ export default async function InvoicePage({
           <Row label="Хямдрал" value={`−${formatPrice(order.discount)}`} />
         )}
         {order.loyalty_used > 0 && (
-          <Row label="Loyalty" value={`−${formatPrice(order.loyalty_used)}`} />
+          <Row label="V point" value={`−${formatPrice(order.loyalty_used)}`} />
         )}
         <Row label="Хүргэлт" value={formatPrice(order.shipping_fee)} />
         <div className="border-border flex justify-between border-t pt-1 font-semibold">

@@ -24,6 +24,11 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, ImagePlus, Trash2, UploadCloud, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/components/shared/confirm-dialog";
+import {
+  adminFetch,
+  mutateJson,
+  type AdminResult,
+} from "@/features/admin/lib/mutate";
 import { IMAGE_ACCEPT } from "@/lib/storage/limits";
 import { prepareUpload } from "@/lib/storage/prepare-upload";
 
@@ -86,7 +91,7 @@ function SortableTile({
         isDragging
           ? // The tile stays as the empty slot the overlay will drop into.
             "border-primary border-dashed opacity-30"
-          : "border-border"
+          : ""
       }`}
     >
       <div className="bg-secondary relative aspect-square">
@@ -104,7 +109,7 @@ function SortableTile({
           {...attributes}
           {...listeners}
           aria-label={`${index + 1}-р зураг — чирж эрэмбэ солих (Space дараад сумаар зөөнө)`}
-          className="bg-background/80 text-muted-foreground absolute top-1.5 left-1.5 cursor-grab touch-none rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none active:cursor-grabbing max-sm:opacity-100"
+          className="bg-background/80 text-muted-foreground absolute top-1.5 left-1.5 cursor-grab touch-none rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing max-sm:opacity-100"
         >
           <GripVertical className="size-4" />
         </button>
@@ -113,7 +118,7 @@ function SortableTile({
           type="button"
           onClick={onRemove}
           aria-label={`${index + 1}-р зургийг устгах`}
-          className="bg-background/80 text-muted-foreground hover:text-destructive absolute top-1.5 right-1.5 rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none max-sm:opacity-100"
+          className="bg-background/80 text-muted-foreground hover:text-destructive absolute top-1.5 right-1.5 rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100"
         >
           <Trash2 className="size-4" />
         </button>
@@ -128,7 +133,7 @@ function SortableTile({
       <Input
         value={img.alt}
         placeholder="Зургийн тайлбар (alt)"
-        className="border-border h-8 rounded-none border-0 border-t bg-transparent text-xs"
+        className="bg-secondary/60 h-11 rounded-none text-base md:h-9 md:text-xs"
         onChange={(e) => onAlt(e.target.value)}
         onBlur={onAltBlur}
       />
@@ -161,7 +166,9 @@ export function ProductImages({
     // A small activation distance keeps a plain click on the handle from
     // starting a drag.
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   const persisted = Boolean(productId);
@@ -187,15 +194,16 @@ export function ProductImages({
   const persistOrder = React.useCallback(
     async (next: GalleryImage[]) => {
       if (!persisted) return;
-      await fetch(`/api/admin/products/${productId}/images`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await mutateJson(
+        `/api/admin/products/${productId}/images`,
+        "PATCH",
+        {
           images: next
             .filter((img) => img.id)
             .map((img, i) => ({ id: img.id, alt: img.alt, sortOrder: i })),
-        }),
-      });
+        },
+        "Зургийн дараалал хадгалагдсангүй",
+      );
     },
     [persisted, productId],
   );
@@ -232,21 +240,40 @@ export function ProductImages({
       try {
         const fd = new FormData();
         fd.append("file", file);
-        let res: Response;
+        let res: AdminResult<{
+          url?: string;
+          id?: string;
+          alt?: string | null;
+        }>;
         if (persisted) {
-          res = await fetch(`/api/admin/products/${productId}/images`, {
+          res = await adminFetch<{
+            url?: string;
+            id?: string;
+            alt?: string | null;
+          }>(`/api/admin/products/${productId}/images`, {
             method: "POST",
             body: fd,
           });
         } else {
           fd.append("folder", "products/new");
-          res = await fetch("/api/upload", { method: "POST", body: fd });
+          res = await adminFetch<{
+            url?: string;
+            id?: string;
+            alt?: string | null;
+          }>("/api/upload", {
+            method: "POST",
+            body: fd,
+          });
         }
 
-        const data = await res.json().catch(() => null);
-        if (data?.demo) {
-          addError("Demo горим: зураг хадгалагдсангүй.");
-        } else if (!res.ok || !data?.url) {
+        const data = res.ok ? res.data : null;
+        if (!res.ok) {
+          addError(
+            res.demo
+              ? "Demo горим: зураг хадгалагдсангүй."
+              : `«${file.name}» — ${res.error}`,
+          );
+        } else if (!data?.url) {
           addError(`«${file.name}» — оруулахад алдаа гарлаа.`);
         } else {
           // Append one at a time so each tile lands as soon as it's ready.
@@ -291,12 +318,12 @@ export function ProductImages({
     if (!ok) return;
 
     if (persisted && img.id) {
-      const res = await fetch(
+      const res = await adminFetch(
         `/api/admin/products/${productId}/images?imageId=${img.id}`,
         { method: "DELETE" },
       );
       if (!res.ok) {
-        addError("Устгахад алдаа гарлаа.");
+        addError(res.error);
         return;
       }
     }
@@ -335,7 +362,7 @@ export function ProductImages({
             upload(e.dataTransfer.files);
         }}
         onClick={() => inputRef.current?.click()}
-        className={`flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors focus-visible:outline-none disabled:cursor-default disabled:opacity-50 ${
+        className={`flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors disabled:cursor-default disabled:opacity-50 ${
           dropActive
             ? "border-primary bg-primary/5"
             : "border-muted-foreground/30 hover:border-muted-foreground/60 hover:bg-secondary/40"
@@ -426,7 +453,7 @@ export function ProductImages({
               {Array.from({ length: uploading }).map((_, i) => (
                 <li
                   key={`uploading-${i}`}
-                  className="border-border bg-secondary/50 text-muted-foreground flex aspect-square animate-pulse flex-col items-center justify-center gap-2 rounded-lg border border-dashed"
+                  className="bg-secondary/50 text-muted-foreground flex aspect-square animate-pulse flex-col items-center justify-center gap-2 rounded-lg"
                 >
                   <ImagePlus className="size-6" />
                   <span className="text-xs">Оруулж байна…</span>

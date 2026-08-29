@@ -33,6 +33,26 @@ export function formatDate(value: string | number | Date): string {
   return dateFmt.format(new Date(value));
 }
 
+const dateTimeFmt = new Intl.DateTimeFormat("mn-MN", {
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  timeZone: UB_TIMEZONE,
+});
+
+/**
+ * Date *and* time, for the admin lists that triage by arrival.
+ *
+ * The order list showed date only, so fifty orders taken across one day all
+ * read «2026.08.28» and could not be told apart — while the list's own filter
+ * takes a `datetime-local`. Ulaanbaatar time, like every other admin timestamp.
+ */
+export function formatDateTime(value: string | number | Date): string {
+  return dateTimeFmt.format(new Date(value));
+}
+
 /**
  * Relative label like "2 өдрийн өмнө". Future instants (clock skew on a just
  * created row) collapse to "саяхан" instead of the confusing "дараа".

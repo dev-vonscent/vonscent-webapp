@@ -30,12 +30,33 @@ const mlSize = z.union([
 /**
  * One decant size as the admin priced it. There is no derived price any more:
  * `price` is the ₮ figure typed in the form and the figure customers pay.
+ *
+ * `active && price === 0` is refused. The daily job is typing four prices by
+ * hand, so the product where only 5ml and 10ml were priced used to publish 2ml
+ * and 20ml at 0₮ — real ml leaving the building for free. A size the shop does
+ * not sell yet is `active: false`, not priced at zero.
  */
-export const variantDraftSchema = z.object({
-  ml: mlSize,
-  price: z.number().int().nonnegative(),
-  active: z.boolean(),
-});
+export const variantDraftSchema = z
+  .object({
+    ml: mlSize,
+    price: z.number().int().nonnegative(),
+    active: z.boolean(),
+  })
+  .refine((v) => !v.active || v.price > 0, {
+    message: "Зарах хэмжээний үнэ 0 байж болохгүй.",
+    path: ["price"],
+  });
+
+/**
+ * The same rule as a plain predicate, for the forms: the client blocks the
+ * save and points at the offending row instead of posting and reading back a
+ * server error the operator has to translate.
+ */
+export function unpricedActiveSizes(
+  variants: { ml: number; price: number; active: boolean }[],
+): number[] {
+  return variants.filter((v) => v.active && v.price <= 0).map((v) => v.ml);
+}
 
 export const productInputSchema = z.object({
   name: z.string().min(1),

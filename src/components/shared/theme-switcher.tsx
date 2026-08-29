@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 const THEMES = [
   { value: "black", label: "Хар", swatch: "#000000" },
   { value: "white", label: "Цагаан", swatch: "#ffffff" },
-  { value: "pink", label: "Ягаан", swatch: "#e84a7f" },
+  { value: "pink", label: "Ягаан", swatch: "#c2245c" },
 ] as const;
 
 export function ThemeSwitcher({ className }: { className?: string }) {
