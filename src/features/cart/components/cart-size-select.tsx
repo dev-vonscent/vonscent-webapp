@@ -38,24 +38,35 @@ export function CartSizeSelect({
     (CartVariant & { inStock: boolean })[] | null
   >(null);
   const [loading, setLoading] = React.useState(false);
+  const [failed, setFailed] = React.useState(false);
 
   async function load() {
     if (options || loading) return;
     setLoading(true);
+    setFailed(false);
     try {
       const res = await fetch(`/api/products?slug=${encodeURIComponent(slug)}`);
       const data = res.ok ? await res.json() : null;
       const product = data?.product as ProductDetail | undefined;
-      setOptions(
-        (product?.variants ?? [])
-          .filter((v) => v.isActive)
-          .map((v) => ({
-            variantId: v.id,
-            ml: v.ml,
-            unitPrice: v.price,
-            inStock: v.inStock,
-          })),
-      );
+      const next = (product?.variants ?? [])
+        .filter((v) => v.isActive)
+        .map((v) => ({
+          variantId: v.id,
+          ml: v.ml,
+          unitPrice: v.price,
+          inStock: v.inStock,
+        }));
+      // A deactivated or delisted product answers 404 / with no variants — a
+      // real condition here, since a cart can sit in localStorage for weeks.
+      // Say so instead of opening an empty list, and leave `options` null so
+      // the next open retries.
+      if (next.length === 0) {
+        setFailed(true);
+        return;
+      }
+      setOptions(next);
+    } catch {
+      setFailed(true);
     } finally {
       setLoading(false);
     }
@@ -74,14 +85,19 @@ export function CartSizeSelect({
   return (
     <Select value={variantId} onValueChange={pick} onOpenChange={load}>
       <SelectTrigger className={className} aria-label="Хэмжээ солих">
-        {/* Until the list loads there is no matching item for `value`, so the
-            current size is rendered as the placeholder. */}
-        <SelectValue placeholder={`${ml}ml`} />
+        {/* The cart is the source of truth for the current size, so the
+            trigger renders it directly — a failed or half-loaded list can
+            never blank out the label. */}
+        <SelectValue placeholder={`${ml}ml`}>{`${ml}ml`}</SelectValue>
       </SelectTrigger>
       <SelectContent>
         {options === null ? (
           <SelectItem value={variantId} disabled>
-            {loading ? "Ачаалж байна…" : `${ml}ml`}
+            {loading
+              ? "Ачаалж байна…"
+              : failed
+                ? "Хэмжээ ачаалж чадсангүй"
+                : `${ml}ml`}
           </SelectItem>
         ) : (
           options.map((o) => (
