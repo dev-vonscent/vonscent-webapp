@@ -15,8 +15,8 @@ export default async function AdminTagsPage() {
       <div>
         <h1 className="font-serif text-2xl font-semibold">Нэмэлт таг</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Дотоод таг-ууд — хэрэглэгчид badge болж харагдахгүй, харин хайлт
-          болон үнэрээ олох quiz-д ашиглагдана. Бараа нэмэх/засах форм дээрээс
+          Дотоод таг-ууд — хэрэглэгчид badge болж харагдахгүй, харин хайлт болон
+          үнэрээ олох quiz-д ашиглагдана. Бараа нэмэх/засах форм дээрээс
           сонгоно.
         </p>
       </div>

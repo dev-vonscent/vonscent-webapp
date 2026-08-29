@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import type { GiftSettings } from "@/features/content/api";
+import { adminFetch } from "@/features/admin/lib/mutate";
 
 const MAX_POOL = 8;
 
@@ -45,7 +46,7 @@ export function GiftPoolManager({
     setSaving(true);
     setMsg(null);
     try {
-      const res = await fetch("/api/admin/settings", {
+      const res = await adminFetch("/api/admin/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -53,13 +54,12 @@ export function GiftPoolManager({
           value: { enabled, productIds: ids },
         }),
       });
-      const data = await res.json().catch(() => null);
       setMsg(
         res.ok
-          ? data?.demo
+          ? "Хадгалагдлаа."
+          : res.demo
             ? "Demo горим: Supabase холбогдсоны дараа хадгалагдана."
-            : "Хадгалагдлаа."
-          : "Алдаа гарлаа.",
+            : res.error,
       );
     } finally {
       setSaving(false);
@@ -96,8 +96,8 @@ export function GiftPoolManager({
           className="max-w-sm"
         />
 
-        <div className="border-border max-h-112 overflow-y-auto rounded-lg border">
-          <ul className="divide-border divide-y">
+        <div className="bg-muted/40 max-h-112 overflow-y-auto rounded-lg">
+          <ul className="[&>li:nth-child(even)]:bg-muted/40">
             {filtered.map((p) => {
               const checked = ids.includes(p.id);
               const disabled =
@@ -136,7 +136,9 @@ export function GiftPoolManager({
           </ul>
         </div>
 
-        {msg && <p className="bg-secondary rounded-md px-3 py-2 text-sm">{msg}</p>}
+        {msg && (
+          <p className="bg-secondary rounded-md px-3 py-2 text-sm">{msg}</p>
+        )}
         <Button onClick={save} disabled={saving}>
           {saving ? "Хадгалж байна…" : "Хадгалах"}
         </Button>

@@ -2,10 +2,13 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { adminFetch, mutate, mutateJson } from "@/features/admin/lib/mutate";
+import { toast } from "@/lib/toast";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field } from "@/components/ui/field";
+import { DatePicker } from "@/features/admin/components/date-picker";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -63,7 +66,7 @@ export function CouponManager({
     e.preventDefault();
     setBusy(true);
     try {
-      const res = await fetch("/api/admin/coupons", {
+      const res = await adminFetch<{ id?: string }>("/api/admin/coupons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -80,7 +83,12 @@ export function CouponManager({
           isActive: true,
         }),
       });
-      if (res.ok) {
+      if (!res.ok) {
+        toast.error(res.error, "Купон үүсээгүй");
+        return;
+      }
+      toast.success("Купон үүслээ.");
+      {
         setForm({
           code: "",
           type: "percent",
@@ -100,11 +108,14 @@ export function CouponManager({
   }
 
   async function toggle(c: CouponRow) {
-    await fetch(`/api/admin/coupons/${c.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: !c.is_active }),
-    });
+    const ok = await mutateJson(
+      `/api/admin/coupons/${c.id}`,
+      "PATCH",
+      { isActive: !c.is_active },
+      "Купон шинэчлэгдсэнгүй",
+    );
+    if (!ok) return;
+    toast.success(c.is_active ? "Купон идэвхгүй боллоо." : "Купон идэвхжлээ.");
     router.refresh();
   }
 
@@ -116,7 +127,15 @@ export function CouponManager({
       destructive: true,
     });
     if (!ok) return;
-    await fetch(`/api/admin/coupons/${id}`, { method: "DELETE" });
+    if (
+      !(await mutate(
+        `/api/admin/coupons/${id}`,
+        { method: "DELETE" },
+        "Купон устсангүй",
+      ))
+    )
+      return;
+    toast.success("Купон устлаа.");
     router.refresh();
   }
 
@@ -136,16 +155,14 @@ export function CouponManager({
         <Card>
           <CardContent className="p-6">
             <form onSubmit={create} className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Код</Label>
+              <Field label="Код">
                 <Input
                   value={form.code}
                   onChange={(e) => set("code", e.target.value)}
                   required
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Төрөл</Label>
+              </Field>
+              <Field label="Төрөл">
                 <Select value={form.type} onValueChange={(v) => set("type", v)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -155,34 +172,30 @@ export function CouponManager({
                     <SelectItem value="fixed">Тогтсон дүн (₮)</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>{form.type === "percent" ? "Хувь" : "Дүн (₮)"}</Label>
+              </Field>
+              <Field label={form.type === "percent" ? "Хувь" : "Дүн (₮)"}>
                 <Input
                   type="number"
                   value={form.value}
                   onChange={(e) => set("value", e.target.value)}
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Доод дүн (₮)</Label>
+              </Field>
+              <Field label="Доод дүн (₮)">
                 <Input
                   type="number"
                   value={form.minSubtotal}
                   onChange={(e) => set("minSubtotal", e.target.value)}
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Ашиглах хязгаар (нийт)</Label>
+              </Field>
+              <Field label="Ашиглах хязгаар (нийт)">
                 <Input
                   type="number"
                   value={form.maxUses}
                   onChange={(e) => set("maxUses", e.target.value)}
                   placeholder="Хязгааргүй"
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Нэг хүн хэдэн удаа</Label>
+              </Field>
+              <Field label="Нэг хүн хэдэн удаа">
                 <Input
                   type="number"
                   value={form.maxUsesPerUser}
@@ -193,9 +206,8 @@ export function CouponManager({
                   Бөглөвөл зочноор захиалахад ашиглах боломжгүй — нэвтрэх
                   шаардлагатай (тоолохын тулд).
                 </p>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Хэрэглэгч</Label>
+              </Field>
+              <Field label="Хэрэглэгч">
                 <Select
                   value={form.userId}
                   onValueChange={(v) => set("userId", v)}
@@ -219,15 +231,17 @@ export function CouponManager({
                   Тодорхой хүнийг сонговол код зөвхөн тэр хүнд харагдаж,
                   ажиллана.
                 </p>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Дуусах огноо</Label>
-                <Input
-                  type="date"
+              </Field>
+              <Field
+                label="Дуусах огноо"
+                hint="Хоосон бол хугацаагүй."
+              >
+                <DatePicker
                   value={form.endsAt}
-                  onChange={(e) => set("endsAt", e.target.value)}
+                  placeholder="Хугацаагүй"
+                  onChange={(v) => set("endsAt", v)}
                 />
-              </div>
+              </Field>
               <div className="sm:col-span-2">
                 <Button type="submit" disabled={busy}>
                   Хадгалах
@@ -239,7 +253,7 @@ export function CouponManager({
       )}
 
       {initial.length === 0 ? (
-        <p className="border-border text-muted-foreground rounded-lg border border-dashed py-16 text-center text-sm">
+        <p className="bg-muted/40 text-muted-foreground rounded-lg py-16 text-center text-sm">
           Купон алга.
         </p>
       ) : (
@@ -258,7 +272,7 @@ export function CouponManager({
             </thead>
             <tbody>
               {initial.map((c) => (
-                <tr key={c.id} className="border-border border-t">
+                <tr key={c.id} className="even:bg-muted/40">
                   <td className="px-4 py-3 font-mono font-semibold">
                     {c.code}
                   </td>

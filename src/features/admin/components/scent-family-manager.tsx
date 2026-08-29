@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { adminFetch } from "@/features/admin/lib/mutate";
 import { Plus, Eye, EyeOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,23 +33,22 @@ export function ScentFamilyManager({
     setBusy(true);
     setMsg(null);
     try {
-      const res = await fetch(url, {
+      const res = await adminFetch(url, {
         headers: { "Content-Type": "application/json" },
         ...init,
       });
-      const data = await res.json().catch(() => ({}));
-      if (data.demo) {
-        setMsg("Demo горим: Supabase холбогдсоны дараа хадгалагдана.");
-        return false;
-      }
       if (!res.ok) {
-        setMsg(
-          {
-            DUPLICATE: "Энэ slug аль хэдийн бүртгэлтэй байна.",
-            NOT_MIGRATED:
-              "Өгөгдлийн сан бэлэн биш байна — 0018_scent_families.sql migration ажиллуулаагүй тул доорх жагсаалт зөвхөн үндсэн утгууд. (docs/planning/todo.md B3b)",
-          }[data.error as string] ?? "Алдаа гарлаа.",
-        );
+        if (res.demo) {
+          setMsg("Demo горим: Supabase холбогдсоны дараа хадгалагдана.");
+          return false;
+        }
+        // The route answers with a machine code; translate the ones we know.
+        const known = Object.entries({
+          DUPLICATE: "Энэ slug аль хэдийн бүртгэлтэй байна.",
+          NOT_MIGRATED:
+            "Өгөгдлийн сан бэлэн биш байна — 0018_scent_families.sql migration ажиллуулаагүй тул доорх жагсаалт зөвхөн үндсэн утгууд. (docs/planning/todo.md B3b)",
+        }).find(([code]) => res.error.includes(code));
+        setMsg(known ? known[1] : res.error);
         return false;
       }
       router.refresh();
@@ -99,7 +99,7 @@ export function ScentFamilyManager({
       )}
       <Card>
         <CardContent className="p-0">
-          <ul className="divide-border divide-y">
+          <ul className="[&>li:nth-child(even)]:bg-muted/40">
             {families.map((f) => (
               <li key={f.slug} className="flex items-center gap-3 px-4 py-3">
                 {/* Uploading writes straight through: an icon is one field, so

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { mutate, mutateJson } from "@/features/admin/lib/mutate";
 import {
   ChevronDown,
   ChevronUp,
@@ -58,35 +59,43 @@ export function HomeSectionManager({
   const [busy, setBusy] = React.useState(false);
   const [title, setTitle] = React.useState("");
 
-  async function send(url: string, init: RequestInit) {
+  async function send(url: string, init: RequestInit, errorTitle: string) {
     setBusy(true);
     try {
-      await fetch(url, {
-        headers: { "Content-Type": "application/json" },
-        ...init,
-      });
-      router.refresh();
+      if (
+        await mutate(
+          url,
+          { headers: { "Content-Type": "application/json" }, ...init },
+          errorTitle,
+        )
+      )
+        router.refresh();
     } finally {
       setBusy(false);
     }
   }
 
   const patch = (id: string, body: unknown) =>
-    send(`/api/admin/home-sections/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    });
+    send(
+      `/api/admin/home-sections/${id}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+      "Хэсэг шинэчлэгдсэнгүй",
+    );
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    await send("/api/admin/home-sections", {
-      method: "POST",
-      body: JSON.stringify({
-        title: title.trim(),
-        sortOrder: sections.length + 1,
-      }),
-    });
+    await send(
+      "/api/admin/home-sections",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          title: title.trim(),
+          sortOrder: sections.length + 1,
+        }),
+      },
+      "Хэсэг нэмэгдсэнгүй",
+    );
     setTitle("");
   }
 
@@ -98,7 +107,11 @@ export function HomeSectionManager({
       destructive: true,
     });
     if (!ok) return;
-    await send(`/api/admin/home-sections/${section.id}`, { method: "DELETE" });
+    await send(
+      `/api/admin/home-sections/${section.id}`,
+      { method: "DELETE" },
+      "Хэсэг устсангүй",
+    );
   }
 
   /** Swap two rails' sort_order — one PATCH each, so a refresh is enough. */
@@ -107,18 +120,22 @@ export function HomeSectionManager({
     if (next < 0 || next >= sections.length) return;
     const a = sections[index];
     const b = sections[next];
-    await Promise.all([
-      fetch(`/api/admin/home-sections/${a.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sortOrder: b.sort_order }),
-      }),
-      fetch(`/api/admin/home-sections/${b.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sortOrder: a.sort_order }),
-      }),
+    // Both PATCHes must land, or the two rails end up sharing a sort_order.
+    const [okA, okB] = await Promise.all([
+      mutateJson(
+        `/api/admin/home-sections/${a.id}`,
+        "PATCH",
+        { sortOrder: b.sort_order },
+        "Дараалал өөрчлөгдсөнгүй",
+      ),
+      mutateJson(
+        `/api/admin/home-sections/${b.id}`,
+        "PATCH",
+        { sortOrder: a.sort_order },
+        "Дараалал өөрчлөгдсөнгүй",
+      ),
     ]);
+    if (!okA || !okB) return;
     router.refresh();
   }
 
@@ -141,7 +158,7 @@ export function HomeSectionManager({
       ))}
 
       {sections.length === 0 && (
-        <p className="border-border text-muted-foreground rounded-lg border border-dashed py-16 text-center text-sm">
+        <p className="bg-muted/40 text-muted-foreground rounded-lg py-16 text-center text-sm">
           Хэсэг алга. Доор нэр өгч эхний хэсгээ үүсгэнэ үү.
         </p>
       )}

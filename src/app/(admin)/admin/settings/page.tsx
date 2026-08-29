@@ -4,9 +4,10 @@ import * as React from "react";
 import Link from "next/link";
 import { Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -18,16 +19,13 @@ import {
 import { SHIPPING_ZONES, type ShippingZoneConfig } from "@/lib/constants";
 import { ZoneAreas } from "@/features/admin/components/zone-areas";
 import { createClient } from "@/lib/supabase/browser";
-
-async function saveSetting(key: string, value: unknown) {
-  await fetch("/api/admin/settings", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key, value }),
-  });
-}
+import { saveSetting } from "@/features/admin/lib/mutate";
+import { toast } from "@/lib/toast";
+import { useConfirm } from "@/components/shared/confirm-dialog";
+import { useUnsavedGuard } from "@/features/admin/lib/return-to";
 
 export default function AdminSettingsPage() {
+  const [confirm, confirmDialog] = useConfirm();
   const [store, setStore] = React.useState({
     name: "vonscent",
     phone: "",
@@ -63,9 +61,48 @@ export default function AdminSettingsPage() {
     autoOnCreate: true,
   });
 
+  // Seven independent forms with seven save buttons used to share no state at
+  // all: an operator who edited store info and a shipping zone, then pressed
+  // one Хадгалах, silently lost the other. Each section now compares itself to
+  // what was last written and says so.
+  const [baseline, setBaseline] = React.useState<Record<string, string> | null>(
+    null,
+  );
+  const snapshot = React.useMemo(
+    () => ({
+      store: JSON.stringify(store),
+      collection: JSON.stringify(collection),
+      imageGen: JSON.stringify(imageGen),
+      shipping: JSON.stringify(zones),
+      coupons: JSON.stringify(autoGrant),
+      payment: JSON.stringify(invoiceCode),
+    }),
+    [store, collection, imageGen, zones, autoGrant, invoiceCode],
+  );
+  type SectionKey = keyof typeof snapshot;
+  // Before the settings row has loaded there is nothing to compare against, so
+  // nothing is dirty — otherwise the fetch itself would mark every section.
+  const isDirty = (k: SectionKey) =>
+    baseline !== null && baseline[k] !== snapshot[k];
+  const commit = (k: SectionKey) =>
+    setBaseline((b) => ({ ...(b ?? snapshot), [k]: snapshot[k] }));
+  const anyDirty =
+    baseline !== null &&
+    (Object.keys(snapshot) as SectionKey[]).some(isDirty);
+
+  useUnsavedGuard(anyDirty);
+
+  const [loaded, setLoaded] = React.useState(false);
+  React.useEffect(() => {
+    if (loaded && baseline === null) setBaseline(snapshot);
+  }, [loaded, baseline, snapshot]);
+
   React.useEffect(() => {
     const supabase = createClient();
-    if (!supabase) return;
+    if (!supabase) {
+      setLoaded(true);
+      return;
+    }
     supabase
       .from("settings")
       .select("key, value")
@@ -101,17 +138,43 @@ export default function AdminSettingsPage() {
           if (row.key === "imageGen" && v)
             setImageGen((g) => ({ ...g, ...(v as object) }));
         }
+        setLoaded(true);
       });
   }, []);
 
+  /**
+   * Deleting a zone changes what every customer in it pays at checkout, and
+   * the change goes live on the next save — the most consequential one-click
+   * action on this page.
+   */
+  async function removeZone(i: number) {
+    const z = zones[i];
+    if (
+      !(await confirm({
+        title: `«${z?.name || z?.code || `${i + 1}-р бүс`}» бүсийг устгах уу?`,
+        description:
+          "Энэ бүсийн хүргэлтийн төлбөр, хамрах хороод устна. Хадгалсны дараа тухайн бүсийн худалдан авагчид хүргэлт сонгох боломжгүй болно.",
+        confirmLabel: "Устгах",
+        destructive: true,
+      }))
+    )
+      return;
+    setZones((zs) => zs.filter((_, j) => j !== i));
+  }
+
   return (
     <div className="space-y-6">
+      {confirmDialog}
       <h1 className="font-serif text-2xl font-semibold">Тохиргоо</h1>
 
       {/* Store info */}
       <Saver
         title="Дэлгүүрийн мэдээлэл"
-        onSave={() => saveSetting("store", store)}
+        onSave={() =>
+          saveSetting("store", store, "Дэлгүүрийн мэдээлэл хадгалагдсангүй")
+        }
+        dirty={isDirty("store")}
+        onSaved={() => commit("store")}
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Нэр">
@@ -143,39 +206,44 @@ export default function AdminSettingsPage() {
 
       {/* Collections (Багц) */}
       <Saver
-        title="Багц (Collection)"
+        title="Багц"
         onSave={() =>
-          saveSetting("collection", {
-            ...collection,
-            giftMlOptions: [1, 2],
-            roundTo: 100,
-          })
+          saveSetting(
+            "collection",
+            {
+              ...collection,
+              giftMlOptions: [1, 2],
+              roundTo: 100,
+            },
+            "Багц хадгалагдсангүй",
+          )
         }
+        dirty={isDirty("collection")}
+        onSaved={() => commit("collection")}
       >
         <div className="space-y-4">
           <div className="flex flex-wrap gap-4 text-sm">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
+            <label className="flex cursor-pointer items-center gap-2 py-1">
+              <Checkbox
                 checked={collection.customEnabled}
-                onChange={(e) =>
+                onCheckedChange={(c) =>
                   setCollection({
                     ...collection,
-                    customEnabled: e.target.checked,
+                    customEnabled: Boolean(c),
                   })
                 }
-                className="size-4"
               />
-              Custom багц идэвхтэй
+              Өөрөө угсрах багц идэвхтэй
             </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
+            <label className="flex cursor-pointer items-center gap-2 py-1">
+              <Checkbox
                 checked={collection.giftEnabled}
-                onChange={(e) =>
-                  setCollection({ ...collection, giftEnabled: e.target.checked })
+                onCheckedChange={(c) =>
+                  setCollection({
+                    ...collection,
+                    giftEnabled: Boolean(c),
+                  })
                 }
-                className="size-4"
               />
               Нэмэлт бэлэг идэвхтэй
             </label>
@@ -206,7 +274,10 @@ export default function AdminSettingsPage() {
                 }
               />
             </Field>
-            <Field label="Custom хямдрал %">
+            <Field
+              label="Өөрөө угсарсан багцын хямдрал %"
+              hint="Худалдан авагч өөрөө сонгож угсарсан багцад."
+            >
               <Input
                 type="number"
                 value={collection.customDiscountPct}
@@ -218,7 +289,10 @@ export default function AdminSettingsPage() {
                 }
               />
             </Field>
-            <Field label="Base default хямдрал %">
+            <Field
+              label="Бэлэн багцын үндсэн хямдрал %"
+              hint="Та урьдчилан бэлдсэн багцад анхдагчаар тавигдана."
+            >
               <Input
                 type="number"
                 value={collection.baseDefaultDiscountPct}
@@ -249,57 +323,65 @@ export default function AdminSettingsPage() {
       {/* AI image generation */}
       <Saver
         title="AI зураг үүсгэлт"
-        onSave={() => saveSetting("imageGen", imageGen)}
+        onSave={() =>
+          saveSetting("imageGen", imageGen, "AI зураг хадгалагдсангүй")
+        }
+        dirty={isDirty("imageGen")}
+        onSaved={() => commit("imageGen")}
       >
         <div className="space-y-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
+          <label className="flex cursor-pointer items-center gap-2 py-1 text-sm">
+            <Checkbox
               checked={imageGen.enabled}
-              onChange={(e) =>
-                setImageGen({ ...imageGen, enabled: e.target.checked })
+              onCheckedChange={(c) =>
+                setImageGen({ ...imageGen, enabled: Boolean(c) })
               }
-              className="size-4"
             />
             AI зураг үүсгэлт идэвхтэй
           </label>
-          <Field label="Үндсэн prompt (англи)">
+          <Field label="AI зурагт өгөх үндсэн заавар (англиар бичнэ)">
             <textarea
               value={imageGen.basePrompt}
               onChange={(e) =>
                 setImageGen({ ...imageGen, basePrompt: e.target.value })
               }
               rows={4}
-              className="border-border bg-background w-full rounded-md border p-2 text-sm"
+              className="bg-secondary field-edge w-full rounded-md p-2 text-base md:text-sm"
               placeholder="Professional e-commerce product photo of a perfume bottle…"
             />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Хэмжээ">
-              <select
+              <Select
                 value={imageGen.size}
-                onChange={(e) =>
-                  setImageGen({ ...imageGen, size: e.target.value })
-                }
-                className="border-border bg-background h-9 w-full rounded-md border px-2 text-sm"
+                onValueChange={(v) => setImageGen({ ...imageGen, size: v })}
               >
-                <option value="1024x1536">1024×1536 (босоо)</option>
-                <option value="1024x1024">1024×1024 (дөрвөлжин)</option>
-                <option value="1536x1024">1536×1024 (хэвтээ)</option>
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1024x1536">1024×1536 (босоо)</SelectItem>
+                  <SelectItem value="1024x1024">
+                    1024×1024 (дөрвөлжин)
+                  </SelectItem>
+                  <SelectItem value="1536x1024">1536×1024 (хэвтээ)</SelectItem>
+                </SelectContent>
+              </Select>
             </Field>
             <Field label="Чанар">
-              <select
+              <Select
                 value={imageGen.quality}
-                onChange={(e) =>
-                  setImageGen({ ...imageGen, quality: e.target.value })
-                }
-                className="border-border bg-background h-9 w-full rounded-md border px-2 text-sm"
+                onValueChange={(v) => setImageGen({ ...imageGen, quality: v })}
               >
-                <option value="low">Бага</option>
-                <option value="medium">Дунд</option>
-                <option value="high">Өндөр</option>
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Бага</SelectItem>
+                  <SelectItem value="medium">Дунд</SelectItem>
+                  <SelectItem value="high">Өндөр</SelectItem>
+                </SelectContent>
+              </Select>
             </Field>
           </div>
         </div>
@@ -308,14 +390,15 @@ export default function AdminSettingsPage() {
       {/* Shipping */}
       <Saver
         title="Хүргэлтийн бүс ба төлбөр"
-        onSave={() => saveSetting("shipping", { zones })}
+        onSave={() =>
+          saveSetting("shipping", { zones }, "Хүргэлтийн бүс хадгалагдсангүй")
+        }
+        dirty={isDirty("shipping")}
+        onSaved={() => commit("shipping")}
       >
         <div className="space-y-3">
           {zones.map((z, i) => (
-            <div
-              key={i}
-              className="border-border space-y-3 rounded-lg border p-2"
-            >
+            <div key={i} className="bg-muted/40 space-y-3 rounded-lg p-2">
               <div className="flex flex-wrap items-center gap-2">
                 {/* The code is the zone's identity (stored on orders); the name
                   beside it is only what customers read, so renaming is safe. */}
@@ -388,12 +471,18 @@ export default function AdminSettingsPage() {
                   />
                   Орон нутаг
                 </label>
-                <button
-                  onClick={() => setZones((zs) => zs.filter((_, j) => j !== i))}
-                  className="text-muted-foreground hover:text-destructive"
+                {/* A live-money delete sitting in a wrapping row of five
+                    inputs — it needs a real target, not a bare 16px icon. */}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeZone(i)}
+                  className="hover:text-destructive shrink-0"
+                  aria-label={`${z.name || z.code || `${i + 1}-р`} бүсийг устгах`}
                 >
                   <Trash2 className="size-4" />
-                </button>
+                </Button>
               </div>
               <ZoneAreas
                 areas={z.areas ?? []}
@@ -407,7 +496,7 @@ export default function AdminSettingsPage() {
           ))}
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             size="sm"
             onClick={() =>
               setZones((zs) => [
@@ -440,7 +529,11 @@ export default function AdminSettingsPage() {
       {/* Automatic reward coupon */}
       <Saver
         title="Автомат купон"
-        onSave={() => saveSetting("coupons", { autoGrant })}
+        onSave={() =>
+          saveSetting("coupons", { autoGrant }, "Купон хадгалагдсангүй")
+        }
+        dirty={isDirty("coupons")}
+        onSaved={() => commit("coupons")}
       >
         <label className="flex cursor-pointer items-center gap-2 text-sm">
           <Checkbox
@@ -513,7 +606,11 @@ export default function AdminSettingsPage() {
       {/* Payment */}
       <Saver
         title="Төлбөрийн тохиргоо (QPay)"
-        onSave={() => saveSetting("payment", { invoiceCode })}
+        onSave={() =>
+          saveSetting("payment", { invoiceCode }, "Төлбөр хадгалагдсангүй")
+        }
+        dirty={isDirty("payment")}
+        onSaved={() => commit("payment")}
       >
         <Field label="QPay Invoice Code">
           <Input
@@ -550,45 +647,57 @@ export default function AdminSettingsPage() {
   );
 }
 
+/**
+ * One settings section: its own fields, its own save, and its own unsaved
+ * marker. The marker is the point — this page stacks seven of these, so
+ * "which of these did I actually save?" is a question the page has to answer
+ * on its own rather than leaving the operator to remember.
+ */
 function Saver({
   title,
   children,
   onSave,
+  dirty,
+  onSaved,
 }: {
   title: string;
   children: React.ReactNode;
-  onSave: () => Promise<void>;
+  /** Resolves true when the write landed; `saveSetting` has already toasted. */
+  onSave: () => Promise<boolean>;
+  dirty: boolean;
+  onSaved: () => void;
 }) {
-  const [saved, setSaved] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
   async function handle() {
-    await onSave();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+    setBusy(true);
+    try {
+      if (await onSave()) {
+        toast.success(`${title} хадгалагдлаа.`);
+        onSaved();
+      }
+    } finally {
+      setBusy(false);
+    }
   }
   return (
     <Card>
       <CardContent className="space-y-4 p-6">
-        <h2 className="font-serif text-lg font-semibold">{title}</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-serif text-lg font-semibold">{title}</h2>
+          {dirty && (
+            <Badge className="bg-warning/15 text-warning shrink-0">
+              Хадгалаагүй
+            </Badge>
+          )}
+        </div>
         {children}
-        <Button onClick={handle}>
-          {saved ? "Хадгалагдлаа ✓" : "Хадгалах"}
+        {/* Disabled when clean: a save that writes the same values back still
+            reads as "something happened", which is how the operator learns to
+            press all seven buttons every time. */}
+        <Button onClick={handle} disabled={busy || !dirty}>
+          {busy ? "Хадгалж байна…" : dirty ? "Хадгалах" : "Хадгалсан"}
         </Button>
       </CardContent>
     </Card>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
-    </div>
   );
 }

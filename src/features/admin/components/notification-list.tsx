@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { mutate } from "@/features/admin/lib/mutate";
 import { BellRing, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,19 +27,26 @@ export function NotificationList({
   async function markRead(id: string) {
     setBusy(id);
     try {
-      await fetch(`/api/admin/notifications/${id}`, { method: "PATCH" });
-      router.refresh();
+      if (
+        await mutate(
+          `/api/admin/notifications/${id}`,
+          { method: "PATCH" },
+          "Уншсан гэж тэмдэглэгдсэнгүй",
+        )
+      )
+        router.refresh();
     } finally {
       setBusy(null);
     }
   }
 
   return (
-    <Card className="border-destructive/40">
+    <Card className="bg-destructive/10">
       <CardContent className="p-5">
         <h2 className="mb-3 flex items-center gap-2 font-medium">
           <BellRing className="text-destructive size-4" />
-          Шинэ мэдэгдэл ({notifications.length})
+          Шинэ мэдэгдэл
+          {notifications.length >= 20 ? " (20+)" : ` (${notifications.length})`}
         </h2>
         <ul className="space-y-2">
           {notifications.map((n) => (
