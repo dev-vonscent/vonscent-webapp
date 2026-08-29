@@ -14,6 +14,7 @@ import {
   getUnreadNotifications,
 } from "@/features/admin/api";
 import { NotificationList } from "@/features/admin/components/notification-list";
+import { stockState } from "@/features/admin/lib/stock-state";
 import { formatPrice, formatDate } from "@/lib/format";
 import { ORDER_STATUS_LABEL, ORDER_STATUSES } from "@/lib/constants";
 
@@ -26,17 +27,22 @@ export default async function AdminDashboard() {
   // Alert against each product's own configured threshold (A1) — not a
   // hardcoded figure.
   const lowStock = products.filter(
-    (p) => p.availableMl > 0 && p.availableMl <= p.lowStockMl,
+    (p) => stockState(p.availableMl, p.lowStockMl) === "low",
   );
-  const soldOut = products.filter((p) => p.availableMl <= 0);
+  const soldOut = products.filter(
+    (p) => stockState(p.availableMl, p.lowStockMl) === "soldout",
+  );
   const topSellerIds = dash?.topSellerIds ?? [];
-  const topSellers =
-    topSellerIds.length > 0
-      ? topSellerIds
-          .map((id) => products.find((p) => p.id === id))
-          .filter((p): p is NonNullable<typeof p> => Boolean(p))
-          .slice(0, 5)
-      : products.filter((p) => p.tags.includes("hot")).slice(0, 5);
+  // Real sales data when there is any. Without it the card falls back to the
+  // products tagged «Эрэлттэй» — which is the admin's own guess, not a
+  // measurement, so the card has to say which of the two it is showing.
+  const hasRealSales = topSellerIds.length > 0;
+  const topSellers = hasRealSales
+    ? topSellerIds
+        .map((id) => products.find((p) => p.id === id))
+        .filter((p): p is NonNullable<typeof p> => Boolean(p))
+        .slice(0, 5)
+    : products.filter((p) => p.tags.includes("hot")).slice(0, 5);
 
   const sales = [
     { label: "Өнөөдөр", value: dash?.salesToday ?? 0 },
@@ -81,10 +87,7 @@ export default async function AdminDashboard() {
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {ORDER_STATUSES.map((st) => (
-              <div
-                key={st}
-                className="border-border rounded-lg border p-3 text-center"
-              >
+              <div key={st} className="bg-muted/40 rounded-lg p-3 text-center">
                 <p className="font-serif text-xl font-semibold">
                   {dash?.statusCounts[st] ?? 0}
                 </p>
@@ -98,7 +101,7 @@ export default async function AdminDashboard() {
       </Card>
 
       {/* Inventory quick stats */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         {[
           { icon: Boxes, label: "Нийт бараа", value: String(products.length) },
           {
@@ -157,7 +160,7 @@ export default async function AdminDashboard() {
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-medium">Үлдэгдэл багассан</h2>
               <Link
-                href="/admin/inventory"
+                href="/admin/products?stock=low&sort=stock"
                 className="text-gold-strong flex items-center gap-1 text-sm hover:underline"
               >
                 Бүгд <ArrowRight className="size-3.5" />
@@ -170,14 +173,22 @@ export default async function AdminDashboard() {
             ) : (
               <ul className="space-y-2">
                 {lowStock.map((p) => (
-                  <li
-                    key={p.id}
-                    className="flex items-center justify-between text-sm"
-                  >
-                    <span>
-                      {p.brand} — {p.name}
-                    </span>
-                    <Badge variant="sale">{p.availableMl}ml</Badge>
+                  <li key={p.id}>
+                    {/* Straight to the row that can fix it: this list used to
+                        name a problem and leave the operator to go find it. */}
+                    <Link
+                      href={`/admin/products?q=${encodeURIComponent(p.name)}`}
+                      className="hover:bg-muted/60 -mx-2 flex min-h-11 items-center justify-between gap-3 rounded-md px-2 text-sm md:min-h-0 md:py-1"
+                    >
+                      <span className="min-w-0 truncate">
+                        {p.brand} — {p.name}
+                      </span>
+                      {/* Low stock is a warning, not a failure — `variant="sale"`
+                          painted it the same red as «Дууссан» (stock-badge.tsx). */}
+                      <Badge className="bg-warning/15 text-warning shrink-0 tabular-nums">
+                        {p.availableMl}ml
+                      </Badge>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -189,22 +200,43 @@ export default async function AdminDashboard() {
       {/* Top sellers */}
       <Card>
         <CardContent className="p-5">
-          <h2 className="mb-4 font-medium">Эрэлттэй бараа</h2>
-          <ul className="space-y-2">
-            {topSellers.map((p) => (
-              <li
-                key={p.id}
-                className="flex items-center justify-between text-sm"
-              >
-                <span>
-                  {p.brand} — {p.name}
-                </span>
-                <span className="text-muted-foreground">
-                  {formatPrice(p.startingPrice)}-аас
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="mb-1 flex items-baseline justify-between gap-3">
+            <h2 className="font-medium">Эрэлттэй бараа</h2>
+            {!hasRealSales && topSellers.length > 0 && (
+              <span className="text-muted-foreground text-xs">
+                «Эрэлттэй» тагаар
+              </span>
+            )}
+          </div>
+          <p className="text-muted-foreground mb-4 text-xs">
+            {hasRealSales
+              ? "Сүүлийн 30 хоногийн борлуулалтаар."
+              : "Борлуулалтын түүх хараахан алга тул та өөрөө тэмдэглэсэн бараа харагдаж байна."}
+          </p>
+          {topSellers.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              Захиалга орж эхэлмэгц хамгийн их зарагдсан бараа энд гарна. Одоохондоо
+              барааныхаа тагт «Эрэлттэй» гэж тэмдэглэвэл энд харагдана.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {topSellers.map((p) => (
+                <li key={p.id}>
+                  <Link
+                    href={`/admin/products?q=${encodeURIComponent(p.name)}`}
+                    className="hover:bg-muted/60 -mx-2 flex min-h-11 items-center justify-between gap-3 rounded-md px-2 text-sm md:min-h-0 md:py-1"
+                  >
+                    <span className="min-w-0 truncate">
+                      {p.brand} — {p.name}
+                    </span>
+                    <span className="text-muted-foreground shrink-0 tabular-nums">
+                      {formatPrice(p.startingPrice)}-аас
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </CardContent>
       </Card>
     </div>

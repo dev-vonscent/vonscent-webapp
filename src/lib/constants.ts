@@ -34,6 +34,17 @@ export const DEFAULT_BUNDLE_ML = 5;
 export const RESERVE_TIMEOUT_MINUTES = 30;
 
 /**
+ * Доод хязгаар (ml) — шинэ бараа энэ утгаас эхэлнэ.
+ *
+ * Боломжит үлдэгдэл нь энэ тооноос доош ороход бараа «Бага» болж, хяналтын
+ * самбарт сэрэмжлүүлэг гарна. 20ml байсныг 50 болгов: 20ml гэдэг нь ганцхан
+ * 20ml decant-ын хэмжээ, өөрөөр хэлбэл сэрэмжлүүлэг нь сүүлчийн захиалга
+ * гарсны дараа асдаг байсан — гааль, тээврийн хугацааг бодоход дахин
+ * захиалахад хэтэрхий орой. Админ бараа тус бүрээр нь өөрчилж болно.
+ */
+export const DEFAULT_LOW_STOCK_ML = 50;
+
+/**
  * Сар бүрийн бэлгийн sample (questions.md №2–3): one 1ml pick per full
  * 200,000₮ of goods value — coupon discount subtracted, shipping excluded.
  * 200k → 1 pick, 400k → 2 picks, and so on.
