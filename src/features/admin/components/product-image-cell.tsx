@@ -3,6 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { adminFetch, mutate, mutateJson } from "@/features/admin/lib/mutate";
 import {
   Loader2,
   AlertTriangle,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export interface CellProduct {
@@ -44,6 +46,9 @@ interface HistoryItem {
   createdAt: string;
 }
 
+/** One row of the `image-status` poll response. */
+type ImageStatus = Partial<CellState> & { status: CellState["status"] };
+
 const isBusy = (s: string) => s === "pending" || s === "generating";
 
 export function ProductImageCell({
@@ -71,21 +76,13 @@ export function ProductImageCell({
   React.useEffect(() => {
     if (!isBusy(state.status)) return;
     const iv = setInterval(async () => {
-      const r = await fetch(
+      const r = await adminFetch<{ statuses?: ImageStatus[] }>(
         `/api/admin/products/image-status?ids=${product.id}`,
-      )
-        .then((res) => (res.ok ? res.json() : null))
-        .catch(() => null);
-      const s = r?.statuses?.[0];
-      if (s)
-        setState({
-          status: s.status,
-          published: s.published,
-          resultUrl: s.resultUrl,
-          generationId: s.generationId,
-          prompt: s.prompt,
-          error: s.error,
-        });
+      );
+      const s = r.ok ? r.data?.statuses?.[0] : null;
+      // Merge rather than replace: a field the route omits should keep its
+      // previous value, not blank the cell.
+      if (s) setState((prev) => ({ ...prev, ...s }));
     }, 4000);
     return () => clearInterval(iv);
   }, [state.status, product.id]);
@@ -96,14 +93,21 @@ export function ProductImageCell({
     !!state.resultUrl &&
     state.resultUrl !== state.published;
 
+  // The one thing this cell has to say beyond "here is the picture": an AI
+  // image finished generating and is waiting for a human to publish it.
+  const hint = unapproved
+    ? "AI зураг бэлэн болсон ч хараахан нийтлээгүй. Дарж хараад батална уу."
+    : "Зураг харах / удирдах";
+
   return (
-    <>
+    <div className="flex items-center gap-2">
       <button
         type="button"
         onClick={() => setOpen(true)}
-        title="Зураг харах / удирдах"
+        aria-label={hint}
+        title={hint}
         className={cn(
-          "border-border bg-muted relative shrink-0 overflow-hidden rounded-md border",
+          "bg-muted relative shrink-0 overflow-hidden rounded-md",
           large ? "size-24" : "size-12",
         )}
       >
@@ -128,12 +132,17 @@ export function ProductImageCell({
             <ImageIcon className="size-5" />
           </span>
         )}
-        {unapproved && (
-          <span className="bg-gold-strong absolute inset-x-0 bottom-0 py-px text-center text-[8px] font-semibold text-white">
-            батлаагүй
-          </span>
-        )}
       </button>
+
+      {/* Beside the thumbnail, not on it. Overlaying the word made it 8px and
+          unreadable; replacing the word with a bare dot made it unreadable in
+          a different way — a marker nobody can name is not a marker. The
+          column has the width, so the state says what it is. */}
+      {unapproved && (
+        <Badge className="bg-warning/15 text-warning shrink-0" title={hint}>
+          Батлаагүй
+        </Badge>
+      )}
 
       {open && (
         <ImagePopup
@@ -144,7 +153,7 @@ export function ProductImageCell({
           onClose={() => setOpen(false)}
         />
       )}
-    </>
+    </div>
   );
 }
 
@@ -168,10 +177,10 @@ function ImagePopup({
   const [history, setHistory] = React.useState<HistoryItem[]>([]);
 
   const loadHistory = React.useCallback(async () => {
-    const r = await fetch(`/api/admin/products/${product.id}/generations`)
-      .then((res) => (res.ok ? res.json() : null))
-      .catch(() => null);
-    setHistory(r?.generations ?? []);
+    const r = await adminFetch<{ generations?: HistoryItem[] }>(
+      `/api/admin/products/${product.id}/generations`,
+    );
+    setHistory(r.ok ? (r.data?.generations ?? []) : []);
   }, [product.id]);
 
   React.useEffect(() => {
@@ -182,12 +191,10 @@ function ImagePopup({
   React.useEffect(() => {
     if (!isBusy(state.status)) return;
     const iv = setInterval(async () => {
-      const r = await fetch(
+      const r = await adminFetch<{ statuses?: ImageStatus[] }>(
         `/api/admin/products/image-status?ids=${product.id}`,
-      )
-        .then((res) => (res.ok ? res.json() : null))
-        .catch(() => null);
-      const s = r?.statuses?.[0];
+      );
+      const s = r.ok ? r.data?.statuses?.[0] : null;
       if (s) {
         setState((prev) => ({ ...prev, ...s }));
         if (!isBusy(s.status)) loadHistory();
@@ -211,26 +218,26 @@ function ImagePopup({
     // prefers the product's saved original reference when it has one.
     const ref = referenceSeed ?? state.published ?? state.resultUrl;
     if (ref) body.referenceUrl = ref;
-    const r = await fetch(
+    const ok = await mutateJson(
       `/api/admin/products/${product.id}/regenerate-image`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      },
+      "POST",
+      body,
+      "Зураг үүсгэж эхэлсэнгүй",
     );
     setBusy(false);
-    if (r.ok)
+    if (ok)
       setState((prev) => ({ ...prev, status: "generating", error: null }));
   }
 
   async function approve() {
     setBusy(true);
-    const r = await fetch(`/api/admin/products/${product.id}/approve-image`, {
-      method: "POST",
-    });
+    const ok = await mutate(
+      `/api/admin/products/${product.id}/approve-image`,
+      { method: "POST" },
+      "Зураг нийтлэгдсэнгүй",
+    );
     setBusy(false);
-    if (r.ok) {
+    if (ok) {
       setState((prev) => ({ ...prev, published: prev.resultUrl }));
       router.refresh();
     }
@@ -238,13 +245,14 @@ function ImagePopup({
 
   async function revert(generationId: string) {
     setBusy(true);
-    const r = await fetch(`/api/admin/products/${product.id}/revert-image`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ generationId }),
-    });
+    const ok = await mutateJson(
+      `/api/admin/products/${product.id}/revert-image`,
+      "POST",
+      { generationId },
+      "Зураг сэргээгдсэнгүй",
+    );
     setBusy(false);
-    if (r.ok) {
+    if (ok) {
       const item = history.find((h) => h.id === generationId);
       setState((prev) => ({
         ...prev,
@@ -269,7 +277,7 @@ function ImagePopup({
 
         <div className="grid gap-4 sm:grid-cols-2">
           {/* Preview */}
-          <div className="border-border bg-muted relative aspect-4/5 overflow-hidden rounded-xl border">
+          <div className="bg-muted relative aspect-4/5 overflow-hidden rounded-xl">
             {isBusy(state.status) ? (
               <span className="text-muted-foreground flex size-full flex-col items-center justify-center gap-2 text-sm">
                 <Loader2 className="size-7 animate-spin" /> Үүсгэж байна…
@@ -303,7 +311,7 @@ function ImagePopup({
                 onChange={(e) => setAdjust(e.target.value)}
                 rows={3}
                 placeholder="Жишээ: Доор байгаа чулууг илүү бодит болго"
-                className="border-border bg-background placeholder:text-muted-foreground mt-1 w-full resize-none rounded-md border p-2 text-sm focus-visible:outline-none"
+                className="bg-secondary field-edge placeholder:text-muted-foreground mt-1 w-full resize-none rounded-md p-2 text-base md:text-sm"
               />
             </label>
             <p className="text-muted-foreground -mt-1 text-xs">
@@ -316,7 +324,7 @@ function ImagePopup({
               <Sparkles className="size-4" /> Дахин үүсгэх
             </Button>
             {unapproved && (
-              <Button variant="outline" onClick={approve} disabled={busy}>
+              <Button variant="secondary" onClick={approve} disabled={busy}>
                 <Check className="size-4" /> Батлаж нийтлэх
               </Button>
             )}
@@ -338,9 +346,10 @@ function ImagePopup({
                     key={h.id}
                     onClick={() => revert(h.id)}
                     disabled={busy}
+                    aria-label="Энэ хувилбарыг сэргээх"
                     title="Энэ хувилбарыг сэргээх"
                     className={cn(
-                      "border-border group relative size-16 shrink-0 overflow-hidden rounded-md border",
+                      "bg-muted group relative size-16 shrink-0 overflow-hidden rounded-md",
                       state.published === h.resultUrl &&
                         "ring-gold-strong ring-2",
                     )}
@@ -354,6 +363,10 @@ function ImagePopup({
                         className="object-cover"
                       />
                     )}
+                    {/* A scrim over an arbitrary photograph, not over a theme
+                        surface: DESIGN.md sanctions a literal dark scrim here
+                        precisely because the image underneath is the same in
+                        all three themes. */}
                     <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/40 group-hover:opacity-100">
                       <RotateCcw className="size-4 text-white" />
                     </span>

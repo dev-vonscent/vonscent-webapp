@@ -3,7 +3,9 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field } from "@/components/ui/field";
+import { adminFetch } from "@/features/admin/lib/mutate";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +20,7 @@ import {
 import {
   VariantPriceTable,
   emptyVariants,
+  unpricedActiveSizes,
   type VariantDraft,
 } from "./variant-price-table";
 import { MultiCheck, useToggleList } from "./multi-check";
@@ -29,6 +32,7 @@ import {
   CONCENTRATIONS,
   SEASONS,
   SEASON_LABEL,
+  DEFAULT_LOW_STOCK_ML,
 } from "@/lib/constants";
 import type { ScentFamilyOption } from "@/lib/types";
 import type { CustomTagOption } from "@/features/taxonomy/api";
@@ -68,10 +72,11 @@ export function ProductForm({
     bottleMl: "100",
     salePct: "0",
     onHandMl: "100",
-    lowStockMl: "20",
+    lowStockMl: String(DEFAULT_LOW_STOCK_ML),
   });
 
   const [variants, setVariants] = React.useState<VariantDraft[]>(emptyVariants);
+  const [showVariantErrors, setShowVariantErrors] = React.useState(false);
   const [tags, toggleTag] = useToggleList([]);
   const [customTags, toggleCustomTag] = useToggleList([]);
   const [isActive, setIsActive] = React.useState(true);
@@ -93,6 +98,25 @@ export function ProductForm({
     e.preventDefault();
     if (imageMode === "generate" && images.length === 0) {
       setResult("AI-аар үүсгэхэд лавлах зураг заавал оруулна уу.");
+      return;
+    }
+    // Sizes now arrive unticked (variant-price-table.tsx), so a product can be
+    // created with no size on sale at all — say so rather than publishing a
+    // product nobody can buy.
+    if (!variants.some((v) => v.active)) {
+      setShowVariantErrors(true);
+      setResult(
+        "Ядаж нэг хэмжээг «Зарна» болгож, үнийг нь оруулна уу — эс бөгөөс энэ барааг хэн ч авч чадахгүй.",
+      );
+      return;
+    }
+    // A ticked size with no price would publish a free decant against real ml.
+    const unpriced = unpricedActiveSizes(variants);
+    if (unpriced.length > 0) {
+      setShowVariantErrors(true);
+      setResult(
+        `${unpriced.join(", ")}ml зарахаар тэмдэглэсэн ч үнэгүй байна. Үнэ оруулах эсвэл «Зарна»-г авна уу.`,
+      );
       return;
     }
     setSubmitting(true);
@@ -127,20 +151,26 @@ export function ProductForm({
           .map((s) => s.trim())
           .filter(Boolean),
       };
-      const res = await fetch("/api/admin/products", {
+      const res = await adminFetch("/api/admin/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (data.demo) {
+      if (res.ok) {
+        toast.success(
+          imageMode === "generate"
+            ? `«${form.name}» нэмэгдлээ. Зураг бэлэн болтол бараа нуугдсан хэвээр байна.`
+            : `«${form.name}» нэмэгдлээ.`,
+        );
+        router.push("/admin/products");
+      } else if (res.demo) {
         setResult(
           "Demo горим: Supabase холбогдсоны дараа бараа бодитоор хадгалагдана.",
         );
-      } else if (res.ok) {
-        router.push("/admin/products");
       } else {
-        setResult("Алдаа гарлаа.");
+        // "Алдаа гарлаа." after thirty filled fields tells the operator
+        // nothing — pass the server's own reason through.
+        setResult(`Хадгалж чадсангүй: ${res.error}`);
       }
     } finally {
       setSubmitting(false);
@@ -215,7 +245,7 @@ export function ProductForm({
             options={families.map((f) => ({ value: f.slug, label: f.label }))}
             selected={scentFamilies}
             onToggle={toggleFamily}
-            empty="Тохиргоо → Үнэрийн төрөл хэсэгт эхлээд төрөл нэмнэ үү."
+            empty="Каталог → Үнэрийн төрөл хэсэгт эхлээд төрөл нэмнэ үү."
           />
           <MultiCheck
             label="Улирал (олон сонголт)"
@@ -304,7 +334,12 @@ export function ProductForm({
       <Card>
         <CardContent className="space-y-4 p-6">
           <h2 className="font-serif text-lg font-semibold">Үнэ</h2>
-          <VariantPriceTable variants={variants} onChange={setVariants} />
+          <VariantPriceTable
+            variants={variants}
+            onChange={setVariants}
+            showErrors={showVariantErrors}
+            idPrefix="new"
+          />
           <Field label="Хямдралын % (0 = хямдралгүй)">
             <Input
               type="number"
@@ -397,16 +432,27 @@ export function ProductForm({
       </Card>
 
       {result && (
-        <p className="bg-secondary rounded-md px-4 py-3 text-sm">{result}</p>
+        // role="alert" so a save failure is announced, not just painted.
+        <p role="alert" className="bg-secondary rounded-md px-4 py-3 text-sm">
+          {result}
+        </p>
       )}
 
-      <div className="flex gap-3">
-        <Button type="submit" size="lg" disabled={submitting}>
+      {/* Sticky on a phone: the submit used to sit below ~30 fields, so saving
+          meant scrolling the whole form back down. `pb-safe` keeps it clear of
+          the iOS home indicator. */}
+      <div className="bg-background/85 pb-safe sticky bottom-0 -mx-4 flex gap-3 px-4 py-3 backdrop-blur md:static md:mx-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+        <Button
+          type="submit"
+          size="lg"
+          disabled={submitting}
+          className="flex-1 md:flex-none"
+        >
           {submitting ? "Хадгалж байна…" : "Бараа хадгалах"}
         </Button>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           size="lg"
           onClick={() => router.push("/admin/products")}
         >
@@ -414,20 +460,5 @@ export function ProductForm({
         </Button>
       </div>
     </form>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
-    </div>
   );
 }
