@@ -3,12 +3,12 @@ import { cache } from "react";
 import { createPublicClient } from "@/lib/supabase/public";
 import { SHIPPING_ZONES } from "@/lib/constants";
 import { getProductsByIds, getProductsByTag } from "@/features/products/api";
-import type { HeroBannerRow, HomeSectionRow } from "@/db/types";
+import type { HomeSectionRow } from "@/db/types";
 import type { ProductListItem } from "@/lib/types";
 
 /**
  * Content / settings data access (admin A8 + A10). Settings live in the
- * key/value `settings` table; banners in `hero_banners`. Everything falls back
+ * key/value `settings` table. Everything falls back
  * to sensible defaults so the storefront renders in demo mode.
  */
 
@@ -165,16 +165,6 @@ export const getLoyaltySettings = () => getSetting("loyalty", DEFAULT_LOYALTY);
 export const getStoreSettings = () => getSetting("store", DEFAULT_STORE);
 export const getGiftSettings = () => getSetting("gift", DEFAULT_GIFT);
 
-export interface HeroBanner {
-  id: string;
-  title: string;
-  subtitle: string;
-  ctaLabel: string;
-  ctaHref: string;
-  imageUrl: string | null;
-  sortOrder: number;
-}
-
 /** A curated home rail with its products already resolved (todo.md B7). */
 export interface HomeSection {
   id: string;
@@ -240,21 +230,3 @@ export async function getHomeSections(): Promise<HomeSection[]> {
   return sections;
 }
 
-export async function getHeroBanners(): Promise<HeroBanner[]> {
-  const supabase = createPublicClient();
-  if (!supabase) return [];
-  const { data } = await supabase
-    .from("hero_banners")
-    .select("*")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true });
-  return ((data as HeroBannerRow[] | null) ?? []).map((b) => ({
-    id: b.id,
-    title: b.title,
-    subtitle: b.subtitle,
-    ctaLabel: b.cta_label,
-    ctaHref: b.cta_href,
-    imageUrl: b.image_url,
-    sortOrder: b.sort_order,
-  }));
-}

@@ -20,7 +20,7 @@ const FOLDERS = {
   /** Scent family icons (todo.md B3b) — shown on the home rail and filters. */
   families: "staff",
   blog: "staff",
-  /** Marketing imagery — hero banners and promo popup slides (admin A8). */
+  /** Marketing imagery — promo popup slides (admin A8). */
   marketing: "staff",
 } as const;
 

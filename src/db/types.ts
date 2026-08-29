@@ -255,18 +255,6 @@ export interface FaqRow {
   created_at: string;
 }
 
-export interface HeroBannerRow {
-  id: string;
-  title: string;
-  subtitle: string;
-  cta_label: string;
-  cta_href: string;
-  image_url: string | null;
-  sort_order: number;
-  is_active: boolean;
-  created_at: string;
-}
-
 export interface NewsletterSubscriberRow {
   id: string;
   email: string;
@@ -357,7 +345,6 @@ export interface Database {
         "id" | "published_at" | "created_at" | "updated_at"
       >;
       faqs: Table<FaqRow, "id" | "created_at">;
-      hero_banners: Table<HeroBannerRow, "id" | "created_at">;
       newsletter_subscribers: Table<NewsletterSubscriberRow, "id" | "created_at">;
       loyalty_ledger: Table<LoyaltyLedgerRow, "id" | "created_at">;
       order_status_history: Table<OrderStatusHistoryRow, "id" | "created_at">;

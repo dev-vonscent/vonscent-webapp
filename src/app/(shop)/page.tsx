@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
-import { SiteFooter } from "@/components/shared/site-footer";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { Stars } from "@/components/shared/stars";
 import { ProductCarousel } from "@/features/products/components/product-carousel";
@@ -22,15 +21,10 @@ import {
   getBrands,
 } from "@/features/products/api";
 import { getRecentReviews } from "@/features/reviews/api";
-import {
-  getPopupSettings,
-  getHeroBanners,
-  getHomeSections,
-} from "@/features/content/api";
+import { getPopupSettings, getHomeSections } from "@/features/content/api";
 import { getScentFamilies } from "@/features/taxonomy/api";
 import { getFeaturedCollections } from "@/features/collections/api";
 import { CollectionCard } from "@/features/collections/components/collection-card";
-import { HeroCarousel } from "@/features/marketing/components/hero-carousel";
 import { ScentQuiz } from "@/features/quiz/components/scent-quiz";
 import { PromoPopup } from "@/features/marketing/components/promo-popup";
 import { GENDERS, GENDER_LABEL } from "@/lib/constants";
@@ -59,7 +53,6 @@ export default async function HomePage() {
     brands,
     reviews,
     popup,
-    banners,
     families,
     sections,
     featuredCollections,
@@ -70,7 +63,6 @@ export default async function HomePage() {
     getBrands(),
     getRecentReviews(3),
     getPopupSettings(),
-    getHeroBanners(),
     getScentFamilies(),
     getHomeSections(),
     getFeaturedCollections(3),
@@ -79,8 +71,8 @@ export default async function HomePage() {
   return (
     <>
       <PromoPopup settings={popup} />
-      {/* Hero — layered: CSS ambience + a contained (never upscaled) image,
-          so low-res admin uploads stay sharp on wide screens. Pulled up under
+      {/* Hero — a contained (never upscaled) image over the flat theme
+          backdrop, so the artwork stays sharp on wide screens. Pulled up under
           the floating header (pt-4 16px + h-14 pill = 72px) so the backdrop
           reaches the very top and shows behind the translucent pill. */}
       <section className="bg-background relative -mt-18 w-full overflow-hidden">
@@ -91,79 +83,73 @@ export default async function HomePage() {
           className="absolute inset-0 opacity-[0.05] mix-blend-overlay"
           style={{ backgroundImage: GRAIN }}
         />
-        {banners.length > 0 ? (
-          // Admin-managed banners (A8) win; the static block below is the
-          // fallback for a store that hasn't uploaded any yet.
-          <HeroCarousel banners={banners} />
-        ) : (
-          <div className="mx-auto grid max-w-352 items-center gap-8 px-4 pt-28 pb-16 md:grid-cols-2 md:px-8">
-            <div className="relative z-10 max-w-md space-y-5 max-md:mx-auto max-md:flex max-md:flex-col max-md:items-center max-md:text-center md:order-1">
-              <p className="text-muted-foreground text-sm font-medium tracking-[0.22em] uppercase">
-                Жинхэнэ үнэртэн · Decant
-              </p>
-              <h1 className="text-foreground text-4xl font-bold tracking-tight text-balance sm:text-5xl">
-                Бүтэн сав авахаасаа өмнө туршиж үз
-              </h1>
-              <p className="text-muted-foreground">
-                Дэлхийн шилдэг үнэртнүүдийг 2/5/10/20ml багцаар — өөрт тохирохоо
-                олоод дараа нь бүтэн савыг нь аваарай.
-              </p>
-              <div className="flex gap-3">
-                <Button
-                  asChild
-                  size="lg"
-                  className="in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
-                >
-                  <Link href="/catalog">Каталог үзэх</Link>
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="secondary"
-                  className="in-[.black]:bg-white/10 in-[.black]:text-white in-[.black]:hover:bg-white/20"
-                >
-                  <Link href="/collections/build">Багц угсрах</Link>
-                </Button>
-              </div>
-            </div>
-
-            {/* The image never scales past its container, and the mask melts
-                its edges into the CSS backdrop. */}
-            <div className="relative order-first mx-auto aspect-square w-full max-w-140 mask-[radial-gradient(ellipse_70%_68%_at_50%_50%,#000_55%,transparent_78%)] md:order-2">
-              {/* One artwork per theme — the dark shot is unreadable on the
-                  light palettes. All three are in the DOM (a display:none
-                  image is never "visible", so lazy-loading would never fire
-                  it); only the active theme's is painted. */}
-              <Image
-                src="/hero-black.webp"
-                alt="VON SCENT"
-                fill
-                priority
-                // All three artworks are square — 1:1 with the slot.
-                sizes="(max-width: 768px) 100vw, 560px"
-                // The bottle sits smaller in its frame than the light shots,
-                // so it gets a nudge up in scale to match their presence.
-                className="scale-110 object-cover in-[.pink]:hidden in-[.white]:hidden"
-              />
-              <Image
-                src="/hero-white.webp"
-                alt="VON SCENT"
-                fill
-                loading="eager"
-                sizes="(max-width: 768px) 100vw, 560px"
-                className="hidden object-cover in-[.white]:block"
-              />
-              <Image
-                src="/hero-pink.webp"
-                alt="VON SCENT"
-                fill
-                loading="eager"
-                sizes="(max-width: 768px) 100vw, 560px"
-                className="hidden object-cover in-[.pink]:block"
-              />
+        <div className="mx-auto grid max-w-352 items-center gap-8 px-4 pt-28 pb-16 md:grid-cols-2 md:px-8">
+          <div className="relative z-10 max-w-xl space-y-6 max-md:mx-auto max-md:flex max-md:flex-col max-md:items-center max-md:text-center md:order-1">
+            <p className="text-muted-foreground text-sm font-medium tracking-[0.22em] uppercase sm:text-base">
+              Жинхэнэ үнэртэн · Decant
+            </p>
+            <h1 className="text-foreground text-4xl font-bold tracking-tight text-balance sm:text-6xl lg:text-7xl">
+              Бүтэн үнэртэн авахаасаа өмнө туршиж үз
+            </h1>
+            <p className="text-muted-foreground text-base text-pretty sm:text-lg">
+              Дэлхийн шилдэг үнэртнүүдийг 2/5/10/20ml сонголтоор — өөрт
+              тохирох үнэртэй усаа олоод дараа нь бүтнээр нь аваарай.
+            </p>
+            <div className="flex gap-3">
+              <Button
+                asChild
+                size="lg"
+                className="in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+              >
+                <Link href="/catalog">Каталог үзэх</Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="secondary"
+                className="in-[.black]:bg-white/10 in-[.black]:text-white in-[.black]:hover:bg-white/20"
+              >
+                <Link href="/collections/build">Багц угсрах</Link>
+              </Button>
             </div>
           </div>
-        )}
+
+          {/* The image never scales past its container, and the mask melts
+              its edges into the CSS backdrop. */}
+          <div className="relative order-first mx-auto aspect-square w-full max-w-140 mask-[radial-gradient(ellipse_70%_68%_at_50%_50%,#000_55%,transparent_78%)] md:order-2">
+            {/* One artwork per theme — the dark shot is unreadable on the
+                light palettes. All three are in the DOM (a display:none
+                image is never "visible", so lazy-loading would never fire
+                it); only the active theme's is painted. */}
+            <Image
+              src="/hero-black.webp"
+              alt="VON SCENT"
+              fill
+              priority
+              // All three artworks are square — 1:1 with the slot.
+              sizes="(max-width: 768px) 100vw, 560px"
+              // The bottle sits smaller in its frame than the light shots,
+              // so it gets a nudge up in scale to match their presence.
+              className="scale-110 object-cover in-[.pink]:hidden in-[.white]:hidden"
+            />
+            <Image
+              src="/hero-white.webp"
+              alt="VON SCENT"
+              fill
+              loading="eager"
+              sizes="(max-width: 768px) 100vw, 560px"
+              className="hidden object-cover in-[.white]:block"
+            />
+            <Image
+              src="/hero-pink.webp"
+              alt="VON SCENT"
+              fill
+              loading="eager"
+              sizes="(max-width: 768px) 100vw, 560px"
+              className="hidden object-cover in-[.pink]:block"
+            />
+          </div>
+        </div>
       </section>
 
       <div className="mx-auto max-w-352 space-y-10 px-4 py-8 sm:space-y-16 sm:py-14 md:px-8">
@@ -279,14 +265,17 @@ export default async function HomePage() {
                   sizes="(max-width: 640px) 33vw, 360px"
                   className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/25 to-black/10" />
-                <span className="absolute top-4 right-4 z-10 font-serif text-3xl text-white/40">
+                <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/40 to-black/15" />
+                <span
+                  aria-hidden
+                  className="absolute top-4 right-4 z-10 font-serif text-3xl text-white/40"
+                >
                   0{i + 1}
                 </span>
-                <span className="relative z-10 font-serif text-lg font-medium sm:text-xl">
+                <span className="relative z-10 font-serif text-lg font-medium text-white sm:text-xl">
                   {GENDER_LABEL[g]}
                 </span>
-                <span className="text-muted-foreground relative z-10 mt-1 inline-flex items-center gap-1 text-xs opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="relative z-10 mt-1 inline-flex items-center gap-1 text-xs text-white/80 opacity-0 transition-opacity group-hover:opacity-100">
                   Үзэх <ArrowRight className="size-3" />
                 </span>
               </Link>
@@ -354,7 +343,7 @@ export default async function HomePage() {
                   sizes="(max-width: 640px) 50vw, 280px"
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/15 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/35 to-black/5" />
                 <span className="relative z-10 font-serif text-lg font-medium text-white">
                   {s.label}
                 </span>
@@ -482,8 +471,6 @@ export default async function HomePage() {
           </section>
         )}
       </div>
-
-      <SiteFooter />
     </>
   );
 }
