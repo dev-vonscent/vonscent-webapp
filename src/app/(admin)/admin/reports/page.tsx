@@ -38,7 +38,7 @@ export default async function AdminReportsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-serif text-2xl font-semibold">Тайлан</h1>
         <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="secondary" size="sm">
             {/* Opens the print view; the browser's Save-as-PDF is the export
                 (todo.md B8) — same mechanism as the order invoice. */}
             <Link href="/admin/reports/print" target="_blank">
@@ -58,7 +58,7 @@ export default async function AdminReportsPage() {
               {formatPrice(report.totalRevenue)}
             </p>
             <p className="text-muted-foreground text-sm">
-              Нийт борлуулалт (хүргэлт, купон, оноогүй)
+              Нийт борлуулалт (хүргэлт, купон, оноо хассан)
             </p>
           </CardContent>
         </Card>
@@ -109,28 +109,30 @@ export default async function AdminReportsPage() {
             <>
               <MonthlySalesChart data={monthlyAsc} />
               <div className="mt-6 overflow-x-auto">
-              <table className="w-full min-w-105 text-sm">
-                <thead className="text-muted-foreground text-left text-xs">
-                  <tr>
-                    <th className="pb-2 font-medium">Сар</th>
-                    <th className="pb-2 font-medium">Захиалга</th>
-                    <th className="pb-2 font-medium">Заралсан ml</th>
-                    <th className="pb-2 text-right font-medium">Борлуулалт</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {report.monthly.map((m) => (
-                    <tr key={m.month} className="border-border border-t">
-                      <td className="py-2 font-medium">{m.month}</td>
-                      <td className="py-2">{m.orders}</td>
-                      <td className="py-2">{m.ml}ml</td>
-                      <td className="py-2 text-right font-medium">
-                        {formatPrice(m.revenue)}
-                      </td>
+                <table className="w-full min-w-105 text-sm">
+                  <thead className="text-muted-foreground text-left text-xs">
+                    <tr>
+                      <th className="pb-2 font-medium">Сар</th>
+                      <th className="pb-2 font-medium">Захиалга</th>
+                      <th className="pb-2 font-medium">Зарсан мл</th>
+                      <th className="pb-2 text-right font-medium">
+                        Борлуулалт
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {report.monthly.map((m) => (
+                      <tr key={m.month} className="even:bg-muted/40">
+                        <td className="py-2 font-medium">{m.month}</td>
+                        <td className="py-2">{m.orders}</td>
+                        <td className="py-2">{m.ml}ml</td>
+                        <td className="py-2 text-right font-medium">
+                          {formatPrice(m.revenue)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </>
           )}
@@ -206,7 +208,7 @@ export default async function AdminReportsPage() {
 
 function ExportButton({ type, label }: { type: string; label: string }) {
   return (
-    <Button asChild variant="outline" size="sm">
+    <Button asChild variant="secondary" size="sm">
       <a href={`/api/admin/reports/export?type=${type}`}>
         <Download className="size-4" /> {label} CSV
       </a>

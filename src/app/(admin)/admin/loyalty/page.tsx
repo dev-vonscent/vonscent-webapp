@@ -2,18 +2,21 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/browser";
+import { saveSetting } from "@/features/admin/lib/mutate";
+import { toast } from "@/lib/toast";
 
 export default function AdminLoyaltyPage() {
   const [earnPer, setEarnPer] = React.useState(100);
   const [earnPoints, setEarnPoints] = React.useState(1);
   const [redeemRate, setRedeemRate] = React.useState(1);
   const [lockHours, setLockHours] = React.useState(24);
-  const [saved, setSaved] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
   const [loaded, setLoaded] = React.useState(false);
 
   React.useEffect(() => {
@@ -41,19 +44,31 @@ export default function AdminLoyaltyPage() {
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    await fetch("/api/admin/settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        key: "loyalty",
-        value: { earnPer, earnPoints, redeemRate, lockHours },
-      }),
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setBusy(true);
+    try {
+      const ok = await saveSetting(
+        "loyalty",
+        { earnPer, earnPoints, redeemRate, lockHours },
+        "V point тохиргоо хадгалагдсангүй",
+      );
+      if (ok) toast.success("V point тохиргоо хадгалагдлаа.");
+    } finally {
+      setBusy(false);
+    }
   }
 
-  if (!loaded) return <div className="h-40" />;
+  // A bare sized div announces nothing: a screen-reader user got silence
+  // where every other admin screen says «Ачаалж байна» (admin/loading.tsx).
+  if (!loaded)
+    return (
+      <div
+        role="status"
+        aria-label="Ачаалж байна"
+        className="text-muted-foreground flex h-40 items-center justify-center"
+      >
+        <Loader2 className="size-6 animate-spin" />
+      </div>
+    );
 
   return (
     <div className="space-y-6">
@@ -103,8 +118,8 @@ export default function AdminLoyaltyPage() {
                 </p>
               </div>
             </div>
-            <Button type="submit">
-              {saved ? "Хадгалагдлаа ✓" : "Хадгалах"}
+            <Button type="submit" disabled={busy}>
+              {busy ? "Хадгалж байна…" : "Хадгалах"}
             </Button>
           </form>
           <p className="text-muted-foreground text-sm">

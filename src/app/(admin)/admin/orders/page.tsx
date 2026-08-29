@@ -2,6 +2,13 @@ import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { OrdersTable } from "@/features/admin/components/orders-table";
+import { DateRangeFilter } from "@/features/admin/components/date-range-filter";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  ServerPager,
+  makeHrefBuilder,
+} from "@/features/admin/components/server-pager";
 import {
   ORDER_STATUS_LABEL,
   ORDER_STATUSES,
@@ -9,6 +16,9 @@ import {
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { OrderRow } from "@/db/types";
+
+/** Server-side page size; the table no longer paginates on the client. */
+const ORDERS_PER_PAGE = 50;
 
 /**
  * `datetime-local` gives us UB wall-clock text; the column is timestamptz, so
@@ -28,17 +38,26 @@ export default async function AdminOrdersPage({
     q?: string;
     from?: string;
     to?: string;
+    page?: string;
   }>;
 }) {
-  const { status, q, from, to } = await searchParams;
+  const { status, q, from, to, page } = await searchParams;
+  const pageIndex = Math.max(0, (Number(page) || 1) - 1);
   const supabase = await createClient();
   let orders: OrderRow[] = [];
+  // `null` = demo mode (no Supabase); a number is the real total, which the
+  // pager needs. The old `.limit(200)` truncated silently, so past 200 orders
+  // the list was simply wrong with nothing on screen saying so.
+  let total: number | null = null;
   if (supabase) {
     let query = supabase
       .from("orders")
-      .select("*")
+      .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
-      .limit(200);
+      .range(
+        pageIndex * ORDERS_PER_PAGE,
+        pageIndex * ORDERS_PER_PAGE + ORDERS_PER_PAGE - 1,
+      );
     if (status && ORDER_STATUSES.includes(status as OrderStatus)) {
       query = query.eq("status", status);
     }
@@ -54,9 +73,17 @@ export default async function AdminOrdersPage({
     const toIso = ubIso(to);
     if (fromIso) query = query.gte("created_at", fromIso);
     if (toIso) query = query.lte("created_at", toIso);
-    const { data } = await query;
+    const { data, count } = await query;
     orders = (data as OrderRow[] | null) ?? [];
+    total = count ?? 0;
   }
+
+  // Paging keeps every filter; changing a filter resets to page 1.
+  const hrefWith = makeHrefBuilder("/admin/orders", { status, q, from, to });
+  const pageHref = (i: number) =>
+    hrefWith({ page: i > 0 ? String(i + 1) : undefined });
+  const statusHref = (s?: OrderStatus) =>
+    hrefWith({ status: s, page: undefined });
 
   return (
     <div className="space-y-6">
@@ -64,73 +91,92 @@ export default async function AdminOrdersPage({
 
       {/* Status filter + search */}
       <div className="flex flex-wrap items-center gap-2">
-        <FilterChip label="Бүгд" href="/admin/orders" active={!status} />
+        {/* Every chip carries the operator's search and date range forward —
+            dropping them mid-investigation was silent data loss. */}
+        <FilterChip
+          label="Бүгд"
+          href={statusHref(undefined)}
+          active={!status}
+        />
         {ORDER_STATUSES.map((s) => (
           <FilterChip
             key={s}
             label={ORDER_STATUS_LABEL[s]}
-            href={`/admin/orders?status=${s}`}
+            href={statusHref(s)}
             active={status === s}
           />
         ))}
       </div>
 
-      {/* Search + date/time range (A1: "өдөр цагаар, дугаараар, утсаар") */}
-      <form
-        action="/admin/orders"
-        className="border-border flex flex-wrap items-end gap-3 rounded-lg border p-3"
-      >
-        {status && <input type="hidden" name="status" value={status} />}
-        <label className="text-muted-foreground flex flex-col gap-1 text-xs">
-          Хайлт
-          <input
-            name="q"
-            defaultValue={q}
-            placeholder="Дугаар / нэр / утас"
-            className="border-border text-foreground focus:border-primary h-9 w-56 rounded-md border bg-transparent px-3 text-sm outline-none"
-          />
-        </label>
-        <label className="text-muted-foreground flex flex-col gap-1 text-xs">
-          Эхлэх (огноо, цаг)
-          <input
-            type="datetime-local"
-            name="from"
-            defaultValue={from}
-            className="border-border text-foreground focus:border-primary h-9 rounded-md border bg-transparent px-3 text-sm outline-none"
-          />
-        </label>
-        <label className="text-muted-foreground flex flex-col gap-1 text-xs">
-          Дуусах (огноо, цаг)
-          <input
-            type="datetime-local"
-            name="to"
-            defaultValue={to}
-            className="border-border text-foreground focus:border-primary h-9 rounded-md border bg-transparent px-3 text-sm outline-none"
-          />
-        </label>
-        <button
-          type="submit"
-          className="bg-foreground text-background h-9 rounded-md px-4 text-sm font-medium"
-        >
-          Шүүх
-        </button>
-        {(q || from || to) && (
-          <Link
-            href={status ? `/admin/orders?status=${status}` : "/admin/orders"}
-            className="text-muted-foreground hover:text-foreground h-9 rounded-md px-3 text-sm/9 "
-          >
-            Цэвэрлэх
-          </Link>
-        )}
-      </form>
+      {/* Search + date range (A1: "өдөр цагаар, дугаараар, утсаар") */}
+      {/* The surface is a card, not a border: globals.css collapses every
+          border to transparent, so this filter bar used to float unframed. */}
+      <div className="bg-card space-y-3 rounded-lg p-3">
+        {/* Presets first: "today's orders" is the question this page is opened
+            to answer, and it used to cost two typed datetimes. */}
+        <DateRangeFilter from={from} to={to} params={{ status, q }} />
+
+        <form action="/admin/orders" className="flex flex-wrap items-end gap-3">
+          {status && <input type="hidden" name="status" value={status} />}
+          {/* The range lives in the URL, so the search form has to carry it
+              across a submit or filtering by phone would clear the dates. */}
+          {from && <input type="hidden" name="from" value={from} />}
+          {to && <input type="hidden" name="to" value={to} />}
+          <label className="text-muted-foreground flex flex-col gap-1 text-xs">
+            Хайлт
+            <Input
+              name="q"
+              defaultValue={q}
+              placeholder="Дугаар / нэр / утас"
+              className="w-56"
+            />
+          </label>
+          <Button type="submit">Хайх</Button>
+          {(q || from || to) && (
+            <Button variant="ghost" asChild>
+              <Link
+                href={
+                  status ? `/admin/orders?status=${status}` : "/admin/orders"
+                }
+              >
+                Цэвэрлэх
+              </Link>
+            </Button>
+          )}
+        </form>
+      </div>
 
       {orders.length === 0 ? (
-        <div className="border-border flex flex-col items-center gap-3 rounded-lg border border-dashed py-20 text-center">
+        <div className="bg-card flex flex-col items-center gap-3 rounded-lg py-20 text-center">
           <ShoppingCart className="text-muted-foreground size-10" />
-          <p className="font-medium">Захиалга алга</p>
+          <p className="font-medium">
+            {status || q || from || to
+              ? "Энэ шүүлтэд тохирох захиалга алга"
+              : "Захиалга алга"}
+          </p>
+          <p className="text-muted-foreground max-w-xs text-sm">
+            {status || q || from || to
+              ? "Шүүлтүүрээ өөрчилж эсвэл цэвэрлээд дахин үзнэ үү."
+              : "Худалдан авагч эхний захиалгаа өгмөгц энд харагдана."}
+          </p>
+          {(status || q || from || to) && (
+            <Button variant="secondary" size="sm" asChild>
+              <Link href="/admin/orders">Бүх захиалга харах</Link>
+            </Button>
+          )}
         </div>
       ) : (
-        <OrdersTable data={orders} />
+        <>
+          <OrdersTable data={orders} />
+          {total !== null && (
+            <ServerPager
+              page={pageIndex}
+              perPage={ORDERS_PER_PAGE}
+              total={total}
+              hrefForPage={pageHref}
+            />
+          )}
+        </>
       )}
     </div>
   );
@@ -149,10 +195,12 @@ function FilterChip({
     <Link
       href={href}
       className={cn(
-        "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+        // Inactive chips had only a (transparent) border, so five of the six
+        // read as bare floating words. Every chip now carries a surface.
+        "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
         active
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-border text-muted-foreground hover:border-gold-strong",
+          ? "bg-primary text-primary-foreground"
+          : "bg-secondary text-muted-foreground hover:text-foreground",
       )}
     >
       {label}

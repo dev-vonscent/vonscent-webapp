@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getOrderDetail } from "@/features/admin/api";
+import { getStaffUser } from "@/lib/auth/guard";
 import { formatPrice, formatDate } from "@/lib/format";
 import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/constants";
 import { OrderStatusControl } from "@/features/admin/components/order-status-control";
@@ -23,7 +24,10 @@ export default async function AdminOrderDetail({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const detail = await getOrderDetail(id);
+  const [detail, staff] = await Promise.all([
+    getOrderDetail(id),
+    getStaffUser(),
+  ]);
   if (!detail) notFound();
   const { order, items, history, customer } = detail;
 
@@ -53,7 +57,7 @@ export default async function AdminOrderDetail({
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
           <Card>
-            <CardContent className="divide-border divide-y p-0">
+            <CardContent className="[&>div:nth-child(even)]:bg-muted/40 p-0">
               {items.map((i) => (
                 <div
                   key={i.id}
@@ -62,8 +66,10 @@ export default async function AdminOrderDetail({
                   <span>
                     {i.brand} {i.product_name} · {i.ml}ml × {i.qty}
                     {i.is_sample && (
+                      /* Not "Sample": 2ml is an ordinary paid size in this shop.
+                         This flag marks the free monthly 1ml gift line. */
                       <Badge variant="secondary" className="ml-2">
-                        Sample
+                        Бэлэг
                       </Badge>
                     )}
                   </span>
@@ -142,7 +148,7 @@ export default async function AdminOrderDetail({
               )}
               {order.loyalty_used > 0 && (
                 <Row
-                  label="Loyalty"
+                  label="V point"
                   value={`−${formatPrice(order.loyalty_used)}`}
                 />
               )}
@@ -171,6 +177,7 @@ export default async function AdminOrderDetail({
                 orderId={order.id}
                 current={order.status}
                 paymentStatus={order.payment_status}
+                canRecover={staff?.role === "super_admin"}
               />
             </CardContent>
           </Card>

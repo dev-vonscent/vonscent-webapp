@@ -68,6 +68,33 @@ const columns: ColumnDef<CustomerListRow, unknown>[] = [
 
 export function CustomersTable({ data }: { data: CustomerListRow[] }) {
   return (
-    <DataTable columns={columns} data={data} emptyText="Хэрэглэгч алга" />
+    <DataTable
+      columns={columns}
+      data={data}
+      pageSize={0}
+      // Same reason as the order list: rows are one server-paginated page of
+      // 50, so a phone-only re-sort would reorder that slice alone and read as
+      // a sort of the whole list.
+      phoneSort={false}
+      emptyText="Хэрэглэгч алга"
+      label="Хэрэглэгчийн жагсаалт"
+      renderCard={(c) => (
+        <Link href={`/admin/customers/${c.id}`} className="block space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-medium">{c.full_name || "—"}</span>
+            {c.is_blocked ? (
+              <Badge variant="sale">Хориглосон</Badge>
+            ) : (
+              <Badge variant="new">Идэвхтэй</Badge>
+            )}
+          </div>
+          <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-sm">
+            <span>{c.phone || "Утас алга"}</span>
+            <span>{ROLE_LABEL[c.role as UserRole]}</span>
+            <span>{c.loyalty_points} V point</span>
+          </div>
+        </Link>
+      )}
+    />
   );
 }

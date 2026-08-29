@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCustomerDetail } from "@/features/admin/api";
-import { formatPrice, formatDate } from "@/lib/format";
+import { formatPrice, formatDate, formatDateTime } from "@/lib/format";
 import { ORDER_STATUS_LABEL } from "@/lib/constants";
 import { CustomerControl } from "@/features/admin/components/customer-control";
 
@@ -63,30 +63,60 @@ export default async function AdminCustomerDetail({
               {orders.length === 0 ? (
                 <p className="text-muted-foreground text-sm">Захиалга алга.</p>
               ) : (
-                <ul className="divide-border divide-y text-sm">
-                  {orders.map((o) => (
-                    <li
-                      key={o.id}
-                      className="flex items-center justify-between py-2"
-                    >
-                      <Link
-                        href={`/admin/orders/${o.id}`}
-                        className="hover:text-gold-strong font-mono"
-                      >
-                        {o.order_no}
-                      </Link>
-                      <span className="text-muted-foreground">
-                        {formatDate(o.created_at)}
-                      </span>
-                      <Badge variant="secondary">
-                        {ORDER_STATUS_LABEL[o.status]}
-                      </Badge>
-                      <span className="font-medium">
-                        {formatPrice(o.total)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                // Four columns of bare text in a flex row: a screen reader
+                // read «VS-0042» «2026.08.12» «Хүргэгдсэн» «45,000₮» with no
+                // field names. It is a table, so it is marked up as one.
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <caption className="sr-only">
+                      Энэ хэрэглэгчийн захиалгын түүх
+                    </caption>
+                    <thead className="text-muted-foreground text-left text-xs">
+                      <tr>
+                        <th scope="col" className="px-2 py-1 font-medium">
+                          Дугаар
+                        </th>
+                        <th scope="col" className="px-2 py-1 font-medium">
+                          Огноо
+                        </th>
+                        <th scope="col" className="px-2 py-1 font-medium">
+                          Төлөв
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-2 py-1 text-right font-medium"
+                        >
+                          Дүн
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.map((o) => (
+                        <tr key={o.id} className="even:bg-muted/40">
+                          <th scope="row" className="p-2  text-left">
+                            <Link
+                              href={`/admin/orders/${o.id}`}
+                              className="hover:text-gold-strong font-mono font-normal"
+                            >
+                              {o.order_no}
+                            </Link>
+                          </th>
+                          <td className="text-muted-foreground p-2  tabular-nums">
+                            {formatDateTime(o.created_at)}
+                          </td>
+                          <td className="p-2 ">
+                            <Badge variant="secondary">
+                              {ORDER_STATUS_LABEL[o.status]}
+                            </Badge>
+                          </td>
+                          <td className="p-2  text-right font-medium tabular-nums">
+                            {formatPrice(o.total)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -95,7 +125,7 @@ export default async function AdminCustomerDetail({
             <Card>
               <CardContent className="p-5">
                 <h2 className="mb-3 font-medium">V point гүйлгээ</h2>
-                <ul className="divide-border divide-y text-sm">
+                <ul className="[&>li:nth-child(even)]:bg-muted/40 text-sm [&>li]:rounded-md [&>li]:px-2">
                   {ledger.map((l) => (
                     <li
                       key={l.id}
