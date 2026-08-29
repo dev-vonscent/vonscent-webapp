@@ -9,7 +9,13 @@ test("admin dashboard renders in demo mode", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("admin products table renders", async ({ page }) => {
+// Demo mode has no database, so the catalogue is empty. The products page no
+// longer renders an empty table shell for that — an empty catalogue and a
+// filter that matched nothing are two different nothings, and each gets its
+// own state with the way out. This still smoke-tests that the page builds and
+// renders server-side.
+test("admin products page renders", async ({ page }) => {
   await page.goto("/admin/products");
-  await expect(page.locator("table").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Бараа" })).toBeVisible();
+  await expect(page.getByText("Каталог хоосон байна")).toBeVisible();
 });
