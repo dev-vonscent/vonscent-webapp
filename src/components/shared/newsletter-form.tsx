@@ -51,6 +51,7 @@ export function NewsletterForm() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          aria-label="Имэйл хаяг"
           placeholder="имэйл хаяг"
           className="bg-card"
         />

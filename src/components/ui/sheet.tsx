@@ -59,8 +59,8 @@ export const SheetContent = React.forwardRef<
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none">
-          <X className="size-4" />
+        <DialogPrimitive.Close className="hover:bg-secondary absolute top-2 right-2 flex size-11 items-center justify-center rounded-full transition-colors md:size-9">
+          <X className="size-5 md:size-4" />
           <span className="sr-only">Хаах</span>
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>
@@ -82,7 +82,7 @@ export const SheetTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("font-serif text-lg font-semibold", className)}
+    className={cn("text-lg font-semibold tracking-tight", className)}
     {...props}
   />
 ));

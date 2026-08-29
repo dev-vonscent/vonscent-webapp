@@ -158,7 +158,7 @@ export default function WishlistPage() {
                 <Button
                   asChild
                   size="sm"
-                  className="gap-2 bg-white text-black hover:bg-white/90 max-sm:flex-1"
+                  className="gap-2 in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90 max-sm:flex-1"
                 >
                   <Link href="/cart">
                     <Check className="size-4" /> Сагсанд нэмлээ
@@ -168,7 +168,7 @@ export default function WishlistPage() {
               ) : (
                 <Button
                   size="sm"
-                  className="gap-2 bg-white text-black hover:bg-white/90 max-sm:flex-1"
+                  className="gap-2 in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90 max-sm:flex-1"
                   onClick={addAllToCart}
                   disabled={inStock.length === 0}
                 >

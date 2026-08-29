@@ -76,7 +76,10 @@ export const DigitInput = React.forwardRef<HTMLInputElement, DigitInputProps>(
           className="absolute inset-0 z-10 cursor-pointer text-base opacity-0"
           style={{ caretColor: "transparent" }}
         />
-        <div aria-hidden className="flex items-center justify-center gap-1.5">
+        <div
+          aria-hidden
+          className="flex items-center justify-center gap-1.5"
+        >
           {Array.from({ length }).map((_, i) => {
             const char = value[i];
             const active = focused && i === activeIndex && !disabled;
@@ -88,7 +91,7 @@ export const DigitInput = React.forwardRef<HTMLInputElement, DigitInputProps>(
                 {/* flat cells — the blinking caret alone marks the active one */}
                 <div
                   className={cn(
-                    "bg-secondary flex h-12 w-full max-w-10 min-w-0 flex-1 items-center justify-center rounded-xl text-lg font-semibold tabular-nums",
+                    "bg-secondary field-edge flex h-12 w-full max-w-10 min-w-0 flex-1 items-center justify-center rounded-xl text-lg font-semibold tabular-nums",
                     disabled && "opacity-50",
                     cellClassName,
                   )}

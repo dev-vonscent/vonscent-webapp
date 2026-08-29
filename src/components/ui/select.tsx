@@ -4,6 +4,7 @@ import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useFieldProps } from "@/components/ui/field";
 
 export const Select = SelectPrimitive.Root;
 export const SelectGroup = SelectPrimitive.Group;
@@ -16,10 +17,10 @@ export const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "bg-secondary flex h-10 w-full items-center justify-between rounded-md px-3 py-2 text-sm focus:outline-none disabled:opacity-50 [&>span]:line-clamp-1",
+      "bg-secondary field-edge flex h-10 w-full items-center justify-between rounded-md px-3 py-2 text-sm disabled:opacity-50 [&>span]:line-clamp-1",
       className,
     )}
-    {...props}
+    {...useFieldProps(props)}
   >
     {children}
     <SelectPrimitive.Icon asChild>

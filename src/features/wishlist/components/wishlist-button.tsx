@@ -26,7 +26,7 @@ export function WishlistButton({
       aria-pressed={active}
       onClick={() => toggle(productId)}
       className={cn(
-        "bg-background/80 text-foreground hover:bg-background flex size-8 items-center justify-center rounded-full backdrop-blur transition-colors",
+        "bg-background/80 text-foreground hover:bg-background flex size-8 items-center justify-center rounded-full backdrop-blur transition-colors relative before:absolute before:top-1/2 before:left-1/2 before:size-11 before:-translate-1/2  before:content-['']",
         className,
       )}
     >

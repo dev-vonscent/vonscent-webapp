@@ -67,7 +67,7 @@ export default function AuthLayout({
       </div>
 
       {/* ── Glass form card ── */}
-      <div className="relative z-10 w-full max-w-sm">
+      <main className="relative z-10 w-full max-w-sm">
         {/* soft halo behind the card */}
         <div
           aria-hidden
@@ -81,7 +81,7 @@ export default function AuthLayout({
           />
           {children}
         </div>
-      </div>
+      </main>
 
       {/* ── Footnote ── */}
       <p className="text-muted-foreground/70 animate-fade-up relative z-10 mt-8 text-center text-[11px] tracking-[0.3em] uppercase [animation-delay:300ms]">

@@ -90,7 +90,7 @@ export function QuickAdd({
           type="button"
           aria-label="Сагсанд нэмэх"
           className={cn(
-            "bg-background/80 text-foreground hover:bg-background flex size-8 items-center justify-center rounded-full backdrop-blur transition-colors",
+            "bg-background/80 text-foreground hover:bg-background flex size-8 items-center justify-center rounded-full backdrop-blur transition-colors relative before:absolute before:top-1/2 before:left-1/2 before:size-11 before:-translate-1/2  before:content-['']",
             className,
           )}
         >
@@ -145,9 +145,10 @@ export function QuickAdd({
                   <button
                     key={v.id}
                     type="button"
+                    aria-pressed={active}
                     onClick={() => setVariantId(v.id)}
                     className={cn(
-                      "flex min-w-18 flex-col items-center rounded-lg px-4 py-2 transition-colors",
+                      "flex min-h-11 min-w-18 flex-col items-center justify-center rounded-lg px-4 py-2 transition-colors",
                       active
                         ? "bg-foreground/30"
                         : "bg-secondary hover:bg-accent",

@@ -114,7 +114,7 @@ export function GlobalSearch() {
                 value={value}
                 onValueChange={setValue}
                 placeholder="Үнэртэн, брэнд хайх…"
-                className="placeholder:text-muted-foreground h-14 w-full border-0 bg-transparent px-11 text-base outline-none"
+                className="placeholder:text-muted-foreground h-14 w-full border-0 bg-transparent px-11 text-base"
               />
               <DialogPrimitive.Close
                 aria-label="Хаах"

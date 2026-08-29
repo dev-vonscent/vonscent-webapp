@@ -86,7 +86,7 @@ export function ProfileMenu() {
         <button
           type="button"
           aria-label="Профайл цэс"
-          className="bg-secondary text-foreground relative size-9 shrink-0 overflow-hidden rounded-full transition-transform hover:scale-105 focus:outline-none"
+          className="bg-secondary text-foreground relative size-9 shrink-0 overflow-hidden rounded-full transition-transform hover:scale-105"
         >
           {profile?.avatar ? (
             <Image

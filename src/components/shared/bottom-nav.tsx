@@ -75,6 +75,7 @@ function Tab({
     <Link
       href={href}
       aria-label={label}
+      aria-current={active ? "page" : undefined}
       className={cn(
         "relative flex size-11 items-center justify-center rounded-full transition-colors",
         active

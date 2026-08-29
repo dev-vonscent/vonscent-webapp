@@ -104,15 +104,29 @@ export default async function ProductPage({
         ]}
       />
       {/* Breadcrumb (hidden on mobile for a fuller hero image) */}
-      <nav className="text-muted-foreground mb-6 hidden text-sm sm:block">
-        <Link href="/" className="hover:text-foreground">
-          Нүүр
-        </Link>{" "}
-        /{" "}
-        <Link href="/catalog" className="hover:text-foreground">
-          Каталог
-        </Link>{" "}
-        / <span className="text-foreground">{product.name}</span>
+      <nav
+        aria-label="Замын мөр"
+        className="text-muted-foreground mb-6 hidden text-sm sm:block"
+      >
+        <ol className="flex flex-wrap items-center gap-x-1.5">
+          <li>
+            <Link href="/" className="hover:text-foreground">
+              Нүүр
+            </Link>
+          </li>
+          <li aria-hidden>/</li>
+          <li>
+            <Link href="/catalog" className="hover:text-foreground">
+              Каталог
+            </Link>
+          </li>
+          <li aria-hidden>/</li>
+          <li>
+            <span className="text-foreground" aria-current="page">
+              {product.name}
+            </span>
+          </li>
+        </ol>
       </nav>
 
       <div className="grid gap-0 sm:gap-10 lg:grid-cols-2 lg:items-start">

@@ -4,6 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { motion, useReducedMotion } from "motion/react";
 import {
   BadgeCheck,
   ChevronRight,
@@ -291,6 +292,9 @@ function IconCircle({ icon: Icon }: { icon: React.ElementType }) {
   );
 }
 
+// Link needs to be a motion component so the tile can own the hover state.
+const MotionLink = motion.create(Link);
+
 function Tile({
   href,
   kicker,
@@ -304,27 +308,62 @@ function Tile({
   sub?: string;
   gold?: boolean;
 }) {
+  // The chevron is the tile's "I'm tappable" signal. Touch devices have no
+  // hover, so there it simply stays visible; only on a fine pointer does it
+  // hide and glide out from behind the kicker.
+  const [hoverCapable, setHoverCapable] = React.useState(false);
+  React.useEffect(() => {
+    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const sync = () => setHoverCapable(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  const reduceMotion = useReducedMotion();
+  const [active, setActive] = React.useState(false);
+  const tucked = hoverCapable && !reduceMotion && !active;
+
   return (
-    <Link
+    <MotionLink
       href={href}
+      initial={false}
+      onHoverStart={() => setActive(true)}
+      onHoverEnd={() => setActive(false)}
+      onFocus={() => setActive(true)}
+      onBlur={() => setActive(false)}
+      whileTap={{ scale: 0.985 }}
+      transition={{ type: "spring", stiffness: 320, damping: 30, mass: 0.6 }}
       className={cn(
-        "bg-card hover:bg-accent rounded-2xl p-4 transition-colors",
+        "bg-card hover:bg-accent group rounded-2xl p-4 transition-colors duration-300",
         gold && "border-gold/60 border",
       )}
     >
-      <p
-        className={cn(
-          "text-sm font-medium",
-          gold ? "text-gold" : "text-muted-foreground",
-        )}
-      >
-        {kicker}
-      </p>
+      <div className="flex items-center gap-2">
+        <p
+          className={cn(
+            "text-sm font-medium",
+            gold ? "text-gold" : "text-muted-foreground",
+          )}
+        >
+          {kicker}
+        </p>
+        {/* Animating opacity/x only — the span keeps its slot in the flow at
+            every state, so the tile never reflows. */}
+        <motion.span
+          aria-hidden
+          className="text-muted-foreground group-hover:text-foreground ml-auto shrink-0 transition-colors"
+          initial={false}
+          animate={{ opacity: tucked ? 0 : 1, x: tucked ? -16 : 0 }}
+          transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.6 }}
+        >
+          <ChevronRight className="size-4" />
+        </motion.span>
+      </div>
       <p className="font-serif text-2xl/snug font-semibold tabular-nums">
         {value}
       </p>
       {sub && <p className="text-muted-foreground text-xs">{sub}</p>}
-    </Link>
+    </MotionLink>
   );
 }
 

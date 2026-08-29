@@ -80,7 +80,7 @@ function CarouselArrow({
       aria-label={side === "left" ? "Өмнөх" : "Дараах"}
       className={cn(
         "border-border bg-card text-foreground shadow-lift absolute top-[28%] z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border transition-all md:flex",
-        "hover:border-gold-strong/50 opacity-0 group-hover/carousel:opacity-100",
+        "hover:border-gold-strong/50 opacity-0 group-hover/carousel:opacity-100 group-focus-within/carousel:opacity-100 focus-visible:opacity-100",
         "disabled:pointer-events-none disabled:opacity-0",
         side === "left" ? "-left-5" : "-right-5",
       )}

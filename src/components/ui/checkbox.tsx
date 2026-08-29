@@ -12,7 +12,7 @@ export const Checkbox = React.forwardRef<
   <CheckboxPrimitive.Root
     ref={ref}
     className={cn(
-      "peer bg-secondary data-[state=checked]:bg-foreground data-[state=checked]:text-background size-4 shrink-0 rounded-sm focus-visible:outline-none disabled:opacity-50",
+      "peer bg-secondary data-[state=checked]:bg-foreground data-[state=checked]:text-background field-edge relative size-4 shrink-0 rounded-sm before:absolute before:top-1/2 before:left-1/2 before:size-11 before:-translate-1/2  before:content-[''] disabled:opacity-50",
       className,
     )}
     {...props}

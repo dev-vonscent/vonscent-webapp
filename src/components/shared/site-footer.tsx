@@ -35,7 +35,7 @@ const COLUMNS = [
 export async function SiteFooter() {
   const social = await getSocialSettings();
   return (
-    <footer className="border-border bg-surface-deep mt-10 border-t sm:mt-20">
+    <footer className="bg-surface-deep mt-10 sm:mt-20">
       <div className="mx-auto max-w-352 px-4 py-10 sm:py-16">
         <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
           <div className="space-y-4">
@@ -78,9 +78,9 @@ export async function SiteFooter() {
 
           {COLUMNS.map((col) => (
             <div key={col.title}>
-              <h4 className="text-gold mb-4 text-xs font-semibold tracking-[0.18em] uppercase">
+              <h2 className="text-gold mb-4 text-xs font-semibold tracking-[0.18em] uppercase">
                 {col.title}
-              </h4>
+              </h2>
               <ul className="space-y-2.5">
                 {col.links.map((l) => (
                   <li key={l.href}>
@@ -100,9 +100,9 @@ export async function SiteFooter() {
         <div className="mt-10 sm:mt-14">
           <div className="gold-rule" />
           <div className="mt-6 sm:mt-8">
-            <h4 className="text-gold mb-3 text-xs font-semibold tracking-[0.18em] uppercase">
+            <h2 className="text-gold mb-3 text-xs font-semibold tracking-[0.18em] uppercase">
               Мэдээлэл авах
-            </h4>
+            </h2>
             <NewsletterForm />
           </div>
         </div>
