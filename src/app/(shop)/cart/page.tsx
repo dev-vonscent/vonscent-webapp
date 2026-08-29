@@ -338,7 +338,8 @@ export default function CartPage() {
                 <span className="font-serif text-lg font-semibold">
                   {formatPrice(
                     subtotal -
-                      (coupon ? Math.min(coupon.discount, subtotal) : 0),
+                      (coupon ? Math.min(coupon.discount, subtotal) : 0) +
+                      defaultZoneFee,
                   )}
                 </span>
               </div>
