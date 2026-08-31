@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadImage } from "@/lib/storage/storage";
+import { addGalleryImage } from "@/features/admin/image-gen";
 import {
   generateProductImage,
   type ImageSize,
@@ -76,6 +77,11 @@ export async function processGeneration(jobId: string): Promise<void> {
       contentType,
     );
     if (!uploaded) throw new Error("Storage upload failed.");
+
+    // The result is a gallery picture like any other, just not ticked for the
+    // storefront yet (0049) — the admin selects it in the image studio. The job
+    // row stays as the record of the attempt.
+    await addGalleryImage(supabase, j.product_id, uploaded.url, false);
 
     await supabase
       .from("product_image_generations")

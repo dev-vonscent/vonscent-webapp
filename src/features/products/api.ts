@@ -30,6 +30,8 @@ interface DbImage {
   url: string;
   alt: string | null;
   sort_order: number;
+  /** 0049 — the admin's storefront selection within the gallery. */
+  is_visible: boolean;
 }
 interface DbInventory {
   on_hand_ml: number;
@@ -77,14 +79,17 @@ const SELECT = `
   gender, concentration, scent_families, seasons,
   origin_country, release_year, bottle_ml,
   rating_avg, rating_count, sale_pct, created_at,
-  product_images ( url, alt, sort_order ),
+  product_images ( url, alt, sort_order, is_visible ),
   product_variants ( id, ml, price, is_active ),
   inventory ( on_hand_ml, reserved_ml, is_sold_out ),
   product_tags ( tags ( slug, kind ) )
 `;
 
 function mapProduct(row: DbProduct): ProductDetail {
+  // The gallery holds every picture the admin has for this product; only the
+  // ones they ticked reach the shop (0049).
   const images = [...row.product_images]
+    .filter((i) => i.is_visible !== false)
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((i) => ({ url: i.url, alt: i.alt ?? row.name }));
 

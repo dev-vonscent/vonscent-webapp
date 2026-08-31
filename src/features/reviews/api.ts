@@ -38,7 +38,7 @@ interface ReviewJoin {
     name: string;
     slug: string;
     brand: string;
-    product_images?: { url: string; sort_order: number }[];
+    product_images?: { url: string; sort_order: number; is_visible?: boolean }[];
   } | null;
 }
 
@@ -113,7 +113,7 @@ export async function getRecentReviews(limit = 6): Promise<RecentReview[]> {
   const { data } = await supabase
     .from("reviews")
     .select(
-      "id, product_id, user_id, rating, body, created_at, products ( name, slug, brand, product_images ( url, sort_order ) )",
+      "id, product_id, user_id, rating, body, created_at, products ( name, slug, brand, product_images ( url, sort_order, is_visible ) )",
     )
     .not("body", "eq", "")
     .order("created_at", { ascending: false })
@@ -125,7 +125,9 @@ export async function getRecentReviews(limit = 6): Promise<RecentReview[]> {
   );
   return rows.map((r) => {
     const image =
-      [...(r.products?.product_images ?? [])].sort(
+      [...(r.products?.product_images ?? [])]
+        .filter((i) => i.is_visible !== false)
+        .sort(
         (a, b) => a.sort_order - b.sort_order,
       )[0]?.url ?? null;
     return {

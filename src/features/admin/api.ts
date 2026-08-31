@@ -267,6 +267,8 @@ export interface AdminProductImage {
   url: string;
   alt: string | null;
   sort_order: number;
+  /** Ticked = the storefront shows it (0049). */
+  is_visible: boolean;
 }
 
 export interface AdminProduct {
@@ -304,8 +306,12 @@ export interface AdminProduct {
   tags: string[];
   /** Free-form internal tag slugs (0035_custom_tags). */
   customTags: string[];
-  /** Published primary image (product_images sort_order 0). */
+  /** First image the storefront actually shows, if any. */
   imageUrl: string | null;
+  /** Gallery pictures the admin has not ticked for the storefront yet. */
+  hiddenImageCount: number;
+  /** Bottle photo the AI works from (0031_product_reference_image). */
+  referenceImageUrl: string | null;
   /** Latest AI generation state (ai-image-generation §8). */
   imageStatus: "none" | "pending" | "generating" | "done" | "failed";
   imageResultUrl: string | null;
@@ -318,8 +324,8 @@ const ADMIN_PRODUCT_SELECT = `
   id, slug, name, brand, gender, concentration, scent_families, seasons,
   description, notes_description, usage_description, short_description,
   notes_top, notes_heart, notes_base, origin_country, release_year,
-  bottle_price, bottle_ml, sale_pct, is_active,
-  product_images ( id, url, alt, sort_order ),
+  bottle_price, bottle_ml, sale_pct, is_active, reference_image_url,
+  product_images ( id, url, alt, sort_order, is_visible ),
   product_variants ( ml, price, is_active ),
   inventory ( on_hand_ml, reserved_ml, low_stock_ml ),
   product_tags ( tags ( slug ) ),
@@ -357,6 +363,7 @@ interface AdminProductRow {
   bottle_ml: number;
   sale_pct: number;
   is_active: boolean;
+  reference_image_url: string | null;
   product_images: AdminProductImage[];
   product_variants: {
     ml: number;
@@ -427,7 +434,9 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
     // Filled by the callers' separate custom-tags query (audit R2 — an
     // embedded select would fail wholesale on a DB without 0035).
     customTags: [],
-    imageUrl: images[0]?.url ?? null,
+    imageUrl: images.find((i) => i.is_visible !== false)?.url ?? null,
+    hiddenImageCount: images.filter((i) => i.is_visible === false).length,
+    referenceImageUrl: r.reference_image_url ?? null,
     imageStatus: gen?.status ?? "none",
     imageResultUrl: gen?.result_url ?? null,
     imageGenId: gen?.id ?? null,

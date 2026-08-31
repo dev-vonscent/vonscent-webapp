@@ -21,7 +21,16 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, ImagePlus, Trash2, UploadCloud, X } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  GripVertical,
+  ImageIcon,
+  ImagePlus,
+  Trash2,
+  UploadCloud,
+  X,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/components/shared/confirm-dialog";
 import {
@@ -33,7 +42,13 @@ import { IMAGE_ACCEPT } from "@/lib/storage/limits";
 import { prepareUpload } from "@/lib/storage/prepare-upload";
 
 /**
- * Product gallery editor (todo.md B3).
+ * Product gallery editor (todo.md B3), split into a controller and two views.
+ *
+ * It used to be one component that always drew the dropzone above the tiles.
+ * The image studio needs them apart — the pictures read first, and adding one
+ * is a choice between uploading and generating — so the state lives in
+ * `useProductGallery` and the caller places `GalleryGrid` and `GalleryDropzone`
+ * where they belong.
  *
  * Two modes, because a new product has no row to hang images on yet:
  *   • `productId` set — every change hits /api/admin/products/[id]/images
@@ -52,96 +67,47 @@ export interface GalleryImage {
   id?: string;
   url: string;
   alt: string;
+  /**
+   * Whether the storefront shows it (0049). Every picture — uploaded or
+   * AI-generated — is a gallery row; this is the admin's selection among them.
+   * Uploads arrive selected, generated images arrive waiting to be picked.
+   */
+  visible: boolean;
 }
 
-const MAX_IMAGES = 12;
+export const MAX_IMAGES = 12;
 
 /** Stable sortable id — DB id once the row exists, URL for staged uploads. */
 function keyOf(img: GalleryImage): string {
   return img.id ?? img.url;
 }
 
-function SortableTile({
-  img,
-  index,
-  onRemove,
-  onAlt,
-  onAltBlur,
-}: {
-  img: GalleryImage;
-  index: number;
-  onRemove: () => void;
-  onAlt: (alt: string) => void;
-  onAltBlur: () => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: keyOf(img) });
-
-  return (
-    <li
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`group bg-card relative overflow-hidden rounded-lg border ${
-        isDragging
-          ? // The tile stays as the empty slot the overlay will drop into.
-            "border-primary border-dashed opacity-30"
-          : ""
-      }`}
-    >
-      <div className="bg-secondary relative aspect-square">
-        <Image
-          src={img.url}
-          alt={img.alt || "Барааны зураг"}
-          fill
-          sizes="(min-width: 640px) 200px, 45vw"
-          className="object-cover"
-          draggable={false}
-        />
-
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          aria-label={`${index + 1}-р зураг — чирж эрэмбэ солих (Space дараад сумаар зөөнө)`}
-          className="bg-background/80 text-muted-foreground absolute top-1.5 left-1.5 cursor-grab touch-none rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing max-sm:opacity-100"
-        >
-          <GripVertical className="size-4" />
-        </button>
-
-        <button
-          type="button"
-          onClick={onRemove}
-          aria-label={`${index + 1}-р зургийг устгах`}
-          className="bg-background/80 text-muted-foreground hover:text-destructive absolute top-1.5 right-1.5 rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100"
-        >
-          <Trash2 className="size-4" />
-        </button>
-
-        {index === 0 && (
-          <span className="bg-primary/90 text-primary-foreground absolute inset-x-0 bottom-0 py-1 text-center text-[11px] font-medium">
-            Үндсэн зураг
-          </span>
-        )}
-      </div>
-
-      <Input
-        value={img.alt}
-        placeholder="Зургийн тайлбар (alt)"
-        className="bg-secondary/60 h-11 rounded-none text-base md:h-9 md:text-xs"
-        onChange={(e) => onAlt(e.target.value)}
-        onBlur={onAltBlur}
-      />
-    </li>
-  );
+export interface GalleryController {
+  images: GalleryImage[];
+  uploading: number;
+  errors: string[];
+  full: boolean;
+  dismissError: (message: string) => void;
+  upload: (files: FileList | File[]) => Promise<void>;
+  /** Re-seed from the server — a background job may have filed a new row. */
+  replaceImages: (images: GalleryImage[]) => void;
+  remove: (index: number) => Promise<void>;
+  setAlt: (index: number, alt: string) => void;
+  toggleVisible: (index: number) => void;
+  /** How many pictures the storefront actually shows. */
+  visibleCount: number;
+  persistCurrent: () => void;
+  confirmDialog: React.ReactNode;
+  dnd: {
+    sensors: ReturnType<typeof useSensors>;
+    activeImage: GalleryImage | null;
+    onDragStart: (e: DragStartEvent) => void;
+    onDragEnd: (e: DragEndEvent) => void;
+    onDragCancel: () => void;
+  };
 }
 
-export function ProductImages({
+export function useProductGallery({
   productId,
   initial = [],
   onChange,
@@ -149,15 +115,13 @@ export function ProductImages({
   productId?: string;
   initial?: GalleryImage[];
   onChange?: (images: GalleryImage[]) => void;
-}) {
+}): GalleryController {
   const [images, setImages] = React.useState<GalleryImage[]>(initial);
   const [uploading, setUploading] = React.useState(0);
   const [errors, setErrors] = React.useState<string[]>([]);
-  const [dropActive, setDropActive] = React.useState(false);
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const [confirm, confirmDialog] = useConfirm();
 
-  const inputRef = React.useRef<HTMLInputElement>(null);
   // Uploads append sequentially while earlier responses may still be landing;
   // the ref always holds the latest list without waiting for a re-render.
   const imagesRef = React.useRef(images);
@@ -173,9 +137,6 @@ export function ProductImages({
 
   const persisted = Boolean(productId);
   const full = images.length + uploading >= MAX_IMAGES;
-  const activeImage = activeId
-    ? images.find((img) => keyOf(img) === activeId)
-    : null;
 
   const notify = React.useCallback(
     (next: GalleryImage[]) => {
@@ -200,7 +161,12 @@ export function ProductImages({
         {
           images: next
             .filter((img) => img.id)
-            .map((img, i) => ({ id: img.id, alt: img.alt, sortOrder: i })),
+            .map((img, i) => ({
+            id: img.id,
+            alt: img.alt,
+            sortOrder: i,
+            isVisible: img.visible,
+          })),
         },
         "Зургийн дараалал хадгалагдсангүй",
       );
@@ -208,7 +174,7 @@ export function ProductImages({
     [persisted, productId],
   );
 
-  // ── Upload ───────────────────────────────────────────────────────────
+  // Upload
   async function upload(files: FileList | File[]) {
     setErrors([]);
     const room = MAX_IMAGES - imagesRef.current.length;
@@ -279,34 +245,16 @@ export function ProductImages({
           // Append one at a time so each tile lands as soon as it's ready.
           notify([
             ...imagesRef.current,
-            { id: data.id, url: data.url, alt: data.alt ?? "" },
+            { id: data.id, url: data.url, alt: data.alt ?? "", visible: true },
           ]);
         }
       } finally {
         setUploading((n) => n - 1);
       }
     }
-    if (inputRef.current) inputRef.current.value = "";
   }
 
-  // ── Reorder ──────────────────────────────────────────────────────────
-  function onDragStart(e: DragStartEvent) {
-    setActiveId(String(e.active.id));
-  }
-
-  function onDragEnd(e: DragEndEvent) {
-    setActiveId(null);
-    const { active, over } = e;
-    if (!over || active.id === over.id) return;
-    const from = images.findIndex((img) => keyOf(img) === active.id);
-    const to = images.findIndex((img) => keyOf(img) === over.id);
-    if (from < 0 || to < 0) return;
-    const next = arrayMove(images, from, to);
-    notify(next);
-    void persistOrder(next);
-  }
-
-  // ── Delete ───────────────────────────────────────────────────────────
+  // Delete
   async function remove(index: number) {
     const img = images[index];
     const ok = await confirm({
@@ -332,22 +280,256 @@ export function ProductImages({
     await persistOrder(next);
   }
 
-  function setAlt(index: number, alt: string) {
-    notify(images.map((img, i) => (i === index ? { ...img, alt } : img)));
+  return {
+    images,
+    uploading,
+    errors,
+    full,
+    dismissError: (message) =>
+      setErrors((e) => e.filter((m) => m !== message)),
+    upload,
+    replaceImages: notify,
+    remove,
+    setAlt: (index, alt) =>
+      notify(images.map((img, i) => (i === index ? { ...img, alt } : img))),
+    toggleVisible: (index) => {
+      const next = images.map((img, i) =>
+        i === index ? { ...img, visible: !img.visible } : img,
+      );
+      notify(next);
+      void persistOrder(next);
+    },
+    visibleCount: images.filter((img) => img.visible).length,
+    persistCurrent: () => void persistOrder(imagesRef.current),
+    confirmDialog,
+    dnd: {
+      sensors,
+      activeImage: activeId
+        ? (images.find((img) => keyOf(img) === activeId) ?? null)
+        : null,
+      onDragStart: (e) => setActiveId(String(e.active.id)),
+      onDragEnd: (e) => {
+        setActiveId(null);
+        const { active, over } = e;
+        if (!over || active.id === over.id) return;
+        const from = images.findIndex((img) => keyOf(img) === active.id);
+        const to = images.findIndex((img) => keyOf(img) === over.id);
+        if (from < 0 || to < 0) return;
+        const next = arrayMove(images, from, to);
+        notify(next);
+        void persistOrder(next);
+      },
+      onDragCancel: () => setActiveId(null),
+    },
+  };
+}
+
+function SortableTile({
+  img,
+  index,
+  isPrimary,
+  eager,
+  onRemove,
+  onAlt,
+  onAltBlur,
+  onToggleVisible,
+}: {
+  img: GalleryImage;
+  index: number;
+  /** First *visible* image — the one the catalogue grid shows. */
+  isPrimary: boolean;
+  /** Above the fold now that the gallery leads the form — load it eagerly. */
+  eager: boolean;
+  onRemove: () => void;
+  onAlt: (alt: string) => void;
+  onAltBlur: () => void;
+  onToggleVisible: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: keyOf(img) });
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`group bg-card relative overflow-hidden rounded-lg ${
+        isDragging
+          ? // The tile stays as the empty slot the overlay will drop into.
+            "opacity-30"
+          : ""
+      }`}
+    >
+      <div className="bg-secondary relative aspect-square">
+        <Image
+          src={img.url}
+          alt={img.alt || "Барааны зураг"}
+          fill
+          sizes="(min-width: 640px) 200px, 45vw"
+          priority={eager}
+          // A picture the shop does not show reads as a draft, not as a
+          // missing one: still legible, plainly set aside.
+          className={`object-cover transition-opacity ${img.visible ? "" : "opacity-35"}`}
+          draggable={false}
+        />
+
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label={`${index + 1}-р зураг — чирж эрэмбэ солих (Space дараад сумаар зөөнө)`}
+          className="on-image text-muted-foreground absolute top-1.5 left-1.5 cursor-grab touch-none rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing max-sm:opacity-100"
+        >
+          <GripVertical className="size-4" />
+        </button>
+
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`${index + 1}-р зургийг устгах`}
+          className="on-image text-muted-foreground hover:text-destructive absolute top-1.5 right-1.5 rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100"
+        >
+          <Trash2 className="size-4" />
+        </button>
+
+        {/* The selection itself. Always visible — it is the decision this
+            grid exists to record, not a hover affordance. */}
+        <button
+          type="button"
+          onClick={onToggleVisible}
+          aria-pressed={img.visible}
+          className="on-image absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium"
+        >
+          {img.visible ? (
+            <>
+              <Eye className="text-gold-strong size-3.5" />
+              {isPrimary ? "Үндсэн зураг" : "Сайтад харагдана"}
+            </>
+          ) : (
+            <>
+              <EyeOff className="text-muted-foreground size-3.5" />
+              <span className="text-muted-foreground">Харагдахгүй</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      <Input
+        value={img.alt}
+        placeholder="Зургийн тайлбар (alt)"
+        className="bg-secondary/60 h-11 rounded-none text-base md:h-9 md:text-xs"
+        onChange={(e) => onAlt(e.target.value)}
+        onBlur={onAltBlur}
+      />
+    </li>
+  );
+}
+
+/** The pictures themselves — first in the studio, above the add controls. */
+export function GalleryGrid({ g }: { g: GalleryController }) {
+  if (g.images.length === 0 && g.uploading === 0) {
+    return (
+      <>
+        {g.confirmDialog}
+        <div className="bg-secondary/40 text-muted-foreground flex flex-col items-center gap-2 rounded-xl px-4 py-10 text-center">
+          <ImageIcon className="size-6" />
+          <p className="text-sm">Зураг алга</p>
+          <p className="text-xs">
+            Доорх «Зураг нэмэх» хэсгээс оруулах эсвэл AI-аар үүсгэнэ.
+          </p>
+        </div>
+      </>
+    );
   }
 
   return (
-    <div className="space-y-4">
-      {confirmDialog}
+    <>
+      {g.confirmDialog}
+      <DndContext
+        // dnd-kit derives `aria-describedby="DndDescribedBy-<id>"` from a
+        // module-level counter when no id is given. The server module is long
+        // lived, so its counter drifts past the client's and every tile
+        // hydrates with a mismatched attribute. A fixed id pins both sides.
+        id="product-gallery"
+        sensors={g.dnd.sensors}
+        collisionDetection={closestCenter}
+        onDragStart={g.dnd.onDragStart}
+        onDragEnd={g.dnd.onDragEnd}
+        onDragCancel={g.dnd.onDragCancel}
+      >
+        <SortableContext
+          items={g.images.map(keyOf)}
+          strategy={rectSortingStrategy}
+        >
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {g.images.map((img, i) => (
+              <SortableTile
+                key={keyOf(img)}
+                img={img}
+                index={i}
+                eager={i === 0}
+                isPrimary={
+                  img.visible && g.images.findIndex((x) => x.visible) === i
+                }
+                onRemove={() => g.remove(i)}
+                onAlt={(alt) => g.setAlt(i, alt)}
+                onAltBlur={g.persistCurrent}
+                onToggleVisible={() => g.toggleVisible(i)}
+              />
+            ))}
 
-      {/* Dropzone — click or drop files anywhere inside it. A button so it
-          answers to the keyboard as well as the mouse. */}
+            {/* Placeholder per in-flight upload. */}
+            {Array.from({ length: g.uploading }).map((_, i) => (
+              <li
+                key={`uploading-${i}`}
+                className="bg-secondary/50 text-muted-foreground flex aspect-square animate-pulse flex-col items-center justify-center gap-2 rounded-lg"
+              >
+                <ImagePlus className="size-6" />
+                <span className="text-xs">Оруулж байна…</span>
+              </li>
+            ))}
+          </ul>
+        </SortableContext>
+
+        {/* The image riding under the pointer. */}
+        <DragOverlay>
+          {g.dnd.activeImage ? (
+            <div className="overflow-hidden rounded-lg shadow-2xl">
+              {/* A plain img: next/image adds nothing for a copy of a picture
+                  the browser has already fetched. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={g.dnd.activeImage.url}
+                alt=""
+                className="size-full -rotate-2 object-cover"
+                draggable={false}
+              />
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+    </>
+  );
+}
+
+/** Click or drop files. Lives inside the studio's «Бэлэн зураг» tab. */
+export function GalleryDropzone({ g }: { g: GalleryController }) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [dropActive, setDropActive] = React.useState(false);
+
+  return (
+    <div className="space-y-3">
       <button
         type="button"
-        disabled={full}
+        disabled={g.full}
         onDragOver={(e) => {
           e.preventDefault();
-          if (!full) setDropActive(true);
+          if (!g.full) setDropActive(true);
         }}
         onDragLeave={(e) => {
           // Ignore the events fired while crossing child elements.
@@ -358,26 +540,23 @@ export function ProductImages({
         onDrop={(e) => {
           e.preventDefault();
           setDropActive(false);
-          if (!full && e.dataTransfer.files.length)
-            upload(e.dataTransfer.files);
+          if (!g.full && e.dataTransfer.files.length) g.upload(e.dataTransfer.files);
         }}
         onClick={() => inputRef.current?.click()}
-        className={`flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors disabled:cursor-default disabled:opacity-50 ${
-          dropActive
-            ? "border-primary bg-primary/5"
-            : "border-muted-foreground/30 hover:border-muted-foreground/60 hover:bg-secondary/40"
+        className={`field-edge flex w-full cursor-pointer flex-col items-center gap-1.5 rounded-lg px-4 py-7 text-center transition-colors disabled:cursor-default disabled:opacity-50 ${
+          dropActive ? "bg-accent" : "hover:bg-accent/60"
         }`}
       >
         <UploadCloud
-          className={`size-7 ${dropActive ? "text-gold-strong" : "text-muted-foreground"}`}
+          className={`size-6 ${dropActive ? "text-gold-strong" : "text-muted-foreground"}`}
         />
         {/* Spans, not paragraphs: a <button> may only hold phrasing content. */}
         <span className="text-sm font-medium">
-          {full
+          {g.full
             ? `Дээд хязгаарт хүрсэн (${MAX_IMAGES} зураг)`
             : "Зургаа энд чирж оруулна уу"}
         </span>
-        {!full && (
+        {!g.full && (
           <span className="text-muted-foreground text-xs">
             эсвэл дарж сонгоно уу · JPG / PNG / WebP / AVIF · 5MB хүртэл
           </span>
@@ -392,17 +571,20 @@ export function ProductImages({
         accept={IMAGE_ACCEPT}
         multiple
         hidden
-        onChange={(e) => e.target.files && upload(e.target.files)}
+        onChange={(e) => {
+          if (e.target.files) g.upload(e.target.files);
+          e.target.value = "";
+        }}
       />
 
-      {errors.length > 0 && (
+      {g.errors.length > 0 && (
         <ul className="bg-destructive/10 text-destructive space-y-1 rounded-md px-3 py-2 text-sm">
-          {errors.map((msg) => (
+          {g.errors.map((msg) => (
             <li key={msg} className="flex items-start gap-2">
               <span className="flex-1">{msg}</span>
               <button
                 type="button"
-                onClick={() => setErrors((e) => e.filter((m) => m !== msg))}
+                onClick={() => g.dismissError(msg)}
                 aria-label="Мэдэгдлийг хаах"
               >
                 <X className="size-4" />
@@ -410,75 +592,6 @@ export function ProductImages({
             </li>
           ))}
         </ul>
-      )}
-
-      {(images.length > 0 || uploading > 0) && (
-        <div className="text-muted-foreground flex items-center justify-between text-xs">
-          <span>
-            {images.length} / {MAX_IMAGES} зураг
-          </span>
-          {images.length > 1 && (
-            <span className="hidden sm:inline">
-              Чирж эрэмбийг солино · эхний зураг үндсэн зураг болно
-            </span>
-          )}
-        </div>
-      )}
-
-      {images.length === 0 && uploading === 0 ? null : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={onDragStart}
-          onDragEnd={onDragEnd}
-          onDragCancel={() => setActiveId(null)}
-        >
-          <SortableContext
-            items={images.map(keyOf)}
-            strategy={rectSortingStrategy}
-          >
-            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {images.map((img, i) => (
-                <SortableTile
-                  key={keyOf(img)}
-                  img={img}
-                  index={i}
-                  onRemove={() => remove(i)}
-                  onAlt={(alt) => setAlt(i, alt)}
-                  onAltBlur={() => persistOrder(imagesRef.current)}
-                />
-              ))}
-
-              {/* Placeholder per in-flight upload. */}
-              {Array.from({ length: uploading }).map((_, i) => (
-                <li
-                  key={`uploading-${i}`}
-                  className="bg-secondary/50 text-muted-foreground flex aspect-square animate-pulse flex-col items-center justify-center gap-2 rounded-lg"
-                >
-                  <ImagePlus className="size-6" />
-                  <span className="text-xs">Оруулж байна…</span>
-                </li>
-              ))}
-            </ul>
-          </SortableContext>
-
-          {/* The image riding under the pointer. */}
-          <DragOverlay>
-            {activeImage ? (
-              <div className="border-primary overflow-hidden rounded-lg border-2 shadow-2xl">
-                {/* A plain img: next/image adds nothing for a copy of a picture
-                    the browser has already fetched. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={activeImage.url}
-                  alt=""
-                  className="size-full -rotate-2 object-cover"
-                  draggable={false}
-                />
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
       )}
     </div>
   );

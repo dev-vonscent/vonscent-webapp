@@ -34,6 +34,42 @@ function fail(error: string, status: number) {
   return NextResponse.json({ error }, { status });
 }
 
+/** The gallery as it stands, for a client that has fallen behind — the studio
+ *  after a background generation filed its result as a row (0049). */
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const g = await guard();
+  if ("demo" in g) return NextResponse.json({ images: [] });
+  if ("error" in g) return fail(g.error, g.error === "FORBIDDEN" ? 403 : 500);
+
+  const { data } = await g.supabase
+    .from("product_images")
+    .select("id, url, alt, sort_order, is_visible")
+    .eq("product_id", id)
+    .order("sort_order", { ascending: true });
+
+  return NextResponse.json({
+    images: (
+      (data as
+        | {
+            id: string;
+            url: string;
+            alt: string | null;
+            is_visible: boolean;
+          }[]
+        | null) ?? []
+    ).map((r) => ({
+      id: r.id,
+      url: r.url,
+      alt: r.alt ?? "",
+      visible: r.is_visible,
+    })),
+  });
+}
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -83,7 +119,7 @@ export async function POST(
       alt: (form?.get("alt") as string) || "",
       sort_order: nextOrder,
     })
-    .select("id, url, alt, sort_order")
+    .select("id, url, alt, sort_order, is_visible")
     .single();
   if (error || !data) {
     // Don't leave the object behind when the row didn't land.
@@ -100,6 +136,8 @@ const patchSchema = z.object({
         id: z.string().uuid(),
         alt: z.string().max(200).default(""),
         sortOrder: z.number().int().nonnegative(),
+        /** The admin's storefront selection (0049). */
+        isVisible: z.boolean().default(true),
       }),
     )
     .max(MAX_IMAGES),
@@ -122,7 +160,11 @@ export async function PATCH(
   for (const img of parsed.data.images) {
     await g.supabase
       .from("product_images")
-      .update({ alt: img.alt, sort_order: img.sortOrder })
+      .update({
+        alt: img.alt,
+        sort_order: img.sortOrder,
+        is_visible: img.isVisible,
+      })
       .eq("id", img.id)
       .eq("product_id", id);
   }

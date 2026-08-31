@@ -55,7 +55,7 @@
   --ring: #d4d4d4;
   /* The system's only hairline: a functional edge so form controls are
      identifiable on a borderless surface (WCAG 1.4.11, >=3:1 either side). */
-  --field-edge: #6b6b6b;
+  --field-edge: #6b6b6b00;
 
   --surface-deep: #000000;
 

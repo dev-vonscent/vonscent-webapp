@@ -1,10 +1,16 @@
 "use client";
 
+import * as React from "react";
+import { useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
 import { StockBadge } from "@/features/admin/components/stock-badge";
 import { DataTable } from "@/features/admin/components/data-table";
-import { ProductImageCell } from "@/features/admin/components/product-image-cell";
+import {
+  ProductNameLink,
+  ProductThumbLink,
+} from "@/features/admin/components/product-thumb";
 import { ProductRowActions } from "@/features/admin/components/product-row-actions";
+import { adminFetch } from "@/features/admin/lib/mutate";
 import type { AdminProduct } from "@/features/admin/api";
 import { formatPrice } from "@/lib/format";
 
@@ -24,35 +30,18 @@ const columns: ColumnDef<AdminProduct, unknown>[] = [
     id: "image",
     header: "Зураг",
     enableSorting: false,
-    cell: ({ row }) => {
-      const p = row.original;
-      return (
-        <ProductImageCell
-          product={{
-            id: p.id,
-            name: p.name,
-            isActive: p.isActive,
-            imageUrl: p.imageUrl,
-            imageStatus: p.imageStatus,
-            imageResultUrl: p.imageResultUrl,
-            imageGenId: p.imageGenId,
-            imagePrompt: p.imagePrompt,
-            imageError: p.imageError,
-          }}
-        />
-      );
-    },
+    cell: ({ row }) => (
+      <ProductThumbLink product={row.original} className="size-12" />
+    ),
   },
   {
     accessorKey: "name",
     header: "Нэр",
-    cell: ({ getValue }) => (
-      <span
-        className="block max-w-56 truncate font-medium"
-        title={getValue<string>()}
-      >
-        {getValue<string>()}
-      </span>
+    cell: ({ row }) => (
+      <ProductNameLink
+        product={row.original}
+        className="block max-w-56 truncate"
+      />
     ),
   },
   {
@@ -115,7 +104,42 @@ const columns: ColumnDef<AdminProduct, unknown>[] = [
   },
 ];
 
+/**
+ * Refresh the list once the images being generated land.
+ *
+ * One interval for the page, not one per row: the old cell polled from every
+ * row that happened to be busy, so creating three AI products put three timers
+ * and three requests every four seconds on the same screen.
+ */
+function useGenerationWatch(data: AdminProduct[]) {
+  const router = useRouter();
+  const busyIds = data
+    .filter(
+      (p) => p.imageStatus === "pending" || p.imageStatus === "generating",
+    )
+    .map((p) => p.id)
+    .join(",");
+
+  React.useEffect(() => {
+    if (!busyIds) return;
+    const iv = setInterval(async () => {
+      const r = await adminFetch<{ statuses?: { status: string }[] }>(
+        `/api/admin/products/image-status?ids=${busyIds}`,
+      );
+      const statuses = r.ok ? (r.data?.statuses ?? []) : [];
+      const landed = statuses.some(
+        (s) => s.status !== "pending" && s.status !== "generating",
+      );
+      // The server component owns the row data, so re-render it rather than
+      // patching a copy of the truth in here.
+      if (landed) router.refresh();
+    }, 4000);
+    return () => clearInterval(iv);
+  }, [busyIds, router]);
+}
+
 export function ProductsTable({ data }: { data: AdminProduct[] }) {
+  useGenerationWatch(data);
   return (
     <DataTable
       columns={columns}
@@ -127,12 +151,16 @@ export function ProductsTable({ data }: { data: AdminProduct[] }) {
       phoneSort={false}
       renderCard={(p) => (
         <div className="space-y-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
+          {/* The phone card carried every number but no picture — the one thing
+              that identifies a bottle at a glance. It leads the card now, and
+              it is the tap target for the editor alongside the name. */}
+          <div className="flex items-start gap-3">
+            <ProductThumbLink product={p} className="size-16" />
+            <div className="min-w-0 flex-1">
               <p className="text-muted-foreground text-[11px] tracking-[0.15em] uppercase">
                 {p.brand}
               </p>
-              <p className="font-medium">{p.name}</p>
+              <ProductNameLink product={p} className="block truncate" />
             </div>
             <StockBadge
               availableMl={p.availableMl}

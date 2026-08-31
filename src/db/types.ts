@@ -82,6 +82,8 @@ export interface ProductImageRow {
   url: string;
   alt: string;
   sort_order: number;
+  /** Admin's selection of what the storefront shows (0049). */
+  is_visible: boolean;
 }
 
 export interface ProductVariantRow {

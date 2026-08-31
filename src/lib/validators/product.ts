@@ -17,6 +17,8 @@ const seasonList = z
 export const productImageSchema = z.object({
   url: z.string().url().max(2048),
   alt: z.string().max(200).default(""),
+  /** Whether the storefront shows it (0049). Uploads default to shown. */
+  visible: z.boolean().default(true),
 });
 
 /** The store's whole size list — see ML_SIZES / 0026_sample_tier.sql. */
@@ -75,11 +77,18 @@ export const productInputSchema = z.object({
   notesDescription: z.string().default(""),
   usageDescription: z.string().default(""),
   shortDescription: z.string().default(""),
-  // Images uploaded before the product row existed, in gallery order. In
-  // `generate` mode the first image is the AI reference, not the gallery.
+  // Images uploaded before the product row existed, in gallery order — this is
+  // the storefront gallery, nothing else.
   images: z.array(productImageSchema).max(12).default([]),
-  /** `upload` = use the uploaded image; `generate` = create it with AI (§2). */
-  imageMode: z.enum(["upload", "generate"]).default("upload"),
+  /**
+   * The bottle photo the AI works from (`products.reference_image_url`). It is
+   * its own field rather than "the first gallery image": the reference is never
+   * shown to customers, and a product can perfectly well have both a real
+   * gallery and a reference to regenerate from later.
+   */
+  referenceUrl: z.string().url().max(2048).nullable().default(null),
+  /** Enqueue a generation on save. Needs `referenceUrl` to do anything (§2). */
+  generateImage: z.boolean().default(false),
   originCountry: z.string().optional(),
   releaseYear: z.number().int().nullable().optional(),
   onHandMl: z.number().int().nonnegative(),

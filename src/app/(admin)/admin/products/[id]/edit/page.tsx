@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { getAdminProduct } from "@/features/admin/api";
 import { ProductEditForm } from "@/features/admin/components/product-edit-form";
 import { getScentFamilies, fetchCustomTags } from "@/features/taxonomy/api";
+import { isImageGenConfigured } from "@/lib/env";
 
 export default async function EditProductPage({
   params,
@@ -31,6 +32,7 @@ export default async function EditProductPage({
         product={product}
         families={families}
         customTagPool={customTagPool}
+        aiEnabled={isImageGenConfigured}
       />
     </div>
   );

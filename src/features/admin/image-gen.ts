@@ -3,22 +3,38 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Add a generated image to a product's gallery **without touching the existing
- * images** (approve / revert, ai-image-generation §5b, §14.5). It appends at the
- * end (or becomes the first image when the gallery is empty), so a product that
- * already had photos keeps them. Duplicate URLs are ignored.
+ * images**. It appends at the end (or becomes the first image when the gallery
+ * is empty), so a product that already had photos keeps them.
+ *
+ * `visible` is the admin's storefront selection (0049). A generated image lands
+ * hidden — it is in the gallery to be looked at, not published — while an
+ * upload is visible, because choosing to upload a photo is already the choice
+ * to show it.
+ *
+ * Returns the gallery row — the one just inserted, or the existing one when the
+ * URL was already there.
  */
+export interface GalleryRow {
+  id: string;
+  url: string;
+  alt: string;
+  sort_order: number;
+  is_visible: boolean;
+}
+
 export async function addGalleryImage(
   supabase: SupabaseClient,
   productId: string,
   url: string,
-): Promise<void> {
+  visible = false,
+): Promise<GalleryRow | null> {
   const { data: existing } = await supabase
     .from("product_images")
-    .select("id")
+    .select("id, url, alt, sort_order, is_visible")
     .eq("product_id", productId)
     .eq("url", url)
     .maybeSingle();
-  if (existing) return; // already in the gallery
+  if (existing) return existing as GalleryRow; // already in the gallery
 
   const { data: prod } = await supabase
     .from("products")
@@ -37,10 +53,16 @@ export async function addGalleryImage(
   const nextOrder =
     ((last as { sort_order?: number } | null)?.sort_order ?? -1) + 1;
 
-  await supabase.from("product_images").insert({
-    product_id: productId,
-    url,
-    alt,
-    sort_order: nextOrder,
-  });
+  const { data } = await supabase
+    .from("product_images")
+    .insert({
+      product_id: productId,
+      url,
+      alt,
+      sort_order: nextOrder,
+      is_visible: visible,
+    })
+    .select("id, url, alt, sort_order, is_visible")
+    .single();
+  return (data as GalleryRow | null) ?? null;
 }

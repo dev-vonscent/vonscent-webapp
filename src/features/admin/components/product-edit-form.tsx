@@ -39,7 +39,7 @@ import {
 } from "./variant-price-table";
 import { MultiCheck, useToggleList } from "./multi-check";
 import { DescriptionFields } from "./description-fields";
-import { ProductImages } from "./product-images";
+import { ProductImageStudio } from "./product-image-studio";
 import type { AdminProduct } from "@/features/admin/api";
 import type { CustomTagOption } from "@/features/taxonomy/api";
 import type { ScentFamilyOption } from "@/lib/types";
@@ -53,10 +53,13 @@ export function ProductEditForm({
   product,
   families,
   customTagPool = [],
+  aiEnabled = false,
 }: {
   product: AdminProduct;
   families: ScentFamilyOption[];
   customTagPool?: CustomTagOption[];
+  /** `isImageGenConfigured` — server-only env, handed down by the page. */
+  aiEnabled?: boolean;
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -248,6 +251,23 @@ export function ProductEditForm({
   return (
     <form onSubmit={save} className="space-y-6">
       {confirmDialog}
+      {/* The picture leads: it is the one part of a product an operator comes
+          back to edit on its own, and the AI controls belong beside the gallery
+          they feed rather than in a dialog on another screen. */}
+      <ProductImageStudio
+        productId={product.id}
+        initialImages={product.images.map((img) => ({
+          id: img.id,
+          url: img.url,
+          alt: img.alt ?? "",
+          visible: img.is_visible,
+        }))}
+        initialReference={product.referenceImageUrl}
+        initialStatus={product.imageStatus}
+        initialError={product.imageError}
+        aiEnabled={aiEnabled}
+      />
+
       <Card>
         <CardContent className="space-y-4 p-6">
           <h2 className="font-serif text-lg font-semibold">Үндсэн мэдээлэл</h2>
@@ -328,20 +348,6 @@ export function ProductEditForm({
               onChange={(e) => set("originCountry", e.target.value)}
             />
           </Field>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="space-y-4 p-6">
-          <h2 className="font-serif text-lg font-semibold">Зураг</h2>
-          <ProductImages
-            productId={product.id}
-            initial={product.images.map((img) => ({
-              id: img.id,
-              url: img.url,
-              alt: img.alt ?? "",
-            }))}
-          />
         </CardContent>
       </Card>
 

@@ -25,7 +25,8 @@ import {
 } from "./variant-price-table";
 import { MultiCheck, useToggleList } from "./multi-check";
 import { DescriptionFields } from "./description-fields";
-import { ProductImages, type GalleryImage } from "./product-images";
+import { type GalleryImage } from "./product-images";
+import { ProductImageStudio } from "./product-image-studio";
 import {
   GENDERS,
   GENDER_LABEL,
@@ -46,9 +47,12 @@ const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
 export function ProductForm({
   families,
   customTagPool = [],
+  aiEnabled = false,
 }: {
   families: ScentFamilyOption[];
   customTagPool?: CustomTagOption[];
+  /** `isImageGenConfigured` — server-only env, handed down by the page. */
+  aiEnabled?: boolean;
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = React.useState(false);
@@ -83,12 +87,13 @@ export function ProductForm({
   const [scentFamilies, toggleFamily] = useToggleList([]);
   const [seasons, toggleSeason] = useToggleList(["all"], { exclusive: "all" });
   // Uploaded to a staging folder before the product row exists; the create
-  // route attaches them to the new product (or uses the first as the AI
-  // reference in `generate` mode).
+  // route attaches them to the new product.
   const [images, setImages] = React.useState<GalleryImage[]>([]);
-  const [imageMode, setImageMode] = React.useState<"upload" | "generate">(
-    "generate",
-  );
+  // The bottle photo the AI works from — staged the same way, but kept apart
+  // from the gallery because customers never see it.
+  // Choosing a reference *is* the intent to generate — there is no second
+  // "and do it" checkbox to forget to tick.
+  const [referenceUrl, setReferenceUrl] = React.useState<string | null>(null);
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -96,8 +101,12 @@ export function ProductForm({
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (imageMode === "generate" && images.length === 0) {
-      setResult("AI-аар үүсгэхэд лавлах зураг заавал оруулна уу.");
+    // A product with no picture at all is not sellable, and nothing downstream
+    // can invent one — say so here rather than publishing an empty card.
+    if (images.length === 0 && !referenceUrl) {
+      setResult(
+        "Зураг байхгүй байна. Галерейд зураг оруулах, эсвэл AI-д лавлах зураг өгнө үү.",
+      );
       return;
     }
     // Sizes now arrive unticked (variant-price-table.tsx), so a product can be
@@ -130,8 +139,13 @@ export function ProductForm({
         tags,
         customTags,
         isActive,
-        imageMode,
-        images: images.map((img) => ({ url: img.url, alt: img.alt })),
+        referenceUrl,
+        generateImage: Boolean(referenceUrl),
+        images: images.map((img) => ({
+          url: img.url,
+          alt: img.alt,
+          visible: img.visible,
+        })),
         releaseYear: form.releaseYear ? Number(form.releaseYear) : null,
         bottlePrice: Number(form.bottlePrice) || 0,
         bottleMl: Number(form.bottleMl) || 0,
@@ -158,7 +172,7 @@ export function ProductForm({
       });
       if (res.ok) {
         toast.success(
-          imageMode === "generate"
+          referenceUrl && images.length === 0
             ? `«${form.name}» нэмэгдлээ. Зураг бэлэн болтол бараа нуугдсан хэвээр байна.`
             : `«${form.name}» нэмэгдлээ.`,
         );
@@ -179,6 +193,16 @@ export function ProductForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+      {/* First: the picture is what the operator has in hand when they start,
+          and on the AI path it is what decides whether the product can even
+          publish — so it leads the form rather than sitting between the notes
+          and the price table. */}
+      <ProductImageStudio
+        aiEnabled={aiEnabled}
+        onImagesChange={setImages}
+        onReferenceChange={setReferenceUrl}
+      />
+
       <Card>
         <CardContent className="space-y-4 p-6">
           <h2 className="font-serif text-lg font-semibold">Үндсэн мэдээлэл</h2>
@@ -259,45 +283,6 @@ export function ProductForm({
               onChange={(e) => set("originCountry", e.target.value)}
             />
           </Field>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="space-y-4 p-6">
-          <h2 className="font-serif text-lg font-semibold">Зураг</h2>
-
-          {/* Mode: use the uploaded image, or generate it with AI (§2). */}
-          <div className="bg-secondary flex w-fit gap-1 rounded-lg p-1 text-sm">
-            {(
-              [
-                ["upload", "Бэлэн зураг"],
-                ["generate", "AI-аар үүсгэх"],
-              ] as const
-            ).map(([mode, label]) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setImageMode(mode)}
-                className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
-                  imageMode === mode
-                    ? "bg-background shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {imageMode === "generate" && (
-            <p className="text-muted-foreground text-sm">
-              <strong>Лавлах зураг заавал</strong> — доор үнэртний зураг
-              оруулна. Хадгалахад бараа <strong>идэвхгүй</strong> статустай орж,
-              зураг фоноор үүснэ. Батлагдсаны дараа нийтлэгдэнэ.
-            </p>
-          )}
-
-          <ProductImages onChange={setImages} />
         </CardContent>
       </Card>
 

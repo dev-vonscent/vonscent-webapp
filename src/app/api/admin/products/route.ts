@@ -71,15 +71,20 @@ export async function POST(req: Request) {
     sale_pct: input.salePct,
   };
 
-  // AI-generated images aren't published until the admin approves them (§5b),
-  // so the product starts hidden regardless of the form's active checkbox.
-  // Uploaded images publish with whatever the admin chose.
-  const aiMode = input.imageMode === "generate" && isImageGenConfigured;
-
   const hostedImages = input.images.filter((img) => isStorageUrl(img.url));
-  // In AI mode the first uploaded image is the reference bottle — persist it on
-  // the product so every future regeneration can reuse it.
-  const referenceImageUrl = aiMode ? (hostedImages[0]?.url ?? null) : null;
+  // The reference bottle is persisted on the product whether or not a job runs
+  // now, so a later regeneration always has the original to work from.
+  const referenceImageUrl =
+    input.referenceUrl && isStorageUrl(input.referenceUrl)
+      ? input.referenceUrl
+      : null;
+  const aiMode =
+    input.generateImage && isImageGenConfigured && Boolean(referenceImageUrl);
+
+  // A product whose only picture is still being generated has nothing to show,
+  // so it starts hidden however the form's checkbox was left. One that already
+  // carries uploaded gallery images publishes on the admin's word.
+  const startsActive = aiMode && hostedImages.length === 0 ? false : input.isActive;
 
   const { data: product, error: pErr } = await supabase
     .from("products")
@@ -87,7 +92,7 @@ export async function POST(req: Request) {
       ...base,
       scent_families: families,
       seasons: input.seasons,
-      is_active: aiMode ? false : input.isActive,
+      is_active: startsActive,
       reference_image_url: referenceImageUrl,
     })
     .select("id")
@@ -108,10 +113,23 @@ export async function POST(req: Request) {
 
   await supabase.from("product_variants").insert(variants);
 
+  // Gallery images are the gallery, always — the AI reference is a separate
+  // field now, so the two no longer compete for the same uploads.
+  if (hostedImages.length) {
+    await supabase.from("product_images").insert(
+      hostedImages.map((img, i) => ({
+        product_id: productId,
+        url: img.url,
+        alt: img.alt || input.name,
+        sort_order: i,
+        is_visible: img.visible,
+      })),
+    );
+  }
+
   if (aiMode) {
-    // The uploaded image is the AI *reference*, not the gallery. Compose the
-    // prompt from the current base prompt in build-image-prompt.ts (the file is
-    // the single source of truth), then enqueue + kick off the job.
+    // Compose the prompt from the current base prompt in build-image-prompt.ts
+    // (the file is the single source of truth), then enqueue + kick off the job.
     const prompt = buildImagePrompt(
       {
         name: input.name,
@@ -143,16 +161,6 @@ export async function POST(req: Request) {
         await processGeneration(jobId);
       });
     }
-  } else if (hostedImages.length) {
-    // Upload mode: the images are the gallery.
-    await supabase.from("product_images").insert(
-      hostedImages.map((img, i) => ({
-        product_id: productId,
-        url: img.url,
-        alt: img.alt || input.name,
-        sort_order: i,
-      })),
-    );
   }
 
   await supabase.from("inventory").insert({
