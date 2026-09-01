@@ -24,6 +24,7 @@ import {
   type VariantDraft,
 } from "./variant-price-table";
 import { MultiCheck, useToggleList } from "./multi-check";
+import { CustomTagField } from "./custom-tag-field";
 import { DescriptionFields } from "./description-fields";
 import { type GalleryImage } from "./product-images";
 import { ProductImageStudio } from "./product-image-studio";
@@ -406,15 +407,10 @@ export function ProductForm({
             />
             Идэвхтэй (нийтлэх)
           </label>
-          <MultiCheck
-            label="Нэмэлт таг (дотоод — хайлт, quiz-д ашиглагдана)"
-            options={customTagPool.map((t) => ({
-              value: t.slug,
-              label: t.name,
-            }))}
+          <CustomTagField
+            pool={customTagPool}
             selected={customTags}
             onToggle={toggleCustomTag}
-            empty="«Нэмэлт таг» хуудсанд эхлээд таг нэмнэ үү."
           />
         </CardContent>
       </Card>
