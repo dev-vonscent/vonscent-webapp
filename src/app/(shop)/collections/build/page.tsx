@@ -5,6 +5,7 @@ import {
   getCollectionSettings,
 } from "@/features/collections/api";
 import { getBrands, getPriceBounds } from "@/features/products/api";
+import { getActiveBrands } from "@/features/taxonomy/api";
 import { getScentFamilies } from "@/features/taxonomy/api";
 import { CollectionBuilder } from "@/features/collections/components/builder";
 import { createClient } from "@/lib/supabase/server";
@@ -16,14 +17,17 @@ export const metadata: Metadata = {
 };
 
 export default async function BuildPage() {
-  const [products, settings, brands, priceBounds, families] = await Promise.all(
-    [
+  const [products, settings, brands, brandRows, priceBounds, families] =
+    await Promise.all([
       getBuilderProducts(),
       getCollectionSettings(),
       getBrands(),
+      getActiveBrands(),
       getPriceBounds(),
       getScentFamilies(),
-    ],
+    ]);
+  const brandLogos = Object.fromEntries(
+    brandRows.map((b) => [b.name, b.logoUrl]),
   );
 
   let isLoggedIn = false;
@@ -59,6 +63,7 @@ export default async function BuildPage() {
         settings={settings}
         isLoggedIn={isLoggedIn}
         brands={brands}
+        brandLogos={brandLogos}
         priceBounds={priceBounds}
         families={families}
       />

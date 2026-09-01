@@ -83,6 +83,21 @@ export interface ScentFamilyOption {
   isActive: boolean;
 }
 
+/**
+ * One row of the admin-managed brand list (0050_brands.sql).
+ *
+ * `name` is the string that lands on `products.brand` and is displayed
+ * everywhere; the row exists so the name has one owner and can carry a logo.
+ */
+export interface BrandOption {
+  id: string;
+  slug: string;
+  name: string;
+  logoUrl: string | null;
+  sortOrder: number;
+  isActive: boolean;
+}
+
 export interface CatalogFilters {
   brand?: string[];
   gender?: Gender[];

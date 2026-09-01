@@ -43,6 +43,9 @@ const PRESET_BY_FOLDER: Record<string, PresetName> = {
   blog: "photo",
   avatars: "avatar",
   families: "icon",
+  // A logo is a wordmark shown at 24-48px; `icon` bounds the long edge, so a
+  // wide logo keeps its aspect ratio rather than being squared off.
+  brands: "icon",
   marketing: "photo",
 };
 

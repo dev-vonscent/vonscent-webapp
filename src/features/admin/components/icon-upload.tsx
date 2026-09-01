@@ -20,6 +20,7 @@ export function IconUpload({
   label = "Дүрс",
   size = 48,
   allowClear = true,
+  folder = "families",
 }: {
   value: string | null;
   onChange: (url: string | null) => void;
@@ -27,6 +28,12 @@ export function IconUpload({
   size?: number;
   /** Hide the clear (X) button — click-to-replace stays available. */
   allowClear?: boolean;
+  /**
+   * Storage folder the upload route accepts. It is the folder, not the caller,
+   * that decides who may write there, so this stays a closed set rather than a
+   * free string.
+   */
+  folder?: "families" | "brands";
 }) {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -44,7 +51,7 @@ export function IconUpload({
     try {
       const fd = new FormData();
       fd.append("file", prepared.file);
-      fd.append("folder", "families");
+      fd.append("folder", folder);
       const res = await adminFetch<{ url?: string; width?: number }>(
         "/api/upload",
         { method: "POST", body: fd },
@@ -81,6 +88,9 @@ export function IconUpload({
               alt=""
               width={size}
               height={size}
+              // Brand logos are SVG; next/image will not optimise those without
+              // `dangerouslyAllowSVG`, and an icon is small enough not to need it.
+              unoptimized
               className="size-full object-contain"
             />
           ) : (

@@ -20,6 +20,7 @@ export function MultiCheck({
   selected,
   onToggle,
   empty,
+  renderAction,
 }: {
   label: string;
   options: MultiCheckOption[];
@@ -27,6 +28,13 @@ export function MultiCheck({
   onToggle: (value: string) => void;
   /** Shown instead of the grid when the taxonomy is empty. */
   empty?: React.ReactNode;
+  /**
+   * Trailing control for each option — the custom-tag grid puts a «…» menu
+   * there. When given, the chip's styling moves from the `<label>` to a
+   * wrapper so the control sits *outside* the label; inside it, every click on
+   * the menu would also toggle the checkbox.
+   */
+  renderAction?: (option: MultiCheckOption) => React.ReactNode;
 }) {
   return (
     <div className="space-y-2">
@@ -37,19 +45,40 @@ export function MultiCheck({
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {options.map((o) => {
             const id = `${label}-${o.value}`;
-            return (
-              <label
-                key={o.value}
-                htmlFor={id}
-                className="bg-secondary hover:bg-accent flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors"
-              >
+            const box = (
+              <>
                 <Checkbox
                   id={id}
                   checked={selected.includes(o.value)}
                   onCheckedChange={() => onToggle(o.value)}
                 />
                 <span className="truncate">{o.label}</span>
-              </label>
+              </>
+            );
+            const chip =
+              "bg-secondary hover:bg-accent flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors";
+
+            if (!renderAction) {
+              return (
+                <label
+                  key={o.value}
+                  htmlFor={id}
+                  className={`${chip} cursor-pointer`}
+                >
+                  {box}
+                </label>
+              );
+            }
+            return (
+              <div key={o.value} className={chip}>
+                <label
+                  htmlFor={id}
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-2"
+                >
+                  {box}
+                </label>
+                {renderAction(o)}
+              </div>
             );
           })}
         </div>

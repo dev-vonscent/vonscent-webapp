@@ -1,13 +1,18 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ProductForm } from "@/features/admin/components/product-form";
-import { getScentFamilies, fetchCustomTags } from "@/features/taxonomy/api";
+import {
+  getScentFamilies,
+  fetchCustomTags,
+  getActiveBrands,
+} from "@/features/taxonomy/api";
 import { isImageGenConfigured } from "@/lib/env";
 
 export default async function NewProductPage() {
-  const [families, customTagPool] = await Promise.all([
+  const [families, customTagPool, brands] = await Promise.all([
     getScentFamilies(),
     fetchCustomTags(),
+    getActiveBrands(),
   ]);
   return (
     <div className="space-y-6">
@@ -21,6 +26,7 @@ export default async function NewProductPage() {
       <h1 className="font-serif text-2xl font-semibold">Шинэ бараа нэмэх</h1>
       <ProductForm
         families={families}
+        brands={brands}
         customTagPool={customTagPool}
         aiEnabled={isImageGenConfigured}
       />

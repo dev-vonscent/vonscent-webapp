@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import type { ScentFamilyOption } from "@/lib/types";
+import type { BrandOption, ScentFamilyOption } from "@/lib/types";
 import { DEFAULT_SCENT_FAMILIES } from "@/lib/constants";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createPublicClient } from "@/lib/supabase/public";
@@ -102,4 +102,64 @@ export async function sanitizeFamilies(slugs: string[]): Promise<string[]> {
 export async function getScentFamilyLabels(): Promise<Record<string, string>> {
   const families = await fetchScentFamilies();
   return Object.fromEntries(families.map((f) => [f.slug, f.label]));
+}
+
+/* ── Brands (0050_brands.sql) ─────────────────────────────────────────────── */
+
+interface DbBrand {
+  id: string;
+  slug: string;
+  name: string;
+  logo_url: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+/**
+ * Every brand, hidden ones included (admin view).
+ *
+ * Ordered by `sort_order` then name so the admin can pin the houses they sell
+ * most to the top of the product form's dropdown without renaming anything.
+ * Empty in demo mode — the product form falls back to a free-text field there,
+ * because a dropdown with nothing in it cannot be filled in.
+ */
+export const fetchBrands = cache(async (): Promise<BrandOption[]> => {
+  if (!isSupabaseConfigured) return [];
+  const supabase = createPublicClient();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("brands")
+    .select("id, slug, name, logo_url, sort_order, is_active")
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+  return ((data as DbBrand[] | null) ?? []).map((r) => ({
+    id: r.id,
+    slug: r.slug,
+    name: r.name,
+    logoUrl: r.logo_url,
+    sortOrder: r.sort_order,
+    isActive: r.is_active,
+  }));
+});
+
+/** Only the brands the admin still wants offered on the product form. */
+export async function getActiveBrands(): Promise<BrandOption[]> {
+  return (await fetchBrands()).filter((b) => b.isActive);
+}
+
+/**
+ * The brand row a product's `brand` text belongs to, matched case-insensitively.
+ *
+ * The write path keeps both columns: `brand` because every reader already uses
+ * it, `brand_id` because that is what a rename follows. A name the list does
+ * not know yet returns null rather than failing the save — an operator typing
+ * a new brand should not lose the product they were creating.
+ */
+export async function resolveBrandId(name: string): Promise<string | null> {
+  const wanted = name.trim().toLowerCase();
+  if (!wanted) return null;
+  const hit = (await fetchBrands()).find(
+    (b) => b.name.trim().toLowerCase() === wanted,
+  );
+  return hit?.id ?? null;
 }

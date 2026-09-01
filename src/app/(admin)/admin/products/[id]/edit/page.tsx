@@ -3,7 +3,11 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getAdminProduct } from "@/features/admin/api";
 import { ProductEditForm } from "@/features/admin/components/product-edit-form";
-import { getScentFamilies, fetchCustomTags } from "@/features/taxonomy/api";
+import {
+  getScentFamilies,
+  fetchCustomTags,
+  fetchBrands,
+} from "@/features/taxonomy/api";
 import { isImageGenConfigured } from "@/lib/env";
 
 export default async function EditProductPage({
@@ -12,10 +16,13 @@ export default async function EditProductPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [product, families, customTagPool] = await Promise.all([
+  const [product, families, customTagPool, brands] = await Promise.all([
     getAdminProduct(id),
     getScentFamilies(),
     fetchCustomTags(),
+    // Edit reads the *full* list, hidden brands included: a product already on
+    // a retired brand must keep showing it rather than silently losing it.
+    fetchBrands(),
   ]);
   if (!product) notFound();
 
@@ -31,6 +38,7 @@ export default async function EditProductPage({
       <ProductEditForm
         product={product}
         families={families}
+        brands={brands}
         customTagPool={customTagPool}
         aiEnabled={isImageGenConfigured}
       />

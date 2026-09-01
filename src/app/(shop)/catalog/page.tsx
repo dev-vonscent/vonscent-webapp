@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SearchX } from "lucide-react";
 import { getCatalog, getBrands, getPriceBounds } from "@/features/products/api";
-import { getScentFamilies } from "@/features/taxonomy/api";
+import { getActiveBrands, getScentFamilies } from "@/features/taxonomy/api";
 import { parseFilters } from "@/features/catalog/parse";
 import { CatalogFilters } from "@/features/catalog/components/catalog-filters";
 import { CatalogFilterSheet } from "@/features/catalog/components/catalog-filter-sheet";
@@ -31,12 +31,18 @@ export default async function CatalogPage({
 }) {
   const params = await searchParams;
   const filters = parseFilters(params);
-  const [result, brands, priceBounds, families] = await Promise.all([
+  const [result, brands, priceBounds, families, brandRows] = await Promise.all([
     getCatalog(filters),
     getBrands(),
     getPriceBounds(),
     getScentFamilies(),
+    getActiveBrands(),
   ]);
+  // `getBrands()` is the list that actually has products (and their order);
+  // the brands table only supplies the artwork.
+  const brandLogos = Object.fromEntries(
+    brandRows.map((b) => [b.name, b.logoUrl]),
+  );
 
   return (
     <div className="mx-auto max-w-352 px-4 py-8 md:px-8">
@@ -55,6 +61,7 @@ export default async function CatalogPage({
       <div className="border-border flex items-center gap-2 border-y py-3 lg:hidden">
         <CatalogFilterSheet
           brands={brands}
+          brandLogos={brandLogos}
           priceBounds={priceBounds}
           families={families}
         />
@@ -68,6 +75,7 @@ export default async function CatalogPage({
           <CatalogSearch className="mb-6" />
           <CatalogFilters
             brands={brands}
+            brandLogos={brandLogos}
             priceBounds={priceBounds}
             families={families}
           />

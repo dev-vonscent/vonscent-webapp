@@ -22,7 +22,7 @@ import {
 } from "@/features/products/api";
 import { getRecentReviews } from "@/features/reviews/api";
 import { getPopupSettings, getHomeSections } from "@/features/content/api";
-import { getScentFamilies } from "@/features/taxonomy/api";
+import { getActiveBrands, getScentFamilies } from "@/features/taxonomy/api";
 import { getFeaturedCollections } from "@/features/collections/api";
 import { CollectionCard } from "@/features/collections/components/collection-card";
 import { ScentQuiz } from "@/features/quiz/components/scent-quiz";
@@ -54,6 +54,7 @@ export default async function HomePage() {
     reviews,
     popup,
     families,
+    brandLogos,
     sections,
     featuredCollections,
   ] = await Promise.all([
@@ -64,6 +65,7 @@ export default async function HomePage() {
     getRecentReviews(3),
     getPopupSettings(),
     getScentFamilies(),
+    getActiveBrands(),
     getHomeSections(),
     getFeaturedCollections(3),
   ]);
@@ -355,7 +357,12 @@ export default async function HomePage() {
         {/* Brands */}
         <section>
           <SectionHeading title="Брэндээр" href="/catalog" />
-          <BrandMarquee brands={brands} />
+          <BrandMarquee
+            brands={brands}
+            logos={Object.fromEntries(
+              brandLogos.map((b) => [b.name, b.logoUrl]),
+            )}
+          />
         </section>
 
         {/* On sale */}

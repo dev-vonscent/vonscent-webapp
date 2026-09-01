@@ -1,15 +1,9 @@
-import { Loader2 } from "lucide-react";
+import { PageSpinner } from "@/components/shared/skeletons";
 
+/**
+ * Catch-all for admin screens with no shape-specific skeleton. The heavy
+ * lists — бараа, захиалга, хэрэглэгч, үлдэгдэл — each override it.
+ */
 export default function Loading() {
-  return (
-    <div
-      className="text-muted-foreground flex min-h-[50vh] items-center justify-center"
-      role="status"
-      aria-label="Ачаалж байна"
-    >
-      {/* An SVG stroke, not a border: globals.css collapses every border to
-          transparent, so a `border-2` ring spinner renders as nothing at all. */}
-      <Loader2 className="size-8 animate-spin" />
-    </div>
-  );
+  return <PageSpinner />;
 }

@@ -10,19 +10,9 @@ import { formatPrice } from "@/lib/format";
 import { GENDERS, GENDER_LABEL } from "@/lib/constants";
 import { useFilterQuery } from "./use-filter-query";
 import type { ScentFamilyOption } from "@/lib/types";
+import type { BrandLogos } from "@/features/products/components/brand-marquee";
 
 const PRICE_STEP = 1000;
-
-/** Brand name → transparent logo in /public/brands (see brand-marquee). */
-const BRAND_LOGOS: Record<string, string> = {
-  "Acqua di Parma": "/brands/acqua-di-parma.svg",
-  Chanel: "/brands/chanel.svg",
-  Creed: "/brands/creed.svg",
-  Dior: "/brands/dior.svg",
-  "Maison Margiela": "/brands/maison-margiela.svg",
-  "Tom Ford": "/brands/tom-ford.svg",
-  "Yves Saint Laurent": "/brands/yves-saint-laurent.svg",
-};
 
 const TAGS: { value: string; label: string }[] = [
   { value: "new", label: "Шинэ" },
@@ -81,10 +71,18 @@ function Chip({
 
 export function CatalogFilters({
   brands,
+  brandLogos,
   priceBounds,
   families,
 }: {
   brands: string[];
+  /**
+   * Brand name → logo path, from the `brands` table. Passed in rather than
+   * looked up here: this is a client component, and the list used to be a
+   * hard-coded seven-entry map that silently went stale every time the shop
+   * took on a new house.
+   */
+  brandLogos: BrandLogos;
   priceBounds: { min: number; max: number };
   /** Live taxonomy from `scent_families` — the admin owns this list. */
   families: ScentFamilyOption[];
@@ -219,9 +217,9 @@ export function CatalogFilters({
       )}
 
       <Group title="Брэнд">
-        <div className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-1">
+        <div className="slim-scrollbar grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-2">
           {brands.map((b) => {
-            const logo = BRAND_LOGOS[b];
+            const logo = brandLogos[b];
             return (
               <Chip
                 key={b}

@@ -67,5 +67,110 @@ CSV бэлэн болсны дараа импорт скрипт нь дараа
 4. `inventory` — `on_hand_ml`.
 5. `product_tags` — `tags`-г таг-ийн id-тай холбоно.
 
-> Энэ CSV-г уншиж DB рүү оруулдаг импорт скриптийг (`scripts/import-products.ts`,
-> ж: `pnpm db:import docs/import/product-import-template.csv`) бэлдэж өгөх боломжтой.
+### Команд
+
+```bash
+# Эхлээд --dry-аар шалгана (DB-д хүрэхгүй, зөвхөн уншиж алдаа заана)
+pnpm db:import-products docs/import/real-product-list.xlsx --dry
+
+# Оруулах — шинэ бараа НУУГДМАЛ (is_active = false) орно
+pnpm db:import-products docs/import/real-product-list.xlsx
+
+# Шууд дэлгүүрт нээх бол
+pnpm db:import-products docs/import/real-product-list.xlsx --active
+```
+
+Скрипт нь Excel загварын **«Бүтээгдэхүүн»** хуудсыг уншина (2-р мөрийн
+машины түлхүүр = багана). Загварын жишээ мөрүүдийг өөрөө таньж алгасна.
+
+**Хоосон нүд = «хөндөхгүй», «устга» гэсэн үг биш.** Тухайн барааг дахин
+импортлоход Excel-д хоосон байгаа багана DB дэх утгаараа хэвээр үлдэнэ —
+админы дараа нэмсэн зураг, танилцуулга, үлдэгдэл дарагдахгүй.
+
+Хөрвүүлэлт:
+
+| Excel | DB |
+|---|---|
+| `Эрэгтэй` / `Эмэгтэй` / `Юнисекс` | `gender` enum |
+| `edp intense` → `EDP`, `elixir de parfum` → `Elixir`, `Extrait de parfum` → `Extrait` | `concentration_t` (хаалттай 6 утга) |
+| Брэндийн бичлэг (`Tom ford` → `Tom Ford`) | скриптийн `BRAND_MAP` |
+| Үнэрийн бүл / нэмэлт таг — **шошгоор** нь тааруулна | `scent_families`, `custom_tags` |
+
+`BRAND_MAP`-д байхгүй брэнд Excel дэх бичлэгээрээ орох ба төгсгөлд
+сануулга болж хэвлэгдэнэ.
+
+## Дэлгэрэнгүй мэдээлэл нөхөх (enrichment)
+
+Excel-д зөвхөн нэр, брэнд, хүйс, төрөл, эх савны ml, 4 үнэ л байдаг. Нот,
+танилцуулга, зураг зэрэг **худалдан авагчийн уншдаг бүх зүйл** тусад нь
+цуглуулагдаж, `docs/import/enrichment/` доор амьдарна.
+
+| Файл | Хэн бичдэг | Агуулга |
+|---|---|---|
+| `harvest.json` | `scripts/harvest-parfumo.ts` | Parfumo-оос: зургийн URL, гарсан он, англи нот пирамид |
+| `notes.mn.json` | гараар | Англи нот → монгол нэршлийн нэгдсэн толь |
+| `copy.mn.json` | гараар | Монгол танилцуулга, гараар оруулсан нот/зураг |
+| `manifest.json` | `scripts/build-enrichment.ts` | Дээрх гурвыг нийлүүлсэн, DB-д бичих эцсийн файл |
+
+```bash
+node --env-file=.env --import tsx scripts/harvest-parfumo.ts        # бүгд
+node --env-file=.env --import tsx scripts/harvest-parfumo.ts <slug> # зөвхөн заасныг
+node --import tsx scripts/build-enrichment.ts
+pnpm db:enrich-products docs/import/enrichment/manifest.json --dry
+pnpm db:enrich-products docs/import/enrichment/manifest.json
+pnpm db:enrich-products docs/import/enrichment/manifest.json --keep-images  # зөвхөн текст
+```
+
+### Яагаад албан ёсны сайтаас биш вэ
+
+Dior, Chanel, YSL, Louis Vuitton, Versace, Gucci, Hermès, Bvlgari зэрэг байшингууд
+браузер биш аливаа хүсэлтэд **403** буцаана. Хариу өгдөг цөөн сайт ч нот
+пирамидаа зөвхөн зурган дээр нийтэлдэг. Тиймээс бодит өгөгдлийг Parfumo-оос
+(бүтэцлэгдсэн markup) авдаг; `scripts/crawl-pdp.ts` нь албан ёсны хуудас
+уншигдах тохиолдолд JSON-LD/OpenGraph-оос нь мэдээлэл сугалж авна.
+
+### Зургийн дэвсгэр
+
+Клиент **цагаан дэвсгэртэй** зураг хүссэн. Брэндүүдийн өөрсдийн PDP зураг
+ихэвчлэн саарал студийн дэвсгэртэй (Versace 207/255, Creed 212/255) тул
+Parfumo-гийн каталогийн packshot (цагаан, ус тэмдэггүй) эсвэл Fragrantica-гийн
+`fimgs.net/mdimg/perfume/o.<id>.jpg`-ийг ашиглана.
+
+`scripts/lib/image-checks.ts` нь зураг бүрийн **захын цагирагийн медиан
+гэрэлтэлт**-ийг хэмжиж, 244/255-аас доош бол сануулга өгнө. Саарал дэвсгэрийг
+хиймлээр цайруулах оролдлого (flood-fill segmentation, tone curve) хийж үзсэн
+боловч аль аль нь лонхыг сүйтгэж байсан тул **хэмжиж, цагаан эх сурвалж сонгох**
+зарчмыг баримталсан.
+
+
+## Зургийг AI-аар дахин авах (regen)
+
+Каталогийн зургууд өөр өөр эх сурвалжаас ирдэг тул кадр, хэмжээ, дэвсгэр нь
+таарахгүй. `scripts/regen-product-images.ts` нь **одоо байгаа зургийг лавлах
+болгон** OpenAI-д буцааж илгээж, бүгдийг нэг дэвсгэр (#E7E5E2), нэг масштаб,
+нэг гэрэлтүүлэгтэй болгоно.
+
+```bash
+pnpm db:regen-images --dry              # төлөвлөгөө, API дуудахгүй
+pnpm db:regen-images --limit=1          # эхлээд нэгийг үзэх
+pnpm db:regen-images                    # бүгд
+pnpm db:regen-images <slug> <slug>      # зөвхөн заасныг (алдаатайг дахин)
+pnpm db:regen-images --rollback         # хуучин зургийг буцаах
+```
+
+`gpt-image-1.5` · `1024x1024` · `quality=high`. **Төлбөртэй** — бараа тутамд
+нэг генерац.
+
+### Квот
+
+Байгууллагын gpt-image хязгаар нь **минутад 5 оролтын зураг**. Үүнээс дээш
+зэрэгцүүлбэл 429 буцаж, дахин оролдлогын нөөц дэмий үрэгдэнэ. Тиймээс анхдагч
+зэрэгцээ **4**, дахин оролдлогын хүлээлт **бүтэн минутаар** (65с, 130с, 195с) —
+минутын цонхыг давахгүй бол дахин оролдох нь утгагүй.
+
+### Буцаах
+
+Дарж бичихээс өмнө хуучин бүх URL `docs/import/enrichment/image-backup.json`-д
+бичигдэнэ (нэг slug-ийн **хамгийн эхний** утга хадгалагдана — хоёр дахь удаа
+ажиллуулахад үүсгэсэн зургийг «эх» гэж бүртгэхээс сэргийлнэ). Хуучин объектууд
+Storage-д үлддэг тул `--rollback` нь жинхэнэ буцаалт.

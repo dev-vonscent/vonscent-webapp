@@ -53,9 +53,13 @@ export async function POST(req: Request) {
   const slug = slugifyTag(name);
   if (!slug) return NextResponse.json({ error: "VALIDATION" }, { status: 400 });
 
-  const { error } = await g.supabase
+  // Returns the row, not just `ok`: the product form can add a tag inline and
+  // has to select it immediately, which needs the id the database just made.
+  const { data, error } = await g.supabase
     .from("custom_tags")
-    .insert({ name, slug });
+    .insert({ name, slug })
+    .select("id, name, slug")
+    .single();
   if (error) {
     const code = (error as { code?: string }).code;
     if (code === "23505")
@@ -65,5 +69,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "INSERT_FAILED" }, { status: 500 });
   }
   revalidatePublic();
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, tag: data });
 }

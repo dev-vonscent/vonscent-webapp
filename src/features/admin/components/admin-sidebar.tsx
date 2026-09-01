@@ -4,24 +4,25 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  Boxes,
-  Layers,
-  Tags,
-  Tag,
-  Warehouse,
-  ShoppingCart,
-  Settings,
-  Store,
-  Users,
-  TicketPercent,
   Award,
-  Gift,
-  FileText,
   BarChart3,
-  LayoutList,
+  Boxes,
   ChevronDown,
+  Crown,
+  FileText,
+  Gift,
+  Layers,
+  LayoutDashboard,
+  LayoutList,
   Menu,
+  Settings,
+  ShoppingCart,
+  Store,
+  Tag,
+  Tags,
+  TicketPercent,
+  Users,
+  Warehouse,
 } from "lucide-react";
 import {
   Sheet,
@@ -32,6 +33,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { NavPendingSwap } from "@/components/shared/nav-pending";
 import { Logo } from "@/components/shared/logo";
 import type { SidebarBadges } from "@/features/admin/api";
 
@@ -74,6 +76,7 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
         badge: "outOfStock",
       },
       { href: "/admin/collections", label: "Багц", icon: Layers },
+      { href: "/admin/brands", label: "Брэнд", icon: Crown },
       { href: "/admin/scent-families", label: "Үнэрийн төрөл", icon: Tags },
       { href: "/admin/tags", label: "Нэмэлт таг", icon: Tag },
     ],
@@ -195,7 +198,9 @@ export function AdminSidebar({
             : "text-muted-foreground hover:bg-accent hover:text-foreground",
         )}
       >
-        <l.icon className="size-4" />
+        <NavPendingSwap>
+          <l.icon className="size-4" />
+        </NavPendingSwap>
         {l.label}
         {badgeCount > 0 && (
           <span className="bg-foreground text-background ml-auto rounded-full px-1.5 text-[11px]/4 font-semibold">

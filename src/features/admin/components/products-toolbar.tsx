@@ -2,14 +2,14 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowUpDown, Boxes } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 /**
@@ -23,15 +23,99 @@ import { cn } from "@/lib/utils";
  * dropdown's «Үлдэгдэл багаас», two controls that read as the same thing and
  * did not do the same thing.
  *
- * Now each control answers one question: chips for visibility (three states,
- * visible without opening anything), a dropdown for stock, a dropdown for
- * order. They combine.
+ * Now each control answers one question and they combine: chips for visibility
+ * (three states, visible without opening anything), and two icon menus — stock
+ * and order — sitting to the left of the search field, where they cost a
+ * gesture to read but no width to display.
  */
 const VISIBILITY = [
   { value: "", label: "Бүгд" },
   { value: "active", label: "Идэвхтэй" },
   { value: "hidden", label: "Нуусан" },
 ];
+
+/** The first entry of each list is the default — picking it clears the param. */
+const STOCK = [
+  { value: "", label: "Бүх үлдэгдэл" },
+  { value: "ok", label: "Хэвийн" },
+  { value: "low", label: "Бага" },
+  { value: "soldout", label: "Дууссан" },
+];
+
+const SORT = [
+  { value: "", label: "Нэрээр" },
+  { value: "brand", label: "Брэндээр" },
+  { value: "price-asc", label: "Үнэ өсөхөөр" },
+  { value: "price-desc", label: "Үнэ буурахаар" },
+  { value: "stock", label: "Үлдэгдэл багаас" },
+];
+
+/**
+ * One filter as an icon button. Collapsing the two dropdowns to icons is what
+ * lets them sit beside the search field instead of below it — but an icon on
+ * its own cannot say what it is currently set to, so it carries the chosen
+ * label in its `title`, lights up in the chip's active colour whenever the
+ * value is not the default, and marks the live row inside the menu.
+ */
+function IconFilter({
+  icon: Icon,
+  label,
+  options,
+  value,
+  onSelect,
+}: {
+  icon: typeof Boxes;
+  label: string;
+  options: { value: string; label: string }[];
+  value: string;
+  onSelect: (value: string) => void;
+}) {
+  const current = options.find((o) => o.value === value) ?? options[0];
+  const isDefault = current.value === "";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={`${label}: ${current.label}`}
+          title={`${label}: ${current.label}`}
+          className={cn(
+            "grid size-11 shrink-0 place-items-center rounded-full transition-colors md:size-9",
+            isDefault
+              ? "bg-secondary text-muted-foreground hover:text-foreground"
+              : "bg-primary text-primary-foreground",
+          )}
+        >
+          <Icon className="size-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        {options.map((o) => (
+          <DropdownMenuItem
+            key={o.value || "default"}
+            onSelect={() => onSelect(o.value)}
+            className={cn(
+              "min-h-11 md:min-h-0",
+              o.value !== current.value && "text-muted-foreground",
+            )}
+          >
+            {/* A dot, not a tick: `DropdownMenuItem` greys every `svg` it
+                contains, so a check icon would read as unselected. */}
+            <span
+              aria-hidden
+              className={cn(
+                "size-1.5 rounded-full",
+                o.value === current.value ? "bg-gold-strong" : "bg-transparent",
+              )}
+            />
+            {o.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export function ProductsToolbar() {
   const router = useRouter();
@@ -71,25 +155,52 @@ export function ProductsToolbar() {
     <div
       // Dim rather than block: the list under it is still the previous result,
       // and taking the controls away mid-type is worse than a stale row.
+      //
+      // Two layouts, not one wrapping row. Four controls with fixed widths in a
+      // `flex-wrap` broke onto a phone wherever they happened to run out of
+      // room — a half-width search box, then two chips and a dropdown crammed
+      // together, then the last dropdown alone. On a phone each control gets a
+      // full-width band of its own; from `md` the whole thing collapses back
+      // into the single inline row a wide screen has space for.
       className={cn(
-        "flex flex-wrap items-center gap-x-3 gap-y-2 transition-opacity",
+        "space-y-2 transition-opacity md:flex md:flex-wrap md:items-center md:gap-x-3 md:gap-y-2 md:space-y-0",
         pending && "opacity-60",
       )}
       aria-busy={pending}
     >
-      <Input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        type="search"
-        aria-label="Нэр, брэндээр хайх"
-        placeholder="Нэр, брэндээр хайх…"
-        className="h-11 w-56 md:h-9"
-      />
+      {/* The two dropdowns ride to the left of the search field as icons, so
+          the row costs one band on a phone instead of three. */}
+      <div className="flex items-center gap-2">
+        <IconFilter
+          icon={Boxes}
+          label="Үлдэгдэл"
+          options={STOCK}
+          value={params.get("stock") ?? ""}
+          onSelect={(v) => patch("stock", v)}
+        />
+        <IconFilter
+          icon={ArrowUpDown}
+          label="Эрэмбэ"
+          options={SORT}
+          value={params.get("sort") ?? ""}
+          onSelect={(v) => patch("sort", v)}
+        />
+        <Input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          type="search"
+          aria-label="Нэр, брэндээр хайх"
+          placeholder="Нэр, брэндээр хайх…"
+          className="h-11 min-w-0 flex-1 md:h-9 md:w-56 md:flex-none"
+        />
+      </div>
 
       <div
         role="group"
         aria-label="Харагдацаар шүүх"
-        className="flex flex-wrap items-center gap-1.5"
+        // Three equal parts on a phone: the chips are one choice, so they read
+        // as one control rather than three words of different lengths.
+        className="grid grid-cols-3 gap-1.5 md:flex md:items-center"
       >
         {VISIBILITY.map((v) => (
           <button
@@ -111,36 +222,6 @@ export function ProductsToolbar() {
         ))}
       </div>
 
-      <Select
-        value={params.get("stock") ?? "all"}
-        onValueChange={(v) => patch("stock", v === "all" ? "" : v)}
-      >
-        <SelectTrigger aria-label="Үлдэгдлээр шүүх" className="h-11 w-40 md:h-9">
-          <SelectValue placeholder="Үлдэгдэл" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Бүх үлдэгдэл</SelectItem>
-          <SelectItem value="ok">Хэвийн</SelectItem>
-          <SelectItem value="low">Бага</SelectItem>
-          <SelectItem value="soldout">Дууссан</SelectItem>
-        </SelectContent>
-      </Select>
-
-      <Select
-        value={params.get("sort") ?? "name"}
-        onValueChange={(v) => patch("sort", v === "name" ? "" : v)}
-      >
-        <SelectTrigger aria-label="Эрэмбэлэх" className="h-11 w-44 md:h-9">
-          <SelectValue placeholder="Эрэмбэ" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="name">Нэрээр</SelectItem>
-          <SelectItem value="brand">Брэндээр</SelectItem>
-          <SelectItem value="price-asc">Үнэ өсөхөөр</SelectItem>
-          <SelectItem value="price-desc">Үнэ буурахаар</SelectItem>
-          <SelectItem value="stock">Үлдэгдэл багаас</SelectItem>
-        </SelectContent>
-      </Select>
     </div>
   );
 }

@@ -38,11 +38,14 @@ import {
   type VariantDraft,
 } from "./variant-price-table";
 import { MultiCheck, useToggleList } from "./multi-check";
+import { AddCustomTag } from "./add-custom-tag";
+import { CustomTagActions } from "./custom-tag-actions";
 import { DescriptionFields } from "./description-fields";
 import { ProductImageStudio } from "./product-image-studio";
+import { BrandSelect } from "./brand-select";
 import type { AdminProduct } from "@/features/admin/api";
 import type { CustomTagOption } from "@/features/taxonomy/api";
-import type { ScentFamilyOption } from "@/lib/types";
+import type { BrandOption, ScentFamilyOption } from "@/lib/types";
 const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
   { slug: "new", label: "Шинэ" },
   { slug: "hot", label: "Эрэлттэй" },
@@ -52,11 +55,13 @@ const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
 export function ProductEditForm({
   product,
   families,
+  brands,
   customTagPool = [],
   aiEnabled = false,
 }: {
   product: AdminProduct;
   families: ScentFamilyOption[];
+  brands: BrandOption[];
   customTagPool?: CustomTagOption[];
   /** `isImageGenConfigured` — server-only env, handed down by the page. */
   aiEnabled?: boolean;
@@ -109,6 +114,10 @@ export function ProductEditForm({
   );
   const [tags, setTags] = React.useState<string[]>(product.tags);
   const [customTags, rawToggleCustomTag] = useToggleList(product.customTags);
+  // The pool is a server prop, but a tag coined here has to show up in the
+  // grid immediately rather than after a refresh.
+  const [pool, setPool] = React.useState(customTagPool);
+  React.useEffect(() => setPool(customTagPool), [customTagPool]);
   const [isActive, setIsActive] = React.useState(product.isActive);
 
   useUnsavedGuard(dirty);
@@ -280,10 +289,10 @@ export function ProductEditForm({
               />
             </Field>
             <Field label="Брэнд">
-              <Input
+              <BrandSelect
+                brands={brands}
                 value={form.brand}
-                onChange={(e) => set("brand", e.target.value)}
-                required
+                onChange={(v) => set("brand", v)}
               />
             </Field>
             <Field label="Хүйс">
@@ -470,16 +479,58 @@ export function ProductEditForm({
             />
             Идэвхтэй (нийтлэх)
           </label>
-          <MultiCheck
-            label="Нэмэлт таг (дотоод — хайлт, quiz-д ашиглагдана)"
-            options={customTagPool.map((t) => ({
-              value: t.slug,
-              label: t.name,
-            }))}
-            selected={customTags}
-            onToggle={toggleCustomTag}
-            empty="«Нэмэлт таг» хуудсанд эхлээд таг нэмнэ үү."
-          />
+          <div className="space-y-3">
+            <MultiCheck
+              label="Нэмэлт таг (дотоод — хайлт, quiz-д ашиглагдана)"
+              options={pool.map((t) => ({ value: t.slug, label: t.name }))}
+              selected={customTags}
+              onToggle={toggleCustomTag}
+              empty="Одоогоор таг алга — доороос нэмнэ үү."
+              renderAction={(o) => {
+                const tag = pool.find((t) => t.slug === o.value);
+                if (!tag) return null;
+                return (
+                  <CustomTagActions
+                    tag={tag}
+                    onRenamed={(next) => {
+                      setPool((prev) =>
+                        prev.map((t) => (t.id === next.id ? next : t)),
+                      );
+                      // The slug is re-derived on rename, so a ticked tag has
+                      // to be re-ticked under its new one or the save would
+                      // silently drop it.
+                      if (customTags.includes(tag.slug)) {
+                        toggleCustomTag(tag.slug);
+                        toggleCustomTag(next.slug);
+                      }
+                    }}
+                    onDeleted={(gone) => {
+                      setPool((prev) =>
+                        prev.filter((t) => t.id !== gone.id),
+                      );
+                      if (customTags.includes(gone.slug))
+                        toggleCustomTag(gone.slug);
+                    }}
+                  />
+                );
+              }}
+            />
+            <AddCustomTag
+              pool={pool}
+              onCreated={(tag) => {
+                setPool((prev) =>
+                  prev.some((t) => t.id === tag.id)
+                    ? prev
+                    : [...prev, tag].sort((a, b) =>
+                        a.name.localeCompare(b.name),
+                      ),
+                );
+                // Coining a tag on a product means you want it on that
+                // product; ticking it is the whole point of doing it here.
+                if (!customTags.includes(tag.slug)) toggleCustomTag(tag.slug);
+              }}
+            />
+          </div>
         </CardContent>
       </Card>
 

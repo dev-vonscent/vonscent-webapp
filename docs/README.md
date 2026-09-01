@@ -27,6 +27,7 @@
 |---|---|
 | [product-import-guide.md](./import/product-import-guide.md) | Бараа импортлох заавар |
 | [product-import-template.csv](./import/product-import-template.csv) | Барааны CSV загвар |
+| real-product-list.xlsx | Клиентээс ирсэн бодит барааны жагсаалт (75 бараа) |
 | [collection-import-guide.md](./import/collection-import-guide.md) | Багц импортлох заавар |
 | [collection-import-template.xlsx](./import/collection-import-template.xlsx) | Багцын хоосон Excel загвар |
 | [collection-import-sample.xlsx](./import/collection-import-sample.xlsx) | Бөглөсөн жишээ (3 багц) |
@@ -44,6 +45,20 @@
 ## Түгээмэл командууд
 
 ```bash
+# Бараа импортлох (эхлээд --dry-аар шалгах; --active-гүй бол нуугдмал орно)
+pnpm db:import-products docs/import/real-product-list.xlsx --dry
+pnpm db:import-products docs/import/real-product-list.xlsx
+
+# Брэндийн лого олж public/brands-д хийгээд DB-д холбох
+node --env-file=.env --import tsx scripts/fetch-brand-logos.ts --review   # шалгах
+node --env-file=.env --import tsx scripts/fetch-brand-logos.ts --write
+node --env-file=.env --import tsx scripts/set-brand-logos.ts
+
+# Барааны дэлгэрэнгүй (нот, танилцуулга, зураг) нөхөх
+node --env-file=.env --import tsx scripts/harvest-parfumo.ts
+node --import tsx scripts/build-enrichment.ts
+pnpm db:enrich-products docs/import/enrichment/manifest.json
+
 # Багц импортлох (эхлээд --dry-аар шалгах)
 pnpm db:import-collections docs/import/collection-import-template.xlsx --dry
 pnpm db:import-collections docs/import/collection-import-template.xlsx

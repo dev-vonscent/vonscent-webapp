@@ -319,6 +319,47 @@
   }
 }
 
+/*
+ * Slim scrollbar for panels that scroll inside the page — the brand list in
+ * the catalogue filter, above all.
+ *
+ * The OS scrollbar is a light-grey slab that ignores the theme: on the black
+ * theme it draws a bright bar down the side of the filter, which reads as
+ * chrome bolted onto the design rather than part of it. This keeps the
+ * affordance (unlike `no-scrollbar`, which hides it entirely and leaves no
+ * hint that there is more) but renders it in theme colour and half the width.
+ *
+ * `scrollbar-color` covers Firefox; the `::-webkit-` rules cover Chrome and
+ * Safari, where the track is left transparent so only the thumb shows.
+ */
+@utility slim-scrollbar {
+  scrollbar-width: thin;
+  /*
+   * The colour has to be muted *here*, not only in the `::-webkit-` block
+   * below: once `scrollbar-width` is set, Chrome switches to the standard
+   * properties and ignores the pseudo-elements entirely, so a bare
+   * `var(--muted-foreground)` would paint a solid #a1a1a1 bar down the side of
+   * the filter on the black theme. The `::-webkit-` rules are kept for older
+   * Safari, which has the pseudo-elements but not `scrollbar-color`.
+   */
+  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 40%, transparent)
+    transparent;
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
+    border-radius: 9999px;
+  }
+  &:hover::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+  }
+}
+
 /* Thin neutral hairline divider used sparingly */
 @utility gold-rule {
   height: 1px;

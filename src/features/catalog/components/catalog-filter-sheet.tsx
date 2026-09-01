@@ -10,6 +10,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { CatalogFilters } from "./catalog-filters";
+import type { BrandLogos } from "@/features/products/components/brand-marquee";
 import { useFilterQuery } from "./use-filter-query";
 import type { ScentFamilyOption } from "@/lib/types";
 
@@ -20,10 +21,12 @@ import type { ScentFamilyOption } from "@/lib/types";
  */
 export function CatalogFilterSheet({
   brands,
+  brandLogos,
   priceBounds,
   families,
 }: {
   brands: string[];
+  brandLogos: BrandLogos;
   priceBounds: { min: number; max: number };
   families: ScentFamilyOption[];
 }) {
@@ -80,6 +83,7 @@ export function CatalogFilterSheet({
         <div className="no-scrollbar -mx-2 flex-1 overflow-y-auto px-2">
           <CatalogFilters
             brands={brands}
+            brandLogos={brandLogos}
             priceBounds={priceBounds}
             families={families}
           />

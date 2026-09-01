@@ -19,6 +19,8 @@ const FOLDERS = {
   "products/new": "staff",
   /** Scent family icons (todo.md B3b) — shown on the home rail and filters. */
   families: "staff",
+  /** Brand logos (0050_brands.sql) — the picker and the brand list. */
+  brands: "staff",
   blog: "staff",
   /** Marketing imagery — promo popup slides (admin A8). */
   marketing: "staff",

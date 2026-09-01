@@ -24,6 +24,7 @@ import type {
   GiftCandidate,
 } from "../types";
 import type { CatalogFilters as Filters, ScentFamilyOption } from "@/lib/types";
+import type { BrandLogos } from "@/features/products/components/brand-marquee";
 
 /** Filter + sort a product list the same way the catalog server does. */
 function applyFilters(
@@ -73,6 +74,7 @@ export function CollectionBuilder({
   settings,
   isLoggedIn,
   brands,
+  brandLogos,
   priceBounds,
   families,
 }: {
@@ -80,6 +82,7 @@ export function CollectionBuilder({
   settings: CollectionSettings;
   isLoggedIn: boolean;
   brands: string[];
+  brandLogos: BrandLogos;
   priceBounds: { min: number; max: number };
   families: ScentFamilyOption[];
 }) {
@@ -408,6 +411,7 @@ export function CollectionBuilder({
       <div className="border-border flex items-center gap-2 border-y py-3 lg:hidden">
         <CatalogFilterSheet
           brands={brands}
+          brandLogos={brandLogos}
           priceBounds={priceBounds}
           families={families}
         />
@@ -421,6 +425,7 @@ export function CollectionBuilder({
           <CatalogSearch className="mb-6" />
           <CatalogFilters
             brands={brands}
+            brandLogos={brandLogos}
             priceBounds={priceBounds}
             families={families}
           />

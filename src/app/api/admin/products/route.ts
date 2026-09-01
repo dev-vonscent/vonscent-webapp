@@ -5,7 +5,7 @@ import { isSupabaseConfigured, isImageGenConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaffUser } from "@/lib/auth/guard";
 import { isStorageUrl } from "@/lib/storage/storage";
-import { sanitizeFamilies, sanitizeCustomTags } from "@/features/taxonomy/api";
+import { resolveBrandId, sanitizeCustomTags, sanitizeFamilies } from "@/features/taxonomy/api";
 import {
   buildImagePrompt,
   DEFAULT_BASE_PROMPT,
@@ -50,11 +50,16 @@ export async function POST(req: Request) {
 
   const slug = slugify(input.name, input.brand);
   const families = await sanitizeFamilies(input.scentFamilies);
+  // `brand` stays the display text every reader uses; `brand_id` is what a
+  // later rename in the brand list follows (0050). A name that isn't in the
+  // list yet resolves to null rather than blocking the save.
+  const brandId = await resolveBrandId(input.brand);
 
   const base = {
     slug,
     name: input.name,
     brand: input.brand,
+    brand_id: brandId,
     description: input.description,
     notes_description: input.notesDescription,
     usage_description: input.usageDescription,

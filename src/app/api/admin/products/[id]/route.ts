@@ -4,7 +4,7 @@ import { productEditSchema } from "@/lib/validators/product";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sanitizeFamilies, sanitizeCustomTags } from "@/features/taxonomy/api";
+import { resolveBrandId, sanitizeCustomTags, sanitizeFamilies } from "@/features/taxonomy/api";
 
 async function guard() {
   if (!isSupabaseConfigured) return { demo: true as const };
@@ -38,7 +38,12 @@ export async function PATCH(
 
   const productUpdate: Record<string, unknown> = {};
   if (input.name !== undefined) productUpdate.name = input.name;
-  if (input.brand !== undefined) productUpdate.brand = input.brand;
+  if (input.brand !== undefined) {
+    productUpdate.brand = input.brand;
+    // Keep the pointer in step with the text, so a later rename in the brand
+    // list reaches this product too (0050 brands_name_sync).
+    productUpdate.brand_id = await resolveBrandId(input.brand);
+  }
   if (input.gender !== undefined) productUpdate.gender = input.gender;
   if (input.concentration !== undefined)
     productUpdate.concentration = input.concentration;

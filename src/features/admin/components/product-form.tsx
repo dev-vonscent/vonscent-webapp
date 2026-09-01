@@ -27,6 +27,7 @@ import { MultiCheck, useToggleList } from "./multi-check";
 import { DescriptionFields } from "./description-fields";
 import { type GalleryImage } from "./product-images";
 import { ProductImageStudio } from "./product-image-studio";
+import { BrandSelect } from "./brand-select";
 import {
   GENDERS,
   GENDER_LABEL,
@@ -35,7 +36,7 @@ import {
   SEASON_LABEL,
   DEFAULT_LOW_STOCK_ML,
 } from "@/lib/constants";
-import type { ScentFamilyOption } from "@/lib/types";
+import type { BrandOption, ScentFamilyOption } from "@/lib/types";
 import type { CustomTagOption } from "@/features/taxonomy/api";
 
 const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
@@ -46,10 +47,12 @@ const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
 
 export function ProductForm({
   families,
+  brands,
   customTagPool = [],
   aiEnabled = false,
 }: {
   families: ScentFamilyOption[];
+  brands: BrandOption[];
   customTagPool?: CustomTagOption[];
   /** `isImageGenConfigured` — server-only env, handed down by the page. */
   aiEnabled?: boolean;
@@ -215,10 +218,10 @@ export function ProductForm({
               />
             </Field>
             <Field label="Брэнд">
-              <Input
-                required
+              <BrandSelect
+                brands={brands}
                 value={form.brand}
-                onChange={(e) => set("brand", e.target.value)}
+                onChange={(v) => set("brand", v)}
               />
             </Field>
             <Field label="Хүйс">
