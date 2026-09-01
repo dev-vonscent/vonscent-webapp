@@ -290,6 +290,22 @@ export function ProductImageStudio({
                 ))}
               </div>
             )}
+
+            {/*
+              Say why, rather than just vanishing. `aiEnabled` is
+              `isImageGenConfigured`, i.e. whether OPENAI_API_KEY is present on
+              the server — and because `.env*` is gitignored, a deployment that
+              was never given the key in its own environment simply loses this
+              whole feature with no message. That looks like a bug and is not
+              traceable from the screen.
+            */}
+            {!aiEnabled && (
+              <p className="text-muted-foreground text-xs">
+                AI-аар үүсгэх идэвхгүй — серверт{" "}
+                <code className="font-mono">OPENAI_API_KEY</code> тохируулаагүй
+                байна.
+              </p>
+            )}
           </div>
 
           {!aiEnabled || mode === "upload" ? (
