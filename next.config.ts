@@ -61,11 +61,12 @@ const nextConfig: NextConfig = {
       route,
       [
         // Vercel's runtime is glibc linux-x64 — the musl and wasm variants
-        // sitting next to it would only bloat the function.
+        // sitting next to it would only bloat the function. These resolve to
+        // real directories thanks to `node-linker=hoisted` (.npmrc); through
+        // pnpm's default store they are symlinks, and Vercel rejects a
+        // function bundle that contains one.
         "./node_modules/@img/sharp-linux-x64/**/*",
         "./node_modules/@img/sharp-libvips-linux-x64/**/*",
-        "./node_modules/.pnpm/@img+sharp-linux-x64@*/**/*",
-        "./node_modules/.pnpm/@img+sharp-libvips-linux-x64@*/**/*",
       ],
     ]),
   ),
