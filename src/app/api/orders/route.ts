@@ -4,6 +4,7 @@ import { checkoutSchema } from "@/lib/validators/order";
 import {
   BundleUnavailableError,
   computeSummary,
+  ItemsUnavailableError,
   priceGiftLines,
   UndeliverableZoneError,
 } from "@/features/checkout/api";
@@ -15,6 +16,7 @@ import { env } from "@/lib/env";
 import { createInvoice, isQpayMockMode } from "@/lib/payments/qpay";
 import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
 import { formatPrice } from "@/lib/format";
+import { isPhoneEmail } from "@/lib/auth/phone-email";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -34,6 +36,14 @@ export async function POST(req: Request) {
   } catch (e) {
     if (e instanceof UndeliverableZoneError) {
       return NextResponse.json({ error: "ZONE_UNAVAILABLE" }, { status: 400 });
+    }
+    if (e instanceof ItemsUnavailableError) {
+      // The cart outlived the catalogue — the browser drops these lines and
+      // tells the customer, rather than us charging for what was left.
+      return NextResponse.json(
+        { error: "ITEMS_UNAVAILABLE", variantIds: e.variantIds },
+        { status: 409 },
+      );
     }
     if (e instanceof BundleUnavailableError) {
       return NextResponse.json(
@@ -94,7 +104,12 @@ export async function POST(req: Request) {
         payment_method: input.paymentMethod,
         contact_name: input.contactName,
         contact_phone: input.contactPhone,
-        contact_email: input.contactEmail || null,
+        // A phone account's synthetic Supabase address is internal plumbing —
+        // it must never be stored as if the customer had given us an email.
+        contact_email:
+          input.contactEmail && !isPhoneEmail(input.contactEmail)
+            ? input.contactEmail
+            : null,
         ship_city: input.shipCity,
         ship_district: input.shipDistrict ?? null,
         ship_detail: input.shipDetail,

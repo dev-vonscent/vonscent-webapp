@@ -46,6 +46,7 @@ import {
   composeDetail,
 } from "@/features/checkout/components/address-fields";
 import { formatPrice } from "@/lib/format";
+import { isPhoneEmail } from "@/lib/auth/phone-email";
 import { useCart, selectSubtotal } from "@/features/cart/store";
 import { trackBeginCheckout } from "@/lib/analytics";
 import { createClient } from "@/lib/supabase/browser";
@@ -81,6 +82,7 @@ export default function CheckoutPage() {
   const subtotal = useCart(selectSubtotal);
   const coupon = useCart((s) => s.coupon);
   const clear = useCart((s) => s.clear);
+  const removeLine = useCart((s) => s.remove);
   const [mounted, setMounted] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
@@ -218,7 +220,18 @@ export default function CheckoutPage() {
       } | null;
       if (p?.full_name) setValue("contactName", p.full_name);
       if (p?.phone) setValue("contactPhone", p.phone);
-      if (user.email) setValue("contactEmail", user.email);
+      // Supabase-ийн `<утас>@phone.vonscent.mn` бол дотоод хаяг — захиалгад
+      // хэзээ ч бичигдэхгүй. Хэрэглэгчийн өөрөө бүртгүүлсэн хаяг байвал тэр,
+      // үгүй бол талбар хоосон хэвээр.
+      if (user.email && !isPhoneEmail(user.email)) {
+        setValue("contactEmail", user.email);
+      }
+      fetch("/api/newsletter/me")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { email?: string | null } | null) => {
+          if (data?.email) setValue("contactEmail", data.email);
+        })
+        .catch(() => undefined);
       setLoyaltyPoints(p?.loyalty_points ?? 0);
       setAddresses((addrs as AddressRow[] | null) ?? []);
       const rate = (setting as { value?: { redeemRate?: number } } | null)
@@ -399,14 +412,32 @@ export default function CheckoutPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        // A cart lives in localStorage and can outlive the catalogue. The
+        // server refuses the order rather than quietly charging for whatever
+        // survived, and the dead lines come back by variant id (the cart's
+        // line key) so they can be cleared here.
+        if (data.error === "ITEMS_UNAVAILABLE") {
+          const ids: string[] = Array.isArray(data.variantIds)
+            ? data.variantIds
+            : [];
+          for (const id of ids) removeLine(id);
+          setServerError(
+            ids.length > 0
+              ? "Сагсан дахь зарим бараа худалдаанаас хасагдсан тул сагснаас чинь хаслаа. Үлдсэн барааг шалгаад дахин үргэлжлүүлнэ үү."
+              : "Сагсан дахь бараа худалдаанд байхгүй болжээ. Сагсаа шинэчилнэ үү.",
+          );
+          return;
+        }
         setServerError(
-          data.error === "OUT_OF_STOCK"
-            ? "Уучлаарай, зарим бараа дууссан байна."
-            : data.error === "BUNDLE_UNAVAILABLE"
-              ? "Сагсан дахь багц худалдаанд байхгүй болсон байна. Багцаа шинэчилнэ үү."
-            : data.error === "ZONE_UNAVAILABLE"
-              ? "Сонгосон бүсэд хүргэлт хийх боломжгүй байна."
-              : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
+          data.error === "EMPTY_CART"
+            ? "Сагс хоосон байна — бараагаа дахин нэмнэ үү."
+            : data.error === "OUT_OF_STOCK"
+              ? "Уучлаарай, зарим бараа дууссан байна."
+              : data.error === "BUNDLE_UNAVAILABLE"
+                ? "Сагсан дахь багц худалдаанд байхгүй болсон байна. Багцаа шинэчилнэ үү."
+                : data.error === "ZONE_UNAVAILABLE"
+                  ? "Сонгосон бүсэд хүргэлт хийх боломжгүй байна."
+                  : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
         );
         return;
       }
@@ -690,7 +721,7 @@ export default function CheckoutPage() {
                         </span>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm/tight  font-medium">
+                        <p className="truncate text-sm/tight font-medium">
                           {c.name}
                         </p>
                         <p className="text-muted-foreground text-xs">
@@ -721,7 +752,7 @@ export default function CheckoutPage() {
                         </span>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm/tight  font-medium">
+                        <p className="truncate text-sm/tight font-medium">
                           {i.name}
                         </p>
                         <p className="text-muted-foreground text-xs">
@@ -861,12 +892,10 @@ export default function CheckoutPage() {
 
               {/* Dispatch cut-off reminder (questions.md №14). */}
               {mounted && (
-                <p className="bg-secondary rounded-xl px-3 py-2.5 text-xs/relaxed ">
+                <p className="bg-secondary rounded-xl px-3 py-2.5 text-xs/relaxed">
                   <Clock className="mr-1 inline size-3.5 align-[-2px]" />
                   {`Захиалга маргааш ${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна (амралтын өдөр ч хүргэнэ).`}{" "}
-                  Маргааш өглөөний <strong>
-                    {ORDER_EDIT_CUTOFF_HOUR}:00
-                  </strong>{" "}
+                  Маргааш өглөөний <strong>{ORDER_EDIT_CUTOFF_HOUR}:00</strong>{" "}
                   цагаас хойш захиалга цуцлах, өөрчлөх боломжгүй.
                 </p>
               )}
