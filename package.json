@@ -18,7 +18,8 @@
     "db:import-collections": "node --env-file=.env.local --import tsx scripts/import-collections.ts",
     "db:import-products": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/import-products.ts",
     "db:enrich-products": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/enrich-products.ts",
-    "db:regen-images": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/regen-product-images.ts"
+    "db:regen-images": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/regen-product-images.ts",
+    "db:gen-note-images": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/gen-note-images.ts"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",

@@ -4,7 +4,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { createPublicClient } from "@/lib/supabase/public";
 import { createClient } from "@/lib/supabase/server";
 import { fetchProducts } from "@/features/products/api";
-import { memberPrices } from "./pricing";
+import { memberPrices, discountRange } from "./pricing";
 import { DEFAULT_COLLECTION_SETTINGS } from "./types";
 import type {
   BuilderProduct,
@@ -14,7 +14,7 @@ import type {
   GiftCandidate,
 } from "./types";
 import type { ProductDetail } from "@/lib/types";
-import type { Gender } from "@/db/types";
+import type { Gender, TagKind } from "@/db/types";
 
 /**
  * Collection data access. Reads `collections` + `collection_items` from
@@ -37,13 +37,26 @@ interface DbCollection {
   is_active: boolean;
   is_featured: boolean;
   collection_items: { product_id: string; sort_order: number }[];
+  collection_ml_discounts?: { ml: number; discount_pct: number | string }[];
+  collection_tags?: { tags: { kind: TagKind } | null }[];
 }
 
 const SELECT = `
   id, slug, type, user_id, name, gender, description,
   discount_pct, image_url, gift_ml, is_active, is_featured,
-  collection_items ( product_id, sort_order )
+  collection_items ( product_id, sort_order ),
+  collection_ml_discounts ( ml, discount_pct ),
+  collection_tags ( tags ( kind ) )
 `;
+
+/** Per-size overrides as a plain ml → % map (0051). */
+function toMlDiscounts(row: DbCollection): Record<number, number> {
+  const out: Record<number, number> = {};
+  for (const d of row.collection_ml_discounts ?? []) {
+    out[d.ml] = Number(d.discount_pct);
+  }
+  return out;
+}
 
 export const getCollectionSettings = cache(
   async (): Promise<CollectionSettings> => {
@@ -100,7 +113,13 @@ function build(
   // short roster means the bundle can't be sold (§9).
   const complete = members.length === items.length && members.length > 0;
   const discountPct = Number(row.discount_pct);
-  const prices = memberPrices(members, discountPct, settings.roundTo);
+  const mlDiscounts = toMlDiscounts(row);
+  const prices = memberPrices(
+    members,
+    discountPct,
+    settings.roundTo,
+    mlDiscounts,
+  );
   const availableMls = complete
     ? prices.filter((p) => p.available).map((p) => p.ml)
     : [];
@@ -117,6 +136,11 @@ function build(
     gender: row.gender,
     description: row.description ?? "",
     discountPct,
+    mlDiscounts,
+    discountRange: discountRange(prices, availableMls),
+    tags: (row.collection_tags ?? [])
+      .map((t) => t.tags?.kind)
+      .filter((k): k is TagKind => Boolean(k)),
     image: row.image_url ?? members[0]?.image?.url ?? null,
     giftMl: row.gift_ml ?? settings.giftMl,
     giftEnabled: settings.giftEnabled,
@@ -215,7 +239,10 @@ export async function getMyCollections(): Promise<Collection[]> {
 /** Pricing facts for a base collection — used to re-price a bundle at checkout. */
 export async function getCollectionOrderInfo(id: string): Promise<{
   name: string;
+  /** Default %, for a size with no override. */
   discountPct: number;
+  /** Per-size overrides (0051) — the ordered ml is priced from these. */
+  mlDiscounts: Record<number, number>;
   giftMl: number | null;
   /** Product ids of the collection's roster — the order must match it. */
   memberProductIds: string[];
@@ -225,7 +252,9 @@ export async function getCollectionOrderInfo(id: string): Promise<{
   if (!supabase) return null;
   const { data } = await supabase
     .from("collections")
-    .select("name, discount_pct, gift_ml, collection_items ( product_id )")
+    .select(
+      "name, discount_pct, gift_ml, collection_items ( product_id ), collection_ml_discounts ( ml, discount_pct )",
+    )
     .eq("id", id)
     .eq("is_active", true)
     .maybeSingle();
@@ -235,10 +264,16 @@ export async function getCollectionOrderInfo(id: string): Promise<{
     discount_pct: number;
     gift_ml: number | null;
     collection_items: { product_id: string }[] | null;
+    collection_ml_discounts: { ml: number; discount_pct: number | string }[] | null;
   };
+  const mlDiscounts: Record<number, number> = {};
+  for (const d of row.collection_ml_discounts ?? []) {
+    mlDiscounts[d.ml] = Number(d.discount_pct);
+  }
   return {
     name: row.name,
     discountPct: Number(row.discount_pct),
+    mlDiscounts,
     giftMl: row.gift_ml,
     memberProductIds: (row.collection_items ?? []).map((i) => i.product_id),
   };

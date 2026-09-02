@@ -62,6 +62,19 @@ const DIRECT: Record<string, string> = {
 };
 
 /**
+ * Brands neither Commons nor a plain `DIRECT` fetch reaches, saved by hand.
+ * Recorded here so a later run knows the file on disk was deliberate rather
+ * than left over from a broken fetch:
+ *
+ * - `diptyque` — the wordmark is an inline `<symbol id="i-logo">` in the
+ *   diptyqueparis.com header sprite, not a file, so it was lifted out of the
+ *   page and wrapped in its own `<svg>` with the clipPath it references.
+ * - `maison-francis-kurkdjian` — franciskurkdjian.com is behind Akamai and
+ *   answers a scripted request with 403, so the mark came from seeklogo
+ *   (625488) as gold-on-white and was re-cut to black on transparent.
+ */
+
+/**
  * Brands that are a line of another house rather than a house of their own,
  * and so share its mark. Miss Dior is Dior.
  */

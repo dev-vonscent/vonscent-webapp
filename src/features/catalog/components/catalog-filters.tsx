@@ -217,7 +217,7 @@ export function CatalogFilters({
       )}
 
       <Group title="Брэнд">
-        <div className="slim-scrollbar grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-2">
+        <div className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-2">
           {brands.map((b) => {
             const logo = brandLogos[b];
             return (
@@ -234,6 +234,9 @@ export function CatalogFilters({
                       width={120}
                       height={24}
                       unoptimized
+                      // The list is a short scroll box, so a lazy logo blinks
+                      // in under the cursor as the shopper scrolls the brands.
+                      loading="eager"
                       className="brand-logo h-5 w-auto object-contain"
                     />
                   </span>

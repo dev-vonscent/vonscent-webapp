@@ -27,6 +27,7 @@ import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { createClient } from "@supabase/supabase-js";
 import { backgroundLuma } from "./lib/image-checks";
+import { PACKSHOT_PROMPT } from "@/lib/ai/packshot-prompt";
 
 const BACKUP = "docs/import/enrichment/image-backup.json";
 const BUCKET = process.env.SUPABASE_STORAGE_BUCKET ?? "product-images";
@@ -48,8 +49,6 @@ const CONCURRENCY = Number(
   process.argv.find((a) => a.startsWith("--concurrency="))?.slice(14) ?? 4,
 );
 
-/** The art direction, applied identically to every bottle. */
-const PROMPT = `Keep the perfume bottle 100% identical to the reference image. Do not alter, redesign, retouch, crop, or reinterpret any part of the bottle. Preserve its exact shape, proportions, cap, glass, liquid color, label, logo, typography, text, reflections, and all original details. Place the bottle upright and perfectly centered on a seamless warm light-gray studio tabletop/background in #E7E5E2. No visible horizon line, no texture, no props, and no extra objects. Strict composition requirement: the complete visible bottle height must be exactly 60% of the total image height and must never exceed 60%. Keep equal empty space above and below the bottle. Do not zoom in and do not crop any part of the bottle. Use soft diffused studio lighting from the upper-left/front-left. Create a subtle, close-to-object soft shadow exactly like a premium studio product photo: the shadow should fall gently behind the bottle toward the right and bottom-right, with the darkest area close to the bottle's right edge and base. The shadow must be wide, soft, feathered, and smoothly faded into the background, with no hard edges, no sharp silhouette, no long cast shadow, and no dark black areas. Add a very subtle natural contact shadow directly beneath the bottle base. Minimal luxury perfume product photography, clean realistic glass reflections, high resolution, photorealistic, centered composition, 1:1 square aspect ratio.`;
 
 const dryRun = process.argv.includes("--dry");
 const rollback = process.argv.includes("--rollback");
@@ -136,7 +135,7 @@ async function generate(ref: Buffer): Promise<Buffer> {
       new Blob([new Uint8Array(ref)], { type: "image/png" }),
       "reference.png",
     );
-    form.append("prompt", PROMPT);
+    form.append("prompt", PACKSHOT_PROMPT);
     form.append("size", SIZE);
     form.append("quality", QUALITY);
     form.append("n", "1");

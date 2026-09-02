@@ -22,6 +22,13 @@ export interface GenerateOptions {
 
 const OPENAI = "https://api.openai.com/v1";
 
+/**
+ * One model for every image the shop generates. The batch scripts already ran
+ * on 1.5 while the app was still on gpt-image-1; a catalogue whose pictures
+ * come from two different models does not look like one catalogue.
+ */
+const MODEL = "gpt-image-1.5";
+
 interface OpenAiImageResponse {
   data?: { b64_json?: string }[];
   error?: { message?: string };
@@ -52,7 +59,10 @@ async function callOpenAi(
 }
 
 export interface GeneratedImage {
+  /** Optimised WebP, ready to store. */
   buffer: Buffer;
+  /** Exactly what the model returned, for callers that must post-process. */
+  raw: Buffer;
   contentType: string;
   ext: string;
 }
@@ -74,7 +84,7 @@ export async function generateProductImage(
     const refType = refRes.headers.get("content-type") || "image/png";
 
     const form = new FormData();
-    form.append("model", "gpt-image-1");
+    form.append("model", MODEL);
     form.append(
       "image",
       new Blob([new Uint8Array(refBuf)], { type: refType }),
@@ -89,7 +99,7 @@ export async function generateProductImage(
     b64 = await callOpenAi(
       "/images/generations",
       JSON.stringify({
-        model: "gpt-image-1",
+        model: MODEL,
         prompt: opts.prompt,
         size,
         quality,
@@ -102,5 +112,5 @@ export async function generateProductImage(
   // Optimise to WebP so gallery pages stay light (same as uploaded images).
   const raw = Buffer.from(b64, "base64");
   const buffer = await sharp(raw).webp({ quality: 82 }).toBuffer();
-  return { buffer, contentType: "image/webp", ext: "webp" };
+  return { buffer, raw, contentType: "image/webp", ext: "webp" };
 }

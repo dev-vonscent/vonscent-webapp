@@ -41,7 +41,10 @@ export function CollectionDetail({
       slug: collection.slug,
       name: collection.name,
       image: collection.image,
-      discountPct: collection.discountPct,
+      // The rate for the size being bought, not the bundle default: with
+      // per-size discounts (0051) those differ, and the cart would otherwise
+      // show a percentage the customer is not getting.
+      discountPct: priceRow.discountPct,
       ml,
       members: collection.members.map((m) => {
         const v = m.variantByMl[ml];

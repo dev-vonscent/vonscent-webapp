@@ -24,7 +24,7 @@ export function ProductCard({
     <div className="group relative flex flex-col">
       <Link
         href={`/products/${product.slug}`}
-        className="bg-muted group-hover:shadow-lift relative aspect-4/5 overflow-hidden rounded-2xl transition-all duration-300"
+        className="bg-none group-hover:shadow-lift relative aspect-4/5 overflow-hidden rounded-2xl transition-all duration-300"
       >
         {product.image && (
           <Image

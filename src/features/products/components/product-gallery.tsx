@@ -69,7 +69,7 @@ export function ProductGallery({
       <div className="relative -mx-4 -mt-20 sm:mx-0 sm:mt-0">
         <div
           ref={emblaRef}
-          className="sm:border-border sm:bg-muted sm:shadow-soft overflow-hidden sm:rounded-2xl sm:border"
+          className=" sm:bg-none overflow-hidden sm:rounded-2xl"
         >
           <div className="flex">
             {images.map((img, i) => (
@@ -78,7 +78,7 @@ export function ProductGallery({
                 type="button"
                 onClick={() => openLightbox(i)}
                 aria-label={`${name} — зураг ${i + 1} томруулах`}
-                className="bg-muted relative aspect-4/5 min-w-0 flex-[0_0_100%] cursor-zoom-in sm:aspect-square"
+                className="bg-none relative aspect-4/5 min-w-0 flex-[0_0_100%] cursor-zoom-in sm:aspect-square"
               >
                 <Image
                   src={img.url}

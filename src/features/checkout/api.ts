@@ -11,7 +11,7 @@ import {
   getCollectionSettings,
   getCollectionOrderInfo,
 } from "@/features/collections/api";
-import { bundlePrice } from "@/features/collections/pricing";
+import { bundlePrice, discountForMl } from "@/features/collections/pricing";
 import { resolveZone, zoneKey } from "@/lib/geo/zone";
 import type {
   CheckoutInput,
@@ -141,7 +141,10 @@ export async function priceCollectionLines(
         [...ordered].some((id) => !roster.has(id))
       )
         continue;
-      discountPct = info.discountPct;
+      // Priced at the size actually ordered: a bundle may discount 20ml harder
+      // than 2ml (0051), so taking the bundle default here would charge the
+      // wrong total for every overridden size.
+      discountPct = discountForMl(col.ml, info.discountPct, info.mlDiscounts);
       name = info.name;
       giftMl = info.giftMl ?? settings.giftMl;
     } else {

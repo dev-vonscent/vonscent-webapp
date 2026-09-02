@@ -12,6 +12,7 @@
 | [requirement_fb_gap_analysis.md](./spec/requirement_fb_gap_analysis.md) | Санал ↔ хэрэгжилтийн зөрүүний шинжилгээ |
 | [collection-requirement.md](./spec/collection-requirement.md) | Багц (Collection) функцийн бүрэн шаардлага + UI/UX |
 | [ai-image-generation-requirement.md](./spec/ai-image-generation-requirement.md) | AI (gpt-image-1) барааны зураг үүсгэх функцийн шаардлага |
+| [note-images.md](./spec/note-images.md) | Үнэрийн нотын зураг — prompt, багц скрипт, шинэ бараа нэмэх үеийн авто урсгал |
 | [design.md](./spec/design.md) | Дизайн систем, токен |
 | [development.md](./spec/development.md) | Хөгжүүлэлтийн архитектур, дүрэм |
 

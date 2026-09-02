@@ -50,6 +50,14 @@ function BrandLink({
             fill
             unoptimized
             sizes="160px"
+            // Lazy loading is wrong for a track that scrolls itself. The
+            // browser only fetches an image once it intersects the viewport,
+            // and everything past the visible window is clipped by the
+            // `overflow-hidden` wrapper — so a logo started downloading at the
+            // moment the animation carried it into view and blinked in
+            // half-way across. The wall shows every brand within one cycle, so
+            // all of them are needed as soon as the section is on screen.
+            loading="eager"
             className="brand-logo object-contain"
           />
         </span>

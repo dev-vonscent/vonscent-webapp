@@ -311,52 +311,19 @@
 }
 
 /* ---- Custom utilities (luxury helpers) ---- */
+/*
+ * Opt out of the themed scrollbar entirely (base layer, `html`).
+ *
+ * For the two places where the bar itself is the noise: the product gallery's
+ * thumbnail strip and the mobile filter sheet, both of which are swiped rather
+ * than dragged. Everything else keeps the scrollbar — hiding it removes the
+ * only hint that there is more to see.
+ */
 @utility no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
   &::-webkit-scrollbar {
     display: none;
-  }
-}
-
-/*
- * Slim scrollbar for panels that scroll inside the page — the brand list in
- * the catalogue filter, above all.
- *
- * The OS scrollbar is a light-grey slab that ignores the theme: on the black
- * theme it draws a bright bar down the side of the filter, which reads as
- * chrome bolted onto the design rather than part of it. This keeps the
- * affordance (unlike `no-scrollbar`, which hides it entirely and leaves no
- * hint that there is more) but renders it in theme colour and half the width.
- *
- * `scrollbar-color` covers Firefox; the `::-webkit-` rules cover Chrome and
- * Safari, where the track is left transparent so only the thumb shows.
- */
-@utility slim-scrollbar {
-  scrollbar-width: thin;
-  /*
-   * The colour has to be muted *here*, not only in the `::-webkit-` block
-   * below: once `scrollbar-width` is set, Chrome switches to the standard
-   * properties and ignores the pseudo-elements entirely, so a bare
-   * `var(--muted-foreground)` would paint a solid #a1a1a1 bar down the side of
-   * the filter on the black theme. The `::-webkit-` rules are kept for older
-   * Safari, which has the pseudo-elements but not `scrollbar-color`.
-   */
-  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 40%, transparent)
-    transparent;
-  &::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  &::-webkit-scrollbar-thumb {
-    background-color: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
-    border-radius: 9999px;
-  }
-  &:hover::-webkit-scrollbar-thumb {
-    background-color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
   }
 }
 
@@ -421,15 +388,6 @@
 }
 [data-header-hidden="true"] {
   --header-offset: 1.5rem;
-}
-
-/* Scrollable but with the scrollbar hidden (mobile filter sheet). */
-.no-scrollbar {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
 }
 
 /* The single functional hairline in a borderless system: gives form
@@ -508,6 +466,57 @@
     font-family: var(--font-sans), system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+  }
+  /* Scrollbars are part of the design, not chrome bolted onto it.
+   *
+   * The OS scrollbar is a light-grey slab that ignores the theme: on the black
+   * theme it draws a bright bar down the side of the page and of every panel
+   * that scrolls. This used to be fixed one element at a time with a
+   * `slim-scrollbar` class, which meant the catalogue filter was themed and the
+   * other sixteen scrolling containers — the cart sheet, the admin sidebar,
+   * every wide table, the page itself — were not.
+   *
+   * So it is declared once, here, on `html`. `scrollbar-width` and
+   * `scrollbar-color` are *inherited* properties, so this reaches every
+   * scrolling element in the document, including ones rendered into portals,
+   * without any of them opting in. `no-scrollbar` still opts out: it is a
+   * utility, and utilities cascade after base.
+   */
+  html {
+    scrollbar-width: thin;
+    /*
+     * The colour has to be set through the standard property, not only in the
+     * `::-webkit-` block below: once `scrollbar-width` is set, Chrome switches
+     * to the standard properties and ignores the pseudo-elements entirely, so a
+     * bare `var(--muted-foreground)` would paint a solid #a1a1a1 bar down the
+     * side of the page on the black theme.
+     */
+    scrollbar-color: color-mix(in oklab, var(--muted-foreground) 40%, transparent)
+      transparent;
+  }
+  /* Kept for older Safari, which has the pseudo-elements but not
+     `scrollbar-color`. The track stays transparent so only the thumb shows. */
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: color-mix(
+      in oklab,
+      var(--muted-foreground) 40%,
+      transparent
+    );
+    border-radius: 9999px;
+  }
+  *:hover::-webkit-scrollbar-thumb {
+    background-color: color-mix(
+      in oklab,
+      var(--muted-foreground) 70%,
+      transparent
+    );
   }
   h1,
   h2,

@@ -6,6 +6,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { slugify } from "@/features/collections/slug";
+import { writeCollectionChildren } from "./write-children";
 
 export async function GET() {
   if (!isSupabaseConfigured) return NextResponse.json({ collections: [] });
@@ -82,6 +83,12 @@ export async function POST(req: Request) {
     await supabase.from("collections").delete().eq("id", coll.id);
     return NextResponse.json({ error: "INSERT_FAILED" }, { status: 500 });
   }
+
+  await writeCollectionChildren(supabase, coll.id, {
+    mlDiscounts: input.mlDiscounts,
+    tags: input.tags,
+    customTags: input.customTags,
+  });
 
   revalidatePublic();
   return NextResponse.json({ id: coll.id, slug });

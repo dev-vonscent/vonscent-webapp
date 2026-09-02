@@ -10,6 +10,7 @@ import {
 } from "@/features/collections/api";
 import { CollectionDetail } from "@/features/collections/components/collection-detail";
 import { GENDER_LABEL } from "@/lib/constants";
+import { formatDiscountRange } from "@/features/collections/pricing";
 
 export const revalidate = 60;
 
@@ -77,9 +78,9 @@ export default async function CollectionPage({
               />
             )}
             <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-              {collection.discountPct > 0 && (
+              {collection.discountRange.max > 0 && (
                 <Badge variant="sale" className="w-fit backdrop-blur-sm">
-                  −{collection.discountPct}%
+                  −{formatDiscountRange(collection.discountRange)}
                 </Badge>
               )}
               {collection.giftEnabled && (

@@ -23,6 +23,8 @@ export interface CollectionPriceAtMl {
   memberSum: number;
   /** Discounted, rounded bundle price. */
   price: number;
+  /** The % applied at this size: the per-ml override, else the bundle default. */
+  discountPct: number;
   /** memberSum − price. */
   saved: number;
   /** Every member has an active, in-stock variant at this ml. */
@@ -37,7 +39,14 @@ export interface Collection {
   name: string;
   gender: Gender;
   description: string;
+  /** Default %, applied to any size without its own override. */
   discountPct: number;
+  /** Per-size overrides, keyed by ml (0051). Empty when the default rules all. */
+  mlDiscounts: Record<number, number>;
+  /** Span of the discounts actually on offer — «5-10%» on a card. */
+  discountRange: { min: number; max: number };
+  /** Customer-facing badges, shared with products. */
+  tags: TagKind[];
   /** Cover image (collection.image_url, or the first member's image). */
   image: string | null;
   /** Resolved free-gift size (collection.gift_ml ?? settings.giftMl). */

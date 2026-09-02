@@ -1,4 +1,3 @@
-import { getAllProducts } from "@/features/products/api";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   CollectionAdmin,
@@ -8,7 +7,6 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function AdminCollectionsPage() {
-  const products = await getAllProducts();
   const supabase = createAdminClient();
   let collections: AdminCollection[] = [];
   if (supabase) {
@@ -31,14 +29,7 @@ export default async function AdminCollectionsPage() {
           Бэлэн багц үүсгэх, засах — 4 үнэртэн, хямдрал, нэмэлт бэлэг.
         </p>
       </div>
-      <CollectionAdmin
-        collections={collections}
-        products={products.map((p) => ({
-          id: p.id,
-          name: p.name,
-          brand: p.brand,
-        }))}
-      />
+      <CollectionAdmin collections={collections} />
     </div>
   );
 }

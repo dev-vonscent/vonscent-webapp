@@ -4,6 +4,7 @@ import { collectionUpdateSchema } from "@/lib/validators/collection";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { writeCollectionChildren } from "../write-children";
 
 export async function PATCH(
   req: Request,
@@ -80,6 +81,12 @@ export async function PATCH(
     if (error)
       return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
   }
+
+  await writeCollectionChildren(supabase, id, {
+    mlDiscounts: input.mlDiscounts,
+    tags: input.tags,
+    customTags: input.customTags,
+  });
 
   revalidatePublic();
   return NextResponse.json({ ok: true });

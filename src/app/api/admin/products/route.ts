@@ -6,11 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaffUser } from "@/lib/auth/guard";
 import { isStorageUrl } from "@/lib/storage/storage";
 import { resolveBrandId, sanitizeCustomTags, sanitizeFamilies } from "@/features/taxonomy/api";
-import {
-  buildImagePrompt,
-  DEFAULT_BASE_PROMPT,
-} from "@/lib/ai/build-image-prompt";
-import { processGeneration } from "@/lib/ai/process-generation";
+import { runNewProductImages } from "@/lib/ai/new-product-pipeline";
 
 function slugify(name: string, brand: string) {
   return `${brand}-${name}`
@@ -133,39 +129,13 @@ export async function POST(req: Request) {
   }
 
   if (aiMode) {
-    // Compose the prompt from the current base prompt in build-image-prompt.ts
-    // (the file is the single source of truth), then enqueue + kick off the job.
-    const prompt = buildImagePrompt(
-      {
-        name: input.name,
-        brand: input.brand,
-        gender: input.gender,
-        scentFamilies: families,
-        shortDescription: input.shortDescription,
-        description: input.description,
-      },
-      DEFAULT_BASE_PROMPT,
-    );
-
-    const { data: job } = await supabase
-      .from("product_image_generations")
-      .insert({
-        product_id: productId,
-        status: "pending",
-        prompt,
-        reference_url: referenceImageUrl,
-      })
-      .select("id")
-      .single();
-
-    if (job) {
-      const jobId = (job as { id: string }).id;
-      // Runs after the response is sent — the admin lands on the table while
-      // the image generates; the table polls until it's done (§6.3).
-      after(async () => {
-        await processGeneration(jobId);
-      });
-    }
+    // Two pictures from the one uploaded bottle: the catalogue packshot, then
+    // the note image shot from that packshot (lib/ai/new-product-pipeline.ts).
+    // Runs after the response is sent — the admin lands on the table while the
+    // images generate; the table polls until they're done (§6.3).
+    after(async () => {
+      await runNewProductImages(productId, referenceImageUrl!);
+    });
   }
 
   await supabase.from("inventory").insert({

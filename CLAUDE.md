@@ -41,6 +41,8 @@ PR-аас өмнө: `pnpm typecheck` + `pnpm lint` + `pnpm test` цэвэр ба
 
 - Tailwind utility, theme token — өнгө/зай hardcode хийхгүй. **Gradient хэрэглэхгүй** (design.md).
 - Mobile-first responsive, dark mode-д бэлэн (next-themes).
+- Themed scrollbar нь `html` дээр өгөгдмөл, бүх гүйдэг элементэд удамшина — элемент
+  бүрт класс нэмэхгүй. Нуух шаардлагатай ховор тохиолдолд л `no-scrollbar` (design.md §6.1).
 
 ## Git
 

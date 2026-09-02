@@ -2,6 +2,7 @@ import { ogCard, OG_SIZE } from "@/lib/og";
 import { getCollectionBySlug } from "@/features/collections/api";
 import { formatPrice } from "@/lib/format";
 import { SITE } from "@/lib/constants";
+import { formatDiscountRange } from "@/features/collections/pricing";
 
 export const revalidate = 3600;
 export const size = OG_SIZE;
@@ -24,6 +25,8 @@ export default async function Image({
       ? "Дууссан"
       : `${formatPrice(collection.startingPrice)}-с эхэлнэ`,
     imageUrl: collection.image,
-    badge: collection.discountPct ? `-${collection.discountPct}%` : undefined,
+    badge: collection.discountRange.max
+      ? `-${formatDiscountRange(collection.discountRange)}`
+      : undefined,
   });
 }
