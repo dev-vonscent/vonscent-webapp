@@ -230,8 +230,11 @@ export function ProfileEditDialog({
             value={email}
             disabled
             className="disabled:opacity-60"
-            placeholder="—"
+            placeholder="Бүртгээгүй"
           />
+          <p className="text-muted-foreground text-xs">
+            Имэйлээ профайл хуудасны «Имэйл мэдэгдэл» хэсгээс бүртгэж, солино.
+          </p>
         </div>
 
         <div className="flex justify-end gap-3 pt-1">

@@ -2,6 +2,11 @@ import "server-only";
 
 import { createHmac } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  isPhoneEmail,
+  phoneEmail,
+  PHONE_EMAIL_DOMAIN,
+} from "@/lib/auth/phone-email";
 
 /**
  * Phone + passcode auth built on Supabase Auth (development.md §9.1).
@@ -13,18 +18,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * our routes (which rate-limit), never against the Supabase API directly.
  */
 
-const PHONE_EMAIL_DOMAIN = "phone.vonscent.mn";
-
 export const PASSCODE_RE = /^\d{4}$/u;
 
-/** Synthetic Supabase email for a phone account. */
-export function phoneEmail(phone: string): string {
-  return `${phone}@${PHONE_EMAIL_DOMAIN}`;
-}
-
-export function isPhoneEmail(email: string | undefined | null): boolean {
-  return Boolean(email?.endsWith(`@${PHONE_EMAIL_DOMAIN}`));
-}
+export { phoneEmail, isPhoneEmail, PHONE_EMAIL_DOMAIN };
 
 function pepper(): string {
   const value = process.env.AUTH_PASSCODE_PEPPER ?? "";
