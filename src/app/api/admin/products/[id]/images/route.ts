@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { deleteImage, storagePath, uploadImage } from "@/lib/storage/storage";
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/lib/storage/limits";
 import { processImage, presetForFolder } from "@/lib/storage/process-image";
+import { imageUploadFailure } from "@/lib/storage/report";
 
 /**
  * Gallery of an existing product (todo.md B3). POST uploads a file and appends
@@ -71,6 +72,17 @@ export async function GET(
 }
 
 export async function POST(
+  req: Request,
+  ctx: { params: Promise<{ id: string }> },
+) {
+  try {
+    return await handlePost(req, ctx);
+  } catch (err) {
+    return imageUploadFailure(err);
+  }
+}
+
+async function handlePost(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {

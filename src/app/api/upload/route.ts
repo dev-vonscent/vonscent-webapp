@@ -5,6 +5,7 @@ import { getStaffUser } from "@/lib/auth/guard";
 import { uploadImage } from "@/lib/storage/storage";
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/lib/storage/limits";
 import { processImage, presetForFolder } from "@/lib/storage/process-image";
+import { imageUploadFailure } from "@/lib/storage/report";
 
 /**
  * Image upload to Supabase Storage. Auth required.
@@ -32,7 +33,7 @@ function isFolder(value: string): value is Folder {
   return value in FOLDERS;
 }
 
-export async function POST(req: Request) {
+async function handle(req: Request) {
   if (!isSupabaseConfigured) {
     return NextResponse.json({ demo: true });
   }
@@ -87,4 +88,12 @@ export async function POST(req: Request) {
     width: image.width,
     height: image.height,
   });
+}
+
+export async function POST(req: Request) {
+  try {
+    return await handle(req);
+  } catch (err) {
+    return imageUploadFailure(err);
+  }
 }
