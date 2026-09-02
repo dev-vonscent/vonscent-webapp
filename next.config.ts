@@ -34,6 +34,34 @@ if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
 }
 
 const nextConfig: NextConfig = {
+  /**
+   * `sharp` is a native module (process-image.ts, ai/generate-image.ts). Next
+   * must leave it out of the server bundle and load it from node_modules at
+   * runtime — otherwise the whole upload route crashes on import.
+   */
+  serverExternalPackages: ["sharp"],
+  /**
+   * Vercel ships only the files its tracer can follow, and the tracer misses
+   * libvips' `.so` behind pnpm's symlinks — the linux binary reached the
+   * lambda without its shared library and every upload answered a bodyless
+   * 500 (`libvips-cpp.so: cannot open shared object file`). Both globs are
+   * listed because pnpm keeps the real files under `.pnpm/` and only links
+   * them into `@img/`; only the routes that actually touch sharp are listed,
+   * since libvips is tens of megabytes per function.
+   */
+  outputFileTracingIncludes: Object.fromEntries(
+    [
+      "/api/upload",
+      "/api/admin/upload",
+      "/api/admin/products",
+      "/api/admin/products/[id]/images",
+      "/api/admin/products/[id]/generate-image",
+      "/api/admin/products/[id]/regenerate-image",
+    ].map((route) => [
+      route,
+      ["./node_modules/@img/**/*", "./node_modules/.pnpm/@img+*/**/*"],
+    ]),
+  ),
   images: {
     remotePatterns,
     /**
