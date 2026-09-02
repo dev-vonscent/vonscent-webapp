@@ -1,6 +1,6 @@
 # Release-ээс өмнө хийх зүйлс — vonscent.mn
 
-Сүүлд шинэчилсэн: 2026-08-24. Хийсэн зүйл бүрийг `[x]` болгож тэмдэглэ.
+Сүүлд шинэчилсэн: 2026-09-03. Хийсэн зүйл бүрийг `[x]` болгож тэмдэглэ.
 
 ---
 
@@ -10,10 +10,10 @@
 Resend-ээр явна. `RESEND_API_KEY` байхгүй бол код чимээгүй алгасдаг тул
 release хүртэл юу ч эвдрэхгүй — гэхдээ release дээр заавал асаана.
 
-- [ ] **Бүртгүүлэх:** [resend.com](https://resend.com) → Sign up (GitHub эсвэл
+- [x] **Бүртгүүлэх:** [resend.com](https://resend.com) → Sign up (GitHub эсвэл
       имэйл). Free багц: өдөрт 100, сард 3,000 имэйл — эхлэхэд хангалттай.
       Сарын 3,000-д ойртвол paid руу шилжинэ (development.md §9.5).
-- [ ] **Домэйн баталгаажуулах:** Dashboard → Domains → Add Domain →
+- [x] **Домэйн баталгаажуулах:** Dashboard → Domains → Add Domain →
       `vonscent.mn` (Region: Tokyo ойр). Resend-ийн өгсөн DNS бичлэгүүдийг
       домэйны DNS самбарт нэмнэ:
       - MX + TXT (SPF) — `send.vonscent.mn` дээр
@@ -22,17 +22,22 @@ release хүртэл юу ч эвдрэхгүй — гэхдээ release дээ�
       Дараа нь Resend дээр **Verify** — минутаас хэдэн цаг хүлээнэ.
       ⚠ Домэйн баталгаажаагүй бол default `onboarding@resend.dev` илгээгч нь
       зөвхөн өөрийн бүртгэлтэй имэйл рүү явдаг — бодит хэрэглэгчид очихгүй.
-- [ ] **API key:** Dashboard → API Keys → Create:
+- [x] **API key:** Dashboard → API Keys → Create:
       Name `vonscent-production`, Permission **Sending access**, Domain
       `vonscent.mn`. `re_...` key-г нэг л удаа харуулна — шууд хуул.
-- [ ] **Env:** `.env.local` + Vercel (Settings → Environment Variables,
+- [x] **Env:** `.env.local` + Vercel (Settings → Environment Variables,
       Production):
       ```
       RESEND_API_KEY=re_xxxxxxxxxx
       EMAIL_FROM=Vonscent <no-reply@vonscent.mn>
       ```
       `STORE_INBOX_EMAIL` default нь vonscent.store@gmail.com — өөрчлөх бол л нэмнэ.
-- [ ] **Шалгах:** contact формоос мессеж илгээх + mock төлбөр баталгаажуулах →
+- [~] **Шалгах:** локал дээр захиалга баталгаажуулж шалгасан (2026-09-03,
+      Resend: Sent → Delivered). Vercel дээрх deploy дээр давтан шалгах үлдсэн —
+      env тавьсны дараа **redeploy** шаардлагатай, мөн
+      `NEXT_PUBLIC_SITE_URL=https://dev.vonscent.mn` байх ёстой (эс бөгөөс имэйл
+      доторх линк localhost руу заана).
+      Хуучин заавар: contact формоос мессеж илгээх + mock төлбөр баталгаажуулах →
       Resend Dashboard → Logs дээр илгээлтүүд харагдана. Хэрэглэгчийн имэйл
       очихын тулд тухайн данс footer-ийн формоор имэйлээ бүртгүүлсэн байх
       ёстойг санаарай.
