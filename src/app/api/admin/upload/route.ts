@@ -2,13 +2,12 @@ import { NextResponse } from "next/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
 import { uploadImage } from "@/lib/storage/storage";
+import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/lib/storage/limits";
 import { processImage, presetForFolder } from "@/lib/storage/process-image";
-
-const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/avif"];
-const MAX_BYTES = 5 * 1024 * 1024; // 5MB
+import { imageUploadFailure } from "@/lib/storage/report";
 
 /** Upload a product/blog image to Supabase Storage. Staff only. */
-export async function POST(req: Request) {
+async function handle(req: Request) {
   if (!isSupabaseConfigured) {
     return NextResponse.json({ demo: true });
   }
@@ -25,10 +24,10 @@ export async function POST(req: Request) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "NO_FILE" }, { status: 400 });
   }
-  if (!ALLOWED.includes(file.type)) {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     return NextResponse.json({ error: "BAD_TYPE" }, { status: 400 });
   }
-  if (file.size > MAX_BYTES) {
+  if (file.size > MAX_IMAGE_BYTES) {
     return NextResponse.json({ error: "TOO_LARGE" }, { status: 400 });
   }
 
@@ -49,4 +48,12 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json(result);
+}
+
+export async function POST(req: Request) {
+  try {
+    return await handle(req);
+  } catch (err) {
+    return imageUploadFailure(err);
+  }
 }

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
+import { prepareUpload } from "@/lib/storage/prepare-upload";
 
 /**
  * TipTap WYSIWYG for admin content (blog body, FAQ answers, about story).
@@ -68,27 +69,30 @@ function Toolbar({ editor }: { editor: Editor }) {
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
       return;
     }
-    editor
-      .chain()
-      .focus()
-      .extendMarkRange("link")
-      .setLink({ href: url })
-      .run();
+    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
   }
 
   async function addImage(file: File) {
+    // Same downscale the admin pickers do — a raw camera file is over the
+    // host's request-body limit and would fail with an opaque platform error.
+    const prepared = await prepareUpload(file);
+    if (!prepared.ok) {
+      toast.error(prepared.message);
+      return;
+    }
     const form = new FormData();
-    form.append("file", file);
+    form.append("file", prepared.file);
     form.append("folder", "blog");
     const res = await fetch("/api/admin/upload", {
       method: "POST",
       body: form,
     });
-    const json = res.ok
-      ? ((await res.json()) as { url?: string })
-      : null;
-    if (!json?.url) {
-      toast.error("Зураг байршуулж чадсангүй");
+    const json = (await res.json().catch(() => null)) as {
+      url?: string;
+      error?: string;
+    } | null;
+    if (!res.ok || !json?.url) {
+      toast.error(json?.error ?? `Зураг байршуулж чадсангүй (${res.status}).`);
       return;
     }
     editor.chain().focus().setImage({ src: json.url }).run();
@@ -115,18 +119,14 @@ function Toolbar({ editor }: { editor: Editor }) {
       <ToolbarButton
         label="Гарчиг H2"
         active={editor.isActive("heading", { level: 2 })}
-        onClick={() =>
-          editor.chain().focus().toggleHeading({ level: 2 }).run()
-        }
+        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
       >
         <Heading2 className="size-4" />
       </ToolbarButton>
       <ToolbarButton
         label="Гарчиг H3"
         active={editor.isActive("heading", { level: 3 })}
-        onClick={() =>
-          editor.chain().focus().toggleHeading({ level: 3 }).run()
-        }
+        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
       >
         <Heading3 className="size-4" />
       </ToolbarButton>
@@ -218,8 +218,7 @@ export function RichTextEditor({
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class:
-          "prose max-w-none min-h-32 px-3 py-2 text-sm outline-none",
+        class: "prose max-w-none min-h-32 px-3 py-2 text-sm outline-none",
       },
     },
     onUpdate: ({ editor: e }) => {
@@ -246,12 +245,7 @@ export function RichTextEditor({
   }
 
   return (
-    <div
-      className={cn(
-        "bg-secondary rounded-md",
-        className,
-      )}
-    >
+    <div className={cn("bg-secondary rounded-md", className)}>
       <Toolbar editor={editor} />
       <EditorContent editor={editor} />
     </div>

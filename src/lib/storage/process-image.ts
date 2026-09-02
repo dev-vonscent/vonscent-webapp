@@ -1,5 +1,5 @@
 import "server-only";
-import sharp from "sharp";
+import type { Sharp } from "sharp";
 
 /**
  * Normalise an uploaded image before it reaches Storage.
@@ -60,6 +60,35 @@ export interface ProcessedImage {
 }
 
 /**
+ * `sharp` is a native module: on a serverless host a missing or wrong-arch
+ * binary throws at *import* time, which crashed the whole upload route before
+ * any handler code ran — the browser saw a bodyless 500 and the admin saw
+ * "Сервер хариу өгсөнгүй". Loading it lazily turns that into a named error the
+ * route can report and Sentry can capture.
+ */
+export class ImageToolUnavailableError extends Error {
+  constructor(cause: unknown) {
+    super("sharp (image processing) failed to load");
+    this.name = "ImageToolUnavailableError";
+    this.cause = cause;
+  }
+}
+
+let sharpFactory: ((...args: never[]) => Sharp) | null = null;
+
+async function loadSharp() {
+  if (!sharpFactory) {
+    try {
+      const mod = await import("sharp");
+      sharpFactory = mod.default as unknown as (...args: never[]) => Sharp;
+    } catch (err) {
+      throw new ImageToolUnavailableError(err);
+    }
+  }
+  return sharpFactory as unknown as typeof import("sharp").default;
+}
+
+/**
  * Resize to fit `preset.maxEdge` and re-encode as WebP. Returns null when the
  * bytes aren't a decodable image, which the caller should treat as a bad
  * upload rather than a server fault — the MIME check upstream only reads the
@@ -72,6 +101,7 @@ export async function processImage(
   const buffer = Buffer.isBuffer(input)
     ? input
     : Buffer.from(input as ArrayBuffer);
+  const sharp = await loadSharp();
   try {
     const { data, info } = await sharp(buffer, { failOn: "error" })
       // Phone cameras store orientation in EXIF; bake it in before we strip
