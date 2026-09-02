@@ -8,6 +8,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/lib/format";
 import { trackPurchase } from "@/lib/analytics";
+import {
+  DISPATCH_HOUR,
+  ORDER_EDIT_CUTOFF_HOUR,
+  earliestDeliveryDay,
+  formatDeliveryDay,
+} from "@/lib/time";
 
 interface QpayInfo {
   invoiceId: string;
@@ -20,6 +26,8 @@ interface LastOrder {
   total: number;
   paymentMethod: "qpay" | "bank_transfer";
   contactName: string;
+  /** "yyyy-MM-dd" (UB) — chosen at checkout; absent on a pre-E1 session. */
+  deliverOn?: string | null;
   qpay?: QpayInfo | null;
   qpayMock?: boolean;
 }
@@ -142,8 +150,13 @@ export default function OrderSuccessPage() {
             : `Баярлалаа, ${order.contactName}! ${showQpayMock ? "Доорх mock QPay-ээр төлбөрөө баталгаажуулна уу." : "Бид тантай удахгүй холбогдоно."}`}
         </p>
         <p className="text-muted-foreground text-sm">
-          Захиалга маргааш 11:00 цагт хүргэлтэд гарна (амралтын өдөр ч хүргэнэ).
-          Маргааш өглөөний 9:00 цаг хүртэл цуцлах боломжтой.
+          Захиалга{" "}
+          <strong className="text-foreground">
+            {formatDeliveryDay(order.deliverOn ?? earliestDeliveryDay())}
+          </strong>{" "}
+          {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна (амралтын өдөр ч хүргэнэ). Тэр
+          өдрийн өглөөний {ORDER_EDIT_CUTOFF_HOUR}:00 цаг хүртэл цуцлах
+          боломжтой.
         </p>
       </div>
 

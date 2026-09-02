@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { revalidatePublic } from "@/lib/cache";
-import { isSupabaseConfigured } from "@/lib/env";
+import { env, isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
 import { isOrderEditable } from "@/lib/time";
-import { sendEmail, STORE_INBOX } from "@/lib/email";
+import { sendEmail, STORE_INBOX, renderEmail } from "@/lib/email";
+import { formatPrice } from "@/lib/format";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
 import type { OrderRow } from "@/db/types";
 
@@ -34,12 +35,12 @@ export async function POST(
   // RLS lets the owner read their own order; confirm ownership + status.
   const { data } = await supabase
     .from("orders")
-    .select("id, user_id, status, created_at")
+    .select("id, user_id, status, created_at, deliver_on")
     .eq("id", id)
     .maybeSingle();
   const order = data as Pick<
     OrderRow,
-    "id" | "user_id" | "status" | "created_at"
+    "id" | "user_id" | "status" | "created_at" | "deliver_on"
   > | null;
   if (!order || order.user_id !== user.id) {
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
@@ -47,9 +48,11 @@ export async function POST(
   if (order.status !== "pending" && order.status !== "confirmed") {
     return NextResponse.json({ error: "NOT_CANCELLABLE" }, { status: 409 });
   }
-  // Past 09:00 on the dispatch day the decants are already being prepared
-  // (requirement_fb.md §9). Enforced server-side, not just in the UI.
-  if (!isOrderEditable(order.created_at)) {
+  // Past 09:00 on the delivery day the decants are already being prepared
+  // (requirement_fb.md §9). A pre-order therefore stays cancellable right up
+  // to the morning of the day it was booked for. Enforced server-side, not
+  // just in the UI.
+  if (!isOrderEditable(order)) {
     return NextResponse.json({ error: "PAST_CUTOFF" }, { status: 409 });
   }
 
@@ -81,16 +84,29 @@ export async function POST(
     payment_status: string;
   } | null;
   if (o) {
+    const { html, text } = renderEmail({
+      preheader: `${o.order_no} — цуцлагдсан захиалга`,
+      heading: `Захиалга цуцлагдлаа — ${o.order_no}`,
+      paragraphs: ["Хэрэглэгч захиалгаа өөрөө цуцаллаа."],
+      lines: [
+        { label: "Хэрэглэгч", value: o.contact_name ?? "—" },
+        { label: "Утас", value: o.contact_phone ?? "—" },
+        { label: "Дүн", value: formatPrice(o.total), strong: true },
+      ],
+      note:
+        o.payment_status === "paid"
+          ? "Төлбөр төлөгдсөн байсан — хэрэглэгчтэй холбогдож мөнгийг нь буцаана уу."
+          : "Төлбөр төлөгдөөгүй байсан.",
+      cta: {
+        label: "Захиалгыг нээх",
+        href: `${env.siteUrl}/admin/orders/${id}`,
+      },
+    });
     await sendEmail({
       to: STORE_INBOX,
       subject: `Захиалга цуцлагдлаа: ${o.order_no}`,
-      text:
-        `Захиалга ${o.order_no} цуцлагдлаа.\n` +
-        `Хэрэглэгч: ${o.contact_name ?? "—"} (${o.contact_phone ?? "—"})\n` +
-        `Дүн: ${o.total}₮\n` +
-        (o.payment_status === "paid"
-          ? "Төлбөр төлөгдсөн байсан — хэрэглэгчтэй холбогдож мөнгийг нь буцаана уу."
-          : "Төлбөр төлөгдөөгүй байсан."),
+      text,
+      html,
     });
   }
   // The customer gets their own copy on the email they registered (if any).

@@ -4,6 +4,7 @@ import { checkoutSchema } from "@/lib/validators/order";
 import {
   BundleUnavailableError,
   computeSummary,
+  ItemsUnavailableError,
   priceGiftLines,
   UndeliverableZoneError,
 } from "@/features/checkout/api";
@@ -15,6 +16,16 @@ import { env } from "@/lib/env";
 import { createInvoice, isQpayMockMode } from "@/lib/payments/qpay";
 import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
 import { formatPrice } from "@/lib/format";
+import { isPhoneEmail } from "@/lib/auth/phone-email";
+import { earliestDeliveryDay, latestDeliveryDay } from "@/lib/time";
+
+/** Клиентээс ирсэн өдрийг [маргааш, маргааш+30] мужид оруулна. */
+function clampDeliveryDay(value: string | undefined): string {
+  const min = earliestDeliveryDay();
+  const max = latestDeliveryDay();
+  if (!value || value < min) return min;
+  return value > max ? max : value;
+}
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -34,6 +45,14 @@ export async function POST(req: Request) {
   } catch (e) {
     if (e instanceof UndeliverableZoneError) {
       return NextResponse.json({ error: "ZONE_UNAVAILABLE" }, { status: 400 });
+    }
+    if (e instanceof ItemsUnavailableError) {
+      // The cart outlived the catalogue — the browser drops these lines and
+      // tells the customer, rather than us charging for what was left.
+      return NextResponse.json(
+        { error: "ITEMS_UNAVAILABLE", variantIds: e.variantIds },
+        { status: 409 },
+      );
     }
     if (e instanceof BundleUnavailableError) {
       return NextResponse.json(
@@ -94,7 +113,12 @@ export async function POST(req: Request) {
         payment_method: input.paymentMethod,
         contact_name: input.contactName,
         contact_phone: input.contactPhone,
-        contact_email: input.contactEmail || null,
+        // A phone account's synthetic Supabase address is internal plumbing —
+        // it must never be stored as if the customer had given us an email.
+        contact_email:
+          input.contactEmail && !isPhoneEmail(input.contactEmail)
+            ? input.contactEmail
+            : null,
         ship_city: input.shipCity,
         ship_district: input.shipDistrict ?? null,
         ship_detail: input.shipDetail,
@@ -104,6 +128,10 @@ export async function POST(req: Request) {
         shipping_fee: summary.shippingFee,
         coupon_code: input.couponCode ?? null,
         loyalty_used: userId ? input.loyaltyUsed : 0,
+        // Хүргэх өдөр: маргаашаас 30 хоногийн дотор. Хязгаарыг энд бас
+        // барина — place_order хэдийнэ өнөөдрөөс өмнөх өдрийг татдаг ч
+        // «3 сарын дараа» гэсэн захиалга нөөцөө тэр хугацаанд түгжих болно.
+        deliver_on: clampDeliveryDay(input.deliverOn),
         reserve_minutes: RESERVE_TIMEOUT_MINUTES,
       },
       p_items: allLines.map((l) => {

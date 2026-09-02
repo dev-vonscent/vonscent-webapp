@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { getOrderDetail } from "@/features/admin/api";
 import { getStaffUser } from "@/lib/auth/guard";
 import { formatPrice, formatDate } from "@/lib/format";
+import { deliveryDayOf, formatDeliveryDay } from "@/lib/time";
 import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/constants";
 import { OrderStatusControl } from "@/features/admin/components/order-status-control";
 
@@ -46,7 +47,10 @@ export default async function AdminOrderDetail({
             {order.order_no}
           </h1>
           <p className="text-muted-foreground text-sm">
-            {formatDate(order.created_at)}
+            {formatDate(order.created_at)} · Хүргэх:{" "}
+            <span className="text-foreground font-medium">
+              {formatDeliveryDay(deliveryDayOf(order))}
+            </span>
           </p>
         </div>
         <Badge variant={STATUS_VARIANT[order.status]}>

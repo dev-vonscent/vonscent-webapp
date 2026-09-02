@@ -87,10 +87,10 @@ export default async function HomePage() {
         />
         <div className="mx-auto grid max-w-352 items-center gap-8 px-4 pt-28 pb-16 md:grid-cols-2 md:px-8">
           <div className="relative z-10 max-w-xl space-y-6 max-md:mx-auto max-md:flex max-md:flex-col max-md:items-center max-md:text-center md:order-1">
-            <p className="text-muted-foreground text-sm font-medium tracking-[0.22em] uppercase sm:text-base">
+            <p className="text-muted-foreground text-xs font-medium tracking-[0.22em] uppercase sm:text-sm">
               Жинхэнэ үнэртэн · Decant
             </p>
-            <h1 className="text-foreground text-4xl font-bold tracking-tight text-balance sm:text-6xl lg:text-7xl">
+            <h1 className="text-foreground text-3xl font-bold tracking-tight text-balance sm:text-5xl lg:text-6xl">
               Бүтэн үнэртэн авахаасаа өмнө туршиж үз
             </h1>
             <p className="text-muted-foreground text-base text-pretty sm:text-lg">

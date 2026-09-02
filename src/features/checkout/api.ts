@@ -48,17 +48,29 @@ export interface OrderSummary {
 
 /**
  * Recompute every line's price from authoritative product data — never trust
- * prices sent by the client (development.md §7.5). Unknown items are skipped.
+ * prices sent by the client (development.md §7.5).
+ *
+ * A line whose product or size is gone (deleted, deactivated) is reported in
+ * `missing` rather than dropped in silence: the browser's cart is persisted in
+ * localStorage and can easily outlive the catalogue, and quietly charging for
+ * whatever survived would ship an order nobody placed.
  */
 export async function priceLines(
   items: OrderItemInput[],
-): Promise<PricedLine[]> {
+): Promise<{ lines: PricedLine[]; missing: OrderItemInput[] }> {
   const lines: PricedLine[] = [];
+  const missing: OrderItemInput[] = [];
   for (const item of items) {
     const product = await getProductById(item.productId);
-    if (!product) continue;
+    if (!product) {
+      missing.push(item);
+      continue;
+    }
     const variant = product.variants.find((v) => v.id === item.variantId);
-    if (!variant || !variant.isActive) continue;
+    if (!variant || !variant.isActive) {
+      missing.push(item);
+      continue;
+    }
     const unitPrice = variant.price;
     lines.push({
       productId: item.productId,
@@ -71,7 +83,7 @@ export async function priceLines(
       lineTotal: unitPrice * item.qty,
     });
   }
-  return lines;
+  return { lines, missing };
 }
 
 /**
@@ -91,7 +103,12 @@ export async function priceCollectionLines(
   ]);
   const variantIndex = new Map<
     string,
-    { product: (typeof products)[number]; price: number; ml: number; active: boolean }
+    {
+      product: (typeof products)[number];
+      price: number;
+      ml: number;
+      active: boolean;
+    }
   >();
   for (const p of products) {
     for (const v of p.variants) {
@@ -264,6 +281,17 @@ export async function priceGiftLines(
   return out;
 }
 
+/**
+ * One or more cart lines point at a product/size the catalogue no longer has.
+ * Carries the variant ids so the browser can strip exactly those lines.
+ */
+export class ItemsUnavailableError extends Error {
+  constructor(readonly variantIds: string[]) {
+    super("Cart contains items that no longer exist");
+    this.name = "ItemsUnavailableError";
+  }
+}
+
 /** A cart bundle no longer prices (deactivated / member missing / tampered). */
 export class BundleUnavailableError extends Error {
   constructor() {
@@ -311,7 +339,8 @@ export async function resolveShipping(
     address.shipCity && address.shipCity !== "Улаанбаатар"
       ? zones.find((z) => z.remote && z.deliverable !== false)
       : undefined;
-  const zone = mapped ?? (ruralFallback ? zoneKey(ruralFallback) : address.shipZone);
+  const zone =
+    mapped ?? (ruralFallback ? zoneKey(ruralFallback) : address.shipZone);
 
   // Match on the stable code so a renamed zone still prices correctly; older
   // orders/clients that send a zone name are still found through zoneKey().
@@ -331,17 +360,22 @@ export async function computeSummary(
   input: Pick<CheckoutInput, "items" | "collections"> & ShippingAddress,
 ): Promise<OrderSummary> {
   const requestedBundles = input.collections ?? [];
-  const [itemLines, bundleResult] = await Promise.all([
+  const [itemResult, bundleResult] = await Promise.all([
     priceLines(input.items),
     priceCollectionLines(requestedBundles),
   ]);
+  // Same rule as a vanished bundle below: fail loudly, naming the lines the
+  // customer has to drop, instead of pricing an order they never assembled.
+  if (itemResult.missing.length > 0) {
+    throw new ItemsUnavailableError(itemResult.missing.map((i) => i.variantId));
+  }
   // A bundle that failed re-validation (deactivated, member gone, tampered)
   // must fail the order loudly — silently charging for the rest would ship an
   // order the customer didn't ask for.
   if (bundleResult.pricedBundles < requestedBundles.length) {
     throw new BundleUnavailableError();
   }
-  const lines = [...itemLines, ...bundleResult.lines];
+  const lines = [...itemResult.lines, ...bundleResult.lines];
   const subtotal = lines.reduce((s, l) => s + l.lineTotal, 0);
   const { zone, fee: shippingFee } = await resolveShipping(input);
   // The coupon discount is applied inside place_order, which re-validates the

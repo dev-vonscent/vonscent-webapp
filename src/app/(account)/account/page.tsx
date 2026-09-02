@@ -22,10 +22,15 @@ import { useWishlist } from "@/features/wishlist/store";
 import { AddressBook } from "@/features/account/components/address-book";
 import { PasscodeDialog } from "@/features/account/components/passcode-dialog";
 import { ProfileEditDialog } from "@/features/account/components/profile-edit-dialog";
+import { EmailSettings } from "@/features/account/components/email-settings";
+import { isPhoneEmail } from "@/lib/auth/phone-email";
 import type { ProductListItem } from "@/lib/types";
 
 export default function ProfilePage() {
-  const [email, setEmail] = React.useState("");
+  /** Supabase auth-ийн хаяг — утсаар бүртгүүлсэн хүнд синтетик тул харуулахгүй. */
+  const [authEmail, setAuthEmail] = React.useState("");
+  /** Хэрэглэгчийн өөрөө бүртгүүлсэн бодит хаяг (newsletter_subscribers). */
+  const [contactEmail, setContactEmail] = React.useState<string | null>(null);
   const [userId, setUserId] = React.useState<string | null>(null);
   const [fullName, setFullName] = React.useState("");
   const [phone, setPhone] = React.useState("");
@@ -63,7 +68,7 @@ export default function ProfilePage() {
     supabase.auth.getUser().then(async ({ data }) => {
       if (data.user) {
         setUserId(data.user.id);
-        setEmail(data.user.email ?? "");
+        setAuthEmail(data.user.email ?? "");
         const { data: profile } = await supabase
           .from("profiles")
           .select(
@@ -130,8 +135,16 @@ export default function ProfilePage() {
 
   if (!loaded) return <div className="h-40" />;
 
-  const initial = (fullName || email || "?").charAt(0).toUpperCase();
-  const handle = (email.split("@")[0] || "vonscent").toLowerCase();
+  // Утсаар бүртгүүлсэн данс Supabase дээр `<утас>@phone.vonscent.mn` гэсэн
+  // синтетик хаягтай байдаг — түүнийг хаана ч харуулахгүй.
+  const realEmail = isPhoneEmail(authEmail) ? "" : authEmail;
+  const displayEmail = contactEmail ?? realEmail;
+  const initial = (fullName || displayEmail || "?").charAt(0).toUpperCase();
+  const handle = (
+    displayEmail.split("@")[0] ||
+    phone ||
+    "vonscent"
+  ).toLowerCase();
 
   return (
     <div className="space-y-8">
@@ -229,7 +242,7 @@ export default function ProfilePage() {
 
         {/* Passcode change — phone accounts only (the 4-digit code is theirs;
             an email/OAuth account would just get a 401 from the route). */}
-        {configured && email.endsWith("@phone.vonscent.mn") && (
+        {configured && isPhoneEmail(authEmail) && (
           <button
             onClick={() => setPasscodeOpen(true)}
             className="bg-card hover:bg-accent flex w-full items-center gap-4 rounded-xl p-4 text-left transition-colors"
@@ -240,6 +253,9 @@ export default function ProfilePage() {
           </button>
         )}
       </div>
+
+      {/* Email notifications — register, change, or switch off */}
+      {configured && <EmailSettings onEmailChange={setContactEmail} />}
 
       {/* Delivery addresses */}
       {configured && <AddressBook />}
@@ -267,7 +283,7 @@ export default function ProfilePage() {
         onOpenChange={setProfileOpen}
         userId={userId}
         configured={configured}
-        email={email}
+        email={displayEmail}
         fullName={fullName}
         phone={phone}
         phoneVerified={phoneVerified}
@@ -354,7 +370,12 @@ function Tile({
           className="text-muted-foreground group-hover:text-foreground ml-auto shrink-0 transition-colors"
           initial={false}
           animate={{ opacity: tucked ? 0 : 1, x: tucked ? -16 : 0 }}
-          transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.6 }}
+          transition={{
+            type: "spring",
+            stiffness: 420,
+            damping: 34,
+            mass: 0.6,
+          }}
         >
           <ChevronRight className="size-4" />
         </motion.span>
