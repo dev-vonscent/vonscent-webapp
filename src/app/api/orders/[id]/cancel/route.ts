@@ -35,12 +35,12 @@ export async function POST(
   // RLS lets the owner read their own order; confirm ownership + status.
   const { data } = await supabase
     .from("orders")
-    .select("id, user_id, status, created_at")
+    .select("id, user_id, status, created_at, deliver_on")
     .eq("id", id)
     .maybeSingle();
   const order = data as Pick<
     OrderRow,
-    "id" | "user_id" | "status" | "created_at"
+    "id" | "user_id" | "status" | "created_at" | "deliver_on"
   > | null;
   if (!order || order.user_id !== user.id) {
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
@@ -48,9 +48,11 @@ export async function POST(
   if (order.status !== "pending" && order.status !== "confirmed") {
     return NextResponse.json({ error: "NOT_CANCELLABLE" }, { status: 409 });
   }
-  // Past 09:00 on the dispatch day the decants are already being prepared
-  // (requirement_fb.md §9). Enforced server-side, not just in the UI.
-  if (!isOrderEditable(order.created_at)) {
+  // Past 09:00 on the delivery day the decants are already being prepared
+  // (requirement_fb.md §9). A pre-order therefore stays cancellable right up
+  // to the morning of the day it was booked for. Enforced server-side, not
+  // just in the UI.
+  if (!isOrderEditable(order)) {
     return NextResponse.json({ error: "PAST_CUTOFF" }, { status: 409 });
   }
 

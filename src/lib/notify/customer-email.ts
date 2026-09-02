@@ -8,6 +8,7 @@ import {
 } from "@/lib/email";
 import { env } from "@/lib/env";
 import { formatPrice, formatMl } from "@/lib/format";
+import { DISPATCH_HOUR, deliveryDayOf, formatDeliveryDay } from "@/lib/time";
 
 /**
  * Захиалгын имэйл мэдэгдэл — зөвхөн хоёр үед: төлбөр баталгаажихад ба
@@ -28,7 +29,7 @@ export async function sendOrderCustomerEmail(
   const { data } = await supabase
     .from("orders")
     .select(
-      "order_no, subtotal, shipping_fee, discount, loyalty_used, total, user_id, payment_status",
+      "order_no, subtotal, shipping_fee, discount, loyalty_used, total, user_id, payment_status, created_at, deliver_on",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -41,6 +42,8 @@ export async function sendOrderCustomerEmail(
     total: number;
     user_id: string | null;
     payment_status: string;
+    created_at: string;
+    deliver_on: string | null;
   } | null;
   if (!order?.user_id) return; // guest — nowhere agreed to send to
 
@@ -69,10 +72,18 @@ export async function sendOrderCustomerEmail(
           heading: "Захиалга баталгаажлаа",
           paragraphs: [
             "Сайн байна уу! Таны захиалгын төлбөр амжилттай хүлээн авлаа.",
-            `Захиалгын дугаар: ${order.order_no}. Захиалга тань маргааш 11:00 цагт хүргэлтэд гарна.`,
+            `Захиалгын дугаар: ${order.order_no}. Захиалга тань ` +
+              `${formatDeliveryDay(deliveryDayOf(order)).toLowerCase()} ` +
+              `${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.`,
           ],
           items: await loadItems(supabase, orderId),
-          lines: summaryLines(order),
+          lines: [
+            {
+              label: "Хүргэх өдөр",
+              value: formatDeliveryDay(deliveryDayOf(order)),
+            },
+            ...summaryLines(order),
+          ],
           cta: { label: "Захиалгаа хянах", href: ordersUrl },
           footerNotes,
           unsubscribeUrl,

@@ -17,6 +17,15 @@ import { createInvoice, isQpayMockMode } from "@/lib/payments/qpay";
 import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
 import { formatPrice } from "@/lib/format";
 import { isPhoneEmail } from "@/lib/auth/phone-email";
+import { earliestDeliveryDay, latestDeliveryDay } from "@/lib/time";
+
+/** Клиентээс ирсэн өдрийг [маргааш, маргааш+30] мужид оруулна. */
+function clampDeliveryDay(value: string | undefined): string {
+  const min = earliestDeliveryDay();
+  const max = latestDeliveryDay();
+  if (!value || value < min) return min;
+  return value > max ? max : value;
+}
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -119,6 +128,10 @@ export async function POST(req: Request) {
         shipping_fee: summary.shippingFee,
         coupon_code: input.couponCode ?? null,
         loyalty_used: userId ? input.loyaltyUsed : 0,
+        // Хүргэх өдөр: маргаашаас 30 хоногийн дотор. Хязгаарыг энд бас
+        // барина — place_order хэдийнэ өнөөдрөөс өмнөх өдрийг татдаг ч
+        // «3 сарын дараа» гэсэн захиалга нөөцөө тэр хугацаанд түгжих болно.
+        deliver_on: clampDeliveryDay(input.deliverOn),
         reserve_minutes: RESERVE_TIMEOUT_MINUTES,
       },
       p_items: allLines.map((l) => {

@@ -39,7 +39,13 @@ import {
 import { giftAllowanceFor } from "@/lib/gift";
 import { GiftSamplePicker } from "@/features/checkout/components/gift-sample-picker";
 import { CheckoutStepper } from "@/features/checkout/components/checkout-stepper";
-import { DISPATCH_HOUR, ORDER_EDIT_CUTOFF_HOUR } from "@/lib/time";
+import {
+  DISPATCH_HOUR,
+  MAX_PREORDER_DAYS,
+  ORDER_EDIT_CUTOFF_HOUR,
+  formatDeliveryDay,
+  ubDayFromNow,
+} from "@/lib/time";
 import { resolveZone, zoneKey } from "@/lib/geo/zone";
 import {
   AddressFields,
@@ -127,6 +133,17 @@ export default function CheckoutPage() {
       paymentMethod: "qpay",
     },
   });
+
+  // Сонгож болох хүргэлтийн өдрүүд. Mount-ийн дараа бодогдоно: сервер ба
+  // браузарын өдөр зөрвөл (шөнө дунд, өөр цагийн бүс) hydration зөрчилдөнө.
+  const [deliveryDays, setDeliveryDays] = React.useState<string[]>([]);
+  React.useEffect(() => {
+    const days = Array.from({ length: MAX_PREORDER_DAYS }, (_, i) =>
+      ubDayFromNow(i + 1),
+    );
+    setDeliveryDays(days);
+    setValue("deliverOn", days[0]);
+  }, [setValue]);
 
   // Delivery zones + free-shipping threshold are admin-configurable (A10).
   React.useEffect(() => {
@@ -391,6 +408,7 @@ export default function CheckoutPage() {
           shipDetail: composeDetail(khoroo, values.shipDetail),
           note: note || undefined,
           couponCode: coupon?.code,
+          deliverOn: values.deliverOn,
           loyaltyUsed: loyaltyApplied,
           saveAddress: saveAddr,
           giftProductIds: giftIds,
@@ -449,6 +467,7 @@ export default function CheckoutPage() {
           total: order.total,
           paymentMethod: order.paymentMethod,
           contactName: values.contactName,
+          deliverOn: values.deliverOn ?? null,
           qpay: order.qpay ?? null,
           qpayMock: order.qpayMock ?? false,
         }),
@@ -599,6 +618,30 @@ export default function CheckoutPage() {
                 </p>
               )}
             </Field>
+
+            {deliveryDays.length > 0 && (
+              <Field label="Хүргүүлэх өдөр" error={errors.deliverOn?.message}>
+                <Select
+                  value={watch("deliverOn") ?? deliveryDays[0]}
+                  onValueChange={(v) => setValue("deliverOn", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {deliveryDays.map((day) => (
+                      <SelectItem key={day} value={day}>
+                        {formatDeliveryDay(day)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-muted-foreground text-xs">
+                  Хамгийн эрт нь маргааш — бэлдэхэд нэг өдөр хэрэгтэй. Сонгосон
+                  өдрийнхөө {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.
+                </p>
+              </Field>
+            )}
 
             {zoneBlocked && (
               <p className="bg-destructive/10 text-destructive rounded-xl px-3 py-2.5 text-sm">
@@ -894,9 +937,12 @@ export default function CheckoutPage() {
               {mounted && (
                 <p className="bg-secondary rounded-xl px-3 py-2.5 text-xs/relaxed">
                   <Clock className="mr-1 inline size-3.5 align-[-2px]" />
-                  {`Захиалга маргааш ${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна (амралтын өдөр ч хүргэнэ).`}{" "}
-                  Маргааш өглөөний <strong>{ORDER_EDIT_CUTOFF_HOUR}:00</strong>{" "}
-                  цагаас хойш захиалга цуцлах, өөрчлөх боломжгүй.
+                  {`Захиалга ${formatDeliveryDay(
+                    watch("deliverOn") ?? deliveryDays[0] ?? "",
+                  ).toLowerCase()} ${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна (амралтын өдөр ч хүргэнэ).`}{" "}
+                  Тэр өдрийн өглөөний{" "}
+                  <strong>{ORDER_EDIT_CUTOFF_HOUR}:00</strong> цагаас хойш
+                  захиалга цуцлах, өөрчлөх боломжгүй.
                 </p>
               )}
 

@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/features/admin/components/data-table";
 import { formatPrice, formatDateTime } from "@/lib/format";
+import { deliveryDayOf, formatDeliveryDay } from "@/lib/time";
 import { ORDER_STATUS_LABEL } from "@/lib/constants";
 import type { OrderRow } from "@/db/types";
 
@@ -27,6 +28,18 @@ const columns: ColumnDef<OrderRow, unknown>[] = [
     cell: ({ getValue }) => (
       <span className="text-muted-foreground">
         {formatDateTime(getValue<string>())}
+      </span>
+    ),
+  },
+  {
+    id: "deliver_on",
+    header: "Хүргэх өдөр",
+    // Pre-orders (backlog E1) mean this is no longer "the day after the order
+    // came in" — an operator planning tomorrow's run needs it on the list.
+    accessorFn: (row) => deliveryDayOf(row),
+    cell: ({ row }) => (
+      <span className="whitespace-nowrap">
+        {formatDeliveryDay(deliveryDayOf(row.original))}
       </span>
     ),
   },

@@ -7,7 +7,13 @@ import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
 import { getProductsByIds } from "@/features/products/api";
 import { formatPrice, formatDate } from "@/lib/format";
-import { isOrderEditable, formatDeadline } from "@/lib/time";
+import {
+  DISPATCH_HOUR,
+  deliveryDayOf,
+  formatDeadline,
+  formatDeliveryDay,
+  isOrderEditable,
+} from "@/lib/time";
 import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/constants";
 import {
   OrderActions,
@@ -78,9 +84,10 @@ export default async function OrderDetailPage({
     .filter((i) => i.slug);
 
   // Cancellable only while the status allows it AND we are still before 09:00
-  // on the dispatch day (requirement_fb.md §9).
+  // on the delivery day (requirement_fb.md §9) — which for a pre-order can be
+  // a week or more away.
   const openStatus = order.status === "pending" || order.status === "confirmed";
-  const beforeCutoff = isOrderEditable(order.created_at);
+  const beforeCutoff = isOrderEditable(order);
   const cancellable = openStatus && beforeCutoff;
 
   return (
@@ -161,10 +168,9 @@ export default async function OrderDetailPage({
 
           {openStatus && !beforeCutoff && (
             <p className="bg-secondary text-muted-foreground rounded-xl px-4 py-3 text-sm">
-              Захиалга бэлтгэгдэж эхэлсэн тул (
-              {formatDeadline(order.created_at)} цагийн хугацаа өнгөрсөн)
-              цуцлах, өөрчлөх боломжгүй. Асуудал гарвал пэйж чат эсвэл утсаар
-              холбогдоно уу.
+              Захиалга бэлтгэгдэж эхэлсэн тул ({formatDeadline(order)} цагийн
+              хугацаа өнгөрсөн) цуцлах, өөрчлөх боломжгүй. Асуудал гарвал пэйж
+              чат эсвэл утсаар холбогдоно уу.
             </p>
           )}
 
@@ -216,6 +222,16 @@ export default async function OrderDetailPage({
           <Card>
             <CardContent className="space-y-1 p-5 text-sm">
               <h2 className="mb-2 font-medium">Хүргэлт</h2>
+              <p className="mb-2">
+                <span className="text-muted-foreground">Хүргэх өдөр: </span>
+                <span className="font-medium">
+                  {formatDeliveryDay(deliveryDayOf(order))}
+                </span>
+                <span className="text-muted-foreground">
+                  {" "}
+                  · {DISPATCH_HOUR}:00 цагт гарна
+                </span>
+              </p>
               <p>{order.contact_name}</p>
               <p className="text-muted-foreground">{order.contact_phone}</p>
               <p className="text-muted-foreground">

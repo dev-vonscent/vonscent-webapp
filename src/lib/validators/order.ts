@@ -37,6 +37,15 @@ export const checkoutSchema = z.object({
   shipKhoroo: z.number().int().positive().nullable().default(null),
   shipZone: z.string().min(1, "Хүргэлтийн бүс сонгоно уу"),
   paymentMethod: z.enum(["qpay", "bank_transfer"]),
+  /**
+   * Хүргүүлэх өдөр — "yyyy-MM-dd" (UB). Хоосон бол сервер маргаашийг авна;
+   * хэт эрт / хэт хол өдрийг ч сервер өөрөө зөв мужид нь оруулна
+   * (place_order + orders route), тул энд зөвхөн хэлбэрийг шалгана.
+   */
+  deliverOn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/u, "Огноо буруу байна")
+    .optional(),
   note: z.string().max(500).optional(),
   couponCode: z.string().optional(),
   loyaltyUsed: z.number().int().nonnegative().default(0),
