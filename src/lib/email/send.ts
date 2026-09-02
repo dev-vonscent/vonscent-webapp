@@ -6,6 +6,9 @@ import * as Sentry from "@sentry/nextjs";
  * Off (returns false) until RESEND_API_KEY is set; callers must treat email
  * as best-effort and persist anything important themselves first.
  *
+ * Захидлын агуулгыг гараар бүү угса — `renderEmail()` (layout.ts) хос
+ * html/text гаргаж өгнө, бүх захидал нэг загвартай байх ёстой.
+ *
  * Env:
  *   RESEND_API_KEY   — enables sending.
  *   EMAIL_FROM       — verified sender, e.g. "Vonscent <no-reply@vonscent.mn>"
@@ -15,6 +18,15 @@ export async function sendEmail(params: {
   to: string;
   subject: string;
   text: string;
+  html?: string;
+  /**
+   * Where a reply should land. `no-reply@` is not a real mailbox — a verified
+   * domain may send from any address, but nothing receives there — so customer
+   * mail points replies at the store inbox instead of dropping them.
+   */
+  replyTo?: string;
+  /** Extra SMTP headers, e.g. List-Unsubscribe on marketing-adjacent mail. */
+  headers?: Record<string, string>;
 }): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return false;
@@ -31,6 +43,9 @@ export async function sendEmail(params: {
         to: [params.to],
         subject: params.subject,
         text: params.text,
+        ...(params.html ? { html: params.html } : {}),
+        ...(params.replyTo ? { reply_to: params.replyTo } : {}),
+        ...(params.headers ? { headers: params.headers } : {}),
       }),
     });
     if (!res.ok) {

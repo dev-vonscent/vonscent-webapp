@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendEmail, STORE_INBOX } from "@/lib/email";
+import { sendEmail, STORE_INBOX, renderEmail } from "@/lib/email";
 import { contactInputSchema } from "@/lib/validators/contact";
 
 /**
@@ -26,10 +26,20 @@ export async function POST(req: Request) {
   }
 
   // Best-effort forward — the DB row above is the source of truth.
+  const { html, text } = renderEmail({
+    preheader: `${name} — холбоо барих форм`,
+    heading: "Холбоо барих форм",
+    paragraphs: [message],
+    lines: [
+      { label: "Нэр", value: name },
+      { label: "Имэйл", value: email },
+    ],
+  });
   await sendEmail({
     to: STORE_INBOX,
     subject: `Холбоо барих: ${name}`,
-    text: `Нэр: ${name}\nИмэйл: ${email}\n\n${message}`,
+    text,
+    html,
   });
 
   return NextResponse.json({ ok: true });

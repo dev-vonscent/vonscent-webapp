@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { revalidatePublic } from "@/lib/cache";
-import { isSupabaseConfigured } from "@/lib/env";
+import { env, isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
 import { isOrderEditable } from "@/lib/time";
-import { sendEmail, STORE_INBOX } from "@/lib/email";
+import { sendEmail, STORE_INBOX, renderEmail } from "@/lib/email";
+import { formatPrice } from "@/lib/format";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
 import type { OrderRow } from "@/db/types";
 
@@ -81,16 +82,29 @@ export async function POST(
     payment_status: string;
   } | null;
   if (o) {
+    const { html, text } = renderEmail({
+      preheader: `${o.order_no} — цуцлагдсан захиалга`,
+      heading: `Захиалга цуцлагдлаа — ${o.order_no}`,
+      paragraphs: ["Хэрэглэгч захиалгаа өөрөө цуцаллаа."],
+      lines: [
+        { label: "Хэрэглэгч", value: o.contact_name ?? "—" },
+        { label: "Утас", value: o.contact_phone ?? "—" },
+        { label: "Дүн", value: formatPrice(o.total), strong: true },
+      ],
+      note:
+        o.payment_status === "paid"
+          ? "Төлбөр төлөгдсөн байсан — хэрэглэгчтэй холбогдож мөнгийг нь буцаана уу."
+          : "Төлбөр төлөгдөөгүй байсан.",
+      cta: {
+        label: "Захиалгыг нээх",
+        href: `${env.siteUrl}/admin/orders/${id}`,
+      },
+    });
     await sendEmail({
       to: STORE_INBOX,
       subject: `Захиалга цуцлагдлаа: ${o.order_no}`,
-      text:
-        `Захиалга ${o.order_no} цуцлагдлаа.\n` +
-        `Хэрэглэгч: ${o.contact_name ?? "—"} (${o.contact_phone ?? "—"})\n` +
-        `Дүн: ${o.total}₮\n` +
-        (o.payment_status === "paid"
-          ? "Төлбөр төлөгдсөн байсан — хэрэглэгчтэй холбогдож мөнгийг нь буцаана уу."
-          : "Төлбөр төлөгдөөгүй байсан."),
+      text,
+      html,
     });
   }
   // The customer gets their own copy on the email they registered (if any).
