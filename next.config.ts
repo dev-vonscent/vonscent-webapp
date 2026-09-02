@@ -59,7 +59,14 @@ const nextConfig: NextConfig = {
       "/api/admin/products/[id]/regenerate-image",
     ].map((route) => [
       route,
-      ["./node_modules/@img/**/*", "./node_modules/.pnpm/@img+*/**/*"],
+      [
+        // Vercel's runtime is glibc linux-x64 — the musl and wasm variants
+        // sitting next to it would only bloat the function.
+        "./node_modules/@img/sharp-linux-x64/**/*",
+        "./node_modules/@img/sharp-libvips-linux-x64/**/*",
+        "./node_modules/.pnpm/@img+sharp-linux-x64@*/**/*",
+        "./node_modules/.pnpm/@img+sharp-libvips-linux-x64@*/**/*",
+      ],
     ]),
   ),
   images: {
