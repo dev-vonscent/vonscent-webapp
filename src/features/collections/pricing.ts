@@ -14,6 +14,16 @@ export function roundTo(value: number, step: number): number {
  */
 export type MlDiscounts = Record<number, number>;
 
+/**
+ * Хэмжээ бүрийн ТОГТМОЛ үнэ (0054, backlog B6), ml-ээр түлхүүрлэсэн.
+ *
+ * Багцын үнэ өмнө нь гишүүдийн үнийн нийлбэрээс хувь хасаж амьдаар бодогддог
+ * байсан тул гишүүн барааны хямдрал багцын үнийг чимээгүйхэн өөрчилдөг байв.
+ * Тогтмол үнэ өгсөн хэмжээнд тэр тооцоо огт хийгдэхгүй: админы бичсэн үнэ нь
+ * эцсийн үнэ, гишүүдийн нийлбэр нь зөвхөн «хэмнэлт»-ийг харуулахад үлдэнэ.
+ */
+export type MlPrices = Record<number, number>;
+
 /** The discount that applies at one size: the override, else the default. */
 export function discountForMl(
   ml: number,
@@ -46,20 +56,35 @@ export function memberPrices(
   defaultDiscountPct: number,
   step = 100,
   overrides: MlDiscounts = {},
+  fixedPrices: MlPrices = {},
 ): CollectionPriceAtMl[] {
   return BUNDLE_ML_SIZES.map((ml) => {
     const rows = members.map((m) => m.variantByMl[ml]);
     const available =
       members.length > 0 && rows.every((r) => r != null && r.inStock);
+    // Гишүүдийн үнэ нь БОДИТООР төлөх (хямдарсан) үнэ — тиймээс custom багц
+    // ч хямдарсан үнээр бодогдоно (backlog B5).
     const memberSum = rows.reduce((sum, r) => sum + (r?.price ?? 0), 0);
-    const discountPct = discountForMl(ml, defaultDiscountPct, overrides);
-    const price = bundlePrice(memberSum, discountPct, step);
+    const fixed = fixedPrices[ml];
+    const price = Number.isFinite(fixed)
+      ? Math.max(0, fixed as number)
+      : bundlePrice(
+          memberSum,
+          discountForMl(ml, defaultDiscountPct, overrides),
+          step,
+        );
+    // Харуулах хувь нь ҮРГЭЛЖ бодит үнээс гарна. Тогтмол үнэтэй хэмжээнд
+    // админы бичсэн хувь нь худал болох тул түүнийг давтаж болохгүй.
+    const discountPct =
+      memberSum > 0
+        ? Math.max(0, Math.round(((memberSum - price) / memberSum) * 100))
+        : 0;
     return {
       ml,
       memberSum,
       price,
       discountPct,
-      saved: memberSum - price,
+      saved: Math.max(0, memberSum - price),
       available,
     };
   });

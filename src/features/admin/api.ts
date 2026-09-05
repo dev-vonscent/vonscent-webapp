@@ -256,8 +256,10 @@ export async function getCustomers(
 /** One ml size as the admin edits it (product_variants). */
 export interface AdminVariant {
   ml: number;
-  /** The ₮ price the admin typed — nothing derives it. */
+  /** Үндсэн үнэ — админы гараар бичсэн, юу ч үүнийг гаргаж бодохгүй. */
   price: number;
+  /** Хямдарсан үнэ, эсвэл null (0054) — байвал бодитоор төлөх дүн. */
+  salePrice: number | null;
   isActive: boolean;
 }
 
@@ -293,8 +295,9 @@ export interface AdminProduct {
   releaseYear: number | null;
   bottlePrice: number;
   bottleMl: number;
-  salePct: number;
   isActive: boolean;
+  /** «Онцлох» тэмдэг (0055). */
+  isFeatured: boolean;
   startingPrice: number;
   /** on_hand_ml − reserved_ml: what the shop can actually still sell. */
   availableMl: number;
@@ -324,9 +327,9 @@ const ADMIN_PRODUCT_SELECT = `
   id, slug, name, brand, gender, concentration, scent_families, seasons,
   description, notes_description, usage_description, short_description,
   notes_top, notes_heart, notes_base, origin_country, release_year,
-  bottle_price, bottle_ml, sale_pct, is_active, reference_image_url,
+  bottle_price, bottle_ml, is_active, is_featured, reference_image_url,
   product_images ( id, url, alt, sort_order, is_visible ),
-  product_variants ( ml, price, is_active ),
+  product_variants ( ml, price, sale_price, is_active ),
   inventory ( on_hand_ml, reserved_ml, low_stock_ml ),
   product_tags ( tags ( slug ) ),
   product_image_generations ( id, status, result_url, prompt, error, created_at )
@@ -361,13 +364,14 @@ interface AdminProductRow {
   release_year: number | null;
   bottle_price: number;
   bottle_ml: number;
-  sale_pct: number;
   is_active: boolean;
+  is_featured?: boolean | null;
   reference_image_url: string | null;
   product_images: AdminProductImage[];
   product_variants: {
     ml: number;
     price: number;
+    sale_price: number | null;
     is_active: boolean;
   }[];
   inventory:
@@ -380,9 +384,10 @@ interface AdminProductRow {
 
 function mapAdminProduct(r: AdminProductRow): AdminProduct {
   const inv = Array.isArray(r.inventory) ? r.inventory[0] : r.inventory;
+  // Жагсаалтын «-аас» үнэ нь бодитоор төлөх дүнгээр (хямдрал орсон, 0054).
   const prices = r.product_variants
     .filter((v) => v.is_active)
-    .map((v) => v.price);
+    .map((v) => v.sale_price ?? v.price);
   const tags = r.product_tags
     .map((pt) => (Array.isArray(pt.tags) ? pt.tags[0] : pt.tags)?.slug)
     .filter((s): s is string => Boolean(s));
@@ -411,6 +416,7 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
       .map((v) => ({
         ml: v.ml,
         price: v.price,
+        salePrice: v.sale_price,
         isActive: v.is_active,
       })),
     notesTop: r.notes_top,
@@ -420,8 +426,8 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
     releaseYear: r.release_year,
     bottlePrice: r.bottle_price,
     bottleMl: r.bottle_ml,
-    salePct: r.sale_pct,
     isActive: r.is_active,
+    isFeatured: r.is_featured === true,
     startingPrice: prices.length ? Math.min(...prices) : 0,
     availableMl: inv ? inv.on_hand_ml - inv.reserved_ml : 0,
     // Kept alongside `availableMl` because the products list now owns stock

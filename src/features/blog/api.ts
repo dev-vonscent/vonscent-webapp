@@ -17,7 +17,10 @@ function mapRow(r: BlogPostRow): BlogPost {
     excerpt: r.excerpt,
     category: r.category,
     date: r.published_at,
-    cover: r.cover_url ?? `https://picsum.photos/seed/${r.slug}/1200/630`,
+    // Зураггүй нийтлэлд санамсаргүй stock зураг (picsum) тавьдаг байсныг
+    // болив — админ зураг оруулаагүйг сайт өөрөө «зохиож» болохгүй; UI нь
+    // загварын placeholder харуулна (blog-cover.tsx).
+    cover: r.cover_url || null,
     body: r.body ?? "",
   };
 }

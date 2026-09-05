@@ -24,6 +24,8 @@ export default async function Image({
       ? "Дууссан"
       : `${formatPrice(product.startingPrice)}-с эхэлнэ`,
     imageUrl: product.image?.url ?? null,
-    badge: product.salePct ? `-${product.salePct}%` : undefined,
+    // Хувь харуулахгүй (backlog B4) — хямдралтай эсэхийг л дохино.
+    badge:
+      product.startingBasePrice > product.startingPrice ? "Хямдрал" : undefined,
   });
 }

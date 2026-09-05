@@ -18,7 +18,7 @@ export async function GET() {
   const { data } = await supabase
     .from("collections")
     .select(
-      "id, slug, name, gender, description, discount_pct, image_url, gift_ml, is_active, is_featured, collection_items ( product_id, sort_order )",
+      "id, slug, name, gender, description, discount_pct, image_url, is_active, is_featured, collection_items ( product_id, sort_order )",
     )
     .eq("type", "base")
     .order("is_featured", { ascending: false })
@@ -57,7 +57,6 @@ export async function POST(req: Request) {
       gender: input.gender,
       description: input.description,
       discount_pct: input.discountPct,
-      gift_ml: input.giftMl,
       image_url: input.imageUrl ?? null,
       is_active: input.isActive,
       is_featured: input.isFeatured,

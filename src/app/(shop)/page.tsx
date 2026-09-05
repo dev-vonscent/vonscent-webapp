@@ -21,7 +21,11 @@ import {
   getBrands,
 } from "@/features/products/api";
 import { getRecentReviews } from "@/features/reviews/api";
-import { getPopupSettings, getHomeSections } from "@/features/content/api";
+import {
+  getPopupSettings,
+  getHomeSections,
+  getGiftSettings,
+} from "@/features/content/api";
 import { getActiveBrands, getScentFamilies } from "@/features/taxonomy/api";
 import { getFeaturedCollections } from "@/features/collections/api";
 import { CollectionCard } from "@/features/collections/components/collection-card";
@@ -57,6 +61,7 @@ export default async function HomePage() {
     brandLogos,
     sections,
     featuredCollections,
+    gift,
   ] = await Promise.all([
     getNewArrivals(8),
     getBestSellers(8),
@@ -68,7 +73,10 @@ export default async function HomePage() {
     getActiveBrands(),
     getHomeSections(),
     getFeaturedCollections(3),
+    getGiftSettings(),
   ]);
+  // «Бэлэгтэй» тэмдэг зөвхөн бэлгийн сан ажиллаж байгаа үед (backlog A2).
+  const giftPoolEnabled = gift.enabled && gift.productIds.length > 0;
 
   return (
     <>
@@ -198,7 +206,11 @@ export default async function HomePage() {
             />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-3">
               {featuredCollections.map((c) => (
-                <CollectionCard key={c.id} collection={c} />
+                <CollectionCard
+                  key={c.id}
+                  collection={c}
+                  giftPoolEnabled={giftPoolEnabled}
+                />
               ))}
             </div>
           </section>
@@ -226,8 +238,8 @@ export default async function HomePage() {
               Дуртай үнэртнүүдээ багцал
             </h2>
             <p className="text-muted-foreground">
-              4 ба түүнээс дээш үнэртэн сонгоод хямдралтай үнээр аваарай — дээр
-              нь өөрийн сонгосон нэмэлт бэлэгтэй.
+              4 ба түүнээс дээш үнэртэн сонгоод хямдралтай үнээр аваарай —
+              дуртай хослолоо өөрөө угсарна.
             </p>
             <Button asChild size="lg">
               <Link href="/collections/build">

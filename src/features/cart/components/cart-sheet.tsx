@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { Gift, Minus, Plus, ShoppingCart, Trash2, Undo2 } from "lucide-react";
+import { bundleGiftGuarantee } from "@/lib/gift";
+import { useGiftPool } from "@/features/gifts/use-gift-pool";
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
@@ -41,6 +43,7 @@ export function CartSheet({
   const collections = useCart((s) => s.collections);
   const setCollectionQty = useCart((s) => s.setCollectionQty);
   const removeCollection = useCart((s) => s.removeCollection);
+  const giftPool = useGiftPool();
   const count = useCart(selectCount);
   const subtotal = useCart(selectSubtotal);
 
@@ -190,18 +193,17 @@ export function CartSheet({
                         </div>
                       </div>
 
-                      {/* Members + gift */}
+                      {/* Members + бэлгийн эрхийн сануулга */}
                       <ul className="text-muted-foreground mt-2 space-y-0.5 text-xs">
                         {c.members.map((m) => (
                           <li key={m.variantId} className="truncate">
                             • {m.brand} — {m.name}
                           </li>
                         ))}
-                        {c.gift && (
-                          <li className="text-foreground/80 flex items-center gap-1 truncate">
+                        {giftPool?.enabled && bundleGiftGuarantee(c) > 0 && (
+                          <li className="text-foreground/80 flex items-center gap-1">
                             <Gift className="text-gold-strong size-3 shrink-0" />
-                            Бэлэг: {c.gift.brand} — {c.gift.name} ({c.gift.ml}
-                            ml)
+                            1мл бэлгийн эрхтэй — төлбөрийн хуудсанд сонгоно
                           </li>
                         )}
                       </ul>

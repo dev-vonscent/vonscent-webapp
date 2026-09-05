@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/format";
 import { getBlogPost, getRelatedPosts } from "@/features/blog/api";
 import { JsonLd, articleJsonLd } from "@/components/shared/json-ld";
 import { RichText } from "@/components/shared/rich-text";
+import { BlogCoverHero } from "@/features/blog/components/blog-cover";
 
 /**
  * ISR: public data comes from the cookie-less client, so the page is
@@ -72,16 +72,7 @@ export default async function BlogPostPage({
         {formatDate(post.date)}
       </p>
 
-      <div className="border-border bg-muted relative mt-8 aspect-video overflow-hidden rounded-xl border">
-        <Image
-          src={post.cover}
-          alt={post.title}
-          fill
-          priority
-          sizes="(max-width: 768px) 100vw, 768px"
-          className="object-cover"
-        />
-      </div>
+      <BlogCoverHero post={post} />
 
       <RichText
         content={post.body}

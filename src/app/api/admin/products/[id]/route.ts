@@ -4,7 +4,11 @@ import { productEditSchema } from "@/lib/validators/product";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveBrandId, sanitizeCustomTags, sanitizeFamilies } from "@/features/taxonomy/api";
+import {
+  resolveBrandId,
+  sanitizeCustomTags,
+  sanitizeFamilies,
+} from "@/features/taxonomy/api";
 
 async function guard() {
   if (!isSupabaseConfigured) return { demo: true as const };
@@ -67,10 +71,11 @@ export async function PATCH(
   if (input.releaseYear !== undefined)
     productUpdate.release_year = input.releaseYear;
   if (input.isActive !== undefined) productUpdate.is_active = input.isActive;
+  if (input.isFeatured !== undefined)
+    productUpdate.is_featured = input.isFeatured;
   if (input.bottlePrice !== undefined)
     productUpdate.bottle_price = input.bottlePrice;
   if (input.bottleMl !== undefined) productUpdate.bottle_ml = input.bottleMl;
-  if (input.salePct !== undefined) productUpdate.sale_pct = input.salePct;
 
   if (Object.keys(productUpdate).length > 0) {
     const { error } = await supabase
@@ -88,12 +93,18 @@ export async function PATCH(
   // yet (e.g. the 2ml sample tier on an older product) can be added here.
   if (input.variants !== undefined) {
     for (const v of input.variants) {
-      await supabase
-        .from("product_variants")
-        .upsert(
-          { product_id: id, ml: v.ml, price: v.price, is_active: v.active },
-          { onConflict: "product_id,ml" },
-        );
+      await supabase.from("product_variants").upsert(
+        {
+          product_id: id,
+          ml: v.ml,
+          price: v.price,
+          // 0 буюу хоосон = хямдрал байхгүй. Мөрийг үргэлж бичих нь чухал —
+          // тэгэхгүй бол хямдралыг цуцлах арга байхгүй болно.
+          sale_price: v.salePrice && v.salePrice > 0 ? v.salePrice : null,
+          is_active: v.active,
+        },
+        { onConflict: "product_id,ml" },
+      );
     }
   }
 
@@ -130,8 +141,7 @@ export async function PATCH(
       product_id: id,
       tag_id: t.id,
     }));
-    if (links.length)
-      await supabase.from("product_custom_tags").insert(links);
+    if (links.length) await supabase.from("product_custom_tags").insert(links);
   }
 
   revalidatePublic();

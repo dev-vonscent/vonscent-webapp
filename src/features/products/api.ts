@@ -23,7 +23,10 @@ import { createPublicClient } from "@/lib/supabase/public";
 interface DbVariant {
   id: string;
   ml: number;
+  /** Үндсэн үнэ. */
   price: number;
+  /** Хямдарсан үнэ, эсвэл null (0054). */
+  sale_price: number | null;
   is_active: boolean;
 }
 interface DbImage {
@@ -59,7 +62,7 @@ interface DbProduct {
   bottle_ml: number;
   rating_avg: number;
   rating_count: number;
-  sale_pct: number;
+  is_featured: boolean | null;
   created_at: string;
   product_images: DbImage[];
   product_variants: DbVariant[];
@@ -78,9 +81,9 @@ const SELECT = `
   notes_top, notes_heart, notes_base,
   gender, concentration, scent_families, seasons,
   origin_country, release_year, bottle_ml,
-  rating_avg, rating_count, sale_pct, created_at,
+  rating_avg, rating_count, is_featured, created_at,
   product_images ( url, alt, sort_order, is_visible ),
-  product_variants ( id, ml, price, is_active ),
+  product_variants ( id, ml, price, sale_price, is_active ),
   inventory ( on_hand_ml, reserved_ml, is_sold_out ),
   product_tags ( tags ( slug, kind ) )
 `;
@@ -104,17 +107,26 @@ function mapProduct(row: DbProduct): ProductDetail {
     .map((v) => ({
       id: v.id,
       ml: v.ml,
-      price: v.price,
+      // Хямдарсан үнэ байвал БОДИТООР төлөх дүн нь тэр (0054). Сагс, захиалга,
+      // тайлан бүгд `price`-аар явдаг тул хямдрал энэ нэг мөрөөр бүх урсгалд
+      // хүчин төгөлдөр болно; үндсэн үнэ нь зөвхөн зураастай харагдана.
+      price: v.sale_price ?? v.price,
+      basePrice: v.price,
       isActive: v.is_active,
       inStock: !inv?.is_sold_out && availableMl >= v.ml,
     }));
 
   // "From" price quotes the cheapest size a customer can actually buy today.
   const sellable = variants.filter((v) => v.isActive && v.inStock);
-  const priced = (
-    sellable.length ? sellable : variants.filter((v) => v.isActive)
-  ).map((v) => v.price);
-  const startingPrice = priced.length ? Math.min(...priced) : 0;
+  const quotable = sellable.length
+    ? sellable
+    : variants.filter((v) => v.isActive);
+  // Хамгийн хямд хэмжээ — түүний ҮНДСЭН үнэ нь картан дээрх зураастай дүн.
+  const cheapest = quotable.length
+    ? quotable.reduce((a, b) => (a.price <= b.price ? a : b))
+    : null;
+  const startingPrice = cheapest?.price ?? 0;
+  const startingBasePrice = cheapest?.basePrice ?? 0;
 
   const tags = row.product_tags
     .map((pt) => (Array.isArray(pt.tags) ? pt.tags[0] : pt.tags)?.kind)
@@ -132,13 +144,14 @@ function mapProduct(row: DbProduct): ProductDetail {
     image: images[0] ?? null,
     images,
     startingPrice,
+    startingBasePrice,
     tags,
+    isFeatured: row.is_featured === true,
     // Sold out only once *every* size is unbuyable — a bottle with 8ml left
     // still sells 5ml, so it must not be greyed out in the grid.
     soldOut: sellable.length === 0,
     ratingAvg: row.rating_avg,
     ratingCount: row.rating_count,
-    salePct: row.sale_pct ?? 0,
     createdAt: row.created_at,
     description: row.description,
     notesDescription: row.notes_description ?? "",
@@ -221,11 +234,12 @@ function toListItem(p: ProductDetail): ProductListItem {
     seasons: p.seasons,
     image: p.image,
     startingPrice: p.startingPrice,
+    startingBasePrice: p.startingBasePrice,
     tags: p.tags,
+    isFeatured: p.isFeatured,
     soldOut: p.soldOut,
     ratingAvg: p.ratingAvg,
     ratingCount: p.ratingCount,
-    salePct: p.salePct,
     createdAt: p.createdAt,
   };
 }
@@ -261,6 +275,7 @@ export async function getCatalog(
     family,
     season,
     tags,
+    featured,
     ml,
     minPrice,
     maxPrice,
@@ -286,6 +301,7 @@ export async function getCatalog(
     )
       return false;
     if (tags?.length && !tags.some((t) => p.tags.includes(t))) return false;
+    if (featured && !p.isFeatured) return false;
     // "ml боломж" means sizes you can actually order right now.
     if (
       ml?.length &&
@@ -388,6 +404,23 @@ export async function getRelated(
     .sort((a, b) => b.s - a.s || a.p.name.localeCompare(b.p.name))
     .slice(0, limit)
     .map((x) => toListItem(x.p));
+}
+
+/**
+ * «Онцлох» гэж тэмдэглэсэн бараа (backlog C2) — нүүрийн 'featured' төрлийн
+ * хэсэг эндээс уншина. Хамгийн сүүлд нэмэгдсэн нь түрүүлж, дууссан нь хойно.
+ */
+export async function getFeaturedProducts(
+  limit = 8,
+): Promise<ProductListItem[]> {
+  const all = await fetchProducts();
+  return sortProducts(
+    all.filter((p) => p.isFeatured),
+    "new",
+  )
+    .sort((a, b) => Number(a.soldOut) - Number(b.soldOut))
+    .slice(0, limit)
+    .map(toListItem);
 }
 
 export async function getNewArrivals(limit = 8): Promise<ProductListItem[]> {

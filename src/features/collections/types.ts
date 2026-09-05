@@ -21,9 +21,12 @@ export interface CollectionPriceAtMl {
   ml: number;
   /** Σ member prices at this ml (pre-discount). */
   memberSum: number;
-  /** Discounted, rounded bundle price. */
+  /** Эцсийн үнэ: тогтмол үнэ, эсвэл нийлбэрээс хувь хассан дүн. */
   price: number;
-  /** The % applied at this size: the per-ml override, else the bundle default. */
+  /**
+   * Бодит хэмнэлтийн хувь (`memberSum` → `price`). Админы бичсэн хувь биш —
+   * тогтмол үнэтэй хэмжээнд тэр хувь худал болно.
+   */
   discountPct: number;
   /** memberSum − price. */
   saved: number;
@@ -43,15 +46,17 @@ export interface Collection {
   discountPct: number;
   /** Per-size overrides, keyed by ml (0051). Empty when the default rules all. */
   mlDiscounts: Record<number, number>;
+  /**
+   * Хэмжээ бүрийн тогтмол үнэ (0054, B6). Тухайн хэмжээ энд байвал хувийн
+   * тооцоо огт хийгдэхгүй — админы бичсэн үнэ нь эцсийн үнэ.
+   */
+  mlPrices: Record<number, number>;
   /** Span of the discounts actually on offer — «5-10%» on a card. */
   discountRange: { min: number; max: number };
   /** Customer-facing badges, shared with products. */
   tags: TagKind[];
   /** Cover image (collection.image_url, or the first member's image). */
   image: string | null;
-  /** Resolved free-gift size (collection.gift_ml ?? settings.giftMl). */
-  giftMl: number;
-  giftEnabled: boolean;
   isActive: boolean;
   isFeatured: boolean;
   members: CollectionMember[];
@@ -89,15 +94,6 @@ export interface BuilderProduct {
   ratingCount: number;
 }
 
-/** A perfume the buyer may pick as the free gift (not in the bundle). */
-export interface GiftCandidate {
-  productId: string;
-  slug: string;
-  name: string;
-  brand: string;
-  image: ProductImage | null;
-}
-
 /** Admin-tunable collection settings (settings.collection). */
 export interface CollectionSettings {
   customEnabled: boolean;
@@ -105,9 +101,6 @@ export interface CollectionSettings {
   maxItems: number | null;
   customDiscountPct: number;
   baseDefaultDiscountPct: number;
-  giftEnabled: boolean;
-  giftMl: number;
-  giftMlOptions: number[];
   roundTo: number;
 }
 
@@ -117,8 +110,5 @@ export const DEFAULT_COLLECTION_SETTINGS: CollectionSettings = {
   maxItems: null,
   customDiscountPct: 5,
   baseDefaultDiscountPct: 5,
-  giftEnabled: true,
-  giftMl: 1,
-  giftMlOptions: [1, 2],
   roundTo: 100,
 };

@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  getMyCollections,
-  getGiftCandidates,
-  getCollectionSettings,
-} from "@/features/collections/api";
+import { getMyCollections } from "@/features/collections/api";
 import { MyCollections } from "@/features/collections/components/my-collections";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
@@ -31,13 +27,7 @@ export default async function MyCollectionsPage() {
     );
   }
 
-  const [collections, settings] = await Promise.all([
-    getMyCollections(),
-    getCollectionSettings(),
-  ]);
-  const giftCandidates = settings.giftEnabled
-    ? await getGiftCandidates([], settings.giftMl)
-    : [];
+  const collections = await getMyCollections();
 
   return (
     <div className="space-y-6">
@@ -46,12 +36,7 @@ export default async function MyCollectionsPage() {
           Өөрийн угсарсан багцууд — сагсанд нэмэх, нэр солих, устгах.
         </p>
       </div>
-      <MyCollections
-        collections={collections}
-        giftCandidates={giftCandidates}
-        giftEnabled={settings.giftEnabled}
-        giftMl={settings.giftMl}
-      />
+      <MyCollections collections={collections} />
     </div>
   );
 }

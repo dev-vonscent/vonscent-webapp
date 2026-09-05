@@ -80,10 +80,11 @@ export async function POST(req: Request) {
   }
 
   if (supabase) {
-    // Monthly gift samples: the allowance is one 1ml pick per full 200,000₮
-    // of goods value AFTER the coupon (questions.md №3), so validate the
-    // coupon here the same way place_order will and price the picks against
-    // the discounted figure.
+    // Бэлгийн 1мл дээж: эрх нь купоны дараах барааны дүнгийн 200,000₮ тутамд
+    // 1, эсвэл preset 5/10/20мл багцын баталгаа — алийг нь ихийг нь (src/lib/
+    // gift.ts). Тиймээс купоныг энд place_order-той ижил аргаар шалгаад
+    // хямдарсан дүнгээр эрхийг бодно. Сонголт бүр серверт дахин шалгагдана —
+    // сан дотор байгаа эсэх, үлдэгдэл, эрхийн тоо.
     let giftLines: Awaited<ReturnType<typeof priceGiftLines>> = [];
     if (input.giftProductIds.length > 0) {
       let discount = 0;
@@ -101,7 +102,7 @@ export async function POST(req: Request) {
       giftLines = await priceGiftLines(
         input.giftProductIds,
         Math.max(summary.subtotal - discount, 0),
-        summary.bundleQty,
+        summary.giftGuarantee,
       );
     }
     const allLines = [...summary.lines, ...giftLines];
@@ -142,7 +143,7 @@ export async function POST(req: Request) {
           qty: l.qty,
         };
         // Bundle lines carry a server-computed unit price + grouping, and a
-        // monthly gift sample is a 0₮ line; loose items send none so
+        // бэлгийн 1мл дээж нь 0₮ мөр; loose items send none so
         // place_order charges the variant's list price.
         if (l.collectionName !== undefined || l.isGift) {
           return {

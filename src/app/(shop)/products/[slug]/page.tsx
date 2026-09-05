@@ -22,6 +22,7 @@ import {
 } from "@/components/shared/json-ld";
 import { getScentFamilyLabels } from "@/features/taxonomy/api";
 import { ReviewSection } from "@/features/reviews/components/review-section";
+import { GenderBadge } from "@/features/products/components/gender-badge";
 import { GENDER_LABEL, SEASON_LABEL } from "@/lib/constants";
 
 /**
@@ -92,7 +93,7 @@ export default async function ProductPage({
   const familyLabels = product.scentFamilies.map((f) => familyLabelMap[f] ?? f);
 
   return (
-    <div className="mx-auto max-w-352 p-4  sm:py-8 md:px-8">
+    <div className="mx-auto max-w-352 p-4 sm:py-8 md:px-8">
       <JsonLd
         data={[
           productJsonLd(product),
@@ -151,6 +152,8 @@ export default async function ProductPage({
                     {TAG_LABEL[t]}
                   </Badge>
                 ))}
+                {/* Хүйс — тагуудын хажууд нэг мөрөнд (backlog C1). */}
+                <GenderBadge gender={product.gender} />
               </div>
               <div className="flex items-start justify-between gap-3">
                 <h1 className="font-serif text-3xl font-semibold tracking-tight">

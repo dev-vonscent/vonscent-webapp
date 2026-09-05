@@ -41,18 +41,9 @@ export interface CartCollectionMember {
   price: number;
 }
 
-/** The free gift chosen for a bundle. */
-export interface CartCollectionGift {
-  productId: string;
-  name: string;
-  brand: string;
-  image: string | null;
-  ml: number;
-}
-
 /** A base or custom bundle in the cart — rendered and edited as one group. */
 export interface CartCollection {
-  /** Stable key: bundle identity + ml + gift, so identical configs merge. */
+  /** Stable key: bundle identity + ml, so identical configs merge. */
   key: string;
   collectionId: string | null;
   type: "base" | "custom";
@@ -62,8 +53,7 @@ export interface CartCollection {
   discountPct: number;
   ml: number;
   members: CartCollectionMember[];
-  gift: CartCollectionGift | null;
-  /** Discounted bundle price (excludes the free gift). */
+  /** Discounted bundle price. */
   unitPrice: number;
   qty: number;
 }
@@ -88,10 +78,10 @@ interface CartState {
 }
 
 /**
- * Identity of a bundle config: same collection + ml + gift folds together.
+ * Identity of a bundle config: same collection + ml folds together.
  * A custom bundle has no collectionId, so its identity is its member set —
- * otherwise two different custom bundles at the same ml/gift would merge and
- * the second one's members would silently vanish (audit R1).
+ * otherwise two different custom bundles at the same ml would merge and the
+ * second one's members would silently vanish (audit R1).
  */
 function collectionKey(c: Omit<CartCollection, "key" | "qty">): string {
   const identity =
@@ -100,7 +90,7 @@ function collectionKey(c: Omit<CartCollection, "key" | "qty">): string {
       .map((m) => m.variantId)
       .sort()
       .join("+")}`;
-  return [identity, c.ml, c.gift?.productId ?? "nogift"].join(":");
+  return [identity, c.ml].join(":");
 }
 
 export const useCart = create<CartState>()(

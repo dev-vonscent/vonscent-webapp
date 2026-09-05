@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { ImagePlus, Loader2, X } from "lucide-react";
+import { ImagePlus, X } from "lucide-react";
 import { IMAGE_ACCEPT } from "@/lib/storage/limits";
 import { prepareUpload } from "@/lib/storage/prepare-upload";
-import { adminFetch } from "@/features/admin/lib/mutate";
+import { xhrUpload, uploadErrorMessage } from "@/lib/storage/upload-progress";
+import { UploadProgress } from "@/features/admin/components/upload-progress";
 
 /**
  * Wide-format single-image picker for marketing imagery (hero banners, promo
@@ -25,6 +26,8 @@ export function ImageUpload({
   label?: string;
 }) {
   const [busy, setBusy] = React.useState(false);
+  /** 0–100 while the bytes leave the browser; null once the server is working. */
+  const [progress, setProgress] = React.useState<number | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [warning, setWarning] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -38,17 +41,26 @@ export function ImageUpload({
       return;
     }
     setBusy(true);
+    setProgress(0);
     try {
       const fd = new FormData();
       fd.append("file", prepared.file);
       fd.append("folder", folder);
-      const res = await adminFetch<{ url?: string; width?: number }>(
-        "/api/upload",
-        { method: "POST", body: fd },
-      );
-      const data = res.ok ? res.data : null;
-      if (!res.ok) {
-        setError(res.demo ? "Demo горим: зураг хадгалагдсангүй." : res.error);
+      const res = await xhrUpload<{
+        url?: string;
+        width?: number;
+        error?: string;
+        demo?: boolean;
+      }>({
+        url: "/api/upload",
+        body: fd,
+        // 100% гэдэг нь «серверт хүрсэн» гэсэн үг; дараа нь сервер зургийг
+        // дахин кодлодог тул тодорхойгүй spinner руу шилжинэ.
+        onProgress: (pct) => setProgress(pct < 100 ? pct : null),
+      });
+      const data = res.json;
+      if (res.status < 200 || res.status >= 300 || data?.demo) {
+        setError(uploadErrorMessage(res, "Зураг байршуулж чадсангүй"));
       } else if (!data?.url) {
         setError("Оруулахад алдаа гарлаа.");
       } else {
@@ -61,8 +73,11 @@ export function ImageUpload({
         }
         onChange(data.url);
       }
+    } catch {
+      setError("Сүлжээний алдаа — дахин оролдоно уу.");
     } finally {
       setBusy(false);
+      setProgress(null);
       if (inputRef.current) inputRef.current.value = "";
     }
   }
@@ -78,7 +93,7 @@ export function ImageUpload({
           className="border-muted-foreground/40 bg-secondary text-muted-foreground hover:border-muted-foreground/70 hover:bg-accent relative flex aspect-16/10 w-full items-center justify-center overflow-hidden rounded-md border border-dashed transition-colors disabled:opacity-60"
         >
           {busy ? (
-            <Loader2 className="size-5 animate-spin" />
+            <UploadProgress pct={progress} />
           ) : value ? (
             // Plain <img>: previously-saved values can point at hosts outside
             // next.config's allowlist (pasted Google Drive links), and

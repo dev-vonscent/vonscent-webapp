@@ -86,7 +86,7 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
     links: [
       { href: "/admin/promotions", label: "Урамшуулал", icon: TicketPercent },
       { href: "/admin/loyalty", label: "V point", icon: Award },
-      { href: "/admin/gifts", label: "Сарын бэлэг", icon: Gift },
+      { href: "/admin/gifts", label: "Бэлгийн үнэрүүд", icon: Gift },
     ],
   },
   {

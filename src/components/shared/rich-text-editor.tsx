@@ -21,6 +21,14 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { prepareUpload } from "@/lib/storage/prepare-upload";
+import { xhrUpload, uploadErrorMessage } from "@/lib/storage/upload-progress";
+
+/** Явцтай байршуулалт — toolbar-ын доор нэг мөр бар. */
+interface UploadState {
+  label: string;
+  /** 0–100; null = серверт хүрсэн, боловсруулж байна. */
+  pct: number | null;
+}
 
 /**
  * TipTap WYSIWYG for admin content (blog body, FAQ answers, about story).
@@ -61,6 +69,8 @@ function ToolbarButton({
 }
 
 function Toolbar({ editor }: { editor: Editor }) {
+  const [uploading, setUploading] = React.useState<UploadState | null>(null);
+
   function setLink() {
     const prev = editor.getAttributes("link").href as string | undefined;
     const url = window.prompt("Холбоосын URL", prev ?? "https://");
@@ -83,19 +93,31 @@ function Toolbar({ editor }: { editor: Editor }) {
     const form = new FormData();
     form.append("file", prepared.file);
     form.append("folder", "blog");
-    const res = await fetch("/api/admin/upload", {
-      method: "POST",
-      body: form,
-    });
-    const json = (await res.json().catch(() => null)) as {
-      url?: string;
-      error?: string;
-    } | null;
-    if (!res.ok || !json?.url) {
-      toast.error(json?.error ?? `Зураг байршуулж чадсангүй (${res.status}).`);
-      return;
+    setUploading({ label: "Зураг байршуулж байна", pct: 0 });
+    try {
+      const res = await xhrUpload<{
+        url?: string;
+        error?: string;
+        demo?: boolean;
+      }>({
+        url: "/api/admin/upload",
+        body: form,
+        onProgress: (pct) =>
+          setUploading({
+            label: "Зураг байршуулж байна",
+            pct: pct < 100 ? pct : null,
+          }),
+      });
+      if (res.status < 200 || res.status >= 300 || !res.json?.url) {
+        toast.error(uploadErrorMessage(res, "Зураг байршуулж чадсангүй"));
+        return;
+      }
+      editor.chain().focus().setImage({ src: res.json.url }).run();
+    } catch {
+      toast.error("Сүлжээний алдаа — дахин оролдоно уу.");
+    } finally {
+      setUploading(null);
     }
-    editor.chain().focus().setImage({ src: json.url }).run();
   }
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -160,6 +182,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       </ToolbarButton>
       <ToolbarButton
         label="Зураг оруулах"
+        disabled={uploading !== null}
         onClick={() => fileInputRef.current?.click()}
       >
         <ImageIcon className="size-4" />
@@ -190,6 +213,31 @@ function Toolbar({ editor }: { editor: Editor }) {
       >
         <Redo className="size-4" />
       </ToolbarButton>
+      {uploading && (
+        <div
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={uploading.pct ?? undefined}
+          aria-label={uploading.label}
+          className="text-muted-foreground flex w-full items-center gap-2 px-1 pt-1 text-xs"
+        >
+          <span className="bg-border h-1 flex-1 overflow-hidden rounded-full">
+            <span
+              className={cn(
+                "bg-foreground block h-full transition-[width] duration-150",
+                uploading.pct === null && "animate-pulse",
+              )}
+              style={{ width: `${uploading.pct ?? 100}%` }}
+            />
+          </span>
+          <span className="tabular-nums">
+            {uploading.pct === null
+              ? "Боловсруулж байна…"
+              : `${uploading.label}… ${uploading.pct}%`}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

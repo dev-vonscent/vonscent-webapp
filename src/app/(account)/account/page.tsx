@@ -125,7 +125,10 @@ export default function ProfilePage() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { items: ProductListItem[] } | null) => {
         if (cancelled || !data) return;
-        setSaleWishCount(data.items.filter((p) => p.salePct > 0).length);
+        setSaleWishCount(
+          data.items.filter((p) => p.startingBasePrice > p.startingPrice)
+            .length,
+        );
       })
       .catch(() => undefined);
     return () => {

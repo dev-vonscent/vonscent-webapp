@@ -30,6 +30,11 @@ export function parseFilters(params: Params): CatalogFilters {
   const tags = list(params.tags).filter((t): t is TagKind =>
     TAGS.includes(t as TagKind),
   );
+  // `featured=1` — нүүрийн «Онцлох» хэсгийн «Бүгд» холбоос (backlog C2).
+  const featuredRaw = Array.isArray(params.featured)
+    ? params.featured[0]
+    : params.featured;
+  const featured = featuredRaw === "1" || featuredRaw === "true";
   const ml = list(params.ml)
     .map(Number)
     .filter((n) => (ML_SIZES as readonly number[]).includes(n));
@@ -50,6 +55,7 @@ export function parseFilters(params: Params): CatalogFilters {
     family,
     season,
     tags,
+    featured: featured || undefined,
     ml,
     minPrice: num(params.minPrice),
     maxPrice: num(params.maxPrice),

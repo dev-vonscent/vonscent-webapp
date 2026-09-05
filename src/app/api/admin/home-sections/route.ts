@@ -10,7 +10,7 @@ const schema = z.object({
   title: z.string().min(1).max(80),
   subtitle: z.string().max(160).default(""),
   href: z.string().max(200).default(""),
-  kind: z.enum(["manual", "tag"]).default("manual"),
+  kind: z.enum(["manual", "tag", "featured"]).default("manual"),
   tag: z.enum(["new", "hot", "sale"]).nullable().default(null),
   maxItems: z.number().int().min(1).max(24).default(8),
   sortOrder: z.number().int().default(0),
@@ -34,8 +34,8 @@ export async function POST(req: Request) {
     subtitle: i.subtitle,
     href: i.href,
     kind: i.kind,
-    // A manual section must not keep a stale tag around: `kind` is what the
-    // reader switches on, and a leftover tag would be confusing in the admin.
+    // Only a tag section keeps a tag: `kind` is what the reader switches on,
+    // and a leftover tag would be confusing in the admin.
     tag: i.kind === "tag" ? i.tag : null,
     max_items: i.maxItems,
     sort_order: i.sortOrder,

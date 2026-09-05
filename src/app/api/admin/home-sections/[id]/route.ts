@@ -9,7 +9,7 @@ const patchSchema = z.object({
   title: z.string().min(1).max(80).optional(),
   subtitle: z.string().max(160).optional(),
   href: z.string().max(200).optional(),
-  kind: z.enum(["manual", "tag"]).optional(),
+  kind: z.enum(["manual", "tag", "featured"]).optional(),
   tag: z.enum(["new", "hot", "sale"]).nullable().optional(),
   maxItems: z.number().int().min(1).max(24).optional(),
   sortOrder: z.number().int().optional(),
@@ -59,8 +59,8 @@ export async function PATCH(
   if (d.href !== undefined) update.href = d.href;
   if (d.kind !== undefined) {
     update.kind = d.kind;
-    // Switching to a manual list drops the tag, so the two can't disagree.
-    if (d.kind === "manual") update.tag = null;
+    // Switching away from a tag rail drops the tag, so the two can't disagree.
+    if (d.kind !== "tag") update.tag = null;
   }
   if (d.tag !== undefined && update.tag === undefined) update.tag = d.tag;
   if (d.maxItems !== undefined) update.max_items = d.maxItems;

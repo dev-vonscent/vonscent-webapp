@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { mutate, mutateJson } from "@/features/admin/lib/mutate";
 import {
@@ -9,6 +10,7 @@ import {
   Eye,
   EyeOff,
   Plus,
+  Star,
   Trash2,
   X,
 } from "lucide-react";
@@ -38,6 +40,19 @@ const TAG_LABEL: Record<string, string> = {
   new: "Шинэ",
   hot: "Эрэлттэй",
   sale: "Хямдралтай",
+};
+
+type SectionKind = AdminHomeSection["kind"];
+
+/**
+ * Хэсгийн эх сурвалж. 'tag' төрлийг админ шинээр сонгодоггүй (хуучин
+ * таг-рейлүүд л тэр төрөлтэй), тиймээс сонголтод зөвхөн тухайн хэсэг өөрөө
+ * tag байвал гарна.
+ */
+const KIND_LABEL: Record<SectionKind, string> = {
+  manual: "Гараар сонгосон бараа",
+  featured: "«Онцлох» тэмдэгтэй бараа (автомат)",
+  tag: "Тагтай бараа (автомат)",
 };
 
 /**
@@ -208,7 +223,12 @@ function SectionCard({
   const [title, setTitle] = React.useState(section.title);
   const [subtitle, setSubtitle] = React.useState(section.subtitle);
   const [href, setHref] = React.useState(section.href);
+  const [kind, setKind] = React.useState<SectionKind>(section.kind);
   const [picked, setPicked] = React.useState<string[]>(section.productIds);
+  const kinds: SectionKind[] =
+    section.kind === "tag"
+      ? ["tag", "manual", "featured"]
+      : ["manual", "featured"];
 
   const byId = React.useMemo(
     () => new Map(products.map((p) => [p.id, p])),
@@ -301,87 +321,133 @@ function SectionCard({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label>Бараа ({picked.length})</Label>
-          {picked.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Бараа сонгоогүй тул энэ хэсэг нүүр хуудсанд харагдахгүй.
-            </p>
-          ) : (
-            <ol className="space-y-1.5">
-              {picked.map((id, i) => {
-                const p = byId.get(id);
-                return (
-                  <li
-                    key={id}
-                    className="bg-secondary flex items-center gap-2 rounded-md px-3 py-1.5 text-sm"
-                  >
-                    <span className="text-muted-foreground w-5 text-xs">
-                      {i + 1}.
-                    </span>
-                    <span className="min-w-0 flex-1 truncate">
-                      {p ? `${p.brand} — ${p.name}` : "Устсан бараа"}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => movePicked(i, -1)}
-                      disabled={i === 0}
-                      aria-label="Дээш"
-                      className="text-muted-foreground disabled:opacity-30"
-                    >
-                      <ChevronUp className="size-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => movePicked(i, 1)}
-                      disabled={i === picked.length - 1}
-                      aria-label="Доош"
-                      className="text-muted-foreground disabled:opacity-30"
-                    >
-                      <ChevronDown className="size-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPicked(picked.filter((x) => x !== id))}
-                      aria-label="Хасах"
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      <X className="size-4" />
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-          )}
-
-          <Select
-            value=""
-            onValueChange={(id) => setPicked([...picked, id])}
-            disabled={available.length === 0}
-          >
+        <div className="space-y-1.5">
+          <Label>Бараа хаанаас ирэх вэ</Label>
+          <Select value={kind} onValueChange={(v) => setKind(v as SectionKind)}>
             <SelectTrigger className="max-w-sm">
-              <SelectValue placeholder="Бараа нэмэх" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {available.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.brand} — {p.name}
+              {kinds.map((k) => (
+                <SelectItem key={k} value={k}>
+                  {KIND_LABEL[k]}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        {section.kind === "tag" && section.tag && (
+        {kind === "featured" ? (
+          // «Онцлох» тэмдэг барааны өөрийнх нь дээр амьдардаг (0055) — энд
+          // давхар жагсаалт хөтөлдөггүй, тиймээс сонгогч биш заавар.
+          <div className="bg-secondary flex items-start gap-3 rounded-md px-4 py-3 text-sm">
+            <Star className="text-gold-strong mt-0.5 size-4 shrink-0" />
+            <p className="text-muted-foreground">
+              Барааны хуудсан дээр «Онцлох бараа» гэж тэмдэглэсэн бүх бараа энд
+              автоматаар гарна (хамгийн ихдээ {section.max_items}). Тэмдгийг{" "}
+              <Link
+                href="/admin/products"
+                className="text-foreground underline underline-offset-2"
+              >
+                барааны жагсаалт
+              </Link>
+              -ын мөрийн цэснээс шууд солино.
+            </p>
+          </div>
+        ) : kind === "tag" ? (
           <p className="text-muted-foreground text-xs">
-            Энэ хэсэг «{TAG_LABEL[section.tag] ?? section.tag}» тагтай барааг
-            автоматаар харуулна — гараар сонгосон жагсаалт үйлчлэхгүй.
+            Энэ хэсэг «
+            {section.tag ? (TAG_LABEL[section.tag] ?? section.tag) : ""}» тагтай
+            барааг автоматаар харуулна — гараар сонгосон жагсаалт үйлчлэхгүй.
           </p>
+        ) : (
+          <div className="space-y-2">
+            <Label>Бараа ({picked.length})</Label>
+            {picked.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                Бараа сонгоогүй тул энэ хэсэг нүүр хуудсанд харагдахгүй.
+              </p>
+            ) : (
+              <ol className="space-y-1.5">
+                {picked.map((id, i) => {
+                  const p = byId.get(id);
+                  return (
+                    <li
+                      key={id}
+                      className="bg-secondary flex items-center gap-2 rounded-md px-3 py-1.5 text-sm"
+                    >
+                      <span className="text-muted-foreground w-5 text-xs">
+                        {i + 1}.
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">
+                        {p ? `${p.brand} — ${p.name}` : "Устсан бараа"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => movePicked(i, -1)}
+                        disabled={i === 0}
+                        aria-label="Дээш"
+                        className="text-muted-foreground disabled:opacity-30"
+                      >
+                        <ChevronUp className="size-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => movePicked(i, 1)}
+                        disabled={i === picked.length - 1}
+                        aria-label="Доош"
+                        className="text-muted-foreground disabled:opacity-30"
+                      >
+                        <ChevronDown className="size-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPicked(picked.filter((x) => x !== id))
+                        }
+                        aria-label="Хасах"
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+
+            <Select
+              value=""
+              onValueChange={(id) => setPicked([...picked, id])}
+              disabled={available.length === 0}
+            >
+              <SelectTrigger className="max-w-sm">
+                <SelectValue placeholder="Бараа нэмэх" />
+              </SelectTrigger>
+              <SelectContent>
+                {available.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.brand} — {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         )}
 
         <Button
           disabled={busy}
-          onClick={() => onPatch({ title, subtitle, href, products: picked })}
+          onClick={() =>
+            onPatch({
+              title,
+              subtitle,
+              href,
+              kind,
+              // Гараар сонгосон жагсаалт зөвхөн 'manual' үед л утгатай;
+              // бусад төрөлд хуучин сонголтыг устгаж цэвэрлэнэ.
+              products: kind === "manual" ? picked : [],
+            })
+          }
         >
           Хадгалах
         </Button>

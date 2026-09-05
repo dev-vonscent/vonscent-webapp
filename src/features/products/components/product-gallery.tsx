@@ -69,7 +69,7 @@ export function ProductGallery({
       <div className="relative -mx-4 -mt-20 sm:mx-0 sm:mt-0">
         <div
           ref={emblaRef}
-          className=" sm:bg-none overflow-hidden sm:rounded-2xl"
+          className="overflow-hidden sm:rounded-2xl sm:bg-none"
         >
           <div className="flex">
             {images.map((img, i) => (
@@ -78,7 +78,7 @@ export function ProductGallery({
                 type="button"
                 onClick={() => openLightbox(i)}
                 aria-label={`${name} — зураг ${i + 1} томруулах`}
-                className="bg-none relative aspect-4/5 min-w-0 flex-[0_0_100%] cursor-zoom-in sm:aspect-square"
+                className="relative aspect-4/5 min-w-0 flex-[0_0_100%] cursor-zoom-in bg-none sm:aspect-square"
               >
                 <Image
                   src={img.url}
@@ -102,7 +102,7 @@ export function ProductGallery({
                 aria-label={`Зураг ${i + 1}`}
                 aria-current={i === active ? "true" : undefined}
                 className={cn(
-                  "relative h-1.5 rounded-full transition-all before:absolute before:top-1/2 before:left-1/2 before:h-11 before:w-6 before:-translate-1/2  before:content-['']",
+                  "relative h-1.5 rounded-full transition-all before:absolute before:top-1/2 before:left-1/2 before:h-11 before:w-6 before:-translate-1/2 before:content-['']",
                   i === active
                     ? "bg-foreground w-6"
                     : "bg-muted-foreground/60 w-1.5",
@@ -151,9 +151,7 @@ export function ProductGallery({
         plugins={many ? [Zoom, Thumbnails] : [Zoom]}
         carousel={{ finite: !many }}
         render={
-          many
-            ? undefined
-            : { buttonPrev: () => null, buttonNext: () => null }
+          many ? undefined : { buttonPrev: () => null, buttonNext: () => null }
         }
         zoom={{ maxZoomPixelRatio: 3 }}
       />

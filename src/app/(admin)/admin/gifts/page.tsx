@@ -5,8 +5,9 @@ import { GiftPoolManager } from "@/features/admin/components/gift-pool-manager";
 export const dynamic = "force-dynamic";
 
 /**
- * Сар бүрийн бэлгийн sample-ийн сан (questions.md №2): the admin curates the
- * 4–8 perfumes buyers can pick their free 1ml samples from at checkout.
+ * Бэлгийн үнэрүүдийн сан: админ 6–8 ус сонгож, худалдан авагч checkout дээр
+ * зөвхөн эндээс 1мл бэлгээ сонгоно. Сар бүр солих үүрэггүй — хүссэн үедээ
+ * шинэчилнэ (backlog A2–A3).
  */
 export default async function AdminGiftsPage() {
   const [products, settings] = await Promise.all([
@@ -18,12 +19,13 @@ export default async function AdminGiftsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-serif text-2xl font-semibold">
-          Сарын бэлэг — 1мл дээж
+          Бэлгийн үнэрүүд — 1мл дээж
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Худалдан авагч 200,000₮ тутамд (купоны дараах, хүргэлтгүй дүнгээр)
-          доорх уснуудаас 1мл дээжээ захиалга баталгаажуулах үедээ сонгоно. Сар бүр 4–8 ус
-          сонгохыг зөвлөнө.
+          Худалдан авагч 200,000₮ тутамд (купоны дараах, хүргэлтгүй дүнгээр),
+          мөн бэлэн 5/10/20мл багц бүрээс 1 ширхэг — алийг нь ихийг нь — доорх
+          уснуудаас 1мл дээжээр сонгоно. 6–8 ус байлгахыг зөвлөнө; сар бүр
+          солих шаардлагагүй, хүссэн үедээ шинэчилнэ.
         </p>
       </div>
       <GiftPoolManager

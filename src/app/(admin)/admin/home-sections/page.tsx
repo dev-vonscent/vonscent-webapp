@@ -16,7 +16,8 @@ export default async function HomeSectionsPage() {
         <h1 className="font-serif text-2xl font-semibold">Нүүрийн хэсэг</h1>
         <p className="text-muted-foreground mt-1 text-sm">
           «Онцлох», «Багц уснууд» зэрэг хэсгийг үүсгэж, дотор нь харагдах барааг
-          гараар сонгож эрэмбэлнэ. Бараагүй хэсэг нүүр хуудсанд харагдахгүй.
+          гараар сонгож эрэмбэлнэ, эсвэл «Онцлох» тэмдэгтэй барааг автоматаар
+          харуулна. Бараагүй хэсэг нүүр хуудсанд харагдахгүй.
         </p>
       </div>
       <HomeSectionManager

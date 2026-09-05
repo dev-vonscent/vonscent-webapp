@@ -37,9 +37,7 @@ export function breadcrumbJsonLd(
 }
 
 export function productJsonLd(product: ProductDetail): Json {
-  const prices = product.variants
-    .filter((v) => v.isActive)
-    .map((v) => v.price);
+  const prices = product.variants.filter((v) => v.isActive).map((v) => v.price);
   const low = prices.length ? Math.min(...prices) : product.startingPrice;
   const high = prices.length ? Math.max(...prices) : product.startingPrice;
 
@@ -79,7 +77,7 @@ export function articleJsonLd(post: BlogPost): Json {
     "@type": "Article",
     headline: post.title,
     description: post.excerpt,
-    image: [post.cover],
+    image: post.cover ? [post.cover] : [],
     datePublished: post.date,
     url: `${SITE.url}/blog/${post.slug}`,
     author: { "@type": "Organization", name: SITE.name, url: SITE.url },
@@ -87,9 +85,7 @@ export function articleJsonLd(post: BlogPost): Json {
   };
 }
 
-export function faqJsonLd(
-  faqs: { question: string; answer: string }[],
-): Json {
+export function faqJsonLd(faqs: { question: string; answer: string }[]): Json {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",

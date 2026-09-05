@@ -6,19 +6,14 @@ import { Gift } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
-import { GIFT_THRESHOLD } from "@/lib/constants";
-
-interface GiftOption {
-  id: string;
-  name: string;
-  brand: string;
-  image: string | null;
-}
+import { useGiftPool } from "@/features/gifts/use-gift-pool";
 
 /**
- * Сар бүрийн бэлгийн 1мл sample сонгох хэсэг (questions.md №2–3). Shown when
- * the goods value (after coupon) clears 200,000₮ — one pick per full 200k.
- * The server re-validates every pick, so this is presentation only.
+ * Бэлгийн 1мл дээж сонгох хэсэг. Эрх нь купоны дараах барааны дүнгийн
+ * 200,000₮ тутамд 1, эсвэл preset 5/10/20мл багцын баталгаа — ихийг нь.
+ * Сонголт зөвхөн админы бэлгийн сангаас гарна: сан хоосон / унтраалттай бол
+ * энэ хэсэг бүхэлдээ харагдахгүй. Сервер бүх сонголтыг дахин шалгадаг тул
+ * энэ нь зөвхөн харагдац.
  */
 export function GiftSamplePicker({
   allowance,
@@ -30,22 +25,8 @@ export function GiftSamplePicker({
   value: string[];
   onChange: (ids: string[]) => void;
 }) {
-  const [options, setOptions] = React.useState<GiftOption[] | null>(null);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    fetch("/api/gifts")
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled) setOptions(d?.enabled ? (d.products ?? []) : []);
-      })
-      .catch(() => {
-        if (!cancelled) setOptions([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const pool = useGiftPool();
+  const options = pool?.enabled ? pool.products : [];
 
   // Drop picks that no longer fit a shrunken allowance (coupon added, items
   // removed) so the submit payload never over-asks.
@@ -53,7 +34,7 @@ export function GiftSamplePicker({
     if (value.length > allowance) onChange(value.slice(0, allowance));
   }, [allowance, value, onChange]);
 
-  if (allowance <= 0 || !options || options.length === 0) return null;
+  if (allowance <= 0 || options.length === 0) return null;
 
   function toggle(id: string) {
     if (value.includes(id)) {
@@ -68,11 +49,11 @@ export function GiftSamplePicker({
       <CardContent className="space-y-3 p-6">
         <h2 className="flex items-center gap-2 font-serif text-lg font-semibold">
           <Gift className="text-gold-strong size-5" />
-          Бэлгийн 1мл sample
+          Бэлгийн 1мл дээж
         </h2>
         <p className="text-muted-foreground text-sm">
-          {formatPrice(GIFT_THRESHOLD)} тутамд 1 sample, багц бүр дор хаяж 1
-          — та <strong>{allowance}</strong> ширхэг сонгох эрхтэй (
+          {formatPrice(pool?.threshold ?? 0)} тутамд 1, бэлэн 5/10/20мл багц
+          бүрээс 1 — та <strong>{allowance}</strong> ширхэг сонгох эрхтэй (
           {value.length} сонгосон).
         </p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

@@ -4,7 +4,8 @@ export interface BlogPost {
   excerpt: string;
   category: string;
   date: string;
-  cover: string;
+  /** Нүүр зураг — байхгүй бол UI загварын placeholder харуулна. */
+  cover: string | null;
   /**
    * Post content. New posts store TipTap HTML; legacy/seed posts store plain
    * text with blank lines between paragraphs — <RichText> renders both.

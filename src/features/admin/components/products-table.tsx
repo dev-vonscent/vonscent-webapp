@@ -13,6 +13,7 @@ import { ProductRowActions } from "@/features/admin/components/product-row-actio
 import { adminFetch } from "@/features/admin/lib/mutate";
 import type { AdminProduct } from "@/features/admin/api";
 import { formatPrice } from "@/lib/format";
+import { Star } from "lucide-react";
 
 /**
  * The admin's single catalogue screen.
@@ -38,10 +39,18 @@ const columns: ColumnDef<AdminProduct, unknown>[] = [
     accessorKey: "name",
     header: "Нэр",
     cell: ({ row }) => (
-      <ProductNameLink
-        product={row.original}
-        className="block max-w-56 truncate"
-      />
+      <span className="flex max-w-56 items-center gap-1.5">
+        <ProductNameLink
+          product={row.original}
+          className="block min-w-0 truncate"
+        />
+        {row.original.isFeatured && (
+          <Star
+            className="fill-gold-strong text-gold-strong size-3.5 shrink-0"
+            aria-label="Онцлох бараа"
+          />
+        )}
+      </span>
     ),
   },
   {

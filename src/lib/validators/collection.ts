@@ -13,10 +13,21 @@ const mlSize = z.union([
  * overrode are sent; anything missing is charged `discountPct`, so an empty
  * array is a bundle priced the old, uniform way.
  */
-export const mlDiscountSchema = z.object({
-  ml: mlSize,
-  discountPct: z.number().min(0).max(100),
-});
+export const mlDiscountSchema = z
+  .object({
+    ml: mlSize,
+    /** Хувь. Тогтмол үнэ өгсөн үед хэрэггүй тул сонголттой (0054). */
+    discountPct: z.number().min(0).max(100).nullable().default(null),
+    /**
+     * Тухайн хэмжээний ТОГТМОЛ үнэ (0054, B6). Байвал эцсийн үнэ нь энэ —
+     * гишүүдийн үнэ өөрчлөгдсөн ч багцын үнэ хөдлөхгүй.
+     */
+    price: z.number().int().nonnegative().nullable().default(null),
+  })
+  // Хоосон мөр хадгалах нь утгагүй (DB-ийн check-тэй ижил дүрэм).
+  .refine((r) => r.discountPct != null || r.price != null, {
+    message: "Хувь эсвэл тогтмол үнийн аль нэгийг оруулна уу.",
+  });
 
 /** Base collection create — exactly 4 distinct products (client decision §14.3). */
 export const collectionCreateSchema = z.object({
@@ -36,7 +47,6 @@ export const collectionCreateSchema = z.object({
       (rows) => new Set(rows.map((r) => r.ml)).size === rows.length,
       "Хэмжээ давхардсан",
     ),
-  giftMl: z.number().int().positive().nullable().default(null),
   imageUrl: z.string().url().nullable().optional(),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),

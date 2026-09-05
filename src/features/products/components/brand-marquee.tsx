@@ -100,7 +100,7 @@ function Track({
   const loop = [...half, ...half];
   return (
     <div
-      className={`animate-marquee flex w-max items-center gap-10 pr-10 group-hover:paused group-focus-within:paused ${
+      className={`animate-marquee group-hover:paused group-focus-within:paused flex w-max items-center gap-10 pr-10 ${
         reverse ? "direction-[reverse]" : ""
       }`}
       style={{ animationDuration: `${half.length * SECONDS_PER_LOGO}s` }}

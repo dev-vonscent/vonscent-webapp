@@ -11,7 +11,6 @@ import type {
   Collection,
   CollectionMember,
   CollectionSettings,
-  GiftCandidate,
 } from "./types";
 import type { ProductDetail } from "@/lib/types";
 import type { Gender, TagKind } from "@/db/types";
@@ -33,19 +32,22 @@ interface DbCollection {
   description: string | null;
   discount_pct: number | string;
   image_url: string | null;
-  gift_ml: number | null;
   is_active: boolean;
   is_featured: boolean;
   collection_items: { product_id: string; sort_order: number }[];
-  collection_ml_discounts?: { ml: number; discount_pct: number | string }[];
+  collection_ml_discounts?: {
+    ml: number;
+    discount_pct: number | string | null;
+    price: number | null;
+  }[];
   collection_tags?: { tags: { kind: TagKind } | null }[];
 }
 
 const SELECT = `
   id, slug, type, user_id, name, gender, description,
-  discount_pct, image_url, gift_ml, is_active, is_featured,
+  discount_pct, image_url, is_active, is_featured,
   collection_items ( product_id, sort_order ),
-  collection_ml_discounts ( ml, discount_pct ),
+  collection_ml_discounts ( ml, discount_pct, price ),
   collection_tags ( tags ( kind ) )
 `;
 
@@ -53,7 +55,16 @@ const SELECT = `
 function toMlDiscounts(row: DbCollection): Record<number, number> {
   const out: Record<number, number> = {};
   for (const d of row.collection_ml_discounts ?? []) {
-    out[d.ml] = Number(d.discount_pct);
+    if (d.discount_pct != null) out[d.ml] = Number(d.discount_pct);
+  }
+  return out;
+}
+
+/** Хэмжээ бүрийн тогтмол үнэ (0054) — байгаа мөр нь хувийг гүйцээж дарна. */
+function toMlPrices(row: DbCollection): Record<number, number> {
+  const out: Record<number, number> = {};
+  for (const d of row.collection_ml_discounts ?? []) {
+    if (d.price != null) out[d.ml] = Number(d.price);
   }
   return out;
 }
@@ -114,11 +125,13 @@ function build(
   const complete = members.length === items.length && members.length > 0;
   const discountPct = Number(row.discount_pct);
   const mlDiscounts = toMlDiscounts(row);
+  const mlPrices = toMlPrices(row);
   const prices = memberPrices(
     members,
     discountPct,
     settings.roundTo,
     mlDiscounts,
+    mlPrices,
   );
   const availableMls = complete
     ? prices.filter((p) => p.available).map((p) => p.ml)
@@ -137,13 +150,12 @@ function build(
     description: row.description ?? "",
     discountPct,
     mlDiscounts,
+    mlPrices,
     discountRange: discountRange(prices, availableMls),
     tags: (row.collection_tags ?? [])
       .map((t) => t.tags?.kind)
       .filter((k): k is TagKind => Boolean(k)),
     image: row.image_url ?? members[0]?.image?.url ?? null,
-    giftMl: row.gift_ml ?? settings.giftMl,
-    giftEnabled: settings.giftEnabled,
     isActive: row.is_active,
     isFeatured: row.is_featured,
     members,
@@ -243,7 +255,8 @@ export async function getCollectionOrderInfo(id: string): Promise<{
   discountPct: number;
   /** Per-size overrides (0051) — the ordered ml is priced from these. */
   mlDiscounts: Record<number, number>;
-  giftMl: number | null;
+  /** Тогтмол үнэтэй хэмжээнүүд (0054) — байвал хувийн тооцоог бүрэн орлоно. */
+  mlPrices: Record<number, number>;
   /** Product ids of the collection's roster — the order must match it. */
   memberProductIds: string[];
 } | null> {
@@ -253,7 +266,7 @@ export async function getCollectionOrderInfo(id: string): Promise<{
   const { data } = await supabase
     .from("collections")
     .select(
-      "name, discount_pct, gift_ml, collection_items ( product_id ), collection_ml_discounts ( ml, discount_pct )",
+      "name, discount_pct, collection_items ( product_id ), collection_ml_discounts ( ml, discount_pct, price )",
     )
     .eq("id", id)
     .eq("is_active", true)
@@ -262,19 +275,26 @@ export async function getCollectionOrderInfo(id: string): Promise<{
   const row = data as {
     name: string;
     discount_pct: number;
-    gift_ml: number | null;
     collection_items: { product_id: string }[] | null;
-    collection_ml_discounts: { ml: number; discount_pct: number | string }[] | null;
+    collection_ml_discounts:
+      | {
+          ml: number;
+          discount_pct: number | string | null;
+          price: number | null;
+        }[]
+      | null;
   };
   const mlDiscounts: Record<number, number> = {};
+  const mlPrices: Record<number, number> = {};
   for (const d of row.collection_ml_discounts ?? []) {
-    mlDiscounts[d.ml] = Number(d.discount_pct);
+    if (d.discount_pct != null) mlDiscounts[d.ml] = Number(d.discount_pct);
+    if (d.price != null) mlPrices[d.ml] = Number(d.price);
   }
   return {
     name: row.name,
     discountPct: Number(row.discount_pct),
     mlDiscounts,
-    giftMl: row.gift_ml,
+    mlPrices,
     memberProductIds: (row.collection_items ?? []).map((i) => i.product_id),
   };
 }
@@ -306,25 +326,4 @@ export async function getBuilderProducts(): Promise<BuilderProduct[]> {
     createdAt: p.createdAt,
     ratingCount: p.ratingCount,
   }));
-}
-
-/**
- * Perfumes the buyer may pick as the free gift: active products not already in
- * the bundle, with enough source ml left to fill the gift size.
- */
-export async function getGiftCandidates(
-  excludeProductIds: string[],
-  giftMl: number,
-): Promise<GiftCandidate[]> {
-  const products = await fetchProducts();
-  const exclude = new Set(excludeProductIds);
-  return products
-    .filter((p) => !exclude.has(p.id) && !p.soldOut && p.availableMl >= giftMl)
-    .map((p) => ({
-      productId: p.id,
-      slug: p.slug,
-      name: p.name,
-      brand: p.brand,
-      image: p.image,
-    }));
 }
