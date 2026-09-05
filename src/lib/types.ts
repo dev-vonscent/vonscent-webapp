@@ -10,8 +10,18 @@ import type {
 export interface Variant {
   id: string;
   ml: number;
-  /** Effective charged price in integer ₮ (override ?? auto). */
+  /**
+   * Effective charged price in integer ₮ — the discounted figure when the
+   * admin set one, else the base price (0054). Everything that charges,
+   * sums or reports money uses this.
+   */
   price: number;
+  /**
+   * The admin's base price (`product_variants.price`). Equal to `price` when
+   * the size is not discounted; higher when it is, and then it is the
+   * crossed-out figure the storefront shows.
+   */
+  basePrice: number;
   isActive: boolean;
   /**
    * Can this size actually be filled from the remaining source ml?
@@ -40,14 +50,20 @@ export interface ProductListItem {
   /** Seasons this scent suits; empty = unspecified, "all" = year-round. */
   seasons: Season[];
   image: ProductImage | null;
-  /** Lowest active variant price (display "from …"). */
+  /** Lowest active variant price — discounts included (display "from …"). */
   startingPrice: number;
+  /**
+   * Base price of the same size `startingPrice` came from (0054). Greater than
+   * `startingPrice` only when that size is discounted, which is exactly when a
+   * card shows a crossed-out price. No percent is ever shown (backlog B4).
+   */
+  startingBasePrice: number;
   tags: TagKind[];
+  /** Админы «Онцлох» тэмдэг (0055) — нүүрийн онцлох хэсэг үүгээр бүрдэнэ. */
+  isFeatured: boolean;
   soldOut: boolean;
   ratingAvg: number;
   ratingCount: number;
-  /** Display-only discount % (0038) — 0 means no crossed-out price. */
-  salePct: number;
   createdAt: string;
 }
 
@@ -104,6 +120,8 @@ export interface CatalogFilters {
   family?: ScentFamily[];
   season?: Season[];
   tags?: TagKind[];
+  /** Зөвхөн «Онцлох» гэж тэмдэглэсэн бараа. */
+  featured?: boolean;
   ml?: number[];
   minPrice?: number;
   maxPrice?: number;

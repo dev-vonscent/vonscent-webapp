@@ -14,7 +14,6 @@ export const collectionOrderSchema = z.object({
   ml: z.number().int().positive(),
   qty: z.number().int().positive().max(99),
   memberVariantIds: z.array(z.string().min(1)).min(1),
-  giftProductId: z.string().nullable().default(null),
 });
 
 export const checkoutSchema = z.object({
@@ -55,9 +54,9 @@ export const checkoutSchema = z.object({
   items: z.array(orderItemSchema).default([]),
   collections: z.array(collectionOrderSchema).default([]),
   /**
-   * Сар бүрийн бэлгийн 1мл sample-ийн сонголтууд. The server re-validates:
-   * one pick per full 200,000₮ of goods (after coupon, before shipping),
-   * products must be in the admin's monthly pool.
+   * Бэлгийн 1мл дээжийн сонголтууд. Сервер бүгдийг дахин шалгана: эрх нь
+   * купоны дараах барааны дүнгийн 200,000₮ тутамд 1 (эсвэл preset 5/10/20мл
+   * багцын баталгаа), сонгосон ус нь админы бэлгийн санд байх ёстой.
    */
   giftProductIds: z.array(z.string().min(1)).max(8).default([]),
 });

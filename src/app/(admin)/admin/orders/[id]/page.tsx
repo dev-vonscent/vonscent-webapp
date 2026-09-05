@@ -71,7 +71,7 @@ export default async function AdminOrderDetail({
                     {i.brand} {i.product_name} · {i.ml}ml × {i.qty}
                     {i.is_sample && (
                       /* Not "Sample": 2ml is an ordinary paid size in this shop.
-                         This flag marks the free monthly 1ml gift line. */
+                         This flag marks the free 1ml gift line. */
                       <Badge variant="secondary" className="ml-2">
                         Бэлэг
                       </Badge>

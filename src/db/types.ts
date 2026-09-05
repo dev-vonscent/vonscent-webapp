@@ -67,11 +67,11 @@ export interface ProductRow {
   seasons: Season[];
   bottle_price: number;
   bottle_ml: number;
-  /** Display-only discount % (0038) — variant prices stay the charged figure. */
-  sale_pct: number;
   rating_avg: number;
   rating_count: number;
   is_active: boolean;
+  /** «Онцлох бараа» (0055) — нүүрийн 'featured' хэсэг эндээс автоматаар уншина. */
+  is_featured: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -90,8 +90,13 @@ export interface ProductVariantRow {
   id: string;
   product_id: string;
   ml: number;
-  /** The ₮ price the admin typed (0027) — nothing derives it. */
+  /** Үндсэн үнэ — админы гараар бичсэн (0027). Хямдралгүй үед төлөх дүн. */
   price: number;
+  /**
+   * Хямдарсан үнэ (0054). null бол хямдрал байхгүй. Байвал энэ нь бодитоор
+   * төлөх дүн — `variant_price()` үүнийг эхэлж авна.
+   */
+  sale_price: number | null;
   is_active: boolean;
 }
 
@@ -293,8 +298,11 @@ export interface HomeSectionRow {
   title: string;
   subtitle: string;
   href: string;
-  /** 'manual' = hand-picked list, 'tag' = everything carrying `tag`. */
-  kind: "manual" | "tag";
+  /**
+   * 'manual' = hand-picked list, 'tag' = everything carrying `tag`,
+   * 'featured' = every product the admin marked «Онцлох» (0055).
+   */
+  kind: "manual" | "tag" | "featured";
   tag: TagKind | null;
   max_items: number;
   sort_order: number;
@@ -327,9 +335,9 @@ type Table<Row, Optional extends keyof Row> = {
 export interface Database {
   public: {
     Tables: {
-      products: Table<ProductRow, "id" | "created_at" | "updated_at" | "sale_pct">;
+      products: Table<ProductRow, "id" | "created_at" | "updated_at">;
       product_images: Table<ProductImageRow, "id">;
-      product_variants: Table<ProductVariantRow, "id">;
+      product_variants: Table<ProductVariantRow, "id" | "sale_price">;
       inventory: Table<InventoryRow, "updated_at">;
       tags: Table<TagRow, "id">;
       scent_families: Table<ScentFamilyRow, "created_at">;

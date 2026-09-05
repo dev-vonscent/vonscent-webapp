@@ -3,7 +3,18 @@
 import * as React from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { MoreHorizontal, Plus, Minus, Coins, Pencil } from "lucide-react";
+import {
+  MoreHorizontal,
+  Plus,
+  Minus,
+  Coins,
+  Pencil,
+  Star,
+  StarOff,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { mutateJson } from "@/features/admin/lib/mutate";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -41,11 +52,37 @@ export function ProductRowActions({
   variant?: "icon" | "block";
 }) {
   const params = useSearchParams();
+  const router = useRouter();
   const [pricing, setPricing] = React.useState(false);
+  const [featuring, setFeaturing] = React.useState(false);
   const [stockMode, setStockMode] = React.useState<StockMode | null>(null);
   const label = `${product.brand} — ${product.name}`;
   // The full editor returns to this exact filtered list, not a bare one.
   const fullEditHref = editHref(product.id, params.toString());
+
+  /** «Онцлох» тэмдгийг мөрөн дээрээс шууд солих (backlog C2). */
+  async function toggleFeatured() {
+    setFeaturing(true);
+    try {
+      const next = !product.isFeatured;
+      const ok = await mutateJson(
+        `/api/admin/products/${product.id}`,
+        "PATCH",
+        { isFeatured: next },
+        "Онцлох тэмдэг солигдсонгүй",
+      );
+      if (ok) {
+        toast.success(
+          next
+            ? `«${product.name}» онцлох боллоо. Нүүрийн онцлох хэсэгт харагдана.`
+            : `«${product.name}» онцлохоос хасагдлаа.`,
+        );
+        router.refresh();
+      }
+    } finally {
+      setFeaturing(false);
+    }
+  }
 
   return (
     <>
@@ -104,6 +141,14 @@ export function ProductRowActions({
             Үлдэгдэл залруулах
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => void toggleFeatured()}
+            disabled={featuring}
+            className={ITEM}
+          >
+            {product.isFeatured ? <StarOff /> : <Star />}
+            {product.isFeatured ? "Онцлохоос хасах" : "Онцлох болгох"}
+          </DropdownMenuItem>
           <DropdownMenuItem asChild className={ITEM}>
             <Link href={fullEditHref}>
               <Pencil />
@@ -118,11 +163,7 @@ export function ProductRowActions({
           listeners and 40 controlled forms on the page for nothing — the same
           trap `data-table.tsx` documents for the old RestockControl. */}
       {pricing && (
-        <QuickPriceDialog
-          open
-          onOpenChange={setPricing}
-          product={product}
-        />
+        <QuickPriceDialog open onOpenChange={setPricing} product={product} />
       )}
       {stockMode !== null && (
         <StockAdjustDialog

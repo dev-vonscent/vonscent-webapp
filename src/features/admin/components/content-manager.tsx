@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { ImageOff, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,7 +69,6 @@ function Section({
 function PopupSection({ initial }: { initial: PopupSettings }) {
   const [confirm, confirmDialog] = useConfirm();
   const [enabled, setEnabled] = React.useState(initial.enabled);
-  const [frequency, setFrequency] = React.useState(initial.frequencyHours);
   const [slides, setSlides] = React.useState<PopupSlide[]>(
     initial.slides ?? [],
   );
@@ -81,23 +80,15 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
   function addSlide() {
     setSlides((ss) => [
       ...ss,
-      {
-        title: "",
-        body: "",
-        ctaLabel: "",
-        ctaHref: "/catalog",
-        imageUrl: null,
-        startsAt: null,
-        endsAt: null,
-      },
+      { imageUrl: null, href: "", startsAt: null, endsAt: null },
     ]);
   }
   async function removeSlide(i: number) {
     if (
       !(await confirm({
-        title: `Слайд ${i + 1}-ийг устгах уу?`,
+        title: `Зар ${i + 1}-ийг устгах уу?`,
         description:
-          "Слайдын гарчиг, зураг, холбоос устна. Хадгалсны дараа сайтад харагдахаа болино.",
+          "Зураг, холбоос, хуваарь нь устна. Хадгалсны дараа сайтад харагдахаа болино.",
         confirmLabel: "Устгах",
         destructive: true,
       }))
@@ -106,11 +97,21 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
     setSlides((ss) => ss.filter((_, j) => j !== i));
   }
   async function save() {
+    // Зураггүй зар гэж байхгүй (G2) — хадгалахаас өмнө хэлнэ, чимээгүй
+    // хаяхгүй.
+    const missing = slides.findIndex((s) => !s.imageUrl);
+    if (missing >= 0) {
+      toast.error(
+        `Зар ${missing + 1} зураггүй байна. Зураг оруулах эсвэл зарыг устгана уу.`,
+        "Popup хадгалагдсангүй",
+      );
+      return;
+    }
     setBusy(true);
     try {
       const ok = await saveSetting(
         "popup",
-        { enabled, frequencyHours: frequency, slides },
+        { enabled, slides },
         "Popup хадгалагдсангүй",
       );
       if (ok) toast.success("Popup хадгалагдлаа.");
@@ -120,63 +121,47 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
   }
 
   return (
-    <Section title="Сурталчилгааны popup (олон слайд, swipe + autoplay)">
+    <Section title="Сурталчилгааны popup">
       {confirmDialog}
-      <div className="flex flex-wrap items-end gap-4">
-        <label className="flex items-center gap-2 text-sm">
-          <Checkbox
-            checked={enabled}
-            onCheckedChange={(v) => setEnabled(Boolean(v))}
-          />
-          Идэвхжүүлэх
-        </label>
-        <Field label="Давтамж (цаг)">
-          <Input
-            type="number"
-            className="w-28"
-            value={frequency}
-            onChange={(e) => setFrequency(Number(e.target.value) || 24)}
-          />
-        </Field>
-      </div>
+      <p className="text-muted-foreground text-sm">
+        Зөвхөн нүүр хуудсанд, хуудас нээгдэх бүрд гарна — хаасан ч дараагийн
+        удаа дахин гарна. Зар нь зөвхөн зураг: гарчиг, текст, купоныг зураг
+        дотроо бэлдэнэ. Олон зар байвал 5 секунд тутамд автоматаар шилжинэ.
+      </p>
+      <label className="flex items-center gap-2 text-sm">
+        <Checkbox
+          checked={enabled}
+          onCheckedChange={(v) => setEnabled(Boolean(v))}
+        />
+        Идэвхжүүлэх
+      </label>
 
       <div className="space-y-4">
         {slides.map((s, i) => (
           <div key={i} className="bg-muted/40 space-y-3 rounded-lg p-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Слайд {i + 1}</p>
+              <p className="text-sm font-medium">Зар {i + 1}</p>
               <button
                 type="button"
                 onClick={() => removeSlide(i)}
                 className="text-muted-foreground hover:text-destructive"
-                aria-label={`Слайд ${i + 1} устгах`}
+                aria-label={`Зар ${i + 1} устгах`}
               >
                 <Trash2 className="size-4" />
               </button>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Гарчиг">
-                <Input
-                  value={s.title}
-                  onChange={(e) => setSlide(i, { title: e.target.value })}
-                />
-              </Field>
-              <Field label="Зураг">
+              <Field label="Зураг (босоо эсвэл дөрвөлжин зураг тохиромжтой)">
                 <ImageUpload
                   value={s.imageUrl}
                   onChange={(url) => setSlide(i, { imageUrl: url })}
                 />
               </Field>
-              <Field label="CTA текст">
+              <Field label="Холбоос (заавал биш — зураг дээр дарахад очно)">
                 <Input
-                  value={s.ctaLabel}
-                  onChange={(e) => setSlide(i, { ctaLabel: e.target.value })}
-                />
-              </Field>
-              <Field label="CTA холбоос">
-                <Input
-                  value={s.ctaHref}
-                  onChange={(e) => setSlide(i, { ctaHref: e.target.value })}
+                  value={s.href}
+                  placeholder="/catalog?tags=sale"
+                  onChange={(e) => setSlide(i, { href: e.target.value })}
                 />
               </Field>
               <Field label="Эхлэх огноо">
@@ -202,30 +187,10 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
                 />
               </Field>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Текст">
-                <Input
-                  value={s.body}
-                  onChange={(e) => setSlide(i, { body: e.target.value })}
-                />
-              </Field>
-              <Field label="Купон код (заавал биш — бичвэл хуулах товчтой купон болж харагдана)">
-                <Input
-                  value={s.couponCode ?? ""}
-                  placeholder="SUMMER10"
-                  onChange={(e) =>
-                    setSlide(i, {
-                      couponCode:
-                        e.target.value.trim().toUpperCase() || undefined,
-                    })
-                  }
-                />
-              </Field>
-            </div>
           </div>
         ))}
         <Button variant="secondary" onClick={addSlide}>
-          <Plus className="size-4" /> Слайд нэмэх
+          <Plus className="size-4" /> Зар нэмэх
         </Button>
       </div>
 
@@ -414,30 +379,48 @@ function BlogSection({ initial }: { initial: BlogPostRow[] }) {
   const [category, setCategory] = React.useState("");
   const [excerpt, setExcerpt] = React.useState("");
   const [body, setBody] = React.useState("");
+  const [coverUrl, setCoverUrl] = React.useState<string | null>(null);
+  const [isPublished, setIsPublished] = React.useState(true);
+  const [busy, setBusy] = React.useState(false);
+
   async function add() {
-    if (!title) return;
-    const ok = await mutate(
-      "/api/admin/blog",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          category,
-          excerpt,
-          body,
-          isPublished: true,
-        }),
-      },
-      "Нийтлэл нэмэгдсэнгүй",
-    );
-    if (!ok) return;
-    toast.success("Нийтлэл нэмэгдлээ.");
-    setTitle("");
-    setCategory("");
-    setExcerpt("");
-    setBody("");
-    router.refresh();
+    if (!title.trim()) {
+      toast.error("Гарчиг бичнэ үү.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const ok = await mutate(
+        "/api/admin/blog",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: title.trim(),
+            category: category.trim(),
+            excerpt: excerpt.trim(),
+            body,
+            coverUrl,
+            isPublished,
+          }),
+        },
+        "Нийтлэл нэмэгдсэнгүй",
+      );
+      if (!ok) return;
+      toast.success(
+        isPublished
+          ? "Нийтлэл нийтлэгдлээ."
+          : "Нийтлэл ноорог болж хадгалагдлаа.",
+      );
+      setTitle("");
+      setCategory("");
+      setExcerpt("");
+      setBody("");
+      setCoverUrl(null);
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
   }
   async function del(id: string, title: string) {
     if (
@@ -466,14 +449,41 @@ function BlogSection({ initial }: { initial: BlogPostRow[] }) {
           <EditableRow
             key={p.id}
             summary={
-              <span>
-                <strong>{p.title}</strong>{" "}
-                {!p.is_published && <Badge variant="secondary">Ноорог</Badge>}
+              <span className="flex min-w-0 items-center gap-3">
+                {/* Нүүр зураг байгаа эсэх нэг харцаар — зураггүй нийтлэл
+                    сайтад placeholder-той гардаг. */}
+                <span className="bg-secondary relative size-10 shrink-0 overflow-hidden rounded-md">
+                  {p.cover_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.cover_url}
+                      alt=""
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    <ImageOff className="text-muted-foreground absolute inset-0 m-auto size-4" />
+                  )}
+                </span>
+                <span className="min-w-0">
+                  <strong className="block truncate">{p.title}</strong>
+                  <span className="text-muted-foreground flex flex-wrap gap-1.5 text-xs">
+                    {!p.is_published && (
+                      <Badge variant="secondary">Ноорог</Badge>
+                    )}
+                    {!p.cover_url && <span>Нүүр зураггүй</span>}
+                  </span>
+                </span>
               </span>
             }
             onDelete={() => del(p.id, p.title)}
             fields={[
               { key: "title", label: "Гарчиг", value: p.title },
+              {
+                key: "coverUrl",
+                label: "Нүүр зураг",
+                value: p.cover_url ?? "",
+                image: true,
+              },
               { key: "category", label: "Ангилал", value: p.category ?? "" },
               { key: "excerpt", label: "Товч", value: p.excerpt ?? "" },
               {
@@ -494,6 +504,7 @@ function BlogSection({ initial }: { initial: BlogPostRow[] }) {
                     category: v.category,
                     excerpt: v.excerpt,
                     body: v.body,
+                    coverUrl: v.coverUrl || null,
                   }),
                 },
                 "Нийтлэл хадгалагдсангүй",
@@ -506,31 +517,68 @@ function BlogSection({ initial }: { initial: BlogPostRow[] }) {
           />
         ))}
       </ul>
-      <div className="grid gap-2">
-        <Input
-          placeholder="Гарчиг"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <Input
-          placeholder="Ангилал"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        />
-        <Input
-          placeholder="Товч (excerpt)"
-          value={excerpt}
-          onChange={(e) => setExcerpt(e.target.value)}
-        />
-        <RichTextEditor
-          placeholder="Нийтлэлийн агуулга"
-          value={body}
-          onChange={setBody}
-        />
+
+      <div className="border-border space-y-4 border-t pt-4">
+        <p className="text-sm font-medium">Шинэ нийтлэл</p>
+        <div className="grid gap-4">
+          <Field
+            label="Нүүр зураг"
+            hint="Жагсаалт, нийтлэлийн толгой, сошиал хуваалцах картанд гарна. 16:10 харьцаатай, 1200px-ээс өргөн зураг тохиромжтой. Оруулаагүй бол загварын placeholder харагдана."
+          >
+            <ImageUpload value={coverUrl} onChange={setCoverUrl} />
+          </Field>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Гарчиг">
+            <Input
+              value={title}
+              placeholder="Decant гэж юу вэ?"
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </Field>
+          <Field label="Ангилал" hint="Картан дээр жижиг шошго болж гарна.">
+            <Input
+              value={category}
+              placeholder="Зөвлөмж"
+              onChange={(e) => setCategory(e.target.value)}
+            />
+          </Field>
+        </div>
+        <Field
+          label="Товч (excerpt)"
+          hint="Жагсаалт ба хайлтын үр дүнд гарах 1–2 өгүүлбэр."
+        >
+          <Input
+            value={excerpt}
+            placeholder="Бүтэн сав авахаасаа өмнө decant-аар туршихын давуу тал."
+            onChange={(e) => setExcerpt(e.target.value)}
+          />
+        </Field>
+        <Field
+          label="Агуулга"
+          hint="Зургийг toolbar-ын зургийн товчоор шууд оруулна."
+        >
+          <RichTextEditor
+            placeholder="Нийтлэлийн агуулга"
+            value={body}
+            onChange={setBody}
+          />
+        </Field>
+        <label className="flex cursor-pointer items-center gap-2 text-sm">
+          <Checkbox
+            checked={isPublished}
+            onCheckedChange={(v) => setIsPublished(Boolean(v))}
+          />
+          Шууд нийтлэх
+          <span className="text-muted-foreground text-xs">
+            (унтраавал ноорог болж, зөвхөн энд харагдана)
+          </span>
+        </label>
+        <Button variant="secondary" onClick={add} disabled={busy}>
+          <Plus className="size-4" />
+          {busy ? "Нэмж байна…" : "Нийтлэл нэмэх"}
+        </Button>
       </div>
-      <Button variant="secondary" onClick={add}>
-        <Plus className="size-4" /> Нийтлэл нэмэх
-      </Button>
     </Section>
   );
 }

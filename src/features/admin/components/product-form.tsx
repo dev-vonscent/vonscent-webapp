@@ -78,7 +78,6 @@ export function ProductForm({
     releaseYear: "",
     bottlePrice: "",
     bottleMl: "100",
-    salePct: "0",
     onHandMl: "100",
     lowStockMl: String(DEFAULT_LOW_STOCK_ML),
   });
@@ -88,6 +87,7 @@ export function ProductForm({
   const [tags, toggleTag] = useToggleList([]);
   const [customTags, toggleCustomTag] = useToggleList([]);
   const [isActive, setIsActive] = React.useState(true);
+  const [isFeatured, setIsFeatured] = React.useState(false);
   const [scentFamilies, toggleFamily] = useToggleList([]);
   const [seasons, toggleSeason] = useToggleList(["all"], { exclusive: "all" });
   // Uploaded to a staging folder before the product row exists; the create
@@ -143,6 +143,7 @@ export function ProductForm({
         tags,
         customTags,
         isActive,
+        isFeatured,
         referenceUrl,
         generateImage: Boolean(referenceUrl),
         images: images.map((img) => ({
@@ -153,7 +154,6 @@ export function ProductForm({
         releaseYear: form.releaseYear ? Number(form.releaseYear) : null,
         bottlePrice: Number(form.bottlePrice) || 0,
         bottleMl: Number(form.bottleMl) || 0,
-        salePct: Math.min(100, Math.max(0, Number(form.salePct) || 0)),
         onHandMl: Number(form.onHandMl),
         lowStockMl: Number(form.lowStockMl),
         notesTop: form.notesTop
@@ -329,19 +329,6 @@ export function ProductForm({
             showErrors={showVariantErrors}
             idPrefix="new"
           />
-          <Field label="Хямдралын % (0 = хямдралгүй)">
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={form.salePct}
-              onChange={(e) => set("salePct", e.target.value)}
-            />
-          </Field>
-          <p className="text-muted-foreground text-sm">
-            Дээрх үнэ бол худалдан авагчийн төлөх үнэ. Хувь оруулбал сайт дээр
-            зураастай «хуучин үнэ» болон -X% тэмдэг харагдана.
-          </p>
           <Separator />
           <h2 className="font-serif text-lg font-semibold">
             Эх сав ба үлдэгдэл
@@ -406,6 +393,20 @@ export function ProductForm({
               onCheckedChange={(v) => setIsActive(Boolean(v))}
             />
             Идэвхтэй (нийтлэх)
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Checkbox
+              checked={isFeatured}
+              onCheckedChange={(v) => {
+                setIsFeatured(Boolean(v));
+              }}
+            />
+            <span>
+              Онцлох бараа
+              <span className="text-muted-foreground block text-xs">
+                Нүүрийн «Онцлох» хэсэгт автоматаар орно
+              </span>
+            </span>
           </label>
           <CustomTagField
             pool={customTagPool}

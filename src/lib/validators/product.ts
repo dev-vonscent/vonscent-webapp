@@ -42,11 +42,22 @@ export const variantDraftSchema = z
   .object({
     ml: mlSize,
     price: z.number().int().nonnegative(),
+    /**
+     * Хямдарсан үнэ (0054) — байвал ЭНЭ нь бодитоор төлөх дүн, `price` нь
+     * зураастай харагдах үндсэн үнэ болно. null бол хямдрал байхгүй.
+     */
+    salePrice: z.number().int().nonnegative().nullable().default(null),
     active: z.boolean(),
   })
   .refine((v) => !v.active || v.price > 0, {
     message: "Зарах хэмжээний үнэ 0 байж болохгүй.",
     path: ["price"],
+  })
+  // Үндсэн үнээс дээгүүр «хямдрал» гэдэг нь хямдрал биш — DB-ийн check-тэй
+  // ижил дүрэм, зөвхөн эндээс ойлгомжтой алдаа буцаана.
+  .refine((v) => v.salePrice == null || v.salePrice <= v.price, {
+    message: "Хямдарсан үнэ үндсэн үнээс их байж болохгүй.",
+    path: ["salePrice"],
   });
 
 /**
@@ -97,9 +108,9 @@ export const productInputSchema = z.object({
   bottleMl: z.number().int().positive(),
   variants: z.array(variantDraftSchema).min(1),
   tags: z.array(z.enum(["new", "hot", "sale"])).default([]),
-  /** Display-only discount % — variant prices stay the charged figure (0038). */
-  salePct: z.number().int().min(0).max(100).default(0),
   isActive: z.boolean().default(true),
+  /** «Онцлох бараа» — нүүрийн онцлох хэсэгт автоматаар орно (0055). */
+  isFeatured: z.boolean().default(false),
   /** Free-form internal tags (slugs from the admin pool, 0035_custom_tags). */
   customTags: z.array(z.string().min(1)).default([]),
 });
@@ -126,8 +137,8 @@ export const productEditSchema = z.object({
   originCountry: z.string().nullable().optional(),
   releaseYear: z.number().int().nullable().optional(),
   isActive: z.boolean().optional(),
+  isFeatured: z.boolean().optional(),
   tags: z.array(z.enum(["new", "hot", "sale"])).optional(),
-  salePct: z.number().int().min(0).max(100).optional(),
   bottlePrice: z.number().int().nonnegative().optional(),
   bottleMl: z.number().int().positive().optional(),
   lowStockMl: z.number().int().nonnegative().optional(),

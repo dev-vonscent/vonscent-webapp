@@ -4,10 +4,8 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Gift } from "lucide-react";
-import {
-  getCollectionBySlug,
-  getGiftCandidates,
-} from "@/features/collections/api";
+import { getCollectionBySlug } from "@/features/collections/api";
+import { getGiftSettings } from "@/features/content/api";
 import { CollectionDetail } from "@/features/collections/components/collection-detail";
 import { GENDER_LABEL } from "@/lib/constants";
 import { formatDiscountRange } from "@/features/collections/pricing";
@@ -43,12 +41,10 @@ export default async function CollectionPage({
   const collection = await getCollectionBySlug(slug);
   if (!collection) notFound();
 
-  const giftCandidates = collection.giftEnabled
-    ? await getGiftCandidates(
-        collection.members.map((m) => m.productId),
-        collection.giftMl,
-      )
-    : [];
+  // Бэлгийн эрх зөвхөн админы сангаас гарна — сан хоосон бол багц дээр
+  // бэлгийн тухай юу ч амлахгүй (backlog A2).
+  const gift = await getGiftSettings();
+  const giftPoolEnabled = gift.enabled && gift.productIds.length > 0;
 
   return (
     <div className="mx-auto max-w-352 p-4  sm:py-8 md:px-8">
@@ -83,7 +79,7 @@ export default async function CollectionPage({
                   −{formatDiscountRange(collection.discountRange)}
                 </Badge>
               )}
-              {collection.giftEnabled && (
+              {giftPoolEnabled && (
                 <Badge className="bg-foreground/85 text-background w-fit gap-1 backdrop-blur-sm">
                   <Gift className="size-3" /> Бэлэгтэй
                 </Badge>
@@ -104,7 +100,7 @@ export default async function CollectionPage({
 
           <CollectionDetail
             collection={collection}
-            giftCandidates={giftCandidates}
+            giftPoolEnabled={giftPoolEnabled}
           />
         </div>
       </div>

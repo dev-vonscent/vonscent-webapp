@@ -4,8 +4,8 @@ import { getGiftSettings } from "@/features/content/api";
 import { GIFT_SAMPLE_ML, GIFT_THRESHOLD } from "@/lib/constants";
 
 /**
- * The month's giftable sample perfumes for the checkout picker — only the
- * pool entries that actually exist, are published, and have the 1ml in stock.
+ * Бэлгийн санд буй уснууд — сагс, checkout хоёулаа эндээс уншина (backlog A2).
+ * Зөвхөн бодитоор байгаа, нийтлэгдсэн, 1мл-ээ гаргах үлдэгдэлтэй нь буцна.
  */
 export async function GET() {
   const settings = await getGiftSettings();

@@ -50,8 +50,6 @@ export default function AdminSettingsPage() {
     maxItems: null as number | null,
     customDiscountPct: 5,
     baseDefaultDiscountPct: 5,
-    giftEnabled: true,
-    giftMl: 1,
   });
   const [imageGen, setImageGen] = React.useState({
     enabled: true,
@@ -210,11 +208,7 @@ export default function AdminSettingsPage() {
         onSave={() =>
           saveSetting(
             "collection",
-            {
-              ...collection,
-              giftMlOptions: [1, 2],
-              roundTo: 100,
-            },
+            { ...collection, roundTo: 100 },
             "Багц хадгалагдсангүй",
           )
         }
@@ -234,18 +228,6 @@ export default function AdminSettingsPage() {
                 }
               />
               Өөрөө угсрах багц идэвхтэй
-            </label>
-            <label className="flex cursor-pointer items-center gap-2 py-1">
-              <Checkbox
-                checked={collection.giftEnabled}
-                onCheckedChange={(c) =>
-                  setCollection({
-                    ...collection,
-                    giftEnabled: Boolean(c),
-                  })
-                }
-              />
-              Нэмэлт бэлэг идэвхтэй
             </label>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -300,18 +282,6 @@ export default function AdminSettingsPage() {
                   setCollection({
                     ...collection,
                     baseDefaultDiscountPct: Number(e.target.value),
-                  })
-                }
-              />
-            </Field>
-            <Field label="Бэлгийн ml (default)">
-              <Input
-                type="number"
-                value={collection.giftMl}
-                onChange={(e) =>
-                  setCollection({
-                    ...collection,
-                    giftMl: Number(e.target.value),
                   })
                 }
               />

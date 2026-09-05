@@ -98,8 +98,10 @@ function GenderChips({
 
 export function CollectionBrowser({
   collections,
+  giftPoolEnabled = false,
 }: {
   collections: Collection[];
+  giftPoolEnabled?: boolean;
 }) {
   const [q, setQ] = React.useState("");
   const [gender, setGender] = React.useState<GenderFilter>("all");
@@ -256,7 +258,10 @@ export function CollectionBrowser({
               Тохирох багц олдсонгүй.
             </p>
           ) : (
-            <CollectionGrid collections={shown} />
+            <CollectionGrid
+              collections={shown}
+              giftPoolEnabled={giftPoolEnabled}
+            />
           )}
         </div>
       </div>

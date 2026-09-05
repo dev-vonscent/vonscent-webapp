@@ -16,7 +16,11 @@ export async function writeCollectionChildren(
   supabase: SupabaseClient,
   collectionId: string,
   input: {
-    mlDiscounts?: { ml: number; discountPct: number }[];
+    mlDiscounts?: {
+      ml: number;
+      discountPct: number | null;
+      price: number | null;
+    }[];
     tags?: string[];
     customTags?: string[];
   },
@@ -32,6 +36,7 @@ export async function writeCollectionChildren(
           collection_id: collectionId,
           ml: d.ml,
           discount_pct: d.discountPct,
+          price: d.price,
         })),
       );
     }

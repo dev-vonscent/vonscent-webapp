@@ -2,7 +2,11 @@ import "server-only";
 import { cache } from "react";
 import { createPublicClient } from "@/lib/supabase/public";
 import { SHIPPING_ZONES } from "@/lib/constants";
-import { getProductsByIds, getProductsByTag } from "@/features/products/api";
+import {
+  getFeaturedProducts,
+  getProductsByIds,
+  getProductsByTag,
+} from "@/features/products/api";
 import type { HomeSectionRow } from "@/db/types";
 import type { ProductListItem } from "@/lib/types";
 
@@ -12,25 +16,26 @@ import type { ProductListItem } from "@/lib/types";
  * to sensible defaults so the storefront renders in demo mode.
  */
 
+/**
+ * Popup-ийн нэг слайд = нэг зураг (backlog G2). Гарчиг, текст, товч, купон
+ * байхгүй — зар нь зураг дотроо. Хуучин хадгалагдсан слайдын `title` /
+ * `ctaHref` талбарыг `normalizePopup` шинэ хэлбэрт хөрвүүлнэ.
+ */
 export interface PopupSlide {
-  title: string;
-  body: string;
-  ctaLabel: string;
-  ctaHref: string;
   imageUrl: string | null;
+  /** Зураг дээр дарахад очих холбоос; хоосон бол зөвхөн зураг. */
+  href: string;
   /** ISO date strings; null = no bound. Slide shows only inside this window. */
   startsAt: string | null;
   endsAt: string | null;
-  /**
-   * Optional coupon code — the popup renders it as a styled copyable coupon
-   * (questions.md №12: суурь кодыг бэлтгэж, агуулгыг админ бэлдэнэ).
-   */
-  couponCode?: string;
 }
 
+/**
+ * Popup нь зөвхөн нүүр хуудсанд, нүүр нээгдэх бүрд гарна (backlog G1) —
+ * давтамж, session хязгаар байхгүй тул тохиргоо нь идэвх + слайдууд л.
+ */
 export interface PopupSettings {
   enabled: boolean;
-  frequencyHours: number;
   slides: PopupSlide[];
 }
 export interface SocialSettings {
@@ -82,7 +87,8 @@ export interface LoyaltySettings {
  */
 export interface GiftSettings {
   enabled: boolean;
-  /** Product ids of this month's giftable perfumes (aim for 4–8). */
+  /** Бэлгийн санд буй уснуудын id (6–8 байлгахыг зөвлөнө). Хоосон бол
+   * бэлгийн сонголт бүхэлдээ унтарна. */
   productIds: string[];
 }
 export interface StoreSettings {
@@ -94,7 +100,6 @@ export interface StoreSettings {
 
 export const DEFAULT_POPUP: PopupSettings = {
   enabled: false,
-  frequencyHours: 24,
   slides: [],
 };
 export const DEFAULT_SOCIAL: SocialSettings = {
@@ -146,7 +151,37 @@ async function getSetting<T>(key: string, fallback: T): Promise<T> {
   return { ...fallback, ...(v as object) } as T;
 }
 
-export const getPopupSettings = () => getSetting("popup", DEFAULT_POPUP);
+/** G2-оос өмнөх слайдын хэлбэр — хадгалагдсан өгөгдөл л ийм байж болно. */
+interface LegacyPopupSlide extends Partial<PopupSlide> {
+  ctaHref?: string;
+}
+
+/**
+ * Хадгалагдсан слайдыг одоогийн хэлбэрт оруулна: зурагтай слайд л үлдэнэ,
+ * хуучин CTA холбоос нь href болно. Ингэснээр G2-оос өмнө оруулсан зурагтай
+ * зар алдагдахгүй, зураггүй нь чимээгүй унана. Хуучин title/alt зэрэг
+ * илүү талбарууд хаягдана.
+ */
+export function normalizePopup(raw: unknown): PopupSettings {
+  const src = (raw ?? {}) as { enabled?: unknown; slides?: unknown };
+  const slides = (
+    Array.isArray(src.slides) ? src.slides : []
+  ) as LegacyPopupSlide[];
+  return {
+    enabled: src.enabled === true,
+    slides: slides
+      .filter((s) => typeof s?.imageUrl === "string" && s.imageUrl.length > 0)
+      .map((s) => ({
+        imageUrl: s.imageUrl as string,
+        href: (s.href ?? s.ctaHref ?? "").trim(),
+        startsAt: s.startsAt ?? null,
+        endsAt: s.endsAt ?? null,
+      })),
+  };
+}
+
+export const getPopupSettings = async (): Promise<PopupSettings> =>
+  normalizePopup((await fetchSettings()).popup);
 export const getSocialSettings = async (): Promise<SocialSettings> => {
   // The 0013 seed left instagram/facebook as "", which would otherwise win
   // over the defaults in the merge — treat blank fields as unset.
@@ -179,8 +214,10 @@ export interface HomeSection {
  *
  * A 'manual' section keeps the admin's exact order; a 'tag' section is the
  * old marketing-tag rail expressed as a row, so «Онцлох» and «Шинээр буусан»
- * can be reordered against each other. Empty sections are dropped rather than
- * rendering a heading with nothing under it.
+ * can be reordered against each other; a 'featured' section (0055) shows
+ * whatever the admin ticked «Онцлох» on the product itself, so the two ways
+ * of curating the home page never disagree. Empty sections are dropped rather
+ * than rendering a heading with nothing under it.
  */
 export async function getHomeSections(): Promise<HomeSection[]> {
   const supabase = createPublicClient();
@@ -205,6 +242,8 @@ export async function getHomeSections(): Promise<HomeSection[]> {
     let products: ProductListItem[];
     if (row.kind === "tag" && row.tag) {
       products = await getProductsByTag(row.tag, row.max_items);
+    } else if (row.kind === "featured") {
+      products = await getFeaturedProducts(row.max_items);
     } else {
       const ordered = [...row.home_section_products].sort(
         (a, b) => a.sort_order - b.sort_order,
@@ -229,4 +268,3 @@ export async function getHomeSections(): Promise<HomeSection[]> {
   }
   return sections;
 }
-

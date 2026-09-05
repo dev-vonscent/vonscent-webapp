@@ -27,10 +27,10 @@ export default async function EditCollectionPage({
     supabase
       .from("collections")
       .select(
-        `id, slug, name, gender, description, discount_pct, image_url, gift_ml,
+        `id, slug, name, gender, description, discount_pct, image_url,
          is_active, is_featured,
          collection_items ( product_id, sort_order ),
-         collection_ml_discounts ( ml, discount_pct ),
+         collection_ml_discounts ( ml, discount_pct, price ),
          collection_tags ( tags ( slug ) ),
          collection_custom_tags ( custom_tags ( slug ) )`,
       )

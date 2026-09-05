@@ -5,7 +5,7 @@ import {
   GIFT_SAMPLE_ML,
   SHIPPING_ZONES,
 } from "@/lib/constants";
-import { giftAllowanceFor } from "@/lib/gift";
+import { bundleGiftGuarantee, giftAllowanceFor } from "@/lib/gift";
 import { getGiftSettings, getShippingSettings } from "@/features/content/api";
 import {
   getCollectionSettings,
@@ -42,8 +42,8 @@ export interface OrderSummary {
   shippingFee: number;
   discount: number;
   total: number;
-  /** Copies of bundles in the order (Σ qty) — drives the gift allowance. */
-  bundleQty: number;
+  /** Σ багцын баталгаат бэлгийн эрх (preset 5/10/20мл багц бүрээс 1). */
+  giftGuarantee: number;
 }
 
 /**
@@ -90,13 +90,20 @@ export async function priceLines(
  * Re-price every bundle from authoritative product data. A base bundle's
  * discount comes from its `collections` row; a custom one uses the shop-wide
  * custom rate. The discount is spread across member lines (each keeps a
- * discounted unit_price) and the free gift is added as a 0₮ line so inventory
- * still reserves its ml. Never trust prices sent by the client.
+ * discounted unit_price). Never trust prices sent by the client.
+ *
+ * Багц дотроо бэлэг АВЧИРДАГГҮЙ болов (backlog A2): бүх бэлэг зөвхөн админы
+ * бэлгийн pool-оос, checkout дээр сонгогдоно. Багц нь эрхийн тоонд л нөлөөлнө
+ * — тэр эрхийг энд `giftGuarantee` болгож буцаана.
  */
 export async function priceCollectionLines(
   cols: CollectionOrderInput[],
-): Promise<{ lines: PricedLine[]; pricedBundles: number; bundleQty: number }> {
-  if (!cols.length) return { lines: [], pricedBundles: 0, bundleQty: 0 };
+): Promise<{
+  lines: PricedLine[];
+  pricedBundles: number;
+  giftGuarantee: number;
+}> {
+  if (!cols.length) return { lines: [], pricedBundles: 0, giftGuarantee: 0 };
   const [products, settings] = await Promise.all([
     fetchProducts(),
     getCollectionSettings(),
@@ -123,7 +130,7 @@ export async function priceCollectionLines(
 
   const out: PricedLine[] = [];
   let pricedBundles = 0;
-  let bundleQty = 0;
+  let giftGuarantee = 0;
   for (const col of cols) {
     // A bundle prices over the sizes the shop sells.
     if (!(BUNDLE_ML_SIZES as readonly number[]).includes(col.ml)) continue;
@@ -143,8 +150,13 @@ export async function priceCollectionLines(
     if (members.some((m) => !m.active || m.ml !== col.ml)) continue;
 
     let discountPct = settings.customDiscountPct;
+    // Preset багцын тогтмол үнэ (0054, B6) — байвал гишүүдийн нийлбэрээс
+    // хамаарахгүй эцсийн үнэ.
+    let fixedPrice: number | null = null;
     let name = "Миний багц";
-    let giftMl = settings.giftMl;
+    // «preset» гэдгийг сервер өөрөө шийднэ: collectionId-гүй, эсвэл roster нь
+    // тохирохгүй бол энэ багц custom дүрмээр яваад баталгаат бэлэг авахгүй.
+    let isPreset = false;
     if (col.type === "base" && col.collectionId) {
       const info = await getCollectionOrderInfo(col.collectionId);
       if (!info) continue; // base bundle vanished — drop it
@@ -162,8 +174,10 @@ export async function priceCollectionLines(
       // than 2ml (0051), so taking the bundle default here would charge the
       // wrong total for every overridden size.
       discountPct = discountForMl(col.ml, info.discountPct, info.mlDiscounts);
+      const fixed = info.mlPrices[col.ml];
+      fixedPrice = Number.isFinite(fixed) ? Math.max(0, fixed) : null;
       name = info.name;
-      giftMl = info.giftMl ?? settings.giftMl;
+      isPreset = true;
     } else {
       // Custom bundles obey the shop-wide builder rules even when the payload
       // bypasses the UI.
@@ -173,8 +187,13 @@ export async function priceCollectionLines(
         continue;
     }
 
+    // Гишүүний `price` нь хямдарсан (бодитоор төлөх) үнэ — custom багц ч
+    // тиймээс хямдарсан үнээр бодогдоно (B5).
     const memberSum = members.reduce((s, m) => s + m.price, 0);
-    const total = bundlePrice(memberSum, discountPct, settings.roundTo);
+    const total =
+      fixedPrice != null
+        ? fixedPrice
+        : bundlePrice(memberSum, discountPct, settings.roundTo);
 
     // Spread the discounted total across members; the last line absorbs the
     // rounding remainder so the parts sum exactly to `total`.
@@ -202,53 +221,36 @@ export async function priceCollectionLines(
       });
     });
 
-    // Free gift: a product not already in the bundle, with enough stock for
-    // EVERY copy of the bundle (giftMl × qty — the line reserves that much).
-    if (col.giftProductId && settings.giftEnabled) {
-      const gift = products.find((p) => p.id === col.giftProductId);
-      const inBundle = members.some((m) => m.product.id === col.giftProductId);
-      if (
-        gift &&
-        !inBundle &&
-        gift.availableMl >= giftMl * col.qty &&
-        !gift.soldOut
-      ) {
-        out.push({
-          productId: gift.id,
-          variantId: "",
-          name: gift.name,
-          brand: gift.brand,
-          ml: giftMl,
-          qty: col.qty,
-          unitPrice: 0,
-          lineTotal: 0,
-          collectionId: col.collectionId,
-          collectionName: name,
-          isGift: true,
-        });
-      }
-    }
     pricedBundles += 1;
-    bundleQty += col.qty;
+    // Баталгаат эрх нь ЗӨВХӨН серверийн баталсан төрөл/хэмжээнээс гарна —
+    // сагсны хэлсэн төрөлд итгэхгүй.
+    giftGuarantee += bundleGiftGuarantee({
+      type: isPreset ? "base" : "custom",
+      ml: col.ml,
+      qty: col.qty,
+    });
   }
-  return { lines: out, pricedBundles, bundleQty };
+  return { lines: out, pricedBundles, giftGuarantee };
 }
 
 /**
- * Validate the buyer's monthly gift-sample picks (questions.md №2–3) and turn
- * them into 0₮ 1ml lines. `goodsAfterDiscount` is subtotal − coupon discount
- * (shipping excluded); the allowance also counts bundles — see
- * giftAllowanceFor() in src/lib/gift.ts. Picks outside the admin's
- * pool, duplicates, or picks beyond the allowance are silently dropped — the
- * order still goes through, just without the invalid gift.
+ * Validate the buyer's 1ml gift picks and turn them into 0₮ lines.
+ * `goodsAfterDiscount` is subtotal − coupon discount (shipping excluded);
+ * `giftGuarantee` is the bundles' guaranteed count — see giftAllowanceFor()
+ * in src/lib/gift.ts. Picks outside the admin's pool, duplicates, or picks
+ * beyond the allowance are silently dropped — the order still goes through,
+ * just without the invalid gift.
+ *
+ * Энэ бол бэлгийн ЦОРЫН ГАНЦ эх сурвалж: багц дотроос ирсэн бэлэг байхгүй,
+ * сан хоосон / унтраалттай бол бэлэг огт олгогдохгүй.
  */
 export async function priceGiftLines(
   giftProductIds: string[],
   goodsAfterDiscount: number,
-  bundleQty = 0,
+  giftGuarantee = 0,
 ): Promise<PricedLine[]> {
   if (!giftProductIds.length) return [];
-  const allowance = giftAllowanceFor(goodsAfterDiscount, bundleQty);
+  const allowance = giftAllowanceFor(goodsAfterDiscount, giftGuarantee);
   if (allowance <= 0) return [];
 
   const settings = await getGiftSettings();
@@ -389,7 +391,7 @@ export async function computeSummary(
     shippingFee,
     discount,
     total,
-    bundleQty: bundleResult.bundleQty,
+    giftGuarantee: bundleResult.giftGuarantee,
   };
 }
 

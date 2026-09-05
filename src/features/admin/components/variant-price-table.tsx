@@ -14,8 +14,14 @@ import { unpricedActiveSizes } from "@/lib/validators/product";
 
 export interface VariantDraft {
   ml: number;
-  /** The ₮ price the admin typed — what the customer pays, as-is. */
+  /** Үндсэн үнэ — хямдралгүй үед төлөх дүн, хямдралтай үед зураастай харагдана. */
   price: number;
+  /**
+   * Хямдарсан үнэ (0054). null / 0 бол хямдрал байхгүй. Байвал худалдан авагч
+   * ЭНЭ дүнг төлнө — зөвхөн харагдац биш, сагс, захиалга, тайлан бүгд үүгээр
+   * явна.
+   */
+  salePrice: number | null;
   active: boolean;
 }
 
@@ -31,7 +37,12 @@ export { unpricedActiveSizes };
  * ticks a size once it has a price, rather than remembering to untick two.
  */
 export function emptyVariants(): VariantDraft[] {
-  return ML_SIZES.map((ml) => ({ ml, price: 0, active: false }));
+  return ML_SIZES.map((ml) => ({
+    ml,
+    price: 0,
+    salePrice: null,
+    active: false,
+  }));
 }
 
 /**
@@ -56,6 +67,12 @@ export function VariantPriceTable({
   idPrefix?: string;
 }) {
   const unpriced = new Set(unpricedActiveSizes(variants));
+  // Үндсэн үнээс өндөр «хямдрал» бол алдаа — DB-ийн check ч үүнийг татгалзана.
+  const badSale = new Set(
+    variants
+      .filter((v) => v.salePrice != null && v.salePrice > v.price)
+      .map((v) => v.ml),
+  );
 
   function update(ml: number, patch: Partial<VariantDraft>) {
     onChange(variants.map((v) => (v.ml === ml ? { ...v, ...patch } : v)));
@@ -72,6 +89,9 @@ export function VariantPriceTable({
               </th>
               <th scope="col" className="px-3 py-2 font-medium">
                 Үнэ (₮)
+              </th>
+              <th scope="col" className="px-3 py-2 font-medium">
+                Хямдарсан (₮)
               </th>
               {/* Not "1ml" — that collides with the monthly 1ml gift. This is
                   the unit price, shown so four hand-typed prices can be
@@ -91,6 +111,14 @@ export function VariantPriceTable({
                 showErrors && unpriced.has(v.ml)
                   ? "Үнэ оруулна уу, эсвэл «Зарна»-г авна уу."
                   : undefined;
+              const saleError =
+                showErrors && badSale.has(v.ml)
+                  ? "Үндсэн үнээс их байна."
+                  : undefined;
+              // ₮/1мл нь БОДИТООР төлөх үнээр бодогдоно — тэгэхгүй бол
+              // хямдралтай хэмжээ хямд болсон нь энэ баганад харагдахгүй.
+              const charged =
+                v.salePrice && v.salePrice > 0 ? v.salePrice : v.price;
               return (
                 <tr key={v.ml} className="even:bg-muted/40">
                   <th
@@ -120,10 +148,36 @@ export function VariantPriceTable({
                     />
                     <FieldError id={id} message={error} />
                   </td>
+                  <td className="px-3 py-2 align-top">
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      step={100}
+                      className={`h-11 w-28 md:h-8 md:w-32 ${fieldErrorClass(saleError)}`}
+                      aria-label={`${v.ml}ml-ийн хямдарсан үнэ`}
+                      value={v.salePrice == null ? "" : v.salePrice}
+                      placeholder="—"
+                      {...fieldErrorProps(`${id}-sale`, saleError)}
+                      onChange={(e) => {
+                        const raw = e.target.value.trim();
+                        update(v.ml, {
+                          // Хоосон талбар = хямдрал байхгүй (null). 0 гэсэн
+                          // тоог «үнэгүй» гэж ойлгохгүйн тулд түүнийг ч мөн
+                          // хямдралгүйд тооцно.
+                          salePrice:
+                            raw === "" ? null : Math.max(0, Number(raw) || 0),
+                        });
+                      }}
+                    />
+                    <FieldError id={`${id}-sale`} message={saleError} />
+                  </td>
                   {/* Not a pricing input — just so the admin can eyeball whether
                       the four sizes are priced consistently. */}
                   <td className="text-muted-foreground px-3 py-2 align-top tabular-nums">
-                    {v.price > 0 ? formatPrice(Math.round(v.price / v.ml)) : "—"}
+                    {charged > 0
+                      ? formatPrice(Math.round(charged / v.ml))
+                      : "—"}
                   </td>
                   <td className="px-3 py-2 align-top">
                     <Checkbox
@@ -141,9 +195,10 @@ export function VariantPriceTable({
         </table>
       </div>
       <p className="text-muted-foreground text-xs">
-        Хэмжээ тус бүрийн үнийг гараар бичнэ. «Зарна»-г авбал тухайн хэмжээ
-        худалдаанаас түр гарна (үлдэгдэл дуусахаас үл хамааран). Үнэгүй хэмжээг
-        зарах боломжгүй.
+        Хэмжээ тус бүрийн үнийг гараар бичнэ. «Хямдарсан» баганад үнэ бичвэл
+        худалдан авагч тэр дүнг төлж, үндсэн үнэ нь зураастай харагдана — хоосон
+        орхивол хямдрал байхгүй. «Зарна»-г авбал тухайн хэмжээ худалдаанаас түр
+        гарна (үлдэгдэл дуусахаас үл хамааран). Үнэгүй хэмжээг зарах боломжгүй.
       </p>
     </div>
   );

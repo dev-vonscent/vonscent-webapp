@@ -36,13 +36,10 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
 
   const selected = activeVariants.find((v) => v.id === variantId) ?? null;
   const unitPrice = selected?.price ?? 0;
-  // sale_pct is display-only: the charged price stays `price`, the crossed-out
-  // "original" is derived from it, rounded to a clean 100₮ (0038).
-  const salePct = product.salePct;
-  const originalPrice =
-    salePct > 0
-      ? Math.round(unitPrice / (1 - salePct / 100) / 100) * 100
-      : null;
+  // Хямдрал нь хэмжээ тус бүрийнх, бас БОДИТ (0054): `price` нь төлөх дүн,
+  // `basePrice` нь зураастай харагдах үндсэн үнэ. Хувь харуулахгүй (B4).
+  const basePrice = selected?.basePrice ?? 0;
+  const originalPrice = basePrice > unitPrice ? basePrice : null;
   const soldOut = product.soldOut;
   // The whole product may still be sellable while this particular size is not.
   const selectedOut = !soldOut && selected != null && !selected.inStock;
@@ -50,7 +47,9 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   const inStockVariants = activeVariants.filter((v) => v.inStock);
   const bestValue =
     inStockVariants.length > 1
-      ? inStockVariants.reduce((a, b) => (a.price / a.ml <= b.price / b.ml ? a : b))
+      ? inStockVariants.reduce((a, b) =>
+          a.price / a.ml <= b.price / b.ml ? a : b,
+        )
       : null;
 
   function onAdd() {
@@ -87,14 +86,9 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           {formatPrice(unitPrice)}
         </span>
         {originalPrice && originalPrice > unitPrice && (
-          <>
-            <span className="text-muted-foreground pb-1 text-base line-through">
-              {formatPrice(originalPrice)}
-            </span>
-            <span className="bg-destructive/15 text-destructive mb-1 rounded-md px-2 py-0.5 text-xs font-semibold">
-              -{salePct}%
-            </span>
-          </>
+          <span className="text-muted-foreground pb-1 text-base line-through">
+            {formatPrice(originalPrice)}
+          </span>
         )}
         {selected && (
           <span className="text-muted-foreground pb-1 text-sm">
@@ -134,6 +128,11 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                 <span className="text-muted-foreground text-xs">
                   {v.inStock ? formatPrice(v.price) : "Дууссан"}
                 </span>
+                {v.inStock && v.basePrice > v.price && (
+                  <span className="text-muted-foreground text-[10px] line-through">
+                    {formatPrice(v.basePrice)}
+                  </span>
+                )}
                 {v.inStock && (
                   <span className="text-muted-foreground text-[10px]">
                     {formatPrice(Math.round(v.price / v.ml))}/ml
@@ -207,7 +206,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
             <p className="truncate text-xs font-medium">
               {product.name} · {selected.ml}ml
             </p>
-            <p className="font-serif text-lg/tight  font-semibold">
+            <p className="font-serif text-lg/tight font-semibold">
               {formatPrice(unitPrice)}
             </p>
           </div>

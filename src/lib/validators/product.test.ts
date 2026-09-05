@@ -23,7 +23,11 @@ describe("variantDraftSchema", () => {
   });
 
   it("refuses an active size priced at zero", () => {
-    const res = variantDraftSchema.safeParse({ ml: 20, price: 0, active: true });
+    const res = variantDraftSchema.safeParse({
+      ml: 20,
+      price: 0,
+      active: true,
+    });
     expect(res.success).toBe(false);
     if (!res.success) {
       expect(res.error.issues[0].path).toEqual(["price"]);
@@ -34,7 +38,8 @@ describe("variantDraftSchema", () => {
     // 2ml is priced and sold like 5/10/20 — the schema must not treat it
     // differently in either direction.
     expect(
-      variantDraftSchema.safeParse({ ml: 2, price: 9000, active: true }).success,
+      variantDraftSchema.safeParse({ ml: 2, price: 9000, active: true })
+        .success,
     ).toBe(true);
     expect(
       variantDraftSchema.safeParse({ ml: 2, price: 0, active: true }).success,
@@ -75,5 +80,46 @@ describe("unpricedActiveSizes", () => {
         { ml: 10, price: 0, active: false },
       ]),
     ).toEqual([]);
+  });
+});
+
+/**
+ * Хэмжээ тус бүрийн БОДИТ хямдрал (0054, backlog B1). Хямдарсан үнэ бол
+ * төлөгдөх дүн, тиймээс үндсэн үнээс дээгүүр байх нь мөнгөний алдаа — DB-ийн
+ * check-ээс өмнө энд таслагдана.
+ */
+describe("variantDraftSchema — хямдарсан үнэ", () => {
+  it("хямдралгүй мөр null-аар өгөгдмөл орно", () => {
+    const res = variantDraftSchema.safeParse({
+      ml: 5,
+      price: 24000,
+      active: true,
+    });
+    expect(res.success).toBe(true);
+    if (res.success) expect(res.data.salePrice).toBeNull();
+  });
+
+  it("үндсэн үнээс бага хямдралыг зөвшөөрнө", () => {
+    expect(
+      variantDraftSchema.safeParse({
+        ml: 10,
+        price: 52000,
+        salePrice: 42000,
+        active: true,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("үндсэн үнээс их хямдралыг татгалзана", () => {
+    const res = variantDraftSchema.safeParse({
+      ml: 10,
+      price: 52000,
+      salePrice: 60000,
+      active: true,
+    });
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(res.error.issues[0].path).toEqual(["salePrice"]);
+    }
   });
 });

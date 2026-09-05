@@ -10,7 +10,14 @@ import { formatDiscountRange } from "@/features/collections/pricing";
 
 /** A bundle card led by its poster image, with the member bottles as a small
  * avatar strip so the buyer still sees what's inside. */
-export function CollectionCard({ collection }: { collection: Collection }) {
+export function CollectionCard({
+  collection,
+  giftPoolEnabled = false,
+}: {
+  collection: Collection;
+  /** Бэлгийн сан идэвхтэй үед л «Бэлэгтэй» тэмдэг гарна (backlog A2). */
+  giftPoolEnabled?: boolean;
+}) {
   const start = collection.startingPrice;
   const startMl = collection.availableMls[0];
   const members = collection.members.slice(0, 4);
@@ -39,7 +46,7 @@ export function CollectionCard({ collection }: { collection: Collection }) {
               −{formatDiscountRange(collection.discountRange)}
             </Badge>
           )}
-          {collection.giftEnabled && (
+          {giftPoolEnabled && (
             <Badge className="bg-foreground/85 text-background w-fit gap-1 backdrop-blur-sm">
               <Gift className="size-3" /> Бэлэгтэй
             </Badge>

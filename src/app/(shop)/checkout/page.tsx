@@ -36,7 +36,11 @@ import {
   PAYMENT_METHODS,
   type ShippingZoneConfig,
 } from "@/lib/constants";
-import { giftAllowanceFor } from "@/lib/gift";
+import {
+  bundleGiftGuarantee,
+  giftAllowanceFor,
+  giftGuaranteeFor,
+} from "@/lib/gift";
 import { GiftSamplePicker } from "@/features/checkout/components/gift-sample-picker";
 import { CheckoutStepper } from "@/features/checkout/components/checkout-stepper";
 import {
@@ -307,12 +311,12 @@ export default function CheckoutPage() {
     Math.floor(loyaltyPoints * redeemRate),
     Math.max(subtotal - discount, 0),
   );
-  // Monthly gift samples: one 1ml pick per full 200k of goods after coupon,
-  // and every bundle carries at least one pick of its own (src/lib/gift.ts).
-  const bundleQty = collections.reduce((n, c) => n + c.qty, 0);
+  // Бэлгийн 1мл дээж: купоны дараах барааны дүнгийн 200,000₮ тутамд 1, эсвэл
+  // preset 5/10/20мл багц бүрийн баталгаа — ихийг нь (src/lib/gift.ts).
+  // Сервер энэ тоог өөрөө дахин бодно, энэ нь зөвхөн харагдац.
   const giftAllowance = giftAllowanceFor(
     Math.max(subtotal - discount, 0),
-    bundleQty,
+    giftGuaranteeFor(collections),
   );
   const loyaltyApplied = useLoyalty ? maxLoyalty : 0;
   const total = Math.max(subtotal + shippingFee - discount - loyaltyApplied, 0);
@@ -424,7 +428,6 @@ export default function CheckoutPage() {
             ml: c.ml,
             qty: c.qty,
             memberVariantIds: c.members.map((m) => m.variantId),
-            giftProductId: c.gift?.productId ?? null,
           })),
         }),
       });
@@ -727,7 +730,7 @@ export default function CheckoutPage() {
             </RadioGroup>
           </Section>
 
-          {/* Monthly gift samples — one pick per full 200k of goods value. */}
+          {/* Бэлгийн 1мл дээж — эрхийн тоогоор, зөвхөн админы сангаас. */}
           {mounted && (
             <GiftSamplePicker
               allowance={giftAllowance}
@@ -769,7 +772,7 @@ export default function CheckoutPage() {
                         </p>
                         <p className="text-muted-foreground text-xs">
                           Багц · {c.ml}ml · {c.members.length} үнэртэн
-                          {c.gift ? " · 🎁" : ""}
+                          {bundleGiftGuarantee(c) > 0 ? " · 🎁" : ""}
                         </p>
                       </div>
                       <span className="text-sm font-medium">

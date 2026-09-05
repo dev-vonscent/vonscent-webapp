@@ -3,18 +3,17 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { X, ChevronLeft, ChevronRight, Copy, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
-import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import type { PopupSettings, PopupSlide } from "@/features/content/api";
 
-const STORAGE_KEY = "vonscent-popup-dismissed";
-/** Per-tab flag: the popup is shown at most once per visit to the site. */
-const SESSION_KEY = "vonscent-popup-seen";
 const AUTOPLAY_MS = 5000;
+/** Хуудас зурагдаж амжсаны дараа гарна — дээрээс нь шууд унахгүй. */
+const OPEN_DELAY_MS = 800;
 
 /** True when `now` falls within the slide's optional [startsAt, endsAt] window. */
 function isLive(slide: PopupSlide, now: number): boolean {
@@ -24,54 +23,23 @@ function isLive(slide: PopupSlide, now: number): boolean {
 }
 
 /**
- * A coupon rendered as a dashed-border ticket with a copy button — the admin
- * only types the code; the presentation lives in code (questions.md №12).
- */
-function CouponCode({ code }: { code: string }) {
-  const [copied, setCopied] = React.useState(false);
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard blocked (e.g. non-secure context) — the code stays visible
-      // to copy by hand.
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={copy}
-      aria-label={`${code} купон хуулах`}
-      className="border-primary/60 bg-secondary/60 hover:bg-secondary mx-auto flex items-center gap-3 rounded-lg border-2 border-dashed px-5 py-2.5 transition-colors"
-    >
-      <span className="font-mono text-lg font-semibold tracking-widest">
-        {code}
-      </span>
-      {copied ? (
-        <span className="text-success flex items-center gap-1 text-xs">
-          <Check className="size-3.5" /> Хуулагдлаа
-        </span>
-      ) : (
-        <span className="text-muted-foreground flex items-center gap-1 text-xs">
-          <Copy className="size-3.5" /> Хуулах
-        </span>
-      )}
-    </button>
-  );
-}
-
-/**
- * Marketing popup carousel (admin A8). Shows scheduled slides once per
- * `frequencyHours` window. Auto-advances; pauses on manual swipe/drag, then
- * resumes. Closable.
+ * Сурталчилгааны popup (backlog G1–G3).
+ *
+ * Зөвхөн зураг: гарчиг, текст, товч, купон байхгүй — зураг нь өөрөө зар,
+ * холбоостой бол дарахад тийшээ очно. Зөвхөн нүүр хуудсанд, нүүр нээгдэх
+ * бүрд (refresh, буцаж ирэх) гарна; «нэг session-д нэг удаа», «хэдэн цаг
+ * тутамд» гэсэн хязгаарлалт байхгүй тул юу ч хадгалахгүй. Олон слайд бол
+ * автоматаар шилжинэ, сум/свайпаар гараар солино; гараар хөдөлгөсний дараа
+ * автомат зогсоно.
+ *
+ * Radix Dialog дээр суурилсан: Escape, гадна дарах, focus trap, scroll lock,
+ * дэлгэц уншигчийн `role=dialog` бүгд бэлэн ирнэ.
  */
 export function PromoPopup({ settings }: { settings: PopupSettings }) {
   const [open, setOpen] = React.useState(false);
   const [index, setIndex] = React.useState(0);
+  // Хуваарь нь браузарын цагаар шийдэгдэнэ — серверийн ISR кэш хуучин
+  // байсан ч дууссан зар үзэгдэхгүй.
   const [slides, setSlides] = React.useState<PopupSlide[]>([]);
   const many = slides.length > 1;
   const reducedMotion = usePrefersReducedMotion();
@@ -91,132 +59,136 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
     };
   }, [emblaApi]);
 
-  // Filter to slides whose schedule is live now, then decide whether to show.
   React.useEffect(() => {
     const now = Date.now();
     const live = (settings.slides ?? []).filter(
-      (s) => s.title && isLive(s, now),
+      (s) => Boolean(s.imageUrl) && isLive(s, now),
     );
     setSlides(live);
     if (!settings.enabled || live.length === 0) return;
-    // Two gates: the admin's frequency window across visits, and a per-tab flag
-    // so navigating back to Home doesn't re-open it (requirement_fb.md §1 —
-    // "Home руу буцах бүрд гарч ирдгийг болиулах"). The session flag is set as
-    // soon as it opens, not only when dismissed, so leaving the page mid-popup
-    // still counts as "seen".
-    if (sessionStorage.getItem(SESSION_KEY)) return;
-    const last = Number(localStorage.getItem(STORAGE_KEY) ?? 0);
-    if ((now - last) / 36e5 < settings.frequencyHours) return;
-    const t = setTimeout(() => {
-      sessionStorage.setItem(SESSION_KEY, "1");
-      setOpen(true);
-    }, 1200);
+    const t = setTimeout(() => setOpen(true), OPEN_DELAY_MS);
     return () => clearTimeout(t);
-  }, [settings.enabled, settings.frequencyHours, settings.slides]);
+  }, [settings.enabled, settings.slides]);
 
-  function dismiss() {
-    localStorage.setItem(STORAGE_KEY, String(Date.now()));
-    setOpen(false);
-  }
   function go(dir: number) {
     emblaApi?.plugins().autoplay?.stop();
     if (dir > 0) emblaApi?.scrollNext();
     else emblaApi?.scrollPrev();
   }
 
-  if (!open || slides.length === 0) return null;
+  if (slides.length === 0) return null;
 
   return (
-    <div
-      className="bg-foreground/40 fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={dismiss}
-    >
-      <div
-        className="bg-card relative w-full max-w-md overflow-hidden rounded-xl shadow-xl"
-        onClick={(e) => e.stopPropagation()}
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent
+        aria-describedby={undefined}
+        className="max-w-lg gap-0 overflow-hidden p-0"
       >
-        <button
-          onClick={dismiss}
-          aria-label="Хаах"
-          className="bg-background/70 text-muted-foreground hover:bg-accent absolute top-3 right-3 z-10 rounded-md p-1"
-        >
-          <X className="size-4" />
-        </button>
+        <DialogTitle className="sr-only">Сурталчилгаа</DialogTitle>
 
         <div ref={emblaRef} className="overflow-hidden">
           <div className="flex items-start">
             {slides.map((slide, i) => (
-              <div key={i} className="min-w-0 flex-[0_0_100%]">
-                {slide.imageUrl && (
-                  <div className="bg-secondary relative aspect-16/10 w-full">
-                    <Image
-                      src={slide.imageUrl}
-                      alt={slide.title}
-                      fill
-                      sizes="448px"
-                      className="object-cover"
-                    />
-                  </div>
-                )}
-
-                <div className="space-y-3 p-8 text-center">
-                  <h2 className="font-serif text-2xl font-semibold">
-                    {slide.title}
-                  </h2>
-                  {slide.body && (
-                    <p className="text-muted-foreground text-sm">
-                      {slide.body}
-                    </p>
-                  )}
-                  {slide.couponCode && <CouponCode code={slide.couponCode} />}
-                  {slide.ctaLabel && (
-                    <Button asChild className="mt-2" onClick={dismiss}>
-                      <Link href={slide.ctaHref || "/catalog"}>
-                        {slide.ctaLabel}
-                      </Link>
-                    </Button>
-                  )}
-                </div>
+              <div
+                key={`${slide.imageUrl}-${i}`}
+                className="min-w-0 flex-[0_0_100%]"
+              >
+                <SlideImage
+                  slide={slide}
+                  eager={i === 0}
+                  onNavigate={() => setOpen(false)}
+                />
               </div>
             ))}
           </div>
         </div>
 
-        {slides.length > 1 && (
+        {many && (
           <>
             <button
+              type="button"
               onClick={() => go(-1)}
-              aria-label="Өмнөх"
-              className="bg-background/70 hover:bg-accent absolute top-1/2 left-2 -translate-y-1/2 rounded-full p-1.5"
+              aria-label="Өмнөх зар"
+              className="bg-background/70 text-foreground hover:bg-background absolute top-1/2 left-2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full backdrop-blur transition-colors"
             >
               <ChevronLeft className="size-4" />
             </button>
             <button
+              type="button"
               onClick={() => go(1)}
-              aria-label="Дараах"
-              className="bg-background/70 hover:bg-accent absolute top-1/2 right-2 -translate-y-1/2 rounded-full p-1.5"
+              aria-label="Дараах зар"
+              className="bg-background/70 text-foreground hover:bg-background absolute top-1/2 right-2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full backdrop-blur transition-colors"
             >
               <ChevronRight className="size-4" />
             </button>
-            <div className="flex justify-center gap-1.5 pb-4">
+            <div
+              role="tablist"
+              aria-label="Зарууд"
+              className="bg-background/70 absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-2.5 py-1.5 backdrop-blur"
+            >
               {slides.map((_, i) => (
                 <button
                   key={i}
+                  type="button"
+                  role="tab"
+                  aria-selected={i === index}
+                  aria-label={`${i + 1}-р зар`}
                   onClick={() => {
                     emblaApi?.plugins().autoplay?.stop();
                     emblaApi?.scrollTo(i);
                   }}
-                  aria-label={`${i + 1}`}
                   className={cn(
-                    "size-1.5 rounded-full transition-colors",
-                    i === index ? "bg-primary" : "bg-border",
+                    "h-1.5 rounded-full transition-all",
+                    i === index
+                      ? "bg-foreground w-4"
+                      : "bg-foreground/35 w-1.5",
                   )}
                 />
               ))}
             </div>
           </>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Зураг өөрийн харьцаагаараа, тайрахгүй — админ ямар ч хэмжээтэй зураг
+ * оруулж болно. Хэт өндөр зураг дэлгэцээс хэтрэхгүйн тулд 80vh-д хашина.
+ */
+function SlideImage({
+  slide,
+  eager,
+  onNavigate,
+}: {
+  slide: PopupSlide;
+  eager: boolean;
+  onNavigate: () => void;
+}) {
+  const img = (
+    <Image
+      src={slide.imageUrl!}
+      // Зар нь зураг дотроо — админ alt бичдэггүй, ерөнхий тайлбар хангалттай.
+      alt="Сурталчилгаа"
+      width={1080}
+      height={1350}
+      sizes="(max-width: 544px) calc(100vw - 2rem), 512px"
+      loading={eager ? "eager" : "lazy"}
+      className="bg-secondary h-auto max-h-[80vh] w-full object-contain"
+      // Свайп хийхэд браузарын зураг чирэх үйлдэл саад болдог.
+      draggable={false}
+    />
+  );
+  if (!slide.href) return img;
+  return (
+    <Link
+      href={slide.href}
+      onClick={onNavigate}
+      className="block focus-visible:outline-none"
+      aria-label="Зар үзэх"
+    >
+      {img}
+    </Link>
   );
 }

@@ -138,11 +138,12 @@ function toListItem(p: ProductDetail): ProductListItem {
     seasons: p.seasons,
     image: p.image,
     startingPrice: p.startingPrice,
+    startingBasePrice: p.startingBasePrice,
     tags: p.tags,
+    isFeatured: p.isFeatured,
     soldOut: p.soldOut,
     ratingAvg: p.ratingAvg,
     ratingCount: p.ratingCount,
-    salePct: p.salePct,
     createdAt: p.createdAt,
   };
 }

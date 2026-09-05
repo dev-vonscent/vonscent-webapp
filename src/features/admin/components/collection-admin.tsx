@@ -20,12 +20,16 @@ export interface AdminCollection {
   /** Default %, used for any size without its own row (0051). */
   discount_pct: number | string;
   image_url: string | null;
-  gift_ml: number | null;
   is_active: boolean;
   is_featured: boolean;
   collection_items: { product_id: string; sort_order: number }[];
   /** Only loaded by the edit page — the list does not need them. */
-  collection_ml_discounts?: { ml: number; discount_pct: number | string }[];
+  collection_ml_discounts?: {
+    ml: number;
+    discount_pct: number | string | null;
+    /** Тухайн хэмжээний тогтмол үнэ (0054) — байвал хувийг орлоно. */
+    price: number | null;
+  }[];
   collection_tags?: { tags: { slug: string } | null }[];
   collection_custom_tags?: { custom_tags: { slug: string } | null }[];
 }

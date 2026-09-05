@@ -5,6 +5,7 @@ import { formatPrice } from "@/lib/format";
 import type { ProductListItem } from "@/lib/types";
 import { WishlistButton } from "@/features/wishlist/components/wishlist-button";
 import { QuickAdd } from "./quick-add";
+import { GenderBadge } from "./gender-badge";
 
 const TAG_LABEL: Record<string, string> = {
   new: "Шинэ",
@@ -24,7 +25,7 @@ export function ProductCard({
     <div className="group relative flex flex-col">
       <Link
         href={`/products/${product.slug}`}
-        className="bg-none group-hover:shadow-lift relative aspect-4/5 overflow-hidden rounded-2xl transition-all duration-300"
+        className="group-hover:shadow-lift relative aspect-4/5 overflow-hidden rounded-2xl bg-none transition-all duration-300"
       >
         {product.image && (
           <Image
@@ -37,7 +38,11 @@ export function ProductCard({
         )}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
           {product.tags.map((t) => (
-            <Badge key={t} variant={t} className="w-fit bg-background/85! backdrop-blur-sm">
+            <Badge
+              key={t}
+              variant={t}
+              className="bg-background/85! w-fit backdrop-blur-sm"
+            >
               {TAG_LABEL[t]}
             </Badge>
           ))}
@@ -62,17 +67,27 @@ export function ProductCard({
       </div>
 
       <div className="mt-3 flex flex-col gap-0.5">
-        <span className="text-muted-foreground text-[11px] tracking-[0.15em] uppercase">
-          {product.brand}
-        </span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-muted-foreground truncate text-[11px] tracking-[0.15em] uppercase">
+            {product.brand}
+          </span>
+          {/* Хүйсийн тэмдэг (backlog C1) — брэндийн мөрөнд, чимээгүй. */}
+          <GenderBadge gender={product.gender} tone="muted" />
+        </div>
         <Link
           href={`/products/${product.slug}`}
-          className="hover:text-gold-strong font-serif text-base/tight  font-medium transition-colors"
+          className="hover:text-gold-strong font-serif text-base/tight font-medium transition-colors"
         >
           {product.name}
         </Link>
-        <span className="text-foreground/70 mt-1.5 text-sm font-semibold tracking-tight">
+        <span className="text-foreground/70 mt-1.5 flex items-baseline gap-1.5 text-sm font-semibold tracking-tight">
           {formatPrice(product.startingPrice)}
+          {/* Зөвхөн үндсэн үнэ (зураастай) — хувь харуулахгүй (backlog B4). */}
+          {product.startingBasePrice > product.startingPrice && (
+            <span className="text-muted-foreground text-xs font-normal line-through">
+              {formatPrice(product.startingBasePrice)}
+            </span>
+          )}
         </span>
       </div>
     </div>

@@ -90,7 +90,7 @@ export function QuickAdd({
           type="button"
           aria-label="Сагсанд нэмэх"
           className={cn(
-            "bg-background/80 text-foreground hover:bg-background flex size-8 items-center justify-center rounded-full backdrop-blur transition-colors relative before:absolute before:top-1/2 before:left-1/2 before:size-11 before:-translate-1/2  before:content-['']",
+            "bg-background/80 text-foreground hover:bg-background relative flex size-8 items-center justify-center rounded-full backdrop-blur transition-colors before:absolute before:top-1/2 before:left-1/2 before:size-11 before:-translate-1/2 before:content-['']",
             className,
           )}
         >
@@ -118,13 +118,23 @@ export function QuickAdd({
             <p className="text-muted-foreground text-[11px] tracking-[0.15em] uppercase">
               {product.brand}
             </p>
-            <p className="font-serif text-base/tight  font-medium">
+            <p className="font-serif text-base/tight font-medium">
               {product.name}
             </p>
             <p className="mt-1 font-semibold tracking-tight">
               {selected
                 ? formatPrice(selected.price)
                 : formatPrice(product.startingPrice)}
+              {/* Үндсэн үнэ зураастай — хувьгүй (backlog B4). */}
+              {(selected
+                ? selected.basePrice > selected.price
+                : product.startingBasePrice > product.startingPrice) && (
+                <span className="text-muted-foreground ml-1.5 text-xs font-normal line-through">
+                  {formatPrice(
+                    selected ? selected.basePrice : product.startingBasePrice,
+                  )}
+                </span>
+              )}
               {selected && (
                 <span className="text-muted-foreground ml-1 text-xs font-normal">
                   / {selected.ml}ml

@@ -167,7 +167,7 @@ function draftFrom(product: AdminProduct): VariantDraft[] {
   return ML_SIZES.map((ml) => {
     const v = product.variants.find((x) => x.ml === ml);
     return v
-      ? { ml, price: v.price, active: v.isActive }
-      : { ml, price: 0, active: false };
+      ? { ml, price: v.price, salePrice: v.salePrice, active: v.isActive }
+      : { ml, price: 0, salePrice: null, active: false };
   });
 }

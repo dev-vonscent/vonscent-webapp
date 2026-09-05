@@ -92,7 +92,6 @@ export function ProductEditForm({
     releaseYear: product.releaseYear ? String(product.releaseYear) : "",
     bottlePrice: String(product.bottlePrice),
     bottleMl: String(product.bottleMl),
-    salePct: String(product.salePct),
     lowStockMl: String(product.lowStockMl),
   });
   const [scentFamilies, rawToggleFamily] = useToggleList(product.scentFamilies);
@@ -107,13 +106,19 @@ export function ProductEditForm({
     ML_SIZES.map((ml) => {
       const v = product.variants.find((x) => x.ml === ml);
       return v
-        ? { ml, price: v.price, active: v.isActive }
-        : { ml, price: 0, active: false };
+        ? {
+            ml,
+            price: v.price,
+            salePrice: v.salePrice,
+            active: v.isActive,
+          }
+        : { ml, price: 0, salePrice: null, active: false };
     }),
   );
   const [tags, setTags] = React.useState<string[]>(product.tags);
   const [customTags, rawToggleCustomTag] = useToggleList(product.customTags);
   const [isActive, setIsActive] = React.useState(product.isActive);
+  const [isFeatured, setIsFeatured] = React.useState(product.isFeatured);
 
   useUnsavedGuard(dirty);
 
@@ -199,10 +204,10 @@ export function ProductEditForm({
           releaseYear: form.releaseYear ? Number(form.releaseYear) : null,
           bottlePrice: Number(form.bottlePrice),
           bottleMl: Number(form.bottleMl),
-          salePct: Math.min(100, Math.max(0, Number(form.salePct) || 0)),
           lowStockMl: Number(form.lowStockMl),
           variants,
           isActive,
+          isFeatured,
           tags,
           customTags,
         }),
@@ -403,20 +408,6 @@ export function ProductEditForm({
             </div>
           )}
 
-          <Field label="Хямдралын % (0 = хямдралгүй)">
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={form.salePct}
-              onChange={(e) => set("salePct", e.target.value)}
-            />
-          </Field>
-          <p className="text-muted-foreground text-sm">
-            Дээрх үнэ бол худалдан авагчийн төлөх үнэ. Хувь оруулбал сайт дээр
-            зураастай «хуучин үнэ» болон -X% тэмдэг харагдана.
-          </p>
-
           <p className="text-muted-foreground text-sm">
             Эх савны үнэ/багтаамж нь борлуулалт, ашгийн тайланд болон үлдэгдэл
             тооцоонд ашиглагдана — зарах үнэд нөлөөлөхгүй.
@@ -473,6 +464,21 @@ export function ProductEditForm({
               }}
             />
             Идэвхтэй (нийтлэх)
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Checkbox
+              checked={isFeatured}
+              onCheckedChange={(v) => {
+                setDirty(true);
+                setIsFeatured(Boolean(v));
+              }}
+            />
+            <span>
+              Онцлох бараа
+              <span className="text-muted-foreground block text-xs">
+                Нүүрийн «Онцлох» хэсэгт автоматаар орно
+              </span>
+            </span>
           </label>
           <CustomTagField
             pool={customTagPool}

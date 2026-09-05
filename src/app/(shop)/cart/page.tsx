@@ -4,6 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Gift, Minus, Plus, Trash2, ShoppingCart } from "lucide-react";
+import { bundleGiftGuarantee } from "@/lib/gift";
+import { useGiftPool } from "@/features/gifts/use-gift-pool";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +24,7 @@ export default function CartPage() {
   const collections = useCart((s) => s.collections);
   const setCollectionQty = useCart((s) => s.setCollectionQty);
   const removeCollection = useCart((s) => s.removeCollection);
+  const giftPool = useGiftPool();
   const subtotal = useCart(selectSubtotal);
   const coupon = useCart((s) => s.coupon);
   const setCoupon = useCart((s) => s.setCoupon);
@@ -157,11 +160,10 @@ export default function CartPage() {
                           • {m.brand} — {m.name}
                         </li>
                       ))}
-                      {c.gift && (
-                        <li className="text-foreground/80 flex items-center gap-1 truncate">
+                      {giftPool?.enabled && bundleGiftGuarantee(c) > 0 && (
+                        <li className="text-foreground/80 flex items-center gap-1">
                           <Gift className="text-gold-strong size-3 shrink-0" />
-                          Бэлэг: {c.gift.brand} — {c.gift.name} ({c.gift.ml}
-                          ml)
+                          1мл бэлгийн эрхтэй — бэлгээ төлбөрийн хуудсанд сонгоно
                         </li>
                       )}
                     </ul>

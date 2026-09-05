@@ -10,26 +10,14 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
-import { GiftPicker } from "./gift-picker";
-import type { Collection, GiftCandidate } from "../types";
+import type { Collection } from "../types";
 
-function Card({
-  collection,
-  giftCandidates,
-  giftEnabled,
-  giftMl,
-}: {
-  collection: Collection;
-  giftCandidates: GiftCandidate[];
-  giftEnabled: boolean;
-  giftMl: number;
-}) {
+function Card({ collection }: { collection: Collection }) {
   const router = useRouter();
   const addCollection = useCart((s) => s.addCollection);
   const [ml, setMl] = React.useState<number>(
     collection.availableMls[0] ?? collection.prices[0]?.ml,
   );
-  const [giftId, setGiftId] = React.useState<string | null>(null);
   const [added, setAdded] = React.useState(false);
   const [renaming, setRenaming] = React.useState(false);
   const [name, setName] = React.useState(collection.name);
@@ -37,13 +25,9 @@ function Card({
 
   const priceRow = collection.prices.find((p) => p.ml === ml) ?? null;
   const available = priceRow?.available ?? false;
-  const memberIds = new Set(collection.members.map((m) => m.productId));
-  const candidates = giftCandidates.filter((g) => !memberIds.has(g.productId));
-  const gift = candidates.find((g) => g.productId === giftId) ?? null;
-  const needsGift = giftEnabled && candidates.length > 0 && !giftId;
 
   function add() {
-    if (!priceRow || !available || needsGift) return;
+    if (!priceRow || !available) return;
     addCollection({
       collectionId: collection.id,
       type: "custom",
@@ -61,15 +45,6 @@ function Card({
         image: m.image?.url ?? null,
         price: m.variantByMl[ml].price,
       })),
-      gift: gift
-        ? {
-            productId: gift.productId,
-            name: gift.name,
-            brand: gift.brand,
-            image: gift.image?.url ?? null,
-            ml: giftMl,
-          }
-        : null,
       unitPrice: priceRow.price,
     });
     setAdded(true);
@@ -187,27 +162,16 @@ function Card({
             </span>
           </div>
 
-          {giftEnabled && candidates.length > 0 && (
-            <GiftPicker
-              candidates={candidates}
-              giftMl={giftMl}
-              value={giftId}
-              onChange={setGiftId}
-            />
-          )}
-
           <Button
             size="sm"
             className="w-full"
-            disabled={!available || needsGift}
+            disabled={!available}
             onClick={add}
           >
             {added ? (
               <>
                 <Check className="size-4" /> Нэмэгдлээ
               </>
-            ) : needsGift ? (
-              "Бэлгээ сонгоно уу"
             ) : (
               <>
                 <ShoppingCart className="size-4" /> Сагсанд нэмэх
@@ -220,17 +184,7 @@ function Card({
   );
 }
 
-export function MyCollections({
-  collections,
-  giftCandidates,
-  giftEnabled,
-  giftMl,
-}: {
-  collections: Collection[];
-  giftCandidates: GiftCandidate[];
-  giftEnabled: boolean;
-  giftMl: number;
-}) {
+export function MyCollections({ collections }: { collections: Collection[] }) {
   if (collections.length === 0) {
     return (
       <div className="border-border flex flex-col items-center gap-4 rounded-2xl border border-dashed py-16 text-center">
@@ -246,13 +200,7 @@ export function MyCollections({
   return (
     <div className="space-y-4">
       {collections.map((c) => (
-        <Card
-          key={c.id}
-          collection={c}
-          giftCandidates={giftCandidates}
-          giftEnabled={giftEnabled}
-          giftMl={giftMl}
-        />
+        <Card key={c.id} collection={c} />
       ))}
     </div>
   );

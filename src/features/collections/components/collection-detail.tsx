@@ -8,33 +8,37 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
-import { GiftPicker } from "./gift-picker";
-import type { Collection, GiftCandidate } from "../types";
+import { bundleGiftGuarantee } from "@/lib/gift";
+import type { Collection } from "../types";
 
 export function CollectionDetail({
   collection,
-  giftCandidates,
+  giftPoolEnabled,
 }: {
   collection: Collection;
-  giftCandidates: GiftCandidate[];
+  /** Админы бэлгийн сан идэвхтэй бөгөөд хоосон биш эсэх (backlog A2). */
+  giftPoolEnabled: boolean;
 }) {
   const firstMl = collection.availableMls[0];
   const [ml, setMl] = React.useState<number>(
     firstMl ?? collection.prices[0]?.ml,
   );
-  const [giftId, setGiftId] = React.useState<string | null>(null);
   const [added, setAdded] = React.useState(false);
 
   const addCollection = useCart((s) => s.addCollection);
 
   const priceRow = collection.prices.find((p) => p.ml === ml) ?? null;
   const available = priceRow?.available ?? false;
-  const gift = giftCandidates.find((g) => g.productId === giftId) ?? null;
-  const needsGift =
-    collection.giftEnabled && giftCandidates.length > 0 && !giftId;
+  // Багц өөрөө бэлэг «авчирдаггүй» — зөвхөн бэлгийн эрх өгнө, бэлгээ
+  // худалдан авагч төлбөрийн хуудсанд админы сангаас сонгоно (backlog A2).
+  const giftGuarantee = bundleGiftGuarantee({
+    type: collection.type,
+    ml,
+    qty: 1,
+  });
 
   function onAdd() {
-    if (!priceRow || !available || needsGift) return;
+    if (!priceRow || !available) return;
     addCollection({
       collectionId: collection.id,
       type: collection.type,
@@ -58,15 +62,6 @@ export function CollectionDetail({
           price: v.price,
         };
       }),
-      gift: gift
-        ? {
-            productId: gift.productId,
-            name: gift.name,
-            brand: gift.brand,
-            image: gift.image?.url ?? null,
-            ml: collection.giftMl,
-          }
-        : null,
       unitPrice: priceRow.price,
     });
     setAdded(true);
@@ -167,32 +162,22 @@ export function CollectionDetail({
         </div>
       </div>
 
-      {/* Gift */}
-      {collection.giftEnabled && (
-        <div className="space-y-2">
-          <p className="flex items-center gap-1.5 text-sm font-medium">
-            <Gift className="text-gold-strong size-4" /> Нэмэлт бэлэг
-          </p>
-          {giftCandidates.length > 0 ? (
-            <GiftPicker
-              candidates={giftCandidates}
-              giftMl={collection.giftMl}
-              value={giftId}
-              onChange={setGiftId}
-            />
-          ) : (
-            <p className="text-muted-foreground text-xs">
-              Бэлэгт тохирох үнэртэн одоогоор алга байна.
-            </p>
-          )}
-        </div>
+      {/* Бэлгийн эрх — сонголт нь checkout дээр */}
+      {giftPoolEnabled && giftGuarantee > 0 && (
+        <p className="border-border bg-secondary/60 flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm">
+          <Gift className="text-gold-strong mt-0.5 size-4 shrink-0" />
+          <span>
+            Энэ багц <strong>1мл бэлгийн дээж</strong> дагалдана — бэлгээ
+            төлбөрийн хуудсанд бэлгийн уснуудаас сонгоно.
+          </span>
+        </p>
       )}
 
       {/* Add to cart */}
       <Button
         size="lg"
         className="w-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
-        disabled={!available || needsGift}
+        disabled={!available}
         onClick={onAdd}
       >
         {added ? (
@@ -201,8 +186,6 @@ export function CollectionDetail({
           </>
         ) : !available ? (
           "Түр байхгүй"
-        ) : needsGift ? (
-          "Эхлээд бэлгээ сонгоно уу"
         ) : (
           <>
             <ShoppingCart className="size-4" /> Сагсанд нэмэх

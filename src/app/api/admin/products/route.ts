@@ -5,7 +5,11 @@ import { isSupabaseConfigured, isImageGenConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaffUser } from "@/lib/auth/guard";
 import { isStorageUrl } from "@/lib/storage/storage";
-import { resolveBrandId, sanitizeCustomTags, sanitizeFamilies } from "@/features/taxonomy/api";
+import {
+  resolveBrandId,
+  sanitizeCustomTags,
+  sanitizeFamilies,
+} from "@/features/taxonomy/api";
 import { runNewProductImages } from "@/lib/ai/new-product-pipeline";
 
 function slugify(name: string, brand: string) {
@@ -69,7 +73,6 @@ export async function POST(req: Request) {
     release_year: input.releaseYear ?? null,
     bottle_price: input.bottlePrice,
     bottle_ml: input.bottleMl,
-    sale_pct: input.salePct,
   };
 
   const hostedImages = input.images.filter((img) => isStorageUrl(img.url));
@@ -85,7 +88,8 @@ export async function POST(req: Request) {
   // A product whose only picture is still being generated has nothing to show,
   // so it starts hidden however the form's checkbox was left. One that already
   // carries uploaded gallery images publishes on the admin's word.
-  const startsActive = aiMode && hostedImages.length === 0 ? false : input.isActive;
+  const startsActive =
+    aiMode && hostedImages.length === 0 ? false : input.isActive;
 
   const { data: product, error: pErr } = await supabase
     .from("products")
@@ -94,6 +98,7 @@ export async function POST(req: Request) {
       scent_families: families,
       seasons: input.seasons,
       is_active: startsActive,
+      is_featured: input.isFeatured,
       reference_image_url: referenceImageUrl,
     })
     .select("id")
@@ -105,10 +110,12 @@ export async function POST(req: Request) {
   const productId = (product as { id: string }).id;
 
   // Variants: the admin priced each size by hand, so store the figure as-is.
+  // `sale_price` нь тухайн хэмжээний бодит хямдрал (0054) — хоосон бол null.
   const variants = input.variants.map((v) => ({
     product_id: productId,
     ml: v.ml,
     price: v.price,
+    sale_price: v.salePrice && v.salePrice > 0 ? v.salePrice : null,
     is_active: v.active,
   }));
 

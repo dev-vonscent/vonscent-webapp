@@ -188,7 +188,6 @@ export function CollectionForm({
     discountPct: collection
       ? Number(collection.discount_pct)
       : defaultDiscountPct,
-    giftMl: (collection?.gift_ml ?? "") as number | "",
     imageUrl: collection?.image_url ?? "",
     isActive: collection?.is_active ?? true,
     isFeatured: collection?.is_featured ?? false,
@@ -208,10 +207,31 @@ export function CollectionForm({
       const own = (collection?.collection_ml_discounts ?? []).find(
         (d) => d.ml === ml,
       );
-      seed[ml] = own ? Number(own.discount_pct) : "";
+      seed[ml] =
+        own && own.discount_pct != null ? Number(own.discount_pct) : "";
     }
     return seed;
   });
+
+  /**
+   * Хэмжээ бүрийн ТОГТМОЛ үнэ (0054, B6). `""` бол «нийлбэрээс хувиар бод».
+   *
+   * Гишүүн барааны үнэ (эсвэл түүний хямдрал) өөрчлөгдөхөд багцын үнэ
+   * чимээгүйхэн хөдөлдөг байсныг зогсоох гол хэрэгсэл — энд үнэ бичсэн бол
+   * хувь ямар ч байсан тэр үнэ л эцсийн үнэ болно.
+   */
+  const [mlPrices, setMlPrices] = React.useState<Record<number, number | "">>(
+    () => {
+      const seed: Record<number, number | ""> = {};
+      for (const ml of BUNDLE_ML_SIZES) {
+        const own = (collection?.collection_ml_discounts ?? []).find(
+          (d) => d.ml === ml,
+        );
+        seed[ml] = own && own.price != null ? Number(own.price) : "";
+      }
+      return seed;
+    },
+  );
 
   const [tags, toggleTag] = useToggleList(
     (collection?.collection_tags ?? [])
@@ -258,15 +278,28 @@ export function CollectionForm({
             .map(([k, v]) => [Number(k), Number(v)]),
         ),
       );
+      const fixed = mlPrices[ml];
+      const price =
+        fixed === "" || fixed == null
+          ? bundlePrice(memberSum, pct, roundTo)
+          : Number(fixed);
       return {
         ml,
         complete,
         memberSum,
-        pct,
-        price: bundlePrice(memberSum, pct, roundTo),
+        // Тогтмол үнэтэй үед харуулах хувь нь бодит хэмнэлтээс гарна — админы
+        // бичсэн хувь тэр үед үйлчлэхгүй.
+        pct:
+          fixed === "" || fixed == null
+            ? pct
+            : memberSum > 0
+              ? Math.max(0, Math.round(((memberSum - price) / memberSum) * 100))
+              : 0,
+        fixed: fixed !== "" && fixed != null,
+        price,
       };
     });
-  }, [form.productIds, form.discountPct, mlDiscounts, byId, roundTo]);
+  }, [form.productIds, form.discountPct, mlDiscounts, mlPrices, byId, roundTo]);
 
   function toggleProduct(id: string) {
     setForm((f) => {
@@ -297,10 +330,16 @@ export function CollectionForm({
         discountPct: Number(form.discountPct),
         // Only the sizes actually overridden travel; the rest fall back to the
         // default on the server exactly as they do here.
+        // Only the sizes actually overridden travel; the rest fall back to the
+        // default on the server exactly as they do here. Нэг мөр нь хувь,
+        // тогтмол үнэ, эсвэл хоёуланг нь авч явж болно.
         mlDiscounts: BUNDLE_ML_SIZES.filter(
-          (ml) => mlDiscounts[ml] !== "",
-        ).map((ml) => ({ ml, discountPct: Number(mlDiscounts[ml]) })),
-        giftMl: form.giftMl === "" ? null : Number(form.giftMl),
+          (ml) => mlDiscounts[ml] !== "" || mlPrices[ml] !== "",
+        ).map((ml) => ({
+          ml,
+          discountPct: mlDiscounts[ml] === "" ? null : Number(mlDiscounts[ml]),
+          price: mlPrices[ml] === "" ? null : Number(mlPrices[ml]),
+        })),
         imageUrl: form.imageUrl || null,
         isActive: form.isActive,
         isFeatured: form.isFeatured,
@@ -369,19 +408,6 @@ export function CollectionForm({
                   ))}
                 </SelectContent>
               </Select>
-            </Field>
-            <Field label="Бэлгийн ml" hint="Хоосон бол үндсэн тохиргоо">
-              <Input
-                type="number"
-                value={form.giftMl}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    giftMl: e.target.value === "" ? "" : Number(e.target.value),
-                  })
-                }
-                placeholder="default"
-              />
             </Field>
           </div>
           <Field label="Тайлбар">
@@ -495,6 +521,9 @@ export function CollectionForm({
                     Хямдрал %
                   </th>
                   <th scope="col" className="px-3 py-2 font-medium">
+                    Тогтмол үнэ (₮)
+                  </th>
+                  <th scope="col" className="px-3 py-2 font-medium">
                     Багцын үнэ
                   </th>
                 </tr>
@@ -537,13 +566,36 @@ export function CollectionForm({
                         }
                       />
                     </td>
+                    <td className="px-3 py-2">
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        step={100}
+                        className="h-11 w-32 md:h-8 md:w-32"
+                        aria-label={`${r.ml}ml-ийн тогтмол үнэ`}
+                        placeholder="—"
+                        value={mlPrices[r.ml]}
+                        onChange={(e) =>
+                          setMlPrices((d) => ({
+                            ...d,
+                            [r.ml]:
+                              e.target.value === ""
+                                ? ""
+                                : Math.max(0, Number(e.target.value) || 0),
+                          }))
+                        }
+                      />
+                    </td>
                     <td className="px-3 py-2 tabular-nums">
-                      {r.complete ? (
+                      {r.complete || r.fixed ? (
                         <>
                           {formatPrice(r.price)}
-                          <span className="text-muted-foreground ml-1 text-xs">
-                            −{r.pct}%
-                          </span>
+                          {r.complete && (
+                            <span className="text-muted-foreground ml-1 text-xs">
+                              −{r.pct}%
+                            </span>
+                          )}
                         </>
                       ) : (
                         "—"
@@ -555,9 +607,11 @@ export function CollectionForm({
             </table>
           </div>
           <p className="text-muted-foreground text-xs">
-            Багцын үнэ нь гишүүдийн үнийн нийлбэрээс бодогдоно — гараар бичихгүй.
-            Хэмжээний хямдралыг хоосон орхивол үндсэн хямдрал үйлчилнэ. «—» гэдэг
-            нь тухайн хэмжээгээр аль нэг үнэртэн зарагддаггүй гэсэн үг.
+            «Тогтмол үнэ» бичвэл тухайн хэмжээний багц яг тэр үнээр зарагдана —
+            гишүүн барааны үнэ, хямдрал өөрчлөгдсөн ч хөдлөхгүй. Хоосон орхивол
+            үнэ нь нийлбэрээс хувиар бодогдоно (хэмжээний хувийг ч хоосон
+            орхивол үндсэн хямдрал үйлчилнэ). «—» гэдэг нь тухайн хэмжээгээр аль
+            нэг үнэртэн зарагддаггүй гэсэн үг.
           </p>
         </CardContent>
       </Card>

@@ -17,11 +17,9 @@ import { CatalogSort } from "@/features/catalog/components/catalog-sort";
 import { CatalogSearch } from "@/features/catalog/components/catalog-search";
 import { parseFilters } from "@/features/catalog/parse";
 import { bundlePrice } from "../pricing";
-import { GiftPicker } from "./gift-picker";
 import type {
   BuilderProduct,
   CollectionSettings,
-  GiftCandidate,
 } from "../types";
 import type { CatalogFilters as Filters, ScentFamilyOption } from "@/lib/types";
 import type { BrandLogos } from "@/features/products/components/brand-marquee";
@@ -92,7 +90,6 @@ export function CollectionBuilder({
 
   const [ml, setMl] = React.useState<number>(DEFAULT_BUNDLE_ML);
   const [ids, setIds] = React.useState<string[]>([]);
-  const [giftId, setGiftId] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
   const [desc, setDesc] = React.useState("");
@@ -137,32 +134,11 @@ export function CollectionBuilder({
   );
   const saved = memberSum - price;
 
-  const giftCandidates: GiftCandidate[] = React.useMemo(
-    () =>
-      products
-        .filter(
-          (p) =>
-            !ids.includes(p.productId) &&
-            !p.soldOut &&
-            p.availableMl >= settings.giftMl,
-        )
-        .map((p) => ({
-          productId: p.productId,
-          slug: p.slug,
-          name: p.name,
-          brand: p.brand,
-          image: p.image,
-        })),
-    [products, ids, settings.giftMl],
-  );
-
   const atMax = settings.maxItems != null && ids.length >= settings.maxItems;
-  const needsGift =
-    settings.giftEnabled && giftCandidates.length > 0 && !giftId;
+  // Өөрөө угсарсан багц баталгаат бэлэг өгөхгүй (backlog A1) — бэлгийн эрх
+  // нь зөвхөн захиалгын дүнгээс гарч, checkout дээр сонгогдоно.
   const canCreate =
-    unavailableSelected.length === 0 &&
-    ids.length >= settings.minItems &&
-    !needsGift;
+    unavailableSelected.length === 0 && ids.length >= settings.minItems;
 
   function changeMl(next: number) {
     setMl(next);
@@ -171,7 +147,6 @@ export function CollectionBuilder({
   function removeUnavailable() {
     const bad = new Set(unavailableSelected.map((p) => p.productId));
     setIds((prev) => prev.filter((id) => !bad.has(id)));
-    if (giftId && bad.has(giftId)) setGiftId(null);
   }
 
   function toggle(id: string) {
@@ -181,13 +156,11 @@ export function CollectionBuilder({
         return prev;
       return [...prev, id];
     });
-    if (giftId === id) setGiftId(null);
   }
 
   async function create() {
     if (!canCreate || busy) return;
     setBusy(true);
-    const gift = giftCandidates.find((g) => g.productId === giftId) ?? null;
     const first = availableSelected[0];
 
     addCollection({
@@ -207,15 +180,6 @@ export function CollectionBuilder({
         image: p.image?.url ?? null,
         price: p.variantByMl[ml].price,
       })),
-      gift: gift
-        ? {
-            productId: gift.productId,
-            name: gift.name,
-            brand: gift.brand,
-            image: gift.image?.url ?? null,
-            ml: settings.giftMl,
-          }
-        : null,
       unitPrice: price,
     });
 
@@ -235,7 +199,6 @@ export function CollectionBuilder({
     setBusy(false);
     setOpen(false);
     setIds([]);
-    setGiftId(null);
     setName("");
     setDesc("");
     router.refresh();
@@ -348,18 +311,8 @@ export function CollectionBuilder({
           )}
         </div>
 
-        {/* Actions — gift picker + create; stacks on mobile */}
+        {/* Actions — create; stacks on mobile */}
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-          {settings.giftEnabled && giftCandidates.length > 0 && (
-            <div className="min-w-0 flex-1">
-              <GiftPicker
-                candidates={giftCandidates}
-                giftMl={settings.giftMl}
-                value={giftId}
-                onChange={setGiftId}
-              />
-            </div>
-          )}
           <Button
             disabled={!canCreate}
             onClick={() => {

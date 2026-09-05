@@ -225,14 +225,21 @@ const RAW: SeedInput[] = [
 ];
 
 function buildVariants(input: SeedInput) {
-  return ML_SIZES.filter((ml) => input.prices?.[ml] != null).map((ml) => ({
-    id: `${input.slug}-${ml}`,
-    ml,
-    price: input.prices![ml]!,
-    isActive: true,
-    // demo stock: a size is buyable while the bottle can still fill it
-    inStock: input.onHandMl >= ml,
-  }));
+  // Demo data: a «sale»-tagged seed sells 10% below its base price, so the
+  // storefront's crossed-out price has something real to show (0054).
+  const off = input.tags.includes("sale") ? 0.9 : 1;
+  return ML_SIZES.filter((ml) => input.prices?.[ml] != null).map((ml) => {
+    const basePrice = input.prices![ml]!;
+    return {
+      id: `${input.slug}-${ml}`,
+      ml,
+      price: Math.round((basePrice * off) / 100) * 100,
+      basePrice,
+      isActive: true,
+      // demo stock: a size is buyable while the bottle can still fill it
+      inStock: input.onHandMl >= ml,
+    };
+  });
 }
 
 const unsplash = (id: string) =>
@@ -293,7 +300,8 @@ export function productImageUrls(slug: string): string[] {
 
 export const SEED_PRODUCTS: ProductDetail[] = RAW.map((input) => {
   const variants = buildVariants(input);
-  const startingPrice = Math.min(...variants.map((v) => v.price));
+  const cheapest = variants.reduce((a, b) => (a.price <= b.price ? a : b));
+  const startingPrice = cheapest.price;
   const images = productImageUrls(input.slug).map((url) => ({
     url,
     alt: input.name,
@@ -310,12 +318,12 @@ export const SEED_PRODUCTS: ProductDetail[] = RAW.map((input) => {
     image: images[0],
     images,
     startingPrice,
+    startingBasePrice: cheapest.basePrice,
     tags: input.tags,
+    isFeatured: false,
     soldOut: !variants.some((v) => v.isActive && v.inStock),
     ratingAvg: input.ratingAvg,
     ratingCount: input.ratingCount,
-    // Demo data: sale-tagged seeds show a 10% crossed-out price.
-    salePct: input.tags.includes("sale") ? 10 : 0,
     createdAt: new Date(2024, 0, 1 + RAW.indexOf(input)).toISOString(),
     description: input.description,
     notesDescription: input.notesDescription ?? "",
