@@ -36,6 +36,13 @@ const RURAL_CODE = "R";
 const RURAL = "Орон нутаг";
 const BLOCKED_CODE = "X";
 const UNDELIVERABLE = "Хүргэлт хийхгүй";
+/**
+ * Letters the УБ sheet may use. `R` is there because three capital districts —
+ * Багануур, Багахангай, Налайх — are billed as countryside: they are far
+ * enough out that the parcel goes by bus, which is exactly what `remote: true`
+ * tells the customer at checkout (клиентийн 2026-09 залруулга).
+ */
+const CITY_LETTERS = new Set(["A", "B", "C", RURAL_CODE, BLOCKED_CODE]);
 
 const root = process.cwd();
 const docs = join(root, "docs", "delivery");
@@ -113,6 +120,13 @@ const skipped: string[] = [];
       skipped.push(`УБ ${r[ci]} ${r[ki]}-р хороо`);
       continue;
     }
+    // An unrecognised letter used to land in `cityAreas` and be quietly
+    // dropped further down, which reads as "the client's row was imported"
+    // right up until the fee is wrong at checkout.
+    if (!CITY_LETTERS.has(z)) {
+      skipped.push(`УБ ${r[ci]} ${r[ki]}-р хороо: танигдахгүй бүс «${z}»`);
+      continue;
+    }
     (cityAreas[z] ??= []).push(`${r[ci]}:${Number(r[ki])}`);
   }
 }
@@ -162,6 +176,13 @@ for (const letter of ["A", "B", "C"]) {
 const ruralLetters = Object.keys(ruralAreas)
   .filter((l) => l !== BLOCKED_CODE)
   .sort();
+/** УБ хороо marked `R` — they ride along in the single countryside zone. */
+const cityRural = cityAreas[RURAL_CODE] ?? [];
+if (cityRural.length && ruralLetters.length !== 1) {
+  skipped.push(
+    `${cityRural.length} УБ хороо «R» гэж тэмдэглэгдсэн ч нэгтгэх орон нутгийн бүс алга`,
+  );
+}
 for (const letter of ruralLetters) {
   const single = ruralLetters.length === 1;
   zones.push({
@@ -170,7 +191,7 @@ for (const letter of ruralLetters) {
     fee: FEES[letter] ?? 0,
     deliverable: true,
     remote: true,
-    areas: ruralAreas[letter],
+    areas: single ? [...cityRural, ...ruralAreas[letter]] : ruralAreas[letter],
   });
 }
 
