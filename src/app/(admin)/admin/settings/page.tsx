@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
@@ -17,15 +16,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SHIPPING_ZONES, type ShippingZoneConfig } from "@/lib/constants";
-import { ZoneAreas } from "@/features/admin/components/zone-areas";
+import { ZoneEditor } from "@/features/admin/components/zone-editor";
 import { createClient } from "@/lib/supabase/browser";
 import { saveSetting } from "@/features/admin/lib/mutate";
 import { toast } from "@/lib/toast";
-import { useConfirm } from "@/components/shared/confirm-dialog";
 import { useUnsavedGuard } from "@/features/admin/lib/return-to";
 
 export default function AdminSettingsPage() {
-  const [confirm, confirmDialog] = useConfirm();
   const [store, setStore] = React.useState({
     name: "vonscent",
     phone: "",
@@ -140,29 +137,8 @@ export default function AdminSettingsPage() {
       });
   }, []);
 
-  /**
-   * Deleting a zone changes what every customer in it pays at checkout, and
-   * the change goes live on the next save — the most consequential one-click
-   * action on this page.
-   */
-  async function removeZone(i: number) {
-    const z = zones[i];
-    if (
-      !(await confirm({
-        title: `«${z?.name || z?.code || `${i + 1}-р бүс`}» бүсийг устгах уу?`,
-        description:
-          "Энэ бүсийн хүргэлтийн төлбөр, хамрах хороод устна. Хадгалсны дараа тухайн бүсийн худалдан авагчид хүргэлт сонгох боломжгүй болно.",
-        confirmLabel: "Устгах",
-        destructive: true,
-      }))
-    )
-      return;
-    setZones((zs) => zs.filter((_, j) => j !== i));
-  }
-
   return (
     <div className="space-y-6">
-      {confirmDialog}
       <h1 className="font-serif text-2xl font-semibold">Тохиргоо</h1>
 
       {/* Store info */}
@@ -367,131 +343,18 @@ export default function AdminSettingsPage() {
         onSaved={() => commit("shipping")}
       >
         <div className="space-y-3">
-          {zones.map((z, i) => (
-            <div key={i} className="bg-muted/40 space-y-3 rounded-lg p-2">
-              <div className="flex flex-wrap items-center gap-2">
-                {/* The code is the zone's identity (stored on orders); the name
-                  beside it is only what customers read, so renaming is safe. */}
-                <Input
-                  value={z.code}
-                  onChange={(e) =>
-                    setZones((zs) =>
-                      zs.map((x, j) =>
-                        j === i
-                          ? { ...x, code: e.target.value.toUpperCase() }
-                          : x,
-                      ),
-                    )
-                  }
-                  placeholder="A"
-                  maxLength={4}
-                  className="w-16 text-center font-mono"
-                />
-                <Input
-                  value={z.name}
-                  onChange={(e) =>
-                    setZones((zs) =>
-                      zs.map((x, j) =>
-                        j === i ? { ...x, name: e.target.value } : x,
-                      ),
-                    )
-                  }
-                  placeholder="Бүсийн нэр"
-                  className="min-w-40 flex-1"
-                />
-                <Input
-                  type="number"
-                  className="w-32"
-                  value={z.fee}
-                  disabled={!z.deliverable}
-                  onChange={(e) =>
-                    setZones((zs) =>
-                      zs.map((x, j) =>
-                        j === i
-                          ? { ...x, fee: Number(e.target.value) || 0 }
-                          : x,
-                      ),
-                    )
-                  }
-                  placeholder="Төлбөр"
-                />
-                <label className="flex cursor-pointer items-center gap-1.5 text-xs whitespace-nowrap">
-                  <Checkbox
-                    checked={z.deliverable}
-                    onCheckedChange={(c) =>
-                      setZones((zs) =>
-                        zs.map((x, j) =>
-                          j === i ? { ...x, deliverable: Boolean(c) } : x,
-                        ),
-                      )
-                    }
-                  />
-                  Хүргэнэ
-                </label>
-                <label className="flex cursor-pointer items-center gap-1.5 text-xs whitespace-nowrap">
-                  <Checkbox
-                    checked={z.remote}
-                    onCheckedChange={(c) =>
-                      setZones((zs) =>
-                        zs.map((x, j) =>
-                          j === i ? { ...x, remote: Boolean(c) } : x,
-                        ),
-                      )
-                    }
-                  />
-                  Орон нутаг
-                </label>
-                {/* A live-money delete sitting in a wrapping row of five
-                    inputs — it needs a real target, not a bare 16px icon. */}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeZone(i)}
-                  className="hover:text-destructive shrink-0"
-                  aria-label={`${z.name || z.code || `${i + 1}-р`} бүсийг устгах`}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-              <ZoneAreas
-                areas={z.areas ?? []}
-                onChange={(areas) =>
-                  setZones((zs) =>
-                    zs.map((x, j) => (j === i ? { ...x, areas } : x)),
-                  )
-                }
-              />
-            </div>
-          ))}
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() =>
-              setZones((zs) => [
-                ...zs,
-                {
-                  code: "",
-                  name: "",
-                  fee: 0,
-                  deliverable: true,
-                  remote: false,
-                  areas: [],
-                },
-              ])
-            }
-          >
-            <Plus className="size-4" /> Бүс нэмэх
-          </Button>
+          <ZoneEditor zones={zones} onChange={setZones} />
           <p className="text-muted-foreground text-xs">
-            Эхний нүд бол бүсийн <b>код</b> (A/B/C/R/X) — захиалга дээр
-            хадгалагдах тогтвортой утга, өөрчлөхгүй байхыг зөвлөнө. Хажуугийн
-            нэр болон төлбөрийг хэзээ ч чөлөөтэй засаж болно. «Хүргэнэ»
-            тэмдэглэгээг авбал тухайн бүсийг сонгосон хэрэглэгч захиалга өгөх
-            боломжгүй болно. «Орон нутаг» бол унаа явах газраа бичихийг
-            сануулна. Хамрах газар нутгийг бөглөвөл checkout дээр бүс нь хаягаас
-            автоматаар тодорхойлогдоно (хороо нь дүүргээсээ давуу).
+            Дугуй доторх үсэг бол бүсийн <b>код</b> (A/B/C/R/X) — захиалга дээр
+            хадгалагдах тогтвортой утга тул засагдахгүй. Нэр, төлбөрийг хэзээ ч
+            чөлөөтэй өөрчилж болно. Хороогоо оноовол checkout дээр бүс нь
+            хаягаас автоматаар тодорхойлогдоно. <b>X</b> бүс бол хүргэлт хийхгүй
+            газрууд — тэнд орсон хороог сонгосон хэрэглэгч захиалга өгч чадахгүй.
+            <b> R</b> бүсэд хороо оноох шаардлагагүй: Улаанбаатараас гадуурх бүх
+            хаяг өөрөө тэнд тооцогдоно. Хороог нэг бүсээс нөгөө рүү зөөхдөө
+            товшоод доод самбараас зорих бүсээ сонгоно; «Оноогдоогүй хороо
+            нэмэх» нь зөвхөн улсын хэмжээнд шинэ хороо байгуулагдсан үед л
+            хэрэгтэй.
           </p>
         </div>
       </Saver>

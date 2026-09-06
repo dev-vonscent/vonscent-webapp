@@ -92,10 +92,18 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
  * Shipping zones (seed/fallback only — the storefront reads settings.shipping
  * so the admin's A10 configuration is what customers actually pay).
  *
+ * The live table is хороо-level: the client's sheet prices all 204 хороо one by
+ * one (docs/delivery/delivery-zones-ub-template.csv, built into
+ * settings.shipping by scripts/build-shipping-settings.ts). Restating that here
+ * would be 204 keys nobody reads and a second copy to keep in step, so this
+ * seed stays at district granularity — a sane default for an environment that
+ * has no settings row yet, never a substitute for the imported table.
+ *
  * `deliverable: false` marks a zone we cannot serve at all (requirement_fb.md:
- * "бүс сонговол хүргэлт хийх боломжгүй байдлаар" — Налайх, Шарга морьт, 22
- * товчоо г.м.). `remote: true` marks countryside zones, where the customer is
- * reminded to name the bus/transport pickup point.
+ * "бүс сонговол хүргэлт хийх боломжгүй байдлаар"). It starts empty: which
+ * хороо are refused is a client decision that arrives with the sheet.
+ * `remote: true` marks countryside zones, where the customer is reminded to
+ * name the bus/transport pickup point.
  */
 export const SHIPPING_ZONES: readonly ShippingZoneConfig[] = [
   {
@@ -123,17 +131,27 @@ export const SHIPPING_ZONES: readonly ShippingZoneConfig[] = [
     deliverable: true,
     remote: false,
     // Хороо түвшний бүс: админ Тохиргоо хуудсаар тодорхой хороодыг Б-ээс
-    // энд өргөнө (Шарга морьт, 22 товчоо орчмын зуслан бол X рүү).
+    // энд өргөнө.
   },
-  { code: "R", name: "Орон нутаг", fee: 9000, deliverable: true, remote: true },
+  {
+    code: "R",
+    name: "Орон нутаг",
+    fee: 9000,
+    deliverable: true,
+    remote: true,
+    // Налайх, Багануур, Багахангай — хотын дүүрэг ч илгээмж унаагаар явдаг тул
+    // орон нутгийн үнээр бодогдоно (клиентийн 2026-09 залруулга). Бусад аймаг
+    // энд бичигдэхгүй: Улаанбаатараас гадуурх хаяг checkout дээр өөрөө энэ
+    // бүсэд унана (features/checkout/api.ts ruralFallback).
+    areas: ["MN1113", "MN1101", "MN1104"],
+  },
   {
     code: "X",
     name: "Хүргэлт хийхгүй",
     fee: 0,
     deliverable: false,
     remote: false,
-    // Налайх, Багануур, Багахангай
-    areas: ["MN1113", "MN1101", "MN1104"],
+    areas: [],
   },
 ];
 
