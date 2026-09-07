@@ -240,6 +240,178 @@ export function CarouselSkeleton({
   );
 }
 
+/**
+ * A card whose imagery bleeds to one edge and whose copy sits beside it — the
+ * shape `SideImage` panels use (the scent quiz, the build-your-own promo).
+ * `imageRight` mirrors it for the quiz, whose artwork sits on the md+ right.
+ */
+export function PanelSkeleton({
+  imageRight = false,
+}: {
+  imageRight?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "border-border bg-card grid grid-cols-1 overflow-hidden rounded-2xl border",
+        imageRight ? "md:grid-cols-[1fr_320px]" : "md:grid-cols-[320px_1fr]",
+      )}
+      role="status"
+      aria-label="Ачаалж байна"
+    >
+      <SkeletonBlock
+        className={cn(
+          "aspect-5/2 min-h-70 w-full rounded-none md:min-h-0",
+          imageRight
+            ? "md:order-2 md:aspect-auto"
+            : "order-first md:aspect-auto",
+        )}
+      />
+      <div
+        className={cn(
+          "flex min-w-0 flex-col justify-center gap-4 p-6 sm:p-10",
+          imageRight && "md:order-1",
+        )}
+      >
+        <SkeletonBlock className="h-3 w-28" />
+        <SkeletonBlock className="h-8 w-56" />
+        <SkeletonBlock className="h-4 w-full max-w-md" />
+        <SkeletonBlock className="h-4 w-2/3 max-w-sm" />
+        <SkeletonBlock className="mt-2 h-10 w-40 rounded-md" />
+      </div>
+    </div>
+  );
+}
+
+/** Bundle cards — heading, then the `aspect-3/2` posters `CollectionCard` uses. */
+export function CollectionGridSkeleton({ cards = 3 }: { cards?: number }) {
+  return (
+    <div role="status" aria-label="Ачаалж байна">
+      <div className="mb-6 flex items-end justify-between gap-4">
+        <div className="space-y-2">
+          <SkeletonBlock className="h-8 w-44" />
+          <SkeletonBlock className="h-4 w-56" />
+        </div>
+        <SkeletonBlock className="h-4 w-28" />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-3">
+        {Array.from({ length: cards }).map((_, i) => (
+          <div key={i} className="flex flex-col">
+            <SkeletonBlock className="aspect-3/2 w-full rounded-2xl" />
+            <div className="mt-3 flex flex-col gap-1.5">
+              <SkeletonBlock className="h-4 w-3/4" />
+              <SkeletonBlock className="h-4 w-24" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The brand wall — two rows of `h-14` logo slots, matching `BrandMarquee`, so
+ * the wall doesn't jump into place when the logos land.
+ */
+export function MarqueeSkeleton({ perRow = 6 }: { perRow?: number }) {
+  return (
+    <div role="status" aria-label="Ачаалж байна">
+      <div className="mb-6 flex items-end justify-between gap-4">
+        <SkeletonBlock className="h-8 w-40" />
+        <SkeletonBlock className="h-4 w-28" />
+      </div>
+      <div className="space-y-4 overflow-hidden">
+        {[0, 1].map((row) => (
+          <div key={row} className="flex gap-8">
+            {Array.from({ length: perRow }).map((_, i) => (
+              <SkeletonBlock
+                key={i}
+                className="h-10 w-32 shrink-0 sm:h-12 sm:w-40"
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Review cards — quote lines over the author row. */
+export function ReviewsSkeleton({ cards = 3 }: { cards?: number }) {
+  return (
+    <div role="status" aria-label="Ачаалж байна">
+      <HeadingSkeleton className="mb-6" />
+      <div className="grid gap-5 md:grid-cols-3">
+        {Array.from({ length: cards }).map((_, i) => (
+          <div
+            key={i}
+            className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-6"
+          >
+            <SkeletonBlock className="h-4 w-24" />
+            <SkeletonBlock className="h-4 w-full" />
+            <SkeletonBlock className="h-4 w-5/6" />
+            <div className="mt-auto flex items-center gap-3 pt-4">
+              <SkeletonBlock className="size-10 shrink-0 rounded-full" />
+              <div className="flex-1 space-y-1.5">
+                <SkeletonBlock className="h-3.5 w-24" />
+                <SkeletonBlock className="h-3 w-16" />
+              </div>
+              <SkeletonBlock className="size-15 shrink-0 rounded-lg" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The home page: hero, the trust strip, then the first rail.
+ *
+ * Only what sits above the fold is drawn. The page itself streams — its shell
+ * is static and every data-backed rail carries its own Suspense skeleton — so
+ * this boundary is only ever on screen for the RSC round-trip, and filling the
+ * whole document with placeholder rails would flash more than it explains.
+ */
+export function HomeSkeleton() {
+  return (
+    <div role="status" aria-label="Нүүр хуудас ачаалж байна">
+      <section className="bg-background relative -mt-18 w-full overflow-hidden">
+        <div className="mx-auto grid max-w-352 items-center gap-8 px-4 pt-28 pb-16 md:grid-cols-2 md:px-8">
+          <div className="max-w-xl space-y-6 max-md:mx-auto max-md:flex max-md:w-full max-md:flex-col max-md:items-center md:order-1">
+            <SkeletonBlock className="h-3.5 w-44" />
+            <SkeletonBlock className="h-12 w-full sm:h-16" />
+            <SkeletonBlock className="h-12 w-4/5 sm:h-16" />
+            <SkeletonBlock className="h-4 w-full" />
+            <div className="flex gap-3">
+              <SkeletonBlock className="h-11 w-36 rounded-md" />
+              <SkeletonBlock className="h-11 w-36 rounded-md" />
+            </div>
+          </div>
+          <div className="order-first mx-auto aspect-square w-full max-w-140 md:order-2">
+            <SkeletonBlock className="size-full rounded-full" />
+          </div>
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-352 space-y-10 px-4 py-8 sm:space-y-16 sm:py-14 md:px-8">
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-card flex items-center gap-3 p-5">
+              <SkeletonBlock className="size-6 shrink-0 rounded-full" />
+              <div className="flex-1 space-y-1.5">
+                <SkeletonBlock className="h-3.5 w-24" />
+                <SkeletonBlock className="h-3 w-32" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <CarouselSkeleton action />
+      </div>
+    </div>
+  );
+}
+
 /** The scent-family tiles: icon over a label, six across on desktop. */
 export function TileGridSkeleton({ tiles = 6 }: { tiles?: number }) {
   return (

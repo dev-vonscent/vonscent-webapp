@@ -1,14 +1,19 @@
-import { PageSpinner } from "@/components/shared/skeletons";
+import { HomeSkeleton } from "@/components/shared/skeletons";
 
 /**
- * Catch-all for shop routes that have no shape-specific skeleton of their own
- * (about, faq, contact, cart…). The busy routes — catalog, product, collections,
- * blog — each override this with a skeleton of their own layout.
+ * The home page's navigation boundary.
  *
- * It used to draw a `border-2` ring spinner, which was invisible: globals.css
- * forces every border in the app to transparent, so this boundary showed a
- * blank half-screen for the whole wait.
+ * In practice this segment has exactly one page of its own — every other shop
+ * route (каталог, бүтээгдэхүүн, багц, блог, сагс, тооцоо…) ships a `loading.tsx`
+ * beside its own `page.tsx`, so nothing else falls back here. A new shop route
+ * must bring its own skeleton rather than inherit this one.
+ *
+ * It used to draw a centred spinner, which read as a stall on a page that is
+ * mostly static: the hero and the category grids need no database at all. The
+ * page now streams — its shell paints immediately and each rail arrives under
+ * its own Suspense skeleton — so this boundary only covers the RSC round-trip,
+ * and drawing the shape that is coming beats a spinning circle.
  */
 export default function Loading() {
-  return <PageSpinner />;
+  return <HomeSkeleton />;
 }

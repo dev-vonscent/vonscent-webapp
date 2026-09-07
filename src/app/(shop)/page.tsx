@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -34,6 +35,14 @@ import { PromoPopup } from "@/features/marketing/components/promo-popup";
 import { GENDERS, GENDER_LABEL } from "@/lib/constants";
 import { GRAIN } from "@/lib/textures";
 import { SideImage } from "@/components/shared/side-image";
+import {
+  CarouselSkeleton,
+  CollectionGridSkeleton,
+  MarqueeSkeleton,
+  PanelSkeleton,
+  ReviewsSkeleton,
+  TileGridSkeleton,
+} from "@/components/shared/skeletons";
 
 /**
  * ISR: public data comes from the cookie-less client, so the page is
@@ -42,6 +51,21 @@ import { SideImage } from "@/components/shared/side-image";
  */
 export const revalidate = 60;
 
+/**
+ * The page function itself is deliberately **not** async: nothing above blocks
+ * on the database, so the hero, the trust strip and the static category grids
+ * paint the instant the document arrives. Every data-backed rail is its own
+ * async component behind a `<Suspense>` boundary and streams in under a
+ * skeleton of its own shape.
+ *
+ * That is why each rail re-fetches what it needs instead of taking props from
+ * one big `Promise.all`: the underlying readers (`fetchProducts`,
+ * `fetchSettings`, `fetchScentFamilies`, `fetchBrands`, `getBaseCollections`)
+ * are all wrapped in React `cache()`, so a request still makes each query once
+ * — the boundaries only change *when* each result is allowed to paint, not how
+ * many round-trips there are.
+ */
+
 const TRUST = [
   { icon: BadgeCheck, title: "100% жинхэнэ", desc: "Албан ёсны эх сурвалж" },
   { icon: Sparkles, title: "2/5/10/20ml", desc: "Туршиж сонгох багц" },
@@ -49,38 +73,14 @@ const TRUST = [
   { icon: ShieldCheck, title: "Аюулгүй төлбөр", desc: "QPay & банк" },
 ];
 
-export default async function HomePage() {
-  const [
-    newArrivals,
-    bestSellers,
-    onSale,
-    brands,
-    reviews,
-    popup,
-    families,
-    brandLogos,
-    sections,
-    featuredCollections,
-    gift,
-  ] = await Promise.all([
-    getNewArrivals(8),
-    getBestSellers(8),
-    getOnSale(4),
-    getBrands(),
-    getRecentReviews(3),
-    getPopupSettings(),
-    getScentFamilies(),
-    getActiveBrands(),
-    getHomeSections(),
-    getFeaturedCollections(3),
-    getGiftSettings(),
-  ]);
-  // «Бэлэгтэй» тэмдэг зөвхөн бэлгийн сан ажиллаж байгаа үед (backlog A2).
-  const giftPoolEnabled = gift.enabled && gift.productIds.length > 0;
-
+export default function HomePage() {
   return (
     <>
-      <PromoPopup settings={popup} />
+      {/* An overlay with nothing to reserve, so it streams with no fallback. */}
+      <Suspense fallback={null}>
+        <PromoSlot />
+      </Suspense>
+
       {/* Hero — a contained (never upscaled) image over the flat theme
           backdrop, so the artwork stays sharp on wide screens. Pulled up under
           the floating header (pt-4 16px + h-14 pill = 72px) so the backdrop
@@ -102,8 +102,8 @@ export default async function HomePage() {
               Бүтэн үнэртэн авахаасаа өмнө туршиж үз
             </h1>
             <p className="text-muted-foreground text-base text-pretty sm:text-lg">
-              Дэлхийн шилдэг үнэртнүүдийг 2/5/10/20ml сонголтоор — өөрт
-              тохирох үнэртэй усаа олоод дараа нь бүтнээр нь аваарай.
+              Дэлхийн шилдэг үнэртнүүдийг 2/5/10/20ml сонголтоор — өөрт тохирох
+              үнэртэй усаа олоод дараа нь бүтнээр нь аваарай.
             </p>
             <div className="flex gap-3">
               <Button
@@ -176,45 +176,21 @@ export default async function HomePage() {
           ))}
         </section>
 
-        {/* New arrivals — hidden until it can fill a row (5d). */}
-        {newArrivals.length >= 4 && (
-          <section>
-            <SectionHeading title="Шинээр буусан" href="/catalog?tags=new" />
-            <ProductCarousel products={newArrivals} />
-          </section>
-        )}
+        <Suspense fallback={<CarouselSkeleton action />}>
+          <NewArrivalsSection />
+        </Suspense>
 
-        {/* Scent quiz — for visitors who can't pick (client-only, so the ISR
-          page stays cacheable; matching runs in /api/quiz on demand). */}
-        <section>
-          <ScentQuiz families={families} />
-        </section>
+        <Suspense fallback={<PanelSkeleton imageRight />}>
+          <QuizSection />
+        </Suspense>
 
-        {/* Best sellers */}
-        <section>
-          <SectionHeading title="Эрэлттэй" href="/catalog?tags=hot" />
-          <ProductCarousel products={bestSellers} />
-        </section>
+        <Suspense fallback={<CarouselSkeleton action />}>
+          <BestSellersSection />
+        </Suspense>
 
-        {/* Featured bundles */}
-        {featuredCollections.length > 0 && (
-          <section>
-            <SectionHeading
-              title="Онцлох багц"
-              subtitle="Сонгож бэлдсэн үнэртний багцууд"
-              href="/collections"
-            />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-3">
-              {featuredCollections.map((c) => (
-                <CollectionCard
-                  key={c.id}
-                  collection={c}
-                  giftPoolEnabled={giftPoolEnabled}
-                />
-              ))}
-            </div>
-          </section>
-        )}
+        <Suspense fallback={<CollectionGridSkeleton />}>
+          <FeaturedBundlesSection />
+        </Suspense>
 
         {/* Build-your-own bundle promo — the side image (5c) bleeds to the
             card edge and fades into the bg-card surface; a CSS glow stands
@@ -249,18 +225,9 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Curated sections — «Онцлох», «Багц уснууд» and anything else the
-          admin composed (todo.md B7), in the order they set. */}
-        {sections.map((s) => (
-          <section key={s.id}>
-            <SectionHeading
-              title={s.title}
-              subtitle={s.subtitle || undefined}
-              href={s.href || undefined}
-            />
-            <ProductCarousel products={s.products} />
-          </section>
-        ))}
+        <Suspense fallback={<CarouselSkeleton action />}>
+          <CuratedSections />
+        </Suspense>
 
         {/* Shop by gender */}
         <section>
@@ -297,43 +264,9 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Shop by scent family — the admin-managed taxonomy, icons included
-          (todo.md B3b), so a family added in the admin shows up here too. */}
-        {families.length > 0 && (
-          <section>
-            <SectionHeading title="Үнэрийн төрлөөр" />
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-              {families.map((f) => (
-                <Link
-                  key={f.slug}
-                  href={`/catalog?family=${f.slug}`}
-                  className="group bg-card hover:bg-accent hover:shadow-soft flex flex-col items-center gap-2 rounded-xl p-4 text-center text-xs font-medium transition-all hover:-translate-y-1"
-                >
-                  <div className="relative size-16 transition-transform duration-500 group-hover:scale-105">
-                    {f.iconUrl ? (
-                      <Image
-                        src={f.iconUrl}
-                        alt={f.label}
-                        fill
-                        sizes="64px"
-                        // The 256px WebP master is only a few KB; optimizing it
-                        // would cost a transformation without shrinking much.
-                        unoptimized
-                        className="object-contain"
-                      />
-                    ) : (
-                      // No icon uploaded yet: the initial keeps the grid even.
-                      <span className="bg-secondary flex size-full items-center justify-center rounded-full font-serif text-xl">
-                        {f.label.slice(0, 1)}
-                      </span>
-                    )}
-                  </div>
-                  {f.label}
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+        <Suspense fallback={<TileGridSkeleton />}>
+          <ScentFamiliesSection />
+        </Suspense>
 
         {/* Shop by season */}
         <section>
@@ -366,28 +299,13 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Brands */}
-        <section>
-          <SectionHeading title="Брэндээр" href="/catalog" />
-          <BrandMarquee
-            brands={brands}
-            logos={Object.fromEntries(
-              brandLogos.map((b) => [b.name, b.logoUrl]),
-            )}
-          />
-        </section>
+        <Suspense fallback={<MarqueeSkeleton />}>
+          <BrandsSection />
+        </Suspense>
 
-        {/* On sale */}
-        {onSale.length > 0 && (
-          <section>
-            <SectionHeading
-              title="Онцгой санал"
-              subtitle="Хямдралтай үнэртнүүд"
-              href="/catalog?tags=sale"
-            />
-            <ProductCarousel products={onSale} />
-          </section>
-        )}
+        <Suspense fallback={<CarouselSkeleton action />}>
+          <OnSaleSection />
+        </Suspense>
 
         {/* Brand intro — statless (5d): the counts looked hollow on a small
             catalogue and the generic claims already live in the trust bar. */}
@@ -410,86 +328,256 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Reviews */}
-        {reviews.length > 0 && (
-          <section>
-            <SectionHeading
-              title="Хэрэглэгчдийн сэтгэгдэл"
-              subtitle="Бодит худалдан авагчдын үнэлгээ"
-            />
-            <div className="grid gap-5 md:grid-cols-3">
-              {reviews.map((r) => (
-                <figure
-                  key={r.id}
-                  className="group border-border bg-card hover:border-gold-strong/40 hover:shadow-lift relative flex flex-col gap-4 overflow-hidden rounded-2xl border p-6 transition-all duration-300"
-                >
-                  <Quote
-                    className="text-foreground/4 group-hover:text-gold-strong/10 pointer-events-none absolute -top-3 -right-3 size-20 rotate-180 transition-colors"
-                    strokeWidth={1.5}
-                    aria-hidden
-                  />
-                  <Stars rating={r.rating} size={16} />
-                  <blockquote className="text-foreground/90 line-clamp-5 font-serif text-[15px] leading-relaxed">
-                    “{r.body || "Сайхан үнэр!"}”
-                  </blockquote>
-                  <figcaption className="border-border/60 mt-auto flex items-center gap-3 border-t pt-4">
-                    <span className="bg-secondary relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-semibold">
-                      {r.authorAvatar ? (
-                        <Image
-                          src={r.authorAvatar}
-                          alt=""
-                          fill
-                          sizes="40px"
-                          className="object-cover"
-                        />
-                      ) : (
-                        r.authorName.charAt(0).toUpperCase()
-                      )}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1">
-                        <span className="text-foreground truncate text-sm font-medium">
-                          {r.authorName}
-                        </span>
-                        <BadgeCheck
-                          className="text-gold-strong size-3.5 shrink-0"
-                          aria-label="Баталгаажсан худалдан авагч"
-                        />
-                      </div>
-                      <span className="text-muted-foreground block text-xs">
-                        {formatDate(r.createdAt)}
-                      </span>
-                    </div>
-                    {r.productName && (
-                      <Link
-                        href={`/products/${r.productSlug}`}
-                        className="group/prod flex items-center gap-2"
-                        title={`${r.brand} ${r.productName}`}
-                      >
-                        <span className="border-border bg-muted group-hover/prod:border-gold-strong/50 relative size-15 shrink-0 overflow-hidden rounded-lg border transition-colors">
-                          {r.productImage ? (
-                            <Image
-                              src={r.productImage}
-                              alt={r.productName}
-                              fill
-                              sizes="60px"
-                              className="object-cover"
-                            />
-                          ) : (
-                            <span className="text-muted-foreground flex h-full items-center justify-center text-[10px] font-medium">
-                              {r.brand.charAt(0)}
-                            </span>
-                          )}
-                        </span>
-                      </Link>
-                    )}
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
-          </section>
-        )}
+        <Suspense fallback={<ReviewsSkeleton />}>
+          <ReviewsSection />
+        </Suspense>
       </div>
     </>
+  );
+}
+
+async function PromoSlot() {
+  return <PromoPopup settings={await getPopupSettings()} />;
+}
+
+/** Шинээр буусан — hidden until it can fill a row (5d). */
+async function NewArrivalsSection() {
+  const products = await getNewArrivals(8);
+  if (products.length < 4) return null;
+  return (
+    <section>
+      <SectionHeading title="Шинээр буусан" href="/catalog?tags=new" />
+      <ProductCarousel products={products} />
+    </section>
+  );
+}
+
+/**
+ * Scent quiz — for visitors who can't pick (client-only, so the ISR page stays
+ * cacheable; matching runs in /api/quiz on demand).
+ */
+async function QuizSection() {
+  return (
+    <section>
+      <ScentQuiz families={await getScentFamilies()} />
+    </section>
+  );
+}
+
+async function BestSellersSection() {
+  return (
+    <section>
+      <SectionHeading title="Эрэлттэй" href="/catalog?tags=hot" />
+      <ProductCarousel products={await getBestSellers(8)} />
+    </section>
+  );
+}
+
+async function FeaturedBundlesSection() {
+  const [collections, gift] = await Promise.all([
+    getFeaturedCollections(3),
+    getGiftSettings(),
+  ]);
+  if (collections.length === 0) return null;
+  // «Бэлэгтэй» тэмдэг зөвхөн бэлгийн сан ажиллаж байгаа үед (backlog A2).
+  const giftPoolEnabled = gift.enabled && gift.productIds.length > 0;
+  return (
+    <section>
+      <SectionHeading
+        title="Онцлох багц"
+        subtitle="Сонгож бэлдсэн үнэртний багцууд"
+        href="/collections"
+      />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-3">
+        {collections.map((c) => (
+          <CollectionCard
+            key={c.id}
+            collection={c}
+            giftPoolEnabled={giftPoolEnabled}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Curated rails — «Онцлох», «Багц уснууд» and anything else the admin composed
+ * (todo.md B7), in the order they set. They share one boundary because they are
+ * one query and their count isn't known until it resolves.
+ */
+async function CuratedSections() {
+  const sections = await getHomeSections();
+  return (
+    <>
+      {sections.map((s) => (
+        <section key={s.id}>
+          <SectionHeading
+            title={s.title}
+            subtitle={s.subtitle || undefined}
+            href={s.href || undefined}
+          />
+          <ProductCarousel products={s.products} />
+        </section>
+      ))}
+    </>
+  );
+}
+
+/**
+ * Shop by scent family — the admin-managed taxonomy, icons included
+ * (todo.md B3b), so a family added in the admin shows up here too.
+ */
+async function ScentFamiliesSection() {
+  const families = await getScentFamilies();
+  if (families.length === 0) return null;
+  return (
+    <section>
+      <SectionHeading title="Үнэрийн төрлөөр" />
+      <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+        {families.map((f) => (
+          <Link
+            key={f.slug}
+            href={`/catalog?family=${f.slug}`}
+            className="group bg-card hover:bg-accent hover:shadow-soft flex flex-col items-center gap-2 rounded-xl p-4 text-center text-xs font-medium transition-all hover:-translate-y-1"
+          >
+            <div className="relative size-16 transition-transform duration-500 group-hover:scale-105">
+              {f.iconUrl ? (
+                <Image
+                  src={f.iconUrl}
+                  alt={f.label}
+                  fill
+                  sizes="64px"
+                  // The 256px WebP master is only a few KB; optimizing it
+                  // would cost a transformation without shrinking much.
+                  unoptimized
+                  className="object-contain"
+                />
+              ) : (
+                // No icon uploaded yet: the initial keeps the grid even.
+                <span className="bg-secondary flex size-full items-center justify-center rounded-full font-serif text-xl">
+                  {f.label.slice(0, 1)}
+                </span>
+              )}
+            </div>
+            {f.label}
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+async function BrandsSection() {
+  const [brands, brandLogos] = await Promise.all([
+    getBrands(),
+    getActiveBrands(),
+  ]);
+  return (
+    <section>
+      <SectionHeading title="Брэндээр" href="/catalog" />
+      <BrandMarquee
+        brands={brands}
+        logos={Object.fromEntries(brandLogos.map((b) => [b.name, b.logoUrl]))}
+      />
+    </section>
+  );
+}
+
+async function OnSaleSection() {
+  const onSale = await getOnSale(4);
+  if (onSale.length === 0) return null;
+  return (
+    <section>
+      <SectionHeading
+        title="Онцгой санал"
+        subtitle="Хямдралтай үнэртнүүд"
+        href="/catalog?tags=sale"
+      />
+      <ProductCarousel products={onSale} />
+    </section>
+  );
+}
+
+async function ReviewsSection() {
+  const reviews = await getRecentReviews(3);
+  if (reviews.length === 0) return null;
+  return (
+    <section>
+      <SectionHeading
+        title="Хэрэглэгчдийн сэтгэгдэл"
+        subtitle="Бодит худалдан авагчдын үнэлгээ"
+      />
+      <div className="grid gap-5 md:grid-cols-3">
+        {reviews.map((r) => (
+          <figure
+            key={r.id}
+            className="group border-border bg-card hover:border-gold-strong/40 hover:shadow-lift relative flex flex-col gap-4 overflow-hidden rounded-2xl border p-6 transition-all duration-300"
+          >
+            <Quote
+              className="text-foreground/4 group-hover:text-gold-strong/10 pointer-events-none absolute -top-3 -right-3 size-20 rotate-180 transition-colors"
+              strokeWidth={1.5}
+              aria-hidden
+            />
+            <Stars rating={r.rating} size={16} />
+            <blockquote className="text-foreground/90 line-clamp-5 font-serif text-[15px] leading-relaxed">
+              “{r.body || "Сайхан үнэр!"}”
+            </blockquote>
+            <figcaption className="border-border/60 mt-auto flex items-center gap-3 border-t pt-4">
+              <span className="bg-secondary relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-semibold">
+                {r.authorAvatar ? (
+                  <Image
+                    src={r.authorAvatar}
+                    alt=""
+                    fill
+                    sizes="40px"
+                    className="object-cover"
+                  />
+                ) : (
+                  r.authorName.charAt(0).toUpperCase()
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1">
+                  <span className="text-foreground truncate text-sm font-medium">
+                    {r.authorName}
+                  </span>
+                  <BadgeCheck
+                    className="text-gold-strong size-3.5 shrink-0"
+                    aria-label="Баталгаажсан худалдан авагч"
+                  />
+                </div>
+                <span className="text-muted-foreground block text-xs">
+                  {formatDate(r.createdAt)}
+                </span>
+              </div>
+              {r.productName && (
+                <Link
+                  href={`/products/${r.productSlug}`}
+                  className="group/prod flex items-center gap-2"
+                  title={`${r.brand} ${r.productName}`}
+                >
+                  <span className="border-border bg-muted group-hover/prod:border-gold-strong/50 relative size-15 shrink-0 overflow-hidden rounded-lg border transition-colors">
+                    {r.productImage ? (
+                      <Image
+                        src={r.productImage}
+                        alt={r.productName}
+                        fill
+                        sizes="60px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <span className="text-muted-foreground flex h-full items-center justify-center text-[10px] font-medium">
+                        {r.brand.charAt(0)}
+                      </span>
+                    )}
+                  </span>
+                </Link>
+              )}
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </section>
   );
 }
