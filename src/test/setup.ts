@@ -18,6 +18,30 @@ if (typeof Element !== "undefined") {
   Element.prototype.scrollIntoView ??= () => {};
 }
 
+/**
+ * `window.matchMedia`, which jsdom also leaves out.
+ *
+ * Several components ask the browser a media question on mount —
+ * `usePrefersReducedMotion`, `ResponsiveDialog`'s desktop check, the profile
+ * tiles' hover-capability check — and without this they throw before
+ * rendering anything. Everything reports "no match", i.e. the mobile,
+ * full-motion baseline; a test that cares about the other answer overrides
+ * this itself.
+ */
+if (typeof window !== "undefined") {
+  window.matchMedia ??= (query: string) =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList;
+}
+
 afterEach(() => {
   cleanup();
 });

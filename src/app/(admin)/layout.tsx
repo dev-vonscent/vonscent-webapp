@@ -1,19 +1,19 @@
 import { AdminSidebar } from "@/features/admin/components/admin-sidebar";
-import { getSidebarBadges } from "@/features/admin/api";
 
 // Admin screens must always show live data — never serve them from the
-// static cache even though their fetchers no longer read cookies.
+// static cache. The layout itself no longer fetches anything: the sidebar
+// counts moved to /api/admin/badges, because awaiting them here re-ran two
+// Supabase queries on every admin navigation and delayed the route swap.
 export const dynamic = "force-dynamic";
 
-export default async function AdminLayout({
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const badges = await getSidebarBadges();
   return (
     <div className="flex min-h-svh flex-col lg:flex-row">
-      <AdminSidebar badges={badges} />
+      <AdminSidebar />
       {/* max-w-5xl is a reading measure borrowed from the storefront; this is a
           table surface, so on a wide operator monitor it squeezed 7 columns
           into 1024px and left the rest of the screen empty. */}

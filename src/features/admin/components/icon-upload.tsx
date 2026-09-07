@@ -3,6 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import { ImagePlus, Loader2, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { IMAGE_ACCEPT } from "@/lib/storage/limits";
 import { prepareUpload } from "@/lib/storage/prepare-upload";
 import { adminFetch } from "@/features/admin/lib/mutate";
@@ -19,13 +20,22 @@ export function IconUpload({
   onChange,
   label = "Дүрс",
   size = 48,
+  width,
   allowClear = true,
   folder = "families",
+  brandArtwork = false,
 }: {
   value: string | null;
   onChange: (url: string | null) => void;
   label?: string;
+  /** Tile height, and its width too unless `width` overrides it. */
   size?: number;
+  /**
+   * Wider tile, for artwork that is a wordmark rather than an icon. A brand
+   * logo is roughly 4:1, so in a square it is squeezed down to a ten-pixel
+   * strip and no amount of contrast makes that readable.
+   */
+  width?: number;
   /** Hide the clear (X) button — click-to-replace stays available. */
   allowClear?: boolean;
   /**
@@ -34,6 +44,15 @@ export function IconUpload({
    * free string.
    */
   folder?: "families" | "brands";
+  /**
+   * Render the preview under the storefront's brand-logo rule: the artwork is
+   * single-colour dark on transparent, so on the black theme it is inverted to
+   * white (globals.css `.brand-logo`). Without it the admin showed black on
+   * black — and worse, showed something different from what the shop renders.
+   * Scent-family icons are full-colour and must never be touched, hence a flag
+   * rather than a blanket filter.
+   */
+  brandArtwork?: boolean;
 }) {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -78,7 +97,7 @@ export function IconUpload({
           onClick={() => inputRef.current?.click()}
           aria-label={value ? `${label} солих` : `${label} оруулах`}
           className="border-muted-foreground/40 bg-secondary text-muted-foreground hover:border-muted-foreground/70 hover:bg-accent flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-dashed transition-colors disabled:opacity-60"
-          style={{ width: size, height: size }}
+          style={{ width: width ?? size, height: size }}
         >
           {busy ? (
             <Loader2 className="size-4 animate-spin" />
@@ -86,12 +105,15 @@ export function IconUpload({
             <Image
               src={value}
               alt=""
-              width={size}
+              width={width ?? size}
               height={size}
               // Brand logos are SVG; next/image will not optimise those without
               // `dangerouslyAllowSVG`, and an icon is small enough not to need it.
               unoptimized
-              className="size-full object-contain"
+              className={cn(
+                "size-full object-contain",
+                brandArtwork && "brand-logo",
+              )}
             />
           ) : (
             <ImagePlus className="size-4" />

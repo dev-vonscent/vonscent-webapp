@@ -10,6 +10,7 @@ import type {
   HomeSectionRow,
   FaqRow,
   BlogPostRow,
+  SpinWheelPrizeRow,
 } from "@/db/types";
 import {
   ORDER_STATUSES,
@@ -687,4 +688,91 @@ export async function getAllBlogPosts(): Promise<BlogPostRow[]> {
     .select("*")
     .order("published_at", { ascending: false });
   return (data as BlogPostRow[] | null) ?? [];
+}
+
+/** Tunables behind the lucky wheel — `settings.spin` (0053). */
+export interface WheelSettings {
+  enabled: boolean;
+  freeSpinHours: number;
+  spinCost: number;
+  monthlyPointCap: number;
+  rareCouponPerMonth: number;
+  couponValidDays: number;
+  singleActiveCoupon: boolean;
+}
+
+export const WHEEL_SETTINGS_DEFAULTS: WheelSettings = {
+  enabled: true,
+  freeSpinHours: 24,
+  spinCost: 2000,
+  monthlyPointCap: 5000,
+  rareCouponPerMonth: 1,
+  couponValidDays: 30,
+  singleActiveCoupon: true,
+};
+
+export interface WheelReport {
+  days: number;
+  spins: number;
+  freeSpins: number;
+  paidSpins: number;
+  pointsAwarded: number;
+  pointsSpent: number;
+  couponsIssued: number;
+  couponsUsed: number;
+  bySlot: { slot: number; label: string; count: number }[];
+  /** Physical prizes still owed, oldest first — never windowed away. */
+  pending: {
+    id: string;
+    label: string;
+    createdAt: string;
+    customer: string;
+    phone: string | null;
+  }[];
+}
+
+const EMPTY_REPORT: WheelReport = {
+  days: 30,
+  spins: 0,
+  freeSpins: 0,
+  paidSpins: 0,
+  pointsAwarded: 0,
+  pointsSpent: 0,
+  couponsIssued: 0,
+  couponsUsed: 0,
+  bySlot: [],
+  pending: [],
+};
+
+/**
+ * Everything the wheel's admin page shows: the segments with their weights,
+ * the tunables, and how the wheel has actually paid out (docs/lucky-wheel.md
+ * §6 — "олгосон vs ашигласан"). Staff RLS gates the prize table, so this is
+ * the cookie-bound client, not the service role.
+ */
+export async function getWheelAdmin(): Promise<{
+  prizes: SpinWheelPrizeRow[];
+  settings: WheelSettings;
+  report: WheelReport;
+}> {
+  const supabase = await createClient();
+  if (!supabase) {
+    return { prizes: [], settings: WHEEL_SETTINGS_DEFAULTS, report: EMPTY_REPORT };
+  }
+
+  const [prizesRes, settingRes, reportRes] = await Promise.all([
+    supabase.from("spin_wheel_prizes").select("*").order("slot"),
+    supabase.from("settings").select("value").eq("key", "spin").maybeSingle(),
+    callRpc<WheelReport & { error?: string }>(supabase, "spin_wheel_report", {
+      p_days: 30,
+    }),
+  ]);
+
+  const stored = (settingRes.data as { value?: Partial<WheelSettings> } | null)?.value;
+  const report = reportRes.data;
+  return {
+    prizes: (prizesRes.data as SpinWheelPrizeRow[] | null) ?? [],
+    settings: { ...WHEEL_SETTINGS_DEFAULTS, ...(stored ?? {}) },
+    report: report && !report.error ? report : EMPTY_REPORT,
+  };
 }

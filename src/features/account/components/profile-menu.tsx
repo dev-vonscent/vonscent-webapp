@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Package,
+  Disc3,
   HelpCircle,
   LogIn,
   LogOut,
@@ -161,6 +162,13 @@ export function ProfileMenu() {
           <DropdownMenuItem asChild>
             <Link href="/account/orders">
               <Package /> Миний захиалга
+            </Link>
+          </DropdownMenuItem>
+        )}
+        {profile && (
+          <DropdownMenuItem asChild>
+            <Link href="/lucky-wheel">
+              <Disc3 /> Азын хүрд
             </Link>
           </DropdownMenuItem>
         )}

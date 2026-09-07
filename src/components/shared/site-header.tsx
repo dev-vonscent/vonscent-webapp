@@ -32,6 +32,7 @@ const NAV = [
   { href: "/catalog", label: "Каталог" },
   { href: "/collections", label: "Багц" },
   { href: "/catalog?tags=sale", label: "Хямдрал" },
+  { href: "/lucky-wheel", label: "Азын хүрд" },
   { href: "/about", label: "Бидний тухай" },
   { href: "/blog", label: "Блог" },
   { href: "/contact", label: "Холбоо барих" },
@@ -57,6 +58,7 @@ const TITLES: Record<string, string> = {
   "/cart": "Сагс",
   "/checkout": "Захиалга",
   "/faq": "Тусламж",
+  "/lucky-wheel": "Азын хүрд",
   "/wishlist": "Хүслийн жагсаалт",
   "/account": "Миний бүртгэл",
   "/account/orders": "Миний захиалга",
@@ -87,14 +89,23 @@ export function SiteHeader() {
     function onScroll() {
       const y = window.scrollY;
       const diff = y - lastY;
+      lastY = y;
       if (y < 80) {
         setHidden(false); // always visible near the top
-      } else if (diff > 6) {
+        return;
+      }
+      // A jump further than the viewport in a single event is not a gesture.
+      // It is the browser restoring the scroll position after a reload (or an
+      // anchor jump), and reading it as "scrolling down" meant a page reloaded
+      // halfway down came back with its header already hidden and no way to
+      // get it except by scrolling up. Re-sync and leave the header alone; a
+      // real flick arrives as many small deltas and still hides it.
+      if (Math.abs(diff) > window.innerHeight) return;
+      if (diff > 6) {
         setHidden(true); // scrolling down
       } else if (diff < -6) {
         setHidden(false); // scrolling up
       }
-      lastY = y;
     }
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);

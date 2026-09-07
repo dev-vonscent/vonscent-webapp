@@ -24,6 +24,7 @@ import { PasscodeDialog } from "@/features/account/components/passcode-dialog";
 import { ProfileEditDialog } from "@/features/account/components/profile-edit-dialog";
 import { EmailSettings } from "@/features/account/components/email-settings";
 import { isPhoneEmail } from "@/lib/auth/phone-email";
+import { WheelEntryCard } from "@/features/lucky-wheel/components/wheel-entry-card";
 import type { ProductListItem } from "@/lib/types";
 
 export default function ProfilePage() {
@@ -237,6 +238,10 @@ export default function ProfilePage() {
 
       {/* Settings rows */}
       <div className="space-y-2">
+        {/* Above the settings, not among them: the wheel is something to do,
+            and it hides itself when there is nothing to collect. */}
+        {configured && <WheelEntryCard />}
+
         <div className="bg-card flex items-center gap-4 rounded-xl p-4">
           <IconCircle icon={Palette} />
           <span className="font-medium">Загвар</span>

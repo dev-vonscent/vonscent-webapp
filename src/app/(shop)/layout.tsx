@@ -1,6 +1,7 @@
 import { SiteHeader } from "@/components/shared/site-header";
 import { BottomNav } from "@/components/shared/bottom-nav";
 import { WishlistSync } from "@/features/wishlist/sync";
+import { ScrollReset } from "@/components/shared/scroll-reset";
 
 /**
  * The footer arrives through a parallel route slot rather than being rendered
@@ -25,6 +26,7 @@ export default function ShopLayout({
 }) {
   return (
     <>
+      <ScrollReset />
       <SiteHeader />
       <main id="main" className="flex-1 pb-24 md:pb-0">
         {children}

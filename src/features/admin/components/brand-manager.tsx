@@ -104,11 +104,13 @@ export function BrandManager({ brands }: { brands: BrandOption[] }) {
                     separate save step would only be a way to lose it. */}
                 <IconUpload
                   size={40}
+                  width={104}
                   label={`${b.name} лого`}
                   value={b.logoUrl}
                   onChange={(url) => patch(b, { logoUrl: url })}
                   allowClear={false}
                   folder="brands"
+                  brandArtwork
                 />
 
                 <span className="min-w-0 flex-1">
@@ -224,7 +226,9 @@ export function BrandManager({ brands }: { brands: BrandOption[] }) {
                   onChange={setLogoUrl}
                   label="Лого"
                   size={56}
+                  width={144}
                   folder="brands"
+                  brandArtwork
                 />
               </div>
             </div>

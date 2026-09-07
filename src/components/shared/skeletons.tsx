@@ -194,3 +194,170 @@ export function DetailSkeleton({ label }: { label: string }) {
     </div>
   );
 }
+
+/**
+ * A carousel rail: the section heading, then a row of cards at the widths
+ * `ProductCarousel` uses (44% / 31% / 23.5%), so the real cards slide in
+ * exactly where their placeholders sat.
+ *
+ * `heading` is off for a rail whose real title is already on screen — a
+ * placeholder bar over a heading the visitor can read is a step backwards.
+ */
+export function CarouselSkeleton({
+  cards = 4,
+  heading = true,
+  action = false,
+}: {
+  cards?: number;
+  heading?: boolean;
+  /** Reserve the "Бүгдийг үзэх" link on the right of the heading. */
+  action?: boolean;
+}) {
+  return (
+    <div role="status" aria-label="Ачаалж байна">
+      {heading && (
+        <div className="mb-6 flex items-end justify-between gap-4">
+          <SkeletonBlock className="h-8 w-44" />
+          {action && <SkeletonBlock className="h-4 w-28" />}
+        </div>
+      )}
+      <div className="flex gap-4 overflow-hidden">
+        {Array.from({ length: cards }).map((_, i) => (
+          <div
+            key={i}
+            className="w-[44%] min-w-0 shrink-0 sm:w-[31%] lg:w-[23.5%]"
+          >
+            <SkeletonBlock className="aspect-4/5 w-full rounded-2xl" />
+            <div className="mt-3 flex flex-col gap-1.5">
+              <SkeletonBlock className="h-2.5 w-16" />
+              <SkeletonBlock className="h-4 w-3/4" />
+              <SkeletonBlock className="h-4 w-20" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** The scent-family tiles: icon over a label, six across on desktop. */
+export function TileGridSkeleton({ tiles = 6 }: { tiles?: number }) {
+  return (
+    <div role="status" aria-label="Ачаалж байна">
+      <div className="mb-6">
+        <SkeletonBlock className="h-8 w-44" />
+      </div>
+      <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+        {Array.from({ length: tiles }).map((_, i) => (
+          <div
+            key={i}
+            className="bg-card flex flex-col items-center gap-2 rounded-xl p-4"
+          >
+            <SkeletonBlock className="size-16 rounded-full" />
+            <SkeletonBlock className="h-3 w-14" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Азын хүрд — title, the disc, then the spin button.
+ *
+ * Shared by the route boundary and by the page's own first render (the wheel
+ * loads its state from `/api/lucky-wheel` after mount), so the two hand over
+ * to each other without the disc changing size or moving.
+ */
+export function WheelSkeleton() {
+  return (
+    <div
+      className="mx-auto max-w-3xl space-y-6 px-4 py-10"
+      role="status"
+      aria-label="Азын хүрд ачаалж байна"
+    >
+      <SkeletonBlock className="mx-auto h-8 w-56" />
+      <SkeletonBlock className="mx-auto aspect-square w-full max-w-[min(88vw,30rem)] rounded-full" />
+      <SkeletonBlock className="mx-auto h-11 w-64 rounded-md" />
+    </div>
+  );
+}
+
+/**
+ * A row of stat tiles — the number-first cards the reports and wheel screens
+ * open with.
+ */
+export function StatRowSkeleton({
+  tiles = 4,
+  className = "grid grid-cols-2 gap-3 lg:grid-cols-4",
+}: {
+  tiles?: number;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      {Array.from({ length: tiles }).map((_, i) => (
+        <SkeletonBlock key={i} className="h-24 w-full rounded-xl" />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Stacked setting cards — a title over a grid of labelled fields. Covers the
+ * admin's form screens (тохиргоо, V point, контент…), which all share that
+ * shape and would otherwise fall back to the section's bare spinner.
+ */
+export function SettingsSkeleton({
+  cards = [4, 4],
+  heading = true,
+}: {
+  /** Field count per card, one entry per card. */
+  cards?: number[];
+  heading?: boolean;
+}) {
+  return (
+    <div className="space-y-6" role="status" aria-label="Ачаалж байна">
+      {heading && <HeadingSkeleton />}
+      {cards.map((fields, card) => (
+        <Card key={card}>
+          <CardContent className="space-y-4 p-6">
+            <SkeletonBlock className="h-5 w-44" />
+            <div className="grid gap-4 sm:grid-cols-2">
+              {Array.from({ length: fields }).map((_, i) => (
+                <div key={i} className="space-y-1.5">
+                  <SkeletonBlock className="h-3.5 w-24" />
+                  <SkeletonBlock className="h-10 w-full rounded-md" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Heading over a list of rows inside one card — the taxonomy screens (брэнд,
+ * үнэрийн төрөл, нэмэлт таг, бэлгийн сан), which are all "icon, name, actions"
+ * lists followed by an add form.
+ */
+export function AdminListSkeleton({
+  rows = 8,
+  thumb = true,
+  form = true,
+}: {
+  rows?: number;
+  thumb?: boolean;
+  /** Reserve the "add new" card under the list. */
+  form?: boolean;
+}) {
+  return (
+    <div className="space-y-6" role="status" aria-label="Ачаалж байна">
+      <HeadingSkeleton />
+      <TableSkeleton rows={rows} thumb={thumb} />
+      {form && <SkeletonBlock className="h-44 w-full rounded-xl" />}
+    </div>
+  );
+}

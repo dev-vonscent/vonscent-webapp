@@ -33,6 +33,14 @@ export type PaymentStatus = "unpaid" | "paid" | "refunded";
 export type TagKind = "new" | "hot" | "sale";
 export type Season = "spring" | "summer" | "autumn" | "winter" | "all";
 export type CouponType = "percent" | "fixed";
+/** Lucky wheel (0053). */
+export type SpinPrizeKind =
+  | "points"
+  | "coupon_percent"
+  | "coupon_fixed"
+  | "bundle";
+export type SpinTier = "common" | "rare" | "grand";
+export type SpinType = "free" | "paid";
 export type UserRole =
   | "guest"
   | "customer"
@@ -212,6 +220,10 @@ export interface CouponRow {
   /** Per-account cap, counted from coupon_redemptions (0025). */
   max_uses_per_user: number | null;
   used_count: number;
+  /** Cap on a percent coupon's ₮ discount (0053). null = uncapped. */
+  max_discount: number | null;
+  /** Who issued it: 'manual' | 'spin' (0053). */
+  source: string;
   starts_at: string | null;
   ends_at: string | null;
   is_active: boolean;
@@ -316,6 +328,47 @@ export interface HomeSectionProductRow {
   sort_order: number;
 }
 
+/** One segment of the lucky wheel (0053). Staff-only — `weight` is shop economics. */
+export interface SpinWheelPrizeRow {
+  id: string;
+  /** Position on the wheel, clockwise from 12 o'clock. */
+  slot: number;
+  label: string;
+  short_label: string;
+  kind: SpinPrizeKind;
+  tier: SpinTier;
+  /** points → V; coupon_percent → %; coupon_fixed → ₮; bundle → шир. */
+  value: number;
+  min_subtotal: number;
+  max_discount: number | null;
+  /** Relative draw weight — the shop's odds, never sent to the client. */
+  weight: number;
+  /** Global per-month issue cap; null = unlimited. */
+  monthly_cap: number | null;
+  /** Where a capped draw is redirected to. */
+  fallback_slot: number | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+/** One spin. Prize fields are snapshots so history survives a prize edit. */
+export interface SpinWheelSpinRow {
+  id: string;
+  user_id: string;
+  prize_id: string | null;
+  slot: number;
+  label: string;
+  kind: SpinPrizeKind;
+  tier: SpinTier;
+  value: number;
+  spin_type: SpinType;
+  points_spent: number;
+  coupon_id: string | null;
+  /** Physical prizes only — set when the admin has handed it over. */
+  fulfilled_at: string | null;
+  created_at: string;
+}
+
 export interface OrderStatusHistoryRow {
   id: string;
   order_id: string;
@@ -360,6 +413,8 @@ export interface Database {
       newsletter_subscribers: Table<NewsletterSubscriberRow, "id" | "created_at">;
       loyalty_ledger: Table<LoyaltyLedgerRow, "id" | "created_at">;
       order_status_history: Table<OrderStatusHistoryRow, "id" | "created_at">;
+      spin_wheel_prizes: Table<SpinWheelPrizeRow, "id" | "created_at">;
+      spin_wheel_spins: Table<SpinWheelSpinRow, "id" | "created_at">;
     };
     Views: Record<string, never>;
     Functions: {
@@ -377,6 +432,8 @@ export interface Database {
       release_order_points: { Args: Record<string, unknown>; Returns: number };
       release_due_points: { Args: Record<string, unknown>; Returns: number };
       grant_reward_coupon: { Args: Record<string, unknown>; Returns: string };
+      spin_wheel: { Args: Record<string, unknown>; Returns: unknown };
+      spin_wheel_state: { Args: Record<string, unknown>; Returns: unknown };
     };
     Enums: {
       user_role: UserRole;
@@ -387,6 +444,9 @@ export interface Database {
       payment_status_t: PaymentStatus;
       tag_kind_t: TagKind;
       coupon_type_t: CouponType;
+      spin_prize_kind_t: SpinPrizeKind;
+      spin_prize_tier_t: SpinTier;
+      spin_type_t: SpinType;
     };
     CompositeTypes: Record<string, never>;
   };

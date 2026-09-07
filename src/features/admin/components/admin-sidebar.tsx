@@ -9,6 +9,7 @@ import {
   Boxes,
   ChevronDown,
   Crown,
+  Disc3,
   FileText,
   Gift,
   Layers,
@@ -33,8 +34,9 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { NavPendingSwap } from "@/components/shared/nav-pending";
 import { Logo } from "@/components/shared/logo";
+import { useQuery } from "@tanstack/react-query";
+import { adminFetch } from "@/features/admin/lib/mutate";
 import type { SidebarBadges } from "@/features/admin/api";
 
 interface NavLink {
@@ -86,7 +88,8 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
     links: [
       { href: "/admin/promotions", label: "Урамшуулал", icon: TicketPercent },
       { href: "/admin/loyalty", label: "V point", icon: Award },
-      { href: "/admin/gifts", label: "Бэлгийн үнэрүүд", icon: Gift },
+      { href: "/admin/gifts", label: "Сарын бэлэг", icon: Gift },
+      { href: "/admin/lucky-wheel", label: "Азын хүрд", icon: Disc3 },
     ],
   },
   {
@@ -131,16 +134,44 @@ const OPEN_KEY = "admin-nav-open";
 // Default keeps Захиалга / Бараа / Үлдэгдэл visible on first paint.
 const DEFAULT_OPEN = ["Борлуулалт", "Каталог"];
 
+/**
+ * The counts, fetched by the sidebar itself rather than handed down by the
+ * layout.
+ *
+ * `(admin)/layout.tsx` re-renders on every admin navigation, so awaiting these
+ * two Supabase counts there put ~200-350ms in front of every sidebar click —
+ * the route could not even show its `loading.tsx` until they came back. They
+ * are decoration: the nav is fully usable while they are missing, so they
+ * belong on their own request. A minute of staleness on a "new orders" badge
+ * is fine; a minute of lag on the whole panel is not.
+ */
+function useSidebarBadges(): SidebarBadges {
+  const { data } = useQuery<SidebarBadges>({
+    queryKey: ["admin-sidebar-badges"],
+    queryFn: async () => {
+      // `adminFetch`, not a bare fetch: eslint bans the raw call anywhere
+      // under features/admin so an unchecked response can never ship.
+      const res = await adminFetch<SidebarBadges>("/api/admin/badges", {
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error(res.error);
+      return res.data;
+    },
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  });
+  return data ?? NO_BADGES;
+}
+
 function isActive(pathname: string, href: string): boolean {
   return href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 }
 
-export function AdminSidebar({
-  badges = { newOrders: 0, outOfStock: 0 },
-}: {
-  badges?: SidebarBadges;
-}) {
+const NO_BADGES: SidebarBadges = { newOrders: 0, outOfStock: 0 };
+
+export function AdminSidebar() {
   const pathname = usePathname();
+  const badges = useSidebarBadges();
 
   // Which titled groups are expanded (5b). localStorage is read after mount so
   // the SSR markup always matches the first client render.
@@ -198,9 +229,7 @@ export function AdminSidebar({
             : "text-muted-foreground hover:bg-accent hover:text-foreground",
         )}
       >
-        <NavPendingSwap>
-          <l.icon className="size-4" />
-        </NavPendingSwap>
+        <l.icon className="size-4" />
         {l.label}
         {badgeCount > 0 && (
           <span className="bg-foreground text-background ml-auto rounded-full px-1.5 text-[11px]/4 font-semibold">
