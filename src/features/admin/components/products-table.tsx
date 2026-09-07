@@ -158,6 +158,11 @@ export function ProductsTable({ data }: { data: AdminProduct[] }) {
       // Sorting already lives in the toolbar above, in the URL, where it
       // survives a refresh — a second phone-only sort would fight it.
       phoneSort={false}
+      // Хуудаслалт нь өгөгдлийн санд (0060) — `DataTable`-ийн өөрийн 20-оор
+      // таслах хуудаслалтыг унтраана. Үгүй бол хоёр pager дараалж, серверийн
+      // 50 мөрийг дахин 20-оор хувааж «76-аас 1–20» гэж худал уншигдана.
+      // orders-table / customers-table аль хэдийн ингэсэн.
+      pageSize={0}
       renderCard={(p) => (
         <div className="space-y-3">
           {/* The phone card carried every number but no picture — the one thing

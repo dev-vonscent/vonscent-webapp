@@ -2,8 +2,10 @@ import "server-only";
 import { cache } from "react";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createPublicClient } from "@/lib/supabase/public";
+import { callRpc } from "@/lib/supabase/rpc";
+import type { CatalogFilters } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
-import { fetchProducts } from "@/features/products/api";
+import { getCatalog, getProductDetailsByIds } from "@/features/products/api";
 import { memberPrices, discountRange } from "./pricing";
 import { DEFAULT_COLLECTION_SETTINGS } from "./types";
 import type {
@@ -167,12 +169,33 @@ function build(
 }
 
 /** All active base collections, resolved with live member data. */
+
+/**
+ * Багцын гишүүдийг ЗӨВХӨН тэдгээрийн id-гаар уншина.
+ *
+ * Өмнө нь энэ гурван дуудагч бүгд `fetchProducts()`-оор БҮХ идэвхтэй барааг
+ * (зураг, хэмжээ, үлдэгдэл, таг) татаж аваад дундаас нь 3–5 гишүүнээ олдог
+ * байв — хэрэглэгчийн «Миний багцууд» хуудсыг дангаараа хамгийн удаан хуудас
+ * болгож байсан шалтгаан. Одоо зөвхөн хэрэгтэй мөрүүд ирнэ.
+ */
+async function membersById(
+  rows: DbCollection[],
+): Promise<Map<string, ProductDetail>> {
+  const ids = [
+    ...new Set(
+      rows.flatMap((r) => (r.collection_items ?? []).map((i) => i.product_id)),
+    ),
+  ];
+  const products = await getProductDetailsByIds(ids);
+  return new Map(products.map((p) => [p.id, p]));
+}
+
 export const getBaseCollections = cache(async (): Promise<Collection[]> => {
   if (!isSupabaseConfigured) return [];
   const supabase = createPublicClient();
   if (!supabase) return [];
 
-  const [{ data, error }, products, settings] = await Promise.all([
+  const [{ data, error }, settings] = await Promise.all([
     supabase
       .from("collections")
       .select(SELECT)
@@ -180,15 +203,13 @@ export const getBaseCollections = cache(async (): Promise<Collection[]> => {
       .eq("is_active", true)
       .order("is_featured", { ascending: false })
       .order("name"),
-    fetchProducts(),
     getCollectionSettings(),
   ]);
   if (error || !data) return [];
 
-  const productById = new Map(products.map((p) => [p.id, p]));
-  return (data as unknown as DbCollection[]).map((row) =>
-    build(row, productById, settings),
-  );
+  const rows = data as unknown as DbCollection[];
+  const productById = await membersById(rows);
+  return rows.map((row) => build(row, productById, settings));
 });
 
 /** Featured base collections for the home rail. */
@@ -205,20 +226,19 @@ export async function getCollectionBySlug(
   const supabase = createPublicClient();
   if (!supabase) return null;
 
-  const [{ data, error }, products, settings] = await Promise.all([
+  const [{ data, error }, settings] = await Promise.all([
     supabase
       .from("collections")
       .select(SELECT)
       .eq("slug", slug)
       .eq("is_active", true)
       .maybeSingle(),
-    fetchProducts(),
     getCollectionSettings(),
   ]);
   if (error || !data) return null;
 
-  const productById = new Map(products.map((p) => [p.id, p]));
-  return build(data as unknown as DbCollection, productById, settings);
+  const row = data as unknown as DbCollection;
+  return build(row, await membersById([row]), settings);
 }
 
 /** The signed-in user's saved custom collections (owner-scoped via RLS). */
@@ -230,22 +250,20 @@ export async function getMyCollections(): Promise<Collection[]> {
   } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const [{ data, error }, products, settings] = await Promise.all([
+  const [{ data, error }, settings] = await Promise.all([
     supabase
       .from("collections")
       .select(SELECT)
       .eq("type", "custom")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
-    fetchProducts(),
     getCollectionSettings(),
   ]);
   if (error || !data) return [];
 
-  const productById = new Map(products.map((p) => [p.id, p]));
-  return (data as unknown as DbCollection[]).map((row) =>
-    build(row, productById, settings),
-  );
+  const rows = data as unknown as DbCollection[];
+  const productById = await membersById(rows);
+  return rows.map((row) => build(row, productById, settings));
 }
 
 /** Pricing facts for a base collection — used to re-price a bundle at checkout. */
@@ -299,31 +317,116 @@ export async function getCollectionOrderInfo(id: string): Promise<{
   };
 }
 
-/** All active products shaped for the custom-bundle builder (client-safe). */
-export async function getBuilderProducts(): Promise<BuilderProduct[]> {
-  const products = await fetchProducts();
-  return products.map((p) => ({
-    productId: p.id,
-    slug: p.slug,
-    name: p.name,
-    brand: p.brand,
-    gender: p.gender,
-    image: p.image,
-    soldOut: p.soldOut,
-    availableMl: p.availableMl,
-    variantByMl: Object.fromEntries(
-      p.variants
-        .filter((v) => v.isActive)
-        .map((v) => [
-          v.ml,
-          { variantId: v.id, price: v.price, inStock: v.inStock },
-        ]),
-    ),
-    scentFamilies: p.scentFamilies,
-    seasons: p.seasons,
-    tags: p.tags,
-    startingPrice: p.startingPrice,
-    createdAt: p.createdAt,
-    ratingCount: p.ratingCount,
-  }));
+/**
+ * Багц угсрах хуудсын НЭГ ХУУДАС бараа.
+ *
+ * Шүүлт / эрэмбэ / хуудаслалт нь `catalog_search()` дотор — каталогийн
+ * хуудастай ЯГ нэг эх сурвалж, тиймээс хоёр дэлгэц хэзээ ч өөр бараа
+ * харуулахгүй. Дараа нь зөвхөн тэр хуудсанд харагдах барааны хэмжээнүүдийг
+ * `product_variants_for()`-оор нэмж уншина (0064).
+ *
+ * Өмнө нь энэ функц БҮХ идэвхтэй барааг хэмжээ бүрийнх нь хамт буцааж, шүүлт,
+ * эрэмбэ, хуудаслалт нь браузарт хийгддэг байв — 75 бараатай үед хуудас 405 KB.
+ */
+export async function getBuilderProducts(
+  filters: CatalogFilters = {},
+): Promise<{
+  items: BuilderProduct[];
+  total: number;
+  page: number;
+  perPage: number;
+}> {
+  const { items, total, page, perPage } = await getCatalog({
+    ...filters,
+    perPage: filters.perPage ?? BUILDER_PER_PAGE,
+  });
+  if (!items.length) return { items: [], total, page, perPage };
+
+  const supabase = createPublicClient();
+  const extra = new Map<
+    string,
+    { availableMl: number; variantByMl: BuilderProduct["variantByMl"] }
+  >();
+  if (!supabase) {
+    // Demo горим (эсвэл RPC байхгүй сан): seed каталогаас нөхнө. Үгүй бол
+    // бүх ус «энэ хэмжээнд байхгүй» гэж харагдана.
+    for (const p of await getProductDetailsByIds(items.map((i) => i.id))) {
+      extra.set(p.id, {
+        availableMl: p.availableMl,
+        variantByMl: Object.fromEntries(
+          p.variants
+            .filter((v) => v.isActive)
+            .map((v) => [
+              v.ml,
+              { variantId: v.id, price: v.price, inStock: v.inStock },
+            ]),
+        ),
+      });
+    }
+  }
+  if (supabase) {
+    const { data } = await callRpc<
+      {
+        product_id: string;
+        available_ml: number;
+        variants: Record<
+          string,
+          { variantId: string; price: number; inStock: boolean }
+        > | null;
+      }[]
+    >(supabase, "product_variants_for", { p_ids: items.map((i) => i.id) });
+    if (!data?.length) {
+      // 0064 хэрэгжээгүй сан дээр ч угсрагч ажиллана.
+      for (const p of await getProductDetailsByIds(items.map((i) => i.id))) {
+        extra.set(p.id, {
+          availableMl: p.availableMl,
+          variantByMl: Object.fromEntries(
+            p.variants
+              .filter((v) => v.isActive)
+              .map((v) => [
+                v.ml,
+                { variantId: v.id, price: v.price, inStock: v.inStock },
+              ]),
+          ),
+        });
+      }
+    }
+    for (const row of data ?? []) {
+      extra.set(row.product_id, {
+        availableMl: row.available_ml,
+        variantByMl: Object.fromEntries(
+          Object.entries(row.variants ?? {}).map(
+            ([ml, v]) => [Number(ml), v] as const,
+          ),
+        ) as BuilderProduct["variantByMl"],
+      });
+    }
+  }
+
+  return {
+    items: items.map((p) => ({
+      productId: p.id,
+      slug: p.slug,
+      name: p.name,
+      brand: p.brand,
+      gender: p.gender,
+      image: p.image,
+      soldOut: p.soldOut,
+      availableMl: extra.get(p.id)?.availableMl ?? 0,
+      variantByMl: extra.get(p.id)?.variantByMl ?? {},
+      scentFamilies: p.scentFamilies,
+      seasons: p.seasons,
+      tags: p.tags,
+      startingPrice: p.startingPrice,
+      createdAt: p.createdAt,
+      ratingCount: p.ratingCount,
+    })),
+    total,
+    page,
+    perPage,
+  };
 }
+
+/** Багц угсрагчийн нэг хуудсанд хэдэн бараа. Каталогийнхаас өгөөмөр: энд
+ *  сонголт хийж байгаа тул нэг дэлгэцэнд илүү олон ус харагдах нь дээр. */
+export const BUILDER_PER_PAGE = 24;

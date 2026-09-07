@@ -134,6 +134,9 @@ export function ProductsToolbar() {
       // The old single-parameter form; carrying it forward would re-apply a
       // filter the operator just cleared.
       next.delete("status");
+      // Шинэ шүүлт = шинэ жагсаалт. 4-р хуудсан дээр байхад шүүхэд хоосон
+      // дэлгэц гарч ирэх нь «юу ч олдсонгүй» гэж уншигдана.
+      next.delete("page");
       startTransition(() => {
         router.replace(`/admin/products?${next.toString()}`);
       });
@@ -163,7 +166,7 @@ export function ProductsToolbar() {
       // full-width band of its own; from `md` the whole thing collapses back
       // into the single inline row a wide screen has space for.
       className={cn(
-        "space-y-2 transition-opacity md:flex md:flex-wrap md:items-center md:gap-x-3 md:gap-y-2 md:space-y-0",
+        "space-y-2 transition-opacity md:flex md:flex-wrap md:items-center md:space-y-0 md:gap-x-3 md:gap-y-2",
         pending && "opacity-60",
       )}
       aria-busy={pending}
@@ -221,7 +224,6 @@ export function ProductsToolbar() {
           </button>
         ))}
       </div>
-
     </div>
   );
 }

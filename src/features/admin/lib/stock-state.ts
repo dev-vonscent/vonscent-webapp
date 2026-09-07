@@ -20,6 +20,18 @@ export const STOCK_STATE_LABEL: Record<StockState, string> = {
   soldout: "Дууссан",
 };
 
+/**
+ * Энэ дүрэм SQL-д ХОЁР удаа давтагдсан: `admin_product_page()` (0060, барааны
+ * жагсаалтын үлдэгдлийн шүүлт) ба `admin_stock_overview()` (0065, самбар /
+ * тайлан / хэвлэх). Хоёул ЗӨВХӨН доорх хоёр аргументтай хэлбэрийг тусгадаг —
+ * `is_sold_out`-ыг уншдаггүй.
+ *
+ * Тэр нь зөрүү биш: админы дэлгэцүүд ч түүнийг дамжуулдаггүй
+ * (`ADMIN_PRODUCT_SELECT` нь `is_sold_out`-ыг сонгодог ч үгүй, `StockBadge`-д
+ * ч өгдөггүй). Гурав дахь аргументыг ЗӨВХӨН дэлгүүрийн тал хэрэглэдэг
+ * (`mapProduct()`-ийн `inStock`). Хэрэв админд ч уншуулах бол SQL-ийн хоёр
+ * функцийг ЗЭРЭГ шинэчлэх ёстой, үгүй бол жагсаалтын шүүлт ба тэмдэг зөрнө.
+ */
 export function stockState(
   availableMl: number,
   lowStockMl: number,

@@ -7,32 +7,27 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import type { GiftSettings } from "@/features/content/api";
 import { adminFetch } from "@/features/admin/lib/mutate";
+import { useProductOptions } from "@/features/admin/hooks/use-product-options";
+import type { ProductOption } from "@/features/admin/lib/product-option";
 
 const MIN_POOL = 6;
 const MAX_POOL = 8;
-
-interface GiftProductOption {
-  id: string;
-  name: string;
-  brand: string;
-  availableMl: number;
-  isActive: boolean;
-}
 
 /**
  * Бэлгийн үнэрүүд — бүх бэлэг (дүнгээр ч, багцаар ч) зөвхөн энэ сангаас
  * гарна (backlog A2). 6–8 ус сонгохыг зөвлөнө; сар бүр солих үүрэггүй.
  */
 export function GiftPoolManager({
-  products,
+  options,
   initial,
 }: {
-  products: GiftProductOption[];
+  /** Сонгогдсон бараа + эхний хуудас; цаашийг хайлтаар сервер өгнө. */
+  options: ProductOption[];
   initial: GiftSettings;
 }) {
+  const { q, setQ, items, loading, byId } = useProductOptions(options);
   const [enabled, setEnabled] = React.useState(initial.enabled);
   const [ids, setIds] = React.useState<string[]>(initial.productIds);
-  const [q, setQ] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
 
@@ -70,29 +65,18 @@ export function GiftPoolManager({
     }
   }
 
-  const byId = React.useMemo(
-    () => new Map(products.map((p) => [p.id, p])),
-    [products],
-  );
   // Худалдан авагч талд /api/gifts зөвхөн ИДЭВХТЭЙ, 1мл гаргах үлдэгдэлтэй
   // барааг харуулдаг. Сонгосон мөртөө тэр шүүлтэд унасан ус чимээгүй алга
   // болвол админ «5 сонгосон, 4 харагдаж байна» гэж эргэлзэнэ — тул энд
   // нэрлэж хэлнэ.
   const hidden = ids
-    .map((id) => byId.get(id))
-    .filter((p): p is GiftProductOption =>
+    .map((id) => byId(id))
+    .filter((p): p is ProductOption =>
       p ? !p.isActive || p.availableMl < 1 : false,
     );
   // Устгагдсан бараа ч санд үлдэж болно — түүнийг ч «харагдах» гэж тоолохгүй.
-  const missing = ids.filter((id) => !byId.has(id)).length;
+  const missing = ids.filter((id) => !byId(id)).length;
   const visibleCount = ids.length - hidden.length - missing;
-
-  const query = q.trim().toLowerCase();
-  const filtered = query
-    ? products.filter((p) =>
-        `${p.brand} ${p.name}`.toLowerCase().includes(query),
-      )
-    : products;
 
   return (
     <Card>
@@ -128,9 +112,16 @@ export function GiftPoolManager({
           className="max-w-sm"
         />
 
-        <div className="bg-muted/40 max-h-112 overflow-y-auto rounded-lg">
+        {/* Жагсаалт нь бүх каталог БИШ — хайлтад таарсан эхний хэдэн мөр.
+            Хүссэн ус эндээ харагдахгүй бол нэрээ бичихэд гарч ирнэ. */}
+        <div
+          className={`bg-muted/40 max-h-112 overflow-y-auto rounded-lg transition-opacity ${
+            loading ? "opacity-60" : ""
+          }`}
+          aria-busy={loading}
+        >
           <ul className="[&>li:nth-child(even)]:bg-muted/40">
-            {filtered.map((p) => {
+            {items.map((p) => {
               const checked = ids.includes(p.id);
               // Идэвхгүй / үлдэгдэлгүй усыг шинээр нэмүүлэхгүй — сонгосон ч
               // худалдан авагчид харагдахгүй тул сан хуурамчаар дүүрнэ.
@@ -166,9 +157,9 @@ export function GiftPoolManager({
                 </li>
               );
             })}
-            {filtered.length === 0 && (
+            {items.length === 0 && (
               <li className="text-muted-foreground px-3 py-4 text-sm">
-                Илэрц алга.
+                {loading ? "Хайж байна…" : "Илэрц алга."}
               </li>
             )}
           </ul>

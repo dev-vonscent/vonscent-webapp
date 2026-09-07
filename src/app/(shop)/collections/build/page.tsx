@@ -8,6 +8,7 @@ import { getBrands, getPriceBounds } from "@/features/products/api";
 import { getActiveBrands } from "@/features/taxonomy/api";
 import { getScentFamilies } from "@/features/taxonomy/api";
 import { CollectionBuilder } from "@/features/collections/components/builder";
+import { parseFilters } from "@/features/catalog/parse";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 
@@ -16,10 +17,17 @@ export const metadata: Metadata = {
   description: "Дуртай үнэртнүүдээ сонгож, хямдралтай өөрийн багц угсраарай.",
 };
 
-export default async function BuildPage() {
-  const [products, settings, brands, brandRows, priceBounds, families] =
+export default async function BuildPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // Шүүлт, хайлт, хуудас нь URL-д — каталогийн хуудастай ижил (refresh,
+  // «буцах», хуваалцсан холбоос бүгд ажиллана).
+  const filters = parseFilters(await searchParams);
+  const [page, settings, brands, brandRows, priceBounds, families] =
     await Promise.all([
-      getBuilderProducts(),
+      getBuilderProducts(filters),
       getCollectionSettings(),
       getBrands(),
       getActiveBrands(),
@@ -55,11 +63,14 @@ export default async function BuildPage() {
 
   return (
     <div className="mx-auto max-w-352 px-4 py-6 md:px-8">
-      <h1 className="font-serif mb-4 text-2xl font-semibold tracking-tight sm:text-3xl">
+      <h1 className="mb-4 font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
         Багц угсрах
       </h1>
       <CollectionBuilder
-        products={products}
+        products={page.items}
+        total={page.total}
+        page={page.page}
+        perPage={page.perPage}
         settings={settings}
         isLoggedIn={isLoggedIn}
         brands={brands}

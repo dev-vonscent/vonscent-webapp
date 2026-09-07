@@ -28,13 +28,8 @@ import {
 } from "@/components/ui/select";
 import { useConfirm } from "@/components/shared/confirm-dialog";
 import type { AdminHomeSection } from "@/features/admin/api";
-
-/** Just what the picker needs off a product. */
-export interface PickableProduct {
-  id: string;
-  name: string;
-  brand: string;
-}
+import { useProductOptions } from "@/features/admin/hooks/use-product-options";
+import type { ProductOption } from "@/features/admin/lib/product-option";
 
 const TAG_LABEL: Record<string, string> = {
   new: "Шинэ",
@@ -64,10 +59,11 @@ const KIND_LABEL: Record<SectionKind, string> = {
  */
 export function HomeSectionManager({
   sections,
-  products,
+  options,
 }: {
   sections: AdminHomeSection[];
-  products: PickableProduct[];
+  /** Сонгогдсон бараа + эхний хуудас; цаашийг сонгогч сервер дээрээс хайна. */
+  options: ProductOption[];
 }) {
   const router = useRouter();
   const [confirm, confirmDialog] = useConfirm();
@@ -162,7 +158,7 @@ export function HomeSectionManager({
         <SectionCard
           key={section.id}
           section={section}
-          products={products}
+          options={options}
           busy={busy}
           first={i === 0}
           last={i === sections.length - 1}
@@ -201,7 +197,7 @@ export function HomeSectionManager({
 
 function SectionCard({
   section,
-  products,
+  options,
   busy,
   first,
   last,
@@ -210,7 +206,7 @@ function SectionCard({
   onRemove,
 }: {
   section: AdminHomeSection;
-  products: PickableProduct[];
+  options: ProductOption[];
   busy: boolean;
   first: boolean;
   last: boolean;
@@ -230,11 +226,10 @@ function SectionCard({
       ? ["tag", "manual", "featured"]
       : ["manual", "featured"];
 
-  const byId = React.useMemo(
-    () => new Map(products.map((p) => [p.id, p])),
-    [products],
-  );
-  const available = products.filter((p) => !picked.includes(p.id));
+  // Хайлт нь сервер дээр — өмнө нь бүх каталог props-оор ирж, сонгогч нь
+  // хэдэн зуун мөртэй `Select` болдог байв.
+  const { q, setQ, items, loading, byId } = useProductOptions(options);
+  const available = items.filter((p) => !picked.includes(p.id));
 
   function movePicked(index: number, delta: number) {
     const next = index + delta;
@@ -370,7 +365,7 @@ function SectionCard({
             ) : (
               <ol className="space-y-1.5">
                 {picked.map((id, i) => {
-                  const p = byId.get(id);
+                  const p = byId(id);
                   return (
                     <li
                       key={id}
@@ -416,22 +411,49 @@ function SectionCard({
               </ol>
             )}
 
-            <Select
-              value=""
-              onValueChange={(id) => setPicked([...picked, id])}
-              disabled={available.length === 0}
-            >
-              <SelectTrigger className="max-w-sm">
-                <SelectValue placeholder="Бараа нэмэх" />
-              </SelectTrigger>
-              <SelectContent>
-                {available.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.brand} — {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Хайлттай сонгогч. Урьд нь энэ нь бүх каталогийг агуулсан
+                `Select` байсан — 500 бараатай үед гүйлгэж олох боломжгүй, мөн
+                каталог бүхэлдээ хуудсанд ачаалагдана гэсэн үг. */}
+            <div className="max-w-sm space-y-2">
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Бараа нэмэх — нэр, брэндээр хайх…"
+                aria-label="Нэмэх барааг хайх"
+              />
+              <div
+                className={`bg-muted/40 max-h-56 overflow-y-auto rounded-md transition-opacity ${
+                  loading ? "opacity-60" : ""
+                }`}
+                aria-busy={loading}
+              >
+                {available.length === 0 ? (
+                  <p className="text-muted-foreground px-3 py-3 text-sm">
+                    {loading ? "Хайж байна…" : "Илэрц алга."}
+                  </p>
+                ) : (
+                  <ul className="[&>li:nth-child(even)]:bg-muted/40">
+                    {available.map((p) => (
+                      <li key={p.id}>
+                        <button
+                          type="button"
+                          onClick={() => setPicked([...picked, p.id])}
+                          className="hover:bg-accent flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm md:min-h-9"
+                        >
+                          <Plus className="text-muted-foreground size-3.5 shrink-0" />
+                          <span className="min-w-0 truncate">
+                            <span className="text-muted-foreground mr-2 text-xs uppercase">
+                              {p.brand}
+                            </span>
+                            {p.name}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

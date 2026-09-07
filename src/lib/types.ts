@@ -122,11 +122,17 @@ export interface CatalogFilters {
   tags?: TagKind[];
   /** Зөвхөн «Онцлох» гэж тэмдэглэсэн бараа. */
   featured?: boolean;
+  /** Зөвхөн эдгээр id — нүүрийн эрэмбэлэгдсэн жагсаалт, хүслийн жагсаалт. */
+  ids?: string[];
   ml?: number[];
   minPrice?: number;
   maxPrice?: number;
   search?: string;
-  sort?: "new" | "price_asc" | "price_desc" | "name" | "popular";
+  /**
+   * `featured` нь URL-аас ирдэггүй, зөвхөн дотоод хэрэглээ: дууссан барааг
+   * ард нь, үлдсэнийг шинэ нь түрүүлж (нүүрийн «Онцлох» хэсэг).
+   */
+  sort?: "new" | "price_asc" | "price_desc" | "name" | "popular" | "featured";
   page?: number;
   perPage?: number;
 }

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Check, Plus, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,60 +15,17 @@ import { CatalogFilters } from "@/features/catalog/components/catalog-filters";
 import { CatalogFilterSheet } from "@/features/catalog/components/catalog-filter-sheet";
 import { CatalogSort } from "@/features/catalog/components/catalog-sort";
 import { CatalogSearch } from "@/features/catalog/components/catalog-search";
-import { parseFilters } from "@/features/catalog/parse";
+import { CatalogPagination } from "@/features/catalog/components/catalog-pagination";
 import { bundlePrice } from "../pricing";
-import type {
-  BuilderProduct,
-  CollectionSettings,
-} from "../types";
-import type { CatalogFilters as Filters, ScentFamilyOption } from "@/lib/types";
+import type { BuilderProduct, CollectionSettings } from "../types";
+import type { ScentFamilyOption } from "@/lib/types";
 import type { BrandLogos } from "@/features/products/components/brand-marquee";
-
-/** Filter + sort a product list the same way the catalog server does. */
-function applyFilters(
-  products: BuilderProduct[],
-  f: Filters,
-): BuilderProduct[] {
-  const items = products.filter((p) => {
-    if (f.brand?.length && !f.brand.includes(p.brand)) return false;
-    if (f.gender?.length && !f.gender.includes(p.gender)) return false;
-    if (f.family?.length && !f.family.some((x) => p.scentFamilies.includes(x)))
-      return false;
-    if (
-      f.season?.length &&
-      !(
-        p.seasons.includes("all") || f.season.some((s) => p.seasons.includes(s))
-      )
-    )
-      return false;
-    if (f.tags?.length && !f.tags.some((t) => p.tags.includes(t))) return false;
-    if (f.minPrice != null && p.startingPrice < f.minPrice) return false;
-    if (f.maxPrice != null && p.startingPrice > f.maxPrice) return false;
-    if (f.search) {
-      const q = f.search.toLowerCase();
-      if (!`${p.name} ${p.brand}`.toLowerCase().includes(q)) return false;
-    }
-    return true;
-  });
-  const sort = f.sort ?? "new";
-  return [...items].sort((a, b) => {
-    switch (sort) {
-      case "price_asc":
-        return a.startingPrice - b.startingPrice;
-      case "price_desc":
-        return b.startingPrice - a.startingPrice;
-      case "name":
-        return a.name.localeCompare(b.name);
-      case "popular":
-        return b.ratingCount - a.ratingCount;
-      default:
-        return b.createdAt.localeCompare(a.createdAt);
-    }
-  });
-}
 
 export function CollectionBuilder({
   products,
+  total,
+  page,
+  perPage,
   settings,
   isLoggedIn,
   brands,
@@ -76,7 +33,11 @@ export function CollectionBuilder({
   priceBounds,
   families,
 }: {
+  /** ЗӨВХӨН энэ хуудсын бараа — шүүлт, эрэмбэ, хуудаслалт сервер дээр. */
   products: BuilderProduct[];
+  total: number;
+  page: number;
+  perPage: number;
   settings: CollectionSettings;
   isLoggedIn: boolean;
   brands: string[];
@@ -85,38 +46,24 @@ export function CollectionBuilder({
   families: ScentFamilyOption[];
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const addCollection = useCart((s) => s.addCollection);
 
   const [ml, setMl] = React.useState<number>(DEFAULT_BUNDLE_ML);
-  const [ids, setIds] = React.useState<string[]>([]);
+  // Сонгосон барааг ID-гаар нь биш, БҮТНЭЭР нь санана. Шүүлт эсвэл хуудас
+  // солигдоход тухайн бараа одоогийн хуудсанд байхаа болих ч сонголт
+  // хэвээрээ үлдэх ёстой — өмнө нь бүх каталог санах ойд байсан тул энэ
+  // асуудал байгаагүй.
+  const [picked, setPicked] = React.useState<BuilderProduct[]>([]);
+  const ids = picked.map((p) => p.productId);
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
   const [desc, setDesc] = React.useState("");
   const [save, setSave] = React.useState(isLoggedIn);
   const [busy, setBusy] = React.useState(false);
 
-  const byId = React.useMemo(
-    () => new Map(products.map((p) => [p.productId, p])),
-    [products],
-  );
-
-  const filters = React.useMemo(
-    () => parseFilters(Object.fromEntries(searchParams.entries())),
-    [searchParams],
-  );
-
-  // Show every product the filters match — a scent the customer searched for
-  // must never just vanish. Ones the chosen size can't fill are shown disabled
-  // with an explanation rather than hidden (avoids "where did it go?").
-  const grid = React.useMemo(
-    () => applyFilters(products, filters),
-    [products, filters],
-  );
-
-  const selected = ids
-    .map((id) => byId.get(id))
-    .filter(Boolean) as BuilderProduct[];
+  // Шүүлт, эрэмбэ, хуудаслалтыг сервер хийсэн — энд зөвхөн харагдац.
+  const grid = products;
+  const selected = picked;
   // A size change never silently drops a pick: unavailable members stay
   // selected but are flagged so the customer sees exactly what's affected.
   const availableSelected = selected.filter((p) => p.variantByMl[ml]?.inStock);
@@ -146,15 +93,16 @@ export function CollectionBuilder({
 
   function removeUnavailable() {
     const bad = new Set(unavailableSelected.map((p) => p.productId));
-    setIds((prev) => prev.filter((id) => !bad.has(id)));
+    setPicked((prev) => prev.filter((p) => !bad.has(p.productId)));
   }
 
-  function toggle(id: string) {
-    setIds((prev) => {
-      if (prev.includes(id)) return prev.filter((x) => x !== id);
+  function toggle(product: BuilderProduct) {
+    setPicked((prev) => {
+      if (prev.some((p) => p.productId === product.productId))
+        return prev.filter((p) => p.productId !== product.productId);
       if (settings.maxItems != null && prev.length >= settings.maxItems)
         return prev;
-      return [...prev, id];
+      return [...prev, product];
     });
   }
 
@@ -198,7 +146,7 @@ export function CollectionBuilder({
 
     setBusy(false);
     setOpen(false);
-    setIds([]);
+    setPicked([]);
     setName("");
     setDesc("");
     router.refresh();
@@ -270,7 +218,7 @@ export function CollectionBuilder({
                 return (
                   <button
                     key={p.productId}
-                    onClick={() => toggle(p.productId)}
+                    onClick={() => toggle(p)}
                     aria-label={`${p.brand} ${p.name} хасах`}
                     title={
                       bad
@@ -303,7 +251,7 @@ export function CollectionBuilder({
                       <span className="bg-destructive absolute inset-x-0 bottom-0 py-0.5 text-center text-[9px] font-semibold text-white">
                         байхгүй
                       </span>
-                  )}
+                    )}
                   </button>
                 );
               })}
@@ -433,7 +381,7 @@ export function CollectionBuilder({
                         </span>
                       )}
                       <button
-                        onClick={() => toggle(p.productId)}
+                        onClick={() => toggle(p)}
                         disabled={disabled}
                         aria-pressed={on}
                         aria-label={on ? "Хасах" : "Нэмэх"}
@@ -478,6 +426,12 @@ export function CollectionBuilder({
               })}
             </div>
           )}
+
+          {/* Хуудаслалт — каталогийнхтай ижил хэрэгсэл. Сонгосон ус хуудас
+              солиход ч сонгогдсон хэвээр үлдэнэ: `picked` нь барааг БҮТНЭЭР
+              санадаг тул одоогийн хуудсанд байхаа болих нь хамаагүй
+              (builder.test.tsx). */}
+          <CatalogPagination page={page} perPage={perPage} total={total} />
         </div>
       </div>
 

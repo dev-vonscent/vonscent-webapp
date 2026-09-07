@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   getReportData,
-  getAdminProducts,
+  getStockOverview,
   getDashboardData,
 } from "@/features/admin/api";
 import {
@@ -14,24 +14,28 @@ import {
 } from "@/features/admin/components/report-charts";
 import { formatPrice } from "@/lib/format";
 
+/** Графикт харуулах «хамгийн бага үлдэгдэлтэй» барааны тоо. */
+const REPORT_STOCK_LIMIT = 10;
+
 export default async function AdminReportsPage() {
-  const [report, products, dashboard] = await Promise.all([
+  // Нийт мл ба «хамгийн бага үлдэгдэлтэй 10» хоёуланг SQL өгнө (0062) — өмнө
+  // нь бүх каталогийг татаж аваад JS дотор нийлбэр, эрэмбэ хийдэг байв.
+  const [report, stock, dashboard] = await Promise.all([
     getReportData(),
-    getAdminProducts(),
+    // Нуусан барааг SQL өөрөө хасна (0065). Өмнө нь илүүг уншаад JS дотор
+    // шүүдэг байсан нь график 10-аас дутах эсэхийг нуусан барааны тооноос
+    // хамааралтай болгож байв.
+    getStockOverview({ limit: REPORT_STOCK_LIMIT, activeOnly: true }),
     getDashboardData(),
   ]);
-  const totalMl = products.reduce((s, p) => s + p.availableMl, 0);
+  const totalMl = stock.totalAvailableMl;
   // getReportData sorts monthly newest-first; the time axis wants oldest-first.
   const monthlyAsc = [...report.monthly].reverse();
-  const lowestStock = products
-    .filter((p) => p.isActive)
-    .sort((a, b) => a.availableMl - b.availableMl)
-    .slice(0, 10)
-    .map((p) => ({
-      name: `${p.brand} — ${p.name}`,
-      availableMl: p.availableMl,
-      lowStockMl: p.lowStockMl,
-    }));
+  const lowestStock = stock.items.map((p) => ({
+    name: `${p.brand} — ${p.name}`,
+    availableMl: p.availableMl,
+    lowStockMl: p.lowStockMl,
+  }));
 
   return (
     <div className="space-y-8">

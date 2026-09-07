@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "analyze": "next build --experimental-analyze && node --import tsx scripts/bundle-report.ts",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
