@@ -221,6 +221,11 @@ export function ProductEditForm({
             ? `«${form.name}» хадгалагдлаа. Шинэ үнэ сайтад шууд харагдана.`
             : `«${form.name}» хадгалагдлаа. Бараа сайтад харагдахгүй байна.`,
         );
+        // `refresh()` нь `push()`-ээс ӨМНӨ: `staleTimes.dynamic` (next.config.ts)
+        // client router cache-ийг 30 секунд санадаг тул үүнгүйгээр оператор
+        // өөрийнхөө засварыг жагсаалтад хараагүй хэвээр буцна. `backHref` нь
+        // шүүлттэй жагсаалтын URL — cache-ийн яг тэр л түлхүүр.
+        router.refresh();
         router.push(backHref);
         return;
       }
@@ -248,6 +253,9 @@ export function ProductEditForm({
       if (res.ok) {
         setDirty(false);
         toast.success(`«${product.name}» устгагдлаа.`);
+        // Устгасны дараа энэ нь ялангуяа чухал: cache-тай жагсаалт нь устсан
+        // барааг байгаа юм шиг харуулна (дээрх save-ийн тайлбарыг үзнэ үү).
+        router.refresh();
         router.push(backHref);
         return;
       }

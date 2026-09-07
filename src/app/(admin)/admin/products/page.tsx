@@ -2,13 +2,15 @@ import Link from "next/link";
 import { Plus, PackageSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  ADMIN_PRODUCTS_CAP,
-  getAdminProducts,
-  productsWereCapped,
+  ADMIN_PRODUCTS_PER_PAGE,
+  getAdminProductPage,
 } from "@/features/admin/api";
 import { ProductsToolbar } from "@/features/admin/components/products-toolbar";
 import { ProductsTable } from "@/features/admin/components/products-table";
-import { stockState } from "@/features/admin/lib/stock-state";
+import {
+  ServerPager,
+  makeHrefBuilder,
+} from "@/features/admin/components/server-pager";
 
 export default async function AdminProductsPage({
   searchParams,
@@ -20,52 +22,35 @@ export default async function AdminProductsPage({
     /** Legacy single filter, kept so old links and bookmarks still land. */
     status?: string;
     sort?: string;
+    page?: string;
   }>;
 }) {
-  const { q, vis, stock, status, sort } = await searchParams;
-  const [all, capped] = await Promise.all([
-    getAdminProducts(),
-    productsWereCapped(),
-  ]);
-  let products = all;
+  const { q, vis, stock, status, sort, page } = await searchParams;
 
   // Visibility and stock used to share one `status` parameter, which made them
   // mutually exclusive. Old links carrying it are mapped onto whichever of the
   // two dimensions they actually meant.
   const visibility = vis ?? legacyVisibility(status);
   const stockFilter = stock ?? legacyStock(status);
+  const pageIndex = Math.max(0, (Number(page) || 1) - 1);
 
-  if (q) {
-    const needle = q.toLowerCase();
-    products = products.filter((p) =>
-      `${p.name} ${p.brand}`.toLowerCase().includes(needle),
-    );
-  }
-  if (visibility === "active") products = products.filter((p) => p.isActive);
-  else if (visibility === "hidden")
-    products = products.filter((p) => !p.isActive);
-
-  if (stockFilter)
-    products = products.filter(
-      (p) => stockState(p.availableMl, p.lowStockMl) === stockFilter,
-    );
-
-  products = [...products].sort((a, b) => {
-    switch (sort) {
-      case "brand":
-        return a.brand.localeCompare(b.brand) || a.name.localeCompare(b.name);
-      case "price-asc":
-        return a.startingPrice - b.startingPrice;
-      case "price-desc":
-        return b.startingPrice - a.startingPrice;
-      case "stock":
-        return a.availableMl - b.availableMl;
-      default:
-        return a.name.localeCompare(b.name);
-    }
+  // Шүүлт, эрэмбэ, хуудаслалт бүгд өгөгдлийн санд (backlog H2) — энэ дэлгэц
+  // өмнө нь 2000 барааг бүтнээр татаж аваад JS дотор шүүдэг байв.
+  const { rows, total } = await getAdminProductPage({
+    q,
+    visibility,
+    stock: stockFilter,
+    sort,
+    page: pageIndex,
   });
 
   const filtering = Boolean(q || visibility || stockFilter);
+  const href = makeHrefBuilder("/admin/products", {
+    q,
+    vis: visibility,
+    stock: stockFilter,
+    sort,
+  });
 
   return (
     <div className="space-y-6">
@@ -81,21 +66,22 @@ export default async function AdminProductsPage({
 
       <ProductsToolbar />
 
-      {capped && (
-        <p
-          role="status"
-          className="bg-warning/15 text-warning rounded-md px-4 py-3 text-sm"
-        >
-          Каталог {ADMIN_PRODUCTS_CAP.toLocaleString("mn-MN")} бараанаас
-          хэтэрсэн тул зөвхөн хамгийн сүүлд нэмэгдсэн{" "}
-          {ADMIN_PRODUCTS_CAP.toLocaleString("mn-MN")} нь энд харагдаж байна.
-        </p>
-      )}
-
-      {products.length === 0 ? (
+      {rows.length === 0 ? (
         <EmptyState filtering={filtering} />
       ) : (
-        <ProductsTable data={products} />
+        <>
+          <ProductsTable data={rows} />
+          {total !== null && (
+            <ServerPager
+              page={pageIndex}
+              perPage={ADMIN_PRODUCTS_PER_PAGE}
+              total={total}
+              hrefForPage={(i) =>
+                href({ page: i > 0 ? String(i + 1) : undefined })
+              }
+            />
+          )}
+        </>
       )}
     </div>
   );

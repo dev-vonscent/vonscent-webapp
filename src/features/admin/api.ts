@@ -17,6 +17,10 @@ import {
   DEFAULT_LOW_STOCK_ML,
   type OrderStatus,
 } from "@/lib/constants";
+import * as Sentry from "@sentry/nextjs";
+import { matchesSearch, searchTerms } from "@/lib/search";
+import { stockState } from "./lib/stock-state";
+import { PRODUCT_OPTION_LIMIT, type ProductOption } from "./lib/product-option";
 
 /**
  * Admin read access. Uses the cookie-bound client so staff RLS applies (admins
@@ -453,10 +457,15 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
 }
 
 /**
- * Hard cap on the catalogue fetch. This query had no `.limit()` at all, which
- * does not mean "everything" — it means PostgREST's `db-max-rows` silently
- * truncates. An explicit cap plus `productsWereCapped` makes the ceiling
- * visible instead: the shop is told rather than quietly shown fewer goods.
+ * Hard cap on the whole-catalogue fetch. This query had no `.limit()` at all,
+ * which does not mean "everything" — it means PostgREST's `db-max-rows`
+ * silently truncates. An explicit cap plus `productsWereCapped` makes the
+ * ceiling visible instead: the shop is told rather than quietly shown fewer
+ * goods.
+ *
+ * Барааны ЖАГСААЛТ энэ замаар явахаа больсон (`getAdminProductPage`); энд
+ * үлдсэн дуудагчид (хяналтын самбар, тайлан, бэлгийн сан, нүүрийн хэсэг) нь
+ * бүх каталогийг үнэхээр шаарддаг.
  */
 export const ADMIN_PRODUCTS_CAP = 2000;
 
@@ -473,14 +482,298 @@ export async function getAdminProducts(): Promise<AdminProduct[]> {
   );
 }
 
-/** True when the catalogue is larger than one `getAdminProducts()` page. */
-export async function productsWereCapped(): Promise<boolean> {
+/**
+ * Барааны сонгогчийн жагсаалт (бэлгийн сан, нүүрийн хэсэг, багцын форм).
+ *
+ * `ids` өгвөл ЯГ тэдгээрийг буцаана (сонгогдсон бараа хайлтаас үл хамааран
+ * нэрээрээ харагдах ёстой); үгүй бол хайлтад таарсан эхний `limit` мөр.
+ *
+ * Өмнө нь эдгээр гурван дэлгэц бүх каталогийг сервер дээр татаж аваад браузар
+ * руу бүтнээр нь дамжуулж, хайлтыг санах ойд хийдэг байв (0063).
+ */
+export async function getProductOptions({
+  q,
+  ids,
+  limit = PRODUCT_OPTION_LIMIT,
+}: {
+  q?: string;
+  ids?: string[];
+  limit?: number;
+} = {}): Promise<ProductOption[]> {
+  if (ids && ids.length === 0) return [];
   const supabase = await createClient();
-  if (!supabase) return false;
-  const { count } = await supabase
+  if (!supabase) return [];
+
+  const { data, error } = await callRpc<
+    {
+      id: string;
+      name: string;
+      brand: string;
+      is_active: boolean;
+      available_ml: number;
+      price_by_ml: Record<string, number> | null;
+    }[]
+  >(supabase, "admin_product_options", {
+    p_terms: !ids && q?.trim() ? searchTerms(q) : null,
+    p_ids: ids ?? null,
+    // id-гаар асуухад бүгдийг нь буцаах ёстой — хайлтын хязгаар үйлчлэхгүй.
+    p_limit: ids ? ids.length : limit,
+  });
+  if (error || !data) {
+    Sentry.captureException(
+      new Error(`admin_product_options failed: ${error?.message ?? "no rows"}`),
+    );
+    return [];
+  }
+  return data.map((r) => ({
+    id: r.id,
+    name: r.name,
+    brand: r.brand,
+    isActive: r.is_active,
+    availableMl: r.available_ml,
+    priceByMl: Object.fromEntries(
+      Object.entries(r.price_by_ml ?? {}).map(([ml, price]) => [
+        Number(ml),
+        Number(price),
+      ]),
+    ),
+  }));
+}
+
+/** Нэг барааны үлдэгдлийн мөр (`admin_stock_overview`). */
+export interface StockRow {
+  id: string;
+  name: string;
+  brand: string;
+  isActive: boolean;
+  availableMl: number;
+  lowStockMl: number;
+  state: "ok" | "low" | "soldout";
+}
+
+export interface StockOverview {
+  /** Доорх дөрөв нь БҮХ каталогийн тухай — шүүлтээс хамаарахгүй. */
+  totalProducts: number;
+  lowCount: number;
+  soldoutCount: number;
+  totalAvailableMl: number;
+  /** Шүүлтэд таарсан мөрийн бүтэн тоо. `items.length` нь үүнээс бага байж болно. */
+  matchedCount: number;
+  /** Үлдэгдэл багаас нь эрэмбэлсэн, ихдээ `limit` мөр. */
+  items: StockRow[];
+}
+
+const EMPTY_OVERVIEW: StockOverview = {
+  totalProducts: 0,
+  lowCount: 0,
+  soldoutCount: 0,
+  totalAvailableMl: 0,
+  matchedCount: 0,
+  items: [],
+};
+
+/** `getStockOverview()`-ийн жагсаалтын шүүлт (0065). */
+export interface StockOverviewQuery {
+  /** Хэдэн мөр унших. Тоолуурт нөлөөлөхгүй. */
+  limit?: number;
+  /** Зөвхөн энэ төлөв; `"attention"` = `ok` биш бүгд. */
+  state?: StockRow["state"] | "attention";
+  /** Нуусан барааг жагсаалтаас гаргах. */
+  activeOnly?: boolean;
+}
+
+/**
+ * Үлдэгдлийн нэгдсэн тойм — самбар, тайлан, хэвлэх хуудас гурвын НЭГ эх сурвалж.
+ *
+ * Гурвуулаа өмнө нь `getAdminProducts()`-оор бүх каталогийг татаж аваад JS
+ * дотор тоолж, эрэмбэлдэг байв (0062). Одоо нэг дуудлага, зөвхөн `limit` мөр.
+ *
+ * Шүүлт нь SQL-д (0065) байх нь ЗАЙЛШГҮЙ: жагсаалт `available_ml`-ээр
+ * эрэмбэлэгддэг тул дууссан бараа «бага» бараа бүгдээс өмнө орно. Хязгаарлаж
+ * аваад JS дотор `state`-ээр шүүвэл хязгаар нь буруу мөрөөр дүүрч, дуудагч
+ * хоосон жагсаалт хардаг.
+ */
+export async function getStockOverview({
+  limit = 50,
+  state,
+  activeOnly = false,
+}: StockOverviewQuery = {}): Promise<StockOverview> {
+  const supabase = await createClient();
+  if (!supabase) return EMPTY_OVERVIEW;
+
+  const { data, error } = await callRpc<
+    {
+      total_products: number;
+      low_count: number;
+      soldout_count: number;
+      total_available_ml: number;
+      matched_count: number;
+      items: {
+        id: string;
+        name: string;
+        brand: string;
+        is_active: boolean;
+        available_ml: number;
+        low_stock_ml: number;
+        state: StockRow["state"];
+      }[];
+    }[]
+  >(supabase, "admin_stock_overview", {
+    p_limit: limit,
+    p_state: state ?? null,
+    p_active_only: activeOnly,
+  });
+
+  const row = data?.[0];
+  if (error || !row) {
+    Sentry.captureException(
+      new Error(`admin_stock_overview failed: ${error?.message ?? "no rows"}`),
+    );
+    return EMPTY_OVERVIEW;
+  }
+  return {
+    totalProducts: Number(row.total_products),
+    lowCount: Number(row.low_count),
+    soldoutCount: Number(row.soldout_count),
+    totalAvailableMl: Number(row.total_available_ml),
+    matchedCount: Number(row.matched_count),
+    items: (row.items ?? []).map((r) => ({
+      id: r.id,
+      name: r.name,
+      brand: r.brand,
+      isActive: r.is_active,
+      availableMl: r.available_ml,
+      lowStockMl: r.low_stock_ml,
+      state: r.state,
+    })),
+  };
+}
+
+/** Rows per page for the products list — server-side, like orders/customers. */
+export const ADMIN_PRODUCTS_PER_PAGE = 50;
+
+/** Барааны жагсаалтын URL-д байгаа төлөв бүхэлдээ. */
+export interface AdminProductQuery {
+  /** Нэр / брэнд / нэмэлт таг (дэлгүүрийнхтэй ижил хэвийн болголт). */
+  q?: string;
+  /** '' | 'active' | 'hidden' */
+  visibility?: string;
+  /** '' | 'ok' | 'low' | 'soldout' */
+  stock?: string;
+  /** '' | 'brand' | 'price-asc' | 'price-desc' | 'stock' */
+  sort?: string;
+  /** Zero-based. */
+  page?: number;
+}
+
+/**
+ * Админы барааны жагсаалтын НЭГ ХУУДАС.
+ *
+ * Шүүлт, эрэмбэ, хуудаслалт нь `admin_product_page()` дотор (0060). Өмнө нь
+ * энэ дэлгэц 2000 барааг бүтнээр нь татаж аваад JS дотор шүүдэг байсан бөгөөд
+ * хуудаслалт огт байгаагүй — 2000-аас цааших бараа хайлтад ч олдохгүй байв
+ * (backlog H2).
+ *
+ * `total` нь `null` бол demo горим (Supabase тохируулаагүй).
+ */
+export async function getAdminProductPage(
+  query: AdminProductQuery = {},
+): Promise<{ rows: AdminProduct[]; total: number | null }> {
+  const supabase = await createClient();
+  if (!supabase) return { rows: [], total: null };
+
+  const page = Math.max(0, query.page ?? 0);
+  const { data, error } = await callRpc<{ total: number; id: string }[]>(
+    supabase,
+    "admin_product_page",
+    {
+      // Админ нэг үсэг бичихэд ч шүүгдэх ёстой тул дэлгүүрийн
+      // `MIN_SEARCH_LENGTH` босго энд үйлчлэхгүй.
+      p_terms: query.q?.trim() ? searchTerms(query.q) : null,
+      p_visibility: query.visibility || null,
+      p_stock: query.stock || null,
+      p_sort: query.sort || null,
+      p_page: page + 1,
+      p_per_page: ADMIN_PRODUCTS_PER_PAGE,
+    },
+  );
+
+  if (error || !data) {
+    // 0060 хараахан хэрэгжээгүй сан дээр ч жагсаалт ажиллах ёстой.
+    Sentry.captureException(
+      new Error(`admin_product_page failed: ${error?.message ?? "no rows"}`),
+    );
+    return memoryProductPage(query, page);
+  }
+
+  const ids = data.map((r) => r.id);
+  if (!ids.length) return { rows: [], total: 0 };
+
+  const { data: rows } = await supabase
     .from("products")
-    .select("id", { count: "exact", head: true });
-  return (count ?? 0) > ADMIN_PRODUCTS_CAP;
+    .select(ADMIN_PRODUCT_SELECT)
+    .in("id", ids);
+  const byId = new Map(
+    ((rows as unknown as AdminProductRow[] | null) ?? []).map((r) => [
+      r.id,
+      mapAdminProduct(r),
+    ]),
+  );
+  return {
+    // Эрэмбийг SQL шийдсэн — `in()` нь дарааллыг хадгалдаггүй тул сэргээнэ.
+    rows: ids
+      .map((id) => byId.get(id))
+      .filter((p): p is AdminProduct => Boolean(p)),
+    total: data[0] ? Number(data[0].total) : 0,
+  };
+}
+
+/**
+ * Санах ойн зам — RPC унасан үеийн нөөц. Дүрмүүд нь `admin_product_page()`-тэй
+ * нэг мөр байх ёстой.
+ */
+async function memoryProductPage(
+  query: AdminProductQuery,
+  page: number,
+): Promise<{ rows: AdminProduct[]; total: number | null }> {
+  let items = await getAdminProducts();
+
+  if (query.q?.trim()) {
+    const haystack = (p: AdminProduct) => `${p.name} ${p.brand}`;
+    items = items.filter((p) => matchesSearch(haystack(p), query.q!));
+  }
+  if (query.visibility === "active") items = items.filter((p) => p.isActive);
+  else if (query.visibility === "hidden")
+    items = items.filter((p) => !p.isActive);
+  if (query.stock)
+    items = items.filter(
+      (p) => stockState(p.availableMl, p.lowStockMl) === query.stock,
+    );
+
+  items = [...items].sort((a, b) => {
+    switch (query.sort) {
+      case "brand":
+        return a.brand.localeCompare(b.brand) || a.name.localeCompare(b.name);
+      case "price-asc":
+        return (
+          a.startingPrice - b.startingPrice || a.name.localeCompare(b.name)
+        );
+      case "price-desc":
+        return (
+          b.startingPrice - a.startingPrice || a.name.localeCompare(b.name)
+        );
+      case "stock":
+        return a.availableMl - b.availableMl || a.name.localeCompare(b.name);
+      default:
+        return a.name.localeCompare(b.name);
+    }
+  });
+
+  const start = page * ADMIN_PRODUCTS_PER_PAGE;
+  return {
+    rows: items.slice(start, start + ADMIN_PRODUCTS_PER_PAGE),
+    total: items.length,
+  };
 }
 
 export async function getAdminProduct(

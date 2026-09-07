@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
-import { getReportData, getAdminProducts } from "@/features/admin/api";
+import { getReportData, getStockOverview } from "@/features/admin/api";
 import { getStoreSettings } from "@/features/content/api";
 import { PrintButton } from "@/features/admin/components/print-button";
 import { formatPrice, formatDate } from "@/lib/format";
-import {
-  stockState,
-  STOCK_STATE_LABEL,
-} from "@/features/admin/lib/stock-state";
+import { STOCK_STATE_LABEL } from "@/features/admin/lib/stock-state";
 
 export const metadata: Metadata = { title: "Тайлан — хэвлэх" };
 
@@ -18,19 +15,27 @@ export const metadata: Metadata = { title: "Тайлан — хэвлэх" };
  * rendering dependency on the server, and is what the invoice page (A4)
  * already does — one mechanism, not two.
  */
+/**
+ * Хэвлэх хуудас нь анхаарал шаардсан БҮХ мөрийг гаргах ёстой тул нөөцөө өндөр
+ * авна. Үүнээс хэтэрвэл хуудас хэвлэхэд ч урт болно — тэр үед барааны
+ * жагсаалтын шүүлтүүр зөв хэрэгсэл болно.
+ */
+const PRINT_STOCK_LIMIT = 300;
+
 export default async function ReportPrintPage() {
-  const [report, products, store] = await Promise.all([
+  const [report, stock, store] = await Promise.all([
     getReportData(),
-    getAdminProducts(),
+    // Sold-out rows used to land in here as merely "low"; both still need the
+    // operator's attention on a printed sheet, so they stay together — but the
+    // state column now says which is which. `attention` = `ok` биш бүгд,
+    // шүүлтийг SQL хийнэ (0065).
+    getStockOverview({ limit: PRINT_STOCK_LIMIT, state: "attention" }),
     getStoreSettings(),
   ]);
-  const totalMl = products.reduce((s, p) => s + p.availableMl, 0);
-  // Sold-out rows used to land in here as merely "low"; both still need the
-  // operator's attention on a printed sheet, so they stay together — but the
-  // state column now says which is which.
-  const lowStock = products.filter(
-    (p) => stockState(p.availableMl, p.lowStockMl) !== "ok",
-  );
+  const totalMl = stock.totalAvailableMl;
+  const lowStock = stock.items;
+  /** Хэвлэсэн хуудас дуугүй тасрах ёсгүй — тасарсан бол тэр нь цаасан дээр гарна. */
+  const omitted = stock.matchedCount - lowStock.length;
 
   return (
     <div className="print-sheet mx-auto max-w-3xl space-y-6 p-2 text-sm">
@@ -83,10 +88,18 @@ export default async function ReportPrintPage() {
           p.name,
           `${p.availableMl}ml`,
           `${p.lowStockMl}ml`,
-          STOCK_STATE_LABEL[stockState(p.availableMl, p.lowStockMl)],
+          // Төлвийг SQL аль хэдийн бодсон (0062) — дахин бодвол хоёр газар зөрөх эрсдэл.
+          STOCK_STATE_LABEL[p.state],
         ])}
         empty="Доод хязгаарт хүрсэн бараа алга."
       />
+      {omitted > 0 && (
+        <p className="text-muted-foreground text-xs">
+          Дээрх хүснэгтэд анхаарах үлдэгдлийн эхний {lowStock.length} мөр орсон.
+          Бусад {omitted} бараа хуудсанд багтаагүй — «Бараа» жагсаалтаас
+          үлдэгдлээр шүүж харна уу.
+        </p>
+      )}
 
       <p className="text-muted-foreground text-xs print:hidden">
         PDF болгож хадгалахын тулд «Хэвлэх» дарж, хэвлэгчийн сонголтоос «Save as

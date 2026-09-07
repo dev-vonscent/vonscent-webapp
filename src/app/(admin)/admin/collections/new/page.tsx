@@ -1,16 +1,18 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { getAllProducts } from "@/features/products/api";
 import { getCollectionSettings } from "@/features/collections/api";
+import { getProductOptions } from "@/features/admin/api";
 import { fetchCustomTags } from "@/features/taxonomy/api";
 import { CollectionForm } from "@/features/admin/components/collection-form";
-import { toAdminProducts } from "../to-admin-products";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewCollectionPage() {
-  const [products, customTagPool, settings] = await Promise.all([
-    getAllProducts(),
+  // Сонгогчид эхний хуудас хангалттай — цаашийг форм өөрөө хайж уншина.
+  // Өмнө нь энд БҮХ каталог (`getAllProducts()`) ирж, браузар руу бүтнээрээ
+  // дамждаг байв.
+  const [options, customTagPool, settings] = await Promise.all([
+    getProductOptions({}),
     fetchCustomTags(),
     getCollectionSettings(),
   ]);
@@ -24,7 +26,7 @@ export default async function NewCollectionPage() {
       </Link>
       <h1 className="font-serif text-2xl font-semibold">Шинэ багц нэмэх</h1>
       <CollectionForm
-        products={toAdminProducts(products)}
+        products={options}
         customTagPool={customTagPool}
         roundTo={settings.roundTo}
         defaultDiscountPct={settings.baseDefaultDiscountPct}

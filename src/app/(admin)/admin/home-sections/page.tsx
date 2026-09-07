@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
-import { getAllHomeSections, getAdminProducts } from "@/features/admin/api";
+import { getAllHomeSections, getProductOptions } from "@/features/admin/api";
 import { HomeSectionManager } from "@/features/admin/components/home-section-manager";
 
 export const metadata: Metadata = { title: "Нүүрийн хэсэг" };
 
 export default async function HomeSectionsPage() {
-  const [sections, products] = await Promise.all([
-    getAllHomeSections(),
-    getAdminProducts(),
+  const sections = await getAllHomeSections();
+  // Гараар сонгосон бүх бараа (нэрээр нь харуулахад хэрэгтэй) + эхний хуудас.
+  // Бүх каталогийг илгээхээ болив — сонгогч хайлтаараа сервер дээрээс уншина.
+  const pickedIds = [...new Set(sections.flatMap((s) => s.productIds))];
+  const [selected, firstPage] = await Promise.all([
+    getProductOptions({ ids: pickedIds }),
+    getProductOptions({}),
   ]);
+  const seen = new Set(selected.map((p) => p.id));
+  const options = [...selected, ...firstPage.filter((p) => !seen.has(p.id))];
 
   return (
     <div className="space-y-6">
@@ -20,14 +26,7 @@ export default async function HomeSectionsPage() {
           харуулна. Бараагүй хэсэг нүүр хуудсанд харагдахгүй.
         </p>
       </div>
-      <HomeSectionManager
-        sections={sections}
-        products={products.map((p) => ({
-          id: p.id,
-          name: p.name,
-          brand: p.brand,
-        }))}
-      />
+      <HomeSectionManager sections={sections} options={options} />
     </div>
   );
 }

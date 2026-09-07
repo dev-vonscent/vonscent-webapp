@@ -180,6 +180,13 @@ export function ProductForm({
             ? `«${form.name}» нэмэгдлээ. Зураг бэлэн болтол бараа нуугдсан хэвээр байна.`
             : `«${form.name}» нэмэгдлээ.`,
         );
+        // `refresh()` нь `push()`-ээс ӨМНӨ байх ёстой. `staleTimes.dynamic`
+        // (next.config.ts) нь client router cache-ийг 30 секунд санадаг тул
+        // шинэ бараа нэмээд жагсаалт руу залхуу шилжвэл түүнийг эндээс
+        // харагдахгүй. `refresh()` нь cache-ийг бүхэлд хүчингүй болгодог тул
+        // үүний ДАРААХ push нь шинээр татна; дараа нь хийвэл хуучин жагсаалт
+        // нэг хором харагдаад дараа нь залруулагдана.
+        router.refresh();
         router.push("/admin/products");
       } else if (res.demo) {
         setResult(

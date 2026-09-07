@@ -9,40 +9,54 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  getAdminProducts,
   getDashboardData,
+  getStockOverview,
   getUnreadNotifications,
 } from "@/features/admin/api";
+import { getProductsByIds, getProductsByTag } from "@/features/products/api";
 import { NotificationList } from "@/features/admin/components/notification-list";
-import { stockState } from "@/features/admin/lib/stock-state";
 import { formatPrice, formatDate } from "@/lib/format";
 import { ORDER_STATUS_LABEL, ORDER_STATUSES } from "@/lib/constants";
 
+/**
+ * Самбарын «үлдэгдэл багассан» карт хэдэн мөр асуух вэ. Бүх барааг татахын
+ * оронд хамгийн бага үлдэгдэлтэй энэ хэдийг л уншина; цаашийг нь «Бүгд»
+ * холбоос барааны жагсаалт руу аваачна.
+ */
+const DASHBOARD_STOCK_LIMIT = 20;
+
 export default async function AdminDashboard() {
-  const [products, dash, notifications] = await Promise.all([
-    getAdminProducts(),
+  // Тоолох, эрэмбэлэх ажил SQL-д (0062). Өмнө нь энэ хуудас бүх каталогийг
+  // татаж аваад JS дотор шүүдэг байв.
+  const [stock, dash, notifications] = await Promise.all([
+    // Alert against each product's own configured threshold (A1) — not a
+    // hardcoded figure. Шүүлт нь SQL-д (0065): `items` нь `available_ml`-ээр
+    // эрэмбэлэгддэг тул дууссан бараа «бага» бүгдээс ӨМНӨ орно. Хязгаарлаж
+    // аваад энд шүүсэн бол дууссан бараа 20 болонгуут жагсаалт хоосорч,
+    // дээрх карт «багатай: 35» гэж байхад доор «Сэрэмжлүүлэг алга.» гэж
+    // уншигдана.
+    getStockOverview({ limit: DASHBOARD_STOCK_LIMIT, state: "low" }),
     getDashboardData(),
     getUnreadNotifications(),
   ]);
-  // Alert against each product's own configured threshold (A1) — not a
-  // hardcoded figure.
-  const lowStock = products.filter(
-    (p) => stockState(p.availableMl, p.lowStockMl) === "low",
-  );
-  const soldOut = products.filter(
-    (p) => stockState(p.availableMl, p.lowStockMl) === "soldout",
-  );
+  const lowStock = stock.items;
   const topSellerIds = dash?.topSellerIds ?? [];
   // Real sales data when there is any. Without it the card falls back to the
   // products tagged «Эрэлттэй» — which is the admin's own guess, not a
   // measurement, so the card has to say which of the two it is showing.
   const hasRealSales = topSellerIds.length > 0;
   const topSellers = hasRealSales
-    ? topSellerIds
-        .map((id) => products.find((p) => p.id === id))
-        .filter((p): p is NonNullable<typeof p> => Boolean(p))
-        .slice(0, 5)
-    : products.filter((p) => p.tags.includes("hot")).slice(0, 5);
+    ? await (async () => {
+        // Борлуулалтын дараалал нь SQL-ийнх; `getProductsByIds` id-ийн
+        // дарааллыг хадгалдаггүй тул эргүүлэн эрэмбэлнэ.
+        const found = await getProductsByIds(topSellerIds.slice(0, 12));
+        const byId = new Map(found.map((p) => [p.id, p]));
+        return topSellerIds
+          .map((id) => byId.get(id))
+          .filter((p): p is NonNullable<typeof p> => Boolean(p))
+          .slice(0, 5);
+      })()
+    : await getProductsByTag("hot", 5);
 
   const sales = [
     { label: "Өнөөдөр", value: dash?.salesToday ?? 0 },
@@ -103,13 +117,21 @@ export default async function AdminDashboard() {
       {/* Inventory quick stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         {[
-          { icon: Boxes, label: "Нийт бараа", value: String(products.length) },
+          {
+            icon: Boxes,
+            label: "Нийт бараа",
+            value: String(stock.totalProducts),
+          },
           {
             icon: AlertTriangle,
             label: "Үлдэгдэл багатай",
-            value: String(lowStock.length),
+            value: String(stock.lowCount),
           },
-          { icon: PackageX, label: "Дууссан", value: String(soldOut.length) },
+          {
+            icon: PackageX,
+            label: "Дууссан",
+            value: String(stock.soldoutCount),
+          },
         ].map((s) => (
           <Card key={s.label}>
             <CardContent className="p-5">
@@ -191,6 +213,21 @@ export default async function AdminDashboard() {
                     </Link>
                   </li>
                 ))}
+                {/* Жагсаалт хязгаартай. Түүнийг дуугүй нуувал оператор
+                    сэрэмжлүүлгийн ЗӨВХӨН эхний хэсгийг харж байгаагаа мэдэхгүй
+                    — дээрх картны тоотой зөрсөн нь ойлгомжгүй болно. */}
+                {stock.matchedCount > lowStock.length && (
+                  <li className="text-muted-foreground pt-1 text-xs">
+                    Бусад {stock.matchedCount - lowStock.length} бараа —{" "}
+                    <Link
+                      href="/admin/products?stock=low&sort=stock"
+                      className="underline underline-offset-2"
+                    >
+                      жагсаалтаас
+                    </Link>
+                    .
+                  </li>
+                )}
               </ul>
             )}
           </CardContent>
@@ -215,8 +252,9 @@ export default async function AdminDashboard() {
           </p>
           {topSellers.length === 0 ? (
             <p className="text-muted-foreground text-sm">
-              Захиалга орж эхэлмэгц хамгийн их зарагдсан бараа энд гарна. Одоохондоо
-              барааныхаа тагт «Эрэлттэй» гэж тэмдэглэвэл энд харагдана.
+              Захиалга орж эхэлмэгц хамгийн их зарагдсан бараа энд гарна.
+              Одоохондоо барааныхаа тагт «Эрэлттэй» гэж тэмдэглэвэл энд
+              харагдана.
             </p>
           ) : (
             <ul className="space-y-2">

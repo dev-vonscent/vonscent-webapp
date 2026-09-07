@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getAllProducts } from "@/features/products/api";
 import { getCollectionSettings } from "@/features/collections/api";
+import { getProductOptions } from "@/features/admin/api";
 import { fetchCustomTags } from "@/features/taxonomy/api";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CollectionForm } from "@/features/admin/components/collection-form";
 import type { AdminCollection } from "@/features/admin/components/collection-admin";
-import { toAdminProducts } from "../../to-admin-products";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +19,7 @@ export default async function EditCollectionPage({
   const supabase = createAdminClient();
   if (!supabase) notFound();
 
-  const [products, customTagPool, settings, { data }] = await Promise.all([
-    getAllProducts(),
+  const [customTagPool, settings, { data }] = await Promise.all([
     fetchCustomTags(),
     getCollectionSettings(),
     supabase
@@ -41,6 +39,18 @@ export default async function EditCollectionPage({
   const collection = data as AdminCollection | null;
   if (!collection) notFound();
 
+  // Гишүүд (нэрээрээ харагдах ёстой) + сонгогчийн эхний хуудас. Өмнө нь энд
+  // БҮХ каталог ирж, браузар руу бүтнээрээ дамждаг байв.
+  const memberIds = (collection.collection_items ?? []).map(
+    (i) => i.product_id,
+  );
+  const [members, firstPage] = await Promise.all([
+    getProductOptions({ ids: memberIds }),
+    getProductOptions({}),
+  ]);
+  const seen = new Set(members.map((p) => p.id));
+  const options = [...members, ...firstPage.filter((p) => !seen.has(p.id))];
+
   return (
     <div className="space-y-6">
       <Link
@@ -52,7 +62,7 @@ export default async function EditCollectionPage({
       <h1 className="font-serif text-2xl font-semibold">Багц засах</h1>
       <CollectionForm
         collection={collection}
-        products={toAdminProducts(products)}
+        products={options}
         customTagPool={customTagPool}
         roundTo={settings.roundTo}
         defaultDiscountPct={settings.baseDefaultDiscountPct}

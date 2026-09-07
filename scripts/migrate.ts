@@ -7,10 +7,9 @@
  * is safe to re-run. Each file runs in its own transaction, in filename order.
  *
  * Supabase's direct host (db.<ref>.supabase.co) is IPv6-only; if it can't be
- * resolved we transparently fall back to the IPv4 Session pooler, auto-probing
- * the project's region.
+ * resolved we transparently fall back to the IPv4 Session pooler (scripts/db.ts).
  */
-import { Client } from "pg";
+import { connectDb } from "./db";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -25,90 +24,8 @@ const files = readdirSync(dir)
   .filter((f) => f.endsWith(".sql"))
   .sort();
 
-const SSL = { rejectUnauthorized: false } as const;
-
-// Common Supabase pooler regions to probe (Session pooler, port 5432, IPv4).
-const REGIONS = [
-  "ap-southeast-1",
-  "ap-northeast-1",
-  "ap-northeast-2",
-  "ap-southeast-2",
-  "ap-south-1",
-  "us-east-1",
-  "us-east-2",
-  "us-west-1",
-  "eu-central-1",
-  "eu-west-1",
-  "eu-west-2",
-  "sa-east-1",
-];
-
-function isLocal(u: string) {
-  return u.includes("localhost") || u.includes("127.0.0.1");
-}
-
-async function tryDirect(): Promise<Client | null> {
-  const client = new Client({
-    connectionString: url,
-    ssl: isLocal(url!) ? undefined : SSL,
-    connectionTimeoutMillis: 8000,
-  });
-  try {
-    await client.connect();
-    return client;
-  } catch {
-    await client.end().catch(() => {});
-    return null;
-  }
-}
-
-async function tryPooler(): Promise<Client | null> {
-  const u = new URL(url!);
-  const m = u.hostname.match(/^db\.([a-z0-9]+)\.supabase\.co$/);
-  if (!m) return null;
-  const ref = m[1];
-  const password = decodeURIComponent(u.password);
-  const database = u.pathname.replace(/^\//, "") || "postgres";
-
-  const hosts = REGIONS.flatMap((r) => [
-    `aws-0-${r}.pooler.supabase.com`,
-    `aws-1-${r}.pooler.supabase.com`,
-  ]);
-
-  for (const host of hosts) {
-    const client = new Client({
-      host,
-      port: 5432,
-      user: `postgres.${ref}`,
-      password,
-      database,
-      ssl: SSL,
-      connectionTimeoutMillis: 8000,
-    });
-    try {
-      await client.connect();
-      console.log(`→ Connected via Session pooler (${host}).`);
-      return client;
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      // Only surface non-"tenant not found" errors to cut noise.
-      if (!/tenant.*not found/i.test(msg)) console.log(`  ${host}: ${msg}`);
-      await client.end().catch(() => {});
-    }
-  }
-  return null;
-}
-
 async function main() {
-  const client = (await tryDirect()) ?? (await tryPooler());
-  if (!client) {
-    console.error(
-      "✖ Could not connect via direct host or Session pooler.\n" +
-        "  Copy the Session pooler URI from the Supabase dashboard\n" +
-        "  (Connect → Session pooler) into DATABASE_URL and retry.",
-    );
-    process.exit(1);
-  }
+  const client = await connectDb(url!);
 
   // Track which migrations have run so re-runs only apply new ones.
   await client.query(

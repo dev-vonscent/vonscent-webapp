@@ -25,6 +25,8 @@ import { prepareUpload } from "@/lib/storage/prepare-upload";
 import { bundlePrice, discountForMl } from "@/features/collections/pricing";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useProductOptions } from "@/features/admin/hooks/use-product-options";
+import type { ProductOption } from "@/features/admin/lib/product-option";
 import { GENDERS, GENDER_LABEL, BUNDLE_ML_SIZES } from "@/lib/constants";
 import type { CustomTagOption } from "@/features/taxonomy/api";
 import type { AdminCollection } from "./collection-admin";
@@ -39,13 +41,13 @@ const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
 ];
 
 /** A perfume as the picker needs it: identity plus its price at every size. */
-export interface AdminProduct {
-  id: string;
-  name: string;
-  brand: string;
-  /** ₮ by ml, active variants only. A missing size cannot be bundled. */
-  priceByMl: Record<number, number>;
-}
+/**
+ * Багцын гишүүн болох боломжтой бараа.
+ *
+ * `ProductOption`-ийн нэр дэвшүүлсэн хувилбар — үнийн хүснэгт нь гишүүдийн
+ * `priceByMl`-ээс гардаг тул тэр талбар нь энэ формын гол хэрэгцээ.
+ */
+export type AdminProduct = ProductOption;
 
 /** Cover image: one file, straight into `collections.image_url`. */
 function CoverImageField({
@@ -244,14 +246,12 @@ export function CollectionForm({
       .filter((s): s is string => Boolean(s)),
   );
 
-  const [q, setQ] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const byId = React.useMemo(
-    () => new Map(products.map((p) => [p.id, p])),
-    [products],
-  );
+  // Хайлт нь сервер дээр (0063): өмнө нь энэ форм бүх каталогийг props-оор
+  // хүлээж авдаг байсан — багцад 5 ус сонгохын тулд.
+  const { q, setQ, items, loading, byId } = useProductOptions(products);
 
   /**
    * What each size would cost, live, as the operator picks perfumes and types
@@ -260,7 +260,7 @@ export function CollectionForm({
    */
   const rows = React.useMemo(() => {
     const members = form.productIds
-      .map((id) => byId.get(id))
+      .map((id) => byId(id))
       .filter((p): p is AdminProduct => Boolean(p));
     return BUNDLE_ML_SIZES.map((ml) => {
       const prices = members.map((m) => m.priceByMl[ml]);
@@ -355,15 +355,12 @@ export function CollectionForm({
       return;
     }
     toast.success(editing ? "Багц шинэчлэгдлээ." : "Багц үүслээ.");
-    router.push("/admin/collections");
+    // `refresh()` нь `push()`-ээс ӨМНӨ: cache-ийг эхлээд хүчингүй болговол
+    // жагсаалт шууд шинээр татагдана. Нөгөө дараалал нь ажилладаг ч хуучин
+    // жагсаалтыг нэг хором харуулаад дараа нь залруулдаг.
     router.refresh();
+    router.push("/admin/collections");
   }
-
-  const filtered = q
-    ? products.filter((p) =>
-        `${p.brand} ${p.name}`.toLowerCase().includes(q.toLowerCase()),
-      )
-    : products;
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -430,7 +427,7 @@ export function CollectionForm({
           {form.productIds.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {form.productIds.map((id) => {
-                const p = byId.get(id);
+                const p = byId(id);
                 return (
                   <button
                     key={id}
@@ -456,8 +453,16 @@ export function CollectionForm({
             />
           </div>
 
-          <div className="bg-muted/40 max-h-96 space-y-1 overflow-y-auto rounded-lg p-1">
-            {filtered.map((p) => {
+          {/* Жагсаалт нь бүх каталог БИШ — хайлтад таарсан эхний хэдэн мөр
+              (сонгосон нь үргэлж дотор нь байна). */}
+          <div
+            className={cn(
+              "bg-muted/40 max-h-96 space-y-1 overflow-y-auto rounded-lg p-1 transition-opacity",
+              loading && "opacity-60",
+            )}
+            aria-busy={loading}
+          >
+            {items.map((p) => {
               const on = form.productIds.includes(p.id);
               return (
                 <button
@@ -478,9 +483,9 @@ export function CollectionForm({
                 </button>
               );
             })}
-            {filtered.length === 0 && (
+            {items.length === 0 && (
               <p className="text-muted-foreground p-3 text-sm">
-                Илэрц олдсонгүй.
+                {loading ? "Хайж байна…" : "Илэрц олдсонгүй."}
               </p>
             )}
           </div>

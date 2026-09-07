@@ -1,4 +1,4 @@
-import { getAdminProducts } from "@/features/admin/api";
+import { getProductOptions } from "@/features/admin/api";
 import { getGiftSettings } from "@/features/content/api";
 import { GiftPoolManager } from "@/features/admin/components/gift-pool-manager";
 
@@ -10,10 +10,15 @@ export const dynamic = "force-dynamic";
  * шинэчилнэ (backlog A2–A3).
  */
 export default async function AdminGiftsPage() {
-  const [products, settings] = await Promise.all([
-    getAdminProducts(),
-    getGiftSettings(),
+  const settings = await getGiftSettings();
+  // Сонгогдсон ус + эхний хуудас. Бүх каталогийг илгээхээ болив — үлдсэнийг
+  // сонгогч хайлтаараа сервер дээрээс уншина.
+  const [selected, firstPage] = await Promise.all([
+    getProductOptions({ ids: settings.productIds }),
+    getProductOptions({}),
   ]);
+  const seen = new Set(selected.map((p) => p.id));
+  const options = [...selected, ...firstPage.filter((p) => !seen.has(p.id))];
 
   return (
     <div className="space-y-6">
@@ -28,16 +33,7 @@ export default async function AdminGiftsPage() {
           солих шаардлагагүй, хүссэн үедээ шинэчилнэ.
         </p>
       </div>
-      <GiftPoolManager
-        products={products.map((p) => ({
-          id: p.id,
-          name: p.name,
-          brand: p.brand,
-          availableMl: p.availableMl,
-          isActive: p.isActive,
-        }))}
-        initial={settings}
-      />
+      <GiftPoolManager options={options} initial={settings} />
     </div>
   );
 }
