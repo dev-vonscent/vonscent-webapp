@@ -2,14 +2,18 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 /**
- * Allow remote images from Supabase Storage (when configured) plus a couple of
- * hosts used by seed/placeholder data so the demo renders without live storage.
+ * Allow remote images from Supabase Storage (when configured) plus the host
+ * used by seed data so the demo renders without live storage.
+ *
+ * `picsum.photos` устгагдав (backlog I1): блогийн зураггүй нийтлэлд
+ * санамсаргүй stock зураг тавихаа больсон тул түүнийг зөвшөөрөх шаардлага
+ * байхгүй. `images.unsplash.com` нь хэрэгтэй хэвээр — барааны seed зураг
+ * (features/products/seed.ts `productImageUrls()`) түүнээс уншина.
  */
 const remotePatterns: NonNullable<
   NonNullable<NextConfig["images"]>["remotePatterns"]
 > = [
   { protocol: "https", hostname: "images.unsplash.com" },
-  { protocol: "https", hostname: "picsum.photos" },
   // Hardcoded fallback for the production Supabase project so image loading
   // never depends on env availability at config-evaluation time.
   {

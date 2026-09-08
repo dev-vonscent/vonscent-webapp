@@ -1,7 +1,7 @@
 /**
  * Хайлтын хэвийн болголтын ПАРИТЕТ шалгагч.
  *
- *   node --env-file=.env.local --import tsx scripts/check-search-parity.ts
+ *   pnpm check:search-parity          (DATABASE_URL шаардана)
  *
  * Глобал хайлт (0057_search.sql) хоёр талтай: хайх ҮГИЙГ браузар/сервер дээр
  * TypeScript-ийн `normalizeSearchText()` хэвийн болгодог бол ХАЙГДАХ ТЕКСТИЙГ
@@ -17,6 +17,10 @@
  * даалгадаг бөгөөд энэ нь сангийн locale-ээс хамаарна (Supabase дээр
  * en_US.UTF-8 тул зөв; C locale-тай туршилтын санд зөрнө). Дэлгүүрийн барааны
  * нэрэнд тэдгээр үсэг байхгүй тул зориудаар хамрахгүй орхив.
+ *
+ * Энэ скрипт бодит сан шаарддаг тул CI-д ОРООГҮЙ. CI тал дээрх хамгаалалт нь
+ * `src/lib/search.test.ts`-ийн «паритетын цоож» — TS талын гаралт өөрчлөгдвөл
+ * `pnpm test` унаж, энэ скриптийг ажиллуулах шаардлагатайг сануулна.
  */
 import { connectDb } from "./db";
 import { normalizeSearchText } from "../src/lib/search";

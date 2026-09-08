@@ -14,6 +14,7 @@
     "test:e2e": "playwright test",
     "format": "prettier --write .",
     "db:types": "supabase gen types typescript --local > src/db/types.ts",
+    "check:search-parity": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/check-search-parity.ts",
     "db:migrate": "node --env-file=.env.local --import tsx scripts/migrate.ts",
     "db:seed": "node --env-file=.env.local --import tsx scripts/seed.ts",
     "db:import-collections": "node --env-file=.env.local --import tsx scripts/import-collections.ts",

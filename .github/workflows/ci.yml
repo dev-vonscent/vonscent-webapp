@@ -5,9 +5,19 @@ on:
     branches: [main]
   pull_request:
 
+# Нэг branch дээр дараалсан push хийхэд хуучин ажиллагааг таслана — PR-ийн
+# хамгийн сүүлийн commit-ийн хариу л хэрэгтэй, e2e нь runner-ийн цагийг
+# нилээд иддэг.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # Хурдан шалгалтууд: секундээр биш минутаар хэмжигдэх e2e-г хүлээлгэхгүйгээр
+  # PR-д хариу өгнө.
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
 
@@ -17,7 +27,9 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          # `.node-version`-оос уншина (22.21.0) — CI ба орон нутгийн хувилбар
+          # хоёр салж, зөвхөн CI дээр унадаг алдаа гарахгүйн тулд.
+          node-version-file: .node-version
           cache: pnpm
 
       - name: Install dependencies
@@ -29,11 +41,20 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # Хайлтын хэвийн болголтын «паритетын цоож» (src/lib/search.test.ts) энд
+      # ажиллана. Бодит сан шаарддаг `pnpm check:search-parity` нь CI-д
+      # ЗОРИУДААР ороогүй — DATABASE_URL секрет шаардана; TS талын өөрчлөлтийг
+      # цоож нь аль хэдийн барина.
       - name: Test
         run: pnpm test
 
+  # E2E нь дотроо `pnpm build && pnpm start` хийдэг (playwright.config.ts) тул
+  # хамаагүй урт. `check` унасан үед ажиллуулах нь runner-ийн цаг дэмий үрэх
+  # болно.
   e2e:
+    needs: check
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
 
@@ -43,7 +64,7 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version-file: .node-version
           cache: pnpm
 
       - name: Install dependencies
@@ -52,5 +73,21 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
+      # Секрет шаардахгүй: playwright.config.ts нь Supabase env-ийг хоосон
+      # болгож DEMO горимд ачаалдаг тул бодит сан, QPay, Resend-д хүрэхгүй.
+      # Sentry-ийн source map илгээлт нь SENTRY_AUTH_TOKEN байхгүй үед өөрөө
+      # алгасдаг (next.config.ts) тул build ч дамжина.
       - name: E2E tests (demo mode)
         run: pnpm test:e2e
+
+      # `trace: "on-first-retry"` тул унасан тестийн trace нь зөвхөн эндээс
+      # авагдана — CI-ийн лог дээр «яагаад унасан» нь харагддаггүй.
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
