@@ -21,6 +21,25 @@ export function slotCenter(slot: number, count: number): number {
   return (slot - 0.5) * segmentAngle(count);
 }
 
+/**
+ * Wheel position (1-based) of a prize's database slot.
+ *
+ * `spin_wheel_prizes.slot` is an id, not a position. The admin can deactivate a
+ * segment — the 2ml bundle once its pool runs dry is the expected case
+ * (docs/lucky-wheel.md §5.3) — and the wheel then arrives with a gapped list
+ * like [1,3,4,5,6,7,8]. Everything else here counts positions 1..count, so a
+ * slot must be resolved through this first: drawing slot 8 on a seven-segment
+ * wheel puts the wedge past 360° and parks the pointer on the wrong prize.
+ *
+ * An unknown slot falls back to position 1 rather than throwing: a wheel that
+ * lands on the wrong segment is a bug, but one that crashes mid-spin loses the
+ * prize the server has already awarded.
+ */
+export function positionOfSlot(slots: number[], slot: number): number {
+  const i = slots.indexOf(slot);
+  return i < 0 ? 1 : i + 1;
+}
+
 /** Normalise any angle into [0, 360). */
 export function norm360(deg: number): number {
   return ((deg % 360) + 360) % 360;

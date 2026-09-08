@@ -21,6 +21,7 @@ import { mutateJson } from "@/features/admin/lib/mutate";
 import { toast } from "@/lib/toast";
 import { formatDate, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { ASSUMED_AOV } from "@/lib/constants";
 import type { SpinWheelPrizeRow } from "@/db/types";
 import type { WheelReport, WheelSettings } from "@/features/admin/api";
 
@@ -85,6 +86,27 @@ function toDraft(row: SpinWheelPrizeRow): Draft {
     fallbackSlot: row.fallback_slot == null ? "" : String(row.fallback_slot),
     isActive: row.is_active,
   };
+}
+
+/**
+ * Нэг хожилтын нэрлэсэн үнэ ₮-өөр — админы «дундаж шагнал / эргэлт»-д л
+ * хэрэглэнэ (docs/lucky-wheel.md §3-ын «Нэрлэсэн» багана).
+ *
+ * Хувиар хөнгөлөх купоныг **сагсанд харьцуулж** үнэлнэ: дээд хязгаар (`maxDiscount`)
+ * тавьсан бол түүгээр тагласан, үгүй бол ASSUMED_AOV дээрх бүтэн хувь. Урьд нь
+ * энэ нь `maxDiscount || minSubtotal * value/100` байсан — 2026-09-07-оос хойш
+ * хүрдний хувийн купон хязгааргүй, доод хязгааргүй болсон тул хоёулаа 0 болж,
+ * 5% ба 10% купон тооцоонд бүрэн орохоо больж байв.
+ */
+function nominalWorth(
+  kind: string,
+  value: number,
+  maxDiscount: number,
+): number {
+  if (kind === "points" || kind === "coupon_fixed") return value;
+  if (kind !== "coupon_percent") return 0;
+  const full = (ASSUMED_AOV * value) / 100;
+  return maxDiscount > 0 ? Math.min(full, maxDiscount) : full;
 }
 
 const num = (v: string) => {
@@ -468,7 +490,7 @@ export function LuckyWheelAdmin({
                   }
                 />
               </Field>
-              <Field label="Сард олгох V point-ийн дээд хэмжээ">
+              <Field label="Сард олгох V point-ийн дээд хэмжээ (0 = хязгааргүй)">
                 <Input
                   inputMode="numeric"
                   value={config.monthlyPointCap}
@@ -480,7 +502,7 @@ export function LuckyWheelAdmin({
                   }
                 />
               </Field>
-              <Field label="Ховор купон сард (удаа)">
+              <Field label="Ховор купон сард, удаа (0 = хязгааргүй)">
                 <Input
                   inputMode="numeric"
                   value={config.rareCouponPerMonth}
@@ -528,26 +550,27 @@ export function LuckyWheelAdmin({
             </div>
 
             <p className="text-muted-foreground text-xs">
-              Идэвхтэй эргүүлэгчийн сарын зардлыг 100,000₮ захиалгын ~8%-д
-              барихыг зорино (docs/lucky-wheel.md §5). Хэтэрвэл эхлээд пойнтын
-              сарын хязгаарыг чангатгаж, дараа нь 10% купоны жинг бууруулна.
-              Одоогийн дундаж шагналын нэрлэсэн үнэ (бодит бэлгийг оруулаагүй):{" "}
+              Сарын тагууд авагдсан тул (2026-09-07) хүрдэнд **автомат
+              хамгаалалт үлдээгүй** — зардлыг барих хөшүүрэг зөвхөн энд байна.
+              Идэвхтэй эргүүлэгчийн одоогийн сарын өртөг{" "}
+              {formatPrice(ASSUMED_AOV)} захиалгын ~21%, зорилт 8%
+              (docs/lucky-wheel.md §5.2). Дарааллаар: үнэгүй эргэлтийг 48–72 цаг
+              болгох → пойнтын утгыг буулгах → 2мл багцын жинг буулгах. Купон
+              хуримтлагддаг тул жингээр засах нь үр дүн багатай — 30 эргэлтэд 5%
+              купон бараг тодорхой таарч, захиалга бүрийн шалыг тогтоодог
+              (§5.1). Одоогийн дундаж шагналын нэрлэсэн үнэ (бодит бэлгийг
+              оруулаагүй):{" "}
               <span className="text-foreground font-medium">
                 {formatPrice(
                   Math.round(
                     drafts.reduce((sum, d) => {
                       if (!d.isActive || totalWeight <= 0) return sum;
                       const share = num(d.weight) / totalWeight;
-                      const worth =
-                        d.kind === "points"
-                          ? num(d.value)
-                          : d.kind === "coupon_fixed"
-                            ? num(d.value)
-                            : d.kind === "coupon_percent"
-                              ? num(d.maxDiscount) ||
-                                num(d.minSubtotal) * (num(d.value) / 100)
-                              : 0;
-                      return sum + share * worth;
+                      return (
+                        sum +
+                        share *
+                          nominalWorth(d.kind, num(d.value), num(d.maxDiscount))
+                      );
                     }, 0),
                   ),
                 )}

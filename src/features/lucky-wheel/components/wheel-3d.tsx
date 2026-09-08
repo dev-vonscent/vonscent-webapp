@@ -10,7 +10,12 @@ import {
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
-import { segmentPath, slotAtRotation, targetRotation } from "../geometry";
+import {
+  positionOfSlot,
+  segmentPath,
+  slotAtRotation,
+  targetRotation,
+} from "../geometry";
 import type { WheelPrize } from "../types";
 
 /**
@@ -32,7 +37,10 @@ const DEPTH = 9;
 const DEPTH_STEP = 2.4;
 
 export interface WheelHandle {
-  /** Spin to `slot` and resolve once the pointer has settled. */
+  /**
+   * Spin to the prize occupying `slot` and resolve once the pointer settles.
+   * Takes the **database** slot, not a wheel position — see `positionOfSlot`.
+   */
   spinTo(slot: number): Promise<void>;
 }
 
@@ -81,7 +89,8 @@ export const Wheel3D = React.forwardRef<WheelHandle, WheelProps>(
     const reduced = usePrefersReducedMotion();
     const rotation = useMotionValue(0);
     const [pointerKick, setPointerKick] = React.useState(0);
-    const lastSlot = React.useRef(1);
+    /** Wheel *position* (1..count) last seen under the pointer. */
+    const lastPosition = React.useRef(1);
     const count = prizes.length;
 
     // Pointer parallax: the stage leans a few degrees towards the cursor, which
@@ -107,9 +116,9 @@ export const Wheel3D = React.forwardRef<WheelHandle, WheelProps>(
     // makes a wheel feel like a wheel rather than a rotating picture.
     useMotionValueEvent(rotation, "change", (value) => {
       if (count === 0) return;
-      const slot = slotAtRotation(value, count);
-      if (slot === lastSlot.current) return;
-      lastSlot.current = slot;
+      const position = slotAtRotation(value, count);
+      if (position === lastPosition.current) return;
+      lastPosition.current = position;
       setPointerKick((n) => n + 1);
       onTick?.();
     });
@@ -120,7 +129,16 @@ export const Wheel3D = React.forwardRef<WheelHandle, WheelProps>(
         const from = rotation.get();
         const turns = reduced ? 0 : 5 + Math.floor(Math.random() * 3);
         const jitter = reduced ? 0 : Math.random() * 2 - 1;
-        const target = targetRotation(from, slot, count, turns, jitter);
+        const target = targetRotation(
+          from,
+          positionOfSlot(
+            prizes.map((p) => p.slot),
+            slot,
+          ),
+          count,
+          turns,
+          jitter,
+        );
         if (reduced) {
           await animate(rotation, target, { duration: 0.45, ease: "easeOut" });
           return;
@@ -202,15 +220,15 @@ export const Wheel3D = React.forwardRef<WheelHandle, WheelProps>(
               {prizes.map((prize, i) => (
                 <path
                   key={prize.slot}
-                  d={segmentPath(prize.slot, count, 100)}
+                  d={segmentPath(i + 1, count, 100)}
                   fill={fillFor(prize, i)}
                   stroke="color-mix(in oklab, var(--background) 70%, transparent)"
                   strokeWidth={0.8}
                 />
               ))}
-              {prizes.map((prize) => {
+              {prizes.map((prize, i) => {
                 const lines = labelLines(prize.shortLabel || prize.label);
-                const center = (prize.slot - 0.5) * (360 / count);
+                const center = (i + 0.5) * (360 / count);
                 const y = lines.length > 1 ? -68 : -64;
                 // Past a quarter turn the radial label ends up upside down.
                 // Flipping it about its own anchor keeps every wedge readable
@@ -257,9 +275,8 @@ export const Wheel3D = React.forwardRef<WheelHandle, WheelProps>(
               className="pointer-events-none absolute inset-0 size-full"
               style={{ transform: "translateZ(4px)" }}
             >
-              {prizes.map((prize) => {
-                const a =
-                  ((prize.slot - 1) * (360 / count) - 90) * (Math.PI / 180);
+              {prizes.map((prize, i) => {
+                const a = (i * (360 / count) - 90) * (Math.PI / 180);
                 return (
                   <circle
                     key={`peg-${prize.slot}`}

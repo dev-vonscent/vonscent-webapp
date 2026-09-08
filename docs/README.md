@@ -43,6 +43,13 @@
 | Delivery Zones Template.xlsx | Excel загвар |
 | shipping-settings.json | `scripts/build-shipping-settings.ts`-ээс үүсдэг (CSV → тохиргоо) |
 
+### Үндсэн хавтас — функцийн гүнзгий баримт
+| Файл | Тайлбар |
+|---|---|
+| [qpay-testing.md](./qpay-testing.md) | QPay төлбөрийн тестийн гарын авлага — mock, harness, бодит төлбөр, callback, чеклист |
+| [lucky-wheel.md](./lucky-wheel.md) | Азын хүрд — шагнал, магадлал, эдийн засгийн тооцоо |
+| [requirement_final.md](./requirement_final.md) | Клиентийн эцсийн бизнес шаардлага |
+
 ## Түгээмэл командууд
 
 ```bash

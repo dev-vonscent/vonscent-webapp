@@ -64,8 +64,11 @@ const TITLES: Record<string, string> = {
   "/account/orders": "Миний захиалга",
   "/account/loyalty": "Урамшуулал",
   "/account/addresses": "Хаягууд",
+  "/account/coupons": "Купон",
   "/products": "", // full-bleed image hero — no title, just back + cart
   "/order/success": "Захиалга",
+  // /pay/<token> — the prefix match covers the token segment.
+  "/pay": "Төлбөр",
 };
 
 function getTitle(pathname: string): string {
@@ -173,7 +176,7 @@ export function SiteHeader() {
                   <SheetClose asChild key={item.href}>
                     <Link
                       href={item.href}
-                      className="hover:bg-accent rounded-lg p-3  text-base font-medium transition-colors"
+                      className="hover:bg-accent rounded-lg p-3 text-base font-medium transition-colors"
                     >
                       {item.label}
                     </Link>
@@ -184,7 +187,7 @@ export function SiteHeader() {
               <SheetClose asChild>
                 <Link
                   href="/account"
-                  className="hover:bg-accent flex items-center gap-3 rounded-lg p-3  text-base font-medium transition-colors"
+                  className="hover:bg-accent flex items-center gap-3 rounded-lg p-3 text-base font-medium transition-colors"
                 >
                   <User className="size-5" /> Профайл
                 </Link>
@@ -195,7 +198,7 @@ export function SiteHeader() {
                 <SheetClose asChild>
                   <Link
                     href="/admin"
-                    className="hover:bg-accent flex items-center gap-3 rounded-lg p-3  text-base font-medium transition-colors"
+                    className="hover:bg-accent flex items-center gap-3 rounded-lg p-3 text-base font-medium transition-colors"
                   >
                     <LayoutDashboard className="size-5" /> Админ хэсэг
                   </Link>

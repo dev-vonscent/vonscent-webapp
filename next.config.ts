@@ -14,6 +14,11 @@ const remotePatterns: NonNullable<
   NonNullable<NextConfig["images"]>["remotePatterns"]
 > = [
   { protocol: "https", hostname: "images.unsplash.com" },
+  // QPay bank/wallet logos, served with the deeplinks on a created invoice
+  // (qpay/FINDINGS.md §2). The payment page renders them `unoptimized`, but
+  // next/image still refuses a host that is not listed here.
+  { protocol: "https", hostname: "qpay.mn" },
+  { protocol: "https", hostname: "s3.qpay.mn" },
   // Hardcoded fallback for the production Supabase project so image loading
   // never depends on env availability at config-evaluation time.
   {

@@ -188,8 +188,30 @@ export interface OrderRow {
   deliver_on: string | null;
   reserve_expires_at: string | null;
   qpay_invoice_id: string | null;
+  /**
+   * Opaque key for /pay/<token> — 0068. `order_no` is a sequence, so it can
+   * never be the payment page's key.
+   */
+  pay_token: string;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * QPay invoice artefacts for one order — 0068. Its own table because `qr_image`
+ * (~10KB) and the 23 bank deeplinks (~5KB) would otherwise ride along in every
+ * `select *` on `orders`.
+ */
+export interface QpayInvoiceRow {
+  order_id: string;
+  invoice_id: string;
+  qr_text: string;
+  /** Bare base64 PNG, exactly as QPay returns it (no `data:` prefix). */
+  qr_image: string | null;
+  short_url: string | null;
+  deeplinks: { name: string; description?: string; logo?: string; link: string }[];
+  amount: number;
+  created_at: string;
 }
 
 export interface OrderItemRow {

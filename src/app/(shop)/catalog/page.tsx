@@ -81,7 +81,13 @@ export default async function CatalogPage({
           />
         </aside>
 
-        <div className="flex-1">
+        {/*
+          `min-w-0` is load-bearing, not tidiness. A flex child defaults to
+          `min-width: auto`, so the product grid pushed this column out to its
+          own content width and the whole page scrolled sideways on a phone —
+          93px of it, measured at 390px.
+        */}
+        <div className="min-w-0 flex-1">
           {/* Sort — top-right above the products (desktop) */}
           <div className="mb-4 hidden items-center justify-end lg:flex">
             <CatalogSort />

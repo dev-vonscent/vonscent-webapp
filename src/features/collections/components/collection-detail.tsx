@@ -3,11 +3,13 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Check, Gift, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
+import { trackBeginCheckout } from "@/lib/analytics";
 import { bundleGiftGuarantee } from "@/lib/gift";
 import type { Collection } from "../types";
 
@@ -26,6 +28,7 @@ export function CollectionDetail({
   const [added, setAdded] = React.useState(false);
 
   const addCollection = useCart((s) => s.addCollection);
+  const router = useRouter();
 
   const priceRow = collection.prices.find((p) => p.ml === ml) ?? null;
   const available = priceRow?.available ?? false;
@@ -37,8 +40,9 @@ export function CollectionDetail({
     qty: 1,
   });
 
-  function onAdd() {
-    if (!priceRow || !available) return;
+  /** Puts the bundle in the cart. Returns false when nothing was added. */
+  function addToCart(): boolean {
+    if (!priceRow || !available) return false;
     addCollection({
       collectionId: collection.id,
       type: collection.type,
@@ -64,8 +68,40 @@ export function CollectionDetail({
       }),
       unitPrice: priceRow.price,
     });
+    return true;
+  }
+
+  function onAdd() {
+    if (!addToCart()) return;
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
+  }
+
+  /**
+   * «Захиалах» — the same add, then straight to checkout.
+   *
+   * It goes through the cart rather than around it: checkout prices the whole
+   * cart server-side, and a parallel "just this bundle" path would be a second
+   * pricing route to keep in step with coupons, gifts and loyalty. Anything
+   * already in the cart comes along, and checkout is where it can be changed.
+   */
+  function onBuyNow() {
+    if (!addToCart()) return;
+    if (priceRow) {
+      trackBeginCheckout(
+        [
+          {
+            id: collection.id,
+            name: `${collection.name} ${ml}ml`,
+            brand: "vonscent",
+            price: priceRow.price,
+            quantity: 1,
+          },
+        ],
+        priceRow.price,
+      );
+    }
+    router.push("/checkout");
   }
 
   return (
@@ -91,7 +127,7 @@ export function CollectionDetail({
       </div>
 
       {collection.description && (
-        <p className="text-foreground/80 text-sm/relaxed ">
+        <p className="text-foreground/80 text-sm/relaxed">
           {collection.description}
         </p>
       )}
@@ -173,25 +209,36 @@ export function CollectionDetail({
         </p>
       )}
 
-      {/* Add to cart */}
-      <Button
-        size="lg"
-        className="w-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
-        disabled={!available}
-        onClick={onAdd}
-      >
-        {added ? (
-          <>
-            <Check className="size-4" /> Нэмэгдлээ
-          </>
-        ) : !available ? (
-          "Түр байхгүй"
-        ) : (
-          <>
-            <ShoppingCart className="size-4" /> Сагсанд нэмэх
-          </>
-        )}
-      </Button>
+      {/* «Захиалах» leads: it is the shorter road to a paid order, and the
+          cart stays one tap away underneath. */}
+      <div className="space-y-3">
+        <Button
+          size="lg"
+          className="w-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+          disabled={!available}
+          onClick={onBuyNow}
+        >
+          {available ? "Захиалах" : "Түр байхгүй"}
+        </Button>
+
+        <Button
+          size="lg"
+          variant="outline"
+          className="w-full"
+          disabled={!available}
+          onClick={onAdd}
+        >
+          {added ? (
+            <>
+              <Check className="size-4" /> Нэмэгдлээ
+            </>
+          ) : (
+            <>
+              <ShoppingCart className="size-4" /> Сагсанд нэмэх
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

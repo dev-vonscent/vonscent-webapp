@@ -13,7 +13,8 @@ import { createClient } from "@/lib/supabase/server";
 import { callRpc } from "@/lib/supabase/rpc";
 import { RESERVE_TIMEOUT_MINUTES } from "@/lib/constants";
 import { env } from "@/lib/env";
-import { createInvoice, isQpayMockMode } from "@/lib/payments/qpay";
+import { isQpayMockMode } from "@/lib/payments/qpay";
+import { ensureInvoice } from "@/lib/payments/invoice";
 import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
 import { formatPrice } from "@/lib/format";
 import { isPhoneEmail } from "@/lib/auth/phone-email";
@@ -186,36 +187,37 @@ export async function POST(req: Request) {
       });
     }
 
-    let qpay = null;
+    // The order exists but is **pending**: `place_order` only reserves stock.
+    // It becomes `confirmed` in mark_order_paid, i.e. after the money lands.
+    // `pay_token` (0068) is how the customer reaches /pay/<token>.
+    const { data: created } = await supabase
+      .from("orders")
+      .select("id, pay_token, user_id")
+      .eq("order_no", orderNo)
+      .maybeSingle();
+    const order = created as {
+      id: string;
+      pay_token: string;
+      user_id: string | null;
+    } | null;
 
-    if (input.paymentMethod === "qpay" && orderNo) {
-      const invoice = await createInvoice({
-        orderNo,
-        amount: total,
-        callbackUrl: `${env.siteUrl}/api/payments/qpay/webhook?order=${encodeURIComponent(orderNo)}`,
+    // Invoice creation goes through ensureInvoice so one order can never end
+    // up with two live QPay invoices — QPay does not enforce
+    // sender_invoice_no uniqueness (qpay/FINDINGS.md §2). If it fails here the
+    // order still stands: the payment page retries on open.
+    if (input.paymentMethod === "qpay" && order) {
+      await ensureInvoice(supabase, {
+        id: order.id,
+        order_no: orderNo,
+        total,
+        user_id: order.user_id,
       });
-      if (invoice) {
-        qpay = {
-          invoiceId: invoice.invoiceId,
-          qrText: invoice.qrText,
-          qrImage: invoice.qrImage,
-        };
-        await supabase
-          .from("orders")
-          .update({ qpay_invoice_id: invoice.invoiceId })
-          .eq("order_no", orderNo);
-      }
     }
 
     // Stock moved — refresh cached product pages so sold-out states stay honest.
     revalidatePublic();
 
     // Best-effort admin ping (no-op until Telegram env is set).
-    const { data: created } = await supabase
-      .from("orders")
-      .select("id")
-      .eq("order_no", orderNo)
-      .maybeSingle();
     const itemList = allLines
       .map(
         (l) =>
@@ -229,44 +231,29 @@ export async function POST(req: Request) {
         `📍 ${tgEscape([input.shipCity, input.shipDistrict, input.shipDetail].filter(Boolean).join(", "))}\n\n` +
         `${itemList}\n\n` +
         `💰 ${formatPrice(total)} · ${input.paymentMethod === "qpay" ? "QPay" : "Банкны шилжүүлэг"}` +
-        (created?.id ? `\n🔗 ${env.siteUrl}/admin/orders/${created.id}` : ""),
+        (order?.id ? `\n🔗 ${env.siteUrl}/admin/orders/${order.id}` : ""),
     );
+    // The browser only needs the token: the QR, the deeplinks and the live
+    // payment state all come from the server when /pay/<token> renders.
     return NextResponse.json({
       orderNo,
       total,
       paymentMethod: input.paymentMethod,
+      payToken: order?.pay_token ?? null,
       summary,
-      qpay,
       qpayMock: isQpayMockMode(),
     });
   }
 
-  // Demo fallback (no DB): generate an order number so the flow completes.
+  // Demo fallback (no DB): there is nothing to persist and no token to issue,
+  // so the browser gets the order number and stops at the confirmation copy.
   const orderNo = `VS-${Date.now().toString().slice(-7)}`;
-  const total = summary.total;
-  let qpay = null;
-
-  if (input.paymentMethod === "qpay") {
-    const invoice = await createInvoice({
-      orderNo,
-      amount: total,
-      callbackUrl: `${env.siteUrl}/api/payments/qpay/webhook?order=${encodeURIComponent(orderNo)}`,
-    });
-    if (invoice) {
-      qpay = {
-        invoiceId: invoice.invoiceId,
-        qrText: invoice.qrText,
-        qrImage: invoice.qrImage,
-      };
-    }
-  }
-
   return NextResponse.json({
     orderNo,
-    total,
+    total: summary.total,
     paymentMethod: input.paymentMethod,
+    payToken: null,
     summary,
-    qpay,
     qpayMock: isQpayMockMode(),
     demo: true,
   });

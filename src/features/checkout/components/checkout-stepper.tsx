@@ -9,8 +9,10 @@ import { cn } from "@/lib/utils";
  * form section is in view, and clicking a step scrolls to it.
  */
 export const CHECKOUT_STEPS = [
-  { id: "step-contact", label: "Холбоо барих" },
+  // Хаяг эхэнд: хадгалсан хаягаа сонгоход нэр, утас нь дагаад бөглөгддөг тул
+  // холбоо барих хэсэг түүний ард ирэх нь зөв дараалал.
   { id: "step-shipping", label: "Хүргэлт" },
+  { id: "step-contact", label: "Холбоо барих" },
   { id: "step-payment", label: "Төлбөр" },
 ] as const;
 

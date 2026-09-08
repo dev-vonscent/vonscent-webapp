@@ -8,10 +8,7 @@ import { Button } from "@/components/ui/button";
  * A gap of exactly one page is filled with the number itself — an ellipsis
  * hiding a single page is just a worse button.
  */
-export function paginationItems(
-  page: number,
-  pages: number,
-): (number | "…")[] {
+export function paginationItems(page: number, pages: number): (number | "…")[] {
   if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1);
   const wanted = new Set([1, 2, page - 1, page, page + 1, pages - 1, pages]);
   const items: (number | "…")[] = [];
@@ -57,27 +54,42 @@ export function CatalogPagination({
       >
         Өмнөх
       </Button>
-      {paginationItems(page, pages).map((p, i) =>
-        p === "…" ? (
-          <span
-            key={`gap-${i}`}
-            className="text-muted-foreground w-6 text-center text-sm"
-            aria-hidden
-          >
-            …
-          </span>
-        ) : (
-          <Button
-            key={p}
-            variant={p === page ? "default" : "outline"}
-            size="sm"
-            className="w-9"
-            onClick={() => go(p)}
-          >
-            {p}
-          </Button>
-        ),
-      )}
+
+      {/*
+        The numbered buttons are desktop-only. `paginationItems` can return
+        nine entries, and nine 36px buttons between «Өмнөх» and «Дараах» come
+        to ~480px — on a 390px phone that pushed the whole page sideways.
+        A phone gets the position instead, which is the only part of the row
+        a thumb cannot already reach with the two arrows.
+      */}
+      <span className="text-muted-foreground px-2 text-sm tabular-nums sm:hidden">
+        {page} / {pages}
+      </span>
+
+      <span className="hidden items-center gap-2 sm:flex">
+        {paginationItems(page, pages).map((p, i) =>
+          p === "…" ? (
+            <span
+              key={`gap-${i}`}
+              className="text-muted-foreground w-6 text-center text-sm"
+              aria-hidden
+            >
+              …
+            </span>
+          ) : (
+            <Button
+              key={p}
+              variant={p === page ? "default" : "outline"}
+              size="sm"
+              className="w-9"
+              onClick={() => go(p)}
+            >
+              {p}
+            </Button>
+          ),
+        )}
+      </span>
+
       <Button
         variant="outline"
         size="sm"

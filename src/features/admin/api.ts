@@ -998,10 +998,13 @@ export const WHEEL_SETTINGS_DEFAULTS: WheelSettings = {
   enabled: true,
   freeSpinHours: 24,
   spinCost: 2000,
-  monthlyPointCap: 5000,
-  rareCouponPerMonth: 1,
+  // 0 = хязгааргүй. Клиент 2026-09-07-д хоёр тагийг цуцаллаа: «магадлал нь
+  // таарсан бол хэдэн ч удаа хожиж болно» (0067, docs §5).
+  monthlyPointCap: 0,
+  rareCouponPerMonth: 0,
   couponValidDays: 30,
-  singleActiveCoupon: true,
+  // Клиент 2026-09-07-д цуцаллаа: купон хуримтлагдана (0066, docs §0 №1).
+  singleActiveCoupon: false,
 };
 
 export interface WheelReport {
@@ -1050,7 +1053,11 @@ export async function getWheelAdmin(): Promise<{
 }> {
   const supabase = await createClient();
   if (!supabase) {
-    return { prizes: [], settings: WHEEL_SETTINGS_DEFAULTS, report: EMPTY_REPORT };
+    return {
+      prizes: [],
+      settings: WHEEL_SETTINGS_DEFAULTS,
+      report: EMPTY_REPORT,
+    };
   }
 
   const [prizesRes, settingRes, reportRes] = await Promise.all([
@@ -1061,7 +1068,8 @@ export async function getWheelAdmin(): Promise<{
     }),
   ]);
 
-  const stored = (settingRes.data as { value?: Partial<WheelSettings> } | null)?.value;
+  const stored = (settingRes.data as { value?: Partial<WheelSettings> } | null)
+    ?.value;
   const report = reportRes.data;
   return {
     prizes: (prizesRes.data as SpinWheelPrizeRow[] | null) ?? [],

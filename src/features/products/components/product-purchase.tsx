@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Minus, Plus, ShoppingCart, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
-import { trackAddToCart } from "@/lib/analytics";
+import { trackAddToCart, trackBeginCheckout } from "@/lib/analytics";
 import type { ProductDetail } from "@/lib/types";
 
 export function ProductPurchase({ product }: { product: ProductDetail }) {
@@ -20,6 +21,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   const [added, setAdded] = React.useState(false);
 
   const add = useCart((s) => s.add);
+  const router = useRouter();
 
   // Mobile sticky buy bar (1e): appears once the in-page CTA scrolls away.
   const ctaRef = React.useRef<HTMLDivElement>(null);
@@ -44,6 +46,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   // The whole product may still be sellable while this particular size is not.
   const selectedOut = !soldOut && selected != null && !selected.inStock;
   // Lowest ₮/ml among in-stock sizes gets the «Хамгийн ашигтай» badge.
+  const buyDisabled = soldOut || !selected || !selected.inStock;
   const inStockVariants = activeVariants.filter((v) => v.inStock);
   const bestValue =
     inStockVariants.length > 1
@@ -52,8 +55,9 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
         )
       : null;
 
-  function onAdd() {
-    if (!selected || soldOut || !selected.inStock) return;
+  /** Puts the selected size in the cart. Returns false when nothing was added. */
+  function addToCart(): boolean {
+    if (!selected || soldOut || !selected.inStock) return false;
     add(
       {
         productId: product.id,
@@ -74,8 +78,42 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
       price: unitPrice,
       quantity: qty,
     });
+    return true;
+  }
+
+  function onAdd() {
+    if (!addToCart()) return;
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
+  }
+
+  /**
+   * «Захиалах» — the same add, then straight to checkout.
+   *
+   * It goes through the cart rather than around it: checkout prices the whole
+   * cart server-side, and a parallel "just this one item" path would be a
+   * second pricing route to keep in step with coupons, bundles, gifts and
+   * loyalty. Anything already in the cart therefore comes along, which is what
+   * a customer who has been adding items expects — and the checkout page is
+   * where they can still change it.
+   */
+  function onBuyNow() {
+    if (!addToCart()) return;
+    if (selected) {
+      trackBeginCheckout(
+        [
+          {
+            id: product.id,
+            name: `${product.name} ${selected.ml}ml`,
+            brand: product.brand,
+            price: unitPrice,
+            quantity: qty,
+          },
+        ],
+        unitPrice * qty,
+      );
+    }
+    router.push("/checkout");
   }
 
   return (
@@ -149,39 +187,53 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
         )}
       </div>
 
-      <div ref={ctaRef} className="flex items-center gap-4">
-        <div className="bg-secondary flex items-center rounded-md">
-          <button
-            className="hover:text-foreground px-3 py-2"
-            onClick={() => setQty((q) => Math.max(1, q - 1))}
-            aria-label="Хасах"
+      <div ref={ctaRef} className="space-y-3">
+        <div className="flex items-center gap-4">
+          <div className="bg-secondary flex items-center rounded-md">
+            <button
+              className="hover:text-foreground px-3 py-2"
+              onClick={() => setQty((q) => Math.max(1, q - 1))}
+              aria-label="Хасах"
+            >
+              <Minus className="size-4" />
+            </button>
+            <span className="w-10 text-center text-sm">{qty}</span>
+            <button
+              className="hover:text-foreground px-3 py-2"
+              onClick={() => setQty((q) => q + 1)}
+              aria-label="Нэмэх"
+            >
+              <Plus className="size-4" />
+            </button>
+          </div>
+
+          {/* «Захиалах» leads: it is the shorter road to a paid order, and
+              the cart stays one tap away underneath. */}
+          <Button
+            size="lg"
+            className="flex-1 in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+            disabled={buyDisabled}
+            onClick={onBuyNow}
           >
-            <Minus className="size-4" />
-          </button>
-          <span className="w-10 text-center text-sm">{qty}</span>
-          <button
-            className="hover:text-foreground px-3 py-2"
-            onClick={() => setQty((q) => q + 1)}
-            aria-label="Нэмэх"
-          >
-            <Plus className="size-4" />
-          </button>
+            {soldOut
+              ? "Дууссан"
+              : selectedOut
+                ? `${selected?.ml}ml дууссан`
+                : "Захиалах"}
+          </Button>
         </div>
 
         <Button
           size="lg"
-          className="flex-1 in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
-          disabled={soldOut || !selected || !selected.inStock}
+          variant="outline"
+          className="w-full"
+          disabled={buyDisabled}
           onClick={onAdd}
         >
           {added ? (
             <>
               <Check className="size-4" /> Нэмэгдлээ
             </>
-          ) : soldOut ? (
-            "Дууссан"
-          ) : selectedOut ? (
-            `${selected?.ml}ml дууссан`
           ) : (
             <>
               <ShoppingCart className="size-4" /> Сагсанд нэмэх
@@ -210,20 +262,28 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
               {formatPrice(unitPrice)}
             </p>
           </div>
-          <Button
-            onClick={onAdd}
-            className="in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
-          >
-            {added ? (
-              <>
-                <Check className="size-4" /> Нэмэгдлээ
-              </>
-            ) : (
-              <>
-                <ShoppingCart className="size-4" /> Сагсанд нэмэх
-              </>
-            )}
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            {/* Icon-only at this width — the label would push «Захиалах» off
+                the bar on a small phone. */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={onAdd}
+              aria-label="Сагсанд нэмэх"
+            >
+              {added ? (
+                <Check className="size-4" />
+              ) : (
+                <ShoppingCart className="size-4" />
+              )}
+            </Button>
+            <Button
+              onClick={onBuyNow}
+              className="in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+            >
+              Захиалах
+            </Button>
+          </div>
         </div>
       )}
     </div>

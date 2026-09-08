@@ -56,6 +56,11 @@ import {
   AddressFields,
   composeDetail,
 } from "@/features/checkout/components/address-fields";
+import {
+  NEW_ADDRESS,
+  SavedAddresses,
+} from "@/features/checkout/components/saved-addresses";
+import { CouponField } from "@/features/checkout/components/coupon-field";
 import { formatPrice } from "@/lib/format";
 import { isPhoneEmail } from "@/lib/auth/phone-email";
 import { useCart, selectSubtotal } from "@/features/cart/store";
@@ -100,6 +105,11 @@ export default function CheckoutPage() {
 
   const [authed, setAuthed] = React.useState(false);
   const [addresses, setAddresses] = React.useState<AddressRow[]>([]);
+  /** Chosen saved address id, or NEW_ADDRESS while the form is open. */
+  const [addressChoice, setAddressChoice] = React.useState(NEW_ADDRESS);
+  /** A guest, or a customer with no addresses, only ever sees the form. */
+  const showAddressForm = addressChoice === NEW_ADDRESS;
+
   const [loyaltyPoints, setLoyaltyPoints] = React.useState(0);
   const [redeemRate, setRedeemRate] = React.useState(1);
   const [useLoyalty, setUseLoyalty] = React.useState(false);
@@ -138,6 +148,20 @@ export default function CheckoutPage() {
       paymentMethod: "qpay",
     },
   });
+
+  /** Fills the form from a saved address — used by the picker and, on load,
+   *  by the default address the query puts first. */
+  const applyAddress = React.useCallback(
+    (a: AddressRow) => {
+      setValue("contactName", a.recipient);
+      setValue("contactPhone", a.phone);
+      setValue("shipCity", a.city);
+      setValue("shipDistrict", a.district ?? "");
+      setValue("shipDetail", a.detail);
+      setKhoroo(null); // detail already carries the khoroo text
+    },
+    [setValue],
+  );
 
   // Сонгож болох хүргэлтийн өдрүүд. Mount-ийн дараа бодогдоно: сервер ба
   // браузарын өдөр зөрвөл (шөнө дунд, өөр цагийн бүс) hydration зөрчилдөнө.
@@ -255,12 +279,20 @@ export default function CheckoutPage() {
         })
         .catch(() => undefined);
       setLoyaltyPoints(p?.loyalty_points ?? 0);
-      setAddresses((addrs as AddressRow[] | null) ?? []);
+      const rows = (addrs as AddressRow[] | null) ?? [];
+      setAddresses(rows);
+      // The query orders `is_default` first, so the head of the list is the
+      // address to start on — a returning customer should not have to choose
+      // the same one every time.
+      if (rows[0]) {
+        setAddressChoice(rows[0].id);
+        applyAddress(rows[0]);
+      }
       const rate = (setting as { value?: { redeemRate?: number } } | null)
         ?.value?.redeemRate;
       if (rate) setRedeemRate(rate);
     })();
-  }, [setValue]);
+  }, [setValue, applyAddress]);
 
   // Offer the codes this customer can actually use, rather than expecting
   // them to remember one (todo.md B4). Re-asked whenever the cart total moves,
@@ -327,15 +359,19 @@ export default function CheckoutPage() {
   const loyaltyApplied = useLoyalty ? maxLoyalty : 0;
   const total = Math.max(subtotal + shippingFee - discount - loyaltyApplied, 0);
 
-  function selectAddress(id: string) {
-    const a = addresses.find((x) => x.id === id);
-    if (!a) return;
-    setValue("contactName", a.recipient);
-    setValue("contactPhone", a.phone);
-    setValue("shipCity", a.city);
-    setValue("shipDistrict", a.district ?? "");
-    setValue("shipDetail", a.detail);
-    setKhoroo(null); // detail already carries the khoroo text
+  function onAddressChoice(next: string) {
+    setAddressChoice(next);
+    if (next === NEW_ADDRESS) {
+      // Blank the address fields so the form opens empty rather than
+      // pre-filled with the address the customer just chose to replace.
+      setValue("shipCity", "Улаанбаатар");
+      setValue("shipDistrict", "");
+      setValue("shipDetail", "");
+      setKhoroo(null);
+      return;
+    }
+    const a = addresses.find((x) => x.id === next);
+    if (a) applyAddress(a);
   }
 
   if (mounted && items.length === 0 && collections.length === 0) {
@@ -469,6 +505,15 @@ export default function CheckoutPage() {
         return;
       }
       const order = await res.json();
+      clear();
+      // The payment page is server-rendered from `pay_token`, so nothing about
+      // the order rides in sessionStorage any more: the link survives a reload,
+      // a new tab, and being opened on the customer's phone.
+      if (order.payToken) {
+        router.push(`/pay/${order.payToken}`);
+        return;
+      }
+      // Demo mode (no database) issues no token — there is nothing to pay.
       sessionStorage.setItem(
         "vonscent-last-order",
         JSON.stringify({
@@ -477,11 +522,8 @@ export default function CheckoutPage() {
           paymentMethod: order.paymentMethod,
           contactName: values.contactName,
           deliverOn: values.deliverOn ?? null,
-          qpay: order.qpay ?? null,
-          qpayMock: order.qpayMock ?? false,
         }),
       );
-      clear();
       router.push("/order/success");
     } finally {
       setSubmitting(false);
@@ -528,79 +570,63 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* Saved addresses */}
-          {authed && addresses.length > 0 && (
-            <Section step={0} icon={MapPin} title="Хадгалсан хаяг">
-              <Select onValueChange={selectAddress}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Хадгалсан хаягаас сонгох" />
-                </SelectTrigger>
-                <SelectContent>
-                  {addresses.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.recipient} — {a.city}
-                      {a.district ? `, ${a.district}` : ""}, {a.detail}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Section>
-          )}
-
-          {/* Contact */}
-          <Section step={1} id="step-contact" icon={User} title="Холбоо барих">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Нэр" error={errors.contactName?.message}>
-                <Input {...register("contactName")} placeholder="Таны нэр" />
-              </Field>
-              <Field label="Утас" error={errors.contactPhone?.message}>
-                <Input
-                  {...register("contactPhone")}
-                  placeholder="99112233"
-                  inputMode="numeric"
-                />
-              </Field>
-            </div>
-            <Field
-              label="Имэйл (заавал биш)"
-              error={errors.contactEmail?.message}
-            >
-              <Input
-                {...register("contactEmail")}
-                placeholder="name@mail.com"
-              />
-            </Field>
-          </Section>
-
-          {/* Shipping */}
+          {/* Shipping — first, because choosing a saved address fills in the
+              contact name and phone below it. */}
           <Section
-            step={2}
+            step={1}
             id="step-shipping"
             icon={MapPin}
             title="Хүргэлтийн хаяг"
           >
-            <AddressFields
-              value={{
-                city: watch("shipCity") ?? "",
-                district: watch("shipDistrict") ?? "",
-                khoroo,
-              }}
-              onChange={(next) => {
-                setValue("shipCity", next.city);
-                setValue("shipDistrict", next.district);
-                setKhoroo(next.khoroo);
-              }}
-              errors={{
-                city: errors.shipCity?.message,
-                district: errors.shipDistrict?.message,
-              }}
-            />
-            <Field label="Дэлгэрэнгүй хаяг" error={errors.shipDetail?.message}>
-              <Input
-                {...register("shipDetail")}
-                placeholder="Байр, орц, тоот"
+            {authed && addresses.length > 0 && (
+              <SavedAddresses
+                addresses={addresses}
+                value={addressChoice}
+                onChange={onAddressChoice}
               />
-            </Field>
+            )}
+
+            {/* The form is the whole section for a guest, and a disclosure for
+                a customer who already has addresses on file. */}
+            {showAddressForm && (
+              <div className="space-y-4">
+                <AddressFields
+                  value={{
+                    city: watch("shipCity") ?? "",
+                    district: watch("shipDistrict") ?? "",
+                    khoroo,
+                  }}
+                  onChange={(next) => {
+                    setValue("shipCity", next.city);
+                    setValue("shipDistrict", next.district);
+                    setKhoroo(next.khoroo);
+                  }}
+                  errors={{
+                    city: errors.shipCity?.message,
+                    district: errors.shipDistrict?.message,
+                  }}
+                />
+                <Field
+                  label="Дэлгэрэнгүй хаяг"
+                  error={errors.shipDetail?.message}
+                >
+                  <Input
+                    {...register("shipDetail")}
+                    placeholder="Байр, орц, тоот"
+                  />
+                </Field>
+                {authed && (
+                  <label className="flex cursor-pointer items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={saveAddr}
+                      onCheckedChange={(v) => setSaveAddr(Boolean(v))}
+                    />
+                    Энэ хаягийг хадгалах
+                  </label>
+                )}
+              </div>
+            )}
+
             <Field label="Хүргэлтийн бүс" error={errors.shipZone?.message}>
               <Select
                 value={zone}
@@ -699,15 +725,31 @@ export default function CheckoutPage() {
                 placeholder="Жишээ: оройн цагаар залгаарай"
               />
             </Field>
-            {authed && (
-              <label className="flex cursor-pointer items-center gap-2 text-sm">
-                <Checkbox
-                  checked={saveAddr}
-                  onCheckedChange={(v) => setSaveAddr(Boolean(v))}
+          </Section>
+
+          {/* Contact */}
+          <Section step={2} id="step-contact" icon={User} title="Холбоо барих">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Нэр" error={errors.contactName?.message}>
+                <Input {...register("contactName")} placeholder="Таны нэр" />
+              </Field>
+              <Field label="Утас" error={errors.contactPhone?.message}>
+                <Input
+                  {...register("contactPhone")}
+                  placeholder="99112233"
+                  inputMode="numeric"
                 />
-                Энэ хаягийг хадгалах
-              </label>
-            )}
+              </Field>
+            </div>
+            <Field
+              label="Имэйл (заавал биш)"
+              error={errors.contactEmail?.message}
+            >
+              <Input
+                {...register("contactEmail")}
+                placeholder="name@mail.com"
+              />
+            </Field>
           </Section>
 
           {/* Payment */}
@@ -823,68 +865,20 @@ export default function CheckoutPage() {
               <div className="gold-rule" />
 
               {/* Coupon — also offered here, not just in the cart. */}
-              {coupon ? (
-                <div className="bg-secondary flex items-center justify-between rounded-xl px-3 py-2.5 text-sm">
-                  <span>
-                    Купон <strong>{coupon.code}</strong>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setCoupon(null)}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    Хасах
-                  </button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <Input
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    placeholder="Купон код"
-                    className="h-9"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={applying}
-                    onClick={applyCoupon}
-                  >
-                    {applying ? "…" : "Хэрэглэх"}
-                  </Button>
-                </div>
-              )}
-              {couponMsg && (
-                <p className="text-destructive text-xs">{couponMsg}</p>
-              )}
-              {!coupon && offers.length > 0 && (
-                <div className="space-y-1.5">
-                  <p className="text-muted-foreground text-xs">
-                    Танд боломжтой купон
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {offers.map((o) => (
-                      <button
-                        key={o.code}
-                        type="button"
-                        onClick={() => {
-                          setCoupon({ code: o.code, discount: o.discount });
-                          setCouponMsg(null);
-                        }}
-                        className="bg-secondary hover:bg-accent rounded-full px-3 py-1.5 text-xs transition-colors"
-                      >
-                        <span className="font-mono font-semibold">
-                          {o.code}
-                        </span>
-                        {" · −"}
-                        {formatPrice(o.discount)}
-                        {o.personal && " · танд"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <CouponField
+                applied={coupon}
+                offers={offers}
+                code={code}
+                onCodeChange={setCode}
+                onApply={applyCoupon}
+                applying={applying}
+                message={couponMsg}
+                onPick={(o) => {
+                  setCoupon({ code: o.code, discount: o.discount });
+                  setCouponMsg(null);
+                }}
+                onRemove={() => setCoupon(null)}
+              />
 
               <div className="space-y-2.5">
                 <div className="flex justify-between text-sm">

@@ -85,5 +85,33 @@ export async function POST(req: Request) {
 
   // Best offer first — that is the one worth a single tap.
   coupons.sort((a, b) => b.discount - a.discount);
-  return NextResponse.json({ coupons: coupons.slice(0, 5) });
+  return NextResponse.json({ coupons: dedupe(coupons).slice(0, 5) });
+}
+
+/**
+ * Collapse coupons that are the same offer.
+ *
+ * Since the lucky wheel stopped replacing unused coupons (docs/lucky-wheel.md
+ * §0 №1) one customer can hold six identical 5,000₮ codes. Listing them all is
+ * noise — applying any one has the same effect — and worse, they crowd the
+ * five-row cap so a genuinely different coupon never reaches the customer.
+ *
+ * The survivor is the one expiring soonest: it is the one that would otherwise
+ * be wasted, and spending it leaves the longer-lived duplicates in hand.
+ */
+export function dedupe(coupons: AvailableCoupon[]): AvailableCoupon[] {
+  const byOffer = new Map<string, AvailableCoupon>();
+  for (const c of coupons) {
+    const key = `${c.type}:${c.value}:${c.discount}:${c.minSubtotal}`;
+    const held = byOffer.get(key);
+    if (!held) {
+      byOffer.set(key, c);
+      continue;
+    }
+    // A coupon with no end date never expires, so it never wins this contest.
+    const a = c.endsAt ? Date.parse(c.endsAt) : Infinity;
+    const b = held.endsAt ? Date.parse(held.endsAt) : Infinity;
+    if (a < b) byOffer.set(key, c);
+  }
+  return [...byOffer.values()];
 }

@@ -14,7 +14,6 @@ import {
   Pencil,
 } from "lucide-react";
 import { ThemeSwitcher } from "@/components/shared/theme-switcher";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/browser";
@@ -23,6 +22,7 @@ import { AddressBook } from "@/features/account/components/address-book";
 import { PasscodeDialog } from "@/features/account/components/passcode-dialog";
 import { ProfileEditDialog } from "@/features/account/components/profile-edit-dialog";
 import { EmailSettings } from "@/features/account/components/email-settings";
+import { CouponList } from "@/features/account/components/coupon-list";
 import { isPhoneEmail } from "@/lib/auth/phone-email";
 import { WheelEntryCard } from "@/features/lucky-wheel/components/wheel-entry-card";
 import type { ProductListItem } from "@/lib/types";
@@ -271,7 +271,7 @@ export default function ProfilePage() {
       {/* Available coupons */}
       {configured && (
         <div id="coupons" className="scroll-mt-24">
-          <Coupons />
+          <CouponList />
         </div>
       )}
 
@@ -393,66 +393,5 @@ function Tile({
       </p>
       {sub && <p className="text-muted-foreground text-xs">{sub}</p>}
     </MotionLink>
-  );
-}
-
-interface PublicCoupon {
-  id: string;
-  code: string;
-  type: "percent" | "fixed";
-  value: number;
-  min_subtotal: number;
-  ends_at: string | null;
-  /** Set = issued to this customer alone (0020_user_coupons). */
-  user_id: string | null;
-}
-
-function Coupons() {
-  const [items, setItems] = React.useState<PublicCoupon[]>([]);
-  React.useEffect(() => {
-    const supabase = createClient();
-    if (!supabase) return;
-    // RLS narrows this to public coupons plus the ones issued to this
-    // customer — someone else's personal code never reaches the browser.
-    supabase
-      .from("coupons")
-      .select("id, code, type, value, min_subtotal, ends_at, user_id")
-      .eq("is_active", true)
-      .then(({ data }) => setItems((data as PublicCoupon[] | null) ?? []));
-  }, []);
-
-  if (items.length === 0) return null;
-
-  return (
-    <Card>
-      <CardContent className="space-y-3 p-6">
-        <h2 className="font-serif text-lg font-semibold">Идэвхтэй купонууд</h2>
-        <div className="space-y-2">
-          {items.map((c) => (
-            <div
-              key={c.id}
-              className="bg-secondary flex items-center justify-between rounded-md px-3 py-2 text-sm"
-            >
-              <span className="flex items-center gap-2">
-                <span className="font-mono font-semibold">{c.code}</span>
-                {c.user_id && (
-                  <span className="bg-primary/15 text-gold-strong rounded-full px-2 py-0.5 text-[11px]">
-                    Танд зориулав
-                  </span>
-                )}
-              </span>
-              <span className="text-muted-foreground">
-                {c.type === "percent"
-                  ? `${c.value}% хямдрал`
-                  : `${c.value.toLocaleString()}₮ хямдрал`}
-                {c.min_subtotal > 0
-                  ? ` · ${c.min_subtotal.toLocaleString()}₮-өөс`
-                  : ""}
-              </span>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
   );
 }
