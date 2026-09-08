@@ -30,5 +30,10 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  // `qpay/` is a standalone harness with its own tsconfig, package.json and
+  // node_modules (docs/qpay-testing.md §4). Its sources are committed but its
+  // dependencies are not, so leaving it in `**/*.ts` broke the deploy build on
+  // `Cannot find module 'qrcode-terminal'` — a package that only ever exists
+  // inside qpay/. It typechecks itself with `npm run typecheck` in that folder.
+  "exclude": ["node_modules", "qpay"]
 }
