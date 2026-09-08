@@ -21,9 +21,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # Хувилбарыг package.json-ий `packageManager`-ээс уншина — Node-ийг
+      # `.node-version`-оор зангидсантай ижил зарчим. Хоёр газар бичвэл
+      # салж, зөвхөн CI (эсвэл зөвхөн Vercel) дээр унадаг алдаа гарна:
+      # pnpm 11 нь `pnpm.overrides`-ыг lockfile-д бичихээ больсон ч pnpm 10
+      # түүнийг шалгадаг тул яг тэр зөрүү build-ыг унагаж байсан.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v5
         with:
@@ -58,9 +61,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # Хувилбарыг package.json-ий `packageManager`-ээс уншина — Node-ийг
+      # `.node-version`-оор зангидсантай ижил зарчим. Хоёр газар бичвэл
+      # салж, зөвхөн CI (эсвэл зөвхөн Vercel) дээр унадаг алдаа гарна:
+      # pnpm 11 нь `pnpm.overrides`-ыг lockfile-д бичихээ больсон ч pnpm 10
+      # түүнийг шалгадаг тул яг тэр зөрүү build-ыг унагаж байсан.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v5
         with:
