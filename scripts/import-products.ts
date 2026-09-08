@@ -14,6 +14,13 @@
  * blank column is left exactly as it is, so a re-import can never wipe copy or
  * pictures an admin has since added. New products take the schema defaults.
  *
+ * Хямдрал нь ХЭМЖЭЭ ТУС БҮРИЙН бодит үнэ болов (backlog B1/B2). Барааны
+ * түвшний `products.sale_pct` нь 0054_real_discounts.sql-аар устсан; оронд нь
+ * `sale_price_<ml>` багануудаар `product_variants.sale_price` бөглөгдөнө —
+ * үндсэн үнэ нь зураастай харагдах дүн, хямдарсан үнэ нь БОДИТООР төлөгдөх
+ * дүн. Загварт тэр багана байхгүй бол скрипт хуучнаар ажиллана, хямдралыг
+ * админ хуудсаас тавина.
+ *
  * Requires NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in the env.
  */
 import * as path from "node:path";
@@ -238,7 +245,6 @@ interface Row {
   /** Below here every field is optional — absent means «leave alone». */
   bottlePrice: number | null;
   onHandMl: number | null;
-  salePct: number | null;
   releaseYear: number | null;
   originCountry: string;
   scentFamilies: string[];
@@ -325,7 +331,6 @@ async function readRows(): Promise<ReadResult> {
       bottleMl: int(o.bottle_ml) ?? 0,
       bottlePrice: int(o.bottle_price),
       onHandMl: int(o.on_hand_ml),
-      salePct: int(o.sale_pct),
       releaseYear: int(o.release_year),
       originCountry: str(o.origin_country),
       scentFamilies: list(o.scent_families),
@@ -349,6 +354,16 @@ async function readRows(): Promise<ReadResult> {
       if (price !== null) prices.set(ml, price);
     }
     priceCache.set(rowNo, prices);
+
+    // Per-size SALE prices: sale_price_2ml … sale_price_20ml (backlog B1).
+    // Хямдрал нь хувь БИШ, бүхэл ₮ — админ гараар бичдэг зарчимтай нэг мөр.
+    // Багана нь загварт байхгүй бол энэ map хоосон үлдэнэ (хойшоо нийцтэй).
+    const salePrices = new Map<number, number>();
+    for (const ml of ML_SIZES) {
+      const sale = int(o[`sale_price_${ml}ml`]);
+      if (sale !== null) salePrices.set(ml, sale);
+    }
+    salePriceCache.set(rowNo, salePrices);
   });
 
   return { rows, examples, unmappedBrands: [...unmapped].sort() };
@@ -356,6 +371,12 @@ async function readRows(): Promise<ReadResult> {
 
 /** rowNo → { ml: price ₮ } for every size the client priced. */
 const priceCache = new Map<number, Map<number, number>>();
+/**
+ * rowNo → { ml: sale_price ₮ } — зөвхөн хямдарсан үнэ бичсэн хэмжээнүүд.
+ * Хоосон нүд нь «хямдрал байхгүй» гэсэн үг БИШ, «хөндөхгүй» гэсэн үг: DB дээр
+ * админ тавьсан хямдрал байвал тэр нь хэвээр үлдэнэ (доорх upsert-ийг үз).
+ */
+const salePriceCache = new Map<number, Map<number, number>>();
 
 function validate(rows: Row[]): string[] {
   const errors: string[] = [];
@@ -369,15 +390,31 @@ function validate(rows: Row[]): string[] {
       errors.push(`${at}: «Хүйс» танигдсангүй (Эрэгтэй/Эмэгтэй/Юнисекс).`);
     if (!r.concentration)
       errors.push(`${at}: «Төрөл» танигдсангүй (EDP/EDT/Parfum/…).`);
-    if (r.bottleMl <= 0) errors.push(`${at}: «Эх сав (ml)» эерэг тоо байх ёстой.`);
+    if (r.bottleMl <= 0)
+      errors.push(`${at}: «Эх сав (ml)» эерэг тоо байх ёстой.`);
     const prices = priceCache.get(r.rowNo);
     if (!prices || prices.size === 0)
       errors.push(`${at}: ямар ч хэмжээний үнэ бөглөөгүй.`);
     for (const [ml, p] of prices ?? []) {
       if (p < 0) errors.push(`${at}: ${ml}ml үнэ сөрөг байна.`);
     }
-    if (r.salePct !== null && (r.salePct < 0 || r.salePct > 100))
-      errors.push(`${at}: «Хямдрал %» 0–100 хооронд байх ёстой.`);
+    // Хямдарсан үнэ: DB-ийн `product_variants_sale_price_range` шалгалттай
+    // ижил дүрэм (0054) — 0 ≤ sale_price ≤ price. Үндсэн үнэгүй хэмжээнд
+    // хямдрал тавих нь ямар үнээс хямдарсныг хэлэхгүй тул алдаа.
+    for (const [ml, sale] of salePriceCache.get(r.rowNo) ?? []) {
+      const base = prices?.get(ml);
+      if (base === undefined) {
+        errors.push(
+          `${at}: ${ml}ml хямдарсан үнэ бичсэн ч үндсэн үнэ хоосон байна.`,
+        );
+        continue;
+      }
+      if (sale < 0) errors.push(`${at}: ${ml}ml хямдарсан үнэ сөрөг байна.`);
+      else if (sale > base)
+        errors.push(
+          `${at}: ${ml}ml хямдарсан үнэ (${sale}) үндсэн үнээс (${base}) их байна.`,
+        );
+    }
     const dupe = seen.get(r.slug);
     if (dupe)
       errors.push(`${at}: slug «${r.slug}» ${dupe}-р мөртэй давхардаж байна.`);
@@ -397,7 +434,6 @@ function productPatch(r: Row): Record<string, unknown> {
     bottle_ml: r.bottleMl,
   };
   if (r.bottlePrice !== null) patch.bottle_price = r.bottlePrice;
-  if (r.salePct !== null) patch.sale_pct = r.salePct;
   if (r.releaseYear !== null) patch.release_year = r.releaseYear;
   if (r.originCountry) patch.origin_country = r.originCountry;
   if (r.scentFamilies.length) patch.scent_families = r.scentFamilies;
@@ -471,8 +507,17 @@ async function main() {
     console.log("");
     for (const r of rows) {
       const p = priceCache.get(r.rowNo)!;
+      const s = salePriceCache.get(r.rowNo) ?? new Map<number, number>();
+      // Хямдарсан үнэтэй хэмжээг «үндсэн→хямдарсан» гэж харуулна, ингэснээр
+      // оруулахаас өмнө аль үнэ бодитоор төлөгдөхийг эндүүрэхгүй.
       const sizes = [...p.entries()]
-        .map(([ml, v]) => `${ml}ml:${v.toLocaleString("en-US")}`)
+        .map(([ml, v]) => {
+          const base = v.toLocaleString("en-US");
+          const sale = s.get(ml);
+          return sale === undefined
+            ? `${ml}ml:${base}`
+            : `${ml}ml:${base}→${sale.toLocaleString("en-US")}`;
+        })
         .join(" ");
       console.log(
         `  • ${r.slug} — ${r.brand} «${r.name}» · ${r.gender} · ${r.concentration} · ${r.bottleMl}ml · ${sizes}`,
@@ -577,17 +622,37 @@ async function main() {
 
     // Variants — one row per priced size, upserted so an unpriced size keeps
     // whatever the admin set. Money is integer ₮ (development.md §5).
+    //
+    // ХОЁР БАТЧААР бичнэ (backlog B1). PostgREST-ийн нэг удаагийн upsert нь
+    // массив дахь БҮХ объектын түлхүүр ижил байхыг шаарддаг тул бүх мөрөнд
+    // `sale_price` тавихаас өөр аргагүй болно — тэгвэл Excel-д хоосон байсан
+    // хэмжээнд `null` бичигдэж, админ тавьсан хямдрал ЧИМЭЭГҮЙ УСТАНА. Энэ
+    // скриптийн «хоосон нүд = хөндөхгүй» зарчмыг хамгаалахын тулд хямдралтай
+    // ба хямдралгүй хэмжээнүүдийг тусад нь бичнэ.
     const prices = priceCache.get(r.rowNo)!;
-    const { error: vErr } = await supabase.from("product_variants").upsert(
-      [...prices.entries()].map(([ml, price]) => ({
-        product_id: id,
-        ml,
-        price,
-        is_active: true,
-      })),
-      { onConflict: "product_id,ml" },
+    const salePrices = salePriceCache.get(r.rowNo) ?? new Map<number, number>();
+    const withSale = [...prices.entries()].filter(([ml]) => salePrices.has(ml));
+    const withoutSale = [...prices.entries()].filter(
+      ([ml]) => !salePrices.has(ml),
     );
-    if (vErr) console.error(`  ✗ ${r.slug} variants: ${vErr.message}`);
+
+    for (const [batch, includeSale] of [
+      [withSale, true],
+      [withoutSale, false],
+    ] as const) {
+      if (batch.length === 0) continue;
+      const { error: vErr } = await supabase.from("product_variants").upsert(
+        batch.map(([ml, price]) => ({
+          product_id: id,
+          ml,
+          price,
+          is_active: true,
+          ...(includeSale ? { sale_price: salePrices.get(ml)! } : {}),
+        })),
+        { onConflict: "product_id,ml" },
+      );
+      if (vErr) console.error(`  ✗ ${r.slug} variants: ${vErr.message}`);
+    }
 
     // Inventory: create the row so the product is tracked, but never move an
     // existing count — stock is the admin's live number, not the sheet's.

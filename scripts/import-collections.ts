@@ -10,6 +10,14 @@
  *
  * Requires NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in the env, and
  * the 0028_collections.sql migration to have been applied.
+ *
+ * Бэлэг нь багцын тохиргоо БАЙХАА больсон (backlog A2/A4): бүх бэлэг админы
+ * бэлгийн сангаас (`settings.gift`) гарах болсон тул `collections.gift_ml`
+ * багана 0053_gift_pool_single_source.sql-аар устсан. Загварт «Бэлгийн ml»
+ * багана үлдсэн байвал уншихгүй, харин чимээгүй хаяхын оронд сануулга хэвлэнэ.
+ *
+ * Хэмжээ тус бүрийн ТОГТМОЛ үнэ (backlog B6, `collection_ml_discounts.price`)
+ * нь энэ загвараар оруулагддаггүй — админы «Багц» хуудсаас тавина.
  */
 import * as path from "node:path";
 import ExcelJS from "exceljs";
@@ -61,7 +69,6 @@ const HEADER_MAP: Record<string, string> = {
   Хүйс: "gender",
   Тайлбар: "description",
   "Хямдрал %": "discount_pct",
-  "Бэлгийн ml": "gift_ml",
   "Зургийн URL": "image_url",
   Идэвхтэй: "is_active",
   Онцлох: "is_featured",
@@ -143,7 +150,6 @@ interface Row {
   gender: string;
   description: string;
   discount_pct: number;
-  gift_ml: number | null;
   image_url: string | null;
   is_active: boolean;
   is_featured: boolean;
@@ -165,6 +171,12 @@ function cellValue(v: ExcelJS.CellValue): unknown {
   return v;
 }
 
+/**
+ * Загварт «Бэлгийн ml» багана үлдсэн эсэх. Уншихгүй боловч чимээгүй алгасвал
+ * админ «бэлгээ тохирууллаа» гэж бодох тул `main()` дээр сануулна (A2/A4).
+ */
+let legacyGiftMlColumn = false;
+
 async function readRows(): Promise<Row[]> {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.readFile(file);
@@ -179,6 +191,7 @@ async function readRows(): Promise<Row[]> {
   ws.getRow(1).eachCell({ includeEmpty: true }, (cell, col) => {
     headers[col] = str(cellValue(cell.value));
   });
+  legacyGiftMlColumn = headers.some((h) => h?.trim() === "Бэлгийн ml");
   const rows: Row[] = [];
   ws.eachRow((row, rowNo) => {
     if (rowNo === 1) return;
@@ -200,7 +213,6 @@ async function readRows(): Promise<Row[]> {
       gender: (str(o.gender) || "unisex").toLowerCase(),
       description: str(o.description),
       discount_pct: num(o.discount_pct) ?? 5,
-      gift_ml: num(o.gift_ml),
       image_url: str(o.image_url) || null,
       is_active: truthy(o.is_active, true),
       is_featured: truthy(o.is_featured, false),
@@ -230,8 +242,6 @@ function validate(rows: Row[]): string[] {
       );
     if (new Set(nonEmpty).size !== nonEmpty.length)
       errors.push(`${at}: 4 slug давхардаж болохгүй.`);
-    if (row.gift_ml !== null && row.gift_ml <= 0)
-      errors.push(`${at}: «Бэлгийн ml» эерэг тоо байх ёстой.`);
     if (row.discount_pct < 0 || row.discount_pct > 100)
       errors.push(`${at}: «Хямдрал %» 0–100 хооронд байх ёстой.`);
   }
@@ -253,11 +263,20 @@ async function main() {
     process.exit(1);
   }
 
+  // Алдаа биш — гэхдээ бөглөсөн зүйл нь хэрэгжихгүй тул дуугүй байж болохгүй.
+  if (legacyGiftMlColumn) {
+    console.log(
+      "\n  ⚠︎ «Бэлгийн ml» багана УНШИГДАХГҮЙ. Бэлэг нь багц тус бүрээр биш,\n" +
+        "     админы «Бэлгийн үнэрүүд» сангаас (1мл дээж) олгогддог болсон.\n" +
+        "     Багана нь загварт үлдсэн ч ямар ч нөлөө үзүүлэхгүй.",
+    );
+  }
+
   if (dryRun) {
     console.log(`\n✓ Шалгалт (--dry): ${rows.length} багц зөв бүтэцтэй.\n`);
     rows.forEach((r) =>
       console.log(
-        `  • ${r.slug} — «${r.name}» · ${r.gender} · ${r.discount_pct}% · бэлэг ${r.gift_ml ?? "default"}ml · [${r.members.join(", ")}]`,
+        `  • ${r.slug} — «${r.name}» · ${r.gender} · ${r.discount_pct}% · [${r.members.join(", ")}]`,
       ),
     );
     console.log("\nDB-д хүрээгүй. Оруулахдаа --dry-г хасаж ажиллуул.");
@@ -309,7 +328,6 @@ async function main() {
           description: row.description,
           discount_pct: row.discount_pct,
           image_url: row.image_url,
-          gift_ml: row.gift_ml,
           is_active: row.is_active,
           is_featured: row.is_featured,
         },
