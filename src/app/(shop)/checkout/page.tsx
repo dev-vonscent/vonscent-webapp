@@ -42,6 +42,7 @@ import {
   giftGuaranteeFor,
 } from "@/lib/gift";
 import { GiftSamplePicker } from "@/features/checkout/components/gift-sample-picker";
+import { useGiftPool } from "@/features/gifts/use-gift-pool";
 import { CheckoutStepper } from "@/features/checkout/components/checkout-stepper";
 import {
   DISPATCH_HOUR,
@@ -313,11 +314,16 @@ export default function CheckoutPage() {
   );
   // Бэлгийн 1мл дээж: купоны дараах барааны дүнгийн 200,000₮ тутамд 1, эсвэл
   // preset 5/10/20мл багц бүрийн баталгаа — ихийг нь (src/lib/gift.ts).
-  // Сервер энэ тоог өөрөө дахин бодно, энэ нь зөвхөн харагдац.
   const giftAllowance = giftAllowanceFor(
     Math.max(subtotal - discount, 0),
     giftGuaranteeFor(collections),
   );
+  // Бэлгийн сан — сагс, багцын дэлгэрэнгүйтэй ижил цорын ганц эх сурвалж
+  // (backlog A2). Сан унтраалттай / хоосон бол доорх тоймд «🎁» гэж
+  // амлахгүй: `GiftSamplePicker` өөрөө нуугддаг тул тэмдэг нь хэзээ ч
+  // сонгох боломжгүй бэлгийг зааж байх ёсгүй. Модуль дотор кэштэй hook тул
+  // нэмэлт хүсэлт гарахгүй, ачаалж амжаагүй үед `null` (тэмдэг гарахгүй).
+  const giftPool = useGiftPool();
   const loyaltyApplied = useLoyalty ? maxLoyalty : 0;
   const total = Math.max(subtotal + shippingFee - discount - loyaltyApplied, 0);
 
@@ -772,7 +778,9 @@ export default function CheckoutPage() {
                         </p>
                         <p className="text-muted-foreground text-xs">
                           Багц · {c.ml}ml · {c.members.length} үнэртэн
-                          {bundleGiftGuarantee(c) > 0 ? " · 🎁" : ""}
+                          {giftPool?.enabled && bundleGiftGuarantee(c) > 0
+                            ? " · 🎁"
+                            : ""}
                         </p>
                       </div>
                       <span className="text-sm font-medium">
