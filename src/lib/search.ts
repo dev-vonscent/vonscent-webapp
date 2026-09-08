@@ -58,8 +58,13 @@ const CYRILLIC_TO_LATIN: Record<string, string> = {
  * Decomposition runs BEFORE the lowercasing so that a compatibility character
  * which unfolds into letters (№ → "No", ﬁ → "fi") is lowercased afterwards
  * like any other text. Postgres' `search_normalize()` (0057_search.sql) is
- * built in exactly this order — `scripts/check-search-parity.ts` proves the
- * two agree, and a search only finds anything while they do.
+ * built in exactly this order — `pnpm check:search-parity` proves the two
+ * agree on live data, and a search only finds anything while they do.
+ *
+ * ⚠️ Энэ функцийг засвал: (1) 0057_search.sql-ийн `search_normalize()`-ийг мөн
+ * зэрэг засах, (2) `pnpm check:search-parity` ажиллуулах, (3) `search.test.ts`
+ * дэх «паритетын цоож» хүснэгтийг шинэчлэх. Аль нэгийг л засвал хайлт ямар ч
+ * алдаа гаргалгүйгээр хагас ажиллана.
  */
 export function normalizeSearchText(text: string): string {
   const folded = text
