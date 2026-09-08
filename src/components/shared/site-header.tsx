@@ -130,9 +130,28 @@ export function SiteHeader() {
         hidden && "-translate-y-full",
       )}
     >
-      {/* Mobile compact header — inner pages only, no background */}
+      {/* Mobile compact header — inner pages only */}
       {!isHome && (
-        <div className="flex h-16 items-center justify-between gap-3 px-4 md:hidden">
+        <div className="relative flex h-16 items-center justify-between gap-3 px-4 md:hidden">
+          {/*
+            A scrim, because this bar has no background of its own: the back
+            button and the cart carry their own pills, but the title sat
+            directly on whatever scrolled beneath it — product photography,
+            the bundle tray — and went unreadable against the light parts.
+
+            It fades from `--background`, not from black: that is the page's own
+            colour, so the same rule reads correctly on the black, white and
+            pink themes instead of laying a dark wash over a light one. It also
+            keeps the bar feeling like it floats, which a solid fill would not.
+
+            `-z-10` is contained by the header's own stacking context (it is
+            `sticky z-40`), so this paints under the bar's controls and over the
+            page — never behind the page itself.
+          */}
+          <span
+            aria-hidden
+            className="from-background pointer-events-none absolute inset-x-0 top-0 -z-10 h-24 bg-linear-to-b to-transparent"
+          />
           <button
             type="button"
             onClick={() => router.back()}

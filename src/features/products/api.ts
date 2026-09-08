@@ -394,9 +394,35 @@ function orNull<T>(list: T[] | undefined): T[] | null {
  * RPC ажиллахгүй бол (0058 хараахан хэрэгжээгүй сан, эсвэл demo горим) хуучин
  * санах ойн замаар уншина — дэлгүүр хоосорч харагдахаас сэргийлнэ.
  */
+/**
+ * A gender filter also answers with unisex scents.
+ *
+ * «Эрэгтэй» on this shop means "a scent a man would wear", not "a scent
+ * labelled male" — and a unisex bottle is exactly that. Filtering it out hid
+ * a large part of the catalogue behind a choice nobody makes expecting to
+ * narrow it that hard; it is the same reasoning that already lets a season of
+ * "all" answer every season filter.
+ *
+ * Picking unisex on its own still means unisex on its own: that is a
+ * deliberately narrower question.
+ */
+export function expandGenders(
+  gender: CatalogFilters["gender"],
+): CatalogFilters["gender"] {
+  if (!gender?.length) return gender;
+  if (!gender.some((g) => g === "male" || g === "female")) return gender;
+  return gender.includes("unisex") ? gender : [...gender, "unisex"];
+}
+
 export async function getCatalog(
-  filters: CatalogFilters = {},
+  input: CatalogFilters = {},
 ): Promise<CatalogResult> {
+  // Widened once, here, so the SQL path and the in-memory fallback below can
+  // never drift on the rule.
+  const filters: CatalogFilters = {
+    ...input,
+    gender: expandGenders(input.gender),
+  };
   const { sort = "new", page = 1, perPage = DEFAULT_PER_PAGE } = filters;
   const supabase = createPublicClient();
 

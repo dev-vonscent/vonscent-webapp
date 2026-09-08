@@ -382,10 +382,25 @@
 
 /* Sticky offset for page content that sits under the auto-hiding header:
    clears the header when it's visible, shrinks to a small gap when it's away.
-   site-header toggles data-header-hidden on <html>. */
+   site-header toggles data-header-hidden on <html>.
+
+   Each value is the header's own height plus the gap that should show under
+   it. Header heights come from site-header: a 4rem compact bar below md
+   (`h-16`), and above it the floating pill at 4.5rem (`pt-4` + `h-14`).
+
+   On a phone the gap is a hairline 4px, so the header and the sticky content
+   under it read as one stacked block — screen height is the scarce thing
+   there, and the two were drifting 32px apart. From md up there is room to
+   breathe, so the gap stays 1.5rem. */
 :root {
-  --header-offset: 6rem;
+  --header-offset: 4.25rem;
 }
+@media (min-width: 48rem) {
+  :root {
+    --header-offset: 6rem;
+  }
+}
+/* Must stay after the media query — same specificity, so source order wins. */
 [data-header-hidden="true"] {
   --header-offset: 1.5rem;
 }
