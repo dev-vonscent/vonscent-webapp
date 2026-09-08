@@ -205,7 +205,7 @@ export function CollectionBuilder({
                 {availableSelected.length}
               </span>
               /{settings.minItems}
-              {settings.maxItems ? `–${settings.maxItems}` : "+"} үнэртэн
+              {settings.maxItems ? `–${settings.maxItems}` : "+"}
             </span>
 
             {memberSum > 0 && saved > 0 && (
@@ -220,7 +220,7 @@ export function CollectionBuilder({
             )}
             {saved > 0 && (
               <span className="text-gold-strong text-xs font-medium">
-                {formatPrice(saved)} хэмнэлээ
+                {formatPrice(saved)} хэмнэлт
               </span>
             )}
           </div>
@@ -232,19 +232,19 @@ export function CollectionBuilder({
           applied, so a customer three scents in had no way to know that one
           more would take 5% off the lot.
         */}
-        <DiscountHint
+        {/* <DiscountHint
           count={availableSelected.length}
           minItems={settings.minItems}
           pct={settings.customDiscountPct}
           active={discountEarned}
-        />
+        /> */}
 
         {/* Selected scents — its own full-width row of larger thumbnails */}
         <div className="mt-3">
           {selected.length === 0 ? (
             <div className="border-border text-muted-foreground flex h-16 items-center justify-center rounded-xl border border-dashed px-3 text-center text-sm">
               Доорх үнэртнүүдээс {settings.minItems}+ сонгож багцаа
-              бүрдүүлээрэй.
+              бүрдүүлээд 5%-ийн хэмнэлттэй аваарай.
             </div>
           ) : (
             /*

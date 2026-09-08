@@ -388,21 +388,24 @@
    it. Header heights come from site-header: a 4rem compact bar below md
    (`h-16`), and above it the floating pill at 4.5rem (`pt-4` + `h-14`).
 
-   On a phone the gap is a hairline 4px, so the header and the sticky content
-   under it read as one stacked block — screen height is the scarce thing
-   there, and the two were drifting 32px apart. From md up there is room to
-   breathe, so the gap stays 1.5rem. */
+   The gap is a hairline 4px at every width, so the header and the sticky
+   content under it read as one stacked block rather than two things that
+   drifted apart. Only the header's own height changes across the breakpoint.
+
+   With the header away there is nothing to clear, so the offset is that same
+   4px hairline: the content parks just under the viewport edge instead of
+   leaving a band of nothing above it. */
 :root {
-  --header-offset: 4.25rem;
+  --header-offset: 4.25rem; /* 4rem bar + 4px */
 }
 @media (min-width: 48rem) {
   :root {
-    --header-offset: 6rem;
+    --header-offset: 4.75rem; /* 4.5rem pill + 4px */
   }
 }
 /* Must stay after the media query — same specificity, so source order wins. */
 [data-header-hidden="true"] {
-  --header-offset: 1.5rem;
+  --header-offset: 0.5rem;
 }
 
 /* The single functional hairline in a borderless system: gives form
