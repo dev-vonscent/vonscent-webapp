@@ -81,9 +81,11 @@ export interface LoyaltySettings {
   redeemRate: number;
 }
 /**
- * Сар бүрийн бэлгийн sample (questions.md №2–3): the admin curates 4–8
- * perfumes; at checkout the buyer picks 1ml samples — one pick per full
- * 200,000₮ of goods value (after the coupon, before shipping).
+ * Бэлгийн үнэрүүдийн сан (backlog A2–A4): админ 6–8 ус сонгож, худалдан авагч
+ * checkout дээр зөвхөн эндээс 1мл дээж сонгоно — купоны дараах барааны дүнгийн
+ * 200,000₮ тутамд 1, эсвэл preset 5/10/20мл багц бүрийн баталгаа (ихийг нь).
+ * Сан бол бүх бэлгийн ЦОРЫН ГАНЦ эх сурвалж; сар бүр солих үүрэггүй, админ
+ * хүссэн үедээ шинэчилнэ.
  */
 export interface GiftSettings {
   enabled: boolean;
