@@ -1,0 +1,7 @@
+node_modules/
+out/
+.env
+.env.local
+
+# Contains the QPay merchant password in plaintext — never commit.
+requirement.md

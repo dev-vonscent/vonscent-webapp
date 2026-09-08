@@ -1,0 +1,23 @@
+{
+  "name": "qpay-harness",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone QPay V2 merchant API test harness for VONSCENT",
+  "scripts": {
+    "token": "tsx src/scripts/01-token.ts",
+    "invoice": "tsx src/scripts/02-invoice.ts",
+    "check": "tsx src/scripts/03-check.ts",
+    "invoice:get": "tsx src/scripts/04-invoice-get.ts",
+    "invoice:cancel": "tsx src/scripts/05-invoice-cancel.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/qrcode-terminal": "^0.12.2",
+    "dotenv": "^17.2.1",
+    "qrcode-terminal": "^0.12.0",
+    "tsx": "^4.20.4",
+    "typescript": "^5.9.2"
+  }
+}
