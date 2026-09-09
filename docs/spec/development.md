@@ -272,3 +272,17 @@ QPay **ба банк шилжүүлэг** хоёул — checkout дээр со�
 ### 9.5 Дараа анхаарах (одоо биш)
 - **Resend free tier** (≈100 имэйл/өдөр, 3000/сар) — newsletter жагсаалт томрох үед
   paid руу шилжих эсвэл өөр ESP сонгоно.
+
+### 9.6 Функцийн region (шийдсэн)
+Supabase project нь **ap-northeast-2 (Seoul)** дээр байдаг тул Vercel функцийг ч
+`icn1` (Seoul) дээр гүйлгэнэ — `vercel.json` → `regions: ["icn1"]`. Өгөгдмөл нь
+`iad1` (Вашингтон) бөгөөд тэр тохиргоотойгоор `dev.vonscent.mn` дээр хэмжихэд
+каталогийн TTFB 520–740ms, нийт 1.3–1.7s байсан: query бүр Ази ↔ АНУ (~220ms
+RTT) дамжиж, RSC payload нь бас тэр урт хоолойгоор явж байв.
+
+- `vercel.json`-ы `regions` нь Project Settings → Functions → Region-ыг дардаг.
+  Hobby план ч **нэг** region сонгож болно (Pro/Enterprise л олон region авна).
+- Static файл, PoP/CDN-д хамаагүй — зөвхөн функц хаана гүйхийг л шийднэ.
+- Хүчин төгөлдөр болохын тулд дахин deploy шаардлагатай; дараа нь
+  `curl -sI https://dev.vonscent.mn/catalog | grep x-vercel-id` дээр
+  `...::icn1::...` гэж харагдана.

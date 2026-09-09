@@ -9,13 +9,17 @@ import { CatalogFilterSheet } from "@/features/catalog/components/catalog-filter
 import { CatalogSort } from "@/features/catalog/components/catalog-sort";
 import { CatalogSearch } from "@/features/catalog/components/catalog-search";
 import { CatalogPagination } from "@/features/catalog/components/catalog-pagination";
+import { CatalogResults } from "@/features/catalog/components/catalog-results";
+import { FilterQueryProvider } from "@/features/catalog/components/use-filter-query";
 import { ProductGrid } from "@/features/products/components/product-grid";
 import { Button } from "@/components/ui/button";
 
 /**
- * ISR: public data comes from the cookie-less client, so the page is
- * cacheable. Admin writes purge it via revalidatePublic(); this window
- * is just the safety net for writes that bypass the admin API.
+ * The route itself is dynamic — it reads `searchParams`, so a filtered view is
+ * rendered per request and this window only covers the unfiltered /catalog
+ * entry. The filter data behind it is what's actually cached: `catalogSearch`,
+ * the facets and the taxonomy (features/products/api.ts, features/taxonomy)
+ * each carry their own window plus a tag that revalidatePublic() purges.
  */
 export const revalidate = 60;
 
@@ -45,79 +49,83 @@ export default async function CatalogPage({
   );
 
   return (
-    <div className="mx-auto max-w-352 px-4 py-8 md:px-8">
-      <div className="mb-6">
-        <h1 className="font-serif text-3xl font-semibold tracking-tight">
-          {filters.search ? `«${filters.search}» хайлтын үр дүн` : "Каталог"}
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          {filters.search
-            ? `${result.total} илэрц олдлоо`
-            : `${result.total} бараа олдлоо`}
-        </p>
-      </div>
+    <FilterQueryProvider>
+      <div className="mx-auto max-w-352 px-4 py-8 md:px-8">
+        <div className="mb-6">
+          <h1 className="font-serif text-3xl font-semibold tracking-tight">
+            {filters.search ? `«${filters.search}» хайлтын үр дүн` : "Каталог"}
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {filters.search
+              ? `${result.total} илэрц олдлоо`
+              : `${result.total} бараа олдлоо`}
+          </p>
+        </div>
 
-      {/* Controls — mobile only (on desktop the search sits above the sidebar) */}
-      <div className="border-border flex items-center gap-2 border-y py-3 lg:hidden">
-        <CatalogFilterSheet
-          brands={brands}
-          brandLogos={brandLogos}
-          priceBounds={priceBounds}
-          families={families}
-        />
-        <CatalogSort iconOnly />
-        <CatalogSearch className="flex-1" />
-      </div>
-
-      <div className="mt-6 flex gap-10 lg:mt-8">
-        {/* Desktop sidebar: search above the filter, sharing its width */}
-        <aside className="hidden w-72 shrink-0 lg:block">
-          <CatalogSearch className="mb-6" />
-          <CatalogFilters
+        {/* Controls — mobile only (on desktop the search sits above the sidebar) */}
+        <div className="border-border flex items-center gap-2 border-y py-3 lg:hidden">
+          <CatalogFilterSheet
             brands={brands}
             brandLogos={brandLogos}
             priceBounds={priceBounds}
             families={families}
           />
-        </aside>
+          <CatalogSort iconOnly />
+          <CatalogSearch className="flex-1" />
+        </div>
 
-        {/*
+        <div className="mt-6 flex gap-10 lg:mt-8">
+          {/* Desktop sidebar: search above the filter, sharing its width */}
+          <aside className="hidden w-72 shrink-0 lg:block">
+            <CatalogSearch className="mb-6" />
+            <CatalogFilters
+              brands={brands}
+              brandLogos={brandLogos}
+              priceBounds={priceBounds}
+              families={families}
+            />
+          </aside>
+
+          {/*
           `min-w-0` is load-bearing, not tidiness. A flex child defaults to
           `min-width: auto`, so the product grid pushed this column out to its
           own content width and the whole page scrolled sideways on a phone —
           93px of it, measured at 390px.
         */}
-        <div className="min-w-0 flex-1">
-          {/* Sort — top-right above the products (desktop) */}
-          <div className="mb-4 hidden items-center justify-end lg:flex">
-            <CatalogSort />
-          </div>
-
-          {result.items.length === 0 ? (
-            <div className="border-border flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed py-24 text-center">
-              <SearchX className="text-muted-foreground size-10" />
-              <div>
-                <p className="font-medium">Илэрц олдсонгүй</p>
-                <p className="text-muted-foreground text-sm">
-                  Шүүлтүүрээ өөрчилж дахин оролдоно уу.
-                </p>
-              </div>
-              <Button asChild variant="outline">
-                <Link href="/catalog">Бүх барааг үзэх</Link>
-              </Button>
+          <div className="min-w-0 flex-1">
+            {/* Sort — top-right above the products (desktop) */}
+            <div className="mb-4 hidden items-center justify-end lg:flex">
+              <CatalogSort />
             </div>
-          ) : (
-            <>
-              <ProductGrid products={result.items} />
-              <CatalogPagination
-                page={result.page}
-                perPage={result.perPage}
-                total={result.total}
-              />
-            </>
-          )}
+
+            <CatalogResults>
+              {result.items.length === 0 ? (
+                <div className="border-border flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed py-24 text-center">
+                  <SearchX className="text-muted-foreground size-10" />
+                  <div>
+                    <p className="font-medium">Илэрц олдсонгүй</p>
+                    <p className="text-muted-foreground text-sm">
+                      Шүүлтүүрээ өөрчилж дахин оролдоно уу.
+                    </p>
+                  </div>
+                  <Button asChild variant="outline">
+                    <Link href="/catalog">Бүх барааг үзэх</Link>
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <ProductGrid products={result.items} />
+                  <CatalogPagination
+                    page={result.page}
+                    perPage={result.perPage}
+                    total={result.total}
+                  />
+                </>
+              )}
+            </CatalogResults>
+          </div>
         </div>
       </div>
-    </div>
+    </FilterQueryProvider>
   );
 }

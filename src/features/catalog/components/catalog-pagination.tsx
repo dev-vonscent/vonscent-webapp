@@ -1,7 +1,7 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { useFilterQuery } from "./use-filter-query";
 
 /**
  * Page numbers worth showing: first, last, current ±1, with "…" gaps.
@@ -32,17 +32,13 @@ export function CatalogPagination({
   perPage: number;
   total: number;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  // Paging goes through the shared filter state so it lights up (and dims the
+  // grid) as fast as a filter chip does, instead of waiting on the server.
+  const { setPage } = useFilterQuery();
   const pages = Math.ceil(total / perPage);
   if (pages <= 1) return null;
 
-  function go(p: number) {
-    const next = new URLSearchParams(searchParams.toString());
-    next.set("page", String(p));
-    router.push(`${pathname}?${next.toString()}`, { scroll: true });
-  }
+  const go = setPage;
 
   return (
     <div className="mt-12 flex items-center justify-center gap-2">
