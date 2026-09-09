@@ -1,5 +1,7 @@
 import "server-only";
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAG_CATALOG } from "@/lib/cache-tags";
 import * as Sentry from "@sentry/nextjs";
 import type {
   CatalogFilters,
@@ -395,6 +397,37 @@ function orNull<T>(list: T[] | undefined): T[] | null {
  * санах ойн замаар уншина — дэлгүүр хоосорч харагдахаас сэргийлнэ.
  */
 /**
+ * `catalog_search` per filter combination, held for a minute.
+ *
+ * The page is dynamic (it reads searchParams), so its `revalidate = 60` never
+ * applied to a filtered view and every chip click paid for a fresh query
+ * against the database — cheap next to a local Postgres, ~a second away from a
+ * hosted one. The arguments are part of the cache key, so re-picking a filter
+ * (or a second visitor picking the same one) is served from cache, and admin
+ * writes purge the tag rather than waiting the window out.
+ *
+ * Errors are rethrown, not returned: a thrown error isn't cached, so a blip
+ * doesn't pin an empty catalogue in place for a minute.
+ */
+const catalogSearch = unstable_cache(
+  async (params: Record<string, unknown>): Promise<CatalogRow[]> => {
+    const supabase = createPublicClient();
+    if (!supabase) throw new Error("catalog_search: no supabase client");
+    const { data, error } = await callRpc<CatalogRow[]>(
+      supabase,
+      "catalog_search",
+      params,
+    );
+    if (error || !data) {
+      throw new Error(`catalog_search failed: ${error?.message ?? "no rows"}`);
+    }
+    return data;
+  },
+  ["catalog-search"],
+  { revalidate: 60, tags: [CACHE_TAG_CATALOG] },
+);
+
+/**
  * A gender filter also answers with unisex scents.
  *
  * «Эрэгтэй» on this shop means "a scent a man would wear", not "a scent
@@ -424,13 +457,10 @@ export async function getCatalog(
     gender: expandGenders(input.gender),
   };
   const { sort = "new", page = 1, perPage = DEFAULT_PER_PAGE } = filters;
-  const supabase = createPublicClient();
 
-  if (supabase) {
-    const { data, error } = await callRpc<CatalogRow[]>(
-      supabase,
-      "catalog_search",
-      {
+  if (isSupabaseConfigured) {
+    try {
+      const data = await catalogSearch({
         p_terms: filters.search ? searchTerms(filters.search) : null,
         p_ids: orNull(filters.ids),
         p_brands: orNull(filters.brand),
@@ -445,9 +475,7 @@ export async function getCatalog(
         p_sort: sort,
         p_page: page,
         p_per_page: perPage,
-      },
-    );
-    if (!error && data) {
+      });
       return {
         items: data.map(fromCatalogRow),
         // `total` нь мөр болгонд давтагдаж ирдэг; илэрцгүй бол 0.
@@ -455,10 +483,9 @@ export async function getCatalog(
         page,
         perPage,
       };
+    } catch (err) {
+      Sentry.captureException(err);
     }
-    Sentry.captureException(
-      new Error(`catalog_search failed: ${error?.message ?? "no rows"}`),
-    );
   }
 
   return memoryCatalog(filters);
@@ -735,30 +762,46 @@ export async function getOnSale(limit = 8): Promise<ProductListItem[]> {
  * Хоёулаа нэг SQL дуудлагаас гарна (`catalog_facets()`), request-д нэг удаа
  * (React `cache`). Өмнө нь тус тусдаа бүх каталогийг ачаалж боддог байв.
  */
-const fetchFacets = cache(
-  async (): Promise<{ brands: string[]; min: number; max: number }> => {
-    const supabase = createPublicClient();
-    if (supabase) {
-      const { data, error } = await callRpc<
-        { brands: string[]; min_price: number; max_price: number }[]
-      >(supabase, "catalog_facets", {});
-      const row = data?.[0];
-      if (!error && row) {
-        return {
-          brands: row.brands ?? [],
-          min: row.min_price ?? 0,
-          max: row.max_price ?? 0,
-        };
-      }
+/**
+ * Brand list and price bounds don't depend on the filters, yet the catalog
+ * re-rendered them on every chip click — four extra database round trips per
+ * filter change, which is most of the wait on a deployment that isn't next to
+ * its database. `cache()` alone only dedupes within one request, so the result
+ * is held across requests too and purged by tag on admin writes.
+ */
+const fetchFacetsUncached = async (): Promise<{
+  brands: string[];
+  min: number;
+  max: number;
+}> => {
+  const supabase = createPublicClient();
+  if (supabase) {
+    const { data, error } = await callRpc<
+      { brands: string[]; min_price: number; max_price: number }[]
+    >(supabase, "catalog_facets", {});
+    const row = data?.[0];
+    if (!error && row) {
+      return {
+        brands: row.brands ?? [],
+        min: row.min_price ?? 0,
+        max: row.max_price ?? 0,
+      };
     }
-    const all = await fetchProducts();
-    const prices = all.map((p) => p.startingPrice).filter((n) => n > 0);
-    return {
-      brands: [...new Set(all.map((p) => p.brand))].sort(),
-      min: prices.length ? Math.min(...prices) : 0,
-      max: prices.length ? Math.max(...prices) : 0,
-    };
-  },
+  }
+  const all = await fetchProducts();
+  const prices = all.map((p) => p.startingPrice).filter((n) => n > 0);
+  return {
+    brands: [...new Set(all.map((p) => p.brand))].sort(),
+    min: prices.length ? Math.min(...prices) : 0,
+    max: prices.length ? Math.max(...prices) : 0,
+  };
+};
+
+const fetchFacets = cache(
+  unstable_cache(fetchFacetsUncached, ["catalog-facets"], {
+    revalidate: 300,
+    tags: [CACHE_TAG_CATALOG],
+  }),
 );
 
 export async function getBrands(): Promise<string[]> {

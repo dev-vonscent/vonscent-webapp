@@ -1,5 +1,7 @@
 import "server-only";
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAG_TAXONOMY } from "@/lib/cache-tags";
 import type { BrandOption, ScentFamilyOption } from "@/lib/types";
 import { DEFAULT_SCENT_FAMILIES } from "@/lib/constants";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -58,26 +60,36 @@ export async function sanitizeCustomTags(slugs: string[]): Promise<string[]> {
 }
 
 /** Every family, including deactivated ones (admin view). */
+const fetchScentFamiliesUncached = async (): Promise<ScentFamilyOption[]> => {
+  if (!isSupabaseConfigured) return DEMO_FAMILIES;
+  const supabase = createPublicClient();
+  if (!supabase) return DEMO_FAMILIES;
+
+  const { data, error } = await supabase
+    .from("scent_families")
+    .select("slug, label, icon_url, sort_order, is_active")
+    .order("sort_order", { ascending: true });
+
+  if (error || !data) return DEMO_FAMILIES;
+  return (data as unknown as DbScentFamily[]).map((r) => ({
+    slug: r.slug,
+    label: r.label,
+    iconUrl: r.icon_url,
+    sortOrder: r.sort_order,
+    isActive: r.is_active,
+  }));
+};
+
+/**
+ * The taxonomy changes when an admin edits it, not when a shopper filters, so
+ * it is held across requests as well as within one — the catalog page used to
+ * re-query it on every chip click. Admin writes purge it by tag.
+ */
 export const fetchScentFamilies = cache(
-  async (): Promise<ScentFamilyOption[]> => {
-    if (!isSupabaseConfigured) return DEMO_FAMILIES;
-    const supabase = createPublicClient();
-    if (!supabase) return DEMO_FAMILIES;
-
-    const { data, error } = await supabase
-      .from("scent_families")
-      .select("slug, label, icon_url, sort_order, is_active")
-      .order("sort_order", { ascending: true });
-
-    if (error || !data) return DEMO_FAMILIES;
-    return (data as unknown as DbScentFamily[]).map((r) => ({
-      slug: r.slug,
-      label: r.label,
-      iconUrl: r.icon_url,
-      sortOrder: r.sort_order,
-      isActive: r.is_active,
-    }));
-  },
+  unstable_cache(fetchScentFamiliesUncached, ["scent-families"], {
+    revalidate: 300,
+    tags: [CACHE_TAG_TAXONOMY],
+  }),
 );
 
 /** Only the families customers should see in the catalog filter. */
@@ -123,7 +135,7 @@ interface DbBrand {
  * Empty in demo mode — the product form falls back to a free-text field there,
  * because a dropdown with nothing in it cannot be filled in.
  */
-export const fetchBrands = cache(async (): Promise<BrandOption[]> => {
+const fetchBrandsUncached = async (): Promise<BrandOption[]> => {
   if (!isSupabaseConfigured) return [];
   const supabase = createPublicClient();
   if (!supabase) return [];
@@ -140,7 +152,14 @@ export const fetchBrands = cache(async (): Promise<BrandOption[]> => {
     sortOrder: r.sort_order,
     isActive: r.is_active,
   }));
-});
+};
+
+export const fetchBrands = cache(
+  unstable_cache(fetchBrandsUncached, ["brands"], {
+    revalidate: 300,
+    tags: [CACHE_TAG_TAXONOMY],
+  }),
+);
 
 /** Only the brands the admin still wants offered on the product form. */
 export async function getActiveBrands(): Promise<BrandOption[]> {

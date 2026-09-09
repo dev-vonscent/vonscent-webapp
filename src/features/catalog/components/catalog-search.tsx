@@ -10,17 +10,36 @@ export function CatalogSearch({ className }: { className?: string }) {
   const { setSingle, searchParams } = useFilterQuery();
   const urlQuery = searchParams.get("q") ?? "";
   const [value, setValue] = React.useState(urlQuery);
+  // Last query we wrote to the URL ourselves, and whether that write is still
+  // in flight. While it is, the URL keeps echoing the *previous* query back at
+  // us; syncing that into the input would wipe out characters typed in the
+  // meantime.
+  const committedRef = React.useRef(urlQuery);
+  const pendingRef = React.useRef(false);
 
-  // Keep the input in sync when the URL query changes (e.g. browser nav).
-  React.useEffect(() => setValue(urlQuery), [urlQuery]);
-
-  // Debounce updates to the URL; skip when nothing actually changed so we
-  // don't reset pagination on mount.
+  // URL -> input, but only for changes we didn't cause (browser nav, links).
   React.useEffect(() => {
-    if (value === urlQuery) return;
-    const id = setTimeout(() => setSingle("q", value.trim() || undefined), 350);
+    if (urlQuery === committedRef.current) {
+      pendingRef.current = false; // our own write landed
+      return;
+    }
+    if (pendingRef.current) return; // stale echo, ignore
+    committedRef.current = urlQuery;
+    setValue(urlQuery);
+  }, [urlQuery]);
+
+  // input -> URL, debounced. Compare against the committed query so an
+  // unchanged value (e.g. on mount, or a trailing space) doesn't navigate.
+  React.useEffect(() => {
+    const trimmed = value.trim();
+    if (trimmed === committedRef.current) return;
+    const id = setTimeout(() => {
+      committedRef.current = trimmed;
+      pendingRef.current = true;
+      setSingle("q", trimmed || undefined);
+    }, 350);
     return () => clearTimeout(id);
-  }, [value, urlQuery, setSingle]);
+  }, [value, setSingle]);
 
   return (
     <div className={cn("relative", className)}>
