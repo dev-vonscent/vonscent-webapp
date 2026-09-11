@@ -68,9 +68,13 @@ function HitThumb({ hit }: { hit: SearchHit }) {
           alt={hit.title}
           fill
           sizes="48px"
-          // Брэндийн лого ихэвчлэн ил захтай — тайрахгүй багтаана.
+          // Брэндийн лого ихэвчлэн ил захтай — тайрахгүй багтаана. Лого нь
+          // тунгалаг дээрх хар зураг тул dark mode-д `brand-logo` (globals.css)
+          // урвуулж харагдуулна.
           className={
-            hit.kind === "brand" ? "object-contain p-1.5" : "object-cover"
+            hit.kind === "brand"
+              ? "brand-logo object-contain p-1.5"
+              : "object-cover"
           }
         />
       ) : (

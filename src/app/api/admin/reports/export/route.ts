@@ -58,7 +58,7 @@ export async function GET(req: Request) {
       : { data: [] };
     const orders = (data as OrderRow[] | null) ?? [];
     rows = [
-      ["Дугаар", "Огноо", "Хэрэглэгч", "Дэд дүн", "Хямдрал", "Нийт", "Төлөв"],
+      ["Дугаар", "Огноо", "Хэрэглэгч", "Барааны дүн", "Хямдрал", "Нийт", "Төлөв"],
       ...orders.map((o) => [
         o.order_no,
         new Date(o.created_at).toISOString().slice(0, 10),

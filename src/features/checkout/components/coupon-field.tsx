@@ -34,6 +34,7 @@ export function CouponField({
   onCodeChange,
   onApply,
   applying,
+  loading = false,
   message,
   onPick,
   onRemove,
@@ -44,13 +45,17 @@ export function CouponField({
   onCodeChange: (value: string) => void;
   onApply: () => void;
   applying: boolean;
+  /** Санал болгох купонуудыг сервер хайж байна. */
+  loading?: boolean;
   message: string | null;
   onPick: (coupon: AvailableCoupon) => void;
   onRemove: () => void;
 }) {
   // With offers on screen the input is the fallback, so it starts folded away.
   const [manualOpen, setManualOpen] = React.useState(false);
-  const showManual = manualOpen || offers.length === 0;
+  // Хайлт дуусаагүй байхад «купон байхгүй» гэж шийдэхгүй — эс тэгвээс input
+  // гарч ирээд, санал ирэхэд нь дахин алга болж анивчина.
+  const showManual = manualOpen || (!loading && offers.length === 0);
 
   if (applied) {
     return (
@@ -97,6 +102,13 @@ export function CouponField({
             ))}
           </ul>
         </>
+      )}
+
+      {loading && offers.length === 0 && !manualOpen && (
+        <div className="space-y-2" aria-hidden>
+          <div className="bg-secondary h-4 w-32 animate-pulse rounded" />
+          <div className="bg-secondary h-16 w-full animate-pulse rounded-xl" />
+        </div>
       )}
 
       {showManual ? (

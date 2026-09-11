@@ -7,12 +7,11 @@ import Image from "next/image";
 import {
   User,
   MapPin,
-  CreditCard,
   Truck,
-  Sparkles,
   ShieldCheck,
   ShoppingCart,
   Clock,
+  Loader2,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,7 +21,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -31,11 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { checkoutSchema } from "@/lib/validators/order";
-import {
-  SHIPPING_ZONES,
-  PAYMENT_METHODS,
-  type ShippingZoneConfig,
-} from "@/lib/constants";
+import { SHIPPING_ZONES, type ShippingZoneConfig } from "@/lib/constants";
 import {
   bundleGiftGuarantee,
   giftAllowanceFor,
@@ -43,7 +37,6 @@ import {
 } from "@/lib/gift";
 import { GiftSamplePicker } from "@/features/checkout/components/gift-sample-picker";
 import { useGiftPool } from "@/features/gifts/use-gift-pool";
-import { CheckoutStepper } from "@/features/checkout/components/checkout-stepper";
 import {
   DISPATCH_HOUR,
   MAX_PREORDER_DAYS,
@@ -52,22 +45,26 @@ import {
   ubDayFromNow,
 } from "@/lib/time";
 import { resolveZone, zoneKey } from "@/lib/geo/zone";
-import {
-  AddressFields,
-  composeDetail,
-} from "@/features/checkout/components/address-fields";
+import { composeDetail } from "@/features/checkout/components/address-fields";
 import {
   NEW_ADDRESS,
   SavedAddresses,
 } from "@/features/checkout/components/saved-addresses";
+import {
+  AddressDialog,
+  type AddressFormValue,
+} from "@/features/checkout/components/address-dialog";
 import { CouponField } from "@/features/checkout/components/coupon-field";
+import { useCoupon } from "@/features/checkout/use-coupon";
 import { formatPrice } from "@/lib/format";
-import { isPhoneEmail } from "@/lib/auth/phone-email";
 import { useCart, selectSubtotal } from "@/features/cart/store";
+import {
+  useSelectedLines,
+  getSelectedLines,
+} from "@/features/cart/use-cart-selection";
 import { trackBeginCheckout } from "@/lib/analytics";
 import { createClient } from "@/lib/supabase/browser";
 import type { AddressRow } from "@/db/types";
-import type { AvailableCoupon } from "@/app/api/coupons/available/route";
 
 interface ShippingSettingsShape {
   zones: {
@@ -80,35 +77,41 @@ interface ShippingSettingsShape {
   }[];
 }
 
-/** Ready-made delivery notes the client asked for (gift wrap, call ahead, …). */
-const NOTE_OPTIONS = [
-  "Бэлгийн боолт хийлгэх",
-  "Хүргэхээс өмнө залгах",
-  "Өөр хүн хүлээж авна",
-  "Ажлын цагаар хүргэх",
-];
+/**
+ * Ready-made delivery notes. Хүргэлтэд үнэхээр өөр үйлдэл шаарддаг хоёрыг л
+ * үлдээв — «өөр хүн хүлээж авна» гэдэг нь хүлээн авагчийн мэдээллээр аль
+ * хэдийн шийдэгддэг, «ажлын цагаар хүргэх» нь хүргэлтийн цагтай зөрчилддөг.
+ */
+const NOTE_OPTIONS = ["Бэлгийн боолт хийлгэх", "Хүргэхээс өмнө залгах"];
 
 const formSchema = checkoutSchema.omit({ items: true, collections: true });
 type FormValues = z.infer<typeof formSchema>;
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const items = useCart((s) => s.items);
-  const collections = useCart((s) => s.collections);
+  // Захиалга сагснаас *сонгосон* мөрүүдийг л авна — сонгоогүй бараа сагсандаа
+  // үлдэж, дараа нь тусад нь захиалагдана.
+  const { items, collections } = useSelectedLines();
+  const cartLineCount = useCart((s) => s.items.length + s.collections.length);
   const subtotal = useCart(selectSubtotal);
   const coupon = useCart((s) => s.coupon);
-  const clear = useCart((s) => s.clear);
+  const removeOrdered = useCart((s) => s.removeSelected);
   const removeLine = useCart((s) => s.remove);
   const [mounted, setMounted] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
+  // Захиалга үүсээд төлбөрийн хуудас руу шилжих хооронд сагс хоосорсон тул
+  // «Сагс хоосон байна» гэсэн хоосон төлөв анивчдаг байсан — router.push нь
+  // тэр хооронд хийгддэг. Шилжиж байгаа гэдгээ тусад нь тэмдэглэнэ.
+  const [leaving, setLeaving] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
 
   const [authed, setAuthed] = React.useState(false);
   const [addresses, setAddresses] = React.useState<AddressRow[]>([]);
-  /** Chosen saved address id, or NEW_ADDRESS while the form is open. */
+  /** Chosen saved address id, or NEW_ADDRESS for the one typed in the dialog. */
   const [addressChoice, setAddressChoice] = React.useState(NEW_ADDRESS);
-  /** A guest, or a customer with no addresses, only ever sees the form. */
-  const showAddressForm = addressChoice === NEW_ADDRESS;
+  /** Popup-аар оруулсан шинэ хаяг — хадгалсан хаягтай ижил карт болж харагдана. */
+  const [draft, setDraft] = React.useState<AddressFormValue | null>(null);
+  const [addressOpen, setAddressOpen] = React.useState(false);
 
   const [loyaltyPoints, setLoyaltyPoints] = React.useState(0);
   const [redeemRate, setRedeemRate] = React.useState(1);
@@ -128,11 +131,19 @@ export default function CheckoutPage() {
   // has to be visible to onSubmit in that same tick.
   const guestWarned = React.useRef(false);
   const [showGuestWarning, setShowGuestWarning] = React.useState(false);
-  const [code, setCode] = React.useState("");
-  const [couponMsg, setCouponMsg] = React.useState<string | null>(null);
-  const [applying, setApplying] = React.useState(false);
-  const [offers, setOffers] = React.useState<AvailableCoupon[]>([]);
-  const setCoupon = useCart((s) => s.setCoupon);
+  // Купоны бүх логик (санал болгох, дахин шалгах) нэг hook дотор.
+  const {
+    discount,
+    offers,
+    code,
+    setCode,
+    apply: applyCoupon,
+    applying,
+    offersLoading,
+    message: couponMsg,
+    pick: pickCoupon,
+    clear: clearCoupon,
+  } = useCoupon(subtotal, { enabled: mounted });
 
   const {
     register,
@@ -149,12 +160,19 @@ export default function CheckoutPage() {
     },
   });
 
-  /** Fills the form from a saved address — used by the picker and, on load,
-   *  by the default address the query puts first. */
+  /**
+   * Fills the form from a saved address.
+   *
+   * Хүлээн авагчийн нэр, утсыг зөвхөн хэрэглэгч өөрөө хаяг сонгоход бөглөнө:
+   * хуудас нээгдэхэд үндсэн хаягийн хүн автоматаар бичигдчихвэл өөр хүнд
+   * хүргүүлэх захиалга дээр хэн ч тэр хоёр талбарыг хянаж үздэггүй.
+   */
   const applyAddress = React.useCallback(
-    (a: AddressRow) => {
-      setValue("contactName", a.recipient);
-      setValue("contactPhone", a.phone);
+    (a: AddressRow, { contact = true }: { contact?: boolean } = {}) => {
+      if (contact) {
+        setValue("contactName", a.recipient);
+        setValue("contactPhone", a.phone);
+      }
       setValue("shipCity", a.city);
       setValue("shipDistrict", a.district ?? "");
       setValue("shipDetail", a.detail);
@@ -208,7 +226,7 @@ export default function CheckoutPage() {
   const checkoutTracked = React.useRef(false);
   React.useEffect(() => {
     if (checkoutTracked.current || !mounted) return;
-    const { items: cartItems, collections: cartCols } = useCart.getState();
+    const { items: cartItems, collections: cartCols } = getSelectedLines();
     if (cartItems.length === 0 && cartCols.length === 0) return;
     checkoutTracked.current = true;
     trackBeginCheckout(
@@ -245,7 +263,7 @@ export default function CheckoutPage() {
         await Promise.all([
           supabase
             .from("profiles")
-            .select("full_name, phone, loyalty_points")
+            .select("loyalty_points")
             .eq("id", user.id)
             .maybeSingle(),
           supabase
@@ -259,25 +277,9 @@ export default function CheckoutPage() {
             .eq("key", "loyalty")
             .maybeSingle(),
         ]);
-      const p = profile as {
-        full_name?: string;
-        phone?: string;
-        loyalty_points?: number;
-      } | null;
-      if (p?.full_name) setValue("contactName", p.full_name);
-      if (p?.phone) setValue("contactPhone", p.phone);
-      // Supabase-ийн `<утас>@phone.vonscent.mn` бол дотоод хаяг — захиалгад
-      // хэзээ ч бичигдэхгүй. Хэрэглэгчийн өөрөө бүртгүүлсэн хаяг байвал тэр,
-      // үгүй бол талбар хоосон хэвээр.
-      if (user.email && !isPhoneEmail(user.email)) {
-        setValue("contactEmail", user.email);
-      }
-      fetch("/api/newsletter/me")
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data: { email?: string | null } | null) => {
-          if (data?.email) setValue("contactEmail", data.email);
-        })
-        .catch(() => undefined);
+      // Хүлээн авагчийн нэр, утас, имэйлийг дансны мэдээллээр бөглөхгүй:
+      // талбарууд хоосон эхэлж, захиалга бүрт хэн хүлээж авахыг ил бичнэ.
+      const p = profile as { loyalty_points?: number } | null;
       setLoyaltyPoints(p?.loyalty_points ?? 0);
       const rows = (addrs as AddressRow[] | null) ?? [];
       setAddresses(rows);
@@ -286,7 +288,7 @@ export default function CheckoutPage() {
       // the same one every time.
       if (rows[0]) {
         setAddressChoice(rows[0].id);
-        applyAddress(rows[0]);
+        applyAddress(rows[0], { contact: false });
       }
       const rate = (setting as { value?: { redeemRate?: number } } | null)
         ?.value?.redeemRate;
@@ -294,51 +296,40 @@ export default function CheckoutPage() {
     })();
   }, [setValue, applyAddress]);
 
-  // Offer the codes this customer can actually use, rather than expecting
-  // them to remember one (todo.md B4). Re-asked whenever the cart total moves,
-  // since a coupon's minimum may only just have been met.
-  React.useEffect(() => {
-    if (!mounted || subtotal <= 0 || coupon) {
-      setOffers([]);
-      return;
-    }
-    let cancelled = false;
-    fetch("/api/coupons/available", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subtotal }),
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!cancelled) setOffers(data?.coupons ?? []);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [mounted, subtotal, coupon]);
-
   const zone = watch("shipZone");
-  const payment = watch("paymentMethod");
   const city = watch("shipCity");
+  const detail = watch("shipDetail");
   const district = watch("shipDistrict");
 
-  // Zone follows the address wherever the admin has mapped it (B5b). The
-  // server re-derives it the same way, so this only keeps the displayed fee
-  // honest — it is not what the customer is charged on.
+  // Бүсийг хэрэглэгч сонгохоо больсон: хаягаа сонгомогц админы бүсийн
+  // хүснэгтээс (B5b) бүс, түүнтэй хамт хүргэлтийн үнэ өөрөө тодорхойлогдоно.
+  // Сервер яг ижил дүрмээр дахин бодох тул энэ нь зөвхөн харагдах үнийг зөв
+  // байлгах — хэрэглэгч хямд бүс «сонгох» боломж байхгүй.
   const autoZone = React.useMemo(
     () => resolveZone(zones, { city, district, khoroo }),
     [zones, city, district, khoroo],
   );
   React.useEffect(() => {
-    if (autoZone) setValue("shipZone", autoZone);
-  }, [autoZone, setValue]);
+    // Дүрэм таарахгүй хаяг (админ бүсээ бүрэн зураагүй) бол хүргэдэг бүсийн
+    // эхнийхээр үнэлнэ — сервер ч ийм тохиолдолд ингэж бодно.
+    const fallback = zones.find((z) => z.deliverable !== false) ?? zones[0];
+    const next = autoZone ?? (fallback ? zoneKey(fallback) : null);
+    if (next) setValue("shipZone", next);
+  }, [autoZone, zones, setValue]);
   const selectedZone = zones.find((z) => zoneKey(z) === zone) ?? zones[0];
   const zoneBlocked = selectedZone ? !selectedZone.deliverable : false;
+  /** Хаяг бүрэн эсэх — бүс, хүргэлтийн үнэ зөвхөн үүний дараа гарна. */
+  const hasAddress = Boolean(city && district && detail);
+  /** Хаягийн блокийн доор гарах цорын нэг мессеж (талбарууд popup дотор). */
+  const addressError =
+    errors.shipCity?.message ??
+    errors.shipDistrict?.message ??
+    errors.shipDetail?.message ??
+    errors.shipZone?.message ??
+    null;
   // Every order pays its delivery fee (client rule — no free-shipping tier).
   const shippingFee = zoneBlocked || !selectedZone ? 0 : selectedZone.fee;
 
-  const discount = coupon ? Math.min(coupon.discount, subtotal) : 0;
   // Points cover the goods only — never the delivery fee (questions.md №9).
   const maxLoyalty = Math.min(
     Math.floor(loyaltyPoints * redeemRate),
@@ -359,22 +350,48 @@ export default function CheckoutPage() {
   const loyaltyApplied = useLoyalty ? maxLoyalty : 0;
   const total = Math.max(subtotal + shippingFee - discount - loyaltyApplied, 0);
 
+  /** Popup-аас гарсан хаягийг формд тавиад сонгогдсон болгоно. */
+  function applyDraft(form: AddressFormValue) {
+    setDraft(form);
+    setAddressChoice(NEW_ADDRESS);
+    setValue("shipCity", form.city);
+    setValue("shipDistrict", form.district);
+    setValue("shipDetail", form.detail);
+    setKhoroo(form.khoroo);
+  }
+
   function onAddressChoice(next: string) {
-    setAddressChoice(next);
     if (next === NEW_ADDRESS) {
-      // Blank the address fields so the form opens empty rather than
-      // pre-filled with the address the customer just chose to replace.
-      setValue("shipCity", "Улаанбаатар");
-      setValue("shipDistrict", "");
-      setValue("shipDetail", "");
-      setKhoroo(null);
+      // Оруулсан хаяг байхгүй бол сонгох юм ч байхгүй — popup нээнэ.
+      if (!draft) {
+        setAddressOpen(true);
+        return;
+      }
+      setAddressChoice(NEW_ADDRESS);
+      applyDraft(draft);
       return;
     }
+    setAddressChoice(next);
     const a = addresses.find((x) => x.id === next);
     if (a) applyAddress(a);
   }
 
+  // Төлбөрийн хуудас руу шилжиж байхад сагс аль хэдийн хоосорсон байдаг тул
+  // хоосон төлөвийн оронд шилжиж байгааг харуулна.
+  if (leaving) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-28 text-center md:px-8">
+        <Loader2 className="text-muted-foreground size-7 animate-spin" />
+        <p className="text-muted-foreground text-sm">
+          Төлбөрийн хуудас руу шилжиж байна…
+        </p>
+      </div>
+    );
+  }
+
   if (mounted && items.length === 0 && collections.length === 0) {
+    // Сагс дүүрэн байж болно — зүгээр л нэг ч мөр сонгоогүй байх.
+    const nothingSelected = cartLineCount > 0;
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-5 px-4 py-28 text-center md:px-8">
         <span className="bg-secondary flex size-16 items-center justify-center rounded-full">
@@ -382,45 +399,21 @@ export default function CheckoutPage() {
         </span>
         <div className="space-y-1">
           <h1 className="font-serif text-2xl font-semibold">
-            Сагс хоосон байна
+            {nothingSelected ? "Бараа сонгогдоогүй" : "Сагс хоосон байна"}
           </h1>
           <p className="text-muted-foreground text-sm">
-            Захиалга өгөхийн тулд эхлээд бараа нэмнэ үү.
+            {nothingSelected
+              ? "Сагснаасаа захиалах барааг чагтлаад дахин үргэлжлүүлнэ үү."
+              : "Захиалга өгөхийн тулд эхлээд бараа нэмнэ үү."}
           </p>
         </div>
         <Button asChild size="lg">
-          <Link href="/catalog">Бараа үзэх</Link>
+          <Link href={nothingSelected ? "/cart" : "/catalog"}>
+            {nothingSelected ? "Сагс руу буцах" : "Бараа үзэх"}
+          </Link>
         </Button>
       </div>
     );
-  }
-
-  async function applyCoupon() {
-    if (!code.trim()) return;
-    setApplying(true);
-    setCouponMsg(null);
-    try {
-      const res = await fetch("/api/coupons/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: code.trim(), subtotal }),
-      });
-      const data = await res.json();
-      if (data.valid) {
-        setCoupon({
-          code: data.code ?? code.trim().toUpperCase(),
-          discount: data.discount,
-        });
-        setCode("");
-      } else {
-        setCoupon(null);
-        setCouponMsg(data.message ?? "Купон хүчингүй байна.");
-      }
-    } catch {
-      setCouponMsg("Алдаа гарлаа. Дахин оролдоно уу.");
-    } finally {
-      setApplying(false);
-    }
   }
 
   async function onSubmit(values: FormValues) {
@@ -505,7 +498,10 @@ export default function CheckoutPage() {
         return;
       }
       const order = await res.json();
-      clear();
+      // Захиалга үүссэн — эндээс хойш хуудас зөвхөн шилжих төлөвт байна.
+      setLeaving(true);
+      // Зөвхөн захиалагдсан (сонгосон) мөрүүд сагснаас хасагдана.
+      removeOrdered();
       // The payment page is server-rendered from `pay_token`, so nothing about
       // the order rides in sessionStorage any more: the link survives a reload,
       // a new tab, and being opened on the customer's phone.
@@ -532,21 +528,12 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-352 px-4 py-8 md:px-8">
-      <div className="mb-8">
-        <Link
-          href="/cart"
-          className="text-muted-foreground hover:text-foreground text-xs transition-colors"
-        >
-          ← Сагс руу буцах
-        </Link>
-        <h1 className="mt-1 font-serif text-3xl font-semibold tracking-tight">
-          Захиалга өгөх
-        </h1>
-      </div>
-
-      <div className="lg:max-w-[calc(100%-440px)]">
-        <CheckoutStepper />
-      </div>
+      {/* «Сагс руу буцах» линк байхгүй: сагс нь толгойн навигацид ямагт
+          байдаг, харин захиалгын хуудсын толгойд гарц тавих нь эндээс гарах
+          сонголтыг хамгийн түрүүнд уншуулна. */}
+      <h1 className="mb-8 font-serif text-3xl font-semibold tracking-tight">
+        Захиалга өгөх
+      </h1>
 
       <form
         onSubmit={handleSubmit(onSubmit)}
@@ -555,8 +542,7 @@ export default function CheckoutPage() {
         <div className="space-y-6">
           {/* Guest prompt: register to earn loyalty points */}
           {mounted && !authed && (
-            <div className="bg-secondary flex items-start gap-3 rounded-2xl px-4 py-3.5 text-sm">
-              <Sparkles className="text-gold-strong mt-0.5 size-4 shrink-0" />
+            <div className="bg-secondary rounded-2xl px-4 py-3.5 text-sm">
               <p>
                 <Link
                   href="/register"
@@ -570,89 +556,43 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* Shipping — first, because choosing a saved address fills in the
-              contact name and phone below it. */}
-          <Section
-            step={1}
-            id="step-shipping"
-            icon={MapPin}
-            title="Хүргэлтийн хаяг"
-          >
-            {authed && addresses.length > 0 && (
-              <SavedAddresses
-                addresses={addresses}
-                value={addressChoice}
-                onChange={onAddressChoice}
-              />
+          {/* Хүргэлтийн хаяг — хадгалсан хаягууд + popup-аар нэмсэн шинэ хаяг */}
+          <Section step={1} icon={MapPin} title="Хүргэлтийн хаяг">
+            <SavedAddresses
+              addresses={authed ? addresses : []}
+              value={addressChoice}
+              onChange={onAddressChoice}
+              draft={draft}
+              onAddNew={() => setAddressOpen(true)}
+            />
+
+            {addressError && (
+              <p className="text-destructive text-xs">{addressError}</p>
             )}
 
-            {/* The form is the whole section for a guest, and a disclosure for
-                a customer who already has addresses on file. */}
-            {showAddressForm && (
-              <div className="space-y-4">
-                <AddressFields
-                  value={{
-                    city: watch("shipCity") ?? "",
-                    district: watch("shipDistrict") ?? "",
-                    khoroo,
-                  }}
-                  onChange={(next) => {
-                    setValue("shipCity", next.city);
-                    setValue("shipDistrict", next.district);
-                    setKhoroo(next.khoroo);
-                  }}
-                  errors={{
-                    city: errors.shipCity?.message,
-                    district: errors.shipDistrict?.message,
-                  }}
+            {authed && draft && addressChoice === NEW_ADDRESS && (
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <Checkbox
+                  checked={saveAddr}
+                  onCheckedChange={(v) => setSaveAddr(Boolean(v))}
                 />
-                <Field
-                  label="Дэлгэрэнгүй хаяг"
-                  error={errors.shipDetail?.message}
-                >
-                  <Input
-                    {...register("shipDetail")}
-                    placeholder="Байр, орц, тоот"
-                  />
-                </Field>
-                {authed && (
-                  <label className="flex cursor-pointer items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={saveAddr}
-                      onCheckedChange={(v) => setSaveAddr(Boolean(v))}
-                    />
-                    Энэ хаягийг хадгалах
-                  </label>
-                )}
+                Энэ хаягийг хадгалах
+              </label>
+            )}
+
+            {/* Бүс сонгох талбар байхаа больсон — хаягаас гарсан бүс, үнийг л
+                харуулна. */}
+            {hasAddress && selectedZone && (
+              <div className="bg-secondary flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Truck className="size-4" />
+                  Хүргэлт · {selectedZone.name}
+                </span>
+                <span className="font-medium">
+                  {zoneBlocked ? "хүргэлтгүй" : formatPrice(selectedZone.fee)}
+                </span>
               </div>
             )}
-
-            <Field label="Хүргэлтийн бүс" error={errors.shipZone?.message}>
-              <Select
-                value={zone}
-                onValueChange={(v) => setValue("shipZone", v)}
-                disabled={Boolean(autoZone)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {zones.map((z) => (
-                    <SelectItem key={zoneKey(z)} value={zoneKey(z)}>
-                      {z.name}
-                      {z.deliverable
-                        ? ` — ${formatPrice(z.fee)}`
-                        : " — хүргэлтгүй"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {autoZone && (
-                <p className="text-muted-foreground text-xs">
-                  Бүс нь сонгосон хаягаас автоматаар тодорхойлогдлоо.
-                </p>
-              )}
-            </Field>
 
             {deliveryDays.length > 0 && (
               <Field label="Хүргүүлэх өдөр" error={errors.deliverOn?.message}>
@@ -727,11 +667,15 @@ export default function CheckoutPage() {
             </Field>
           </Section>
 
-          {/* Contact */}
-          <Section step={2} id="step-contact" icon={User} title="Холбоо барих">
+          {/* Хүлээн авагч — талбарууд зориуд хоосон эхэлнэ (дансны нэр, утсаар
+              бөглөхгүй), хаяг сонгоход л бөглөгдөнө. */}
+          <Section step={2} icon={User} title="Хүлээн авагчийн мэдээлэл">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Нэр" error={errors.contactName?.message}>
-                <Input {...register("contactName")} placeholder="Таны нэр" />
+                <Input
+                  {...register("contactName")}
+                  placeholder="Хүлээн авах хүний нэр"
+                />
               </Field>
               <Field label="Утас" error={errors.contactPhone?.message}>
                 <Input
@@ -750,32 +694,6 @@ export default function CheckoutPage() {
                 placeholder="name@mail.com"
               />
             </Field>
-          </Section>
-
-          {/* Payment */}
-          <Section
-            step={3}
-            id="step-payment"
-            icon={CreditCard}
-            title="Төлбөрийн арга"
-          >
-            <RadioGroup
-              value={payment}
-              onValueChange={(v) =>
-                setValue("paymentMethod", v as FormValues["paymentMethod"])
-              }
-              className="gap-3"
-            >
-              {PAYMENT_METHODS.map((m) => (
-                <label
-                  key={m.value}
-                  className="bg-secondary hover:bg-accent has-checked:ring-foreground flex cursor-pointer items-center gap-3 rounded-xl p-4 ring-2 ring-transparent transition-all"
-                >
-                  <RadioGroupItem value={m.value} />
-                  <span className="text-sm font-medium">{m.label}</span>
-                </label>
-              ))}
-            </RadioGroup>
           </Section>
 
           {/* Бэлгийн 1мл дээж — эрхийн тоогоор, зөвхөн админы сангаас. */}
@@ -800,16 +718,21 @@ export default function CheckoutPage() {
                 {mounted &&
                   collections.map((c) => (
                     <div key={c.key} className="flex items-center gap-3">
-                      <div className="bg-muted relative size-14 shrink-0 overflow-hidden rounded-xl">
-                        {c.image && (
-                          <Image
-                            src={c.image}
-                            alt={c.name}
-                            fill
-                            sizes="56px"
-                            className="object-cover"
-                          />
-                        )}
+                      {/* Тоо ширхгийн тэмдэг зургийн хүрээний *гадна* байх
+                          ёстой: `overflow-hidden` дотор байхдаа хагас
+                          хайчлагдаж, зураг дээр хар зэрэг шиг харагддаг. */}
+                      <div className="relative size-14 shrink-0">
+                        <div className="bg-muted size-full overflow-hidden rounded-xl">
+                          {c.image && (
+                            <Image
+                              src={c.image}
+                              alt={c.name}
+                              fill
+                              sizes="56px"
+                              className="object-cover"
+                            />
+                          )}
+                        </div>
                         <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[10px] font-semibold">
                           {c.qty}
                         </span>
@@ -833,16 +756,21 @@ export default function CheckoutPage() {
                 {mounted &&
                   items.map((i) => (
                     <div key={i.key} className="flex items-center gap-3">
-                      <div className="bg-muted relative size-14 shrink-0 overflow-hidden rounded-xl">
-                        {i.image && (
-                          <Image
-                            src={i.image}
-                            alt={i.name}
-                            fill
-                            sizes="56px"
-                            className="object-cover"
-                          />
-                        )}
+                      {/* Тоо ширхгийн тэмдэг зургийн хүрээний *гадна* байх
+                          ёстой: `overflow-hidden` дотор байхдаа хагас
+                          хайчлагдаж, зураг дээр хар зэрэг шиг харагддаг. */}
+                      <div className="relative size-14 shrink-0">
+                        <div className="bg-muted size-full overflow-hidden rounded-xl">
+                          {i.image && (
+                            <Image
+                              src={i.image}
+                              alt={i.name}
+                              fill
+                              sizes="56px"
+                              className="object-cover"
+                            />
+                          )}
+                        </div>
                         <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[10px] font-semibold">
                           {i.qty}
                         </span>
@@ -872,17 +800,15 @@ export default function CheckoutPage() {
                 onCodeChange={setCode}
                 onApply={applyCoupon}
                 applying={applying}
+                loading={offersLoading}
                 message={couponMsg}
-                onPick={(o) => {
-                  setCoupon({ code: o.code, discount: o.discount });
-                  setCouponMsg(null);
-                }}
-                onRemove={() => setCoupon(null)}
+                onPick={pickCoupon}
+                onRemove={clearCoupon}
               />
 
               <div className="space-y-2.5">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Дэд дүн</span>
+                  <span className="text-muted-foreground">Барааны дүн</span>
                   <span>{formatPrice(subtotal)}</span>
                 </div>
                 {discount > 0 && (
@@ -967,19 +893,24 @@ export default function CheckoutPage() {
                 <ShieldCheck className="size-3.5" />
                 Аюулгүй төлбөр · QPay
               </p>
-              <p className="text-muted-foreground text-center text-xs">
-                Баталгаажуулснаар та үйлчилгээний нөхцөлийг зөвшөөрнө.
-              </p>
             </CardContent>
           </Card>
         </div>
       </form>
 
+      {/* Шинэ хаяг — popup. Хуудсан дээр форм нээхээ больсон. */}
+      <AddressDialog
+        open={addressOpen}
+        onOpenChange={setAddressOpen}
+        initial={draft ?? undefined}
+        submitLabel="Хаяг хэрэглэх"
+        onSave={applyDraft}
+      />
+
       {/* Guest consent: V point is forfeited unless they register first. */}
       {showGuestWarning && (
         <div className="bg-foreground/40 fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="bg-card w-full max-w-sm space-y-4 rounded-2xl p-6 text-center shadow-xl">
-            <Sparkles className="text-gold-strong mx-auto size-7" />
             <h2 className="font-serif text-xl font-semibold">
               Оноо цуглуулахгүй байхаар байна
             </h2>
@@ -1012,19 +943,17 @@ export default function CheckoutPage() {
 
 function Section({
   step,
-  id,
   icon: Icon,
   title,
   children,
 }: {
   step: number;
-  id?: string;
   icon: React.ElementType;
   title: string;
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="bg-card scroll-mt-24 rounded-2xl p-5 sm:p-6">
+    <section className="bg-card scroll-mt-24 rounded-2xl p-5 sm:p-6">
       <div className="mb-5 flex items-center gap-3">
         <span className="bg-secondary flex size-9 shrink-0 items-center justify-center rounded-full">
           {step > 0 ? (

@@ -17,6 +17,7 @@ const FILTER_KEYS = [
   "family",
   "season",
   "tags",
+  "featured",
   "minPrice",
   "maxPrice",
   "q",

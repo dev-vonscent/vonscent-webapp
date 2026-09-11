@@ -509,7 +509,11 @@
      * bare `var(--muted-foreground)` would paint a solid #a1a1a1 bar down the
      * side of the page on the black theme.
      */
-    scrollbar-color: color-mix(in oklab, var(--muted-foreground) 40%, transparent)
+    scrollbar-color: color-mix(
+        in oklab,
+        var(--muted-foreground) 40%,
+        transparent
+      )
       transparent;
   }
   /* Kept for older Safari, which has the pseudo-elements but not

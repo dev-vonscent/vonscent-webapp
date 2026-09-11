@@ -62,7 +62,7 @@ export default async function InvoicePage({
       </table>
 
       <div className="ml-auto w-56 space-y-1">
-        <Row label="Дэд дүн" value={formatPrice(order.subtotal)} />
+        <Row label="Барааны дүн" value={formatPrice(order.subtotal)} />
         {order.discount > 0 && (
           <Row label="Хямдрал" value={`−${formatPrice(order.discount)}`} />
         )}

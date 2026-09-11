@@ -188,7 +188,7 @@ export default async function OrderDetailPage({
           <Card>
             <CardContent className="space-y-3 p-5 text-sm">
               <h2 className="font-medium">Дүн</h2>
-              <Row label="Дэд дүн" value={formatPrice(order.subtotal)} />
+              <Row label="Барааны дүн" value={formatPrice(order.subtotal)} />
               {order.discount > 0 && (
                 <Row
                   label="Хямдрал"

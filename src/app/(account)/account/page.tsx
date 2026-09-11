@@ -10,10 +10,8 @@ import {
   ChevronRight,
   KeyRound,
   LogOut,
-  Palette,
   Pencil,
 } from "lucide-react";
-import { ThemeSwitcher } from "@/components/shared/theme-switcher";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/browser";
@@ -231,7 +229,7 @@ export default function ProfilePage() {
         />
         <Tile
           href="/account/collections"
-          kicker="Багцууд"
+          kicker="Миний багцууд"
           value={collectionsCount}
         />
       </div>
@@ -241,12 +239,6 @@ export default function ProfilePage() {
         {/* Above the settings, not among them: the wheel is something to do,
             and it hides itself when there is nothing to collect. */}
         {configured && <WheelEntryCard />}
-
-        <div className="bg-card flex items-center gap-4 rounded-xl p-4">
-          <IconCircle icon={Palette} />
-          <span className="font-medium">Загвар</span>
-          <ThemeSwitcher className="ml-auto" />
-        </div>
 
         {/* Passcode change — phone accounts only (the 4-digit code is theirs;
             an email/OAuth account would just get a 401 from the route). */}

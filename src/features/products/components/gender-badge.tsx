@@ -59,8 +59,8 @@ export function GenderIcon({
 }
 
 /**
- * Хүйсийн шошго. Картан дээр `tone="muted"` — брэндийн мөрийн хажууд чимээгүй
- * тэмдэг; дэлгэрэнгүй дээр `tone="pill"` — таг badge-уудын хажууд нэг мөр.
+ * Хүйсийн шошго. Картан дээр `tone="muted"` — брэндийн мөрийн хажууд, брэндээс
+ * илүү тод уншигдана; дэлгэрэнгүй дээр `tone="pill"` — таг badge-уудын хажууд нэг мөр.
  * Өнгөөр ялгахгүй (design.md: theme token, хүйсээр өнгө тавьдаг хэвшил
  * дизайнд байхгүй) — дүрс нь өөрөө ялгаа болно.
  */
@@ -78,12 +78,12 @@ export function GenderBadge({
     return (
       <span
         className={cn(
-          "text-muted-foreground inline-flex items-center gap-1 text-[11px]",
+          "text-foreground/75 inline-flex items-center gap-1 text-[11px] font-medium",
           className,
         )}
         title={label}
       >
-        <GenderIcon gender={gender} className="size-3" />
+        <GenderIcon gender={gender} className="size-3.5" />
         {label}
       </span>
     );
@@ -91,7 +91,7 @@ export function GenderBadge({
   return (
     <span
       className={cn(
-        "border-border bg-secondary/60 text-foreground/80 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium",
+        "border-border bg-secondary text-foreground inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
         className,
       )}
     >

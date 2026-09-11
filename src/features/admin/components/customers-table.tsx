@@ -72,6 +72,10 @@ export function CustomersTable({ data }: { data: CustomerListRow[] }) {
       columns={columns}
       data={data}
       pageSize={0}
+      // Нэр дээр дарах нь хэтэрхий жижиг бай — «—» нэргүй хэрэглэгчийн хувьд
+      // бараг байхгүй. Мөр бүхэлдээ дэлгэрэнгүй руу оруулна (карт аль хэдийн
+      // тэгж ажилладаг байсан).
+      rowHref={(c) => `/admin/customers/${c.id}`}
       // Same reason as the order list: rows are one server-paginated page of
       // 50, so a phone-only re-sort would reorder that slice alone and read as
       // a sort of the whole list.

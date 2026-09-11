@@ -8,6 +8,7 @@ import { Gift, Minus, Plus, ShoppingCart, Trash2, Undo2 } from "lucide-react";
 import { bundleGiftGuarantee } from "@/lib/gift";
 import { useGiftPool } from "@/features/gifts/use-gift-pool";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Sheet,
   SheetContent,
@@ -26,6 +27,7 @@ import {
   type CartItem,
 } from "@/features/cart/store";
 import { CartSizeSelect } from "@/features/cart/components/cart-size-select";
+import { useCartSelection } from "@/features/cart/use-cart-selection";
 
 export function CartSheet({
   triggerVariant = "ghost",
@@ -46,6 +48,17 @@ export function CartSheet({
   const giftPool = useGiftPool();
   const count = useCart(selectCount);
   const subtotal = useCart(selectSubtotal);
+  const setItemSelected = useCart((s) => s.setItemSelected);
+  const setCollectionSelected = useCart((s) => s.setCollectionSelected);
+  const {
+    isItemSelected,
+    isCollectionSelected,
+    setAllSelected,
+    lineCount,
+    selectedLineCount,
+    allSelected,
+    noneSelected,
+  } = useCartSelection();
 
   const add = useCart((s) => s.add);
 
@@ -138,6 +151,19 @@ export function CartSheet({
           </div>
         ) : (
           <>
+            {/* Хүссэн барааг л захиалахын тулд мөр тус бүр checkbox-той */}
+            <label className="flex cursor-pointer items-center gap-2.5 pt-3 text-sm">
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={(v) => setAllSelected(Boolean(v))}
+                aria-label="Бүгдийг сонгох"
+              />
+              <span>Бүгдийг сонгох</span>
+              <span className="text-muted-foreground text-xs tabular-nums">
+                {selectedLineCount}/{lineCount}
+              </span>
+            </label>
+
             <MotionConfig reducedMotion="user">
               <div className="-mx-2 flex-1 space-y-4 overflow-y-auto px-2 py-4">
                 <AnimatePresence mode="popLayout" initial={false}>
@@ -151,6 +177,14 @@ export function CartSheet({
                       className="bg-secondary/50 rounded-lg p-3"
                     >
                       <div className="flex gap-3">
+                        <Checkbox
+                          checked={isCollectionSelected(c.key)}
+                          onCheckedChange={(v) =>
+                            setCollectionSelected(c.key, Boolean(v))
+                          }
+                          aria-label={`${c.name} багцыг сонгох`}
+                          className="mt-1 self-start"
+                        />
                         <div className="bg-muted relative size-20 shrink-0 overflow-hidden rounded-md">
                           {c.image && (
                             <Image
@@ -165,7 +199,7 @@ export function CartSheet({
                         <div className="flex flex-1 flex-col">
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <p className="text-sm/tight  font-medium">
+                              <p className="text-sm/tight font-medium">
                                 {c.name}
                               </p>
                               <div className="mt-0.5 flex items-center gap-1.5">
@@ -243,6 +277,14 @@ export function CartSheet({
                       transition={{ duration: 0.2 }}
                       className="flex gap-3"
                     >
+                      <Checkbox
+                        checked={isItemSelected(item.key)}
+                        onCheckedChange={(v) =>
+                          setItemSelected(item.key, Boolean(v))
+                        }
+                        aria-label={`${item.name} сонгох`}
+                        className="mt-1 self-start"
+                      />
                       <div className="bg-muted relative size-20 shrink-0 overflow-hidden rounded-md">
                         {item.image && (
                           <Image
@@ -260,7 +302,7 @@ export function CartSheet({
                             <p className="text-muted-foreground text-xs">
                               {item.brand}
                             </p>
-                            <p className="text-sm/tight  font-medium">
+                            <p className="text-sm/tight font-medium">
                               {item.name}
                             </p>
                             <div className="mt-1.5 flex items-center gap-1.5">
@@ -332,7 +374,8 @@ export function CartSheet({
                 </div>
               )}
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Дэд дүн</span>
+                {/* Сонгосон мөрийн тоо дээрх «Бүгдийг сонгох n/m»-д байгаа. */}
+                <span className="text-muted-foreground">Барааны дүн</span>
                 <span className="font-medium tabular-nums">
                   {formatPrice(subtotal)}
                 </span>
@@ -340,18 +383,28 @@ export function CartSheet({
               {/* No figure here on purpose: the fee depends on the delivery
                   zone, which is only known once an address is chosen. */}
               <p className="text-muted-foreground text-xs text-balance">
-                Хүргэлтийн төлбөр хаягийн бүсээс хамаарч нэмэгдэнэ — эцсийн
-                дүнг захиалгын хуудсанд харна.
+                Хүргэлтийн төлбөр хаягийн бүсээс хамаарч нэмэгдэнэ — эцсийн дүнг
+                захиалгын хуудсанд харна.
               </p>
-              <SheetClose asChild>
+              {noneSelected ? (
                 <Button
-                  asChild
-                  className="in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90 w-full"
+                  className="w-full in-[.black]:bg-white in-[.black]:text-black"
                   size="lg"
+                  disabled
                 >
-                  <Link href="/checkout">Захиалах</Link>
+                  Захиалах бараагаа сонгоно уу
                 </Button>
-              </SheetClose>
+              ) : (
+                <SheetClose asChild>
+                  <Button
+                    asChild
+                    className="w-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+                    size="lg"
+                  >
+                    <Link href="/checkout">Захиалах</Link>
+                  </Button>
+                </SheetClose>
+              )}
               <SheetClose asChild>
                 <Button asChild variant="ghost" className="w-full">
                   <Link href="/cart">Сагс харах</Link>

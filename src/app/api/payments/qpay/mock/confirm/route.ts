@@ -31,9 +31,12 @@ export async function POST(req: Request) {
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 500 });
   }
+  // Төлбөр батлагдсаны дараа хүргэх өдөр ахисан байж болно (0069).
+  const fresh = await orderIdForToken(parsed.data.token);
   return NextResponse.json({
     ok: true,
     demo: result.demo,
     alreadyPaid: result.alreadyPaid,
+    deliverOn: fresh?.deliverOn ?? order.deliverOn,
   });
 }

@@ -50,6 +50,22 @@ function view(over: Partial<PaymentView> = {}): PaymentView {
   return {
     orderNo: "VS-1042",
     total: 45000,
+    lines: [
+      {
+        name: "Floral",
+        brand: "Coach",
+        ml: 5,
+        qty: 2,
+        lineTotal: 36000,
+        isSample: false,
+        collectionName: null,
+        image: null,
+      },
+    ],
+    subtotal: 36000,
+    shippingFee: 9000,
+    discount: 0,
+    loyaltyUsed: 0,
     paymentMethod: "qpay",
     paid: false,
     cancelled: false,
@@ -154,14 +170,16 @@ describe("pending payment", () => {
     localStorage.clear();
   });
 
-  it("shows the QR and the invoice reference", async () => {
+  it("shows the QR, and nothing about the invoice itself", () => {
     render(<PaymentPanel view={view()} token="tok" />);
 
     expect(screen.getByAltText("QPay QR код").getAttribute("src")).toBe(
       "data:image/png;base64,AAAA",
     );
-    await userEvent.click(screen.getByText("Төлбөрийн дэлгэрэнгүй"));
-    expect(screen.getByText("inv_42")).toBeTruthy();
+    // Invoice ID нь төлөгч хүнд хэрэггүй дотоод дугаар — захиалгын дугаар
+    // зүүн талын тоймд аль хэдийн байна.
+    expect(screen.queryByText("Төлбөрийн дэлгэрэнгүй")).toBeNull();
+    expect(screen.queryByText("inv_42")).toBeNull();
   });
 
   it("reports back when a manual check finds no payment", async () => {
@@ -260,14 +278,26 @@ describe("pending payment", () => {
 describe("on a desktop", () => {
   beforeEach(() => stubPointer(false));
 
-  it("stops rendering the app icons as links", () => {
+  it("keeps the app grid off the page and the icons unlinked", () => {
     // A `khanbank://` click on a desktop produces a browser error, not a
-    // payment — the icons stay as a legend for the QR.
+    // payment. Web дээр QR л жинхэнэ арга тул сүлжээ бүхэлдээ зөвхөн
+    // хүрэлцэхүйц төхөөрөмжид (`pointer: coarse`) харагдана — CSS-ээр,
+    // ингэснээр утсан дээр эхний зурагтаа шууд зөв гарна.
     render(<PaymentPanel view={view()} token="tok" />);
 
     expect(screen.queryByRole("link", { name: /аппаар төлөх/ })).toBeNull();
-    expect(screen.getByText("Хаан банк")).toBeTruthy();
+    expect(screen.getByText("Хаан банк").closest("[data-touch-only]")).not.toBe(
+      null,
+    );
     expect(screen.getByAltText("QPay QR код")).toBeTruthy();
+  });
+
+  it("shows the QR without a disclosure to open first", () => {
+    render(<PaymentPanel view={view()} token="tok" />);
+    // «QR кодоор төлөх» нугаралт нь зөвхөн апптай төхөөрөмжид.
+    expect(screen.getByText("QR кодоор төлөх").closest("button")).toHaveClass(
+      "pointer-coarse:flex",
+    );
   });
 
   it("drops the recently-used shortcut, which exists only to be tapped", () => {
@@ -276,6 +306,37 @@ describe("on a desktop", () => {
 
     expect(screen.queryByText("Сүүлд хэрэглэсэн")).toBeNull();
     localStorage.clear();
+  });
+});
+
+describe("the order recap", () => {
+  it("says what the money is for", () => {
+    render(<PaymentPanel view={view()} token="tok" />);
+
+    expect(screen.getByText("Floral")).toBeTruthy();
+    expect(screen.getByText("Coach · 5ml")).toBeTruthy();
+    // Дүнгийн бүтэц: 36,000 + 9,000 = 45,000 гэдэг нь хуудсан дээрээ.
+    // Мөрийн дүн ба дэд дүн хоёулаа 36,000₮ тул хоёр таарна.
+    expect(screen.getAllByText("36,000₮")).toHaveLength(2);
+    expect(screen.getByText("9,000₮")).toBeTruthy();
+    expect(screen.getByText("VS-1042")).toBeTruthy();
+  });
+
+  it("names a discount and the points spent when there are any", () => {
+    render(
+      <PaymentPanel
+        view={view({ discount: 4000, loyaltyUsed: 210 })}
+        token="tok"
+      />,
+    );
+
+    expect(screen.getByText("−4,000₮")).toBeTruthy();
+    expect(screen.getByText("−210₮")).toBeTruthy();
+  });
+
+  it("stays out of the way for an order with no lines on file", () => {
+    render(<PaymentPanel view={view({ lines: [] })} token="tok" />);
+    expect(screen.queryByText("Захиалга")).toBeNull();
   });
 });
 

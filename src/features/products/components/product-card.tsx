@@ -71,7 +71,7 @@ export function ProductCard({
           <span className="text-muted-foreground truncate text-[11px] tracking-[0.15em] uppercase">
             {product.brand}
           </span>
-          {/* Хүйсийн тэмдэг (backlog C1) — брэндийн мөрөнд, чимээгүй. */}
+          {/* Хүйсийн тэмдэг (backlog C1) — брэндийн мөрөнд, тод уншигдана. */}
           <GenderBadge gender={product.gender} tone="muted" />
         </div>
         <Link

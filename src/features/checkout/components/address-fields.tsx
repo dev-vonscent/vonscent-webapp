@@ -138,3 +138,21 @@ export function composeDetail(khoroo: number | null, detail: string): string {
   return rest ? `${formatKhoroo(khoroo)}, ${rest}` : formatKhoroo(khoroo);
 }
 
+/**
+ * Inverse of `composeDetail` — pull the хороо back out of a stored detail line
+ * so a saved address can be reopened in the form it was written in.
+ *
+ * Only the leading "N-р хороо, " prefix is recognised, which is exactly what
+ * `composeDetail` writes; anything else stays in the free-text remainder.
+ */
+export function splitDetail(detail: string): {
+  khoroo: number | null;
+  detail: string;
+} {
+  const match = /^(\d+)-р хороо(?:,\s*)?/u.exec(detail.trim());
+  if (!match) return { khoroo: null, detail: detail.trim() };
+  return {
+    khoroo: Number(match[1]),
+    detail: detail.trim().slice(match[0].length).trim(),
+  };
+}

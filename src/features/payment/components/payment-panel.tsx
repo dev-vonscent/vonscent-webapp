@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { MotionConfig, motion } from "motion/react";
 import {
   Check,
@@ -22,6 +23,7 @@ import {
   ORDER_EDIT_CUTOFF_HOUR,
   earliestDeliveryDay,
   formatDeliveryDay,
+  projectedDeliveryDay,
 } from "@/lib/time";
 import type { PaymentView } from "../types";
 import { BankApps } from "./bank-apps";
@@ -62,6 +64,13 @@ export function PaymentPanel({
   token: string;
 }) {
   const [paid, setPaid] = React.useState(view.paid);
+  /**
+   * Хүргэх өдөр нь төлбөр төлөгдсөн мөчид ахьж болно (migration 0069: 09:00-аас
+   * хойш төлсөн бол тэр өдөр хүргэх боломж аль хэдийн өнгөрсөн). Хуудас
+   * нээгдэхэд уншсан өдөр нь тийм тохиолдолд хуучирдаг тул төлөгдсөн гэсэн
+   * хариунаас шинэ өдрийг авна.
+   */
+  const [deliverOn, setDeliverOn] = React.useState(view.deliverOn);
   const [checking, setChecking] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -80,8 +89,14 @@ export function PaymentPanel({
           (verify ? "&verify=1" : ""),
       );
       if (!res.ok) return false;
-      const data = (await res.json()) as { paid?: boolean };
-      if (data?.paid) setPaid(true);
+      const data = (await res.json()) as {
+        paid?: boolean;
+        deliverOn?: string | null;
+      };
+      if (data?.paid) {
+        if (data.deliverOn) setDeliverOn(data.deliverOn);
+        setPaid(true);
+      }
       return Boolean(data?.paid);
     },
     [token],
@@ -153,6 +168,10 @@ export function PaymentPanel({
         setError("Симуляц бүтсэнгүй.");
         return;
       }
+      const data = (await res.json().catch(() => null)) as {
+        deliverOn?: string | null;
+      } | null;
+      if (data?.deliverOn) setDeliverOn(data.deliverOn);
       setPaid(true);
     } finally {
       setChecking(false);
@@ -160,7 +179,7 @@ export function PaymentPanel({
   }
 
   if (view.cancelled) return <CancelledState />;
-  if (paid) return <PaidState view={view} />;
+  if (paid) return <PaidState view={view} deliverOn={deliverOn} />;
 
   return (
     <MotionConfig reducedMotion="user">
@@ -199,6 +218,8 @@ export function PaymentPanel({
               биш.
             </p>
           )}
+
+          <OrderRecap view={view} />
         </div>
 
         {/*
@@ -222,6 +243,125 @@ export function PaymentPanel({
         </div>
       </motion.div>
     </MotionConfig>
+  );
+}
+
+/**
+ * Юуны төлөө төлж байгаа нь — зүүн талын мөр.
+ *
+ * Хуудас нээгдэхэд «22,790₮» гэсэн тоо ба QR л байсан: төлбөрийн линк нь
+ * бусдад дамжиж болдог, дамжуулж авсан хүн юуны төлөө хэдийг төлж байгаагаа
+ * харах ёстой. Хаяг, холбоо барих мэдээллийг зориуд оруулаагүй (api.ts).
+ */
+function OrderRecap({ view }: { view: PaymentView }) {
+  if (view.lines.length === 0) return null;
+  return (
+    <div className="border-border bg-card mt-6 rounded-2xl border p-4 md:mt-8 md:p-5">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-sm font-medium">Захиалга</p>
+        <span className="text-muted-foreground font-mono text-xs">
+          {view.orderNo}
+        </span>
+      </div>
+
+      <ul className="divide-border mt-3 divide-y">
+        {view.lines.map((line, i) => (
+          <li
+            key={`${line.name}-${line.ml}-${i}`}
+            className="flex items-center gap-3 py-2.5"
+          >
+            <div className="relative size-11 shrink-0">
+              <div className="bg-muted size-full overflow-hidden rounded-lg">
+                {line.image && (
+                  <Image
+                    src={line.image}
+                    alt={line.name}
+                    fill
+                    sizes="44px"
+                    className="object-cover"
+                  />
+                )}
+              </div>
+              {line.qty > 1 && (
+                <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[10px] font-semibold">
+                  {line.qty}
+                </span>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm/tight font-medium">{line.name}</p>
+              <p className="text-muted-foreground truncate text-xs">
+                {[
+                  line.brand,
+                  `${line.ml}ml`,
+                  line.collectionName ?? null,
+                  line.isSample ? "бэлэг" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            </div>
+            <span className="text-sm font-medium tabular-nums">
+              {line.isSample && line.lineTotal === 0
+                ? "0₮"
+                : formatPrice(line.lineTotal)}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {/* Тоог тайлбарлах бүтэц — «яагаад 22,790₮ болов?» гэсэн асуулт
+          хуудсан дээрээ хариулттай байх ёстой. */}
+      <div className="border-border mt-3 space-y-1.5 border-t pt-3 text-xs">
+        <RecapRow label="Барааны дүн" value={formatPrice(view.subtotal)} />
+        <RecapRow label="Хүргэлт" value={formatPrice(view.shippingFee)} />
+        {view.discount > 0 && (
+          <RecapRow
+            label="Хөнгөлөлт"
+            value={`−${formatPrice(view.discount)}`}
+            accent
+          />
+        )}
+        {view.loyaltyUsed > 0 && (
+          <RecapRow
+            label="V point"
+            value={`−${formatPrice(view.loyaltyUsed)}`}
+            accent
+          />
+        )}
+      </div>
+
+      {/* Төлбөр хоцорсон бол сонгосон өдөр аль хэдийн өнгөрсөн байж мэднэ —
+          `mark_order_paid` (0069) төлөх мөчид өдрийг ахиулна. Тиймээс энд
+          хадгалсан өдрийг биш, одоо төлөхөд хүргэгдэх өдрийг харуулна. */}
+      <p className="text-muted-foreground mt-3 text-xs">
+        <strong className="text-foreground font-medium">
+          {formatDeliveryDay(projectedDeliveryDay(view.deliverOn))}
+        </strong>{" "}
+        {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.
+      </p>
+    </div>
+  );
+}
+
+function RecapRow({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="flex justify-between gap-3">
+      <span className="text-muted-foreground">{label}</span>
+      <span
+        className={cn("tabular-nums", accent ? "text-success" : "font-medium")}
+      >
+        {value}
+      </span>
+    </div>
   );
 }
 
@@ -275,29 +415,29 @@ function QpaySection({
   return (
     <div className="flex flex-col">
       {/*
-        Order flips with the device. A phone can open the banking app, so the
-        grid leads and the QR is the fallback; a desktop cannot open one, so
-        the QR is the only real action and the icons below it are its legend.
-
-        Source order is the phone's — apps, rule, QR, rule, actions — and the
-        `md:order-*` values renumber all five so the desktop reads QR, rule,
-        apps, rule, actions. Every child is numbered, because leaving the two
-        rules on the same order value stacks them into a double hairline.
+        Банкны аппын сүлжээ зөвхөн хүрэлцэхүйц төхөөрөмж дээр (`pointer-coarse`
+        — утас, таблет). Web дээр `khanbank://` линк нээх апп байхгүй тул
+        дарахад «хаяг буруу» гэсэн мухардал болдог: тэнд QR л жинхэнэ арга,
+        иймд апп бүрэн харагдахгүй. Breakpoint биш pointer-оор шалгаж байгаа
+        нь ноутбукийн хагас өргөн цонх ч апп нээж чадахгүйтэй адил.
       */}
-      <div className="pb-6 md:order-3 md:p-5">
+      <div data-touch-only className="hidden pointer-coarse:block">
         {/* The group headings ("Банк", "Цахим хэтэвч") already say what this
             is, so it carries no heading of its own. */}
-        <BankApps links={invoice.deeplinks} mock={view.mock} />
+        <div className="pb-6 md:p-5">
+          <BankApps links={invoice.deeplinks} mock={view.mock} />
+        </div>
+        <Separator />
       </div>
 
-      <Separator className="md:order-2" />
-
-      <div className="py-5 md:order-1 md:p-5">
+      <div className="py-5 md:p-5">
         <button
           type="button"
           onClick={() => setQrOpen((v) => !v)}
           aria-expanded={qrOpen}
-          className="flex w-full items-center gap-2 text-sm font-medium md:hidden"
+          // Апп нээж чадах төхөөрөмж дээр л QR-г нугалж хийнэ; web дээр QR
+          // нь цорын ганц арга тул хумихгүй.
+          className="hidden w-full items-center gap-2 text-sm font-medium md:hidden pointer-coarse:flex"
         >
           <QrCode className="text-muted-foreground size-4" />
           QR кодоор төлөх
@@ -309,12 +449,17 @@ function QpaySection({
           />
         </button>
 
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="hidden items-center gap-2 md:flex pointer-fine:flex">
           <QrCode className="text-gold-strong size-4" />
           <p className="text-sm font-medium">Банкны аппаараа QR уншуулна уу</p>
         </div>
 
-        <div className={cn("md:block", qrOpen ? "block" : "hidden")}>
+        <div
+          className={cn(
+            "md:block pointer-fine:block",
+            qrOpen ? "block" : "hidden",
+          )}
+        >
           {invoice.qrImage && (
             <div className="mt-4 flex flex-col items-center gap-3">
               {/* Not next/image: a data: URL has no host to whitelist and
@@ -333,7 +478,7 @@ function QpaySection({
                   stays on both, since "open it on my phone" is exactly what a
                   desktop customer wants. */}
               <p className="text-muted-foreground text-center text-xs">
-                <span className="md:hidden">
+                <span className="hidden md:hidden pointer-coarse:inline">
                   Банкны аппаа онгойлгоод QR уншуулна уу
                   {invoice.shortUrl && " · "}
                 </span>
@@ -353,9 +498,9 @@ function QpaySection({
         </div>
       </div>
 
-      <Separator className="md:order-4" />
+      <Separator />
 
-      <div className="space-y-3 py-5 md:order-5 md:p-5">
+      <div className="space-y-3 py-5 md:p-5">
         {error && (
           <p className="bg-destructive/10 text-destructive rounded-md px-3 py-2 text-sm">
             {error}
@@ -396,16 +541,6 @@ function QpaySection({
             </Button>
           </>
         )}
-
-        <details className="group">
-          <summary className="text-muted-foreground hover:text-foreground cursor-pointer list-none text-center text-[11px] transition-colors">
-            Төлбөрийн дэлгэрэнгүй
-          </summary>
-          <div className="bg-secondary mt-3 rounded-md px-3 py-1">
-            <CopyRow label="Захиалга" value={view.orderNo} copy mono />
-            <CopyRow label="Invoice ID" value={invoice.invoiceId} copy mono />
-          </div>
-        </details>
       </div>
     </div>
   );
@@ -430,7 +565,14 @@ function BankTransfer({ orderNo }: { orderNo: string }) {
   );
 }
 
-function PaidState({ view }: { view: PaymentView }) {
+function PaidState({
+  view,
+  deliverOn,
+}: {
+  view: PaymentView;
+  /** Төлбөр батлагдсаны дараах хүргэх өдөр — сервер ахиулсан байж мэднэ. */
+  deliverOn: string | null;
+}) {
   return (
     <MotionConfig reducedMotion="user">
       <motion.div
@@ -462,7 +604,7 @@ function PaidState({ view }: { view: PaymentView }) {
         <div className="border-border bg-card mt-8 rounded-2xl border p-5 text-left">
           <p className="text-sm">
             <strong>
-              {formatDeliveryDay(view.deliverOn ?? earliestDeliveryDay())}
+              {formatDeliveryDay(deliverOn ?? earliestDeliveryDay())}
             </strong>{" "}
             {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.
           </p>

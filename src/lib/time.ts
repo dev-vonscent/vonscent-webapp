@@ -64,6 +64,36 @@ export function earliestDeliveryDay(now: Date = new Date()): string {
   return ubDayFromNow(1, now);
 }
 
+/**
+ * Боломжтой хамгийн эрт хүргэх өдөр — *одоо* төлбөл хүргэж чадах өдөр.
+ *
+ * 09:00 (ORDER_EDIT_CUTOFF_HOUR) хүртэл өнөөдөр бэлдэх завсар бий; түүнээс
+ * хойш тэр өдрийн бэлтгэл эхэлсэн тул хамгийн эрт нь маргааш.
+ *
+ * Эрх нь серверт (`mark_order_paid`, migration 0069) — төлбөр төлөгдөх мөчид
+ * `deliver_on`-г яг ижил дүрмээр ахиулна. Энэ нь зөвхөн урьдчилан харуулах
+ * тооцоо: төлөхөөсөө өмнө «Өнөөдөр» гэж уншаад дараа нь маргааш хүргэгдэх нь
+ * хамгийн таарамжгүй.
+ */
+export function earliestServableDay(now: Date = new Date()): string {
+  const ub = new TZDate(now.getTime(), UB_TIMEZONE);
+  return ub.getHours() < ORDER_EDIT_CUTOFF_HOUR
+    ? format(ub, "yyyy-MM-dd")
+    : ubDayFromNow(1, now);
+}
+
+/**
+ * Захиалга хүргэгдэх бодит өдөр: сонгосон өдөр, гэхдээ хэрэгжих боломжтой
+ * хамгийн эрт өдрөөс хойш. Өдрийг хэзээ ч эрт болгохгүй — зөвхөн ахиулна.
+ */
+export function projectedDeliveryDay(
+  day: string | null | undefined,
+  now: Date = new Date(),
+): string {
+  const earliest = earliestServableDay(now);
+  return !day || day < earliest ? earliest : day;
+}
+
 /** The latest day the checkout offers. */
 export function latestDeliveryDay(now: Date = new Date()): string {
   return ubDayFromNow(MAX_PREORDER_DAYS, now);

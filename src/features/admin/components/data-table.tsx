@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   flexRender,
   getCoreRowModel,
@@ -68,6 +69,20 @@ function useIsPhone() {
   return isPhone;
 }
 
+/**
+ * Anything the operator could have meant to click INSIDE a clickable row — a
+ * link, a row-action menu, a stock input. Without this, `rowHref` would eat
+ * every one of them: the click bubbles to the row and navigates away instead
+ * of opening the menu the operator aimed at.
+ */
+function isInteractive(target: EventTarget | null): boolean {
+  return Boolean(
+    (target as HTMLElement | null)?.closest(
+      "a,button,input,select,textarea,label,[role='button'],[role='menuitem'],[role='checkbox'],[data-no-row-link]",
+    ),
+  );
+}
+
 interface DataTableProps<TData> {
   columns: ColumnDef<TData, unknown>[];
   data: TData[];
@@ -87,6 +102,15 @@ interface DataTableProps<TData> {
    */
   renderCard?: (row: TData) => React.ReactNode;
   /**
+   * Makes the whole table row clickable, navigating to the returned href.
+   *
+   * The row's own primary cell keeps its real `<a>`: that is what a keyboard
+   * and a screen reader follow, and what a middle-click opens in a tab — the
+   * row click is a pointer convenience on top of it, not a replacement. So no
+   * `tabIndex` here, which would add a second, unlabelled tab stop per row.
+   */
+  rowHref?: (row: TData) => string;
+  /**
    * Turn off the phone-only sort control. Set it when the page already owns
    * sorting — the products list sorts through the URL in its own toolbar, so
    * a phone was getting two «Эрэмбэ» dropdowns that sorted by different
@@ -103,8 +127,10 @@ export function DataTable<TData>({
   emptyText = "Мэдээлэл алга",
   label,
   renderCard,
+  rowHref,
   phoneSort = true,
 }: DataTableProps<TData>) {
+  const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const searchId = useId();
@@ -291,30 +317,51 @@ export function DataTable<TData>({
                   </TableCell>
                 </TableRow>
               ) : (
-                table.getRowModel().rows.map((row) => (
-                  // `TableRow`'s `border-t` is dead — globals.css collapses every
-                  // border to transparent — so rows are separated the way
-                  // DESIGN.md prescribes: with the next colour layer.
-                  <TableRow
-                    key={row.id}
-                    className="even:bg-muted/40 hover:bg-muted/70"
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        className={cn(
-                          alignOf(cell.column.columnDef.meta) === "right" &&
-                            "text-right",
-                        )}
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                table.getRowModel().rows.map((row) => {
+                  const href = rowHref?.(row.original);
+                  return (
+                    // `TableRow`'s `border-t` is dead — globals.css collapses every
+                    // border to transparent — so rows are separated the way
+                    // DESIGN.md prescribes: with the next colour layer.
+                    <TableRow
+                      key={row.id}
+                      className={cn(
+                        "even:bg-muted/40 hover:bg-muted/70",
+                        href && "cursor-pointer",
+                      )}
+                      onClick={
+                        href
+                          ? (e) => {
+                              if (isInteractive(e.target)) return;
+                              // Selecting a phone number to copy it ends in a
+                              // click too; that must not navigate away.
+                              if (window.getSelection()?.toString()) return;
+                              // Cmd/Ctrl-click opens a tab, as it would on the
+                              // link inside the row.
+                              if (e.metaKey || e.ctrlKey)
+                                window.open(href, "_blank");
+                              else router.push(href);
+                            }
+                          : undefined
+                      }
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          className={cn(
+                            alignOf(cell.column.columnDef.meta) === "right" &&
+                              "text-right",
+                          )}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -324,11 +371,18 @@ export function DataTable<TData>({
       {pageSize > 0 && filteredCount > 0 && (
         <div className="flex items-center justify-end gap-2 text-sm">
           {/* The row total matters: without it a filter that matches 3 rows and
-              one that matches 300 look identical from the page counter. */}
+              one that matches 300 look identical from the page counter. Same
+              wording as ServerPager — «Нийт N», with the visible range only
+              once there is more than one page to be on. */}
           <span className="text-muted-foreground">
-            {filteredCount.toLocaleString("mn-MN")}-аас{" "}
-            {(firstRow + 1).toLocaleString("mn-MN")}–
-            {lastRow.toLocaleString("mn-MN")}
+            Нийт {filteredCount.toLocaleString("mn-MN")}
+            {pageCount > 1 && (
+              <>
+                {" · "}
+                {(firstRow + 1).toLocaleString("mn-MN")}–
+                {lastRow.toLocaleString("mn-MN")}
+              </>
+            )}
           </span>
           {pageCount > 1 && (
             <>

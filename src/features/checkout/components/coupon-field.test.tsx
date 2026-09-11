@@ -164,3 +164,28 @@ describe("manual entry", () => {
     expect(screen.getByText("Купон хүчингүй байна.")).toBeTruthy();
   });
 });
+
+describe("while the offers are still loading", () => {
+  it("keeps the manual input out of the way instead of flashing it", () => {
+    // Купоныг × дарж хассан яг тэр мөч: жагсаалт хоосон ч «купон байхгүй»
+    // гэсэн үг биш. Input гарч ирээд санал ирэхэд алга болвол анивчина.
+    render(<CouponField {...NOOP} applied={null} offers={[]} loading />);
+
+    expect(screen.queryByPlaceholderText("Купон код")).toBeNull();
+  });
+
+  it("still offers the input once the answer is in and there is nothing", () => {
+    render(
+      <CouponField {...NOOP} applied={null} offers={[]} loading={false} />,
+    );
+
+    expect(screen.getByPlaceholderText("Купон код")).toBeTruthy();
+  });
+
+  it("lets the customer open the input by hand mid-load", async () => {
+    render(<CouponField {...NOOP} applied={null} offers={[offer()]} loading />);
+
+    await userEvent.click(screen.getByText("Өөр код оруулах"));
+    expect(screen.getByPlaceholderText("Купон код")).toBeTruthy();
+  });
+});

@@ -9,8 +9,6 @@ import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { AddressFields } from "@/features/checkout/components/address-fields";
 
 export interface AddressFormValue {
-  recipient: string;
-  phone: string;
   city: string;
   district: string;
   khoroo: number | null;
@@ -18,8 +16,6 @@ export interface AddressFormValue {
 }
 
 const EMPTY: AddressFormValue = {
-  recipient: "",
-  phone: "",
   city: "",
   district: "",
   khoroo: null,
@@ -27,38 +23,54 @@ const EMPTY: AddressFormValue = {
 };
 
 interface Errors {
-  recipient?: string;
-  phone?: string;
   city?: string;
   district?: string;
   detail?: string;
 }
 
-/** Шинэ хүргэлтийн хаяг нэмэх dialog (мобайлд bottom sheet). */
+/**
+ * Хүргэлтийн хаяг нэмэх / засах dialog (мобайлд bottom sheet). Хаягийн
+ * дэвтэр (данс) ба checkout-ийн «Шинэ хаяг нэмэх» хоёулаа үүнийг хэрэглэнэ —
+ * хаяг бөглөх туршлага хоёр газарт хоёр өөр байх шаардлагагүй.
+ *
+ * Хүлээн авагчийн нэр, утас энд асуухгүй: данс аль хэдийн өөрийн нэр, утастай
+ * бөгөөд хаяг бүр дээр дахин бөглөх нь ижил мэдээллийг гурав дахин хуулж
+ * бичих ажил болдог. Хаяг = зөвхөн газар нь.
+ */
 export function AddressDialog({
   open,
   onOpenChange,
+  initial,
   onSave,
+  submitLabel,
+  extra,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Байгаа хаягийг засаж байвал түүний утга; шинээр нэмэхэд undefined. */
+  initial?: AddressFormValue;
   /** Валидаци давсан формыг хадгална (амжилтгүй бол throw хийж болно). */
-  onSave: (form: AddressFormValue) => Promise<void>;
+  onSave: (form: AddressFormValue) => Promise<void> | void;
+  /** Хадгалахаас өөр үйлдэл бол товчны текст (checkout: «Хаяг хэрэглэх»). */
+  submitLabel?: string;
+  /** Товчнуудын дээр гарах нэмэлт хэсэг (checkout: хаягаа хадгалах чагт). */
+  extra?: React.ReactNode;
 }) {
-  const [form, setForm] = React.useState(EMPTY);
+  const editing = initial != null;
+  const [form, setForm] = React.useState(initial ?? EMPTY);
   const [errors, setErrors] = React.useState<Errors>({});
   const [saving, setSaving] = React.useState(false);
 
-  const recipientRef = React.useRef<HTMLInputElement>(null);
-  const phoneRef = React.useRef<HTMLInputElement>(null);
   const detailRef = React.useRef<HTMLInputElement>(null);
   const regionRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (open) {
-      setForm(EMPTY);
+      setForm(initial ?? EMPTY);
       setErrors({});
     }
+    // `initial` нь шинэ объект байж болох тул зөвхөн нээх мөчид уншина.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   function clearError(key: keyof Errors) {
@@ -66,8 +78,6 @@ export function AddressDialog({
   }
 
   function focusFirstError(next: Errors) {
-    if (next.recipient) return recipientRef.current?.focus();
-    if (next.phone) return phoneRef.current?.focus();
     if (next.city || next.district) {
       // Radix SelectTrigger = role="combobox"; эхнийх нь хот, дараах нь дүүрэг.
       const triggers =
@@ -82,8 +92,6 @@ export function AddressDialog({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const next: Errors = {};
-    if (!form.recipient.trim()) next.recipient = "Хүлээн авагчаа оруулна уу";
-    if (!/^\d{8}$/u.test(form.phone)) next.phone = "8 оронтой дугаар оруулна уу";
     if (!form.city) next.city = "Хот / аймгаа сонгоно уу";
     if (!form.district) next.district = "Дүүрэг, сумаа сонгоно уу";
     if (!form.detail.trim()) next.detail = "Дэлгэрэнгүй хаягаа оруулна уу";
@@ -105,43 +113,9 @@ export function AddressDialog({
     <ResponsiveDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Шинэ хаяг нэмэх"
+      title={editing ? "Хаяг засах" : "Шинэ хаяг нэмэх"}
     >
       <form onSubmit={submit} noValidate className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="address-recipient">Хүлээн авагч</Label>
-            <Input
-              id="address-recipient"
-              ref={recipientRef}
-              value={form.recipient}
-              aria-invalid={errors.recipient ? "true" : undefined}
-              className={fieldErrorClass(errors.recipient)}
-              onChange={(e) => {
-                setForm({ ...form, recipient: e.target.value });
-                clearError("recipient");
-              }}
-            />
-            <FieldError message={errors.recipient} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="address-phone">Утас</Label>
-            <Input
-              id="address-phone"
-              ref={phoneRef}
-              value={form.phone}
-              inputMode="numeric"
-              aria-invalid={errors.phone ? "true" : undefined}
-              className={fieldErrorClass(errors.phone)}
-              onChange={(e) => {
-                setForm({ ...form, phone: e.target.value });
-                clearError("phone");
-              }}
-            />
-            <FieldError message={errors.phone} />
-          </div>
-        </div>
-
         <div ref={regionRef}>
           <AddressFields
             value={{
@@ -180,6 +154,8 @@ export function AddressDialog({
           <FieldError message={errors.detail} />
         </div>
 
+        {extra}
+
         <div className="flex justify-end gap-3 pt-1">
           <Button
             type="button"
@@ -190,7 +166,7 @@ export function AddressDialog({
             Болих
           </Button>
           <Button type="submit" disabled={saving}>
-            {saving ? "Хадгалж байна…" : "Хадгалах"}
+            {saving ? "Хадгалж байна…" : (submitLabel ?? "Хадгалах")}
           </Button>
         </div>
       </form>
