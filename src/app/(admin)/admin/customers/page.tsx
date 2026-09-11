@@ -6,8 +6,8 @@ import {
   ServerPager,
   makeHrefBuilder,
 } from "@/features/admin/components/server-pager";
+import { CustomersToolbar } from "@/features/admin/components/customers-toolbar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 export default async function AdminCustomersPage({
   searchParams,
@@ -23,17 +23,7 @@ export default async function AdminCustomersPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-serif text-2xl font-semibold">Хэрэглэгч</h1>
-        <form action="/admin/customers">
-          <label htmlFor="customer-search" className="sr-only">
-            Хэрэглэгчийг нэрээр хайх
-          </label>
-          <Input
-            id="customer-search"
-            name="q"
-            defaultValue={q}
-            placeholder="Нэрээр хайх"
-          />
-        </form>
+        <CustomersToolbar />
       </div>
 
       {rows.length === 0 ? (
@@ -44,7 +34,7 @@ export default async function AdminCustomersPage({
           </p>
           <p className="text-muted-foreground max-w-xs text-sm">
             {q
-              ? "Өөр нэрээр хайж үзнэ үү."
+              ? "Өөр нэр эсвэл утасны дугаараар хайж үзнэ үү."
               : "Хэрэглэгч бүртгүүлмэгц энд харагдана."}
           </p>
           {q && (

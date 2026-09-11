@@ -15,6 +15,7 @@ import {
   Info,
   Mail,
   LayoutDashboard,
+  Palette,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -23,6 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { ThemeSwitcher } from "@/components/shared/theme-switcher";
 import { createClient } from "@/lib/supabase/browser";
 import { useIsStaff } from "@/features/account/use-staff";
 
@@ -177,6 +179,16 @@ export function ProfileMenu() {
             <HelpCircle /> Түгээмэл асуулт
           </Link>
         </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        {/* Загвар — DropdownMenuItem биш: swatch дарахад цэс хаагдвал сонголтоо
+            эргэж харах боломжгүй болно. Тул энэ мөр нь сонгогдох item биш. */}
+        <div className="flex items-center gap-2 px-2 py-1.5 text-sm">
+          <Palette className="text-muted-foreground size-4 shrink-0" />
+          <span>Загвар</span>
+          <ThemeSwitcher className="ml-auto" />
+        </div>
 
         <DropdownMenuSeparator />
 

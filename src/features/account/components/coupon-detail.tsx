@@ -18,7 +18,12 @@ import { useCart, selectSubtotal } from "@/features/cart/store";
 import { formatPrice, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { daysLeft, usable, type CouponRecord } from "./coupons";
-import { STUB_RATIO, TicketOutline, couponLabel } from "./coupon-ticket";
+import {
+  STUB_RATIO,
+  TicketOutline,
+  TicketStub,
+  couponLabel,
+} from "./coupon-ticket";
 
 /**
  * One coupon, in full.
@@ -144,8 +149,9 @@ export function CouponDetail({ code }: { code: string }) {
       </Link>
 
       {/* The same ticket as the wallet grid, at hero size. */}
-      <div className="text-muted-foreground relative mt-4 aspect-video">
+      <div className="text-muted-foreground/50 relative mt-4 aspect-video">
         <TicketOutline />
+        <TicketStub className="text-muted-foreground/70" />
         <span
           className="absolute inset-y-0 right-0 flex flex-col items-center justify-center gap-1"
           style={{ left: `${STUB_RATIO * 100}%` }}
@@ -154,7 +160,7 @@ export function CouponDetail({ code }: { code: string }) {
             {couponLabel(coupon.type, coupon.value)}
           </span>
           {coupon.user_id && (
-            <span className="text-gold-strong text-xs font-medium">
+            <span className="text-muted-foreground text-xs font-medium">
               Зөвхөн танд
             </span>
           )}
@@ -198,7 +204,7 @@ export function CouponDetail({ code }: { code: string }) {
         {coupon.source === "spin" && (
           <Detail label="Хаанаас">
             <span className="inline-flex items-center gap-1.5">
-              <Gift className="text-gold-strong size-3.5" /> Азын хүрднээс
+              <Gift className="text-muted-foreground size-3.5" /> Азын хүрднээс
             </span>
           </Detail>
         )}
@@ -297,7 +303,7 @@ function CopyButton({ code }: { code: string }) {
       className="bg-background hover:bg-accent flex size-10 shrink-0 items-center justify-center rounded-lg transition-colors"
     >
       {copied ? (
-        <Check className="text-gold-strong size-4" />
+        <Check className="text-foreground size-4" />
       ) : (
         <Copy className="size-4" />
       )}

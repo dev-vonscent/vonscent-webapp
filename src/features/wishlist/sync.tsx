@@ -18,10 +18,19 @@ const UUID_RE =
  * (a toggle made mid-merge is folded into the union it snapshots), and auth
  * is observed via onAuthStateChange so sign-out stops mirroring and clears
  * the local list before another account signs in on the same device.
+ *
+ * The signed-in user is tracked in a ref as well as in state: the sign-out
+ * branch has to clear the zustand store, and doing that from inside a
+ * `setUserId(prev => …)` updater ran it during React's render phase, which
+ * updated every wishlist subscriber (BottomNav) mid-render — the
+ * "Cannot update a component while rendering a different component" warning.
+ * The ref lets the callback read the current user without an updater.
  */
 export function WishlistSync() {
   const ids = useWishlist((s) => s.ids);
   const [userId, setUserId] = React.useState<string | null>(null);
+  /** Same value as `userId`, readable from callbacks without an updater. */
+  const userIdRef = React.useRef<string | null>(null);
   /** Mirroring is armed only after the merge for the CURRENT user finished. */
   const mergedFor = React.useRef<string | null>(null);
   const prev = React.useRef<string[]>([]);
@@ -29,21 +38,27 @@ export function WishlistSync() {
   React.useEffect(() => {
     const supabase = createClient();
     if (!supabase) return;
+
+    /** Records the new auth user; clears the local list on sign-out. */
+    function applyUser(next: string | null) {
+      if (userIdRef.current && !next) {
+        // Sign-out: the local list belongs to the account that left. This runs
+        // in an event callback, never inside a state updater, so subscribers
+        // are notified outside of render.
+        mergedFor.current = null;
+        useWishlist.setState({ ids: [] });
+      }
+      userIdRef.current = next;
+      setUserId(next);
+    }
+
     supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id ?? null);
+      applyUser(data.user?.id ?? null);
     });
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      const next = session?.user?.id ?? null;
-      setUserId((current) => {
-        if (current && !next) {
-          // Sign-out: the local list belongs to the account that left.
-          mergedFor.current = null;
-          useWishlist.setState({ ids: [] });
-        }
-        return next;
-      });
+      applyUser(session?.user?.id ?? null);
     });
     return () => subscription.unsubscribe();
   }, []);

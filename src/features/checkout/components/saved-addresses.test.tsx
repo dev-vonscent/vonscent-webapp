@@ -27,7 +27,14 @@ const ROWS = [
 
 describe("SavedAddresses", () => {
   it("marks the default address and shows each one in full", () => {
-    render(<SavedAddresses addresses={ROWS} value="a1" onChange={() => {}} />);
+    render(
+      <SavedAddresses
+        addresses={ROWS}
+        value="a1"
+        onChange={() => {}}
+        onAddNew={() => {}}
+      />,
+    );
 
     expect(screen.getByText("Үндсэн")).toBeTruthy();
     expect(screen.getByText("Бат-Эрдэнэ")).toBeTruthy();
@@ -38,29 +45,83 @@ describe("SavedAddresses", () => {
   });
 
   it("checks the address it is given", () => {
-    render(<SavedAddresses addresses={ROWS} value="a2" onChange={() => {}} />);
+    render(
+      <SavedAddresses
+        addresses={ROWS}
+        value="a2"
+        onChange={() => {}}
+        onAddNew={() => {}}
+      />,
+    );
 
+    // «Шинэ хаяг нэмэх» нь radio биш болсон: дарахад юу ч сонгогддоггүй,
+    // popup нээгддэг.
     const radios = screen.getAllByRole("radio");
     expect(radios.map((r) => r.getAttribute("aria-checked"))).toEqual([
       "false",
       "true",
-      "false", // "Шинэ хаяг нэмэх"
     ]);
   });
 
   it("reports a chosen address", async () => {
     const onChange = vi.fn();
-    render(<SavedAddresses addresses={ROWS} value="a1" onChange={onChange} />);
+    render(
+      <SavedAddresses
+        addresses={ROWS}
+        value="a1"
+        onChange={onChange}
+        onAddNew={() => {}}
+      />,
+    );
 
     await userEvent.click(screen.getByText("Сарнай"));
     expect(onChange).toHaveBeenCalledWith("a2");
   });
 
-  it("offers 'new address' as the last option, not a separate control", async () => {
+  it("opens the dialog instead of revealing a form", async () => {
+    const onAddNew = vi.fn();
     const onChange = vi.fn();
-    render(<SavedAddresses addresses={ROWS} value="a1" onChange={onChange} />);
+    render(
+      <SavedAddresses
+        addresses={ROWS}
+        value="a1"
+        onChange={onChange}
+        onAddNew={onAddNew}
+      />,
+    );
 
     await userEvent.click(screen.getByText("Шинэ хаяг нэмэх"));
-    expect(onChange).toHaveBeenCalledWith(NEW_ADDRESS);
+    expect(onAddNew).toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("shows an address entered in the dialog as a chosen card", async () => {
+    const onAddNew = vi.fn();
+    render(
+      <SavedAddresses
+        addresses={ROWS}
+        value={NEW_ADDRESS}
+        onChange={() => {}}
+        draft={{
+          city: "Улаанбаатар",
+          district: "Баянгол",
+          khoroo: 12,
+          detail: "20-р байр",
+        }}
+        onAddNew={onAddNew}
+      />,
+    );
+
+    expect(
+      screen.getByText("Улаанбаатар, Баянгол, 12-р хороо, 20-р байр"),
+    ).toBeTruthy();
+    const draftRadio = screen
+      .getAllByRole("radio")
+      .find((r) => r.getAttribute("aria-checked") === "true");
+    expect(draftRadio).toBeTruthy();
+
+    // Оруулсан хаягаа тэндээсээ засах боломжтой.
+    await userEvent.click(screen.getByText("Засах"));
+    expect(onAddNew).toHaveBeenCalled();
   });
 });

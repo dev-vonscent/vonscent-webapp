@@ -17,7 +17,6 @@ import { toast } from "@/lib/toast";
 
 interface Errors {
   name?: string;
-  phone?: string;
 }
 
 /** Профайл засах dialog (мобайлд bottom sheet) — нэр, аватар, утас. */
@@ -49,23 +48,20 @@ export function ProfileEditDialog({
   onPhoneVerified: () => void;
 }) {
   const [name, setName] = React.useState(fullName);
-  const [phoneValue, setPhoneValue] = React.useState(phone);
   const [errors, setErrors] = React.useState<Errors>({});
   const [avatarError, setAvatarError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
 
   const nameRef = React.useRef<HTMLInputElement>(null);
-  const phoneRef = React.useRef<HTMLInputElement>(null);
 
   // Нээх бүрт хадгалагдсан утгаас эхэлнэ.
   React.useEffect(() => {
     if (open) {
       setName(fullName);
-      setPhoneValue(phone);
       setErrors({});
       setAvatarError(null);
     }
-  }, [open, fullName, phone]);
+  }, [open, fullName]);
 
   function clearError(key: keyof Errors) {
     setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
@@ -75,36 +71,27 @@ export function ProfileEditDialog({
     e.preventDefault();
     const next: Errors = {};
     if (!name.trim()) next.name = "Нэрээ оруулна уу";
-    if (!phoneVerified && phoneValue && !/^\d{8}$/u.test(phoneValue)) {
-      next.phone = "8 оронтой дугаар оруулна уу";
-    }
     setErrors(next);
     if (next.name) {
       nameRef.current?.focus();
-      return;
-    }
-    if (next.phone) {
-      phoneRef.current?.focus();
       return;
     }
 
     const supabase = createClient();
     if (!supabase || !userId) return;
     setSaving(true);
-    // Баталгаажсан дугаарыг эндээс өөрчлөхгүй — verify.mn урсгалаар л солино.
-    const update = phoneVerified
-      ? { full_name: name.trim() }
-      : { full_name: name.trim(), phone: phoneValue };
+    // Утасны дугаарыг эндээс өөрчлөхгүй: түүнийг verify.mn-ийн MO-SMS
+    // урсгалаар л солино, тул энэ форм зөвхөн нэрийг бичдэг.
     const { error } = await supabase
       .from("profiles")
-      .update(update)
+      .update({ full_name: name.trim() })
       .eq("id", userId);
     setSaving(false);
     if (error) {
       toast.error("Хадгалж чадсангүй. Дахин оролдоно уу.");
       return;
     }
-    onSaved({ fullName: name.trim(), phone: phoneValue });
+    onSaved({ fullName: name.trim(), phone });
     toast.success("Мэдээлэл хадгалагдлаа.");
     onOpenChange(false);
   }
@@ -202,25 +189,24 @@ export function ProfileEditDialog({
           <div className="flex items-center gap-2">
             <Input
               id="profile-phone"
-              ref={phoneRef}
-              value={phoneValue}
-              inputMode="numeric"
-              readOnly={phoneVerified}
-              aria-invalid={errors.phone ? "true" : undefined}
-              className={fieldErrorClass(errors.phone)}
-              onChange={(e) => {
-                setPhoneValue(e.target.value);
-                clearError("phone");
-              }}
+              value={phone}
+              disabled
+              className="disabled:opacity-60"
+              placeholder="Бүртгээгүй"
             />
             {phoneVerified && <Badge variant="new">Баталгаажсан</Badge>}
           </div>
-          <FieldError message={errors.phone} />
-          <PhoneVerify
-            phone={phoneValue}
-            verified={phoneVerified}
-            onVerified={onPhoneVerified}
-          />
+          <p className="text-muted-foreground text-xs">
+            Дугаар нь таны нэвтрэх мэдээлэл — эндээс солих боломжгүй. Солих
+            шаардлагатай бол бидэнтэй холбогдоорой.
+          </p>
+          {!phoneVerified && phone && (
+            <PhoneVerify
+              phone={phone}
+              verified={phoneVerified}
+              onVerified={onPhoneVerified}
+            />
+          )}
         </div>
 
         <div className="space-y-1.5">

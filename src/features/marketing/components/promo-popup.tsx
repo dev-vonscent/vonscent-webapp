@@ -82,11 +82,13 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
         aria-describedby={undefined}
-        className="max-w-lg gap-0 overflow-hidden p-0"
+        // Зөвхөн зураг харагдана: хүрээ/дэвсгэр/сүүдэргүй, зурагны өөрийн
+        // харьцаагаар агшина (letterbox үүсэхгүй).
+        className="w-auto max-w-[min(100vw_-_2rem,32rem)] gap-0 border-0 bg-transparent p-0 shadow-none"
       >
         <DialogTitle className="sr-only">Сурталчилгаа</DialogTitle>
 
-        <div ref={emblaRef} className="overflow-hidden">
+        <div ref={emblaRef} className="overflow-hidden rounded-2xl">
           <div className="flex items-start">
             {slides.map((slide, i) => (
               <div
@@ -155,7 +157,7 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
 
 /**
  * Зураг өөрийн харьцаагаараа, тайрахгүй — админ ямар ч хэмжээтэй зураг
- * оруулж болно. Хэт өндөр зураг дэлгэцээс хэтрэхгүйн тулд 80vh-д хашина.
+ * оруулж болно. Хэт өндөр зураг дэлгэцээс хэтрэхгүйн тулд 85svh-д хашина.
  */
 function SlideImage({
   slide,
@@ -175,7 +177,7 @@ function SlideImage({
       height={1350}
       sizes="(max-width: 544px) calc(100vw - 2rem), 512px"
       loading={eager ? "eager" : "lazy"}
-      className="bg-secondary h-auto max-h-[80vh] w-full object-contain"
+      className="mx-auto block h-auto max-h-[85svh] w-auto max-w-full"
       // Свайп хийхэд браузарын зураг чирэх үйлдэл саад болдог.
       draggable={false}
     />

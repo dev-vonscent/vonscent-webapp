@@ -21,6 +21,7 @@ import * as Sentry from "@sentry/nextjs";
 import { matchesSearch, searchTerms } from "@/lib/search";
 import { stockState } from "./lib/stock-state";
 import { PRODUCT_OPTION_LIMIT, type ProductOption } from "./lib/product-option";
+import { customerSearchFilter } from "./lib/customer-search";
 
 /**
  * Admin read access. Uses the cookie-bound client so staff RLS applies (admins
@@ -249,7 +250,8 @@ export async function getCustomers(
     .from("profiles")
     .select("*", { count: "exact" })
     .order("created_at", { ascending: false });
-  if (search) query = query.ilike("full_name", `%${search}%`);
+  const filter = search ? customerSearchFilter(search) : null;
+  if (filter) query = query.or(filter);
   // The old `.limit(200)` hid every customer past the 200th, search included.
   const { data, count } = await query.range(
     page * CUSTOMERS_PER_PAGE,

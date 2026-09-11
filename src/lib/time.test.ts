@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  earliestServableDay,
+  projectedDeliveryDay,
   orderDispatchAt,
   orderEditDeadline,
   isOrderEditable,
@@ -124,11 +126,71 @@ describe("order dispatch & cut-off rules", () => {
     });
 
     it("names today", () => {
-      expect(formatDeliveryDay(ubToday(now), now)).toBe("Өнөөдөр (08/01, Бямба)");
+      expect(formatDeliveryDay(ubToday(now), now)).toBe(
+        "Өнөөдөр (08/01, Бямба)",
+      );
     });
 
     it("writes any other day with its weekday", () => {
       expect(formatDeliveryDay("2026-08-14", now)).toBe("08/14, Баасан");
+    });
+  });
+});
+
+/**
+ * Төлбөр хоцорсон захиалгын хүргэх өдөр.
+ *
+ * Өчигдөр «маргааш» гэж захиалсан (deliver_on = өнөөдөр) захиалгыг өнөөдөр
+ * 12:00-д төлөхөд өнөөдрийн 11:00-ийн хүргэлт аль хэдийн гарсан — тэр
+ * захиалга бодитоор маргааш хүргэгдэнэ. Дүрмийн эрх нь migration 0069-ийн
+ * `mark_order_paid`-д; эдгээр нь хуудсан дээрх урьдчилсан тооцоог барина.
+ */
+describe("delivery day of a payment that arrives late", () => {
+  /** UB (UTC+8) цагаар тэр өдрийн `hour`:`minute` мөч. */
+  const ub = (day: string, hour: number, minute = 0) => {
+    const [y, m, d] = day.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d, hour - 8, minute));
+  };
+
+  describe("earliestServableDay", () => {
+    it("keeps today while there is still time to prepare", () => {
+      // 09:00 (цуцлах/өөрчлөх хязгаар) -аас өмнө өнөөдөр хүргэж болно.
+      expect(earliestServableDay(ub("2026-09-11", 7, 30))).toBe("2026-09-11");
+    });
+
+    it("rolls to tomorrow once the day's prep has started", () => {
+      expect(earliestServableDay(ub("2026-09-11", 9))).toBe("2026-09-12");
+      expect(earliestServableDay(ub("2026-09-11", 12))).toBe("2026-09-12");
+      expect(earliestServableDay(ub("2026-09-11", 23, 59))).toBe("2026-09-12");
+    });
+  });
+
+  describe("projectedDeliveryDay", () => {
+    it("moves a day that can no longer be served", () => {
+      expect(projectedDeliveryDay("2026-09-11", ub("2026-09-11", 12))).toBe(
+        "2026-09-12",
+      );
+    });
+
+    it("leaves a day that is still ahead alone", () => {
+      expect(projectedDeliveryDay("2026-09-15", ub("2026-09-11", 12))).toBe(
+        "2026-09-15",
+      );
+      expect(projectedDeliveryDay("2026-09-11", ub("2026-09-11", 8))).toBe(
+        "2026-09-11",
+      );
+    });
+
+    it("never pulls a day earlier", () => {
+      expect(projectedDeliveryDay("2026-09-20", ub("2026-09-11", 23))).toBe(
+        "2026-09-20",
+      );
+    });
+
+    it("falls back to the earliest day when none is stored", () => {
+      expect(projectedDeliveryDay(null, ub("2026-09-11", 12))).toBe(
+        "2026-09-12",
+      );
     });
   });
 });

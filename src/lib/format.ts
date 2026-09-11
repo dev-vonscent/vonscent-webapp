@@ -22,18 +22,19 @@ export function formatMl(ml: number): string {
   return `${ml}ml`;
 }
 
-const dateFmt = new Intl.DateTimeFormat("mn-MN", {
+/**
+ * Dates are assembled from parts rather than handed to a locale pattern.
+ *
+ * `mn-MN` writes a month with no year beside it as a ROMAN numeral, so
+ * «08 IX 15:34» is what an order taken on 2026-09-08 15:34 actually rendered
+ * as — unreadable next to the numeric «2026.09.08» the same screen showed
+ * elsewhere. Composing the parts ourselves pins one shape everywhere:
+ * `2026.09.08`, and `2026.09.08 15:34` when the clock time matters.
+ *
+ * Everything stays on Ulaanbaatar time, which is what the shop runs on.
+ */
+const partsFmt = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  timeZone: UB_TIMEZONE,
-});
-
-export function formatDate(value: string | number | Date): string {
-  return dateFmt.format(new Date(value));
-}
-
-const dateTimeFmt = new Intl.DateTimeFormat("mn-MN", {
   month: "2-digit",
   day: "2-digit",
   hour: "2-digit",
@@ -42,15 +43,32 @@ const dateTimeFmt = new Intl.DateTimeFormat("mn-MN", {
   timeZone: UB_TIMEZONE,
 });
 
+function ubParts(value: string | number | Date): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const part of partsFmt.formatToParts(new Date(value))) {
+    out[part.type] = part.value;
+  }
+  return out;
+}
+
+/** `2026.09.08` — Ulaanbaatar day. */
+export function formatDate(value: string | number | Date): string {
+  const p = ubParts(value);
+  return `${p.year}.${p.month}.${p.day}`;
+}
+
 /**
- * Date *and* time, for the admin lists that triage by arrival.
+ * Date *and* time (`2026.09.08 15:34`), for the admin lists that triage by
+ * arrival.
  *
  * The order list showed date only, so fifty orders taken across one day all
  * read «2026.08.28» and could not be told apart — while the list's own filter
- * takes a `datetime-local`. Ulaanbaatar time, like every other admin timestamp.
+ * takes a `datetime-local`. The year is part of it too: a customer's order
+ * history spans years, and «08 IX» left the operator guessing which one.
  */
 export function formatDateTime(value: string | number | Date): string {
-  return dateTimeFmt.format(new Date(value));
+  const p = ubParts(value);
+  return `${p.year}.${p.month}.${p.day} ${p.hour}:${p.minute}`;
 }
 
 /**

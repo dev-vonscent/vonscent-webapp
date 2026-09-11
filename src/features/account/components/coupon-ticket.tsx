@@ -10,6 +10,13 @@ import { cn } from "@/lib/utils";
  * corners, the two side bites, the small tears where the dashed rule meets the
  * top and bottom edges, and a single continuous line through all of them.
  *
+ * The body is filled (`fill-secondary`) rather than left transparent: an
+ * unfilled outline on a light card read as a blank rectangle with a number in
+ * it — the ticket needs its own ground to look like an object you could pick
+ * up. The fill is the page's own `secondary`, not a colour of its own: the
+ * ticket is one surface among the rest, and `.black` / `.white` stay
+ * grayscale as globals.css intends.
+ *
  * The geometry lives in a 160×90 viewBox — the same 16:9 the cards are laid
  * out at (`aspect-video`) — so the ticket scales uniformly and the notches
  * never go oval. Change the card's aspect and this viewBox moves with it.
@@ -61,7 +68,7 @@ export function TicketOutline({ className }: { className?: string }) {
       strokeLinecap="round"
       className={cn("absolute inset-0 size-full", className)}
     >
-      <path d={TICKET_PATH} />
+      <path d={TICKET_PATH} className="fill-secondary" />
       {/* The perforation, running between the two tear notches. */}
       <line
         x1={TEAR_X}
@@ -72,6 +79,30 @@ export function TicketOutline({ className }: { className?: string }) {
         strokeWidth={1.25}
       />
     </svg>
+  );
+}
+
+/**
+ * The word running up the stub.
+ *
+ * The stub is a quarter of the ticket and held nothing, which is what made the
+ * card look empty. Vertical type is what is actually printed there on a real
+ * ticket, and it costs no horizontal room the value needs.
+ */
+export function TicketStub({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "absolute inset-y-0 left-0 flex items-center justify-center",
+        className,
+      )}
+      style={{ width: `${STUB_RATIO * 100}%` }}
+    >
+      <span className="rotate-180 text-[9px] font-semibold tracking-[0.2em] uppercase [writing-mode:vertical-rl]">
+        Купон
+      </span>
+    </span>
   );
 }
 

@@ -7,6 +7,11 @@ import { Button } from "@/components/ui/button";
  * Always states the real total — a page counter alone cannot tell "3 matches"
  * from "300 matches", which is the whole reason an operator applies a filter.
  * Links rather than buttons, so back and share work.
+ *
+ * The label used to read «5-аас 1–5»: three numbers, no word saying which was
+ * which, and on a single page it restated the same count twice. Now the total
+ * is named («Нийт 5»), and the range is added only when the list actually
+ * spills over one page — `Нийт 5,000 · 51–100`.
  */
 export function ServerPager({
   page,
@@ -27,8 +32,13 @@ export function ServerPager({
   return (
     <div className="flex items-center justify-end gap-2 text-sm">
       <span className="text-muted-foreground">
-        {total.toLocaleString("mn-MN")}-аас {first.toLocaleString("mn-MN")}–
-        {last.toLocaleString("mn-MN")}
+        Нийт {total.toLocaleString("mn-MN")}
+        {pageCount > 1 && (
+          <>
+            {" · "}
+            {first.toLocaleString("mn-MN")}–{last.toLocaleString("mn-MN")}
+          </>
+        )}
       </span>
       {pageCount > 1 && (
         <>

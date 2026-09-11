@@ -20,6 +20,10 @@ import { verifyAndMarkOrderPaid } from "@/lib/payments/confirm-order";
  *
  * Keyed by `pay_token`, never `order_no`: order numbers are sequential, and
  * even a leaked boolean per order number is worth not handing out.
+ *
+ * Төлөгдсөн хариу нь `deliverOn`-г хамт буцаана: `mark_order_paid` (0069) нь
+ * хоцорсон төлбөр дээр хүргэх өдрийг ахиулдаг тул хуудсан дээр нээгдэх үед
+ * уншсан өдөр хуучирсан байж мэднэ.
  */
 const querySchema = z.object({
   token: z.string().min(8).max(128),
@@ -41,13 +45,23 @@ export async function GET(req: Request) {
 
   const order = await orderIdForToken(parsed.data.token);
   if (!order) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-  if (order.paid) return NextResponse.json({ paid: true });
+  if (order.paid) {
+    return NextResponse.json({ paid: true, deliverOn: order.deliverOn });
+  }
 
   if (parsed.data.verify === "1") {
     const result = await verifyAndMarkOrderPaid(order.id);
     // NOT_PAID / CHECK_FAILED are both "keep waiting" from the page's side —
     // the distinction only matters in logs, so the shape stays a boolean.
-    return NextResponse.json({ paid: result.ok === true, verified: true });
+    if (!result.ok) return NextResponse.json({ paid: false, verified: true });
+    // Дахин уншиж байгаа нь зөвхөн өдрийн төлөө: төлбөр батлагдсан мөчид
+    // хүргэх өдөр ахисан байж болно.
+    const fresh = await orderIdForToken(parsed.data.token);
+    return NextResponse.json({
+      paid: true,
+      verified: true,
+      deliverOn: fresh?.deliverOn ?? order.deliverOn,
+    });
   }
 
   return NextResponse.json({ paid: false });

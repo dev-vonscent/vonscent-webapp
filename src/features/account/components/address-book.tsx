@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { Check, Loader2, MapPin, Plus, Trash2 } from "lucide-react";
+import { Check, Loader2, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,8 +10,11 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import {
   AddressDialog,
   type AddressFormValue,
-} from "@/features/account/components/address-dialog";
-import { composeDetail } from "@/features/checkout/components/address-fields";
+} from "@/features/checkout/components/address-dialog";
+import {
+  composeDetail,
+  splitDetail,
+} from "@/features/checkout/components/address-fields";
 import { createClient } from "@/lib/supabase/browser";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import { cn } from "@/lib/utils";
@@ -25,9 +28,13 @@ function sortDefaultFirst(list: AddressRow[]): AddressRow[] {
 
 export function AddressBook() {
   const [userId, setUserId] = React.useState<string | null>(null);
+  /** Хүлээн авагчийн нэр, утас — хаяг бүр дээр асуухын оронд дансаас. */
+  const [contact, setContact] = React.useState({ name: "", phone: "" });
   const [items, setItems] = React.useState<AddressRow[]>([]);
   const [loaded, setLoaded] = React.useState(false);
   const [dialogOpen, setDialogOpen] = React.useState(false);
+  /** Засаж байгаа хаяг; null = шинээр нэмж байна. */
+  const [editing, setEditing] = React.useState<AddressRow | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(
     null,
   );
@@ -51,11 +58,20 @@ export function AddressBook() {
       return;
     }
     setUserId(user.id);
-    const { data } = await supabase
-      .from("addresses")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("is_default", { ascending: false });
+    const [{ data }, { data: profile }] = await Promise.all([
+      supabase
+        .from("addresses")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("is_default", { ascending: false }),
+      supabase
+        .from("profiles")
+        .select("full_name, phone")
+        .eq("id", user.id)
+        .maybeSingle(),
+    ]);
+    const p = profile as { full_name?: string; phone?: string } | null;
+    setContact({ name: p?.full_name ?? "", phone: p?.phone ?? "" });
     setItems(sortDefaultFirst((data as AddressRow[] | null) ?? []));
     setLoaded(true);
   }, []);
@@ -64,19 +80,40 @@ export function AddressBook() {
     load();
   }, [load]);
 
-  async function add(form: AddressFormValue) {
+  function openNew() {
+    setEditing(null);
+    setDialogOpen(true);
+  }
+
+  function openEdit(a: AddressRow) {
+    setEditing(a);
+    setDialogOpen(true);
+  }
+
+  async function save(form: AddressFormValue) {
     const supabase = createClient();
     if (!supabase || !userId) return;
-    await supabase.from("addresses").insert({
-      user_id: userId,
+    const fields = {
       label: form.district || form.city,
-      recipient: form.recipient,
-      phone: form.phone,
       city: form.city,
       district: form.district || null,
       detail: composeDetail(form.khoroo, form.detail),
-      is_default: items.length === 0,
-    });
+    };
+    const { error } = editing
+      ? await supabase.from("addresses").update(fields).eq("id", editing.id)
+      : await supabase.from("addresses").insert({
+          ...fields,
+          user_id: userId,
+          // Хүлээн авагч нь дансны эзэн — dialog дээр дахин асуухгүй.
+          recipient: contact.name,
+          phone: contact.phone,
+          is_default: items.length === 0,
+        });
+    if (error) {
+      toast.error("Хаягийг хадгалж чадсангүй. Дахин оролдоно уу.");
+      return;
+    }
+    toast.success(editing ? "Хаяг шинэчлэгдлээ." : "Хаяг нэмэгдлээ.");
     load();
   }
 
@@ -142,7 +179,7 @@ export function AddressBook() {
             variant="outline"
             size="sm"
             className="ml-auto"
-            onClick={() => setDialogOpen(true)}
+            onClick={openNew}
           >
             <Plus className="size-4" /> Нэмэх
           </Button>
@@ -153,7 +190,7 @@ export function AddressBook() {
         <div className="bg-secondary flex flex-col items-center gap-3 rounded-xl py-12 text-center">
           <MapPin className="text-muted-foreground size-9" />
           <p className="text-muted-foreground text-sm">Хадгалсан хаяг алга.</p>
-          <Button variant="outline" onClick={() => setDialogOpen(true)}>
+          <Button variant="outline" onClick={openNew}>
             Шинэ хаяг нэмэх
           </Button>
         </div>
@@ -189,7 +226,10 @@ export function AddressBook() {
                       <div className="flex items-start gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium">{a.recipient}</p>
+                            <p className="font-medium">
+                              {a.city}
+                              {a.district ? `, ${a.district}` : ""}
+                            </p>
                             <AnimatePresence initial={false}>
                               {a.is_default && (
                                 <motion.span
@@ -203,22 +243,25 @@ export function AddressBook() {
                               )}
                             </AnimatePresence>
                           </div>
-                          <p className="text-muted-foreground text-sm">
-                            {a.phone}
-                          </p>
-                          <p className="mt-1 text-sm">
-                            {a.city}
-                            {a.district ? `, ${a.district}` : ""}, {a.detail}
-                          </p>
+                          <p className="mt-1 text-sm">{a.detail}</p>
                         </div>
 
-                        <button
-                          onClick={() => setPendingDeleteId(a.id)}
-                          className="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded-md p-2"
-                          aria-label="Устгах"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
+                        <div className="flex shrink-0 items-center">
+                          <button
+                            onClick={() => openEdit(a)}
+                            className="text-muted-foreground hover:bg-accent hover:text-foreground rounded-md p-2"
+                            aria-label="Засах"
+                          >
+                            <Pencil className="size-4" />
+                          </button>
+                          <button
+                            onClick={() => setPendingDeleteId(a.id)}
+                            className="text-muted-foreground hover:bg-accent hover:text-foreground rounded-md p-2"
+                            aria-label="Устгах"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Дарах газар нь тодорхой байх ёстой — icon биш, бичигтэй товч. */}
@@ -255,7 +298,16 @@ export function AddressBook() {
       <AddressDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onSave={add}
+        initial={
+          editing
+            ? {
+                city: editing.city,
+                district: editing.district ?? "",
+                ...splitDetail(editing.detail),
+              }
+            : undefined
+        }
+        onSave={save}
       />
 
       <ConfirmDialog

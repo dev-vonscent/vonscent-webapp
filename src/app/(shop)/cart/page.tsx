@@ -3,19 +3,19 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Gift, Minus, Plus, Trash2, ShoppingCart } from "lucide-react";
+import { Gift, Minus, Plus, Trash2, Truck, ShoppingCart } from "lucide-react";
 import { bundleGiftGuarantee } from "@/lib/gift";
 import { useGiftPool } from "@/features/gifts/use-gift-pool";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
+import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { formatPrice } from "@/lib/format";
-import { SHIPPING_ZONES } from "@/lib/constants";
-import { createClient } from "@/lib/supabase/browser";
 import { useCart, selectSubtotal } from "@/features/cart/store";
 import { CartSizeSelect } from "@/features/cart/components/cart-size-select";
+import { useCartSelection } from "@/features/cart/use-cart-selection";
 
 export default function CartPage() {
   const items = useCart((s) => s.items);
@@ -25,71 +25,25 @@ export default function CartPage() {
   const setCollectionQty = useCart((s) => s.setCollectionQty);
   const removeCollection = useCart((s) => s.removeCollection);
   const giftPool = useGiftPool();
+  const setItemSelected = useCart((s) => s.setItemSelected);
+  const setCollectionSelected = useCart((s) => s.setCollectionSelected);
+  const {
+    isItemSelected,
+    isCollectionSelected,
+    setAllSelected,
+    removeSelected,
+    lineCount,
+    selectedLineCount,
+    allSelected,
+    noneSelected,
+  } = useCartSelection();
+  // Устгах нь буцаагдахгүй тул нэг дарааж баталгаажуулна.
+  const [confirmRemove, setConfirmRemove] = React.useState(false);
   const subtotal = useCart(selectSubtotal);
-  const coupon = useCart((s) => s.coupon);
-  const setCoupon = useCart((s) => s.setCoupon);
   const [mounted, setMounted] = React.useState(false);
-  const [code, setCode] = React.useState("");
-  const [couponMsg, setCouponMsg] = React.useState<string | null>(null);
-  const [applying, setApplying] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
 
-  // Estimated delivery fee — the admin's default (first deliverable) zone,
-  // i.e. Ulaanbaatar city centre. Checkout still computes the real fee.
-  const [defaultZoneFee, setDefaultZoneFee] = React.useState<number>(
-    SHIPPING_ZONES[0].fee,
-  );
-  React.useEffect(() => {
-    const supabase = createClient();
-    if (!supabase) return;
-    (async () => {
-      const { data } = await supabase
-        .from("settings")
-        .select("value")
-        .eq("key", "shipping")
-        .maybeSingle();
-      const zones = (
-        data as {
-          value?: { zones?: { fee?: number; deliverable?: boolean }[] };
-        } | null
-      )?.value?.zones;
-      const first = zones?.find((z) => z.deliverable !== false);
-      if (first && Number(first.fee) > 0) setDefaultZoneFee(Number(first.fee));
-    })();
-  }, []);
-
-  async function applyCoupon(e: React.FormEvent) {
-    e.preventDefault();
-    if (!code.trim()) return;
-    setApplying(true);
-    setCouponMsg(null);
-    try {
-      const res = await fetch("/api/coupons/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: code.trim(), subtotal }),
-      });
-      const data = await res.json();
-      if (data.valid) {
-        setCoupon({
-          code: data.code ?? code.trim().toUpperCase(),
-          discount: data.discount,
-        });
-        setCouponMsg(null);
-        setCode("");
-      } else {
-        setCoupon(null);
-        setCouponMsg(data.message ?? "Купон хүчингүй байна.");
-      }
-    } catch {
-      setCouponMsg("Алдаа гарлаа. Дахин оролдоно уу.");
-    } finally {
-      setApplying(false);
-    }
-  }
-
-  if (!mounted)
-    return <div className="mx-auto max-w-352 px-4 py-16 md:px-8" />;
+  if (!mounted) return <div className="mx-auto max-w-352 px-4 py-16 md:px-8" />;
 
   if (items.length === 0 && collections.length === 0) {
     return (
@@ -112,11 +66,47 @@ export default function CartPage() {
 
       <div className="grid gap-10 lg:grid-cols-[1fr_360px]">
         <div className="space-y-4">
+          {/* Сонголтын толгой мөр — хүссэн барааг л захиалах боломж */}
+          <div className="flex items-center justify-between gap-3 px-1">
+            <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={(v) => setAllSelected(Boolean(v))}
+                aria-label="Бүгдийг сонгох"
+              />
+              <span>Бүгдийг сонгох</span>
+              <span className="text-muted-foreground text-xs tabular-nums">
+                {selectedLineCount}/{lineCount}
+              </span>
+            </label>
+            {/* Мөр бүр аль хэдийн хогийн савны icon-той тул толгойн үйлдлийг
+                ч icon болговол «энэ мөрийг устгах» гэж уншигдана — текст
+                товч нь хэмжээгээрээ ч, үгээрээ ч өөр зүйл гэдгийг хэлнэ. */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setConfirmRemove(true)}
+              disabled={noneSelected}
+              className="text-muted-foreground hover:text-destructive -mr-2 h-11 text-xs md:h-9"
+            >
+              Сонгосныг устгах
+            </Button>
+          </div>
+
           {/* Bundles — one grouped card each (same grouping as the cart sheet) */}
           {collections.map((c) => (
             <Card key={c.key}>
               <CardContent className="p-4">
                 <div className="flex gap-4">
+                  <Checkbox
+                    checked={isCollectionSelected(c.key)}
+                    onCheckedChange={(v) =>
+                      setCollectionSelected(c.key, Boolean(v))
+                    }
+                    aria-label={`${c.name} багцыг сонгох`}
+                    className="mt-1 self-start"
+                  />
                   <div className="border-border bg-muted relative size-24 shrink-0 overflow-hidden rounded-md border">
                     {c.image && (
                       <Image
@@ -140,7 +130,10 @@ export default function CartPage() {
                             {c.ml}ml багц
                           </span>
                           {c.discountPct > 0 && (
-                            <Badge variant="sale" className="h-4 px-1 text-[10px]">
+                            <Badge
+                              variant="sale"
+                              className="h-4 px-1 text-[10px]"
+                            >
                               −{c.discountPct}%
                             </Badge>
                           )}
@@ -176,7 +169,9 @@ export default function CartPage() {
                         >
                           <Minus className="size-4 md:size-3.5" />
                         </button>
-                        <span className="w-8 text-center text-sm tabular-nums md:w-6">{c.qty}</span>
+                        <span className="w-8 text-center text-sm tabular-nums md:w-6">
+                          {c.qty}
+                        </span>
                         <button
                           className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full md:size-9"
                           onClick={() => setCollectionQty(c.key, c.qty + 1)}
@@ -198,6 +193,12 @@ export default function CartPage() {
           {items.map((item) => (
             <Card key={item.key}>
               <CardContent className="flex gap-4 p-4">
+                <Checkbox
+                  checked={isItemSelected(item.key)}
+                  onCheckedChange={(v) => setItemSelected(item.key, Boolean(v))}
+                  aria-label={`${item.name} сонгох`}
+                  className="mt-1 self-start"
+                />
                 <div className="border-border bg-muted relative size-24 shrink-0 overflow-hidden rounded-md border">
                   {item.image && (
                     <Image
@@ -276,77 +277,47 @@ export default function CartPage() {
                 Захиалгын дүн
               </h2>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Дэд дүн</span>
+                {/* Сонгосон мөрийн тоо зүүн талын «Бүгдийг сонгох 2/2»-д
+                    аль хэдийн байгаа тул энд давхардуулахгүй. */}
+                <span className="text-muted-foreground">Барааны дүн</span>
                 <span className="font-medium">{formatPrice(subtotal)}</span>
               </div>
 
-              {/* Coupon */}
-              {coupon ? (
-                <div className="bg-secondary flex items-center justify-between rounded-md px-3 py-2 text-sm">
-                  <span>
-                    Купон <strong>{coupon.code}</strong>
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="text-success font-medium">
-                      −{formatPrice(Math.min(coupon.discount, subtotal))}
-                    </span>
-                    <button
-                      onClick={() => setCoupon(null)}
-                      className="text-muted-foreground hover:text-destructive -mr-2 flex size-11 shrink-0 items-center justify-center rounded-full md:size-9"
-                      aria-label="Купон хасах"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  </span>
-                </div>
-              ) : (
-                <form onSubmit={applyCoupon} className="flex gap-2">
-                  <Input
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    placeholder="Купон код"
-                    className="h-9"
-                  />
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    size="sm"
-                    disabled={applying}
-                  >
-                    {applying ? "…" : "Хэрэглэх"}
-                  </Button>
-                </form>
-              )}
-              {couponMsg && (
-                <p className="text-destructive text-xs">{couponMsg}</p>
-              )}
+              {/*
+                Хүргэлтийн төлбөрийг тоогоор бичихгүй — хаягийн бүсээс
+                хамаарч хэлбэлздэг тул «8,000₮» гэж амлаад дараа нь өөр дүн
+                гарах нь хэрэглэгчийн хамгийн таагүй хүлээж авдаг зөрүү.
+                Тиймээс сагс нь барааны дүнгээ л баттай хэлж, хүргэлтийг
+                хаяг тодорсны дараа (checkout) нэмнэ — сагсны sheet ч мөн
+                ийм.
 
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    Хүргэлт · Улаанбаатар
-                  </span>
-                  <span className="font-medium">
-                    {formatPrice(defaultZoneFee)}
-                  </span>
-                </div>
-                <p className="text-muted-foreground text-xs">
-                  Бүсээс хамаарна — эцсийн дүн checkout дээр.
-                </p>
-              </div>
+                Купоны талбар ч энд байхгүй — зориуд: код байхгүй хүнд «хаа
+                нэгтээ хямдрал байна» гэж хэлээд сайтаас гаргаж купон
+                хайлгадаг (Baymard), мөн checkout дээр хэрэглэгчийн боломжтой
+                купоныг өөрөө санал болгодог хувилбар аль хэдийн бий.
+              */}
               <Separator />
-              <div className="flex justify-between">
-                <span className="font-medium">Нийт</span>
-                <span className="font-serif text-lg font-semibold">
-                  {formatPrice(
-                    subtotal -
-                      (coupon ? Math.min(coupon.discount, subtotal) : 0) +
-                      defaultZoneFee,
-                  )}
+              <div className="flex items-baseline justify-between">
+                <span className="text-muted-foreground flex items-center gap-1.5 text-sm">
+                  <Truck className="size-4" /> Хүргэлт
                 </span>
+                <span className="text-sm">Хаягаас хамаарна</span>
               </div>
-              <Button asChild size="lg" className="w-full">
-                <Link href="/checkout">Захиалга үргэлжлүүлэх</Link>
+              <p className="text-muted-foreground text-xs text-balance">
+                Хүргэлтийн төлбөр, купон, V point бүгд дараагийн хуудсанд —
+                хаягаа сонгомогц эцсийн дүн гарна.
+              </p>
+              <Button
+                asChild={!noneSelected}
+                size="lg"
+                className="w-full"
+                disabled={noneSelected}
+              >
+                {noneSelected ? (
+                  "Захиалах бараагаа сонгоно уу"
+                ) : (
+                  <Link href="/checkout">Захиалга үргэлжлүүлэх</Link>
+                )}
               </Button>
               <Button asChild variant="ghost" className="w-full">
                 <Link href="/catalog">Үргэлжлүүлэн дэлгүүр хэсэх</Link>
@@ -355,6 +326,30 @@ export default function CartPage() {
           </Card>
         </div>
       </div>
+
+      {/* Сонгосон мөрүүдийг устгах нь буцаагдахгүй тул нэг баталгаажуулалт —
+          сагсны толгойн дээрх хогийн савны icon үүнийг нээнэ. */}
+      <ResponsiveDialog
+        open={confirmRemove}
+        onOpenChange={setConfirmRemove}
+        title="Сонгосон барааг устгах?"
+        description={`Сагснаас ${selectedLineCount} мөр устана. Үүнийг буцаах боломжгүй.`}
+      >
+        <div className="flex justify-end gap-3 pt-2">
+          <Button variant="outline" onClick={() => setConfirmRemove(false)}>
+            Болих
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => {
+              removeSelected();
+              setConfirmRemove(false);
+            }}
+          >
+            Устгах
+          </Button>
+        </div>
+      </ResponsiveDialog>
     </div>
   );
 }

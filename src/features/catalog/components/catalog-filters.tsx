@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
-import { GENDERS, GENDER_LABEL } from "@/lib/constants";
+import { GENDERS, GENDER_LABEL, SEASON_LABEL, SEASONS } from "@/lib/constants";
 import { useFilterQuery } from "./use-filter-query";
 import type { ScentFamilyOption } from "@/lib/types";
 import type { BrandLogos } from "@/features/products/components/brand-marquee";
@@ -20,12 +20,8 @@ const TAGS: { value: string; label: string }[] = [
   { value: "sale", label: "Хямдрал" },
 ];
 
-const SEASONS_F: { value: string; label: string }[] = [
-  { value: "spring", label: "Хавар" },
-  { value: "summer", label: "Зун" },
-  { value: "autumn", label: "Намар" },
-  { value: "winter", label: "Өвөл" },
-];
+/** «Бүх улирал» тусдаа явна — доорх дөрөв нь дан улирлын сонголт. */
+const SINGLE_SEASONS = SEASONS.filter((s) => s !== "all");
 
 function Group({
   title,
@@ -46,10 +42,12 @@ function Group({
 function Chip({
   active,
   onClick,
+  className,
   children,
 }: {
   active: boolean;
   onClick: () => void;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -62,6 +60,7 @@ function Chip({
         active
           ? "bg-muted-foreground text-background"
           : "bg-secondary text-foreground hover:bg-accent",
+        className,
       )}
     >
       {children}
@@ -87,8 +86,35 @@ export function CatalogFilters({
   /** Live taxonomy from `scent_families` — the admin owns this list. */
   families: ScentFamilyOption[];
 }) {
-  const { values, toggle, setMany, clearAll, activeCount, searchParams } =
-    useFilterQuery();
+  const {
+    values,
+    toggle,
+    setSingle,
+    setMany,
+    clearAll,
+    activeCount,
+    searchParams,
+  } = useFilterQuery();
+
+  // «Бүх улирал» нь бүх улирлыг дааж байгаа үнэрүүд (seasons ⊇ 'all') гэсэн
+  // өөрийн гэсэн сонголт — тиймээс дан улирлуудтай хамт сонгогдохгүй: аль нэгийг
+  // сонгоход нөгөө нь идэвхгүй болно.
+  const season = values("season");
+  const allSeasons = season.includes("all");
+
+  function toggleAllSeasons() {
+    setSingle("season", allSeasons ? undefined : "all");
+  }
+
+  function toggleSeason(value: string) {
+    const picked = season.filter((s) => s !== "all");
+    const next = picked.includes(value)
+      ? picked.filter((s) => s !== value)
+      : [...picked, value];
+    setSingle("season", next.length ? next.join(",") : undefined);
+  }
+
+  const featured = searchParams.get("featured") === "1";
 
   // Round bounds out to nice slider stops.
   const domainMin = Math.floor(priceBounds.min / PRICE_STEP) * PRICE_STEP;
@@ -165,13 +191,20 @@ export function CatalogFilters({
 
       <Group title="Улирал">
         <div className="grid grid-cols-2 gap-2">
-          {SEASONS_F.map((s) => (
+          <Chip
+            active={allSeasons}
+            onClick={toggleAllSeasons}
+            className="col-span-2"
+          >
+            {SEASON_LABEL.all}
+          </Chip>
+          {SINGLE_SEASONS.map((s) => (
             <Chip
-              key={s.value}
-              active={values("season").includes(s.value)}
-              onClick={() => toggle("season", s.value)}
+              key={s}
+              active={!allSeasons && season.includes(s)}
+              onClick={() => toggleSeason(s)}
             >
-              {s.label}
+              {SEASON_LABEL[s]}
             </Chip>
           ))}
         </div>
@@ -179,7 +212,13 @@ export function CatalogFilters({
       <Separator />
 
       <Group title="Таг">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
+          <Chip
+            active={featured}
+            onClick={() => setSingle("featured", featured ? undefined : "1")}
+          >
+            Онцлох
+          </Chip>
           {TAGS.map((t) => (
             <Chip
               key={t.value}
