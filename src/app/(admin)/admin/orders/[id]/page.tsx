@@ -53,7 +53,12 @@ export default async function AdminOrderDetail({
             </span>
           </p>
         </div>
-        <Badge variant={STATUS_VARIANT[order.status]}>
+        {/* The order's state is read at a glance from here, so it is sized
+            like a headline rather than a list chip. */}
+        <Badge
+          variant={STATUS_VARIANT[order.status]}
+          className="px-4 py-1.5 text-sm md:text-base"
+        >
           {ORDER_STATUS_LABEL[order.status]}
         </Badge>
       </div>

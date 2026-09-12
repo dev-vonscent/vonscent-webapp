@@ -20,6 +20,9 @@ async function handle(req: Request, bodyOrderNo?: string) {
 
   const result = await verifyAndMarkOrderPaidByOrderNo(orderNo);
   if (!result.ok) {
+    // 5xx is "try again"; everything terminal must be 4xx so QPay stops
+    // retrying. ORDER_CANCELLED is terminal by definition — the order will
+    // never accept this payment, and an admin has already been notified.
     const status =
       result.error === "MISSING_ORDER"
         ? 400
@@ -27,7 +30,9 @@ async function handle(req: Request, bodyOrderNo?: string) {
           ? 404
           : result.error === "NOT_PAID" || result.error === "NO_INVOICE"
             ? 402
-            : 502;
+            : result.error === "ORDER_CANCELLED"
+              ? 409
+              : 502;
     return NextResponse.json({ error: result.error }, { status });
   }
 

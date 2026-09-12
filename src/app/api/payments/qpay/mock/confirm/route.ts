@@ -29,7 +29,12 @@ export async function POST(req: Request) {
 
   const result = await markOrderPaid(order.id);
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 500 });
+    // A cancelled order refusing the payment is a legitimate outcome, not a
+    // server fault — mock mode should show the same wall as production.
+    return NextResponse.json(
+      { error: result.error },
+      { status: result.error === "ORDER_CANCELLED" ? 409 : 500 },
+    );
   }
   // Төлбөр батлагдсаны дараа хүргэх өдөр ахисан байж болно (0069).
   const fresh = await orderIdForToken(parsed.data.token);

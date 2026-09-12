@@ -37,7 +37,8 @@ export type ConfirmOrderResult =
         | "COMMIT_FAILED"
         | "NO_INVOICE"
         | "CHECK_FAILED"
-        | "NOT_PAID";
+        | "NOT_PAID"
+        | "ORDER_CANCELLED";
     };
 
 interface OrderPaymentRow {
@@ -76,7 +77,34 @@ async function commit(
   const { error } = await callRpc(supabase, "mark_order_paid", {
     p_order: order.id,
   });
-  if (error) return { ok: false, error: "COMMIT_FAILED" };
+  if (error) {
+    // `mark_order_paid` (0073) refuses a cancelled order: its ml, points and
+    // coupon were already given back, so committing would resurrect it. But
+    // the money HAS arrived — the customer paid an invoice for an order they
+    // (or the admin) cancelled in the meantime. Nothing in the schema can
+    // record that, so it becomes a human task, loudly. Terminal for the
+    // caller too: retrying will never succeed, so QPay must stop retrying.
+    if (error.message.includes("ORDER_CANCELLED")) {
+      // The bell in /admin is the durable channel; Telegram is best-effort.
+      await supabase.from("admin_notifications").insert({
+        kind: "payment_after_cancel",
+        order_id: order.id,
+        message:
+          `Цуцлагдсан захиалга ${order.order_no}-д ${formatPrice(order.total)} ` +
+          `төлбөр орж ирлээ. Захиалга сэргэхгүй — мөнгийг хэрэглэгчид гараар ` +
+          `буцаана уу.`,
+      });
+      await notifyAdmin(
+        `⚠️ <b>Цуцлагдсан захиалгад төлбөр орлоо</b> — ${tgEscape(order.order_no)}\n` +
+          `💰 ${formatPrice(order.total)}\n` +
+          `Захиалга цуцлагдсан тул автоматаар бүртгэгдсэнгүй. ` +
+          `Мөнгийг хэрэглэгчид гараар буцаана уу.\n` +
+          `🔗 ${env.siteUrl}/admin/orders/${order.id}`,
+      );
+      return { ok: false, error: "ORDER_CANCELLED" };
+    }
+    return { ok: false, error: "COMMIT_FAILED" };
+  }
 
   await notifyAdmin(
     `✅ <b>Төлбөр төлөгдлөө</b> — ${tgEscape(order.order_no)}\n` +

@@ -53,7 +53,15 @@ export async function GET(req: Request) {
     const result = await verifyAndMarkOrderPaid(order.id);
     // NOT_PAID / CHECK_FAILED are both "keep waiting" from the page's side —
     // the distinction only matters in logs, so the shape stays a boolean.
-    if (!result.ok) return NextResponse.json({ paid: false, verified: true });
+    // ORDER_CANCELLED is the one exception: waiting is pointless, and the
+    // customer must be told rather than left watching a spinner.
+    if (!result.ok) {
+      return NextResponse.json({
+        paid: false,
+        verified: true,
+        cancelled: result.error === "ORDER_CANCELLED",
+      });
+    }
     // Дахин уншиж байгаа нь зөвхөн өдрийн төлөө: төлбөр батлагдсан мөчид
     // хүргэх өдөр ахисан байж болно.
     const fresh = await orderIdForToken(parsed.data.token);
