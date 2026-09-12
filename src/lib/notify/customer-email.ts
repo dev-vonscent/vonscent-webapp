@@ -59,6 +59,13 @@ export async function sendOrderCustomerEmail(
   } | null;
   if (!sub || !sub.is_active) return;
 
+  // Урамшууллын купон — `orders_reward_coupon` trigger (0025/0041) нь
+  // төлбөр баталгаажих мөчид үүсгэчихсэн байдаг. Үүсгэх нь бүрэн ажиллаж
+  // байсан ч ХЭЛЭХ хэсэг нь дутуу байв: купон зөвхөн дансны «Миний купон»
+  // хэсэгт чимээгүй нэмэгдэж, хэн ч тэр хуудсыг зориуд шалгахгүй.
+  const autoCoupon =
+    kind === "paid" ? await loadAutoCoupon(supabase, orderId) : null;
+
   const unsubscribeUrl = `${env.siteUrl}/api/newsletter/unsubscribe?token=${sub.token}`;
   const footerNotes = [
     "Энэ мэдэгдлийг таны vonscent дээр бүртгүүлсэн имэйл рүү илгээв.",
@@ -75,6 +82,13 @@ export async function sendOrderCustomerEmail(
             `Захиалгын дугаар: ${order.order_no}. Захиалга тань ` +
               `${formatDeliveryDay(deliveryDayOf(order)).toLowerCase()} ` +
               `${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.`,
+            ...(autoCoupon
+              ? [
+                  `🎁 Танд дараагийн захиалгад зориулсан ${autoCoupon.label} ` +
+                    `купон нэмэгдлээ: ${autoCoupon.code}. ` +
+                    `${autoCoupon.expiry} хүртэл хүчинтэй.`,
+                ]
+              : []),
           ],
           items: await loadItems(supabase, orderId),
           lines: [
@@ -123,6 +137,36 @@ export async function sendOrderCustomerEmail(
       "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
     },
   });
+}
+
+/**
+ * Энэ захиалгаас төрсөн урамшууллын купон. `coupons.source_order_id` дээрх
+ * цорын ганц индекс (0025) тул нэг захиалгад дээд тал нь нэг.
+ * Уншиж чадахгүй бол имэйл түүнгүйгээр явна.
+ */
+async function loadAutoCoupon(
+  supabase: NonNullable<ReturnType<typeof createAdminClient>>,
+  orderId: string,
+): Promise<{ code: string; label: string; expiry: string } | null> {
+  const { data } = await supabase
+    .from("coupons")
+    .select("code, type, value, ends_at")
+    .eq("source_order_id", orderId)
+    .maybeSingle();
+  const row = data as {
+    code: string;
+    type: string;
+    value: number;
+    ends_at: string | null;
+  } | null;
+  if (!row) return null;
+  return {
+    code: row.code,
+    label: row.type === "percent" ? `${row.value}%` : formatPrice(row.value),
+    expiry: row.ends_at
+      ? new Date(row.ends_at).toLocaleDateString("mn-MN")
+      : "цуцлах хүртэл",
+  };
 }
 
 /** Захиалгын мөрүүд — уншиж чадахгүй бол мэдэгдлийг мөргүйгээр илгээнэ. */

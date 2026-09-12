@@ -77,6 +77,8 @@ export async function POST(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     // e.g. a bank transfer the admin just verified — same notice as QPay.
+    // Урамшууллын купоныг `orders_reward_coupon` trigger өөрөө үүсгэсэн
+    // байна (mark_order_paid-ийн UPDATE дотор) — имэйл түүнийг уншина.
     await sendOrderCustomerEmail(id, "paid");
   }
 
