@@ -65,6 +65,12 @@ export function PaymentPanel({
 }) {
   const [paid, setPaid] = React.useState(view.paid);
   /**
+   * Хуудас нээлттэй байхад захиалга цуцлагдаж болно (админ, эсвэл хэрэглэгч
+   * өөр таб дээр). Тийм үед poller-ийг зогсоож, цуцлагдсаныг шууд харуулна —
+   * `mark_order_paid` тэр захиалгыг хэзээ ч төлөгдсөн болгохгүй.
+   */
+  const [cancelled, setCancelled] = React.useState(view.cancelled);
+  /**
    * Хүргэх өдөр нь төлбөр төлөгдсөн мөчид ахьж болно (migration 0069: 09:00-аас
    * хойш төлсөн бол тэр өдөр хүргэх боломж аль хэдийн өнгөрсөн). Хуудас
    * нээгдэхэд уншсан өдөр нь тийм тохиолдолд хуучирдаг тул төлөгдсөн гэсэн
@@ -75,7 +81,7 @@ export function PaymentPanel({
   const [error, setError] = React.useState<string | null>(null);
 
   const isQpay = view.paymentMethod === "qpay";
-  const waiting = !paid && !view.cancelled;
+  const waiting = !paid && !cancelled;
   /** Set only when the invoice asks for less than the order is worth. */
   const testAmount =
     view.invoice && view.invoice.amount < view.total
@@ -91,13 +97,16 @@ export function PaymentPanel({
       if (!res.ok) return false;
       const data = (await res.json()) as {
         paid?: boolean;
+        cancelled?: boolean;
         deliverOn?: string | null;
       };
       if (data?.paid) {
         if (data.deliverOn) setDeliverOn(data.deliverOn);
         setPaid(true);
       }
-      return Boolean(data?.paid);
+      if (data?.cancelled) setCancelled(true);
+      // Аль аль нь poller-ийн төгсгөл: цааш хүлээх зүйл алга.
+      return Boolean(data?.paid) || Boolean(data?.cancelled);
     },
     [token],
   );
@@ -178,7 +187,7 @@ export function PaymentPanel({
     }
   }
 
-  if (view.cancelled) return <CancelledState />;
+  if (cancelled) return <CancelledState />;
   if (paid) return <PaidState view={view} deliverOn={deliverOn} />;
 
   return (

@@ -57,6 +57,18 @@ export async function POST(
   if (!supabase) return NextResponse.json({ error: "NO_DB" }, { status: 500 });
 
   if (parsed.data.paid) {
+    // A cancelled order has already given its ml, points and coupon back —
+    // marking it paid would resurrect it as `confirmed` and commit that ml a
+    // second time. `mark_order_paid` refuses too; this is the handler-side
+    // repeat (development.md §7.5).
+    const { data: row } = await supabase
+      .from("orders")
+      .select("status")
+      .eq("id", id)
+      .maybeSingle();
+    if ((row as { status?: OrderStatus } | null)?.status === "cancelled") {
+      return NextResponse.json({ error: "ORDER_CANCELLED" }, { status: 409 });
+    }
     // Commit inventory + earn loyalty (idempotent).
     const { error } = await callRpc(supabase, "mark_order_paid", {
       p_order: id,
@@ -71,12 +83,21 @@ export async function POST(
   if (parsed.data.status) {
     const { data: row } = await supabase
       .from("orders")
-      .select("status")
+      .select("status, payment_status")
       .eq("id", id)
       .maybeSingle();
-    const current = (row as { status?: OrderStatus } | null)?.status;
+    const order = row as {
+      status?: OrderStatus;
+      payment_status?: string;
+    } | null;
+    const current = order?.status;
     if (!current) {
       return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+    }
+    // A refunded order is closed: reopening it would put a live order back in
+    // the queue with the money already returned.
+    if (order?.payment_status === "refunded") {
+      return NextResponse.json({ error: "ORDER_REFUNDED" }, { status: 409 });
     }
     const next = parsed.data.status;
     const allowed =
@@ -106,12 +127,24 @@ export async function POST(
   }
 
   if (parsed.data.refund) {
-    const { error } = await callRpc(supabase, "mark_order_refunded", {
-      p_order: id,
-      p_by: staff.id,
-    });
+    // Refund is the receipt for money the admin has already sent back, and it
+    // only makes sense once the order itself is void: cancelling is what
+    // returns the ml, the V points and the coupon (0019/0040). Refunding a
+    // live order would leave «Хүргэгдэж буй + Буцаагдсан» with none of that
+    // undone. `mark_order_refunded` enforces the same rule under a row lock.
+    const { data, error } = await callRpc<{ ok: boolean; reason?: string }>(
+      supabase,
+      "mark_order_refunded",
+      { p_order: id, p_by: staff.id },
+    );
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    if (!data?.ok) {
+      return NextResponse.json(
+        { error: data?.reason ?? "ILLEGAL_REFUND" },
+        { status: 409 },
+      );
     }
   }
 

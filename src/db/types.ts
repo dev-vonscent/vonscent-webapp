@@ -449,7 +449,8 @@ export interface Database {
       restock_inventory: { Args: Record<string, unknown>; Returns: undefined };
       validate_coupon: { Args: Record<string, unknown>; Returns: unknown };
       update_order_status: { Args: Record<string, unknown>; Returns: undefined };
-      mark_order_refunded: { Args: Record<string, unknown>; Returns: undefined };
+      // jsonb: { ok, reason? } — 0073.
+      mark_order_refunded: { Args: Record<string, unknown>; Returns: unknown };
       recompute_rating: { Args: Record<string, unknown>; Returns: undefined };
       release_order_points: { Args: Record<string, unknown>; Returns: number };
       release_due_points: { Args: Record<string, unknown>; Returns: number };

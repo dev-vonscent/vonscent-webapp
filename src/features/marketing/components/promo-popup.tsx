@@ -15,6 +15,14 @@ const AUTOPLAY_MS = 5000;
 /** Хуудас зурагдаж амжсаны дараа гарна — дээрээс нь шууд унахгүй. */
 const OPEN_DELAY_MS = 800;
 
+/**
+ * Нэг document-д ганц удаа. Модулийн хувьсагч нь client navigation-ы үед
+ * (нүүр → бараа → буцах) хадгалагдана, харин F5/шинэ таб дээр шинээр
+ * ачаалагдаж false болно — яг «зөвхөн reload дээр» гэсэн хүсэлт.
+ * sessionStorage тохирохгүй: тэр reload-ыг давж үлдэнэ.
+ */
+let shownForThisDocument = false;
+
 /** True when `now` falls within the slide's optional [startsAt, endsAt] window. */
 function isLive(slide: PopupSlide, now: number): boolean {
   if (slide.startsAt && now < new Date(slide.startsAt).getTime()) return false;
@@ -26,9 +34,9 @@ function isLive(slide: PopupSlide, now: number): boolean {
  * Сурталчилгааны popup (backlog G1–G3).
  *
  * Зөвхөн зураг: гарчиг, текст, товч, купон байхгүй — зураг нь өөрөө зар,
- * холбоостой бол дарахад тийшээ очно. Зөвхөн нүүр хуудсанд, нүүр нээгдэх
- * бүрд (refresh, буцаж ирэх) гарна; «нэг session-д нэг удаа», «хэдэн цаг
- * тутамд» гэсэн хязгаарлалт байхгүй тул юу ч хадгалахгүй. Олон слайд бол
+ * холбоостой бол дарахад тийшээ очно. Зөвхөн нүүр хуудсанд, хуудас бүтнээрээ
+ * ачаалагдах бүрд (эхний нээлт, refresh) нэг л удаа гарна — сайт дотор
+ * навигаци хийгээд нүүр рүү буцахад дахин гарахгүй. Олон слайд бол
  * автоматаар шилжинэ, сум/свайпаар гараар солино; гараар хөдөлгөсний дараа
  * автомат зогсоно.
  *
@@ -66,7 +74,11 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
     );
     setSlides(live);
     if (!settings.enabled || live.length === 0) return;
-    const t = setTimeout(() => setOpen(true), OPEN_DELAY_MS);
+    if (shownForThisDocument) return;
+    const t = setTimeout(() => {
+      shownForThisDocument = true;
+      setOpen(true);
+    }, OPEN_DELAY_MS);
     return () => clearTimeout(t);
   }, [settings.enabled, settings.slides]);
 
