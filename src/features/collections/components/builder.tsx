@@ -16,12 +16,13 @@ import { CatalogFilterSheet } from "@/features/catalog/components/catalog-filter
 import { CatalogSort } from "@/features/catalog/components/catalog-sort";
 import { CatalogSearch } from "@/features/catalog/components/catalog-search";
 import { CatalogPagination } from "@/features/catalog/components/catalog-pagination";
+import { FilterQueryProvider } from "@/features/catalog/components/use-filter-query";
 import { bundlePrice } from "../pricing";
 import type { BuilderProduct, CollectionSettings } from "../types";
 import type { ScentFamilyOption } from "@/lib/types";
 import type { BrandLogos } from "@/features/products/components/brand-marquee";
 
-export function CollectionBuilder({
+function BuilderInner({
   products,
   total,
   page,
@@ -243,8 +244,8 @@ export function CollectionBuilder({
         <div className="mt-3">
           {selected.length === 0 ? (
             <div className="border-border text-muted-foreground flex h-16 items-center justify-center rounded-xl border border-dashed px-3 text-center text-sm">
-              Доорх үнэртнүүдээс {settings.minItems}+ сонгож багцаа
-              бүрдүүлээд 5%-ийн хэмнэлттэй аваарай.
+              Доорх үнэртнүүдээс {settings.minItems}+ сонгож багцаа бүрдүүлээд
+              5%-ийн хэмнэлттэй аваарай.
             </div>
           ) : (
             /*
@@ -554,6 +555,20 @@ export function CollectionBuilder({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/**
+ * Каталогийн шүүлт/эрэмбэ/хайлтын хэрэгслүүд нэг л query state хуваалцдаг тул
+ * багц угсрагчийг ч каталогийн адил provider дотор боох ёстой.
+ */
+export function CollectionBuilder(
+  props: React.ComponentProps<typeof BuilderInner>,
+) {
+  return (
+    <FilterQueryProvider>
+      <BuilderInner {...props} />
+    </FilterQueryProvider>
   );
 }
 
