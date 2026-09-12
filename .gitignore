@@ -50,3 +50,6 @@ next-env.d.ts
 /DESIGN.md
 /PRODUCT.md
 shot.tmp.mjs
+
+# database backups (pnpm db:backup)
+/backups
