@@ -1,6 +1,6 @@
 # Release-ээс өмнө хийх зүйлс — vonscent.mn
 
-Сүүлд шинэчилсэн: 2026-09-03. Хийсэн зүйл бүрийг `[x]` болгож тэмдэглэ.
+Сүүлд шинэчилсэн: 2026-09-12. Хийсэн зүйл бүрийг `[x]` болгож тэмдэглэ.
 
 ---
 
@@ -47,13 +47,49 @@ release хүртэл юу ч эвдрэхгүй — гэхдээ release дээ�
 - [ ] **vonscent.mn** домэйныг Vercel project-д холбох (Vercel → Domains).
 - [ ] Vercel env: `NEXT_PUBLIC_SITE_URL=https://vonscent.mn` (имэйл доторх
       линк, sitemap, OG бүгд үүнээс уншина).
-- [ ] **Vercel Pro** багц авах (requirement_final.md: урт serverless, image
-      optimization квот, аналитик).
-- [ ] **Supabase Pro** багц авах (унтардаггүй — pg_cron найдвартай болно,
-      өдрийн backup, storage/bandwidth).
+- [ ] **Vercel Pro** багц авах — $20/сар (1 deploy seat) + $20 credit, дотор нь
+      1 TB Fast Data Transfer, 10 сая Edge Request. Hobby нь **арилжааны
+      хэрэглээ хориотой**, Spend Management байхгүй, image квот давбал зураг
+      402 алдаа буцаана. Fluid compute дээр функцийн хугацаа 300s (Pro 800s) —
+      `after()` доторх OpenAI зураг үүсгэлтэд хүрэлцэнэ.
+- [ ] **Supabase Pro** багц авах — $25/сар + $10 compute credit (Micro).
+      Free project 1 долоо хоног идэвхгүй бол унтардаг; Pro-д өдрийн backup
+      (7 хоног), лог 7 хоног, pg_cron найдвартай. Багтсан: 8 GB DB, 250 GB
+      egress, 100 GB storage, 100k MAU.
 - [ ] Pro орчинд **pg_cron ажиллаж буйг шалгах**: 11:00-д «хүргэгдэж буй»,
       23:00-д «хүргэгдсэн» авто шилжилт, reserve timeout, оноoны түгжээ
       (`select * from cron.job;` — 6 job идэвхтэй байх ёстой).
+
+### 2.1 Зардлын хяналт (Pro руу шилжихэд заавал)
+
+Тарифыг `icn1` (Seoul) бүсээр тооцов — функц тэнд ажиллана (`vercel.json`).
+Дэлгэрэнгүй: Vercel-ийн багтсан нөөцөөс гадуур ISR write $5.20/1M (8KB unit),
+Edge Request $2.60/1M, Fast Origin Transfer $0.24/GB, invocation $0.60/1M.
+
+- [ ] **Vercel Spend Management** асаах (Hobby дээр байхгүй): threshold ~$100,
+      и-мэйл мэдэгдэл + шаардлагатай бол project-ийг автоматаар зогсоох.
+- [ ] **ISR зардал багасгах:** дэлгүүрийн хуудсуудын `export const revalidate = 60`
+      → `3600` болгох (`(shop)/page.tsx`, `catalog`, `products/[slug]`, `blog`,
+      `blog/[slug]`, `collections`, `collections/[slug]`, `about`, `faq`,
+      `contact`). Урсгал сийрэг үед 60 секундын ISR нь **үзэлт тутам** хуудсыг
+      дахин бичдэг (~$0.00017/үзэлт ≈ 100k үзэлтэд $17/сар). Өгөгдөл шинэчлэгдэх
+      нь алдагдахгүй — `src/lib/cache.ts`-ийн on-demand `revalidatePath`/
+      `revalidateTag` админы бичилт бүр дээр аль хэдийн дуудагддаг.
+- [ ] **Төлбөрийн polling зөөлрүүлэх:** `payment-panel.tsx` (`POLL_MS = 3_000`,
+      timeout 20 мин) нь нэг захиалгад 400 хүртэл хүсэлт үүсгэнэ. Шатласан
+      interval (3с → 5с → 10с) + tab нуугдсан үед (`visibilityState`) зогсоох.
+      QPay webhook аль хэдийн байгаа тул polling нь зөвхөн UI-н баталгаа.
+- [ ] **Vercel Firewall / rate limiting** тавих задгай route-уудад: `/api/search`,
+      `/api/products`, `/api/reviews` (bot-ын урсгал Edge Request-ыг тэсрүүлэх
+      гол эрсдэл).
+- [ ] **Supabase compute:** Micro-оор эхлэх ($10 credit-д багтана), 2 долоо
+      хоногийн дараа metric харж Small ($15) шаардлагатай эсэхийг шийдэх.
+      Spend cap эхлээд ON (тасрах эрсдэлтэй) — амьд болсны дараа OFF болгоод
+      Vercel-ийн threshold-той хослуулж хянана.
+- [ ] **Авахгүй байх add-on-ууд:** Supabase PITR ($100/сар), Custom domain
+      ($10/сар), Advanced MFA Phone ($75/сар — утасны баталгаажуулалт verify.mn
+      дээр байгаа тул хэрэггүй). Supabase Storage image transformation
+      ($5/1000 зураг) бүү асаа — next/image Vercel дээр аль хэдийн хийж байна.
 
 ## 3. Төлбөр — QPay ба банк
 
