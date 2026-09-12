@@ -5,7 +5,6 @@ import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/toaster";
 import { Analytics } from "@/components/shared/analytics";
 import Script from "next/script";
-import dynamic from "next/dynamic";
 import "./globals.css";
 
 // Single minimalist sans font across the whole site.
@@ -22,24 +21,6 @@ export const viewport: Viewport = {
   // min-h-svh layouts re-center themselves above it.
   interactiveWidget: "resizes-content",
 };
-
-/**
- * Dev-only floating theme switcher.
- *
- * The import has to sit inside the `NODE_ENV` branch, not just the render: a
- * plain top-level import of a client component ships its chunk to production
- * even when the JSX is never reached — the Mongolian label was verifiably in
- * the production bundle when this was written the obvious way. `NODE_ENV` is
- * inlined at build time, so the `import()` in the dead branch is dropped.
- */
-const DevThemeSwitcher =
-  process.env.NODE_ENV === "development"
-    ? dynamic(() =>
-        import("@/components/shared/dev-theme-switcher").then(
-          (m) => m.DevThemeSwitcher,
-        ),
-      )
-    : () => null;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
@@ -78,13 +59,7 @@ export default function RootLayout({
         <Script id="focus-method" strategy="beforeInteractive">
           {FOCUS_METHOD_SCRIPT}
         </Script>
-        <Providers>
-          {children}
-          {/* Inside Providers: `useTheme` needs next-themes' context, and
-              mounted as a sibling of the page it would silently render three
-              dead swatches. */}
-          <DevThemeSwitcher />
-        </Providers>
+        <Providers>{children}</Providers>
         <Toaster />
         <Analytics />
       </body>

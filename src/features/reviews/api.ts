@@ -1,141 +1,117 @@
 import "server-only";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createPublicClient } from "@/lib/supabase/public";
+import { REVIEWS_PAGE_SIZE } from "@/lib/constants";
+import type { RecentReview, Review, ReviewPage } from "./types";
+
+export type { RecentReview, Review, ReviewPage } from "./types";
 
 /**
- * Review data access. Reviews are public content but reviewer names live in
- * `profiles` (owner/staff RLS), so reads go through the service-role client
- * when available to resolve display names; otherwise they fall back to anon.
+ * Review data access.
+ *
+ * Everything here reads the `public_reviews` view (0071), which already joins
+ * the reviewer's display name and the product blurb. That view runs with owner
+ * rights so the anon key can resolve names without the service-role client —
+ * previously this module reached for service role on a *public* page just to
+ * read two columns out of `profiles`, and silently degraded every name to a
+ * generic label when the key was absent.
  */
 
-export interface Review {
-  id: string;
-  productId: string;
-  userId: string;
-  rating: number;
-  body: string;
-  createdAt: string;
-  authorName: string;
-  authorAvatar: string | null;
-}
-
-export interface RecentReview extends Review {
-  productName: string;
-  productSlug: string;
-  brand: string;
-  productImage: string | null;
-}
-
-interface ReviewJoin {
+interface PublicReviewRow {
   id: string;
   product_id: string;
   user_id: string;
   rating: number;
-  body: string;
+  body: string | null;
   created_at: string;
-  profiles: { full_name: string | null; avatar_url: string | null } | null;
-  products?: {
-    name: string;
-    slug: string;
-    brand: string;
-    product_images?: { url: string; sort_order: number; is_visible?: boolean }[];
-  } | null;
+  updated_at: string;
+  author_name: string | null;
+  author_avatar: string | null;
+  product_name?: string | null;
+  product_slug?: string | null;
+  product_brand?: string | null;
+  product_image?: string | null;
 }
 
-async function readClient() {
-  return createAdminClient() ?? createPublicClient();
-}
+const REVIEW_COLUMNS =
+  "id, product_id, user_id, rating, body, created_at, updated_at, author_name, author_avatar";
 
-type DbClient = NonNullable<Awaited<ReturnType<typeof readClient>>>;
-type ProfileInfo = { full_name: string | null; avatar_url: string | null };
+/** Shown when the reviewer never set a display name. */
+const ANONYMOUS_AUTHOR = "Хэрэглэгч";
 
-/**
- * Reviewer names live in `profiles`, but there's no direct FK from `reviews`
- * to `profiles` (both only reference auth.users), so PostgREST can't embed it.
- * We resolve the names in a separate lookup keyed by user_id. Reads go through
- * the service-role client when available, otherwise RLS may hide other users'
- * profiles and names fall back to a generic label.
- */
-async function profileMap(
-  supabase: DbClient,
-  userIds: string[],
-): Promise<Map<string, ProfileInfo>> {
-  const ids = [...new Set(userIds)];
-  if (ids.length === 0) return new Map();
-  const { data } = await supabase
-    .from("profiles")
-    .select("id, full_name, avatar_url")
-    .in("id", ids);
-  const rows =
-    (data as unknown as ({ id: string } & ProfileInfo)[] | null) ?? [];
-  return new Map(
-    rows.map((p) => [
-      p.id,
-      { full_name: p.full_name, avatar_url: p.avatar_url },
-    ]),
-  );
-}
-
-function mapReview(r: ReviewJoin): Review {
+function mapReview(r: PublicReviewRow): Review {
   return {
     id: r.id,
     productId: r.product_id,
     userId: r.user_id,
     rating: r.rating,
-    body: r.body,
+    body: r.body ?? "",
     createdAt: r.created_at,
-    authorName: r.profiles?.full_name?.trim() || "Хэрэглэгч",
-    authorAvatar: r.profiles?.avatar_url ?? null,
+    updatedAt: r.updated_at,
+    authorName: r.author_name ?? ANONYMOUS_AUTHOR,
+    authorAvatar: r.author_avatar ?? null,
   };
 }
 
-export async function getProductReviews(productId: string): Promise<Review[]> {
-  const supabase = await readClient();
-  if (!supabase) return [];
-  const { data } = await supabase
-    .from("reviews")
-    .select("id, product_id, user_id, rating, body, created_at")
+/**
+ * One page of a product's reviews, newest first. `total` comes back from the
+ * same query as the rows, so the header count can never disagree with the list.
+ */
+export async function getProductReviewPage(
+  productId: string,
+  offset = 0,
+  limit: number = REVIEWS_PAGE_SIZE,
+): Promise<ReviewPage> {
+  const supabase = createPublicClient();
+  if (!supabase) return { reviews: [], total: 0 };
+  const { data, count } = await supabase
+    .from("public_reviews")
+    .select(REVIEW_COLUMNS, { count: "exact" })
     .eq("product_id", productId)
-    .order("created_at", { ascending: false });
-  const rows = (data as unknown as ReviewJoin[] | null) ?? [];
-  const profiles = await profileMap(
-    supabase,
-    rows.map((r) => r.user_id),
-  );
-  return rows.map((r) =>
-    mapReview({ ...r, profiles: profiles.get(r.user_id) ?? null }),
-  );
+    .order("created_at", { ascending: false })
+    // Tiebreaker: without it, two reviews sharing a timestamp can swap between
+    // page requests and the "Цааш үзэх" window would skip or repeat a row.
+    .order("id", { ascending: false })
+    .range(offset, offset + limit - 1);
+  const rows = (data as unknown as PublicReviewRow[] | null) ?? [];
+  return { reviews: rows.map(mapReview), total: count ?? 0 };
 }
 
+/**
+ * How many of those reviews actually carry text. A rating-only review is a
+ * valid review but not a "сэтгэгдэл", and the header states both separately.
+ */
+export async function getProductCommentCount(
+  productId: string,
+): Promise<number> {
+  const supabase = createPublicClient();
+  if (!supabase) return 0;
+  const { count } = await supabase
+    .from("public_reviews")
+    .select("id", { count: "exact", head: true })
+    .eq("product_id", productId)
+    .neq("body", "");
+  return count ?? 0;
+}
+
+/** Newest reviews with text, for the home page strip. Active products only. */
 export async function getRecentReviews(limit = 6): Promise<RecentReview[]> {
-  const supabase = await readClient();
+  const supabase = createPublicClient();
   if (!supabase) return [];
   const { data } = await supabase
-    .from("reviews")
+    .from("public_reviews")
     .select(
-      "id, product_id, user_id, rating, body, created_at, products ( name, slug, brand, product_images ( url, sort_order, is_visible ) )",
+      `${REVIEW_COLUMNS}, product_name, product_slug, product_brand, product_image`,
     )
-    .not("body", "eq", "")
+    .neq("body", "")
+    .eq("product_is_active", true)
     .order("created_at", { ascending: false })
     .limit(limit);
-  const rows = (data as unknown as ReviewJoin[] | null) ?? [];
-  const profiles = await profileMap(
-    supabase,
-    rows.map((r) => r.user_id),
-  );
-  return rows.map((r) => {
-    const image =
-      [...(r.products?.product_images ?? [])]
-        .filter((i) => i.is_visible !== false)
-        .sort(
-        (a, b) => a.sort_order - b.sort_order,
-      )[0]?.url ?? null;
-    return {
-      ...mapReview({ ...r, profiles: profiles.get(r.user_id) ?? null }),
-      productName: r.products?.name ?? "",
-      productSlug: r.products?.slug ?? "",
-      brand: r.products?.brand ?? "",
-      productImage: image,
-    };
-  });
+  const rows = (data as unknown as PublicReviewRow[] | null) ?? [];
+  return rows.map((r) => ({
+    ...mapReview(r),
+    productName: r.product_name ?? "",
+    productSlug: r.product_slug ?? "",
+    brand: r.product_brand ?? "",
+    productImage: r.product_image ?? null,
+  }));
 }

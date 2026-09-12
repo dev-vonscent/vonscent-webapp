@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Home, Search, Heart, User, Boxes } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWishlist } from "@/features/wishlist/store";
+import { useBottomNavHidden } from "@/components/shared/bottom-nav-store";
 
 const LEFT = [
   { href: "/", label: "Нүүр", icon: Home },
@@ -21,6 +22,10 @@ const RIGHT = [
 export function BottomNav() {
   const pathname = usePathname();
   const wishCount = useWishlist((s) => s.ids.length);
+  // Хуудасны үйлдлийн зурвас доод ирмэгийг эзэлсэн үед цэс замаа тавьж өгнө
+  // (`useClaimBottomBar`). Унтраахын оронд гулсаж буух нь хаашаа явсныг
+  // харуулж, буцаж гарахдаа ч гэнэт үсэрдэггүй.
+  const hidden = useBottomNavHidden();
 
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -31,9 +36,16 @@ export function BottomNav() {
     mounted && href === "/wishlist" ? wishCount : 0;
 
   return (
-    <div className="pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center md:hidden">
+    <div
+      className={cn(
+        "pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center transition-transform duration-300 ease-out motion-reduce:transition-none md:hidden",
+        hidden && "translate-y-[140%]",
+      )}
+    >
       <nav
         aria-label="Үндсэн цэс"
+        // Дэлгэцээс гарсан цэс гарын товчлуураар ч бариулахгүй байх ёстой.
+        inert={hidden}
         className="bg-secondary/85 shadow-lift pointer-events-auto mb-3 flex items-center gap-1 rounded-full px-2.5 py-2 backdrop-blur"
       >
         {LEFT.map((item) => (

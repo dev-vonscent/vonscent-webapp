@@ -23,7 +23,12 @@ import {
 import { getScentFamilyLabels } from "@/features/taxonomy/api";
 import { ReviewSection } from "@/features/reviews/components/review-section";
 import { GenderBadge } from "@/features/products/components/gender-badge";
-import { GENDER_LABEL, SEASON_LABEL } from "@/lib/constants";
+import {
+  GENDER_LABEL,
+  RELATED_SECTION_ID,
+  SEASON_LABEL,
+} from "@/lib/constants";
+import { DISPATCH_HOUR } from "@/lib/time";
 
 /**
  * ISR: public data comes from the cookie-less client, so the page is
@@ -185,11 +190,6 @@ export default async function ProductPage({
               <NoteColumn title="Зүрх" notes={product.notesHeart} />
               <NoteColumn title="Суурь" notes={product.notesBase} />
             </div>
-            {product.shortDescription && (
-              <p className="text-muted-foreground text-sm">
-                {product.shortDescription}
-              </p>
-            )}
           </div>
 
           <Accordion type="single" collapsible defaultValue="desc">
@@ -255,24 +255,30 @@ export default async function ProductPage({
             <AccordionItem value="ship">
               <AccordionTrigger>Хүргэлт ба буцаалт</AccordionTrigger>
               <AccordionContent>
-                Улаанбаатар хотод 24 цагийн дотор хүргэнэ. Орон нутагт 2-4
-                хоног. Decant бараа тул эрүүл ахуйн шалтгаанаар буцаалт
-                хийгдэхгүй.
+                Улаанбаатар хотод хамгийн эрт нь маргааш — хүргүүлэх өдрөө
+                төлбөрийн хуудсан дээр сонгоно, тэр өдрийн {DISPATCH_HOUR}:00
+                цагт хүргэлтэд гарна. Орон нутагт 2-4 хоног. Decant бараа тул
+                эрүүл ахуйн шалтгаанаар буцаалт хийгдэхгүй.
               </AccordionContent>
             </AccordionItem>
           </Accordion>
 
-          {/* Үнэлгээ */}
-          <ReviewSection
-            productId={product.id}
-            ratingAvg={product.ratingAvg}
-            ratingCount={product.ratingCount}
-          />
         </div>
       </div>
 
+      {/* Үнэлгээ — бүтэн өргөнөөр. Барааны хоёр баганат grid-ийн ДОТОР байхад
+          карт бүр ~100px өргөнтэй болж, багана нь төгсгөлгүй сунаж «Төстэй
+          бараа»-г дэлгэцээс шахаж гаргадаг байсан. */}
+      <section className="mt-16">
+        <ReviewSection
+          productId={product.id}
+          slug={product.slug}
+          ratingAvg={product.ratingAvg}
+        />
+      </section>
+
       {related.length > 0 && (
-        <section className="mt-16">
+        <section id={RELATED_SECTION_ID} className="mt-16">
           <SectionHeading title="Төстэй бараа" />
           <ProductCarousel products={related} />
         </section>
