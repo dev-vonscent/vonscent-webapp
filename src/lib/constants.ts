@@ -16,7 +16,7 @@ export const SITE = {
  * size, an ordinary purchasable tier like the rest (client decision, see
  * docs/analysis/questions.md №1); the admin prices each size per product and
  * leaves a size inactive where it makes no sense. The DB enforces the same
- * closed set (0031_sample_tier_back.sql).
+ * closed set (0031b_sample_tier_back.sql).
  */
 export const ML_SIZES = [2, 5, 10, 20] as const;
 export type MlSize = (typeof ML_SIZES)[number];

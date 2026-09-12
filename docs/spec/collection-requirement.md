@@ -173,11 +173,11 @@ price(ml)     = roundTo( memberSum(ml) × (1 − customDiscountPct/100) )
 | `baseDefaultDiscountPct` | Шинэ base багцын анхны хямдрал % | `5` |
 
 Бэлгийн тохиргоо энд байхаа больсон — `settings.gift` (`enabled`, `productIds`)
-руу шилжсэн (0053_gift_pool_single_source.sql).
+руу шилжсэн (0053a_gift_pool_single_source.sql).
 
 ---
 
-## 5. Дата модель (🔵 migration `0028_collections.sql`)
+## 5. Дата модель (🔵 migration `0028a_collections.sql`)
 
 ### 5.1 Шинэ хүснэгтүүд
 ```sql
@@ -370,7 +370,7 @@ subtotal(бараа + багцны хямдарсан үнэ; бэлэг 0)
 
 ## 12. Хэрэгжүүлэлтийн фаз
 
-1. **DB** — `0028_collections.sql` (enum, `collections`+`user_id`+`gift_ml`,
+1. **DB** — `0028a_collections.sql` (enum, `collections`+`user_id`+`gift_ml`,
    `collection_items`, `order_items`+`is_gift`, `settings.collection` seed, RLS). 🔵
 2. **Core** — `lib/pricing/collectionPrice()`, `lib/validators/collection.ts`,
    серверийн задлах/snapshot helper (төрөл + бэлэг). 🟢
