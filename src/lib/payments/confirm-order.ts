@@ -111,6 +111,10 @@ async function commit(
       `💰 ${formatPrice(order.total)}\n` +
       `🔗 ${env.siteUrl}/admin/orders/${order.id}`,
   );
+  // Урамшууллын купоныг энд ҮҮСГЭХГҮЙ: `orders_reward_coupon` trigger (0025,
+  // 0041) нь `payment_status → 'paid'` болох мөчид `grant_reward_coupon`-ыг
+  // өөрөө дуудна. Тэр нь `mark_order_paid`-ийн UPDATE-ийн дотор явдаг тул
+  // энэ мөрөнд хүрэхэд купон аль хэдийн бэлэн — имэйл түүнийг уншина.
   await sendOrderCustomerEmail(order.id, "paid");
   return { ok: true };
 }

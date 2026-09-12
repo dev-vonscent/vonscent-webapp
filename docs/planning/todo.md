@@ -247,7 +247,7 @@
    `GET /api/admin/badges`-ээр sidebar өөрөө татна (60с тутам сэргэнэ).
 2. **Middleware дэх хоёр round trip** — `auth.getUser()` (Auth сервер рүү) ба
    `profiles.role` уншилт (152-427мс). Одоо `getClaims()` нь ES256 гарын үсгийг
-   нутагт шалгаж, эрхийг `0054_role_in_jwt.sql`-ээр токенд суулгасан
+   нутагт шалгаж, эрхийг `0074_role_in_jwt.sql`-ээр токенд суулгасан
    `app_metadata.user_role`-оос уншина. Ажилтны хувьд **сүлжээний дуудлага 0**.
 3. **13 админ хуудсанд өөрийн `loading.tsx` байгаагүй** — нийтлэг
    `admin/loading.tsx` нь аль хэдийн mount хийгдсэн хил тул зэргэлдээ хуудас
@@ -256,7 +256,7 @@
 Sidebar-ийн icon spinner (`NavPendingSwap`) хэрэггүй болж устсан.
 
 ### B6. Шинэ том функцууд
-- [x] **Хүрд (Spin wheel)** — `0053_spin_wheel.sql`: `spin_wheel_prizes`,
+- [x] **Хүрд (Spin wheel)** — `0061_spin_wheel.sql`: `spin_wheel_prizes`,
       `spin_wheel_spins`, глобал магадлалын pool, `spin_wheel()` RPC (сугалаа
       бүхэлдээ сервер тал дээр, profiles мөрийг түгжсэн атомик транзакц),
       `/lucky-wheel` хуудас (3D хүрд, анимац, дуу, confetti),

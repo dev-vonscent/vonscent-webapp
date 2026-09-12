@@ -113,7 +113,7 @@ Style hints: <shortDescription>
 
 ---
 
-## 5. Дата модель (🔵 migration `0030_image_generation.sql`)
+## 5. Дата модель (🔵 migration `0030a_image_generation.sql`)
 
 Үүсгэлтийн төлөв, prompt, алдаа, түүхийг хадгалах ажлын хүснэгт:
 
@@ -307,7 +307,7 @@ create trigger pig_updated_at before update on product_image_generations
 
 1. **Env + helper** — `OPENAI_API_KEY`, `lib/ai/build-image-prompt.ts`,
    `lib/ai/generate-image.ts` (OpenAI gpt-image-1 дуудлага + sharp + upload). 🟢
-2. **DB** — `0030_image_generation.sql` (job хүснэгт, enum, RLS, `settings.imageGen`). 🔵
+2. **DB** — `0030a_image_generation.sql` (job хүснэгт, enum, RLS, `settings.imageGen`). 🔵
 3. **Форм + create** — формд горим toggle (①/②); AI горимд `is_active=false` +
    job enqueue; `generate-image` route (`after()`-аар эхлүүлэх). 🟢
 4. **Табл UI** — «Зураг» багана, төлөв (loader/fail/done), polling. 🟢

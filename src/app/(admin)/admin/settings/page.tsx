@@ -82,8 +82,7 @@ export default function AdminSettingsPage() {
   const commit = (k: SectionKey) =>
     setBaseline((b) => ({ ...(b ?? snapshot), [k]: snapshot[k] }));
   const anyDirty =
-    baseline !== null &&
-    (Object.keys(snapshot) as SectionKey[]).some(isDirty);
+    baseline !== null && (Object.keys(snapshot) as SectionKey[]).some(isDirty);
 
   useUnsavedGuard(anyDirty);
 
@@ -349,7 +348,8 @@ export default function AdminSettingsPage() {
             хадгалагдах тогтвортой утга тул засагдахгүй. Нэр, төлбөрийг хэзээ ч
             чөлөөтэй өөрчилж болно. Хороогоо оноовол checkout дээр бүс нь
             хаягаас автоматаар тодорхойлогдоно. <b>X</b> бүс бол хүргэлт хийхгүй
-            газрууд — тэнд орсон хороог сонгосон хэрэглэгч захиалга өгч чадахгүй.
+            газрууд — тэнд орсон хороог сонгосон хэрэглэгч захиалга өгч
+            чадахгүй.
             <b> R</b> бүсэд хороо оноох шаардлагагүй: Улаанбаатараас гадуурх бүх
             хаяг өөрөө тэнд тооцогдоно. Хороог нэг бүсээс нөгөө рүү зөөхдөө
             товшоод доод самбараас зорих бүсээ сонгоно; «Оноогдоогүй хороо
@@ -378,7 +378,7 @@ export default function AdminSettingsPage() {
           Идэвхжүүлэх
         </label>
         <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
-          <Field label="Захиалгын доод дүн (₮)">
+          <Field label="Барааны доод дүн (₮)">
             <Input
               type="number"
               value={autoGrant.minTotal}
@@ -430,9 +430,12 @@ export default function AdminSettingsPage() {
           </Field>
         </div>
         <p className="text-muted-foreground text-xs">
-          Төлбөр нь баталгаажсан захиалга энэ дүнгээс давбал худалдан авагчид
-          зөвхөн түүнд зориулсан купон автоматаар үүснэ. Зочны захиалгад
-          үүсэхгүй (хаана хадгалах бүртгэл байхгүй).
+          Төлбөр нь баталгаажсан захиалгын <strong>барааны цэвэр дүн</strong>{" "}
+          (барааны дүн − купоны хямдрал;{" "}
+          <strong>хүргэлт ба оноо ороогүй</strong>) энэ тоонд хүрвэл худалдан
+          авагчид зөвхөн түүнд зориулсан купон автоматаар үүснэ. Бэлгийн эрх
+          тооцдогтой яг ижил дүн. Нэг захиалга дээд тал нь нэг купон; зочны
+          захиалгад үүсэхгүй (хаана хадгалах бүртгэл байхгүй).
         </p>
       </Saver>
 

@@ -47,7 +47,7 @@ async function tryDirect(url: string): Promise<Client | null> {
 async function tryPooler(
   url: string,
   verbose: boolean,
-): Promise<Client | null> {
+): Promise<Resolved | null> {
   const u = new URL(url);
   const m = u.hostname.match(/^db\.([a-z0-9]+)\.supabase\.co$/);
   if (!m) return null;
@@ -73,7 +73,12 @@ async function tryPooler(
     try {
       await client.connect();
       console.log(`→ Connected via Session pooler (${host}).`);
-      return client;
+      // Тэр чигт нь `pg_dump`-д өгөх боломжтой URI. Нууц үг нь тусгай
+      // тэмдэгттэй байж болох тул заавал encode хийнэ.
+      const uri =
+        `postgresql://postgres.${ref}:${encodeURIComponent(password)}` +
+        `@${host}:5432/${database}?sslmode=require`;
+      return { client, url: uri, viaPooler: true };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       // Only surface non-"tenant not found" errors to cut noise.
@@ -86,10 +91,31 @@ async function tryPooler(
   return null;
 }
 
-/** Холбогдсон client, эсвэл ойлгомжтой алдаа заагаад гарна. */
-export async function connectDb(url: string, verbose = true): Promise<Client> {
-  const client = (await tryDirect(url)) ?? (await tryPooler(url, verbose));
-  if (!client) {
+/** Холбогдсон client ба түүнд ЯГ тохирсон холболтын URI. */
+export interface Resolved {
+  client: Client;
+  /** `pg_dump` мэтийн гадаад хэрэгсэлд шууд өгөх боломжтой URI. */
+  url: string;
+  /** IPv4 pooler-ээр холбогдсон эсэх (Docker-оос хүрэхэд чухал). */
+  viaPooler: boolean;
+}
+
+/**
+ * Холболт ба түүний URI-г буцаана.
+ *
+ * `skipDirect` — шууд хостыг (IPv6) зориуд алгасах. Docker дотроос
+ * `pg_dump` ажиллуулах үед хэрэгтэй: контейнерийн сүлжээнд IPv6 байхгүй тул
+ * `db.<ref>.supabase.co` хүрэхгүй, харин pooler нь IPv4.
+ */
+export async function resolveDb(
+  url: string,
+  { verbose = true, skipDirect = false } = {},
+): Promise<Resolved> {
+  const direct = skipDirect ? null : await tryDirect(url);
+  const resolved =
+    (direct ? { client: direct, url, viaPooler: false } : null) ??
+    (await tryPooler(url, verbose));
+  if (!resolved) {
     console.error(
       "✖ Could not connect via direct host or Session pooler.\n" +
         "  Copy the Session pooler URI from the Supabase dashboard\n" +
@@ -97,5 +123,10 @@ export async function connectDb(url: string, verbose = true): Promise<Client> {
     );
     process.exit(1);
   }
-  return client;
+  return resolved;
+}
+
+/** Холбогдсон client, эсвэл ойлгомжтой алдаа заагаад гарна. */
+export async function connectDb(url: string, verbose = true): Promise<Client> {
+  return (await resolveDb(url, { verbose })).client;
 }

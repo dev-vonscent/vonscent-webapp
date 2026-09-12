@@ -16,7 +16,7 @@ export const SITE = {
  * size, an ordinary purchasable tier like the rest (client decision, see
  * docs/analysis/questions.md №1); the admin prices each size per product and
  * leaves a size inactive where it makes no sense. The DB enforces the same
- * closed set (0031_sample_tier_back.sql).
+ * closed set (0031b_sample_tier_back.sql).
  */
 export const ML_SIZES = [2, 5, 10, 20] as const;
 export type MlSize = (typeof ML_SIZES)[number];
@@ -226,6 +226,15 @@ export const ROLE_LABEL: Record<Role, string> = {
 };
 
 /**
+ * Гарах үед Supabase-ийн хариуг хэр удаан хүлээх вэ (мс).
+ *
+ * Сессийг сервер тал дээр хүчингүй болгох нь зөв — гэхдээ тэр дуудлага
+ * саатсанаас болж хэрэглэгч гарч чадахгүй байх нь буруу. Хугацаа дуусвал
+ * cookie-г ямар ч тохиолдолд устгаад цааш явна (`/api/auth/sign-out`).
+ */
+export const SIGN_OUT_TIMEOUT_MS = 2_500;
+
+/**
  * Хайлт эхлэх хамгийн богино урт (backlog H1.3).
  *
  * Нэг үсгээр хайхад бараг бүх каталог таардаг — хэрэглэгчид ямар ч мэдээлэл
@@ -273,6 +282,12 @@ export const ASSUMED_AOV = 80_000;
  * Хуудсанд шигтгэсэн байснаас энд гарсан: төлбөрийн заавар нь агуулга биш,
  * тохиргоо. Утгууд нь клиентээс бодит данс ирэх хүртэлх түр зуурын байршуулагч
  * бөгөөд солиход зөвхөн энэ мөрүүд өөрчлөгдөнө.
+ *
+ * ⚠️ **Доорх данс нь ЖИШИГ, бодит биш.** Одоогоор худалдан авагчид хүрдэггүй:
+ * checkout нь `paymentMethod: "qpay"`-г хатуу дамжуулдаг тул шилжүүлгийн
+ * захиалга үүсэх зам байхгүй (клиентийн шийдвэр, 2026-09-13). Шилжүүлгийг
+ * нээхийн ӨМНӨ энэ гурван утгыг бодит данс болгоно — эс бөгөөс мөнгө байхгүй
+ * данс руу явна.
  */
 export const BANK_TRANSFER = {
   bank: "Хаан банк",

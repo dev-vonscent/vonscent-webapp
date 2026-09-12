@@ -9,11 +9,11 @@
  * Re-running with the same `slug` updates in place (upsert) — never duplicates.
  *
  * Requires NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in the env, and
- * the 0028_collections.sql migration to have been applied.
+ * the 0028a_collections.sql migration to have been applied.
  *
  * Бэлэг нь багцын тохиргоо БАЙХАА больсон (backlog A2/A4): бүх бэлэг админы
  * бэлгийн сангаас (`settings.gift`) гарах болсон тул `collections.gift_ml`
- * багана 0053_gift_pool_single_source.sql-аар устсан. Загварт «Бэлгийн ml»
+ * багана 0053a_gift_pool_single_source.sql-аар устсан. Загварт «Бэлгийн ml»
  * багана үлдсэн байвал уншихгүй, харин чимээгүй хаяхын оронд сануулга хэвлэнэ.
  *
  * Хэмжээ тус бүрийн ТОГТМОЛ үнэ (backlog B6, `collection_ml_discounts.price`)

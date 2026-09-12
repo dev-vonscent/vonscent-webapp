@@ -15,7 +15,7 @@
  * pictures an admin has since added. New products take the schema defaults.
  *
  * Хямдрал нь ХЭМЖЭЭ ТУС БҮРИЙН бодит үнэ болов (backlog B1/B2). Барааны
- * түвшний `products.sale_pct` нь 0054_real_discounts.sql-аар устсан; оронд нь
+ * түвшний `products.sale_pct` нь 0054a_real_discounts.sql-аар устсан; оронд нь
  * `sale_price_<ml>` багануудаар `product_variants.sale_price` бөглөгдөнө —
  * үндсэн үнэ нь зураастай харагдах дүн, хямдарсан үнэ нь БОДИТООР төлөгдөх
  * дүн. Загварт тэр багана байхгүй бол скрипт хуучнаар ажиллана, хямдралыг

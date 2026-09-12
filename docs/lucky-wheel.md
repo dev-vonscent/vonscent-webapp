@@ -242,7 +242,7 @@
 
 | Хэсэг | Байршил |
 |---|---|
-| Schema, RPC, seed | `supabase/migrations/0053_spin_wheel.sql` |
+| Schema, RPC, seed | `supabase/migrations/0061_spin_wheel.sql` (анх 0053, дугаар давхардсан тул нүүсэн) |
 | Хэрэглэгчийн хуудас | `/lucky-wheel` — `src/features/lucky-wheel/` |
 | Орох цэг | Профайл (`/account`) дээрх мөр — үнэгүй эргэлт бэлэн эсэхийг шууд харуулна; толгойн цэс, профайлын dropdown |
 | API | `GET/POST /api/lucky-wheel` |

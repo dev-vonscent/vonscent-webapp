@@ -49,7 +49,7 @@
 
 Хуучин загварт **«Бэлгийн ml»** багана байсан. Одоо бэлэг нь багц тус бүрийн
 тохиргоо БИШ: бүх бэлэг админы **«Бэлгийн үнэрүүд»** сангаас (1мл дээж) гарна.
-`collections.gift_ml` багана `0053_gift_pool_single_source.sql`-аар устсан тул
+`collections.gift_ml` багана `0053a_gift_pool_single_source.sql`-аар устсан тул
 скрипт тэр баганыг уншихаа болив. Загварт үлдсэн байвал импорт **алдаагүй**
 явна, харин «уншигдахгүй» гэсэн сануулга хэвлэгдэнэ.
 
@@ -66,7 +66,7 @@
 
 ## Импорт (хөгжүүлэгчид)
 
-**Урьдчилсан нөхцөл:** `0028_collections.sql` migration DB дээр ажилласан байх
+**Урьдчилсан нөхцөл:** `0028a_collections.sql` migration DB дээр ажилласан байх
 (`collections`, `collection_items`, `settings.collection`). Env: `NEXT_PUBLIC_SUPABASE_URL`,
 `SUPABASE_SERVICE_ROLE_KEY` (`.env.local`).
 

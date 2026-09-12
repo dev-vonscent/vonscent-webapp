@@ -3,7 +3,6 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import {
   BadgeCheck,
@@ -20,6 +19,7 @@ import { AddressBook } from "@/features/account/components/address-book";
 import { PasscodeDialog } from "@/features/account/components/passcode-dialog";
 import { ProfileEditDialog } from "@/features/account/components/profile-edit-dialog";
 import { EmailSettings } from "@/features/account/components/email-settings";
+import { SignOutForm } from "@/features/account/components/sign-out-form";
 import { CouponList } from "@/features/account/components/coupon-list";
 import { isPhoneEmail } from "@/lib/auth/phone-email";
 import { WheelEntryCard } from "@/features/lucky-wheel/components/wheel-entry-card";
@@ -48,14 +48,6 @@ export default function ProfilePage() {
 
   const wishIds = useWishlist((s) => s.ids);
   const wishCount = wishIds.length;
-  const router = useRouter();
-
-  async function signOut() {
-    const supabase = createClient();
-    if (supabase) await supabase.auth.signOut();
-    router.push("/");
-    router.refresh();
-  }
 
   React.useEffect(() => {
     const supabase = createClient();
@@ -269,13 +261,15 @@ export default function ProfilePage() {
 
       {/* Sign out */}
       {configured && (
-        <Button
-          variant="ghost"
-          className="bg-destructive/10 text-destructive hover:bg-destructive/18 hover:text-destructive w-full"
-          onClick={signOut}
-        >
-          <LogOut className="size-4" /> Гарах
-        </Button>
+        <SignOutForm>
+          <Button
+            type="submit"
+            variant="ghost"
+            className="bg-destructive/10 text-destructive hover:bg-destructive/18 hover:text-destructive w-full"
+          >
+            <LogOut className="size-4" /> Гарах
+          </Button>
+        </SignOutForm>
       )}
 
       <ProfileEditDialog

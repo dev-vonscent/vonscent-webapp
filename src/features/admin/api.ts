@@ -320,7 +320,7 @@ export interface AdminProduct {
   imageUrl: string | null;
   /** Gallery pictures the admin has not ticked for the storefront yet. */
   hiddenImageCount: number;
-  /** Bottle photo the AI works from (0031_product_reference_image). */
+  /** Bottle photo the AI works from (0031a_product_reference_image). */
   referenceImageUrl: string | null;
   /** Latest AI generation state (ai-image-generation §8). */
   imageStatus: "none" | "pending" | "generating" | "done" | "failed";
