@@ -1,10 +1,15 @@
+import type * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { SITE } from "@/lib/constants";
 
-export function Logo({ className }: { className?: string }) {
+export function Logo({
+  className,
+  ...props
+}: Omit<React.ComponentProps<typeof Link>, "href">) {
   return (
     <Link
+      {...props}
       href="/"
       className={cn(
         "text-foreground font-serif text-xl font-semibold tracking-tight",

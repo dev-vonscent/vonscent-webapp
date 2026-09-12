@@ -3,40 +3,13 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  Boxes,
-  Heart,
-  Home,
-  LayoutDashboard,
-  Menu,
-  Search,
-  User,
-} from "lucide-react";
+import { ArrowLeft, Boxes, Heart, Home, Search } from "lucide-react";
 import { Logo } from "./logo";
+import { MobileMenu } from "./mobile-menu";
 import { CartSheet } from "@/features/cart/components/cart-sheet";
 import { ProfileMenu } from "@/features/account/components/profile-menu";
-import { useIsStaff } from "@/features/account/use-staff";
 import { GlobalSearch } from "./global-search";
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-  SheetClose,
-} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-
-const NAV = [
-  { href: "/catalog", label: "Каталог" },
-  { href: "/collections", label: "Багц" },
-  { href: "/catalog?tags=sale", label: "Хямдрал" },
-  { href: "/lucky-wheel", label: "Азын хүрд" },
-  { href: "/about", label: "Бидний тухай" },
-  { href: "/blog", label: "Блог" },
-  { href: "/contact", label: "Холбоо барих" },
-] as const;
 
 /** Desktop pill nav — left side links; the cart sits last (see render). */
 const PILL_NAV = [
@@ -82,7 +55,6 @@ function getTitle(pathname: string): string {
 export function SiteHeader() {
   const pathname = usePathname();
   const router = useRouter();
-  const isStaff = useIsStaff();
   const isHome = pathname === "/";
 
   // Hide on scroll down, reveal on scroll up.
@@ -176,55 +148,7 @@ export function SiteHeader() {
       <div className={cn("px-4 pt-4", isHome ? "block" : "hidden md:block")}>
         <div className="bg-secondary/85 shadow-lift relative mx-auto flex h-14 max-w-352 items-center gap-2 rounded-full px-3 backdrop-blur">
           {/* Left: mobile menu + logo */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="md:hidden"
-                aria-label="Цэс"
-              >
-                <Menu className="size-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-80">
-              <SheetTitle className="font-serif text-xl">Цэс</SheetTitle>
-              <div className="gold-rule my-4" />
-              <nav className="flex flex-col gap-1">
-                {NAV.map((item) => (
-                  <SheetClose asChild key={item.href}>
-                    <Link
-                      href={item.href}
-                      className="hover:bg-accent rounded-lg p-3 text-base font-medium transition-colors"
-                    >
-                      {item.label}
-                    </Link>
-                  </SheetClose>
-                ))}
-              </nav>
-              <div className="gold-rule my-4" />
-              <SheetClose asChild>
-                <Link
-                  href="/account"
-                  className="hover:bg-accent flex items-center gap-3 rounded-lg p-3 text-base font-medium transition-colors"
-                >
-                  <User className="size-5" /> Профайл
-                </Link>
-              </SheetClose>
-              {/* Staff-only shortcut; the avatar dropdown it mirrors is
-                  desktop-only, so mobile needs its own entry point. */}
-              {isStaff && (
-                <SheetClose asChild>
-                  <Link
-                    href="/admin"
-                    className="hover:bg-accent flex items-center gap-3 rounded-lg p-3 text-base font-medium transition-colors"
-                  >
-                    <LayoutDashboard className="size-5" /> Админ хэсэг
-                  </Link>
-                </SheetClose>
-              )}
-            </SheetContent>
-          </Sheet>
+          <MobileMenu className="md:hidden" />
 
           <Logo className="px-1 text-lg md:text-xl" />
 

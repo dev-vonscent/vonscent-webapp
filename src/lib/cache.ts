@@ -18,3 +18,15 @@ export function revalidatePublic() {
   revalidateTag(CACHE_TAG_CATALOG, "max");
   revalidateTag(CACHE_TAG_TAXONOMY, "max");
 }
+
+/**
+ * Purge only what a review write actually changes: the product page (list +
+ * rating), the catalog (rating stars on cards) and the home page (its recent
+ * reviews strip). Deliberately *not* `revalidatePublic()` — a single customer
+ * rating should not drop every cached page on the site.
+ */
+export function revalidateProductReviews(slug: string | null) {
+  if (slug) revalidatePath(`/products/${slug}`);
+  revalidatePath("/products");
+  revalidatePath("/");
+}

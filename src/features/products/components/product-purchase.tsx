@@ -6,6 +6,8 @@ import { Minus, Plus, ShoppingCart, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
+import { RELATED_SECTION_ID } from "@/lib/constants";
+import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { useCart } from "@/features/cart/store";
 import { trackAddToCart, trackBeginCheckout } from "@/lib/analytics";
 import type { ProductDetail } from "@/lib/types";
@@ -36,6 +38,27 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
     return () => observer.disconnect();
   }, []);
 
+  // …and stands down again over «Төстэй бараа». At the bottom of the page the
+  // bar was parked on top of the last row of *other* products' cards — their
+  // wishlist and quick-add buttons became untappable, and a «Захиалах» for this
+  // perfume sitting over a different one is misleading on top of being in the
+  // way. The section is absent when the product has no related items, in which
+  // case there is nothing to collide with and the bar simply stays.
+  const [atRelated, setAtRelated] = React.useState(false);
+  React.useEffect(() => {
+    const el = document.getElementById(RELATED_SECTION_ID);
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setAtRelated(entry.isIntersecting),
+      // Positive bottom margin: the section counts as "here" while it is still
+      // just below the fold, so the bar is already gone by the time the first
+      // card is reachable rather than lifting off from under the thumb.
+      { rootMargin: "0px 0px 120px 0px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const selected = activeVariants.find((v) => v.id === variantId) ?? null;
   const unitPrice = selected?.price ?? 0;
   // Хямдрал нь хэмжээ тус бүрийнх, бас БОДИТ (0054): `price` нь төлөх дүн,
@@ -54,6 +77,12 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           a.price / a.ml <= b.price / b.ml ? a : b,
         )
       : null;
+
+  // Зурвас гарах цорын ганц нөхцөл — доод цэсэнд мэдэгдэх нэхэмжлэл ч үүнээс
+  // уншина, ингэснээр хоёулаа хэзээ ч зөрөхгүй.
+  const showBuyBar =
+    ctaAway && !atRelated && !soldOut && selected != null && selected.inStock;
+  useClaimBottomBar(showBuyBar);
 
   /** Puts the selected size in the cart. Returns false when nothing was added. */
   function addToCart(): boolean {
@@ -189,17 +218,22 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
 
       <div ref={ctaRef} className="space-y-3">
         <div className="flex items-center gap-4">
-          <div className="bg-secondary flex items-center rounded-md">
+          {/* Stepper height is locked to the lg button next to it (h-12) so the
+              row reads as one control strip. */}
+          <div className="bg-secondary flex h-12 shrink-0 items-center rounded-md">
             <button
-              className="hover:text-foreground px-3 py-2"
+              className="text-muted-foreground hover:text-foreground disabled:hover:text-muted-foreground flex h-full w-11 items-center justify-center rounded-l-md transition-colors disabled:opacity-40"
               onClick={() => setQty((q) => Math.max(1, q - 1))}
+              disabled={qty <= 1}
               aria-label="Хасах"
             >
               <Minus className="size-4" />
             </button>
-            <span className="w-10 text-center text-sm">{qty}</span>
+            <span className="w-8 text-center text-sm font-medium tabular-nums">
+              {qty}
+            </span>
             <button
-              className="hover:text-foreground px-3 py-2"
+              className="text-muted-foreground hover:text-foreground flex h-full w-11 items-center justify-center rounded-r-md transition-colors"
               onClick={() => setQty((q) => q + 1)}
               aria-label="Нэмэх"
             >
@@ -223,9 +257,11 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           </Button>
         </div>
 
+        {/* `outline` has no surface in this borderless system — the secondary
+            layer is what gives a full-width button its own ground. */}
         <Button
           size="lg"
-          variant="outline"
+          variant="secondary"
           className="w-full"
           disabled={buyDisabled}
           onClick={onAdd}
@@ -240,6 +276,19 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
             </>
           )}
         </Button>
+
+        {/* Дээрх том үнэ нь нэгжийн үнэ хэвээр үлдэнэ — тэр нь «/ Nml» ба
+            ₮/ml харьцуулалттай холбоотой лавлах дүн. Тоо ширхэг 1-ээс олон
+            болсон үед төлөх дүнг энд, дарах мөчид нь харуулна (сагс,
+            төлбөрийн хуудасны мөр ч ижил `unitPrice × qty` уншина). */}
+        {qty > 1 && !buyDisabled && (
+          <p className="text-muted-foreground text-sm" aria-live="polite">
+            {qty} ш × {formatPrice(unitPrice)} ={" "}
+            <span className="text-foreground font-semibold tabular-nums">
+              {formatPrice(unitPrice * qty)}
+            </span>
+          </p>
+        )}
       </div>
 
       {/* Availability + delivery promise right where the buying decision
@@ -247,27 +296,33 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
       {!soldOut && selected?.inStock && (
         <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
           <Check className="text-success size-3.5" />
-          Нөөцөд бэлэн · Улаанбаатарт 24 цагийн дотор хүргэнэ
+          Нөөцөд бэлэн · Улаанбаатарт хамгийн эрт нь маргааш хүргэгдэнэ
         </p>
       )}
 
-      {/* Mobile sticky buy bar — sits above the floating bottom nav. */}
-      {ctaAway && !soldOut && selected?.inStock && (
-        <div className="bg-card/95 border-border fixed inset-x-0 bottom-20 z-40 flex items-center justify-between gap-3 border-t px-4 py-3 backdrop-blur md:hidden">
-          <div className="min-w-0">
-            <p className="truncate text-xs font-medium">
-              {product.name} · {selected.ml}ml
-            </p>
-            <p className="font-serif text-lg/tight font-semibold">
-              {formatPrice(unitPrice)}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
+      {/* Mobile sticky buy bar. It takes the BottomNav's place rather than
+          stacking on it (`useClaimBottomBar`), so it also takes its shape: a
+          floating capsule with the Glass Trio (/85 + blur + lift), inset from
+          the edge. Flush against the bottom it read as stuck to the screen
+          instead of hovering over the page. */}
+      {showBuyBar && (
+        <div className="pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 md:hidden">
+          <div className="bg-secondary/85 shadow-lift pointer-events-auto mb-3 flex w-full items-center gap-3 rounded-full py-2 pr-2 pl-4 backdrop-blur">
+            <div className="min-w-0 flex-1">
+              <p className="text-muted-foreground truncate text-[11px]">
+                {product.name} · {selected.ml}ml
+                {qty > 1 && ` · ${qty} ш`}
+              </p>
+              <p className="font-serif text-base/tight font-semibold tabular-nums">
+                {formatPrice(unitPrice * qty)}
+              </p>
+            </div>
             {/* Icon-only at this width — the label would push «Захиалах» off
-                the bar on a small phone. */}
+                the bar on a small phone. Both pills, to nest in the capsule. */}
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
+              className="shrink-0 rounded-full"
               onClick={onAdd}
               aria-label="Сагсанд нэмэх"
             >
@@ -279,7 +334,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
             </Button>
             <Button
               onClick={onBuyNow}
-              className="in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+              className="shrink-0 rounded-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
             >
               Захиалах
             </Button>
