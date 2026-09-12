@@ -13,8 +13,17 @@ import { http, HttpResponse, type JsonBodyType } from "msw";
 
 export const QPAY_BASE = "https://merchant.qpay.mn/v2";
 
-/** ~2026-09-08T17:07Z — a timestamp, exactly as QPay sends it. */
-export const QPAY_EXPIRES_TIMESTAMP = 1788887262;
+/**
+ * `expires_in` — QPay яг ингэж явуулдаг: TTL биш, **unix timestamp** (секунд).
+ *
+ * Тогтмол тоо байсныг **одооноос нэг цагийн дараа** гэж болгов. Хатуу
+ * бичсэн `1788887262` нь 2026-09-08-д хүрч, тэр өдрөөс эхлэн token нь
+ * «хугацаа нь дууссан» гэж уншигдаж, кэш ажиллахаа болсон — «authenticates
+ * once across several calls» тест өдөр ирэх тусам өөрөө унадаг болсон юм.
+ * Тест нь `expires_in` ба `expiresAtMs`-ийн ХӨРВҮҮЛЭЛТИЙГ шалгах ёстой болохоос
+ * хуанлийн тодорхой өдрөөс хамаарах учиргүй.
+ */
+export const QPAY_EXPIRES_TIMESTAMP = Math.floor(Date.now() / 1000) + 3600;
 
 export const qpayToken = (
   token = "tok_1",
