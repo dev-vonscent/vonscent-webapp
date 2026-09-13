@@ -26,6 +26,22 @@ export default async function CollectionsPage() {
 
   return (
     <div className="mx-auto max-w-352 px-4 py-6 md:px-8">
+      {/*
+        Building your own is the other half of this page, not a feature buried
+        behind an empty state: a customer who has just read four ready-made
+        bundles is exactly the one who knows what they would put in a fifth.
+      */}
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <p className="text-muted-foreground text-sm">
+          Сонгож бэлдсэн багцууд — эсвэл өөрөө угсараарай.
+        </p>
+        <Button asChild className="shrink-0">
+          <Link href="/collections/build">
+            Багц угсрах
+          </Link>
+        </Button>
+      </div>
+
       {collections.length === 0 ? (
         <EmptyState
           size="lg"

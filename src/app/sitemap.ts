@@ -2,7 +2,6 @@ import type { MetadataRoute } from "next";
 import { env } from "@/lib/env";
 import { createPublicClient } from "@/lib/supabase/public";
 import { SEED_PRODUCTS } from "@/features/products/seed";
-import { BLOG_POSTS } from "@/features/blog/seed";
 
 interface SlugRow {
   slug: string;
@@ -20,19 +19,6 @@ async function productEntries(): Promise<SlugRow[]> {
     if (rows.length) return rows;
   }
   return SEED_PRODUCTS.map((p) => ({ slug: p.slug, updated_at: null }));
-}
-
-async function blogEntries(): Promise<SlugRow[]> {
-  const supabase = createPublicClient();
-  if (supabase) {
-    const { data } = await supabase
-      .from("blog_posts")
-      .select("slug, updated_at")
-      .eq("is_published", true);
-    const rows = (data as SlugRow[] | null) ?? [];
-    if (rows.length) return rows;
-  }
-  return BLOG_POSTS.map((p) => ({ slug: p.slug, updated_at: p.date }));
 }
 
 async function collectionEntries(): Promise<SlugRow[]> {
@@ -64,14 +50,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/catalog",
     "/collections",
     "/collections/build",
-    "/about",
     "/contact",
     "/faq",
-    "/blog",
   ];
-  const [products, posts, collections] = await Promise.all([
+  // Блог/Танилцуулга нуугдсан тул sitemap-д ч байхгүй.
+  const [products, collections] = await Promise.all([
     productEntries(),
-    blogEntries(),
     collectionEntries(),
   ]);
 
@@ -81,6 +65,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...collections.map((r) =>
       entry(base, `/collections/${r.slug}`, r.updated_at),
     ),
-    ...posts.map((r) => entry(base, `/blog/${r.slug}`, r.updated_at)),
   ];
 }

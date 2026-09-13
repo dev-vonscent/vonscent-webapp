@@ -18,6 +18,11 @@ export interface GenerateOptions {
   referenceUrl?: string | null;
   size?: ImageSize;
   quality?: ImageQuality;
+  /**
+   * Тунгалаг дэвсгэр (үнэрийн төрлийн дүрс). Зөвхөн text-to-image замд —
+   * загвар PNG буцаах ёстой, JPEG/WebP-д alpha сувга байхгүй.
+   */
+  background?: "transparent";
 }
 
 const OPENAI = "https://api.openai.com/v1";
@@ -104,6 +109,9 @@ export async function generateProductImage(
         size,
         quality,
         n: 1,
+        ...(opts.background === "transparent"
+          ? { background: "transparent", output_format: "png" }
+          : {}),
       }),
       true,
     );

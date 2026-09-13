@@ -5,10 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
-  BookOpen,
   Gift,
   HelpCircle,
-  Info,
   LayoutDashboard,
   LogOut,
   Mail,
@@ -45,8 +43,6 @@ const PRIMARY = [
 
 /** Уншиж танилцах хуудсууд — капсулаар, жижгээр. */
 const SECONDARY = [
-  { href: "/blog", label: "Блог", icon: BookOpen },
-  { href: "/about", label: "Бидний тухай", icon: Info },
   { href: "/contact", label: "Холбоо барих", icon: Mail },
   { href: "/faq", label: "Түгээмэл асуулт", icon: HelpCircle },
 ] as const;

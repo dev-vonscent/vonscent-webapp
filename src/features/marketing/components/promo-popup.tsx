@@ -12,6 +12,9 @@ import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import type { PopupSettings, PopupSlide } from "@/features/content/api";
 
 const AUTOPLAY_MS = 5000;
+/** Дэлгэцэд багтаах хязгаар: хажуу тал тус бүр 1rem, өндрийн 85%. */
+const VIEWPORT_PAD = 32;
+const MAX_HEIGHT_RATIO = 0.85;
 /** Хуудас зурагдаж амжсаны дараа гарна — дээрээс нь шууд унахгүй. */
 const OPEN_DELAY_MS = 800;
 
@@ -22,6 +25,55 @@ const OPEN_DELAY_MS = 800;
  * sessionStorage тохирохгүй: тэр reload-ыг давж үлдэнэ.
  */
 let shownForThisDocument = false;
+
+interface Size {
+  w: number;
+  h: number;
+}
+
+/**
+ * Зурагны жинхэнэ хэмжээ — popup нээгдэхээс өмнө уншина.
+ *
+ * Дэлгэц нээгдсэн хойно хэмжих бол хайрцаг нь эхлээд таамаг харьцаагаар
+ * гарч, дараа нь үсэрнэ. Тиймээс слайдуудыг урьдчилж ачаалж (браузарын
+ * кэшэд суусан тул дараа нь дахин татахгүй) хэмжээг нь цуглуулна.
+ */
+function useNaturalSizes(urls: string[]): Record<string, Size> {
+  const [sizes, setSizes] = React.useState<Record<string, Size>>({});
+  const key = urls.join("\u0000");
+  React.useEffect(() => {
+    let alive = true;
+    for (const url of key ? key.split("\u0000") : []) {
+      const img = new window.Image();
+      img.onload = () => {
+        if (!alive) return;
+        setSizes((prev) =>
+          prev[url]
+            ? prev
+            : { ...prev, [url]: { w: img.naturalWidth, h: img.naturalHeight } },
+        );
+      };
+      img.src = url;
+    }
+    return () => {
+      alive = false;
+    };
+  }, [key]);
+  return sizes;
+}
+
+/** Дэлгэцийн хэмжээ — цонх өөрчлөгдөхөд popup-ын өргөн дагаж тохирно. */
+function useViewport(): Size | null {
+  const [viewport, setViewport] = React.useState<Size | null>(null);
+  React.useEffect(() => {
+    const read = () =>
+      setViewport({ w: window.innerWidth, h: window.innerHeight });
+    read();
+    window.addEventListener("resize", read);
+    return () => window.removeEventListener("resize", read);
+  }, []);
+  return viewport;
+}
 
 /** True when `now` falls within the slide's optional [startsAt, endsAt] window. */
 function isLive(slide: PopupSlide, now: number): boolean {
@@ -53,6 +105,26 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
   // байсан ч дууссан зар үзэгдэхгүй.
   const [slides, setSlides] = React.useState<PopupSlide[]>([]);
   const many = slides.length > 1;
+  const sizes = useNaturalSizes(
+    React.useMemo(() => slides.map((s) => s.imageUrl!), [slides]),
+  );
+  const viewport = useViewport();
+  /**
+   * Popup-ын өргөн = зурагны өөрийн өргөн, дэлгэцэд багтаах хэмжээгээр л
+   * жижгэрнэ (өндрөөрөө хашигдвал харьцаагаараа нарийсна). Хэд хэдэн слайдтай
+   * бол хамгийн өргөнөөр нь — бусад нь дундаа голлоно.
+   */
+  const width = React.useMemo(() => {
+    const measured = slides
+      .map((s) => sizes[s.imageUrl!])
+      .filter((d): d is Size => Boolean(d));
+    if (!viewport || measured.length === 0) return undefined;
+    const maxW = viewport.w - VIEWPORT_PAD;
+    const maxH = viewport.h * MAX_HEIGHT_RATIO;
+    return Math.round(
+      Math.max(...measured.map((d) => Math.min(d.w, maxW, (maxH * d.w) / d.h))),
+    );
+  }, [slides, sizes, viewport]);
   const reducedMotion = usePrefersReducedMotion();
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { loop: many, watchDrag: many },
@@ -110,9 +182,11 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
         aria-describedby={undefined}
-        // Зөвхөн зураг харагдана: хүрээ/дэвсгэр/сүүдэргүй, зурагны өөрийн
-        // харьцаагаар агшина (letterbox үүсэхгүй).
-        className="w-auto max-w-[min(100vw_-_2rem,32rem)] gap-0 border-0 bg-transparent p-0 shadow-none"
+        // Зөвхөн зураг харагдана: хүрээ/дэвсгэр/сүүдэргүй. Хайрцаг нь
+        // оруулсан зурагны өөрийн хэмжээгээр гарна — тогтсон өргөнд
+        // сунгах/агшаахгүй, letterbox үүсэхгүй.
+        style={width ? { width } : undefined}
+        className="w-auto max-w-[calc(100vw-2rem)] gap-0 border-0 bg-transparent p-0 shadow-none"
       >
         <DialogTitle className="sr-only">Сурталчилгаа</DialogTitle>
 
@@ -142,6 +216,7 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
               >
                 <SlideImage
                   slide={slide}
+                  size={sizes[slide.imageUrl!]}
                   eager={i === 0}
                   focusable={i === index}
                   onNavigate={() => setOpen(false)}
@@ -226,16 +301,25 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
 }
 
 /**
- * Зураг өөрийн харьцаагаараа, тайрахгүй — админ ямар ч хэмжээтэй зураг
- * оруулж болно. Хэт өндөр зураг дэлгэцээс хэтрэхгүйн тулд 85svh-д хашина.
+ * Зураг өөрийн хэмжээ, харьцаагаараа — тайрахгүй, сунгахгүй. Админ ямар ч
+ * хэмжээтэй зураг оруулж болно; дэлгэцээс хэтрэх зураг л (өргөн/85svh)
+ * харьцаагаараа агшина.
+ *
+ * `unoptimized` нь санамсаргүй биш: оптимайзерийн өгдөг `srcset`/`sizes`
+ * хосыг браузар intrinsic хэмжээ болгон авдаг тул зураг ямагт `sizes`-д
+ * бичсэн өргөнөөр буудаг — жинхэнэ хэмжээгээр нь гаргах гэсэн энэ хүсэлттэй
+ * шууд зөрчилддөг. Зар нь цөөн, document-д нэг л удаа гарна.
  */
 function SlideImage({
   slide,
+  size,
   eager,
   focusable,
   onNavigate,
 }: {
   slide: PopupSlide;
+  /** Хэмжсэн жинхэнэ хэмжээ — ачаалж амжаагүй үед таамаг харьцаа. */
+  size?: Size;
   eager: boolean;
   /** Идэвхтэй слайд эсэх — идэвхгүй слайдын холбоос Tab-д орохгүй. */
   focusable: boolean;
@@ -246,11 +330,11 @@ function SlideImage({
       src={slide.imageUrl!}
       // Зар нь зураг дотроо — админ alt бичдэггүй, ерөнхий тайлбар хангалттай.
       alt="Сурталчилгаа"
-      width={1080}
-      height={1350}
-      sizes="(max-width: 544px) calc(100vw - 2rem), 512px"
+      width={size?.w ?? 1080}
+      height={size?.h ?? 1350}
+      unoptimized
       loading={eager ? "eager" : "lazy"}
-      className="mx-auto block h-auto max-h-[85svh] w-auto max-w-full"
+      className="mx-auto block size-auto max-h-[85svh] max-w-full"
       // Свайп хийхэд браузарын зураг чирэх үйлдэл саад болдог.
       draggable={false}
     />

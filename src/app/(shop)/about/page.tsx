@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { CONTENT_PAGES_HIDDEN } from "@/lib/constants";
 import Image from "next/image";
 import { BadgeCheck, Sparkles, Truck, Heart } from "lucide-react";
 import { getAboutSettings } from "@/features/content/api";
@@ -41,6 +43,9 @@ const VALUES = [
 import { RichText } from "@/components/shared/rich-text";
 
 export default async function AboutPage() {
+  // Хуудас түр нуугдсан — шууд URL-ээр ч орохгүй (CONTENT_PAGES_HIDDEN).
+  if (CONTENT_PAGES_HIDDEN) notFound();
+
   const about = await getAboutSettings();
   return (
     <div className="mx-auto max-w-4xl px-4 py-16 md:px-8">

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { CONTENT_PAGES_HIDDEN } from "@/lib/constants";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/format";
@@ -18,6 +20,9 @@ export const metadata: Metadata = {
 };
 
 export default async function BlogPage() {
+  // Хуудас түр нуугдсан — шууд URL-ээр ч орохгүй (CONTENT_PAGES_HIDDEN).
+  if (CONTENT_PAGES_HIDDEN) notFound();
+
   const posts = await getBlogPosts();
   const [featured, ...rest] = posts;
   return (

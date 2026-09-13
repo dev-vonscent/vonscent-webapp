@@ -23,13 +23,6 @@ const COLUMNS = [
       { href: "/account/orders", label: "Захиалга хянах" },
     ],
   },
-  {
-    title: "Бидний тухай",
-    links: [
-      { href: "/about", label: "Танилцуулга" },
-      { href: "/blog", label: "Блог" },
-    ],
-  },
 ];
 
 export async function SiteFooter() {

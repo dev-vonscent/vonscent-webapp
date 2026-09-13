@@ -15,7 +15,9 @@ export function ProductCarousel({
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "start",
     containScroll: "trimSnaps",
-    slidesToScroll: "auto",
+    // Сум дарахад нэг бараагаар — "auto" нь харагдах бүлгээрээ (3-4 бараа)
+    // үсэрдэг байсан.
+    slidesToScroll: 1,
   });
   const [atStart, setAtStart] = React.useState(true);
   const [atEnd, setAtEnd] = React.useState(false);
@@ -34,7 +36,9 @@ export function ProductCarousel({
   }, [emblaApi]);
 
   return (
-    <div className="group/carousel relative">
+    // `@container`: сумны байрлалыг картын зурагны өндрөөр (карт бүр
+    // контейнерийн өргөний хувиар өргөнтэй, зураг нь 4/5) тооцно.
+    <div className="group/carousel @container relative">
       <div ref={emblaRef} className="-mx-4 overflow-hidden sm:mx-0">
         <div className="flex gap-4 px-4 sm:px-0">
           {products.map((p) => (
@@ -79,8 +83,13 @@ function CarouselArrow({
       disabled={disabled}
       aria-label={side === "left" ? "Өмнөх" : "Дараах"}
       className={cn(
-        "border-border bg-card text-foreground shadow-lift absolute top-[28%] z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border transition-all md:flex",
-        "hover:border-gold-strong/50 opacity-0 group-focus-within/carousel:opacity-100 group-hover/carousel:opacity-100 focus-visible:opacity-100",
+        // Голлосон: rail-ийн өндрийн яг дунд. Хүрээ token нь ил тод
+        // (--border: transparent) тул ring-ээр ирмэг өгч, дэвсгэрийг
+        // background-аас салгаж тодруулав.
+        // Голлох цэг нь rail биш, картын ЗУРАГ: зурагны өндөр = картын өргөн
+        // (31cqw / lg дээр 23.5cqw) × 5/4, тэгэхээр төв нь түүний хагас.
+        "bg-background/85 text-foreground shadow-lift ring-foreground/15 absolute top-[calc(31cqw*5/8)] z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full ring-1 backdrop-blur transition-all md:flex lg:top-[calc(23.5cqw*5/8)]",
+        "hover:bg-foreground hover:text-background hover:ring-foreground/40 opacity-0 group-focus-within/carousel:opacity-100 group-hover/carousel:opacity-100 focus-visible:opacity-100",
         "disabled:pointer-events-none disabled:opacity-0",
         side === "left" ? "-left-5" : "-right-5",
       )}
