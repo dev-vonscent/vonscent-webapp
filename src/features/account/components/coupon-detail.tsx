@@ -49,6 +49,10 @@ export function CouponDetail({ code }: { code: string }) {
   /** Every code this customer holds for the same offer. */
   const [siblings, setSiblings] = React.useState<Row[]>([]);
   const [applying, setApplying] = React.useState(false);
+  // Амжилттай болсны дараа навигаци дуустал товч «бэлэн» рүү буцахгүй —
+  // үгүй бол хэрэглэгч дуусаагүй гэж бодоод дахин дардаг.
+  const [leaving, setLeaving] = React.useState(false);
+  const pending = applying || leaving;
   const [error, setError] = React.useState<string | null>(null);
 
   const subtotal = useCart(selectSubtotal);
@@ -87,6 +91,7 @@ export function CouponDetail({ code }: { code: string }) {
     if (!coupon) return;
     // Nothing to discount yet — send them shopping rather than failing.
     if (subtotal <= 0) {
+      setLeaving(true);
       router.push("/catalog");
       return;
     }
@@ -104,6 +109,7 @@ export function CouponDetail({ code }: { code: string }) {
         return;
       }
       applyToCart({ code: data.code ?? coupon.code, discount: data.discount });
+      setLeaving(true);
       router.push("/checkout");
     } catch {
       setError("Алдаа гарлаа. Дахин оролдоно уу.");
@@ -246,10 +252,10 @@ export function CouponDetail({ code }: { code: string }) {
           <Button
             size="lg"
             className="w-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
-            disabled={applying}
+            disabled={pending}
             onClick={onUse}
           >
-            {applying ? (
+            {pending ? (
               <>
                 <Loader2 className="size-4 animate-spin" /> Шалгаж байна…
               </>
