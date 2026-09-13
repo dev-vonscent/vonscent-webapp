@@ -12,6 +12,7 @@ function product(
     brand: "Test",
     gender: "unisex",
     concentration: "EDP",
+    sillage: "medium",
     scentFamilies: [],
     seasons: [],
     image: null,
@@ -158,6 +159,78 @@ describe("scoreQuizMatches", () => {
     });
     expect(items[0].id).toBe("match");
     expect(items[0].matchPct).toBeGreaterThan(50);
+  });
+
+  it("keeps a season contradiction off the top, however well tagged", () => {
+    // «Зун» + далай: a winter-only scent wearing every tag the answers touch
+    // must still lose to an honest summer match (audit: 21.7% of results used
+    // to contradict the season picked).
+    const summerAnswers = {
+      gender: "any" as const,
+      picks: ["weekend-beach", "season-summer"],
+    };
+    const items = scoreQuizMatches(
+      [
+        product({
+          id: "winter-overtagged",
+          scentFamilies: ["citrus", "fresh"],
+          seasons: ["winter"],
+          customTagSlugs: ["marine", "sport", "fruity", "clean", "daily"],
+        }),
+        product({
+          id: "honest-summer",
+          scentFamilies: ["citrus"],
+          seasons: ["summer"],
+          customTagSlugs: ["marine"],
+        }),
+      ],
+      summerAnswers,
+    ).items;
+    expect(items[0].id).toBe("honest-summer");
+  });
+
+  it("does not let a long tag list buy rank", () => {
+    // Both wear the two heaviest tags of the answer; the difference is only
+    // how many further weak tags the admin happened to add.
+    const { items } = scoreQuizMatches(
+      [
+        product({
+          id: "many-tags",
+          customTagSlugs: ["oud", "smoky", "party", "luxurious"],
+        }),
+        product({
+          id: "few-tags",
+          customTagSlugs: ["oud", "smoky"],
+          ratingAvg: 4.5,
+          ratingCount: 20,
+        }),
+      ],
+      { gender: "any", picks: ["time-night"] },
+    );
+    // Equal capped tag scores, so the proven scent wins the tie-break instead
+    // of being buried by the extra tags.
+    expect(items[0].id).toBe("few-tags");
+  });
+
+  it("reads intensity from sillage, not from the bottle type", () => {
+    // 0078: an EDT can carry a room and an Extrait can sit on the skin, so the
+    // admin's sillage decides — the concentration is deliberately inverted here.
+    const { items } = scoreQuizMatches(
+      [
+        product({
+          id: "loud-edt",
+          concentration: "EDT",
+          sillage: "strong",
+        }),
+        product({
+          id: "quiet-extrait",
+          concentration: "Extrait",
+          sillage: "light",
+        }),
+      ],
+      { gender: "any", picks: ["impression-bold"] }, // intensity.strong + 3
+    );
+    expect(items[0].id).toBe("loud-edt");
   });
 
   it("returns an empty fallback for an empty catalogue", () => {

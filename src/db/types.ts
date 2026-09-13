@@ -32,6 +32,11 @@ export type PaymentMethod = "qpay" | "bank_transfer";
 export type PaymentStatus = "unpaid" | "paid" | "refunded";
 export type TagKind = "new" | "hot" | "sale";
 export type Season = "spring" | "summer" | "autumn" | "winter" | "all";
+/**
+ * Үнэрийн хүч (0078). Концентраци нь савны төрөл болохоос хүч биш тул quiz-ийн
+ * эрчмийн тэнхлэг үүнийг уншина — sillage-ийг админ гараар тохируулна.
+ */
+export type Sillage = "light" | "medium" | "strong";
 export type CouponType = "percent" | "fixed";
 /** Lucky wheel (0053). */
 export type SpinPrizeKind =
@@ -69,6 +74,8 @@ export interface ProductRow {
   notes_base: string[];
   gender: Gender;
   concentration: Concentration;
+  /** Үнэр хэр хол мэдрэгдэх вэ (0078) — quiz-ийн эрчмийн эх сурвалж. */
+  sillage: Sillage;
   scent_families: ScentFamily[];
   origin_country: string | null;
   release_year: number | null;

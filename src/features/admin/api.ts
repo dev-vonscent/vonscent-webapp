@@ -11,6 +11,7 @@ import type {
   FaqRow,
   BlogPostRow,
   SpinWheelPrizeRow,
+  Sillage,
 } from "@/db/types";
 import {
   ORDER_STATUSES,
@@ -288,6 +289,8 @@ export interface AdminProduct {
   brand: string;
   gender: string;
   concentration: string;
+  /** Үнэрийн хүч (0078) — quiz-ийн эрчмийн тэнхлэг. */
+  sillage: Sillage;
   scentFamilies: string[];
   seasons: string[];
   description: string;
@@ -332,7 +335,7 @@ export interface AdminProduct {
 }
 
 const ADMIN_PRODUCT_SELECT = `
-  id, slug, name, brand, gender, concentration, scent_families, seasons,
+  id, slug, name, brand, gender, concentration, sillage, scent_families, seasons,
   description, notes_description, usage_description, short_description,
   notes_top, notes_heart, notes_base, origin_country, release_year,
   bottle_price, bottle_ml, is_active, is_featured, reference_image_url,
@@ -359,6 +362,7 @@ interface AdminProductRow {
   brand: string;
   gender: string;
   concentration: string;
+  sillage: Sillage | null;
   scent_families: string[] | null;
   seasons: string[] | null;
   description: string;
@@ -412,6 +416,8 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
     brand: r.brand,
     gender: r.gender,
     concentration: r.concentration,
+    // 0078-ийн өмнөх сан дээр багана байхгүй байж болно — тэр үед «дундаж».
+    sillage: r.sillage ?? "medium",
     scentFamilies: r.scent_families ?? [],
     seasons: r.seasons ?? [],
     description: r.description,

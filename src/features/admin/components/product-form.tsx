@@ -35,8 +35,12 @@ import {
   CONCENTRATIONS,
   SEASONS,
   SEASON_LABEL,
+  SILLAGES,
+  SILLAGE_LABEL,
+  SILLAGE_HINT,
   DEFAULT_LOW_STOCK_ML,
 } from "@/lib/constants";
+import type { Sillage } from "@/lib/constants";
 import type { BrandOption, ScentFamilyOption } from "@/lib/types";
 import type { CustomTagOption } from "@/features/taxonomy/api";
 
@@ -67,6 +71,8 @@ export function ProductForm({
     brand: "",
     gender: "unisex",
     concentration: "EDP",
+    // Үнэрийн хүч (0078) — quiz-ийн эрчмийн асуулт үүнийг уншина.
+    sillage: "medium",
     notesTop: "",
     notesHeart: "",
     notesBase: "",
@@ -261,6 +267,26 @@ export function ProductForm({
                   {CONCENTRATIONS.map((c) => (
                     <SelectItem key={c} value={c}>
                       {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field
+              label="Үнэртэх зай"
+              hint={SILLAGE_HINT[form.sillage as Sillage]}
+            >
+              <Select
+                value={form.sillage}
+                onValueChange={(v) => set("sillage", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SILLAGES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {SILLAGE_LABEL[s]}
                     </SelectItem>
                   ))}
                 </SelectContent>

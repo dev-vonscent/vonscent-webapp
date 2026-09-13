@@ -69,6 +69,7 @@ export async function POST(req: Request) {
     notes_base: input.notesBase,
     gender: input.gender,
     concentration: input.concentration,
+    sillage: input.sillage,
     origin_country: input.originCountry ?? null,
     release_year: input.releaseYear ?? null,
     bottle_price: input.bottlePrice,

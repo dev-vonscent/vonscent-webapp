@@ -51,6 +51,7 @@ export async function PATCH(
   if (input.gender !== undefined) productUpdate.gender = input.gender;
   if (input.concentration !== undefined)
     productUpdate.concentration = input.concentration;
+  if (input.sillage !== undefined) productUpdate.sillage = input.sillage;
   if (input.scentFamilies !== undefined)
     productUpdate.scent_families = await sanitizeFamilies(input.scentFamilies);
   if (input.seasons !== undefined) productUpdate.seasons = input.seasons;

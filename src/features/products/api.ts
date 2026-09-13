@@ -60,6 +60,7 @@ interface DbProduct {
   notes_base: string[];
   gender: ProductDetail["gender"];
   concentration: ProductDetail["concentration"];
+  sillage: ProductDetail["sillage"] | null;
   scent_families: ScentFamily[] | null;
   seasons: Season[] | null;
   origin_country: string | null;
@@ -84,7 +85,7 @@ const SELECT = `
   id, slug, name, brand,
   description, notes_description, usage_description, short_description,
   notes_top, notes_heart, notes_base,
-  gender, concentration, scent_families, seasons,
+  gender, concentration, sillage, scent_families, seasons,
   origin_country, release_year, bottle_ml,
   rating_avg, rating_count, is_featured, created_at,
   product_images ( url, alt, sort_order, is_visible ),
@@ -144,6 +145,8 @@ function mapProduct(row: DbProduct): ProductDetail {
     brand: row.brand,
     gender: row.gender,
     concentration: row.concentration,
+    // 0078-оос өмнөх сан дээр багана байхгүй байж болно — тэр үед 'medium'.
+    sillage: row.sillage ?? "medium",
     scentFamilies: row.scent_families ?? [],
     seasons: row.seasons ?? [],
     image: images[0] ?? null,

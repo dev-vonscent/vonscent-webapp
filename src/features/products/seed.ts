@@ -298,6 +298,16 @@ export function productImageUrls(slug: string): string[] {
   return ids.map(unsplash);
 }
 
+/** 0078-ийн урьдчилсан дүүргэлттэй ижил дүрэм (демо өгөгдөлд л хэрэглэнэ). */
+const SEED_SILLAGE: Record<ProductDetail["concentration"], ProductDetail["sillage"]> = {
+  EDC: "light",
+  EDT: "light",
+  EDP: "medium",
+  Parfum: "strong",
+  Extrait: "strong",
+  Elixir: "strong",
+};
+
 export const SEED_PRODUCTS: ProductDetail[] = RAW.map((input) => {
   const variants = buildVariants(input);
   const cheapest = variants.reduce((a, b) => (a.price <= b.price ? a : b));
@@ -313,6 +323,9 @@ export const SEED_PRODUCTS: ProductDetail[] = RAW.map((input) => {
     brand: input.brand,
     gender: input.gender,
     concentration: input.concentration,
+    // Demo data has no hand-set sillage — the same guess 0078 backfills the
+    // live catalogue with, so the seed shop behaves like a freshly migrated one.
+    sillage: SEED_SILLAGE[input.concentration],
     scentFamilies: input.scentFamilies,
     seasons: input.seasons ?? [],
     image: images[0],
