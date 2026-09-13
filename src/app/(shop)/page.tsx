@@ -32,7 +32,6 @@ import {
   CarouselSkeleton,
   CollectionGridSkeleton,
   MarqueeSkeleton,
-  PanelSkeleton,
   ReviewsSkeleton,
   TileGridSkeleton,
 } from "@/components/shared/skeletons";
@@ -155,9 +154,7 @@ export default function HomePage() {
           <CuratedSections />
         </Suspense>
 
-        <Suspense fallback={<PanelSkeleton imageRight />}>
-          <QuizSection />
-        </Suspense>
+        <QuizSection />
 
         <Suspense fallback={<CarouselSkeleton action />}>
           <BestSellersSection />
@@ -307,13 +304,14 @@ async function NewArrivalsSection() {
 }
 
 /**
- * Scent quiz — for visitors who can't pick (client-only, so the ISR page stays
- * cacheable; matching runs in /api/quiz on demand).
+ * Scent quiz — for visitors who can't pick. Entirely client-side (so the ISR
+ * page stays cacheable) and no longer fetches anything on the server, so it
+ * needs no Suspense boundary: matching runs in /api/quiz on demand.
  */
-async function QuizSection() {
+function QuizSection() {
   return (
     <section>
-      <ScentQuiz families={await getScentFamilies()} />
+      <ScentQuiz />
     </section>
   );
 }

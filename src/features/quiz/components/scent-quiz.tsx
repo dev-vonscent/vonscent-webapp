@@ -14,7 +14,6 @@ import type { ProductListItem } from "@/lib/types";
 import { rateLimitMessage } from "@/lib/rate-limit-client";
 import { GENDER_QUESTION, QUIZ_QUESTIONS } from "../questions";
 import type { QuizOption } from "../questions";
-import { buildProfile } from "../score";
 
 /**
  * "Үнэрээ ол" — the home page scent quiz. Runs entirely on the client so the
@@ -86,19 +85,6 @@ function clearStoredAnswers(): void {
   }
 }
 
-const SEASON_LABEL: Record<string, string> = {
-  spring: "Хавар",
-  summer: "Зун",
-  autumn: "Намар",
-  winter: "Өвөл",
-};
-
-const INTENSITY_LABEL: Record<string, string> = {
-  light: "Зөөлөн үнэр",
-  medium: "Дунд зэрэг",
-  strong: "Тод үнэр",
-};
-
 /** Crossfade + soft rise between the widget's phases (intro/quiz/results/…). */
 const phaseVariants = {
   enter: { opacity: 0, y: 12 },
@@ -128,21 +114,7 @@ const itemVariants = {
   },
 } as const;
 
-/** Top-N keys of a weight record, heaviest first, zero-weights dropped. */
-function topKeys(rec: Record<string, number | undefined>, n: number): string[] {
-  return Object.entries(rec)
-    .filter((e): e is [string, number] => (e[1] ?? 0) > 0)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, n)
-    .map(([k]) => k);
-}
-
-export function ScentQuiz({
-  families = [],
-}: {
-  /** slug → label source for the profile chips (3b). */
-  families?: { slug: string; label: string }[];
-}) {
+export function ScentQuiz() {
   const [phase, setPhase] = React.useState<Phase>("intro");
   const [step, setStep] = React.useState(0);
   // +1 when moving forward, -1 when going back — drives the slide direction.
@@ -484,9 +456,6 @@ export function ScentQuiz({
                     ? "Яг таарсан үнэр олдсонгүй тул хамгийн эрэлттэй үнэртнүүдийг санал болгож байна."
                     : "Таны хариултад үндэслэн сонголоо."}
                 </motion.p>
-                {!result.fallback && (
-                  <ProfileChips picks={picks} families={families} />
-                )}
               </div>
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
@@ -554,46 +523,6 @@ export function ScentQuiz({
         </AnimatePresence>
       </motion.div>
     </MotionConfig>
-  );
-}
-
-/** «Таны профайл» chips — top-2 families, top season, top intensity (3b). */
-function ProfileChips({
-  picks,
-  families,
-}: {
-  picks: Record<string, string>;
-  families: { slug: string; label: string }[];
-}) {
-  const profile = buildProfile(Object.values(picks));
-  const familyLabel = Object.fromEntries(
-    families.map((f) => [f.slug, f.label]),
-  );
-  const chips = [
-    ...topKeys(profile.families, 2).map((slug) => familyLabel[slug] ?? slug),
-    ...topKeys(profile.seasons, 1).map((s) => SEASON_LABEL[s] ?? s),
-    ...topKeys(profile.intensity, 1).map((i) => INTENSITY_LABEL[i] ?? i),
-  ];
-  if (chips.length === 0) return null;
-  return (
-    <div className="mt-3 flex flex-wrap items-center gap-2">
-      {chips.map((c, i) => (
-        <motion.span
-          key={c}
-          initial={{ opacity: 0, scale: 0.85, y: 6 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{
-            delay: 0.15 + i * 0.06,
-            type: "spring",
-            stiffness: 420,
-            damping: 26,
-          }}
-          className="border-border bg-card rounded-full border px-3 py-1 text-xs font-medium"
-        >
-          {c}
-        </motion.span>
-      ))}
-    </div>
   );
 }
 
