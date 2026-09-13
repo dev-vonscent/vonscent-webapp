@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/sheet";
 import { useIsStaff } from "@/features/account/use-staff";
 import { useProfileSummary } from "@/features/account/use-profile-summary";
-import { SignOutForm } from "@/features/account/components/sign-out-form";
+import { useSignOutConfirm } from "@/features/account/components/use-sign-out-confirm";
 import { cn } from "@/lib/utils";
 
 /**
@@ -56,7 +56,7 @@ const ACCOUNT_SHORTCUTS = [
 
 export function MobileMenu({ className }: { className?: string }) {
   const pathname = usePathname();
-  const signOutForm = React.useRef<HTMLFormElement>(null);
+  const [askSignOut, signOutDialog] = useSignOutConfirm();
   const isStaff = useIsStaff();
   const { profile, loading, configured } = useProfileSummary();
 
@@ -67,7 +67,7 @@ export function MobileMenu({ className }: { className?: string }) {
 
   return (
     <>
-      <SignOutForm ref={signOutForm} />
+      {signOutDialog}
       <Sheet>
         <SheetTrigger asChild>
           <Button
@@ -125,8 +125,8 @@ export function MobileMenu({ className }: { className?: string }) {
                           href={item.href}
                           className="bg-muted hover:bg-accent flex h-16 flex-col items-center justify-center gap-1.5 rounded-[0.875rem] transition-colors"
                         >
-                          <item.icon className="text-muted-foreground size-4.5" />
-                          <span className="text-[11px] font-medium">
+                          <item.icon className="text-muted-foreground size-5" />
+                          <span className="text-sm font-medium">
                             {item.label}
                           </span>
                         </Link>
@@ -177,7 +177,7 @@ export function MobileMenu({ className }: { className?: string }) {
                       style={{ animationDelay: `${60 + i * 45}ms` }}
                       className={cn(
                         "animate-fade-up animation-duration-[380ms] motion-reduce:animate-none",
-                        "flex items-center gap-3 py-2.5 text-xl font-semibold tracking-tight transition-colors",
+                        "flex items-center gap-3 py-2.5 text-lg font-semibold tracking-tight transition-colors",
                         active
                           ? "text-foreground"
                           : "text-foreground/70 hover:text-foreground",
@@ -238,11 +238,11 @@ export function MobileMenu({ className }: { className?: string }) {
                 </SheetClose>
               )}
               {configured && profile && (
-                // Форм нь Sheet-ийн ГАДНА (дээр) — самбар хаагдахад энэ товч
-                // устдаг тул илгээхийг нь шууд өдөөнө.
+                // Форм ба баталгаажуулах цонх нь Sheet-ийн ГАДНА (дээр) —
+                // самбар хаагдахад энэ товч устдаг.
                 <button
                   type="button"
-                  onClick={() => signOutForm.current?.requestSubmit()}
+                  onClick={askSignOut}
                   className="bg-destructive/10 text-destructive hover:bg-destructive/20 ml-auto flex h-11 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors"
                 >
                   <LogOut className="size-4 shrink-0" /> Гарах
