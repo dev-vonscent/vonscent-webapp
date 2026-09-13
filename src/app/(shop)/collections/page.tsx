@@ -5,6 +5,7 @@ import { getBaseCollections } from "@/features/collections/api";
 import { getGiftSettings } from "@/features/content/api";
 import { CollectionBrowser } from "@/features/collections/components/collection-browser";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/shared/empty-state";
 
 /** ISR — collections are public data (see product/catalog pages). */
 export const revalidate = 60;
@@ -26,18 +27,17 @@ export default async function CollectionsPage() {
   return (
     <div className="mx-auto max-w-352 px-4 py-6 md:px-8">
       {collections.length === 0 ? (
-        <div className="border-border flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed py-24 text-center">
-          <PackageOpen className="text-muted-foreground size-10" />
-          <div>
-            <p className="font-medium">Багц одоогоор алга</p>
-            <p className="text-muted-foreground text-sm">
-              Тун удахгүй онцгой багцууд нэмэгдэнэ.
-            </p>
-          </div>
-          <Button asChild variant="outline">
-            <Link href="/catalog">Каталог үзэх</Link>
-          </Button>
-        </div>
+        <EmptyState
+          size="lg"
+          icon={PackageOpen}
+          title="Багц одоогоор алга"
+          description="Тун удахгүй онцгой багцууд нэмэгдэнэ."
+          action={
+            <Button asChild variant="outline">
+              <Link href="/catalog">Каталог үзэх</Link>
+            </Button>
+          }
+        />
       ) : (
         <CollectionBrowser
           collections={collections}

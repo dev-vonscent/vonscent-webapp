@@ -11,6 +11,8 @@ import {
   ServerPager,
   makeHrefBuilder,
 } from "@/features/admin/components/server-pager";
+import { PageHeader } from "@/components/shared/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
 
 export default async function AdminProductsPage({
   searchParams,
@@ -54,20 +56,23 @@ export default async function AdminProductsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="font-serif text-2xl font-semibold">Бараа</h1>
-        <Button asChild className="shrink-0">
-          <Link href="/admin/products/new">
-            <Plus className="size-4" />
-            Бараа нэмэх
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="Бараа"
+        count={total ?? undefined}
+        actions={
+          <Button asChild className="shrink-0">
+            <Link href="/admin/products/new">
+              <Plus className="size-4" />
+              Бараа нэмэх
+            </Link>
+          </Button>
+        }
+      />
 
       <ProductsToolbar />
 
       {rows.length === 0 ? (
-        <EmptyState filtering={filtering} />
+        <ProductsEmpty filtering={filtering} />
       ) : (
         <>
           <ProductsTable data={rows} />
@@ -100,20 +105,19 @@ function legacyStock(status?: string): string {
  * a filter that matched nothing needs the way back — the shared table empty
  * ("Бараа алга") told the operator neither.
  */
-function EmptyState({ filtering }: { filtering: boolean }) {
+function ProductsEmpty({ filtering }: { filtering: boolean }) {
   return (
-    <div className="bg-card rounded-lg px-6 py-14 text-center">
-      <PackageSearch className="text-muted-foreground mx-auto size-8" />
-      <p className="mt-4 font-medium">
-        {filtering ? "Тохирох бараа олдсонгүй" : "Каталог хоосон байна"}
-      </p>
-      <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-sm">
-        {filtering
+    <EmptyState
+      surface="card"
+      icon={PackageSearch}
+      title={filtering ? "Тохирох бараа олдсонгүй" : "Каталог хоосон байна"}
+      description={
+        filtering
           ? "Хайлт, шүүлтүүрээ өөрчилж үзнэ үү."
-          : "Эхний барааг нэмээд хэмжээ тус бүрийн үнийг бичихэд дэлгүүр ажиллаж эхэлнэ."}
-      </p>
-      <div className="mt-5">
-        {filtering ? (
+          : "Эхний барааг нэмээд хэмжээ тус бүрийн үнийг бичихэд дэлгүүр ажиллаж эхэлнэ."
+      }
+      action={
+        filtering ? (
           <Button variant="secondary" asChild>
             <Link href="/admin/products">Шүүлтүүр цэвэрлэх</Link>
           </Button>
@@ -124,8 +128,8 @@ function EmptyState({ filtering }: { filtering: boolean }) {
               Бараа нэмэх
             </Link>
           </Button>
-        )}
-      </div>
-    </div>
+        )
+      }
+    />
   );
 }

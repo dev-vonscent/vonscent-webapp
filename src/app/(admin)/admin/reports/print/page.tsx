@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getReportData, getStockOverview } from "@/features/admin/api";
+import { rangeSummary } from "@/features/admin/lib/date-range";
 import { getStoreSettings } from "@/features/content/api";
 import { PrintButton } from "@/features/admin/components/print-button";
 import { formatPrice, formatDate } from "@/lib/format";
@@ -22,9 +23,16 @@ export const metadata: Metadata = { title: "Тайлан — хэвлэх" };
  */
 const PRINT_STOCK_LIMIT = 300;
 
-export default async function ReportPrintPage() {
+export default async function ReportPrintPage({
+  searchParams,
+}: {
+  // Хуудас нь тайлангийн шүүлтээс `?from=&to=` -той нээгддэг: цаасан дээр
+  // гарах тоо нь дэлгэц дээр харж байсан мужийнх байх ёстой.
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
+  const { from, to } = await searchParams;
   const [report, stock, store] = await Promise.all([
-    getReportData(),
+    getReportData({ from, to }),
     // Sold-out rows used to land in here as merely "low"; both still need the
     // operator's attention on a printed sheet, so they stay together — but the
     // state column now says which is which. `attention` = `ok` биш бүгд,
@@ -45,6 +53,9 @@ export default async function ReportPrintPage() {
           <p className="text-muted-foreground">
             Борлуулалт ба үлдэгдлийн тайлан
           </p>
+          <p className="text-muted-foreground text-xs">
+            Хугацаа: {rangeSummary(from, to)}
+          </p>
         </div>
         <div className="text-right">
           <p className="text-muted-foreground">
@@ -60,7 +71,9 @@ export default async function ReportPrintPage() {
           value={formatPrice(report.totalRevenue)}
         />
         <Stat label="Төлсөн захиалга" value={String(report.paidOrders)} />
-        <Stat label="Нийт үлдэгдэл" value={`${totalMl}ml`} />
+        {/* Үлдэгдэл нь хугацаанаас хамаарахгүй — цаасан дээр ч тэрийг
+            хэлнэ, эс бөгөөс «9-р сарын үлдэгдэл» мэт уншигдана. */}
+        <Stat label="Нийт үлдэгдэл (одоо)" value={`${totalMl}ml`} />
       </div>
 
       <Table

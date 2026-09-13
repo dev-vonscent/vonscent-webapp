@@ -22,6 +22,7 @@ import { matchesSearch, searchTerms } from "@/lib/search";
 import { stockState } from "./lib/stock-state";
 import { PRODUCT_OPTION_LIMIT, type ProductOption } from "./lib/product-option";
 import { customerSearchFilter } from "./lib/customer-search";
+import { seriesBucket, ubIso } from "./lib/date-range";
 
 /**
  * Admin read access. Uses the cookie-bound client so staff RLS applies (admins
@@ -862,27 +863,54 @@ export async function getCoupons(): Promise<CouponRow[]> {
   return (data as CouponRow[] | null) ?? [];
 }
 
+/**
+ * Тайлангийн хугацааны муж.
+ *
+ * `from` / `to` нь URL-д байдаг `YYYY-MM-DDTHH:mm` (UB хананы цаг) — хоёулаа
+ * `undefined` бол «бүх цаг үе», өөрөөр хэлбэл 0074-өөс өмнөх зан төлөв.
+ */
+export interface ReportRange {
+  from?: string;
+  to?: string;
+}
+
 export interface ReportData {
   totalRevenue: number;
-  /** Зардал: эх савнуудын үнэ + бүх restock-ийн худалдан авсан үнэ. */
+  /**
+   * Зардал: эх савнуудын үнэ + restock-ийн худалдан авсан үнэ.
+   *
+   * Муж өгөгдсөн үед зөвхөн ТЭР МУЖИД бүртгэгдсэн бараа ба тэр мужид
+   * хийгдсэн restock тоологдоно — «энэ сард хэдэн төгрөг хөрөнгө оруулав»
+   * гэсэн утгатай. Мужгүй үед бүгд (§2.7-гийн тэмдэглэл хэвээр).
+   */
   totalCost: number;
   /** Борлуулалт − зардал. */
   profit: number;
   paidOrders: number;
   topProducts: { name: string; brand: string; qty: number; revenue: number }[];
   topBrands: { brand: string; revenue: number }[];
-  /** Paid sales per calendar month, newest first. `month` is "YYYY-MM". */
-  monthly: {
-    month: string;
+  /** Захиалгын төлвийн тоо — мужид хамаарна. */
+  statusCounts: Partial<Record<OrderStatus, number>>;
+  /**
+   * Төлөгдсөн борлуулалт хугацааны хэрчмээр, шинэ нь түрүүлж. `bucket` нь
+   * `series.bucket`-ээс шалтгаалж `YYYY-MM` эсвэл `YYYY-MM-DD`.
+   */
+  series: {
+    bucket: string;
     revenue: number;
     orders: number;
-    /** Source ml sold that month — what the bottles actually gave up. */
+    /** Тэр хэрчимд эх савнаас гарсан мл. */
     ml: number;
   }[];
+  /** Графикийн бүлэглэлт — мужийн уртаас гарна. */
+  bucket: "day" | "month";
 }
 
-export async function getReportData(): Promise<ReportData> {
+export async function getReportData(
+  range: ReportRange = {},
+): Promise<ReportData> {
   const supabase = await createClient();
+  const bucket = seriesBucket(range.from, range.to);
   const empty: ReportData = {
     totalRevenue: 0,
     totalCost: 0,
@@ -890,42 +918,62 @@ export async function getReportData(): Promise<ReportData> {
     paidOrders: 0,
     topProducts: [],
     topBrands: [],
-    monthly: [],
+    statusCounts: {},
+    series: [],
+    bucket,
   };
   if (!supabase) return empty;
 
-  // Every figure below is a SQL aggregate (0046). Summing these in JS meant
-  // fetching every paid order_item, every order, every product price and every
-  // restock row — each capped by a `.limit()` or by PostgREST's db-max-rows,
-  // so the profit the shop plans on was silently wrong past the cap.
+  // Every figure below is a SQL aggregate (0046, мужаар 0074). Summing these
+  // in JS meant fetching every paid order_item, every order, every product
+  // price and every restock row — each capped by a `.limit()` or by
+  // PostgREST's db-max-rows, so the profit the shop plans on was silently
+  // wrong past the cap.
+  //
+  // Цагийн бүс: багана нь `timestamptz` тул UB хананы цагийг `+08:00`-оор
+  // тогтооно (`ubIso`) — серверийн бүс шийдвэл «энэ сар» 8 цагаар гулсана.
+  const p_from = ubIso(range.from) ?? null;
+  const p_to = ubIso(range.to) ?? null;
+
   const [
     { data: totals },
-    { data: monthly },
+    { data: series },
     { data: products },
     { data: brands },
+    { data: statuses },
   ] = await Promise.all([
     callRpc<
       { total_revenue: number; paid_orders: number; total_cost: number }[]
-    >(supabase, "admin_report_totals", {}),
-    callRpc<{ month: string; revenue: number; orders: number; ml: number }[]>(
+    >(supabase, "admin_report_totals", { p_from, p_to }),
+    callRpc<{ bucket: string; revenue: number; orders: number; ml: number }[]>(
       supabase,
-      "admin_report_monthly",
-      {},
+      "admin_report_series",
+      { p_from, p_to, p_bucket: bucket },
     ),
     callRpc<{ name: string; brand: string; qty: number; revenue: number }[]>(
       supabase,
       "admin_report_top_products",
-      { p_limit: 10 },
+      { p_limit: 10, p_from, p_to },
     ),
     callRpc<{ brand: string; revenue: number }[]>(
       supabase,
       "admin_report_top_brands",
-      {},
+      { p_from, p_to },
+    ),
+    callRpc<{ status: OrderStatus; count: number }[]>(
+      supabase,
+      "admin_report_status",
+      { p_from, p_to },
     ),
   ]);
 
   const t = totals?.[0];
   if (!t) return empty;
+
+  const statusCounts: Partial<Record<OrderStatus, number>> = {};
+  for (const row of statuses ?? []) {
+    statusCounts[row.status] = Number(row.count);
+  }
 
   return {
     totalRevenue: t.total_revenue,
@@ -934,8 +982,121 @@ export async function getReportData(): Promise<ReportData> {
     paidOrders: t.paid_orders,
     topProducts: products ?? [],
     topBrands: brands ?? [],
-    monthly: monthly ?? [],
+    statusCounts,
+    series: series ?? [],
+    bucket,
   };
+}
+
+/** Нэг захиалга нэг бараанаас хэдэн мл түгжсэн бэ (`admin_reserved_ml`). */
+export interface ReservedOrder {
+  orderId: string;
+  orderNo: string;
+  status: OrderStatus;
+  contactName: string;
+  contactPhone: string;
+  createdAt: string;
+  /** null = нөөц хугацаагүй (жишээ нь оператор гараар баталгаажуулсан). */
+  reserveExpiresAt: string | null;
+  deliverOn: string | null;
+  ml: number;
+  /** Захиалгад энэ бараанаас бэлгийн 1мл мөр байгаа эсэх. */
+  hasGift: boolean;
+  /**
+   * Нөөцийн хугацаа өнгөрсөн эсэх — САН өөрөө шийдсэн (`now()`).
+   * Вэб серверийн цагаар бодвол хоёр цаг зөрөх боломжтой.
+   */
+  isExpired: boolean;
+}
+
+export interface ReservedProduct {
+  productId: string;
+  name: string;
+  brand: string;
+  isActive: boolean;
+  /** `inventory.reserved_ml` — тоолуур өөрөө. */
+  reservedMl: number;
+  /** Нээлттэй захиалгуудаас тоолсон дүн. `reservedMl`-тэй тэнцүү байх ёстой. */
+  accountedMl: number;
+  onHandMl: number;
+  availableMl: number;
+  /** Хугацаа нь дууссан нөөцийн тоо. */
+  expiredCount: number;
+  orders: ReservedOrder[];
+}
+
+/**
+ * Түгжигдсэн мл ямар захиалганд байгааг бараа бүрээр (0075).
+ *
+ * `p_product` өгвөл зөвхөн тэр бараа. Нөөц барьж буй захиалгын
+ * тодорхойлолт нь migration-ийн толгойд бичигдсэн: төлөгдөөгүй ба
+ * цуцлагдаагүй.
+ */
+export async function getReservedMl(
+  productId?: string,
+): Promise<ReservedProduct[]> {
+  const supabase = await createClient();
+  if (!supabase) return [];
+
+  const { data, error } = await callRpc<
+    {
+      product_id: string;
+      product_name: string;
+      brand: string;
+      is_active: boolean;
+      reserved_ml: number;
+      accounted_ml: number;
+      on_hand_ml: number;
+      available_ml: number;
+      order_count: number;
+      expired_count: number;
+      orders: {
+        order_id: string;
+        order_no: string;
+        status: OrderStatus;
+        contact_name: string;
+        contact_phone: string;
+        created_at: string;
+        reserve_expires_at: string | null;
+        deliver_on: string | null;
+        ml: number;
+        has_gift: boolean;
+        is_expired: boolean;
+      }[];
+    }[]
+  >(supabase, "admin_reserved_ml", { p_product: productId ?? null });
+
+  if (error) {
+    Sentry.captureException(
+      new Error(`admin_reserved_ml failed: ${error.message}`),
+    );
+    return [];
+  }
+
+  return (data ?? []).map((r) => ({
+    productId: r.product_id,
+    name: r.product_name,
+    brand: r.brand,
+    isActive: r.is_active,
+    reservedMl: Number(r.reserved_ml),
+    accountedMl: Number(r.accounted_ml),
+    onHandMl: Number(r.on_hand_ml),
+    availableMl: Number(r.available_ml),
+    expiredCount: Number(r.expired_count),
+    orders: (r.orders ?? []).map((o) => ({
+      orderId: o.order_id,
+      orderNo: o.order_no,
+      status: o.status,
+      contactName: o.contact_name,
+      contactPhone: o.contact_phone,
+      createdAt: o.created_at,
+      reserveExpiresAt: o.reserve_expires_at,
+      deliverOn: o.deliver_on,
+      ml: Number(o.ml),
+      hasGift: o.has_gift,
+      isExpired: o.is_expired,
+    })),
+  }));
 }
 
 /** A home rail as the admin edits it — product ids only, in their order. */

@@ -15,20 +15,13 @@ import {
   type OrderStatus,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/shared/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
+import { ubIso } from "@/features/admin/lib/date-range";
 import type { OrderRow } from "@/db/types";
 
 /** Server-side page size; the table no longer paginates on the client. */
 const ORDERS_PER_PAGE = 50;
-
-/**
- * `datetime-local` gives us UB wall-clock text; the column is timestamptz, so
- * pin the +08:00 offset explicitly instead of letting the server's zone decide.
- */
-function ubIso(local: string | undefined): string | undefined {
-  if (!local) return undefined;
-  const v = local.length === 16 ? `${local}:00` : local;
-  return `${v}+08:00`;
-}
 
 export default async function AdminOrdersPage({
   searchParams,
@@ -87,7 +80,7 @@ export default async function AdminOrdersPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="font-serif text-2xl font-semibold">Захиалга</h1>
+      <PageHeader title="Захиалга" count={total ?? undefined} />
 
       {/* Status filter + search */}
       <div className="flex flex-wrap items-center gap-2">
@@ -147,24 +140,27 @@ export default async function AdminOrdersPage({
       </div>
 
       {orders.length === 0 ? (
-        <div className="bg-card flex flex-col items-center gap-3 rounded-lg py-20 text-center">
-          <ShoppingCart className="text-muted-foreground size-10" />
-          <p className="font-medium">
-            {status || q || from || to
+        <EmptyState
+          surface="card"
+          icon={ShoppingCart}
+          title={
+            status || q || from || to
               ? "Энэ шүүлтэд тохирох захиалга алга"
-              : "Захиалга алга"}
-          </p>
-          <p className="text-muted-foreground max-w-xs text-sm">
-            {status || q || from || to
+              : "Захиалга алга"
+          }
+          description={
+            status || q || from || to
               ? "Шүүлтүүрээ өөрчилж эсвэл цэвэрлээд дахин үзнэ үү."
-              : "Худалдан авагч эхний захиалгаа өгмөгц энд харагдана."}
-          </p>
-          {(status || q || from || to) && (
-            <Button variant="secondary" size="sm" asChild>
-              <Link href="/admin/orders">Бүх захиалга харах</Link>
-            </Button>
-          )}
-        </div>
+              : "Худалдан авагч эхний захиалгаа өгмөгц энд харагдана."
+          }
+          action={
+            (status || q || from || to) && (
+              <Button variant="secondary" size="sm" asChild>
+                <Link href="/admin/orders">Бүх захиалга харах</Link>
+              </Button>
+            )
+          }
+        />
       ) : (
         <>
           <OrdersTable data={orders} />

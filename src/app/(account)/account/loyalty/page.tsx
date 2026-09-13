@@ -2,10 +2,11 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Sparkles, ArrowDownLeft, ArrowUpRight, Lock } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/browser";
 import type { LoyaltyLedgerRow } from "@/db/types";
+import { EmptyState } from "@/components/shared/empty-state";
 
 /** Ledger reasons the RPCs write, in the customer's words. */
 const REASON_LABEL: Record<string, string> = {
@@ -105,12 +106,12 @@ export default function LoyaltyHistoryPage() {
       <section className="space-y-3">
         <h2 className="font-serif text-lg font-semibold">Онооны түүх</h2>
         {entries.length === 0 ? (
-          <div className="bg-secondary flex flex-col items-center gap-3 rounded-lg py-12 text-center">
-            <Sparkles className="text-muted-foreground size-9" />
-            <p className="text-muted-foreground text-sm">
-              Онооны хөдөлгөөн одоогоор алга.
-            </p>
-          </div>
+          <EmptyState
+            surface="muted"
+            size="sm"
+            title="Онооны хөдөлгөөн одоогоор алга"
+            description="Захиалга төлөгдөх бүрд оноо энд бүртгэгдэнэ."
+          />
         ) : (
           <div className="space-y-2">
             {entries.map((e) => {

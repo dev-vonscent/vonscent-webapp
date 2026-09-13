@@ -8,6 +8,11 @@ import {
   startOfDayLocal,
   timeOf,
   DATE_PRESETS,
+  REPORT_DATE_PRESETS,
+  bucketLabel,
+  rangeSummary,
+  seriesBucket,
+  ubIso,
 } from "./date-range";
 
 describe("addDaysKey", () => {
@@ -91,5 +96,89 @@ describe("monthGrid", () => {
     const days = monthGrid(2026, 1).filter(Boolean); // February 2026
     expect(days).toHaveLength(28);
     expect(new Set(days).size).toBe(28);
+  });
+});
+
+describe("тайлангийн presets", () => {
+  const preset = (id: string, today: string) =>
+    REPORT_DATE_PRESETS.find((p) => p.id === id)!.range(today)!;
+
+  it("«Энэ сар» нь сарын 1-нээс өнөөдрийг хүртэл", () => {
+    expect(preset("month", "2026-09-13")).toEqual({
+      from: "2026-09-01T00:00",
+      to: "2026-09-13T23:59",
+    });
+  });
+
+  it("«Өнгөрсөн сар» нь бүтэн сар — 31 хоногтой сарыг богиносгохгүй", () => {
+    expect(preset("prev-month", "2026-09-13")).toEqual({
+      from: "2026-08-01T00:00",
+      to: "2026-08-31T23:59",
+    });
+  });
+
+  it("«Өнгөрсөн сар» нь 1-р сард өмнөх ЖИЛ рүү унана", () => {
+    expect(preset("prev-month", "2026-01-05")).toEqual({
+      from: "2025-12-01T00:00",
+      to: "2025-12-31T23:59",
+    });
+  });
+
+  it("«Өнгөрсөн сар» нь өндөр жилийн 2-р сарыг 29 хоногоор дуусгана", () => {
+    expect(preset("prev-month", "2028-03-10").to).toBe("2028-02-29T23:59");
+  });
+
+  it("«Энэ жил» нь 1-р сарын 1-нээс", () => {
+    expect(preset("year", "2026-09-13").from).toBe("2026-01-01T00:00");
+  });
+
+  it("activePreset нь тайлангийн багцыг таних ёстой", () => {
+    const r = preset("month", "2026-09-13");
+    expect(activePreset(r.from, r.to, "2026-09-13", REPORT_DATE_PRESETS)).toBe(
+      "month",
+    );
+    // Захиалгын багцад «энэ сар» гэж байхгүй тул тэнд «custom».
+    expect(activePreset(r.from, r.to, "2026-09-13")).toBe("custom");
+  });
+});
+
+describe("seriesBucket", () => {
+  it("мужгүй бол сараар", () => {
+    expect(seriesBucket(undefined, undefined)).toBe("month");
+  });
+  it("нэг сарын муж өдрөөр", () => {
+    expect(seriesBucket("2026-09-01T00:00", "2026-09-30T23:59")).toBe("day");
+  });
+  it("яг 62 хоног хүртэл өдрөөр, түүнээс цааш сараар", () => {
+    // 2026-08-01 … 2026-10-01 = 62 хоног (эхний өдөр оролцоно).
+    expect(seriesBucket("2026-08-01T00:00", "2026-10-01T23:59")).toBe("day");
+    expect(seriesBucket("2026-08-01T00:00", "2026-10-02T23:59")).toBe("month");
+  });
+});
+
+describe("bucketLabel", () => {
+  it("сарыг монголоор, өдрийг товчоор", () => {
+    expect(bucketLabel("2026-09")).toBe("9-р сар");
+    expect(bucketLabel("2026-09-03")).toBe("9/3");
+  });
+});
+
+describe("ubIso", () => {
+  it("+08:00-г наана — серверийн бүс шийдэхгүй", () => {
+    expect(ubIso("2026-09-13T00:00")).toBe("2026-09-13T00:00:00+08:00");
+  });
+  it("хоосон утга нь undefined хэвээр", () => {
+    expect(ubIso(undefined)).toBeUndefined();
+  });
+});
+
+describe("rangeSummary", () => {
+  it("мужгүй бол «Бүх хугацаа»", () => {
+    expect(rangeSummary(undefined, undefined)).toBe("Бүх хугацаа");
+  });
+  it("нэг өдрийг давхарлахгүй", () => {
+    expect(rangeSummary("2026-09-13T00:00", "2026-09-13T23:59")).toBe(
+      "2026-09-13",
+    );
   });
 });

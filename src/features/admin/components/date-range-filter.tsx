@@ -15,10 +15,11 @@ import {
   dateKeyOf,
   timeOf,
   ubToday,
+  type Preset,
 } from "@/features/admin/lib/date-range";
 
 /**
- * Date range for the order list.
+ * Date range for the order list — and, since 0074, for the report page too.
  *
  * Two `<input type="datetime-local">` boxes used to sit here, which meant the
  * browser drew its own grey calendar over a themed page — one of the few
@@ -38,10 +39,16 @@ export function DateRangeFilter({
    * must not drop the operator's status chip or search term.
    */
   params,
+  /** Аль хуудас руу шилжих вэ. Өмнө нь `/admin/orders` гэж хатуу бичигдсэн. */
+  basePath = "/admin/orders",
+  /** Тайлан нь өөр багц ашиглана (энэ сар / өнгөрсөн сар / энэ жил). */
+  presets = DATE_PRESETS,
 }: {
   from?: string;
   to?: string;
   params: Record<string, string | undefined>;
+  basePath?: string;
+  presets?: Preset[];
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -50,7 +57,7 @@ export function DateRangeFilter({
   const [today, setToday] = React.useState<string | null>(null);
   React.useEffect(() => setToday(ubToday()), []);
 
-  const current = today ? activePreset(from, to, today) : "all";
+  const current = today ? activePreset(from, to, today, presets) : "all";
 
   function apply(range: { from?: string; to?: string }) {
     const next = new URLSearchParams();
@@ -64,12 +71,12 @@ export function DateRangeFilter({
       if (v) next.set(k, v);
     }
     const qs = next.toString();
-    router.push(qs ? `/admin/orders?${qs}` : "/admin/orders");
+    router.push(qs ? `${basePath}?${qs}` : basePath);
   }
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {DATE_PRESETS.map((p) => (
+      {presets.map((p) => (
         <button
           key={p.id}
           type="button"

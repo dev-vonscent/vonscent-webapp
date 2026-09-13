@@ -14,6 +14,7 @@
 | [ai-image-generation-requirement.md](./spec/ai-image-generation-requirement.md) | AI (gpt-image-1) барааны зураг үүсгэх функцийн шаардлага |
 | [note-images.md](./spec/note-images.md) | Үнэрийн нотын зураг — prompt, багц скрипт, шинэ бараа нэмэх үеийн авто урсгал |
 | [design.md](./spec/design.md) | Дизайн систем, токен |
+| [a11y.md](./spec/a11y.md) | Хүртээмжийн шалгалт (2026-09-13) — зассан зүйлс ба тогтсон дүрмүүд |
 | [development.md](./spec/development.md) | Хөгжүүлэлтийн архитектур, дүрэм |
 
 ### `planning/` — Төлөвлөгөө

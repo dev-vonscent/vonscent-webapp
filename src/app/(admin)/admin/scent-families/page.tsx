@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { fetchScentFamilies } from "@/features/taxonomy/api";
 import { ScentFamilyManager } from "@/features/admin/components/scent-family-manager";
+import { PageHeader } from "@/components/shared/page-header";
 
 export const metadata: Metadata = { title: "Үнэрийн төрөл" };
 
@@ -10,12 +11,10 @@ export default async function ScentFamiliesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-serif text-2xl font-semibold">Үнэрийн төрөл</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Барааны маягт болон каталогийн шүүлтүүр энэ жагсаалтаас уншина.
-        </p>
-      </div>
+      <PageHeader
+        title="Үнэрийн төрөл"
+        description="Барааны маягт болон каталогийн шүүлтүүр энэ жагсаалтаас уншина."
+      />
       <ScentFamilyManager families={families} />
     </div>
   );

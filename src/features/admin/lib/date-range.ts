@@ -75,12 +75,18 @@ export const DATE_PRESETS: Preset[] = [
   {
     id: "7d",
     label: "7 хоног",
-    range: (t) => ({ from: startOfDayLocal(addDaysKey(t, -6)), to: endOfDayLocal(t) }),
+    range: (t) => ({
+      from: startOfDayLocal(addDaysKey(t, -6)),
+      to: endOfDayLocal(t),
+    }),
   },
   {
     id: "30d",
     label: "30 хоног",
-    range: (t) => ({ from: startOfDayLocal(addDaysKey(t, -29)), to: endOfDayLocal(t) }),
+    range: (t) => ({
+      from: startOfDayLocal(addDaysKey(t, -29)),
+      to: endOfDayLocal(t),
+    }),
   },
 ];
 
@@ -93,9 +99,10 @@ export function activePreset(
   from: string | undefined,
   to: string | undefined,
   today: string,
+  presets: Preset[] = DATE_PRESETS,
 ): string {
   if (!from && !to) return "all";
-  for (const p of DATE_PRESETS) {
+  for (const p of presets) {
     const r = p.range(today);
     if (r && r.from === from && r.to === to) return p.id;
   }
@@ -149,4 +156,125 @@ export function monthGrid(year: number, month: number): (string | null)[] {
   }
   while (cells.length % 7 !== 0) cells.push(null);
   return cells;
+}
+
+/**
+ * `2026-08-29T14:30` (UB хананы цаг) → `2026-08-29T14:30:00+08:00`.
+ *
+ * Багана нь `timestamptz` тул +08:00-г ЗААВАЛ энд наана — эс бөгөөс
+ * серверийн цагийн бүс (Vercel дээр UTC) шийдэж, «өнөөдөр» нь 8 цагаар
+ * гулсана. Захиалгын хуудсанд хувийн хуулбар байсныг энд нэгтгэв.
+ */
+export function ubIso(local: string | undefined): string | undefined {
+  if (!local) return undefined;
+  const v = local.length === 16 ? `${local}:00` : local;
+  return `${v}+08:00`;
+}
+
+/** `2026-09` → `2026-09-01`. */
+function firstOfMonth(dateKey: string): string {
+  return `${dateKey.slice(0, 7)}-01`;
+}
+
+/** Тухайн сарын сүүлчийн өдөр. */
+function lastOfMonth(dateKey: string): string {
+  const [y, m] = dateKey.split("-").map(Number);
+  return new Date(Date.UTC(y, m, 0, 12)).toISOString().slice(0, 10);
+}
+
+/**
+ * Тайлангийн presets.
+ *
+ * Захиалгын жагсаалтынхаас (`DATE_PRESETS`) өөр: тайланг «өчигдөр» гэж
+ * хардаггүй, «энэ сар / өнгөрсөн сар / энэ жил» гэж хардаг. Гэхдээ URL-ийн
+ * гэрээ нь ижил (`from`/`to` нь `YYYY-MM-DDTHH:mm`) тул нэг компонент
+ * хоёуланг нь үйлчилнэ.
+ */
+export const REPORT_DATE_PRESETS: Preset[] = [
+  { id: "all", label: "Бүх хугацаа", range: () => null },
+  {
+    id: "today",
+    label: "Өнөөдөр",
+    range: (t) => ({ from: startOfDayLocal(t), to: endOfDayLocal(t) }),
+  },
+  {
+    id: "7d",
+    label: "7 хоног",
+    range: (t) => ({
+      from: startOfDayLocal(addDaysKey(t, -6)),
+      to: endOfDayLocal(t),
+    }),
+  },
+  {
+    id: "30d",
+    label: "30 хоног",
+    range: (t) => ({
+      from: startOfDayLocal(addDaysKey(t, -29)),
+      to: endOfDayLocal(t),
+    }),
+  },
+  {
+    id: "month",
+    label: "Энэ сар",
+    range: (t) => ({
+      from: startOfDayLocal(firstOfMonth(t)),
+      to: endOfDayLocal(t),
+    }),
+  },
+  {
+    id: "prev-month",
+    label: "Өнгөрсөн сар",
+    range: (t) => {
+      // Сарын 1-нээс нэг өдөр ухрах нь өмнөх сарын сүүлчийн өдөр — 31/30/28
+      // хоногийн ялгаа, өндөр жил бүгд өөрөө шийдэгдэнэ.
+      const prev = addDaysKey(firstOfMonth(t), -1);
+      return {
+        from: startOfDayLocal(firstOfMonth(prev)),
+        to: endOfDayLocal(lastOfMonth(prev)),
+      };
+    },
+  },
+  {
+    id: "year",
+    label: "Энэ жил",
+    range: (t) => ({
+      from: startOfDayLocal(`${t.slice(0, 4)}-01-01`),
+      to: endOfDayLocal(t),
+    }),
+  },
+];
+
+/**
+ * Графикийн бүлэглэлт: богино мужид сараар бүлэглэвэл нэг багана үлдэнэ.
+ * Хоёр сар хүртэлх мужийг өдрөөр, түүнээс уртыг сараар.
+ */
+export const DAY_BUCKET_MAX_DAYS = 62;
+
+export function seriesBucket(
+  from: string | undefined,
+  to: string | undefined,
+): "day" | "month" {
+  const a = dateKeyOf(from);
+  const b = dateKeyOf(to);
+  if (!a || !b) return "month";
+  const days =
+    (Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000 +
+    1;
+  return days <= DAY_BUCKET_MAX_DAYS ? "day" : "month";
+}
+
+/** `2026-09` → «9-р сар», `2026-09-13` → «9/13». Графикийн тэнхлэгт. */
+export function bucketLabel(bucket: string): string {
+  const parts = bucket.split("-");
+  if (parts.length >= 3) return `${Number(parts[1])}/${Number(parts[2])}`;
+  return `${Number(parts[1])}-р сар`;
+}
+
+/** Сонгосон мужийн монгол тайлбар («Бүх хугацаа», «2026-09-01 — 2026-09-13»). */
+export function rangeSummary(from?: string, to?: string): string {
+  const a = dateKeyOf(from);
+  const b = dateKeyOf(to);
+  if (!a && !b) return "Бүх хугацаа";
+  if (a && b) return a === b ? a : `${a} — ${b}`;
+  return a ? `${a}-с хойш` : `${b} хүртэл`;
 }

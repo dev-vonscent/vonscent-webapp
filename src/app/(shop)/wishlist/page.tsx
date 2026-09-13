@@ -12,6 +12,7 @@ import { useWishlist } from "@/features/wishlist/store";
 import { useCart } from "@/features/cart/store";
 import { formatPrice } from "@/lib/format";
 import type { ProductDetail, Variant } from "@/lib/types";
+import { EmptyState } from "@/components/shared/empty-state";
 
 async function fetchDetails(ids: string[]): Promise<ProductDetail[]> {
   if (!ids.length) return [];
@@ -96,20 +97,17 @@ export default function WishlistPage() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="border-border flex flex-col items-center gap-4 rounded-2xl border border-dashed py-24 text-center">
-          <div className="bg-secondary flex size-16 items-center justify-center rounded-full">
-            <Heart className="text-muted-foreground size-7" />
-          </div>
-          <div>
-            <p className="font-medium">Жагсаалт хоосон байна</p>
-            <p className="text-muted-foreground text-sm">
-              Дуртай үнэртнээ ❤ дарж хадгалаарай.
-            </p>
-          </div>
-          <Button asChild>
-            <Link href="/catalog">Бараа үзэх</Link>
-          </Button>
-        </div>
+        <EmptyState
+          size="lg"
+          icon={Heart}
+          title="Жагсаалт хоосон байна"
+          description="Дуртай үнэртнээ ❤ дарж хадгалаарай."
+          action={
+            <Button asChild>
+              <Link href="/catalog">Бараа үзэх</Link>
+            </Button>
+          }
+        />
       ) : (
         <>
           {/* Action bar — summary + bulk actions */}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { fetchBrands } from "@/features/taxonomy/api";
 import { BrandManager } from "@/features/admin/components/brand-manager";
+import { PageHeader } from "@/components/shared/page-header";
 
 export const metadata: Metadata = { title: "Брэнд" };
 
@@ -10,13 +11,10 @@ export default async function BrandsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-serif text-2xl font-semibold">Брэнд</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Барааны маягт энэ жагсаалтаас уншина. Нэр солиход тухайн брэндийн бүх
-          бараан дээр шинэчлэгдэнэ.
-        </p>
-      </div>
+      <PageHeader
+        title="Брэнд"
+        description="Барааны маягт энэ жагсаалтаас уншина. Нэр солиход тухайн брэндийн бүх бараан дээр шинэчлэгдэнэ."
+      />
       <BrandManager brands={brands} />
     </div>
   );
