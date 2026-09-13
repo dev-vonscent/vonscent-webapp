@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CONTENT_PAGES_HIDDEN } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/format";
 import { getBlogPost, getRelatedPosts } from "@/features/blog/api";
@@ -48,6 +49,9 @@ export default async function BlogPostPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  // Хуудас түр нуугдсан — шууд URL-ээр ч орохгүй (CONTENT_PAGES_HIDDEN).
+  if (CONTENT_PAGES_HIDDEN) notFound();
+
   const { slug } = await params;
   const post = await getBlogPost(slug);
   if (!post) notFound();

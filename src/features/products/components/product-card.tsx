@@ -71,8 +71,12 @@ export function ProductCard({
           <span className="text-muted-foreground truncate text-[11px] tracking-[0.15em] uppercase">
             {product.brand}
           </span>
-          {/* Хүйсийн тэмдэг (backlog C1) — брэндийн мөрөнд, тод уншигдана. */}
-          <GenderBadge gender={product.gender} tone="muted" />
+          {/* Хүйсийн тэмдэг (backlog C1) — chip хэлбэрээр: дэвсгэр нь
+              background-аас ялгарч, зүгээр текст мэт харагдахаа больно. */}
+          <GenderBadge
+            gender={product.gender}
+            className="ring-foreground/10 shrink-0 px-2 py-0.5 text-[10px] font-medium ring-1"
+          />
         </div>
         <Link
           href={`/products/${product.slug}`}

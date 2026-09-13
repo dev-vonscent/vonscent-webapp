@@ -10,8 +10,6 @@ import {
   LogIn,
   LogOut,
   UserPlus,
-  BookOpen,
-  Info,
   Mail,
   LayoutDashboard,
   Palette,
@@ -186,16 +184,6 @@ export function ProfileMenu() {
 
           <DropdownMenuSeparator />
 
-          <DropdownMenuItem asChild>
-            <Link href="/blog">
-              <BookOpen /> Блог
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/about">
-              <Info /> Танилцуулга
-            </Link>
-          </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/contact">
               <Mail /> Холбоо барих

@@ -319,6 +319,14 @@
  * than dragged. Everything else keeps the scrollbar — hiding it removes the
  * only hint that there is more to see.
  */
+/*
+ * Анимацийг зогсоох (brand marquee: хүрч/барьж байхад зогсоод, тавихаар
+ * үргэлжилнэ). Tailwind-д animation-play-state-ийн бэлэн utility байхгүй.
+ */
+@utility paused {
+  animation-play-state: paused;
+}
+
 @utility no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;

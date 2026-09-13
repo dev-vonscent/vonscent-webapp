@@ -367,3 +367,16 @@ export const RATE_LIMITS = {
 } as const;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;
+
+/**
+ * Танилцуулга (`/about`) ба Блог (`/blog`) хуудсууд түр нуугдсан эсэх
+ * (клиентийн шийдвэр, 2026-09-13).
+ *
+ * Цэс, footer, sitemap, хайлтын үр дүнгээс холбоосуудыг нь аль хэдийн хассан;
+ * энэ тугийг route бүр шалгаж, шууд URL-ээр орох замыг 404 болгоно. Хуудсуудыг
+ * эргүүлж нээхэд үүнийг `false` болгоод холбоосуудыг нь буцааж тавина.
+ *
+ * Төрлийг зориуд `boolean` гэж бичив: literal `true` бол TypeScript доорх
+ * кодыг хүрэшгүй гэж үзээд narrowing-оо алддаг.
+ */
+export const CONTENT_PAGES_HIDDEN: boolean = true;

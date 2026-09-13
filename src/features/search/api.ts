@@ -4,7 +4,6 @@ import { callRpc } from "@/lib/supabase/rpc";
 import { SEARCH_LIMIT_PER_KIND } from "@/lib/constants";
 import { isSearchable, matchesSearch, searchTerms } from "@/lib/search";
 import { SEED_PRODUCTS } from "@/features/products/seed";
-import { BLOG_POSTS } from "@/features/blog/seed";
 import {
   EMPTY_SEARCH_RESULTS,
   type SearchHit,
@@ -94,6 +93,9 @@ export async function globalSearch(
     brand: [],
   };
   for (const row of data) {
+    // Блог хуудас нуугдсан тул нийтлэлийн үр дүнг харуулахгүй (RPC-г нь
+    // хэвээр үлдээв: хуудсыг эргүүлж нээхэд энэ шүүлтийг л авна).
+    if (row.kind === "post") continue;
     // RPC эрэмбэлж өгсөн — дараалал нь хэвээр.
     results[row.kind]?.push(toHit(row));
   }
@@ -108,10 +110,6 @@ function seedSearch(query: string, limitPerKind: number): SearchResults {
   const products = SEED_PRODUCTS.filter((p) =>
     matchesSearch(`${p.name} ${p.brand} ${p.customTags.join(" ")}`, query),
   ).slice(0, limitPerKind);
-  const posts = BLOG_POSTS.filter((p) =>
-    matchesSearch(`${p.title} ${p.excerpt} ${p.category}`, query),
-  ).slice(0, limitPerKind);
-
   return {
     product: products.map((p) => ({
       kind: "product",
@@ -125,17 +123,7 @@ function seedSearch(query: string, limitPerKind: number): SearchResults {
       itemCount: null,
     })),
     collection: [],
-    post: posts.map((p) => ({
-      kind: "post",
-      id: p.slug,
-      href: `/blog/${p.slug}`,
-      title: p.title,
-      subtitle: p.category || null,
-      imageUrl: p.cover,
-      price: null,
-      soldOut: false,
-      itemCount: null,
-    })),
+    post: [],
     brand: [],
   };
 }

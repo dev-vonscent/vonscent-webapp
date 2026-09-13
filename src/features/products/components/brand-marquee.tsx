@@ -1,5 +1,9 @@
+"use client";
+
+import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 /**
  * Brand name → logo path, from the `brands` table (0050). Logos are dark
@@ -85,14 +89,23 @@ function BrandLink({
  */
 const SECONDS_PER_LOGO = 4;
 
+/**
+ * Гүйлгэх мөр. Мөр бүр өөрөө хэвтээ scroll-той — гараараа гүйлгэж бүх брэндийг
+ * үзэх боломжтой (утсан дээр анимацийг хүлээх шаардлагагүй). Хүрч/хулганаар
+ * барьж байх үед `paused` — салангуут дахин урсана.
+ */
 function Track({
   items,
   logos,
   reverse,
+  paused,
+  onScroll,
 }: {
   items: string[];
   logos: BrandLogos;
   reverse?: boolean;
+  paused: boolean;
+  onScroll: () => void;
 }) {
   // 2× the items per half guarantees the half is wider than the viewport, and
   // the half is duplicated so -50% loops seamlessly.
@@ -100,16 +113,92 @@ function Track({
   const loop = [...half, ...half];
   return (
     <div
-      className={`animate-marquee group-hover:paused group-focus-within:paused flex w-max items-center gap-10 pr-10 ${
-        reverse ? "direction-[reverse]" : ""
-      }`}
-      style={{ animationDuration: `${half.length * SECONDS_PER_LOGO}s` }}
+      onScroll={onScroll}
+      // Гүйлгэх мөрийн scrollbar нь өөрөө чимэглэл болж хардаг тул энэ бол
+      // `no-scrollbar`-ын зөвшөөрөгдсөн ховор тохиолдол (design.md §6.1).
+      // `touch-action`-ыг хөндөхгүй: `pan-x` бол мөрөн дээрээс эхэлсэн босоо
+      // гүйлт (хуудас өөрөө) хаагдана.
+      className="no-scrollbar overflow-x-auto overscroll-x-contain"
     >
-      {loop.map((b, i) => (
-        <BrandLink key={i} brand={b} logos={logos} hidden={i >= half.length} />
-      ))}
+      <div
+        className={cn(
+          "animate-marquee flex w-max items-center gap-10 pr-10",
+          paused && "paused",
+          reverse && "direction-[reverse]",
+        )}
+        style={{ animationDuration: `${half.length * SECONDS_PER_LOGO}s` }}
+      >
+        {loop.map((b, i) => (
+          <BrandLink key={i} brand={b} logos={logos} hidden={i >= half.length} />
+        ))}
+      </div>
     </div>
   );
+}
+
+/** Хүрэлт/гүйлгэлт зогссоны дараа анимац эргэж асах хүлээлт. */
+const RESUME_AFTER_TOUCH_MS = 800;
+const RESUME_AFTER_SCROLL_MS = 1500;
+
+/**
+ * «Барьж байвал зогс, тавихаар дахин урс» төлөв.
+ *
+ * Зөвхөн hover дээр түшиглэсэн CSS шийдэл утсан дээр ажиллахгүй: хуруу
+ * хүрэхэд hover тогтож үлдэх ба мөр мөнхөд зогсдог. Тиймээс pointer/scroll
+ * эвентээр зогсоож, тодорхой хугацааны дараа өөрөө сэргэнэ.
+ */
+function usePauseWhileTouched() {
+  const [paused, setPaused] = React.useState(false);
+  const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clear = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  };
+  React.useEffect(() => clear, []);
+
+  const pause = React.useCallback(() => {
+    clear();
+    setPaused(true);
+  }, []);
+  const resume = React.useCallback((delay = 0) => {
+    clear();
+    if (delay === 0) return setPaused(false);
+    timer.current = setTimeout(() => setPaused(false), delay);
+  }, []);
+
+  return {
+    paused,
+    handlers: {
+      // Хулгана: орохоор зогсоож, гарахаар шууд сэргээнэ.
+      onPointerEnter: (e: React.PointerEvent) => {
+        if (e.pointerType === "mouse") pause();
+      },
+      onPointerLeave: (e: React.PointerEvent) => {
+        if (e.pointerType === "mouse") resume();
+      },
+      // Хүрэлт: дарж барих үед зогсоно, тавихад хэсэг хүлээгээд сэргэнэ.
+      // Хулганы товшилт үүнд орохгүй: заагч нь мөрөн дээр байсаар байтал
+      // дахин урсаж эхэлбэл дарах гэсэн лого нь оргоно — хулгана гартал
+      // (`onPointerLeave`) зогссон хэвээр.
+      onPointerDown: pause,
+      onPointerUp: (e: React.PointerEvent) => {
+        if (e.pointerType !== "mouse") resume(RESUME_AFTER_TOUCH_MS);
+      },
+      onPointerCancel: (e: React.PointerEvent) => {
+        if (e.pointerType !== "mouse") resume(RESUME_AFTER_TOUCH_MS);
+      },
+      // Гарын товчоор дамжсан фокус — салангуут сэргэнэ.
+      onFocusCapture: pause,
+      onBlurCapture: () => resume(RESUME_AFTER_TOUCH_MS),
+    },
+    // Momentum scroll хуруу тавьсны дараа ч үргэлжилдэг тул тусдаа, уртавтар
+    // хүлээлттэй: гүйлт бүрэн зогсмогц л анимац эргэж асна.
+    onScroll: () => {
+      pause();
+      resume(RESUME_AFTER_SCROLL_MS);
+    },
+  };
 }
 
 export function BrandMarquee({
@@ -119,6 +208,7 @@ export function BrandMarquee({
   brands: string[];
   logos: BrandLogos;
 }) {
+  const { paused, handlers, onScroll } = usePauseWhileTouched();
   if (brands.length === 0) return null;
   // A marquee of three logos loops awkwardly — a small catalogue gets a plain
   // centered row instead (5d).
@@ -136,7 +226,10 @@ export function BrandMarquee({
   const row2 = brands.slice(mid);
   return (
     <div
-      className="group relative space-y-6 overflow-hidden"
+      {...handlers}
+      // `overflow-hidden` байхгүй: мөр бүр өөрийн хэвтээ scroll-той, тайралтыг
+      // mask нь хийнэ.
+      className="relative space-y-6"
       style={{
         maskImage:
           "linear-gradient(to right, transparent, #000 8%, #000 92%, transparent)",
@@ -144,8 +237,14 @@ export function BrandMarquee({
           "linear-gradient(to right, transparent, #000 8%, #000 92%, transparent)",
       }}
     >
-      <Track items={row1} logos={logos} />
-      <Track items={row2.length ? row2 : row1} logos={logos} reverse />
+      <Track items={row1} logos={logos} paused={paused} onScroll={onScroll} />
+      <Track
+        items={row2.length ? row2 : row1}
+        logos={logos}
+        reverse
+        paused={paused}
+        onScroll={onScroll}
+      />
     </div>
   );
 }

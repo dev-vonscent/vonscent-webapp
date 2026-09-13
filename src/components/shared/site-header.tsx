@@ -25,8 +25,6 @@ const TITLES: Record<string, string> = {
   "/collections": "Багц",
   "/collections/build": "Багц угсрах",
   "/account/collections": "Миний багцууд",
-  "/about": "Бидний тухай",
-  "/blog": "Блог",
   "/contact": "Холбоо барих",
   "/cart": "Сагс",
   "/checkout": "Захиалга",

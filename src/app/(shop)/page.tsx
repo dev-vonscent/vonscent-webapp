@@ -1,14 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  Sparkles,
-  ShieldCheck,
-  Truck,
-  BadgeCheck,
-  ArrowRight,
-  Quote,
-} from "lucide-react";
+import { BadgeCheck, ArrowRight, Quote } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/shared/section-heading";
@@ -65,13 +58,6 @@ export const revalidate = 60;
  * — the boundaries only change *when* each result is allowed to paint, not how
  * many round-trips there are.
  */
-
-const TRUST = [
-  { icon: BadgeCheck, title: "100% жинхэнэ", desc: "Албан ёсны эх сурвалж" },
-  { icon: Sparkles, title: "2/5/10/20ml", desc: "Туршиж сонгох багц" },
-  { icon: Truck, title: "Шуурхай хүргэлт", desc: "Хотод 24 цагт" },
-  { icon: ShieldCheck, title: "Аюулгүй төлбөр", desc: "QPay & банк" },
-];
 
 export default function HomePage() {
   return (
@@ -163,21 +149,10 @@ export default function HomePage() {
       </section>
 
       <div className="mx-auto max-w-352 space-y-10 px-4 py-8 sm:space-y-16 sm:py-14 md:px-8">
-        {/* Trust */}
-        <section className="border-border bg-border grid grid-cols-2 gap-px overflow-hidden rounded-2xl border md:grid-cols-4">
-          {TRUST.map((t) => (
-            <div key={t.title} className="bg-card flex items-center gap-3 p-5">
-              <t.icon className="text-gold-strong size-6 shrink-0" />
-              <div>
-                <p className="text-sm font-medium">{t.title}</p>
-                <p className="text-muted-foreground text-xs">{t.desc}</p>
-              </div>
-            </div>
-          ))}
-        </section>
-
+        {/* Админы угсарсан rail-ууд («Онцлох», «Багц уснууд») эхэнд —
+            «Шинээр буусан» тэдний оронд доошоо шилжсэн. */}
         <Suspense fallback={<CarouselSkeleton action />}>
-          <NewArrivalsSection />
+          <CuratedSections />
         </Suspense>
 
         <Suspense fallback={<PanelSkeleton imageRight />}>
@@ -226,7 +201,7 @@ export default function HomePage() {
         </section>
 
         <Suspense fallback={<CarouselSkeleton action />}>
-          <CuratedSections />
+          <NewArrivalsSection />
         </Suspense>
 
         {/* Shop by gender */}
@@ -306,27 +281,6 @@ export default function HomePage() {
         <Suspense fallback={<CarouselSkeleton action />}>
           <OnSaleSection />
         </Suspense>
-
-        {/* Brand intro — statless (5d): the counts looked hollow on a small
-            catalogue and the generic claims already live in the trust bar. */}
-        <section className="border-border rounded-xl border p-8 md:p-12">
-          <div className="max-w-2xl space-y-4">
-            <p className="text-muted-foreground text-sm font-medium tracking-[0.2em] uppercase">
-              Бидний тухай
-            </p>
-            <h2 className="font-serif text-3xl font-semibold">
-              Үнэр бол хувийн илэрхийлэл
-            </h2>
-            <p className="text-muted-foreground">
-              vonscent нь дэлхийн шилдэг үнэртнүүдийг жижиг (decant) багцаар
-              санал болгодог. Бүтэн сав авахаасаа өмнө өөрт тань яг тохирохыг
-              туршиж олох боломжийг бид олгоно.
-            </p>
-            <Button asChild variant="outline">
-              <Link href="/about">Дэлгэрэнгүй</Link>
-            </Button>
-          </div>
-        </section>
 
         <Suspense fallback={<ReviewsSkeleton />}>
           <ReviewsSection />

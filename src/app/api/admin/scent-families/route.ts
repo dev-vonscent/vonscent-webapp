@@ -1,15 +1,41 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { revalidatePublic } from "@/lib/cache";
 import { scentFamilyCreateSchema } from "@/lib/validators/scent-family";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isSupabaseConfigured, isImageGenConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { generateFamilyIcon } from "@/lib/ai/family-icon";
 
 /**
  * Scent family taxonomy CRUD (admin → Тохиргоо → Үнэрийн төрөл).
  * Adding a family here makes it selectable on the product form and, once a
  * product carries it, a chip in the catalog filter.
  */
+
+/**
+ * Дүрсээ оруулаагүй төрөлд AI-аар үүсгэж, мөрөнд нь бичнэ.
+ *
+ * `after()` дотор ажиллана: зураг үүсэхэд хагас минут орчим зарцуулагддаг тул
+ * админ түүнийг хүлээж суух ёсгүй — мөр шууд үүсээд, дүрс нь бэлэн болмогц
+ * нэмэгдэнэ (UI нь дүрс гартал хуудсаа сэргээж хардаг). Алдаа гарвал төрөл
+ * дүрсгүйгээр үлдэнэ, админ гараар оруулж болно.
+ */
+function generateIconInBackground(slug: string, label: string): void {
+  after(async () => {
+    const url = await generateFamilyIcon(slug, label);
+    if (!url) return;
+    const supabase = createAdminClient();
+    if (!supabase) return;
+    // Хооронд нь админ гараар дүрс оруулсан бол түүнийг дарж бичихгүй.
+    await supabase
+      .from("scent_families")
+      .update({ icon_url: url })
+      .eq("slug", slug)
+      .is("icon_url", null);
+    revalidatePublic();
+  });
+}
+
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = scentFamilyCreateSchema.safeParse(body);
@@ -45,6 +71,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "NOT_MIGRATED" }, { status: 503 });
     return NextResponse.json({ error: "INSERT_FAILED" }, { status: 500 });
   }
+  // Дүрсээ өөрөө оруулсан бол хүндэтгэнэ; үгүй бол AI үүсгэнэ.
+  const generatingIcon = !input.iconUrl && isImageGenConfigured;
+  if (generatingIcon) generateIconInBackground(input.slug, input.label);
+
   revalidatePublic();
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, generatingIcon });
 }
