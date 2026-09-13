@@ -24,7 +24,11 @@ import {
   ML_SIZES,
   SEASONS,
   SEASON_LABEL,
+  SILLAGES,
+  SILLAGE_LABEL,
+  SILLAGE_HINT,
 } from "@/lib/constants";
+import type { Sillage } from "@/lib/constants";
 import { useConfirm } from "@/components/shared/confirm-dialog";
 import { toast } from "@/lib/toast";
 import {
@@ -81,6 +85,7 @@ export function ProductEditForm({
     brand: product.brand,
     gender: product.gender,
     concentration: product.concentration,
+    sillage: product.sillage as string,
     description: product.description,
     notesDescription: product.notesDescription,
     usageDescription: product.usageDescription,
@@ -191,6 +196,7 @@ export function ProductEditForm({
           brand: form.brand,
           gender: form.gender,
           concentration: form.concentration,
+          sillage: form.sillage,
           scentFamilies,
           seasons,
           description: form.description,
@@ -332,6 +338,26 @@ export function ProductEditForm({
                   {CONCENTRATIONS.map((c) => (
                     <SelectItem key={c} value={c}>
                       {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field
+              label="Үнэртэх зай"
+              hint={SILLAGE_HINT[form.sillage as Sillage]}
+            >
+              <Select
+                value={form.sillage}
+                onValueChange={(v) => set("sillage", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SILLAGES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {SILLAGE_LABEL[s]}
                     </SelectItem>
                   ))}
                 </SelectContent>

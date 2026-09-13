@@ -208,6 +208,26 @@ export const SEASON_LABEL: Record<Season, string> = {
   all: "Бүх улирал",
 };
 
+/**
+ * Үнэрийн хүч (0078) — quiz-ийн эрчмийн тэнхлэг. Тайлбарууд нь «Алийг нь
+ * илүүд үзэх вэ?» асуултын хариултуудтай нэг мөр байх ёстой: админ бөглөхдөө
+ * хэрэглэгчийн сонголттой ижил шалгуур барина.
+ */
+export const SILLAGES = ["light", "medium", "strong"] as const;
+export type Sillage = (typeof SILLAGES)[number];
+
+export const SILLAGE_LABEL: Record<Sillage, string> = {
+  light: "Сул",
+  medium: "Дундаж",
+  strong: "Хүчтэй",
+};
+
+export const SILLAGE_HINT: Record<Sillage, string> = {
+  light: "Ойртоход л мэдрэгдэнэ",
+  medium: "Хажуугаар зөрөхөд мэдрэгдэнэ",
+  strong: "Өрөөнд орж ирэхэд анзаарагдана",
+};
+
 export const ROLES = [
   "guest",
   "customer",

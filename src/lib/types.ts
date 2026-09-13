@@ -3,6 +3,7 @@ import type {
   Gender,
   ScentFamily,
   Season,
+  Sillage,
   TagKind,
 } from "@/db/types";
 
@@ -69,6 +70,12 @@ export interface ProductListItem {
 
 /** Full product detail page payload. */
 export interface ProductDetail extends ProductListItem {
+  /**
+   * Үнэр хэр хол мэдрэгдэх вэ (0078) — админы тохируулсан утга. Quiz-ийн
+   * эрчмийн тэнхлэг үүнийг уншина; каталогийн жагсаалтад хэрэггүй тул
+   * `catalog_items` харагдац дээр нэмээгүй.
+   */
+  sillage: Sillage;
   /** Four-part description (0022) — any part may be empty. */
   description: string;
   notesDescription: string;

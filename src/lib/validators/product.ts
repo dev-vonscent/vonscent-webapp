@@ -76,6 +76,11 @@ export const productInputSchema = z.object({
   brand: z.string().min(1),
   gender: z.enum(["male", "female", "unisex"]),
   concentration: z.enum(["EDP", "EDT", "Parfum", "EDC", "Extrait", "Elixir"]),
+  /**
+   * Үнэрийн хүч (0078) — quiz-ийн эрчмийн асуулт үүнийг уншина. Шинэ бараанд
+   * анхдагчаар «дундаж»: хамгийн саармаг таамаг бөгөөд админ засаж болно.
+   */
+  sillage: z.enum(["light", "medium", "strong"]).default("medium"),
   // Families are admin-managed slugs (scent_families table), so they are
   // validated against the live taxonomy in the route, not by a closed enum.
   scentFamilies: z.array(z.string().min(1)).default([]),
@@ -125,6 +130,7 @@ export const productEditSchema = z.object({
   concentration: z
     .enum(["EDP", "EDT", "Parfum", "EDC", "Extrait", "Elixir"])
     .optional(),
+  sillage: z.enum(["light", "medium", "strong"]).optional(),
   scentFamilies: z.array(z.string().min(1)).optional(),
   seasons: seasonList.optional(),
   notesTop: z.array(z.string()).optional(),
