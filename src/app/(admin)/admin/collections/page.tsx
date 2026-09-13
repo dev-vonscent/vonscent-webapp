@@ -27,7 +27,6 @@ export default async function AdminCollectionsPage() {
       <PageHeader
         title="Багц"
         count={collections.length}
-        description="Бэлэн багц үүсгэх, засах — 4 үнэртэн, хэмжээ тус бүрийн хямдрал. Бэлгийн 1мл дээж нь тусдаа «Бэлгийн үнэрүүд» хуудсаар удирдагдана."
       />
       <CollectionAdmin collections={collections} />
     </div>

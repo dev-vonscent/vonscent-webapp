@@ -13,7 +13,6 @@ export default async function BrandsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Брэнд"
-        description="Барааны маягт энэ жагсаалтаас уншина. Нэр солиход тухайн брэндийн бүх бараан дээр шинэчлэгдэнэ."
       />
       <BrandManager brands={brands} />
     </div>

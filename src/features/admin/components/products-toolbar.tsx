@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowUpDown, Boxes } from "lucide-react";
+import { ArrowUpDown, Boxes, Star } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -81,7 +81,7 @@ function IconFilter({
           aria-label={`${label}: ${current.label}`}
           title={`${label}: ${current.label}`}
           className={cn(
-            "grid size-11 shrink-0 place-items-center rounded-full transition-colors md:size-9",
+            "grid size-11 shrink-0 place-items-center rounded-md transition-colors md:size-9",
             isDefault
               ? "bg-secondary text-muted-foreground hover:text-foreground"
               : "bg-primary text-primary-foreground",
@@ -105,7 +105,7 @@ function IconFilter({
             <span
               aria-hidden
               className={cn(
-                "size-1.5 rounded-full",
+                "size-1.5 rounded-md",
                 o.value === current.value ? "bg-gold-strong" : "bg-transparent",
               )}
             />
@@ -153,6 +153,10 @@ export function ProductsToolbar() {
   }, [q, params, patch]);
 
   const vis = params.get("vis") ?? "";
+  // «Онцлох» нь харагдацын гурав шиг сонголт БИШ, тусдаа унтраалга: «идэвхтэй
+  // ба онцлох» гэж асуух нь бодит хэрэгцээ тул хоёрыг нэг бүлэгт нийлүүлээгүй
+  // (энэ файлын толгойд бичсэн «хоёр өөр асуултыг нэг контрол болгосон» алдаа).
+  const featured = params.get("featured") === "1";
 
   return (
     <div
@@ -201,9 +205,9 @@ export function ProductsToolbar() {
       <div
         role="group"
         aria-label="Харагдацаар шүүх"
-        // Three equal parts on a phone: the chips are one choice, so they read
-        // as one control rather than three words of different lengths.
-        className="grid grid-cols-3 gap-1.5 md:flex md:items-center"
+        // Дөрвөн тэнцүү хэсэг: эхний гурав нь нэг сонголт, сүүлчийнх нь
+        // тусдаа унтраалга — гэхдээ нэг эгнээнд, ижил хэлбэрээр уншигдана.
+        className="grid grid-cols-4 gap-1.5 md:flex md:items-center"
       >
         {VISIBILITY.map((v) => (
           <button
@@ -214,7 +218,7 @@ export function ProductsToolbar() {
             className={cn(
               // Every chip carries a surface: the borderless system leaves an
               // unfilled chip as a bare floating word.
-              "min-h-11 rounded-full px-3.5 text-xs font-medium transition-colors md:min-h-9",
+              "min-h-11 rounded-md px-3.5 text-xs font-medium transition-colors md:min-h-9",
               vis === v.value
                 ? "bg-primary text-primary-foreground"
                 : "bg-secondary text-muted-foreground hover:text-foreground",
@@ -223,6 +227,21 @@ export function ProductsToolbar() {
             {v.label}
           </button>
         ))}
+        <button
+          type="button"
+          aria-pressed={featured}
+          title="Зөвхөн «Онцлох» тэмдэгтэй бараа"
+          onClick={() => patch("featured", featured ? "" : "1")}
+          className={cn(
+            "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md px-3.5 text-xs font-medium transition-colors md:min-h-9",
+            featured
+              ? "bg-primary text-primary-foreground"
+              : "bg-secondary text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Star className={cn("size-3.5", featured && "fill-current")} />
+          Онцлох
+        </button>
       </div>
     </div>
   );

@@ -54,7 +54,6 @@ interface DbProduct {
   description: string;
   notes_description: string | null;
   usage_description: string | null;
-  short_description: string | null;
   notes_top: string[];
   notes_heart: string[];
   notes_base: string[];
@@ -83,7 +82,7 @@ interface DbProduct {
 
 const SELECT = `
   id, slug, name, brand,
-  description, notes_description, usage_description, short_description,
+  description, notes_description, usage_description,
   notes_top, notes_heart, notes_base,
   gender, concentration, sillage, scent_families, seasons,
   origin_country, release_year, bottle_ml,
@@ -164,7 +163,6 @@ function mapProduct(row: DbProduct): ProductDetail {
     description: row.description,
     notesDescription: row.notes_description ?? "",
     usageDescription: row.usage_description ?? "",
-    shortDescription: row.short_description ?? "",
     notesTop: row.notes_top,
     notesHeart: row.notes_heart,
     notesBase: row.notes_base,

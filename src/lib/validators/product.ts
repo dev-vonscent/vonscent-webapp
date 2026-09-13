@@ -92,7 +92,6 @@ export const productInputSchema = z.object({
   description: z.string().default(""),
   notesDescription: z.string().default(""),
   usageDescription: z.string().default(""),
-  shortDescription: z.string().default(""),
   // Images uploaded before the product row existed, in gallery order — this is
   // the storefront gallery, nothing else.
   images: z.array(productImageSchema).max(12).default([]),
@@ -139,7 +138,6 @@ export const productEditSchema = z.object({
   description: z.string().optional(),
   notesDescription: z.string().optional(),
   usageDescription: z.string().optional(),
-  shortDescription: z.string().optional(),
   originCountry: z.string().nullable().optional(),
   releaseYear: z.number().int().nullable().optional(),
   isActive: z.boolean().optional(),

@@ -3,7 +3,8 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { adminFetch } from "@/features/admin/lib/mutate";
-import { Plus, Eye, EyeOff, Loader2 } from "lucide-react";
+import { useConfirm } from "@/components/shared/confirm-dialog";
+import { Plus, Eye, EyeOff, Loader2, Pencil, Trash2, Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -12,12 +13,15 @@ import { IconUpload } from "./icon-upload";
 import type { ScentFamilyOption } from "@/lib/types";
 
 /**
- * Дүрс үүсэхийг хүлээх хэмнэл ба таслах хугацаа. Ердийн үүсэлт 20-60 секунд;
- * хоёр минутын дараа ч ирээгүй бол амжилтгүй болсон гэж үзнэ (`scent_families`
- * дээр job-ийн төлөв хадгалдаггүй тул хугацаа нь цорын ганц дохио).
+ * Дүрс үүсэхийг хүлээх хэмнэл ба таслах хугацаа.
+ *
+ * Хоёр минут байсныг найм болгов: 2026-09-13-нд «Утаат» төрлийн дүрс дөрвөн
+ * минутын дараа бэлэн болсон ба UI түүнээс өмнө хүлээхээ больсон тул «зураг
+ * гарсангүй» мэт харагдсан. `scent_families` дээр job-ийн төлөв хадгалдаггүй
+ * тул хугацаа нь цорын ганц дохио — богино байснаас урт нь дээр.
  */
-const ICON_POLL_MS = 5000;
-const ICON_WAIT_MS = 2 * 60 * 1000;
+const ICON_POLL_MS = 6000;
+const ICON_WAIT_MS = 8 * 60 * 1000;
 
 /**
  * Үнэрийн төрөл CRUD. Adding a row here makes the family selectable on the
@@ -28,43 +32,59 @@ const ICON_WAIT_MS = 2 * 60 * 1000;
  * Дүрсээ оруулаагүй бол сервер нь AI-аар үүсгээд мөрөнд нь бичнэ
  * (`/api/admin/scent-families` → `lib/ai/family-icon.ts`). Тэр ажил хүсэлтийн
  * араас (`after()`) явдаг тул энд дүрс гартал хуудсаа тогтмол сэргээж хардаг.
+ *
+ * Хүлээлтийн төлөв нь React-ийн state-д биш, ӨГӨГДӨЛД тулгуурладаг: «дүрсгүй
+ * + саяхан үүссэн» мөр бүр хүлээгдэж байгаа гэсэн үг. Тиймээс хуудсаа сэргээх
+ * (F5) эсвэл өөр компьютероос нээхэд ч эргэлдэх тэмдэг байрандаа хэвээр байна
+ * — өмнө нь state алдагдаад мэт болж алга болдог байв.
  */
 export function ScentFamilyManager({
   families,
+  imageGenEnabled,
 }: {
   families: ScentFamilyOption[];
+  /** OPENAI_API_KEY тохируулагдсан эсэх — үгүй бол хүлээх зүйл алга. */
+  imageGenEnabled: boolean;
 }) {
   const router = useRouter();
+  const [confirm, confirmDialog] = useConfirm();
   const [busy, setBusy] = React.useState(false);
+  // Нэр засаж байгаа мөр (slug) ба талбарын утга.
+  const [editing, setEditing] = React.useState<string | null>(null);
+  const [editLabel, setEditLabel] = React.useState("");
   const [msg, setMsg] = React.useState<string | null>(null);
   const [slug, setSlug] = React.useState("");
   const [label, setLabel] = React.useState("");
   const [iconUrl, setIconUrl] = React.useState("");
-  // Аль төрлийн дүрсийг, хэдийг хүртэл хүлээж байгаа.
-  const [iconWatch, setIconWatch] = React.useState<{
-    slug: string;
-    until: number;
-  } | null>(null);
+
+  /**
+   * Одоогийн цаг. `Date.now()`-ыг render дотор дуудаж болохгүй (цэвэр биш,
+   * React Compiler хориглоно) тул жагсаалт шинэчлэгдэх бүрд эффектээс уншина.
+   */
+  const [now, setNow] = React.useState(0);
+  React.useEffect(() => setNow(Date.now()), [families]);
+
+  /** Дүрсээ хүлээж байгаа мөрүүд (дүрсгүй + ICON_WAIT_MS дотор үүссэн). */
+  const awaitingIcons = React.useMemo(() => {
+    if (!imageGenEnabled || now === 0) return new Set<string>();
+    return new Set(
+      families
+        .filter(
+          (f) =>
+            !f.iconUrl && now - new Date(f.createdAt).getTime() < ICON_WAIT_MS,
+        )
+        .map((f) => f.slug),
+    );
+  }, [families, imageGenEnabled, now]);
 
   React.useEffect(() => {
-    if (!iconWatch) return;
-    if (families.some((f) => f.slug === iconWatch.slug && f.iconUrl)) {
-      setIconWatch(null);
-      setMsg("Дүрс бэлэн боллоо.");
-      return;
-    }
-    if (Date.now() > iconWatch.until) {
-      setIconWatch(null);
-      setMsg(
-        "Дүрс үүсгэж чадсангүй эсвэл удаж байна — гараар оруулж болно.",
-      );
-      return;
-    }
+    if (awaitingIcons.size === 0) return;
     // `families` шинэчлэгдэх бүрд энэ эффект дахин ажиллана, тиймээс нэг л
     // удаагийн timeout хангалттай: refresh → шинэ prop → дараагийн timeout.
+    // Хүлээх хугацаа өнгөрөхөд `awaitingIcons` өөрөө хоосорч зогсоно.
     const t = setTimeout(() => router.refresh(), ICON_POLL_MS);
     return () => clearTimeout(t);
-  }, [iconWatch, families, router]);
+  }, [awaitingIcons, families, router]);
 
   async function send<T = unknown>(
     url: string,
@@ -118,8 +138,9 @@ export function ScentFamilyManager({
     setLabel("");
     setIconUrl("");
     if (res.generatingIcon) {
-      setIconWatch({ slug: newSlug, until: Date.now() + ICON_WAIT_MS });
-      setMsg("Дүрсийг AI үүсгэж байна — бэлэн болмогц энд гарч ирнэ.");
+      setMsg(
+        "Дүрсийг AI үүсгэж байна (хэдэн минут орж болно) — бэлэн болмогц энд гарч ирнэ.",
+      );
     }
   }
 
@@ -137,8 +158,80 @@ export function ScentFamilyManager({
     });
   }
 
+  /**
+   * Нэрийг засах. Slug нь хөдлөхгүй: хаягийн мөрөнд (`?family=`) бас
+   * `products.scent_families` массив дотор шууд бичигдсэн байдаг тул түүнийг
+   * солих нь бүх барааны холбоосыг таслана.
+   */
+  async function saveLabel(f: ScentFamilyOption) {
+    const label = editLabel.trim();
+    setEditing(null);
+    if (!label || label === f.label) return;
+    await send(`/api/admin/scent-families/${f.slug}`, {
+      method: "PATCH",
+      body: JSON.stringify({ label }),
+    });
+  }
+
+  /**
+   * Бүрмөсөн устгах. Бараан дээр ашиглагдаж байвал сервер эхлээд 409 + тоог
+   * буцаана — тэр тоог хэлж, хоёр дахь удаа зөвшөөрөл авсны дараа л хүчээр
+   * устгана (бараа бүрээс slug нь хасагдана).
+   */
+  async function remove(f: ScentFamilyOption) {
+    const ok = await confirm({
+      title: `«${f.label}» төрлийг устгах уу?`,
+      description:
+        "Устгасан төрөл буцаж сэргэхгүй. Түр хасах бол нүдний тэмдгээр нуух нь хангалттай.",
+      confirmLabel: "Устгах",
+      destructive: true,
+    });
+    if (!ok) return;
+
+    const url = `/api/admin/scent-families/${f.slug}`;
+    const res = await adminFetch<{ products?: number }>(url, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      setMsg(`«${f.label}» устлаа.`);
+      router.refresh();
+      return;
+    }
+    if (res.demo) {
+      setMsg("Demo горим: Supabase холбогдсоны дараа хадгалагдана.");
+      return;
+    }
+    if (!res.error.includes("IN_USE")) {
+      setMsg(res.error);
+      return;
+    }
+
+    // 409-ийн хариу дотор хэдэн бараанд ашиглагдаж байгаа тоо ирнэ.
+    const inUse = res.data?.products ?? 0;
+    const forced = await confirm({
+      title: `«${f.label}» ${inUse} бараан дээр ашиглагдаж байна`,
+      description:
+        "Устгавал энэ төрөл тэдгээр бараанаас хасагдана (бараа өөрөө үлдэнэ). Үргэлжлүүлэх үү?",
+      confirmLabel: "Бүгдээс хасаад устгах",
+      destructive: true,
+    });
+    if (!forced) return;
+    const done = await adminFetch<{ products?: number }>(`${url}?force=1`, {
+      method: "DELETE",
+    });
+    if (!done.ok) {
+      setMsg(done.error);
+      return;
+    }
+    setMsg(
+      `«${f.label}» устлаа — ${done.data?.products ?? 0} бараанаас хасагдлаа.`,
+    );
+    router.refresh();
+  }
+
   return (
     <div className="space-y-6">
+      {confirmDialog}
       {/* Feedback lives above the list — at the bottom it scrolls out of view
           and a failed/demo-mode click looks like the button did nothing. */}
       {msg && (
@@ -148,8 +241,8 @@ export function ScentFamilyManager({
         <CardContent className="p-0">
           <ul className="[&>li:nth-child(even)]:bg-muted/40">
             {families.map((f) => (
-              <li key={f.slug} className="flex items-center gap-3 px-4 py-3">
-                {iconWatch?.slug === f.slug && !f.iconUrl ? (
+              <li key={f.slug} className="flex items-center gap-1 px-4 py-3">
+                {awaitingIcons.has(f.slug) ? (
                   // AI дүрсээ үүсгэж байгаа мөр: хоосон нүд биш, ажиллаж
                   // байгаа нь харагдана.
                   <span
@@ -170,14 +263,69 @@ export function ScentFamilyManager({
                   />
                 )}
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">
-                    {f.label}
-                  </span>
+                  {editing === f.slug ? (
+                    // Slug биш, зөвхөн НЭР засагдана — slug нь хаяг ба
+                    // барааны массив дотор шууд бичигдсэн түлхүүр.
+                    <Input
+                      autoFocus
+                      value={editLabel}
+                      aria-label={`${f.label} нэр`}
+                      onChange={(e) => setEditLabel(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveLabel(f);
+                        if (e.key === "Escape") setEditing(null);
+                      }}
+                      className="h-8 max-w-60"
+                    />
+                  ) : (
+                    <span className="block truncate text-sm font-medium">
+                      {f.label}
+                    </span>
+                  )}
                   <span className="text-muted-foreground block truncate text-xs">
                     {f.slug}
                     {!f.isActive && " · нуугдсан"}
                   </span>
                 </span>
+
+                {editing === f.slug ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      disabled={busy}
+                      onClick={() => saveLabel(f)}
+                      aria-label="Нэр хадгалах"
+                    >
+                      <Check className="size-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setEditing(null)}
+                      aria-label="Болих"
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={busy}
+                    onClick={() => {
+                      setEditing(f.slug);
+                      setEditLabel(f.label);
+                    }}
+                    aria-label={`${f.label} нэрийг засах`}
+                    title="Нэр засах"
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="ghost"
@@ -196,6 +344,18 @@ export function ScentFamilyManager({
                   ) : (
                     <EyeOff className="text-muted-foreground size-4" />
                   )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  disabled={busy}
+                  onClick={() => remove(f)}
+                  aria-label={`${f.label} устгах`}
+                  title="Бүрмөсөн устгах"
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 className="size-4" />
                 </Button>
               </li>
             ))}
@@ -240,12 +400,6 @@ export function ScentFamilyManager({
                 />
               </div>
             </div>
-            <p className="text-muted-foreground text-xs">
-              Slug нь хаягийн мөрөнд ашиглагдана (/catalog?family=gourmand) тул
-              үүсгэсний дараа өөрчлөгдөхгүй. Дүрс оруулаагүй бол AI нь slug-д
-              тохирох орцны зургийг өөрөө үүсгэж хадгална (хагас минут орчим) —
-              таалагдаагүй бол дээрх жагсаалтаас дараад солино.
-            </p>
             <Button type="submit" disabled={busy}>
               <Plus className="mr-1 size-4" />
               Нэмэх

@@ -65,8 +65,6 @@ export async function PATCH(
     productUpdate.notes_description = input.notesDescription;
   if (input.usageDescription !== undefined)
     productUpdate.usage_description = input.usageDescription;
-  if (input.shortDescription !== undefined)
-    productUpdate.short_description = input.shortDescription;
   if (input.originCountry !== undefined)
     productUpdate.origin_country = input.originCountry;
   if (input.releaseYear !== undefined)

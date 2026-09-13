@@ -22,7 +22,6 @@ interface ProductRow {
   brand: string | null;
   gender: string | null;
   scent_families: string[] | null;
-  short_description: string | null;
   description: string | null;
   reference_image_url: string | null;
 }
@@ -52,7 +51,7 @@ export async function POST(
   const { data: product } = await supabase
     .from("products")
     .select(
-      "name, brand, gender, scent_families, short_description, description, reference_image_url",
+      "name, brand, gender, scent_families, description, reference_image_url",
     )
     .eq("id", id)
     .maybeSingle();
@@ -68,7 +67,6 @@ export async function POST(
       brand: p.brand ?? undefined,
       gender: p.gender ?? undefined,
       scentFamilies: p.scent_families ?? undefined,
-      shortDescription: p.short_description ?? undefined,
       description: p.description ?? undefined,
     },
     DEFAULT_BASE_PROMPT,

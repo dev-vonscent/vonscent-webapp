@@ -164,16 +164,39 @@ export interface AdminNotification {
   created_at: string;
 }
 
-/** Unread admin notifications (order cancellations etc.), newest first. */
-export async function getUnreadNotifications(): Promise<AdminNotification[]> {
+/**
+ * Уншаагүй мэдэгдлийн ТОО (самбарын карт).
+ *
+ * Самбар нь мөрүүдийг нь харуулахаа больсон — зөвхөн «хэдэн шинэ мэдэгдэл
+ * байна» гэж хэлээд `/admin/notifications` руу илгээдэг — тул мөр татах
+ * шаардлагагүй. Ингэснээр 20-иор тасалдсан «20+» гэсэн бүдэг тоо ч
+ * жинхэнэ тоогоор солигдов.
+ */
+export async function getUnreadNotificationCount(): Promise<number> {
+  const supabase = await createClient();
+  if (!supabase) return 0;
+  const { count } = await supabase
+    .from("admin_notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("is_read", false);
+  return count ?? 0;
+}
+
+/**
+ * Бүх мэдэгдэл (уншсан ба уншаагүй), шинэ нь эхэндээ — `/admin/notifications`
+ * хуудасны түүх. Самбар дээрх карт зөвхөн уншаагүйг харуулдаг тул уншсаны
+ * дараа мэдэгдэл хаашаа ч алга болдоггүй гэдгийг энэ хуудас баталгаажуулна.
+ */
+export async function getAllNotifications(
+  limit = 100,
+): Promise<AdminNotification[]> {
   const supabase = await createClient();
   if (!supabase) return [];
   const { data } = await supabase
     .from("admin_notifications")
     .select("*")
-    .eq("is_read", false)
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(limit);
   return (data as unknown as AdminNotification[] | null) ?? [];
 }
 
@@ -296,7 +319,6 @@ export interface AdminProduct {
   description: string;
   notesDescription: string;
   usageDescription: string;
-  shortDescription: string;
   images: AdminProductImage[];
   variants: AdminVariant[];
   notesTop: string[];
@@ -336,7 +358,7 @@ export interface AdminProduct {
 
 const ADMIN_PRODUCT_SELECT = `
   id, slug, name, brand, gender, concentration, sillage, scent_families, seasons,
-  description, notes_description, usage_description, short_description,
+  description, notes_description, usage_description,
   notes_top, notes_heart, notes_base, origin_country, release_year,
   bottle_price, bottle_ml, is_active, is_featured, reference_image_url,
   product_images ( id, url, alt, sort_order, is_visible ),
@@ -368,7 +390,6 @@ interface AdminProductRow {
   description: string;
   notes_description: string | null;
   usage_description: string | null;
-  short_description: string | null;
   notes_top: string[];
   notes_heart: string[];
   notes_base: string[];
@@ -423,7 +444,6 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
     description: r.description,
     notesDescription: r.notes_description ?? "",
     usageDescription: r.usage_description ?? "",
-    shortDescription: r.short_description ?? "",
     images,
     variants: [...r.product_variants]
       .sort((a, b) => a.ml - b.ml)
@@ -669,6 +689,8 @@ export interface AdminProductQuery {
   visibility?: string;
   /** '' | 'ok' | 'low' | 'soldout' */
   stock?: string;
+  /** Зөвхөн «Онцлох» тэмдэгтэй бараа (0055). Харагдацаас хамааралгүй. */
+  featured?: boolean;
   /** '' | 'brand' | 'price-asc' | 'price-desc' | 'stock' */
   sort?: string;
   /** Zero-based. */
@@ -701,6 +723,7 @@ export async function getAdminProductPage(
       p_terms: query.q?.trim() ? searchTerms(query.q) : null,
       p_visibility: query.visibility || null,
       p_stock: query.stock || null,
+      p_featured: query.featured ? true : null,
       p_sort: query.sort || null,
       p_page: page + 1,
       p_per_page: ADMIN_PRODUCTS_PER_PAGE,
@@ -758,6 +781,7 @@ async function memoryProductPage(
     items = items.filter(
       (p) => stockState(p.availableMl, p.lowStockMl) === query.stock,
     );
+  if (query.featured) items = items.filter((p) => p.isFeatured);
 
   items = [...items].sort((a, b) => {
     switch (query.sort) {

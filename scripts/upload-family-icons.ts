@@ -11,7 +11,7 @@
  * админ хуудсан дээрээс солих боломжгүй, AI-аар үүсгэсэн шинэ дүрстэй ч
  * хоёр өөр эх сурвалж болдог. Энэ script нь `public/family-<slug>.png`
  * файлуудыг Storage-ийн `families/` фолдер руу (upload route-тай ижил
- * боловсруулалт: 256px WebP, alpha хэвээр) хийж, `icon_url`-ыг нийтийн URL
+ * боловсруулалт: 512px WebP, alpha хэвээр) хийж, `icon_url`-ыг нийтийн URL
  * болгоно — ингэснээр сайт бүх дүрсээ өгөгдлийн сангаас уншина.
  *
  * Давхар ажиллуулахад аюулгүй: Storage-д аль хэдийн байгаа мөрийг алгасна
@@ -24,8 +24,8 @@ import sharp from "sharp";
 import { createClient } from "@supabase/supabase-js";
 
 const DIR = "public";
-/** `IMAGE_PRESETS.icon`-той ижил — дүрс 64px-д буудаг. */
-const MAX_EDGE = 256;
+/** `IMAGE_PRESETS.familyIcon`-той ижил. */
+const MAX_EDGE = 512;
 const QUALITY = 85;
 
 const dryRun = process.argv.includes("--dry");
@@ -82,13 +82,11 @@ async function main() {
     }
 
     // Alpha сувгийг хадгална — дүрс гурван загварын дэвсгэр дээр буудаг.
+    // `withoutEnlargement` БАЙХГҮЙ: бүх дүрс яг 512×512 байх ёстой бөгөөд
+    // мастер нь өчүүхэн жижиг (family-spicy.png нь 505px) байвал тэр зөрүү
+    // Storage руу дамждаг. 1.4% томсгох нь нүдэнд мэдрэгдэхгүй.
     const webp = await sharp(file)
-      .resize({
-        width: MAX_EDGE,
-        height: MAX_EDGE,
-        fit: "inside",
-        withoutEnlargement: true,
-      })
+      .resize({ width: MAX_EDGE, height: MAX_EDGE, fit: "inside" })
       .webp({ quality: QUALITY })
       .toBuffer();
 

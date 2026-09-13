@@ -64,7 +64,9 @@ export function saveSetting(
 
 export type AdminResult<T> =
   | { ok: true; data: T }
-  | { ok: false; error: string; demo?: boolean };
+  /** `data` нь амжилтгүй хариуны бие — зарим маршрут алдаандаа хамт мэдээлэл
+   *  буцаадаг (ж: 409 IN_USE + хэдэн бараанд ашиглагдаж байгаа тоо). */
+  | { ok: false; error: string; demo?: boolean; data: T | null };
 
 /**
  * For the calls whose *body* the caller needs — uploads that return a URL and
@@ -90,12 +92,14 @@ export async function adminFetch<T = unknown>(
         ok: false,
         error: "Demo горим: өөрчлөлт хадгалагдсангүй.",
         demo: true,
+        data: data as T,
       };
     }
     if (!res.ok) {
       return {
         ok: false,
         error: data?.error ?? `Сервер хариу өгсөнгүй (${res.status}).`,
+        data: (data ?? null) as T | null,
       };
     }
     return { ok: true, data: data as T };
@@ -103,6 +107,7 @@ export async function adminFetch<T = unknown>(
     return {
       ok: false,
       error: "Сүлжээнд холбогдож чадсангүй. Дахин оролдоно уу.",
+      data: null,
     };
   }
 }

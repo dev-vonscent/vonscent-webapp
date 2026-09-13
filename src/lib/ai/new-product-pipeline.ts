@@ -61,6 +61,24 @@ async function startJob(
   return (data as { id: string } | null)?.id ?? null;
 }
 
+/**
+ * Ажлыг ДАРААЛАЛД тавина (`pending`): лавлах зураг нь хараахан байхгүй, эхний
+ * шат дуусахад бөглөгдөнө. Мөр урьдчилж үүсэх нь UI-д хэрэгтэй — админ хоёр
+ * зураг бэлдэгдэж байгааг нэг дороос харна.
+ */
+async function queueJob(
+  supabase: SupabaseClient,
+  productId: string,
+  prompt: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("product_image_generations")
+    .insert({ product_id: productId, status: "pending", prompt })
+    .select("id")
+    .single();
+  return (data as { id: string } | null)?.id ?? null;
+}
+
 async function finishJob(
   supabase: SupabaseClient,
   jobId: string | null,
@@ -94,6 +112,19 @@ export async function runNewProductImages(
   const product = data as ProductRow | null;
   if (!product) return;
 
+  // Нот нь эхлээд хэрэгтэй: хоёр дахь ажлын мөрийг УРЬДЧИЛЖ үүсгэвэл админ
+  // барааныхаа хуудсыг нээхэд «нэг нь үүсэж байна, нөгөө нь дараалалд» гэж
+  // харагдана. Хийсвэр аккорд (мускус, амбер) л байвал зурах юм алга.
+  const notes = pickNotes(
+    {
+      top: product.notes_top ?? [],
+      heart: product.notes_heart ?? [],
+      base: product.notes_base ?? [],
+    },
+    MAX_NOTES,
+  );
+  const notePrompt = notes.length ? buildNoteImagePrompt(notes) : null;
+
   // ── 1. Packshot → the main image ────────────────────────────────────────
   const packshotJob = await startJob(
     supabase,
@@ -101,6 +132,9 @@ export async function runNewProductImages(
     PACKSHOT_PROMPT,
     referenceUrl,
   );
+  // Лавлах нь packshot өөрөө болно — түүнийг гартал хоосон, төлөв нь
+  // `pending` (дараалалд).
+  const noteJob = notePrompt ? await queueJob(supabase, productId, notePrompt) : null;
   let packshotUrl: string;
   try {
     const { buffer, contentType, ext } = await generateProductImage({
@@ -130,25 +164,21 @@ export async function runNewProductImages(
       status: "failed",
       error: (e instanceof Error ? e.message : String(e)).slice(0, 500),
     });
+    // Дараалалд байсан нотын ажил мөнхийн «pending» болж үлдэх ёсгүй.
+    await finishJob(supabase, noteJob, {
+      status: "failed",
+      error: "Үндсэн зураг үүсээгүй тул үнэрийн зураг зогслоо.",
+    });
     return; // stage 2 has nothing to work from
   }
 
   // ── 2. Note image → the second gallery picture ──────────────────────────
-  const notes = pickNotes(
-    {
-      top: product.notes_top ?? [],
-      heart: product.notes_heart ?? [],
-      base: product.notes_base ?? [],
-    },
-    MAX_NOTES,
-  );
-  // A perfume whose notes are all abstract accords (musk, amber, woody notes)
-  // has nothing photographable to put behind the bottle. The packshot stands
-  // on its own; there is no failure to report.
-  if (!notes.length) return;
-
-  const notePrompt = buildNoteImagePrompt(notes);
-  const noteJob = await startJob(supabase, productId, notePrompt, packshotUrl);
+  if (!noteJob || !notePrompt) return;
+  await finishJob(supabase, noteJob, {
+    status: "generating",
+    attempts: 1,
+    reference_url: packshotUrl,
+  });
   try {
     const { raw } = await generateProductImage({
       prompt: notePrompt,

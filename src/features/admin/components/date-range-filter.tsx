@@ -11,11 +11,11 @@ import { Calendar } from "@/features/admin/components/calendar";
 import { cn } from "@/lib/utils";
 import {
   DATE_PRESETS,
+  REPORT_DATE_PRESETS,
   activePreset,
   dateKeyOf,
   timeOf,
   ubToday,
-  type Preset,
 } from "@/features/admin/lib/date-range";
 
 /**
@@ -41,15 +41,22 @@ export function DateRangeFilter({
   params,
   /** Аль хуудас руу шилжих вэ. Өмнө нь `/admin/orders` гэж хатуу бичигдсэн. */
   basePath = "/admin/orders",
-  /** Тайлан нь өөр багц ашиглана (энэ сар / өнгөрсөн сар / энэ жил). */
-  presets = DATE_PRESETS,
+  /**
+   * Аль багц preset хэрэглэх вэ. Массивыг нь ШУУД дамжуулж болохгүй: preset
+   * бүр `range()` функцтэй бөгөөд серверийн компонентоос клиент рүү функц
+   * дамжихгүй («Functions cannot be passed directly to Client Components»).
+   * Тиймээс нэрийг нь дамжуулж, массивыг энд сонгоно.
+   */
+  presetSet = "orders",
 }: {
   from?: string;
   to?: string;
   params: Record<string, string | undefined>;
   basePath?: string;
-  presets?: Preset[];
+  presetSet?: "orders" | "reports";
 }) {
+  const presets =
+    presetSet === "reports" ? REPORT_DATE_PRESETS : DATE_PRESETS;
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   // Ulaanbaatar's today, not the laptop's: an operator abroad must still see

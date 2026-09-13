@@ -22,6 +22,9 @@ const DEMO_FAMILIES: ScentFamilyOption[] = DEFAULT_SCENT_FAMILIES.map(
     iconUrl: f.iconUrl,
     sortOrder: i + 1,
     isActive: true,
+    // Demo өгөгдөл шинэ мөр биш — админ дээр «дүрс хүлээж байна» гэж
+    // харагдахаас сэргийлж эртний огноо.
+    createdAt: new Date(0).toISOString(),
   }),
 );
 
@@ -31,6 +34,7 @@ interface DbScentFamily {
   icon_url: string | null;
   sort_order: number;
   is_active: boolean;
+  created_at: string;
 }
 
 /** One entry of the admin-managed free-form tag pool (0035_custom_tags). */
@@ -67,7 +71,7 @@ const fetchScentFamiliesUncached = async (): Promise<ScentFamilyOption[]> => {
 
   const { data, error } = await supabase
     .from("scent_families")
-    .select("slug, label, icon_url, sort_order, is_active")
+    .select("slug, label, icon_url, sort_order, is_active, created_at")
     .order("sort_order", { ascending: true });
 
   if (error || !data) return DEMO_FAMILIES;
@@ -77,6 +81,7 @@ const fetchScentFamiliesUncached = async (): Promise<ScentFamilyOption[]> => {
     iconUrl: r.icon_url,
     sortOrder: r.sort_order,
     isActive: r.is_active,
+    createdAt: r.created_at,
   }));
 };
 

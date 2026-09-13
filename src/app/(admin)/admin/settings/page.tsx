@@ -265,72 +265,11 @@ export default function AdminSettingsPage() {
         </div>
       </Saver>
 
-      {/* AI image generation */}
-      <Saver
-        title="AI зураг үүсгэлт"
-        onSave={() =>
-          saveSetting("imageGen", imageGen, "AI зураг хадгалагдсангүй")
-        }
-        dirty={isDirty("imageGen")}
-        onSaved={() => commit("imageGen")}
-      >
-        <div className="space-y-4">
-          <label className="flex cursor-pointer items-center gap-2 py-1 text-sm">
-            <Checkbox
-              checked={imageGen.enabled}
-              onCheckedChange={(c) =>
-                setImageGen({ ...imageGen, enabled: Boolean(c) })
-              }
-            />
-            AI зураг үүсгэлт идэвхтэй
-          </label>
-          <Field label="AI зурагт өгөх үндсэн заавар (англиар бичнэ)">
-            <textarea
-              value={imageGen.basePrompt}
-              onChange={(e) =>
-                setImageGen({ ...imageGen, basePrompt: e.target.value })
-              }
-              rows={4}
-              className="bg-secondary field-edge w-full rounded-md p-2 text-base md:text-sm"
-              placeholder="Professional e-commerce product photo of a perfume bottle…"
-            />
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Хэмжээ">
-              <Select
-                value={imageGen.size}
-                onValueChange={(v) => setImageGen({ ...imageGen, size: v })}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1024x1536">1024×1536 (босоо)</SelectItem>
-                  <SelectItem value="1024x1024">
-                    1024×1024 (дөрвөлжин)
-                  </SelectItem>
-                  <SelectItem value="1536x1024">1536×1024 (хэвтээ)</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Чанар">
-              <Select
-                value={imageGen.quality}
-                onValueChange={(v) => setImageGen({ ...imageGen, quality: v })}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Бага</SelectItem>
-                  <SelectItem value="medium">Дунд</SelectItem>
-                  <SelectItem value="high">Өндөр</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-          </div>
-        </div>
-      </Saver>
+      {/* «AI зураг үүсгэлт» хэсэг НУУГДСАН (клиентийн шийдвэр, 2026-09-13).
+          Хадгалагдсан `imageGen` тохиргоо санд хэвээр, доорх төлөв ч уншигдсан
+          хэвээр байна — зөвхөн засах дэлгэц нь алга. Барааны зураг үүсгэх шинэ
+          гарцууд (packshot / үнэрийн нот / засвар) хэмжээ, чанараа өөрсдөө
+          тогтоодог тул энэ хэсэг практикт хэрэглэгдэхээ больсон. */}
 
       {/* Shipping */}
       <Saver

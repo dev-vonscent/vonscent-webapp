@@ -17,7 +17,11 @@ import {
  *   · нэг удаа харсан мөр бүр `byId`-д үлдэнэ — сонгосон бараа хайлт солиход
  *     нэрээ алдахгүй (chip, сануулга бүгд нэрээрээ харагдана).
  */
-export function useProductOptions(initial: ProductOption[]) {
+export function useProductOptions(
+  initial: ProductOption[],
+  /** Хэдэн мөр уншихыг хүсэх вэ (бэлгийн сан бүгдийг асуудаг). */
+  limit: number = PRODUCT_OPTION_LIMIT,
+) {
   const [q, setQ] = React.useState("");
   const [items, setItems] = React.useState<ProductOption[]>(initial);
   const [loading, setLoading] = React.useState(false);
@@ -40,7 +44,7 @@ export function useProductOptions(initial: ProductOption[]) {
     setLoading(true);
     const t = setTimeout(async () => {
       const res = await adminFetch<{ items: ProductOption[] }>(
-        `/api/admin/products/options?q=${encodeURIComponent(term)}&limit=${PRODUCT_OPTION_LIMIT}`,
+        `/api/admin/products/options?q=${encodeURIComponent(term)}&limit=${limit}`,
       );
       if (cancelled) return;
       if (res.ok) {
@@ -53,7 +57,7 @@ export function useProductOptions(initial: ProductOption[]) {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [q]);
+  }, [q, limit]);
 
   /** Хэзээ нэгэн цагт харсан бараа — сонгогдсоныг нэрлэхэд хэрэглэнэ. */
   const byId = React.useCallback(

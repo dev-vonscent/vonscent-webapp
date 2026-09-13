@@ -37,7 +37,10 @@ export default async function AdminCustomerDetail({
         {profile.is_blocked && <Badge variant="sale">Хориглосон</Badge>}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+      {/* `items-start`: grid-ийн багана өгөгдмөлөөр мөрийн өндрөөр сунадаг тул
+          баруун талын «Удирдах» карт зүүн талын урт баганыг дагаж сунаж, доогоо
+          хоосон зайтай болдог байв. */}
+      <div className="grid items-start gap-6 lg:grid-cols-[1fr_300px]">
         <div className="space-y-6">
           <Card>
             <CardContent className="grid grid-cols-3 gap-4 p-5 text-center">

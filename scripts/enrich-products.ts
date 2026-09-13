@@ -77,7 +77,6 @@ export interface Entry {
   notesTop?: string[];
   notesHeart?: string[];
   notesBase?: string[];
-  shortDescription?: string;
   description?: string;
   notesDescription?: string;
   usageDescription?: string;
@@ -160,7 +159,6 @@ function textPatch(e: Entry): Record<string, unknown> {
   if (e.notesTop?.length) patch.notes_top = e.notesTop;
   if (e.notesHeart?.length) patch.notes_heart = e.notesHeart;
   if (e.notesBase?.length) patch.notes_base = e.notesBase;
-  if (e.shortDescription) patch.short_description = e.shortDescription;
   if (e.description) patch.description = e.description;
   if (e.notesDescription) patch.notes_description = e.notesDescription;
   if (e.usageDescription) patch.usage_description = e.usageDescription;

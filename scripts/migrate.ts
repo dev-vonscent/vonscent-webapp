@@ -37,6 +37,9 @@ const files = readdirSync(dir)
  * Бүх сан шинэ нэрээр бүртгэгдсэн нь батлагдвал энэ хүснэгтийг устгаж болно.
  */
 const RENAMED: Record<string, string> = {
+  // 0078 нь хоёр салаанд зэрэг авагдсан (sillage ба энэ) — дугаарыг нь
+  // хөндөлгүй үсэг залгав, сан дээр хуучин нэрээр бүртгэгдсэн байж болно.
+  "0078a_delete_scent_family.sql": "0078_delete_scent_family.sql",
   "0028a_collections.sql": "0028_collections.sql",
   "0028b_verify_mn.sql": "0028_verify_mn.sql",
   "0029a_drop_phone_otps.sql": "0029_drop_phone_otps.sql",

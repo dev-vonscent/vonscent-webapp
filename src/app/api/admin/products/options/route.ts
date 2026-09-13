@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { getStaffUser } from "@/lib/auth/guard";
 import { getProductOptions } from "@/features/admin/api";
 import { isSupabaseConfigured } from "@/lib/env";
-import { PRODUCT_OPTION_LIMIT } from "@/features/admin/lib/product-option";
+import {
+  PRODUCT_OPTION_LIMIT,
+  PRODUCT_OPTION_MAX,
+} from "@/features/admin/lib/product-option";
 
 /**
  * Барааны сонгогчийн хайлт (бэлгийн сан, нүүрийн хэсэг, багцын форм).
@@ -23,7 +26,7 @@ export async function GET(req: Request) {
   const q = searchParams.get("q") ?? "";
   const limit = Math.min(
     Math.max(Number(searchParams.get("limit")) || PRODUCT_OPTION_LIMIT, 1),
-    100,
+    PRODUCT_OPTION_MAX,
   );
   const items = await getProductOptions({ q, limit });
   return NextResponse.json({ items });

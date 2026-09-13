@@ -1,5 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
+import * as Sentry from "@sentry/nextjs";
 import { uploadImage } from "@/lib/storage/storage";
 import { processImage, IMAGE_PRESETS } from "@/lib/storage/process-image";
 import { generateProductImage } from "./generate-image";
@@ -39,12 +40,15 @@ export async function generateFamilyIcon(
     const { raw } = await generateProductImage({
       prompt: buildFamilyIconPrompt(slug, label),
       size: "1024x1024",
-      quality: "high",
+      // `high` биш: дүрс 64px-д буудаг тул нарийвчлал нь нүдэнд мэдрэгдэхгүй
+      // атлаа үүсэлт нь дөрвөн минут хүртэл үргэлжилж (2026-09-13-ны «Утаат»),
+      // админ хүлээж дуусгаагүй. `medium` нь хэд дахин хурдан, хямд.
+      quality: "medium",
       background: "transparent",
     });
-    // Дүрс 64px-д буудаг тул `icon` preset (256px) хангалттай; WebP нь
-    // alpha-г хадгална.
-    const image = await processImage(raw, IMAGE_PRESETS.icon);
+    // 512×512 (`familyIcon` preset) — repo дахь мастеруудтай ижил хэмжээ;
+    // WebP нь alpha-г хадгална.
+    const image = await processImage(raw, IMAGE_PRESETS.familyIcon);
     if (!image) return null;
     const uploaded = await uploadImage(
       `families/${slug}-${randomUUID()}.${image.ext}`,
@@ -52,7 +56,11 @@ export async function generateFamilyIcon(
       image.contentType,
     );
     return uploaded?.url ?? null;
-  } catch {
+  } catch (err) {
+    // Дуудагч нь `after()` дотор тул шидсэн алдаа хаана ч харагдахгүй — энэ бол
+    // «мөнгө хасагдсан атлаа дүрс алга» гэсэн тохиолдлын цорын ганц ул мөр.
+    Sentry.captureException(err);
+    console.error(`[family-icon] ${slug}:`, err);
     return null;
   }
 }

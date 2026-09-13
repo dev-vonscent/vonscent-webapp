@@ -47,7 +47,6 @@ interface Copy {
   notesTop?: string[];
   notesHeart?: string[];
   notesBase?: string[];
-  shortDescription?: string;
   description?: string;
   notesDescription?: string;
   usageDescription?: string;

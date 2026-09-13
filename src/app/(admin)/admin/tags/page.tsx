@@ -15,7 +15,6 @@ export default async function AdminTagsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Нэмэлт таг"
-        description="Дотоод таг-ууд — хэрэглэгчид badge болж харагдахгүй, харин хайлт болон үнэрээ олох quiz-д ашиглагдана. Бараа нэмэх/засах форм дээрээс сонгоно."
       />
       <CustomTagManager tags={tags} />
     </div>

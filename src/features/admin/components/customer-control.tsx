@@ -134,7 +134,6 @@ export function CustomerControl({
 
       <Field
         label="V point"
-        hint="Оруулсан тоо нь шинэ бүтэн үлдэгдэл болно (нэмэгдэхгүй)."
       >
         <div className="flex gap-2">
           <Input

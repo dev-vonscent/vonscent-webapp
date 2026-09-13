@@ -26,8 +26,15 @@ export const IMAGE_PRESETS = {
   photo: { maxEdge: 1600, quality: 82 },
   /** Profile pictures, rendered at ~96px but kept retina-sized. */
   avatar: { maxEdge: 512, quality: 80 },
-  /** Scent-family icons, rendered at 48px (icon-upload.tsx). */
+  /** Брэндийн wordmark, 24-48px-д буудаг. */
   icon: { maxEdge: 256, quality: 85 },
+  /**
+   * Үнэрийн төрлийн дүрс. Брэндийн лого шиг 256px-д хашихгүй: эдгээр нь
+   * бодит объектын зураг, нүүрэн дээр 64px-д буудаг ч retina дэлгэцэнд
+   * хоёр дахин нягт хэрэгтэй ба одоо байгаа `public/family-*.png` мастерууд
+   * нь 512×512.
+   */
+  familyIcon: { maxEdge: 512, quality: 85 },
 } as const satisfies Record<string, ImagePreset>;
 
 export type PresetName = keyof typeof IMAGE_PRESETS;
@@ -42,7 +49,7 @@ const PRESET_BY_FOLDER: Record<string, PresetName> = {
   "products/new": "photo",
   blog: "photo",
   avatars: "avatar",
-  families: "icon",
+  families: "familyIcon",
   // A logo is a wordmark shown at 24-48px; `icon` bounds the long edge, so a
   // wide logo keeps its aspect ratio rather than being squared off.
   brands: "icon",

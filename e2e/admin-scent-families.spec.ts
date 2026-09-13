@@ -48,3 +48,22 @@ test("demo горимд хадгалагдахгүйг хэлнэ", async ({ pag
   await fillNewFamily(page, "Утаат", "smoky");
   await expect(page.getByText(/Demo горим/)).toBeVisible();
 });
+
+test("мөр бүр нэр засах, устгах товчтой", async ({ page }) => {
+  await page.goto("/admin/scent-families");
+  const row = page.locator("li", { hasText: "floral" }).first();
+  await expect(row).toBeVisible();
+
+  // Нэр засах: товч дарахад мөрөнд оруулах талбар гарна.
+  await row.getByRole("button", { name: /нэрийг засах/ }).click();
+  await expect(row.getByRole("textbox")).toHaveValue("Цэцэгт");
+  await row.getByRole("button", { name: "Болих" }).click();
+  await expect(row.getByRole("textbox")).toHaveCount(0);
+
+  // Устгах: шууд устгахгүй, эхлээд баталгаажуулна.
+  await row.getByRole("button", { name: /устгах/ }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog).toContainText("устгах уу?");
+  await dialog.getByRole("button", { name: "Болих" }).click();
+  await expect(dialog).toHaveCount(0);
+});

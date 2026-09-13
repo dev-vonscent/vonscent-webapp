@@ -53,11 +53,7 @@ export async function generateMetadata({
   if (!product) return { title: "Бараа олдсонгүй" };
   return {
     title: `${product.name} — ${product.brand}`,
-    // The short part is written to stand alone; fall back to the intro.
-    description: (product.shortDescription || product.description).slice(
-      0,
-      160,
-    ),
+    description: product.description.slice(0, 160),
     // og:image comes from the sibling opengraph-image.tsx file convention.
     openGraph: { url: `/products/${product.slug}` },
   };

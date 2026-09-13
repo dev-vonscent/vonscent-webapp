@@ -83,7 +83,6 @@ export interface PromptFields {
   /** e.g. ["floral","woody"] — selects the photoshoot recipe (RULE 3). */
   scentFamilies?: string[];
   /** The perfume's story — fine-tunes the mood within the chosen style. */
-  shortDescription?: string;
   description?: string;
 }
 
@@ -112,19 +111,15 @@ export function buildImagePrompt(
       `Fragrance family: ${families.join(", ")} — use the matching photoshoot style from RULE 3.`,
     );
 
-  // Pass BOTH the concise summary and the full story so the model reads the
-  // character properly; the description refines the mood inside the style.
-  const short = (fields.shortDescription || "").trim();
+  // Барааны танилцуулга — загвар түүнээс УТГА САНААГ нь уншиж, дүр зургаа
+  // тааруулна («товч тайлбар» талбар байхгүй болсон, 2026-09-13).
   const long = (fields.description || "").trim();
-
-  if (short || long) {
+  if (long) {
     details.push(
       "Description (extract the mood and let it fine-tune the scene — never",
       "depict it literally):",
+      clip(long, MAX_DESCRIPTION_CHARS),
     );
-    if (short) details.push(`Summary: ${clip(short, 300)}`);
-    if (long && long !== short)
-      details.push(`Full story: ${clip(long, MAX_DESCRIPTION_CHARS)}`);
   }
 
   // An empty product gets just the base prompt — no dangling section header.

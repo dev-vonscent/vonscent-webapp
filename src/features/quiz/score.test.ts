@@ -27,7 +27,6 @@ function product(
     description: "",
     notesDescription: "",
     usageDescription: "",
-    shortDescription: "",
     notesTop: [],
     notesHeart: [],
     notesBase: [],

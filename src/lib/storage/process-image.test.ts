@@ -75,7 +75,9 @@ describe("presetForFolder", () => {
     expect(presetForFolder("products/new")).toBe(IMAGE_PRESETS.photo);
     expect(presetForFolder("blog")).toBe(IMAGE_PRESETS.photo);
     expect(presetForFolder("avatars")).toBe(IMAGE_PRESETS.avatar);
-    expect(presetForFolder("families")).toBe(IMAGE_PRESETS.icon);
+    // Үнэрийн төрлийн дүрс 512px; брэндийн wordmark 256px хэвээр.
+    expect(presetForFolder("families")).toBe(IMAGE_PRESETS.familyIcon);
+    expect(presetForFolder("brands")).toBe(IMAGE_PRESETS.icon);
   });
 
   it("falls back to the photo preset for an unknown folder", () => {

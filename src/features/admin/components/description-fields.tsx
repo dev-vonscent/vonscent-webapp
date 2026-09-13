@@ -4,16 +4,18 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 
 /**
- * The four description parts the client asked for (todo.md B3,
- * requirement_fb.md). Shared by the create and edit forms so both stay in the
- * same order and carry the same guidance.
+ * The description parts the client asked for (todo.md B3, requirement_fb.md).
+ * Shared by the create and edit forms so both stay in the same order and carry
+ * the same guidance.
+ *
+ * Дөрөв дэх «Товч тайлбар» хэсэг АВАГДСАН (клиентийн шийдвэр, 2026-09-13):
+ * хайлт, хуваалцах линкийн тайлбар нь ерөнхий танилцуулгаас авагдана.
  */
 
 export interface DescriptionValue {
   description: string;
   notesDescription: string;
   usageDescription: string;
-  shortDescription: string;
 }
 
 const PARTS: {
@@ -40,12 +42,6 @@ const PARTS: {
     hint: "Хаана, ямар үед, ямар улиралд тохиромжтой.",
     rows: 3,
   },
-  {
-    key: "shortDescription",
-    label: "4. Товч тайлбар",
-    hint: "Нэг өгүүлбэр. Хайлт, жагсаалт болон хуваалцах линк дээр харагдана.",
-    rows: 2,
-  },
 ];
 
 export function DescriptionFields({
@@ -61,10 +57,6 @@ export function DescriptionFields({
         <h2 className="font-serif text-lg font-semibold">
           Дэлгэрэнгүй тайлбар
         </h2>
-        <p className="text-muted-foreground text-sm">
-          Дөрвөн хэсэг тус бүрдээ барааны хуудсанд тусдаа гарна. Хоосон орхисон
-          хэсэг харагдахгүй.
-        </p>
         {PARTS.map((part) => (
           <div key={part.key} className="space-y-1.5">
             <Label htmlFor={part.key}>{part.label}</Label>

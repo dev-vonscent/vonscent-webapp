@@ -294,8 +294,11 @@ export function AdminSidebar() {
     GROUPS.flatMap((g) => g.links).find((l) => isActive(pathname, l.href))
       ?.label ?? "Админ";
 
+  // Ширээний компьютерт багана нь дэлгэцэнд наалдана (`sticky`, бүтэн өндөр):
+  // 25 холбоос бүхий цэс хуудас гүйлгэсний дараа алга болдог байв. Цэсний
+  // жагсаалт өөрөө тусдаа гүйнэ — лого ба доод холбоос хөдөлгөөнгүй үлдэнэ.
   return (
-    <aside className="bg-card lg:w-60 lg:shrink-0 print:hidden">
+    <aside className="bg-card print:hidden lg:sticky lg:top-0 lg:flex lg:h-svh lg:w-60 lg:shrink-0 lg:flex-col">
       {/* ── Mobile: top bar + slide-in sheet (5a) ── */}
       <div className="flex h-14 items-center gap-2 px-3 lg:hidden">
         <Sheet>
@@ -382,7 +385,11 @@ export function AdminSidebar() {
           зэрэг байж болох тул тус бүр нэртэй. */}
       <nav
         aria-label="Админ цэс"
-        className="hidden flex-col gap-1 px-3 lg:flex"
+        // `min-h-0` байхгүй бол flex хүүхэд агуулгаараа сунаж, `overflow-y`
+        // хэзээ ч идэвхжихгүй (flex item-ийн өгөгдмөл `min-height: auto`).
+        // `overscroll-contain` — цэсний төгсгөлд хүрэхэд гүйлт хуудас руу
+        // үсэрч шилжихгүй.
+        className="hidden flex-col gap-1 overflow-y-auto overscroll-contain px-3 lg:flex lg:min-h-0 lg:flex-1"
       >
         {renderGroups()}
       </nav>

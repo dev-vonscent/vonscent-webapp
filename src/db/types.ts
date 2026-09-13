@@ -68,7 +68,6 @@ export interface ProductRow {
   /** Part 3: where and when to wear it. */
   usage_description: string;
   /** Part 4: one-liner for cards, previews and meta tags. */
-  short_description: string;
   notes_top: string[];
   notes_heart: string[];
   notes_base: string[];

@@ -79,7 +79,6 @@ export function ProductForm({
     description: "",
     notesDescription: "",
     usageDescription: "",
-    shortDescription: "",
     originCountry: "",
     releaseYear: "",
     bottlePrice: "",
@@ -366,10 +365,6 @@ export function ProductForm({
           <h2 className="font-serif text-lg font-semibold">
             Эх сав ба үлдэгдэл
           </h2>
-          <p className="text-muted-foreground text-sm">
-            Эх савны үнэ/багтаамж нь борлуулалт, ашгийн тайланд болон үлдэгдэл
-            тооцоонд ашиглагдана — зарах үнэд нөлөөлөхгүй.
-          </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Эх савны үнэ (₮)">
               <Input
@@ -422,13 +417,6 @@ export function ProductForm({
           </div>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox
-              checked={isActive}
-              onCheckedChange={(v) => setIsActive(Boolean(v))}
-            />
-            Идэвхтэй (нийтлэх)
-          </label>
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <Checkbox
               checked={isFeatured}
               onCheckedChange={(v) => {
                 setIsFeatured(Boolean(v));
@@ -436,10 +424,14 @@ export function ProductForm({
             />
             <span>
               Онцлох бараа
-              <span className="text-muted-foreground block text-xs">
-                Нүүрийн «Онцлох» хэсэгт автоматаар орно
-              </span>
             </span>
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Checkbox
+              checked={isActive}
+              onCheckedChange={(v) => setIsActive(Boolean(v))}
+            />
+            Идэвхтэй (нийтлэх)
           </label>
           <CustomTagField
             pool={customTagPool}

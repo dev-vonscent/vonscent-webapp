@@ -63,7 +63,6 @@ export async function POST(req: Request) {
     description: input.description,
     notes_description: input.notesDescription,
     usage_description: input.usageDescription,
-    short_description: input.shortDescription,
     notes_top: input.notesTop,
     notes_heart: input.notesHeart,
     notes_base: input.notesBase,

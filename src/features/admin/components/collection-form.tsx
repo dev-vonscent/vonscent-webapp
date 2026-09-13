@@ -498,7 +498,6 @@ export function CollectionForm({
 
           <Field
             label="Үндсэн хямдрал %"
-            hint="Доор өөр утга бичээгүй бүх хэмжээнд үйлчилнэ."
             className="max-w-40"
           >
             <Input

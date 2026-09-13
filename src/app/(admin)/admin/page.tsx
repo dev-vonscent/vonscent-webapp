@@ -11,10 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   getDashboardData,
   getStockOverview,
-  getUnreadNotifications,
+  getUnreadNotificationCount,
 } from "@/features/admin/api";
 import { getProductsByIds, getProductsByTag } from "@/features/products/api";
-import { NotificationList } from "@/features/admin/components/notification-list";
+import { NotificationCard } from "@/features/admin/components/notification-list";
 import { formatPrice, formatDate } from "@/lib/format";
 import { ORDER_STATUS_LABEL, ORDER_STATUSES } from "@/lib/constants";
 
@@ -28,7 +28,7 @@ const DASHBOARD_STOCK_LIMIT = 20;
 export default async function AdminDashboard() {
   // Тоолох, эрэмбэлэх ажил SQL-д (0062). Өмнө нь энэ хуудас бүх каталогийг
   // татаж аваад JS дотор шүүдэг байв.
-  const [stock, dash, notifications] = await Promise.all([
+  const [stock, dash, unreadCount] = await Promise.all([
     // Alert against each product's own configured threshold (A1) — not a
     // hardcoded figure. Шүүлт нь SQL-д (0065): `items` нь `available_ml`-ээр
     // эрэмбэлэгддэг тул дууссан бараа «бага» бүгдээс ӨМНӨ орно. Хязгаарлаж
@@ -37,7 +37,7 @@ export default async function AdminDashboard() {
     // уншигдана.
     getStockOverview({ limit: DASHBOARD_STOCK_LIMIT, state: "low" }),
     getDashboardData(),
-    getUnreadNotifications(),
+    getUnreadNotificationCount(),
   ]);
   const lowStock = stock.items;
   const topSellerIds = dash?.topSellerIds ?? [];
@@ -68,7 +68,8 @@ export default async function AdminDashboard() {
     <div className="space-y-8">
       <h1 className="font-serif text-2xl font-semibold">Хяналтын самбар</h1>
 
-      <NotificationList notifications={notifications} />
+      {/* Хамгийн дээр: юу болсныг эхлээд хэлнэ, тоо баримт нь доор. */}
+      <NotificationCard unread={unreadCount} />
 
       {/* Sales */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

@@ -232,10 +232,6 @@ export function BrandManager({ brands }: { brands: BrandOption[] }) {
                 />
               </div>
             </div>
-            <p className="text-muted-foreground text-xs">
-              Slug нэрнээс автоматаар үүснэ. Барааны маягт дээрээс ч шууд шинэ
-              брэнд нэмж болно.
-            </p>
             <Button type="submit" disabled={busy || !name.trim()}>
               <Plus className="mr-1 size-4" />
               Нэмэх

@@ -46,7 +46,7 @@ export function productJsonLd(product: ProductDetail): Json {
     "@type": "Product",
     name: product.name,
     brand: { "@type": "Brand", name: product.brand },
-    description: product.shortDescription || product.description,
+    description: product.description,
     image: product.images.map((img) => img.url),
     url: `${SITE.url}/products/${product.slug}`,
     offers: {

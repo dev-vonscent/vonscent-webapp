@@ -252,7 +252,6 @@ interface Row {
   notesTop: string[];
   notesHeart: string[];
   notesBase: string[];
-  shortDescription: string;
   description: string;
   notesDescription: string;
   usageDescription: string;
@@ -338,7 +337,6 @@ async function readRows(): Promise<ReadResult> {
       notesTop: list(o.notes_top),
       notesHeart: list(o.notes_heart),
       notesBase: list(o.notes_base),
-      shortDescription: str(o.short_description),
       description: str(o.description),
       notesDescription: str(o.notes_description),
       usageDescription: str(o.usage_description),
@@ -441,7 +439,6 @@ function productPatch(r: Row): Record<string, unknown> {
   if (r.notesTop.length) patch.notes_top = r.notesTop;
   if (r.notesHeart.length) patch.notes_heart = r.notesHeart;
   if (r.notesBase.length) patch.notes_base = r.notesBase;
-  if (r.shortDescription) patch.short_description = r.shortDescription;
   if (r.description) patch.description = r.description;
   if (r.notesDescription) patch.notes_description = r.notesDescription;
   if (r.usageDescription) patch.usage_description = r.usageDescription;

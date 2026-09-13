@@ -32,7 +32,6 @@ interface SeedInput {
   /** Optional extra description parts (0022); demo rows may omit them. */
   notesDescription?: string;
   usageDescription?: string;
-  shortDescription?: string;
   tags: TagKind[];
   onHandMl: number;
   ratingAvg: number;
@@ -341,7 +340,6 @@ export const SEED_PRODUCTS: ProductDetail[] = RAW.map((input) => {
     description: input.description,
     notesDescription: input.notesDescription ?? "",
     usageDescription: input.usageDescription ?? "",
-    shortDescription: input.shortDescription ?? "",
     notesTop: input.notesTop,
     notesHeart: input.notesHeart,
     notesBase: input.notesBase,

@@ -264,13 +264,6 @@ export function OrderStatusControl({
               </SelectContent>
             </Select>
 
-            <p className="text-muted-foreground text-xs">
-              {selected
-                ? (selected.hint ??
-                  `${ORDER_STATUS_LABEL[current]} → ${ORDER_STATUS_LABEL[selected.to]}`)
-                : "Энэ захиалга дараах төлөв рүү л шилжиж болно."}
-            </p>
-
             <Input
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -288,12 +281,6 @@ export function OrderStatusControl({
                 ? "Шинэчилж байна…"
                 : (selected?.label ?? "Төлөв сонгоно уу")}
             </Button>
-
-            {recovery.length > 0 && (
-              <p className="text-muted-foreground text-xs">
-                Буцаах сонголт зөвхөн супер админд харагдана.
-              </p>
-            )}
           </>
         )}
       </section>

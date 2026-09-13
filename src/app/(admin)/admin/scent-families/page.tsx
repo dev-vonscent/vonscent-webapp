@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { isImageGenConfigured } from "@/lib/env";
 import { fetchScentFamilies } from "@/features/taxonomy/api";
 import { ScentFamilyManager } from "@/features/admin/components/scent-family-manager";
 import { PageHeader } from "@/components/shared/page-header";
@@ -13,9 +14,11 @@ export default async function ScentFamiliesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Үнэрийн төрөл"
-        description="Барааны маягт болон каталогийн шүүлтүүр энэ жагсаалтаас уншина."
       />
-      <ScentFamilyManager families={families} />
+      <ScentFamilyManager
+        families={families}
+        imageGenEnabled={isImageGenConfigured}
+      />
     </div>
   );
 }

@@ -80,7 +80,6 @@ export interface ProductDetail extends ProductListItem {
   description: string;
   notesDescription: string;
   usageDescription: string;
-  shortDescription: string;
   notesTop: string[];
   notesHeart: string[];
   notesBase: string[];
@@ -104,6 +103,12 @@ export interface ScentFamilyOption {
   iconUrl: string | null;
   sortOrder: number;
   isActive: boolean;
+  /**
+   * ISO огноо. Админ дүрсгүй мөрийг «AI үүсгэж байна» гэж таних цорын ганц
+   * дохио — үүсэлт нь хүсэлтийн араас явдаг тул төлөв хадгалдаг хүснэгт
+   * байхгүй (scent-family-manager.tsx).
+   */
+  createdAt: string;
 }
 
 /**

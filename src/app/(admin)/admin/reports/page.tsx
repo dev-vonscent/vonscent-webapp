@@ -13,11 +13,7 @@ import {
   StockBarChart,
 } from "@/features/admin/components/report-charts";
 import { DateRangeFilter } from "@/features/admin/components/date-range-filter";
-import {
-  REPORT_DATE_PRESETS,
-  bucketLabel,
-  rangeSummary,
-} from "@/features/admin/lib/date-range";
+import { bucketLabel, rangeSummary } from "@/features/admin/lib/date-range";
 import { PageHeader } from "@/components/shared/page-header";
 import { formatPrice } from "@/lib/format";
 
@@ -97,7 +93,7 @@ export default async function AdminReportsPage({
           to={to}
           params={{}}
           basePath="/admin/reports"
-          presets={REPORT_DATE_PRESETS}
+          presetSet="reports"
         />
       </div>
 

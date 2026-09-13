@@ -21,13 +21,16 @@ export default async function AdminProductsPage({
     q?: string;
     vis?: string;
     stock?: string;
+    /** '1' бол зөвхөн «Онцлох» бараа. */
+    featured?: string;
     /** Legacy single filter, kept so old links and bookmarks still land. */
     status?: string;
     sort?: string;
     page?: string;
   }>;
 }) {
-  const { q, vis, stock, status, sort, page } = await searchParams;
+  const { q, vis, stock, featured, status, sort, page } = await searchParams;
+  const onlyFeatured = featured === "1";
 
   // Visibility and stock used to share one `status` parameter, which made them
   // mutually exclusive. Old links carrying it are mapped onto whichever of the
@@ -42,15 +45,17 @@ export default async function AdminProductsPage({
     q,
     visibility,
     stock: stockFilter,
+    featured: onlyFeatured,
     sort,
     page: pageIndex,
   });
 
-  const filtering = Boolean(q || visibility || stockFilter);
+  const filtering = Boolean(q || visibility || stockFilter || onlyFeatured);
   const href = makeHrefBuilder("/admin/products", {
     q,
     vis: visibility,
     stock: stockFilter,
+    featured: onlyFeatured ? "1" : undefined,
     sort,
   });
 

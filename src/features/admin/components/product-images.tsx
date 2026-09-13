@@ -22,16 +22,25 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  Clock,
   Eye,
   EyeOff,
   GripVertical,
   ImageIcon,
   ImagePlus,
+  Loader2,
+  Sparkles,
   Trash2,
   UploadCloud,
   X,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useConfirm } from "@/components/shared/confirm-dialog";
 import {
   adminFetch,
@@ -85,6 +94,16 @@ function keyOf(img: GalleryImage): string {
 export interface GalleryController {
   images: GalleryImage[];
   uploading: number;
+  /** Яг одоо бэлдэгдэж буй AI зургийн тоо (эргэлдэх карт). */
+  pending: number;
+  /** Дараалалд хүлээж буй AI зургийн тоо (тайван карт). */
+  queued: number;
+  /** Зургийг заавраар засварлаж эхлүүлнэ; амжилттай бол `true`. */
+  startEdit: (img: GalleryImage, prompt: string) => Promise<boolean>;
+  /** Гаднаас эхлүүлсэн AI ажилд хүлээлтийн карт нэмнэ. */
+  startPending: () => void;
+  /** Серверээс уншсан бодит тоогоор картуудыг тааруулна. */
+  setPendingCounts: (pending: number, queued: number) => void;
   errors: string[];
   full: boolean;
   dismissError: (message: string) => void;
@@ -92,11 +111,9 @@ export interface GalleryController {
   /** Re-seed from the server — a background job may have filed a new row. */
   replaceImages: (images: GalleryImage[]) => void;
   remove: (index: number) => Promise<void>;
-  setAlt: (index: number, alt: string) => void;
   toggleVisible: (index: number) => void;
   /** How many pictures the storefront actually shows. */
   visibleCount: number;
-  persistCurrent: () => void;
   confirmDialog: React.ReactNode;
   dnd: {
     sensors: ReturnType<typeof useSensors>;
@@ -111,13 +128,18 @@ export function useProductGallery({
   productId,
   initial = [],
   onChange,
+  onEditStart,
 }: {
   productId?: string;
   initial?: GalleryImage[];
   onChange?: (images: GalleryImage[]) => void;
+  /** AI засвар эхэлснийг дуудагчид хэлнэ — төлөв хөтлөлт түүн дээр байдаг. */
+  onEditStart?: () => void;
 }): GalleryController {
   const [images, setImages] = React.useState<GalleryImage[]>(initial);
   const [uploading, setUploading] = React.useState(0);
+  const [pending, setPending] = React.useState(0);
+  const [queued, setQueued] = React.useState(0);
   const [errors, setErrors] = React.useState<string[]>([]);
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const [confirm, confirmDialog] = useConfirm();
@@ -280,9 +302,44 @@ export function useProductGallery({
     await persistOrder(next);
   }
 
+  // Санал авалтын эффектийн хамаарал болдог тул тогтвортой байх ёстой —
+  // эс бөгөөс интервал render бүрд дахин эхэлж, хэзээ ч ажиллахгүй.
+  const startPending = React.useCallback(() => setPending((n) => n + 1), []);
+  const setPendingCounts = React.useCallback((p: number, q: number) => {
+    setPending(p);
+    setQueued(q);
+  }, []);
+
+  /**
+   * Зургийг заавраар засварлах. Эх зураг галерейд байрандаа үлдэнэ — үр дүн нь
+   * ШИНЭ мөр болж ард нь нэмэгдэнэ (`addGalleryImage`), тиймээс энд зөвхөн
+   * хүлээлтийн тоолуур нэмэгдэнэ.
+   */
+  async function startEdit(img: GalleryImage, prompt: string) {
+    if (!persisted) return false;
+    setPending((n) => n + 1);
+    const ok = await mutateJson(
+      `/api/admin/products/${productId}/edit-image`,
+      "POST",
+      { referenceUrl: img.url, prompt },
+      "Зураг засварлаж эхэлсэнгүй",
+    );
+    if (!ok) {
+      setPending((n) => Math.max(0, n - 1));
+      return false;
+    }
+    onEditStart?.();
+    return true;
+  }
+
   return {
     images,
     uploading,
+    pending,
+    queued,
+    startEdit,
+    startPending,
+    setPendingCounts,
     errors,
     full,
     dismissError: (message) =>
@@ -290,8 +347,6 @@ export function useProductGallery({
     upload,
     replaceImages: notify,
     remove,
-    setAlt: (index, alt) =>
-      notify(images.map((img, i) => (i === index ? { ...img, alt } : img))),
     toggleVisible: (index) => {
       const next = images.map((img, i) =>
         i === index ? { ...img, visible: !img.visible } : img,
@@ -300,7 +355,6 @@ export function useProductGallery({
       void persistOrder(next);
     },
     visibleCount: images.filter((img) => img.visible).length,
-    persistCurrent: () => void persistOrder(imagesRef.current),
     confirmDialog,
     dnd: {
       sensors,
@@ -330,9 +384,8 @@ function SortableTile({
   isPrimary,
   eager,
   onRemove,
-  onAlt,
-  onAltBlur,
   onToggleVisible,
+  onOpen,
 }: {
   img: GalleryImage;
   index: number;
@@ -341,9 +394,9 @@ function SortableTile({
   /** Above the fold now that the gallery leads the form — load it eagerly. */
   eager: boolean;
   onRemove: () => void;
-  onAlt: (alt: string) => void;
-  onAltBlur: () => void;
   onToggleVisible: () => void;
+  /** Зураг дээр дарахад — том харагдах ба засварлах цонх. */
+  onOpen?: () => void;
 }) {
   const {
     attributes,
@@ -366,17 +419,27 @@ function SortableTile({
       }`}
     >
       <div className="bg-secondary relative aspect-square">
-        <Image
-          src={img.url}
-          alt={img.alt || "Барааны зураг"}
-          fill
-          sizes="(min-width: 640px) 200px, 45vw"
-          priority={eager}
-          // A picture the shop does not show reads as a draft, not as a
-          // missing one: still legible, plainly set aside.
-          className={`object-cover transition-opacity ${img.visible ? "" : "opacity-35"}`}
-          draggable={false}
-        />
+        {/* Зураг өөрөө товч: дарахад том харагдаж, заавраар засварлана.
+            Чирэх бариул, устгах, сонгох товчнууд үүний дээр тусдаа сууна. */}
+        <button
+          type="button"
+          onClick={onOpen}
+          disabled={!onOpen}
+          aria-label={`${index + 1}-р зургийг нээх`}
+          className="absolute inset-0 cursor-zoom-in disabled:cursor-default"
+        >
+          <Image
+            src={img.url}
+            alt={img.alt || "Барааны зураг"}
+            fill
+            sizes="(min-width: 640px) 200px, 45vw"
+            priority={eager}
+            // A picture the shop does not show reads as a draft, not as a
+            // missing one: still legible, plainly set aside.
+            className={`object-cover transition-opacity ${img.visible ? "" : "opacity-35"}`}
+            draggable={false}
+          />
+        </button>
 
         <button
           type="button"
@@ -419,20 +482,101 @@ function SortableTile({
         </button>
       </div>
 
-      <Input
-        value={img.alt}
-        placeholder="Зургийн тайлбар (alt)"
-        className="bg-secondary/60 h-11 rounded-none text-base md:h-9 md:text-xs"
-        onChange={(e) => onAlt(e.target.value)}
-        onBlur={onAltBlur}
-      />
     </li>
+  );
+}
+
+/**
+ * Нэг зургийн цонх: том харагдац ба засварын заавар.
+ *
+ * Бичсэн текст ЯГ тэр чигээрээ загварт очно (`/edit-image`) — нэмэлт үг,
+ * барааны нэр, үндсэн prompt нэмэгдэхгүй. Илгээмэгц цонх хаагдаж, галерейн
+ * ард хүлээлтийн карт гарна; эх зураг байрандаа хэвээр.
+ */
+function EditImageDialog({
+  img,
+  onClose,
+  onSubmit,
+}: {
+  img: GalleryImage | null;
+  onClose: () => void;
+  onSubmit: (prompt: string) => void;
+}) {
+  const [prompt, setPrompt] = React.useState("");
+
+  // Цонх шинэ зураг дээр нээгдэх бүрд талбар цэвэрлэгдэнэ.
+  React.useEffect(() => {
+    if (img) setPrompt("");
+  }, [img]);
+
+  const text = prompt.trim();
+
+  return (
+    <Dialog open={Boolean(img)} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogTitle>Зураг засварлах</DialogTitle>
+        <DialogDescription>
+          Юуг өөрчлөхөө бичнэ үү. Бичсэн зүйл яг тэр чигээрээ AI руу очих ба
+          энэ зураг өөрөө лавлах болно (хүрээг нь 1:1 болгох мөр л ард нь
+          залгагдана). Үр дүн нь галерейд ШИНЭ зураг болж нэмэгдэнэ — энэ
+          зураг байрандаа үлдэнэ.
+        </DialogDescription>
+
+        {img && (
+          <Image
+            src={img.url}
+            alt={img.alt || "Барааны зураг"}
+            width={900}
+            height={900}
+            sizes="(min-width: 768px) 640px, 90vw"
+            className="bg-secondary mx-auto max-h-[55svh] w-auto rounded-lg object-contain"
+          />
+        )}
+
+        <label className="block text-xs font-medium">
+          Засварын заавар
+          <textarea
+            autoFocus
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            rows={3}
+            placeholder="Жишээ: remove the background and place the bottle on white marble"
+            className="bg-background field-edge placeholder:text-muted-foreground mt-1 w-full resize-none rounded-md p-2 text-base md:text-sm"
+          />
+        </label>
+
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Болих
+          </Button>
+          <Button
+            type="button"
+            disabled={!text}
+            onClick={() => onSubmit(text)}
+          >
+            <Sparkles className="size-4" />
+            Засварлах
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 /** The pictures themselves — first in the studio, above the add controls. */
 export function GalleryGrid({ g }: { g: GalleryController }) {
-  if (g.images.length === 0 && g.uploading === 0) {
+  const [editTarget, setEditTarget] = React.useState<GalleryImage | null>(null);
+
+  // Хүлээлтийн картууд ч энэ сүлжээн дотор буудаг тул тэднийг тооцох ёстой:
+  // шинэ бараа зурагГҮЙ үүсдэг бөгөөд AI хоёр зураг нь замдаа явж байхад энэ
+  // хэсэг «Зураг алга» гэж хоосон зогсдог байв — эхний зураг буумагц л
+  // сүлжээ гарч ирээд хоёр дахийн loader-тэй хамт үсэрч харагдана.
+  if (
+    g.images.length === 0 &&
+    g.uploading === 0 &&
+    g.pending === 0 &&
+    g.queued === 0
+  ) {
     return (
       <>
         {g.confirmDialog}
@@ -477,9 +621,8 @@ export function GalleryGrid({ g }: { g: GalleryController }) {
                   img.visible && g.images.findIndex((x) => x.visible) === i
                 }
                 onRemove={() => g.remove(i)}
-                onAlt={(alt) => g.setAlt(i, alt)}
-                onAltBlur={g.persistCurrent}
                 onToggleVisible={() => g.toggleVisible(i)}
+                onOpen={img.id ? () => setEditTarget(img) : undefined}
               />
             ))}
 
@@ -491,6 +634,30 @@ export function GalleryGrid({ g }: { g: GalleryController }) {
               >
                 <ImagePlus className="size-6" />
                 <span className="text-xs">Оруулж байна…</span>
+              </li>
+            ))}
+
+            {/* Явж буй AI ажил бүрд нэг карт — хамгийн ард. Эх зураг
+                байрандаа үлдэж, үр дүн нь шинэ мөр болж ирнэ. */}
+            {Array.from({ length: g.pending }).map((_, i) => (
+              <li
+                key={`pending-${i}`}
+                className="bg-secondary/50 text-muted-foreground flex aspect-square flex-col items-center justify-center gap-2 rounded-lg"
+              >
+                <Loader2 className="size-6 animate-spin" />
+                <span className="text-xs">AI зураг бэлдэж байна…</span>
+              </li>
+            ))}
+
+            {/* Дараалалд хүлээж байгаа ажил (жишээ нь шинэ барааны хоёр дахь,
+                үнэрийн нот зураг — эхнийх нь дуусахыг хүлээнэ). */}
+            {Array.from({ length: g.queued }).map((_, i) => (
+              <li
+                key={`queued-${i}`}
+                className="bg-secondary/30 text-muted-foreground flex aspect-square flex-col items-center justify-center gap-2 rounded-lg"
+              >
+                <Clock className="size-6" />
+                <span className="text-xs">Хүлээгдэж байна…</span>
               </li>
             ))}
           </ul>
@@ -513,6 +680,17 @@ export function GalleryGrid({ g }: { g: GalleryController }) {
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      <EditImageDialog
+        img={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSubmit={(prompt) => {
+          const img = editTarget;
+          // Цонх шууд хаагдана — ажиллаж байгааг галерей дахь карт хэлнэ.
+          setEditTarget(null);
+          if (img) void g.startEdit(img, prompt);
+        }}
+      />
     </>
   );
 }

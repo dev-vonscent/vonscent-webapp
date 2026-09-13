@@ -8,6 +8,7 @@ import {
   type ImageSize,
   type ImageQuality,
 } from "./generate-image";
+import { finishNoteImage } from "./note-image";
 
 /**
  * Process one generation job: claim it, call OpenAI, upload the result, and mark
@@ -30,7 +31,29 @@ interface ImageGenSettings {
   quality?: ImageQuality;
 }
 
-export async function processGeneration(jobId: string): Promise<void> {
+export interface ProcessOptions {
+  /**
+   * «Үнэрийн нот» зураг мөн эсэх. Тийм бол үр дүнг `finishNoteImage`-ээр
+   * дамжуулж дэвсгэрийг нь жинхэнэ хар болгоно (саарал дэвсгэртэйг нь
+   * буцаана) — энгийн packshot-д тэр боловсруулалт хэрэггүй.
+   */
+  note?: boolean;
+  /**
+   * `settings.imageGen`-ийг дарж бичих хэмжээ/чанар.
+   *
+   * Тэр тохиргоо нь `1024x1536` (босоо) байдаг ба каталогийн стандарт
+   * packshot, нотын зураг хоёрын prompt нь ДӨРВӨЛЖИН хүрээнд бичигдсэн —
+   * шинэ барааны шатууд (`new-product-pipeline.ts`) `1024x1024`-ийг шууд
+   * бичдэг нь тиймээс. Тэдгээрийг гараас дуудахад ч мөн адил байх ёстой.
+   */
+  size?: ImageSize;
+  quality?: ImageQuality;
+}
+
+export async function processGeneration(
+  jobId: string,
+  { note = false, size, quality }: ProcessOptions = {},
+): Promise<void> {
   const supabase = createAdminClient();
   if (!supabase) return;
 
@@ -57,11 +80,11 @@ export async function processGeneration(jobId: string): Promise<void> {
     const cfg = ((setting?.value as ImageGenSettings) ??
       {}) as ImageGenSettings;
 
-    const { buffer, contentType, ext } = await generateProductImage({
+    const generated = await generateProductImage({
       prompt: j.prompt,
       referenceUrl: j.reference_url,
-      size: cfg.size,
-      quality: cfg.quality,
+      size: size ?? cfg.size,
+      quality: quality ?? cfg.quality,
     });
 
     const { data: prod } = await supabase
@@ -71,11 +94,19 @@ export async function processGeneration(jobId: string): Promise<void> {
       .maybeSingle();
     const slug = (prod as { slug?: string } | null)?.slug ?? j.product_id;
 
-    const uploaded = await uploadImage(
-      `products/${slug}/ai-${randomUUID()}.${ext}`,
-      buffer,
-      contentType,
-    );
+    const file = note
+      ? {
+          data: (await finishNoteImage(generated.raw)).webp,
+          contentType: "image/webp",
+          path: `products/${slug}/notes-${randomUUID()}.webp`,
+        }
+      : {
+          data: generated.buffer,
+          contentType: generated.contentType,
+          path: `products/${slug}/ai-${randomUUID()}.${generated.ext}`,
+        };
+
+    const uploaded = await uploadImage(file.path, file.data, file.contentType);
     if (!uploaded) throw new Error("Storage upload failed.");
 
     // The result is a gallery picture like any other, just not ticked for the

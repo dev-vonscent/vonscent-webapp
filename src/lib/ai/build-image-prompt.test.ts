@@ -12,7 +12,7 @@ describe("buildImagePrompt", () => {
       name: "Aventus",
       brand: "Creed",
       gender: "male",
-      shortDescription: "Bold and confident.",
+      description: "Bold and confident.",
     });
     expect(p).toContain("Perfume: Creed — Aventus");
     expect(p).toContain("Gender: male");
@@ -22,7 +22,7 @@ describe("buildImagePrompt", () => {
     expect(p.toLowerCase()).not.toContain("bergamot");
   });
 
-  it("falls back to the long description when there is no short one", () => {
+  it("carries the description into the prompt", () => {
     const p = buildImagePrompt({ name: "X", description: "A calm morning." });
     expect(p).toContain("A calm morning.");
   });

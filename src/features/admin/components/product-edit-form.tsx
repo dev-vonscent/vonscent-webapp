@@ -89,7 +89,6 @@ export function ProductEditForm({
     description: product.description,
     notesDescription: product.notesDescription,
     usageDescription: product.usageDescription,
-    shortDescription: product.shortDescription,
     notesTop: product.notesTop.join(", "),
     notesHeart: product.notesHeart.join(", "),
     notesBase: product.notesBase.join(", "),
@@ -202,7 +201,6 @@ export function ProductEditForm({
           description: form.description,
           notesDescription: form.notesDescription,
           usageDescription: form.usageDescription,
-          shortDescription: form.shortDescription,
           notesTop: split(form.notesTop),
           notesHeart: split(form.notesHeart),
           notesBase: split(form.notesBase),
@@ -441,11 +439,6 @@ export function ProductEditForm({
               />
             </div>
           )}
-
-          <p className="text-muted-foreground text-sm">
-            Эх савны үнэ/багтаамж нь борлуулалт, ашгийн тайланд болон үлдэгдэл
-            тооцоонд ашиглагдана — зарах үнэд нөлөөлөхгүй.
-          </p>
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Эх савны үнэ (₮)">
               <Input
@@ -491,16 +484,6 @@ export function ProductEditForm({
           </div>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox
-              checked={isActive}
-              onCheckedChange={(v) => {
-                setDirty(true);
-                setIsActive(Boolean(v));
-              }}
-            />
-            Идэвхтэй (нийтлэх)
-          </label>
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <Checkbox
               checked={isFeatured}
               onCheckedChange={(v) => {
                 setDirty(true);
@@ -509,10 +492,17 @@ export function ProductEditForm({
             />
             <span>
               Онцлох бараа
-              <span className="text-muted-foreground block text-xs">
-                Нүүрийн «Онцлох» хэсэгт автоматаар орно
-              </span>
             </span>
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Checkbox
+              checked={isActive}
+              onCheckedChange={(v) => {
+                setDirty(true);
+                setIsActive(Boolean(v));
+              }}
+            />
+            Идэвхтэй (нийтлэх)
           </label>
           <CustomTagField
             pool={customTagPool}

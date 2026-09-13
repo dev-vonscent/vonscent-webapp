@@ -13,7 +13,9 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-svh flex-col lg:flex-row">
+    // `admin-shell` — globals.css-ийн `html:has(.admin-shell)` дүрмийн дохио
+    // (уян overscroll-ыг зөвхөн админд унтраана).
+    <div className="admin-shell flex min-h-svh flex-col lg:flex-row">
       {/* Хажуугийн цэс 25 холбоостой — гараар ажилладаг оператор хуудас бүр
           дээр тэр бүгдийг давах ёсгүй. */}
       <SkipLink />

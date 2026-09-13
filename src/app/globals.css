@@ -508,6 +508,19 @@
    * without any of them opting in. `no-scrollbar` still opts out: it is a
    * utility, and utilities cascade after base.
    */
+  /*
+   * Админы бүрхүүлд хөтчийн «уян» (rubber-band) overscroll байхгүй.
+   *
+   * Хажуугийн цэс нь дэлгэцэнд наалдсан (sticky, бүтэн өндөр) тул хамгийн
+   * дээр/доор очсон хойно үргэлжлүүлэн түлхэхэд бүх бүрхүүл хамт чирэгдээд
+   * буцаж үсэрдэг — програм эвдэрсэн мэт харагдана. Дэлгүүрийн талд энэ
+   * зан хэвээр: тэнд уншдаг хуудас, гар утсан дээрх «татаж сэргээх» дохио
+   * хэрэгтэй. `:has()` нь `<html>`-д хүрэх цорын ганц зам — админы layout
+   * root дээрх `.admin-shell` ангиас өөр дохио байхгүй.
+   */
+  html:has(.admin-shell) {
+    overscroll-behavior-y: none;
+  }
   html {
     scrollbar-width: thin;
     /*

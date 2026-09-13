@@ -8,7 +8,10 @@ import { Input } from "@/components/ui/input";
 import type { GiftSettings } from "@/features/content/api";
 import { adminFetch } from "@/features/admin/lib/mutate";
 import { useProductOptions } from "@/features/admin/hooks/use-product-options";
-import type { ProductOption } from "@/features/admin/lib/product-option";
+import {
+  PRODUCT_OPTION_MAX,
+  type ProductOption,
+} from "@/features/admin/lib/product-option";
 
 const MIN_POOL = 6;
 const MAX_POOL = 8;
@@ -25,7 +28,12 @@ export function GiftPoolManager({
   options: ProductOption[];
   initial: GiftSettings;
 }) {
-  const { q, setQ, items, loading, byId } = useProductOptions(options);
+  // Бэлгийн ус сонгоход бүх каталог харагдана — хайлт нь шүүлт болохоос
+  // жагсаалтыг нээх нөхцөл биш.
+  const { q, setQ, items, loading, byId } = useProductOptions(
+    options,
+    PRODUCT_OPTION_MAX,
+  );
   const [enabled, setEnabled] = React.useState(initial.enabled);
   const [ids, setIds] = React.useState<string[]>(initial.productIds);
   const [saving, setSaving] = React.useState(false);
@@ -112,8 +120,8 @@ export function GiftPoolManager({
           className="max-w-sm"
         />
 
-        {/* Жагсаалт нь бүх каталог БИШ — хайлтад таарсан эхний хэдэн мөр.
-            Хүссэн ус эндээ харагдахгүй бол нэрээ бичихэд гарч ирнэ. */}
+        {/* Бүх бараа энд байна (хайлт нь зөвхөн шүүнэ). Жагсаалт нь өөрөө
+            гүйнэ — доорх хайрцгийн өндөр хязгаартай. */}
         <div
           className={`bg-muted/40 max-h-112 overflow-y-auto rounded-lg transition-opacity ${
             loading ? "opacity-60" : ""
