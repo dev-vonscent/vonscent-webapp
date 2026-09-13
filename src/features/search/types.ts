@@ -25,6 +25,8 @@ export interface SearchHit {
   soldOut: boolean;
   /** Багцын гишүүдийн тоо, брэндийн барааны тоо. */
   itemCount: number | null;
+  /** Зөвхөн багц: эхний 4 гишүүний зураг — жижиг «савны зурвас» болно. */
+  memberImages: string[] | null;
 }
 
 /** Төрлөөр нь бүлэглэсэн үр дүн — UI SEARCH_KINDS дарааллаар харуулна. */
