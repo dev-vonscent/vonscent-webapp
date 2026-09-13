@@ -13,6 +13,7 @@ import { CatalogResults } from "@/features/catalog/components/catalog-results";
 import { FilterQueryProvider } from "@/features/catalog/components/use-filter-query";
 import { ProductGrid } from "@/features/products/components/product-grid";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/shared/empty-state";
 
 /**
  * The route itself is dynamic — it reads `searchParams`, so a filtered view is
@@ -100,18 +101,17 @@ export default async function CatalogPage({
 
             <CatalogResults>
               {result.items.length === 0 ? (
-                <div className="border-border flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed py-24 text-center">
-                  <SearchX className="text-muted-foreground size-10" />
-                  <div>
-                    <p className="font-medium">Илэрц олдсонгүй</p>
-                    <p className="text-muted-foreground text-sm">
-                      Шүүлтүүрээ өөрчилж дахин оролдоно уу.
-                    </p>
-                  </div>
-                  <Button asChild variant="outline">
-                    <Link href="/catalog">Бүх барааг үзэх</Link>
-                  </Button>
-                </div>
+                <EmptyState
+                  size="lg"
+                  icon={SearchX}
+                  title="Илэрц олдсонгүй"
+                  description="Шүүлтүүрээ өөрчилж дахин оролдоно уу."
+                  action={
+                    <Button asChild variant="outline">
+                      <Link href="/catalog">Бүх барааг үзэх</Link>
+                    </Button>
+                  }
+                />
               ) : (
                 <>
                   <ProductGrid products={result.items} />

@@ -3,6 +3,7 @@ import {
   CollectionAdmin,
   type AdminCollection,
 } from "@/features/admin/components/collection-admin";
+import { PageHeader } from "@/components/shared/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -23,13 +24,11 @@ export default async function AdminCollectionsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-serif text-2xl font-semibold">Багц</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Бэлэн багц үүсгэх, засах — 4 үнэртэн, хэмжээ тус бүрийн хямдрал.
-          Бэлгийн 1мл дээж нь тусдаа «Бэлгийн үнэрүүд» хуудсаар удирдагдана.
-        </p>
-      </div>
+      <PageHeader
+        title="Багц"
+        count={collections.length}
+        description="Бэлэн багц үүсгэх, засах — 4 үнэртэн, хэмжээ тус бүрийн хямдрал. Бэлгийн 1мл дээж нь тусдаа «Бэлгийн үнэрүүд» хуудсаар удирдагдана."
+      />
       <CollectionAdmin collections={collections} />
     </div>
   );

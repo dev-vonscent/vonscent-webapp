@@ -40,7 +40,13 @@ export const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="bg-background/70 text-foreground hover:bg-background absolute top-3 right-3 flex size-8 items-center justify-center rounded-full backdrop-blur transition-colors focus:outline-none">
+      {/* `focus:outline-none` байсныг хаслаа: Tailwind-ийн `:focus` дүрэм нь
+          globals.css-ийн `:focus-visible` тоймоос илүү тодорхой (specificity)
+          тул гараар ажилладаг хэрэглэгч «Хаах» дээр ирэхэд фокус нь ХААНА
+          байгаа нь огт харагдахгүй байв. Энэ ганц ангиас өөр аргаар (wrapper,
+          глобал CSS) засах боломжгүй — utility давхарга нь base давхаргыг
+          үргэлж дардаг. */}
+      <DialogPrimitive.Close className="bg-background/70 text-foreground hover:bg-background absolute top-3 right-3 flex size-8 items-center justify-center rounded-full backdrop-blur transition-colors">
         <X className="size-4" />
         <span className="sr-only">Хаах</span>
       </DialogPrimitive.Close>

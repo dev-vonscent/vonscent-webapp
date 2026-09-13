@@ -58,7 +58,11 @@ export function ConfirmDialog({
   return (
     <Dialog open={isOpen} onOpenChange={busy ? undefined : setOpen}>
       {trigger}
-      <DialogContent className="max-w-sm gap-3">
+      {/* `alertdialog` нь `dialog`-оос ялгаатай: дэлгэц уншигч нээгдэх
+          мөчид агуулгыг нь ШУУД уншина, учир нь энэ бол хариу шаардсан
+          тасалдал (WAI-ARIA APG). Устгах/цуцлах асуултууд яг тийм.
+          `aria-describedby`-г Radix `DialogDescription`-оос өөрөө холбоно. */}
+      <DialogContent role="alertdialog" className="max-w-sm gap-3">
         <DialogTitle>{title}</DialogTitle>
         {description && <DialogDescription>{description}</DialogDescription>}
         <div className="mt-2 flex justify-end gap-2">
@@ -128,7 +132,7 @@ export function useConfirm(): [
         if (!open) settle(false);
       }}
     >
-      <DialogContent>
+      <DialogContent role="alertdialog">
         <DialogTitle>{state?.title}</DialogTitle>
         {state?.description && (
           <DialogDescription>{state.description}</DialogDescription>

@@ -33,7 +33,18 @@ export function ProductGallery({
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { loop: many, watchDrag: many },
     many && !reducedMotion
-      ? [Autoplay({ delay: AUTOPLAY_MS, stopOnInteraction: true })]
+      ? [
+          Autoplay({
+            delay: AUTOPLAY_MS,
+            stopOnInteraction: true,
+            // WCAG 2.2.2: автоматаар хөдөлдөг агуулгыг зогсоох арга байх
+            // ёстой. Цэг/жижиг зураг дээр дарахад бүрмөсөн зогсдог, дээр нь
+            // хулгана дээр нь очих ба гар фокус орох нь ч зогсооно — эс
+            // бөгөөс зураг уншиж байх үед нь солигдчихдог.
+            stopOnMouseEnter: true,
+            stopOnFocusIn: true,
+          }),
+        ]
       : [],
   );
   const [active, setActive] = React.useState(0);
@@ -70,6 +81,9 @@ export function ProductGallery({
         <div
           ref={emblaRef}
           className="overflow-hidden sm:rounded-2xl sm:bg-none"
+          role="group"
+          aria-roledescription="carousel"
+          aria-label={`${name} — зургууд`}
         >
           <div className="flex">
             {images.map((img, i) => (
@@ -78,6 +92,11 @@ export function ProductGallery({
                 type="button"
                 onClick={() => openLightbox(i)}
                 aria-label={`${name} — зураг ${i + 1} томруулах`}
+                // Харагдахгүй слайдууд DOM-д үлддэг тул Tab нь дэлгэцэн дээр
+                // байхгүй товчнууд дээр очиж, дэлгэц уншигч бүх зургийг
+                // дараалуулан уншдаг байв.
+                aria-hidden={i !== active}
+                tabIndex={i === active ? undefined : -1}
                 className="relative aspect-4/5 min-w-0 flex-[0_0_100%] cursor-zoom-in bg-none sm:aspect-square"
               >
                 <Image
@@ -113,6 +132,11 @@ export function ProductGallery({
         )}
       </div>
 
+      {/* Слайд солигдохыг чимээгүй зарлах — DOM-д урьдчилан байх ёстой. */}
+      <div aria-live="polite" aria-atomic className="sr-only">
+        {many ? `Зураг ${active + 1} / ${images.length}` : ""}
+      </div>
+
       {/* Desktop thumbnail strip */}
       {many && (
         <div className="no-scrollbar mt-0 hidden gap-3 overflow-x-auto p-0.5 sm:flex">
@@ -127,6 +151,9 @@ export function ProductGallery({
                   : "opacity-60 hover:opacity-100",
               )}
               aria-label={`Зураг ${i + 1}`}
+              // Идэвхтэйг зөвхөн ring-ээр хэлдэг байсан — өнгө/хүрээ нь
+              // дэлгэц уншигчид хүрдэггүй (WCAG 1.4.1).
+              aria-current={i === active ? "true" : undefined}
             >
               <Image
                 src={img.url}

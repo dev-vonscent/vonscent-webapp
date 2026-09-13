@@ -8,6 +8,8 @@ import {
 } from "@/features/admin/components/server-pager";
 import { CustomersToolbar } from "@/features/admin/components/customers-toolbar";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/shared/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
 
 export default async function AdminCustomersPage({
   searchParams,
@@ -21,28 +23,30 @@ export default async function AdminCustomersPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-serif text-2xl font-semibold">Хэрэглэгч</h1>
-        <CustomersToolbar />
-      </div>
+      <PageHeader
+        title="Хэрэглэгч"
+        count={total ?? undefined}
+        actions={<CustomersToolbar />}
+      />
 
       {rows.length === 0 ? (
-        <div className="bg-card flex flex-col items-center gap-3 rounded-lg py-20 text-center">
-          <Users className="text-muted-foreground size-10" />
-          <p className="font-medium">
-            {q ? "Энэ хайлтад тохирох хэрэглэгч алга" : "Хэрэглэгч алга"}
-          </p>
-          <p className="text-muted-foreground max-w-xs text-sm">
-            {q
+        <EmptyState
+          surface="card"
+          icon={Users}
+          title={q ? "Энэ хайлтад тохирох хэрэглэгч алга" : "Хэрэглэгч алга"}
+          description={
+            q
               ? "Өөр нэр эсвэл утасны дугаараар хайж үзнэ үү."
-              : "Хэрэглэгч бүртгүүлмэгц энд харагдана."}
-          </p>
-          {q && (
-            <Button variant="secondary" size="sm" asChild>
-              <Link href="/admin/customers">Бүх хэрэглэгч харах</Link>
-            </Button>
-          )}
-        </div>
+              : "Хэрэглэгч бүртгүүлмэгц энд харагдана."
+          }
+          action={
+            q && (
+              <Button variant="secondary" size="sm" asChild>
+                <Link href="/admin/customers">Бүх хэрэглэгч харах</Link>
+              </Button>
+            )
+          }
+        />
       ) : (
         <>
           <CustomersTable data={rows} />

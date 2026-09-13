@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
 import type { Collection } from "../types";
+import { EmptyState } from "@/components/shared/empty-state";
 
 function Card({ collection }: { collection: Collection }) {
   const router = useRouter();
@@ -187,14 +188,15 @@ function Card({ collection }: { collection: Collection }) {
 export function MyCollections({ collections }: { collections: Collection[] }) {
   if (collections.length === 0) {
     return (
-      <div className="border-border flex flex-col items-center gap-4 rounded-2xl border border-dashed py-16 text-center">
-        <p className="text-muted-foreground text-sm">
-          Хадгалсан багц алга байна.
-        </p>
-        <Button asChild>
-          <Link href="/collections/build">Багц угсрах</Link>
-        </Button>
-      </div>
+      <EmptyState
+        title="Хадгалсан багц алга байна"
+        description="Дуртай 4 үнэрээ сонгоод өөрийн багцаа угсраарай."
+        action={
+          <Button asChild>
+            <Link href="/collections/build">Багц угсрах</Link>
+          </Button>
+        }
+      />
     );
   }
   return (

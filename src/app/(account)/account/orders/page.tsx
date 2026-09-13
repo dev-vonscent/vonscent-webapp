@@ -20,6 +20,7 @@ import { formatPrice, formatDate } from "@/lib/format";
 import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { OrderRow } from "@/db/types";
+import { EmptyState } from "@/components/shared/empty-state";
 
 /** Distinct chip colour per status (overrides the Badge variant via twMerge). */
 const STATUS_STYLE: Record<OrderStatus, string> = {
@@ -91,20 +92,17 @@ export default async function OrdersPage() {
     return (
       <div className="space-y-6">
         <PageHeader />
-        <div className="border-border flex flex-col items-center gap-4 rounded-2xl border border-dashed py-20 text-center">
-          <div className="bg-secondary flex size-16 items-center justify-center rounded-full">
-            <Package className="text-muted-foreground size-7" />
-          </div>
-          <div>
-            <p className="font-medium">Захиалга алга байна</p>
-            <p className="text-muted-foreground text-sm">
-              Эхний захиалгаа өгөөд энд хянаарай.
-            </p>
-          </div>
-          <Button asChild>
-            <Link href="/catalog">Бараа үзэх</Link>
-          </Button>
-        </div>
+        <EmptyState
+          size="lg"
+          icon={Package}
+          title="Захиалга алга байна"
+          description="Эхний захиалгаа өгөөд энд хянаарай."
+          action={
+            <Button asChild>
+              <Link href="/catalog">Бараа үзэх</Link>
+            </Button>
+          }
+        />
       </div>
     );
   }

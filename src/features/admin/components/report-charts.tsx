@@ -43,8 +43,9 @@ function compactMnt(v: number): string {
   return String(v);
 }
 
-export interface MonthlyPoint {
-  month: string;
+export interface SeriesPoint {
+  /** Тэнхлэгт харагдах бичиг («9-р сар» эсвэл «9/13»). */
+  label: string;
   revenue: number;
   orders: number;
   ml: number;
@@ -95,20 +96,33 @@ function ChartTable({
   );
 }
 
-/** Line chart of monthly revenue; expects points oldest-first. */
-export function MonthlySalesChart({ data }: { data: MonthlyPoint[] }) {
+/**
+ * Борлуулалтын хугацааны график; цэгүүд нь ХУУЧНААС ШИНЭ рүү эрэмбэлэгдсэн
+ * байх ёстой. Хэрчим нь сар ч байж болно, өдөр ч байж болно (`caption`
+ * хоёуланг нь ялгаж хэлнэ) — тайлангийн муж богино үед өдрөөр бүлэглэдэг.
+ */
+export function SalesSeriesChart({
+  data,
+  caption,
+  bucketLabel,
+}: {
+  data: SeriesPoint[];
+  caption: string;
+  /** Хүснэгтийн эхний баганын толгой («Сар» / «Өдөр»). */
+  bucketLabel: string;
+}) {
   return (
     <div className="h-72 w-full">
       <ChartTable
-        caption="Сарын борлуулалт"
-        columns={["Сар", "Орлого (₮)", "Захиалга", "ml"]}
-        rows={data.map((d) => [d.month, d.revenue, d.orders, d.ml])}
+        caption={caption}
+        columns={[bucketLabel, "Орлого (₮)", "Захиалга", "ml"]}
+        rows={data.map((d) => [d.label, d.revenue, d.orders, d.ml])}
       />
       <ResponsiveContainer>
         <LineChart data={data} margin={{ left: 8, right: 16, top: 8 }}>
           <CartesianGrid stroke="var(--muted)" vertical={false} />
           <XAxis
-            dataKey="month"
+            dataKey="label"
             tick={AXIS_TICK}
             tickLine={false}
             axisLine={{ stroke: "var(--muted)" }}

@@ -46,6 +46,15 @@ interface NavLink {
   badge?: keyof SidebarBadges;
 }
 
+/**
+ * Тоолуурын badge нь дэлгэц уншигчид ганц тоо болж уншигддаг («3») тул
+ * утга нь `sr-only` мөрөөр хэлэгдэнэ.
+ */
+const BADGE_LABEL: Record<keyof SidebarBadges, string> = {
+  newOrders: "шинэ захиалга",
+  outOfStock: "дууссан бараа",
+};
+
 const GROUPS: { title: string | null; links: NavLink[] }[] = [
   {
     title: null,
@@ -77,6 +86,9 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
         icon: Boxes,
         badge: "outOfStock",
       },
+      // Түгжигдсэн мл нь барааны мөрөн дээрх «+N ml захиалагдсан» гэсэн
+      // тоог задалдаг тул Бараа-гийн яг дор (0075 / backlog §2.4).
+      { href: "/admin/reservations", label: "Түгжигдсэн мл", icon: Warehouse },
       { href: "/admin/collections", label: "Багц", icon: Layers },
       { href: "/admin/brands", label: "Брэнд", icon: Crown },
       { href: "/admin/scent-families", label: "Үнэрийн төрөл", icon: Tags },
@@ -222,6 +234,9 @@ export function AdminSidebar() {
       <Link
         key={l.href}
         href={l.href}
+        // Идэвхтэй хуудсыг зөвхөн ӨНГӨӨР хэлж байсан — дэлгэц уншигчид
+        // огт мэдэгддэггүй байв (WCAG 1.4.1).
+        aria-current={active ? "page" : undefined}
         className={cn(
           "flex min-h-11 shrink-0 items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors lg:min-h-0",
           active
@@ -231,9 +246,10 @@ export function AdminSidebar() {
       >
         <l.icon className="size-4" />
         {l.label}
-        {badgeCount > 0 && (
+        {badgeCount > 0 && l.badge && (
           <span className="bg-foreground text-background ml-auto rounded-full px-1.5 text-[11px]/4 font-semibold">
             {badgeCount}
+            <span className="sr-only"> {BADGE_LABEL[l.badge]}</span>
           </span>
         )}
       </Link>
@@ -310,6 +326,7 @@ export function AdminSidebar() {
                   <SheetClose asChild key={q.href}>
                     <Link
                       href={q.href}
+                      aria-current={isActive(pathname, q.href) ? "page" : undefined}
                       className={cn(
                         "relative flex flex-col items-center gap-1.5 rounded-lg py-3 text-xs font-medium transition-colors",
                         isActive(pathname, q.href)
@@ -322,6 +339,9 @@ export function AdminSidebar() {
                       {badgeCount > 0 && (
                         <span className="bg-foreground text-background absolute top-1.5 right-1.5 rounded-full px-1.5 text-[11px]/4 font-semibold">
                           {badgeCount}
+                          {q.badge && (
+                            <span className="sr-only"> {BADGE_LABEL[q.badge]}</span>
+                          )}
                         </span>
                       )}
                     </Link>
@@ -330,7 +350,9 @@ export function AdminSidebar() {
               })}
             </div>
 
-            <nav className="flex flex-col gap-1">{renderGroups(true)}</nav>
+            <nav aria-label="Админ цэс" className="flex flex-col gap-1">
+              {renderGroups(true)}
+            </nav>
 
             <SheetClose asChild>
               <Link
@@ -356,7 +378,14 @@ export function AdminSidebar() {
           admin
         </span>
       </div>
-      <nav className="hidden flex-col gap-1 px-3 lg:flex">{renderGroups()}</nav>
+      {/* Хоёр nav landmark (мобайл sheet + ширээний багана) нэг хуудсанд
+          зэрэг байж болох тул тус бүр нэртэй. */}
+      <nav
+        aria-label="Админ цэс"
+        className="hidden flex-col gap-1 px-3 lg:flex"
+      >
+        {renderGroups()}
+      </nav>
       <div className="mt-auto hidden p-3 lg:block">
         <Link
           href="/"

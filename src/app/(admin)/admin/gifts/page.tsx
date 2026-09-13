@@ -1,6 +1,7 @@
 import { getProductOptions } from "@/features/admin/api";
 import { getGiftSettings } from "@/features/content/api";
 import { GiftPoolManager } from "@/features/admin/components/gift-pool-manager";
+import { PageHeader } from "@/components/shared/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -22,17 +23,10 @@ export default async function AdminGiftsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-serif text-2xl font-semibold">
-          Бэлгийн үнэрүүд — 1мл дээж
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Худалдан авагч 200,000₮ тутамд (купоны дараах, хүргэлтгүй дүнгээр),
-          мөн бэлэн 5/10/20мл багц бүрээс 1 ширхэг — алийг нь ихийг нь — доорх
-          уснуудаас 1мл дээжээр сонгоно. 6–8 ус байлгахыг зөвлөнө; сар бүр
-          солих шаардлагагүй, хүссэн үедээ шинэчилнэ.
-        </p>
-      </div>
+      <PageHeader
+        title="Бэлгийн үнэрүүд — 1мл дээж"
+        description="Худалдан авагч 200,000₮ тутамд (купоны дараах, хүргэлтгүй дүнгээр), мөн бэлэн 5/10/20мл багц бүрээс 1 ширхэг — алийг нь ихийг нь — доорх уснуудаас 1мл дээжээр сонгоно. 6–8 ус байлгахыг зөвлөнө; сар бүр солих шаардлагагүй, хүссэн үедээ шинэчилнэ."
+      />
       <GiftPoolManager options={options} initial={settings} />
     </div>
   );

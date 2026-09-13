@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -46,6 +46,9 @@ function isLive(slide: PopupSlide, now: number): boolean {
 export function PromoPopup({ settings }: { settings: PopupSettings }) {
   const [open, setOpen] = React.useState(false);
   const [index, setIndex] = React.useState(0);
+  // Автомат шилжилт ажиллаж байгаа эсэх — WCAG 2.2.2 нь 5 секундээс урт
+  // автоматаар хөдөлдөг агуулгад ЗОГСООХ арга шаарддаг.
+  const [playing, setPlaying] = React.useState(true);
   // Хуваарь нь браузарын цагаар шийдэгдэнэ — серверийн ISR кэш хуучин
   // байсан ч дууссан зар үзэгдэхгүй.
   const [slides, setSlides] = React.useState<PopupSlide[]>([]);
@@ -82,10 +85,23 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
     return () => clearTimeout(t);
   }, [settings.enabled, settings.slides]);
 
-  function go(dir: number) {
+  function stopAutoplay() {
     emblaApi?.plugins().autoplay?.stop();
+    setPlaying(false);
+  }
+
+  function go(dir: number) {
+    stopAutoplay();
     if (dir > 0) emblaApi?.scrollNext();
     else emblaApi?.scrollPrev();
+  }
+
+  function togglePlay() {
+    const autoplay = emblaApi?.plugins().autoplay;
+    if (!autoplay) return;
+    if (playing) autoplay.stop();
+    else autoplay.play();
+    setPlaying(!playing);
   }
 
   if (slides.length === 0) return null;
@@ -100,21 +116,45 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
       >
         <DialogTitle className="sr-only">Сурталчилгаа</DialogTitle>
 
-        <div ref={emblaRef} className="overflow-hidden rounded-2xl">
+        {/* `aria-roledescription="carousel"` нь дэлгэц уншигчид энэ бүлэг
+            нь эргэлддэг гэдгийг хэлнэ; слайд бүр «N / M» гэсэн нэртэй.
+            Өмнө нь цэгүүд нь `role="tablist"`/`role="tab"` байсан нь буруу
+            байв — tab нь `tabpanel` шаарддаг бөгөөд энд тийм зүйл байхгүй. */}
+        <div
+          ref={emblaRef}
+          className="overflow-hidden rounded-2xl"
+          role="group"
+          aria-roledescription="carousel"
+          aria-label="Сурталчилгааны зарууд"
+        >
           <div className="flex items-start">
             {slides.map((slide, i) => (
               <div
                 key={`${slide.imageUrl}-${i}`}
                 className="min-w-0 flex-[0_0_100%]"
+                role="group"
+                aria-roledescription="slide"
+                aria-label={`${i + 1} / ${slides.length}`}
+                // Харагдахгүй байгаа слайдууд нь DOM-д үлддэг тул дэлгэц
+                // уншигч тэднийг ч уншиж, Tab нь тэдний холбоос дээр
+                // очдог байв — хэрэглэгч «алга болсон» товч дээр гацна.
+                aria-hidden={i !== index}
               >
                 <SlideImage
                   slide={slide}
                   eager={i === 0}
+                  focusable={i === index}
                   onNavigate={() => setOpen(false)}
                 />
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Слайд солигдохыг чимээгүй зарлана. `aria-live` нь ЗААВАЛ DOM-д
+            урьдчилан байх ёстой — агуулгатай нь хамт нэмэгдвэл уншигдахгүй. */}
+        <div aria-live="polite" aria-atomic className="sr-only">
+          {many ? `${index + 1} / ${slides.length} зар` : ""}
         </div>
 
         {many && (
@@ -135,30 +175,48 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
             >
               <ChevronRight className="size-4" />
             </button>
-            <div
-              role="tablist"
-              aria-label="Зарууд"
-              className="bg-background/70 absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-2.5 py-1.5 backdrop-blur"
-            >
+            <div className="bg-background/70 absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-2.5 py-1.5 backdrop-blur">
               {slides.map((_, i) => (
                 <button
                   key={i}
                   type="button"
-                  role="tab"
-                  aria-selected={i === index}
-                  aria-label={`${i + 1}-р зар`}
+                  aria-label={`${i + 1}-р зар руу очих`}
+                  aria-current={i === index ? "true" : undefined}
                   onClick={() => {
-                    emblaApi?.plugins().autoplay?.stop();
+                    stopAutoplay();
                     emblaApi?.scrollTo(i);
                   }}
                   className={cn(
-                    "h-1.5 rounded-full transition-all",
+                    // Товшилтын талбай нь хараагдах цэгээсээ том: 6px өндөр
+                    // зорилт нь гар чичирдэг хүнд бараг боломжгүй.
+                    "flex h-6 items-center px-0.5",
+                    "after:block after:h-1.5 after:rounded-full after:transition-all",
                     i === index
-                      ? "bg-foreground w-4"
-                      : "bg-foreground/35 w-1.5",
+                      ? "after:bg-foreground after:w-4"
+                      : "after:bg-foreground/35 after:w-1.5",
                   )}
                 />
               ))}
+              {/* Автомат шилжилтийг зогсоох арга (WCAG 2.2.2). Сум/свайп нь
+                  ч зогсоодог ч тэр нь «зогсоох» гэж нэрлэгдээгүй байв. */}
+              {!reducedMotion && (
+                <button
+                  type="button"
+                  onClick={togglePlay}
+                  aria-label={
+                    playing
+                      ? "Автомат шилжилтийг зогсоох"
+                      : "Автомат шилжилтийг үргэлжлүүлэх"
+                  }
+                  className="text-foreground/70 hover:text-foreground ml-1 flex size-6 items-center justify-center"
+                >
+                  {playing ? (
+                    <Pause className="size-3" />
+                  ) : (
+                    <Play className="size-3" />
+                  )}
+                </button>
+              )}
             </div>
           </>
         )}
@@ -174,10 +232,13 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
 function SlideImage({
   slide,
   eager,
+  focusable,
   onNavigate,
 }: {
   slide: PopupSlide;
   eager: boolean;
+  /** Идэвхтэй слайд эсэх — идэвхгүй слайдын холбоос Tab-д орохгүй. */
+  focusable: boolean;
   onNavigate: () => void;
 }) {
   const img = (
@@ -199,7 +260,10 @@ function SlideImage({
     <Link
       href={slide.href}
       onClick={onNavigate}
-      className="block focus-visible:outline-none"
+      tabIndex={focusable ? undefined : -1}
+      // `focus-visible:outline-none` байсан нь гарнаас ажилладаг хүнд
+      // холбоос нь фокуслагдсаныг харуулахгүй болгож байв.
+      className="block"
       aria-label="Зар үзэх"
     >
       {img}

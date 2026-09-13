@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
 import { StockBadge } from "@/features/admin/components/stock-badge";
@@ -25,6 +26,8 @@ import { Star } from "lucide-react";
  * Reserved ml get a subline rather than a column of their own — the operator
  * only needs them on the rows where an order is actually holding stock, and a
  * three-column ml block pushed the table into permanent horizontal scroll.
+ * Тэр subline нь одоо ХОЛБООС: «+40ml захиалагдсан» гэсэн тоо аль захиалганд
+ * байгааг `/admin/reservations` задалж харуулна (backlog §2.4).
  */
 const columns: ColumnDef<AdminProduct, unknown>[] = [
   {
@@ -81,9 +84,12 @@ const columns: ColumnDef<AdminProduct, unknown>[] = [
             {p.availableMl}ml
           </span>
           {p.reservedMl > 0 && (
-            <span className="text-muted-foreground block text-xs tabular-nums">
+            <Link
+              href={`/admin/reservations?product=${p.id}`}
+              className="text-muted-foreground hover:text-foreground block text-xs tabular-nums underline-offset-2 hover:underline"
+            >
               +{p.reservedMl}ml захиалагдсан
-            </span>
+            </Link>
           )}
         </>
       );
@@ -195,8 +201,17 @@ export function ProductsTable({ data }: { data: AdminProduct[] }) {
             </div>
             <div>
               <dt className="text-muted-foreground text-xs">Захиалагдсан</dt>
-              <dd className="text-muted-foreground tabular-nums">
-                {p.reservedMl}ml
+              <dd className="tabular-nums">
+                {p.reservedMl > 0 ? (
+                  <Link
+                    href={`/admin/reservations?product=${p.id}`}
+                    className="underline-offset-2 hover:underline"
+                  >
+                    {p.reservedMl}ml
+                  </Link>
+                ) : (
+                  <span className="text-muted-foreground">0ml</span>
+                )}
               </dd>
             </div>
           </dl>

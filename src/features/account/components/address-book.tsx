@@ -20,6 +20,7 @@ import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import type { AddressRow } from "@/db/types";
+import { EmptyState } from "@/components/shared/empty-state";
 
 /** Үндсэн хаяг үргэлж хамгийн дээр — жагсаалтын дараалал нэг эх сурвалжтай. */
 function sortDefaultFirst(list: AddressRow[]): AddressRow[] {
@@ -187,13 +188,18 @@ export function AddressBook() {
       </div>
 
       {loaded && items.length === 0 && (
-        <div className="bg-secondary flex flex-col items-center gap-3 rounded-xl py-12 text-center">
-          <MapPin className="text-muted-foreground size-9" />
-          <p className="text-muted-foreground text-sm">Хадгалсан хаяг алга.</p>
-          <Button variant="outline" onClick={openNew}>
-            Шинэ хаяг нэмэх
-          </Button>
-        </div>
+        <EmptyState
+          surface="muted"
+          size="sm"
+          icon={MapPin}
+          title="Хадгалсан хаяг алга"
+          description="Нэг удаа хадгалсан хаяг checkout дээр сонголтоор гарч ирнэ."
+          action={
+            <Button variant="outline" onClick={openNew}>
+              Шинэ хаяг нэмэх
+            </Button>
+          }
+        />
       )}
 
       {items.length > 0 && (
