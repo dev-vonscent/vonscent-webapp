@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import type { ProductListItem } from "@/lib/types";
 import { rateLimitMessage } from "@/lib/rate-limit-client";
 import { GENDER_QUESTION, QUIZ_QUESTIONS } from "../questions";
+import type { QuizOption } from "../questions";
 import { buildProfile } from "../score";
 
 /**
@@ -203,9 +204,9 @@ export function ScentQuiz({
             >
               {/* Side imagery (5c) — bleeds to the card edge and fades into the
                   bg-card surface; a warm CSS glow stands in until
-                  public/quiz-side-v2.webp is generated (prompts/quiz-options.md). */}
+                  public/quiz-side.webp is generated (prompts/quiz-options.md). */}
               <SideImage
-                src="/quiz-side-v2.webp"
+                src="/quiz-side.webp"
                 sizes="(max-width: 768px) 100vw, 320px"
                 className="relative aspect-5/2 min-h-70 w-full md:order-2 md:aspect-auto md:min-h-0"
                 fallbackClassName="bg-[radial-gradient(ellipse_65%_70%_at_65%_55%,rgba(92,62,28,.55),rgba(40,28,14,.2)_55%,transparent_80%)]"
@@ -221,12 +222,6 @@ export function ScentQuiz({
                 animate="center"
                 className="flex min-w-0 flex-col items-start justify-center gap-4 p-6 sm:p-10 md:order-1"
               >
-                <motion.p
-                  variants={itemVariants}
-                  className="text-muted-foreground text-sm font-medium tracking-[0.2em] uppercase"
-                >
-                  Богино асуулга
-                </motion.p>
                 <motion.h2
                   variants={itemVariants}
                   className="font-serif text-2xl font-semibold tracking-tight text-balance wrap-break-word sm:text-3xl"
@@ -237,9 +232,8 @@ export function ScentQuiz({
                   variants={itemVariants}
                   className="text-muted-foreground"
                 >
-                  Аль үнэрийг сонгохоо мэдэхгүй байна уу? Хэдхэн хөгжилтэй
-                  асуултад хариулаад өөрт тань хамгийн сайн тохирох үнэртнүүдийг
-                  олоорой.
+                  Ямар үнэртэй ус сонгохоо мэдэхгүй байна уу? Хэдхэн асуултад
+                  хариулаад тохирох үнэртнүүдээ олоорой.
                 </motion.p>
                 <motion.p
                   variants={itemVariants}
@@ -249,7 +243,7 @@ export function ScentQuiz({
                 </motion.p>
                 <motion.div variants={itemVariants}>
                   <Button onClick={() => setPhase("quiz")} className="mt-2">
-                    Эхэлцгээе <ArrowRight className="size-4" />
+                    Эхлэх <ArrowRight className="size-4" />
                   </Button>
                 </motion.div>
               </motion.div>
@@ -336,7 +330,7 @@ export function ScentQuiz({
                         <OptionTile
                           key={o.id}
                           emoji={o.emoji}
-                          image={o.image}
+                          image={tileImage(o, gender)}
                           label={o.label}
                           selected={picks[question.id] === o.id}
                           onClick={() => pickOption(question.id, o.id)}
@@ -553,6 +547,16 @@ function QuestionBlock({
   );
 }
 
+/**
+ * Artwork for a tile: options shot in both genders follow the visitor's first
+ * answer, so the «Өрөөнд орж ирэнгүүт анзаарагдана» card doesn't show a
+ * model of the other gender. «Unisex» gets the female cut (questions.ts).
+ */
+function tileImage(o: QuizOption, gender: GenderPick): string | undefined {
+  if (!o.imagesByGender) return o.image;
+  return gender === "male" ? o.imagesByGender.male : o.imagesByGender.female;
+}
+
 function OptionTile({
   emoji,
   image,
@@ -611,16 +615,23 @@ function OptionTile({
             className="object-cover [outline:1px_solid_transparent]"
             onError={() => setImgFailed(true)}
           />
-          {/* -bottom-px: overlap the clip edge so subpixel rounding never
-              exposes a bright image row beneath the gradient. */}
+          {/* Scrim, not a plain two-stop gradient: text over a photograph is
+              the most common contrast failure there is (NN/g), and the tiles
+              run over sand, cream sky and snow. The extra stops approximate an
+              ease-out ramp — a linear one bands visibly across a 60% tall box
+              and gives up its density too early, right where the label sits.
+              -bottom-px: overlap the clip edge so subpixel rounding never
+              exposes a bright image row beneath the scrim. */}
           <span
-            className="absolute inset-x-0 -bottom-px h-[60%] bg-linear-to-t from-black/90 via-black/40 to-transparent"
+            className="absolute inset-x-0 -bottom-px h-[62%] bg-[linear-gradient(to_top,rgb(0_0_0/0.92)_0%,rgb(0_0_0/0.85)_22%,rgb(0_0_0/0.6)_45%,rgb(0_0_0/0.3)_68%,rgb(0_0_0/0.1)_85%,transparent_100%)]"
             aria-hidden
           />
           <span
             className={cn(
-              "absolute inset-x-0 bottom-0 p-3.5 pr-3 text-[15px] leading-snug font-medium text-white",
-              selected && "font-semibold",
+              // The shadow is the second line of defence: it keeps the label
+              // readable even where a bright subject reaches the bottom edge.
+              "absolute inset-x-0 bottom-0 p-3.5 pr-3 text-[15px] leading-snug font-semibold text-white [text-shadow:0_1px_3px_rgb(0_0_0/0.55)]",
+              selected && "[text-shadow:0_1px_4px_rgb(0_0_0/0.7)]",
             )}
           >
             {label}

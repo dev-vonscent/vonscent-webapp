@@ -48,6 +48,13 @@ export interface QuizOption {
    * ship before their imagery.
    */
   image?: string;
+  /**
+   * Options whose artwork shows a person are shot twice, so the tile can
+   * mirror the gender the visitor picked in the first step instead of showing
+   * a model of the other gender. `any` («Unisex») gets the female cut.
+   * Takes precedence over `image`, which stays as the last-resort fallback.
+   */
+  imagesByGender?: { male: string; female: string };
   label: string;
   weights: QuizWeights;
 }
@@ -60,25 +67,43 @@ export interface QuizQuestion {
 
 /** First step — the only literal answer (maps straight to products.gender). */
 export const GENDER_QUESTION = {
-  title: "Хэнд зориулсан үнэр хайж байна вэ?",
+  title: "Ямар төрлийн үнэртэн хайж байна вэ?",
   options: [
-    // Reuses the "Хүйсээр" cards (prompts/by-gender.md) — no new artwork.
-    { value: "male", emoji: "🤵", image: "/gender-male.webp", label: "Эрэгтэй" },
-    { value: "female", emoji: "💃", image: "/gender-female.webp", label: "Эмэгтэй" },
-    { value: "any", emoji: "✨", image: "/gender-unisex.webp", label: "Хамаагүй" },
+    // The "Хүйсээр" cards (prompts/by-gender.md), cropped to their top 80%:
+    // the generated artwork carries a brand lockup along the bottom edge that
+    // the home page hides with object-top but the quiz tile's centered 3:4
+    // crop left visible. No new artwork — public/quiz/gender-*.webp.
+    {
+      value: "male",
+      emoji: "🤵",
+      image: "/quiz/gender-male.webp",
+      label: "Эрэгтэй",
+    },
+    {
+      value: "female",
+      emoji: "💃",
+      image: "/quiz/gender-female.webp",
+      label: "Эмэгтэй",
+    },
+    {
+      value: "any",
+      emoji: "✨",
+      image: "/quiz/gender-unisex.webp",
+      label: "Unisex",
+    },
   ],
 } as const;
 
 export const QUIZ_QUESTIONS: QuizQuestion[] = [
   {
     id: "weekend",
-    title: "Төгс амралтын өдрөө хаана өнгөрүүлмээр байна вэ?",
+    title: "Төгс амралтын өдрөө юу хийж өнгөрүүлмээр байна вэ?",
     options: [
       {
         id: "weekend-beach",
-        image: "/quiz/weekend-beach-v2.webp",
+        image: "/quiz/weekend-beach.webp",
         emoji: "🏖️",
-        label: "Далайн эргээр зугаалж, наранд шарна",
+        label: "Далайн эргээр алхах",
         weights: {
           families: { citrus: 2, fresh: 1 },
           seasons: { summer: 2 },
@@ -87,9 +112,9 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "weekend-forest",
-        image: "/quiz/weekend-forest-v2.webp",
+        image: "/quiz/weekend-forest.webp",
         emoji: "🌲",
-        label: "Ойн дундуур алхана",
+        label: "Ойгоор алхах",
         weights: {
           families: { woody: 2, fresh: 1 },
           seasons: { autumn: 2 },
@@ -98,9 +123,9 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "weekend-cozy",
-        image: "/quiz/weekend-cozy-v2.webp",
+        image: "/quiz/weekend-cozy.webp",
         emoji: "🕯️",
-        label: "Гэртээ лаа асааж, ном уншина",
+        label: "Лааны гэрэлд ном унших",
         weights: {
           families: { oriental: 2 },
           seasons: { winter: 2 },
@@ -110,9 +135,9 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "weekend-garden",
-        image: "/quiz/weekend-garden-v2.webp",
+        image: "/quiz/weekend-garden.webp",
         emoji: "🌸",
-        label: "Цэцэглэсэн цэцэрлэгээр зугаална",
+        label: "Цэцэрлэгээр зугаалах",
         weights: {
           families: { floral: 2 },
           seasons: { spring: 2 },
@@ -127,7 +152,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     options: [
       {
         id: "time-morning",
-        image: "/quiz/time-morning-v2.webp",
+        image: "/quiz/time-morning.webp",
         emoji: "🌅",
         label: "Сэрүүн өглөө",
         weights: {
@@ -138,7 +163,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "time-noon",
-        image: "/quiz/time-noon-v2.webp",
+        image: "/quiz/time-noon.webp",
         emoji: "☀️",
         label: "Нартай үдийн цаг",
         weights: {
@@ -149,7 +174,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "time-sunset",
-        image: "/quiz/time-sunset-v2.webp",
+        image: "/quiz/time-sunset.webp",
         emoji: "🌇",
         label: "Нар жаргах үе",
         weights: {
@@ -160,9 +185,9 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "time-night",
-        image: "/quiz/time-night-v2.webp",
+        image: "/quiz/time-night.webp",
         emoji: "🌙",
-        label: "Гүн шөнө",
+        label: "Шөнө дунд",
         weights: {
           families: { oriental: 2, woody: 1 },
           intensity: { strong: 2 },
@@ -173,11 +198,11 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
   },
   {
     id: "character",
-    title: "Найзууд тань таныг хэрхэн дүрсэлдэг вэ?",
+    title: "Бусад хүмүүс таныг хэрхэн дүгнэдэг вэ?",
     options: [
       {
         id: "character-energetic",
-        image: "/quiz/character-energetic-v2.webp",
+        image: "/quiz/character-energetic.webp",
         emoji: "⚡",
         label: "Эрч хүчтэй, хөгжилтэй",
         weights: {
@@ -187,7 +212,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "character-romantic",
-        image: "/quiz/character-romantic-v2.webp",
+        image: "/quiz/character-romantic.webp",
         emoji: "💐",
         label: "Романтик, мэдрэмжтэй",
         weights: {
@@ -197,7 +222,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "character-warm",
-        image: "/quiz/character-warm-v2.webp",
+        image: "/quiz/character-warm.webp",
         emoji: "🔥",
         label: "Дулаан, дотно",
         weights: {
@@ -214,7 +239,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "character-calm",
-        image: "/quiz/character-calm-v2.webp",
+        image: "/quiz/character-calm.webp",
         emoji: "🗿",
         label: "Тайван, өөртөө итгэлтэй",
         weights: {
@@ -233,11 +258,11 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
   },
   {
     id: "season",
-    title: "Хамгийн дуртай улирал тань аль нь вэ?",
+    title: "Аль улиралд хамгийн дуртай вэ?",
     options: [
       {
         id: "season-spring",
-        image: "/quiz/season-spring-v2.webp",
+        image: "/quiz/season-spring.webp",
         emoji: "🌸",
         label: "Хавар",
         weights: {
@@ -248,7 +273,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "season-summer",
-        image: "/quiz/season-summer-v2.webp",
+        image: "/quiz/season-summer.webp",
         emoji: "☀️",
         label: "Зун",
         weights: {
@@ -259,7 +284,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "season-autumn",
-        image: "/quiz/season-autumn-v2.webp",
+        image: "/quiz/season-autumn.webp",
         emoji: "🍂",
         label: "Намар",
         weights: {
@@ -270,7 +295,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "season-winter",
-        image: "/quiz/season-winter-v2.webp",
+        image: "/quiz/season-winter.webp",
         emoji: "❄️",
         label: "Өвөл",
         weights: {
@@ -283,20 +308,24 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
   },
   {
     id: "impression",
-    title: "Таны үнэр хүмүүст ямар сэтгэгдэл үлдээх ёстой вэ?",
+    title: "Алийг нь илүүд үзэх вэ?",
     options: [
       {
         id: "impression-whisper",
-        image: "/quiz/impression-whisper-v2.webp",
+        image: "/quiz/impression-whisper.webp",
         emoji: "🤫",
-        label: "Зөвхөн ойртсон хүнд л мэдрэгдэнэ",
+        label: "Ойртоход мэдрэгдэнэ",
         weights: { intensity: { light: 3 }, tags: { clean: 1, office: 1, light: 1 } },
       },
       {
         id: "impression-balanced",
-        image: "/quiz/impression-balanced-v2.webp",
+        image: "/quiz/impression-balanced-female.webp",
+        imagesByGender: {
+          male: "/quiz/impression-balanced-male.webp",
+          female: "/quiz/impression-balanced-female.webp",
+        },
         emoji: "🙂",
-        label: "Тэнцвэртэй, яг таг",
+        label: "Хажуугаар зөрөхөд мэдрэгдэнэ",
         weights: {
           intensity: { medium: 3 },
           tags: { daily: 1, office: 1, versatile: 1 },
@@ -304,9 +333,13 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       },
       {
         id: "impression-bold",
-        image: "/quiz/impression-bold-v2.webp",
+        image: "/quiz/impression-bold-female.webp",
+        imagesByGender: {
+          male: "/quiz/impression-bold-male.webp",
+          female: "/quiz/impression-bold-female.webp",
+        },
         emoji: "💫",
-        label: "Хажуугаар өнгөрөхөд эргэж харуулна",
+        label: "Өрөөнд орж ирэхэд л анзаарагдана",
         weights: {
           intensity: { strong: 3 },
           tags: {
