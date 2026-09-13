@@ -174,8 +174,8 @@ export default function HomePage() {
             className="relative order-first aspect-5/2 min-h-70 w-full md:order-0 md:aspect-auto md:min-h-0"
             fallbackClassName="bg-[radial-gradient(ellipse_65%_70%_at_35%_55%,rgba(88,92,104,.45),rgba(40,42,50,.18)_55%,transparent_80%)]"
           >
-            {/* fade into the card surface: upward on mobile, rightward on md+ */}
-            <div className="from-card absolute inset-x-0 bottom-0 h-[60%] bg-linear-to-t to-transparent md:hidden" />
+            {/* fade into the card surface — md+ only; on mobile the image keeps
+                its full-bleed edge (a vertical fade washed it out in light mode) */}
             <div className="from-card absolute inset-y-0 right-0 hidden w-1/2 bg-linear-to-l to-transparent md:block" />
           </SideImage>
           <div className="flex max-w-xl min-w-0 flex-col items-start justify-center gap-4 p-6 sm:p-10">
@@ -243,23 +243,24 @@ export default function HomePage() {
         {/* Shop by season */}
         <section>
           <SectionHeading title="Улирлаар" />
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
             {[
-              { slug: "spring", label: "Хавар" },
-              { slug: "summer", label: "Зун" },
-              { slug: "autumn", label: "Намар" },
-              { slug: "winter", label: "Өвөл" },
+              { slug: "spring", label: "Хавар", ext: "jpg" },
+              { slug: "summer", label: "Зун", ext: "jpg" },
+              { slug: "autumn", label: "Намар", ext: "jpg" },
+              { slug: "winter", label: "Өвөл", ext: "jpg" },
+              { slug: "all", label: "Бүх улирал", ext: "webp" },
             ].map((s) => (
               <Link
                 key={s.slug}
                 href={`/catalog?season=${s.slug}`}
-                className="group bg-secondary hover:shadow-lift relative flex aspect-3/2 items-end overflow-hidden rounded-2xl p-4 transition-all hover:-translate-y-1"
+                className="group bg-secondary hover:shadow-lift relative flex aspect-3/2 items-end overflow-hidden rounded-2xl p-4 transition-all hover:-translate-y-1 last:col-span-2 sm:last:col-span-1"
               >
                 <Image
-                  src={`/season-${s.slug}.jpg`}
+                  src={`/season-${s.slug}.${s.ext}`}
                   alt={s.label}
                   fill
-                  sizes="(max-width: 640px) 50vw, 280px"
+                  sizes="(max-width: 640px) 50vw, 240px"
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/35 to-black/5" />
