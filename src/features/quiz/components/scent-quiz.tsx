@@ -27,6 +27,65 @@ type GenderPick = "male" | "female" | "any";
 
 const TOTAL_STEPS = 1 + QUIZ_QUESTIONS.length;
 
+/**
+ * Answers survive a trip to a product page and back.
+ *
+ * The widget is client state on an ISR home page, so opening a recommendation
+ * and pressing back used to remount it at the intro — the visitor's six
+ * answers gone for the sake of one look at a bottle, which is the single most
+ * likely thing they do next. sessionStorage (not localStorage) scopes that
+ * memory to the tab: coming back tomorrow should be a fresh quiz, not last
+ * week's answers.
+ *
+ * Only the ANSWERS are stored. The matches themselves are re-fetched on
+ * restore, because prices, stock and the catalogue itself move.
+ */
+const ANSWERS_KEY = "vonscent:quiz-answers";
+
+interface StoredAnswers {
+  gender: GenderPick;
+  picks: Record<string, string>;
+}
+
+/** Storage throws in private modes and can hold anything — never trust it. */
+function readStoredAnswers(): StoredAnswers | null {
+  try {
+    const raw = sessionStorage.getItem(ANSWERS_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    const { gender, picks } = parsed as Partial<StoredAnswers>;
+    if (gender !== "male" && gender !== "female" && gender !== "any")
+      return null;
+    if (!picks || typeof picks !== "object") return null;
+    // Only a COMPLETE set restores: a half-finished quiz has no results to
+    // return to, and dropping someone mid-run is worse than starting over.
+    const answered = QUIZ_QUESTIONS.filter(
+      (q) => typeof picks[q.id] === "string",
+    );
+    if (answered.length !== QUIZ_QUESTIONS.length) return null;
+    return { gender, picks };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredAnswers(answers: StoredAnswers): void {
+  try {
+    sessionStorage.setItem(ANSWERS_KEY, JSON.stringify(answers));
+  } catch {
+    // Storage full or blocked — the quiz simply won't survive the round trip.
+  }
+}
+
+function clearStoredAnswers(): void {
+  try {
+    sessionStorage.removeItem(ANSWERS_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 const SEASON_LABEL: Record<string, string> = {
   spring: "Хавар",
   summer: "Зун",
@@ -114,6 +173,7 @@ export function ScentQuiz({
     async (finalGender: GenderPick, finalPicks: Record<string, string>) => {
       setPhase("loading");
       setErrorMsg(null);
+      writeStoredAnswers({ gender: finalGender, picks: finalPicks });
       try {
         const res = await fetch("/api/quiz", {
           method: "POST",
@@ -138,6 +198,18 @@ export function ScentQuiz({
     },
     [],
   );
+
+  // Back from a product page: pick the answers up and ask for fresh matches.
+  React.useEffect(() => {
+    const stored = readStoredAnswers();
+    if (!stored) return;
+    setGender(stored.gender);
+    setPicks(stored.picks);
+    setStep(TOTAL_STEPS - 1);
+    void submit(stored.gender, stored.picks);
+    // Runs once on mount; `submit` is stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // A short pause lets the picked tile light up before the next question.
   function advanceFrom(
@@ -172,6 +244,7 @@ export function ScentQuiz({
   }
 
   function restart() {
+    clearStoredAnswers();
     setPicks({});
     setGender("any");
     setResult(null);
@@ -434,15 +507,26 @@ export function ScentQuiz({
                 transition={{ delay: 0.3, duration: 0.3 }}
                 className="mt-6 flex flex-wrap items-center gap-3"
               >
+                {/* The old "see them all in the catalogue" link deep-linked
+                    into hard filters (top families + top season), which is a
+                    different question from the weighted match this rail shows
+                    — the two lists disagreed. The rail is the whole answer
+                    now, and the answers survive a trip to a product page.
+                    A plain catalogue link survives only where the quiz has no
+                    answer of its own to express: a fallback rail or an empty
+                    one would otherwise leave "Дахин эхлэх" as the only way
+                    out. It carries no filters, so nothing can disagree. */}
                 <Button variant="outline" onClick={restart}>
                   <RotateCcw className="size-4" /> Дахин эхлэх
                 </Button>
-                <Link
-                  href={catalogHref(gender, picks)}
-                  className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm font-medium transition-colors hover:underline"
-                >
-                  Бүгдийг каталогоос харах <ArrowRight className="size-4" />
-                </Link>
+                {(result.fallback || result.items.length === 0) && (
+                  <Link
+                    href="/catalog"
+                    className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm font-medium transition-colors hover:underline"
+                  >
+                    Каталогоос үзэх <ArrowRight className="size-4" />
+                  </Link>
+                )}
               </motion.div>
             </motion.div>
           )}
@@ -675,29 +759,3 @@ function OptionTile({
   );
 }
 
-/**
- * Deep-link into /catalog with the answers' strongest signals — the same param
- * names parseFilters reads (intensity has no catalog param, so it is omitted).
- */
-function catalogHref(
-  gender: GenderPick,
-  picks: Record<string, string>,
-): string {
-  const profile = buildProfile(Object.values(picks));
-  const params = new URLSearchParams();
-  if (gender !== "any") params.set("gender", gender);
-
-  const families = Object.entries(profile.families)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 2)
-    .map(([slug]) => slug);
-  if (families.length) params.set("family", families.join(","));
-
-  const [season] = Object.entries(profile.seasons).sort(
-    (a, b) => (b[1] ?? 0) - (a[1] ?? 0),
-  );
-  if (season) params.set("season", season[0]);
-
-  const qs = params.toString();
-  return qs ? `/catalog?${qs}` : "/catalog";
-}

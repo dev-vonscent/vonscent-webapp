@@ -29,7 +29,13 @@ export interface QuizResult {
   fallback: boolean;
 }
 
-const RESULT_LIMIT = 6;
+/**
+ * The rail is the entire answer now — the "see them all in the catalogue" link
+ * is gone (it deep-linked into hard filters that disagreed with this ranking),
+ * so ten matches give a returning visitor somewhere to go without retaking the
+ * quiz. The carousel already scrolls, so nothing changes in the layout.
+ */
+const RESULT_LIMIT = 10;
 
 /**
  * `products.sillage` (0078) IS the intensity axis: the admin sets it by hand

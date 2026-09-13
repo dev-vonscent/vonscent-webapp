@@ -42,6 +42,30 @@ if (typeof window !== "undefined") {
     }) as unknown as MediaQueryList;
 }
 
+/**
+ * `IntersectionObserver`, another jsdom gap.
+ *
+ * Motion's `whileInView` starts an observer the moment a component mounts, so
+ * anything that animates into view (the home rails, the scent quiz card) dies
+ * on render without this. Nothing ever "enters view" in jsdom, so a stub that
+ * records nothing is enough: tests assert on the rendered markup, and the
+ * element's `initial` styles do not affect what they query.
+ */
+if (typeof globalThis.IntersectionObserver === "undefined") {
+  class NoopIntersectionObserver implements IntersectionObserver {
+    readonly root = null;
+    readonly rootMargin = "";
+    readonly thresholds: readonly number[] = [];
+    disconnect() {}
+    observe() {}
+    unobserve() {}
+    takeRecords(): IntersectionObserverEntry[] {
+      return [];
+    }
+  }
+  globalThis.IntersectionObserver = NoopIntersectionObserver;
+}
+
 afterEach(() => {
   cleanup();
 });
