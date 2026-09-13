@@ -145,6 +145,21 @@ describe("scoreQuizMatches", () => {
     expect(items[0].id).toBe("hot-one");
   });
 
+  it("scales the percentage by what a product can carry, not by the vector", () => {
+    // Products wear one tag each, so a fat weight vector must not deflate the
+    // display: a leader that matches everything it possibly could reads high.
+    const oneTagEach = [
+      product({ id: "match", customTagSlugs: ["oud"] }),
+      product({ id: "other", customTagSlugs: ["rose"] }),
+    ];
+    const { items } = scoreQuizMatches(oneTagEach, {
+      gender: "any",
+      picks: ["time-night"], // oud+2 smoky+1 party+1 luxurious+1, oriental/woody
+    });
+    expect(items[0].id).toBe("match");
+    expect(items[0].matchPct).toBeGreaterThan(50);
+  });
+
   it("returns an empty fallback for an empty catalogue", () => {
     const result = scoreQuizMatches([], woodyAnswers);
     expect(result).toEqual({ items: [], fallback: true });

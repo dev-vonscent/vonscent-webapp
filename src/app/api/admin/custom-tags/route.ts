@@ -4,6 +4,7 @@ import { revalidatePublic } from "@/lib/cache";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { normalizeSearchText } from "@/lib/search";
 
 /**
  * Нэмэлт таг-ийн сан (A2). Free-form internal tags: the admin builds the pool
@@ -14,13 +15,21 @@ const createSchema = z.object({
   name: z.string().min(1).max(60),
 });
 
-/** Cyrillic-safe slug: lowercase, spaces → dashes, keep letters/digits. */
+/**
+ * Latin slug: transliterate, spaces → dashes, keep [a-z0-9-].
+ *
+ * The slug is the key the quiz matches its weight vectors on
+ * (features/quiz/questions.ts), so it has to stay in one alphabet — a
+ * Cyrillic slug silently scores zero there. 0077_custom_tag_slugs folded the
+ * Cyrillic slugs this route used to mint back into the Latin pool; keeping
+ * new ones Latin is what stops the pool from forking again. Reuses the search
+ * transliteration so «Ваниль» lands in the same space a search for it does.
+ */
 function slugifyTag(name: string): string {
-  return name
+  return normalizeSearchText(name)
     .trim()
-    .toLowerCase()
     .replace(/\s+/g, "-")
-    .replace(/[^\p{L}\p{N}-]/gu, "")
+    .replace(/[^a-z0-9-]/g, "")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 }
