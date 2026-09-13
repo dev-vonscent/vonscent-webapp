@@ -247,6 +247,10 @@ export function CollectionForm({
   );
 
   const [busy, setBusy] = React.useState(false);
+  // Амжилттай болсны дараа навигаци дуустал товч «бэлэн» рүү буцахгүй —
+  // үгүй бол хэрэглэгч дуусаагүй гэж бодоод дахин дардаг.
+  const [leaving, setLeaving] = React.useState(false);
+  const pending = busy || leaving;
   const [error, setError] = React.useState<string | null>(null);
 
   // Хайлт нь сервер дээр (0063): өмнө нь энэ форм бүх каталогийг props-оор
@@ -358,6 +362,7 @@ export function CollectionForm({
     // `refresh()` нь `push()`-ээс ӨМНӨ: cache-ийг эхлээд хүчингүй болговол
     // жагсаалт шууд шинээр татагдана. Нөгөө дараалал нь ажилладаг ч хуучин
     // жагсаалтыг нэг хором харуулаад дараа нь залруулдаг.
+    setLeaving(true);
     router.refresh();
     router.push("/admin/collections");
   }
@@ -677,10 +682,10 @@ export function CollectionForm({
         <Button
           type="submit"
           size="lg"
-          disabled={busy}
+          disabled={pending}
           className="flex-1 md:flex-none"
         >
-          {busy ? "Хадгалж байна…" : "Багц хадгалах"}
+          {pending ? "Хадгалж байна…" : "Багц хадгалах"}
         </Button>
         <Button
           type="button"

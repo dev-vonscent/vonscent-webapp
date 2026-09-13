@@ -10,6 +10,7 @@ import { BookOpen, Layers, Search, Sparkles, Tag, X } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { MIN_SEARCH_LENGTH } from "@/lib/constants";
 import { isSearchable } from "@/lib/search";
+import { cn } from "@/lib/utils";
 import {
   EMPTY_SEARCH_RESULTS,
   SEARCH_KINDS,
@@ -56,6 +57,30 @@ function hitMeta(hit: SearchHit): string | null {
       : `${hit.itemCount} бүрэлдэхүүн`;
   }
   return null;
+}
+
+/** Багцын гишүүн савнууд — картын зурвасын жижиг хувилбар (эхний 4). */
+function MemberStrip({ urls }: { urls: string[] }) {
+  return (
+    <span className="flex items-center">
+      {urls.slice(0, 4).map((url, i) => (
+        <span
+          key={url}
+          className={cn(
+            "border-card bg-muted relative size-5 shrink-0 overflow-hidden rounded-full border",
+            i > 0 && "-ml-1.5",
+          )}
+          style={{ zIndex: 4 - i }}
+        >
+          {/* 20px-ээр харагдах ч `sizes` нь ЗОРИУД 32px — багцын карт
+              (collection-card.tsx) яг эдгээр зургийг 32/64px өргөнөөр аль
+              хэдийн үүсгэсэн байдаг. Ижил өргөн = ижил кэшийн түлхүүр, өөрөөр
+              хэлбэл Vercel дээр ШИНЭ transformation үүсэхгүй. */}
+          <Image src={url} alt="" fill sizes="32px" className="object-cover" />
+        </span>
+      ))}
+    </span>
+  );
 }
 
 function HitThumb({ hit }: { hit: SearchHit }) {
@@ -228,9 +253,19 @@ export function GlobalSearch() {
                               <span className="block truncate text-sm font-medium">
                                 {hit.title}
                               </span>
-                              {hit.subtitle && (
-                                <span className="text-muted-foreground block truncate text-xs tracking-wide uppercase">
-                                  {hit.subtitle}
+                              {/* Багцын мөр: дотор нь ямар савнууд байгааг
+                                  зураг + нэрээр нь харуулна. */}
+                              {(hit.subtitle || hit.memberImages?.length) && (
+                                <span className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1.5">
+                                  {hit.memberImages &&
+                                    hit.memberImages.length > 0 && (
+                                      <MemberStrip urls={hit.memberImages} />
+                                    )}
+                                  {hit.subtitle && (
+                                    <span className="truncate text-xs tracking-wide uppercase">
+                                      {hit.subtitle}
+                                    </span>
+                                  )}
                                 </span>
                               )}
                             </span>

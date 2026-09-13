@@ -76,6 +76,10 @@ export function ProductEditForm({
   const backHref = listHref(params.get(RETURN_PARAM));
   const [confirm, confirmDialog] = useConfirm();
   const [busy, setBusy] = React.useState(false);
+  // Амжилттай болсны дараа навигаци дуустал товч «бэлэн» рүү буцахгүй —
+  // үгүй бол хэрэглэгч дуусаагүй гэж бодоод дахин дардаг.
+  const [leaving, setLeaving] = React.useState(false);
+  const pending = busy || leaving;
   const [msg, setMsg] = React.useState<string | null>(null);
   const [showVariantErrors, setShowVariantErrors] = React.useState(false);
   const [dirty, setDirty] = React.useState(false);
@@ -169,6 +173,7 @@ export function ProductEditForm({
       });
       if (!ok) return;
     }
+    setLeaving(true);
     router.push(backHref);
   }
 
@@ -229,6 +234,7 @@ export function ProductEditForm({
         // client router cache-ийг 30 секунд санадаг тул үүнгүйгээр оператор
         // өөрийнхөө засварыг жагсаалтад хараагүй хэвээр буцна. `backHref` нь
         // шүүлттэй жагсаалтын URL — cache-ийн яг тэр л түлхүүр.
+        setLeaving(true);
         router.refresh();
         router.push(backHref);
         return;
@@ -259,6 +265,7 @@ export function ProductEditForm({
         toast.success(`«${product.name}» устгагдлаа.`);
         // Устгасны дараа энэ нь ялангуяа чухал: cache-тай жагсаалт нь устсан
         // барааг байгаа юм шиг харуулна (дээрх save-ийн тайлбарыг үзнэ үү).
+        setLeaving(true);
         router.refresh();
         router.push(backHref);
         return;
@@ -532,16 +539,16 @@ export function ProductEditForm({
           <Button
             type="submit"
             size="lg"
-            disabled={busy}
+            disabled={pending}
             className="flex-1 md:flex-none"
           >
-            {busy ? "Хадгалж байна…" : "Хадгалах"}
+            {pending ? "Хадгалж байна…" : "Хадгалах"}
           </Button>
           <Button type="button" variant="secondary" size="lg" onClick={cancel}>
             Болих
           </Button>
         </div>
-        <Button type="button" variant="ghost" onClick={remove} disabled={busy}>
+        <Button type="button" variant="ghost" onClick={remove} disabled={pending}>
           <Trash2 className="size-4" /> Устгах
         </Button>
       </div>

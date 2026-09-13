@@ -46,10 +46,20 @@ export const DigitInput = React.forwardRef<HTMLInputElement, DigitInputProps>(
     React.useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
     const [focused, setFocused] = React.useState(false);
 
+    // `value` prop нь өмнөх render-ийнх — мобайл гар (IME, swipe, автобөглөлт)
+    // нэг frame дотор хэд хэдэн change event илгээхэд тэр нь хоцорч, дуусахыг
+    // буруу мэдэрдэг. Тиймээс өмнөх утгыг ref-д өөрсдөө хөтөлнө.
+    const prevRef = React.useRef(value);
+    React.useEffect(() => {
+      prevRef.current = value;
+    }, [value]);
+
     function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
       const next = e.target.value.replace(/\D/gu, "").slice(0, length);
+      const prev = prevRef.current;
+      prevRef.current = next;
       onChange(next);
-      if (next.length === length && value.length < length) {
+      if (next.length === length && prev.length < length) {
         onComplete?.(next);
       }
     }

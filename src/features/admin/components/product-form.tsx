@@ -64,6 +64,10 @@ export function ProductForm({
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = React.useState(false);
+  // Амжилттай болсны дараа навигаци дуустал товч «бэлэн» рүү буцахгүй —
+  // үгүй бол хэрэглэгч дуусаагүй гэж бодоод дахин дардаг.
+  const [leaving, setLeaving] = React.useState(false);
+  const pending = submitting || leaving;
   const [result, setResult] = React.useState<string | null>(null);
 
   const [form, setForm] = React.useState({
@@ -191,6 +195,7 @@ export function ProductForm({
         // харагдахгүй. `refresh()` нь cache-ийг бүхэлд хүчингүй болгодог тул
         // үүний ДАРААХ push нь шинээр татна; дараа нь хийвэл хуучин жагсаалт
         // нэг хором харагдаад дараа нь залруулагдана.
+        setLeaving(true);
         router.refresh();
         router.push("/admin/products");
       } else if (res.demo) {
@@ -455,10 +460,10 @@ export function ProductForm({
         <Button
           type="submit"
           size="lg"
-          disabled={submitting}
+          disabled={pending}
           className="flex-1 md:flex-none"
         >
-          {submitting ? "Хадгалж байна…" : "Бараа хадгалах"}
+          {pending ? "Хадгалж байна…" : "Бараа хадгалах"}
         </Button>
         <Button
           type="button"

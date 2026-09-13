@@ -20,6 +20,10 @@ import {
  * дотор шүүдэг байсан — бараа нэмэгдэх тусам удаашрахаас гадна зөвхөн бараа
  * олддог байв.
  *
+ * Багц нь өөрийн нэрээс гадна ГИШҮҮН барааныхаа нэр/брэндээр ч олдоно
+ * (0081_collection_search_members) — «creed» гэж хайхад Creed-ийн үнэртнүүдийн
+ * дараа Creed орсон preset багцууд гарна.
+ *
  * Хайх үгийг ЭНД хэвийн болгож (`normalizeSearchText`) SQL руу дамжуулна;
  * баганын текст нь Postgres талдаа `search_normalize()`-ээр хадгалагдсан
  * байдаг. Хоёр функцийн паритетыг `scripts/check-search-parity.ts` шалгана.
@@ -35,6 +39,7 @@ interface SearchRow {
   price: number | null;
   sold_out: boolean;
   item_count: number | null;
+  member_images: string[] | null;
 }
 
 function hrefFor(row: SearchRow): string {
@@ -63,6 +68,7 @@ function toHit(row: SearchRow): SearchHit {
     price: row.price,
     soldOut: row.sold_out,
     itemCount: row.item_count,
+    memberImages: row.member_images,
   };
 }
 
@@ -121,6 +127,7 @@ function seedSearch(query: string, limitPerKind: number): SearchResults {
       price: p.startingPrice,
       soldOut: p.soldOut,
       itemCount: null,
+      memberImages: null,
     })),
     collection: [],
     post: [],
