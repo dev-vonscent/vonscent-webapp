@@ -116,6 +116,10 @@ const TILE_SIZES = "(max-width: 640px) 50vw, 190px";
  * because the tiles are served through the Next image optimizer — a raw
  * `/quiz/x.webp` fetch would warm a URL the tile never requests and download
  * everything twice. Same `sizes`, same srcset, same chosen candidate.
+ *
+ * `fetchPriority="low"` keeps the lookahead behind the step actually on
+ * screen: these are for a question the visitor has not reached yet, so they
+ * must never compete for bandwidth with the tiles being looked at.
  */
 function TilePreloader({ sources }: { sources: string[] }) {
   return (
@@ -132,6 +136,7 @@ function TilePreloader({ sources }: { sources: string[] }) {
           height={1}
           sizes={TILE_SIZES}
           loading="eager"
+          fetchPriority="low"
         />
       ))}
     </span>
