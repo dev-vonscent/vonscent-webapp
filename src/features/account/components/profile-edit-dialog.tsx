@@ -13,6 +13,7 @@ import { PhoneVerify } from "@/features/account/components/phone-verify";
 import { prepareUpload } from "@/lib/storage/prepare-upload";
 import { IMAGE_ACCEPT } from "@/lib/storage/limits";
 import { createClient } from "@/lib/supabase/browser";
+import { rateLimitMessage } from "@/lib/rate-limit-client";
 import { toast } from "@/lib/toast";
 
 interface Errors {
@@ -109,9 +110,23 @@ export function ProfileEditDialog({
     fd.append("file", prepared.file);
     fd.append("folder", "avatars");
     const res = await fetch("/api/upload", { method: "POST", body: fd });
-    if (!res.ok) return;
+    // Өмнө нь энд чимээгүй буцдаг байсан: хэрэглэгч зургаа сонгочихоод юу ч
+    // болоогүй мэт харагдана. Хязгаарт хүрсэн бол серверийн мессеж, эс бөгөөс
+    // ерөнхий алдаа — аль нь ч байсан нэг мөр гарч ирнэ.
+    const limited = await rateLimitMessage(res);
+    if (limited) {
+      setAvatarError(limited);
+      return;
+    }
+    if (!res.ok) {
+      setAvatarError("Зураг байршуулж чадсангүй. Дахин оролдоно уу.");
+      return;
+    }
     const { url } = await res.json();
-    if (!url) return;
+    if (!url) {
+      setAvatarError("Зураг байршуулж чадсангүй. Дахин оролдоно уу.");
+      return;
+    }
     const supabase = createClient();
     if (supabase && userId) {
       await supabase

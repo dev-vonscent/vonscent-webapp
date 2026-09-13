@@ -11,6 +11,7 @@ import { ProductCarousel } from "@/features/products/components/product-carousel
 import { SideImage } from "@/components/shared/side-image";
 import { cn } from "@/lib/utils";
 import type { ProductListItem } from "@/lib/types";
+import { rateLimitMessage } from "@/lib/rate-limit-client";
 import { GENDER_QUESTION, QUIZ_QUESTIONS } from "../questions";
 import { buildProfile } from "../score";
 
@@ -92,6 +93,13 @@ export function ScentQuiz({
     items: ProductListItem[];
     fallback: boolean;
   } | null>(null);
+  /**
+   * Алдааны тайлбар. Ихэвчлэн null — тэр үед ерөнхий «алдаа гарлаа» гарна.
+   * Хүсэлтийн хязгаарт (429) хүрэхэд сервер хэдэн секундын дараа гэдгийг
+   * хэлдэг тул түүнийг нь дамжуулна: «Дахин оролдох» товч тэр хооронд
+   * дахиад л бүтэхгүй учраас товчийг ч нуухад хэрэглэнэ.
+   */
+  const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const advanceTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(
@@ -104,6 +112,7 @@ export function ScentQuiz({
   const submit = React.useCallback(
     async (finalGender: GenderPick, finalPicks: Record<string, string>) => {
       setPhase("loading");
+      setErrorMsg(null);
       try {
         const res = await fetch("/api/quiz", {
           method: "POST",
@@ -113,6 +122,12 @@ export function ScentQuiz({
             picks: Object.values(finalPicks),
           }),
         });
+        const limited = await rateLimitMessage(res);
+        if (limited) {
+          setErrorMsg(limited);
+          setPhase("error");
+          return;
+        }
         if (!res.ok) throw new Error("quiz_failed");
         setResult(await res.json());
         setPhase("results");
@@ -449,11 +464,13 @@ export function ScentQuiz({
               className="relative flex flex-col items-start gap-4 p-6 sm:p-10"
             >
               <p className="text-muted-foreground">
-                Уучлаарай, алдаа гарлаа. Дахин оролдоно уу.
+                {errorMsg ?? "Уучлаарай, алдаа гарлаа. Дахин оролдоно уу."}
               </p>
-              <Button variant="outline" onClick={() => submit(gender, picks)}>
-                Дахин оролдох
-              </Button>
+              {!errorMsg && (
+                <Button variant="outline" onClick={() => submit(gender, picks)}>
+                  Дахин оролдох
+                </Button>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -567,9 +584,7 @@ function OptionTile({
           selected ? { opacity: 1, y: 0, scale: [1, 1.04, 1] } : "center"
         }
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className={cn(
-          "group relative aspect-3/4 rounded-xl text-left",
-        )}
+        className={cn("group relative aspect-3/4 rounded-xl text-left")}
       >
         {/* clip-path (not border-radius + overflow) does the corner clipping:
             Chromium's rounded-clip antialiasing on a composited image layer
@@ -585,7 +600,7 @@ function OptionTile({
         {/* bg-card + translateZ(0) + backface-visibility: the span gets its
             own precisely-rasterized GPU layer, and any sub-pixel gap at its
             edge shows the card color instead of white. */}
-        <span className="bg-card absolute inset-0 overflow-hidden rounded-xl backface-hidden [clip-path:inset(1px_round_calc(var(--radius-xl)-1px))] transform-[translateZ(0)]">
+        <span className="bg-card absolute inset-0 transform-[translateZ(0)] overflow-hidden rounded-xl [clip-path:inset(1px_round_calc(var(--radius-xl)-1px))] backface-hidden">
           <Image
             src={image}
             alt=""
@@ -639,7 +654,7 @@ function OptionTile({
       </span>
       <span
         className={cn(
-          "px-3 pb-3 text-sm/snug  font-medium",
+          "px-3 pb-3 text-sm/snug font-medium",
           selected && "font-semibold",
         )}
       >
