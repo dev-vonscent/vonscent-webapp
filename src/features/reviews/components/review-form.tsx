@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/browser";
 import { reviewInputSchema } from "@/lib/validators/review";
 import { REVIEW_BODY_MAX } from "@/lib/constants";
+import { rateLimitMessage } from "@/lib/rate-limit-client";
 
 type Existing = { rating: number; body: string } | null;
 
@@ -70,8 +71,7 @@ export function ReviewForm({
   }, [productId]);
 
   // Reserve the form's rough height so the column doesn't jump once auth lands.
-  if (authed === null)
-    return <div className="bg-card/40 h-48 rounded-2xl" />;
+  if (authed === null) return <div className="bg-card/40 h-48 rounded-2xl" />;
 
   if (!authed) {
     return (
@@ -110,6 +110,11 @@ export function ReviewForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),
       });
+      const limited = await rateLimitMessage(res);
+      if (limited) {
+        setError(limited);
+        return;
+      }
       if (!res.ok) throw new Error();
       setExisting({ rating: parsed.data.rating, body: parsed.data.body });
       setBody(parsed.data.body);

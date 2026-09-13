@@ -19,6 +19,7 @@ import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
 import { formatPrice } from "@/lib/format";
 import { isPhoneEmail } from "@/lib/auth/phone-email";
 import { earliestDeliveryDay, latestDeliveryDay } from "@/lib/time";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 /** Клиентээс ирсэн өдрийг [маргааш, маргааш+30] мужид оруулна. */
 function clampDeliveryDay(value: string | undefined): string {
@@ -38,6 +39,11 @@ export async function POST(req: Request) {
     );
   }
   const input = parsed.data;
+
+  // Үнэ тооцох, нөөц барих хүнд ажлаас ӨМНӨ. Зочин ч захиалга үүсгэж чаддаг
+  // тул түлхүүр нь IP — checkout-д нэвтэрсэн байх шаардлага байхгүй.
+  const limited = await enforceRateLimit("order", req);
+  if (limited) return limited;
 
   // Authoritative server-side pricing.
   let summary;

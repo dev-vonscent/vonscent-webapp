@@ -468,6 +468,13 @@ export default function CheckoutPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+          setServerError(
+            data.message ??
+              "Хэт олон хүсэлт илгээлээ. Түр хүлээгээд дахин оролдоно уу.",
+          );
+          return;
+        }
         // A cart lives in localStorage and can outlive the catalogue. The
         // server refuses the order rather than quietly charging for whatever
         // survived, and the dead lines come back by variant id (the cart's

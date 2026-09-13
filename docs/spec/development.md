@@ -192,6 +192,8 @@ Route-level middleware-ээр `(admin)` бүлгийг хамгаална. Route
 - Эрх шалгалт route handler бүр дотор. Зөвхөн middleware-д найдахгүй.
 - Нууц (service role key, QPay credential) зөвхөн env-д, client bundle-д орохгүй (`NEXT_PUBLIC_` биш).
 - QPay webhook гарын үсэг/баталгаажуулалтыг шалга.
+- **Нээлттэй бичилтийн цэг бүрт хүсэлтийн хязгаар** — `enforceRateLimit()`
+  (§9.7). Zod шалгалтын дараа, үнэтэй ажил (RPC, sharp, имэйл) эхлэхээс өмнө.
 
 **7.6 Git**
 - Branch: `main` (production), `dev` (integration), feature: `feat/<name>`, fix: `fix/<name>`.
@@ -235,6 +237,8 @@ QPAY_USERNAME= / QPAY_PASSWORD= / QPAY_INVOICE_CODE=
 RESEND_API_KEY=
 VERIFY_MN_API_KEY=           # verify.mn MO-SMS баталгаажуулалт (144773 руу SMS)
 AUTH_PASSCODE_PEPPER=        # утас+passcode нэвтрэлтийн нууц pepper (openssl rand -hex 32)
+RATE_LIMIT_SALT=             # заавал биш — хүсэлтийн хязгаарын субьект hash-ийн давс
+                             # (тавихгүй бол AUTH_PASSCODE_PEPPER-ыг ашиглана)
 
 # Analytics
 NEXT_PUBLIC_GA_ID=           # GA4
@@ -286,3 +290,27 @@ RTT) дамжиж, RSC payload нь бас тэр урт хоолойгоор я
 - Хүчин төгөлдөр болохын тулд дахин deploy шаардлагатай; дараа нь
   `curl -sI https://dev.vonscent.mn/catalog | grep x-vercel-id` дээр
   `...::icn1::...` гэж харагдана.
+
+### 9.7 API-д хүсэлтийн хязгаар (шийдсэн, 2026-09-13)
+Тоолуур нь **Supabase Postgres** дотор, **GCRA** аргаар
+(`0076_rate_limits.sql` · `src/lib/rate-limit.ts` · бодлого нь
+`RATE_LIMITS`, `src/lib/constants.ts`).
+
+- **Санах ойд тоолохгүй.** Vercel олон instance дулаацуулдаг тул
+  process-ын дотоод Map нь «минутад 10»-ыг instance тутамд 10 болгоно.
+- **Upstash Redis биш.** Үнэгүй түвшний команд квот дуусахад limiter өөрөө
+  унана — яг халдлагын үед. Хамгаалж буй цэгүүд бүгд бага давтамжийн
+  бичилт тул Redis-ийн хурд шаардлагагүй, харин handler-ууд ямар ч байсан
+  Supabase руу нэг очдог (функц ба DB хоёул `icn1`/Seoul, §9.6).
+- **GCRA (түлхүүр тутамд нэг timestamp)**, тогтмол цонхны тоолуур биш:
+  цонхны зааг дээрх 2× burst гардаггүй, мөр хуримтлахгүй. Атомик байдал нь
+  `insert ... on conflict do update ... where` дээр тогтоно — Postgres мөрийг
+  түгжсэний дараа where-ээ шалгадаг тул зэрэг хүсэлтүүд цуврана.
+- **Түлхүүр:** нэвтэрсэн бол хэрэглэгчийн id (оператор NAT ард олон
+  захиалагчийг нэг IP-ээр гаргадаг), эс бөгөөс IP. Хоёул давсалсан sha256 —
+  түүхий IP DB-д ордоггүй.
+- **Алдаа гарвал нэвтрүүлнэ (fail-open)** + Sentry. Тоолуурын доголдол
+  бодит захиалгыг зогсоох шалтгаан биш.
+- Хэрэглэгчид 429 + `Retry-After` ба бэлэн монгол мессеж очно; клиент талд
+  `rateLimitMessage()` (`src/lib/rate-limit-client.ts`).
+- Хуучирсан мөрийг pg_cron цагт нэг удаа устгана (`prune_rate_limits`).

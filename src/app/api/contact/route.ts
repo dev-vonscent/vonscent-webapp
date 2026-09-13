@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail, STORE_INBOX, renderEmail } from "@/lib/email";
 import { contactInputSchema } from "@/lib/validators/contact";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 /**
  * Contact form (questions.md №24): the message is stored first so nothing is
@@ -14,6 +15,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "INVALID" }, { status: 400 });
   }
   const { name, email, message } = parsed.data;
+
+  // Нэвтрэхгүйгээр илгээдэг цорын ганц форм — IP-ээр хязгаарлана.
+  const limited = await enforceRateLimit("contact", req);
+  if (limited) return limited;
 
   const supabase = createAdminClient();
   if (supabase) {

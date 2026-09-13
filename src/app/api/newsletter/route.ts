@@ -3,6 +3,7 @@ import { z } from "zod";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({ email: z.string().email() });
 
@@ -27,6 +28,11 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "LOGIN_REQUIRED" }, { status: 401 });
   }
+
+  const limited = await enforceRateLimit("newsletter", req, {
+    subject: user.id,
+  });
+  if (limited) return limited;
 
   const supabase = createAdminClient();
   if (!supabase) return NextResponse.json({ error: "NO_DB" }, { status: 500 });

@@ -10,10 +10,11 @@ import {
   contactInputSchema,
   type ContactInput,
 } from "@/lib/validators/contact";
+import { rateLimitMessage } from "@/lib/rate-limit-client";
 
 export function ContactForm() {
   const [done, setDone] = React.useState(false);
-  const [serverError, setServerError] = React.useState(false);
+  const [serverError, setServerError] = React.useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -23,17 +24,22 @@ export function ContactForm() {
   });
 
   async function onSubmit(values: ContactInput) {
-    setServerError(false);
+    setServerError(null);
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
+      const limited = await rateLimitMessage(res);
+      if (limited) {
+        setServerError(limited);
+        return;
+      }
       if (!res.ok) throw new Error();
       setDone(true);
     } catch {
-      setServerError(true);
+      setServerError("Илгээхэд алдаа гарлаа. Дахин оролдоно уу.");
     }
   }
 
@@ -93,14 +99,18 @@ export function ContactForm() {
           {...register("message")}
         />
         {errors.message && (
-          <p id="message-error" role="alert" className="text-destructive text-xs">
+          <p
+            id="message-error"
+            role="alert"
+            className="text-destructive text-xs"
+          >
             {errors.message.message}
           </p>
         )}
       </div>
       {serverError && (
         <p role="alert" className="text-destructive text-sm">
-          Илгээхэд алдаа гарлаа. Дахин оролдоно уу.
+          {serverError}
         </p>
       )}
       <Button type="submit" className="w-full" disabled={isSubmitting}>

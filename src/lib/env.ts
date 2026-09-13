@@ -19,6 +19,15 @@ export const env = {
 
   /** OpenAI (gpt-image-1) — server-only, AI product-image generation. */
   openaiKey: process.env.OPENAI_API_KEY ?? "",
+
+  /**
+   * Salt for the rate-limit subject hash (src/lib/rate-limit.ts). Optional —
+   * without it the hash is still one-way, the salt only stops an attacker who
+   * reads the table from confirming a guessed IP. Reuses the passcode pepper
+   * when no dedicated salt is set so a deploy is never silently unsalted.
+   */
+  rateLimitSalt:
+    process.env.RATE_LIMIT_SALT ?? process.env.AUTH_PASSCODE_PEPPER ?? "",
 } as const;
 
 /** True when Supabase env is present — otherwise the app falls back to seed data. */
