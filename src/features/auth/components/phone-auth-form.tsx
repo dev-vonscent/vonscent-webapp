@@ -97,6 +97,10 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
   const [passcode, setPasscode] = React.useState("");
   const [passcode2, setPasscode2] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  // Амжилттай болсны дараа router.push дуустал хуудас шилжих төлөвт үлдэнэ.
+  // Үүнгүйгээр `finally` нь loading-ийг тэглээд товч «Нэвтрэх» рүү буцаж,
+  // хэрэглэгч дахин дардаг байсан (мобайлд ялангуяа — навигаци удаан).
+  const [leaving, setLeaving] = React.useState(false);
 
   const passcodeRef = React.useRef<HTMLInputElement>(null);
   const passcode2Ref = React.useRef<HTMLInputElement>(null);
@@ -117,7 +121,8 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
   const doLogin = React.useCallback(
     async (code?: string) => {
       const pc = code ?? passcode;
-      if (loading || !/^\d{8}$/u.test(phone) || !/^\d{4}$/u.test(pc)) return;
+      if (loading || leaving) return;
+      if (!/^\d{8}$/u.test(phone) || !/^\d{4}$/u.test(pc)) return;
       setLoading(true);
       try {
         const res = await fetch("/api/auth/phone/login", {
@@ -126,8 +131,11 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
           body: JSON.stringify({ phone, passcode: pc }),
         });
         if (res.ok) {
-          router.push(next);
+          setLeaving(true);
+          // `refresh()` нь `push()`-ээс ӨМНӨ: client router cache-ийг хүчингүй
+          // болговол зорих хуудас шинэ auth cookie-тойгоо шууд татагдана.
           router.refresh();
+          router.push(next);
           return;
         }
         const body = (await res.json().catch(() => null)) as {
@@ -147,6 +155,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
             }`,
           );
           setPasscode("");
+          passcodeRef.current?.focus();
         } else {
           toast.error("Нэвтэрч чадсангүй. Дахин оролдоно уу.");
         }
@@ -156,7 +165,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
         setLoading(false);
       }
     },
-    [loading, phone, passcode, next, router],
+    [loading, leaving, phone, passcode, next, router],
   );
 
   async function submitPasscode(e: React.FormEvent) {
@@ -167,6 +176,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
       return;
     }
     if (!verify.session) return;
+    if (loading || leaving) return;
     setLoading(true);
     try {
       const res = await fetch(
@@ -184,8 +194,9 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
         },
       );
       if (res.ok) {
-        router.push(next);
+        setLeaving(true);
         router.refresh();
+        router.push(next);
         return;
       }
       const body = (await res.json().catch(() => null)) as {
@@ -230,14 +241,18 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
       email: devEmail,
       password: devPassword,
     });
-    setLoading(false);
     if (signInError) {
+      setLoading(false);
       toast.error("Имэйл эсвэл нууц үг буруу байна.");
       return;
     }
-    router.push(next);
+    setLeaving(true);
     router.refresh();
+    router.push(next);
   }
+
+  // Товчны «ажиллаж байна» төлөв: хүсэлт явж буй ч, хуудас шилжиж буй ч адил.
+  const pending = loading || leaving;
 
   const copy = COPY[mode];
   const mm = Math.floor(verify.secondsLeft / 60);
@@ -322,9 +337,9 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
             <Button
               type="submit"
               className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
-              disabled={loading || !validPhone || !validPasscode}
+              disabled={pending || !validPhone || !validPasscode}
             >
-              {loading ? "Түр хүлээнэ үү…" : copy.cta}
+              {pending ? "Түр хүлээнэ үү…" : copy.cta}
             </Button>
           </Reveal>
         </form>
@@ -372,9 +387,9 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
             <Button
               type="submit"
               className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
-              disabled={loading || !validPasscode || passcode2.length !== 4}
+              disabled={pending || !validPasscode || passcode2.length !== 4}
             >
-              {loading ? "Түр хүлээнэ үү…" : copy.cta}
+              {pending ? "Түр хүлээнэ үү…" : copy.cta}
             </Button>
 
             {/* Ил гарц — бүртгэлээ дуусгалгүй нэвтрэх рүү буцаж болно */}
@@ -579,9 +594,9 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
                 type="submit"
                 variant="outline"
                 className="w-full"
-                disabled={loading}
+                disabled={pending}
               >
-                {loading ? "..." : "Имэйлээр нэвтрэх"}
+                {pending ? "..." : "Имэйлээр нэвтрэх"}
               </Button>
             </form>
           )}
