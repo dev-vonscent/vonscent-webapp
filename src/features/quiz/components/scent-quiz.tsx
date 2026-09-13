@@ -85,6 +85,59 @@ function clearStoredAnswers(): void {
   }
 }
 
+/**
+ * Every tile URL a step will show, gender variants included.
+ *
+ * `step` 0 is the gender question; 1..n are QUIZ_QUESTIONS in order — the same
+ * numbering the widget's own `step` state uses.
+ */
+function stepImages(step: number, gender: GenderPick): string[] {
+  if (step === 0)
+    return GENDER_QUESTION.options.map((o) => o.image).filter(Boolean);
+  const question = QUIZ_QUESTIONS[step - 1];
+  if (!question) return [];
+  return question.options
+    .map((o) => tileImage(o, gender))
+    .filter((src): src is string => Boolean(src));
+}
+
+/** One definition, so the preloader and the tile ask for the same file. */
+const TILE_SIZES = "(max-width: 640px) 50vw, 190px";
+
+/**
+ * Warms the browser cache for the step after this one.
+ *
+ * The tiles are full-bleed photographs, so on a first visit each question used
+ * to sit blank for a second or two while its four images downloaded — a pause
+ * the visitor spends staring at empty cards right after making a choice. One
+ * step of lookahead hides it: answering takes longer than the fetch.
+ *
+ * It mounts real <Image> elements rather than assigning to `new Image().src`,
+ * because the tiles are served through the Next image optimizer — a raw
+ * `/quiz/x.webp` fetch would warm a URL the tile never requests and download
+ * everything twice. Same `sizes`, same srcset, same chosen candidate.
+ */
+function TilePreloader({ sources }: { sources: string[] }) {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute size-px overflow-hidden opacity-0"
+    >
+      {sources.map((src) => (
+        <Image
+          key={src}
+          src={src}
+          alt=""
+          width={1}
+          height={1}
+          sizes={TILE_SIZES}
+          loading="eager"
+        />
+      ))}
+    </span>
+  );
+}
+
 /** Crossfade + soft rise between the widget's phases (intro/quiz/results/…). */
 const phaseVariants = {
   enter: { opacity: 0, y: 12 },
@@ -225,6 +278,17 @@ export function ScentQuiz() {
     setPhase("quiz");
   }
 
+  /**
+   * Artwork for the step after the visible one. The intro warms the gender
+   * tiles; every question warms the next. Nothing is preloaded once the quiz
+   * is over.
+   */
+  const preloadSources = React.useMemo(() => {
+    if (phase === "intro") return stepImages(0, gender);
+    if (phase === "quiz") return stepImages(step + 1, gender);
+    return [];
+  }, [phase, step, gender]);
+
   const question = step > 0 ? QUIZ_QUESTIONS[step - 1] : null;
 
   return (
@@ -236,6 +300,7 @@ export function ScentQuiz() {
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="border-border bg-card relative overflow-hidden rounded-2xl border"
       >
+        <TilePreloader sources={preloadSources} />
         <AnimatePresence mode="wait" initial={false}>
           {phase === "intro" && (
             <motion.div
@@ -586,6 +651,10 @@ function OptionTile({
   // Fall back to the emoji tile while the option's artwork doesn't exist yet
   // (3a — images are generated separately from prompts/quiz-options.md).
   const [imgFailed, setImgFailed] = React.useState(false);
+  // A tile whose photograph hasn't arrived shows the card surface pulsing
+  // rather than an empty hole: on a first visit the four images of a step land
+  // together, and blank cards read as "nothing happened" right after a tap.
+  const [imgLoaded, setImgLoaded] = React.useState(false);
 
   if (image && !imgFailed) {
     return (
@@ -618,14 +687,27 @@ function OptionTile({
             own precisely-rasterized GPU layer, and any sub-pixel gap at its
             edge shows the card color instead of white. */}
         <span className="bg-card absolute inset-0 transform-[translateZ(0)] overflow-hidden rounded-xl [clip-path:inset(1px_round_calc(var(--radius-xl)-1px))] backface-hidden">
+          {/* Sits under the photo and fades out with it, so a cached image
+              (going back a step) never flashes a placeholder. */}
+          <span
+            aria-hidden
+            className={cn(
+              "bg-muted absolute inset-0 transition-opacity duration-300",
+              imgLoaded ? "opacity-0" : "animate-pulse opacity-100",
+            )}
+          />
           <Image
             src={image}
             alt=""
             fill
-            sizes="(max-width: 640px) 50vw, 190px"
+            sizes={TILE_SIZES}
             // The transparent outline nudges the engine into cleaner edge
             // anti-aliasing while the ancestor scales.
-            className="object-cover [outline:1px_solid_transparent]"
+            className={cn(
+              "object-cover transition-opacity duration-300 [outline:1px_solid_transparent]",
+              imgLoaded ? "opacity-100" : "opacity-0",
+            )}
+            onLoad={() => setImgLoaded(true)}
             onError={() => setImgFailed(true)}
           />
           {/* Scrim, not a plain two-stop gradient: text over a photograph is
