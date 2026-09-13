@@ -26,6 +26,15 @@ export interface QuizWeights {
    * Custom-tag slugs (0044 seed, admin-extendable) — use-case and character
    * signals the family/season axes can't express. A slug missing from the
    * admin's pool simply never matches; it doesn't break scoring.
+   *
+   * Deliberately UNWEIGHTED: pool tags that mirror an axis the scorer already
+   * reads — `woody`/`citrus`/`fresh` (scent_families) and `summer`/`winter`
+   * (seasons). Weighting them too would count the same signal twice.
+   *
+   * Slugs are latin by contract (0077_custom_tag_slugs): the admin page
+   * transliterates new tag names, so a tag added there can be wired in here
+   * without a data migration. `pnpm check:quiz-tags` lists pool slugs that no
+   * option weights yet — run it after the client adds tags.
    */
   tags?: Record<string, number>;
 }
@@ -73,7 +82,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
         weights: {
           families: { citrus: 2, fresh: 1 },
           seasons: { summer: 2 },
-          tags: { marine: 2, sport: 1 },
+          tags: { marine: 2, sport: 1, fruity: 1 },
         },
       },
       {
@@ -84,7 +93,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
         weights: {
           families: { woody: 2, fresh: 1 },
           seasons: { autumn: 2 },
-          tags: { clean: 1 },
+          tags: { clean: 1, green: 2, aromatic: 1, herbal: 1 },
         },
       },
       {
@@ -96,7 +105,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
           families: { oriental: 2 },
           seasons: { winter: 2 },
           intensity: { strong: 1 },
-          tags: { vanilla: 2, amber: 1 },
+          tags: { vanilla: 2, amber: 1, gourmand: 2, warm: 1 },
         },
       },
       {
@@ -107,7 +116,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
         weights: {
           families: { floral: 2 },
           seasons: { spring: 2 },
-          tags: { rose: 2, powdery: 1 },
+          tags: { rose: 2, powdery: 1, green: 1, "orange-blossom": 1 },
         },
       },
     ],
@@ -124,7 +133,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
         weights: {
           families: { fresh: 2, citrus: 1 },
           intensity: { light: 2 },
-          tags: { clean: 2, daily: 1 },
+          tags: { clean: 2, daily: 1, green: 1, tea: 1 },
         },
       },
       {
@@ -135,7 +144,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
         weights: {
           families: { floral: 1, citrus: 1 },
           intensity: { medium: 1 },
-          tags: { office: 1, daily: 1 },
+          tags: { office: 1, daily: 1, aromatic: 1 },
         },
       },
       {
@@ -146,7 +155,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
         weights: {
           families: { spicy: 1, oriental: 1 },
           intensity: { medium: 1 },
-          tags: { amber: 1, date: 1 },
+          tags: { amber: 1, date: 1, warm: 2 },
         },
       },
       {
@@ -157,7 +166,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
         weights: {
           families: { oriental: 2, woody: 1 },
           intensity: { strong: 2 },
-          tags: { oud: 2, smoky: 1, party: 1 },
+          tags: { oud: 2, smoky: 1, party: 1, luxurious: 1 },
         },
       },
     ],
@@ -171,28 +180,54 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
         image: "/quiz/character-energetic-v2.webp",
         emoji: "⚡",
         label: "Эрч хүчтэй, хөгжилтэй",
-        weights: { families: { citrus: 2, fresh: 1 }, tags: { sport: 1, youthful: 2 } },
+        weights: {
+          families: { citrus: 2, fresh: 1 },
+          tags: { sport: 1, youthful: 2, fruity: 2, apple: 1, orange: 1 },
+        },
       },
       {
         id: "character-romantic",
         image: "/quiz/character-romantic-v2.webp",
         emoji: "💐",
         label: "Романтик, мэдрэмжтэй",
-        weights: { families: { floral: 2 }, tags: { rose: 2, date: 2, sweet: 1 } },
+        weights: {
+          families: { floral: 2 },
+          tags: { rose: 2, date: 2, sweet: 1, gourmand: 1, honey: 1, musk: 1 },
+        },
       },
       {
         id: "character-warm",
         image: "/quiz/character-warm-v2.webp",
         emoji: "🔥",
         label: "Дулаан, дотно",
-        weights: { families: { spicy: 2, oriental: 1 }, tags: { vanilla: 1, amber: 2, tobacco: 1 } },
+        weights: {
+          families: { spicy: 2, oriental: 1 },
+          tags: {
+            vanilla: 1,
+            amber: 2,
+            tobacco: 1,
+            warm: 2,
+            gourmand: 1,
+            "bitter-almond": 1,
+          },
+        },
       },
       {
         id: "character-calm",
         image: "/quiz/character-calm-v2.webp",
         emoji: "🗿",
         label: "Тайван, өөртөө итгэлтэй",
-        weights: { families: { woody: 2 }, tags: { mature: 2, leather: 1, signature: 1 } },
+        weights: {
+          families: { woody: 2 },
+          tags: {
+            mature: 2,
+            leather: 1,
+            signature: 1,
+            minimalist: 1,
+            aromatic: 1,
+            niche: 1,
+          },
+        },
       },
     ],
   },
@@ -205,28 +240,44 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
         image: "/quiz/season-spring-v2.webp",
         emoji: "🌸",
         label: "Хавар",
-        weights: { seasons: { spring: 3 }, families: { floral: 1 }, tags: { powdery: 1 } },
+        weights: {
+          seasons: { spring: 3 },
+          families: { floral: 1 },
+          tags: { powdery: 1, green: 1 },
+        },
       },
       {
         id: "season-summer",
         image: "/quiz/season-summer-v2.webp",
         emoji: "☀️",
         label: "Зун",
-        weights: { seasons: { summer: 3 }, families: { citrus: 1 }, tags: { marine: 1 } },
+        weights: {
+          seasons: { summer: 3 },
+          families: { citrus: 1 },
+          tags: { marine: 1, fruity: 1 },
+        },
       },
       {
         id: "season-autumn",
         image: "/quiz/season-autumn-v2.webp",
         emoji: "🍂",
         label: "Намар",
-        weights: { seasons: { autumn: 3 }, families: { woody: 1 }, tags: { tobacco: 1, smoky: 1 } },
+        weights: {
+          seasons: { autumn: 3 },
+          families: { woody: 1 },
+          tags: { tobacco: 1, smoky: 1, warm: 1, nutty: 1 },
+        },
       },
       {
         id: "season-winter",
         image: "/quiz/season-winter-v2.webp",
         emoji: "❄️",
         label: "Өвөл",
-        weights: { seasons: { winter: 3 }, families: { oriental: 1 }, tags: { vanilla: 1, oud: 1 } },
+        weights: {
+          seasons: { winter: 3 },
+          families: { oriental: 1 },
+          tags: { vanilla: 1, oud: 1, gourmand: 1 },
+        },
       },
     ],
   },
@@ -239,21 +290,33 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
         image: "/quiz/impression-whisper-v2.webp",
         emoji: "🤫",
         label: "Зөвхөн ойртсон хүнд л мэдрэгдэнэ",
-        weights: { intensity: { light: 3 }, tags: { clean: 1, office: 1 } },
+        weights: { intensity: { light: 3 }, tags: { clean: 1, office: 1, light: 1 } },
       },
       {
         id: "impression-balanced",
         image: "/quiz/impression-balanced-v2.webp",
         emoji: "🙂",
         label: "Тэнцвэртэй, яг таг",
-        weights: { intensity: { medium: 3 }, tags: { daily: 1, office: 1 } },
+        weights: {
+          intensity: { medium: 3 },
+          tags: { daily: 1, office: 1, versatile: 1 },
+        },
       },
       {
         id: "impression-bold",
         image: "/quiz/impression-bold-v2.webp",
         emoji: "💫",
         label: "Хажуугаар өнгөрөхөд эргэж харуулна",
-        weights: { intensity: { strong: 3 }, tags: { "long-lasting": 2, party: 1, signature: 1 } },
+        weights: {
+          intensity: { strong: 3 },
+          tags: {
+            "long-lasting": 2,
+            party: 1,
+            signature: 1,
+            luxurious: 2,
+            special: 1,
+          },
+        },
       },
     ],
   },

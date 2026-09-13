@@ -106,21 +106,56 @@ function scoreProduct(
   return n;
 }
 
+/** The n heaviest weights of a vector — what one product could carry of it. */
+function topWeights(rec: Record<string, number | undefined>, n: number): number {
+  if (n <= 0) return 0;
+  return Object.values(rec)
+    .filter((v): v is number => v != null)
+    .sort((a, b) => b - a)
+    .slice(0, n)
+    .reduce((a, b) => a + b, 0);
+}
+
+/** How many families / seasons / tags the fattest product in the pool carries. */
+interface PoolShape {
+  families: number;
+  seasons: number;
+  tags: number;
+}
+
+function poolShape(pool: ProductDetail[]): PoolShape {
+  const shape: PoolShape = { families: 0, seasons: 0, tags: 0 };
+  for (const p of pool) {
+    shape.families = Math.max(shape.families, p.scentFamilies.length);
+    shape.seasons = Math.max(shape.seasons, p.seasons.length);
+    shape.tags = Math.max(shape.tags, p.customTagSlugs.length);
+  }
+  return shape;
+}
+
 /**
- * Best achievable score for this profile — used to decide whether a match is
- * "strong" (≥25% of it). A product could in theory carry every weighted family
- * and season at once, so this is a loose but stable upper bound.
+ * Best achievable score for this profile — the yardstick for both the "strong
+ * match" threshold (≥25% of it) and the displayed percentage.
+ *
+ * Bounded by what a single product can actually carry rather than by the whole
+ * weight vector: no scent wears six families or a dozen tags at once, and a
+ * vector-wide sum would make every percentage sag as soon as an option gains
+ * another tag weight — a display that drifts with the content file rather than
+ * with the match. `shape` comes from the live pool, so the yardstick tracks how
+ * richly the catalogue is actually tagged.
  */
-function maxScore(profile: QuizProfile, gender: QuizAnswers["gender"]): number {
-  const sum = (rec: Record<string, number | undefined>) =>
-    Object.values(rec).reduce<number>((a, b) => a + (b ?? 0), 0);
+function maxScore(
+  profile: QuizProfile,
+  gender: QuizAnswers["gender"],
+  shape: PoolShape,
+): number {
   const intensityValues = Object.values(profile.intensity).filter(
     (v): v is number => v != null,
   );
   return (
-    2 * sum(profile.families) +
-    sum(profile.seasons) +
-    sum(profile.tags) +
+    2 * topWeights(profile.families, shape.families) +
+    topWeights(profile.seasons, shape.seasons) +
+    topWeights(profile.tags, shape.tags) +
     (intensityValues.length ? Math.max(...intensityValues) : 0) +
     (gender === "any" ? 0 : 1)
   );
@@ -170,7 +205,7 @@ export function scoreQuizMatches(
     (p) => !p.soldOut && matchesGender(p, answers.gender),
   );
 
-  const best = maxScore(profile, answers.gender);
+  const best = maxScore(profile, answers.gender, poolShape(pool));
   const threshold = Math.max(1, best * 0.25);
   const scored = pool
     .map((p) => ({ p, s: scoreProduct(p, profile, answers.gender) }))
