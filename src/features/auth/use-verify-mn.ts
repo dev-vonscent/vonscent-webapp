@@ -56,6 +56,7 @@ export function useVerifyMn(onVerified?: (sessionId: string) => void) {
         if (!res.ok) {
           const body = (await res.json().catch(() => null)) as {
             error?: string;
+            message?: string;
           } | null;
           const messages: Record<string, string> = {
             NOT_CONFIGURED: "Баталгаажуулалт одоогоор идэвхгүй байна.",
@@ -63,8 +64,11 @@ export function useVerifyMn(onVerified?: (sessionId: string) => void) {
             NOT_REGISTERED:
               "Энэ дугаар бүртгэлгүй байна. Эхлээд бүртгүүлнэ үү.",
           };
+          // Хүсэлтийн хязгаар (429) нь бэлэн мессежтэй ирдэг — хэдэн минутын
+          // дараа гэдэг нь тухайн үедээ л мэдэгддэг тул энд давхар бичихгүй.
           setError(
             messages[body?.error ?? ""] ??
+              body?.message ??
               "Сесс эхлүүлж чадсангүй. Дахин оролдоно уу.",
           );
           setStage("error");

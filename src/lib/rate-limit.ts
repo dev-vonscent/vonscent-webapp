@@ -39,6 +39,9 @@ interface RpcVerdict {
   reset: number;
 }
 
+/** Субьект юу вэ — hash-ийн угтвар болж, лог уншихад тусална. */
+export type SubjectKind = "user" | "phone";
+
 export interface RateLimitOptions {
   /**
    * Хэнийг хэмжих вэ — ихэвчлэн нэвтэрсэн хэрэглэгчийн id. Handler аль хэдийн
@@ -46,6 +49,8 @@ export interface RateLimitOptions {
    * олон хүнийг нэг болгож хардаг тул хэрэглэгчийн id үргэлж шударга.
    */
   subject?: string | null;
+  /** `subject` нь хэрэглэгчийн id биш бол (жишээ нь утасны дугаар). */
+  subjectKind?: SubjectKind;
   /** Нэг хүсэлтийн өртөг (олон зүйл зэрэг хийж буй цэгт > 1). */
   cost?: number;
 }
@@ -69,7 +74,7 @@ export function clientIp(req: Request): string | null {
  * — зөвхөн давсалсан sha256 л үлдэнэ (тоолуурт ижил байх нь хангалттай).
  */
 export function subjectKey(
-  kind: "user" | "ip" | "anon",
+  kind: SubjectKind | "ip" | "anon",
   value: string,
 ): string {
   const hash = createHash("sha256")
@@ -137,7 +142,7 @@ export async function checkRateLimit(
   if (!supabase) return pass;
 
   const subject = options.subject
-    ? subjectKey("user", options.subject)
+    ? subjectKey(options.subjectKind ?? "user", options.subject)
     : (() => {
         const ip = clientIp(req);
         return ip ? subjectKey("ip", ip) : subjectKey("anon", "local");
