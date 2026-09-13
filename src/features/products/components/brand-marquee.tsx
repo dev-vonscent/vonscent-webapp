@@ -178,9 +178,16 @@ function usePauseWhileTouched() {
         if (e.pointerType === "mouse") resume();
       },
       // Хүрэлт: дарж барих үед зогсоно, тавихад хэсэг хүлээгээд сэргэнэ.
+      // Хулганы товшилт үүнд орохгүй: заагч нь мөрөн дээр байсаар байтал
+      // дахин урсаж эхэлбэл дарах гэсэн лого нь оргоно — хулгана гартал
+      // (`onPointerLeave`) зогссон хэвээр.
       onPointerDown: pause,
-      onPointerUp: () => resume(RESUME_AFTER_TOUCH_MS),
-      onPointerCancel: () => resume(RESUME_AFTER_TOUCH_MS),
+      onPointerUp: (e: React.PointerEvent) => {
+        if (e.pointerType !== "mouse") resume(RESUME_AFTER_TOUCH_MS);
+      },
+      onPointerCancel: (e: React.PointerEvent) => {
+        if (e.pointerType !== "mouse") resume(RESUME_AFTER_TOUCH_MS);
+      },
       // Гарын товчоор дамжсан фокус — салангуут сэргэнэ.
       onFocusCapture: pause,
       onBlurCapture: () => resume(RESUME_AFTER_TOUCH_MS),
