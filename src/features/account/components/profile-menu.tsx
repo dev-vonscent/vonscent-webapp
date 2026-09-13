@@ -24,7 +24,7 @@ import {
 import { ThemeSwitcher } from "@/components/shared/theme-switcher";
 import { createClient } from "@/lib/supabase/browser";
 import { useIsStaff } from "@/features/account/use-staff";
-import { SignOutForm } from "@/features/account/components/sign-out-form";
+import { useSignOutConfirm } from "@/features/account/components/use-sign-out-confirm";
 
 interface Profile {
   name: string;
@@ -33,7 +33,7 @@ interface Profile {
 }
 
 export function ProfileMenu() {
-  const signOutForm = React.useRef<HTMLFormElement>(null);
+  const [askSignOut, signOutDialog] = useSignOutConfirm();
   const [profile, setProfile] = React.useState<Profile | null>(null);
   const [configured, setConfigured] = React.useState(true);
   const isStaff = useIsStaff();
@@ -75,7 +75,7 @@ export function ProfileMenu() {
 
   return (
     <>
-      <SignOutForm ref={signOutForm} />
+      {signOutDialog}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
@@ -204,10 +204,15 @@ export function ProfileMenu() {
           {configured && profile && (
             <>
               <DropdownMenuSeparator />
-              {/* Форм нь цэсний ГАДНА (дээр) зурагдсан — цэс хаагдахад энэ
-                  товч устдаг тул илгээхийг нь шууд өдөөнө. */}
+              {/* Форм ба баталгаажуулах цонх нь цэсний ГАДНА (дээр)
+                  зурагдсан — цэс хаагдахад энэ товч устдаг.
+                  Цэс хаагдаж байх зуур диалог нээгдэж чаддаггүй тул
+                  анхдагч сонголтыг зогсоож, цэсийг цонхны ард үлдээнэ. */}
               <DropdownMenuItem
-                onSelect={() => signOutForm.current?.requestSubmit()}
+                onSelect={(e) => {
+                  e.preventDefault();
+                  askSignOut();
+                }}
                 className="text-red-400 focus:bg-red-500/10 focus:text-red-400 [&_svg]:text-red-400"
               >
                 <LogOut /> Гарах

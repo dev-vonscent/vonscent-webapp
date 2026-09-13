@@ -19,13 +19,14 @@ import { AddressBook } from "@/features/account/components/address-book";
 import { PasscodeDialog } from "@/features/account/components/passcode-dialog";
 import { ProfileEditDialog } from "@/features/account/components/profile-edit-dialog";
 import { EmailSettings } from "@/features/account/components/email-settings";
-import { SignOutForm } from "@/features/account/components/sign-out-form";
+import { useSignOutConfirm } from "@/features/account/components/use-sign-out-confirm";
 import { CouponList } from "@/features/account/components/coupon-list";
 import { isPhoneEmail } from "@/lib/auth/phone-email";
 import { WheelEntryCard } from "@/features/lucky-wheel/components/wheel-entry-card";
 import type { ProductListItem } from "@/lib/types";
 
 export default function ProfilePage() {
+  const [askSignOut, signOutDialog] = useSignOutConfirm();
   /** Supabase auth-ийн хаяг — утсаар бүртгүүлсэн хүнд синтетик тул харуулахгүй. */
   const [authEmail, setAuthEmail] = React.useState("");
   /** Хэрэглэгчийн өөрөө бүртгүүлсэн бодит хаяг (newsletter_subscribers). */
@@ -261,15 +262,17 @@ export default function ProfilePage() {
 
       {/* Sign out */}
       {configured && (
-        <SignOutForm>
+        <>
+          {signOutDialog}
           <Button
-            type="submit"
+            type="button"
+            onClick={askSignOut}
             variant="ghost"
             className="bg-destructive/10 text-destructive hover:bg-destructive/18 hover:text-destructive w-full"
           >
             <LogOut className="size-4" /> Гарах
           </Button>
-        </SignOutForm>
+        </>
       )}
 
       <ProfileEditDialog
