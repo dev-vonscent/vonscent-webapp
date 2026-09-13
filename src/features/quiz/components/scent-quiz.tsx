@@ -326,8 +326,8 @@ export function ScentQuiz() {
                 className="relative aspect-5/2 min-h-70 w-full md:order-2 md:aspect-auto md:min-h-0"
                 fallbackClassName="bg-[radial-gradient(ellipse_65%_70%_at_65%_55%,rgba(92,62,28,.55),rgba(40,28,14,.2)_55%,transparent_80%)]"
               >
-                {/* fade into the card surface: upward on mobile, leftward on md+ */}
-                <div className="from-card absolute inset-x-0 bottom-0 h-[60%] bg-linear-to-t to-transparent md:hidden" />
+                {/* fade into the card surface — md+ only; on mobile the image keeps
+                    its full-bleed edge (a vertical fade washed it out in light mode) */}
                 <div className="from-card absolute inset-y-0 left-0 hidden w-1/2 bg-linear-to-r to-transparent md:block" />
               </SideImage>
 
