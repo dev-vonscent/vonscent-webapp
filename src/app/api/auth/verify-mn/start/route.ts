@@ -6,6 +6,7 @@ import {
   createVerificationSession,
   isVerifyMnConfigured,
 } from "@/lib/verify-mn";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
   phone: z.string().regex(/^\d{8}$/u),
@@ -29,6 +30,16 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "INVALID_PHONE" }, { status: 400 });
   }
+
+  // Гадны үйлчилгээ рүү залгахаас ӨМНӨ. Хоёр тэнхлэг: нэг дугаарыг дахин
+  // дахин эхлүүлэхээс, бас нэг IP-ээс дугаар сольж гүйлгэхээс.
+  const limitedIp = await enforceRateLimit("verifyStartIp", req);
+  if (limitedIp) return limitedIp;
+  const limitedPhone = await enforceRateLimit("verifyStartPhone", req, {
+    subject: parsed.data.phone,
+    subjectKind: "phone",
+  });
+  if (limitedPhone) return limitedPhone;
 
   if (parsed.data.intent) {
     const registered = Boolean(await findUserIdByPhone(parsed.data.phone));

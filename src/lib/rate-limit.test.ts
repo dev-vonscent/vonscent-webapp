@@ -137,6 +137,20 @@ describe("checkRateLimit", () => {
     expect(args.p_subject).toBe(subjectKey("user", "user-1"));
   });
 
+  it("labels a non-user subject by its kind", async () => {
+    rpc.mockResolvedValue({ data: ALLOWED, error: null });
+    await checkRateLimit("verifyStartPhone", post(), {
+      subject: "99112233",
+      subjectKind: "phone",
+    });
+    const args = rpc.mock.calls[0][2] as Record<string, unknown>;
+    expect(args.p_subject).toBe(subjectKey("phone", "99112233"));
+    // Утасны дугаар DB-д задарч харагдахгүй.
+    expect(args.p_subject).not.toContain("99112233");
+    // Ижил утга өөр төрлөөр ирвэл өөр хувин.
+    expect(args.p_subject).not.toBe(subjectKey("user", "99112233"));
+  });
+
   it("passes the verdict through when the limit is hit", async () => {
     rpc.mockResolvedValue({ data: DENIED, error: null });
     await expect(checkRateLimit("contact", post())).resolves.toMatchObject({
