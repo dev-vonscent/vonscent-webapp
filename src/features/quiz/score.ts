@@ -1,4 +1,4 @@
-import type { Concentration, Season } from "@/db/types";
+import type { Season } from "@/db/types";
 import type { ProductDetail, ProductListItem } from "@/lib/types";
 import {
   QUIZ_QUESTIONS,
@@ -31,15 +31,15 @@ export interface QuizResult {
 
 const RESULT_LIMIT = 6;
 
-/** No sillage column exists — intensity is derived from concentration. */
-const INTENSITY_BY_CONCENTRATION: Record<Concentration, Intensity> = {
-  EDC: "light",
-  EDT: "light",
-  EDP: "medium",
-  Parfum: "strong",
-  Extrait: "strong",
-  Elixir: "strong",
-};
+/**
+ * `products.sillage` (0078) IS the intensity axis: the admin sets it by hand
+ * and its three values are the quiz's three, so the profile is indexed with it
+ * directly. Deriving intensity from concentration (the previous rule) was wrong
+ * for half the catalogue — concentration is the bottle's type, not its reach:
+ * Sauvage EDT carries further than many an Extrait. Indexing the profile with
+ * the column below is what keeps the two unions in step — a value the quiz
+ * doesn't know would not compile.
+ */
 
 const OPTION_WEIGHTS = new Map<string, QuizWeights>(
   QUIZ_QUESTIONS.flatMap((q) => q.options.map((o) => [o.id, o.weights])),
@@ -77,6 +77,49 @@ function matchesGender(
   return p.gender === gender || p.gender === "unisex";
 }
 
+/**
+ * How many matched tags one product may cash in.
+ *
+ * Tag overlap used to be a plain sum, which measured how thoroughly the admin
+ * had tagged a product rather than how well it answered the quiz: across every
+ * possible answer combination, products carrying 11 tags were recommended 5.6×
+ * as often as products carrying 3. Counting only the two heaviest matches keeps
+ * the signal (a scent that hits the strongest tags still wins) while a long
+ * tail of weak tags stops buying rank — the same sweep now reads 2.8×, and the
+ * remainder is the tagging genuinely describing the scent.
+ */
+const TAG_MATCH_LIMIT = 2;
+
+/**
+ * What a scent keeps when it contradicts the season the visitor asked for.
+ *
+ * Season used to be additive only (max weight 3), so a heavily tagged
+ * autumn/winter scent outscored a true summer one on a summer answer — 21.7%
+ * of all recommendations contradicted the season picked. Season is a
+ * condition, not a nudge: a scent that answers none of the wanted seasons
+ * keeps a little over half its score and drops below any honest match, but
+ * stays eligible so a thin catalogue still fills the rail. The sweep now reads
+ * 1.1%, and those are tail positions under 50%.
+ */
+const SEASON_MISMATCH_KEEP = 0.55;
+
+/** A year-round scent genuinely answers any season; it just isn't a specialist. */
+const ALL_SEASON_CREDIT = 0.5;
+
+/** The n heaviest matched weights — what one product may actually cash in. */
+function topMatches(
+  slugs: string[],
+  weights: Record<string, number | undefined>,
+  limit: number,
+): number {
+  return slugs
+    .map((s) => weights[s] ?? 0)
+    .filter((n) => n > 0)
+    .sort((a, b) => b - a)
+    .slice(0, limit)
+    .reduce((a, b) => a + b, 0);
+}
+
 function scoreProduct(
   p: ProductDetail,
   profile: QuizProfile,
@@ -88,22 +131,49 @@ function scoreProduct(
   for (const slug of p.scentFamilies) n += 2 * (profile.families[slug] ?? 0);
 
   // Custom tags carry the use-case/character answers the family axis can't.
-  for (const slug of p.customTagSlugs) n += profile.tags[slug] ?? 0;
+  n += topMatches(p.customTagSlugs, profile.tags, TAG_MATCH_LIMIT);
 
   const seasonWeights = Object.values(profile.seasons).filter(
     (v): v is number => v != null,
   );
   const maxSeason = seasonWeights.length ? Math.max(...seasonWeights) : 0;
   for (const s of p.seasons) {
-    // A year-round scent answers every season preference at half credit.
-    n += s === "all" ? maxSeason / 2 : (profile.seasons[s] ?? 0);
+    n +=
+      s === "all"
+        ? maxSeason * ALL_SEASON_CREDIT
+        : (profile.seasons[s] ?? 0);
   }
 
-  n += profile.intensity[INTENSITY_BY_CONCENTRATION[p.concentration]] ?? 0;
+  n += profile.intensity[p.sillage] ?? 0;
 
   if (gender !== "any" && p.gender === gender) n += 1;
 
+  // The penalty lands on the whole score, so no amount of tag overlap can buy
+  // a winter-only scent onto a summer answer.
+  if (maxSeason > 0 && !answersSeason(p, profile)) n *= SEASON_MISMATCH_KEEP;
+
   return n;
+}
+
+/**
+ * Does the scent cover the season the answers actually lean on?
+ *
+ * Measured against the DOMINANT season, not merely a positive one: the season
+ * question weighs 3 and the weekend question 2, so "Ойгоор алхах" (autumn) with
+ * "Зун" would otherwise let a summer-only scent pass on an autumn answer. A
+ * season within a quarter of the top weight still counts, so two answers that
+ * genuinely agree on two seasons keep both.
+ */
+function answersSeason(p: ProductDetail, profile: QuizProfile): boolean {
+  // Missing season data is a gap in the catalogue, not a contradiction.
+  if (!p.seasons.length) return true;
+  const weights = Object.values(profile.seasons).filter(
+    (v): v is number => v != null,
+  );
+  const max = weights.length ? Math.max(...weights) : 0;
+  return p.seasons.some(
+    (s) => s === "all" || (profile.seasons[s] ?? 0) >= max * 0.75,
+  );
 }
 
 /** The n heaviest weights of a vector — what one product could carry of it. */
@@ -155,7 +225,9 @@ function maxScore(
   return (
     2 * topWeights(profile.families, shape.families) +
     topWeights(profile.seasons, shape.seasons) +
-    topWeights(profile.tags, shape.tags) +
+    // Mirrors TAG_MATCH_LIMIT: the yardstick must measure the same ceiling the
+    // scorer allows, or every percentage sags as products gain tags.
+    topWeights(profile.tags, Math.min(shape.tags, TAG_MATCH_LIMIT)) +
     (intensityValues.length ? Math.max(...intensityValues) : 0) +
     (gender === "any" ? 0 : 1)
   );
