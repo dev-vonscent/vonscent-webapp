@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { rateLimitMessage } from "@/lib/rate-limit-client";
 
 /**
  * Хөлийн «Мэдээлэл авах» форм.
@@ -30,12 +31,15 @@ type State =
   | "login"
   | "taken"
   | "error"
+  | "limited"
   | "empty"
   | "invalid";
 
 export function NewsletterForm() {
   const [email, setEmail] = React.useState("");
   const [state, setState] = React.useState<State>("idle");
+  /** «limited» төлөвийн мессеж — хэдэн минутын дараа гэдгийг сервер хэлнэ. */
+  const [limitMsg, setLimitMsg] = React.useState("");
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   async function onSubmit(e: React.FormEvent) {
@@ -61,7 +65,13 @@ export function NewsletterForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      if (res.status === 401) {
+      if (res.status === 429) {
+        setLimitMsg(
+          (await rateLimitMessage(res)) ??
+            "Хэт олон хүсэлт илгээлээ. Түр хүлээгээд дахин оролдоно уу.",
+        );
+        setState("limited");
+      } else if (res.status === 401) {
         setState("login");
       } else if (res.status === 409) {
         setState("taken");
@@ -117,18 +127,20 @@ export function NewsletterForm() {
           (state === "empty" ||
           state === "invalid" ||
           state === "taken" ||
+          state === "limited" ||
           state === "error"
             ? "text-destructive"
             : "text-muted-foreground")
         }
       >
-        <Message state={state} />
+        <Message state={state} limitMsg={limitMsg} />
       </p>
     </div>
   );
 }
 
-function Message({ state }: { state: State }) {
+function Message({ state, limitMsg }: { state: State; limitMsg: string }) {
+  if (state === "limited") return <>{limitMsg}</>;
   switch (state) {
     case "empty":
       return <>Имэйл хаягаа бичнэ үү.</>;

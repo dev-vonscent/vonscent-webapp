@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { quizAnswersSchema } from "@/features/quiz/questions";
 import { getQuizMatches } from "@/features/quiz/api";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 /**
  * "Үнэрээ ол" quiz matcher. Scoring stays server-side so the weights remain
@@ -13,6 +14,9 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "INVALID" }, { status: 400 });
   }
+  const limited = await enforceRateLimit("quiz", req);
+  if (limited) return limited;
+
   const result = await getQuizMatches(parsed.data);
   return NextResponse.json(result);
 }

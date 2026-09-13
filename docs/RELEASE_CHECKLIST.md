@@ -111,6 +111,12 @@ Edge Request $2.60/1M, Fast Origin Transfer $0.24/GB, invocation $0.60/1M.
       production утгаараа Vercel дээр байгаа эсэх.
 - [ ] Утасны баталгаажуулалт: `VERIFY_MN_API_KEY` production key,
       `AUTH_PASSCODE_PEPPER` тогтмол (солибол бүх нууц үг хүчингүй болно!).
+- [ ] **Хүсэлтийн хязгаар** (development.md §9.7): `0076_rate_limits.sql`
+      production дээр хэрэгжсэн эсэх, `prune-rate-limits` pg_cron ажил
+      бүртгэгдсэн эсэх (`select * from cron.job;`). `RATE_LIMIT_SALT` нь
+      заавал биш — тавихгүй бол `AUTH_PASSCODE_PEPPER` ашиглагдана.
+      Нэвтрүүлсний дараа Sentry дээр 429-ийн тоог ажиглаж, `RATE_LIMITS`-ын
+      утга жирийн хэрэглэгчийг хааж эхэлбэл сулруулна.
 
 ## 5. Админ контент (Тохиргоо самбараас)
 

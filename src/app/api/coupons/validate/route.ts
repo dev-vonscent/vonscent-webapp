@@ -4,6 +4,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
   code: z.string().min(1),
@@ -40,6 +41,11 @@ export async function POST(req: Request) {
   if (!isSupabaseConfigured) {
     return NextResponse.json({ valid: false, discount: 0, message: "demo" });
   }
+
+  // Код таах оролдлогыг сааруулна. Түлхүүр нь IP: халдагч данс солиод л
+  // дахин эхлүүлэх боломжтой тул хэрэглэгчийн id энд хамгаалалт болохгүй.
+  const limited = await enforceRateLimit("coupon", req);
+  if (limited) return limited;
 
   // The session client answers "who is asking"; the admin client does the
   // lookup so a personal coupon can be checked without exposing the row.

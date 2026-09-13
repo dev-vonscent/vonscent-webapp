@@ -6,6 +6,7 @@ import { uploadImage } from "@/lib/storage/storage";
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/lib/storage/limits";
 import { processImage, presetForFolder } from "@/lib/storage/process-image";
 import { imageUploadFailure } from "@/lib/storage/report";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 /**
  * Image upload to Supabase Storage. Auth required.
@@ -53,7 +54,8 @@ async function handle(req: Request) {
   if (!isFolder(folder)) {
     return NextResponse.json({ error: "BAD_FOLDER" }, { status: 400 });
   }
-  if (FOLDERS[folder] === "staff" && !(await getStaffUser())) {
+  const isStaffFolder = FOLDERS[folder] === "staff";
+  if (isStaffFolder && !(await getStaffUser())) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
   if (!(file instanceof File)) {
@@ -64,6 +66,16 @@ async function handle(req: Request) {
   }
   if (file.size > MAX_IMAGE_BYTES) {
     return NextResponse.json({ error: "TOO_LARGE" }, { status: 400 });
+  }
+
+  // sharp боловсруулалт эхлэхийн ӨМНӨ — энэ цэгийн үнэ нь CPU ба Storage.
+  // Ажилтны хавтсыг хязгаарлахгүй: role шалгалт нь өөрөө хаалт бөгөөд бараа
+  // олноор оруулахад 10 бүтээгдэхүүн × хэдэн зураг нь жирийн ажлын урсгал.
+  if (!isStaffFolder) {
+    const limited = await enforceRateLimit("upload", req, {
+      subject: user.id,
+    });
+    if (limited) return limited;
   }
 
   // Re-encoded to a bounded WebP, so the extension comes from the processed

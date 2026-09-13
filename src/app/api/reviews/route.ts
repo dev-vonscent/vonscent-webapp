@@ -10,6 +10,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaffUser } from "@/lib/auth/guard";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** Slug for the cache purge — the review rows only carry the product id. */
@@ -73,6 +74,11 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user)
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+
+  // Хэрэглэгчийн id-ээр: сэтгэгдэл бичихэд нэвтэрсэн байх ёстой тул IP нь
+  // операторын NAT ард сууж буй бусад захиалагчийг л дэмий хохироох байлаа.
+  const limited = await enforceRateLimit("review", req, { subject: user.id });
+  if (limited) return limited;
 
   // Owner-scoped RLS lets the user upsert their own review.
   const { error } = await supabase.from("reviews").upsert(
