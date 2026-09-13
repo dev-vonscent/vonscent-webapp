@@ -33,9 +33,19 @@ function firstCarousel(page: Page) {
 /**
  * Гүйлгэх зайтай эхний rail. Demo каталог жижиг тул зарим rail нь дэлгэцэнд
  * бүтнээрээ багтаж, сумнууд нь идэвхгүй байдаг — тэднийг алгасна.
+ *
+ * `data-ready="true"` болтол хүлээнэ: Embla үүсэхээс ӨМНӨ сумны идэвхтэй эсэх
+ * нь мэдэгдэхгүй тул тэр цонхонд шалгавал буруу rail сонгогдож, дараа нь
+ * унтарсан сум дээр дарж таймаут болно.
  */
 async function scrollableCarousel(page: Page) {
+  // Бүх rail бэлэн болтол — эс тэгвээс «эхний гүйлгэх боломжтой» гэдэг нь
+  // хараахан бэлэн болоогүй rail-ыг алгасаад өөр rail сонгож мэднэ.
   const rails = page.locator("div.group\\/carousel");
+  await expect(rails.first()).toBeVisible();
+  await expect(
+    page.locator('div.group\\/carousel[data-ready="false"]'),
+  ).toHaveCount(0);
   for (let i = 0; i < (await rails.count()); i += 1) {
     const carousel = rails.nth(i);
     if (await carousel.getByRole("button", { name: "Дараах" }).isEnabled())
@@ -71,7 +81,9 @@ test("carousel-ын сум нэг бараагаар гүйлгэнэ", async ({
   await carousel.hover();
 
   const before = await cards.first().boundingBox();
-  await carousel.getByRole("button", { name: "Дараах" }).click();
+  const next = carousel.getByRole("button", { name: "Дараах" });
+  await expect(next).toBeEnabled();
+  await next.click();
   // Embla-гийн шилжилт дуустал.
   await page.waitForTimeout(800);
   const after = await cards.first().boundingBox();
@@ -143,7 +155,9 @@ test.describe("брэндийн гүйдэг мөр", () => {
 
   test("мөрийг гараар гүйлгэж болно", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("heading", { name: "Брэндээр" }).scrollIntoViewIfNeeded();
+    await page
+      .getByRole("heading", { name: "Брэндээр" })
+      .scrollIntoViewIfNeeded();
     const track = page.locator(".animate-marquee").first();
     const row = track.locator("xpath=..");
     await expect(row).toBeVisible();

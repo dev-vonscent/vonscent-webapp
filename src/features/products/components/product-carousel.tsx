@@ -20,13 +20,21 @@ export function ProductCarousel({
     slidesToScroll: 1,
   });
   const [atStart, setAtStart] = React.useState(true);
-  const [atEnd, setAtEnd] = React.useState(false);
+  const [atEnd, setAtEnd] = React.useState(true);
+  // Embla үүсэх хүртэл гүйлгэх зай байгаа эсэхийг МЭДЭХГҮЙ. Өмнө нь `atEnd`
+  // false-аар эхэлдэг байсан тул бүтнээрээ багтдаг rail ч эхний frame-үүдэд
+  // «Дараах» сумаа идэвхтэй харуулж, дараа нь чимээгүй унтардаг байв —
+  // e2e тал дээр яг тэр цонхонд баригдвал ажиллахгүй сум дээр дарж таймаут
+  // болно. Одоо бэлэн болтол хоёр сум идэвхгүй, `data-ready` нь бэлэн болсныг
+  // хэлнэ.
+  const [ready, setReady] = React.useState(false);
 
   React.useEffect(() => {
     if (!emblaApi) return;
     const update = () => {
       setAtStart(!emblaApi.canScrollPrev());
       setAtEnd(!emblaApi.canScrollNext());
+      setReady(true);
     };
     update();
     emblaApi.on("select", update).on("reInit", update);
@@ -38,7 +46,10 @@ export function ProductCarousel({
   return (
     // `@container`: сумны байрлалыг картын зурагны өндрөөр (карт бүр
     // контейнерийн өргөний хувиар өргөнтэй, зураг нь 4/5) тооцно.
-    <div className="group/carousel @container relative">
+    <div
+      className="group/carousel @container relative"
+      data-ready={ready ? "true" : "false"}
+    >
       <div ref={emblaRef} className="-mx-4 overflow-hidden sm:mx-0">
         <div className="flex gap-4 px-4 sm:px-0">
           {products.map((p) => (
@@ -55,12 +66,12 @@ export function ProductCarousel({
       <CarouselArrow
         side="left"
         onClick={() => emblaApi?.scrollPrev()}
-        disabled={atStart}
+        disabled={!ready || atStart}
       />
       <CarouselArrow
         side="right"
         onClick={() => emblaApi?.scrollNext()}
-        disabled={atEnd}
+        disabled={!ready || atEnd}
       />
     </div>
   );
