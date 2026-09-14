@@ -92,7 +92,7 @@ export function LoyaltyField({
             // Баруун зэрэгцүүлсэн нь орон нь «₮»-ийн хажууд очиж, нэг бүтэн
             // дүн болж уншигдана — зүүн захад наалдсан тоо тэмдэгтээсээ
             // тасарч, хоёр өөр зүйл мэт харагддаг.
-            className="h-9 pr-7 text-right tabular-nums"
+            className="h-10 pr-7 text-right tabular-nums md:h-9"
           />
           <span
             aria-hidden
@@ -103,9 +103,9 @@ export function LoyaltyField({
         </div>
         <Button
           type="button"
-          variant="outline"
+          variant={applied ? "secondary" : "default"}
           size="sm"
-          className="h-9 shrink-0"
+          className="h-10 shrink-0 md:h-9"
           onClick={() => commit(applied ? "" : String(max))}
         >
           {applied ? "Болих" : "Бүгдийг"}

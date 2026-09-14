@@ -76,7 +76,12 @@ test("guest places a demo order end to end", async ({ page }) => {
   await dialog.getByRole("button", { name: "Хаяг хэрэглэх" }).click();
   await expect(dialog).toBeHidden();
 
-  await page.getByRole("button", { name: /Захиалга баталгаажуулах/ }).click();
+  // Товч нь захиалгыг баталгаажуулдаггүй, төлбөр рүү дамжуулдаг. Утсан дээр
+  // наалдсан зурвас нь ижил товчийг давхар гаргадаг тул эхнийхийг нь авна.
+  await page
+    .getByRole("button", { name: /Төлбөр төлөх/ })
+    .first()
+    .click();
 
   // A guest gets a "no loyalty points" interstitial before the order posts.
   await page.getByRole("button", { name: "Зочноор үргэлжлүүлэх" }).click();

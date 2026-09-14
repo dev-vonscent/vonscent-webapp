@@ -109,12 +109,16 @@ export function SavedAddresses({
 
       {/* Bottom of the list: opens the dialog rather than revealing a form
           under it. Not a radio — nothing is chosen by pressing it. */}
+      {/* Систем хүрээгүй (`border-color: transparent`) тул энэ товч тасархай
+          хүрээгээрээ огт харагддаггүй байв — зочин хэрэглэгчийн хувьд энэ бол
+          хаяг оруулах ЦОРЫН ГАНЦ хаалга. Гүнийг өнгөний давхаргаар өгч,
+          эргүүлсэн `+` тэмдгээр «сонголт» биш «үйлдэл» гэдгийг нь заана. */}
       <button
         type="button"
         onClick={onAddNew}
-        className="border-border hover:bg-accent flex cursor-pointer items-center gap-3 rounded-xl border border-dashed p-4 text-left transition-all"
+        className="bg-secondary hover:bg-accent flex cursor-pointer items-center gap-3 rounded-xl p-4 text-left transition-all"
       >
-        <span className="bg-secondary flex size-8 shrink-0 items-center justify-center rounded-full">
+        <span className="bg-foreground text-background flex size-8 shrink-0 items-center justify-center rounded-full">
           <Plus className="size-4" />
         </span>
         <span className="text-sm font-medium">

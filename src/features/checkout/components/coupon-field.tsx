@@ -59,7 +59,7 @@ export function CouponField({
 
   if (applied) {
     return (
-      <div className="border-gold-strong/40 bg-secondary flex items-center gap-3 rounded-xl border p-3">
+      <div className="bg-secondary flex items-center gap-3 rounded-xl p-3">
         <span className="bg-gold-strong/15 text-gold-strong flex size-8 shrink-0 items-center justify-center rounded-full">
           <Check className="size-4" strokeWidth={2.5} />
         </span>
@@ -119,7 +119,7 @@ export function CouponField({
             placeholder="Купон код"
             // Codes are printed uppercase; typing them lowercase and seeing
             // them stay lowercase reads as "this isn't the code I was given".
-            className="h-9 font-mono uppercase placeholder:font-sans placeholder:normal-case"
+            className="h-10 font-mono uppercase md:h-9 placeholder:font-sans placeholder:normal-case"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -129,9 +129,8 @@ export function CouponField({
           />
           <Button
             type="button"
-            variant="outline"
             size="sm"
-            className="h-9 shrink-0"
+            className="h-10 shrink-0 md:h-9"
             disabled={applying || !code.trim()}
             onClick={onApply}
           >
@@ -148,7 +147,11 @@ export function CouponField({
         </button>
       )}
 
-      {message && <p className="text-destructive text-xs">{message}</p>}
+      {message && (
+        <p role="alert" className="text-destructive text-xs">
+          {message}
+        </p>
+      )}
     </div>
   );
 }
@@ -167,11 +170,14 @@ function OfferRow({
     <button
       type="button"
       onClick={onPick}
-      className="border-border hover:border-gold-strong/40 hover:bg-accent flex w-full items-center gap-3 rounded-xl border p-2.5 text-left transition-all"
+      // Хүрээ энэ системд тунгалаг тул мөрүүд огт хилгүй, дарж болохгүй текст
+      // мэт харагддаг байв. Мөрийг `bg-secondary` дээр, доторх тэмдгийг нэг
+      // давхарга ухааж (`bg-card`) тавьснаар хоёулаа уншигдана.
+      className="bg-secondary hover:bg-accent flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition-all"
     >
       {/* What the coupon *is*, so two codes are told apart without reading
           either of them. */}
-      <span className="bg-secondary flex size-11 shrink-0 flex-col items-center justify-center rounded-lg">
+      <span className="bg-card flex size-11 shrink-0 flex-col items-center justify-center rounded-lg">
         <Tag className="text-muted-foreground mb-0.5 size-3" />
         <span className="text-[11px] leading-none font-bold">
           {offer.type === "percent"
@@ -186,7 +192,7 @@ function OfferRow({
             {offer.code}
           </span>
           {offer.personal && (
-            <span className="bg-secondary text-muted-foreground rounded-full px-1.5 py-px text-[10px] font-medium">
+            <span className="bg-card text-muted-foreground rounded-full px-1.5 py-px text-[10px] font-medium">
               Танд
             </span>
           )}

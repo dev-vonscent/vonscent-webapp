@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  User,
-  MapPin,
   Truck,
   ShieldCheck,
   ShoppingCart,
@@ -19,8 +17,11 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Field } from "@/components/ui/field";
+import { FieldError } from "@/components/ui/form-field";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import {
   Select,
   SelectContent,
@@ -35,6 +36,7 @@ import {
   giftAllowanceFor,
   giftGuaranteeFor,
 } from "@/lib/gift";
+import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { GiftSamplePicker } from "@/features/checkout/components/gift-sample-picker";
 import { useGiftPool } from "@/features/gifts/use-gift-pool";
 import {
@@ -93,6 +95,70 @@ const NOTE_OPTIONS = ["Бэлгийн боолт хийлгэх", "Хүргэх�
 const formSchema = checkoutSchema.omit({ items: true, collections: true });
 type FormValues = z.infer<typeof formSchema>;
 
+/**
+ * Бүртгүүлэх / нэвтрэх рүү явахад бөглөсөн зүйл нь алга болохгүй байх түлхүүр.
+ *
+ * Энэ хуудсын төлөв бүхэлдээ React state — «Бүртгүүлэх» дарахад хүлээн авагч,
+ * утас, хаягийн ноорог, хүргэх өдөр, тэмдэглэл, бэлгийн сонголт бүгд устдаг
+ * байв. `?next=/checkout`-оор буцаж ирэхэд тэднийг эргүүлж тавина.
+ */
+const DRAFT_KEY = "vonscent-checkout-draft";
+
+interface CheckoutDraft {
+  values: Partial<FormValues>;
+  khoroo: number | null;
+  address: AddressFormValue | null;
+  noteTags: string[];
+  giftIds: string[];
+}
+
+/** Бөглөсөн хэсгийг хадгална — `?next=`-ээр буцаж ирэхэд л уншигдана. */
+function saveDraft(draft: CheckoutDraft) {
+  try {
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    // Private mode / хориглосон storage — ноорог алга болно, урсгал таслахгүй.
+  }
+}
+
+/** Ноорогийг нэг л удаа уншина: буцаад авсны дараа шууд устгана. */
+function takeDraft(): CheckoutDraft | null {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(DRAFT_KEY);
+    return JSON.parse(raw) as CheckoutDraft;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `?next=` нь баталгаажуулалтын формд аль хэдийн байдаг (phone-auth-form) —
+ * checkout нь түүнийг ашигладаггүй байсан тул бүртгүүлэх рүү явсан хүн
+ * буцаж ирэх замгүй /-д хаягддаг байв.
+ */
+const REGISTER_HREF = "/register?next=%2Fcheckout";
+
+/**
+ * Алдаатай талбар аль хэсэгт байгаа вэ. Утсан дээр товч нь 4 дэлгэцийн доор
+ * байдаг тул «дарсан ч юу ч болохгүй» гэсэн мэдрэмжийг зөвхөн энэ зураглал
+ * дээр суурилсан гүйлгэлт л арилгана (`Section` дээрх `scroll-mt-24`).
+ */
+const SECTION_ORDER = ["checkout-address", "checkout-recipient"] as const;
+
+const ERROR_SECTION: Record<string, string> = {
+  shipCity: "checkout-address",
+  shipDistrict: "checkout-address",
+  shipDetail: "checkout-address",
+  shipZone: "checkout-address",
+  deliverOn: "checkout-address",
+  note: "checkout-address",
+  contactName: "checkout-recipient",
+  contactPhone: "checkout-recipient",
+  contactEmail: "checkout-recipient",
+};
+
 export default function CheckoutPage() {
   const router = useRouter();
   // Захиалга сагснаас *сонгосон* мөрүүдийг л авна — сонгоогүй бараа сагсандаа
@@ -132,6 +198,8 @@ export default function CheckoutPage() {
   const [zones, setZones] = React.useState<ShippingZoneConfig[]>([
     ...SHIPPING_ZONES,
   ]);
+  /** Дэлгүүрийн утас — хүргэлтгүй бүсэд гарах бодит гарц (админы тохиргоо). */
+  const [storePhone, setStorePhone] = React.useState<string | null>(null);
   const [noteTags, setNoteTags] = React.useState<string[]>([]);
   const [giftIds, setGiftIds] = React.useState<string[]>([]);
   // Khoroo lives outside the form: it is folded into shipDetail on submit,
@@ -160,15 +228,72 @@ export default function CheckoutPage() {
     handleSubmit,
     watch,
     setValue,
+    getValues,
+    setError,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    // Өөрсдөө фокуслана: RHF-ийн автомат фокус нь бүртгэгдсэн ЭХНИЙ талбар руу
+    // (Нэр) үсэрч, хаягийн алдааг давж гардаг — хаягийн талбарууд popup дотор
+    // байдаг тул RHF тэднийг «байхгүй» гэж үзнэ.
+    shouldFocusError: false,
     defaultValues: {
       shipCity: "",
       shipZone: SHIPPING_ZONES[0].code,
       paymentMethod: "qpay",
     },
   });
+
+  /**
+   * Форм буруу бол эхний алдаатай хэсэг рүү гүйлгэнэ.
+   *
+   * react-hook-form-ийн өөрийнх нь `shouldFocusError` энд ажиллахгүй: хаягийн
+   * талбарууд `register`-дээгүй (popup дотор амьдардаг, `setValue`-ээр
+   * бичигддэг) тул фокуслах ref байхгүй. Утсан дээр товч нь хуудасны ёроолд
+   * байдаг учир ямар нэг харагдах хариу үйлдэлгүй бол дарсан хүн энэ товчийг
+   * эвдэрсэн гэж үзнэ.
+   */
+  const onInvalid = React.useCallback(
+    (formErrors: Record<string, unknown>) => {
+      // Хамгийн ДЭЭД талын алдаатай хэсэг рүү, resolver-ийн түлхүүрийн
+      // дарааллаар биш: хэрэглэгч хуудсыг дээрээс доош уншдаг, схемийн
+      // дарааллаар биш.
+      const ids = new Set(
+        Object.keys(formErrors)
+          .map((key) => ERROR_SECTION[key])
+          .filter(Boolean),
+      );
+      const target = SECTION_ORDER.find((id) => ids.has(id));
+      if (!target) return;
+      const section = document.getElementById(target);
+      section?.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Хэсэг дотроо бичих талбартай бол түүнийг фокуслана (гар утсан дээр
+      // гар нь дараагийн алхмыг өөрөө хэлнэ). `preventScroll` — эс тэгвээс
+      // браузар дөнгөж эхэлсэн гүйлгэлтийг таслана.
+      section
+        ?.querySelector<HTMLElement>('[aria-invalid="true"]')
+        ?.focus({ preventScroll: true });
+    },
+    [],
+  );
+
+  /** Наалдсан төлбөрийн зурвас гарах эсэх — хоосон / шилжих төлөвт гарахгүй. */
+  const showPayBar =
+    mounted && !leaving && (items.length > 0 || collections.length > 0);
+  // Зурвас доод цэсний ОРОНД суудаг — хоёулаа зэрэг хөвж, дэлгэцийн 17%-ийг
+  // эзлэхээс сэргийлнэ. Зурвас байхгүй үед цэс эргэж гарна.
+  useClaimBottomBar(showPayBar);
+
+  /** Бүртгэл рүү явахын өмнө бөглөсөн бүхнээ хадгална. */
+  const keepDraft = React.useCallback(() => {
+    saveDraft({
+      values: getValues(),
+      khoroo,
+      address: draft,
+      noteTags,
+      giftIds,
+    });
+  }, [getValues, khoroo, draft, noteTags, giftIds]);
 
   /**
    * Fills the form from a saved address.
@@ -191,6 +316,26 @@ export default function CheckoutPage() {
     [setValue],
   );
 
+  // Бүртгүүлэх/нэвтрэх рүү явчихаад буцаж ирсэн бол бөглөсөн зүйлээ эргүүлж
+  // авна. Нэг л удаа уншигдана (`takeDraft` уншаад устгана) тул дараагийн
+  // цэвэр захиалга хуучин хүний нэрээр эхлэхгүй.
+  React.useEffect(() => {
+    const saved = takeDraft();
+    if (!saved) return;
+    for (const [key, value] of Object.entries(saved.values)) {
+      if (value != null && value !== "") {
+        setValue(key as keyof FormValues, value as never);
+      }
+    }
+    setKhoroo(saved.khoroo);
+    setNoteTags(saved.noteTags);
+    setGiftIds(saved.giftIds);
+    if (saved.address) {
+      setDraft(saved.address);
+      setAddressChoice(NEW_ADDRESS);
+    }
+  }, [setValue]);
+
   // Сонгож болох хүргэлтийн өдрүүд. Mount-ийн дараа бодогдоно: сервер ба
   // браузарын өдөр зөрвөл (шөнө дунд, өөр цагийн бүс) hydration зөрчилдөнө.
   const [deliveryDays, setDeliveryDays] = React.useState<string[]>([]);
@@ -199,19 +344,30 @@ export default function CheckoutPage() {
       ubDayFromNow(i + 1),
     );
     setDeliveryDays(days);
-    setValue("deliverOn", days[0]);
-  }, [setValue]);
+    // Ноорогоос сэргээсэн өдрийг дарж бичихгүй.
+    if (!getValues("deliverOn")) setValue("deliverOn", days[0]);
+  }, [setValue, getValues]);
 
   // Delivery zones + free-shipping threshold are admin-configurable (A10).
   React.useEffect(() => {
     const supabase = createClient();
     if (!supabase) return;
     (async () => {
-      const { data } = await supabase
-        .from("settings")
-        .select("value")
-        .eq("key", "shipping")
-        .maybeSingle();
+      const [{ data }, { data: storeRow }] = await Promise.all([
+        supabase
+          .from("settings")
+          .select("value")
+          .eq("key", "shipping")
+          .maybeSingle(),
+        supabase
+          .from("settings")
+          .select("value")
+          .eq("key", "store")
+          .maybeSingle(),
+      ]);
+      const phone = (storeRow as { value?: { phone?: string } } | null)?.value
+        ?.phone;
+      if (phone) setStorePhone(phone);
       const v = (data as { value?: Partial<ShippingSettingsShape> } | null)
         ?.value;
       if (!v) return;
@@ -330,6 +486,8 @@ export default function CheckoutPage() {
   const zoneBlocked = selectedZone ? !selectedZone.deliverable : false;
   /** Хаяг бүрэн эсэх — бүс, хүргэлтийн үнэ зөвхөн үүний дараа гарна. */
   const hasAddress = Boolean(city && district && detail);
+  /** Алслагдсан бүс — хаяг тодорсны дараа л мэдэгдэнэ. */
+  const remoteZone = Boolean(hasAddress && selectedZone?.remote && !zoneBlocked);
   /** Хаягийн блокийн доор гарах цорын нэг мессеж (талбарууд popup дотор). */
   const addressError =
     errors.shipCity?.message ??
@@ -337,8 +495,18 @@ export default function CheckoutPage() {
     errors.shipDetail?.message ??
     errors.shipZone?.message ??
     null;
-  // Every order pays its delivery fee (client rule — no free-shipping tier).
-  const shippingFee = zoneBlocked || !selectedZone ? 0 : selectedZone.fee;
+  /**
+   * Хүргэлтийн төлбөр — ЗӨВХӨН хаяг бүрэн болсны дараа.
+   *
+   * Өмнө нь хаяг оруулаагүй байхад ч «хүргэдэг эхний бүс»-ийн үнээр тоо гарч,
+   * бүтэн «Нийт төлөх» харагддаг байв — тэгээд орон нутгийн хаяг ороход тоо нь
+   * үсэрдэг. Хэрэглэгчийн хүрэлгүйгээр өөрчлөгдсөн дүн бол захиалгын явцад
+   * итгэл алдагдуулах хамгийн хүчтэй зөрүү; сагсны хуудас яг үүнээс болж
+   * хүргэлтээ «Хаягаас хамаарна» гэдэг (cart/page.tsx). Энэ хуудас түүнтэй
+   * нэг үг хэлнэ. Үнэгүй хүргэлтийн шатлал байхгүй тул тэр салаа ч байхгүй.
+   */
+  const shippingFee =
+    !hasAddress || zoneBlocked || !selectedZone ? 0 : selectedZone.fee;
 
   // Points cover the goods only — never the delivery fee (questions.md №9).
   const maxLoyalty = Math.min(
@@ -419,7 +587,7 @@ export default function CheckoutPage() {
           <ShoppingCart className="text-muted-foreground size-7" />
         </span>
         <div className="space-y-1">
-          <h1 className="font-serif text-2xl font-semibold">
+          <h1 className="text-2xl font-semibold">
             {nothingSelected ? "Бараа сонгогдоогүй" : "Сагс хоосон байна"}
           </h1>
           <p className="text-muted-foreground text-sm">
@@ -441,8 +609,17 @@ export default function CheckoutPage() {
     // Zones we don't serve must never turn into an order.
     if (zoneBlocked) {
       setServerError(
-        "Сонгосон бүсэд хүргэлт хийх боломжгүй байна. Өөр бүс сонгоно уу.",
+        "Энэ хаяг руу хүргэлт хийдэггүй. Өөр хаяг оруулна уу.",
       );
+      return;
+    }
+    // Унаа явах газар нь орон нутгийн захиалгын хүргэх хаягтай адил чухал —
+    // бичигдээгүй бол захиалга үүсгэхийн оронд талбар руу нь буцаана.
+    if (remoteZone && !(values.note ?? "").trim()) {
+      setError("note", {
+        message: "Ачаа очих унаа, буудлын нэрийг бичнэ үү.",
+      });
+      onInvalid({ note: true });
       return;
     }
     // Guests get one explicit heads-up that they forfeit V point before we
@@ -555,16 +732,16 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="mx-auto max-w-352 px-4 py-8 md:px-8">
+    <div className="mx-auto max-w-352 px-4 pt-8 pb-24 md:px-8 lg:pb-8">
       {/* «Сагс руу буцах» линк байхгүй: сагс нь толгойн навигацид ямагт
           байдаг, харин захиалгын хуудсын толгойд гарц тавих нь эндээс гарах
           сонголтыг хамгийн түрүүнд уншуулна. */}
-      <h1 className="mb-8 font-serif text-3xl font-semibold tracking-tight">
+      <h1 className="mb-8 text-3xl font-semibold tracking-tight">
         Захиалга өгөх
       </h1>
 
       <form
-        onSubmit={handleSubmit(onSubmit)}
+        onSubmit={handleSubmit(onSubmit, onInvalid)}
         className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-10"
       >
         <div className="space-y-6">
@@ -573,7 +750,8 @@ export default function CheckoutPage() {
             <div className="bg-secondary rounded-2xl px-4 py-3.5 text-sm">
               <p>
                 <Link
-                  href="/register"
+                  href={REGISTER_HREF}
+                  onClick={keepDraft}
                   className="font-semibold underline-offset-2 hover:underline"
                 >
                   Бүртгүүлээд
@@ -595,7 +773,7 @@ export default function CheckoutPage() {
           )}
 
           {/* Хүргэлтийн хаяг — хадгалсан хаягууд + popup-аар нэмсэн шинэ хаяг */}
-          <Section step={1} icon={MapPin} title="Хүргэлтийн хаяг">
+          <Section id="checkout-address" step={1} title="Хүргэлтийн хаяг">
             <SavedAddresses
               addresses={authed ? addresses : []}
               value={addressChoice}
@@ -604,9 +782,9 @@ export default function CheckoutPage() {
               onAddNew={() => setAddressOpen(true)}
             />
 
-            {addressError && (
-              <p className="text-destructive text-xs">{addressError}</p>
-            )}
+            {/* Хаягийн талбарууд popup дотор амьдардаг тул алдаа нь энд —
+                `role="alert"`-тай, дэлгэц уншигчид зарлагдана. */}
+            <FieldError id="checkout-address" message={addressError ?? undefined} />
 
             {authed && draft && addressChoice === NEW_ADDRESS && (
               <label className="flex cursor-pointer items-center gap-2 text-sm">
@@ -633,7 +811,11 @@ export default function CheckoutPage() {
             )}
 
             {deliveryDays.length > 0 && (
-              <Field label="Хүргүүлэх өдөр" error={errors.deliverOn?.message}>
+              <Field
+                label="Хүргүүлэх өдөр"
+                error={errors.deliverOn?.message}
+                hint={`Хамгийн эрт нь маргааш — бэлдэхэд нэг өдөр хэрэгтэй. Сонгосон өдрийнхөө ${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.`}
+              >
                 <Select
                   value={watch("deliverOn") ?? deliveryDays[0]}
                   onValueChange={(v) => setValue("deliverOn", v)}
@@ -649,24 +831,32 @@ export default function CheckoutPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-muted-foreground text-xs">
-                  Хамгийн эрт нь маргааш — бэлдэхэд нэг өдөр хэрэгтэй. Сонгосон
-                  өдрийнхөө {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.
-                </p>
               </Field>
             )}
 
+            {/* Бүс сонгох хяналт устсан тул «өөр бүс сонго» гэж хэлэх газар
+                байхгүй — гарц нь өөр хаяг оруулах, эсвэл залгах хоёр л. */}
             {zoneBlocked && (
-              <p className="bg-destructive/10 text-destructive rounded-xl px-3 py-2.5 text-sm">
-                Уучлаарай, энэ бүсэд хүргэлт хийх боломжгүй. Өөр бүс сонгох
-                эсвэл бидэнтэй холбогдоно уу.
-              </p>
-            )}
-            {selectedZone?.remote && !zoneBlocked && (
-              <p className="bg-secondary rounded-xl px-3 py-2.5 text-sm">
-                Орон нутгийн хүргэлт: <strong>унаа явах газраа</strong> доорх
-                тэмдэглэл хэсэгт заавал бичнэ үү.
-              </p>
+              <div className="bg-destructive/10 space-y-2.5 rounded-xl px-3 py-2.5 text-sm">
+                <p className="text-destructive">
+                  Уучлаарай, энэ хаяг руу хүргэлт хийдэггүй.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setAddressOpen(true)}
+                  >
+                    Өөр хаяг оруулах
+                  </Button>
+                  {storePhone && (
+                    <Button asChild variant="secondary" size="sm">
+                      <a href={`tel:${storePhone}`}>{storePhone} руу залгах</a>
+                    </Button>
+                  )}
+                </div>
+              </div>
             )}
 
             <div className="space-y-2">
@@ -697,29 +887,57 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            <Field label="Нэмэлт тэмдэглэл (заавал биш)">
+            {/* Орон нутагт ачаа унаагаар явдаг тул «унаа явах газар» нь
+                заавал: өмнө нь үүнийг «(заавал биш)» гэж шошголсон талбарт
+                шаарддаг байсан — шалгалтгүй, зөрчилтэй. Одоо бүс нь алслагдсан
+                үед энэ талбар нэр, шаардлагаа хоёуланг нь солино. */}
+            <Field
+              label={
+                remoteZone ? "Унаа явах газар" : "Нэмэлт тэмдэглэл (заавал биш)"
+              }
+              error={errors.note?.message}
+              hint={
+                remoteZone
+                  ? "Орон нутгийн захиалга — ачаа очих компани, буудал, унааны нэрийг бичнэ үү."
+                  : undefined
+              }
+            >
               <Input
                 {...register("note")}
-                placeholder="Жишээ: оройн цагаар залгаарай"
+                placeholder={
+                  remoteZone
+                    ? "Жишээ: Дархан, «Ноён» ХХК-ийн унаа"
+                    : "Жишээ: оройн цагаар залгаарай"
+                }
               />
             </Field>
           </Section>
 
           {/* Хүлээн авагч — талбарууд зориуд хоосон эхэлнэ (дансны нэр, утсаар
               бөглөхгүй), хаяг сонгоход л бөглөгдөнө. */}
-          <Section step={2} icon={User} title="Хүлээн авагчийн мэдээлэл">
+          <Section id="checkout-recipient" step={2} title="Хүлээн авагчийн мэдээлэл">
             <div className="grid gap-4 sm:grid-cols-2">
+              {/* `autoComplete` нь утсан дээрх хамгийн том хэмнэлт: Chrome-ийн
+                  автобөглөлт энэ гурван талбарыг нэг товшилтоор дүүргэдэг.
+                  Нэрийг `name` биш `shipping name` гэж тэмдэглэв — хүлээн
+                  авагч нь захиалагч өөрөө байх албагүй (бэлэг). */}
               <Field label="Нэр" error={errors.contactName?.message}>
                 <Input
                   {...register("contactName")}
                   placeholder="Хүлээн авах хүний нэр"
+                  autoComplete="shipping name"
                 />
               </Field>
               <Field label="Утас" error={errors.contactPhone?.message}>
                 <Input
                   {...register("contactPhone")}
                   placeholder="99112233"
+                  type="tel"
                   inputMode="numeric"
+                  // Монголын дугаар 8 орон — 11 оронтой (улсын код түрүүлсэн)
+                  // дугаарыг илгээх хүртэл хүлээж байгаад буцаах нь хожуу.
+                  maxLength={8}
+                  autoComplete="shipping tel-national"
                 />
               </Field>
             </div>
@@ -730,6 +948,8 @@ export default function CheckoutPage() {
               <Input
                 {...register("contactEmail")}
                 placeholder="name@mail.com"
+                type="email"
+                autoComplete="email"
               />
             </Field>
           </Section>
@@ -738,6 +958,7 @@ export default function CheckoutPage() {
           {mounted && (
             <GiftSamplePicker
               allowance={giftAllowance}
+              goodsAfterDiscount={Math.max(subtotal - discount, 0)}
               value={giftIds}
               onChange={setGiftIds}
             />
@@ -748,7 +969,7 @@ export default function CheckoutPage() {
         <div className="lg:sticky lg:top-24 lg:h-fit">
           <Card className="overflow-hidden">
             <CardContent className="space-y-5 p-6">
-              <h2 className="font-serif text-lg font-semibold">
+              <h2 className="text-lg font-semibold">
                 Захиалгын тойм
               </h2>
 
@@ -760,7 +981,7 @@ export default function CheckoutPage() {
                           ёстой: `overflow-hidden` дотор байхдаа хагас
                           хайчлагдаж, зураг дээр хар зэрэг шиг харагддаг. */}
                       <div className="relative size-14 shrink-0">
-                        <div className="bg-muted size-full overflow-hidden rounded-xl">
+                        <div className="bg-muted relative size-full overflow-hidden rounded-xl">
                           {c.image && (
                             <Image
                               src={c.image}
@@ -798,7 +1019,7 @@ export default function CheckoutPage() {
                           ёстой: `overflow-hidden` дотор байхдаа хагас
                           хайчлагдаж, зураг дээр хар зэрэг шиг харагддаг. */}
                       <div className="relative size-14 shrink-0">
-                        <div className="bg-muted size-full overflow-hidden rounded-xl">
+                        <div className="bg-muted relative size-full overflow-hidden rounded-xl">
                           {i.image && (
                             <Image
                               src={i.image}
@@ -881,6 +1102,16 @@ export default function CheckoutPage() {
                     credit
                   />
                 )}
+                {/* Бэлэг нь тоймд ил мөр болж байж л «захиалгад юу орсон бэ»
+                    гэдгийн хэсэг болно — эс тэгвээс хуудасны дунд сонгоод
+                    мартчихдаг, хасагдсаныг нь ч мэдэхгүй өнгөрдөг. */}
+                {giftIds.length > 0 && (
+                  <SummaryRow
+                    label={`Бэлэг · ${giftPool?.sampleMl ?? 1}мл дээж × ${giftIds.length}`}
+                    value="Үнэгүй"
+                    credit
+                  />
+                )}
                 {/* Тэмдэг нь энэ мөрийг ялгаж байгаа тул icon хэрэггүй:
                     бүх шошго нэг зүүн ирмэгээс эхэлсэн багана илүү тайван. */}
                 <SummaryRow
@@ -890,10 +1121,10 @@ export default function CheckoutPage() {
                       : "Хүргэлт"
                   }
                   value={
-                    zoneBlocked
-                      ? "хүргэлтгүй"
-                      : shippingFee === 0
-                        ? "Үнэгүй"
+                    !hasAddress
+                      ? "Хаягаас хамаарна"
+                      : zoneBlocked
+                        ? "хүргэлтгүй"
                         : `+${formatPrice(shippingFee)}`
                   }
                 />
@@ -901,12 +1132,22 @@ export default function CheckoutPage() {
 
               <div className="gold-rule" />
 
+              {/* Хаяг гарч ирэх хүртэл энэ тоо нь эцсийн дүн БИШ — шошго нь
+                  түүнийг шууд хэлнэ, эс тэгвээс «Нийт төлөх» гэж уншсан дүн
+                  дараа нь өсөх нь амласнаа зөрчсөнтэй адил. */}
               <div className="flex items-baseline justify-between gap-3">
-                <span className="font-medium">Нийт төлөх</span>
-                <span className="font-serif text-2xl font-semibold tabular-nums">
+                <span className="font-medium">
+                  {hasAddress ? "Нийт төлөх" : "Хүргэлтгүй дүн"}
+                </span>
+                <span className="text-2xl font-semibold tabular-nums">
                   {formatPrice(total)}
                 </span>
               </div>
+              {!hasAddress && (
+                <p className="text-muted-foreground text-xs">
+                  Хаягаа оруулмагц хүргэлтийн төлбөр нэмэгдэж, эцсийн дүн гарна.
+                </p>
+              )}
 
               {/* Энэ худалдан авалт хэдэн оноо авчрах вэ. Зочинд ижил тоог
                   хуудасны толгой дахь бүртгэлийн санамж аль хэдийн хэлдэг тул
@@ -933,24 +1174,29 @@ export default function CheckoutPage() {
                   <Clock className="mr-1 inline size-3.5 align-[-2px]" />
                   {`Захиалга ${formatDeliveryDay(
                     watch("deliverOn") ?? deliveryDays[0] ?? "",
-                  ).toLowerCase()} ${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна (амралтын өдөр ч хүргэнэ).`}{" "}
+                  )} ${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна (амралтын өдөр ч хүргэнэ).`}{" "}
                   Тэр өдрийн өглөөний{" "}
                   <strong>{ORDER_EDIT_CUTOFF_HOUR}:00</strong> цагаас хойш
                   захиалга цуцлах, өөрчлөх боломжгүй.
                 </p>
               )}
 
+              {/* Товч нь захиалгыг БАТАЛГААЖУУЛДАГГҮЙ — төлөгдөөгүй захиалга
+                  үүсгээд QPay рүү дамжуулна. «Захиалга баталгаажуулах» гэдэг нь
+                  эндээс бүх зүйл дуусна гэсэн амлалт өгч байсан. */}
+              {/* Утсан дээр энэ товчийг наалдсан зурвас орлоно — хоёулаа зэрэг
+                  харагдвал нэг дэлгэц дээр ижил хоёр CTA болно. */}
               <Button
                 type="submit"
                 size="lg"
-                className="w-full"
+                className="hidden w-full lg:inline-flex"
                 disabled={submitting || zoneBlocked}
               >
                 {submitting
                   ? "Илгээж байна…"
                   : zoneBlocked
-                    ? "Энэ бүсэд хүргэлт хийхгүй"
-                    : "Захиалга баталгаажуулах"}
+                    ? "Энэ хаяг руу хүргэлт хийхгүй"
+                    : "Төлбөр төлөх"}
               </Button>
               <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-center text-xs">
                 <ShieldCheck className="size-3.5" />
@@ -959,6 +1205,38 @@ export default function CheckoutPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Утасны наалдсан төлбөрийн зурвас.
+            Тойм нь `lg:sticky` — десктоп дээр л. Утсан дээр дүн ба цорын ганц
+            товч нь ~1900px хуудасны ёроолд байсан тул хэрэглэгч шийдэж буй
+            тоогоо форм бөглөх бүх хугацаанд харахгүй байв. Доод цэсний ДЭЭР
+            давхарлахгүй, түүний оронд суух тул (`useClaimBottomBar`) хэлбэрээ ч
+            түүнээс авна: хөвөгч капсул + Glass Trio. */}
+        {showPayBar && (
+          <div className="pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 lg:hidden">
+            <div className="bg-secondary/85 shadow-lift pointer-events-auto mb-3 flex w-full items-center gap-3 rounded-full py-2 pr-2 pl-4 backdrop-blur">
+              <div className="min-w-0 flex-1">
+                <p className="text-muted-foreground truncate text-[11px]">
+                  {hasAddress ? "Нийт төлөх" : "Хүргэлтгүй дүн"}
+                </p>
+                <p className="text-base/tight font-semibold tabular-nums">
+                  {formatPrice(total)}
+                </p>
+              </div>
+              <Button
+                type="submit"
+                disabled={submitting || zoneBlocked}
+                className="shrink-0 rounded-full"
+              >
+                {submitting
+                  ? "Илгээж байна…"
+                  : zoneBlocked
+                    ? "Хүргэлтгүй"
+                    : "Төлбөр төлөх"}
+              </Button>
+            </div>
+          </div>
+        )}
       </form>
 
       {/* Шинэ хаяг — popup. Хуудсан дээр форм нээхээ больсон. */}
@@ -970,62 +1248,64 @@ export default function CheckoutPage() {
         onSave={applyDraft}
       />
 
-      {/* Guest consent: V point is forfeited unless they register first. */}
-      {showGuestWarning && (
-        <div className="bg-foreground/40 fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-sm space-y-4 rounded-2xl p-6 text-center shadow-xl">
-            <h2 className="font-serif text-xl font-semibold">
-              Оноо цуглуулахгүй байхаар байна
-            </h2>
-            <p className="text-muted-foreground text-sm">
-              Зочноор захиалга хийвэл энэ захиалгын{" "}
-              <strong>V point хуримтлагдахгүй</strong>. Бүртгүүлбэл үнийн
-              дүнгийн 1%-ийг оноогоор буцаан авах боломжтой.
-            </p>
-            <div className="flex flex-col gap-2">
-              <Button asChild size="lg">
-                <Link href="/register">Бүртгүүлэх</Link>
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  guestWarned.current = true;
-                  setShowGuestWarning(false);
-                  handleSubmit(onSubmit)();
-                }}
-              >
-                Зочноор үргэлжлүүлэх
-              </Button>
-            </div>
-          </div>
+      {/* Зочны санамж: бүртгэлгүй бол V point хуримтлагдахгүй.
+          Гол товч нь ЗАХИАЛГАА ҮРГЭЛЖЛҮҮЛЭХ — хэрэглэгч энэ мөчид худалдан
+          авах гэж байгаа болохоос бүртгүүлэх гэж байгаа биш. Бүртгэл нь
+          ноорогоо хадгалаад `?next=/checkout`-оор буцаж ирдэг тул хоёр зам
+          хоёулаа аюулгүй боллоо. */}
+      <ResponsiveDialog
+        open={showGuestWarning}
+        onOpenChange={setShowGuestWarning}
+        title="Зочноор захиалахад V point хуримтлагдахгүй"
+        description="Бүртгүүлбэл захиалгын дүнгийн 1% нь V point болж буцаж, дараагийн захиалгадаа зарцуулагдана. Бүртгүүлэхээр очвол бөглөсөн зүйл чинь хадгалагдаж, буцаж ирэхэд байрандаа байна."
+      >
+        <div className="flex flex-col gap-2">
+          <Button
+            size="lg"
+            onClick={() => {
+              guestWarned.current = true;
+              setShowGuestWarning(false);
+              handleSubmit(onSubmit, onInvalid)();
+            }}
+          >
+            Зочноор үргэлжлүүлэх
+          </Button>
+          <Button asChild variant="secondary" size="lg">
+            <Link href={REGISTER_HREF} onClick={keepDraft}>
+              Эхлээд бүртгүүлэх
+            </Link>
+          </Button>
         </div>
-      )}
+      </ResponsiveDialog>
     </div>
   );
 }
 
+/**
+ * Дугаарласан алхам. `id` нь заавал: форм буруу үед `onInvalid` яг энэ хэсэг
+ * рүү гүйлгэдэг (`scroll-mt-24` нь толгойн доор нуугдахаас хамгаална).
+ *
+ * `icon` prop байсан ч `step > 0` үед хэзээ ч хүрдэггүй байсан тул хассан —
+ * хоёулаа дугаартай дуудагддаг байв.
+ */
 function Section({
+  id,
   step,
-  icon: Icon,
   title,
   children,
 }: {
+  id: string;
   step: number;
-  icon: React.ElementType;
   title: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-card scroll-mt-24 rounded-2xl p-5 sm:p-6">
+    <section id={id} className="bg-card scroll-mt-24 rounded-2xl p-5 sm:p-6">
       <div className="mb-5 flex items-center gap-3">
         <span className="bg-secondary flex size-9 shrink-0 items-center justify-center rounded-full">
-          {step > 0 ? (
-            <span className="text-sm font-semibold">{step}</span>
-          ) : (
-            <Icon className="size-4.5" />
-          )}
+          <span className="text-sm font-semibold">{step}</span>
         </span>
-        <h2 className="font-serif text-lg font-semibold">{title}</h2>
+        <h2 className="text-lg font-semibold">{title}</h2>
       </div>
       <div className="space-y-4">{children}</div>
     </section>
@@ -1058,20 +1338,3 @@ function SummaryRow({
   );
 }
 
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
-      {error && <p className="text-destructive text-xs">{error}</p>}
-    </div>
-  );
-}

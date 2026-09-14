@@ -159,7 +159,7 @@ export function AddressDialog({
         <div className="flex justify-end gap-3 pt-1">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             disabled={saving}
             onClick={() => onOpenChange(false)}
           >
