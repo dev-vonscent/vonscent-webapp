@@ -19,6 +19,7 @@ vi.mock("@/lib/supabase/browser", () => ({
 }));
 
 const setCoupon = vi.fn();
+const clearBuyNow = vi.fn();
 let subtotal = 150000;
 vi.mock("@/features/cart/store", () => ({
   selectSubtotal: (s: unknown) => s,
@@ -28,7 +29,7 @@ vi.mock("@/features/cart/store", () => ({
     selector === undefined ? undefined : pick(selector),
 }));
 function pick(selector: (s: unknown) => unknown) {
-  const state = { setCoupon };
+  const state = { setCoupon, clearBuyNow };
   const viaSelector = selector(subtotal);
   return typeof viaSelector === "number" ? viaSelector : selector(state);
 }

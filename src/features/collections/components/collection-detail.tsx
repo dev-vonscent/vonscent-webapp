@@ -28,6 +28,7 @@ export function CollectionDetail({
   const [added, setAdded] = React.useState(false);
 
   const addCollection = useCart((s) => s.addCollection);
+  const startBuyNowCollection = useCart((s) => s.startBuyNowCollection);
   const router = useRouter();
 
   const priceRow = collection.prices.find((p) => p.ml === ml) ?? null;
@@ -40,10 +41,17 @@ export function CollectionDetail({
     qty: 1,
   });
 
-  /** Puts the bundle in the cart. Returns false when nothing was added. */
-  function addToCart(): boolean {
+  /**
+   * Puts the bundle in the cart. Returns false when nothing was added.
+   *
+   * `mode: "buy-now"` нь «Захиалах»-ын зам: сагсанд огт хүрэлгүй, зөвхөн
+   * төлбөрийн хуудсанд явах тусдаа мөр болгоно (store.ts
+   * `startBuyNowCollection`).
+   */
+  function addToCart(mode: "add" | "buy-now" = "add"): boolean {
     if (!priceRow || !available) return false;
-    addCollection({
+    const put = mode === "buy-now" ? startBuyNowCollection : addCollection;
+    put({
       collectionId: collection.id,
       type: collection.type,
       slug: collection.slug,
@@ -80,13 +88,13 @@ export function CollectionDetail({
   /**
    * «Захиалах» — the same add, then straight to checkout.
    *
-   * It goes through the cart rather than around it: checkout prices the whole
-   * cart server-side, and a parallel "just this bundle" path would be a second
-   * pricing route to keep in step with coupons, gifts and loyalty. Anything
-   * already in the cart comes along, and checkout is where it can be changed.
+   * It goes *around* the cart, the way a Buy Now button is understood
+   * everywhere else: the bundle never lands in the cart, so backing out leaves
+   * the cart untouched and nothing already in it is quietly charged for.
+   * Checkout still prices it server-side through the one shared route.
    */
   function onBuyNow() {
-    if (!addToCart()) return;
+    if (!addToCart("buy-now")) return;
     if (priceRow) {
       trackBeginCheckout(
         [

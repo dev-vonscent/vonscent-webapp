@@ -57,10 +57,10 @@ import {
 import { CouponField } from "@/features/checkout/components/coupon-field";
 import { useCoupon } from "@/features/checkout/use-coupon";
 import { formatPrice } from "@/lib/format";
-import { useCart, selectSubtotal } from "@/features/cart/store";
+import { useCart, selectCheckoutSubtotal } from "@/features/cart/store";
 import {
-  useSelectedLines,
-  getSelectedLines,
+  useCheckoutLines,
+  getCheckoutLines,
 } from "@/features/cart/use-cart-selection";
 import { trackBeginCheckout } from "@/lib/analytics";
 import { createClient } from "@/lib/supabase/browser";
@@ -91,11 +91,11 @@ export default function CheckoutPage() {
   const router = useRouter();
   // Захиалга сагснаас *сонгосон* мөрүүдийг л авна — сонгоогүй бараа сагсандаа
   // үлдэж, дараа нь тусад нь захиалагдана.
-  const { items, collections } = useSelectedLines();
+  const { items, collections, buyNow } = useCheckoutLines();
   const cartLineCount = useCart((s) => s.items.length + s.collections.length);
-  const subtotal = useCart(selectSubtotal);
+  const subtotal = useCart(selectCheckoutSubtotal);
   const coupon = useCart((s) => s.coupon);
-  const removeOrdered = useCart((s) => s.removeSelected);
+  const removeOrdered = useCart((s) => s.clearOrdered);
   const removeLine = useCart((s) => s.remove);
   const [mounted, setMounted] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
@@ -226,7 +226,7 @@ export default function CheckoutPage() {
   const checkoutTracked = React.useRef(false);
   React.useEffect(() => {
     if (checkoutTracked.current || !mounted) return;
-    const { items: cartItems, collections: cartCols } = getSelectedLines();
+    const { items: cartItems, collections: cartCols } = getCheckoutLines();
     if (cartItems.length === 0 && cartCols.length === 0) return;
     checkoutTracked.current = true;
     trackBeginCheckout(
@@ -245,7 +245,7 @@ export default function CheckoutPage() {
           quantity: c.qty,
         })),
       ],
-      selectSubtotal(useCart.getState()),
+      selectCheckoutSubtotal(useCart.getState()),
     );
   }, [mounted]);
 
@@ -390,8 +390,9 @@ export default function CheckoutPage() {
   }
 
   if (mounted && items.length === 0 && collections.length === 0) {
-    // Сагс дүүрэн байж болно — зүгээр л нэг ч мөр сонгоогүй байх.
-    const nothingSelected = cartLineCount > 0;
+    // Сагс дүүрэн байж болно — зүгээр л нэг ч мөр сонгоогүй байх. «Захиалах»
+    // замаар ирсэн бол сагсны агуулга хамаагүй тул энэ зөвлөмж буруу болно.
+    const nothingSelected = !buyNow && cartLineCount > 0;
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-5 px-4 py-28 text-center md:px-8">
         <span className="bg-secondary flex size-16 items-center justify-center rounded-full">

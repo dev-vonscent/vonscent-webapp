@@ -3,8 +3,8 @@
 import * as React from "react";
 import {
   useCart,
-  selectedItems,
-  selectedCollections,
+  selectCheckoutItems,
+  selectCheckoutCollections,
 } from "@/features/cart/store";
 
 /**
@@ -46,29 +46,46 @@ export function useCartSelection() {
   };
 }
 
-/** Захиалгад орох мөрүүд — checkout ба order payload-д хэрэглэнэ. */
-export function useSelectedLines() {
+/**
+ * Захиалгад орох мөрүүд — checkout ба order payload-д хэрэглэнэ.
+ *
+ * «Захиалах» (Buy Now) идэвхтэй бол зөвхөн тэр мөр орно: тэр товч сагсыг
+ * тойрдог тул сагсанд хэвтэж байсан бараа энд гарах ёсгүй.
+ */
+export function useCheckoutLines() {
+  const buyNow = useCart((s) => s.buyNow);
   const items = useCart((s) => s.items);
   const collections = useCart((s) => s.collections);
   const excludedItems = useCart((s) => s.excludedItems);
   const excludedCollections = useCart((s) => s.excludedCollections);
   return {
+    buyNow: buyNow != null,
     items: React.useMemo(
-      () => items.filter((i) => !excludedItems.includes(i.key)),
-      [items, excludedItems],
+      () =>
+        buyNow
+          ? buyNow.kind === "item"
+            ? [buyNow.item]
+            : []
+          : items.filter((i) => !excludedItems.includes(i.key)),
+      [buyNow, items, excludedItems],
     ),
     collections: React.useMemo(
-      () => collections.filter((c) => !excludedCollections.includes(c.key)),
-      [collections, excludedCollections],
+      () =>
+        buyNow
+          ? buyNow.kind === "collection"
+            ? [buyNow.collection]
+            : []
+          : collections.filter((c) => !excludedCollections.includes(c.key)),
+      [buyNow, collections, excludedCollections],
     ),
   };
 }
 
-/** Store-ын гадна (event handler дотор) сонгосон мөрүүдийг унших. */
-export function getSelectedLines() {
+/** Store-ын гадна (event handler дотор) захиалгад орох мөрүүдийг унших. */
+export function getCheckoutLines() {
   const state = useCart.getState();
   return {
-    items: selectedItems(state),
-    collections: selectedCollections(state),
+    items: selectCheckoutItems(state),
+    collections: selectCheckoutCollections(state),
   };
 }

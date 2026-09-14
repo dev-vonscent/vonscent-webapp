@@ -4,6 +4,9 @@ import {
   selectCount,
   selectSubtotal,
   selectSelectedCount,
+  selectCheckoutItems,
+  selectCheckoutCollections,
+  selectCheckoutSubtotal,
 } from "./store";
 
 const line = (variantId: string, unitPrice: number) => ({
@@ -40,6 +43,7 @@ describe("cart selection", () => {
     useCart.setState({
       items: [],
       collections: [],
+      buyNow: null,
       excludedItems: [],
       excludedCollections: [],
       coupon: null,
@@ -116,5 +120,103 @@ describe("cart selection", () => {
     expect(selectSubtotal(state)).toBe(0);
     // Купон нь захиалсан дүн дээр батлагдсан тул үлдсэн сагсанд дагахгүй.
     expect(state.coupon).toBeNull();
+  });
+});
+
+/**
+ * «Захиалах» товч бол Buy Now — салбарын хэмжээнд «сагсыг тойрч, зөвхөн энэ
+ * бараа» гэсэн утгатай (Amazon, Shopify). Тиймээс мөр нь сагсанд ордоггүй,
+ * тусдаа `buyNow` талбарт сууна: дахин дархад тоо ширхэг өсөхгүй, сагсанд
+ * хэвтэж байсан бараа дагаж төлөгдөхгүй, захиалахаа больсон ч сагс хэвээрээ.
+ */
+describe("buy now", () => {
+  beforeEach(() => {
+    useCart.setState({
+      items: [],
+      collections: [],
+      buyNow: null,
+      excludedItems: [],
+      excludedCollections: [],
+      coupon: null,
+    });
+  });
+
+  it("never touches the cart", () => {
+    useCart.getState().add(line("v1", 10000));
+
+    useCart.getState().startBuyNow(line("v2", 5000));
+
+    const state = useCart.getState();
+    // Сагс дарахын өмнөх хэвээрээ — «v2» түүн дотор алга.
+    expect(state.items.map((i) => i.key)).toEqual(["v1"]);
+    expect(selectCount(state)).toBe(1);
+    expect(selectSubtotal(state)).toBe(10000);
+  });
+
+  it("takes only the bought line to checkout", () => {
+    useCart.getState().add(line("v1", 10000));
+    useCart.getState().addCollection(bundle("c1", 40000));
+
+    useCart.getState().startBuyNow(line("v2", 5000), 2);
+
+    const state = useCart.getState();
+    expect(selectCheckoutItems(state).map((i) => i.key)).toEqual(["v2"]);
+    expect(selectCheckoutCollections(state)).toEqual([]);
+    expect(selectCheckoutSubtotal(state)).toBe(10000);
+  });
+
+  it("does not stack up when pressed twice", () => {
+    useCart.getState().startBuyNow(line("v1", 10000));
+    useCart.getState().startBuyNow(line("v1", 10000));
+
+    expect(selectCheckoutItems(useCart.getState())[0].qty).toBe(1);
+    expect(selectCheckoutSubtotal(useCart.getState())).toBe(10000);
+  });
+
+  it("takes only the bought bundle to checkout", () => {
+    useCart.getState().add(line("v1", 10000));
+
+    useCart.getState().startBuyNowCollection(bundle("c1", 40000));
+
+    const state = useCart.getState();
+    expect(state.collections).toEqual([]);
+    expect(selectCheckoutItems(state)).toEqual([]);
+    expect(selectCheckoutCollections(state).map((c) => c.key)).toEqual([
+      "c1:5",
+    ]);
+    expect(selectCheckoutSubtotal(state)).toBe(40000);
+  });
+
+  it("falls back to the checked cart lines once it is cleared", () => {
+    useCart.getState().add(line("v1", 10000));
+    useCart.getState().startBuyNow(line("v2", 5000));
+
+    useCart.getState().clearBuyNow();
+
+    const state = useCart.getState();
+    expect(selectCheckoutItems(state).map((i) => i.key)).toEqual(["v1"]);
+    expect(selectCheckoutSubtotal(state)).toBe(10000);
+  });
+
+  it("drops the line when the order goes through, cart untouched", () => {
+    useCart.getState().add(line("v1", 10000));
+    useCart.getState().startBuyNow(line("v2", 5000));
+    useCart.getState().setCoupon({ code: "X", discount: 1000 });
+
+    useCart.getState().clearOrdered();
+
+    const state = useCart.getState();
+    expect(state.buyNow).toBeNull();
+    // Захиалсан нь сагсныхан биш тул «v1» хэвээрээ.
+    expect(state.items.map((i) => i.key)).toEqual(["v1"]);
+    expect(state.coupon).toBeNull();
+  });
+
+  it("drops a line that the server reports as unavailable", () => {
+    useCart.getState().startBuyNow(line("v1", 10000));
+
+    useCart.getState().remove("v1");
+
+    expect(useCart.getState().buyNow).toBeNull();
   });
 });
