@@ -66,6 +66,7 @@ function view(over: Partial<PaymentView> = {}): PaymentView {
     shippingFee: 9000,
     discount: 0,
     loyaltyUsed: 0,
+    pointsEarned: 0,
     paymentMethod: "qpay",
     paid: false,
     cancelled: false,
@@ -318,7 +319,11 @@ describe("the order recap", () => {
     // Дүнгийн бүтэц: 36,000 + 9,000 = 45,000 гэдэг нь хуудсан дээрээ.
     // Мөрийн дүн ба дэд дүн хоёулаа 36,000₮ тул хоёр таарна.
     expect(screen.getAllByText("36,000₮")).toHaveLength(2);
-    expect(screen.getByText("9,000₮")).toBeTruthy();
+    // Хүргэлт нь НЭМЭГДЭЖ байгаа нь тэмдгээсээ уншигдана.
+    expect(screen.getByText("+9,000₮")).toBeTruthy();
+    // Нийт дүн нь дээрх том тооноос гадна тооцооны төгсгөлд бас гарна.
+    expect(screen.getByText("Нийт төлөх")).toBeTruthy();
+    expect(screen.getAllByText("45,000₮")).toHaveLength(2);
     expect(screen.getByText("VS-1042")).toBeTruthy();
   });
 

@@ -319,11 +319,18 @@ function OrderRecap({ view }: { view: PaymentView }) {
         ))}
       </ul>
 
-      {/* Тоог тайлбарлах бүтэц — «яагаад 22,790₮ болов?» гэсэн асуулт
-          хуудсан дээрээ хариулттай байх ёстой. */}
+      {/*
+        Тоог тайлбарлах бүтэц — «яагаад 22,790₮ болов?» гэсэн асуулт хуудсан
+        дээрээ хариулттай байх ёстой.
+
+        Дараалал нь мөнгө хэрхэн хөдөлсний дараалал: барааны дүн → түүнээс
+        ХАСАГДАХ нь (купон, оноо) → эцэст нь НЭМЭГДЭХ хүргэлт → төлөх дүн.
+        Урьд нь хүргэлт нь хөнгөлөлтүүдийн ӨМНӨ сууж, нийт дүнгийн мөр огт
+        байхгүй байсан тул баганыг нэмж хасаад дээрх том тоог гаргах гэхээр
+        таардаггүй байв.
+      */}
       <div className="border-border mt-3 space-y-1.5 border-t pt-3 text-xs">
         <RecapRow label="Барааны дүн" value={formatPrice(view.subtotal)} />
-        <RecapRow label="Хүргэлт" value={formatPrice(view.shippingFee)} />
         {view.discount > 0 && (
           <RecapRow
             label="Хөнгөлөлт"
@@ -338,7 +345,34 @@ function OrderRecap({ view }: { view: PaymentView }) {
             accent
           />
         )}
+        <RecapRow
+          label="Хүргэлт"
+          value={
+            view.shippingFee === 0
+              ? "Үнэгүй"
+              : `+${formatPrice(view.shippingFee)}`
+          }
+        />
+        <div className="border-border mt-1.5 flex justify-between gap-3 border-t pt-2.5 text-sm">
+          <span className="font-medium">Нийт төлөх</span>
+          <span className="font-semibold tabular-nums">
+            {formatPrice(view.total)}
+          </span>
+        </div>
       </div>
+
+      {/* Төлбөр батлагдвал юу нэмэгдэхийг урьдчилж хэлнэ — оноо нь энэ
+          дэлгүүрт дахин ирэх шалтгаан тул төлсний дараа гэнэт олддог
+          зүйл байх ёсгүй. */}
+      {view.pointsEarned > 0 && (
+        <p className="text-muted-foreground mt-3 text-xs">
+          Төлбөр батлагдмагц{" "}
+          <strong className="text-foreground font-medium tabular-nums">
+            +{view.pointsEarned.toLocaleString("mn-MN")} V point
+          </strong>{" "}
+          хуримтлагдана.
+        </p>
+      )}
 
       {/* Төлбөр хоцорсон бол сонгосон өдөр аль хэдийн өнгөрсөн байж мэднэ —
           `mark_order_paid` (0069) төлөх мөчид өдрийг ахиулна. Тиймээс энд
@@ -621,6 +655,18 @@ function PaidState({
             Тэр өдрийн өглөөний {ORDER_EDIT_CUTOFF_HOUR}:00 цаг хүртэл цуцлах
             боломжтой. Захиалгын явцыг «Захиалгаа хянах» хэсгээс харна.
           </p>
+
+          {/* Захиалга цуцлагдаж болох хугацаанд оноо түгжээтэй байдаг
+              (0024) — «нэмэгдлээ» гэж амлаад дансанд нь харагдахгүй байх
+              нь алдаа мэт уншигддаг тул хоёуланг нь нэг мөрөнд хэлнэ. */}
+          {view.pointsEarned > 0 && (
+            <p className="text-muted-foreground border-border mt-3 border-t pt-3 text-xs">
+              <strong className="text-foreground font-medium tabular-nums">
+                +{view.pointsEarned.toLocaleString("mn-MN")} V point
+              </strong>{" "}
+              хуримтлагдлаа — хүргэгдсэний дараа зарцуулах боломжтой болно.
+            </p>
+          )}
         </div>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">

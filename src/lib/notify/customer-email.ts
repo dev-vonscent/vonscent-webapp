@@ -205,11 +205,14 @@ function summaryLines(order: {
 }) {
   const lines = [{ label: "Барааны дүн", value: formatPrice(order.subtotal) }];
   if (order.discount > 0) {
-    lines.push({ label: "Хямдрал", value: `−${formatPrice(order.discount)}` });
+    lines.push({
+      label: "Хөнгөлөлт",
+      value: `−${formatPrice(order.discount)}`,
+    });
   }
   if (order.loyalty_used > 0) {
     lines.push({
-      label: "Оноо",
+      label: "V point",
       value: `−${formatPrice(order.loyalty_used)}`,
     });
   }
@@ -219,6 +222,6 @@ function summaryLines(order: {
   });
   return [
     ...lines,
-    { label: "Нийт", value: formatPrice(order.total), strong: true },
+    { label: "Нийт төлөх", value: formatPrice(order.total), strong: true },
   ];
 }
