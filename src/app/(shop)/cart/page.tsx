@@ -21,6 +21,10 @@ export default function CartPage() {
   const items = useCart((s) => s.items);
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
+  // Сагснаас захиалга үргэлжлүүлэх нь «сагсаараа захиалж байна» гэсэн үг —
+  // хэрэв өмнө нь «Захиалах» дарсан мөр үлдсэн байвал энэ сагсыг дарж
+  // орлохгүйн тулд эндээс хаяна.
+  const clearBuyNow = useCart((s) => s.clearBuyNow);
   const collections = useCart((s) => s.collections);
   const setCollectionQty = useCart((s) => s.setCollectionQty);
   const removeCollection = useCart((s) => s.removeCollection);
@@ -316,7 +320,9 @@ export default function CartPage() {
                 {noneSelected ? (
                   "Захиалах бараагаа сонгоно уу"
                 ) : (
-                  <Link href="/checkout">Захиалга үргэлжлүүлэх</Link>
+                  <Link href="/checkout" onClick={clearBuyNow}>
+                    Захиалга үргэлжлүүлэх
+                  </Link>
                 )}
               </Button>
               <Button asChild variant="ghost" className="w-full">

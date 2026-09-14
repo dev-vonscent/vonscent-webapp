@@ -23,6 +23,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   const [added, setAdded] = React.useState(false);
 
   const add = useCart((s) => s.add);
+  const startBuyNow = useCart((s) => s.startBuyNow);
   const router = useRouter();
 
   // Mobile sticky buy bar (1e): appears once the in-page CTA scrolls away.
@@ -84,22 +85,26 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
     ctaAway && !atRelated && !soldOut && selected != null && selected.inStock;
   useClaimBottomBar(showBuyBar);
 
-  /** Puts the selected size in the cart. Returns false when nothing was added. */
-  function addToCart(): boolean {
+  /**
+   * Puts the selected size in the cart. Returns false when nothing was added.
+   *
+   * `mode: "buy-now"` нь «Захиалах»-ын зам: сагсанд огт хүрэлгүй, зөвхөн
+   * төлбөрийн хуудсанд явах тусдаа мөр болгоно (store.ts `startBuyNow`).
+   */
+  function addToCart(mode: "add" | "buy-now" = "add"): boolean {
     if (!selected || soldOut || !selected.inStock) return false;
-    add(
-      {
-        productId: product.id,
-        slug: product.slug,
-        name: product.name,
-        brand: product.brand,
-        variantId: selected.id,
-        ml: selected.ml,
-        unitPrice,
-        image: product.image?.url ?? null,
-      },
-      qty,
-    );
+    const line = {
+      productId: product.id,
+      slug: product.slug,
+      name: product.name,
+      brand: product.brand,
+      variantId: selected.id,
+      ml: selected.ml,
+      unitPrice,
+      image: product.image?.url ?? null,
+    };
+    if (mode === "buy-now") startBuyNow(line, qty);
+    else add(line, qty);
     trackAddToCart({
       id: product.id,
       name: `${product.name} ${selected.ml}ml`,
@@ -119,15 +124,15 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   /**
    * «Захиалах» — the same add, then straight to checkout.
    *
-   * It goes through the cart rather than around it: checkout prices the whole
-   * cart server-side, and a parallel "just this one item" path would be a
-   * second pricing route to keep in step with coupons, bundles, gifts and
-   * loyalty. Anything already in the cart therefore comes along, which is what
-   * a customer who has been adding items expects — and the checkout page is
-   * where they can still change it.
+   * It goes *around* the cart, the way a Buy Now button is understood
+   * everywhere else: the line never lands in `items`, so the cart is exactly
+   * as the customer left it if they back out, pressing it twice orders one and
+   * not two, and whatever was already in the cart is not quietly charged for.
+   * Checkout still prices it server-side through the one shared route — only
+   * the basket it is handed differs.
    */
   function onBuyNow() {
-    if (!addToCart()) return;
+    if (!addToCart("buy-now")) return;
     if (selected) {
       trackBeginCheckout(
         [

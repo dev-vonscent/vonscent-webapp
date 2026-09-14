@@ -57,6 +57,9 @@ export function CouponDetail({ code }: { code: string }) {
 
   const subtotal = useCart(selectSubtotal);
   const applyToCart = useCart((s) => s.setCoupon);
+  // Купоныг сагсны дүн дээр шалгаж байгаа тул захиалга ч сагсаараа явна —
+  // үлдсэн «Захиалах» мөр байвал энд хаягдана.
+  const clearBuyNow = useCart((s) => s.clearBuyNow);
 
   React.useEffect(() => {
     const supabase = createClient();
@@ -109,6 +112,7 @@ export function CouponDetail({ code }: { code: string }) {
         return;
       }
       applyToCart({ code: data.code ?? coupon.code, discount: data.discount });
+      clearBuyNow();
       setLeaving(true);
       router.push("/checkout");
     } catch {

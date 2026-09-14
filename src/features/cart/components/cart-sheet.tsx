@@ -42,6 +42,8 @@ export function CartSheet({
   const items = useCart((s) => s.items);
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
+  /** Сагсаар захиалахад үлдсэн «Захиалах» мөр саад болох ёсгүй. */
+  const clearBuyNow = useCart((s) => s.clearBuyNow);
   const collections = useCart((s) => s.collections);
   const setCollectionQty = useCart((s) => s.setCollectionQty);
   const removeCollection = useCart((s) => s.removeCollection);
@@ -401,7 +403,9 @@ export function CartSheet({
                     className="w-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
                     size="lg"
                   >
-                    <Link href="/checkout">Захиалах</Link>
+                    <Link href="/checkout" onClick={clearBuyNow}>
+                      Захиалах
+                    </Link>
                   </Button>
                 </SheetClose>
               )}
