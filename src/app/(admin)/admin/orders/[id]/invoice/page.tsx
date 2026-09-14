@@ -64,14 +64,14 @@ export default async function InvoicePage({
       <div className="ml-auto w-56 space-y-1">
         <Row label="Барааны дүн" value={formatPrice(order.subtotal)} />
         {order.discount > 0 && (
-          <Row label="Хямдрал" value={`−${formatPrice(order.discount)}`} />
+          <Row label="Хөнгөлөлт" value={`−${formatPrice(order.discount)}`} />
         )}
         {order.loyalty_used > 0 && (
           <Row label="V point" value={`−${formatPrice(order.loyalty_used)}`} />
         )}
         <Row label="Хүргэлт" value={formatPrice(order.shipping_fee)} />
         <div className="border-border flex justify-between border-t pt-1 font-semibold">
-          <span>Нийт</span>
+          <span>Нийт төлөх</span>
           <span>{formatPrice(order.total)}</span>
         </div>
       </div>

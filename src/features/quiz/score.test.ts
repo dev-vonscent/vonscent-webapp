@@ -13,6 +13,7 @@ function product(
     gender: "unisex",
     concentration: "EDP",
     sillage: "medium",
+    longevity: "",
     scentFamilies: [],
     seasons: [],
     image: null,

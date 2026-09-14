@@ -31,6 +31,11 @@ export interface PaymentView {
   shippingFee: number;
   discount: number;
   loyaltyUsed: number;
+  /**
+   * Энэ захиалгаас хуримтлагдах V point. Зочны захиалгад 0 — оноо зөвхөн
+   * бүртгэлтэй хэрэглэгчид олгогдоно (`mark_order_paid`).
+   */
+  pointsEarned: number;
   paymentMethod: PaymentMethod;
   paid: boolean;
   /** Захиалга цуцлагдсан (нөөцийн хугацаа дууссан эсвэл гараар). */

@@ -188,10 +188,13 @@ export default async function OrderDetailPage({
           <Card>
             <CardContent className="space-y-3 p-5 text-sm">
               <h2 className="font-medium">Дүн</h2>
+              {/* Дараалал нь мөнгө хөдөлсний дараалал: барааны дүн → хасагдах
+                  нь → нэмэгдэх хүргэлт → төлсөн дүн. Захиалгын тойм,
+                  төлбөрийн хуудас, и-мэйл гурав нь энэ дараалалтай нэг мөр. */}
               <Row label="Барааны дүн" value={formatPrice(order.subtotal)} />
               {order.discount > 0 && (
                 <Row
-                  label="Хямдрал"
+                  label="Хөнгөлөлт"
                   value={`−${formatPrice(order.discount)}`}
                 />
               )}
@@ -201,11 +204,18 @@ export default async function OrderDetailPage({
                   value={`−${formatPrice(order.loyalty_used)}`}
                 />
               )}
-              <Row label="Хүргэлт" value={formatPrice(order.shipping_fee)} />
+              <Row
+                label="Хүргэлт"
+                value={
+                  order.shipping_fee === 0
+                    ? "Үнэгүй"
+                    : `+${formatPrice(order.shipping_fee)}`
+                }
+              />
               <Separator />
-              <div className="flex justify-between font-semibold">
-                <span>Нийт</span>
-                <span>{formatPrice(order.total)}</span>
+              <div className="flex justify-between gap-3 font-semibold">
+                <span>Нийт төлөх</span>
+                <span className="tabular-nums">{formatPrice(order.total)}</span>
               </div>
               <Badge
                 variant={order.payment_status === "paid" ? "new" : "secondary"}
@@ -254,9 +264,9 @@ export default async function OrderDetailPage({
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between">
+    <div className="flex justify-between gap-3">
       <span className="text-muted-foreground">{label}</span>
-      <span>{value}</span>
+      <span className="tabular-nums">{value}</span>
     </div>
   );
 }

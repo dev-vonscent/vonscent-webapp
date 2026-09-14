@@ -55,8 +55,14 @@ import {
   type AddressFormValue,
 } from "@/features/checkout/components/address-dialog";
 import { CouponField } from "@/features/checkout/components/coupon-field";
+import { LoyaltyField } from "@/features/checkout/components/loyalty-field";
 import { useCoupon } from "@/features/checkout/use-coupon";
 import { formatPrice } from "@/lib/format";
+import {
+  DEFAULT_LOYALTY_RULES,
+  parseLoyaltyRules,
+  pointsEarnedFor,
+} from "@/lib/loyalty";
 import { useCart, selectCheckoutSubtotal } from "@/features/cart/store";
 import {
   useCheckoutLines,
@@ -114,8 +120,12 @@ export default function CheckoutPage() {
   const [addressOpen, setAddressOpen] = React.useState(false);
 
   const [loyaltyPoints, setLoyaltyPoints] = React.useState(0);
-  const [redeemRate, setRedeemRate] = React.useState(1);
-  const [useLoyalty, setUseLoyalty] = React.useState(false);
+  const [loyaltyRules, setLoyaltyRules] = React.useState(DEFAULT_LOYALTY_RULES);
+  /**
+   * Оноогоор төлөхөөр хэрэглэгчийн ӨӨРӨӨ бичсэн дүн (₮). Өмнө нь энэ нь
+   * чагт байсан тул «бүгд эсвэл юу ч үгүй» гэсэн хоёрхон сонголттой байв.
+   */
+  const [loyaltyWanted, setLoyaltyWanted] = React.useState(0);
   const [saveAddr, setSaveAddr] = React.useState(false);
   // Zones come from admin settings (A10); the constants are only a fallback
   // for demo mode / while the settings row loads.
@@ -290,9 +300,9 @@ export default function CheckoutPage() {
         setAddressChoice(rows[0].id);
         applyAddress(rows[0], { contact: false });
       }
-      const rate = (setting as { value?: { redeemRate?: number } } | null)
-        ?.value?.redeemRate;
-      if (rate) setRedeemRate(rate);
+      setLoyaltyRules(
+        parseLoyaltyRules((setting as { value?: unknown } | null)?.value),
+      );
     })();
   }, [setValue, applyAddress]);
 
@@ -332,7 +342,7 @@ export default function CheckoutPage() {
 
   // Points cover the goods only — never the delivery fee (questions.md №9).
   const maxLoyalty = Math.min(
-    Math.floor(loyaltyPoints * redeemRate),
+    Math.floor(loyaltyPoints * loyaltyRules.redeemRate),
     Math.max(subtotal - discount, 0),
   );
   // Бэлгийн 1мл дээж: купоны дараах барааны дүнгийн 200,000₮ тутамд 1, эсвэл
@@ -347,8 +357,18 @@ export default function CheckoutPage() {
   // сонгох боломжгүй бэлгийг зааж байх ёсгүй. Модуль дотор кэштэй hook тул
   // нэмэлт хүсэлт гарахгүй, ачаалж амжаагүй үед `null` (тэмдэг гарахгүй).
   const giftPool = useGiftPool();
-  const loyaltyApplied = useLoyalty ? maxLoyalty : 0;
+  // Сагс, купон өөрчлөгдөхөд дээд хязгаар буурч болно — бичсэн дүнг ямагт
+  // түүнд хумина, эс тэгвээс хуудас сервер хүлээж авахгүй дүн харуулна.
+  const loyaltyApplied = Math.min(loyaltyWanted, maxLoyalty);
   const total = Math.max(subtotal + shippingFee - discount - loyaltyApplied, 0);
+  /**
+   * Энэ захиалгаас хуримтлагдах оноо. Сан нь купоны дараах барааны дүнгээс
+   * бодох тул оноогоор төлсөн хэсэг үүнийг бууруулахгүй (lib/loyalty.ts).
+   */
+  const pointsEarned = pointsEarnedFor(
+    Math.max(subtotal - discount, 0),
+    loyaltyRules,
+  );
 
   /** Popup-аас гарсан хаягийг формд тавиад сонгогдсон болгоно. */
   function applyDraft(form: AddressFormValue) {
@@ -558,8 +578,18 @@ export default function CheckoutPage() {
                 >
                   Бүртгүүлээд
                 </Link>{" "}
-                захиалга бүртээ V point цуглуулаарай. Зочноор захиалга хийвэл
-                оноо хуримтлуулахгүй.
+                {pointsEarned > 0 ? (
+                  <>
+                    энэ захиалгаас{" "}
+                    <strong className="tabular-nums">
+                      {pointsEarned.toLocaleString("mn-MN")} V point
+                    </strong>{" "}
+                    цуглуулаарай.
+                  </>
+                ) : (
+                  "захиалга бүртээ V point цуглуулаарай."
+                )}{" "}
+                Зочноор захиалга хийвэл оноо хуримтлуулахгүй.
               </p>
             </div>
           )}
@@ -800,71 +830,96 @@ export default function CheckoutPage() {
 
               <div className="gold-rule" />
 
-              {/* Coupon — also offered here, not just in the cart. */}
-              <CouponField
-                applied={coupon}
-                offers={offers}
-                code={code}
-                onCodeChange={setCode}
-                onApply={applyCoupon}
-                applying={applying}
-                loading={offersLoading}
-                message={couponMsg}
-                onPick={pickCoupon}
-                onRemove={clearCoupon}
-              />
-
+              {/* Хямдруулах ХЭРЭГСЛҮҮД эхэлж, тооцооны мөрүүд дараа нь.
+                  Өмнө нь оноо нь хүргэлт ба нийт дүнгийн ХООРОНД сууж
+                  байсан тул дүн хэрхэн гарсныг дээрээс доош уншиж
+                  болдоггүй байв. */}
               <div className="space-y-2.5">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Барааны дүн</span>
-                  <span>{formatPrice(subtotal)}</span>
-                </div>
-                {discount > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Купон {coupon?.code}
-                    </span>
-                    <span className="text-success">
-                      −{formatPrice(discount)}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground flex items-center gap-1.5">
-                    <Truck className="size-4" /> Хүргэлт
-                  </span>
-                  <span>
-                    {shippingFee === 0 ? "—" : formatPrice(shippingFee)}
-                  </span>
-                </div>
-              </div>
+                {/* Coupon — also offered here, not just in the cart. */}
+                <CouponField
+                  applied={coupon}
+                  offers={offers}
+                  code={code}
+                  onCodeChange={setCode}
+                  onApply={applyCoupon}
+                  applying={applying}
+                  loading={offersLoading}
+                  message={couponMsg}
+                  onPick={pickCoupon}
+                  onRemove={clearCoupon}
+                />
 
-              {/* Loyalty */}
-              {authed && maxLoyalty > 0 && (
-                <label className="bg-secondary flex cursor-pointer items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm">
-                  <span className="flex items-center gap-2">
-                    <Checkbox
-                      checked={useLoyalty}
-                      onCheckedChange={(v) => setUseLoyalty(Boolean(v))}
-                    />
-                    V point ашиглах ({loyaltyPoints})
-                  </span>
-                  {useLoyalty && (
-                    <span className="text-success">
-                      −{formatPrice(loyaltyApplied)}
-                    </span>
-                  )}
-                </label>
-              )}
+                {mounted && authed && maxLoyalty > 0 && (
+                  <LoyaltyField
+                    value={loyaltyApplied}
+                    onChange={setLoyaltyWanted}
+                    max={maxLoyalty}
+                    balance={loyaltyPoints}
+                    redeemRate={loyaltyRules.redeemRate}
+                  />
+                )}
+              </div>
 
               <div className="gold-rule" />
 
-              <div className="flex items-baseline justify-between">
+              {/* Тооцоо: хасагдах нь «−», хүргэлт нь «+». Тэмдэггүй багана
+                  дээр 8,000₮ гэсэн тоо нэмэгдэж байна уу, хасагдаж байна уу
+                  гэдэг зөвхөн шошгоноос таамаглагддаг байсан. */}
+              <div className="space-y-2.5">
+                <SummaryRow label="Барааны дүн" value={formatPrice(subtotal)} />
+                {discount > 0 && (
+                  <SummaryRow
+                    label={coupon?.code ? `Купон · ${coupon.code}` : "Хөнгөлөлт"}
+                    value={`−${formatPrice(discount)}`}
+                    credit
+                  />
+                )}
+                {loyaltyApplied > 0 && (
+                  <SummaryRow
+                    label="V point"
+                    value={`−${formatPrice(loyaltyApplied)}`}
+                    credit
+                  />
+                )}
+                {/* Тэмдэг нь энэ мөрийг ялгаж байгаа тул icon хэрэггүй:
+                    бүх шошго нэг зүүн ирмэгээс эхэлсэн багана илүү тайван. */}
+                <SummaryRow
+                  label={
+                    hasAddress && selectedZone
+                      ? `Хүргэлт · ${selectedZone.name}`
+                      : "Хүргэлт"
+                  }
+                  value={
+                    zoneBlocked
+                      ? "хүргэлтгүй"
+                      : shippingFee === 0
+                        ? "Үнэгүй"
+                        : `+${formatPrice(shippingFee)}`
+                  }
+                />
+              </div>
+
+              <div className="gold-rule" />
+
+              <div className="flex items-baseline justify-between gap-3">
                 <span className="font-medium">Нийт төлөх</span>
-                <span className="font-serif text-2xl font-semibold">
+                <span className="font-serif text-2xl font-semibold tabular-nums">
                   {formatPrice(total)}
                 </span>
               </div>
+
+              {/* Энэ худалдан авалт хэдэн оноо авчрах вэ. Зочинд ижил тоог
+                  хуудасны толгой дахь бүртгэлийн санамж аль хэдийн хэлдэг тул
+                  энд давтахгүй — тойм нь ЭНЭ захиалгын баримт байх ёстой. */}
+              {mounted && authed && pointsEarned > 0 && (
+                <p className="text-muted-foreground text-xs">
+                  Энэ захиалгаас{" "}
+                  <strong className="text-foreground font-medium tabular-nums">
+                    +{pointsEarned.toLocaleString("mn-MN")} V point
+                  </strong>{" "}
+                  хуримтлагдана — хүргэгдсэний дараа зарцуулах боломжтой.
+                </p>
+              )}
 
               {serverError && (
                 <p className="bg-destructive/10 text-destructive rounded-xl px-3 py-2.5 text-sm">
@@ -974,6 +1029,32 @@ function Section({
       </div>
       <div className="space-y-4">{children}</div>
     </section>
+  );
+}
+
+/**
+ * Захиалгын тоймын нэг мөр. Мөнгөн баганыг `tabular-nums`-аар түгжсэн нь
+ * дараалсан дүнгүүдийн орон нь босоогоор эгнэх цорын ганц арга.
+ */
+function SummaryRow({
+  label,
+  value,
+  credit,
+}: {
+  label: string;
+  value: string;
+  /** Хасагдаж буй мөр (купон, оноо) — өнгөөр нь ялгана. */
+  credit?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 text-sm">
+      <span className="text-muted-foreground min-w-0 truncate">{label}</span>
+      <span
+        className={`shrink-0 tabular-nums ${credit ? "text-success" : ""}`}
+      >
+        {value}
+      </span>
+    </div>
   );
 }
 

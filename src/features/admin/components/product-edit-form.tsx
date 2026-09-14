@@ -90,6 +90,7 @@ export function ProductEditForm({
     gender: product.gender,
     concentration: product.concentration,
     sillage: product.sillage as string,
+    longevity: product.longevity,
     description: product.description,
     notesDescription: product.notesDescription,
     usageDescription: product.usageDescription,
@@ -201,6 +202,7 @@ export function ProductEditForm({
           gender: form.gender,
           concentration: form.concentration,
           sillage: form.sillage,
+          longevity: form.longevity,
           scentFamilies,
           seasons,
           description: form.description,
@@ -367,6 +369,20 @@ export function ProductEditForm({
                   ))}
                 </SelectContent>
               </Select>
+            </Field>
+            {/* Эрчим ба барилт хос: «хэр хол» ба «хэр удаан» гэсэн хоёр
+                өөр асуулт тул зэрэгцүүлж тавьсан. Барилт нь хаалттай
+                жагсаалтгүй — админ барааны бодит тайланг уншаад өөрөө бичнэ. */}
+            <Field
+              label="Үнэр барилт"
+              hint="Ж: «4-6 цаг», «8+ цаг», «өдөржин». Хоосон орхивол дэлгүүрт харагдахгүй."
+            >
+              <Input
+                value={form.longevity}
+                maxLength={60}
+                placeholder="4-6 цаг"
+                onChange={(e) => set("longevity", e.target.value)}
+              />
             </Field>
             <Field label="Гаргасан он">
               <Input
