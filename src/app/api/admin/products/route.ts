@@ -69,6 +69,9 @@ export async function POST(req: Request) {
     gender: input.gender,
     concentration: input.concentration,
     sillage: input.sillage,
+    // Хоосон текст = «бичээгүй». Хоосон мөр хадгалвал дэлгүүр хоосон мөр
+    // харуулах эрсдэлтэй тул null болгож нэгтгэнэ (0083).
+    longevity: input.longevity || null,
     origin_country: input.originCountry ?? null,
     release_year: input.releaseYear ?? null,
     bottle_price: input.bottlePrice,

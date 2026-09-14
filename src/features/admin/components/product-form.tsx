@@ -77,6 +77,8 @@ export function ProductForm({
     concentration: "EDP",
     // Үнэрийн хүч (0078) — quiz-ийн эрчмийн асуулт үүнийг уншина.
     sillage: "medium",
+    // Үнэр барилт (0083) — чөлөөт текст, хоосон эхэлнэ.
+    longevity: "",
     notesTop: "",
     notesHeart: "",
     notesBase: "",
@@ -295,6 +297,20 @@ export function ProductForm({
                   ))}
                 </SelectContent>
               </Select>
+            </Field>
+            {/* Эрчим ба барилт хос: «хэр хол» ба «хэр удаан» гэсэн хоёр
+                өөр асуулт тул зэрэгцүүлж тавьсан. Барилт нь хаалттай
+                жагсаалтгүй — админ барааны бодит тайланг уншаад өөрөө бичнэ. */}
+            <Field
+              label="Үнэр барилт"
+              hint="Ж: «4-6 цаг», «8+ цаг», «өдөржин». Хоосон орхивол дэлгүүрт харагдахгүй."
+            >
+              <Input
+                value={form.longevity}
+                maxLength={60}
+                placeholder="4-6 цаг"
+                onChange={(e) => set("longevity", e.target.value)}
+              />
             </Field>
             <Field label="Гаргасан он">
               <Input

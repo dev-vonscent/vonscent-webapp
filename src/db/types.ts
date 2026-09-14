@@ -75,6 +75,8 @@ export interface ProductRow {
   concentration: Concentration;
   /** Үнэр хэр хол мэдрэгдэх вэ (0078) — quiz-ийн эрчмийн эх сурвалж. */
   sillage: Sillage;
+  /** Үнэр барилт (0083) — админы бичсэн чөлөөт текст, ж: «4-6 цаг». */
+  longevity: string | null;
   scent_families: ScentFamily[];
   origin_country: string | null;
   release_year: number | null;

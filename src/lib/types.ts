@@ -76,6 +76,11 @@ export interface ProductDetail extends ProductListItem {
    * `catalog_items` харагдац дээр нэмээгүй.
    */
   sillage: Sillage;
+  /**
+   * Үнэр барилт (0083) — «4-6 цаг» гэх мэт админы гараар бичсэн текст.
+   * Хоосон бол админ хараахан бичээгүй: дэлгүүр мөрийг огт харуулахгүй.
+   */
+  longevity: string;
   /** Four-part description (0022) — any part may be empty. */
   description: string;
   notesDescription: string;
