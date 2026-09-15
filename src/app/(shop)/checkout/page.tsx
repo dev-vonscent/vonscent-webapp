@@ -163,7 +163,6 @@ const ERROR_SECTION: Record<string, string> = {
   note: "checkout-address",
   contactName: "checkout-recipient",
   contactPhone: "checkout-recipient",
-  contactEmail: "checkout-recipient",
 };
 
 export default function CheckoutPage() {
@@ -503,7 +502,7 @@ export default function CheckoutPage() {
             .eq("key", "loyalty")
             .maybeSingle(),
         ]);
-      // Хүлээн авагчийн нэр, утас, имэйлийг дансны мэдээллээр бөглөхгүй:
+      // Хүлээн авагчийн нэр, утсыг дансны мэдээллээр бөглөхгүй:
       // талбарууд хоосон эхэлж, захиалга бүрт хэн хүлээж авахыг ил бичнэ.
       const p = profile as { loyalty_points?: number } | null;
       setLoyaltyPoints(p?.loyalty_points ?? 0);
@@ -1060,7 +1059,7 @@ export default function CheckoutPage() {
           >
             <div className="grid gap-4 sm:grid-cols-2">
               {/* `autoComplete` нь утсан дээрх хамгийн том хэмнэлт: Chrome-ийн
-                  автобөглөлт энэ гурван талбарыг нэг товшилтоор дүүргэдэг.
+                  автобөглөлт энэ хоёр талбарыг нэг товшилтоор дүүргэдэг.
                   Нэрийг `name` биш `shipping name` гэж тэмдэглэв — хүлээн
                   авагч нь захиалагч өөрөө байх албагүй (бэлэг). */}
               <Field label="Нэр" error={errors.contactName?.message}>
@@ -1083,17 +1082,6 @@ export default function CheckoutPage() {
                 />
               </Field>
             </div>
-            <Field
-              label="Имэйл (заавал биш)"
-              error={errors.contactEmail?.message}
-            >
-              <Input
-                {...register("contactEmail")}
-                placeholder="name@mail.com"
-                type="email"
-                autoComplete="email"
-              />
-            </Field>
           </Section>
 
           {/* Бэлгийн 1мл дээж — эрхийн тоогоор, зөвхөн админы сангаас. */}
