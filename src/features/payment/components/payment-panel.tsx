@@ -490,7 +490,7 @@ function QpaySection({
           QPay-тэй холбогдож чадсангүй. Захиалга тань нөөцлөгдсөн хэвээр байгаа
           — дахин оролдоно уу.
         </p>
-        <Button variant="outline" className="w-full" onClick={onManualCheck}>
+        <Button variant="secondary" className="w-full" onClick={onManualCheck}>
           <RefreshCw className="size-4" /> Дахин оролдох
         </Button>
       </div>
@@ -609,7 +609,7 @@ function QpaySection({
         ) : (
           <>
             <Button
-              variant="outline"
+              variant="secondary"
               className="w-full"
               disabled={checking}
               onClick={onManualCheck}
@@ -712,7 +712,7 @@ function PaidState({
         </div>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <Button asChild variant="outline" className="flex-1">
+          <Button asChild variant="secondary" className="flex-1">
             <Link href="/account/orders">Захиалгаа хянах</Link>
           </Button>
           <Button asChild className="flex-1">
@@ -738,7 +738,7 @@ function CancelledState() {
         сагслаад захиалаарай.
       </p>
       <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-        <Button asChild variant="outline">
+        <Button asChild variant="secondary">
           <Link href="/account/orders">Захиалгаа хянах</Link>
         </Button>
         <Button asChild>

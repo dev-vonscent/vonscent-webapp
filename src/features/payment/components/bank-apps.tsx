@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   findBank,
@@ -32,6 +32,13 @@ import type { QpayDeeplink } from "../types";
 /** Which app the customer reached for last, so it can lead next time. */
 const LAST_BANK_KEY = "vonscent-last-bank";
 
+/**
+ * Эхэндээ хэдэн апп харуулах вэ — 4 баганын яг хоёр мөр. Жагсаалт нь
+ * хэрэглээний дарааллаар эрэмбэлэгдсэн тул эхний найм нь захиалгын дийлэнхийг
+ * хамарна; бүрэн жагсаалт нэг товшилтын зайд үлдэнэ.
+ */
+const PRIMARY_COUNT = 8;
+
 function readLastBank(): string | null {
   try {
     return localStorage.getItem(LAST_BANK_KEY);
@@ -59,6 +66,8 @@ export function BankApps({
   const [lastScheme, setLastScheme] = React.useState<string | null>(null);
   /** Set after a tap that did not appear to leave the page — see `onHandoff`. */
   const [stuck, setStuck] = React.useState<string | null>(null);
+  /** Бүрэн жагсаалт дэлгэгдсэн эсэх. */
+  const [expanded, setExpanded] = React.useState(false);
 
   // Read on mount, never during render: the server has no localStorage, so
   // reading it inline would hydrate a different tree than it rendered.
@@ -68,6 +77,9 @@ export function BankApps({
   // "Recently used" is a shortcut for tapping; with nothing to tap it is noise.
   const recent =
     interactive && lastScheme ? findBank(groups, lastScheme) : null;
+
+  const flat = groups.flatMap((g) => g.banks);
+  const collapsed = !expanded && flat.length > PRIMARY_COUNT;
 
   /**
    * A custom-scheme link fails silently when the app is not installed: no
@@ -105,11 +117,17 @@ export function BankApps({
         </section>
       )}
 
-      {groups.map((group) => (
-        <section key={group.category} className="space-y-3">
-          <SectionLabel>{group.label}</SectionLabel>
+      {/*
+        Бүх апп нэг дор гарахад сүлжээ нь утсан дээр 660px — QR ба «Төлбөр
+        баталгаажуулах» хоёрыг эхний дэлгэцээс шахаж гаргадаг байв. Жагсаалт
+        аль хэдийн хэрэглээний дарааллаар эрэмбэлэгдсэн (`ORDER`) тул эхний
+        хоёр мөрөнд хүн бүрийн банк багтана; үлдсэнийг нэг товшилтод үлдээв.
+      */}
+      {collapsed ? (
+        <section className="space-y-3">
+          <SectionLabel>Банкны апп</SectionLabel>
           <ul className="grid grid-cols-4 gap-x-2 gap-y-4 sm:grid-cols-5">
-            {group.banks.map((bank) => (
+            {flat.slice(0, PRIMARY_COUNT).map((bank) => (
               <li key={bank.scheme}>
                 <BankTile
                   bank={bank}
@@ -119,8 +137,33 @@ export function BankApps({
               </li>
             ))}
           </ul>
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="text-muted-foreground hover:text-foreground flex w-full items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors"
+          >
+            Бусад {flat.length - PRIMARY_COUNT} апп
+            <ChevronDown className="size-3.5" />
+          </button>
         </section>
-      ))}
+      ) : (
+        groups.map((group) => (
+          <section key={group.category} className="space-y-3">
+            <SectionLabel>{group.label}</SectionLabel>
+            <ul className="grid grid-cols-4 gap-x-2 gap-y-4 sm:grid-cols-5">
+              {group.banks.map((bank) => (
+                <li key={bank.scheme}>
+                  <BankTile
+                    bank={bank}
+                    onHandoff={onHandoff}
+                    interactive={interactive}
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      )}
 
       {stuck && <HandoffHint bank={stuck} />}
     </div>
