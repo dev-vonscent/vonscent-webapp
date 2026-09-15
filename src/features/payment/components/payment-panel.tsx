@@ -251,7 +251,11 @@ export function PaymentPanel({
         // column in the middle of a 1440px window reads as a phone screen
         // someone forgot to lay out. The left rail carries what is being
         // paid, the right one how to pay it.
-        "max-w-lg md:grid md:max-w-4xl md:grid-cols-[minmax(0,1fr)_420px] md:items-start md:gap-x-14",
+        // `md` дээр багана хоорондын зай нарийн: 768px дээр 56px зай нь зүүн
+        // баганыг 260px болгож хумьдаг бөгөөд хамгийн том бодит дүн (48px
+        // дээр 263px) тэндээс 3px халина. 32px зайтай бол 284px — багтана.
+        // `lg` дээр газар хангалттай тул уужим зай эргэж ирнэ.
+        "max-w-lg md:grid md:max-w-4xl md:grid-cols-[minmax(0,1fr)_420px] md:items-start md:gap-x-8 lg:gap-x-14",
       )}
     >
       {/*
