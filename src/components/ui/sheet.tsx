@@ -82,7 +82,11 @@ export const SheetTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-semibold tracking-tight", className)}
+    // `pr-9`: Dialog-той ижил шалтгаан, гэхдээ энд хаах товч нь `top-2
+    // right-2 size-11` (хүрэх талбар 44px) тул баруун ирмэгээс 52px эзэлнэ —
+    // `p-6`-тай харьцуулахад 28px давхцана. 36px нь түүнийг арилгаад завсар
+    // үлдээнэ (md дээр товч 36px болж, зай нь бүр илүү).
+    className={cn("text-lg font-semibold tracking-tight pr-9", className)}
     {...props}
   />
 ));
