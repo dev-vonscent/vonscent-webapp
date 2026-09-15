@@ -37,6 +37,7 @@ export function SavedAddresses({
   onChange,
   draft,
   onAddNew,
+  onEditDraft,
 }: {
   addresses: AddressRow[];
   /** An address id, or `NEW_ADDRESS`. */
@@ -44,8 +45,10 @@ export function SavedAddresses({
   onChange: (value: string) => void;
   /** Popup-аар оруулсан шинэ хаяг (байвал карт болж харагдана). */
   draft?: AddressDraft | null;
-  /** Popup нээх — шинээр нэмэх, эсвэл оруулсан хаягаа засах. */
+  /** Popup-ыг ХООСОН нээх — өөр хаяг оруулах. */
   onAddNew: () => void;
+  /** Popup-ыг оруулсан хаягаар дүүргэж нээх — түүнийгээ засах. */
+  onEditDraft: () => void;
 }) {
   return (
     <RadioGroup value={value} onValueChange={onChange} className="gap-2.5">
@@ -61,7 +64,7 @@ export function SavedAddresses({
             <span className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium">{a.recipient}</span>
               {a.is_default && (
-                <span className="bg-foreground text-background rounded-full px-1.5 py-px text-[10px] font-semibold">
+                <span className="bg-foreground text-background rounded-full px-1.5 py-px text-[11px] font-semibold">
                   Үндсэн
                 </span>
               )}
@@ -96,10 +99,13 @@ export function SavedAddresses({
               </span>
             </span>
           </label>
+          {/* Текст нь жижиг хэвээр, харин дарагдах талбар нь 44px өндөр
+              (WCAG 2.5.8) — карт дотор суусан тул `-my-2` нь мөрийн өндрийг
+              тэлэхгүй. */}
           <button
             type="button"
-            onClick={onAddNew}
-            className="text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 text-xs transition-colors"
+            onClick={onEditDraft}
+            className="text-muted-foreground hover:text-foreground -my-2 flex shrink-0 items-center gap-1 py-2 text-xs transition-colors"
           >
             <Pencil className="size-3.5" />
             Засах
@@ -108,13 +114,22 @@ export function SavedAddresses({
       )}
 
       {/* Bottom of the list: opens the dialog rather than revealing a form
-          under it. Not a radio — nothing is chosen by pressing it. */}
+          under it. Not a radio — nothing is chosen by pressing it.
+
+          `onAddNew` нь `onEditDraft`-ээс ЯЛГААТАЙ: энэ товч popup-ыг хоосон
+          нээнэ. Урьд нь хоёулаа нэг л функцийг ноорогоор дүүргэж дууддаг
+          байсан тул «Өөр хаяг нэмэх» гэж бичсэн атлаа өмнө оруулсан хаягийг
+          засдаг байв — шошго нь үйлдэлээ хэлэхгүй байсан. */}
+      {/* Систем хүрээгүй (`border-color: transparent`) тул энэ товч тасархай
+          хүрээгээрээ огт харагддаггүй байв — зочин хэрэглэгчийн хувьд энэ бол
+          хаяг оруулах ЦОРЫН ГАНЦ хаалга. Гүнийг өнгөний давхаргаар өгч,
+          эргүүлсэн `+` тэмдгээр «сонголт» биш «үйлдэл» гэдгийг нь заана. */}
       <button
         type="button"
         onClick={onAddNew}
-        className="border-border hover:bg-accent flex cursor-pointer items-center gap-3 rounded-xl border border-dashed p-4 text-left transition-all"
+        className="bg-secondary hover:bg-accent flex cursor-pointer items-center gap-3 rounded-xl p-4 text-left transition-all"
       >
-        <span className="bg-secondary flex size-8 shrink-0 items-center justify-center rounded-full">
+        <span className="bg-foreground text-background flex size-8 shrink-0 items-center justify-center rounded-full">
           <Plus className="size-4" />
         </span>
         <span className="text-sm font-medium">

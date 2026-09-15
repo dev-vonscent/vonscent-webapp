@@ -222,6 +222,12 @@ export default async function ProductPage({
                   <Row label="Брэнд" value={product.brand} />
                   <Row label="Төрөл" value={product.concentration} />
                   <Row label="Хүйс" value={GENDER_LABEL[product.gender]} />
+                  {/* Үнэр барилт (0083) — админ гараар бичсэн үед л гарна.
+                      Хоосон утгыг «мэдэгдэхгүй» болгож дүүргэхгүй: бичээгүй
+                      мөр огт байхгүй нь худал баталгаанаас дээр. */}
+                  {product.longevity && (
+                    <Row label="Үнэр барилт" value={product.longevity} />
+                  )}
                   {product.originCountry && (
                     <Row label="Гарал үүсэл" value={product.originCountry} />
                   )}

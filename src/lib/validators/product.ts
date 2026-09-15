@@ -81,6 +81,11 @@ export const productInputSchema = z.object({
    * анхдагчаар «дундаж»: хамгийн саармаг таамаг бөгөөд админ засаж болно.
    */
   sillage: z.enum(["light", "medium", "strong"]).default("medium"),
+  /**
+   * Үнэр барилт (0083) — чөлөөт текст, ж: «4-6 цаг». Хоосон бол дэлгүүрт
+   * харагдахгүй, тиймээс «мэдэгдэхгүй» гэсэн утга зохиох шаардлагагүй.
+   */
+  longevity: z.string().trim().max(60).default(""),
   // Families are admin-managed slugs (scent_families table), so they are
   // validated against the live taxonomy in the route, not by a closed enum.
   scentFamilies: z.array(z.string().min(1)).default([]),
@@ -130,6 +135,7 @@ export const productEditSchema = z.object({
     .enum(["EDP", "EDT", "Parfum", "EDC", "Extrait", "Elixir"])
     .optional(),
   sillage: z.enum(["light", "medium", "strong"]).optional(),
+  longevity: z.string().trim().max(60).optional(),
   scentFamilies: z.array(z.string().min(1)).optional(),
   seasons: seasonList.optional(),
   notesTop: z.array(z.string()).optional(),

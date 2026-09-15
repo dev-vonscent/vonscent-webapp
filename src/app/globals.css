@@ -61,8 +61,12 @@
   /* Focus speaks in the theme's accent voice — never a gray browser ring. */
   --ring: #d4d4d4;
   /* The system's only hairline: a functional edge so form controls are
-     identifiable on a borderless surface (WCAG 1.4.11, >=3:1 either side). */
-  --field-edge: #6b6b6b00;
+     identifiable on a borderless surface (WCAG 1.4.11, >=3:1 either side).
+     Eight-digit hex here is a bug, not a style: an `00` alpha silently
+     switched the edge off and every input, select, checkbox and radio on the
+     default theme lost its boundary (1.13:1 against `card`). Measured:
+     3.20:1 on `secondary`, 3.62:1 on `card`, 3.94:1 on `background`. */
+  --field-edge: #6b6b6b;
 
   --surface-deep: #000000;
 
@@ -626,7 +630,16 @@
       margin: 0;
     }
   }
-  /* Respect reduced motion (design.md §7) */
+  /* Respect reduced motion (design.md §7).
+   *
+   * `iteration-count: 1` lands every animation on its final keyframe, so
+   * nothing freezes half-played — but a killed animation still leaves the
+   * element's *base* style on screen, and for `animate-ping` that base is a
+   * full-size 60%-opacity ring sitting exactly on top of the dot it was
+   * supposed to radiate from. Read at rest it is not a live signal, just a
+   * fuzzy dot. The ring is pure movement, so it goes; the solid dot under it
+   * stays and the label beside it ("Төлбөр хүлээгдэж байна") carries the
+   * meaning, which is what a non-visual reader was getting all along. */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -634,6 +647,9 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+    }
+    .animate-ping {
+      display: none !important;
     }
   }
 }

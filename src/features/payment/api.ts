@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getProductsByIds } from "@/features/products/api";
 import { ensureInvoice } from "@/lib/payments/invoice";
 import { isQpayMockMode } from "@/lib/payments/qpay";
+import { parseLoyaltyRules, pointsEarnedFor } from "@/lib/loyalty";
 import type { PaymentLine, PaymentView } from "./types";
 import type { PaymentMethod } from "@/db/types";
 
@@ -83,6 +84,28 @@ async function paymentLines(
   }));
 }
 
+/**
+ * Энэ захиалга хэдэн V point авчрах вэ.
+ *
+ * Оноо нь `mark_order_paid`-д, төлбөр батлагдсаны дараа бичигддэг — энд
+ * байгаа нь түүнийг давтан бодож байгаа юм биш, төлөхийн ӨМНӨ «юу
+ * хүлээгдэж байна» гэдгийг хэлэх зорилготой (lib/loyalty.ts). Зочны
+ * захиалга оноо авахгүй тул тохиргоог ч уншихгүй.
+ */
+async function earnedPointsFor(
+  supabase: NonNullable<ReturnType<typeof createAdminClient>>,
+  order: OrderRow,
+): Promise<number> {
+  if (!order.user_id) return 0;
+  const { data } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", "loyalty")
+    .maybeSingle();
+  const rules = parseLoyaltyRules((data as { value?: unknown } | null)?.value);
+  return pointsEarnedFor(Math.max(order.subtotal - order.discount, 0), rules);
+}
+
 export async function getPaymentByToken(
   token: string,
 ): Promise<PaymentView | null> {
@@ -101,6 +124,7 @@ export async function getPaymentByToken(
   const paid = order.payment_status === "paid";
   const cancelled = order.status === "cancelled";
   const lines = await paymentLines(supabase, order.id);
+  const pointsEarned = await earnedPointsFor(supabase, order);
 
   // An invoice is only worth having while the order can still be paid. Asking
   // QPay for one on a cancelled or already-paid order would create a live
@@ -128,6 +152,7 @@ export async function getPaymentByToken(
     shippingFee: order.shipping_fee,
     discount: order.discount,
     loyaltyUsed: order.loyalty_used,
+    pointsEarned,
     paymentMethod: order.payment_method,
     paid,
     cancelled,

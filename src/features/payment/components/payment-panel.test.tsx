@@ -66,6 +66,7 @@ function view(over: Partial<PaymentView> = {}): PaymentView {
     shippingFee: 9000,
     discount: 0,
     loyaltyUsed: 0,
+    pointsEarned: 0,
     paymentMethod: "qpay",
     paid: false,
     cancelled: false,
@@ -233,9 +234,36 @@ describe("pending payment", () => {
     // than leaving the page's main action an empty box.
     expect(screen.queryByRole("link", { name: /аппаар төлөх/ })).toBeNull();
     expect(screen.getByText("Хаан банк")).toBeTruthy();
+    // Бүтэн жагсаалт нь эхний хоёр мөрөөр хумигдана: утсан дээр 660px
+    // өндөр сүлжээ нь QR ба баталгаажуулах товчийг эхний дэлгэцээс
+    // шахаж гаргадаг. Бүлгийн гарчгууд дэлгэсний дараа эргэж ирнэ.
     expect(
-      screen.getByRole("heading", { level: 3, name: "Банк" }),
+      screen.getByRole("heading", { level: 3, name: "Банкны апп" }),
     ).toBeTruthy();
+    expect(
+      screen.queryByRole("heading", { level: 3, name: "Банк" }),
+    ).toBeNull();
+  });
+
+  it("keeps every app one tap away when the roster is folded", async () => {
+    render(
+      <PaymentPanel
+        view={view({
+          mock: true,
+          invoice: { ...view().invoice!, deeplinks: [] },
+        })}
+        token="tok"
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Бусад \d+ апп/ }),
+    );
+
+    const headings = screen
+      .getAllByRole("heading", { level: 3 })
+      .map((h) => h.textContent);
+    expect(headings).toEqual(["Банк", "Цахим хэтэвч"]);
   });
 
   it("says so loudly when the QR asks for a test amount", () => {
@@ -318,7 +346,11 @@ describe("the order recap", () => {
     // Дүнгийн бүтэц: 36,000 + 9,000 = 45,000 гэдэг нь хуудсан дээрээ.
     // Мөрийн дүн ба дэд дүн хоёулаа 36,000₮ тул хоёр таарна.
     expect(screen.getAllByText("36,000₮")).toHaveLength(2);
-    expect(screen.getByText("9,000₮")).toBeTruthy();
+    // Хүргэлт нь НЭМЭГДЭЖ байгаа нь тэмдгээсээ уншигдана.
+    expect(screen.getByText("+9,000₮")).toBeTruthy();
+    // Нийт дүн нь дээрх том тооноос гадна тооцооны төгсгөлд бас гарна.
+    expect(screen.getByText("Нийт төлөх")).toBeTruthy();
+    expect(screen.getAllByText("45,000₮")).toHaveLength(2);
     expect(screen.getByText("VS-1042")).toBeTruthy();
   });
 

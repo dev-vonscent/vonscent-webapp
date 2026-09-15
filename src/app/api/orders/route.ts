@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePublic } from "@/lib/cache";
-import { checkoutSchema } from "@/lib/validators/order";
+import { checkoutOrderSchema } from "@/lib/validators/order";
 import {
   BundleUnavailableError,
   computeSummary,
@@ -17,7 +17,6 @@ import { isQpayMockMode } from "@/lib/payments/qpay";
 import { ensureInvoice } from "@/lib/payments/invoice";
 import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
 import { formatPrice } from "@/lib/format";
-import { isPhoneEmail } from "@/lib/auth/phone-email";
 import { earliestDeliveryDay, latestDeliveryDay } from "@/lib/time";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
@@ -31,7 +30,7 @@ function clampDeliveryDay(value: string | undefined): string {
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
-  const parsed = checkoutSchema.safeParse(body);
+  const parsed = checkoutOrderSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: "VALIDATION", issues: parsed.error.flatten() },
@@ -121,12 +120,14 @@ export async function POST(req: Request) {
         payment_method: input.paymentMethod,
         contact_name: input.contactName,
         contact_phone: input.contactPhone,
-        // A phone account's synthetic Supabase address is internal plumbing —
-        // it must never be stored as if the customer had given us an email.
-        contact_email:
-          input.contactEmail && !isPhoneEmail(input.contactEmail)
-            ? input.contactEmail
-            : null,
+        // `contact_email` -ийг цаашид БИЧИХГҮЙ: checkout-ийн имэйл талбар
+        // хасагдсан. Уншдаг газар нь админы захиалгын дэлгэрэнгүй дэх нэг
+        // мөр текст л байсан бөгөөд захиалгын имэйл нь энэ хаяг руу хэзээ ч
+        // явдаггүй — `sendOrderCustomerEmail` нь зөвхөн хэрэглэгч өөрөө
+        // бүртгүүлсэн `newsletter_subscribers.email` рүү илгээдэг. Өөрөөр
+        // хэлбэл зочны бичсэн хаяг хадгалагдаад ашиглагдахгүй байв.
+        // Багана нь хуучин захиалгуудын өгөгдөлтэй тул DB-д үлдэнэ; түлхүүр
+        // дамжуулахгүй бол `p_order->>'contact_email'` нь NULL болно.
         ship_city: input.shipCity,
         ship_district: input.shipDistrict ?? null,
         ship_detail: input.shipDetail,

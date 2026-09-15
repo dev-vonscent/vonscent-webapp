@@ -22,16 +22,19 @@ export default function PayNotFound() {
         className="text-muted-foreground mx-auto size-12"
         strokeWidth={1.5}
       />
-      <h1 className="mt-4 font-serif text-2xl font-semibold">
-        Төлбөрийн линк олдсонгүй
-      </h1>
+      {/* `font-serif` нь `--font-sans` руу шийдэгддэг (DESIGN.md → One Family
+          Rule) — харагдах өөрчлөлтгүй, зөвхөн зорилго үлдээж байв. */}
+      <h1 className="mt-4 text-2xl font-semibold">Төлбөрийн линк олдсонгүй</h1>
       <p className="text-muted-foreground mt-2 text-sm">
         Линк хугацаа нь дууссан эсвэл бүрэн хуулагдаагүй байж магадгүй.
         Захиалгынхаа төлөвийг «Захиалгаа хянах» хэсгээс шалгаж, тэндээсээ
         төлбөрөө хийх боломжтой.
       </p>
       <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-        <Button asChild variant="outline">
+        {/* `outline` нь хүрээгүй систем дээр `ghost`-той ялгарахгүй тул шинэ
+            кодод хэрэглэхгүй (DESIGN.md → Components → Buttons). Хоёр гарцыг
+            ялгах нь `secondary` vs `default`. */}
+        <Button asChild variant="secondary">
           <Link href="/account/orders">Захиалгаа хянах</Link>
         </Button>
         <Button asChild>
