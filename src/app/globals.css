@@ -8,9 +8,16 @@
  *   .white — light monochrome (white bg, near-black text)
  *   .pink  — soft pink palette
  * The default (:root) mirrors .black to avoid a flash before hydration.
+ *
+ * `.force-black` is the same palette pinned to an element instead of the
+ * document — the home page's quiz and bundle cards stay dark in all three
+ * themes. Because these are custom properties, the nearest ancestor wins,
+ * so everything inside the card resolves against the black values with no
+ * per-utility overrides. Add it to a wrapper, never to a leaf.
  */
 :root,
-.black {
+.black,
+.force-black {
   --background: #000000; /* black */
   --foreground: #ffffff; /* white */
 
@@ -79,6 +86,17 @@
 }
 
 /* ── White (light monochrome) ─────────────────────────────────────────── */
+/* Redefining the tokens is not enough on its own: `color` is inherited as a
+   computed value, so text with no colour utility of its own — the cards'
+   `<h2>`s — keeps whatever `body` resolved from the *document* theme, and
+   goes near-black on a near-black card under `.white`. Re-resolving it here
+   makes the pinned palette apply to inherited text too. Utilities like
+   `text-muted-foreground` already resolve at their own element, so they need
+   nothing. */
+.force-black {
+  color: var(--foreground);
+}
+
 .white {
   --background: #ffffff;
   --foreground: #0a0a0a;

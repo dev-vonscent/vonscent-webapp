@@ -66,83 +66,128 @@ export default function HomePage() {
         <PromoSlot />
       </Suspense>
 
-      {/* Hero — a contained (never upscaled) image over the flat theme
-          backdrop, so the artwork stays sharp on wide screens. Pulled up under
-          the floating header (pt-4 16px + h-14 pill = 72px) so the backdrop
-          reaches the very top and shows behind the translucent pill. */}
+      {/* Hero — a full-bleed banner. The artwork keeps its own 1672×941 ratio
+          (`w-full h-auto`), so it is never cropped: the whole shot is visible
+          edge to edge at every width. Pulled up under the floating header
+          (pt-4 16px + h-14 pill = 72px) so it reaches the very top and shows
+          behind the translucent pill. */}
       <section className="bg-background relative -mt-18 w-full overflow-hidden">
-        {/* No CSS ambience behind the artwork — the backdrop stays the flat
-            theme background so the bottle's own lighting is the only glow. */}
+        {/* Two art directions, three palettes. The breakpoint is handled by
+            the wrappers and the palette by the images inside them, so neither
+            rule has to be stacked onto the other.
+
+            Palette swapping is CSS, never a theme read in JS: the right shot
+            is painted on the first frame, with no post-hydration flash. The
+            shot's empty area IS the theme backdrop (black / white / blush),
+            so the copy laid over it just follows the theme tokens. A
+            display:none image is never "visible", so lazy-loading would never
+            fire it — hence `loading="eager"` on every alternate. */}
+
+        {/* Phone: a 650×941 portrait crop — the wide shot's bottle would be
+            thumbnail-sized at this width, and its empty left half (built to
+            hold the copy) collapses to nothing. Here the copy sits below. */}
+        <div className="md:hidden">
+          <Image
+            src="/hero-mobile-black.png"
+            alt="VON SCENT"
+            width={650}
+            height={861}
+            priority
+            sizes="100vw"
+            className="block h-auto w-full in-[.pink]:hidden in-[.white]:hidden"
+          />
+          <Image
+            src="/hero-mobile-white.png"
+            alt="VON SCENT"
+            width={650}
+            height={861}
+            loading="eager"
+            sizes="100vw"
+            className="hidden h-auto w-full in-[.white]:block"
+          />
+          <Image
+            src="/hero-mobile-pink.png"
+            alt="VON SCENT"
+            width={650}
+            height={861}
+            loading="eager"
+            sizes="100vw"
+            className="hidden h-auto w-full in-[.pink]:block"
+          />
+        </div>
+
+        {/* md and up: the 1672×941 banner, whose left 60% is the copy well. */}
+        <div className="hidden md:block">
+          <Image
+            src="/hero-blackv1.png"
+            alt="VON SCENT"
+            width={1672}
+            height={941}
+            priority
+            sizes="100vw"
+            className="block h-auto w-full in-[.pink]:hidden in-[.white]:hidden"
+          />
+          <Image
+            src="/hero-whitev1.png"
+            alt="VON SCENT"
+            width={1672}
+            height={941}
+            loading="eager"
+            sizes="100vw"
+            className="hidden h-auto w-full in-[.white]:block"
+          />
+          <Image
+            src="/hero-pinkv1.png"
+            alt="VON SCENT"
+            width={1672}
+            height={941}
+            loading="eager"
+            sizes="100vw"
+            className="hidden h-auto w-full in-[.pink]:block"
+          />
+        </div>
         <div
           aria-hidden
-          className="absolute inset-0 opacity-[0.05] mix-blend-overlay"
+          className="pointer-events-none absolute inset-0 opacity-[0.05] mix-blend-overlay"
           style={{ backgroundImage: GRAIN }}
         />
-        <div className="mx-auto grid max-w-352 items-center gap-8 px-4 pt-28 pb-16 md:grid-cols-2 md:px-8">
-          <div className="relative z-10 max-w-xl space-y-6 max-md:mx-auto max-md:flex max-md:flex-col max-md:items-center max-md:text-center md:order-1">
-            <p className="text-muted-foreground text-xs font-medium tracking-[0.22em] uppercase sm:text-sm">
-              Жинхэнэ үнэртэн · Decant
-            </p>
-            <h1 className="text-foreground text-3xl font-bold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-              Бүтэн үнэртэн авахаасаа өмнө туршиж үз
-            </h1>
-            <p className="text-muted-foreground text-base text-pretty sm:text-lg">
-              Дэлхийн шилдэг үнэртнүүдийг 2/5/10/20ml сонголтоор — өөрт тохирох
-              үнэртэй усаа олоод дараа нь бүтнээр нь аваарай.
-            </p>
-            <div className="flex gap-3">
-              <Button
-                asChild
-                size="lg"
-                className="in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
-              >
-                <Link href="/catalog">Каталог үзэх</Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="secondary"
-                className="in-[.black]:bg-white/10 in-[.black]:text-white in-[.black]:hover:bg-white/20"
-              >
-                <Link href="/collections/build">Багц угсрах</Link>
-              </Button>
-            </div>
-          </div>
 
-          {/* The image never scales past its container, and the mask melts
-              its edges into the CSS backdrop. */}
-          <div className="relative order-first mx-auto aspect-square w-full max-w-140 mask-[radial-gradient(ellipse_70%_68%_at_50%_50%,#000_55%,transparent_78%)] md:order-2">
-            {/* One artwork per theme — the dark shot is unreadable on the
-                light palettes. All three are in the DOM (a display:none
-                image is never "visible", so lazy-loading would never fire
-                it); only the active theme's is painted. */}
-            <Image
-              src="/hero-black.webp"
-              alt="VON SCENT"
-              fill
-              priority
-              // All three artworks are square — 1:1 with the slot.
-              sizes="(max-width: 768px) 100vw, 560px"
-              // The bottle sits smaller in its frame than the light shots,
-              // so it gets a nudge up in scale to match their presence.
-              className="scale-110 object-cover in-[.pink]:hidden in-[.white]:hidden"
-            />
-            <Image
-              src="/hero-white.webp"
-              alt="VON SCENT"
-              fill
-              loading="eager"
-              sizes="(max-width: 768px) 100vw, 560px"
-              className="hidden object-cover in-[.white]:block"
-            />
-            <Image
-              src="/hero-pink.webp"
-              alt="VON SCENT"
-              fill
-              loading="eager"
-              sizes="(max-width: 768px) 100vw, 560px"
-              className="hidden object-cover in-[.pink]:block"
-            />
+        {/* Copy. From md up it is absolutely positioned over the empty left
+            half of the artwork; on phones that half is only ~200px tall, so
+            the block drops back into flow under the banner. Either way it sits
+            on the theme's own backdrop colour, so the plain tokens are legible
+            in all three palettes. */}
+        <div className="md:absolute md:inset-0">
+          <div className="mx-auto flex h-full max-w-352 items-center px-4 pt-8 pb-12 md:px-8 md:py-0">
+            <div className="max-w-xl space-y-5 max-md:mx-auto max-md:flex max-md:flex-col max-md:items-center max-md:text-center md:space-y-6">
+              <p className="text-muted-foreground text-xs font-medium tracking-[0.22em] uppercase sm:text-sm">
+                Жинхэнэ үнэртэн · Decant
+              </p>
+              <h1 className="text-foreground text-3xl font-bold tracking-tight text-balance sm:text-5xl lg:text-6xl">
+                Бүтэн үнэртэн авахаасаа өмнө туршиж үз
+              </h1>
+              <p className="text-muted-foreground text-base text-pretty sm:text-lg">
+                Дэлхийн шилдэг үнэртнүүдийг 2/5/10/20ml сонголтоор — өөрт
+                тохирох үнэртэй усаа олоод дараа нь бүтнээр нь аваарай.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  asChild
+                  size="lg"
+                  className="in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+                >
+                  <Link href="/catalog">Каталог үзэх</Link>
+                </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="secondary"
+                  className="in-[.black]:bg-white/10 in-[.black]:text-white in-[.black]:hover:bg-white/20"
+                >
+                  <Link href="/collections/build">Багц угсрах</Link>
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -167,7 +212,7 @@ export default function HomePage() {
         {/* Build-your-own bundle promo — the side image (5c) bleeds to the
             card edge and fades into the bg-card surface; a CSS glow stands
             in until public/bundle-side.webp is generated. */}
-        <section className="border-border bg-card relative grid grid-cols-1 overflow-hidden rounded-2xl border md:grid-cols-[320px_1fr]">
+        <section className="force-black border-border bg-card relative grid grid-cols-1 overflow-hidden rounded-2xl border md:grid-cols-[320px_1fr]">
           <SideImage
             src="/bundle-side.webp"
             sizes="(max-width: 768px) 100vw, 320px"

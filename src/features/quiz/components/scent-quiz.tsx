@@ -303,7 +303,7 @@ export function ScentQuiz() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="border-border bg-card relative overflow-hidden rounded-2xl border"
+        className="force-black border-border bg-card relative overflow-hidden rounded-2xl border"
       >
         <TilePreloader sources={preloadSources} />
         <AnimatePresence mode="wait" initial={false}>
