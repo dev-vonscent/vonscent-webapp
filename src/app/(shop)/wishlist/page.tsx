@@ -101,7 +101,16 @@ export default function WishlistPage() {
           size="lg"
           icon={Heart}
           title="Жагсаалт хоосон байна"
-          description="Дуртай үнэртнээ ❤ дарж хадгалаарай."
+          description={
+            <>
+              {/* Emoji биш lucide icon: ❤ нь төхөөрөмж бүр дээр өөр өнгө,
+                  өөр хэлбэртэй зурагддаг бөгөөд монохром системд өнгөт
+                  тэмдэгт болж унадаг. */}
+              Барааны зурган дээрх{" "}
+              <Heart className="inline size-3.5 align-[-2px]" aria-hidden />{" "}
+              тэмдгийг дарж дуртай үнэртнээ хадгалаарай.
+            </>
+          }
           action={
             <Button asChild>
               <Link href="/catalog">Бараа үзэх</Link>

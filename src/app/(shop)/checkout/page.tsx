@@ -517,8 +517,8 @@ export default function CheckoutPage() {
     giftGuaranteeFor(collections),
   );
   // Бэлгийн сан — сагс, багцын дэлгэрэнгүйтэй ижил цорын ганц эх сурвалж
-  // (backlog A2). Сан унтраалттай / хоосон бол доорх тоймд «🎁» гэж
-  // амлахгүй: `GiftSamplePicker` өөрөө нуугддаг тул тэмдэг нь хэзээ ч
+  // (backlog A2). Сан унтраалттай / хоосон бол доорх тоймд «бэлэгтэй» гэж
+  // амлахгүй: `GiftSamplePicker` өөрөө нуугддаг тул тэмдэглэгээ нь хэзээ ч
   // сонгох боломжгүй бэлгийг зааж байх ёсгүй. Модуль дотор кэштэй hook тул
   // нэмэлт хүсэлт гарахгүй, ачаалж амжаагүй үед `null` (тэмдэг гарахгүй).
   const giftPool = useGiftPool();
@@ -1011,8 +1011,11 @@ export default function CheckoutPage() {
                         </p>
                         <p className="text-muted-foreground text-xs">
                           Багц · {c.ml}ml · {c.members.length} үнэртэн
+                          {/* Emoji биш үг: 🎁 нь тайлбаргүй байсан бөгөөд
+                              төхөөрөмж бүр дээр өөр өнгөөр зурагдаж,
+                              монохром системд ганц өнгөт толбо болдог. */}
                           {giftPool?.enabled && bundleGiftGuarantee(c) > 0
-                            ? " · 🎁"
+                            ? " · бэлэгтэй"
                             : ""}
                         </p>
                       </div>
