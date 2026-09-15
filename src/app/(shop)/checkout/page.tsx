@@ -4,13 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  Truck,
-  ShieldCheck,
-  ShoppingCart,
-  Clock,
-  Loader2,
-} from "lucide-react";
+import { Truck, ShieldCheck, ShoppingCart, Clock, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -209,6 +203,10 @@ export default function CheckoutPage() {
   // has to be visible to onSubmit in that same tick.
   const guestWarned = React.useRef(false);
   const [showGuestWarning, setShowGuestWarning] = React.useState(false);
+  // Бэлгийн эрхээ ашиглаагүйг нэг л удаа асууна: үнэгүй дээжийн төлөө
+  // худалдан авалтыг хаах нь буруу, харин дуугүй өнгөрөөх нь ч буруу.
+  const giftWarned = React.useRef(false);
+  const [showGiftWarning, setShowGiftWarning] = React.useState(false);
   // Купоны бүх логик (санал болгох, дахин шалгах) нэг hook дотор.
   const {
     discount,
@@ -253,29 +251,26 @@ export default function CheckoutPage() {
    * байдаг учир ямар нэг харагдах хариу үйлдэлгүй бол дарсан хүн энэ товчийг
    * эвдэрсэн гэж үзнэ.
    */
-  const onInvalid = React.useCallback(
-    (formErrors: Record<string, unknown>) => {
-      // Хамгийн ДЭЭД талын алдаатай хэсэг рүү, resolver-ийн түлхүүрийн
-      // дарааллаар биш: хэрэглэгч хуудсыг дээрээс доош уншдаг, схемийн
-      // дарааллаар биш.
-      const ids = new Set(
-        Object.keys(formErrors)
-          .map((key) => ERROR_SECTION[key])
-          .filter(Boolean),
-      );
-      const target = SECTION_ORDER.find((id) => ids.has(id));
-      if (!target) return;
-      const section = document.getElementById(target);
-      section?.scrollIntoView({ behavior: "smooth", block: "start" });
-      // Хэсэг дотроо бичих талбартай бол түүнийг фокуслана (гар утсан дээр
-      // гар нь дараагийн алхмыг өөрөө хэлнэ). `preventScroll` — эс тэгвээс
-      // браузар дөнгөж эхэлсэн гүйлгэлтийг таслана.
-      section
-        ?.querySelector<HTMLElement>('[aria-invalid="true"]')
-        ?.focus({ preventScroll: true });
-    },
-    [],
-  );
+  const onInvalid = React.useCallback((formErrors: Record<string, unknown>) => {
+    // Хамгийн ДЭЭД талын алдаатай хэсэг рүү, resolver-ийн түлхүүрийн
+    // дарааллаар биш: хэрэглэгч хуудсыг дээрээс доош уншдаг, схемийн
+    // дарааллаар биш.
+    const ids = new Set(
+      Object.keys(formErrors)
+        .map((key) => ERROR_SECTION[key])
+        .filter(Boolean),
+    );
+    const target = SECTION_ORDER.find((id) => ids.has(id));
+    if (!target) return;
+    const section = document.getElementById(target);
+    section?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Хэсэг дотроо бичих талбартай бол түүнийг фокуслана (гар утсан дээр
+    // гар нь дараагийн алхмыг өөрөө хэлнэ). `preventScroll` — эс тэгвээс
+    // браузар дөнгөж эхэлсэн гүйлгэлтийг таслана.
+    section
+      ?.querySelector<HTMLElement>('[aria-invalid="true"]')
+      ?.focus({ preventScroll: true });
+  }, []);
 
   /** Наалдсан төлбөрийн зурвас гарах эсэх — хоосон / шилжих төлөвт гарахгүй. */
   const showPayBar =
@@ -487,7 +482,9 @@ export default function CheckoutPage() {
   /** Хаяг бүрэн эсэх — бүс, хүргэлтийн үнэ зөвхөн үүний дараа гарна. */
   const hasAddress = Boolean(city && district && detail);
   /** Алслагдсан бүс — хаяг тодорсны дараа л мэдэгдэнэ. */
-  const remoteZone = Boolean(hasAddress && selectedZone?.remote && !zoneBlocked);
+  const remoteZone = Boolean(
+    hasAddress && selectedZone?.remote && !zoneBlocked,
+  );
   /** Хаягийн блокийн доор гарах цорын нэг мессеж (талбарууд popup дотор). */
   const addressError =
     errors.shipCity?.message ??
@@ -608,9 +605,7 @@ export default function CheckoutPage() {
   async function onSubmit(values: FormValues) {
     // Zones we don't serve must never turn into an order.
     if (zoneBlocked) {
-      setServerError(
-        "Энэ хаяг руу хүргэлт хийдэггүй. Өөр хаяг оруулна уу.",
-      );
+      setServerError("Энэ хаяг руу хүргэлт хийдэггүй. Өөр хаяг оруулна уу.");
       return;
     }
     // Унаа явах газар нь орон нутгийн захиалгын хүргэх хаягтай адил чухал —
@@ -626,6 +621,13 @@ export default function CheckoutPage() {
     // take their money (requirement_fb.md §5).
     if (!authed && !guestWarned.current) {
       setShowGuestWarning(true);
+      return;
+    }
+
+    // Эрхтэй атлаа нэг ч дээж сонгоогүй бол нэг удаа сануулна — 600,000₮-ийн
+    // захиалга гурван үнэгүй дээжээ орхиод төлбөр рүү орох ёсгүй.
+    if (giftAllowance > 0 && giftIds.length === 0 && !giftWarned.current) {
+      setShowGiftWarning(true);
       return;
     }
 
@@ -711,7 +713,7 @@ export default function CheckoutPage() {
       // the order rides in sessionStorage any more: the link survives a reload,
       // a new tab, and being opened on the customer's phone.
       if (order.payToken) {
-        router.push(`/pay/${order.payToken}`);
+        router.replace(`/pay/${order.payToken}`);
         return;
       }
       // Demo mode (no database) issues no token — there is nothing to pay.
@@ -725,14 +727,14 @@ export default function CheckoutPage() {
           deliverOn: values.deliverOn ?? null,
         }),
       );
-      router.push("/order/success");
+      router.replace("/order/success");
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div className="mx-auto max-w-352 px-4 pt-8 pb-24 md:px-8 lg:pb-8">
+    <div className="mx-auto max-w-352 px-4 pt-8 md:px-8 md:pb-24 lg:pb-8">
       {/* «Сагс руу буцах» линк байхгүй: сагс нь толгойн навигацид ямагт
           байдаг, харин захиалгын хуудсын толгойд гарц тавих нь эндээс гарах
           сонголтыг хамгийн түрүүнд уншуулна. */}
@@ -784,7 +786,10 @@ export default function CheckoutPage() {
 
             {/* Хаягийн талбарууд popup дотор амьдардаг тул алдаа нь энд —
                 `role="alert"`-тай, дэлгэц уншигчид зарлагдана. */}
-            <FieldError id="checkout-address" message={addressError ?? undefined} />
+            <FieldError
+              id="checkout-address"
+              message={addressError ?? undefined}
+            />
 
             {authed && draft && addressChoice === NEW_ADDRESS && (
               <label className="flex cursor-pointer items-center gap-2 text-sm">
@@ -898,7 +903,7 @@ export default function CheckoutPage() {
               error={errors.note?.message}
               hint={
                 remoteZone
-                  ? "Орон нутгийн захиалга — ачаа очих компани, буудал, унааны нэрийг бичнэ үү."
+                  ? "Орон нутгийн унаа хөдлөх буудал, терминалын нэрийг бичнэ үү."
                   : undefined
               }
             >
@@ -906,7 +911,7 @@ export default function CheckoutPage() {
                 {...register("note")}
                 placeholder={
                   remoteZone
-                    ? "Жишээ: Дархан, «Ноён» ХХК-ийн унаа"
+                    ? "Жишээ: Драгон терминал, Дархан чиглэл"
                     : "Жишээ: оройн цагаар залгаарай"
                 }
               />
@@ -915,7 +920,11 @@ export default function CheckoutPage() {
 
           {/* Хүлээн авагч — талбарууд зориуд хоосон эхэлнэ (дансны нэр, утсаар
               бөглөхгүй), хаяг сонгоход л бөглөгдөнө. */}
-          <Section id="checkout-recipient" step={2} title="Хүлээн авагчийн мэдээлэл">
+          <Section
+            id="checkout-recipient"
+            step={2}
+            title="Хүлээн авагчийн мэдээлэл"
+          >
             <div className="grid gap-4 sm:grid-cols-2">
               {/* `autoComplete` нь утсан дээрх хамгийн том хэмнэлт: Chrome-ийн
                   автобөглөлт энэ гурван талбарыг нэг товшилтоор дүүргэдэг.
@@ -956,12 +965,14 @@ export default function CheckoutPage() {
 
           {/* Бэлгийн 1мл дээж — эрхийн тоогоор, зөвхөн админы сангаас. */}
           {mounted && (
-            <GiftSamplePicker
-              allowance={giftAllowance}
-              goodsAfterDiscount={Math.max(subtotal - discount, 0)}
-              value={giftIds}
-              onChange={setGiftIds}
-            />
+            <div id="checkout-gift" className="scroll-mt-24">
+              <GiftSamplePicker
+                allowance={giftAllowance}
+                goodsAfterDiscount={Math.max(subtotal - discount, 0)}
+                value={giftIds}
+                onChange={setGiftIds}
+              />
+            </div>
           )}
         </div>
 
@@ -969,9 +980,7 @@ export default function CheckoutPage() {
         <div className="lg:sticky lg:top-24 lg:h-fit">
           <Card className="overflow-hidden">
             <CardContent className="space-y-5 p-6">
-              <h2 className="text-lg font-semibold">
-                Захиалгын тойм
-              </h2>
+              <h2 className="text-lg font-semibold">Захиалгын тойм</h2>
 
               <div className="space-y-3">
                 {mounted &&
@@ -1090,7 +1099,9 @@ export default function CheckoutPage() {
                 <SummaryRow label="Барааны дүн" value={formatPrice(subtotal)} />
                 {discount > 0 && (
                   <SummaryRow
-                    label={coupon?.code ? `Купон · ${coupon.code}` : "Хөнгөлөлт"}
+                    label={
+                      coupon?.code ? `Купон · ${coupon.code}` : "Хөнгөлөлт"
+                    }
                     value={`−${formatPrice(discount)}`}
                     credit
                   />
@@ -1111,6 +1122,26 @@ export default function CheckoutPage() {
                     value="Үнэгүй"
                     credit
                   />
+                )}
+                {/* Ашиглаагүй эрхийг тоймд хэлнэ: хэрэглэгч энэ багана дээр
+                    дүнгээ шалгаж байхдаа л «би юу авах гэж байна» гэдгийг
+                    эцэслэн уншдаг. */}
+                {giftAllowance > giftIds.length && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      document
+                        .getElementById("checkout-gift")
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                    }
+                    className="text-gold-strong flex w-full items-baseline justify-between gap-3 text-left text-sm underline-offset-4 hover:underline"
+                  >
+                    <span className="min-w-0">
+                      Бэлгийн {giftAllowance - giftIds.length} дээж сонгоогүй
+                      байна
+                    </span>
+                    <span className="shrink-0">Сонгох</span>
+                  </button>
                 )}
                 {/* Тэмдэг нь энэ мөрийг ялгаж байгаа тул icon хэрэггүй:
                     бүх шошго нэг зүүн ирмэгээс эхэлсэн багана илүү тайван. */}
@@ -1277,6 +1308,41 @@ export default function CheckoutPage() {
           </Button>
         </div>
       </ResponsiveDialog>
+
+      {/* Бэлгээ сонгоогүй — хаалт биш сануулга. Гол товч нь буцаж очиж
+          сонгох; үргэлжлүүлэх нь хоёрдогч боловч ил байна, учир нь үнэгүй
+          дээжийн төлөө хэн нэгний худалдан авалтыг барих ёсгүй. */}
+      <ResponsiveDialog
+        open={showGiftWarning}
+        onOpenChange={setShowGiftWarning}
+        title={`Танд ${giftAllowance} бэлгийн дээж сонгох эрх байна`}
+        description="Энэ захиалгад үнэгүй 1мл дээж дагалдана. Одоо сонгоогүй бол энэ захиалгад дээж орохгүй."
+      >
+        <div className="flex flex-col gap-2">
+          <Button
+            size="lg"
+            onClick={() => {
+              setShowGiftWarning(false);
+              document
+                .getElementById("checkout-gift")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          >
+            Дээжээ сонгох
+          </Button>
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={() => {
+              giftWarned.current = true;
+              setShowGiftWarning(false);
+              handleSubmit(onSubmit, onInvalid)();
+            }}
+          >
+            Дээжгүй үргэлжлүүлэх
+          </Button>
+        </div>
+      </ResponsiveDialog>
     </div>
   );
 }
@@ -1329,12 +1395,9 @@ function SummaryRow({
   return (
     <div className="flex items-baseline justify-between gap-3 text-sm">
       <span className="text-muted-foreground min-w-0 truncate">{label}</span>
-      <span
-        className={`shrink-0 tabular-nums ${credit ? "text-success" : ""}`}
-      >
+      <span className={`shrink-0 tabular-nums ${credit ? "text-success" : ""}`}>
         {value}
       </span>
     </div>
   );
 }
-

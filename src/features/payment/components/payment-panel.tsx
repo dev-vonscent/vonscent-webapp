@@ -205,7 +205,15 @@ export function PaymentPanel({
           "max-w-lg md:grid md:max-w-4xl md:grid-cols-[minmax(0,1fr)_420px] md:items-start md:gap-14",
         )}
       >
-        <div className="md:sticky md:top-24">
+        {/*
+          Утсан дээр дараалал: дүн → төлөх арга (апп / QR / шалгах товч) →
+          дараа нь захиалгын дэлгэрэнгүй. Өмнө нь захиалгын бүтэн карт
+          дундуур нь ортол банкны апп, QR, «Төлбөр шалгах» гурвуулаа нэг
+          дэлгэцийн доор үлддэг байв — энэ хуудасны цорын ганц ажил бол
+          төлүүлэх. Десктоп дээр хоёр багана хэвээр: зүүн нь юуны төлөө,
+          баруун нь яаж.
+        */}
+        <div className="md:col-start-1 md:row-start-1">
           <div className="flex justify-center md:justify-start">
             <StatusPill />
           </div>
@@ -227,8 +235,6 @@ export function PaymentPanel({
               биш.
             </p>
           )}
-
-          <OrderRecap view={view} />
         </div>
 
         {/*
@@ -237,7 +243,7 @@ export function PaymentPanel({
           the screen; the card earns its keep only once the viewport is wider
           than the content (md+).
         */}
-        <div className="md:border-border md:bg-card mt-6 md:mt-0 md:overflow-hidden md:rounded-2xl md:border">
+        <div className="md:border-border md:bg-card mt-6 md:sticky md:top-24 md:col-start-2 md:row-span-2 md:row-start-1 md:mt-0 md:overflow-hidden md:rounded-2xl md:border">
           {isQpay ? (
             <QpaySection
               view={view}
@@ -249,6 +255,10 @@ export function PaymentPanel({
           ) : (
             <BankTransfer orderNo={view.orderNo} />
           )}
+        </div>
+
+        <div className="md:col-start-1 md:row-start-2">
+          <OrderRecap view={view} />
         </div>
       </motion.div>
     </MotionConfig>
@@ -263,63 +273,94 @@ export function PaymentPanel({
  * харах ёстой. Хаяг, холбоо барих мэдээллийг зориуд оруулаагүй (api.ts).
  */
 function OrderRecap({ view }: { view: PaymentView }) {
+  // Утсан дээр хумигдсан эхэлнэ: төлбөрийн хуудасны нэг ажил бол төлүүлэх,
+  // харин «би юуны төлөө төлж байна» гэдэг нь нэг товшилтын зайд байх ёстой
+  // (линк дамжуулж авсан хүнд ялангуяа). Десктоп дээр газар хангалттай тул
+  // үргэлж дэлгэгдсэн.
+  const [open, setOpen] = React.useState(false);
+  const count = view.lines.reduce((n, l) => n + l.qty, 0);
   if (view.lines.length === 0) return null;
   return (
     <div className="border-border bg-card mt-6 rounded-2xl border p-4 md:mt-8 md:p-5">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-sm font-medium">Захиалга</p>
-        <span className="text-muted-foreground font-mono text-xs">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls="order-recap-body"
+        className="flex w-full items-center gap-3 text-left md:pointer-events-none"
+      >
+        {/* Нэг толгой мөр, хоёр биш: тусад нь десктоп/мобайл хувилбар бичвэл
+            захиалгын дугаар DOM-д хоёр удаа орж, дэлгэц уншигчид ч, тестэд ч
+            давхардал болно. */}
+        <span className="shrink-0 text-sm font-medium">Захиалга</span>
+        <span className="text-muted-foreground ml-auto shrink-0 text-xs tabular-nums md:hidden">
+          {count} бараа
+        </span>
+        <span className="text-muted-foreground shrink-0 font-mono text-xs md:ml-auto">
           {view.orderNo}
         </span>
-      </div>
+        <ChevronDown
+          aria-hidden
+          className={cn(
+            "text-muted-foreground size-4 shrink-0 transition-transform md:hidden",
+            open && "rotate-180",
+          )}
+        />
+      </button>
 
-      <ul className="divide-border mt-3 divide-y">
-        {view.lines.map((line, i) => (
-          <li
-            key={`${line.name}-${line.ml}-${i}`}
-            className="flex items-center gap-3 py-2.5"
-          >
-            <div className="relative size-11 shrink-0">
-              <div className="bg-muted size-full overflow-hidden rounded-lg">
-                {line.image && (
-                  <Image
-                    src={line.image}
-                    alt={line.name}
-                    fill
-                    sizes="44px"
-                    className="object-cover"
-                  />
+      <div
+        id="order-recap-body"
+        className={cn("md:block", open ? "block" : "hidden")}
+      >
+        <ul className="divide-border mt-3 divide-y">
+          {view.lines.map((line, i) => (
+            <li
+              key={`${line.name}-${line.ml}-${i}`}
+              className="flex items-center gap-3 py-2.5"
+            >
+              <div className="relative size-11 shrink-0">
+                <div className="bg-muted size-full overflow-hidden rounded-lg">
+                  {line.image && (
+                    <Image
+                      src={line.image}
+                      alt={line.name}
+                      fill
+                      sizes="44px"
+                      className="object-cover"
+                    />
+                  )}
+                </div>
+                {line.qty > 1 && (
+                  <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[10px] font-semibold">
+                    {line.qty}
+                  </span>
                 )}
               </div>
-              {line.qty > 1 && (
-                <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[10px] font-semibold">
-                  {line.qty}
-                </span>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm/tight font-medium">{line.name}</p>
-              <p className="text-muted-foreground truncate text-xs">
-                {[
-                  line.brand,
-                  `${line.ml}ml`,
-                  line.collectionName ?? null,
-                  line.isSample ? "бэлэг" : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
-            </div>
-            <span className="text-sm font-medium tabular-nums">
-              {line.isSample && line.lineTotal === 0
-                ? "0₮"
-                : formatPrice(line.lineTotal)}
-            </span>
-          </li>
-        ))}
-      </ul>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm/tight font-medium">
+                  {line.name}
+                </p>
+                <p className="text-muted-foreground truncate text-xs">
+                  {[
+                    line.brand,
+                    `${line.ml}ml`,
+                    line.collectionName ?? null,
+                    line.isSample ? "бэлэг" : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </div>
+              <span className="text-sm font-medium tabular-nums">
+                {line.isSample && line.lineTotal === 0
+                  ? "0₮"
+                  : formatPrice(line.lineTotal)}
+              </span>
+            </li>
+          ))}
+        </ul>
 
-      {/*
+        {/*
         Тоог тайлбарлах бүтэц — «яагаад 22,790₮ болов?» гэсэн асуулт хуудсан
         дээрээ хариулттай байх ёстой.
 
@@ -329,60 +370,61 @@ function OrderRecap({ view }: { view: PaymentView }) {
         байхгүй байсан тул баганыг нэмж хасаад дээрх том тоог гаргах гэхээр
         таардаггүй байв.
       */}
-      <div className="border-border mt-3 space-y-1.5 border-t pt-3 text-xs">
-        <RecapRow label="Барааны дүн" value={formatPrice(view.subtotal)} />
-        {view.discount > 0 && (
+        <div className="border-border mt-3 space-y-1.5 border-t pt-3 text-xs">
+          <RecapRow label="Барааны дүн" value={formatPrice(view.subtotal)} />
+          {view.discount > 0 && (
+            <RecapRow
+              label="Хөнгөлөлт"
+              value={`−${formatPrice(view.discount)}`}
+              accent
+            />
+          )}
+          {view.loyaltyUsed > 0 && (
+            <RecapRow
+              label="V point"
+              value={`−${formatPrice(view.loyaltyUsed)}`}
+              accent
+            />
+          )}
           <RecapRow
-            label="Хөнгөлөлт"
-            value={`−${formatPrice(view.discount)}`}
-            accent
+            label="Хүргэлт"
+            value={
+              view.shippingFee === 0
+                ? "Үнэгүй"
+                : `+${formatPrice(view.shippingFee)}`
+            }
           />
-        )}
-        {view.loyaltyUsed > 0 && (
-          <RecapRow
-            label="V point"
-            value={`−${formatPrice(view.loyaltyUsed)}`}
-            accent
-          />
-        )}
-        <RecapRow
-          label="Хүргэлт"
-          value={
-            view.shippingFee === 0
-              ? "Үнэгүй"
-              : `+${formatPrice(view.shippingFee)}`
-          }
-        />
-        <div className="border-border mt-1.5 flex justify-between gap-3 border-t pt-2.5 text-sm">
-          <span className="font-medium">Нийт төлөх</span>
-          <span className="font-semibold tabular-nums">
-            {formatPrice(view.total)}
-          </span>
+          <div className="border-border mt-1.5 flex justify-between gap-3 border-t pt-2.5 text-sm">
+            <span className="font-medium">Нийт төлөх</span>
+            <span className="font-semibold tabular-nums">
+              {formatPrice(view.total)}
+            </span>
+          </div>
         </div>
-      </div>
 
-      {/* Төлбөр батлагдвал юу нэмэгдэхийг урьдчилж хэлнэ — оноо нь энэ
+        {/* Төлбөр батлагдвал юу нэмэгдэхийг урьдчилж хэлнэ — оноо нь энэ
           дэлгүүрт дахин ирэх шалтгаан тул төлсний дараа гэнэт олддог
           зүйл байх ёсгүй. */}
-      {view.pointsEarned > 0 && (
-        <p className="text-muted-foreground mt-3 text-xs">
-          Төлбөр батлагдмагц{" "}
-          <strong className="text-foreground font-medium tabular-nums">
-            +{view.pointsEarned.toLocaleString("mn-MN")} V point
-          </strong>{" "}
-          хуримтлагдана.
-        </p>
-      )}
+        {view.pointsEarned > 0 && (
+          <p className="text-muted-foreground mt-3 text-xs">
+            Төлбөр батлагдмагц{" "}
+            <strong className="text-foreground font-medium tabular-nums">
+              +{view.pointsEarned.toLocaleString("mn-MN")} V point
+            </strong>{" "}
+            хуримтлагдана.
+          </p>
+        )}
 
-      {/* Төлбөр хоцорсон бол сонгосон өдөр аль хэдийн өнгөрсөн байж мэднэ —
+        {/* Төлбөр хоцорсон бол сонгосон өдөр аль хэдийн өнгөрсөн байж мэднэ —
           `mark_order_paid` (0069) төлөх мөчид өдрийг ахиулна. Тиймээс энд
           хадгалсан өдрийг биш, одоо төлөхөд хүргэгдэх өдрийг харуулна. */}
-      <p className="text-muted-foreground mt-3 text-xs">
-        <strong className="text-foreground font-medium">
-          {formatDeliveryDay(projectedDeliveryDay(view.deliverOn))}
-        </strong>{" "}
-        {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.
-      </p>
+        <p className="text-muted-foreground mt-3 text-xs">
+          <strong className="text-foreground font-medium">
+            {formatDeliveryDay(projectedDeliveryDay(view.deliverOn))}
+          </strong>{" "}
+          {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.
+        </p>
+      </div>
     </div>
   );
 }

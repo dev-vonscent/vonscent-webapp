@@ -65,9 +65,7 @@ export function GiftSamplePicker({
 
   /** Дараагийн эрх хүртэл дутуу дүн (босго ажиллаж байгаа үед л утгатай). */
   const toNext =
-    threshold > 0
-      ? threshold - (goodsAfterDiscount % threshold || 0)
-      : 0;
+    threshold > 0 ? threshold - (goodsAfterDiscount % threshold || 0) : 0;
 
   function toggle(id: string) {
     if (value.includes(id)) {
@@ -87,8 +85,8 @@ export function GiftSamplePicker({
 
         {allowance > 0 ? (
           <p className="text-muted-foreground text-sm">
-            {formatPrice(threshold)} тутамд 1, бэлэн 5/10/20мл багц бүрээс 1 — та{" "}
-            <strong className="text-foreground">{allowance}</strong> ширхэг
+            {formatPrice(threshold)} тутамд 1, бэлэн 5/10/20мл багц бүрээс 1 —
+            та <strong className="text-foreground">{allowance}</strong> ширхэг
             сонгох эрхтэй ({value.length} сонгосон).
           </p>
         ) : (
@@ -134,7 +132,12 @@ export function GiftSamplePicker({
                         src={o.image}
                         alt={o.name}
                         fill
-                        sizes="120px"
+                        // Хавтан нь десктоп дээр ~270px өргөн (зүүн багана 3
+                        // багана болж хуваагдана) — `120px` гэж хэлэхэд Next
+                        // 128px өргөн хувилбар татаж, хоёр дахин томсгож
+                        // бүдгэрүүлдэг байв. Утсан дээр тод байсан нь тэнд
+                        // хавтан нь жинхэнэдээ 120px орчим байсных.
+                        sizes="(min-width: 1024px) 280px, (min-width: 640px) 30vw, 45vw"
                         className="object-cover"
                       />
                     )}
