@@ -202,7 +202,7 @@ export function PaymentPanel({
           // column in the middle of a 1440px window reads as a phone screen
           // someone forgot to lay out. The left rail carries what is being
           // paid, the right one how to pay it.
-          "max-w-lg md:grid md:max-w-4xl md:grid-cols-[minmax(0,1fr)_420px] md:items-start md:gap-14",
+          "max-w-lg md:grid md:max-w-4xl md:grid-cols-[minmax(0,1fr)_420px] md:items-start md:gap-x-14",
         )}
       >
         {/*
@@ -281,7 +281,7 @@ function OrderRecap({ view }: { view: PaymentView }) {
   const count = view.lines.reduce((n, l) => n + l.qty, 0);
   if (view.lines.length === 0) return null;
   return (
-    <div className="border-border bg-card mt-6 rounded-2xl border p-4 md:mt-8 md:p-5">
+    <div className="border-border bg-card mt-6 rounded-2xl border p-4 md:p-5">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
