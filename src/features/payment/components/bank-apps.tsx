@@ -181,8 +181,13 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
  *
  * `object-contain` on a neutral tile rather than `object-cover`: QPay serves
  * square app icons for most apps, where the two are identical, but a couple
- * are wide wordmarks that cover would crop into nonsense. The hairline ring
- * keeps a white icon from bleeding into the white and pink themes.
+ * are wide wordmarks that cover would crop into nonsense.
+ *
+ * Хайрцгийн ирмэг нь `ring-field-edge` — `ring-border` байсан бөгөөд
+ * `--border` нь гурван theme бүрд тунгалаг тул цагаан лого цагаан / ягаан
+ * аяс дээр дэвсгэртэйгээ нийлж алга болсоор байв. `field-edge` бол системд
+ * зориуд үлдээсэн цорын ганц үс шиг ирмэг (DESIGN.md → The Field Edge Rule),
+ * гурван theme бүрд 3:1-ээс дээш.
  */
 function BankIcon({ bank, size }: { bank: BankLink; size: "sm" | "lg" }) {
   const [failed, setFailed] = React.useState(false);
@@ -191,7 +196,7 @@ function BankIcon({ bank, size }: { bank: BankLink; size: "sm" | "lg" }) {
   return (
     <span
       className={cn(
-        "bg-secondary ring-border relative flex shrink-0 items-center justify-center overflow-hidden ring-1",
+        "bg-secondary ring-field-edge relative flex shrink-0 items-center justify-center overflow-hidden ring-1",
         size === "lg" ? "size-14 rounded-2xl sm:size-16" : "size-10 rounded-xl",
       )}
     >
@@ -211,10 +216,10 @@ function BankIcon({ bank, size }: { bank: BankLink; size: "sm" | "lg" }) {
         // A dead logo URL must not leave an anonymous grey square — the
         // wordmark is what makes the icon identifiable.
         <span
-          className={cn(
-            "text-muted-foreground font-bold tracking-tight",
-            size === "lg" ? "text-[11px]" : "text-[9px]",
-          )}
+          // 11px нь DESIGN.md-ийн Label алхам. Өмнө нь жижиг хайрцаг дээр
+          // 9px байсан — ramp-аас гадуур бөгөөд хамгийн урт код (4 тэмдэгт,
+          // «ХААН») 40px хайрцагт 11px-ээр ч багтдаг.
+          className="text-muted-foreground text-[11px] font-bold tracking-tight"
         >
           {bank.short}
         </span>
@@ -289,7 +294,7 @@ function RecentRow({
 }) {
   if (!bank.link) {
     return (
-      <div className="border-border flex items-center gap-3 rounded-xl border p-2.5 opacity-50">
+      <div className="bg-secondary flex items-center gap-3 rounded-xl p-2.5 opacity-50">
         <BankIcon bank={bank} size="sm" />
         <span className="text-sm font-medium">{bank.name}</span>
       </div>
@@ -299,7 +304,10 @@ function RecentRow({
     <a
       href={bank.link}
       onClick={() => onHandoff(bank)}
-      className="border-border hover:border-gold-strong/40 hover:bg-accent flex items-center gap-3 rounded-xl border p-2.5 transition-colors"
+      // Хүрээ нь энэ системд тунгалаг тул мөр огт хилгүй, дарагддаггүй текст
+      // мэт харагддаг байв — `bg-secondary` давхарга нь түүнийг картын
+      // гадаргуугаас салгаж, дарагдахуйц болгоно (DESIGN.md → Borderless Rule).
+      className="bg-secondary hover:bg-accent flex items-center gap-3 rounded-xl p-2.5 transition-colors"
       aria-label={`${bank.name} аппаар төлөх`}
     >
       <BankIcon bank={bank} size="sm" />

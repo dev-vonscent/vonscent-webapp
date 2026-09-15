@@ -139,6 +139,15 @@ const REGISTER_HREF = "/register?next=%2Fcheckout";
  * байдаг тул «дарсан ч юу ч болохгүй» гэсэн мэдрэмжийг зөвхөн энэ зураглал
  * дээр суурилсан гүйлгэлт л арилгана (`Section` дээрх `scroll-mt-24`).
  */
+/**
+ * Модал хаагдаж, Radix фокусаа нээсэн товч руу буцаах хүртэлх зай.
+ *
+ * `ResponsiveDialog` нь `onCloseAutoFocus`-ыг гадагш гаргадаггүй (`components/ui`
+ * — шууд засахгүй), тиймээс фокусыг нь булаалгүй авахын тулд хаалт дуустал
+ * хүлээнэ. Гүйлгэлт нь `smooth` тул энэ зай нүдэнд мэдэгдэхгүй.
+ */
+const DIALOG_CLOSE_MS = 150;
+
 const SECTION_ORDER = ["checkout-address", "checkout-recipient"] as const;
 
 const ERROR_SECTION: Record<string, string> = {
@@ -170,6 +179,16 @@ export default function CheckoutPage() {
   // тэр хооронд хийгддэг. Шилжиж байгаа гэдгээ тусад нь тэмдэглэнэ.
   const [leaving, setLeaving] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
+  /**
+   * Серверийн алдааны блок руу заасан ref.
+   *
+   * Утсан дээр «Төлбөр төлөх» нь доод ирмэгт наалдсан зурвас, харин энэ мессеж
+   * нь тоймын картын дотор — ө.х. дарсан товч ба гарсан хариу хоёр өөр
+   * дэлгэцэн дээр байдаг. Алдаа гарахад юу ч хөдлөхгүй тул хэрэглэгч товчийг
+   * ажиллахгүй байна гэж үзэж дахин дардаг. Талбарын алдааг (`onInvalid`)
+   * аль хэдийн гүйлгэдэг шигээ үүнийг ч гүйлгэнэ.
+   */
+  const serverErrorRef = React.useRef<HTMLParagraphElement>(null);
 
   const [authed, setAuthed] = React.useState(false);
   const [addresses, setAddresses] = React.useState<AddressRow[]>([]);
@@ -271,6 +290,32 @@ export default function CheckoutPage() {
       ?.querySelector<HTMLElement>('[aria-invalid="true"]')
       ?.focus({ preventScroll: true });
   }, []);
+
+  /**
+   * Бэлгийн хэсэг рүү аваачна — гүйлгэхээс гадна ФОКУС ч зөөнө.
+   *
+   * Зөвхөн `scrollIntoView` хийвэл гарын товчлуур, дэлгэц уншигчаар ажиллаж
+   * буй хүн байрандаа үлддэг: харагдах цонх нүүсэн ч табын байрлал хөдөлдөггүй.
+   * Модалаас дуудагдахад бүр дор: дарсан товч нь модалтайгаа хамт алга болдог
+   * тул фокус `<body>` дээр унана. Хэсэг өөрөө `tabIndex={-1}` авч фокусыг
+   * хүлээж авна.
+   */
+  const goToGifts = React.useCallback(() => {
+    const el = document.getElementById("checkout-gift");
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    el.focus({ preventScroll: true });
+  }, []);
+
+  // Алдаа гарах бүрд түүн рүү гүйлгэнэ. `serverError`-ийг өөрчлөх бүр цэвэрлээд
+  // дахин тавьдаг тул ижил мессеж дахин гарсан ч энэ ажиллана.
+  React.useEffect(() => {
+    if (!serverError) return;
+    serverErrorRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }, [serverError]);
 
   /** Наалдсан төлбөрийн зурвас гарах эсэх — хоосон / шилжих төлөвт гарахгүй. */
   const showPayBar =
@@ -728,6 +773,16 @@ export default function CheckoutPage() {
         }),
       );
       router.replace("/order/success");
+    } catch {
+      // `fetch` нь серверийн хариу БИШ, холболт өөрөө тасрахад throw хийнэ:
+      // сүлжээгүй, DNS, холболт тасрах — гар утасны дата дээр энгийн явдал.
+      // Энэ салаа байхгүй үед товч «Илгээж байна…»-аас буцаад ямар ч
+      // мессеггүй хэвийн болдог тул хэрэглэгч товчийг эвдэрсэн гэж үзээд
+      // дахин дардаг. Захиалга үүссэн эсэх нь тодорхойгүй тул дахин
+      // оролдохыг санал болгохын зэрэгцээ хаанаас шалгахыг нь ч хэлнэ.
+      setServerError(
+        "Сүлжээнд холбогдож чадсангүй. Интернэтээ шалгаад дахин оролдоно уу — захиалга үүссэн бол «Захиалгаа хянах» хэсэгт харагдана.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -965,7 +1020,11 @@ export default function CheckoutPage() {
 
           {/* Бэлгийн 1мл дээж — эрхийн тоогоор, зөвхөн админы сангаас. */}
           {mounted && (
-            <div id="checkout-gift" className="scroll-mt-24">
+            <div
+              id="checkout-gift"
+              tabIndex={-1}
+              className="scroll-mt-24 focus:outline-none"
+            >
               <GiftSamplePicker
                 allowance={giftAllowance}
                 goodsAfterDiscount={Math.max(subtotal - discount, 0)}
@@ -1001,7 +1060,7 @@ export default function CheckoutPage() {
                             />
                           )}
                         </div>
-                        <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[10px] font-semibold">
+                        <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">
                           {c.qty}
                         </span>
                       </div>
@@ -1042,7 +1101,7 @@ export default function CheckoutPage() {
                             />
                           )}
                         </div>
-                        <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[10px] font-semibold">
+                        <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">
                           {i.qty}
                         </span>
                       </div>
@@ -1132,11 +1191,7 @@ export default function CheckoutPage() {
                 {giftAllowance > giftIds.length && (
                   <button
                     type="button"
-                    onClick={() =>
-                      document
-                        .getElementById("checkout-gift")
-                        ?.scrollIntoView({ behavior: "smooth", block: "start" })
-                    }
+                    onClick={goToGifts}
                     className="text-gold-strong flex w-full items-baseline justify-between gap-3 text-left text-sm underline-offset-4 hover:underline"
                   >
                     <span className="min-w-0">
@@ -1196,8 +1251,15 @@ export default function CheckoutPage() {
                 </p>
               )}
 
+              {/* `role="alert"` — эс тэгвээс захиалга татгалзсаныг дэлгэц
+                  уншигч хэрэглэгч огт мэдэхгүй өнгөрнө (WCAG 4.1.3). */}
               {serverError && (
-                <p className="bg-destructive/10 text-destructive rounded-xl px-3 py-2.5 text-sm">
+                <p
+                  ref={serverErrorRef}
+                  role="alert"
+                  tabIndex={-1}
+                  className="bg-destructive/10 text-destructive scroll-mt-24 rounded-xl px-3 py-2.5 text-sm"
+                >
                   {serverError}
                 </p>
               )}
@@ -1326,9 +1388,7 @@ export default function CheckoutPage() {
             size="lg"
             onClick={() => {
               setShowGiftWarning(false);
-              document
-                .getElementById("checkout-gift")
-                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              window.setTimeout(goToGifts, DIALOG_CLOSE_MS);
             }}
           >
             Дээжээ сонгох

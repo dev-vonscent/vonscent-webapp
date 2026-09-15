@@ -61,7 +61,7 @@ export function SavedAddresses({
             <span className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium">{a.recipient}</span>
               {a.is_default && (
-                <span className="bg-foreground text-background rounded-full px-1.5 py-px text-[10px] font-semibold">
+                <span className="bg-foreground text-background rounded-full px-1.5 py-px text-[11px] font-semibold">
                   Үндсэн
                 </span>
               )}
@@ -96,10 +96,13 @@ export function SavedAddresses({
               </span>
             </span>
           </label>
+          {/* Текст нь жижиг хэвээр, харин дарагдах талбар нь 44px өндөр
+              (WCAG 2.5.8) — карт дотор суусан тул `-my-2` нь мөрийн өндрийг
+              тэлэхгүй. */}
           <button
             type="button"
             onClick={onAddNew}
-            className="text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 text-xs transition-colors"
+            className="text-muted-foreground hover:text-foreground -my-2 flex shrink-0 items-center gap-1 py-2 text-xs transition-colors"
           >
             <Pencil className="size-3.5" />
             Засах

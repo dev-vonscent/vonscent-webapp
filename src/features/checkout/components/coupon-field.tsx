@@ -71,11 +71,12 @@ export function CouponField({
             {formatPrice(applied.discount)} хэмнэлээ
           </span>
         </span>
+        {/* 16px дүрс, 44px хүрэх талбар (WCAG 2.5.8). */}
         <button
           type="button"
           onClick={onRemove}
           aria-label="Купон хасах"
-          className="text-muted-foreground hover:text-destructive shrink-0 transition-colors"
+          className="text-muted-foreground hover:text-destructive relative shrink-0 transition-colors before:absolute before:top-1/2 before:left-1/2 before:size-11 before:-translate-1/2 before:content-['']"
         >
           <X className="size-4" />
         </button>
@@ -119,7 +120,7 @@ export function CouponField({
             placeholder="Купон код"
             // Codes are printed uppercase; typing them lowercase and seeing
             // them stay lowercase reads as "this isn't the code I was given".
-            className="h-10 font-mono uppercase md:h-9 placeholder:font-sans placeholder:normal-case"
+            className="h-10 font-mono uppercase placeholder:font-sans placeholder:normal-case md:h-9"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -192,12 +193,12 @@ function OfferRow({
             {offer.code}
           </span>
           {offer.personal && (
-            <span className="bg-card text-muted-foreground rounded-full px-1.5 py-px text-[10px] font-medium">
+            <span className="bg-card text-muted-foreground rounded-full px-1.5 py-px text-[11px] font-medium">
               Танд
             </span>
           )}
           {best && (
-            <span className="bg-foreground text-background rounded-full px-1.5 py-px text-[10px] font-semibold">
+            <span className="bg-foreground text-background rounded-full px-1.5 py-px text-[11px] font-semibold">
               Хамгийн их
             </span>
           )}
