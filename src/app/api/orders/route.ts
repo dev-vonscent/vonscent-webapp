@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePublic } from "@/lib/cache";
-import { checkoutSchema } from "@/lib/validators/order";
+import { checkoutOrderSchema } from "@/lib/validators/order";
 import {
   BundleUnavailableError,
   computeSummary,
@@ -31,7 +31,7 @@ function clampDeliveryDay(value: string | undefined): string {
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
-  const parsed = checkoutSchema.safeParse(body);
+  const parsed = checkoutOrderSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: "VALIDATION", issues: parsed.error.flatten() },

@@ -8,6 +8,7 @@ import {
   ULAANBAATAR_CODE,
   getKhoroos,
   formatKhoroo,
+  khorooRequired,
 } from "@/lib/geo/locations";
 import { composeDetail } from "@/features/checkout/components/address-fields";
 
@@ -76,5 +77,29 @@ describe("khoroo data", () => {
     );
     expect(composeDetail(null, "45-р байр")).toBe("45-р байр");
     expect(composeDetail(3, "  ")).toBe("3-р хороо");
+  });
+});
+
+describe("khorooRequired", () => {
+  it("is true for every Ulaanbaatar district", () => {
+    const ub = AIMAGS.find((a) => a.code === ULAANBAATAR_CODE)!;
+    for (const d of ub.children) {
+      expect(khorooRequired(ub.name, d.name)).toBe(true);
+    }
+  });
+
+  it("is false in the countryside — сум has no khoroos to pick", () => {
+    const rural = AIMAGS.filter((a) => a.code !== ULAANBAATAR_CODE);
+    for (const a of rural) {
+      expect(khorooRequired(a.name, a.children[0].name)).toBe(false);
+    }
+  });
+
+  it("is false for an address the cascade cannot resolve", () => {
+    // Хагас бөглөсөн буюу гараар бичигдсэн хуучин мөр — шаардлага үүсгэхгүй,
+    // эс тэгвээс сонгох боломжгүй талбар дээр захиалга тээглэнэ.
+    expect(khorooRequired("", "")).toBe(false);
+    expect(khorooRequired("Улаанбаатар", "Тодорхойгүй")).toBe(false);
+    expect(khorooRequired("Ниймэн хот", "Баянгол")).toBe(false);
   });
 });

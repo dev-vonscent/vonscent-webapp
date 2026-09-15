@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { khorooRequired } from "@/lib/geo/locations";
 
 export const orderItemSchema = z.object({
   productId: z.string().min(1),
@@ -33,6 +34,7 @@ export const checkoutSchema = z.object({
   shipDetail: z.string().min(3, "Хаягаа дэлгэрэнгүй оруулна уу"),
   // Capital only, and folded into shipDetail for storage — kept as its own
   // field so the server can derive the delivery zone from it (todo.md B5b).
+  // Хороотой хаягт заавал — доорх `checkoutOrderSchema`-г үз.
   shipKhoroo: z.number().int().positive().nullable().default(null),
   shipZone: z.string().min(1, "Хүргэлтийн бүс сонгоно уу"),
   paymentMethod: z.enum(["qpay", "bank_transfer"]),
@@ -59,6 +61,30 @@ export const checkoutSchema = z.object({
    * багцын баталгаа), сонгосон ус нь админы бэлгийн санд байх ёстой.
    */
   giftProductIds: z.array(z.string().min(1)).max(8).default([]),
+});
+
+/** Хорооны мессежийг нэг эх сурвалжаас — форм ба сервер ижил үг хэлнэ. */
+export const KHOROO_REQUIRED_MESSAGE = "Хороогоо сонгоно уу";
+
+/**
+ * Захиалга хүлээж авах схем — `checkoutSchema` дээр хорооны нөхцөлт дүрэм.
+ *
+ * Тусдаа экспорт байгаа шалтгаан: `superRefine` нь `ZodEffects` буцаадаг бөгөөд
+ * түүн дээр `.omit()` ажиллахгүй, харин checkout хуудас формынхоо схемийг
+ * `checkoutSchema.omit({ items, collections })`-оор гаргадаг. Дээрээс нь тэр
+ * форм хороог огт агуулдаггүй (RHF-ээс гадуур, popup дотор сонгогддог) тул
+ * энэ дүрмийг формын resolver дээр тавибал УБ-ын захиалга бүр худал уначихна.
+ * Хэрэглэгч рүү харсан шалгалт нь `AddressDialog` дотор, яг тэр select-ийн
+ * хажууд; энэ нь серверийн хатуу хаалт (CLAUDE.md — client ба server хоёуланд).
+ */
+export const checkoutOrderSchema = checkoutSchema.superRefine((v, ctx) => {
+  if (v.shipKhoroo == null && khorooRequired(v.shipCity, v.shipDistrict)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["shipKhoroo"],
+      message: KHOROO_REQUIRED_MESSAGE,
+    });
+  }
 });
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;

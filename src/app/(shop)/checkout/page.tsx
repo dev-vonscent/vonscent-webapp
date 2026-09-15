@@ -41,7 +41,11 @@ import {
   ubDayFromNow,
 } from "@/lib/time";
 import { resolveZone, zoneKey } from "@/lib/geo/zone";
-import { composeDetail } from "@/features/checkout/components/address-fields";
+import { khorooRequired } from "@/lib/geo/locations";
+import {
+  composeDetail,
+  splitDetail,
+} from "@/features/checkout/components/address-fields";
 import {
   NEW_ADDRESS,
   SavedAddresses,
@@ -197,6 +201,13 @@ export default function CheckoutPage() {
   /** Popup-аар оруулсан шинэ хаяг — хадгалсан хаягтай ижил карт болж харагдана. */
   const [draft, setDraft] = React.useState<AddressFormValue | null>(null);
   const [addressOpen, setAddressOpen] = React.useState(false);
+  /**
+   * Popup-ыг ямар утгаар нээх вэ. Ихэвчлэн `draft` (сүүлд бичсэн хаяг), харин
+   * хадгалсан хаягийн дутуу хороог гүйцээх үед тэр хаягийн утгаар нээнэ.
+   */
+  const [addressSeed, setAddressSeed] = React.useState<AddressFormValue | null>(
+    null,
+  );
 
   const [loyaltyPoints, setLoyaltyPoints] = React.useState(0);
   const [loyaltyRules, setLoyaltyRules] = React.useState(DEFAULT_LOYALTY_RULES);
@@ -350,8 +361,17 @@ export default function CheckoutPage() {
       }
       setValue("shipCity", a.city);
       setValue("shipDistrict", a.district ?? "");
-      setValue("shipDetail", a.detail);
-      setKhoroo(null); // detail already carries the khoroo text
+      // Хадгалсан хаяг нь хороогоо чөлөөт текстийн эхэнд авч явдаг
+      // (`composeDetail`). Өмнө нь энд `setKhoroo(null)` гэж бичээд
+      // «detail аль хэдийн агуулж байгаа» гэж тайлбарласан байв — харагдацын
+      // хувьд үнэн ч, ХҮРГЭЛТИЙН БҮС нь `shipKhoroo`-гоос бодогддог тул
+      // хадгалсан хаягаар захиалсан хүн хороо-тусгай бүсийн үнийг хэзээ ч
+      // авдаггүй, шинээр бичсэн хүн авдаг байв — нэг хаяг, хоёр өөр үнэ.
+      // Одоо хадгалсан мөрийг `address-book` шиг задалж, хоёуланг нь сэргээнэ
+      // (`composeDetail` дахин угсрах тул давхар угтвар үүсэхгүй).
+      const parts = splitDetail(a.detail);
+      setValue("shipDetail", parts.detail);
+      setKhoroo(parts.khoroo);
     },
     [setValue],
   );
@@ -526,6 +546,19 @@ export default function CheckoutPage() {
   const zoneBlocked = selectedZone ? !selectedZone.deliverable : false;
   /** Хаяг бүрэн эсэх — бүс, хүргэлтийн үнэ зөвхөн үүний дараа гарна. */
   const hasAddress = Boolean(city && district && detail);
+  /**
+   * Хадгалсан хуучин хаяг хороогүй байх тохиолдол.
+   *
+   * Хороо нь `composeDetail`-аар чөлөөт текстийн эхэнд хадгалагддаг тул
+   * `splitDetail` түүнийг сэргээдэг — гэхдээ cascade гарахаас өмнө хадгалсан
+   * мөрүүдэд тэр угтвар байхгүй. Сервер одоо хороог шаарддаг тул ийм хаягийг
+   * дуугүй өнгөрөөвөл хэрэглэгч «Хороогоо сонгоно уу» гэсэн хариуг захиалга
+   * илгээсний ДАРАА, засах замгүйгээр л хардаг. Эндээс шууд гүйцээнэ.
+   */
+  const khorooMissing =
+    Boolean(city && district && khoroo == null) &&
+    khorooRequired(city, district);
+
   /** Алслагдсан бүс — хаяг тодорсны дараа л мэдэгдэнэ. */
   const remoteZone = Boolean(
     hasAddress && selectedZone?.remote && !zoneBlocked,
@@ -580,6 +613,12 @@ export default function CheckoutPage() {
     loyaltyRules,
   );
 
+  /** Popup-ыг одоогийн хаягийн утгаар нээнэ — дутуу хороог гүйцээх зам. */
+  function openAddressWith(seed: AddressFormValue | null) {
+    setAddressSeed(seed);
+    setAddressOpen(true);
+  }
+
   /** Popup-аас гарсан хаягийг формд тавиад сонгогдсон болгоно. */
   function applyDraft(form: AddressFormValue) {
     setDraft(form);
@@ -594,7 +633,7 @@ export default function CheckoutPage() {
     if (next === NEW_ADDRESS) {
       // Оруулсан хаяг байхгүй бол сонгох юм ч байхгүй — popup нээнэ.
       if (!draft) {
-        setAddressOpen(true);
+        openAddressWith(null);
         return;
       }
       setAddressChoice(NEW_ADDRESS);
@@ -651,6 +690,15 @@ export default function CheckoutPage() {
     // Zones we don't serve must never turn into an order.
     if (zoneBlocked) {
       setServerError("Энэ хаяг руу хүргэлт хийдэггүй. Өөр хаяг оруулна уу.");
+      return;
+    }
+    // Хороогүй хуучин хаягаар захиалга илгээхгүй: сервер ямар ч байсан
+    // татгалзана (`checkoutOrderSchema`), гэхдээ эндээс буцаавал хэрэглэгч
+    // ЗАСАХ товчтойгоо хамт хариуг нь авна.
+    if (khorooMissing) {
+      setServerError(
+        "Энэ хаягт хороо дутуу байна. «Хороогоо нэмэх»-ээр гүйцээнэ үү — хүргэлтийн бүс, төлбөр түүнээс тодорхойлогдоно.",
+      );
       return;
     }
     // Унаа явах газар нь орон нутгийн захиалгын хүргэх хаягтай адил чухал —
@@ -836,7 +884,7 @@ export default function CheckoutPage() {
               value={addressChoice}
               onChange={onAddressChoice}
               draft={draft}
-              onAddNew={() => setAddressOpen(true)}
+              onAddNew={() => openAddressWith(draft)}
             />
 
             {/* Хаягийн талбарууд popup дотор амьдардаг тул алдаа нь энд —
@@ -854,6 +902,36 @@ export default function CheckoutPage() {
                 />
                 Энэ хаягийг хадгалах
               </label>
+            )}
+
+            {/* Хороо дутуу хуучин хаяг — хаалт биш, гүйцээх зам. Бүс ба
+                хүргэлтийн үнэ хороо дээр тогтдог тул үүнийг үнийн мөрийн
+                ӨМНӨ хэлнэ: доорх тоо хараахан эцсийнх биш. */}
+            {khorooMissing && (
+              <div className="bg-secondary space-y-2.5 rounded-xl px-3 py-2.5 text-sm">
+                <p>
+                  Энэ хаягт <strong>хороо</strong> бичигдээгүй байна. Хүргэлтийн
+                  бүс, төлбөр хорооноос хамаардаг тул гүйцээнэ үү.
+                </p>
+                {/* Энэ блок өөрөө `bg-secondary` тул `variant="secondary"`
+                    товч нь дэвсгэртэйгээ ижил дүүргэлттэй болж, дарагдах зүйл
+                    мэт уншигдахаа больдог. Блок доторх цорын ганц үйлдэл тул
+                    үндсэн товч болно. */}
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() =>
+                    openAddressWith({
+                      city,
+                      district,
+                      khoroo: null,
+                      detail,
+                    })
+                  }
+                >
+                  Хороогоо нэмэх
+                </Button>
+              </div>
             )}
 
             {/* Бүс сонгох талбар байхаа больсон — хаягаас гарсан бүс, үнийг л
@@ -906,7 +984,7 @@ export default function CheckoutPage() {
                     type="button"
                     variant="secondary"
                     size="sm"
-                    onClick={() => setAddressOpen(true)}
+                    onClick={() => openAddressWith(draft)}
                   >
                     Өөр хаяг оруулах
                   </Button>
@@ -1339,7 +1417,7 @@ export default function CheckoutPage() {
       <AddressDialog
         open={addressOpen}
         onOpenChange={setAddressOpen}
-        initial={draft ?? undefined}
+        initial={addressSeed ?? undefined}
         submitLabel="Хаяг хэрэглэх"
         onSave={applyDraft}
       />

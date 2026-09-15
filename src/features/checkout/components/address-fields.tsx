@@ -45,7 +45,7 @@ export function AddressFields({
 }: {
   value: AddressValue;
   onChange: (next: AddressValue) => void;
-  errors?: { city?: string; district?: string };
+  errors?: { city?: string; district?: string; khoroo?: string };
 }) {
   // Names are what we store, so map back to codes to drive the cascade.
   const aimag = AIMAGS.find((a) => a.name === value.city) ?? null;
@@ -102,8 +102,13 @@ export function AddressFields({
         </Select>
       </Field>
 
+      {/* Хороо нь хорооны жагсаалттай хаягт ЗААВАЛ: хүргэлтийн бүсийг
+          (`resolveZone` дээр `MN1107:12` хэлбэрийн хороо-тусгай дүрэм
+          дүүрэг-даяарынхыг дардаг) бөгөөд улмаар ҮНИЙГ тодорхойлдог, мөн
+          хүргэгч хаягийг хорооноос нь олдог. Өмнө нь ямар ч тэмдэглэгээгүй,
+          шалгалтгүй байсан тул заавал мэт харагдаад алгасагддаг байв. */}
       {capital && (
-        <Field label="Хороо">
+        <Field label="Хороо" error={errors?.khoroo}>
           <Select
             value={value.khoroo ? String(value.khoroo) : ""}
             onValueChange={(v) => onChange({ ...value, khoroo: Number(v) })}
