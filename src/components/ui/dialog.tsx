@@ -61,7 +61,13 @@ export const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("font-serif text-lg font-semibold", className)}
+    // `pr-8`: хаах товч нь `absolute top-3 right-3 size-8` тул агуулгын
+    // баруун ирмэгээс 44px хүртэл эзэлдэг, харин `p-6` дотор гарчгийн ирмэг
+    // 24px дээр дуусдаг — өөрөөр хэлбэл товч гарчгийн мөрөнд 20px орж ирнэ.
+    // Урт гарчиг (жишээ нь «Зочноор захиалахад V point хуримтлагдахгүй») яг
+    // тэр X-ийн доогуур ордог байв. 28px нь давхцлыг арилгаад 8px завсар
+    // үлдээх ба `cn` тул дуудагч өөрөө дарж болно.
+    className={cn("font-serif text-lg font-semibold pr-8", className)}
     {...props}
   />
 ));

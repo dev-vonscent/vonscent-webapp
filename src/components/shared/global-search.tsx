@@ -123,7 +123,9 @@ export function GlobalSearch() {
   // ⌘K / Ctrl+K opens the palette from anywhere.
   React.useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
+      // Chrome-ийн автобөглөлт санал болгосон утгыг сонгоход `key`-гүй
+      // `keydown` илгээдэг — хамгаалалтгүй бол хуудас бүхэлдээ унана.
+      if (e.key?.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setOpen((v) => !v);
       }

@@ -91,6 +91,18 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") ?? "/";
+  /**
+   * `?next=` нь login ↔ register хооронд үсрэхэд хадгалагдах ёстой: checkout-
+   * оос ирсэн хүн «Бүртгэлтэй юу? Нэвтрэх» дараад буцах замаа алдвал энэ
+   * параметрийн бүх утга алга болно.
+   */
+  const withNext = React.useCallback(
+    (path: string) =>
+      next && next !== "/"
+        ? `${path}?next=${encodeURIComponent(next)}`
+        : path,
+    [next],
+  );
 
   const [phone, setPhone] = React.useState("");
   const [fullName, setFullName] = React.useState("");
@@ -399,7 +411,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
               className="text-muted-foreground hover:text-foreground h-10 w-full rounded-xl text-[13px] font-normal"
               onClick={() => {
                 verify.reset();
-                router.push("/login");
+                router.push(withNext("/login"));
               }}
             >
               Болих — нэвтрэх рүү буцах
@@ -475,7 +487,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
               className="ring-foreground/15 h-11 flex-1 rounded-xl ring-1"
               onClick={() => {
                 verify.reset();
-                router.push("/login");
+                router.push(withNext("/login"));
               }}
             >
               Болих
@@ -612,7 +624,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
             <>
               Бүртгэлгүй юу?{" "}
               <Link
-                href="/register"
+                href={withNext("/register")}
                 className="text-foreground underline-offset-4 hover:underline"
               >
                 Бүртгүүлэх
@@ -622,7 +634,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
             <>
               {mode === "forgot" ? "Санаа орлоо?" : "Бүртгэлтэй юу?"}{" "}
               <Link
-                href="/login"
+                href={withNext("/login")}
                 className="text-foreground underline-offset-4 hover:underline"
               >
                 Нэвтрэх

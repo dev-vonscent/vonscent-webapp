@@ -33,6 +33,7 @@ describe("SavedAddresses", () => {
         value="a1"
         onChange={() => {}}
         onAddNew={() => {}}
+        onEditDraft={() => {}}
       />,
     );
 
@@ -51,6 +52,7 @@ describe("SavedAddresses", () => {
         value="a2"
         onChange={() => {}}
         onAddNew={() => {}}
+        onEditDraft={() => {}}
       />,
     );
 
@@ -71,6 +73,7 @@ describe("SavedAddresses", () => {
         value="a1"
         onChange={onChange}
         onAddNew={() => {}}
+        onEditDraft={() => {}}
       />,
     );
 
@@ -80,6 +83,7 @@ describe("SavedAddresses", () => {
 
   it("opens the dialog instead of revealing a form", async () => {
     const onAddNew = vi.fn();
+    const onEditDraft = vi.fn();
     const onChange = vi.fn();
     render(
       <SavedAddresses
@@ -87,6 +91,7 @@ describe("SavedAddresses", () => {
         value="a1"
         onChange={onChange}
         onAddNew={onAddNew}
+        onEditDraft={onEditDraft}
       />,
     );
 
@@ -97,6 +102,7 @@ describe("SavedAddresses", () => {
 
   it("shows an address entered in the dialog as a chosen card", async () => {
     const onAddNew = vi.fn();
+    const onEditDraft = vi.fn();
     render(
       <SavedAddresses
         addresses={ROWS}
@@ -109,6 +115,7 @@ describe("SavedAddresses", () => {
           detail: "20-р байр",
         }}
         onAddNew={onAddNew}
+        onEditDraft={onEditDraft}
       />,
     );
 
@@ -122,6 +129,33 @@ describe("SavedAddresses", () => {
 
     // Оруулсан хаягаа тэндээсээ засах боломжтой.
     await userEvent.click(screen.getByText("Засах"));
+    expect(onEditDraft).toHaveBeenCalled();
+    expect(onAddNew).not.toHaveBeenCalled();
+  });
+
+  it("separates «өөр хаяг нэмэх» from editing the draft", async () => {
+    const onAddNew = vi.fn();
+    const onEditDraft = vi.fn();
+    render(
+      <SavedAddresses
+        addresses={ROWS}
+        value={NEW_ADDRESS}
+        onChange={() => {}}
+        draft={{
+          city: "Улаанбаатар",
+          district: "Баянгол",
+          khoroo: 12,
+          detail: "20-р байр",
+        }}
+        onAddNew={onAddNew}
+        onEditDraft={onEditDraft}
+      />,
+    );
+
+    // Ноорог байхад доод товч «Өөр хаяг нэмэх» болдог — энэ нь ноорогоо
+    // засах биш, ХООСОН popup нээх ёстой (урьд нь хоёулаа нэг үйлдэл байв).
+    await userEvent.click(screen.getByText("Өөр хаяг нэмэх"));
     expect(onAddNew).toHaveBeenCalled();
+    expect(onEditDraft).not.toHaveBeenCalled();
   });
 });

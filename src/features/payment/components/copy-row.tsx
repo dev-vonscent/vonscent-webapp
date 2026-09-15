@@ -43,11 +43,16 @@ export function CopyRow({
         >
           {value}
         </span>
+        {/* Хүрэх талбарыг `before`-оор тэлнэ — дүрс нь 14px хэвээр, дарагдах
+            талбар нь 44px. Энэ бол дансны дугаар, гүйлгээний утгыг хуулдаг
+            товч: буруу хуулагдсан утга нь хэн ч тааруулж чадахгүй захиалга
+            болдог тул системд хамгийн жижиг байх ёсгүй (WCAG 2.5.8).
+            `checkbox` / `radio-group` дээр хэрэглэсэн ижил арга. */}
         {copy && (
           <button
             type="button"
             onClick={onCopy}
-            className="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
+            className="text-muted-foreground hover:text-foreground relative shrink-0 transition-colors before:absolute before:top-1/2 before:left-1/2 before:size-11 before:-translate-1/2 before:content-['']"
             aria-label={`${label} хуулах`}
           >
             {copied ? (

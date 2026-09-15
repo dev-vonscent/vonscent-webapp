@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   findBank,
@@ -32,6 +32,13 @@ import type { QpayDeeplink } from "../types";
 /** Which app the customer reached for last, so it can lead next time. */
 const LAST_BANK_KEY = "vonscent-last-bank";
 
+/**
+ * Эхэндээ хэдэн апп харуулах вэ — 4 баганын яг хоёр мөр. Жагсаалт нь
+ * хэрэглээний дарааллаар эрэмбэлэгдсэн тул эхний найм нь захиалгын дийлэнхийг
+ * хамарна; бүрэн жагсаалт нэг товшилтын зайд үлдэнэ.
+ */
+const PRIMARY_COUNT = 8;
+
 function readLastBank(): string | null {
   try {
     return localStorage.getItem(LAST_BANK_KEY);
@@ -59,6 +66,8 @@ export function BankApps({
   const [lastScheme, setLastScheme] = React.useState<string | null>(null);
   /** Set after a tap that did not appear to leave the page — see `onHandoff`. */
   const [stuck, setStuck] = React.useState<string | null>(null);
+  /** Бүрэн жагсаалт дэлгэгдсэн эсэх. */
+  const [expanded, setExpanded] = React.useState(false);
 
   // Read on mount, never during render: the server has no localStorage, so
   // reading it inline would hydrate a different tree than it rendered.
@@ -68,6 +77,9 @@ export function BankApps({
   // "Recently used" is a shortcut for tapping; with nothing to tap it is noise.
   const recent =
     interactive && lastScheme ? findBank(groups, lastScheme) : null;
+
+  const flat = groups.flatMap((g) => g.banks);
+  const collapsed = !expanded && flat.length > PRIMARY_COUNT;
 
   /**
    * A custom-scheme link fails silently when the app is not installed: no
@@ -105,11 +117,17 @@ export function BankApps({
         </section>
       )}
 
-      {groups.map((group) => (
-        <section key={group.category} className="space-y-3">
-          <SectionLabel>{group.label}</SectionLabel>
+      {/*
+        Бүх апп нэг дор гарахад сүлжээ нь утсан дээр 660px — QR ба «Төлбөр
+        баталгаажуулах» хоёрыг эхний дэлгэцээс шахаж гаргадаг байв. Жагсаалт
+        аль хэдийн хэрэглээний дарааллаар эрэмбэлэгдсэн (`ORDER`) тул эхний
+        хоёр мөрөнд хүн бүрийн банк багтана; үлдсэнийг нэг товшилтод үлдээв.
+      */}
+      {collapsed ? (
+        <section className="space-y-3">
+          <SectionLabel>Банкны апп</SectionLabel>
           <ul className="grid grid-cols-4 gap-x-2 gap-y-4 sm:grid-cols-5">
-            {group.banks.map((bank) => (
+            {flat.slice(0, PRIMARY_COUNT).map((bank) => (
               <li key={bank.scheme}>
                 <BankTile
                   bank={bank}
@@ -119,8 +137,33 @@ export function BankApps({
               </li>
             ))}
           </ul>
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="text-muted-foreground hover:text-foreground flex w-full items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors"
+          >
+            Бусад {flat.length - PRIMARY_COUNT} апп
+            <ChevronDown className="size-3.5" />
+          </button>
         </section>
-      ))}
+      ) : (
+        groups.map((group) => (
+          <section key={group.category} className="space-y-3">
+            <SectionLabel>{group.label}</SectionLabel>
+            <ul className="grid grid-cols-4 gap-x-2 gap-y-4 sm:grid-cols-5">
+              {group.banks.map((bank) => (
+                <li key={bank.scheme}>
+                  <BankTile
+                    bank={bank}
+                    onHandoff={onHandoff}
+                    interactive={interactive}
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      )}
 
       {stuck && <HandoffHint bank={stuck} />}
     </div>
@@ -138,8 +181,13 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
  *
  * `object-contain` on a neutral tile rather than `object-cover`: QPay serves
  * square app icons for most apps, where the two are identical, but a couple
- * are wide wordmarks that cover would crop into nonsense. The hairline ring
- * keeps a white icon from bleeding into the white and pink themes.
+ * are wide wordmarks that cover would crop into nonsense.
+ *
+ * Хайрцгийн ирмэг нь `ring-field-edge` — `ring-border` байсан бөгөөд
+ * `--border` нь гурван theme бүрд тунгалаг тул цагаан лого цагаан / ягаан
+ * аяс дээр дэвсгэртэйгээ нийлж алга болсоор байв. `field-edge` бол системд
+ * зориуд үлдээсэн цорын ганц үс шиг ирмэг (DESIGN.md → The Field Edge Rule),
+ * гурван theme бүрд 3:1-ээс дээш.
  */
 function BankIcon({ bank, size }: { bank: BankLink; size: "sm" | "lg" }) {
   const [failed, setFailed] = React.useState(false);
@@ -148,7 +196,7 @@ function BankIcon({ bank, size }: { bank: BankLink; size: "sm" | "lg" }) {
   return (
     <span
       className={cn(
-        "bg-secondary ring-border relative flex shrink-0 items-center justify-center overflow-hidden ring-1",
+        "bg-secondary ring-field-edge relative flex shrink-0 items-center justify-center overflow-hidden ring-1",
         size === "lg" ? "size-14 rounded-2xl sm:size-16" : "size-10 rounded-xl",
       )}
     >
@@ -168,10 +216,10 @@ function BankIcon({ bank, size }: { bank: BankLink; size: "sm" | "lg" }) {
         // A dead logo URL must not leave an anonymous grey square — the
         // wordmark is what makes the icon identifiable.
         <span
-          className={cn(
-            "text-muted-foreground font-bold tracking-tight",
-            size === "lg" ? "text-[11px]" : "text-[9px]",
-          )}
+          // 11px нь DESIGN.md-ийн Label алхам. Өмнө нь жижиг хайрцаг дээр
+          // 9px байсан — ramp-аас гадуур бөгөөд хамгийн урт код (4 тэмдэгт,
+          // «ХААН») 40px хайрцагт 11px-ээр ч багтдаг.
+          className="text-muted-foreground text-[11px] font-bold tracking-tight"
         >
           {bank.short}
         </span>
@@ -190,8 +238,24 @@ function BankTile({
   /** False on a desktop, where a custom-scheme link cannot resolve. */
   interactive: boolean;
 }) {
+  /*
+   * Шошгоны хайрцаг: доод тал нь ХОЁР мөр (`min-h-[2.5em]` = 2 × leading-tight),
+   * дээд тал нь гурав.
+   *
+   * Доод хязгаар нь сүлжээний алхмыг тогтворжуулна — өмнө нь нэр нэг мөрт
+   * багтсан эсэхээс хамаарч хавтан 77.8px ↔ 91.5px хооронд үсэрч, «Төрийн банк
+   * 3.0» орсон мөр л доошоо сунадаг байв. Анхдагч (хураангуй) харагдац дахь
+   * найман апп бүгд ≤2 мөр тул тэнд алхам бүрэн жигд.
+   *
+   * Дээд хязгаар нь 2 биш 3: `line-clamp-2` дээр «Хөрөнгө оруулалтын банк»
+   * бүх өргөнд, «Тээвэр хөгжлийн банк» 320px дээр таслагдаж «Хөрөнгө
+   * оруулалтын…» болдог байв. Нэрээ уншиж чадахгүй банкийг хүн товшихгүй —
+   * ганц мөр өндөрсөхөөс дор. Гурван мөр болдог хоёрхон нэр байгаа тул
+   * гуравдугаар мөрийг УРЬДЧИЛЖ захиалахгүй: тэгвэл хамгийн их харагддаг
+   * хураангуй сүлжээ шалтгаангүйгээр 27.5px өндөрсөх байв.
+   */
   const label = (
-    <span className="line-clamp-2 text-[11px] leading-tight font-medium">
+    <span className="line-clamp-3 min-h-[2.5em] text-[11px] leading-tight font-medium">
       {bank.name}
     </span>
   );
@@ -246,7 +310,7 @@ function RecentRow({
 }) {
   if (!bank.link) {
     return (
-      <div className="border-border flex items-center gap-3 rounded-xl border p-2.5 opacity-50">
+      <div className="bg-secondary flex items-center gap-3 rounded-xl p-2.5 opacity-50">
         <BankIcon bank={bank} size="sm" />
         <span className="text-sm font-medium">{bank.name}</span>
       </div>
@@ -256,7 +320,10 @@ function RecentRow({
     <a
       href={bank.link}
       onClick={() => onHandoff(bank)}
-      className="border-border hover:border-gold-strong/40 hover:bg-accent flex items-center gap-3 rounded-xl border p-2.5 transition-colors"
+      // Хүрээ нь энэ системд тунгалаг тул мөр огт хилгүй, дарагддаггүй текст
+      // мэт харагддаг байв — `bg-secondary` давхарга нь түүнийг картын
+      // гадаргуугаас салгаж, дарагдахуйц болгоно (DESIGN.md → Borderless Rule).
+      className="bg-secondary hover:bg-accent flex items-center gap-3 rounded-xl p-2.5 transition-colors"
       aria-label={`${bank.name} аппаар төлөх`}
     >
       <BankIcon bank={bank} size="sm" />

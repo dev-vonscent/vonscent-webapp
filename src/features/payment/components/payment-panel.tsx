@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { MotionConfig, motion } from "motion/react";
+import { motion } from "motion/react";
 import {
   Check,
   ChevronDown,
@@ -13,7 +13,6 @@ import {
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/lib/format";
 import { trackPurchase } from "@/lib/analytics";
 import { BANK_TRANSFER } from "@/lib/constants";
@@ -48,6 +47,28 @@ import { CopyRow } from "./copy-row";
  * paid before the inventory hold lapses. The exits belong on the states that
  * are actually finished: paid, and cancelled.
  */
+
+/**
+ * Media query as state, correct on the very first client render.
+ *
+ * `useSyncExternalStore` (not `useState` + effect): the server snapshot is the
+ * mobile answer, so the markup Next streams matches the CSS, and the desktop
+ * correction lands before paint instead of a tick later.
+ */
+function useMediaQuery(query: string, serverValue: boolean): boolean {
+  return React.useSyncExternalStore(
+    React.useCallback(
+      (onChange) => {
+        const mq = window.matchMedia(query);
+        mq.addEventListener("change", onChange);
+        return () => mq.removeEventListener("change", onChange);
+      },
+      [query],
+    ),
+    () => window.matchMedia(query).matches,
+    () => serverValue,
+  );
+}
 
 /** Cheap poll of `orders.payment_status` — what the QPay callback writes. */
 const POLL_MS = 3_000;
@@ -113,25 +134,54 @@ export function PaymentPanel({
 
   // Background polling, only while a QPay payment is genuinely outstanding. A
   // bank transfer is confirmed by a human, so polling it would be pure noise.
+  //
+  // Нуугдсан таб дээр ажиллахгүй. Энэ хуудсыг орхисон хүн (банкны апп руу
+  // үсэрсэн, өөр таб нээсэн) 20 минутын турш 3 секунд тутам хүсэлт явуулж,
+  // тав дахь бүрд нь QPay рүү хүрч байв — нэг орхигдсон хуудас ≈ 400 хүсэлт.
+  // Харагдахаа болиход зогсоож, эргэж ирэхэд нэг удаа шалгаад үргэлжлүүлнэ:
+  // таб идэвхгүй байх зуур төлөгдсөн бол хариу нь шууд тэнд байна.
   React.useEffect(() => {
     if (!isQpay || !waiting || view.mock) return;
     const startedAt = Date.now();
     let ticks = 0;
+    let timer: number | undefined;
 
-    const timer = setInterval(async () => {
-      if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
-        clearInterval(timer);
-        return;
-      }
-      ticks += 1;
-      try {
-        if (await check(ticks % VERIFY_EVERY === 0)) clearInterval(timer);
-      } catch {
-        // transient — keep polling
-      }
-    }, POLL_MS);
+    const expired = () => Date.now() - startedAt > POLL_TIMEOUT_MS;
 
-    return () => clearInterval(timer);
+    const stop = () => {
+      if (timer !== undefined) window.clearInterval(timer);
+      timer = undefined;
+    };
+
+    const start = () => {
+      if (timer !== undefined || expired()) return;
+      timer = window.setInterval(async () => {
+        if (expired()) return stop();
+        ticks += 1;
+        try {
+          if (await check(ticks % VERIFY_EVERY === 0)) stop();
+        } catch {
+          // transient — keep polling
+        }
+      }, POLL_MS);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") return stop();
+      if (expired()) return;
+      // Буцаж ирэхэд interval-ийн дараагийн тэмдэглэгээг хүлээлгүй шалгана —
+      // хамгийн магадлалтай нь апп руу очоод төлчихөөд буцаж ирсэн байх.
+      check(true)
+        .then((done) => (done ? stop() : start()))
+        .catch(start);
+    };
+
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [isQpay, waiting, view.mock, check]);
 
   // Purchase analytics fire on confirmed payment only. An unpaid invoice on
@@ -190,68 +240,88 @@ export function PaymentPanel({
   if (cancelled) return <CancelledState />;
   if (paid) return <PaidState view={view} deliverOn={deliverOn} />;
 
+  // Хуудасны орох хөдөлгөөнийг `(shop)/template.tsx` аль хэдийн өгдөг
+  // (`MotionConfig` + fade-up, route бүр дээр). Энд давтах нь ижил fade-up
+  // хоёр удаа давхарлаж, дүн нь хоёр үе шаттай гарч ирдэг болгож байв.
   return (
-    <MotionConfig reducedMotion="user">
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
-        className={cn(
-          "mx-auto px-4 py-10 md:py-16",
-          // One narrow column on a phone; two on a desktop, where a 512px
-          // column in the middle of a 1440px window reads as a phone screen
-          // someone forgot to lay out. The left rail carries what is being
-          // paid, the right one how to pay it.
-          "max-w-lg md:grid md:max-w-4xl md:grid-cols-[minmax(0,1fr)_420px] md:items-start md:gap-14",
-        )}
-      >
-        <div className="md:sticky md:top-24">
-          <div className="flex justify-center md:justify-start">
-            <StatusPill />
-          </div>
-
-          {/* The amount is the page. Everything else is how to send it. */}
-          <h1 className="mt-5 text-center font-serif text-5xl font-semibold tracking-tight tabular-nums sm:text-6xl md:text-left">
-            {formatPrice(view.total)}
-          </h1>
-
-          {/*
-            A staff test order under QPAY_TEST_AMOUNT collects a token sum
-            instead of the total. Saying so loudly is the point: an invoice
-            that quietly asks for 10₮ is exactly the bug this feature would be
-            if it ever reached a customer.
-          */}
-          {testAmount != null && (
-            <p className="border-destructive/40 bg-destructive/10 text-destructive mt-4 rounded-xl border px-3 py-2 text-center text-xs md:text-left">
-              Тест горим — QR нь {formatPrice(testAmount)} нэхнэ, бүтэн дүнг
-              биш.
-            </p>
-          )}
-
-          <OrderRecap view={view} />
+    <div
+      className={cn(
+        "mx-auto px-4 py-10 md:py-16",
+        // One narrow column on a phone; two on a desktop, where a 512px
+        // column in the middle of a 1440px window reads as a phone screen
+        // someone forgot to lay out. The left rail carries what is being
+        // paid, the right one how to pay it.
+        // `md` дээр багана хоорондын зай нарийн: 768px дээр 56px зай нь зүүн
+        // баганыг 260px болгож хумьдаг бөгөөд хамгийн том бодит дүн (48px
+        // дээр 263px) тэндээс 3px халина. 32px зайтай бол 284px — багтана.
+        // `lg` дээр газар хангалттай тул уужим зай эргэж ирнэ.
+        "max-w-lg md:grid md:max-w-4xl md:grid-cols-[minmax(0,1fr)_420px] md:items-start md:gap-x-8 lg:gap-x-14",
+      )}
+    >
+      {/*
+        Утсан дээр дараалал: дүн → төлөх арга (апп / QR / шалгах товч) →
+        дараа нь захиалгын дэлгэрэнгүй. Өмнө нь захиалгын бүтэн карт
+        дундуур нь ортол банкны апп, QR, «Төлбөр шалгах» гурвуулаа нэг
+        дэлгэцийн доор үлддэг байв — энэ хуудасны цорын ганц ажил бол
+        төлүүлэх. Десктоп дээр хоёр багана хэвээр: зүүн нь юуны төлөө,
+        баруун нь яаж.
+      */}
+      <div className="md:col-start-1 md:row-start-1">
+        <div className="flex justify-center md:justify-start">
+          <StatusPill />
         </div>
 
+        {/* The amount is the page. Everything else is how to send it.
+
+            `font-serif` хассан: `--font-serif` нь sans руу шийдэгддэг тул
+            (DESIGN.md → One Family Rule) энэ нь ямар ч харагдах нөлөөгүй
+            зорилго л үлдээж байв.
+
+            `md` дээр зүүн багана 420px-ийн хажууд ~260px болж хумигддаг —
+            60px-ийн зургаан оронтой дүн тэнд багтахгүй (1,234,500₮ ≈ 310px).
+            Тиймээс яг тэр зурваст нэг алхам жижигрээд, `lg` дээр багана
+            388px болмогц эргэж томорно. */}
+        <h1 className="mt-5 text-center text-5xl font-semibold tracking-tight tabular-nums sm:text-6xl md:text-left md:text-5xl lg:text-6xl">
+          {formatPrice(view.total)}
+        </h1>
+
         {/*
+          A staff test order under QPAY_TEST_AMOUNT collects a token sum
+          instead of the total. Saying so loudly is the point: an invoice
+          that quietly asks for 10₮ is exactly the bug this feature would be
+          if it ever reached a customer.
+        */}
+        {testAmount != null && (
+          <p className="bg-destructive/10 text-destructive mt-4 rounded-xl px-3 py-2 text-center text-xs md:text-left">
+            Тест горим — QR нь {formatPrice(testAmount)} нэхнэ, бүтэн дүнг биш.
+          </p>
+        )}
+      </div>
+
+      {/*
           No card on a phone. A bordered panel inset in a 4-unit gutter wastes
           the width the app grid needs and boxes in content that already fills
           the screen; the card earns its keep only once the viewport is wider
           than the content (md+).
         */}
-        <div className="md:border-border md:bg-card mt-6 md:mt-0 md:overflow-hidden md:rounded-2xl md:border">
-          {isQpay ? (
-            <QpaySection
-              view={view}
-              checking={checking}
-              error={error}
-              onManualCheck={onManualCheck}
-              onMockConfirm={onMockConfirm}
-            />
-          ) : (
-            <BankTransfer orderNo={view.orderNo} />
-          )}
-        </div>
-      </motion.div>
-    </MotionConfig>
+      <div className="md:bg-card mt-6 md:sticky md:top-24 md:col-start-2 md:row-span-2 md:row-start-1 md:mt-0 md:overflow-hidden md:rounded-2xl">
+        {isQpay ? (
+          <QpaySection
+            view={view}
+            checking={checking}
+            error={error}
+            onManualCheck={onManualCheck}
+            onMockConfirm={onMockConfirm}
+          />
+        ) : (
+          <BankTransfer orderNo={view.orderNo} />
+        )}
+      </div>
+
+      <div className="md:col-start-1 md:row-start-2">
+        <OrderRecap view={view} />
+      </div>
+    </div>
   );
 }
 
@@ -263,63 +333,111 @@ export function PaymentPanel({
  * харах ёстой. Хаяг, холбоо барих мэдээллийг зориуд оруулаагүй (api.ts).
  */
 function OrderRecap({ view }: { view: PaymentView }) {
+  // Утсан дээр хумигдсан эхэлнэ: төлбөрийн хуудасны нэг ажил бол төлүүлэх,
+  // харин «би юуны төлөө төлж байна» гэдэг нь нэг товшилтын зайд байх ёстой
+  // (линк дамжуулж авсан хүнд ялангуяа). Десктоп дээр газар хангалттай тул
+  // үргэлж дэлгэгдсэн.
+  const [open, setOpen] = React.useState(false);
+  /**
+   * Десктоп дээр энэ толгой нь нугалдаггүй — өмнө нь `md:pointer-events-none`
+   * -оор дарагдсан ч `<button aria-expanded="false">` хэвээр DOM-д үлдэж,
+   * дэлгэц уншигчид «дэлгэгдээгүй» гэж хэлсээр байсан. Бодит байдал дээр
+   * агуулга нь тэнд бүрэн харагдаж байгаа. Тиймээс тэнд товч БИШ — энгийн
+   * толгой мөр болно: захиалгын дугаар DOM-д яг нэг л удаа үлдэнэ.
+   */
+  const collapsible = !useMediaQuery("(min-width: 768px)", false);
+  const count = view.lines.reduce((n, l) => n + l.qty, 0);
   if (view.lines.length === 0) return null;
+  const Head = collapsible ? "button" : "div";
   return (
-    <div className="border-border bg-card mt-6 rounded-2xl border p-4 md:mt-8 md:p-5">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-sm font-medium">Захиалга</p>
-        <span className="text-muted-foreground font-mono text-xs">
+    <div className="bg-card mt-6 rounded-2xl p-4 md:p-5">
+      <Head
+        {...(collapsible
+          ? {
+              type: "button" as const,
+              onClick: () => setOpen((v) => !v),
+              "aria-expanded": open,
+              "aria-controls": "order-recap-body",
+            }
+          : {})}
+        className="flex w-full items-center gap-3 text-left"
+      >
+        {/* Нэг толгой мөр, хоёр биш: тусад нь десктоп/мобайл хувилбар бичвэл
+            захиалгын дугаар DOM-д хоёр удаа орж, дэлгэц уншигчид ч, тестэд ч
+            давхардал болно. */}
+        <span className="shrink-0 text-sm font-medium">Захиалга</span>
+        <span className="text-muted-foreground ml-auto shrink-0 text-xs tabular-nums md:hidden">
+          {count} бараа
+        </span>
+        <span className="text-muted-foreground shrink-0 font-mono text-xs md:ml-auto">
           {view.orderNo}
         </span>
-      </div>
+        <ChevronDown
+          aria-hidden
+          className={cn(
+            "text-muted-foreground size-4 shrink-0 transition-transform md:hidden",
+            open && "rotate-180",
+          )}
+        />
+      </Head>
 
-      <ul className="divide-border mt-3 divide-y">
-        {view.lines.map((line, i) => (
-          <li
-            key={`${line.name}-${line.ml}-${i}`}
-            className="flex items-center gap-3 py-2.5"
-          >
-            <div className="relative size-11 shrink-0">
-              <div className="bg-muted size-full overflow-hidden rounded-lg">
-                {line.image && (
-                  <Image
-                    src={line.image}
-                    alt={line.name}
-                    fill
-                    sizes="44px"
-                    className="object-cover"
-                  />
+      <div
+        id="order-recap-body"
+        className={cn("md:block", open ? "block" : "hidden")}
+      >
+        {/* `divide-y` нь `border-color`-оор зурдаг тул энэ системд огт
+            харагдахгүй (globals.css → бүх border тунгалаг). Мөр хоорондын
+            зай нь өөрөө хангалттай тусгаарлагч; жинхэнэ зураас хэрэгтэй
+            ганц газар бол тооцооны блокийн дээд тал — тэнд `gold-rule`. */}
+        <ul className="mt-3">
+          {view.lines.map((line, i) => (
+            <li
+              key={`${line.name}-${line.ml}-${i}`}
+              className="flex items-center gap-3 py-2.5"
+            >
+              <div className="relative size-11 shrink-0">
+                <div className="bg-muted size-full overflow-hidden rounded-lg">
+                  {line.image && (
+                    <Image
+                      src={line.image}
+                      alt={line.name}
+                      fill
+                      sizes="44px"
+                      className="object-cover"
+                    />
+                  )}
+                </div>
+                {line.qty > 1 && (
+                  <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">
+                    {line.qty}
+                  </span>
                 )}
               </div>
-              {line.qty > 1 && (
-                <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[10px] font-semibold">
-                  {line.qty}
-                </span>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm/tight font-medium">{line.name}</p>
-              <p className="text-muted-foreground truncate text-xs">
-                {[
-                  line.brand,
-                  `${line.ml}ml`,
-                  line.collectionName ?? null,
-                  line.isSample ? "бэлэг" : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
-            </div>
-            <span className="text-sm font-medium tabular-nums">
-              {line.isSample && line.lineTotal === 0
-                ? "0₮"
-                : formatPrice(line.lineTotal)}
-            </span>
-          </li>
-        ))}
-      </ul>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm/tight font-medium">
+                  {line.name}
+                </p>
+                <p className="text-muted-foreground truncate text-xs">
+                  {[
+                    line.brand,
+                    `${line.ml}ml`,
+                    line.collectionName ?? null,
+                    line.isSample ? "бэлэг" : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </div>
+              <span className="text-sm font-medium tabular-nums">
+                {line.isSample && line.lineTotal === 0
+                  ? "0₮"
+                  : formatPrice(line.lineTotal)}
+              </span>
+            </li>
+          ))}
+        </ul>
 
-      {/*
+        {/*
         Тоог тайлбарлах бүтэц — «яагаад 22,790₮ болов?» гэсэн асуулт хуудсан
         дээрээ хариулттай байх ёстой.
 
@@ -329,60 +447,69 @@ function OrderRecap({ view }: { view: PaymentView }) {
         байхгүй байсан тул баганыг нэмж хасаад дээрх том тоог гаргах гэхээр
         таардаггүй байв.
       */}
-      <div className="border-border mt-3 space-y-1.5 border-t pt-3 text-xs">
-        <RecapRow label="Барааны дүн" value={formatPrice(view.subtotal)} />
-        {view.discount > 0 && (
+        <div className="gold-rule mt-3" />
+        <div className="mt-3 space-y-1.5 text-xs">
+          <RecapRow label="Барааны дүн" value={formatPrice(view.subtotal)} />
+          {view.discount > 0 && (
+            <RecapRow
+              label="Хөнгөлөлт"
+              value={`−${formatPrice(view.discount)}`}
+              accent
+            />
+          )}
+          {view.loyaltyUsed > 0 && (
+            <RecapRow
+              label="V point"
+              value={`−${formatPrice(view.loyaltyUsed)}`}
+              accent
+            />
+          )}
           <RecapRow
-            label="Хөнгөлөлт"
-            value={`−${formatPrice(view.discount)}`}
-            accent
+            label="Хүргэлт"
+            value={
+              view.shippingFee === 0
+                ? "Үнэгүй"
+                : `+${formatPrice(view.shippingFee)}`
+            }
           />
-        )}
-        {view.loyaltyUsed > 0 && (
-          <RecapRow
-            label="V point"
-            value={`−${formatPrice(view.loyaltyUsed)}`}
-            accent
-          />
-        )}
-        <RecapRow
-          label="Хүргэлт"
-          value={
-            view.shippingFee === 0
-              ? "Үнэгүй"
-              : `+${formatPrice(view.shippingFee)}`
-          }
-        />
-        <div className="border-border mt-1.5 flex justify-between gap-3 border-t pt-2.5 text-sm">
-          <span className="font-medium">Нийт төлөх</span>
-          <span className="font-semibold tabular-nums">
-            {formatPrice(view.total)}
-          </span>
+          {/* Тооцооны эцсийн мөр. Хэмжээний алхам нь checkout-ийн тоймтой нэг
+              хэмжээст: жагсаалтын мөр → дүн нь ~1.7 дахин том, шошго нь дүнгээс
+              нэг зэрэг жижиг. Урьд нь 12px мөрийн дараа 14px байсан тул «бага
+              зэрэг тод мөр» шиг уншигдаж, зураас нь ч (foreground 12%) үүнийг
+              үүрэх чадалгүй байв. Тусгаарлагч нь одоо зай ба хэмжээ — зураас
+              бол зөвхөн чимэг. */}
+          <div className="gold-rule mt-3.5" />
+          <div className="mt-3.5 flex items-baseline justify-between gap-3">
+            <span className="text-sm font-medium">Нийт төлөх</span>
+            <span className="text-xl font-semibold tabular-nums">
+              {formatPrice(view.total)}
+            </span>
+          </div>
         </div>
-      </div>
 
-      {/* Төлбөр батлагдвал юу нэмэгдэхийг урьдчилж хэлнэ — оноо нь энэ
+        {/* Төлбөр батлагдвал юу нэмэгдэхийг урьдчилж хэлнэ — оноо нь энэ
           дэлгүүрт дахин ирэх шалтгаан тул төлсний дараа гэнэт олддог
           зүйл байх ёсгүй. */}
-      {view.pointsEarned > 0 && (
-        <p className="text-muted-foreground mt-3 text-xs">
-          Төлбөр батлагдмагц{" "}
-          <strong className="text-foreground font-medium tabular-nums">
-            +{view.pointsEarned.toLocaleString("mn-MN")} V point
-          </strong>{" "}
-          хуримтлагдана.
-        </p>
-      )}
+        {view.pointsEarned > 0 && (
+          <p className="text-muted-foreground mt-3 text-xs">
+            Төлбөр батлагдмагц{" "}
+            <strong className="text-foreground font-medium tabular-nums">
+              +{view.pointsEarned.toLocaleString("mn-MN")} V point
+            </strong>{" "}
+            хуримтлагдана.
+          </p>
+        )}
 
-      {/* Төлбөр хоцорсон бол сонгосон өдөр аль хэдийн өнгөрсөн байж мэднэ —
+        {/* Төлбөр хоцорсон бол сонгосон өдөр аль хэдийн өнгөрсөн байж мэднэ —
           `mark_order_paid` (0069) төлөх мөчид өдрийг ахиулна. Тиймээс энд
           хадгалсан өдрийг биш, одоо төлөхөд хүргэгдэх өдрийг харуулна. */}
-      <p className="text-muted-foreground mt-3 text-xs">
-        <strong className="text-foreground font-medium">
-          {formatDeliveryDay(projectedDeliveryDay(view.deliverOn))}
-        </strong>{" "}
-        {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.
-      </p>
+        <p className="text-muted-foreground mt-3 text-xs">
+          <strong className="text-foreground font-medium">
+            {formatDeliveryDay(projectedDeliveryDay(view.deliverOn))}
+          </strong>{" "}
+          {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.
+        </p>
+      </div>
     </div>
   );
 }
@@ -412,7 +539,7 @@ function RecapRow({
 function StatusPill() {
   return (
     <div className="flex justify-center">
-      <span className="border-border bg-card text-muted-foreground inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium">
+      <span className="bg-card text-muted-foreground inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
         <span className="relative flex size-1.5">
           <span className="bg-gold-strong absolute inline-flex size-full animate-ping rounded-full opacity-60" />
           <span className="bg-gold-strong relative inline-flex size-1.5 rounded-full" />
@@ -448,7 +575,7 @@ function QpaySection({
           QPay-тэй холбогдож чадсангүй. Захиалга тань нөөцлөгдсөн хэвээр байгаа
           — дахин оролдоно уу.
         </p>
-        <Button variant="outline" className="w-full" onClick={onManualCheck}>
+        <Button variant="secondary" className="w-full" onClick={onManualCheck}>
           <RefreshCw className="size-4" /> Дахин оролдох
         </Button>
       </div>
@@ -470,7 +597,11 @@ function QpaySection({
         <div className="pb-6 md:p-5">
           <BankApps links={invoice.deeplinks} mock={view.mock} />
         </div>
-        <Separator />
+        {/* `Separator` нь `bg-border` — энэ системд тунгалаг. Гурван
+            хэсэг (апп / QR / шалгах товч) хоорондоо огт тусгаарлагдахгүй
+            нэг урсгал болж байв. `gold-rule` нь `foreground`-оос 12%-иар
+            хольсон жинхэнэ зураас. */}
+        <div className="gold-rule" />
       </div>
 
       <div className="py-5 md:p-5">
@@ -479,8 +610,11 @@ function QpaySection({
           onClick={() => setQrOpen((v) => !v)}
           aria-expanded={qrOpen}
           // Апп нээж чадах төхөөрөмж дээр л QR-г нугалж хийнэ; web дээр QR
-          // нь цорын ганц арга тул хумихгүй.
-          className="hidden w-full items-center gap-2 text-sm font-medium md:hidden pointer-coarse:flex"
+          // нь цорын ганц арга тул хумихгүй. `md:hidden` байсан нь хүрэлцэхүйц
+          // таблет (pointer-coarse ба ≥768px) дээр товчийг гаргачихаад,
+          // агуулгыг нь доорх `md:block`-оор хүчээр дэлгэсэн хэвээр үлдээж,
+          // `aria-expanded` худал ярьдаг болгож байв.
+          className="hidden w-full items-center gap-2 py-1 text-sm font-medium pointer-coarse:flex"
         >
           <QrCode className="text-muted-foreground size-4" />
           QR кодоор төлөх
@@ -492,17 +626,16 @@ function QpaySection({
           />
         </button>
 
-        <div className="hidden items-center gap-2 md:flex pointer-fine:flex">
+        {/* Товчтой ижил нөхцөлөөр — `md:flex` байхад хүрэлцэхүйц таблет дээр
+            энэ гарчиг ба нугалах товч хоёулаа зэрэг гардаг байв. */}
+        <div className="hidden items-center gap-2 pointer-fine:flex">
           <QrCode className="text-gold-strong size-4" />
           <p className="text-sm font-medium">Банкны аппаараа QR уншуулна уу</p>
         </div>
 
-        <div
-          className={cn(
-            "md:block pointer-fine:block",
-            qrOpen ? "block" : "hidden",
-          )}
-        >
+        {/* Товчны харагдах нөхцөлийн яг эсрэг тал: хуруугаар ажиллаж буй
+            төхөөрөмж дээр л нугалагдана, бусад дээр үргэлж задархай. */}
+        <div className={cn("pointer-fine:block", qrOpen ? "block" : "hidden")}>
           {invoice.qrImage && (
             <div className="mt-4 flex flex-col items-center gap-3">
               {/* Not next/image: a data: URL has no host to whitelist and
@@ -515,7 +648,12 @@ function QpaySection({
                 height={256}
                 // Bigger on a desktop, where this is the only way to pay and
                 // the customer is scanning it from arm's length with a phone.
-                className="border-border size-52 rounded-xl border bg-white p-3 md:size-64"
+                // `bg-white` бол token зөрчил биш шаардлага: QR уншигдахын
+                // тулд цагаан «чимээгүй бүс» хэрэгтэй, гурван theme бүрд
+                // адил. Хар дэвсгэр дээр цагаан талбар нь өөрөө ирмэг болдог
+                // тул нэмэлт хүрээ хэрэггүй (тэр нь ямар ч тохиолдолд
+                // тунгалаг байсан).
+                className="size-52 rounded-xl bg-white p-3 md:size-64"
               />
               {/* On a desktop the heading above already says this; the link
                   stays on both, since "open it on my phone" is exactly what a
@@ -541,7 +679,7 @@ function QpaySection({
         </div>
       </div>
 
-      <Separator />
+      <div className="gold-rule" />
 
       <div className="space-y-3 py-5 md:p-5">
         {error && (
@@ -567,7 +705,7 @@ function QpaySection({
         ) : (
           <>
             <Button
-              variant="outline"
+              variant="secondary"
               className="w-full"
               disabled={checking}
               onClick={onManualCheck}
@@ -616,69 +754,69 @@ function PaidState({
   /** Төлбөр батлагдсаны дараах хүргэх өдөр — сервер ахиулсан байж мэднэ. */
   deliverOn: string | null;
 }) {
+  // Хуудасны орох fade-up-ыг `(shop)/template.tsx` өгдөг тул энд давтахгүй —
+  // тэмдэг дээрх scale-in л үлдэнэ: төлбөр батлагдсан мөч бол энэ урсгалын
+  // цорын ганц баярлах цэг, энэ нь чимэг биш хариу. `reducedMotion="user"`-ыг
+  // мөн template-ийн `MotionConfig`-оос контекстээр авна.
   return (
-    <MotionConfig reducedMotion="user">
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
-        className="mx-auto max-w-lg px-4 py-16 text-center md:py-24"
+    <div className="mx-auto max-w-lg px-4 py-16 text-center md:py-24">
+      <motion.span
+        initial={{ scale: 0.85, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.35, delay: 0.05, ease: "easeOut" }}
+        className="bg-success/12 text-success mx-auto flex size-16 items-center justify-center rounded-full"
       >
-        <motion.span
-          initial={{ scale: 0.85, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.35, delay: 0.05, ease: "easeOut" }}
-          className="bg-success/12 text-success mx-auto flex size-16 items-center justify-center rounded-full"
-        >
-          <Check className="size-8" strokeWidth={2.5} />
-        </motion.span>
+        <Check className="size-8" strokeWidth={2.5} />
+      </motion.span>
 
-        <h1 className="mt-6 font-serif text-3xl font-semibold tracking-tight">
-          Төлбөр амжилттай
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Захиалга{" "}
-          <span className="text-foreground font-mono font-medium">
-            {view.orderNo}
-          </span>{" "}
-          баталгаажлаа — {formatPrice(view.total)}
+      <h1 className="mt-6 text-3xl font-semibold tracking-tight">
+        Төлбөр амжилттай
+      </h1>
+      <p className="text-muted-foreground mt-2">
+        Захиалга{" "}
+        <span className="text-foreground font-mono font-medium">
+          {view.orderNo}
+        </span>{" "}
+        баталгаажлаа — {formatPrice(view.total)}
+      </p>
+
+      <div className="bg-card mt-8 rounded-2xl p-5 text-left">
+        <p className="text-sm">
+          <strong>
+            {formatDeliveryDay(deliverOn ?? earliestDeliveryDay())}
+          </strong>{" "}
+          {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.
+        </p>
+        <p className="text-muted-foreground mt-2 text-xs">
+          Тэр өдрийн өглөөний {ORDER_EDIT_CUTOFF_HOUR}:00 цаг хүртэл цуцлах
+          боломжтой. Захиалгын явцыг «Захиалгаа хянах» хэсгээс харна.
         </p>
 
-        <div className="border-border bg-card mt-8 rounded-2xl border p-5 text-left">
-          <p className="text-sm">
-            <strong>
-              {formatDeliveryDay(deliverOn ?? earliestDeliveryDay())}
-            </strong>{" "}
-            {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.
-          </p>
-          <p className="text-muted-foreground mt-2 text-xs">
-            Тэр өдрийн өглөөний {ORDER_EDIT_CUTOFF_HOUR}:00 цаг хүртэл цуцлах
-            боломжтой. Захиалгын явцыг «Захиалгаа хянах» хэсгээс харна.
-          </p>
-
-          {/* Захиалга цуцлагдаж болох хугацаанд оноо түгжээтэй байдаг
+        {/* Захиалга цуцлагдаж болох хугацаанд оноо түгжээтэй байдаг
               (0024) — «нэмэгдлээ» гэж амлаад дансанд нь харагдахгүй байх
               нь алдаа мэт уншигддаг тул хоёуланг нь нэг мөрөнд хэлнэ. */}
-          {view.pointsEarned > 0 && (
-            <p className="text-muted-foreground border-border mt-3 border-t pt-3 text-xs">
+        {view.pointsEarned > 0 && (
+          <>
+            <div className="gold-rule mt-3" />
+            <p className="text-muted-foreground mt-3 text-xs">
               <strong className="text-foreground font-medium tabular-nums">
                 +{view.pointsEarned.toLocaleString("mn-MN")} V point
               </strong>{" "}
               хуримтлагдлаа — хүргэгдсэний дараа зарцуулах боломжтой болно.
             </p>
-          )}
-        </div>
+          </>
+        )}
+      </div>
 
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <Button asChild variant="outline" className="flex-1">
-            <Link href="/account/orders">Захиалгаа хянах</Link>
-          </Button>
-          <Button asChild className="flex-1">
-            <Link href="/catalog">Дэлгүүр үзэх</Link>
-          </Button>
-        </div>
-      </motion.div>
-    </MotionConfig>
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <Button asChild variant="secondary" className="flex-1">
+          <Link href="/account/orders">Захиалгаа хянах</Link>
+        </Button>
+        <Button asChild className="flex-1">
+          <Link href="/catalog">Дэлгүүр үзэх</Link>
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -688,7 +826,7 @@ function CancelledState() {
       <span className="bg-destructive/10 text-destructive mx-auto flex size-16 items-center justify-center rounded-full">
         <XCircle className="size-8" strokeWidth={2} />
       </span>
-      <h1 className="mt-6 font-serif text-3xl font-semibold tracking-tight">
+      <h1 className="mt-6 text-3xl font-semibold tracking-tight">
         Захиалга цуцлагдсан
       </h1>
       <p className="text-muted-foreground mt-2">
@@ -696,7 +834,7 @@ function CancelledState() {
         сагслаад захиалаарай.
       </p>
       <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-        <Button asChild variant="outline">
+        <Button asChild variant="secondary">
           <Link href="/account/orders">Захиалгаа хянах</Link>
         </Button>
         <Button asChild>

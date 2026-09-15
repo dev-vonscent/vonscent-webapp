@@ -26,24 +26,31 @@ export default function Loading() {
         <SkeletonBlock className="mt-8 hidden h-8 w-36 md:block" />
       </div>
 
-      <div className="md:border-border md:bg-card mt-6 md:mt-0 md:rounded-2xl md:border md:p-5">
+      <div className="md:bg-card mt-6 md:mt-0 md:rounded-2xl md:p-5">
         {/* The QR leads on a desktop, the app grid on a phone — the skeleton
-            reserves both in the order each layout renders them. */}
-        <SkeletonBlock className="mx-auto hidden size-64 rounded-xl md:block" />
-        {[5, 5].map((count, group) => (
-          <div key={group} className={group === 0 ? "md:mt-6" : "mt-6"}>
-            <SkeletonBlock className="h-3 w-24" />
-            <div className="mt-3 grid grid-cols-4 gap-x-2 gap-y-4 sm:grid-cols-5">
-              {Array.from({ length: count }).map((_, i) => (
-                <div key={i} className="flex flex-col items-center gap-2">
-                  <SkeletonBlock className="size-14 rounded-2xl sm:size-16" />
-                  <SkeletonBlock className="h-2.5 w-12" />
-                </div>
-              ))}
+            reserves what each device will actually get.
+
+            Банкны апп сүлжээ нь `pointer-coarse` дээр л гардаг (`BankApps` →
+            `useCanOpenApps`), десктоп дээр хэзээ ч биш. Скелет нь түүнийг
+            болзолгүйгээр зурдаг байсан тул хулганатай хэрэглэгч 10 хайрцаг
+            амласан зураг хараад, бодит хуудас ирэхэд тэд алга болдог байв. */}
+        <SkeletonBlock className="mx-auto hidden size-64 rounded-xl pointer-fine:block" />
+        <div className="hidden pointer-coarse:block">
+          {[5, 5].map((count, group) => (
+            <div key={group} className={group === 0 ? "" : "mt-6"}>
+              <SkeletonBlock className="h-3 w-24" />
+              <div className="mt-3 grid grid-cols-4 gap-x-2 gap-y-4 sm:grid-cols-5">
+                {Array.from({ length: count }).map((_, i) => (
+                  <div key={i} className="flex flex-col items-center gap-2">
+                    <SkeletonBlock className="size-14 rounded-2xl sm:size-16" />
+                    <SkeletonBlock className="h-2.5 w-12" />
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-        <SkeletonBlock className="mx-auto mt-6 size-52 rounded-xl md:hidden" />
+          ))}
+          <SkeletonBlock className="mx-auto mt-6 size-52 rounded-xl" />
+        </div>
         <SkeletonBlock className="mt-6 h-10 w-full rounded-md" />
       </div>
     </div>

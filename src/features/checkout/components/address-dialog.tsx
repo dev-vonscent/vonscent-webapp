@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { FieldError, fieldErrorClass } from "@/components/ui/form-field";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { AddressFields } from "@/features/checkout/components/address-fields";
+import { khorooRequired } from "@/lib/geo/locations";
+import { KHOROO_REQUIRED_MESSAGE } from "@/lib/validators/order";
 
 export interface AddressFormValue {
   city: string;
@@ -25,6 +27,7 @@ const EMPTY: AddressFormValue = {
 interface Errors {
   city?: string;
   district?: string;
+  khoroo?: string;
   detail?: string;
 }
 
@@ -78,13 +81,14 @@ export function AddressDialog({
   }
 
   function focusFirstError(next: Errors) {
-    if (next.city || next.district) {
-      // Radix SelectTrigger = role="combobox"; эхнийх нь хот, дараах нь дүүрэг.
+    if (next.city || next.district || next.khoroo) {
+      // Radix SelectTrigger = role="combobox"; дараалал нь хот → дүүрэг → хороо.
       const triggers =
         regionRef.current?.querySelectorAll<HTMLButtonElement>(
           "button[role='combobox']",
         ) ?? [];
-      return triggers[next.city ? 0 : 1]?.focus();
+      const index = next.city ? 0 : next.district ? 1 : 2;
+      return triggers[index]?.focus();
     }
     if (next.detail) return detailRef.current?.focus();
   }
@@ -94,6 +98,17 @@ export function AddressDialog({
     const next: Errors = {};
     if (!form.city) next.city = "Хот / аймгаа сонгоно уу";
     if (!form.district) next.district = "Дүүрэг, сумаа сонгоно уу";
+    // Хороо нь хорооны жагсаалттай хаягт заавал — сервер ч яг ижил дүрмээр
+    // хаана (`checkoutOrderSchema`). Хот/дүүрэг сонгогдоогүй байхад асуухгүй:
+    // тэр хоёрын алдаа нь энэ талбарыг утгагүй болгоно.
+    if (
+      form.city &&
+      form.district &&
+      form.khoroo == null &&
+      khorooRequired(form.city, form.district)
+    ) {
+      next.khoroo = KHOROO_REQUIRED_MESSAGE;
+    }
     if (!form.detail.trim()) next.detail = "Дэлгэрэнгүй хаягаа оруулна уу";
     setErrors(next);
     if (Object.values(next).some(Boolean)) {
@@ -123,7 +138,11 @@ export function AddressDialog({
               district: form.district,
               khoroo: form.khoroo,
             }}
-            errors={{ city: errors.city, district: errors.district }}
+            errors={{
+              city: errors.city,
+              district: errors.district,
+              khoroo: errors.khoroo,
+            }}
             onChange={(next) => {
               setForm({
                 ...form,
@@ -133,6 +152,7 @@ export function AddressDialog({
               });
               clearError("city");
               clearError("district");
+              clearError("khoroo");
             }}
           />
         </div>
@@ -159,7 +179,7 @@ export function AddressDialog({
         <div className="flex justify-end gap-3 pt-1">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             disabled={saving}
             onClick={() => onOpenChange(false)}
           >

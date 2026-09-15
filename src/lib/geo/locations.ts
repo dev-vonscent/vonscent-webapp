@@ -98,3 +98,21 @@ export function getKhoroos(adm2Code: string | null | undefined): number[] {
 export function formatKhoroo(n: number): string {
   return `${n}-р хороо`;
 }
+
+/**
+ * Энэ хаягт хороо ЗААВАЛ эсэх — Cyrillic нэрээр (хадгалагддаг хэлбэр нь энэ).
+ *
+ * «Нийслэл үү?» гэж асуухаас илүү нарийн: шалгуур нь тухайн сум/дүүрэгт хорооны
+ * жагсаалт байгаа эсэх. Одоогийн өгөгдөлд энэ нь УБ-ын 9 дүүрэг (5–43 хороо),
+ * орон нутагт нэг ч үгүй — гэхдээ маргааш өгөгдөл өөрчлөгдвөл дүрэм өөрөө
+ * дагаж, сонгох боломжгүй талбарыг хэзээ ч шаардахгүй.
+ *
+ * Яагаад заавал: хороо нь зөвхөн хаягийн чимэг биш — `resolveZone` дээр
+ * хороо-тусгай дүрэм (`MN1107:12`) дүүрэг-даяарын дүрмийг дардаг тул хүргэлтийн
+ * ҮНЭ түүнээс хамаарна, мөн хүргэгч хорооноос хамаарч хаяг олдог.
+ */
+export function khorooRequired(city: string, district: string): boolean {
+  const aimag = AIMAGS.find((a) => a.name === city);
+  const child = aimag?.children.find((c) => c.name === district);
+  return (child?.khoroos?.length ?? 0) > 0;
+}
