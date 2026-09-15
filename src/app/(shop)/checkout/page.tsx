@@ -593,6 +593,8 @@ export default function CheckoutPage() {
     Math.max(subtotal - discount, 0),
     giftGuaranteeFor(collections),
   );
+  /** Эдлээгүй үлдсэн бэлгийн эрх — сануулга ба тоймын мөр хоёулаа үүнийг хардаг. */
+  const giftRemaining = Math.max(giftAllowance - giftIds.length, 0);
   // Бэлгийн сан — сагс, багцын дэлгэрэнгүйтэй ижил цорын ганц эх сурвалж
   // (backlog A2). Сан унтраалттай / хоосон бол доорх тоймд «бэлэгтэй» гэж
   // амлахгүй: `GiftSamplePicker` өөрөө нуугддаг тул тэмдэглэгээ нь хэзээ ч
@@ -716,9 +718,13 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Эрхтэй атлаа нэг ч дээж сонгоогүй бол нэг удаа сануулна — 600,000₮-ийн
-    // захиалга гурван үнэгүй дээжээ орхиод төлбөр рүү орох ёсгүй.
-    if (giftAllowance > 0 && giftIds.length === 0 && !giftWarned.current) {
+    // Эрхээ БҮТЭН эдлээгүй бол нэг удаа сануулна — 600,000₮-ийн захиалга
+    // гурван үнэгүй дээжээ орхиод төлбөр рүү орох ёсгүй.
+    //
+    // Нөхцөл нь `=== 0` байсан тул «2 эрхтэй, 1 сонгосон» гэсэн хамгийн
+    // элбэг тохиолдол чимээгүй өнгөрдөг байв; тоймын мөр (`giftAllowance >
+    // giftIds.length`) түүнийг аль хэдийн зөв тоолж байсан.
+    if (giftRemaining > 0 && !giftWarned.current) {
       setShowGiftWarning(true);
       return;
     }
@@ -883,7 +889,8 @@ export default function CheckoutPage() {
               value={addressChoice}
               onChange={onAddressChoice}
               draft={draft}
-              onAddNew={() => openAddressWith(draft)}
+              onAddNew={() => openAddressWith(null)}
+              onEditDraft={() => openAddressWith(draft)}
             />
 
             {/* Хаягийн талбарууд popup дотор амьдардаг тул алдаа нь энд —
@@ -1254,15 +1261,14 @@ export default function CheckoutPage() {
                 {/* Ашиглаагүй эрхийг тоймд хэлнэ: хэрэглэгч энэ багана дээр
                     дүнгээ шалгаж байхдаа л «би юу авах гэж байна» гэдгийг
                     эцэслэн уншдаг. */}
-                {giftAllowance > giftIds.length && (
+                {giftRemaining > 0 && (
                   <button
                     type="button"
                     onClick={goToGifts}
                     className="text-gold-strong flex w-full items-baseline justify-between gap-3 text-left text-sm underline-offset-4 hover:underline"
                   >
                     <span className="min-w-0">
-                      Бэлгийн {giftAllowance - giftIds.length} дээж сонгоогүй
-                      байна
+                      Бэлгийн {giftRemaining} дээж сонгоогүй байна
                     </span>
                     <span className="shrink-0">Сонгох</span>
                   </button>
@@ -1418,8 +1424,8 @@ export default function CheckoutPage() {
       <ResponsiveDialog
         open={showGuestWarning}
         onOpenChange={setShowGuestWarning}
-        title="Зочноор захиалахад V point хуримтлагдахгүй"
-        description="Бүртгүүлбэл захиалгын дүнгийн 1% нь V point болж буцаж, дараагийн захиалгадаа зарцуулагдана. Бүртгүүлэхээр очвол бөглөсөн зүйл чинь хадгалагдаж, буцаж ирэхэд байрандаа байна."
+        title="Зочны захиалгад V point байхгүй"
+        description="Бүртгүүлбэл захиалгын дүнгийн 1% нь V point болж буцаж, дараагийн захиалгадаа зарцуулагдана."
       >
         <div className="flex flex-col gap-2">
           <Button
@@ -1446,8 +1452,12 @@ export default function CheckoutPage() {
       <ResponsiveDialog
         open={showGiftWarning}
         onOpenChange={setShowGiftWarning}
-        title={`Танд ${giftAllowance} бэлгийн дээж сонгох эрх байна`}
-        description="Энэ захиалгад үнэгүй 1мл дээж дагалдана. Одоо сонгоогүй бол энэ захиалгад дээж орохгүй."
+        title={`Сонгоогүй ${giftRemaining} бэлэг байна`}
+        description={
+          giftIds.length > 0
+            ? `Та ${giftAllowance} үнэгүй 1мл дээж сонгох эрхтэй бөгөөд ${giftIds.length}-г нь сонгосон байна. Одоо сонгохгүй бол үлдсэн ${giftRemaining} нь энэ захиалгад орохгүй.`
+            : `Энэ захиалгад ${giftAllowance} үнэгүй 1мл дээж дагалдана. Одоо сонгоогүй бол энэ захиалгад дээж орохгүй.`
+        }
       >
         <div className="flex flex-col gap-2">
           <Button
@@ -1468,7 +1478,7 @@ export default function CheckoutPage() {
               handleSubmit(onSubmit, onInvalid)();
             }}
           >
-            Дээжгүй үргэлжлүүлэх
+            {giftIds.length > 0 ? "Ингээд үргэлжлүүлэх" : "Дээжгүй үргэлжлүүлэх"}
           </Button>
         </div>
       </ResponsiveDialog>

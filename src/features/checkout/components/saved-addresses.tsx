@@ -37,6 +37,7 @@ export function SavedAddresses({
   onChange,
   draft,
   onAddNew,
+  onEditDraft,
 }: {
   addresses: AddressRow[];
   /** An address id, or `NEW_ADDRESS`. */
@@ -44,8 +45,10 @@ export function SavedAddresses({
   onChange: (value: string) => void;
   /** Popup-аар оруулсан шинэ хаяг (байвал карт болж харагдана). */
   draft?: AddressDraft | null;
-  /** Popup нээх — шинээр нэмэх, эсвэл оруулсан хаягаа засах. */
+  /** Popup-ыг ХООСОН нээх — өөр хаяг оруулах. */
   onAddNew: () => void;
+  /** Popup-ыг оруулсан хаягаар дүүргэж нээх — түүнийгээ засах. */
+  onEditDraft: () => void;
 }) {
   return (
     <RadioGroup value={value} onValueChange={onChange} className="gap-2.5">
@@ -101,7 +104,7 @@ export function SavedAddresses({
               тэлэхгүй. */}
           <button
             type="button"
-            onClick={onAddNew}
+            onClick={onEditDraft}
             className="text-muted-foreground hover:text-foreground -my-2 flex shrink-0 items-center gap-1 py-2 text-xs transition-colors"
           >
             <Pencil className="size-3.5" />
@@ -111,7 +114,12 @@ export function SavedAddresses({
       )}
 
       {/* Bottom of the list: opens the dialog rather than revealing a form
-          under it. Not a radio — nothing is chosen by pressing it. */}
+          under it. Not a radio — nothing is chosen by pressing it.
+
+          `onAddNew` нь `onEditDraft`-ээс ЯЛГААТАЙ: энэ товч popup-ыг хоосон
+          нээнэ. Урьд нь хоёулаа нэг л функцийг ноорогоор дүүргэж дууддаг
+          байсан тул «Өөр хаяг нэмэх» гэж бичсэн атлаа өмнө оруулсан хаягийг
+          засдаг байв — шошго нь үйлдэлээ хэлэхгүй байсан. */}
       {/* Систем хүрээгүй (`border-color: transparent`) тул энэ товч тасархай
           хүрээгээрээ огт харагддаггүй байв — зочин хэрэглэгчийн хувьд энэ бол
           хаяг оруулах ЦОРЫН ГАНЦ хаалга. Гүнийг өнгөний давхаргаар өгч,
