@@ -41,10 +41,14 @@ export const metadata: Metadata = {
 // Focus method tracking: pointer interaction must never paint a focus ring,
 // but text inputs match :focus-visible even on click (per spec), so CSS alone
 // can't tell the two apart. Runs before paint to avoid a flash.
+//
+// `e.key` is guarded: Chrome's autofill dispatches a `keydown` with no `key`
+// when the customer picks a suggestion, and reading `.indexOf` off it threw a
+// page-level TypeError on every autofilled form.
 const FOCUS_METHOD_SCRIPT = `(function(){var d=document.documentElement;
 d.dataset.focus='pointer';
 addEventListener('pointerdown',function(){d.dataset.focus='pointer'},true);
-addEventListener('keydown',function(e){if(e.key==='Tab'||e.key.indexOf('Arrow')===0||e.key==='Home'||e.key==='End'||e.key==='PageUp'||e.key==='PageDown'){d.dataset.focus='keyboard'}},true);})()`;
+addEventListener('keydown',function(e){var k=e.key;if(!k)return;if(k==='Tab'||k.indexOf('Arrow')===0||k==='Home'||k==='End'||k==='PageUp'||k==='PageDown'){d.dataset.focus='keyboard'}},true);})()`;
 
 export default function RootLayout({
   children,
