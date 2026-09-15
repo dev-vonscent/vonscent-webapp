@@ -472,10 +472,16 @@ function OrderRecap({ view }: { view: PaymentView }) {
                 : `+${formatPrice(view.shippingFee)}`
             }
           />
-          <div className="gold-rule mt-2.5" />
-          <div className="mt-2.5 flex justify-between gap-3 text-sm">
-            <span className="font-medium">Нийт төлөх</span>
-            <span className="font-semibold tabular-nums">
+          {/* Тооцооны эцсийн мөр. Хэмжээний алхам нь checkout-ийн тоймтой нэг
+              хэмжээст: жагсаалтын мөр → дүн нь ~1.7 дахин том, шошго нь дүнгээс
+              нэг зэрэг жижиг. Урьд нь 12px мөрийн дараа 14px байсан тул «бага
+              зэрэг тод мөр» шиг уншигдаж, зураас нь ч (foreground 12%) үүнийг
+              үүрэх чадалгүй байв. Тусгаарлагч нь одоо зай ба хэмжээ — зураас
+              бол зөвхөн чимэг. */}
+          <div className="gold-rule mt-3.5" />
+          <div className="mt-3.5 flex items-baseline justify-between gap-3">
+            <span className="text-sm font-medium">Нийт төлөх</span>
+            <span className="text-xl font-semibold tabular-nums">
               {formatPrice(view.total)}
             </span>
           </div>
