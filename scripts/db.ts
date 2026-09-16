@@ -29,6 +29,27 @@ function isLocal(u: string) {
   return u.includes("localhost") || u.includes("127.0.0.1");
 }
 
+/**
+ * URL-ийн нууц үгийг тайлна — encode хийгээгүй байсан ч унахгүй.
+ *
+ * `DATABASE_URL` нь дүрмээр percent-encode хийгдсэн байх ёстой, гэхдээ
+ * Supabase-ийн dashboard-оос нууц үгээ хуулж шууд наасан үед `%` тэмдэг
+ * түүхийдээ тэр чигээрээ үлддэг. Тэгэхэд `decodeURIComponent` нь
+ * «URI malformed» гэж ШИДНЭ — өөрөөр хэлбэл зөвхөн тусгай тэмдэгттэй
+ * нууц үгтэй төсөл дээр л migration/backup бүхэлдээ зогсоно. (Яг ийм
+ * байдлаар preview төсөл рүү холбогдох боломжгүй байв; prod-ын нууц үг нь
+ * цэвэр үсэг-тоо байсан тул илрээгүй өнгөрчээ.)
+ *
+ * Тайлж чадвал тайлсныг, эс бөгөөс түүхий утгыг буцаана.
+ */
+function decodePassword(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
 async function tryDirect(url: string): Promise<Client | null> {
   const client = new Client({
     connectionString: url,
@@ -52,7 +73,7 @@ async function tryPooler(
   const m = u.hostname.match(/^db\.([a-z0-9]+)\.supabase\.co$/);
   if (!m) return null;
   const ref = m[1];
-  const password = decodeURIComponent(u.password);
+  const password = decodePassword(u.password);
   const database = u.pathname.replace(/^\//, "") || "postgres";
 
   const hosts = REGIONS.flatMap((r) => [
