@@ -32,6 +32,16 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# …бусад нь нууц түлхүүр агуулдаг тул ignore хэвээр, харин загвар нь
+# репод байх ёстой (README нь `cp .env.example .env.local` гэж зааварладаг).
+!.env.example
+
+# Prod-оос татсан schema snapshot нь зөвхөн харьцуулах зориулалттай —
+# migration эх сурвалж нь supabase/migrations/ хэвээр (scripts/schema-snapshot.ts).
+/supabase/_snapshot/
+
+# Supabase CLI-ийн түр файлууд (холбогдсон project-ийн ref г.м.)
+/supabase/.temp/
 
 # vercel
 .vercel
