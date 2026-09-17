@@ -20,7 +20,6 @@ import {
 import {
   GENDERS,
   GENDER_LABEL,
-  CONCENTRATIONS,
   ML_SIZES,
   SEASONS,
   SEASON_LABEL,
@@ -46,9 +45,14 @@ import { CustomTagField } from "./custom-tag-field";
 import { DescriptionFields } from "./description-fields";
 import { ProductImageStudio } from "./product-image-studio";
 import { BrandSelect } from "./brand-select";
+import { ConcentrationSelect } from "./concentration-select";
 import type { AdminProduct } from "@/features/admin/api";
 import type { CustomTagOption } from "@/features/taxonomy/api";
-import type { BrandOption, ScentFamilyOption } from "@/lib/types";
+import type {
+  BrandOption,
+  ConcentrationOption,
+  ScentFamilyOption,
+} from "@/lib/types";
 const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
   { slug: "new", label: "Шинэ" },
   { slug: "hot", label: "Эрэлттэй" },
@@ -59,12 +63,15 @@ export function ProductEditForm({
   product,
   families,
   brands,
+  concentrations,
   customTagPool = [],
   aiEnabled = false,
 }: {
   product: AdminProduct;
   families: ScentFamilyOption[];
   brands: BrandOption[];
+  /** Админы удирддаг үнэртний төрлүүд (0085). */
+  concentrations: ConcentrationOption[];
   customTagPool?: CustomTagOption[];
   /** `isImageGenConfigured` — server-only env, handed down by the page. */
   aiEnabled?: boolean;
@@ -180,6 +187,12 @@ export function ProductEditForm({
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    // Төрлийг жагсаалтаас устгавал талбар хоосрох тул серверийн FK алдаа
+    // хүлээхгүйгээр энд хэлнэ.
+    if (!form.concentration.trim()) {
+      setMsg("Үнэртний төрлөө сонгоно уу.");
+      return;
+    }
     // A ticked size with no price publishes a free decant against real ml
     // stock — refuse before the request, and point at the rows.
     const unpriced = unpricedActiveSizes(variants);
@@ -334,21 +347,11 @@ export function ProductEditForm({
               </Select>
             </Field>
             <Field label="Төрөл">
-              <Select
+              <ConcentrationSelect
+                options={concentrations}
                 value={form.concentration}
-                onValueChange={(v) => set("concentration", v)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CONCENTRATIONS.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(v) => set("concentration", v)}
+              />
             </Field>
             <Field
               label="Үнэртэх зай"
@@ -513,9 +516,7 @@ export function ProductEditForm({
                 setIsFeatured(Boolean(v));
               }}
             />
-            <span>
-              Онцлох бараа
-            </span>
+            <span>Онцлох бараа</span>
           </label>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox
@@ -564,7 +565,12 @@ export function ProductEditForm({
             Болих
           </Button>
         </div>
-        <Button type="button" variant="ghost" onClick={remove} disabled={pending}>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={remove}
+          disabled={pending}
+        >
           <Trash2 className="size-4" /> Устгах
         </Button>
       </div>

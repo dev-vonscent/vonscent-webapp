@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CONCENTRATION_CODE_MAX } from "@/lib/constants";
 
 /**
  * "all" (бүх улирал) already covers every season, so it cannot sit next to an
@@ -75,7 +76,12 @@ export const productInputSchema = z.object({
   name: z.string().min(1),
   brand: z.string().min(1),
   gender: z.enum(["male", "female", "unisex"]),
-  concentration: z.enum(["EDP", "EDT", "Parfum", "EDC", "Extrait", "Elixir"]),
+  /**
+   * Төрөл нь админы удирддаг `concentrations`-ийн `code` (0085), хаалттай
+   * enum биш — scentFamilies-ийн адилаар route дотор амьд жагсаалттай
+   * тулгаж шалгана.
+   */
+  concentration: z.string().trim().min(1).max(CONCENTRATION_CODE_MAX),
   /**
    * Үнэрийн хүч (0078) — quiz-ийн эрчмийн асуулт үүнийг уншина. Шинэ бараанд
    * анхдагчаар «дундаж»: хамгийн саармаг таамаг бөгөөд админ засаж болно.
@@ -132,7 +138,10 @@ export const productEditSchema = z.object({
   brand: z.string().min(1).optional(),
   gender: z.enum(["male", "female", "unisex"]).optional(),
   concentration: z
-    .enum(["EDP", "EDT", "Parfum", "EDC", "Extrait", "Elixir"])
+    .string()
+    .trim()
+    .min(1)
+    .max(CONCENTRATION_CODE_MAX)
     .optional(),
   sillage: z.enum(["light", "medium", "strong"]).optional(),
   longevity: z.string().trim().max(60).optional(),

@@ -7,6 +7,7 @@ import {
   getScentFamilies,
   fetchCustomTags,
   fetchBrands,
+  fetchConcentrations,
 } from "@/features/taxonomy/api";
 import { isImageGenConfigured } from "@/lib/env";
 
@@ -16,14 +17,17 @@ export default async function EditProductPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [product, families, customTagPool, brands] = await Promise.all([
-    getAdminProduct(id),
-    getScentFamilies(),
-    fetchCustomTags(),
-    // Edit reads the *full* list, hidden brands included: a product already on
-    // a retired brand must keep showing it rather than silently losing it.
-    fetchBrands(),
-  ]);
+  const [product, families, customTagPool, brands, concentrations] =
+    await Promise.all([
+      getAdminProduct(id),
+      getScentFamilies(),
+      fetchCustomTags(),
+      // Edit reads the *full* list, hidden brands included: a product already
+      // on a retired brand must keep showing it rather than silently losing it.
+      fetchBrands(),
+      // Same reason for concentrations (0085).
+      fetchConcentrations(),
+    ]);
   if (!product) notFound();
 
   return (
@@ -39,6 +43,7 @@ export default async function EditProductPage({
         product={product}
         families={families}
         brands={brands}
+        concentrations={concentrations}
         customTagPool={customTagPool}
         aiEnabled={isImageGenConfigured}
       />

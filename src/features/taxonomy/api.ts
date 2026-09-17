@@ -2,8 +2,15 @@ import "server-only";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAG_TAXONOMY } from "@/lib/cache-tags";
-import type { BrandOption, ScentFamilyOption } from "@/lib/types";
-import { DEFAULT_SCENT_FAMILIES } from "@/lib/constants";
+import type {
+  BrandOption,
+  ConcentrationOption,
+  ScentFamilyOption,
+} from "@/lib/types";
+import {
+  DEFAULT_CONCENTRATIONS,
+  DEFAULT_SCENT_FAMILIES,
+} from "@/lib/constants";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createPublicClient } from "@/lib/supabase/public";
 
@@ -186,4 +193,93 @@ export async function resolveBrandId(name: string): Promise<string | null> {
     (b) => b.name.trim().toLowerCase() === wanted,
   );
   return hit?.id ?? null;
+}
+
+/* ── Concentrations (0085_concentrations.sql) ─────────────────────────────── */
+
+interface DbConcentration {
+  id: string;
+  code: string;
+  label: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
+/**
+ * Demo mode has no database, but the product form still needs something to
+ * pick from — the seeded list stands in, with ids that cannot collide with
+ * real uuids so nothing tries to PATCH them.
+ */
+const DEMO_CONCENTRATIONS: ConcentrationOption[] = DEFAULT_CONCENTRATIONS.map(
+  (c, i) => ({
+    id: `demo:${c.code}`,
+    code: c.code,
+    label: c.label,
+    sortOrder: (i + 1) * 10,
+    isActive: true,
+  }),
+);
+
+/**
+ * Every concentration, hidden ones included (admin view).
+ *
+ * Admin-managed since 0085: a bottle that turns up as an Eau Fraîche or an
+ * attar is registered here rather than in a migration. Ordered by
+ * `sort_order` then code so the shop's usual types stay at the top of the
+ * product form's dropdown.
+ */
+const fetchConcentrationsUncached = async (): Promise<
+  ConcentrationOption[]
+> => {
+  if (!isSupabaseConfigured) return DEMO_CONCENTRATIONS;
+  const supabase = createPublicClient();
+  if (!supabase) return DEMO_CONCENTRATIONS;
+  const { data, error } = await supabase
+    .from("concentrations")
+    .select("id, code, label, sort_order, is_active")
+    .order("sort_order", { ascending: true })
+    .order("code", { ascending: true });
+  // A database that has not run 0085 yet would otherwise leave the product
+  // form with an unfillable dropdown.
+  if (error || !data) return DEMO_CONCENTRATIONS;
+  return (data as DbConcentration[]).map((r) => ({
+    id: r.id,
+    code: r.code,
+    label: r.label ?? "",
+    sortOrder: r.sort_order,
+    isActive: r.is_active,
+  }));
+};
+
+export const fetchConcentrations = cache(
+  unstable_cache(fetchConcentrationsUncached, ["concentrations"], {
+    revalidate: 300,
+    tags: [CACHE_TAG_TAXONOMY],
+  }),
+);
+
+/** Only the types the admin still wants offered on the product form. */
+export async function getActiveConcentrations(): Promise<
+  ConcentrationOption[]
+> {
+  return (await fetchConcentrations()).filter((c) => c.isActive);
+}
+
+/**
+ * The canonical `code` for what a form sent, matched case-insensitively, or
+ * null if the list does not know it.
+ *
+ * `products.concentration` carries a foreign key to `concentrations.code`, so
+ * an unknown value is a 23503 from Postgres rather than a saved product —
+ * the write routes check here first and answer in Mongolian instead.
+ */
+export async function resolveConcentration(
+  code: string,
+): Promise<string | null> {
+  const wanted = code.trim().toLowerCase();
+  if (!wanted) return null;
+  const hit = (await fetchConcentrations()).find(
+    (c) => c.code.trim().toLowerCase() === wanted,
+  );
+  return hit?.code ?? null;
 }
