@@ -13,6 +13,8 @@ import { trackAddToCart, trackBeginCheckout } from "@/lib/analytics";
 import type { ProductDetail } from "@/lib/types";
 
 export function ProductPurchase({ product }: { product: ProductDetail }) {
+  // Худалдаж болох хэмжээнүүд — сонголт, «хамгийн ашигтай», үнийн тооцоо
+  // бүгд эднээс уншина.
   const activeVariants = product.variants.filter((v) => v.isActive);
   // Preselect the cheapest size that is actually in stock, so the headline
   // price is one the customer can buy (requirement_fb.md §"ml-ийн үнэ").
@@ -171,24 +173,46 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
 
       <div className="space-y-3">
         <p className="text-sm font-medium">Хэмжээ сонгох</p>
+        {/*
+          Хэмжээ бүр ХАРАГДАНА — «Зарна»-г авсан нь жагсаалтаас алга болдог
+          байлаа. Тэгэхээр 5ml-г түр хаасан бараа 2 / 10 / 20 гэсэн цоорхойтой
+          эгнээ үзүүлээд, худалдан авагч тэр хэмжээ огт байдаггүй гэж ойлгодог
+          байв. Одоо гурван төлөв тодорхой:
+            · зарагдаж буй  — сонгоно
+            · түр дууссан   — идэвхгүй, зураастай, «Дууссан» (үлдэгдэл дуусахад)
+            · зарахгүй      — идэвхгүй, «Зарахгүй» (админ өөрөө хаасан)
+          Зарахгүй хэмжээн дээр үнэ ХАРУУЛАХГҮЙ: зарахгүй зүйлийн үнэ нь
+          худалдан авах боломжтой мэт ойлголт өгнө.
+        */}
         <div className="flex flex-wrap gap-2">
-          {activeVariants.map((v) => {
+          {product.variants.map((v) => {
             const active = v.id === variantId;
             const isBestValue = bestValue != null && v.id === bestValue.id;
+            const sellable = v.isActive && v.inStock;
             return (
               <button
                 key={v.id}
                 onClick={() => setVariantId(v.id)}
-                disabled={!v.inStock}
-                aria-pressed={v.inStock ? active : undefined}
-                aria-label={v.inStock ? `${v.ml}ml` : `${v.ml}ml — дууссан`}
+                disabled={!sellable}
+                aria-pressed={sellable ? active : undefined}
+                aria-label={
+                  sellable
+                    ? `${v.ml}ml`
+                    : v.isActive
+                      ? `${v.ml}ml — дууссан`
+                      : `${v.ml}ml — зарахгүй`
+                }
                 className={cn(
                   "relative flex min-h-11 min-w-20 flex-col items-center justify-center rounded-lg px-4 py-2 transition-colors",
-                  !v.inStock
-                    ? "bg-secondary/50 text-muted-foreground cursor-not-allowed line-through opacity-50"
-                    : active
-                      ? "bg-secondary ring-foreground ring-2"
-                      : "bg-secondary hover:bg-accent",
+                  !v.isActive
+                    ? // Түр биш, тогтмол төлөв — зураас нь «үнэ нь хүчингүй
+                      // болсон» гэсэн утгатай тул энд тохирохгүй.
+                      "bg-secondary/40 text-muted-foreground cursor-not-allowed opacity-60"
+                    : !v.inStock
+                      ? "bg-secondary/50 text-muted-foreground cursor-not-allowed line-through opacity-50"
+                      : active
+                        ? "bg-secondary ring-foreground ring-2"
+                        : "bg-secondary hover:bg-accent",
                 )}
               >
                 {isBestValue && (
@@ -198,14 +222,18 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                 )}
                 <span className="text-sm font-semibold">{v.ml}ml</span>
                 <span className="text-muted-foreground text-xs">
-                  {v.inStock ? formatPrice(v.price) : "Дууссан"}
+                  {!v.isActive
+                    ? "Зарахгүй"
+                    : v.inStock
+                      ? formatPrice(v.price)
+                      : "Дууссан"}
                 </span>
-                {v.inStock && v.basePrice > v.price && (
+                {sellable && v.basePrice > v.price && (
                   <span className="text-muted-foreground text-[10px] line-through">
                     {formatPrice(v.basePrice)}
                   </span>
                 )}
-                {v.inStock && (
+                {sellable && (
                   <span className="text-muted-foreground text-[10px]">
                     {formatPrice(Math.round(v.price / v.ml))}/ml
                   </span>
