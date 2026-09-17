@@ -60,3 +60,56 @@ describe("checkoutOrderSchema — khoroo", () => {
     expect(formSchema.safeParse(base).success).toBe(true);
   });
 });
+
+/**
+ * Имэйл ба идемпотентын түлхүүр (0087) — хоёулаа заавал биш. Хуучин клиент,
+ * гадны интеграци эдгээргүй ажиллах ёстой.
+ */
+describe("checkoutOrderSchema — contactEmail", () => {
+  const ub = { ...base, shipKhoroo: 12 };
+
+  it("accepts an order with no email at all", () => {
+    expect(checkoutOrderSchema.safeParse(ub).success).toBe(true);
+  });
+
+  it("accepts an empty string — the field is optional and may stay blank", () => {
+    expect(
+      checkoutOrderSchema.safeParse({ ...ub, contactEmail: "" }).success,
+    ).toBe(true);
+  });
+
+  it("accepts a real address", () => {
+    expect(
+      checkoutOrderSchema.safeParse({ ...ub, contactEmail: "a@b.mn" }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a malformed address rather than silently dropping it", () => {
+    const r = checkoutOrderSchema.safeParse({
+      ...ub,
+      contactEmail: "not-mail",
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe("checkoutOrderSchema — requestId", () => {
+  const ub = { ...base, shipKhoroo: 12 };
+
+  it("is optional, so a client that sends none still orders", () => {
+    expect(checkoutOrderSchema.safeParse(ub).success).toBe(true);
+  });
+
+  it("accepts a uuid", () => {
+    const r = checkoutOrderSchema.safeParse({
+      ...ub,
+      requestId: "3f8a1d2e-9c4b-4a11-8f77-2b6d5e0c1a9f",
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects a non-uuid — a guessable key would let one customer's retry collide with another's order", () => {
+    const r = checkoutOrderSchema.safeParse({ ...ub, requestId: "abc" });
+    expect(r.success).toBe(false);
+  });
+});

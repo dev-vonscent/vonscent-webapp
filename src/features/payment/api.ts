@@ -54,8 +54,13 @@ const SELECT =
 const ITEM_SELECT =
   "product_id, product_name, brand, ml, qty, line_total, is_sample, collection_name";
 
-/** The order's lines, with a product image where the product still exists. */
-async function paymentLines(
+/**
+ * The order's lines, with a product image where the product still exists.
+ *
+ * Exported because `/order/[token]` (features/order-lookup) renders the same
+ * lines under the same privacy rule — one reader, one shape.
+ */
+export async function paymentLines(
   supabase: NonNullable<ReturnType<typeof createAdminClient>>,
   orderId: string,
 ): Promise<PaymentLine[]> {

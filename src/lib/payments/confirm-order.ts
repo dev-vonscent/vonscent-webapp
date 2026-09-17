@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { checkPayment } from "@/lib/payments/qpay";
+import type { QpayPaymentRow } from "@/lib/payments/qpay-types";
 import { readInvoice } from "@/lib/payments/invoice";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
@@ -70,12 +71,19 @@ async function loadOrder(
   return { ok: true, order: (data as OrderPaymentRow | null) ?? null };
 }
 
+/** Төлбөрийг хэн/юу баталсан — аудитын мөрөнд бичигдэнэ (0090). */
+export type PaidSource = "qpay" | "manual" | "mock";
+
 async function commit(
   supabase: SupabaseClient,
   order: OrderPaymentRow,
+  source: PaidSource = "qpay",
+  actor: string | null = null,
 ): Promise<ConfirmOrderResult> {
   const { error } = await callRpc(supabase, "mark_order_paid", {
     p_order: order.id,
+    p_by: actor,
+    p_source: source,
   });
   if (error) {
     // `mark_order_paid` (0073) refuses a cancelled order: its ml, points and
@@ -119,9 +127,16 @@ async function commit(
   return { ok: true };
 }
 
-/** Mark an order paid without asking QPay. Callers must be trusted. */
+/**
+ * Mark an order paid without asking QPay. Callers must be trusted.
+ *
+ * `source`/`actor` нь аудитын мөрд очно: QPay-ээс батлагдсан төлбөр ба
+ * ажилтны итгэл дээр тэмдэглэсэн төлбөр хоёр түүхэнд ялгарах ёстой (0090).
+ */
 export async function markOrderPaid(
   orderId: string,
+  source: PaidSource = "manual",
+  actor: string | null = null,
 ): Promise<ConfirmOrderResult> {
   if (!orderId) return { ok: false, error: "MISSING_ORDER" };
   const supabase = createAdminClient();
@@ -133,7 +148,7 @@ export async function markOrderPaid(
   if (loaded.order.payment_status === "paid") {
     return { ok: true, alreadyPaid: true };
   }
-  return commit(supabase, loaded.order);
+  return commit(supabase, loaded.order, source, actor);
 }
 
 /**
@@ -189,7 +204,134 @@ async function verify(
   const invoice = await readInvoice(supabase, order.id);
   const due = invoice?.amount ?? order.total;
   if (!check.paid || check.paidAmount < due) {
+    // Дутуу төлбөр нь «төлөөгүй»-ээс өөр: мөнгө ГАРСАН, гэхдээ захиалга
+    // баталгаажихгүй. Чимээгүй `NOT_PAID` буцаавал нөөц дуусаж, захиалга
+    // цуцлагдаж, хэн ч мөнгө орсныг мэдэхгүй үлдэнэ. Схемд «хэсэгчлэн
+    // төлөгдсөн» гэсэн төлөв байхгүй тул үүнийг хүний ажил болгож дуудна.
+    if (check.paidAmount > 0) {
+      await notifyPartial(supabase, order, check.paidAmount, due);
+    }
     return { ok: false, error: "NOT_PAID" };
   }
+  // Илүү төлөлт нь захиалгыг зогсоохгүй — мөнгө бүрэн ирсэн тул баталгаажина,
+  // харин зөрүүг буцаах нь мөн хүний ажил.
+  if (check.paidAmount > due) {
+    await notifyOverpaid(supabase, order, check.paidAmount, due);
+  }
+  // Гүйлгээний баримтыг commit-оос ӨМНӨ бичнэ: `commit` нь имэйл, Telegram,
+  // оноо зэрэг олон зүйл хийдэг бөгөөд тэдний аль нэг нь унасан ч мөнгө
+  // хаанаас ирснийг мөрдөх боломжтой байх ёстой.
+  await recordPayments(supabase, order.id, check.rows);
   return commit(supabase, order);
+}
+
+/**
+ * QPay-ийн PAID гүйлгээний мөрүүдийг хадгална (`qpay_payments`, 0089).
+ *
+ * `checkPayment` нь өмнө нь эдгээрийг нийлбэр болгоод хаядаг байсан тул
+ * маргаантай төлбөрийг банкны хуулгатай тулгах түлхүүр үлддэггүй байв.
+ *
+ * `upsert`: энэ зам нь callback, хуудасны poller, tулгалтын cron гурваас
+ * дуудагдах тул ижил гүйлгээ олон удаа ирнэ. `qpay_payment_id` нь primary
+ * key учир давхардал үүсэхгүй.
+ *
+ * Best-effort: бичилт унасан ч төлбөрийн баталгаажуулалтыг зогсоохгүй —
+ * мөнгө аль хэдийн ирсэн, захиалга батлагдах нь чухал.
+ */
+async function recordPayments(
+  supabase: SupabaseClient,
+  orderId: string,
+  rows: QpayPaymentRow[],
+): Promise<void> {
+  if (rows.length === 0) return;
+  const values = rows
+    .filter((r) => r.payment_id)
+    .map((r) => ({
+      qpay_payment_id: String(r.payment_id),
+      order_id: orderId,
+      // Мөнгө integer ₮ — QPay "10.00" гэж мөрөөр илгээдэг тул дугуйлна.
+      amount: Math.round(Number(r.payment_amount ?? 0)),
+      currency: r.payment_currency ?? null,
+      paid_at: r.payment_date ?? null,
+      wallet: r.payment_wallet ?? null,
+      raw: r,
+    }));
+  if (values.length === 0) return;
+  await supabase
+    .from("qpay_payments")
+    .upsert(values, { onConflict: "qpay_payment_id" });
+}
+
+/**
+ * Дутуу төлбөр. `admin_notifications` нь удаан эдэлгээтэй суваг (админы
+ * хонх), Telegram нь best-effort. Дохиог нэг захиалгад нэг л удаа бичнэ —
+ * poller болон tулгалтын cron энэ замыг олон дахин туулна.
+ */
+async function notifyPartial(
+  supabase: SupabaseClient,
+  order: OrderPaymentRow,
+  paid: number,
+  due: number,
+): Promise<void> {
+  const inserted = await insertOnce(
+    supabase,
+    order.id,
+    "partial_payment",
+    `${order.order_no} захиалгад ${formatPrice(paid)} орж ирсэн ч ` +
+      `${formatPrice(due)} шаардлагатай. Захиалга баталгаажаагүй — ` +
+      `хэрэглэгчтэй холбогдож үлдэгдлийг нь авах эсвэл мөнгийг буцаана уу.`,
+  );
+  if (!inserted) return;
+  await notifyAdmin(
+    `⚠️ <b>Дутуу төлбөр</b> — ${tgEscape(order.order_no)}\n` +
+      `💰 ${formatPrice(paid)} / ${formatPrice(due)}\n` +
+      `🔗 ${env.siteUrl}/admin/orders/${order.id}`,
+  );
+}
+
+/** Илүү төлөлт — захиалга баталгаажсан ч зөрүүг буцаах хэрэгтэй. */
+async function notifyOverpaid(
+  supabase: SupabaseClient,
+  order: OrderPaymentRow,
+  paid: number,
+  due: number,
+): Promise<void> {
+  const inserted = await insertOnce(
+    supabase,
+    order.id,
+    "overpayment",
+    `${order.order_no} захиалгад ${formatPrice(paid)} орж ирсэн ч ` +
+      `${formatPrice(due)} шаардлагатай байсан. Илүү гарсан ` +
+      `${formatPrice(paid - due)}-г хэрэглэгчид буцаана уу.`,
+  );
+  if (!inserted) return;
+  await notifyAdmin(
+    `⚠️ <b>Илүү төлөлт</b> — ${tgEscape(order.order_no)}\n` +
+      `💰 ${formatPrice(paid)} / ${formatPrice(due)}\n` +
+      `🔗 ${env.siteUrl}/admin/orders/${order.id}`,
+  );
+}
+
+/**
+ * Нэг захиалга + нэг төрөлд нэг мэдэгдэл. Энэ замыг poller (15 секунд тутам)
+ * ба tулгалтын cron (5 минут тутам) хоёр давтдаг тул хамгаалалтгүй бол
+ * админы хонх нэг захиалгын улмаас хэдэн зуун мөрөөр дүүрнэ.
+ */
+async function insertOnce(
+  supabase: SupabaseClient,
+  orderId: string,
+  kind: string,
+  message: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("admin_notifications")
+    .select("id")
+    .eq("order_id", orderId)
+    .eq("kind", kind)
+    .maybeSingle();
+  if (data) return false;
+  await supabase
+    .from("admin_notifications")
+    .insert({ kind, order_id: orderId, message });
+  return true;
 }

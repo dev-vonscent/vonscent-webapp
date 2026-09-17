@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import {
   Check,
@@ -15,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/format";
 import { trackPurchase } from "@/lib/analytics";
-import { BANK_TRANSFER } from "@/lib/constants";
+import { BANK_TRANSFER, RESERVE_TIMEOUT_MINUTES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import {
   DISPATCH_HOUR,
@@ -72,8 +73,21 @@ function useMediaQuery(query: string, serverValue: boolean): boolean {
 
 /** Cheap poll of `orders.payment_status` — what the QPay callback writes. */
 const POLL_MS = 3_000;
-/** Every Nth poll asks QPay directly, so a lost callback still resolves. */
-const VERIFY_EVERY = 5;
+/**
+ * Every Nth poll asks QPay directly, so a lost callback still resolves.
+ *
+ * 5 (15 сек) байсныг 20 (60 сек) болгов. QPay-ийн баримт гүйлгээг байнга
+ * шалгахыг зөвлөдөггүй, харин callback хүлээж аваад шалгахыг заадаг —
+ * 15 секунд тутмын шалгалт нь нэг нээлттэй хуудсанд 20 минутын турш ~80
+ * `payment/check` дуудлага үүсгэж байв.
+ *
+ * UX-д бараг нөлөөгүй: хэвийн урсгалд callback хэдхэн секундэд ирж,
+ * 3 секундын хямд DB шалгалт түүнийг шууд барина. `verify` нь зөвхөн
+ * callback АЛДАГДСАН үеийн аюулгүйн тор — тэр тохиолдолд ч аппаас буцаж
+ * ирэхэд (`visibilitychange`) шууд нэг шалгалт явдаг, дээр нь «Төлбөр
+ * шалгах» товч хэрэглэгчийн гарт байна.
+ */
+const VERIFY_EVERY = 20;
 /** Stop polling eventually; the reserve hold is long gone by then. */
 const POLL_TIMEOUT_MS = 20 * 60_000;
 
@@ -100,6 +114,12 @@ export function PaymentPanel({
   const [deliverOn, setDeliverOn] = React.useState(view.deliverOn);
   const [checking, setChecking] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  /**
+   * Автомат шалгалт зогссон (`POLL_TIMEOUT_MS`). Гараар шалгах товч ажилласаар
+   * байгаа ч тэр нь ОДОО цорын ганц ажиллаж буй зам болсныг хэлэх ёстой.
+   */
+  const [stale, setStale] = React.useState(false);
+  const router = useRouter();
 
   const isQpay = view.paymentMethod === "qpay";
   const waiting = !paid && !cancelled;
@@ -153,10 +173,19 @@ export function PaymentPanel({
       timer = undefined;
     };
 
+    // Хугацаа дуусахад ЗӨВХӨН зогсоох нь хангалтгүй байв: «Төлбөр хүлээгдэж
+    // байна» гэсэн цохилж буй тэмдэг мөнхөд үлдэж, автомат шалгалт аль хэдийн
+    // үхсэнийг хэн ч мэдэхгүй. Амьд мэт харагддаг үхсэн индикатор нь
+    // индикатор огт байхгүйгээс дор.
+    const halt = () => {
+      stop();
+      setStale(true);
+    };
+
     const start = () => {
       if (timer !== undefined || expired()) return;
       timer = window.setInterval(async () => {
-        if (expired()) return stop();
+        if (expired()) return halt();
         ticks += 1;
         try {
           if (await check(ticks % VERIFY_EVERY === 0)) stop();
@@ -168,7 +197,7 @@ export function PaymentPanel({
 
     const onVisibility = () => {
       if (document.visibilityState === "hidden") return stop();
-      if (expired()) return;
+      if (expired()) return halt();
       // Буцаж ирэхэд interval-ийн дараагийн тэмдэглэгээг хүлээлгүй шалгана —
       // хамгийн магадлалтай нь апп руу очоод төлчихөөд буцаж ирсэн байх.
       check(true)
@@ -197,6 +226,15 @@ export function PaymentPanel({
     }
     trackPurchase(view.orderNo, [], view.total);
   }, [paid, view.orderNo, view.total]);
+
+  /**
+   * Invoice үүсээгүй үед сэргээх зам. Серверийг дахин ажиллуулна —
+   * `getPaymentByToken` нь `ensureInvoice`-ыг дахин дуудна. Төлбөрийн төлөв
+   * асуух нь энд юу ч өгөхгүй: асуух invoice байхгүй.
+   */
+  function onRetryInvoice() {
+    router.refresh();
+  }
 
   async function onManualCheck() {
     setChecking(true);
@@ -237,8 +275,9 @@ export function PaymentPanel({
     }
   }
 
-  if (cancelled) return <CancelledState />;
-  if (paid) return <PaidState view={view} deliverOn={deliverOn} />;
+  if (cancelled) return <CancelledState token={token} />;
+  if (paid)
+    return <PaidState view={view} deliverOn={deliverOn} token={token} />;
 
   // Хуудасны орох хөдөлгөөнийг `(shop)/template.tsx` аль хэдийн өгдөг
   // (`MotionConfig` + fade-up, route бүр дээр). Энд давтах нь ижил fade-up
@@ -268,7 +307,7 @@ export function PaymentPanel({
       */}
       <div className="md:col-start-1 md:row-start-1">
         <div className="flex justify-center md:justify-start">
-          <StatusPill />
+          <StatusPill stale={stale} />
         </div>
 
         {/* The amount is the page. Everything else is how to send it.
@@ -296,6 +335,17 @@ export function PaymentPanel({
             Тест горим — QR нь {formatPrice(testAmount)} нэхнэ, бүтэн дүнг биш.
           </p>
         )}
+
+        {/* Нөөцийн хугацааг ЭНД хэлнэ. Өмнө нь энэ дүрэм зөвхөн алдагдал
+            учирсан мөчид («нөөцийн хугацаа дууссан») задардаг байсан —
+            хэрэглэгч хэзээ ч урьдчилж сонсоогүй дүрмээр шийтгэгддэг байв.
+            Countdown биш өгүүлбэр: тоолуур нь хэрэггүй яаралтай байдал
+            үүсгэдэг бол өгүүлбэр нь шударга байдлыг сэргээхэд хангалттай. */}
+        {waiting && (
+          <p className="text-muted-foreground mt-4 text-center text-xs md:text-left">
+            Барааг тань {RESERVE_TIMEOUT_MINUTES} минут нөөцөлж байна.
+          </p>
+        )}
       </div>
 
       {/*
@@ -310,7 +360,9 @@ export function PaymentPanel({
             view={view}
             checking={checking}
             error={error}
+            stale={stale}
             onManualCheck={onManualCheck}
+            onRetryInvoice={onRetryInvoice}
             onMockConfirm={onMockConfirm}
           />
         ) : (
@@ -535,8 +587,24 @@ function RecapRow({
   );
 }
 
-/** Live "waiting" affordance — a soft pulse, not a spinner racing the clock. */
-function StatusPill() {
+/**
+ * Live "waiting" affordance — a soft pulse, not a spinner racing the clock.
+ *
+ * `stale` үед цохилтыг зогсооно. Автомат шалгалт үхсэн хойно ч цохилсоор
+ * байвал хуудас амьд юм шиг худал хэлж, хэрэглэгч хэзээ ч ирэхгүй хариуг
+ * хүлээнэ.
+ */
+function StatusPill({ stale }: { stale: boolean }) {
+  if (stale) {
+    return (
+      <div className="flex justify-center">
+        <span className="bg-card text-muted-foreground inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
+          <span className="bg-muted-foreground/60 size-1.5 rounded-full" />
+          Автомат шалгалт зогслоо
+        </span>
+      </div>
+    );
+  }
   return (
     <div className="flex justify-center">
       <span className="bg-card text-muted-foreground inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
@@ -550,17 +618,41 @@ function StatusPill() {
   );
 }
 
+/**
+ * Холбоо барих зам. Төлбөрийн хуудас нь урсгалын хамгийн түгшүүртэй дэлгэц
+ * атлаа өмнө нь хүнтэй холбогдох ямар ч гарцгүй байв — QPay унасан, эсвэл
+ * автомат шалгалт зогссон мөчид анхны худалдан авагч энэ дэлгүүр бодит эсэхийг
+ * шийддэг.
+ */
+function ContactLine() {
+  return (
+    <p className="text-muted-foreground text-center text-xs">
+      Асуудал гарвал{" "}
+      <Link href="/contact" className="hover:text-foreground underline">
+        бидэнтэй холбогдоно уу
+      </Link>
+      .
+    </p>
+  );
+}
+
 function QpaySection({
   view,
   checking,
   error,
+  stale,
   onManualCheck,
+  onRetryInvoice,
   onMockConfirm,
 }: {
   view: PaymentView;
   checking: boolean;
   error: string | null;
+  /** Автомат шалгалт зогссон эсэх — гараар шалгах товч үндсэн үйлдэл болно. */
+  stale: boolean;
   onManualCheck: () => void;
+  /** Invoice огт үүсээгүй үед хуудсыг дахин ачаалж `ensureInvoice`-ыг давтана. */
+  onRetryInvoice: () => void;
   onMockConfirm: () => void;
 }) {
   const invoice = view.invoice;
@@ -569,15 +661,20 @@ function QpaySection({
   const [qrOpen, setQrOpen] = React.useState(false);
 
   if (!invoice) {
+    // «Дахин оролдох» нь ӨМНӨ нь `onManualCheck`-ыг дууддаг байсан — тэр нь
+    // төлбөрийн төлөв асуудаг, invoice үүсгэдэггүй. Invoice байхгүй үед
+    // төлөв асуух нь утгагүй: хэрэгтэй зүйл нь серверийг дахин ажиллуулж
+    // `ensureInvoice`-ыг давтуулах явдал.
     return (
       <div className="space-y-3 py-5 md:p-5">
         <p className="bg-destructive/10 text-destructive rounded-md px-3 py-2 text-sm">
           QPay-тэй холбогдож чадсангүй. Захиалга тань нөөцлөгдсөн хэвээр байгаа
           — дахин оролдоно уу.
         </p>
-        <Button variant="secondary" className="w-full" onClick={onManualCheck}>
+        <Button className="w-full" size="lg" onClick={onRetryInvoice}>
           <RefreshCw className="size-4" /> Дахин оролдох
         </Button>
+        <ContactLine />
       </div>
     );
   }
@@ -704,8 +801,18 @@ function QpaySection({
           </Button>
         ) : (
           <>
+            {/* Автомат шалгалт зогссон бол энэ товч нь цорын ганц ажиллаж буй
+                зам болно — тиймээс хоёрдогчоос үндсэн болж, дээр нь юу
+                болсныг нэг мөрөөр хэлнэ. */}
+            {stale && (
+              <p className="text-muted-foreground text-xs">
+                Автомат шалгалт зогслоо. Төлбөрөө хийсэн бол доорх товчийг дарж
+                шалгуулна уу.
+              </p>
+            )}
             <Button
-              variant="secondary"
+              variant={stale ? "default" : "secondary"}
+              size={stale ? "lg" : "default"}
               className="w-full"
               disabled={checking}
               onClick={onManualCheck}
@@ -720,6 +827,7 @@ function QpaySection({
                 </>
               )}
             </Button>
+            {stale && <ContactLine />}
           </>
         )}
       </div>
@@ -749,10 +857,13 @@ function BankTransfer({ orderNo }: { orderNo: string }) {
 function PaidState({
   view,
   deliverOn,
+  token,
 }: {
   view: PaymentView;
   /** Төлбөр батлагдсаны дараах хүргэх өдөр — сервер ахиулсан байж мэднэ. */
   deliverOn: string | null;
+  /** Захиалгын нийтийн хуудас руу — зочин `/account/orders` руу орж чадахгүй. */
+  token: string;
 }) {
   // Хуудасны орох fade-up-ыг `(shop)/template.tsx` өгдөг тул энд давтахгүй —
   // тэмдэг дээрх scale-in л үлдэнэ: төлбөр батлагдсан мөч бол энэ урсгалын
@@ -789,7 +900,7 @@ function PaidState({
         </p>
         <p className="text-muted-foreground mt-2 text-xs">
           Тэр өдрийн өглөөний {ORDER_EDIT_CUTOFF_HOUR}:00 цаг хүртэл цуцлах
-          боломжтой. Захиалгын явцыг «Захиалгаа хянах» хэсгээс харна.
+          боломжтой. Захиалгын явцыг «Захиалгаа харах» хэсгээс хянана.
         </p>
 
         {/* Захиалга цуцлагдаж болох хугацаанд оноо түгжээтэй байдаг
@@ -810,7 +921,7 @@ function PaidState({
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">
         <Button asChild variant="secondary" className="flex-1">
-          <Link href="/account/orders">Захиалгаа хянах</Link>
+          <Link href={`/order/${token}`}>Захиалгаа харах</Link>
         </Button>
         <Button asChild className="flex-1">
           <Link href="/catalog">Дэлгүүр үзэх</Link>
@@ -820,7 +931,18 @@ function PaidState({
   );
 }
 
-function CancelledState() {
+/**
+ * Захиалга цуцлагдсан.
+ *
+ * Шалтгааныг ЭНД БҮҮ НЭРЛЭ. Энэ бүрэлдэхүүн нь `status === 'cancelled'`
+ * гэдгийг л мэднэ — тэр нь нөөцийн хугацаа дуусснаас (`release_expired_
+ * reserves`), хэрэглэгч өөрөө цуцалснаас, эсвэл операторын шийдвэрээс аль нь
+ * ч байж болно. Өмнө нь «Төлбөр хийгдээгүй ТУЛ нөөцийн хугацаа дууссан» гэж
+ * бичдэг байсан нь оператор гараар цуцалсан үед хэрэглэгчийг буруутгаж,
+ * итгэлтэйгээр буруу тайлбарладаг байв. Жинхэнэ шалтгаан нь захиалгын
+ * түүхэнд бичигдсэн — `/order/<token>` түүнийг харуулна.
+ */
+function CancelledState({ token }: { token: string }) {
   return (
     <div className="mx-auto max-w-lg px-4 py-16 text-center md:py-24">
       <span className="bg-destructive/10 text-destructive mx-auto flex size-16 items-center justify-center rounded-full">
@@ -830,12 +952,12 @@ function CancelledState() {
         Захиалга цуцлагдсан
       </h1>
       <p className="text-muted-foreground mt-2">
-        Төлбөр хийгдээгүй тул нөөцийн хугацаа дууссан байна. Барааг дахин
-        сагслаад захиалаарай.
+        Энэ захиалга цуцлагдсан тул төлбөр хийх боломжгүй. Шалтгааныг захиалгын
+        явцаас харна уу — тодорхойгүй бол бидэнтэй холбогдоорой.
       </p>
       <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
         <Button asChild variant="secondary">
-          <Link href="/account/orders">Захиалгаа хянах</Link>
+          <Link href={`/order/${token}`}>Захиалгаа харах</Link>
         </Button>
         <Button asChild>
           <Link href="/catalog">Дэлгүүр үзэх</Link>

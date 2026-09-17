@@ -3,6 +3,7 @@ import { z } from "zod";
 import { orderIdForToken } from "@/features/payment/api";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAndMarkOrderPaid } from "@/lib/payments/confirm-order";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 /**
  * Payment status for the `/pay/[token]` poller.
@@ -39,6 +40,12 @@ export async function GET(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "MISSING_TOKEN" }, { status: 400 });
   }
+
+  // `verify=1` нь QPay руу гадагш дуудлага хийдэг тул токен барьсан хүн ч
+  // хязгааргүй байж болохгүй — хуудас өөрөө 3 секунд тутам асуудаг учир
+  // хязгаар нь тэрнээс өгөөмөр (constants.ts → RATE_LIMITS.paymentStatus).
+  const limited = await enforceRateLimit("paymentStatus", req);
+  if (limited) return limited;
 
   const supabase = createAdminClient();
   if (!supabase) return NextResponse.json({ paid: false, demo: true });

@@ -5,6 +5,8 @@ import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
+import { verifyAndMarkOrderPaid } from "@/lib/payments/confirm-order";
+import { cancelOrderInvoice } from "@/lib/payments/cancel-invoice";
 import { ORDER_STATUSES, type OrderStatus } from "@/lib/constants";
 
 const schema = z.object({
@@ -12,6 +14,8 @@ const schema = z.object({
   note: z.string().max(300).optional(),
   paid: z.boolean().optional(),
   refund: z.boolean().optional(),
+  /** QPay-ээс дахин асууж баталгаажуулах (гараар тэмдэглэхээс өөр). */
+  recheck: z.boolean().optional(),
 });
 
 /**
@@ -56,6 +60,27 @@ export async function POST(
   const supabase = createAdminClient();
   if (!supabase) return NextResponse.json({ error: "NO_DB" }, { status: 500 });
 
+  // QPay-ээс дахин шалгах. Энэ нь `paid`-аас ЗАРЧМЫН хувьд өөр: тэр нь
+  // ажилтны итгэл дээр бичдэг бол энэ нь QPay-ээс `payment/check`-ээр
+  // баталгаажуулдаг. Хэрэглэгч «би төлсөн» гэж залгахад операторын гарт
+  // байх ёстой цорын ганц зөв хэрэгсэл — өмнө нь зөвхөн хэрэглэгчийн
+  // өөрийнх нь төлбөрийн хуудасны poller энийг хийж чаддаг байв.
+  if (parsed.data.recheck) {
+    const result = await verifyAndMarkOrderPaid(id);
+    if (!result.ok) {
+      const status =
+        result.error === "ORDER_NOT_FOUND"
+          ? 404
+          : result.error === "ORDER_CANCELLED"
+            ? 409
+            : result.error === "NOT_PAID" || result.error === "NO_INVOICE"
+              ? 402
+              : 502;
+      return NextResponse.json({ error: result.error }, { status });
+    }
+    return NextResponse.json({ ok: true, alreadyPaid: result.alreadyPaid });
+  }
+
   if (parsed.data.paid) {
     // A cancelled order has already given its ml, points and coupon back —
     // marking it paid would resurrect it as `confirmed` and commit that ml a
@@ -70,8 +95,14 @@ export async function POST(
       return NextResponse.json({ error: "ORDER_CANCELLED" }, { status: 409 });
     }
     // Commit inventory + earn loyalty (idempotent).
+    //
+    // `p_source: "manual"` нь чухал: энэ зам нь QPay-ээс ЮУ Ч асуудаггүй,
+    // ажилтны итгэл дээр мөнгө орсон гэж бичдэг. Аудитын мөрөнд автомат
+    // баталгаажуулалтаас ялгарч харагдах ёстой (0090).
     const { error } = await callRpc(supabase, "mark_order_paid", {
       p_order: id,
+      p_by: staff.id,
+      p_source: "manual",
     });
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -124,6 +155,9 @@ export async function POST(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     if (next === "cancelled") {
+      // Мөн QPay-ийн invoice-ыг хаана: нээлттэй үлдсэн QR цуцлагдсан
+      // захиалгад төлбөр оруулж, гараар буцаах ажил үүсгэдэг.
+      await cancelOrderInvoice(id);
       await sendOrderCustomerEmail(id, "cancelled");
     }
   }
