@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createInvoice, toDataUrl } from "./qpay";
+import { createInvoice, isQpayMockMode, toDataUrl } from "./qpay";
 import type { QpayDeeplink } from "./qpay-types";
 import { env } from "@/lib/env";
 
@@ -66,7 +66,12 @@ export async function readInvoice(
     .select("invoice_id, qr_text, qr_image, short_url, deeplinks, amount")
     .eq("order_id", orderId)
     .maybeSingle();
-  return data ? fromRow(data as InvoiceRow) : null;
+  const row = data as Partial<InvoiceRow> | null;
+  // `invoice_id` NULL нь «эзэмшсэн боловч QPay хараахан хариулаагүй» (0086).
+  // Тийм мөрийг invoice гэж буцаавал `confirm-order` түүний `amount`-ыг
+  // тооцоонд авч, төлбөрийн хуудас хоосон QR зурна.
+  if (!row?.invoice_id || !row.qr_text) return null;
+  return fromRow(row as InvoiceRow);
 }
 
 /**
@@ -88,7 +93,70 @@ export function callbackUrlFor(orderNo: string): string {
     "",
   );
   const origin = base.replace(/\/api\/payments\/qpay\/webhook.*$/, "");
-  return `${origin}/api/payments/qpay/webhook?order=${encodeURIComponent(orderNo)}`;
+  // Нууц сегмент нь QPay-д үүсгэсэн invoice дотор л явна — хэрэглэгчийн
+  // browser-т хэзээ ч гарахгүй. QPay callback-даа гарын үсэг өгдөггүй тул
+  // дуудагчийг таних цорын ганц арга нь энэ (webhook/[secret]/route.ts).
+  const path = env.qpayCallbackSecret
+    ? `/api/payments/qpay/webhook/${encodeURIComponent(env.qpayCallbackSecret)}`
+    : "/api/payments/qpay/webhook";
+  return `${origin}${path}?order=${encodeURIComponent(orderNo)}`;
+}
+
+/** Эзэмшил хэр удаан «амьд» гэж тооцогдох вэ (QPay-ийн хариу + нөөц). */
+const STALE_CLAIM_MS = 60_000;
+/** Хожигдсон тал ялагчийг хэр удаан хүлээх вэ. */
+const WAIT_STEP_MS = 200;
+const WAIT_STEPS = 15;
+
+/**
+ * Мөрөө эзэмших оролдлого. `true` = энэ процесс QPay руу залгах эрхтэй.
+ *
+ * `order_id` primary key дээрх `on conflict do nothing` нь атомар: зэрэг
+ * дуудсан хэдэн ч процессоос яг нэг нь мөр оруулна.
+ *
+ * Хуучирсан эзэмшлийг булаана: QPay руу залгаж байгаад унасан процесс мөрөө
+ * дуусгалгүй үлдээвэл захиалга мөнхөд invoice-гүй болно.
+ */
+async function claim(
+  supabase: SupabaseClient,
+  orderId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("qpay_invoices")
+    .upsert(
+      { order_id: orderId, claimed_at: new Date().toISOString() },
+      { onConflict: "order_id", ignoreDuplicates: true },
+    )
+    .select("order_id");
+  if ((data as unknown[] | null)?.length) return true;
+
+  // Эзэмшил аль хэдийн байна. Хэт хуучирсан бөгөөд дуусаагүй бол булаана.
+  const cutoff = new Date(Date.now() - STALE_CLAIM_MS).toISOString();
+  const { data: stolen } = await supabase
+    .from("qpay_invoices")
+    .update({ claimed_at: new Date().toISOString() })
+    .eq("order_id", orderId)
+    .is("invoice_id", null)
+    .lt("claimed_at", cutoff)
+    .select("order_id");
+  return Boolean((stolen as unknown[] | null)?.length);
+}
+
+/**
+ * Ялагчийн бичихийг хүлээнэ. Богино polling — эзэмшигч нь ихэвчлэн нэг QPay
+ * дуудлагын зайд (1-2 секунд) дуусдаг. Амжихгүй бол `null`: төлбөрийн хуудас
+ * «QPay-тэй холбогдож чадсангүй · Дахин оролдох» гэж харуулна.
+ */
+async function waitForInvoice(
+  supabase: SupabaseClient,
+  orderId: string,
+): Promise<StoredInvoice | null> {
+  for (let i = 0; i < WAIT_STEPS; i += 1) {
+    await new Promise((r) => setTimeout(r, WAIT_STEP_MS));
+    const row = await readInvoice(supabase, orderId);
+    if (row) return row;
+  }
+  return null;
 }
 
 /**
@@ -111,12 +179,46 @@ export async function ensureInvoice(
   if (existing) return existing;
 
   const amount = await invoiceAmount(supabase, order);
+
+  // Mock invoice нь хадгалагддаггүй тул эзэмшлийн мөр ч хэрэггүй — эзэмшвэл
+  // дараа нь бодит invoice үүсэхэд саад болно.
+  if (isQpayMockMode()) {
+    const mock = await createInvoice({
+      orderNo: order.order_no,
+      amount,
+      callbackUrl: callbackUrlFor(order.order_no),
+    });
+    return mock
+      ? {
+          invoiceId: mock.invoiceId,
+          qrText: mock.qrText,
+          qrImage: mock.qrImage,
+          shortUrl: mock.shortUrl,
+          deeplinks: mock.deeplinks,
+          amount,
+        }
+      : null;
+  }
+
+  // QPay руу залгахаас ӨМНӨ мөрөө эзэмшинэ (0086). `order_id` нь primary key
+  // тул зэрэгцээ дуудагчдаас яг нэг нь ялна; хожигдсон нь QPay руу огт
+  // залгахгүй, ялагчийн бичихийг хүлээнэ. Ингэснээр нэг захиалгад хоёр бодит
+  // invoice үүсэх боломж хаагдана.
+  if (!(await claim(supabase, order.id))) {
+    return waitForInvoice(supabase, order.id);
+  }
+
   const invoice = await createInvoice({
     orderNo: order.order_no,
     amount,
     callbackUrl: callbackUrlFor(order.order_no),
   });
-  if (!invoice) return null;
+  if (!invoice) {
+    // Эзэмшлээ суллана — эс тэгвээс QPay-ийн түр доголдол энэ захиалгыг
+    // `STALE_CLAIM_MS` хүртэл invoice-гүй хорино.
+    await supabase.from("qpay_invoices").delete().eq("order_id", order.id);
+    return null;
+  }
 
   // Always answer in the stored shape, freshly created or not. Returning the
   // raw `QpayInvoice` here used to drop `amount`, and the payment page — which
@@ -131,14 +233,11 @@ export async function ensureInvoice(
     deeplinks: invoice.deeplinks,
     amount,
   };
-  // A mock invoice is deliberately not persisted, but still has to render.
-  if (invoice.mock) return normalised;
-
-  // `upsert` rather than `insert`: two tabs can race this, and losing the race
-  // must not surface as an error — both callers want the same invoice.
-  await supabase.from("qpay_invoices").upsert(
-    {
-      order_id: order.id,
+  // Эзэмшсэн мөрөө гүйцээнэ. `upsert` биш `update`: мөр аль хэдийн байгаа
+  // бөгөөд энэ процесс л түүнийг эзэмшсэн — өөр хэн ч бичихгүй.
+  await supabase
+    .from("qpay_invoices")
+    .update({
       invoice_id: invoice.invoiceId,
       qr_text: invoice.qrText,
       qr_image: toBareBase64(invoice.qrImage),
@@ -148,9 +247,8 @@ export async function ensureInvoice(
       // order total — see `invoiceAmount`. The payment check compares against
       // this, so it has to be the stored figure.
       amount,
-    },
-    { onConflict: "order_id" },
-  );
+    })
+    .eq("order_id", order.id);
   await supabase
     .from("orders")
     .update({ qpay_invoice_id: invoice.invoiceId })

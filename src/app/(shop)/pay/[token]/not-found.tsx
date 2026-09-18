@@ -27,17 +27,16 @@ export default function PayNotFound() {
       <h1 className="mt-4 text-2xl font-semibold">Төлбөрийн линк олдсонгүй</h1>
       <p className="text-muted-foreground mt-2 text-sm">
         Линк хугацаа нь дууссан эсвэл бүрэн хуулагдаагүй байж магадгүй.
-        Захиалгынхаа төлөвийг «Захиалгаа хянах» хэсгээс шалгаж, тэндээсээ
-        төлбөрөө хийх боломжтой.
+        Захиалгын дугаар, утсаараа хайгаад төлбөрөө тэндээсээ хийх боломжтой.
       </p>
       <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
         {/* `outline` нь хүрээгүй систем дээр `ghost`-той ялгарахгүй тул шинэ
             кодод хэрэглэхгүй (DESIGN.md → Components → Buttons). Хоёр гарцыг
             ялгах нь `secondary` vs `default`. */}
-        <Button asChild variant="secondary">
-          <Link href="/account/orders">Захиалгаа хянах</Link>
-        </Button>
         <Button asChild>
+          <Link href="/order/find">Захиалга хайх</Link>
+        </Button>
+        <Button asChild variant="secondary">
           <Link href="/contact">Бидэнтэй холбогдох</Link>
         </Button>
       </div>

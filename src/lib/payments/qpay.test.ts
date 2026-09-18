@@ -162,24 +162,58 @@ describe("checkPayment", () => {
       }),
     );
 
-    expect(await checkPayment("inv_1")).toEqual({
+    expect(await checkPayment("inv_1")).toMatchObject({
       paid: true,
       paidAmount: 80000,
     });
   });
 
+  it("keeps the PAID rows so a payment can be traced to a bank record", async () => {
+    // Нийлбэр ганцаараа хангалтгүй: маргаантай төлбөрийг банкны хуулгатай
+    // тулгах түлхүүр нь `payment_id`. Өмнө нь мөрүүд нийлбэр болоод алга
+    // болдог байсан (`qpay_payments`, 0089).
+    server.use(
+      qpayPaymentCheck({
+        count: 2,
+        rows: [
+          {
+            payment_id: "pay_a",
+            payment_status: "PAID",
+            payment_amount: "50000",
+            payment_wallet: "Khan bank",
+          },
+          {
+            payment_id: "pay_ref",
+            payment_status: "REFUNDED",
+            payment_amount: 99999,
+          },
+        ],
+      }),
+    );
+
+    const res = await checkPayment("inv_1");
+    expect(res?.rows.map((r) => r.payment_id)).toEqual(["pay_a"]);
+    expect(res?.rows[0]?.payment_wallet).toBe("Khan bank");
+  });
+
   it("falls back to paid_amount when rows are absent", async () => {
     server.use(qpayPaymentCheck({ count: 1, paid_amount: 120000 }));
 
-    expect(await checkPayment("inv_1")).toEqual({
+    expect(await checkPayment("inv_1")).toMatchObject({
       paid: true,
       paidAmount: 120000,
+      // Мөр байхгүй үед хоосон — `paid_amount` нь мөрийн задаргаа өгдөггүй.
+      rows: [],
     });
   });
 
   it("reports an unpaid invoice as not paid when paid_amount is missing", async () => {
     // The live API omits paid_amount entirely at count: 0 — the `?? 0` guard.
-    expect(await checkPayment("inv_1")).toEqual({ paid: false, paidAmount: 0 });
+    expect(await checkPayment("inv_1")).toMatchObject({
+      paid: false,
+      paidAmount: 0,
+      rows: [],
+    });
   });
 
   it("returns null (not verified) when the token request fails", async () => {

@@ -6,7 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/features/admin/components/data-table";
 import { formatPrice, formatDateTime } from "@/lib/format";
 import { deliveryDayOf, formatDeliveryDay } from "@/lib/time";
-import { ORDER_STATUS_LABEL } from "@/lib/constants";
+import {
+  ORDER_STATUS_LABEL,
+  PAYMENT_STATUS_LABEL,
+  type PaymentStatusValue,
+} from "@/lib/constants";
 import type { OrderRow } from "@/db/types";
 
 const columns: ColumnDef<OrderRow, unknown>[] = [
@@ -61,7 +65,9 @@ const columns: ColumnDef<OrderRow, unknown>[] = [
   {
     accessorKey: "payment_status",
     header: "Төлбөр",
-    cell: ({ getValue }) => <PaymentBadge status={getValue<string>()} />,
+    cell: ({ getValue }) => (
+      <PaymentBadge status={getValue<PaymentStatusValue>()} />
+    ),
   },
   {
     accessorKey: "status",
@@ -74,14 +80,10 @@ const columns: ColumnDef<OrderRow, unknown>[] = [
   },
 ];
 
-function PaymentBadge({ status }: { status: string }) {
+function PaymentBadge({ status }: { status: PaymentStatusValue }) {
   return (
     <Badge variant={status === "paid" ? "new" : "secondary"}>
-      {status === "paid"
-        ? "Төлсөн"
-        : status === "refunded"
-          ? "Буцаагдсан"
-          : "Төлөөгүй"}
+      {PAYMENT_STATUS_LABEL[status]}
     </Badge>
   );
 }

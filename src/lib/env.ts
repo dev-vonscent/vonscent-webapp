@@ -28,6 +28,27 @@ export const env = {
    */
   rateLimitSalt:
     process.env.RATE_LIMIT_SALT ?? process.env.AUTH_PASSCODE_PEPPER ?? "",
+
+  /**
+   * Vercel Cron-ийн нууц. `/api/cron/*` бүр үүнийг шалгана — cron route нь
+   * бүх төлөгдөөгүй захиалгыг QPay-ээс асуудаг тул нээлттэй байж болохгүй.
+   * Тавигдаагүй бол route нь өөрийгөө бүрэн хаана (503), эс тэгвээс нэг
+   * мартсан env нь эцэсгүй нээлттэй endpoint болно.
+   */
+  cronSecret: process.env.CRON_SECRET ?? "",
+
+  /**
+   * QPay-ийн callback замд шигтгэх нууц сегмент.
+   *
+   * QPay callback-даа **гарын үсэг өгдөггүй** (албан ёсны V2 баримт: ямар ч
+   * HMAC/signature/IP allowlist байхгүй; онбординг захидал нь «callback-аар
+   * хүлээн авсны дараа шалгаж баталгаажуулна уу» гэж заадаг). Тиймээс
+   * дуудагчийг таних цорын ганц арга бол хуваалцсан нууц.
+   *
+   * Тавигдаагүй үед хуучин нууцгүй зам ажилласаар байна — эс тэгвээс нэг
+   * мартсан env нь бүх төлбөрийн callback-ыг унагаана.
+   */
+  qpayCallbackSecret: process.env.QPAY_CALLBACK_SECRET ?? "",
 } as const;
 
 /** True when Supabase env is present — otherwise the app falls back to seed data. */

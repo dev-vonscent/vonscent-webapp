@@ -8,7 +8,11 @@ import { getOrderDetail } from "@/features/admin/api";
 import { getStaffUser } from "@/lib/auth/guard";
 import { formatPrice, formatDate } from "@/lib/format";
 import { deliveryDayOf, formatDeliveryDay } from "@/lib/time";
-import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/constants";
+import {
+  ORDER_STATUS_LABEL,
+  PAYMENT_STATUS_LABEL,
+  type OrderStatus,
+} from "@/lib/constants";
 import { OrderStatusControl } from "@/features/admin/components/order-status-control";
 
 const STATUS_VARIANT: Record<OrderStatus, "secondary" | "new" | "sale"> = {
@@ -30,7 +34,7 @@ export default async function AdminOrderDetail({
     getStaffUser(),
   ]);
   if (!detail) notFound();
-  const { order, items, history, customer } = detail;
+  const { order, items, history, customer, payments } = detail;
 
   return (
     <div className="space-y-6">
@@ -180,12 +184,30 @@ export default async function AdminOrderDetail({
               <Badge
                 variant={order.payment_status === "paid" ? "new" : "secondary"}
               >
-                {order.payment_status === "paid"
-                  ? "Төлсөн"
-                  : order.payment_status === "refunded"
-                    ? "Буцаагдсан"
-                    : "Төлөөгүй"}
+                {PAYMENT_STATUS_LABEL[order.payment_status]}
               </Badge>
+
+              {/* QPay-ийн гүйлгээ (0089). Буцаалт нь гараар хийгддэг —
+                  QPay-ийн refund API зөвхөн картын гүйлгээнд ажилладаг —
+                  тул оператор энэ дугаараар мерчант порталаас хайна.
+                  Мөн «би төлсөн» гэсэн маргааны цорын ганц нотолгоо. */}
+              {payments.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-muted-foreground text-xs">QPay гүйлгээ</p>
+                  {payments.map((pmt) => (
+                    <div key={pmt.qpay_payment_id} className="text-xs">
+                      <p className="font-mono break-all">
+                        {pmt.qpay_payment_id}
+                      </p>
+                      <p className="text-muted-foreground">
+                        {formatPrice(pmt.amount)}
+                        {pmt.wallet ? ` · ${pmt.wallet}` : ""}
+                        {pmt.paid_at ? ` · ${formatDate(pmt.paid_at)}` : ""}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -196,6 +218,7 @@ export default async function AdminOrderDetail({
                 orderId={order.id}
                 current={order.status}
                 paymentStatus={order.payment_status}
+                hasQpayInvoice={Boolean(order.qpay_invoice_id)}
                 canRecover={staff?.role === "super_admin"}
               />
             </CardContent>

@@ -17,7 +17,11 @@ import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
 import { getProductsByIds } from "@/features/products/api";
 import { formatPrice, formatDate } from "@/lib/format";
-import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/constants";
+import {
+  ORDER_STATUS_LABEL,
+  PAYMENT_STATUS_LABEL,
+  type OrderStatus,
+} from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { OrderRow } from "@/db/types";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -122,6 +126,12 @@ export default async function OrdersPage() {
             ? `${items[0].brand} ${items[0].product_name}`
             : "";
           const firstMl = items[0]?.ml;
+          // Мөнгө хүлээж буй захиалга. `pay_token` байхгүй (демо/хуучин мөр)
+          // бол төлөх зам ч байхгүй тул товчийг харуулахгүй.
+          const awaitingPayment =
+            o.payment_status === "unpaid" &&
+            o.status !== "cancelled" &&
+            Boolean(o.pay_token);
 
           return (
             <Card
@@ -129,7 +139,7 @@ export default async function OrdersPage() {
               className="group hover:border-gold-strong hover:shadow-lift overflow-hidden transition-all"
             >
               <Link href={`/account/orders/${o.id}`} className="block">
-                <CardContent className="p-5">
+                <CardContent className="p-5 pb-0">
                   {/* Header: order no + date · status */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -139,12 +149,27 @@ export default async function OrdersPage() {
                         {itemCount > 0 && ` · ${itemCount} ширхэг`}
                       </p>
                     </div>
-                    <Badge
-                      className={cn("shrink-0 gap-1", STATUS_STYLE[o.status])}
-                    >
-                      <StatusIcon className="size-3.5" />
-                      {ORDER_STATUS_LABEL[o.status]}
-                    </Badge>
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      <Badge className={cn("gap-1", STATUS_STYLE[o.status])}>
+                        <StatusIcon className="size-3.5" />
+                        {ORDER_STATUS_LABEL[o.status]}
+                      </Badge>
+                      {/* Төлбөрийн төлөв: «төлсөн pending» ба «төлөөгүй
+                          pending» хоёр өмнө нь ялгагдахгүй байв. */}
+                      {o.payment_status !== "paid" &&
+                        o.status !== "cancelled" && (
+                          <Badge
+                            className={cn(
+                              "gap-1",
+                              o.payment_status === "refunded"
+                                ? "bg-muted text-muted-foreground"
+                                : "bg-amber-500/15 text-amber-500",
+                            )}
+                          >
+                            {PAYMENT_STATUS_LABEL[o.payment_status]}
+                          </Badge>
+                        )}
+                    </div>
                   </div>
 
                   {/* Item thumbnails */}
@@ -198,24 +223,42 @@ export default async function OrdersPage() {
                   )}
 
                   {/* Progress stepper (hidden for cancelled orders) */}
-                  {o.status !== "cancelled" && <Stepper status={o.status} />}
-
-                  <Separator className="my-3" />
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-muted-foreground text-xs">Нийт дүн</p>
-                      <p className="text-lg font-semibold">
-                        {formatPrice(o.total)}
-                      </p>
-                    </div>
-                    <span className="text-muted-foreground group-hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors">
-                      Дэлгэрэнгүй
-                      <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-                    </span>
-                  </div>
+                  {o.status !== "cancelled" && (
+                    <Stepper
+                      status={o.status}
+                      paid={o.payment_status !== "unpaid"}
+                    />
+                  )}
                 </CardContent>
               </Link>
+
+              {/* Доод мөр нь картын линкээс ГАДУУР: төлбөрийн товч нь өөрөө
+                  линк тул үүрлэсэн <a> үүсгэхгүйн тулд. */}
+              <div className="px-5 pb-5">
+                <Separator className="my-3" />
+
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-muted-foreground text-xs">Нийт дүн</p>
+                    <p className="text-lg font-semibold">
+                      {formatPrice(o.total)}
+                    </p>
+                  </div>
+                  {awaitingPayment ? (
+                    <Button asChild size="lg" className="shrink-0">
+                      <Link href={`/pay/${o.pay_token}`}>Төлбөр төлөх</Link>
+                    </Button>
+                  ) : (
+                    <Link
+                      href={`/account/orders/${o.id}`}
+                      className="text-muted-foreground group-hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
+                    >
+                      Дэлгэрэнгүй
+                      <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                    </Link>
+                  )}
+                </div>
+              </div>
             </Card>
           );
         })}
@@ -249,9 +292,15 @@ function PageHeader({ count }: { count?: number }) {
   );
 }
 
-/** Compact 4-step fulfilment progress bar. */
-function Stepper({ status }: { status: OrderStatus }) {
-  const current = FLOW.findIndex((s) => s.status === status);
+/**
+ * Compact 4-step fulfilment progress bar.
+ *
+ * `paid` -г тусад нь авдаг шалтгаан: захиалга `pending` төлөвт мөнгө хүлээж
+ * байхад эхний алхмыг дүүргэвэл ахиц гарсан мэт харагдаж, төлбөр хүлээгдэж
+ * буйг нуудаг. Төлбөр батлагдаагүй бол нэг ч алхам дүүрэхгүй.
+ */
+function Stepper({ status, paid }: { status: OrderStatus; paid: boolean }) {
+  const current = paid ? FLOW.findIndex((s) => s.status === status) : -1;
   return (
     <div className="mt-4 flex items-center gap-1.5">
       {FLOW.map((step, i) => {

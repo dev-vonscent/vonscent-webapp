@@ -17,8 +17,49 @@ import { isQpayMockMode } from "@/lib/payments/qpay";
 import { ensureInvoice } from "@/lib/payments/invoice";
 import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
 import { formatPrice } from "@/lib/format";
+import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
 import { earliestDeliveryDay, latestDeliveryDay } from "@/lib/time";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import {
+  claimOrderRequest,
+  completeOrderRequest,
+  releaseOrderRequest,
+} from "@/lib/orders/idempotency";
+
+/**
+ * Давтагдсан идемпотентын түлхүүрийн хариу — анхны захиалгын хариуг сэргээнэ.
+ *
+ * Клиент энэ хоёрыг ялгаж мэдэхгүй байх ёстой: «дахин илгээх» нь анхны
+ * илгээлттэй яг ижил үр дүн өгнө. `summary` нь тэр хүсэлтийн серверийн
+ * тооцоо — дүн нь захиалгын мөрөөс уншигдана.
+ */
+async function describeExistingOrder(
+  supabase: NonNullable<ReturnType<typeof createAdminClient>>,
+  orderId: string,
+  summary: Awaited<ReturnType<typeof computeSummary>>,
+) {
+  const { data } = await supabase
+    .from("orders")
+    .select("order_no, total, payment_method, pay_token")
+    .eq("id", orderId)
+    .maybeSingle();
+  const order = data as {
+    order_no: string;
+    total: number;
+    payment_method: string;
+    pay_token: string | null;
+  } | null;
+  return {
+    orderNo: order?.order_no ?? "",
+    total: order?.total ?? summary.total,
+    paymentMethod: order?.payment_method ?? "qpay",
+    payToken: order?.pay_token ?? null,
+    summary,
+    qpayMock: isQpayMockMode(),
+    /** Клиентэд мэдээлэл болгож л явна — урсгал нь ижил. */
+    deduplicated: true,
+  };
+}
 
 /** Клиентээс ирсэн өдрийг [маргааш, маргааш+30] мужид оруулна. */
 function clampDeliveryDay(value: string | undefined): string {
@@ -86,6 +127,22 @@ export async function POST(req: Request) {
   }
 
   if (supabase) {
+    // Идемпотентын эзэмшил — нөөц түгжих, захиалга үүсгэх, QPay руу залгахаас
+    // БҮГДЭЭС нь өмнө. Сүлжээ тасарч хариу нь алдагдсан үед хэрэглэгч дахин
+    // илгээхэд шинэ захиалга үүсэхгүй, байгаагийнх нь дугаар буцна (0087).
+    if (input.requestId) {
+      const claim = await claimOrderRequest(supabase, input.requestId);
+      if (!claim.won) {
+        if (!claim.existingOrderId) {
+          // Ялагч амжаагүй. Давхар захиалга үүсгэхээс татгалзана.
+          return NextResponse.json({ error: "ORDER_PENDING" }, { status: 409 });
+        }
+        return NextResponse.json(
+          await describeExistingOrder(supabase, claim.existingOrderId, summary),
+        );
+      }
+    }
+
     // Бэлгийн 1мл дээж: эрх нь купоны дараах барааны дүнгийн 200,000₮ тутамд
     // 1, эсвэл preset 5/10/20мл багцын баталгаа — алийг нь ихийг нь (src/lib/
     // gift.ts). Тиймээс купоныг энд place_order-той ижил аргаар шалгаад
@@ -120,14 +177,13 @@ export async function POST(req: Request) {
         payment_method: input.paymentMethod,
         contact_name: input.contactName,
         contact_phone: input.contactPhone,
-        // `contact_email` -ийг цаашид БИЧИХГҮЙ: checkout-ийн имэйл талбар
-        // хасагдсан. Уншдаг газар нь админы захиалгын дэлгэрэнгүй дэх нэг
-        // мөр текст л байсан бөгөөд захиалгын имэйл нь энэ хаяг руу хэзээ ч
-        // явдаггүй — `sendOrderCustomerEmail` нь зөвхөн хэрэглэгч өөрөө
-        // бүртгүүлсэн `newsletter_subscribers.email` рүү илгээдэг. Өөрөөр
-        // хэлбэл зочны бичсэн хаяг хадгалагдаад ашиглагдахгүй байв.
-        // Багана нь хуучин захиалгуудын өгөгдөлтэй тул DB-д үлдэнэ; түлхүүр
-        // дамжуулахгүй бол `p_order->>'contact_email'` нь NULL болно.
+        // `contact_email` дахин бичигдэж эхэллээ. Өмнө нь хасагдсан шалтгаан
+        // нь «хадгалагдаад ашиглагддаггүй» байсан — `sendOrderCustomerEmail`
+        // зөвхөн `newsletter_subscribers.email` рүү илгээдэг байв. Одоо энэ
+        // хаяг нь зочны захиалгаа дахин олох гол зам: захиалгын дугаар ба
+        // төлбөрийн линк энд очно (`customer-email.ts`-ийн хүлээн авагчийн
+        // дараалал). Хоосон мөрийг NULL болгоно.
+        contact_email: input.contactEmail || null,
         ship_city: input.shipCity,
         ship_district: input.shipDistrict ?? null,
         ship_detail: input.shipDetail,
@@ -171,6 +227,9 @@ export async function POST(req: Request) {
     }>(supabase, "place_order", rpcArgs);
 
     if (error) {
+      // Захиалга үүсээгүй тул эзэмшлийг суллана — хэрэглэгч сагсаа засаад
+      // ижил түлхүүрээр дахин оролдох ёстой.
+      if (input.requestId) await releaseOrderRequest(supabase, input.requestId);
       const insufficient = error.message?.includes("INSUFFICIENT_STOCK");
       return NextResponse.json(
         { error: insufficient ? "OUT_OF_STOCK" : "ORDER_FAILED" },
@@ -208,6 +267,13 @@ export async function POST(req: Request) {
       user_id: string | null;
     } | null;
 
+    // Эзэмшлийг захиалгад холбоно — ижил түлхүүртэй хүлээж буй хүсэлт байвал
+    // яг энэ захиалгыг авна. Invoice үүсгэхээс өмнө: тэр нь QPay руу залгадаг
+    // тул удаан, харин хүлээгч талыг тэр болтол саатуулах шалтгаан байхгүй.
+    if (input.requestId && order) {
+      await completeOrderRequest(supabase, input.requestId, order.id);
+    }
+
     // Invoice creation goes through ensureInvoice so one order can never end
     // up with two live QPay invoices — QPay does not enforce
     // sender_invoice_no uniqueness (qpay/FINDINGS.md §2). If it fails here the
@@ -223,6 +289,11 @@ export async function POST(req: Request) {
 
     // Stock moved — refresh cached product pages so sold-out states stay honest.
     revalidatePublic();
+
+    // Захиалгын дугаар ба төлбөрийн линкийг хэрэглэгч рүү. Зочны хувьд энэ нь
+    // захиалгаа дахин олох цорын ганц шууд зам — `/pay/<token>`-оос гарчихвал
+    // өөр буцах хаалга байхгүй. Best-effort: имэйл унасан ч захиалга зогсохгүй.
+    if (order) await sendOrderCustomerEmail(order.id, "placed");
 
     // Best-effort admin ping (no-op until Telegram env is set).
     const itemList = allLines

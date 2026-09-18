@@ -6,6 +6,7 @@ import type {
   QpayDeeplink,
   QpayGetInvoiceResponse,
   QpayPaymentCheckResponse,
+  QpayPaymentRow,
   QpayTokenResponse,
 } from "./qpay-types";
 
@@ -363,6 +364,17 @@ export interface QpayPaymentCheck {
   paid: boolean;
   /** Sum of PAID rows, in ₮. */
   paidAmount: number;
+  /**
+   * The PAID rows themselves.
+   *
+   * Өмнө нь энэ функц мөрүүдийг нийлбэр болгоод хаядаг байсан бөгөөд тэр
+   * нийлбэрээс өөр юу ч үлддэггүй байв. Үүний үр дүнд маргаантай төлбөрийг
+   * банкны хуулгатай тулгах түлхүүр байхгүй: `orders.qpay_invoice_id` нь
+   * INVOICE-ийн дугаар, гүйлгээнийх биш. QPay-ийн `payment_id` нь буцаалт,
+   * тулгалт, дэмжлэгийн ярианы цорын ганц нийтлэг лавлагаа тул хадгална
+   * (`qpay_payments`, 0089).
+   */
+  rows: QpayPaymentRow[];
 }
 
 /**
@@ -391,11 +403,14 @@ export async function checkPayment(
   }
 
   // Only PAID rows are money in — a REFUNDED row carries a positive amount too.
-  const rowSum = (data.rows ?? [])
-    .filter((r) => r.payment_status === "PAID")
-    .reduce((sum, r) => sum + Number(r.payment_amount ?? 0), 0);
+  // (QPay-ийн `payment_status` нь NEW | FAILED | PAID | REFUNDED.)
+  const paidRows = (data.rows ?? []).filter((r) => r.payment_status === "PAID");
+  const rowSum = paidRows.reduce(
+    (sum, r) => sum + Number(r.payment_amount ?? 0),
+    0,
+  );
   // `paid_amount` is absent (not 0) on an unpaid invoice, hence the `?? 0`.
   const paidAmount = rowSum > 0 ? rowSum : Number(data.paid_amount ?? 0);
 
-  return { paid: paidAmount > 0, paidAmount };
+  return { paid: paidAmount > 0, paidAmount, rows: paidRows };
 }

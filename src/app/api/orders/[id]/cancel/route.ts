@@ -4,6 +4,7 @@ import { env, isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
+import { cancelOrderInvoice } from "@/lib/payments/cancel-invoice";
 import { isOrderEditable } from "@/lib/time";
 import { sendEmail, STORE_INBOX, renderEmail } from "@/lib/email";
 import { formatPrice } from "@/lib/format";
@@ -56,7 +57,13 @@ export async function POST(
     return NextResponse.json({ error: "PAST_CUTOFF" }, { status: 409 });
   }
 
-  const admin = createAdminClient() ?? supabase;
+  // Сесийн клиент рүү унахгүй. `update_order_status` нь мл, оноо, купоныг
+  // буцаадаг тул 0088-аас хойш `anon`/`authenticated`-д хаалттай — fallback
+  // нь ажиллахаа больсон бөгөөд чимээгүй амжилтгүй болохоос ил алдаа дээр.
+  const admin = createAdminClient();
+  if (!admin) {
+    return NextResponse.json({ error: "NO_DB" }, { status: 500 });
+  }
   const { error: cancelError } = await callRpc(admin, "update_order_status", {
     p_order: id,
     p_status: "cancelled",
@@ -67,6 +74,10 @@ export async function POST(
   if (cancelError) {
     return NextResponse.json({ error: "CANCEL_FAILED" }, { status: 500 });
   }
+
+  // QPay-ийн invoice-ыг ч хаана — эс тэгвээс утсан дээр нээлттэй үлдсэн QR
+  // цуцлагдсан захиалгад төлбөр оруулж, гараар буцаах ажил үүсгэнэ.
+  await cancelOrderInvoice(id);
 
   // The DB trigger (0032) already dropped an admin_notifications row; the
   // email is a best-effort extra channel so the admin hears about it fast
