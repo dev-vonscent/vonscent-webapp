@@ -15,8 +15,9 @@ Supabase (Postgres/Auth/Storage) · TanStack Query · Zustand · Zod · QPay · 
 
 ```bash
 pnpm install
-cp .env.example .env.local   # түлхүүрүүдийг бөглөнө
-pnpm dev                     # http://localhost:3000
+cp .env.example .env.dev    # dev сангийн түлхүүрүүдийг бөглөнө
+ln -s .env.dev .env.local   # Next.js `.env.local`-ийг л уншина (доор үз)
+pnpm dev                    # http://localhost:3000
 ```
 
 > Supabase холбогдоогүй үед апп **seed дата (demo)**-аар бүрэн ажиллана.
@@ -40,7 +41,12 @@ pnpm dev                     # http://localhost:3000
 Локалд:
 
 ```bash
-cp .env.example .env.local
+cp .env.example .env.dev     # dev (preview) сан
+cp .env.example .env.prod    # production сан
+
+# Next.js нь `.env.dev`-ийг ОГТ уншдаггүй — зөвхөн `.env.local`,
+# `.env.development`, `.env`-ийг хайдаг. Тиймээс symlink-ээр холбоно:
+ln -s .env.dev .env.local
 ```
 
 ### Production ба Preview нь ӨӨР Supabase project
@@ -49,10 +55,10 @@ cp .env.example .env.local
 хэрэглэгчийн дата** дээр ажиллана. Vercel дээр дараах байдлаар тохируулна
 (Project → Settings → Environment Variables, хувьсагч бүрт scope сонгоно):
 
-| Scope | Утга |
-| ----- | ---- |
-| **Production** | `main` салбарын deploy |
-| **Preview** | PR / бусад салбарын deploy |
+| Scope           | Утга                                    |
+| --------------- | --------------------------------------- |
+| **Production**  | `main` салбарын deploy                  |
+| **Preview**     | PR / бусад салбарын deploy              |
 | **Development** | `vercel dev` (энэ репод ашиглагддаггүй) |
 
 ### Хувьсагчийн scope-ийн хүснэгт
@@ -60,26 +66,26 @@ cp .env.example .env.local
 **Production ба Preview-д ӨӨР утгатай байх ёстой** — эдгээрийг хоёр scope-д
 тус тусад нь, өөр утгаар нэмнэ:
 
-| Хувьсагч | Яагаад өөр байх ёстой вэ |
-| -------- | ------------------------ |
-| `NEXT_PUBLIC_SUPABASE_URL` | Өөр project ref |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Project бүр өөрийн түлхүүртэй |
-| `SUPABASE_SERVICE_ROLE_KEY` | Мөн адил. ⛔ server-only |
-| `NEXT_PUBLIC_SITE_URL` | Prod: `https://vonscent.mn` · Preview: preview домэйн |
-| `AUTH_PASSCODE_PEPPER` | Ижил байвал нэг орчны passcode hash нөгөөд хүчинтэй болно |
-| `QPAY_MOCK` | Prod: `false` · **Preview: `true`** (жинхэнэ мөнгө татахаас сэргийлнэ) |
-| `VERIFY_MN_API_KEY` | SMS квот, лог хоёр орчинд хольж болохгүй |
+| Хувьсагч                        | Яагаад өөр байх ёстой вэ                                               |
+| ------------------------------- | ---------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Өөр project ref                                                        |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Project бүр өөрийн түлхүүртэй                                          |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Мөн адил. ⛔ server-only                                               |
+| `NEXT_PUBLIC_SITE_URL`          | Prod: `https://vonscent.mn` · Preview: preview домэйн                  |
+| `AUTH_PASSCODE_PEPPER`          | Ижил байвал нэг орчны passcode hash нөгөөд хүчинтэй болно              |
+| `QPAY_MOCK`                     | Prod: `false` · **Preview: `true`** (жинхэнэ мөнгө татахаас сэргийлнэ) |
+| `VERIFY_MN_API_KEY`             | SMS квот, лог хоёр орчинд хольж болохгүй                               |
 
 **Зөвхөн Production-д** (Preview-д хоосон орхино — тэгвэл тухайн боломж
 автоматаар унтарч, гаднах сервис рүү санамсаргүй хүсэлт явахгүй):
 
-| Хувьсагч | Preview-д хоосон орхивол |
-| -------- | ------------------------ |
-| `RESEND_API_KEY`, `EMAIL_FROM`, `STORE_INBOX_EMAIL` | Тест захиалга жинхэнэ хүн рүү и-мэйл илгээхгүй |
-| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID` | Ажилтны чат тест мэдэгдлээр дүүрэхгүй |
-| `NEXT_PUBLIC_GA_ID`, `NEXT_PUBLIC_META_PIXEL_ID` | Тест трафик аналитикийг бохирдуулахгүй |
-| `OPENAI_API_KEY` | Санамсаргүй зарцуулалт гарахгүй |
-| `QPAY_USERNAME`, `QPAY_PASSWORD`, `QPAY_INVOICE_CODE` | QPay автоматаар mock болно |
+| Хувьсагч                                              | Preview-д хоосон орхивол                       |
+| ----------------------------------------------------- | ---------------------------------------------- |
+| `RESEND_API_KEY`, `EMAIL_FROM`, `STORE_INBOX_EMAIL`   | Тест захиалга жинхэнэ хүн рүү и-мэйл илгээхгүй |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`        | Ажилтны чат тест мэдэгдлээр дүүрэхгүй          |
+| `NEXT_PUBLIC_GA_ID`, `NEXT_PUBLIC_META_PIXEL_ID`      | Тест трафик аналитикийг бохирдуулахгүй         |
+| `OPENAI_API_KEY`                                      | Санамсаргүй зарцуулалт гарахгүй                |
+| `QPAY_USERNAME`, `QPAY_PASSWORD`, `QPAY_INVOICE_CODE` | QPay автоматаар mock болно                     |
 
 **Хоёр scope-д ижил утгатай:** `NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET`,
 `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`.
@@ -104,7 +110,8 @@ SQL migration-ууд [`supabase/migrations/`](./supabase/migrations)-д, дуг�
 зөрчилдөнө.
 
 ```bash
-pnpm db:migrate    # .env.local-ийн DATABASE_URL руу шинэ migration хэрэгжүүлнэ
+pnpm db:migrate-dev   # .env.dev  → dev (preview) сан
+pnpm db:migrate-prod  # .env.prod → production сан
 pnpm db:seed-sql   # supabase/seed.sql (preview/local туршилтын дата)
 pnpm db:seed       # каталогийн seed дата TS-ээр (scripts/seed.ts)
 pnpm db:backup     # public схемийг файл болгож хуулна
@@ -116,7 +123,7 @@ pnpm db:types      # TS төрөл (зөвхөн local Supabase дээр)
 Өөр орчин руу хэрэгжүүлэхдээ env файлаа солино:
 
 ```bash
-node --env-file=.env.von.dev --import tsx scripts/migrate.ts   # preview
+pnpm db:migrate-dev    # = node --env-file=.env.dev … scripts/migrate.ts
 ```
 
 Migration нь идемпотент (`if not exists` / `on conflict do nothing`), файл бүр
@@ -125,7 +132,7 @@ Migration нь идемпотент (`if not exists` / `on conflict do nothing`)
 ### Preview сан руу туршилтын дата
 
 ```bash
-node --env-file=.env.von.dev --import tsx scripts/seed-sql.ts
+pnpm db:seed-sql       # .env.dev руу л ажиллана (prod-д guard зогсооно)
 ```
 
 [`supabase/seed.sql`](./supabase/seed.sql) нь бүхэлдээ **хиймэл** дата: 4 брэнд,
@@ -173,7 +180,7 @@ prod-д ажилласан, шинэ санд ажиллахгүй зөрүү ү
 **5. PR бүр preview дээр эхлээд хэрэгжинэ.**
 
 ```bash
-node --env-file=.env.von.dev --import tsx scripts/migrate.ts
+pnpm db:migrate-dev
 pnpm typecheck && pnpm lint && pnpm test
 ```
 
@@ -192,9 +199,10 @@ storage bucket, pg_cron job, `_app_migrations` бүгдийг харьцуулн
 **7. Merge хийсний дараа prod руу хэрэгжүүлээд дахин шалгана.**
 
 ```bash
-pnpm db:migrate                                    # .env.local → prod
+pnpm db:migrate-prod                               # .env.prod → production
 DB_A="<prod>" DB_B="<preview>" node --import tsx scripts/schema-diff.ts
 ```
+
 Одоо зөрүү **тэг** байх ёстой.
 
 **8. Аль ч санд `drop` / `truncate` / `reset` гараар ажиллуулахгүй.**
