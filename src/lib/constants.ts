@@ -56,15 +56,31 @@ export const GIFT_SAMPLE_ML = 1;
 export const GENDERS = ["male", "female", "unisex"] as const;
 export type Gender = (typeof GENDERS)[number];
 
-export const CONCENTRATIONS = [
-  "EDP",
-  "EDT",
-  "Parfum",
-  "EDC",
-  "Extrait",
-  "Elixir",
+/**
+ * Үнэртний төрөл нь 0085-аас хойш админы удирддаг `concentrations` хүснэгт —
+ * шинэ ус ирэхэд админ өөрөө бүртгэдэг тул хаалттай жагсаалт байхаа больсон.
+ * Доорх нь зөвхөн seed/demo-гийн өгөгдмөл ба шинэ барааны анхдагч сонголт.
+ */
+export const DEFAULT_CONCENTRATIONS = [
+  { code: "Extrait", label: "Extrait de Parfum" },
+  { code: "Parfum", label: "Parfum" },
+  { code: "Elixir", label: "Elixir" },
+  { code: "EDP", label: "Eau de Parfum" },
+  { code: "EDT", label: "Eau de Toilette" },
+  { code: "EDC", label: "Eau de Cologne" },
+  { code: "Eau Fraiche", label: "Eau Fraîche" },
+  { code: "Perfume Oil", label: "Үнэрийн тос" },
+  { code: "Attar", label: "Attar" },
+  { code: "Body Mist", label: "Body Mist" },
+  { code: "Hair Mist", label: "Hair Mist" },
 ] as const;
-export type Concentration = (typeof CONCENTRATIONS)[number];
+
+/** Шинэ барааны форм хоосон эхлэхгүйн тулд. */
+export const DEFAULT_CONCENTRATION = "EDP";
+
+/** Товчлолын урт — админ формын input болон Zod хоёр нэг хязгаартай. */
+export const CONCENTRATION_CODE_MAX = 40;
+export const CONCENTRATION_LABEL_MAX = 80;
 
 export const GENDER_LABEL: Record<Gender, string> = {
   male: "Эрэгтэй",

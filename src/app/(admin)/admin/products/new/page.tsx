@@ -5,14 +5,16 @@ import {
   getScentFamilies,
   fetchCustomTags,
   getActiveBrands,
+  getActiveConcentrations,
 } from "@/features/taxonomy/api";
 import { isImageGenConfigured } from "@/lib/env";
 
 export default async function NewProductPage() {
-  const [families, customTagPool, brands] = await Promise.all([
+  const [families, customTagPool, brands, concentrations] = await Promise.all([
     getScentFamilies(),
     fetchCustomTags(),
     getActiveBrands(),
+    getActiveConcentrations(),
   ]);
   return (
     <div className="space-y-6">
@@ -27,6 +29,7 @@ export default async function NewProductPage() {
       <ProductForm
         families={families}
         brands={brands}
+        concentrations={concentrations}
         customTagPool={customTagPool}
         aiEnabled={isImageGenConfigured}
       />

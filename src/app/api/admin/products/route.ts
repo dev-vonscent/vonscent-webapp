@@ -7,6 +7,7 @@ import { getStaffUser } from "@/lib/auth/guard";
 import { isStorageUrl } from "@/lib/storage/storage";
 import {
   resolveBrandId,
+  resolveConcentration,
   sanitizeCustomTags,
   sanitizeFamilies,
 } from "@/features/taxonomy/api";
@@ -54,6 +55,15 @@ export async function POST(req: Request) {
   // later rename in the brand list follows (0050). A name that isn't in the
   // list yet resolves to null rather than blocking the save.
   const brandId = await resolveBrandId(input.brand);
+  // Төрөл нь `concentrations`-д FK-тэй (0085): танихгүй утга бол Postgres-ийн
+  // 23503 болж унахаас өмнө энд ойлгомжтой хариу өгнө.
+  const concentration = await resolveConcentration(input.concentration);
+  if (!concentration) {
+    return NextResponse.json(
+      { error: "UNKNOWN_CONCENTRATION" },
+      { status: 400 },
+    );
+  }
 
   const base = {
     slug,
@@ -67,7 +77,7 @@ export async function POST(req: Request) {
     notes_heart: input.notesHeart,
     notes_base: input.notesBase,
     gender: input.gender,
-    concentration: input.concentration,
+    concentration,
     sillage: input.sillage,
     // Хоосон текст = «бичээгүй». Хоосон мөр хадгалвал дэлгүүр хоосон мөр
     // харуулах эрсдэлтэй тул null болгож нэгтгэнэ (0083).

@@ -6,6 +6,7 @@ import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   resolveBrandId,
+  resolveConcentration,
   sanitizeCustomTags,
   sanitizeFamilies,
 } from "@/features/taxonomy/api";
@@ -49,8 +50,17 @@ export async function PATCH(
     productUpdate.brand_id = await resolveBrandId(input.brand);
   }
   if (input.gender !== undefined) productUpdate.gender = input.gender;
-  if (input.concentration !== undefined)
-    productUpdate.concentration = input.concentration;
+  if (input.concentration !== undefined) {
+    // `products.concentration` нь `concentrations.code`-д FK-тэй (0085).
+    const concentration = await resolveConcentration(input.concentration);
+    if (!concentration) {
+      return NextResponse.json(
+        { error: "UNKNOWN_CONCENTRATION" },
+        { status: 400 },
+      );
+    }
+    productUpdate.concentration = concentration;
+  }
   if (input.sillage !== undefined) productUpdate.sillage = input.sillage;
   if (input.longevity !== undefined)
     productUpdate.longevity = input.longevity || null;

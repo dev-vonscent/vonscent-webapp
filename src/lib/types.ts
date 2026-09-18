@@ -131,6 +131,20 @@ export interface BrandOption {
   isActive: boolean;
 }
 
+/**
+ * One row of the admin-managed concentration list (0085_concentrations.sql).
+ *
+ * `code` is what `products.concentration` stores and what the product page
+ * shows; `label` is the long form («Eau de Parfum») and may be empty.
+ */
+export interface ConcentrationOption {
+  id: string;
+  code: string;
+  label: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
 export interface CatalogFilters {
   brand?: string[];
   gender?: Gender[];

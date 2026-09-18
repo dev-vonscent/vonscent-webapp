@@ -9,13 +9,12 @@
  */
 
 export type Gender = "male" | "female" | "unisex";
-export type Concentration =
-  | "EDP"
-  | "EDT"
-  | "Parfum"
-  | "EDC"
-  | "Extrait"
-  | "Elixir";
+/**
+ * Үнэртний төрөл нь 0085-аас хойш `concentrations` хүснэгтийн мөр (админ
+ * удирддаг), enum биш — тиймээс энэ нь зүгээр л түүний `code` текст.
+ * `DEFAULT_CONCENTRATIONS` (constants) нь зөвхөн seed/demo-гийн жагсаалт.
+ */
+export type Concentration = string;
 /**
  * Scent families are admin-managed rows in `scent_families` (0018), so a
  * family is just its slug — not a closed union. The six below are only the
@@ -130,6 +129,18 @@ export interface ScentFamilyRow {
   slug: string;
   label: string;
   icon_url: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+/** Админы удирддаг үнэртний төрөл (0085_concentrations.sql). */
+export interface ConcentrationRow {
+  id: string;
+  /** «EDP» — `products.concentration` энэ утгыг хадгална. */
+  code: string;
+  /** «Eau de Parfum». Хоосон байж болно. */
+  label: string;
   sort_order: number;
   is_active: boolean;
   created_at: string;
@@ -424,6 +435,10 @@ export interface Database {
       inventory: Table<InventoryRow, "updated_at">;
       tags: Table<TagRow, "id">;
       scent_families: Table<ScentFamilyRow, "created_at">;
+      concentrations: Table<
+        ConcentrationRow,
+        "id" | "label" | "sort_order" | "is_active" | "created_at"
+      >;
       profiles: Table<ProfileRow, "created_at" | "updated_at">;
       addresses: Table<AddressRow, "id" | "created_at">;
       orders: Table<OrderRow, "id" | "order_no" | "created_at" | "updated_at">;
@@ -469,7 +484,6 @@ export interface Database {
     Enums: {
       user_role: UserRole;
       gender_t: Gender;
-      concentration_t: Concentration;
       order_status_t: OrderStatus;
       payment_method_t: PaymentMethod;
       payment_status_t: PaymentStatus;
