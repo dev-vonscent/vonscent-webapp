@@ -223,13 +223,46 @@ export interface OrderRow {
  */
 export interface QpayInvoiceRow {
   order_id: string;
-  invoice_id: string;
-  qr_text: string;
+  /**
+   * NULL нь «мөрийг эзэмшсэн боловч QPay хараахан хариулаагүй» (0086) — нэг
+   * захиалгад хоёр бодит invoice үүсэхийг хаадаг эзэмшлийн мөр. Уншигч бүр
+   * түүнийг invoice гэж БИШ, хийгдэж байгаа ажил гэж үзэх ёстой.
+   */
+  invoice_id: string | null;
+  qr_text: string | null;
   /** Bare base64 PNG, exactly as QPay returns it (no `data:` prefix). */
   qr_image: string | null;
   short_url: string | null;
   deeplinks: { name: string; description?: string; logo?: string; link: string }[];
   amount: number;
+  /** Мөрийг эзэмшсэн мөч — хуучирсан эзэмшлийг булаахад хэрэглэгдэнэ (0086). */
+  claimed_at: string;
+  created_at: string;
+}
+
+/**
+ * Идемпотентын түлхүүр — нэг checkout оролдлого = нэг UUID (0087). `order_id`
+ * NULL байхад «ялагч захиалгаа үүсгэж байна» гэсэн үг.
+ */
+export interface OrderRequestRow {
+  request_id: string;
+  order_id: string | null;
+  created_at: string;
+}
+
+/**
+ * QPay-ийн PAID гүйлгээний мөр (0089). Буцаалт гараар хийгддэг тул
+ * `qpay_payment_id` нь операторын QPay портал дээрх хайлтын түлхүүр ба
+ * маргаантай төлбөрийн нотолгоо.
+ */
+export interface QpayPaymentRow {
+  qpay_payment_id: string;
+  order_id: string;
+  amount: number;
+  currency: string | null;
+  paid_at: string | null;
+  wallet: string | null;
+  raw: Record<string, unknown>;
   created_at: string;
 }
 

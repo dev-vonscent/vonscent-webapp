@@ -16,6 +16,16 @@ import type { PaymentView } from "../types";
 vi.mock("@/lib/analytics", () => ({ trackPurchase: vi.fn() }));
 
 /**
+ * `useRouter` нь App Router-ийн контекстгүйгээр шидэлт хийдэг. Хуудас үүнийг
+ * зөвхөн invoice үүсгэлт унасан үед `router.refresh()`-д ашигладаг тул
+ * тестэд ердөө mock хангалттай.
+ */
+const routerRefresh = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: routerRefresh }),
+}));
+
+/**
  * jsdom answers every media query with "no match", which for
  * `(pointer: coarse)` means *desktop* — the opposite of the setup file's
  * intended mobile baseline. These tests are a phone unless they say otherwise.

@@ -12,7 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/constants";
+import {
+  ORDER_STATUS_LABEL,
+  PAYMENT_STATUS_LABEL,
+  type OrderStatus,
+} from "@/lib/constants";
 import { useConfirm } from "@/components/shared/confirm-dialog";
 import { toast } from "@/lib/toast";
 import { mutateJson } from "@/features/admin/lib/mutate";
@@ -145,11 +149,17 @@ export function OrderStatusControl({
   orderId,
   current,
   paymentStatus,
+  hasQpayInvoice = false,
   canRecover = false,
 }: {
   orderId: string;
   current: OrderStatus;
   paymentStatus: "unpaid" | "paid" | "refunded";
+  /**
+   * Захиалгад QPay invoice байгаа эсэх. Байвал оператор итгэл дээр
+   * тэмдэглэхийн оронд QPay-ээс ШАЛГУУЛЖ болно.
+   */
+  hasQpayInvoice?: boolean;
   /** super_admin only — unlocks the recovery edges out of a terminal status. */
   canRecover?: boolean;
 }) {
@@ -242,7 +252,8 @@ export function OrderStatusControl({
 
         {all.length === 0 ? (
           <p className="bg-secondary text-muted-foreground rounded-md px-3 py-2 text-sm">
-            {TERMINAL_TEXT[current]} Андуурсан бол супер админаар сэргээлгэнэ үү.
+            {TERMINAL_TEXT[current]} Андуурсан бол супер админаар сэргээлгэнэ
+            үү.
           </p>
         ) : (
           <>
@@ -291,11 +302,7 @@ export function OrderStatusControl({
         <div className="flex items-baseline justify-between gap-2">
           <h3 className="text-sm font-medium">Төлбөр</h3>
           <span className="text-muted-foreground text-xs">
-            {paymentStatus === "paid"
-              ? "Төлсөн"
-              : paymentStatus === "refunded"
-                ? "Буцаагдсан"
-                : "Төлөөгүй"}
+            {PAYMENT_STATUS_LABEL[paymentStatus]}
           </span>
         </div>
 
@@ -325,8 +332,8 @@ export function OrderStatusControl({
             </>
           ) : (
             <p className="text-muted-foreground text-xs">
-              Төлбөр буцаахын өмнө захиалгыг цуцлах ёстой — цуцлахад мл,
-              V point, купон нь автоматаар буцаж, дараа нь буцаалт бүртгэнэ.
+              Төлбөр буцаахын өмнө захиалгыг цуцлах ёстой — цуцлахад мл, V
+              point, купон нь автоматаар буцаж, дараа нь буцаалт бүртгэнэ.
             </p>
           )
         ) : current === "cancelled" ? (
@@ -334,20 +341,47 @@ export function OrderStatusControl({
             Захиалга төлөгдөөгүй цуцлагдсан тул төлбөрийн үйлдэл байхгүй.
           </p>
         ) : (
-          <Button
-            variant="secondary"
-            className="h-11 w-full md:h-9"
-            disabled={busy}
-            onClick={() =>
-              post(
-                { paid: true },
-                "Төлсөн гэж тэмдэглэгдлээ.",
-                "Тэмдэглэгдсэнгүй",
-              )
-            }
-          >
-            Төлсөн гэж тэмдэглэх
-          </Button>
+          <div className="space-y-2">
+            {/* QPay invoice байгаа бол ЭНЭ нь зөв эхний алхам: гараар
+                тэмдэглэх нь QPay-ээс юу ч асуудаггүй, ажилтны итгэл дээр
+                бичдэг. Тиймээс энэ нь үндсэн үйлдэл, гараар нь хоёрдогч. */}
+            {hasQpayInvoice && (
+              <>
+                <Button
+                  className="h-11 w-full md:h-9"
+                  disabled={busy}
+                  onClick={() =>
+                    post(
+                      { recheck: true },
+                      "QPay төлбөрийг баталлаа.",
+                      "Төлбөр олдсонгүй",
+                    )
+                  }
+                >
+                  QPay-ээс дахин шалгах
+                </Button>
+                <p className="text-muted-foreground text-xs">
+                  QPay-ээс шууд асууна. Хэрэглэгч «төлсөн» гэж хэлсэн үед эхлээд
+                  үүнийг ашиглаарай — доорх товч нь QPay-ээс юу ч асуудаггүй,
+                  зөвхөн таны үгээр бүртгэнэ.
+                </p>
+              </>
+            )}
+            <Button
+              variant="secondary"
+              className="h-11 w-full md:h-9"
+              disabled={busy}
+              onClick={() =>
+                post(
+                  { paid: true },
+                  "Төлсөн гэж тэмдэглэгдлээ.",
+                  "Тэмдэглэгдсэнгүй",
+                )
+              }
+            >
+              Төлсөн гэж тэмдэглэх
+            </Button>
+          </div>
         )}
       </section>
     </div>

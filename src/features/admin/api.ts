@@ -200,11 +200,24 @@ export async function getAllNotifications(
   return (data as unknown as AdminNotification[] | null) ?? [];
 }
 
+export interface QpayPaymentRecord {
+  qpay_payment_id: string;
+  amount: number;
+  paid_at: string | null;
+  wallet: string | null;
+}
+
 export async function getOrderDetail(id: string): Promise<{
   order: OrderRow;
   items: OrderItemRow[];
   history: OrderStatusHistoryRow[];
   customer: ProfileRow | null;
+  /**
+   * QPay-ийн гүйлгээнүүд (0089). Буцаалт нь гараар хийгддэг тул оператор
+   * QPay-ийн порталаас хайх шаардлагатай — `payment_id` нь тэр хайлтын
+   * түлхүүр бөгөөд маргаантай төлбөрийн цорын ганц нотолгоо.
+   */
+  payments: QpayPaymentRecord[];
 } | null> {
   const supabase = await createClient();
   if (!supabase) return null;
@@ -216,27 +229,34 @@ export async function getOrderDetail(id: string): Promise<{
   const order = data as OrderRow | null;
   if (!order) return null;
 
-  const [{ data: items }, { data: history }, customer] = await Promise.all([
-    supabase.from("order_items").select("*").eq("order_id", id),
-    supabase
-      .from("order_status_history")
-      .select("*")
-      .eq("order_id", id)
-      .order("created_at", { ascending: true }),
-    order.user_id
-      ? supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", order.user_id)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-  ]);
+  const [{ data: items }, { data: history }, { data: payments }, customer] =
+    await Promise.all([
+      supabase.from("order_items").select("*").eq("order_id", id),
+      supabase
+        .from("order_status_history")
+        .select("*")
+        .eq("order_id", id)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("qpay_payments")
+        .select("qpay_payment_id, amount, paid_at, wallet")
+        .eq("order_id", id)
+        .order("paid_at", { ascending: true }),
+      order.user_id
+        ? supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", order.user_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
 
   return {
     order,
     items: (items as OrderItemRow[] | null) ?? [],
     history: (history as OrderStatusHistoryRow[] | null) ?? [],
     customer: (customer.data as ProfileRow | null) ?? null,
+    payments: (payments as QpayPaymentRecord[] | null) ?? [],
   };
 }
 

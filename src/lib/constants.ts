@@ -30,8 +30,18 @@ export const BUNDLE_ML_SIZES = ML_SIZES;
 /** Size a fresh bundle starts on — the most common decant tier. */
 export const DEFAULT_BUNDLE_ML = 5;
 
-/** Reserve hold (minutes) for orders awaiting payment before auto-release. */
-export const RESERVE_TIMEOUT_MINUTES = 30;
+/**
+ * Reserve hold (minutes) for orders awaiting payment before auto-release.
+ *
+ * 30 биш 35: `release_expired_reserves` (pg_cron, 5 минут тутам) нь захиалгыг
+ * QPay-ээс асуулгүйгээр цуцалдаг. Төлбөр тулгалт (`/api/cron/reconcile-
+ * payments`, мөн 5 минут тутам) цуцлалтаас ӨМНӨ дор хаяж нэг удаа ажилласан
+ * байхыг баталгаажуулах зөрүү — эс тэгвээс алдагдсан callback-тай төлбөр
+ * хэзээ ч олдохгүйгээр цуцлагдана.
+ *
+ * Хэрэглэгчид энэ тоог төлбөрийн хуудас, захиалгын имэйл хоёр хэлнэ.
+ */
+export const RESERVE_TIMEOUT_MINUTES = 35;
 
 /**
  * Доод хязгаар (ml) — шинэ бараа энэ утгаас эхэлнэ.
@@ -103,6 +113,21 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   shipping: "Хүргэгдэж буй",
   delivered: "Хүргэгдсэн",
   cancelled: "Цуцлагдсан",
+};
+
+export const PAYMENT_STATUSES = ["unpaid", "paid", "refunded"] as const;
+export type PaymentStatusValue = (typeof PAYMENT_STATUSES)[number];
+
+/**
+ * Төлбөрийн төлвийн шошго. Захиалгын төлөв нь `ORDER_STATUS_LABEL`-аар нэг
+ * эх сурвалжтай байхад төлбөрийн төлөв нь дөрвөн файлд гараар хуулсан ижил
+ * ternary байсан — админы хүснэгт, админы дэлгэрэнгүй, төлвийн хяналт,
+ * хэрэглэгчийн дэлгэрэнгүй. Тохиолдлоор л таарч байсан тул энд төвлөрүүлэв.
+ */
+export const PAYMENT_STATUS_LABEL: Record<PaymentStatusValue, string> = {
+  unpaid: "Төлөөгүй",
+  paid: "Төлсөн",
+  refunded: "Буцаагдсан",
 };
 
 /**
@@ -380,6 +405,25 @@ export const RATE_LIMITS = {
   verifyStartPhone: { limit: 3, windowSec: 10 * 60 },
   /** Мөн IP-ээр: дугаар солиод л дахин эхлүүлэхээс сэргийлнэ. */
   verifyStartIp: { limit: 10, windowSec: 10 * 60 },
+  /**
+   * Захиалга хайх (`/order/find`). `order_no` нь дараалсан sequence тул энэ
+   * цэг нь хамгийн тод тандалтын гадаргуу: хязгаар нь утас таах оролдлогыг
+   * утгагүй болгох ёстой. Жинхэнэ хэрэглэгч 1-2 удаа л бичнэ.
+   */
+  orderLookup: { limit: 10, windowSec: 10 * 60 },
+  /**
+   * Төлбөрийн төлөв асуух (`/api/payments/status`). Хуудас өөрөө 3 секунд
+   * тутам асуудаг тул өгөөмөр байх ёстой — гэхдээ `verify=1` нь QPay руу
+   * гадагш дуудлага хийдэг учир хязгааргүй байж болохгүй.
+   */
+  paymentStatus: { limit: 120, windowSec: 5 * 60 },
+  /**
+   * QPay-ийн callback. Нэг захиалгад QPay нэг л ping илгээдэг бөгөөд
+   * алдаа гарвал дахин оролддог — хэдхэн дуудлага. Хязгаар нь нууц алдагдсан
+   * үеийн хоёр дахь давхарга: дуудалт бүр QPay руу гадагш `payment/check`
+   * илгээдэг тул хязгааргүй байх ёсгүй.
+   */
+  qpayWebhook: { limit: 60, windowSec: 5 * 60 },
 } as const;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

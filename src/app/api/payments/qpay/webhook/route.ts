@@ -1,57 +1,35 @@
 import { NextResponse } from "next/server";
-import { isQpayMockMode } from "@/lib/payments/qpay";
-import { verifyAndMarkOrderPaidByOrderNo } from "@/lib/payments/confirm-order";
+import { handleQpayCallback } from "./handler";
+import { env } from "@/lib/env";
 
 /**
- * QPay payment callback (development.md §7.5). The caller is untrusted: the
- * order number is public knowledge, so instead of believing the request we
- * re-query QPay for the invoice's payments and only then commit the order
- * (mark_order_paid). In mock mode this endpoint is disabled — simulated
- * payments go through /api/payments/qpay/mock/confirm, which is itself gated
- * to mock mode.
+ * QPay callback — **хуучин, нууцгүй зам**.
+ *
+ * `QPAY_CALLBACK_SECRET` тохируулагдсан үед энэ зам хаагдана: шинэ invoice
+ * бүр нууцтай замыг л `callback_url` болгож авдаг (`callbackUrlFor`).
+ *
+ * Тохируулаагүй үед ажилласаар байна. Энэ нь зориуд: нэг мартсан env нь
+ * төлбөрийн бүх callback-ыг чимээгүй унагаах ёсгүй. Нууц тавигдсаны дараа ч
+ * **хуучин invoice-ууд** энэ зам руу заасаар байх тул шууд 404 буцаах нь тэр
+ * захиалгуудын callback-ыг таслана — гэхдээ нөөцийн цонх 35 минут учир
+ * хамгийн ихдээ 35 минутын invoice л өртөнө, тэдгээрийг төлбөрийн хуудасны
+ * poller (3/15 сек) ба тулгалтын cron (5 мин) хоёулаа барина.
  */
-async function handle(req: Request, bodyOrderNo?: string) {
-  if (isQpayMockMode()) {
-    return NextResponse.json({ error: "MOCK_MODE" }, { status: 403 });
-  }
+export const dynamic = "force-dynamic";
 
-  const url = new URL(req.url);
-  const orderNo = url.searchParams.get("order") ?? bodyOrderNo ?? "";
+/** Нууц тохируулсан бол энэ зам байхаа больсон гэж хариулна. */
+const CLOSED = NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
-  const result = await verifyAndMarkOrderPaidByOrderNo(orderNo);
-  if (!result.ok) {
-    // 5xx is "try again"; everything terminal must be 4xx so QPay stops
-    // retrying. ORDER_CANCELLED is terminal by definition — the order will
-    // never accept this payment, and an admin has already been notified.
-    const status =
-      result.error === "MISSING_ORDER"
-        ? 400
-        : result.error === "ORDER_NOT_FOUND"
-          ? 404
-          : result.error === "NOT_PAID" || result.error === "NO_INVOICE"
-            ? 402
-            : result.error === "ORDER_CANCELLED"
-              ? 409
-              : 502;
-    return NextResponse.json({ error: result.error }, { status });
-  }
-
-  return NextResponse.json({
-    ok: true,
-    demo: result.demo,
-    alreadyPaid: result.alreadyPaid,
-  });
-}
-
-// QPay calls the callback_url with GET; POST is kept for manual re-checks.
 export async function GET(req: Request) {
-  return handle(req);
+  if (env.qpayCallbackSecret) return CLOSED;
+  return handleQpayCallback(req);
 }
 
 export async function POST(req: Request) {
+  if (env.qpayCallbackSecret) return CLOSED;
   const bodyOrderNo = await req
     .json()
     .then((b: { order_no?: string }) => b?.order_no)
     .catch(() => undefined);
-  return handle(req, bodyOrderNo);
+  return handleQpayCallback(req, bodyOrderNo);
 }
