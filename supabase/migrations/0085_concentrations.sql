@@ -44,20 +44,55 @@ insert into concentrations (code, label, sort_order) values
   ('Hair Mist',   'Hair Mist',         110)
 on conflict (code) do nothing;
 
--- enum → text. Анхдагчийг эхлээд хасахгүй бол төрөл хөрвүүлэлт унана.
+-- enum → text. Хоёр бэрхшээл:
+--
+--   1. Анхдагчийг эхлээд хасахгүй бол төрөл хөрвүүлэлт унана.
+--   2. `catalog_items` (0059) нь `p.concentration::text`-ийг уншдаг тул
+--      Postgres «cannot alter type of a column used by a view or rule» гэж
+--      зогсоно. View-ийг тайлж, хөрвүүлээд, дахин үүсгэнэ.
+--
+-- View-ийн биеийг энд ХУУЛААГҮЙ: `pg_get_viewdef()`-ээр сангаас байгаагаар нь
+-- авч, дараа нь тэр чигээр буцаана. Ингэснээр 0059-ийг (эсвэл дараа нь түүнийг
+-- өөрчилсөн migration-ийг) хоёр газар нийцүүлэн засах шаардлага гарахгүй.
+-- `drop view` нь тайлбар, эрх, `security_invoker`-ыг авч хаядаг тул гурвуулаа
+-- гараар нөхөгдөнө.
 do $$
+declare
+  v_view regclass := to_regclass('public.catalog_items');
+  v_def text;
+  v_comment text;
 begin
-  if exists (
+  if not exists (
     select 1
       from information_schema.columns
      where table_name = 'products'
        and column_name = 'concentration'
        and udt_name = 'concentration_t'
   ) then
-    alter table products alter column concentration drop default;
-    alter table products
-      alter column concentration type text using concentration::text;
-    alter table products alter column concentration set default 'EDP';
+    return;
+  end if;
+
+  if v_view is not null then
+    select pg_get_viewdef(v_view, true),
+           obj_description(v_view, 'pg_class')
+      into v_def, v_comment;
+    drop view public.catalog_items;
+  end if;
+
+  alter table products alter column concentration drop default;
+  alter table products
+    alter column concentration type text using concentration::text;
+  alter table products alter column concentration set default 'EDP';
+
+  if v_def is not null then
+    -- 0059-ийн `security_invoker = true`: RLS нь дуудагчийн эрхээр үйлчилнэ.
+    -- reloptions нь viewdef-д ороогүй тул тусад нь тавина.
+    execute 'create view public.catalog_items with (security_invoker = true) as '
+      || v_def;
+    if v_comment is not null then
+      execute format('comment on view public.catalog_items is %L', v_comment);
+    end if;
+    execute 'grant select on public.catalog_items to anon, authenticated';
   end if;
 end $$;
 
