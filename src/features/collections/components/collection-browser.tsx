@@ -32,6 +32,20 @@ const SORTS: { value: Sort; label: string }[] = [
 
 const PRICE_STEP = 1000;
 
+/**
+ * «Эрэгтэй»/«Эмэгтэй» багцад unisex багц ч багтана — каталогийн
+ * `expandGenders`-тэй нэг логик. «Unisex»-ийг дангаар нь сонговол зөвхөн
+ * unisex: тэр нь зориуд нарийсгасан асуулт.
+ */
+export function matchesGender(
+  collectionGender: Gender,
+  filter: GenderFilter,
+): boolean {
+  if (filter === "all") return true;
+  if (filter === "unisex") return collectionGender === "unisex";
+  return collectionGender === filter || collectionGender === "unisex";
+}
+
 function SearchInput({
   value,
   onChange,
@@ -132,7 +146,7 @@ export function CollectionBrowser({
   const shown = React.useMemo(() => {
     const priced = range[0] > domainMin || range[1] < domainMax;
     const list = collections.filter((c) => {
-      if (gender !== "all" && c.gender !== gender) return false;
+      if (!matchesGender(c.gender, gender)) return false;
       if (
         q &&
         !`${c.name} ${c.description}`.toLowerCase().includes(q.toLowerCase())
