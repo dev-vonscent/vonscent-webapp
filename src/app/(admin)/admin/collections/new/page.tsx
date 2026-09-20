@@ -1,20 +1,23 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getCollectionSettings } from "@/features/collections/api";
-import { getProductOptions } from "@/features/admin/api";
+import { countProducts, getProductOptions } from "@/features/admin/api";
+import { PRODUCT_OPTION_MAX } from "@/features/admin/lib/product-option";
 import { fetchCustomTags } from "@/features/taxonomy/api";
 import { CollectionForm } from "@/features/admin/components/collection-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewCollectionPage() {
-  // Сонгогчид эхний хуудас хангалттай — цаашийг форм өөрөө хайж уншина.
-  // Өмнө нь энд БҮХ каталог (`getAllProducts()`) ирж, браузар руу бүтнээрээ
-  // дамждаг байв.
-  const [options, customTagPool, settings] = await Promise.all([
-    getProductOptions({}),
+  // Багц угсрахад каталогоо ГҮЙЛГЭЖ хардаг — нэрийг нь урьдчилж мэдэхгүй
+  // байж хайлтаар таамаглах биш. Тиймээс бэлгийн сантай (`/admin/gifts`)
+  // ижил «бүгдийг харуул» горим: сонгогчийн хөнгөн мөр тул ~80 бараа хэдхэн
+  // КБ болно, хайлт нь зөвхөн нэмэлт шүүлтүүр.
+  const [options, customTagPool, settings, total] = await Promise.all([
+    getProductOptions({ limit: PRODUCT_OPTION_MAX }),
     fetchCustomTags(),
     getCollectionSettings(),
+    countProducts(),
   ]);
   return (
     <div className="space-y-6">
@@ -27,6 +30,7 @@ export default async function NewCollectionPage() {
       <h1 className="font-serif text-2xl font-semibold">Шинэ багц нэмэх</h1>
       <CollectionForm
         products={options}
+        totalProducts={total}
         customTagPool={customTagPool}
         roundTo={settings.roundTo}
         defaultDiscountPct={settings.baseDefaultDiscountPct}

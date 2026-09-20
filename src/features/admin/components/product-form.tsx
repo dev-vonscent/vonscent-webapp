@@ -29,10 +29,11 @@ import { DescriptionFields } from "./description-fields";
 import { type GalleryImage } from "./product-images";
 import { ProductImageStudio } from "./product-image-studio";
 import { BrandSelect } from "./brand-select";
+import { ConcentrationSelect } from "./concentration-select";
 import {
   GENDERS,
   GENDER_LABEL,
-  CONCENTRATIONS,
+  DEFAULT_CONCENTRATION,
   SEASONS,
   SEASON_LABEL,
   SILLAGES,
@@ -41,7 +42,11 @@ import {
   DEFAULT_LOW_STOCK_ML,
 } from "@/lib/constants";
 import type { Sillage } from "@/lib/constants";
-import type { BrandOption, ScentFamilyOption } from "@/lib/types";
+import type {
+  BrandOption,
+  ConcentrationOption,
+  ScentFamilyOption,
+} from "@/lib/types";
 import type { CustomTagOption } from "@/features/taxonomy/api";
 
 const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
@@ -53,16 +58,25 @@ const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
 export function ProductForm({
   families,
   brands,
+  concentrations,
   customTagPool = [],
   aiEnabled = false,
 }: {
   families: ScentFamilyOption[];
   brands: BrandOption[];
+  /** Админы удирддаг үнэртний төрлүүд (0085). */
+  concentrations: ConcentrationOption[];
   customTagPool?: CustomTagOption[];
   /** `isImageGenConfigured` — server-only env, handed down by the page. */
   aiEnabled?: boolean;
 }) {
   const router = useRouter();
+  // «EDP» бол дэлгүүрийн хамгийн түгээмэл төрөл, гэхдээ админ түүнийг
+  // жагсаалтаас хассан байж болох тул байгаа эсэхийг шалгана.
+  const defaultConcentration =
+    concentrations.find((c) => c.code === DEFAULT_CONCENTRATION)?.code ??
+    concentrations[0]?.code ??
+    DEFAULT_CONCENTRATION;
   const [submitting, setSubmitting] = React.useState(false);
   // Амжилттай болсны дараа навигаци дуустал товч «бэлэн» рүү буцахгүй —
   // үгүй бол хэрэглэгч дуусаагүй гэж бодоод дахин дардаг.
@@ -74,7 +88,7 @@ export function ProductForm({
     name: "",
     brand: "",
     gender: "unisex",
-    concentration: "EDP",
+    concentration: defaultConcentration,
     // Үнэрийн хүч (0078) — quiz-ийн эрчмийн асуулт үүнийг уншина.
     sillage: "medium",
     // Үнэр барилт (0083) — чөлөөт текст, хоосон эхэлнэ.
@@ -122,6 +136,12 @@ export function ProductForm({
       setResult(
         "Зураг байхгүй байна. Галерейд зураг оруулах, эсвэл AI-д лавлах зураг өгнө үү.",
       );
+      return;
+    }
+    // Төрлийг жагсаалтаас устгавал талбар хоосрох тул серверийн FK алдаа
+    // хүлээхгүйгээр энд хэлнэ.
+    if (!form.concentration.trim()) {
+      setResult("Үнэртний төрлөө сонгоно уу.");
       return;
     }
     // Sizes now arrive unticked (variant-price-table.tsx), so a product can be
@@ -262,21 +282,11 @@ export function ProductForm({
               </Select>
             </Field>
             <Field label="Төрөл">
-              <Select
+              <ConcentrationSelect
+                options={concentrations}
                 value={form.concentration}
-                onValueChange={(v) => set("concentration", v)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CONCENTRATIONS.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(v) => set("concentration", v)}
+              />
             </Field>
             <Field
               label="Үнэртэх зай"
@@ -443,9 +453,7 @@ export function ProductForm({
                 setIsFeatured(Boolean(v));
               }}
             />
-            <span>
-              Онцлох бараа
-            </span>
+            <span>Онцлох бараа</span>
           </label>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox

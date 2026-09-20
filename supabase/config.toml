@@ -10,7 +10,11 @@ max_rows = 1000
 
 [db]
 port = 54322
-major_version = 15
+# Hosted төслүүд (prod + preview) PostgreSQL 17 дээр ажилладаг. Энд 15 байсан
+# нь зөрүү үүсгэж байв: `supabase db dump` нь pg_dump 15-ийг татаад серверийн
+# 17-той таарахгүй гэж татгалздаг, мөн local dev prod-оос өөр хувилбар дээр
+# ажиллана. Hosted хувилбараа сольвол энийг хамт солино.
+major_version = 17
 
 [studio]
 enabled = true

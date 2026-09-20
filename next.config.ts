@@ -19,13 +19,12 @@ const remotePatterns: NonNullable<
   // next/image still refuses a host that is not listed here.
   { protocol: "https", hostname: "qpay.mn" },
   { protocol: "https", hostname: "s3.qpay.mn" },
-  // Hardcoded fallback for the production Supabase project so image loading
-  // never depends on env availability at config-evaluation time.
-  {
-    protocol: "https",
-    hostname: "khrjllvayvazqkraeotc.supabase.co",
-    pathname: "/storage/v1/object/public/**",
-  },
+  // Supabase-ийн хост нь ЗӨВХӨН env-ээс ирнэ (доор). Өмнө нь production-ий
+  // project ref энд hardcode хийгдсэн байсныг хасав: production ба preview
+  // өөр өөр Supabase project руу заадаг болсон тул тогтмол бичсэн нэг хост нь
+  // (а) preview-д production-ий зургийг ачаалах цонх нээж, (б) орчны
+  // тусгаарлалтыг кодын түвшинд эвддэг байв. Vercel дээр build бүрд
+  // NEXT_PUBLIC_SUPABASE_URL байдаг тул fallback шаардлагагүй.
 ];
 
 if (process.env.NEXT_PUBLIC_SUPABASE_URL) {

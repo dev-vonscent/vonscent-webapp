@@ -23,10 +23,13 @@ const MAX_POOL = 8;
 export function GiftPoolManager({
   options,
   initial,
+  total: totalProducts,
 }: {
-  /** Сонгогдсон бараа + эхний хуудас; цаашийг хайлтаар сервер өгнө. */
+  /** Сонгогдсон бараа + бүх каталог (`PRODUCT_OPTION_MAX`). */
   options: ProductOption[];
   initial: GiftSettings;
+  /** Каталогийн нийт бараа — жагсаалт бүтэн эсэхийг хэлнэ. */
+  total?: number;
 }) {
   // Бэлгийн ус сонгоход бүх каталог харагдана — хайлт нь шүүлт болохоос
   // жагсаалтыг нээх нөхцөл биш.
@@ -34,6 +37,8 @@ export function GiftPoolManager({
     options,
     PRODUCT_OPTION_MAX,
   );
+  // Сервер тоог өгөөгүй бол ирсэн жагсаалтаараа л хэлнэ.
+  const total = totalProducts ?? options.length;
   const [enabled, setEnabled] = React.useState(initial.enabled);
   const [ids, setIds] = React.useState<string[]>(initial.productIds);
   const [saving, setSaving] = React.useState(false);
@@ -113,12 +118,19 @@ export function GiftPoolManager({
           </p>
         </div>
 
-        <Input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Нэр, брэндээр хайх…"
-          className="max-w-sm"
-        />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Нэр, брэндээр хайх…"
+            className="max-w-sm"
+          />
+          {/* Каталогийн нийт тоо — «бүх ус энд байна уу?» гэдгийг жагсаалт
+              өөрөө хэлж чаддаггүй. */}
+          <p className="text-muted-foreground text-xs tabular-nums">
+            Нийт: {total}
+          </p>
+        </div>
 
         {/* Бүх бараа энд байна (хайлт нь зөвхөн шүүнэ). Жагсаалт нь өөрөө
             гүйнэ — доорх хайрцгийн өндөр хязгаартай. */}

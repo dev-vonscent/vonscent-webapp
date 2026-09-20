@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   const order = await orderIdForToken(parsed.data.token);
   if (!order) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
-  const result = await markOrderPaid(order.id);
+  const result = await markOrderPaid(order.id, "mock");
   if (!result.ok) {
     // A cancelled order refusing the payment is a legitimate outcome, not a
     // server fault — mock mode should show the same wall as production.

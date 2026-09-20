@@ -9,13 +9,12 @@
  */
 
 export type Gender = "male" | "female" | "unisex";
-export type Concentration =
-  | "EDP"
-  | "EDT"
-  | "Parfum"
-  | "EDC"
-  | "Extrait"
-  | "Elixir";
+/**
+ * Үнэртний төрөл нь 0085-аас хойш `concentrations` хүснэгтийн мөр (админ
+ * удирддаг), enum биш — тиймээс энэ нь зүгээр л түүний `code` текст.
+ * `DEFAULT_CONCENTRATIONS` (constants) нь зөвхөн seed/demo-гийн жагсаалт.
+ */
+export type Concentration = string;
 /**
  * Scent families are admin-managed rows in `scent_families` (0018), so a
  * family is just its slug — not a closed union. The six below are only the
@@ -135,6 +134,18 @@ export interface ScentFamilyRow {
   created_at: string;
 }
 
+/** Админы удирддаг үнэртний төрөл (0085_concentrations.sql). */
+export interface ConcentrationRow {
+  id: string;
+  /** «EDP» — `products.concentration` энэ утгыг хадгална. */
+  code: string;
+  /** «Eau de Parfum». Хоосон байж болно. */
+  label: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface TagRow {
   id: string;
   slug: string;
@@ -212,13 +223,46 @@ export interface OrderRow {
  */
 export interface QpayInvoiceRow {
   order_id: string;
-  invoice_id: string;
-  qr_text: string;
+  /**
+   * NULL нь «мөрийг эзэмшсэн боловч QPay хараахан хариулаагүй» (0086) — нэг
+   * захиалгад хоёр бодит invoice үүсэхийг хаадаг эзэмшлийн мөр. Уншигч бүр
+   * түүнийг invoice гэж БИШ, хийгдэж байгаа ажил гэж үзэх ёстой.
+   */
+  invoice_id: string | null;
+  qr_text: string | null;
   /** Bare base64 PNG, exactly as QPay returns it (no `data:` prefix). */
   qr_image: string | null;
   short_url: string | null;
   deeplinks: { name: string; description?: string; logo?: string; link: string }[];
   amount: number;
+  /** Мөрийг эзэмшсэн мөч — хуучирсан эзэмшлийг булаахад хэрэглэгдэнэ (0086). */
+  claimed_at: string;
+  created_at: string;
+}
+
+/**
+ * Идемпотентын түлхүүр — нэг checkout оролдлого = нэг UUID (0087). `order_id`
+ * NULL байхад «ялагч захиалгаа үүсгэж байна» гэсэн үг.
+ */
+export interface OrderRequestRow {
+  request_id: string;
+  order_id: string | null;
+  created_at: string;
+}
+
+/**
+ * QPay-ийн PAID гүйлгээний мөр (0089). Буцаалт гараар хийгддэг тул
+ * `qpay_payment_id` нь операторын QPay портал дээрх хайлтын түлхүүр ба
+ * маргаантай төлбөрийн нотолгоо.
+ */
+export interface QpayPaymentRow {
+  qpay_payment_id: string;
+  order_id: string;
+  amount: number;
+  currency: string | null;
+  paid_at: string | null;
+  wallet: string | null;
+  raw: Record<string, unknown>;
   created_at: string;
 }
 
@@ -424,6 +468,10 @@ export interface Database {
       inventory: Table<InventoryRow, "updated_at">;
       tags: Table<TagRow, "id">;
       scent_families: Table<ScentFamilyRow, "created_at">;
+      concentrations: Table<
+        ConcentrationRow,
+        "id" | "label" | "sort_order" | "is_active" | "created_at"
+      >;
       profiles: Table<ProfileRow, "created_at" | "updated_at">;
       addresses: Table<AddressRow, "id" | "created_at">;
       orders: Table<OrderRow, "id" | "order_no" | "created_at" | "updated_at">;
@@ -469,7 +517,6 @@ export interface Database {
     Enums: {
       user_role: UserRole;
       gender_t: Gender;
-      concentration_t: Concentration;
       order_status_t: OrderStatus;
       payment_method_t: PaymentMethod;
       payment_status_t: PaymentStatus;

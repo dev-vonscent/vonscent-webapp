@@ -163,6 +163,7 @@ const ERROR_SECTION: Record<string, string> = {
   note: "checkout-address",
   contactName: "checkout-recipient",
   contactPhone: "checkout-recipient",
+  contactEmail: "checkout-recipient",
 };
 
 export default function CheckoutPage() {
@@ -235,6 +236,12 @@ export default function CheckoutPage() {
   // Бэлгийн эрхээ ашиглаагүйг нэг л удаа асууна: үнэгүй дээжийн төлөө
   // худалдан авалтыг хаах нь буруу, харин дуугүй өнгөрөөх нь ч буруу.
   const giftWarned = React.useRef(false);
+  /**
+   * Идемпотентын түлхүүр (`order_requests`, 0087). Хүсэлт илгээх мөчид
+   * үүсэж, захиалга амжилттай үүсмэгц цэвэрлэгдэнэ — өөрөөр хэлбэл «дахин
+   * оролдох» бүр ижил түлхүүрийг, харин ШИНЭ захиалга шинэ түлхүүрийг авна.
+   */
+  const requestIdRef = React.useRef<string | null>(null);
   const [showGiftWarning, setShowGiftWarning] = React.useState(false);
   // Купоны бүх логик (санал болгох, дахин шалгах) нэг hook дотор.
   const {
@@ -731,6 +738,11 @@ export default function CheckoutPage() {
 
     setSubmitting(true);
     setServerError(null);
+    // Идемпотентын түлхүүр — энэ CHECKOUT ОРОЛДЛОГОД нэг удаа. Хариу нь
+    // замдаа алдагдаад хэрэглэгч дахин дарахад сервер ижил түлхүүрийг хараад
+    // шинэ захиалга үүсгэхгүй. Захиалга амжилттай болмогц шинэчилнэ — дараа
+    // нь өгөх захиалга нь тусдаа байх ёстой.
+    requestIdRef.current ??= crypto.randomUUID();
     // Fold the quick-pick delivery options into the free-text note.
     const note = [noteTags.join(" · "), values.note?.trim()]
       .filter(Boolean)
@@ -749,6 +761,7 @@ export default function CheckoutPage() {
           loyaltyUsed: loyaltyApplied,
           saveAddress: saveAddr,
           giftProductIds: giftIds,
+          requestId: requestIdRef.current,
           items: items.map((i) => ({
             productId: i.productId,
             variantId: i.variantId,
@@ -798,13 +811,21 @@ export default function CheckoutPage() {
                 ? "Сагсан дахь багц худалдаанд байхгүй болсон байна. Багцаа шинэчилнэ үү."
                 : data.error === "ZONE_UNAVAILABLE"
                   ? "Сонгосон бүсэд хүргэлт хийх боломжгүй байна."
-                  : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
+                  : // Ижил захиалга аль хэдийн боловсруулагдаж байна —
+                    // дахин дарвал давхар захиалга болох тул зогсооно.
+                    data.error === "ORDER_PENDING"
+                    ? "Таны захиалга боловсруулагдаж байна. Хэдэн секунд хүлээгээд «Захиалга хайх» хэсгээс шалгана уу."
+                    : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
         );
         return;
       }
       const order = await res.json();
       // Захиалга үүссэн — эндээс хойш хуудас зөвхөн шилжих төлөвт байна.
       setLeaving(true);
+      // Түлхүүрээ суллана: дараагийн захиалга бол өөр захиалга. Үлдээвэл
+      // ижил сесс дотор хийсэн хоёр дахь захиалга нэгдүгээрийнх нь хариуг
+      // авна.
+      requestIdRef.current = null;
       // Зөвхөн захиалагдсан (сонгосон) мөрүүд сагснаас хасагдана.
       removeOrdered();
       // The payment page is server-rendered from `pay_token`, so nothing about
@@ -834,7 +855,7 @@ export default function CheckoutPage() {
       // дахин дардаг. Захиалга үүссэн эсэх нь тодорхойгүй тул дахин
       // оролдохыг санал болгохын зэрэгцээ хаанаас шалгахыг нь ч хэлнэ.
       setServerError(
-        "Сүлжээнд холбогдож чадсангүй. Интернэтээ шалгаад дахин оролдоно уу — захиалга үүссэн бол «Захиалгаа хянах» хэсэгт харагдана.",
+        "Сүлжээнд холбогдож чадсангүй. Интернэтээ шалгаад дахин оролдоно уу — захиалга үүссэн бол «Захиалга хайх» хэсгээс дугаар, утсаараа олно.",
       );
     } finally {
       setSubmitting(false);
@@ -1088,6 +1109,24 @@ export default function CheckoutPage() {
                   autoComplete="shipping tel-national"
                 />
               </Field>
+              {/* Заавал биш. Зочин хэрэглэгчийн хувьд захиалгаа дахин олох
+                  шууд зам нь энэ хаяг руу ирэх линк — эс тэгвээс зөвхөн
+                  захиалгын дугаар + утсаараа /order/find-ээс хайна. */}
+              <Field
+                label="Имэйл (заавал биш)"
+                error={errors.contactEmail?.message}
+              >
+                <Input
+                  {...register("contactEmail")}
+                  placeholder="name@example.com"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                />
+                <p className="text-muted-foreground mt-1.5 text-xs">
+                  Захиалгын дугаар, төлбөрийн линкээ имэйлээр авна.
+                </p>
+              </Field>
             </div>
           </Section>
 
@@ -1150,6 +1189,19 @@ export default function CheckoutPage() {
                             ? " · бэлэгтэй"
                             : ""}
                         </p>
+                        {/* Багц дотор ЯМАР ус байгааг тоймд нэрээр нь бичнэ.
+                            Өмнө нь зөвхөн багцын нэр, нэг зураг, «N үнэртэн»
+                            гэсэн тоо л харагддаг байсан тул худалдан авагч
+                            төлөхийн өмнө сонголтоо шалгах ямар ч арга
+                            байгаагүй — сагсанд аль хэдийн ингэж бичдэг
+                            (cart/page.tsx), тойм нь л хоцорч байв. */}
+                        <ul className="text-muted-foreground mt-0.5 space-y-0.5 text-xs">
+                          {c.members.map((m) => (
+                            <li key={m.variantId} className="truncate">
+                              • {m.brand} — {m.name}
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                       <span className="text-sm font-medium">
                         {formatPrice(c.unitPrice * c.qty)}
@@ -1478,7 +1530,9 @@ export default function CheckoutPage() {
               handleSubmit(onSubmit, onInvalid)();
             }}
           >
-            {giftIds.length > 0 ? "Ингээд үргэлжлүүлэх" : "Дээжгүй үргэлжлүүлэх"}
+            {giftIds.length > 0
+              ? "Ингээд үргэлжлүүлэх"
+              : "Дээжгүй үргэлжлүүлэх"}
           </Button>
         </div>
       </ResponsiveDialog>

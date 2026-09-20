@@ -4,6 +4,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 /**
  * V point-оо ХЭДИЙГ нь зарцуулахаа хэрэглэгч өөрөө шийддэг талбар.
@@ -69,6 +70,18 @@ export function LoyaltyField({
   const applied = value > 0;
   const pointsSpent = applied ? Math.ceil(value / redeemRate) : 0;
   const mn = (n: number) => n.toLocaleString("mn-MN");
+  /**
+   * `₮` тэмдгийг үзүүлэх үү (клиентийн санал, уулзалтын тэмдэглэл 4.2).
+   *
+   * Ханш нь **1 оноо = 1₮** байхад оролтын тоо ба доод мөрний онооны тоо яг
+   * ижил гардаг — дэргэд нь `₮` зогсох нь «оноо биш, төгрөг бичих юм уу?»
+   * гэсэн эргэлзээ төрүүлнэ. Тиймээс тэр үед тэмдгийг огт харуулахгүй.
+   *
+   * Ханш өөр (1 оноо = 2₮ гэх мэт) үед тоо хоёулаа ӨӨР болох тул нэгжээ
+   * заавал хэлэх ёстой — тэнд `₮` хэвээр үлдэнэ.
+   */
+  const showCurrency = redeemRate !== 1;
+  const amount = (n: number) => (showCurrency ? formatPrice(n) : mn(n));
 
   return (
     <div className="space-y-2">
@@ -88,18 +101,25 @@ export function LoyaltyField({
             onChange={(e) => commit(e.target.value)}
             inputMode="numeric"
             placeholder="0"
-            aria-label="Оноогоор төлөх дүн (₮)"
-            // Баруун зэрэгцүүлсэн нь орон нь «₮»-ийн хажууд очиж, нэг бүтэн
-            // дүн болж уншигдана — зүүн захад наалдсан тоо тэмдэгтээсээ
+            aria-label={
+              showCurrency ? "Оноогоор төлөх дүн (₮)" : "Зарцуулах оноо"
+            }
+            // Баруун зэрэгцүүлсэн нь орон нь нэгжийнхээ хажууд очиж, нэг
+            // бүтэн дүн болж уншигдана — зүүн захад наалдсан тоо тэмдэгтээсээ
             // тасарч, хоёр өөр зүйл мэт харагддаг.
-            className="h-10 pr-7 text-right tabular-nums md:h-9"
+            className={cn(
+              "h-10 text-right tabular-nums md:h-9",
+              showCurrency && "pr-7",
+            )}
           />
-          <span
-            aria-hidden
-            className="text-muted-foreground pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm"
-          >
-            ₮
-          </span>
+          {showCurrency && (
+            <span
+              aria-hidden
+              className="text-muted-foreground pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm"
+            >
+              ₮
+            </span>
+          )}
         </div>
         <Button
           type="button"
@@ -117,12 +137,12 @@ export function LoyaltyField({
           хэлнэ. */}
       <p aria-live="polite" className="text-muted-foreground text-xs">
         {clamped
-          ? `Энэ захиалгад хамгийн ихдээ ${formatPrice(max)} ашиглана.`
+          ? `Энэ захиалгад хамгийн ихдээ ${amount(max)} ашиглана.`
           : applied
             ? `${mn(pointsSpent)} оноо зарцуулж, ${mn(
                 Math.max(balance - pointsSpent, 0),
               )} үлдэнэ.`
-            : `Хамгийн ихдээ ${formatPrice(max)} — хүргэлтийн төлбөрт ороогүй.`}
+            : `Хамгийн ихдээ ${amount(max)} — хүргэлтийн төлбөрт ороогүй.`}
       </p>
     </div>
   );

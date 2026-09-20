@@ -12,9 +12,20 @@ Next.js 16 App Router · TypeScript strict · Tailwind CSS 4 · shadcn-маяг�
 ```bash
 pnpm dev / build / typecheck / lint / test        # test = vitest
 pnpm test:e2e                                     # Playwright
-pnpm db:migrate                                   # migration (.env.local уншина)
+pnpm db:migrate-dev                               # migration → dev сан (.env.dev)
+pnpm db:migrate-prod                              # migration → prod сан (.env.prod)
 pnpm db:types                                     # зөвхөн local Supabase дээр ажиллана
 ```
+
+**Хоёр сан тусдаа:** `.env.dev` (dev/preview) ба `.env.prod` (production) —
+өөр өөр Supabase project. Локал ажилд **үргэлж dev** сан: Next.js нь
+`.env.dev`-ийг уншдаггүй тул `.env.local` нь түүн рүү symlink
+(`ln -s .env.dev .env.local`). Ингэснээр `pnpm dev` болон локал
+`next build` хоёулаа dev сан руу заана, prod хэзээ ч санамсаргүй хөндөгдөхгүй.
+
+Migration нь **dev → prod** гэсэн нэг чиглэлд урсана
+(`pnpm db:migrate-dev` → шалгах → `pnpm db:migrate-prod`); prod дээр гараар
+schema засахыг хориглоно. Дэлгэрэнгүй: README «Migration workflow».
 
 PR-аас өмнө: `pnpm typecheck` + `pnpm lint` + `pnpm test` цэвэр байх ёстой.
 

@@ -489,6 +489,14 @@
   *:focus:not(:focus-visible) {
     outline: none;
   }
+  /* Хүрэлтийн highlight — ижил бодлогын үргэлжлэл.
+     iOS Safari / Android Chrome нь дарсан холбоосын хайрцгийг өөрийн өнгөөр
+     будна. Барааны картын зураг нь `overflow-hidden rounded-2xl` холбоос тул
+     зургийн хайрцаг БҮТНЭЭРЭЭ харлаж, хуруугаа даран гүйлгэхэд (tap → scroll)
+     төлөв нь цэвэрлэгддэггүй учир хар хэвээрээ үлддэг. */
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;

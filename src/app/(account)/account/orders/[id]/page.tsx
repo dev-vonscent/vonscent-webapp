@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
@@ -14,7 +15,11 @@ import {
   formatDeliveryDay,
   isOrderEditable,
 } from "@/lib/time";
-import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/constants";
+import {
+  ORDER_STATUS_LABEL,
+  PAYMENT_STATUS_LABEL,
+  type OrderStatus,
+} from "@/lib/constants";
 import {
   OrderActions,
   type ReorderItem,
@@ -46,6 +51,12 @@ export default async function OrderDetailPage({
     .maybeSingle();
   const order = orderData as OrderRow | null;
   if (!order) notFound();
+
+  // Мөнгө хүлээж буй захиалга — энэ хуудасны үндсэн үйлдэл нь төлөх болно.
+  const awaitingPayment =
+    order.payment_status === "unpaid" &&
+    order.status !== "cancelled" &&
+    Boolean(order.pay_token);
 
   const [{ data: itemData }, { data: historyData }] = await Promise.all([
     supabase.from("order_items").select("*").eq("order_id", id),
@@ -125,9 +136,12 @@ export default async function OrderDetailPage({
                 >
                   <span>
                     {i.brand} {i.product_name} · {i.ml}ml × {i.qty}
+                    {/* «Sample» БИШ: 2ml бол энэ дэлгүүрт энгийн төлбөртэй
+                        хэмжээ. `is_sample` нь сар бүрийн 1мл бэлгийн дээжийг
+                        л тэмдэглэдэг. Админы хуудсанд аль хэдийн «Бэлэг». */}
                     {i.is_sample && (
                       <Badge variant="secondary" className="ml-2">
-                        Sample
+                        Бэлэг
                       </Badge>
                     )}
                   </span>
@@ -220,12 +234,13 @@ export default async function OrderDetailPage({
               <Badge
                 variant={order.payment_status === "paid" ? "new" : "secondary"}
               >
-                {order.payment_status === "paid"
-                  ? "Төлсөн"
-                  : order.payment_status === "refunded"
-                    ? "Буцаагдсан"
-                    : "Төлөөгүй"}
+                {PAYMENT_STATUS_LABEL[order.payment_status]}
               </Badge>
+              {awaitingPayment && (
+                <Button asChild size="lg" className="w-full">
+                  <Link href={`/pay/${order.pay_token}`}>Төлбөр төлөх</Link>
+                </Button>
+              )}
             </CardContent>
           </Card>
 
