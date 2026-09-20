@@ -1,4 +1,4 @@
-import { getProductOptions } from "@/features/admin/api";
+import { countProducts, getProductOptions } from "@/features/admin/api";
 import { PRODUCT_OPTION_MAX } from "@/features/admin/lib/product-option";
 import { getGiftSettings } from "@/features/content/api";
 import { GiftPoolManager } from "@/features/admin/components/gift-pool-manager";
@@ -15,9 +15,10 @@ export default async function AdminGiftsPage() {
   const settings = await getGiftSettings();
   // Сонгогдсон ус + БҮХ бараа: бэлгийн ус сонгохдоо админ каталогоо гүйлгэж
   // хардаг тул энэ дэлгэц дээр жагсаалт нь хайлтаас хамаарахгүй.
-  const [selected, all] = await Promise.all([
+  const [selected, all, total] = await Promise.all([
     getProductOptions({ ids: settings.productIds }),
     getProductOptions({ limit: PRODUCT_OPTION_MAX }),
+    countProducts(),
   ]);
   const seen = new Set(selected.map((p) => p.id));
   const options = [...selected, ...all.filter((p) => !seen.has(p.id))];
@@ -28,7 +29,7 @@ export default async function AdminGiftsPage() {
         title="Бэлгийн үнэрүүд — 1мл дээж"
         // description="Худалдан авагч 200,000₮ тутамд (купоны дараах, хүргэлтгүй дүнгээр), мөн бэлэн 5/10/20мл багц бүрээс 1 ширхэг — алийг нь ихийг нь — доорх уснуудаас 1мл дээжээр сонгоно. 6–8 ус байлгахыг зөвлөнө; сар бүр солих шаардлагагүй, хүссэн үедээ шинэчилнэ."
       />
-      <GiftPoolManager options={options} initial={settings} />
+      <GiftPoolManager options={options} initial={settings} total={total} />
     </div>
   );
 }
