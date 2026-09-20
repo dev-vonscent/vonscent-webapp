@@ -594,6 +594,28 @@ export async function getProductOptions({
   }));
 }
 
+/**
+ * Каталогийн НИЙТ барааны тоо — сонгогчийн толгойд «нийт 75 ус» гэж хэлэхэд.
+ *
+ * Сонгогч нь ихдээ `PRODUCT_OPTION_MAX` мөр уншдаг тул «бүгд энд байна уу?»
+ * гэдэг нь жагсаалтаас өөрөө уншигдахгүй — тоог нь тусад нь хэлж байж админ
+ * ус дутуу эсэхийг хардаж чадна. `head: true` тул мөр татахгүй, зөвхөн тоо.
+ */
+export async function countProducts(): Promise<number> {
+  const supabase = await createClient();
+  if (!supabase) return 0;
+  const { count, error } = await supabase
+    .from("products")
+    .select("id", { count: "exact", head: true });
+  if (error) {
+    Sentry.captureException(
+      new Error(`countProducts failed: ${error.message}`),
+    );
+    return 0;
+  }
+  return count ?? 0;
+}
+
 /** Нэг барааны үлдэгдлийн мөр (`admin_stock_overview`). */
 export interface StockRow {
   id: string;

@@ -26,6 +26,7 @@ import { bundlePrice, discountForMl } from "@/features/collections/pricing";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useProductOptions } from "@/features/admin/hooks/use-product-options";
+import { PRODUCT_OPTION_MAX } from "@/features/admin/lib/product-option";
 import type { ProductOption } from "@/features/admin/lib/product-option";
 import { GENDERS, GENDER_LABEL, BUNDLE_ML_SIZES } from "@/lib/constants";
 import type { CustomTagOption } from "@/features/taxonomy/api";
@@ -166,12 +167,15 @@ function CoverImageField({
 
 export function CollectionForm({
   products,
+  totalProducts,
   customTagPool = [],
   collection,
   roundTo = 100,
   defaultDiscountPct = 5,
 }: {
   products: AdminProduct[];
+  /** Каталогийн нийт бараа — сонгогчид «бүгд энд байна уу?» гэдгийг хэлнэ. */
+  totalProducts?: number;
   customTagPool?: CustomTagOption[];
   /** Absent when creating. */
   collection?: AdminCollection;
@@ -253,9 +257,15 @@ export function CollectionForm({
   const pending = busy || leaving;
   const [error, setError] = React.useState<string | null>(null);
 
-  // Хайлт нь сервер дээр (0063): өмнө нь энэ форм бүх каталогийг props-оор
-  // хүлээж авдаг байсан — багцад 5 ус сонгохын тулд.
-  const { q, setQ, items, loading, byId } = useProductOptions(products);
+  // Хайлт нь сервер дээр (0063). Багц угсрахад бүх усаа гүйлгэж хардаг тул
+  // бэлгийн сантай ижил «бүгдийг харуул» горим — хайлт нь зөвхөн нэмэлт
+  // шүүлтүүр, анхдагч 30 мөрийн хязгаар биш (сервер тал ч мөн адил уншина).
+  const { q, setQ, items, loading, byId } = useProductOptions(
+    products,
+    PRODUCT_OPTION_MAX,
+  );
+  // Сервер тоог өгөөгүй (хуучин дуудагч) бол эхний хуудсаараа л хэлнэ.
+  const total = totalProducts ?? products.length;
 
   /**
    * What each size would cost, live, as the operator picks perfumes and types
@@ -425,9 +435,16 @@ export function CollectionForm({
 
       <Card>
         <CardContent className="space-y-4 p-6">
-          <h2 className="font-serif text-lg font-semibold">
-            Үнэртэн ({form.productIds.length}/{REQUIRED_PRODUCTS})
-          </h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-serif text-lg font-semibold">
+              Үнэртэн ({form.productIds.length}/{REQUIRED_PRODUCTS})
+            </h2>
+            {/* Каталогийн нийт тоо — «бүх ус энд байна уу?» гэдгийг
+                жагсаалт өөрөө хэлж чадахгүй. */}
+            <p className="text-muted-foreground text-xs tabular-nums">
+              Нийт: {total}
+            </p>
+          </div>
 
           {form.productIds.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
@@ -458,8 +475,8 @@ export function CollectionForm({
             />
           </div>
 
-          {/* Жагсаалт нь бүх каталог БИШ — хайлтад таарсан эхний хэдэн мөр
-              (сонгосон нь үргэлж дотор нь байна). */}
+          {/* Жагсаалтад бүх каталог байна (`PRODUCT_OPTION_MAX`) — хайлт нь
+              зөвхөн шүүлтүүр. Сонгосон бараа үргэлж дотор нь. */}
           <div
             className={cn(
               "bg-muted/40 max-h-96 space-y-1 overflow-y-auto rounded-lg p-1 transition-opacity",
