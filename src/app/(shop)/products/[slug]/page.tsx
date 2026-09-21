@@ -233,7 +233,7 @@ export default async function ProductPage({
                   )}
                   {product.releaseYear && (
                     <Row
-                      label="Гаргасан он"
+                      label="Гарсан он"
                       value={String(product.releaseYear)}
                     />
                   )}
@@ -257,14 +257,14 @@ export default async function ProductPage({
             <AccordionItem value="ship">
               <AccordionTrigger>Хүргэлт ба буцаалт</AccordionTrigger>
               <AccordionContent>
-                Улаанбаатар хотод хамгийн эрт нь маргааш — хүргүүлэх өдрөө
-                төлбөрийн хуудсан дээр сонгоно, тэр өдрийн {DISPATCH_HOUR}:00
-                цагт хүргэлтэд гарна. Орон нутагт 2-4 хоног. Decant бараа тул
-                эрүүл ахуйн шалтгаанаар буцаалт хийгдэхгүй.
+                Улаанбаатар хотод хамгийн эртдээ маргааш хүргэнэ. Хүргүүлэх
+                өдрөө төлбөр төлөх хэсэгт сонгох боломжтой бөгөөд захиалга
+                сонгосон өдрийн {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна. Орон
+                нутагт 2–4 хоногт хүргэнэ. Decant бараа тул эрүүл ахуйн
+                шалтгаанаар буцаалт хийгдэхгүй.
               </AccordionContent>
             </AccordionItem>
           </Accordion>
-
         </div>
       </div>
 

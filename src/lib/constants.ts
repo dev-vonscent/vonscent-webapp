@@ -7,7 +7,7 @@ export const SITE = {
   domain: "vonscent.mn",
   url: "https://vonscent.mn",
   description:
-    "Үнэртэн бага хэмжээгээр (decant) туршиж сонгох дэлгүүр — 2/5/10/20ml багц.",
+    "Дэлхийн шилдэг үнэртнүүдийг бага хэмжээгээр туршиж, өөрийн үнэрээ олоорой.",
   tagline: "Үнэрээ ол",
 } as const;
 

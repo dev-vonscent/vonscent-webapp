@@ -11,7 +11,7 @@ import { formatPrice, formatDate } from "@/lib/format";
 import {
   DISPATCH_HOUR,
   deliveryDayOf,
-  formatDeadline,
+  formatEditCutoff,
   formatDeliveryDay,
   isOrderEditable,
 } from "@/lib/time";
@@ -94,9 +94,9 @@ export default async function OrderDetailPage({
     })
     .filter((i) => i.slug);
 
-  // Cancellable only while the status allows it AND we are still before 09:00
-  // on the delivery day (requirement_fb.md §9) — which for a pre-order can be
-  // a week or more away.
+  // Cancellable only while the status allows it AND the delivery day has not
+  // started yet (cut-off 00:00 UB, client 2026-09-21) — which for a pre-order
+  // can be a week or more away.
   const openStatus = order.status === "pending" || order.status === "confirmed";
   const beforeCutoff = isOrderEditable(order);
   const cancellable = openStatus && beforeCutoff;
@@ -182,9 +182,11 @@ export default async function OrderDetailPage({
 
           {openStatus && !beforeCutoff && (
             <p className="bg-secondary text-muted-foreground rounded-xl px-4 py-3 text-sm">
-              Захиалга бэлтгэгдэж эхэлсэн тул ({formatDeadline(order)} цагийн
-              хугацаа өнгөрсөн) цуцлах, өөрчлөх боломжгүй. Асуудал гарвал пэйж
-              чат эсвэл утсаар холбогдоно уу.
+              Захиалга бэлтгэгдэж эхэлсэн тул ({formatEditCutoff(
+                deliveryDayOf(order),
+              )}{" "}
+              өнгөрсөн) цуцлах, өөрчлөх боломжгүй. Асуудал гарвал пэйж чат
+              эсвэл утсаар холбогдоно уу.
             </p>
           )}
 

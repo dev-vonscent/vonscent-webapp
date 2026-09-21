@@ -7,9 +7,9 @@
  *     customer picks it at checkout and the earliest choice is tomorrow;
  *   - on that day the order goes out at 11:00 — weekends included, there is
  *     no same-day tier;
- *   - the customer may cancel / change it until 09:00 on THAT day (the decants
- *     are being prepared from then on), so a pre-order stays cancellable for
- *     as long as it is still waiting;
+ *   - the customer may cancel / change it until 00:00 on THAT day — i.e. the
+ *     window closes when the delivery day begins (client, 2026-09-21), so a
+ *     pre-order stays cancellable for as long as it is still waiting;
  *   - at 23:00 the day's deliveries are done (status flips to delivered by
  *     cron — see 0032_order_rules.sql / 0052_order_deliver_on.sql).
  *
@@ -29,8 +29,12 @@ export const UB_TIMEZONE = "Asia/Ulaanbaatar";
 /** Every order leaves for delivery at this hour (UB) on its delivery day. */
 export const DISPATCH_HOUR = 11;
 
-/** After this hour (UB) on the delivery day, no changes or cancellation. */
-export const ORDER_EDIT_CUTOFF_HOUR = 9;
+/**
+ * After this hour (UB) on the delivery day, no changes or cancellation.
+ * 00:00 — the window shuts the moment the delivery day starts, so the whole
+ * day is left for preparing the decants (client, 2026-09-21; it was 09:00).
+ */
+export const ORDER_EDIT_CUTOFF_HOUR = 0;
 
 /**
  * How far ahead a customer may book a delivery. A pre-order reserves its ml
@@ -67,8 +71,9 @@ export function earliestDeliveryDay(now: Date = new Date()): string {
 /**
  * Боломжтой хамгийн эрт хүргэх өдөр — *одоо* төлбөл хүргэж чадах өдөр.
  *
- * 09:00 (ORDER_EDIT_CUTOFF_HOUR) хүртэл өнөөдөр бэлдэх завсар бий; түүнээс
- * хойш тэр өдрийн бэлтгэл эхэлсэн тул хамгийн эрт нь маргааш.
+ * Цуцлах/өөрчлөх цонх (ORDER_EDIT_CUTOFF_HOUR) хаагдсаны дараа тэр өдрийн
+ * бэлтгэл эхэлсэн тул хамгийн эрт нь маргааш. Босго 00:00 болсноор энэ нь
+ * практикт үргэлж маргааш — гэхдээ дүрмийг нэг л газраас уншина.
  *
  * Эрх нь серверт (`mark_order_paid`, migration 0069) — төлбөр төлөгдөх мөчид
  * `deliver_on`-г яг ижил дүрмээр ахиулна. Энэ нь зөвхөн урьдчилан харуулах
@@ -124,7 +129,7 @@ export function orderDispatchAt(order: OrderTiming): Date {
   return dayAt(deliveryDayOf(order), DISPATCH_HOUR);
 }
 
-/** The instant an order stops being editable: 09:00 UB on its delivery day. */
+/** The instant an order stops being editable: 00:00 UB on its delivery day. */
 export function orderEditDeadline(order: OrderTiming): Date {
   return dayAt(deliveryDayOf(order), ORDER_EDIT_CUTOFF_HOUR);
 }
@@ -140,10 +145,26 @@ export function isOrderEditable(
   return now.getTime() < orderEditDeadline(order).getTime();
 }
 
-/** "08/22 09:00" style label for the deadline, in UB time. */
+/** "08/22 00:00" style label for the deadline, in UB time. */
 export function formatDeadline(order: OrderTiming): string {
   const deadline = orderEditDeadline(order);
   return format(new TZDate(deadline.getTime(), UB_TIMEZONE), "MM/dd HH:00");
+}
+
+/**
+ * Захиалгаа өөрчилж болох сүүлчийн минут — «09/21 23:59».
+ *
+ * Эцсийн хугацаа нь хүргэх өдрийн 00:00 болсноос хойш түүнийг цагаар нь
+ * хэлэх нь төөрөгдөл: «09/22-ны 00:00 хүртэл» гэдэг нь 09/22 бүтэн өдөр
+ * хугацаа байгаа мэт уншигддаг. Тиймээс хэрэглэгчид эцсийн МИНУТыг
+ * (өмнөх өдрийн 23:59) харуулна.
+ */
+export function formatEditCutoff(day: string): string {
+  const last = dayAt(day, ORDER_EDIT_CUTOFF_HOUR).getTime() - 60_000;
+  // Тоон дараа орох нөхцөл (-ны/-ний) нь тухайн тооны дуудлагаас хамаардаг
+  // тул огнооны дагавар бичихгүй — дуудах газартаа «...-өөс хойш» гэж
+  // залгана.
+  return format(new TZDate(last, UB_TIMEZONE), "MM/dd HH:mm");
 }
 
 const WEEKDAYS_MN = [

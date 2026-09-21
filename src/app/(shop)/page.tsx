@@ -161,14 +161,13 @@ export default function HomePage() {
           <div className="mx-auto flex h-full max-w-352 items-center px-4 pt-8 pb-12 md:px-8 md:py-0">
             <div className="max-w-xl space-y-5 max-md:mx-auto max-md:flex max-md:flex-col max-md:items-center max-md:text-center md:space-y-6">
               <p className="text-muted-foreground text-xs font-medium tracking-[0.22em] uppercase sm:text-sm">
-                Жинхэнэ үнэртэн · Decant
+                Оригинал үнэртэн · Decant
               </p>
-              <h1 className="text-foreground text-3xl font-bold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-                Бүтэн үнэртэн авахаасаа өмнө туршиж үз
+              <h1 className="text-foreground text-3xl font-bold tracking-tight text-balance sm:text-4xl lg:text-5xl">
+                Бүтэн савтай үнэртэн авахаасаа өмнө туршаад үзээрэй
               </h1>
               <p className="text-muted-foreground text-base text-pretty sm:text-lg">
-                Дэлхийн шилдэг үнэртнүүдийг 2/5/10/20ml сонголтоор — өөрт
-                тохирох үнэртэй усаа олоод дараа нь бүтнээр нь аваарай.
+                Дэлхийн шилдэг үнэртнүүдийг 2/5/10/20 мл хэмжээгээр
               </p>
               <div className="flex gap-3">
                 <Button
@@ -231,8 +230,8 @@ export default function HomePage() {
               Дуртай үнэртнүүдээ багцал
             </h2>
             <p className="text-muted-foreground">
-              4 ба түүнээс дээш үнэртэн сонгоод хямдралтай үнээр аваарай —
-              дуртай хослолоо өөрөө угсарна.
+              4 ба түүнээс дээш үнэртэн сонгоод хямдралтай үнээр аваарай — Өөрт
+              таалагдсан хослолоо хүссэнээрээ бүрдүүл.
             </p>
             <Button asChild size="lg">
               <Link href="/collections/build">
@@ -299,7 +298,7 @@ export default function HomePage() {
               <Link
                 key={s.slug}
                 href={`/catalog?season=${s.slug}`}
-                className="group bg-secondary hover:shadow-lift relative flex aspect-3/2 items-end overflow-hidden rounded-2xl p-4 transition-all hover:-translate-y-1 last:col-span-2 sm:last:col-span-1"
+                className="group bg-secondary hover:shadow-lift relative flex aspect-3/2 items-end overflow-hidden rounded-2xl p-4 transition-all last:col-span-2 hover:-translate-y-1 sm:last:col-span-1"
               >
                 <Image
                   src={`/season-${s.slug}.${s.ext}`}
@@ -410,11 +409,7 @@ async function CuratedSections() {
     <>
       {sections.map((s) => (
         <section key={s.id}>
-          <SectionHeading
-            title={s.title}
-            subtitle={s.subtitle || undefined}
-            href={s.href || undefined}
-          />
+          <SectionHeading title={s.title} href={s.href || undefined} />
           <ProductCarousel products={s.products} />
         </section>
       ))}

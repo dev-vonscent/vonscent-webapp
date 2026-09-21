@@ -36,7 +36,7 @@ import { useGiftPool } from "@/features/gifts/use-gift-pool";
 import {
   DISPATCH_HOUR,
   MAX_PREORDER_DAYS,
-  ORDER_EDIT_CUTOFF_HOUR,
+  formatEditCutoff,
   formatDeliveryDay,
   ubDayFromNow,
 } from "@/lib/time";
@@ -979,7 +979,7 @@ export default function CheckoutPage() {
               <Field
                 label="Хүргүүлэх өдөр"
                 error={errors.deliverOn?.message}
-                hint={`Хамгийн эрт нь маргааш — бэлдэхэд нэг өдөр хэрэгтэй. Сонгосон өдрийнхөө ${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.`}
+                hint={`Хамгийн эртдээ маргааш хүргэнэ. Захиалгыг бэлтгэхэд 1 өдөр шаардлагатай бөгөөд сонгосон өдрийн ${DISPATCH_HOUR}:00 цагаас хүргэлтэд гарна.`}
               >
                 <Select
                   value={watch("deliverOn") ?? deliveryDays[0]}
@@ -1063,7 +1063,7 @@ export default function CheckoutPage() {
               error={errors.note?.message}
               hint={
                 remoteZone
-                  ? "Орон нутгийн унаа хөдлөх буудал, терминалын нэрийг бичнэ үү."
+                  ? "Орон нутгийн унаа хөдлөх буудал эсвэл терминалын нэрийг бичнэ үү."
                   : undefined
               }
             >
@@ -1124,7 +1124,8 @@ export default function CheckoutPage() {
                   autoComplete="email"
                 />
                 <p className="text-muted-foreground mt-1.5 text-xs">
-                  Захиалгын дугаар, төлбөрийн линкээ имэйлээр авна.
+                  Захиалгын дугаар болон төлбөрийн холбоос таны имэйл хаягт
+                  илгээгдэнэ.
                 </p>
               </Field>
             </div>
@@ -1394,10 +1395,13 @@ export default function CheckoutPage() {
                   <Clock className="mr-1 inline size-3.5 align-[-2px]" />
                   {`Захиалга ${formatDeliveryDay(
                     watch("deliverOn") ?? deliveryDays[0] ?? "",
-                  )} ${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна (амралтын өдөр ч хүргэнэ).`}{" "}
-                  Тэр өдрийн өглөөний{" "}
-                  <strong>{ORDER_EDIT_CUTOFF_HOUR}:00</strong> цагаас хойш
-                  захиалга цуцлах, өөрчлөх боломжгүй.
+                  )} ${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.`}{" "}
+                  <strong>
+                    {formatEditCutoff(
+                      watch("deliverOn") ?? deliveryDays[0] ?? "",
+                    )}
+                  </strong>
+                  -с хойш захиалга цуцлах, өөрчлөх боломжгүй.
                 </p>
               )}
 
