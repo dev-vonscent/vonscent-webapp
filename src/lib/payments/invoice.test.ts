@@ -48,6 +48,20 @@ function makeSupabase() {
         }),
         upsert: (values: Record<string, unknown>) => ({
           select: async () => {
+            // `amount` нь default-гүй `not null` (0068; 0086 нь зөвхөн
+            // `invoice_id`/`qr_text`-ийг nullable болгосон). Дуураймал үүнийг
+            // үл тоомсорловол эзэмшлийн insert энд бүтээд бодит DB дээр
+            // унана — яг ийм байдлаар «QPay-тэй холбогдож чадсангүй» нь
+            // production хүртэл тестээр баригдалгүй явсан.
+            if (values.amount == null) {
+              return {
+                data: null,
+                error: {
+                  message:
+                    'null value in column "amount" of relation "qpay_invoices" violates not-null constraint',
+                },
+              };
+            }
             if (row) return { data: [] }; // conflict → do nothing
             row = { ...values, invoice_id: null, qr_text: null };
             return { data: [{ order_id: values.order_id }] };
@@ -184,6 +198,17 @@ describe("ensureInvoice", () => {
     createInvoice.mockResolvedValueOnce(QPAY_OK);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((await ensureInvoice(sb as any, ORDER))?.invoiceId).toBe("inv-A");
+  });
+
+  it("carries the amount into the claim row, not just the finished one", async () => {
+    // Эзэмшлийн мөр `amount`-гүй бол DB `not-null`-ээр татгалзана; `claim` нь
+    // түүнийг «өөр хэн нэгэн эзэмшсэн» гэж уншаад хүлээлтэнд ороод бодит
+    // QPay захиалга БҮР «QPay-тэй холбогдож чадсангүй» болно.
+    createInvoice.mockResolvedValue(QPAY_OK);
+    const sb = makeSupabase();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((await ensureInvoice(sb as any, ORDER))?.amount).toBe(55_000);
+    expect(createInvoice).toHaveBeenCalledTimes(1);
   });
 
   it("never persists a mock invoice — a dev artefact must not pin itself to a real order", async () => {

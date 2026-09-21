@@ -3,12 +3,13 @@
 import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { BadgePercent, Check, Plus, ShoppingBag, X } from "lucide-react";
+import { BadgePercent, Check, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
+import { toast } from "@/lib/toast";
 import { BUNDLE_ML_SIZES, DEFAULT_BUNDLE_ML } from "@/lib/constants";
 import { useCart } from "@/features/cart/store";
 import { CatalogFilters } from "@/features/catalog/components/catalog-filters";
@@ -120,6 +121,8 @@ function BuilderInner({
     if (!canCreate || busy) return;
     setBusy(true);
     const first = availableSelected[0];
+    // Баталгаажуулах мэдэгдэлд хэрэгтэй тул `picked` цэвэрлэгдэхээс өмнө авна.
+    const count = availableSelected.length;
 
     addCollection({
       collectionId: null,
@@ -160,6 +163,14 @@ function BuilderInner({
     setName("");
     setDesc("");
     router.refresh();
+
+    // Урьд нь энэ мөчид дэлгэц зүгээр л цэвэрлэгдэж, юу ч болсон эсэх нь
+    // мэдэгдэхгүй байсан — хамгийн өндөр зорилготой алхам чимээгүй төгсдөг
+    // байв. Toast нь root layout-д аль хэдийн холбогдсон (`lib/toast`).
+    toast.success(
+      `${count} үнэртэн бүхий ${ml}ml багц сагсанд нэмэгдлээ.`,
+      "Багц үүслээ",
+    );
   }
 
   // Selection tray — rendered inside the product column so on desktop it sits
@@ -181,7 +192,9 @@ function BuilderInner({
                   onClick={() => changeMl(size)}
                   aria-pressed={size === ml}
                   className={cn(
-                    "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+                    // Утсан дээр 44px — DESIGN.md-ийн доод хязгаар. Десктоп
+                    // дээр нягтруулна (`md:`), учир нь тэнд хулгана нарийн.
+                    "flex min-h-11 items-center justify-center rounded-full px-4 text-xs font-semibold transition-colors md:min-h-0 md:px-3 md:py-1",
                     size === ml
                       ? "bg-foreground text-background shadow-sm"
                       : "text-muted-foreground hover:text-foreground",
@@ -233,113 +246,71 @@ function BuilderInner({
           applied, so a customer three scents in had no way to know that one
           more would take 5% off the lot.
         */}
-        {/* <DiscountHint
+        <DiscountHint
           count={availableSelected.length}
           minItems={settings.minItems}
           pct={settings.customDiscountPct}
           active={discountEarned}
-        /> */}
+        />
 
         {/* Selected scents — its own full-width row of larger thumbnails */}
         <div className="mt-3">
           {selected.length === 0 ? (
             <div className="border-border text-muted-foreground flex h-16 items-center justify-center rounded-xl border border-dashed px-3 text-center text-sm">
-              Доорх үнэртнүүдээс {settings.minItems}+ сонгож багцаа бүрдүүлээд
-              5%-ийн хэмнэлттэй аваарай.
+              Доорх үнэртнүүдээс {settings.minItems}+ сонгож багцаа бүрдүүлээд{" "}
+              {settings.customDiscountPct}%-ийн хэмнэлттэй аваарай.
             </div>
           ) : (
-            /*
-              The scents scroll; the create button does not. It is a sibling of
-              the scroll container rather than a `sticky` child of it, so the
-              thumbnails cannot slide underneath it and it needs no backdrop of
-              its own — it simply owns the right-hand end of the row.
-
-              `min-w-0` on the strip is what lets it shrink and scroll instead
-              of pushing the button off the tray.
-            */
-            <div className="flex items-start gap-4">
-              <div className="-mx-1 flex min-w-0 flex-1 gap-2 overflow-x-auto px-1 pb-1">
-                {selected.map((p) => {
-                  const bad = !p.variantByMl[ml]?.inStock;
-                  return (
-                    <button
-                      key={p.productId}
-                      onClick={() => toggle(p)}
-                      aria-label={`${p.brand} ${p.name} хасах`}
-                      title={
-                        bad
-                          ? `${p.brand} — ${p.name}: ${ml}ml-д байхгүй`
-                          : `${p.brand} — ${p.name}`
-                      }
-                      className={cn(
-                        "bg-muted group relative size-16 shrink-0 overflow-hidden rounded-xl border transition-transform hover:-translate-y-0.5",
-                        bad
-                          ? "border-destructive ring-destructive/50 ring-2"
-                          : "border-border",
-                      )}
-                    >
-                      {p.image && (
-                        <Image
-                          src={p.image.url}
-                          alt={p.name}
-                          fill
-                          sizes="64px"
-                          className={cn(
-                            "object-cover",
-                            bad && "opacity-40 grayscale",
-                          )}
-                        />
-                      )}
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/45 group-hover:opacity-100">
-                        <X className="size-5 text-white" />
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+              {selected.map((p) => {
+                const bad = !p.variantByMl[ml]?.inStock;
+                return (
+                  <button
+                    key={p.productId}
+                    onClick={() => toggle(p)}
+                    aria-label={`${p.brand} ${p.name} хасах`}
+                    title={
+                      bad
+                        ? `${p.brand} — ${p.name}: ${ml}ml-д байхгүй`
+                        : `${p.brand} — ${p.name}`
+                    }
+                    className={cn(
+                      "bg-muted group relative size-16 shrink-0 overflow-hidden rounded-xl border transition-transform hover:-translate-y-0.5",
+                      bad
+                        ? "border-destructive ring-destructive/50 ring-2"
+                        : "border-border",
+                    )}
+                  >
+                    {p.image && (
+                      <Image
+                        src={p.image.url}
+                        alt={p.name}
+                        fill
+                        sizes="64px"
+                        className={cn(
+                          "object-cover",
+                          bad && "opacity-40 grayscale",
+                        )}
+                      />
+                    )}
+                    {/* Хулганатай дэлгэц дээр бүтэн давхарга. */}
+                    <span className="absolute inset-0 hidden items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/45 group-hover:opacity-100 md:flex">
+                      <X className="size-5 text-white" />
+                    </span>
+                    {/* Утсанд hover гэж байхгүй: урьд нь хасах тэмдэг огт
+                          харагдахгүй байсан тул жижиг зургийг томоор харах
+                          гэж дарсан хүн сонголтоо алддаг байв. */}
+                    <span className="bg-background/85 text-foreground absolute top-0.5 right-0.5 flex size-5 items-center justify-center rounded-full backdrop-blur-sm md:hidden">
+                      <X className="size-3" />
+                    </span>
+                    {bad && (
+                      <span className="bg-destructive absolute inset-x-0 bottom-0 py-0.5 text-center text-[9px] font-semibold text-white">
+                        байхгүй
                       </span>
-                      {bad && (
-                        <span className="bg-destructive absolute inset-x-0 bottom-0 py-0.5 text-center text-[9px] font-semibold text-white">
-                          байхгүй
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/*
-                Create — pinned to the right of the row it acts on, a tile the
-                same size as the scents so the strip reads as "these, then go".
-                The primary action must not be the one thing you have to scroll
-                to find.
-              */}
-              <button
-                type="button"
-                disabled={!canCreate}
-                onClick={() => {
-                  setName("");
-                  setDesc("");
-                  setOpen(true);
-                }}
-                aria-label={
-                  unavailableSelected.length > 0
-                    ? `${unavailableSelected.length} үнэртэн ${ml}ml-д байхгүй`
-                    : "Багц үүсгэх"
-                }
-                title={
-                  unavailableSelected.length > 0
-                    ? `${unavailableSelected.length} үнэртэн ${ml}ml-д байхгүй`
-                    : "Багц үүсгэх"
-                }
-                className={cn(
-                  "flex size-16 shrink-0 items-center justify-center rounded-xl transition-colors",
-                  // Each state paints its own background. Sharing a `bg-card`
-                  // base would put two background-colour utilities on one
-                  // element, and which of them wins is down to the order
-                  // Tailwind happens to emit them in.
-                  canCreate
-                    ? "bg-accent text-foreground hover:opacity-90"
-                    : "bg-card border-border text-muted-foreground cursor-not-allowed border border-dashed",
-                )}
-              >
-                <ShoppingBag className="size-5" />
-              </button>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -368,6 +339,33 @@ function BuilderInner({
               </span>
             </div>
           </div>
+        )}
+
+        {/*
+          Үндсэн үйлдэл. Урьд нь 64px-ийн нэргүй дүрст хавтан байсан: нэр нь
+          зөвхөн `aria-label`/`title`-д амьдардаг тул утсан дээр саарал
+          дөрвөлжин л харагддаг, идэвхгүй үеийн `border-dashed` нь глобал
+          тунгалаг хүрээний дүрмээр арилдаг байв. Одоо товч өөрийн төлөвөө
+          бичгээр хэлнэ — хэдэн үнэртэн дутуу, эсвэл ямар дүнд үүсэх нь.
+        */}
+        {selected.length > 0 && (
+          <Button
+            type="button"
+            size="lg"
+            disabled={!canCreate}
+            onClick={() => {
+              setName("");
+              setDesc("");
+              setOpen(true);
+            }}
+            className="mt-3 w-full"
+          >
+            {unavailableSelected.length > 0
+              ? `${unavailableSelected.length} үнэртэн ${ml}ml-д байхгүй`
+              : availableSelected.length < settings.minItems
+                ? `Багц үүсгэх (${availableSelected.length}/${settings.minItems})`
+                : `Багц үүсгэх · ${formatPrice(price)}`}
+          </Button>
         )}
       </div>
     </div>
@@ -459,7 +457,7 @@ function BuilderInner({
                         aria-pressed={on}
                         aria-label={on ? "Хасах" : "Нэмэх"}
                         className={cn(
-                          "shadow-lift absolute right-2 bottom-2 flex size-9 items-center justify-center rounded-full transition-colors",
+                          "shadow-lift absolute right-2 bottom-2 flex size-11 items-center justify-center rounded-full transition-colors active:scale-95 md:size-9",
                           on
                             ? "bg-gold-strong text-white"
                             : disabled
@@ -607,14 +605,17 @@ function DiscountHint({
   return (
     <p className="bg-secondary text-muted-foreground mt-3 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs">
       <BadgePercent className="size-3.5 shrink-0" />
-      {missing === 1 ? (
+      {/* Нэгийг ч сонгоогүй бол нийт тоо нь ойлгомжтой, харин сонгож эхэлсэн
+          хойно ҮЛДСЭН тоо нь хэрэгтэй: «4 үнэртэн сонговол» гэдэг нь гурав
+          дутуу байгаа хүнд хэдэн алхам үлдснийг хэлэхгүй. */}
+      {count === 0 ? (
         <>
-          <strong className="text-foreground">Дахин 1 үнэртэн</strong> сонговол{" "}
-          {pct}% хямдрал нэмэгдэнэ
+          <strong className="text-foreground">{minItems} үнэртэн</strong>{" "}
+          сонговол {pct}% хямдрал нэмэгдэнэ
         </>
       ) : (
         <>
-          <strong className="text-foreground">{minItems} үнэртэн</strong>{" "}
+          <strong className="text-foreground">Дахин {missing} үнэртэн</strong>{" "}
           сонговол {pct}% хямдрал нэмэгдэнэ
         </>
       )}
