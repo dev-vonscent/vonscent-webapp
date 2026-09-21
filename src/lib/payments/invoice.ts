@@ -116,25 +116,35 @@ const WAIT_STEPS = 15;
  *
  * Хуучирсан эзэмшлийг булаана: QPay руу залгаж байгаад унасан процесс мөрөө
  * дуусгалгүй үлдээвэл захиалга мөнхөд invoice-гүй болно.
+ *
+ * `amount`-ыг ЭНД өгөх ёстой: 0086 нь `invoice_id` / `qr_text`-ийг л nullable
+ * болгосон, `amount` нь default-гүй `not null` хэвээр. Өгөхгүй бол эзэмшлийн
+ * insert бүр `not-null violation`-оор унаж, `claim` нь «өөр хэн нэгэн
+ * эзэмшсэн» гэж ойлгогдоод бодит QPay захиалга бүр «QPay-тэй холбогдож
+ * чадсангүй» болно. Ямар ч байсан дараа нь дахин бичигдэнэ.
  */
 async function claim(
   supabase: SupabaseClient,
   orderId: string,
+  amount: number,
 ): Promise<boolean> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("qpay_invoices")
     .upsert(
-      { order_id: orderId, claimed_at: new Date().toISOString() },
+      { order_id: orderId, amount, claimed_at: new Date().toISOString() },
       { onConflict: "order_id", ignoreDuplicates: true },
     )
     .select("order_id");
+  // Алдааг нам гүм залгивал «эзэмшигдсэн» мэт харагдаж, шалтгаан нь хаана ч
+  // үлдэхгүй — яг энэ нь дээрх алдааг production дээр л илрүүлэхэд хүргэсэн.
+  if (error) console.error(`[qpay] invoice claim failed: ${error.message}`);
   if ((data as unknown[] | null)?.length) return true;
 
   // Эзэмшил аль хэдийн байна. Хэт хуучирсан бөгөөд дуусаагүй бол булаана.
   const cutoff = new Date(Date.now() - STALE_CLAIM_MS).toISOString();
   const { data: stolen } = await supabase
     .from("qpay_invoices")
-    .update({ claimed_at: new Date().toISOString() })
+    .update({ claimed_at: new Date().toISOString(), amount })
     .eq("order_id", orderId)
     .is("invoice_id", null)
     .lt("claimed_at", cutoff)
@@ -204,7 +214,7 @@ export async function ensureInvoice(
   // тул зэрэгцээ дуудагчдаас яг нэг нь ялна; хожигдсон нь QPay руу огт
   // залгахгүй, ялагчийн бичихийг хүлээнэ. Ингэснээр нэг захиалгад хоёр бодит
   // invoice үүсэх боломж хаагдана.
-  if (!(await claim(supabase, order.id))) {
+  if (!(await claim(supabase, order.id, amount))) {
     return waitForInvoice(supabase, order.id);
   }
 
