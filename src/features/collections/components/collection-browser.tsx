@@ -362,7 +362,7 @@ export function CollectionBrowser({
             <EmptyState
               icon={PackageOpen}
               title="Тохирох багц олдсонгүй"
-              description="Шүүлтүүрээ сулруулж эсвэл цэвэрлээд үзээрэй."
+              description="Шүүлтүүрээ өөрчилж, дахин хайж үзээрэй."
               action={
                 // Grid байхгүй болохоор «Өөрөө угсрах» нүд ч алга болно —
                 // энэ хүн яг тэр саналыг сонсох ёстой хүн.

@@ -68,7 +68,7 @@ export default async function CollectionsPage() {
           Багц
         </h1>
         <p className="text-muted-foreground text-sm text-balance">
-          Хэд хэдэн үнэртэн, нэг хэмжээгээр — тусад нь авахаас хямд.
+          Багцаар авах тусад нь авахаас хямд.
         </p>
         {facts.length > 0 && (
           <ul className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">

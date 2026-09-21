@@ -100,12 +100,9 @@ export default function WishlistPage() {
         <EmptyState
           size="lg"
           icon={Heart}
-          title="Жагсаалт хоосон байна"
+          title="Хүслийн жагсаалт хоосон байна"
           description={
             <>
-              {/* Emoji биш lucide icon: ❤ нь төхөөрөмж бүр дээр өөр өнгө,
-                  өөр хэлбэртэй зурагддаг бөгөөд монохром системд өнгөт
-                  тэмдэгт болж унадаг. */}
               Барааны зурган дээрх{" "}
               <Heart className="inline size-3.5 align-[-2px]" aria-hidden />{" "}
               тэмдгийг дарж дуртай үнэртнээ хадгалаарай.

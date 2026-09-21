@@ -20,7 +20,7 @@ import { BANK_TRANSFER, RESERVE_TIMEOUT_MINUTES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import {
   DISPATCH_HOUR,
-  ORDER_EDIT_CUTOFF_HOUR,
+  formatEditCutoff,
   earliestDeliveryDay,
   formatDeliveryDay,
   projectedDeliveryDay,
@@ -899,7 +899,7 @@ function PaidState({
           {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.
         </p>
         <p className="text-muted-foreground mt-2 text-xs">
-          Тэр өдрийн өглөөний {ORDER_EDIT_CUTOFF_HOUR}:00 цаг хүртэл цуцлах
+          {formatEditCutoff(deliverOn ?? earliestDeliveryDay())} хүртэл цуцлах
           боломжтой. Захиалгын явцыг «Захиалгаа харах» хэсгээс хянана.
         </p>
 

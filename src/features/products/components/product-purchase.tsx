@@ -329,7 +329,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
       {!soldOut && selected?.inStock && (
         <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
           <Check className="text-success size-3.5" />
-          Нөөцөд бэлэн · Улаанбаатарт хамгийн эрт нь маргааш хүргэгдэнэ
+          Нөөцөд бэлэн · Улаанбаатарт маргааш хүргэх боломжтой
         </p>
       )}
 

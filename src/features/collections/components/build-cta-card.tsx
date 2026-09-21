@@ -28,7 +28,7 @@ export function BuildCtaCard({
       </span>
       <span className="text-base/tight font-medium">Өөрөө угсрах</span>
       <span className="text-muted-foreground max-w-56 text-sm text-balance">
-        Дуртай {minItems}+ үнэртнээ сонгоод {discountPct}% хямд
+        {minItems}+ үнэртэн сонгоод {discountPct}% хямд аваарай
       </span>
     </Link>
   );
