@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextEditor } from "@/components/shared/rich-text-editor";
+import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { ImageUpload } from "@/features/admin/components/image-upload";
 import type {
   PopupSettings,
@@ -316,6 +317,7 @@ function FaqSection({ initial }: { initial: FaqRow[] }) {
               </span>
             }
             onDelete={() => del(f.id, f.question)}
+            dialogTitle="FAQ засах"
             fields={[
               { key: "category", label: "Ангилал", value: f.category ?? "" },
               { key: "question", label: "Асуулт", value: f.question },
@@ -630,26 +632,40 @@ interface EditableField {
 }
 
 /**
- * One list row with an inline edit form behind the pencil — feeds the PATCH
- * routes that previously had no UI (todo №23: баннер/блог/FAQ засах).
+ * One list row with an edit form behind the pencil — feeds the PATCH routes
+ * that previously had no UI (todo №23: баннер/блог/FAQ засах).
+ *
+ * `dialogTitle` нь формыг мөрийн доор биш, ResponsiveDialog дотор нээнэ: урт
+ * хариулттай FAQ инлайн нээгдэхэд доорх мөрүүдийг түлхэж, жагсаалтын байрлал
+ * алдагддаг. Бусад хэсэг (поп-ап, блог) хуучнаараа инлайн хэвээр.
  */
 function EditableRow({
   summary,
   fields,
   onSave,
   onDelete,
+  dialogTitle,
 }: {
   summary: React.ReactNode;
   fields: EditableField[];
   /** Resolves true when the write landed; false keeps the form open. */
   onSave: (values: Record<string, string>) => Promise<boolean>;
   onDelete: () => void;
+  /** Present = edit in a dialog with this title instead of inline. */
+  dialogTitle?: string;
 }) {
   const [editing, setEditing] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [values, setValues] = React.useState<Record<string, string>>(() =>
     Object.fromEntries(fields.map((f) => [f.key, f.value])),
   );
+
+  // Нээх бүрд шинэчилж уншина: router.refresh()-ийн дараа мөр шинэ утгатай
+  // болсон ч state хуучнаараа үлдвэл хадгалахад хуучин текст буцаж бичигдэнэ.
+  function open() {
+    setValues(Object.fromEntries(fields.map((f) => [f.key, f.value])));
+    setEditing(true);
+  }
 
   async function save() {
     setBusy(true);
@@ -661,6 +677,62 @@ function EditableRow({
     }
   }
 
+  const form = (
+    <div className="space-y-2">
+      {fields.map((f) =>
+        f.image ? (
+          <div key={f.key} className="space-y-1">
+            <Label className="text-xs">{f.label}</Label>
+            <ImageUpload
+              value={values[f.key] || null}
+              onChange={(url) =>
+                setValues((v) => ({ ...v, [f.key]: url ?? "" }))
+              }
+            />
+          </div>
+        ) : f.richtext ? (
+          <div key={f.key} className="space-y-1">
+            <Label className="text-xs">{f.label}</Label>
+            <RichTextEditor
+              value={values[f.key]}
+              onChange={(html) => setValues((v) => ({ ...v, [f.key]: html }))}
+            />
+          </div>
+        ) : f.multiline ? (
+          <div key={f.key} className="space-y-1">
+            <Label className="text-xs">{f.label}</Label>
+            <textarea
+              value={values[f.key]}
+              onChange={(e) =>
+                setValues((v) => ({ ...v, [f.key]: e.target.value }))
+              }
+              rows={4}
+              className="bg-secondary field-edge w-full rounded-md px-3 py-2 text-base md:text-sm"
+            />
+          </div>
+        ) : (
+          <div key={f.key} className="space-y-1">
+            <Label className="text-xs">{f.label}</Label>
+            <Input
+              value={values[f.key]}
+              onChange={(e) =>
+                setValues((v) => ({ ...v, [f.key]: e.target.value }))
+              }
+            />
+          </div>
+        ),
+      )}
+      <div className="flex gap-2 pt-1">
+        <Button size="sm" onClick={save} disabled={busy}>
+          {busy ? "Хадгалж байна…" : "Хадгалах"}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+          Болих
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <li className="bg-muted/40 rounded-md px-3 py-2 text-sm">
       <div className="flex items-center justify-between gap-2">
@@ -668,7 +740,7 @@ function EditableRow({
         <span className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            onClick={() => setEditing((e) => !e)}
+            onClick={() => (editing ? setEditing(false) : open())}
             className="text-muted-foreground hover:text-gold-strong"
             aria-label="Засах"
           >
@@ -684,62 +756,17 @@ function EditableRow({
           </button>
         </span>
       </div>
-      {editing && (
-        <div className="mt-3 space-y-2">
-          {fields.map((f) =>
-            f.image ? (
-              <div key={f.key} className="space-y-1">
-                <Label className="text-xs">{f.label}</Label>
-                <ImageUpload
-                  value={values[f.key] || null}
-                  onChange={(url) =>
-                    setValues((v) => ({ ...v, [f.key]: url ?? "" }))
-                  }
-                />
-              </div>
-            ) : f.richtext ? (
-              <div key={f.key} className="space-y-1">
-                <Label className="text-xs">{f.label}</Label>
-                <RichTextEditor
-                  value={values[f.key]}
-                  onChange={(html) =>
-                    setValues((v) => ({ ...v, [f.key]: html }))
-                  }
-                />
-              </div>
-            ) : f.multiline ? (
-              <div key={f.key} className="space-y-1">
-                <Label className="text-xs">{f.label}</Label>
-                <textarea
-                  value={values[f.key]}
-                  onChange={(e) =>
-                    setValues((v) => ({ ...v, [f.key]: e.target.value }))
-                  }
-                  rows={4}
-                  className="bg-secondary field-edge w-full rounded-md px-3 py-2 text-base md:text-sm"
-                />
-              </div>
-            ) : (
-              <div key={f.key} className="space-y-1">
-                <Label className="text-xs">{f.label}</Label>
-                <Input
-                  value={values[f.key]}
-                  onChange={(e) =>
-                    setValues((v) => ({ ...v, [f.key]: e.target.value }))
-                  }
-                />
-              </div>
-            ),
-          )}
-          <div className="flex gap-2 pt-1">
-            <Button size="sm" onClick={save} disabled={busy}>
-              {busy ? "Хадгалж байна…" : "Хадгалах"}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
-              Болих
-            </Button>
-          </div>
-        </div>
+      {dialogTitle ? (
+        <ResponsiveDialog
+          open={editing}
+          onOpenChange={(o) => (o ? open() : setEditing(false))}
+          title={dialogTitle}
+          className="sm:max-w-2xl"
+        >
+          <div className="mt-2">{form}</div>
+        </ResponsiveDialog>
+      ) : (
+        editing && <div className="mt-3">{form}</div>
       )}
     </li>
   );
