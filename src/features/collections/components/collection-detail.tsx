@@ -9,9 +9,16 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
+import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { trackBeginCheckout } from "@/lib/analytics";
 import { bundleGiftGuarantee } from "@/lib/gift";
 import type { Collection } from "../types";
+
+/**
+ * Үүнээс урт тайлбарыг эвхэнэ. Админ дөрвөн догол мөр бичихэд хэмжээний
+ * сонголт ба хоёр товч утасны дэлгэцээс бүрмөсөн гарч байсан.
+ */
+const DESCRIPTION_CLAMP_CHARS = 220;
 
 export function CollectionDetail({
   collection,
@@ -26,6 +33,8 @@ export function CollectionDetail({
     firstMl ?? collection.prices[0]?.ml,
   );
   const [added, setAdded] = React.useState(false);
+  const [descOpen, setDescOpen] = React.useState(false);
+  const sizeRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
 
   const addCollection = useCart((s) => s.addCollection);
   const startBuyNowCollection = useCart((s) => s.startBuyNowCollection);
@@ -79,10 +88,75 @@ export function CollectionDetail({
     return true;
   }
 
+  /**
+   * Хэмжээний сонголт нь radiogroup — хоёрын нэгийг асаах toggle биш,
+   * нэгийг нь сонгох жагсаалт. Тиймээс сум товчоор нүүж, фокус нь бүлэг дээр
+   * ганцхан зогсоолтой байна (roving tabindex).
+   */
+  function onSizeKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    const keys = [
+      "ArrowRight",
+      "ArrowDown",
+      "ArrowLeft",
+      "ArrowUp",
+      "Home",
+      "End",
+    ];
+    if (!keys.includes(e.key)) return;
+    e.preventDefault();
+    const list = collection.prices;
+    const from = list.findIndex((p) => p.ml === ml);
+    const step = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1;
+    let next: number;
+    if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = list.length - 1;
+    else next = (from + step + list.length) % list.length;
+    // Байхгүй хэмжээг алгасна — сонгох боломжгүй зүйл дээр фокус зогсоохгүй.
+    for (let i = 0; i < list.length && !list[next].available; i += 1) {
+      next = (next + (step || 1) + list.length) % list.length;
+    }
+    if (!list[next].available) return;
+    setMl(list[next].ml);
+    sizeRefs.current[next]?.focus();
+  }
+
+  /**
+   * Гар утасны наалдсан худалдан авах зурвас — барааны хуудсынхтай ижил зан
+   * (`product-purchase.tsx`). 390px дэлгэцэн дээр багцын CTA нь зураг, нэр,
+   * үнэ, тайлбар, хэмжээний сүлжээ, гишүүдийн жагсаалтын ард хоёр орчим
+   * дэлгэцийн доор үлддэг байсан — илүү үнэтэй бараа нь илүү урт замтай
+   * болсон хэрэг.
+   */
+  const ctaRef = React.useRef<HTMLDivElement>(null);
+  const [ctaAway, setCtaAway] = React.useState(false);
+  React.useEffect(() => {
+    const el = ctaRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) =>
+      setCtaAway(!entry.isIntersecting),
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Зурвас нь доод цэсийг НУУНА, дээр нь давхарлахгүй — хоёулаа зэрэг гарвал
+  // хоёр хөвөгч капсул дэлгэцийн доод хэсгийг бүрэн эзэлнэ.
+  const showBuyBar = ctaAway && available && !collection.soldOut;
+  useClaimBottomBar(showBuyBar);
+
+  const addedTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(
+    () => () => {
+      if (addedTimer.current) clearTimeout(addedTimer.current);
+    },
+    [],
+  );
+
   function onAdd() {
     if (!addToCart()) return;
     setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+    if (addedTimer.current) clearTimeout(addedTimer.current);
+    addedTimer.current = setTimeout(() => setAdded(false), 2000);
   }
 
   /**
@@ -114,56 +188,106 @@ export function CollectionDetail({
 
   return (
     <div className="space-y-6">
-      {/* Live price — updates with ml selection */}
-      <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
-        <span className="font-serif text-3xl font-semibold">
-          {formatPrice(priceRow?.price ?? 0)}
-        </span>
-        <span className="text-muted-foreground pb-1 text-sm">
-          / {ml}ml багц
-        </span>
+      {/* Live price — updates with ml selection.
+          Дүнгийн хажууд «{n} үнэртэн × {ml}ml» гэж бичихгүй бол 2мл → 20мл
+          хооронд үнэ гурав дахин өсөх нь тайлбаргүй үсрэлт мэт харагдана. */}
+      <div className="space-y-1" aria-live="polite">
+        <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+          <span className="font-serif text-3xl font-semibold">
+            {formatPrice(priceRow?.price ?? 0)}
+          </span>
+          <span className="text-muted-foreground pb-1 text-sm">
+            {collection.members.length} үнэртэн × {ml}ml
+          </span>
+        </div>
         {priceRow && priceRow.saved > 0 && (
-          <span className="flex items-baseline gap-2 pb-0.5">
-            <span className="text-muted-foreground text-sm line-through">
+          <p className="text-muted-foreground text-sm text-pretty">
+            Тусад нь авбал{" "}
+            <span className="line-through">
               {formatPrice(priceRow.memberSum)}
-            </span>
-            <span className="text-gold-strong text-sm font-medium">
+            </span>{" "}
+            — багцаар{" "}
+            <span className="text-gold-strong font-medium">
               {formatPrice(priceRow.saved)} хэмнэнэ
             </span>
-          </span>
+          </p>
         )}
       </div>
 
       {collection.description && (
-        <p className="text-foreground/80 text-sm/relaxed">
-          {collection.description}
-        </p>
+        <div className="space-y-1">
+          <p
+            className={cn(
+              "text-foreground/80 text-sm/relaxed",
+              !descOpen && "line-clamp-4",
+            )}
+          >
+            {collection.description}
+          </p>
+          {collection.description.length > DESCRIPTION_CLAMP_CHARS && (
+            <button
+              type="button"
+              onClick={() => setDescOpen((v) => !v)}
+              aria-expanded={descOpen}
+              className="text-gold-strong text-sm font-medium underline underline-offset-4"
+            >
+              {descOpen ? "Хураах" : "Дэлгэрэнгүй"}
+            </button>
+          )}
+        </div>
       )}
 
       {/* ml segment */}
       <div className="space-y-3">
-        <p className="text-sm font-medium">Хэмжээ сонгох</p>
-        <div className="flex flex-wrap gap-2">
-          {collection.prices.map((p) => {
+        <p id="bundle-size-label" className="text-sm font-medium">
+          Хэмжээ сонгох{" "}
+          <span className="text-muted-foreground font-normal">
+            — үнэртэн тус бүрд
+          </span>
+        </p>
+        {/*
+          Дөрвүүлээ нэг мөрөнд: хоёр мөр болмогц сүүлчийн хэмжээ (хамгийн
+          үнэтэй нь) доод хөвдөг цэсний доогуур орж, эхний дэлгэцэнд огт
+          харагдахгүй байсан.
+        */}
+        <div
+          role="radiogroup"
+          aria-labelledby="bundle-size-label"
+          onKeyDown={onSizeKeyDown}
+          className="grid grid-cols-4 gap-2"
+        >
+          {collection.prices.map((p, i) => {
             const active = p.ml === ml;
             return (
               <button
                 key={p.ml}
-                onClick={() => setMl(p.ml)}
-                disabled={!p.available}
-                aria-pressed={active}
-                aria-label={p.available ? `${p.ml}ml` : `${p.ml}ml — байхгүй`}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                aria-disabled={p.available ? undefined : true}
+                tabIndex={active ? 0 : -1}
+                ref={(el) => {
+                  sizeRefs.current[i] = el;
+                }}
+                onClick={() => p.available && setMl(p.ml)}
                 className={cn(
-                  "flex min-w-24 flex-col items-center rounded-lg px-4 py-2 transition-colors",
+                  "flex flex-col items-center rounded-lg p-2 transition-colors",
                   !p.available
-                    ? "bg-secondary/50 text-muted-foreground cursor-not-allowed line-through opacity-50"
+                    ? "bg-muted text-muted-foreground cursor-not-allowed line-through"
                     : active
-                      ? "bg-foreground/30"
+                      ? // Цул гадаргуу — «сонгогдсон» нь бүдэг өнгө биш,
+                        // эргэсэн өнгө байх ёстой (/collections/build-тэй ижил).
+                        "bg-foreground text-background"
                       : "bg-secondary hover:bg-accent",
                 )}
               >
                 <span className="text-sm font-semibold">{p.ml}ml</span>
-                <span className="text-muted-foreground text-xs">
+                <span
+                  className={cn(
+                    "text-xs",
+                    active ? "text-background/75" : "text-muted-foreground",
+                  )}
+                >
                   {p.available ? formatPrice(p.price) : "Байхгүй"}
                 </span>
               </button>
@@ -175,16 +299,19 @@ export function CollectionDetail({
       {/* Members */}
       <div className="space-y-3">
         <p className="text-sm font-medium">
-          Багцын үнэртэн ({collection.members.length})
+          Багцын үнэртэн ({collection.members.length}){" "}
+          <span className="text-muted-foreground font-normal">
+            — тус бүр {ml}ml
+          </span>
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
           {collection.members.map((m) => (
             <Link
               key={m.productId}
               href={`/products/${m.slug}`}
-              className="border-border hover:bg-accent flex items-center gap-3 rounded-lg border p-2 transition-colors"
+              className="hover:bg-accent flex items-center gap-3 rounded-lg p-2 transition-colors active:scale-[0.99]"
             >
-              <div className="bg-muted border-border relative size-12 shrink-0 overflow-hidden rounded-md border">
+              <div className="bg-muted relative size-12 shrink-0 overflow-hidden rounded-md">
                 {m.image && (
                   <Image
                     src={m.image.url}
@@ -199,7 +326,9 @@ export function CollectionDetail({
                 <p className="text-muted-foreground text-[11px] tracking-wide uppercase">
                   {m.brand}
                 </p>
-                <p className="truncate text-sm font-medium">{m.name}</p>
+                <p className="truncate text-sm font-medium" title={m.name}>
+                  {m.name}
+                </p>
               </div>
             </Link>
           ))}
@@ -208,7 +337,7 @@ export function CollectionDetail({
 
       {/* Бэлгийн эрх — сонголт нь checkout дээр */}
       {giftPoolEnabled && giftGuarantee > 0 && (
-        <p className="border-border bg-secondary/60 flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm">
+        <p className="bg-secondary/60 flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm">
           <Gift className="text-gold-strong mt-0.5 size-4 shrink-0" />
           <span>
             Энэ багц <strong>1мл бэлгийн дээж</strong> дагалдана — бэлгээ
@@ -219,7 +348,7 @@ export function CollectionDetail({
 
       {/* «Захиалах» leads: it is the shorter road to a paid order, and the
           cart stays one tap away underneath. */}
-      <div className="space-y-3">
+      <div ref={ctaRef} className="space-y-3">
         <Button
           size="lg"
           className="w-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
@@ -229,9 +358,12 @@ export function CollectionDetail({
           {available ? "Захиалах" : "Түр байхгүй"}
         </Button>
 
+        {/* `outline` нь хүрээгүй системд ghost-оос ялгарахгүй тул энэ товч
+            зүгээр л текст мэт харагдаж байсан — `secondary` бол системийн
+            хоёрдогч гадаргуу. */}
         <Button
           size="lg"
-          variant="outline"
+          variant="secondary"
           className="w-full"
           disabled={!available}
           onClick={onAdd}
@@ -246,7 +378,53 @@ export function CollectionDetail({
             </>
           )}
         </Button>
+
+        {/* Харагдаж буй үнэ нь төлөх дүн биш: хүргэлт үргэлж нэмэгддэг
+            (үнэгүй хүргэлтийн босго байхгүй). Хүргэх өдрийг худалдан авагч
+            төлбөрийн хуудсанд өөрөө сонгоно (lib/time.ts — хамгийн эрт нь
+            маргааш). */}
+        <p className="text-muted-foreground text-xs text-balance">
+          Үнэд хүргэлт ороогүй · Хүргэх өдрөө төлбөрийн хуудсанд сонгоно
+        </p>
       </div>
+
+      {/* Барааны хуудасны зурвасын хэлбэрийг яг давтана: хөвөгч капсул,
+          Glass Trio (/85 + blur + lift), ирмэгээс доторлосон. */}
+      {showBuyBar && (
+        <div className="pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 md:hidden">
+          <div className="bg-secondary/85 shadow-lift pointer-events-auto mb-3 flex w-full items-center gap-3 rounded-full py-2 pr-2 pl-4 backdrop-blur">
+            <div className="min-w-0 flex-1">
+              <p className="text-muted-foreground truncate text-[11px]">
+                {collection.name} · {collection.members.length} × {ml}ml
+              </p>
+              <p className="font-serif text-base/tight font-semibold tabular-nums">
+                {formatPrice(priceRow?.price ?? 0)}
+              </p>
+            </div>
+            {/* Энэ өргөнд зөвхөн дүрс — шошго нь «Захиалах»-ыг зурваснаас
+                шахаж гаргана. */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="shrink-0 rounded-full"
+              onClick={onAdd}
+              aria-label="Сагсанд нэмэх"
+            >
+              {added ? (
+                <Check className="size-4" />
+              ) : (
+                <ShoppingCart className="size-4" />
+              )}
+            </Button>
+            <Button
+              onClick={onBuyNow}
+              className="shrink-0 rounded-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+            >
+              Захиалах
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,12 +1,15 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Gift } from "lucide-react";
+import { Droplet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/format";
 import { GENDER_LABEL } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { Collection } from "../types";
-import { formatDiscountRange } from "@/features/collections/pricing";
+import {
+  formatDiscountRange,
+  giftBadgeLabel,
+} from "@/features/collections/pricing";
 
 /** A bundle card led by its poster image, with the member bottles as a small
  * avatar strip so the buyer still sees what's inside. */
@@ -15,18 +18,19 @@ export function CollectionCard({
   giftPoolEnabled = false,
 }: {
   collection: Collection;
-  /** Бэлгийн сан идэвхтэй үед л «Бэлэгтэй» тэмдэг гарна (backlog A2). */
+  /** Бэлгийн сан идэвхтэй үед л дээжийн тэмдэг гарна (backlog A2). */
   giftPoolEnabled?: boolean;
 }) {
   const start = collection.startingPrice;
   const startMl = collection.availableMls[0];
   const members = collection.members.slice(0, 4);
+  const giftLabel = giftPoolEnabled ? giftBadgeLabel(collection) : null;
 
   return (
     <div className="group flex flex-col">
       <Link
         href={`/collections/${collection.slug}`}
-        className="border-border group-hover:border-gold-strong/40 group-hover:shadow-lift relative block aspect-3/2 overflow-hidden rounded-2xl border transition-all duration-300"
+        className="group-hover:shadow-lift relative block aspect-3/2 overflow-hidden rounded-2xl transition-all duration-300 active:scale-[0.99]"
       >
         {collection.image && (
           <Image
@@ -46,9 +50,9 @@ export function CollectionCard({
               −{formatDiscountRange(collection.discountRange)}
             </Badge>
           )}
-          {giftPoolEnabled && (
+          {giftLabel && (
             <Badge className="bg-foreground/85 text-background w-fit gap-1 backdrop-blur-sm">
-              <Gift className="size-3" /> Бэлэгтэй
+              <Droplet className="size-3" /> {giftLabel}
             </Badge>
           )}
         </div>
@@ -81,29 +85,41 @@ export function CollectionCard({
         </div>
 
         {collection.soldOut && (
-          <div className="bg-background/70 absolute inset-0 flex items-center justify-center ">
-            <span className="border-border bg-card rounded-full border px-3 py-1 text-xs font-medium tracking-wide uppercase">
+          <div className="bg-background/70 absolute inset-0 flex items-center justify-center">
+            <span className="bg-card rounded-full px-3 py-1 text-xs font-medium tracking-wide uppercase">
               Түр байхгүй
             </span>
           </div>
         )}
       </Link>
 
+      {/* Хоёр багана хоёулаа «жижиг шошго → гол мөр» бүтэцтэй тул мөр
+          хоорондын зай нь хоёуланд нь ижил байх ёстой: `leading-none` дээр
+          flex gap нэмж зайг нүдээр биш, тоогоор тэнцүүлнэ (нэрийн мөр нь
+          `truncate`-тай учир доод уртыг нь хайчлахгүйн тулд `tight`, түүний
+          2px-ийг баруун баганын gap-аас нөхнө). */}
       <div className="mt-3 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <span className="text-muted-foreground text-[11px] tracking-[0.15em] uppercase">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="text-muted-foreground text-[11px] leading-none tracking-[0.15em] uppercase">
             {GENDER_LABEL[collection.gender]}
           </span>
           <Link
             href={`/collections/${collection.slug}`}
-            className="hover:text-gold-strong block truncate font-serif text-base/tight  font-medium transition-colors"
+            className="hover:text-gold-strong block truncate font-serif text-base/tight font-medium transition-colors"
           >
             {collection.name}
           </Link>
         </div>
+        {/* «109,300₮» дангаараа «2ml нь 109,300₮» гэж уншигдана — доорх мөр
+            нь тэр дүн юуны үнэ болохыг хэлнэ (үнэртний тоо × хэмжээ). */}
         {!collection.soldOut && start > 0 && (
-          <span className="text-foreground/80 shrink-0 pt-0.5 text-sm font-semibold tracking-tight">
-            {startMl}ml-ээс {formatPrice(start)}
+          <span className="flex shrink-0 flex-col items-end gap-1.5">
+            <span className="text-foreground/80 text-sm leading-none font-semibold tracking-tight">
+              {formatPrice(start)}-өөс
+            </span>
+            <span className="text-muted-foreground text-xs leading-none">
+              {collection.members.length} × {startMl}ml
+            </span>
           </span>
         )}
       </div>
