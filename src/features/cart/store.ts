@@ -434,6 +434,23 @@ export const selectCheckoutSubtotal = (s: CartState) =>
   selectCheckoutItems(s).reduce((sum, i) => sum + i.unitPrice * i.qty, 0) +
   selectCheckoutCollections(s).reduce((sum, c) => sum + c.unitPrice * c.qty, 0);
 
+/**
+ * Багцын **хямдралын өмнөх** үнэ — гишүүдийн ганцаарчилсан үнийн нийлбэр.
+ * `unitPrice` нь хямдруулсан дүн тул хоёрын зөрүү нь тухайн багц хэдэн төгрөг
+ * хэмнэж байгааг харуулна; тойм дээр «үндсэн үнэ → хямдрал → төлөх дүн» гэсэн
+ * гурван мөр зөвхөн ийм эх дүнтэй байж утга учиртай болно.
+ */
+export const collectionBasePrice = (c: CartCollection) =>
+  c.members.reduce((sum, m) => sum + m.price, 0);
+
+/** Төлбөрийн хуудасны хямдралгүй дүн (багц бүр задарсан үнээрээ). */
+export const selectCheckoutGross = (s: CartState) =>
+  selectCheckoutItems(s).reduce((sum, i) => sum + i.unitPrice * i.qty, 0) +
+  selectCheckoutCollections(s).reduce(
+    (sum, c) => sum + collectionBasePrice(c) * c.qty,
+    0,
+  );
+
 /** True when at least one line is unchecked (for the «select all» box). */
 export const selectHasExcluded = (s: CartState) =>
   s.excludedItems.length > 0 || s.excludedCollections.length > 0;
