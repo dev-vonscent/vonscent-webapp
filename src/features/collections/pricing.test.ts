@@ -93,11 +93,23 @@ describe("memberPrices", () => {
     const at20 = prices.find((p) => p.ml === 20)!;
     const at5 = prices.find((p) => p.ml === 5)!;
     expect(at20.discountPct).toBe(15);
+    expect(at20.nominalDiscountPct).toBe(15);
     expect(at20.price).toBe(bundlePrice(130000, 15, 100));
     // Untouched sizes keep the bundle default — this is what lets every
     // pre-0051 bundle price exactly as it did before.
     expect(at5.discountPct).toBe(5);
+    expect(at5.nominalDiscountPct).toBe(5);
     expect(at5.price).toBe(bundlePrice(45000, 5, 100));
+  });
+
+  it("keeps the nominal % flat even when ₮ rounding drifts the real %", () => {
+    // memberSum = 2050, 5% off = 1947.5 -> nearest 100 = 1900 -> real
+    // pct = round(150/2050*100) = 7, even though nothing was overridden.
+    const members = [member({ 5: 1000 }, [5]), member({ 5: 1050 }, [5])];
+    const at5 = memberPrices(members, 5, 100).find((p) => p.ml === 5)!;
+    expect(at5.price).toBe(1900);
+    expect(at5.discountPct).toBe(7); // ₮ rounding nudged the real %
+    expect(at5.nominalDiscountPct).toBe(5); // but the promised % holds
   });
 
   it("treats a 0% override as a real override, not as absent", () => {
@@ -122,13 +134,9 @@ describe("discountForMl", () => {
 
 describe("discountRange", () => {
   const rows = (pcts: Record<number, number>) =>
-    Object.entries(pcts).map(([ml, discountPct]) => ({
+    Object.entries(pcts).map(([ml, nominalDiscountPct]) => ({
       ml: Number(ml),
-      memberSum: 0,
-      price: 0,
-      discountPct,
-      saved: 0,
-      available: true,
+      nominalDiscountPct,
     }));
 
   it("spans only the buyable sizes", () => {
@@ -142,6 +150,28 @@ describe("discountRange", () => {
       min: 5,
       max: 10,
     });
+  });
+
+  it("collapses to one figure when sizes only differ by ₮-rounding noise", () => {
+    // Бүгд нэг 5%-ийн амлалттай ч 100₮-т тэгшлэхэд бодит хувь нь ml тус
+    // бүрээр өөр гарч болно (`discountPct`) — badge үүнийг харахгүй ёстой.
+    const members = [
+      member({ 5: 1000, 10: 20000 }, [5, 10]),
+      member({ 5: 1050, 10: 20100 }, [5, 10]),
+    ];
+    const prices = memberPrices(members, 5, 100);
+    expect(prices.find((p) => p.ml === 5)!.discountPct).toBe(7); // rounding drift
+    expect(prices.find((p) => p.ml === 10)!.discountPct).toBe(5); // no drift here
+    expect(discountRange(prices, [5, 10])).toEqual({ min: 5, max: 5 });
+  });
+
+  it("still shows a genuine range when sizes have real per-ml overrides", () => {
+    const members = [
+      member({ 5: 20000, 20: 60000 }, [5, 20]),
+      member({ 5: 25000, 20: 70000 }, [5, 20]),
+    ];
+    const prices = memberPrices(members, 5, 100, { 20: 15 });
+    expect(discountRange(prices, [5, 20])).toEqual({ min: 5, max: 15 });
   });
 });
 
@@ -177,6 +207,9 @@ describe("memberPrices — тогтмол үнэ", () => {
     expect(at10.saved).toBe(15000);
     // Харуулах хувь нь бодит хэмнэлтээс: 15000 / 75000 = 20%.
     expect(at10.discountPct).toBe(20);
+    // Тогтмол үнэтэй хэмжээнд амласан % огт байхгүй тул badge-д ч бодит
+    // хувиараа л орлуулна (`discountPct`-тай адил).
+    expect(at10.nominalDiscountPct).toBe(20);
   });
 
   it("тогтмол үнэгүй хэмжээ хуучин дүрмээрээ бодогдоно", () => {

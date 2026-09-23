@@ -9,6 +9,8 @@ import { formatPrice } from "@/lib/format";
 import { RELATED_SECTION_ID } from "@/lib/constants";
 import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { useCart } from "@/features/cart/store";
+import { cartMlFor } from "@/features/cart/budget";
+import { maxUnits } from "@/features/products/sellable";
 import { trackAddToCart, trackBeginCheckout } from "@/lib/analytics";
 import type { ProductDetail } from "@/lib/types";
 
@@ -19,7 +21,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   // Preselect the cheapest size that is actually in stock, so the headline
   // price is one the customer can buy (requirement_fb.md §"ml-ийн үнэ").
   const [variantId, setVariantId] = React.useState(
-    (activeVariants.find((v) => v.inStock) ?? activeVariants[0])?.id ?? "",
+    (activeVariants.find((v) => v.sellable) ?? activeVariants[0])?.id ?? "",
   );
   const [qty, setQty] = React.useState(1);
   const [added, setAdded] = React.useState(false);
@@ -62,6 +64,12 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
     return () => observer.disconnect();
   }, []);
 
+  // Сагсанд ЭНЭ бараанаас аль хэдийн орсон ml. `sellable` нь «нэг ширхэг
+  // цутгах ml хүрэлцэх үү» гэсэн асуулт тул түүнд найдвал 15ml үлдэгдэлтэй
+  // бараанаас 10ml×2 (эсвэл 10ml + 5ml) сагсанд орчихдог байв.
+  const cartItems = useCart((s) => s.items);
+  const cartCollections = useCart((s) => s.collections);
+
   const selected = activeVariants.find((v) => v.id === variantId) ?? null;
   const unitPrice = selected?.price ?? 0;
   // Хямдрал нь хэмжээ тус бүрийнх, бас БОДИТ (0054): `price` нь төлөх дүн,
@@ -70,10 +78,26 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   const originalPrice = basePrice > unitPrice ? basePrice : null;
   const soldOut = product.soldOut;
   // The whole product may still be sellable while this particular size is not.
-  const selectedOut = !soldOut && selected != null && !selected.inStock;
+  const selectedOut = !soldOut && selected != null && !selected.sellable;
+  // Савны түгжээ (0095) нь түр зуурынх — «дууссан» гэхээс өөр үг хэрэгтэй.
+  const selectedBottleLocked =
+    selected != null && selected.unavailableReason === "bottle";
   // Lowest ₮/ml among in-stock sizes gets the «Хамгийн ашигтай» badge.
-  const buyDisabled = soldOut || !selected || !selected.inStock;
-  const inStockVariants = activeVariants.filter((v) => v.inStock);
+  /** Энэ хэмжээгээр өнөөдөр авч болох ДЭЭД тоо ширхэг. */
+  const maxQty = maxUnits({
+    ml: selected?.ml ?? 0,
+    sellable: selected?.sellable ?? false,
+    remainingMl:
+      product.availableMl -
+      cartMlFor(product.id, { items: cartItems, collections: cartCollections }),
+  });
+  const buyDisabled = soldOut || !selected || !selected.sellable || maxQty < 1;
+  // Хэмжээ солиход (20ml → 2ml) эсвэл сагс өөрчлөгдөхөд сонгосон тоо ширхэг
+  // үлдэгдэлд багтахаа болих боломжтой — тэр дороо буулгана.
+  React.useEffect(() => {
+    setQty((q) => (maxQty >= 1 ? Math.min(q, maxQty) : 1));
+  }, [maxQty]);
+  const inStockVariants = activeVariants.filter((v) => v.sellable);
   const bestValue =
     inStockVariants.length > 1
       ? inStockVariants.reduce((a, b) =>
@@ -84,7 +108,12 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   // Зурвас гарах цорын ганц нөхцөл — доод цэсэнд мэдэгдэх нэхэмжлэл ч үүнээс
   // уншина, ингэснээр хоёулаа хэзээ ч зөрөхгүй.
   const showBuyBar =
-    ctaAway && !atRelated && !soldOut && selected != null && selected.inStock;
+    ctaAway &&
+    !atRelated &&
+    !soldOut &&
+    selected != null &&
+    selected.sellable &&
+    maxQty >= 1;
   useClaimBottomBar(showBuyBar);
 
   /**
@@ -94,7 +123,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
    * төлбөрийн хуудсанд явах тусдаа мөр болгоно (store.ts `startBuyNow`).
    */
   function addToCart(mode: "add" | "buy-now" = "add"): boolean {
-    if (!selected || soldOut || !selected.inStock) return false;
+    if (!selected || soldOut || !selected.sellable || maxQty < 1) return false;
     const line = {
       productId: product.id,
       slug: product.slug,
@@ -188,7 +217,11 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           {product.variants.map((v) => {
             const active = v.id === variantId;
             const isBestValue = bestValue != null && v.id === bestValue.id;
-            const sellable = v.isActive && v.inStock;
+            const sellable = v.sellable;
+            // Савны түгжээ нь «бидэнд энэ өнгийн сав дууслаа» гэсэн ТҮР зуурын
+            // төлөв — үлдэгдэл дуусахаас өөр үг хэрэглэнэ, ингэснээр
+            // хэрэглэгч эргэж ирэхээ мэднэ.
+            const bottle = v.unavailableReason === "bottle";
             return (
               <button
                 key={v.id}
@@ -198,9 +231,11 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                 aria-label={
                   sellable
                     ? `${v.ml}ml`
-                    : v.isActive
-                      ? `${v.ml}ml — дууссан`
-                      : `${v.ml}ml — зарахгүй`
+                    : bottle
+                      ? `${v.ml}ml — түр байхгүй`
+                      : v.isActive
+                        ? `${v.ml}ml — дууссан`
+                        : `${v.ml}ml — зарахгүй`
                 }
                 className={cn(
                   "relative flex min-h-11 min-w-20 flex-col items-center justify-center rounded-lg px-4 py-2 transition-colors",
@@ -208,7 +243,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                     ? // Түр биш, тогтмол төлөв — зураас нь «үнэ нь хүчингүй
                       // болсон» гэсэн утгатай тул энд тохирохгүй.
                       "bg-secondary/40 text-muted-foreground cursor-not-allowed opacity-60"
-                    : !v.inStock
+                    : !sellable
                       ? "bg-secondary/50 text-muted-foreground cursor-not-allowed line-through opacity-50"
                       : active
                         ? "bg-secondary ring-foreground ring-2"
@@ -224,9 +259,11 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                 <span className="text-muted-foreground text-xs">
                   {!v.isActive
                     ? "Зарахгүй"
-                    : v.inStock
-                      ? formatPrice(v.price)
-                      : "Дууссан"}
+                    : bottle
+                      ? "Түр байхгүй"
+                      : v.inStock
+                        ? formatPrice(v.price)
+                        : "Дууссан"}
                 </span>
                 {sellable && v.basePrice > v.price && (
                   <span className="text-muted-foreground text-[10px] line-through">
@@ -244,7 +281,22 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
         </div>
         {selectedOut && (
           <p className="text-muted-foreground text-xs">
-            Энэ хэмжээ түр дууссан байна. Өөр хэмжээ сонгоно уу.
+            {selectedBottleLocked
+              ? "Энэ хэмжээний сав түр дууссан байна. Өөр хэмжээ сонгоно уу."
+              : "Энэ хэмжээ түр дууссан байна. Өөр хэмжээ сонгоно уу."}
+          </p>
+        )}
+        {/* Хэмжээ зарагдаж байгаа ч эх савны үлдэгдэл цөөхөн ширхэг л
+            гүйцээнэ — тоо ширхэгийн товч дээр мөргөхөөс нь өмнө хэлнэ.
+            4-өөс дээш бол дэмий сандаргахгүй. */}
+        {!soldOut && selected?.sellable && maxQty < 1 && (
+          <p className="text-muted-foreground text-xs">
+            Энэ барааны үлдэгдэл сагсанд чинь бүрэн орсон байна.
+          </p>
+        )}
+        {!soldOut && selected?.sellable && maxQty >= 1 && maxQty <= 3 && (
+          <p className="text-muted-foreground text-xs">
+            Үлдэгдэл хомс — {selected.ml}ml-ээс {maxQty} ш авах боломжтой.
           </p>
         )}
       </div>
@@ -266,8 +318,9 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
               {qty}
             </span>
             <button
-              className="text-muted-foreground hover:text-foreground flex h-full w-11 items-center justify-center rounded-r-md transition-colors"
-              onClick={() => setQty((q) => q + 1)}
+              className="text-muted-foreground hover:text-foreground disabled:hover:text-muted-foreground flex h-full w-11 items-center justify-center rounded-r-md transition-colors disabled:opacity-40"
+              onClick={() => setQty((q) => Math.min(q + 1, maxQty))}
+              disabled={qty >= maxQty}
               aria-label="Нэмэх"
             >
               <Plus className="size-4" />
@@ -329,7 +382,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
       {!soldOut && selected?.inStock && (
         <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
           <Check className="text-success size-3.5" />
-          Нөөцөд бэлэн · Улаанбаатарт хамгийн эрт нь маргааш хүргэгдэнэ
+          Нөөцөд бэлэн · Улаанбаатарт маргааш хүргэх боломжтой
         </p>
       )}
 

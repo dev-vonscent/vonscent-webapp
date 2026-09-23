@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getOrderDetail } from "@/features/admin/api";
-import { formatPrice, formatDate } from "@/lib/format";
+import { formatPrice, formatDateTime } from "@/lib/format";
 import { PrintButton } from "@/features/admin/components/print-button";
 
 export default async function InvoicePage({
@@ -23,7 +23,7 @@ export default async function InvoicePage({
         <div className="text-right">
           <p className="font-mono font-semibold">{order.order_no}</p>
           <p className="text-muted-foreground">
-            {formatDate(order.created_at)}
+            {formatDateTime(order.created_at)}
           </p>
         </div>
       </div>

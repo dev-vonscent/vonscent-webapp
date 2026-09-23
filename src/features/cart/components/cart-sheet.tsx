@@ -4,9 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { Gift, Minus, Plus, ShoppingCart, Trash2, Undo2 } from "lucide-react";
-import { bundleGiftGuarantee } from "@/lib/gift";
-import { useGiftPool } from "@/features/gifts/use-gift-pool";
+import { Minus, Plus, ShoppingCart, Trash2, Undo2 } from "lucide-react";
+import { GiftProgressNote } from "@/features/gifts/components/gift-progress-note";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -28,6 +27,10 @@ import {
 } from "@/features/cart/store";
 import { CartSizeSelect } from "@/features/cart/components/cart-size-select";
 import { useCartSelection } from "@/features/cart/use-cart-selection";
+import {
+  unavailableLabel,
+  useCartAvailability,
+} from "@/features/cart/use-cart-availability";
 
 export function CartSheet({
   triggerVariant = "ghost",
@@ -47,7 +50,6 @@ export function CartSheet({
   const collections = useCart((s) => s.collections);
   const setCollectionQty = useCart((s) => s.setCollectionQty);
   const removeCollection = useCart((s) => s.removeCollection);
-  const giftPool = useGiftPool();
   const count = useCart(selectCount);
   const subtotal = useCart(selectSubtotal);
   const setItemSelected = useCart((s) => s.setItemSelected);
@@ -63,6 +65,12 @@ export function CartSheet({
   } = useCartSelection();
 
   const add = useCart((s) => s.add);
+
+  // Сагс `localStorage`-д долоо хоногоор суудаг: хаагдсан хэмжээ, буурсан
+  // үлдэгдэл энд хүртэл амьд үлдэнэ. Drawer НЭЭГДЭХЭД нэг удаа асууна.
+  const [open, setOpen] = React.useState(false);
+  const { statusOf, collectionStatus, maxQtyOf, maxCollectionQtyOf } =
+    useCartAvailability({ enabled: open });
 
   // Avoid hydration mismatch from persisted store.
   const [mounted, setMounted] = React.useState(false);
@@ -101,7 +109,7 @@ export function CartSheet({
   }
 
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button
           variant={triggerVariant}
@@ -236,13 +244,13 @@ export function CartSheet({
                             • {m.brand} — {m.name}
                           </li>
                         ))}
-                        {giftPool?.enabled && bundleGiftGuarantee(c) > 0 && (
-                          <li className="text-foreground/80 flex items-center gap-1">
-                            <Gift className="text-gold-strong size-3 shrink-0" />
-                            1мл бэлгийн эрхтэй — төлбөрийн хуудсанд сонгоно
-                          </li>
-                        )}
                       </ul>
+
+                      {!collectionStatus(c.key).sellable && (
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          {unavailableLabel(collectionStatus(c.key))}
+                        </p>
+                      )}
 
                       <div className="mt-2 flex items-center justify-between">
                         <div className="bg-secondary flex items-center rounded-full">
@@ -257,8 +265,15 @@ export function CartSheet({
                             {c.qty}
                           </span>
                           <button
-                            className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full md:size-9"
-                            onClick={() => setCollectionQty(c.key, c.qty + 1)}
+                            className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full disabled:opacity-40 md:size-9"
+                            onClick={() =>
+                              setCollectionQty(
+                                c.key,
+                                c.qty + 1,
+                                maxCollectionQtyOf(c.key),
+                              )
+                            }
+                            disabled={c.qty >= maxCollectionQtyOf(c.key)}
                             aria-label="Нэмэх"
                           >
                             <Plus className="size-4 md:size-3.5" />
@@ -325,6 +340,13 @@ export function CartSheet({
                             <Trash2 className="size-4" />
                           </button>
                         </div>
+                        {/* Мөрийг сонголтоос гаргасан шалтгаан — тайлбаргүй
+                            бол чагт нь өөрөө тайлагдсан мэт харагдана. */}
+                        {!statusOf(item.variantId).sellable && (
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            {unavailableLabel(statusOf(item.variantId))}
+                          </p>
+                        )}
                         <div className="mt-auto flex items-center justify-between pt-2">
                           <div className="bg-secondary flex items-center rounded-full">
                             <button
@@ -338,8 +360,11 @@ export function CartSheet({
                               {item.qty}
                             </span>
                             <button
-                              className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full md:size-9"
-                              onClick={() => setQty(item.key, item.qty + 1)}
+                              className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full disabled:opacity-40 md:size-9"
+                              onClick={() =>
+                                setQty(item.key, item.qty + 1, maxQtyOf(item.key))
+                              }
+                              disabled={item.qty >= maxQtyOf(item.key)}
                               aria-label="Нэмэх"
                             >
                               <Plus className="size-4 md:size-3.5" />
@@ -382,6 +407,7 @@ export function CartSheet({
                   {formatPrice(subtotal)}
                 </span>
               </div>
+              <GiftProgressNote subtotal={subtotal} />
               {/* No figure here on purpose: the fee depends on the delivery
                   zone, which is only known once an address is chosen. */}
               <p className="text-muted-foreground text-xs text-balance">

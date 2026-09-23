@@ -7,33 +7,24 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
 import { getProductsByIds } from "@/features/products/api";
-import { formatPrice, formatDate } from "@/lib/format";
+import { formatPrice, formatDateTime } from "@/lib/format";
 import {
   DISPATCH_HOUR,
   deliveryDayOf,
-  formatDeadline,
+  formatEditCutoff,
   formatDeliveryDay,
   isOrderEditable,
 } from "@/lib/time";
 import {
   ORDER_STATUS_LABEL,
+  ORDER_STATUS_STYLE,
   PAYMENT_STATUS_LABEL,
-  type OrderStatus,
 } from "@/lib/constants";
 import {
   OrderActions,
   type ReorderItem,
 } from "@/features/account/components/order-actions";
 import type { OrderRow, OrderItemRow, OrderStatusHistoryRow } from "@/db/types";
-
-/** Distinct chip colour per status (overrides the Badge variant via twMerge). */
-const STATUS_STYLE: Record<OrderStatus, string> = {
-  pending: "bg-amber-500/15 text-amber-500",
-  confirmed: "bg-sky-500/15 text-sky-500",
-  shipping: "bg-violet-500/15 text-violet-400",
-  delivered: "bg-emerald-500/15 text-emerald-500",
-  cancelled: "bg-red-500/20 text-red-400",
-};
 
 export default async function OrderDetailPage({
   params,
@@ -94,9 +85,9 @@ export default async function OrderDetailPage({
     })
     .filter((i) => i.slug);
 
-  // Cancellable only while the status allows it AND we are still before 09:00
-  // on the delivery day (requirement_fb.md §9) — which for a pre-order can be
-  // a week or more away.
+  // Cancellable only while the status allows it AND the delivery day has not
+  // started yet (cut-off 00:00 UB, client 2026-09-21) — which for a pre-order
+  // can be a week or more away.
   const openStatus = order.status === "pending" || order.status === "confirmed";
   const beforeCutoff = isOrderEditable(order);
   const cancellable = openStatus && beforeCutoff;
@@ -116,10 +107,10 @@ export default async function OrderDetailPage({
             {order.order_no}
           </h1>
           <p className="text-muted-foreground text-sm">
-            {formatDate(order.created_at)}
+            {formatDateTime(order.created_at)}
           </p>
         </div>
-        <Badge className={STATUS_STYLE[order.status]}>
+        <Badge className={ORDER_STATUS_STYLE[order.status]}>
           {ORDER_STATUS_LABEL[order.status]}
         </Badge>
       </div>
@@ -170,7 +161,7 @@ export default async function OrderDetailPage({
                           <p className="text-muted-foreground">{h.note}</p>
                         )}
                         <p className="text-muted-foreground text-xs">
-                          {formatDate(h.created_at)}
+                          {formatDateTime(h.created_at)}
                         </p>
                       </div>
                     </li>
@@ -182,9 +173,11 @@ export default async function OrderDetailPage({
 
           {openStatus && !beforeCutoff && (
             <p className="bg-secondary text-muted-foreground rounded-xl px-4 py-3 text-sm">
-              Захиалга бэлтгэгдэж эхэлсэн тул ({formatDeadline(order)} цагийн
-              хугацаа өнгөрсөн) цуцлах, өөрчлөх боломжгүй. Асуудал гарвал пэйж
-              чат эсвэл утсаар холбогдоно уу.
+              Захиалга бэлтгэгдэж эхэлсэн тул ({formatEditCutoff(
+                deliveryDayOf(order),
+              )}{" "}
+              өнгөрсөн) цуцлах, өөрчлөх боломжгүй. Асуудал гарвал пэйж чат
+              эсвэл утсаар холбогдоно уу.
             </p>
           )}
 

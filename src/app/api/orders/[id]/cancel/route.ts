@@ -49,10 +49,9 @@ export async function POST(
   if (order.status !== "pending" && order.status !== "confirmed") {
     return NextResponse.json({ error: "NOT_CANCELLABLE" }, { status: 409 });
   }
-  // Past 09:00 on the delivery day the decants are already being prepared
-  // (requirement_fb.md §9). A pre-order therefore stays cancellable right up
-  // to the morning of the day it was booked for. Enforced server-side, not
-  // just in the UI.
+  // Once the delivery day has begun (00:00 UB) the decants are being prepared
+  // for it. A pre-order therefore stays cancellable right up to the midnight
+  // before the day it was booked for. Enforced server-side, not just in the UI.
   if (!isOrderEditable(order)) {
     return NextResponse.json({ error: "PAST_CUTOFF" }, { status: 409 });
   }

@@ -93,8 +93,8 @@ function BuilderInner({
   const saved = memberSum - price;
 
   const atMax = settings.maxItems != null && ids.length >= settings.maxItems;
-  // Өөрөө угсарсан багц баталгаат бэлэг өгөхгүй (backlog A1) — бэлгийн эрх
-  // нь зөвхөн захиалгын дүнгээс гарч, checkout дээр сонгогдоно.
+  // Багц (ямар ч төрөл) тусдаа бэлэг өгөхгүй — бэлгийн эрх зөвхөн захиалгын
+  // дүнгээс гарч, checkout дээр сонгогдоно (src/lib/gift.ts).
   const canCreate =
     unavailableSelected.length === 0 && ids.length >= settings.minItems;
 

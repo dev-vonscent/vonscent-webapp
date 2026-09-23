@@ -6,6 +6,7 @@ import {
   orderEditDeadline,
   isOrderEditable,
   formatDeadline,
+  formatEditCutoff,
   deliveryDayOf,
   earliestDeliveryDay,
   formatDeliveryDay,
@@ -18,8 +19,9 @@ import {
  *
  * Rule under test (client 2026-08-21, amended by backlog E1 2026-09-02): an
  * order goes out at 11:00 UB on its delivery day and stops being editable at
- * 09:00 UB that same day. Without a stored day the old rule applies — the day
- * after it was placed.
+ * 00:00 UB that same day — the window shuts as the day begins (client,
+ * 2026-09-21). Without a stored day the old rule applies — the day after it
+ * was placed.
  */
 describe("order dispatch & cut-off rules", () => {
   describe("deliveryDayOf", () => {
@@ -64,28 +66,30 @@ describe("order dispatch & cut-off rules", () => {
   });
 
   describe("orderEditDeadline", () => {
-    it("is 09:00 UB on the delivery day, however far ahead it is", () => {
+    it("is 00:00 UB on the delivery day, however far ahead it is", () => {
+      // 2026-08-14 00:00 UB = 2026-08-13 16:00Z
       const d = orderEditDeadline({
         created_at: "2026-07-31T00:00:00Z",
         deliver_on: "2026-08-14",
       });
-      expect(d.toISOString()).toBe("2026-08-14T01:00:00.000Z");
+      expect(d.toISOString()).toBe("2026-08-13T16:00:00.000Z");
     });
 
-    it("is 09:00 UB the next day for a pre-E1 order", () => {
-      // placed 2026-07-31 08:00 UB -> deadline 2026-08-01 09:00 UB = 01:00Z
+    it("is 00:00 UB the next day for a pre-E1 order", () => {
+      // placed 2026-07-31 08:00 UB -> deadline 2026-08-01 00:00 UB = 16:00Z
       const d = orderEditDeadline({ created_at: "2026-07-31T00:00:00Z" });
-      expect(d.toISOString()).toBe("2026-08-01T01:00:00.000Z");
+      expect(d.toISOString()).toBe("2026-07-31T16:00:00.000Z");
     });
   });
 
   describe("isOrderEditable", () => {
     it("stays open right up to the deadline", () => {
+      // deliver_on = 2026-08-01, so the window shuts at 2026-07-31 16:00Z.
       const order = { created_at: "2026-07-31T00:00:00Z" };
-      expect(isOrderEditable(order, new Date("2026-08-01T00:59:00Z"))).toBe(
+      expect(isOrderEditable(order, new Date("2026-07-31T15:59:00Z"))).toBe(
         true,
       );
-      expect(isOrderEditable(order, new Date("2026-08-01T01:00:00Z"))).toBe(
+      expect(isOrderEditable(order, new Date("2026-07-31T16:00:00.000Z"))).toBe(
         false,
       );
     });
@@ -95,7 +99,7 @@ describe("order dispatch & cut-off rules", () => {
         created_at: "2026-07-31T00:00:00Z",
         deliver_on: "2026-08-14",
       };
-      // Long past the old "next day 09:00" deadline, but its own day is far off.
+      // Long past the old "next day" deadline, but its own day is far off.
       expect(isOrderEditable(order, new Date("2026-08-05T12:00:00Z"))).toBe(
         true,
       );
@@ -112,7 +116,17 @@ describe("order dispatch & cut-off rules", () => {
           created_at: "2026-07-31T07:00:00Z",
           deliver_on: "2026-08-14",
         }),
-      ).toBe("08/14 09:00");
+      ).toBe("08/14 00:00");
+    });
+  });
+
+  describe("formatEditCutoff", () => {
+    it("names the last minute, the evening before the delivery day", () => {
+      expect(formatEditCutoff("2026-09-22")).toBe("09/21 23:59");
+    });
+
+    it("steps back across a month boundary", () => {
+      expect(formatEditCutoff("2026-09-01")).toBe("08/31 23:59");
     });
   });
 
@@ -153,13 +167,12 @@ describe("delivery day of a payment that arrives late", () => {
   };
 
   describe("earliestServableDay", () => {
-    it("keeps today while there is still time to prepare", () => {
-      // 09:00 (цуцлах/өөрчлөх хязгаар) -аас өмнө өнөөдөр хүргэж болно.
-      expect(earliestServableDay(ub("2026-09-11", 7, 30))).toBe("2026-09-11");
-    });
-
-    it("rolls to tomorrow once the day's prep has started", () => {
-      expect(earliestServableDay(ub("2026-09-11", 9))).toBe("2026-09-12");
+    // Цонх 00:00-д хаагддаг болсноос хойш (ORDER_EDIT_CUTOFF_HOUR = 0)
+    // өнөөдрийн бэлтгэл шөнө дундаас эхэлдэг тул хамгийн эрт нь үргэлж
+    // маргааш — өглөө эрт төлсөн ч өнөөдөр хүргэгдэхгүй.
+    it("is always tomorrow, whatever time of day it is", () => {
+      expect(earliestServableDay(ub("2026-09-11", 0, 1))).toBe("2026-09-12");
+      expect(earliestServableDay(ub("2026-09-11", 7, 30))).toBe("2026-09-12");
       expect(earliestServableDay(ub("2026-09-11", 12))).toBe("2026-09-12");
       expect(earliestServableDay(ub("2026-09-11", 23, 59))).toBe("2026-09-12");
     });
@@ -176,8 +189,8 @@ describe("delivery day of a payment that arrives late", () => {
       expect(projectedDeliveryDay("2026-09-15", ub("2026-09-11", 12))).toBe(
         "2026-09-15",
       );
-      expect(projectedDeliveryDay("2026-09-11", ub("2026-09-11", 8))).toBe(
-        "2026-09-11",
+      expect(projectedDeliveryDay("2026-09-12", ub("2026-09-11", 8))).toBe(
+        "2026-09-12",
       );
     });
 

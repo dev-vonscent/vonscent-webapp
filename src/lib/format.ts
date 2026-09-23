@@ -33,19 +33,38 @@ export function formatMl(ml: number): string {
  *
  * Everything stays on Ulaanbaatar time, which is what the shop runs on.
  */
-const partsFmt = new Intl.DateTimeFormat("en-GB", {
+const dateFmt = new Intl.DateTimeFormat("en-GB", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  timeZone: UB_TIMEZONE,
+});
+
+/**
+ * Seconds matter for orders specifically: cancellation cutoffs are defined
+ * to the second (23:59:59), and two orders placed in the same minute need to
+ * be told apart in the history/audit trail. Kept as its own formatter rather
+ * than an option on `formatDate` so a stray extra arg can't silently add a
+ * clock to a date that was never meant to carry one (blog dates, coupon
+ * expiry, …).
+ */
+const dateTimeFmt = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
   hour: "2-digit",
   minute: "2-digit",
+  second: "2-digit",
   hour12: false,
   timeZone: UB_TIMEZONE,
 });
 
-function ubParts(value: string | number | Date): Record<string, string> {
+function partsOf(
+  fmt: Intl.DateTimeFormat,
+  value: string | number | Date,
+): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const part of partsFmt.formatToParts(new Date(value))) {
+  for (const part of fmt.formatToParts(new Date(value))) {
     out[part.type] = part.value;
   }
   return out;
@@ -53,13 +72,14 @@ function ubParts(value: string | number | Date): Record<string, string> {
 
 /** `2026.09.08` — Ulaanbaatar day. */
 export function formatDate(value: string | number | Date): string {
-  const p = ubParts(value);
+  const p = partsOf(dateFmt, value);
   return `${p.year}.${p.month}.${p.day}`;
 }
 
 /**
- * Date *and* time (`2026.09.08 15:34`), for the admin lists that triage by
- * arrival.
+ * Date, time *and* seconds (`2026.09.08 15:34:07`), for the admin lists that
+ * triage by arrival and for every order-related timestamp (order and payment
+ * dates, status-history entries).
  *
  * The order list showed date only, so fifty orders taken across one day all
  * read «2026.08.28» and could not be told apart — while the list's own filter
@@ -67,8 +87,8 @@ export function formatDate(value: string | number | Date): string {
  * history spans years, and «08 IX» left the operator guessing which one.
  */
 export function formatDateTime(value: string | number | Date): string {
-  const p = ubParts(value);
-  return `${p.year}.${p.month}.${p.day} ${p.hour}:${p.minute}`;
+  const p = partsOf(dateTimeFmt, value);
+  return `${p.year}.${p.month}.${p.day} ${p.hour}:${p.minute}:${p.second}`;
 }
 
 /**

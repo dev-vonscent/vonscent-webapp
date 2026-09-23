@@ -127,11 +127,9 @@ function GenderChips({
 
 export function CollectionBrowser({
   collections,
-  giftPoolEnabled = false,
   trailing,
 }: {
   collections: Collection[];
-  giftPoolEnabled?: boolean;
   /** Grid-ийн сүүлчийн нүд — «Өөрөө угсрах» карт. */
   trailing?: React.ReactNode;
 }) {
@@ -362,7 +360,7 @@ export function CollectionBrowser({
             <EmptyState
               icon={PackageOpen}
               title="Тохирох багц олдсонгүй"
-              description="Шүүлтүүрээ сулруулж эсвэл цэвэрлээд үзээрэй."
+              description="Шүүлтүүрээ өөрчилж, дахин хайж үзээрэй."
               action={
                 // Grid байхгүй болохоор «Өөрөө угсрах» нүд ч алга болно —
                 // энэ хүн яг тэр саналыг сонсох ёстой хүн.
@@ -377,11 +375,7 @@ export function CollectionBrowser({
               }
             />
           ) : (
-            <CollectionGrid
-              collections={shown}
-              giftPoolEnabled={giftPoolEnabled}
-              trailing={trailing}
-            />
+            <CollectionGrid collections={shown} trailing={trailing} />
           )}
         </div>
       </div>

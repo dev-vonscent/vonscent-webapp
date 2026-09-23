@@ -80,27 +80,39 @@ export function GiftSamplePicker({
       <CardContent className="space-y-3 p-6">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
           <Gift className="text-gold-strong size-5" />
-          Бэлгийн 1мл дээж
+          Бэлгийн 1 мл дээж
         </h2>
 
         {allowance > 0 ? (
-          <p className="text-muted-foreground text-sm">
-            {formatPrice(threshold)} тутамд 1, бэлэн 5/10/20мл багц бүрээс 1 —
-            та <strong className="text-foreground">{allowance}</strong> ширхэг
-            сонгох эрхтэй ({value.length} сонгосон).
-          </p>
+          <div className="text-muted-foreground space-y-1 text-sm">
+            <p>
+              Та <strong className="text-foreground">{allowance}</strong> ширхэг
+              1 мл дээж бэлгээр сонгох эрхтэй ({value.length} сонгосон).
+            </p>
+            <p>
+              Купоны дараах барааны дүнгийн {formatPrice(threshold)} тутамд 1
+              дээж авна.
+              Дахиад {formatPrice(toNext)}-ийн бараа нэмбэл 1 дээж нэмэгдэнэ.
+            </p>
+          </div>
         ) : (
           /* Эрхгүй ч хэсэг нь үлддэг: хэдэн төгрөг дутуу байгааг хэлэх нь
              «алга болсон» хэсгээс хамаагүй ойлгомжтой, бас бодит санал. */
-          <p className="text-muted-foreground text-sm">
-            Барааны дүн {formatPrice(threshold)} хүрвэл 1мл дээж бэлгэнд
-            сонгоно. Одоо{" "}
-            <strong className="text-foreground">
-              {formatPrice(goodsAfterDiscount)}
-            </strong>{" "}
-            — <strong className="text-foreground">{formatPrice(toNext)}</strong>{" "}
-            дутуу байна. Бэлэн 5/10/20мл багц бүр ч нэг дээжийн эрх өгдөг.
-          </p>
+          <div className="text-muted-foreground space-y-1 text-sm">
+            <p>
+              Купоны дараах барааны дүн {formatPrice(threshold)}-д хүрвэл 1 мл
+              дээжийг бэлгээр сонгох боломжтой.
+            </p>
+            <p>
+              Одоогийн дүн:{" "}
+              <strong className="text-foreground">
+                {formatPrice(goodsAfterDiscount)}
+              </strong>{" "}
+              — дээж авахад{" "}
+              <strong className="text-foreground">{formatPrice(toNext)}</strong>{" "}
+              дутуу байна.
+            </p>
+          </div>
         )}
 
         {allowance > 0 && (

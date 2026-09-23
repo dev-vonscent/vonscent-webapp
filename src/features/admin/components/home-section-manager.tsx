@@ -428,7 +428,7 @@ function SectionCard({
                 aria-busy={loading}
               >
                 {available.length === 0 ? (
-                  <p className="text-muted-foreground px-3 py-3 text-sm">
+                  <p className="text-muted-foreground p-3 text-sm">
                     {loading ? "Хайж байна…" : "Илэрц алга."}
                   </p>
                 ) : (

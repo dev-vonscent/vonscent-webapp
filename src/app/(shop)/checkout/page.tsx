@@ -25,18 +25,14 @@ import {
 } from "@/components/ui/select";
 import { checkoutSchema } from "@/lib/validators/order";
 import { SHIPPING_ZONES, type ShippingZoneConfig } from "@/lib/constants";
-import {
-  bundleGiftGuarantee,
-  giftAllowanceFor,
-  giftGuaranteeFor,
-} from "@/lib/gift";
+import { giftAllowanceFor } from "@/lib/gift";
 import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { GiftSamplePicker } from "@/features/checkout/components/gift-sample-picker";
 import { useGiftPool } from "@/features/gifts/use-gift-pool";
 import {
   DISPATCH_HOUR,
   MAX_PREORDER_DAYS,
-  ORDER_EDIT_CUTOFF_HOUR,
+  formatEditCutoff,
   formatDeliveryDay,
   ubDayFromNow,
 } from "@/lib/time";
@@ -63,7 +59,12 @@ import {
   parseLoyaltyRules,
   pointsEarnedFor,
 } from "@/lib/loyalty";
-import { useCart, selectCheckoutSubtotal } from "@/features/cart/store";
+import {
+  useCart,
+  selectCheckoutSubtotal,
+  selectCheckoutGross,
+  collectionBasePrice,
+} from "@/features/cart/store";
 import {
   useCheckoutLines,
   getCheckoutLines,
@@ -173,9 +174,17 @@ export default function CheckoutPage() {
   const { items, collections, buyNow } = useCheckoutLines();
   const cartLineCount = useCart((s) => s.items.length + s.collections.length);
   const subtotal = useCart(selectCheckoutSubtotal);
+  /**
+   * Хямдралын өмнөх барааны дүн. Багцын мөр нь хямдруулсан үнээрээ бичигдэж
+   * байсан тул хэмнэлт хаана ч харагдахгүй — тоймын мөр бүр үндсэн үнээ
+   * хэлж, хэмнэлт нь доороо тусдаа мөр болж байж л «яагаад ийм дүн гарав»
+   * гэдгийг дээрээс доош уншиж болно.
+   */
+  const grossSubtotal = useCart(selectCheckoutGross);
   const coupon = useCart((s) => s.coupon);
   const removeOrdered = useCart((s) => s.clearOrdered);
   const removeLine = useCart((s) => s.remove);
+  const setQty = useCart((s) => s.setQty);
   const [mounted, setMounted] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   // Захиалга үүсээд төлбөрийн хуудас руу шилжих хооронд сагс хоосорсон тул
@@ -594,12 +603,9 @@ export default function CheckoutPage() {
     Math.floor(loyaltyPoints * loyaltyRules.redeemRate),
     Math.max(subtotal - discount, 0),
   );
-  // Бэлгийн 1мл дээж: купоны дараах барааны дүнгийн 200,000₮ тутамд 1, эсвэл
-  // preset 5/10/20мл багц бүрийн баталгаа — ихийг нь (src/lib/gift.ts).
-  const giftAllowance = giftAllowanceFor(
-    Math.max(subtotal - discount, 0),
-    giftGuaranteeFor(collections),
-  );
+  // Бэлгийн 1мл дээж: купоны дараах барааны дүнгийн 200,000₮ тутамд 1
+  // (src/lib/gift.ts). Хүргэлт, оноо тооцогдохгүй; багц тусдаа эрх өгөхгүй.
+  const giftAllowance = giftAllowanceFor(Math.max(subtotal - discount, 0));
   /** Эдлээгүй үлдсэн бэлгийн эрх — сануулга ба тоймын мөр хоёулаа үүнийг хардаг. */
   const giftRemaining = Math.max(giftAllowance - giftIds.length, 0);
   // Бэлгийн сан — сагс, багцын дэлгэрэнгүйтэй ижил цорын ганц эх сурвалж
@@ -611,7 +617,13 @@ export default function CheckoutPage() {
   // Сагс, купон өөрчлөгдөхөд дээд хязгаар буурч болно — бичсэн дүнг ямагт
   // түүнд хумина, эс тэгвээс хуудас сервер хүлээж авахгүй дүн харуулна.
   const loyaltyApplied = Math.min(loyaltyWanted, maxLoyalty);
-  const total = Math.max(subtotal + shippingFee - discount - loyaltyApplied, 0);
+  /** Багцын хэмнэлт — үндсэн үнийн нийлбэр ба багцын үнийн зөрүү. */
+  const bundleSavings = Math.max(grossSubtotal - subtotal, 0);
+  /** Барааны дүнгээс хасагдсан бүх хямдрал (багц + купон) — оноо энд ороогүй. */
+  const totalSavings = bundleSavings + discount;
+  /** Хямдралын дараах барааны дүн: хүргэлт, оноо хоёрын өмнөх суурь. */
+  const goodsAfterDiscount = Math.max(subtotal - discount, 0);
+  const total = Math.max(goodsAfterDiscount + shippingFee - loyaltyApplied, 0);
   /**
    * Энэ захиалгаас хуримтлагдах оноо. Сан нь купоны дараах барааны дүнгээс
    * бодох тул оноогоор төлсөн хэсэг үүнийг бууруулахгүй (lib/loyalty.ts).
@@ -802,20 +814,78 @@ export default function CheckoutPage() {
           );
           return;
         }
+        // Хэмжээ бүр дангаараа зарагдах ч НИЙЛБЭР нь эх савны үлдэгдлээс
+        // давсан (10ml×2, эсвэл 10ml + 5ml). Сервер аль бараа, хэд болгохыг
+        // нэрлэж буцаадаг тул мөрийг тэр дороо засаад юу өөрчилснөө хэлнэ —
+        // «зарим бараа дууссан» гэсэн ерөнхий мессежээс хэрэглэгч юуг
+        // засахаа таах ёсгүй.
+        if (data.error === "INSUFFICIENT_STOCK") {
+          const shortages: {
+            variantId: string;
+            name: string;
+            ml: number;
+            maxQty: number;
+            collectionName?: string;
+          }[] = Array.isArray(data.items) ? data.items : [];
+          const notes: string[] = [];
+          for (const short of shortages) {
+            const label = `${short.name} ${short.ml}ml`;
+            // Багцын гишүүнийг дангаар нь багасгах боломжгүй (багц бол нэг
+            // мөр), «Захиалах» мөр ч сагсанд байхгүй — эдгээрийг зөвхөн
+            // хэлнэ, хэрэглэгч өөрөө шийднэ.
+            if (short.collectionName || buyNow) {
+              notes.push(
+                short.maxQty > 0
+                  ? `${label} — дээд тал нь ${short.maxQty} ш`
+                  : `${label} — үлдэгдэл хүрэлцэхгүй`,
+              );
+              continue;
+            }
+            if (short.maxQty > 0) {
+              setQty(short.variantId, short.maxQty);
+              notes.push(`${label} → ${short.maxQty} ш`);
+            } else {
+              removeLine(short.variantId);
+              notes.push(`${label} — сагснаас хаслаа`);
+            }
+          }
+          setServerError(
+            notes.length > 0
+              ? `Үлдэгдэл хүрэлцэхгүй байна: ${notes.join(", ")}. Шалгаад дахин үргэлжлүүлнэ үү.`
+              : "Сонгосон барааны үлдэгдэл хүрэлцэхгүй байна. Тоо ширхэгээ багасгана уу.",
+          );
+          return;
+        }
+        // Захиалга үүсэх ЗУУР өөр хүн нөөцийг авсан (computeSummary цэвэр
+        // өнгөрсөн). Сагснаас барааг нь нэрлэж чадвал хэлнэ.
+        const racedName =
+          data.error === "OUT_OF_STOCK" && data.productId
+            ? (items.find((i) => i.productId === data.productId)?.name ??
+              collections.find((c) =>
+                c.members.some((m) => m.productId === data.productId),
+              )?.name ??
+              null)
+            : null;
         setServerError(
           data.error === "EMPTY_CART"
             ? "Сагс хоосон байна — бараагаа дахин нэмнэ үү."
-            : data.error === "OUT_OF_STOCK"
-              ? "Уучлаарай, зарим бараа дууссан байна."
-              : data.error === "BUNDLE_UNAVAILABLE"
-                ? "Сагсан дахь багц худалдаанд байхгүй болсон байна. Багцаа шинэчилнэ үү."
-                : data.error === "ZONE_UNAVAILABLE"
-                  ? "Сонгосон бүсэд хүргэлт хийх боломжгүй байна."
-                  : // Ижил захиалга аль хэдийн боловсруулагдаж байна —
-                    // дахин дарвал давхар захиалга болох тул зогсооно.
-                    data.error === "ORDER_PENDING"
-                    ? "Таны захиалга боловсруулагдаж байна. Хэдэн секунд хүлээгээд «Захиалга хайх» хэсгээс шалгана уу."
-                    : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
+            : data.error === "BOTTLE_UNAVAILABLE"
+              ? // Савны түгжээ (0095): бараа өөрөө байгаа ч тэр хэмжээг цутгах
+                // сав дууссан — өөр хэмжээгээр нь авч болно.
+                "Сонгосон хэмжээний сав түр дууссан байна. Сагснаасаа өөр хэмжээ сонгоод дахин оролдоно уу."
+              : data.error === "OUT_OF_STOCK"
+                ? racedName
+                  ? `«${racedName}» таныг маягтаа бөглөж байх зуур дууслаа. Сагснаасаа хасаад дахин оролдоно уу.`
+                  : "Уучлаарай, зарим бараа дууссан байна."
+                : data.error === "BUNDLE_UNAVAILABLE"
+                  ? "Сагсан дахь багц худалдаанд байхгүй болсон байна. Багцаа шинэчилнэ үү."
+                  : data.error === "ZONE_UNAVAILABLE"
+                    ? "Сонгосон бүсэд хүргэлт хийх боломжгүй байна."
+                    : // Ижил захиалга аль хэдийн боловсруулагдаж байна —
+                      // дахин дарвал давхар захиалга болох тул зогсооно.
+                      data.error === "ORDER_PENDING"
+                      ? "Таны захиалга боловсруулагдаж байна. Хэдэн секунд хүлээгээд «Захиалга хайх» хэсгээс шалгана уу."
+                      : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
         );
         return;
       }
@@ -979,7 +1049,7 @@ export default function CheckoutPage() {
               <Field
                 label="Хүргүүлэх өдөр"
                 error={errors.deliverOn?.message}
-                hint={`Хамгийн эрт нь маргааш — бэлдэхэд нэг өдөр хэрэгтэй. Сонгосон өдрийнхөө ${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.`}
+                hint={`Хамгийн эртдээ маргааш хүргэнэ. Захиалгыг бэлтгэхэд 1 өдөр шаардлагатай бөгөөд сонгосон өдрийн ${DISPATCH_HOUR}:00 цагаас хүргэлтэд гарна.`}
               >
                 <Select
                   value={watch("deliverOn") ?? deliveryDays[0]}
@@ -1063,7 +1133,7 @@ export default function CheckoutPage() {
               error={errors.note?.message}
               hint={
                 remoteZone
-                  ? "Орон нутгийн унаа хөдлөх буудал, терминалын нэрийг бичнэ үү."
+                  ? "Орон нутгийн унаа хөдлөх буудал эсвэл терминалын нэрийг бичнэ үү."
                   : undefined
               }
             >
@@ -1124,7 +1194,8 @@ export default function CheckoutPage() {
                   autoComplete="email"
                 />
                 <p className="text-muted-foreground mt-1.5 text-xs">
-                  Захиалгын дугаар, төлбөрийн линкээ имэйлээр авна.
+                  Захиалгын дугаар болон төлбөрийн холбоос таны имэйл хаягт
+                  илгээгдэнэ.
                 </p>
               </Field>
             </div>
@@ -1139,7 +1210,7 @@ export default function CheckoutPage() {
             >
               <GiftSamplePicker
                 allowance={giftAllowance}
-                goodsAfterDiscount={Math.max(subtotal - discount, 0)}
+                goodsAfterDiscount={goodsAfterDiscount}
                 value={giftIds}
                 onChange={setGiftIds}
               />
@@ -1182,12 +1253,6 @@ export default function CheckoutPage() {
                         </p>
                         <p className="text-muted-foreground text-xs">
                           Багц · {c.ml}ml · {c.members.length} үнэртэн
-                          {/* Emoji биш үг: 🎁 нь тайлбаргүй байсан бөгөөд
-                              төхөөрөмж бүр дээр өөр өнгөөр зурагдаж,
-                              монохром системд ганц өнгөт толбо болдог. */}
-                          {giftPool?.enabled && bundleGiftGuarantee(c) > 0
-                            ? " · бэлэгтэй"
-                            : ""}
                         </p>
                         {/* Багц дотор ЯМАР ус байгааг тоймд нэрээр нь бичнэ.
                             Өмнө нь зөвхөн багцын нэр, нэг зураг, «N үнэртэн»
@@ -1204,7 +1269,7 @@ export default function CheckoutPage() {
                         </ul>
                       </div>
                       <span className="text-sm font-medium">
-                        {formatPrice(c.unitPrice * c.qty)}
+                        {formatPrice(collectionBasePrice(c) * c.qty)}
                       </span>
                     </div>
                   ))}
@@ -1283,7 +1348,19 @@ export default function CheckoutPage() {
                   дээр 8,000₮ гэсэн тоо нэмэгдэж байна уу, хасагдаж байна уу
                   гэдэг зөвхөн шошгоноос таамаглагддаг байсан. */}
               <div className="space-y-2.5">
-                <SummaryRow label="Барааны дүн" value={formatPrice(subtotal)} />
+                {/* Мөр бүр үндсэн үнээрээ бичигдсэн тул эхний дүн нь тэдгээрийн
+                    ЯГ нийлбэр байх ёстой — хямдрал нь дараагийн мөрөнд гарна. */}
+                <SummaryRow
+                  label="Нийт үндсэн үнэ"
+                  value={formatPrice(grossSubtotal)}
+                />
+                {bundleSavings > 0 && (
+                  <SummaryRow
+                    label="Багцын хямдрал"
+                    value={`−${formatPrice(bundleSavings)}`}
+                    credit
+                  />
+                )}
                 {discount > 0 && (
                   <SummaryRow
                     label={
@@ -1291,6 +1368,13 @@ export default function CheckoutPage() {
                     }
                     value={`−${formatPrice(discount)}`}
                     credit
+                  />
+                )}
+                {totalSavings > 0 && (
+                  <SummaryRow
+                    label="Хямдарсан үнэ"
+                    value={formatPrice(goodsAfterDiscount)}
+                    strong
                   />
                 )}
                 {loyaltyApplied > 0 && (
@@ -1350,7 +1434,7 @@ export default function CheckoutPage() {
                   дараа нь өсөх нь амласнаа зөрчсөнтэй адил. */}
               <div className="flex items-baseline justify-between gap-3">
                 <span className="font-medium">
-                  {hasAddress ? "Нийт төлөх" : "Хүргэлтгүй дүн"}
+                  {hasAddress ? "Нийт төлөх төлбөр" : "Хүргэлтгүй дүн"}
                 </span>
                 <span className="text-2xl font-semibold tabular-nums">
                   {formatPrice(total)}
@@ -1394,10 +1478,13 @@ export default function CheckoutPage() {
                   <Clock className="mr-1 inline size-3.5 align-[-2px]" />
                   {`Захиалга ${formatDeliveryDay(
                     watch("deliverOn") ?? deliveryDays[0] ?? "",
-                  )} ${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна (амралтын өдөр ч хүргэнэ).`}{" "}
-                  Тэр өдрийн өглөөний{" "}
-                  <strong>{ORDER_EDIT_CUTOFF_HOUR}:00</strong> цагаас хойш
-                  захиалга цуцлах, өөрчлөх боломжгүй.
+                  )} ${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.`}{" "}
+                  <strong>
+                    {formatEditCutoff(
+                      watch("deliverOn") ?? deliveryDays[0] ?? "",
+                    )}
+                  </strong>
+                  -с хойш захиалга цуцлах, өөрчлөх боломжгүй.
                 </p>
               )}
 
@@ -1579,16 +1666,25 @@ function SummaryRow({
   label,
   value,
   credit,
+  strong,
 }: {
   label: string;
   value: string;
   /** Хасагдаж буй мөр (купон, оноо) — өнгөөр нь ялгана. */
   credit?: boolean;
+  /** Завсрын дүн (хямдарсан үнэ) — хасалтуудын доор тодруулж уншуулна. */
+  strong?: boolean;
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3 text-sm">
-      <span className="text-muted-foreground min-w-0 truncate">{label}</span>
-      <span className={`shrink-0 tabular-nums ${credit ? "text-success" : ""}`}>
+      <span
+        className={`min-w-0 truncate ${strong ? "text-foreground font-medium" : "text-muted-foreground"}`}
+      >
+        {label}
+      </span>
+      <span
+        className={`shrink-0 tabular-nums ${credit ? "text-success" : ""} ${strong ? "font-medium" : ""}`}
+      >
         {value}
       </span>
     </div>

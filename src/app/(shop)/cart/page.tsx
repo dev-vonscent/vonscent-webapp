@@ -3,9 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Gift, Minus, Plus, Trash2, Truck, ShoppingCart } from "lucide-react";
-import { bundleGiftGuarantee } from "@/lib/gift";
-import { useGiftPool } from "@/features/gifts/use-gift-pool";
+import { Minus, Plus, Trash2, Truck, ShoppingCart } from "lucide-react";
+import { GiftProgressNote } from "@/features/gifts/components/gift-progress-note";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -16,6 +15,10 @@ import { formatPrice } from "@/lib/format";
 import { useCart, selectSubtotal } from "@/features/cart/store";
 import { CartSizeSelect } from "@/features/cart/components/cart-size-select";
 import { useCartSelection } from "@/features/cart/use-cart-selection";
+import {
+  useCartAvailability,
+  unavailableLabel,
+} from "@/features/cart/use-cart-availability";
 
 export default function CartPage() {
   const items = useCart((s) => s.items);
@@ -28,7 +31,6 @@ export default function CartPage() {
   const collections = useCart((s) => s.collections);
   const setCollectionQty = useCart((s) => s.setCollectionQty);
   const removeCollection = useCart((s) => s.removeCollection);
-  const giftPool = useGiftPool();
   const setItemSelected = useCart((s) => s.setItemSelected);
   const setCollectionSelected = useCart((s) => s.setCollectionSelected);
   const {
@@ -41,6 +43,16 @@ export default function CartPage() {
     allSelected,
     noneSelected,
   } = useCartSelection();
+  // Сагс долоо хоногоор суудаг тул хаагдсан хэмжээ (үлдэгдэл, эсвэл савны
+  // түгжээ) энд хүртэл амьд үлдэж болно — нээгдэхэд нэг удаа шалгана.
+  const {
+    statusOf,
+    collectionStatus,
+    maxQtyOf,
+    maxCollectionQtyOf,
+    blockedItemKeys,
+    blockedCollectionKeys,
+  } = useCartAvailability();
   // Устгах нь буцаагдахгүй тул нэг дарааж баталгаажуулна.
   const [confirmRemove, setConfirmRemove] = React.useState(false);
   const subtotal = useCart(selectSubtotal);
@@ -104,7 +116,11 @@ export default function CartPage() {
               <CardContent className="p-4">
                 <div className="flex gap-4">
                   <Checkbox
-                    checked={isCollectionSelected(c.key)}
+                    checked={
+                      isCollectionSelected(c.key) &&
+                      !blockedCollectionKeys.has(c.key)
+                    }
+                    disabled={blockedCollectionKeys.has(c.key)}
                     onCheckedChange={(v) =>
                       setCollectionSelected(c.key, Boolean(v))
                     }
@@ -157,13 +173,12 @@ export default function CartPage() {
                           • {m.brand} — {m.name}
                         </li>
                       ))}
-                      {giftPool?.enabled && bundleGiftGuarantee(c) > 0 && (
-                        <li className="text-foreground/80 flex items-center gap-1">
-                          <Gift className="text-gold-strong size-3 shrink-0" />
-                          1мл бэлгийн эрхтэй — бэлгээ төлбөрийн хуудсанд сонгоно
-                        </li>
-                      )}
                     </ul>
+                    {blockedCollectionKeys.has(c.key) && (
+                      <p className="text-destructive mt-2 text-xs">
+                        {unavailableLabel(collectionStatus(c.key))}
+                      </p>
+                    )}
                     <div className="mt-auto flex items-center justify-between pt-2">
                       <div className="bg-secondary flex items-center rounded-full">
                         <button
@@ -177,8 +192,15 @@ export default function CartPage() {
                           {c.qty}
                         </span>
                         <button
-                          className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full md:size-9"
-                          onClick={() => setCollectionQty(c.key, c.qty + 1)}
+                          className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full disabled:opacity-40 md:size-9"
+                          onClick={() =>
+                            setCollectionQty(
+                              c.key,
+                              c.qty + 1,
+                              maxCollectionQtyOf(c.key),
+                            )
+                          }
+                          disabled={c.qty >= maxCollectionQtyOf(c.key)}
                           aria-label="Нэмэх"
                         >
                           <Plus className="size-4 md:size-3.5" />
@@ -198,7 +220,10 @@ export default function CartPage() {
             <Card key={item.key}>
               <CardContent className="flex gap-4 p-4">
                 <Checkbox
-                  checked={isItemSelected(item.key)}
+                  checked={
+                    isItemSelected(item.key) && !blockedItemKeys.has(item.key)
+                  }
+                  disabled={blockedItemKeys.has(item.key)}
                   onCheckedChange={(v) => setItemSelected(item.key, Boolean(v))}
                   aria-label={`${item.name} сонгох`}
                   className="mt-1 self-start"
@@ -235,6 +260,11 @@ export default function CartPage() {
                           className="h-8 w-36 text-xs"
                         />
                       </div>
+                      {blockedItemKeys.has(item.key) && (
+                        <p className="text-destructive mt-1.5 text-xs">
+                          {unavailableLabel(statusOf(item.variantId))}
+                        </p>
+                      )}
                     </div>
                     <button
                       onClick={() => remove(item.key)}
@@ -257,8 +287,11 @@ export default function CartPage() {
                         {item.qty}
                       </span>
                       <button
-                        className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full md:size-9"
-                        onClick={() => setQty(item.key, item.qty + 1)}
+                        className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full disabled:opacity-40 md:size-9"
+                        onClick={() =>
+                          setQty(item.key, item.qty + 1, maxQtyOf(item.key))
+                        }
+                        disabled={item.qty >= maxQtyOf(item.key)}
                         aria-label="Нэмэх"
                       >
                         <Plus className="size-4 md:size-3.5" />
@@ -286,6 +319,7 @@ export default function CartPage() {
                 <span className="text-muted-foreground">Барааны дүн</span>
                 <span className="font-medium">{formatPrice(subtotal)}</span>
               </div>
+              <GiftProgressNote subtotal={subtotal} />
 
               {/*
                 Хүргэлтийн төлбөрийг тоогоор бичихгүй — хаягийн бүсээс

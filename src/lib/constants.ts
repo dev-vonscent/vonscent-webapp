@@ -7,7 +7,7 @@ export const SITE = {
   domain: "vonscent.mn",
   url: "https://vonscent.mn",
   description:
-    "Үнэртэн бага хэмжээгээр (decant) туршиж сонгох дэлгүүр — 2/5/10/20ml багц.",
+    "Дэлхийн шилдэг үнэртнүүдийг бага хэмжээгээр туршиж, өөрийн үнэрээ олоорой.",
   tagline: "Үнэрээ ол",
 } as const;
 
@@ -113,6 +113,20 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   shipping: "Хүргэгдэж буй",
   delivered: "Хүргэгдсэн",
   cancelled: "Цуцлагдсан",
+};
+
+/**
+ * Төлвийн чипний өнгө. Дөрвөн файлд ижилхэн бичигдсэн байсан (хэрэглэгчийн
+ * захиалгын жагсаалт, дэлгэрэнгүй, /order/[token]) — админы хэсэгт бол огт
+ * өнгөгүй (жагсаалт) эсвэл гурван утгад л буурсан (дэлгэрэнгүй, confirmed/
+ * shipping/delivered бүгд ижил ногоон) байв. Нэг эх сурвалж болгов.
+ */
+export const ORDER_STATUS_STYLE: Record<OrderStatus, string> = {
+  pending: "bg-amber-500/15 text-amber-500",
+  confirmed: "bg-sky-500/15 text-sky-500",
+  shipping: "bg-violet-500/15 text-violet-400",
+  delivered: "bg-emerald-500/15 text-emerald-500",
+  cancelled: "bg-red-500/20 text-red-400",
 };
 
 export const PAYMENT_STATUSES = ["unpaid", "paid", "refunded"] as const;

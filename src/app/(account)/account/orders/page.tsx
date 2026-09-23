@@ -16,24 +16,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
 import { getProductsByIds } from "@/features/products/api";
-import { formatPrice, formatDate } from "@/lib/format";
+import { formatPrice, formatDateTime } from "@/lib/format";
 import {
   ORDER_STATUS_LABEL,
+  ORDER_STATUS_STYLE,
   PAYMENT_STATUS_LABEL,
   type OrderStatus,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { OrderRow } from "@/db/types";
 import { EmptyState } from "@/components/shared/empty-state";
-
-/** Distinct chip colour per status (overrides the Badge variant via twMerge). */
-const STATUS_STYLE: Record<OrderStatus, string> = {
-  pending: "bg-amber-500/15 text-amber-500",
-  confirmed: "bg-sky-500/15 text-sky-500",
-  shipping: "bg-violet-500/15 text-violet-400",
-  delivered: "bg-emerald-500/15 text-emerald-500",
-  cancelled: "bg-red-500/20 text-red-400",
-};
 
 const STATUS_ICON: Record<
   OrderStatus,
@@ -145,12 +137,12 @@ export default async function OrdersPage() {
                     <div className="min-w-0">
                       <p className="font-mono font-medium">{o.order_no}</p>
                       <p className="text-muted-foreground text-sm">
-                        {formatDate(o.created_at)}
+                        {formatDateTime(o.created_at)}
                         {itemCount > 0 && ` · ${itemCount} ширхэг`}
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1.5">
-                      <Badge className={cn("gap-1", STATUS_STYLE[o.status])}>
+                      <Badge className={cn("gap-1", ORDER_STATUS_STYLE[o.status])}>
                         <StatusIcon className="size-3.5" />
                         {ORDER_STATUS_LABEL[o.status]}
                       </Badge>

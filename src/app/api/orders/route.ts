@@ -4,7 +4,9 @@ import { checkoutOrderSchema } from "@/lib/validators/order";
 import {
   BundleUnavailableError,
   computeSummary,
+  InsufficientStockError,
   ItemsUnavailableError,
+  mlByProduct,
   priceGiftLines,
   UndeliverableZoneError,
 } from "@/features/checkout/api";
@@ -101,6 +103,15 @@ export async function POST(req: Request) {
         { status: 409 },
       );
     }
+    if (e instanceof InsufficientStockError) {
+      // Хэмжээ бүр дангаараа зарагдах ч нийлбэр нь эх савны үлдэгдлээс давсан
+      // (10ml×2, эсвэл 10ml + 5ml). Аль бараа, хэд болгохыг нэрлэж буцаана —
+      // браузар сагсаа тэр дороо засна.
+      return NextResponse.json(
+        { error: "INSUFFICIENT_STOCK", items: e.items },
+        { status: 409 },
+      );
+    }
     if (e instanceof BundleUnavailableError) {
       return NextResponse.json(
         { error: "BUNDLE_UNAVAILABLE" },
@@ -144,8 +155,7 @@ export async function POST(req: Request) {
     }
 
     // Бэлгийн 1мл дээж: эрх нь купоны дараах барааны дүнгийн 200,000₮ тутамд
-    // 1, эсвэл preset 5/10/20мл багцын баталгаа — алийг нь ихийг нь (src/lib/
-    // gift.ts). Тиймээс купоныг энд place_order-той ижил аргаар шалгаад
+    // 1 (src/lib/gift.ts); багц тусдаа эрх өгөхгүй. Тиймээс купоныг энд place_order-той ижил аргаар шалгаад
     // хямдарсан дүнгээр эрхийг бодно. Сонголт бүр серверт дахин шалгагдана —
     // сан дотор байгаа эсэх, үлдэгдэл, эрхийн тоо.
     let giftLines: Awaited<ReturnType<typeof priceGiftLines>> = [];
@@ -165,7 +175,9 @@ export async function POST(req: Request) {
       giftLines = await priceGiftLines(
         input.giftProductIds,
         Math.max(summary.subtotal - discount, 0),
-        summary.giftGuarantee,
+        // Төлбөртэй мөрүүд эх савнаас аль хэдийн авсан ml — бэлэг нь зөвхөн
+        // ҮЛДСЭН хэсгээс гарна.
+        mlByProduct(summary.lines),
       );
     }
     const allLines = [...summary.lines, ...giftLines];
@@ -230,9 +242,23 @@ export async function POST(req: Request) {
       // Захиалга үүсээгүй тул эзэмшлийг суллана — хэрэглэгч сагсаа засаад
       // ижил түлхүүрээр дахин оролдох ёстой.
       if (input.requestId) await releaseOrderRequest(supabase, input.requestId);
-      const insufficient = error.message?.includes("INSUFFICIENT_STOCK");
+      // `place_order` нь `INSUFFICIENT_STOCK:<product_id>` гэж шиддэг. Энэ
+      // хүртэл ирнэ гэдэг нь захиалга явж байх зуур өөр хэрэглэгч нөөцийг
+      // авсан гэсэн үг (computeSummary аль хэдийн шалгасан) — тэр барааг
+      // нэрлэж чадвал хэрэглэгч юуг засахаа мэднэ.
+      const insufficient = /INSUFFICIENT_STOCK:(\S+)/.exec(
+        error.message ?? "",
+      );
+      // Савны түгжээ (0095) — сүүлийн шатны хамгаалалт. Энэ хүртэл ирнэ гэдэг
+      // нь сагс хуучирсан, эсвэл захиалга явж байх зуур админ хаасан гэсэн үг.
+      const bottle = error.message?.includes("BOTTLE_UNAVAILABLE");
+      if (bottle) {
+        return NextResponse.json({ error: "BOTTLE_UNAVAILABLE" }, { status: 409 });
+      }
       return NextResponse.json(
-        { error: insufficient ? "OUT_OF_STOCK" : "ORDER_FAILED" },
+        insufficient
+          ? { error: "OUT_OF_STOCK", productId: insufficient[1] }
+          : { error: "ORDER_FAILED" },
         { status: insufficient ? 409 : 500 },
       );
     }

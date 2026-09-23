@@ -11,6 +11,7 @@ import {
   Pencil,
   Star,
   StarOff,
+  FlaskConical,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { mutateJson } from "@/features/admin/lib/mutate";
@@ -56,9 +57,38 @@ export function ProductRowActions({
   const [pricing, setPricing] = React.useState(false);
   const [featuring, setFeaturing] = React.useState(false);
   const [stockMode, setStockMode] = React.useState<StockMode | null>(null);
+  const [bottleBusy, setBottleBusy] = React.useState(false);
   const label = `${product.brand} — ${product.name}`;
   // The full editor returns to this exact filtered list, not a bare one.
   const fullEditHref = editHref(product.id, params.toString());
+
+  /**
+   * Савны түгжээнээс чөлөөлөх / цуцлах (0095).
+   *
+   * Түгжээ нь тухайн ӨНГӨНИЙ бүх бараанд үйлчилдэг тул нээх нь боломжгүй —
+   * энэ нь ганц бараа/хэмжээний онцгой зөвшөөрөл: «өөр өнгийн саванд цутгана».
+   */
+  async function toggleBottleOverride(ml: number, next: boolean) {
+    setBottleBusy(true);
+    try {
+      const ok = await mutateJson(
+        `/api/admin/products/${product.id}/bottle-override`,
+        "PATCH",
+        { ml, override: next },
+        "Чөлөөлөлт хадгалагдсангүй",
+      );
+      if (ok) {
+        toast.success(
+          next
+            ? `«${product.name}» ${ml}ml савны түгжээнээс чөлөөлөгдлөө — өөр өнгийн саванд цутгана.`
+            : `«${product.name}» ${ml}ml чөлөөлөлт цуцлагдлаа.`,
+        );
+        router.refresh();
+      }
+    } finally {
+      setBottleBusy(false);
+    }
+  }
 
   /** «Онцлох» тэмдгийг мөрөн дээрээс шууд солих (backlog C2). */
   async function toggleFeatured() {
@@ -155,6 +185,28 @@ export function ProductRowActions({
               Бүрэн засварлах
             </Link>
           </DropdownMenuItem>
+          {/* Зөвхөн ХААЛТТАЙ хэмжээнд утгатай: сав байгаа үед чөлөөлөх юм
+              байхгүй. Түгжээг өөрийг нь энд нээхгүй — тэр нь бүх барааг
+              нэгэн зэрэг нээх тул Савны нөөцийн хуудсанд байна. */}
+          {product.bottleLockedMls.length > 0 && <DropdownMenuSeparator />}
+          {product.bottleLockedMls.map((ml) => {
+            const on =
+              product.variants.find((v) => v.ml === ml)?.bottleOverride ===
+              true;
+            return (
+              <DropdownMenuItem
+                key={`bottle-${ml}`}
+                onSelect={() => void toggleBottleOverride(ml, !on)}
+                disabled={bottleBusy}
+                className={ITEM}
+              >
+                <FlaskConical />
+                {on
+                  ? `${ml}ml чөлөөлөлтийг цуцлах`
+                  : `${ml}ml-ийг түгжээнээс чөлөөлөх`}
+              </DropdownMenuItem>
+            );
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
 
