@@ -71,11 +71,18 @@ export default async function OrdersPage() {
   let orders: OrderWithItems[] = [];
 
   if (supabase) {
-    const { data } = await supabase
-      .from("orders")
-      .select("*, order_items(product_id, product_name, brand, ml, qty)")
-      .order("created_at", { ascending: false });
-    orders = (data as OrderWithItems[] | null) ?? [];
+    // Эзнээр нь ЗААВАЛ шүүнэ: `orders`-ын RLS нь `user_id = auth.uid() or
+    // is_staff()` тул шүүлтгүй бол ажилтан энэ хувийн хуудсан дээрээ бүх
+    // хүний (зочны ч) захиалгыг хармаар байв.
+    const { data: auth } = await supabase.auth.getUser();
+    if (auth.user) {
+      const { data } = await supabase
+        .from("orders")
+        .select("*, order_items(product_id, product_name, brand, ml, qty)")
+        .eq("user_id", auth.user.id)
+        .order("created_at", { ascending: false });
+      orders = (data as OrderWithItems[] | null) ?? [];
+    }
   }
 
   // Resolve product thumbnails for every line item across all orders.
