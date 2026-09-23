@@ -32,10 +32,13 @@ export function BottleStockManager({
   cells,
   overrides,
   migrated,
+  countsReady,
 }: {
   cells: BottleStockCell[];
   overrides: BottleOverrideRow[];
   migrated: boolean;
+  /** Нөлөөллийн тоо бүрэн уншигдсан эсэх — үгүй бол тоо харуулахгүй. */
+  countsReady: boolean;
 }) {
   const router = useRouter();
   const [pending, setPending] = React.useState<BottleStockCell | null>(null);
@@ -154,8 +157,11 @@ export function BottleStockManager({
                         {cell.isActive ? "Сав байгаа" : "Сав дууссан"}
                       </span>
                       <span className="text-muted-foreground text-xs">
-                        {cell.productCount} бараа
-                        {cell.overrideCount > 0 &&
+                        {countsReady
+                          ? `${cell.productCount} бараа`
+                          : "— бараа"}
+                        {countsReady &&
+                          cell.overrideCount > 0 &&
                           ` · ${cell.overrideCount} чөлөөлсөн`}
                       </span>
                       {!cell.isActive && cell.note && (
@@ -226,9 +232,13 @@ export function BottleStockManager({
               : ""
         }
         description={
-          pending?.isActive
-            ? `${pending.productCount} бараа тэр хэмжээгээрээ захиалагдахаа болино. Бусад хэмжээ, бусад өнгө хэвээр.`
-            : "Тэр хэмжээ дэлгүүр дээр дахин зарагдаж эхэлнэ."
+          !pending?.isActive
+            ? "Тэр хэмжээ дэлгүүр дээр дахин зарагдаж эхэлнэ."
+            : countsReady
+              ? `${pending.productCount} бараа тэр хэмжээгээрээ захиалагдахаа болино. Бусад хэмжээ, бусад өнгө хэвээр.`
+              : // Тоо нь дутуу уншигдсан — «0 бараа хөндөгдөнө» гэж худал
+                // хэлэхээс дуугүй байх нь дээр.
+                "Энэ өнгөний бүх бараа тэр хэмжээгээрээ захиалагдахаа болино. Бусад хэмжээ, бусад өнгө хэвээр."
         }
       >
         <div className="space-y-4 pt-2">
@@ -248,6 +258,7 @@ export function BottleStockManager({
           )}
           {pending != null &&
             !pending.isActive &&
+            countsReady &&
             pending.overrideCount > 0 && (
               <label className="flex cursor-pointer items-start gap-2.5 text-sm">
                 <Checkbox

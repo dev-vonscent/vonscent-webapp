@@ -15,7 +15,7 @@ export const metadata = { title: "Савны нөөц" };
  * «Түгжигдсэн мл» (reserved_ml)-ээс тусдаа ойлголт.
  */
 export default async function AdminBottlesPage() {
-  const { cells, overrides, migrated } = await getBottleStock();
+  const { cells, overrides, migrated, countsReady } = await getBottleStock();
   return (
     <div className="space-y-6">
       <PageHeader
@@ -26,6 +26,7 @@ export default async function AdminBottlesPage() {
         cells={cells}
         overrides={overrides}
         migrated={migrated}
+        countsReady={countsReady}
       />
     </div>
   );

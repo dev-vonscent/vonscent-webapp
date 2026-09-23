@@ -1385,7 +1385,20 @@ export interface BottleStockData {
   overrides: BottleOverrideRow[];
   /** 0095 ажиллаагүй бол хуудас тайлбар харуулна. */
   migrated: boolean;
+  /**
+   * Нөлөөллийн тоо (`productCount` / `overrideCount`) найдвартай уншигдсан
+   * эсэх. Уншилт унасан, эсвэл таазанд хүрсэн бол UI тоо харуулахын оронд
+   * «—» гаргана: «0 бараа хөндөгдөнө» гэж худал хэлбэл админ сав хаахдаа
+   * үр дагаврыг нь дутуу үнэлнэ.
+   */
+  countsReady: boolean;
 }
+
+/**
+ * Нэг уншилтаар авах variant-ийн дээд тоо. PostgREST өөрөө ч мөрийг таслах
+ * тул тааз нь ИЛ байх ёстой — чимээгүй дутуу тоо нь тоо огт байхгүйгээс муу.
+ */
+export const BOTTLE_VARIANTS_CAP = 5000;
 
 interface DbBottleRow {
   gender: Gender;
@@ -1418,7 +1431,12 @@ function one<T>(v: T | T[] | null): T | null {
  * шууд харах ёстой (дарсны дараа биш).
  */
 export async function getBottleStock(): Promise<BottleStockData> {
-  const empty: BottleStockData = { cells: [], overrides: [], migrated: false };
+  const empty: BottleStockData = {
+    cells: [],
+    overrides: [],
+    migrated: false,
+    countsReady: false,
+  };
   const supabase = await createClient();
   if (!supabase) return empty;
 
@@ -1431,7 +1449,8 @@ export async function getBottleStock(): Promise<BottleStockData> {
       .from("product_variants")
       .select(
         "ml, is_active, bottle_override, products(id, name, brand, gender, is_active)",
-      ),
+      )
+      .limit(BOTTLE_VARIANTS_CAP),
   ]);
 
   // 0095 ажиллаагүй сан дээр админ хуудас унах ёсгүй — тайлбартай хоосон
@@ -1439,6 +1458,9 @@ export async function getBottleStock(): Promise<BottleStockData> {
   if (stockRes.error || !stockRes.data) return empty;
 
   const variants = (variantRes.data as DbVariantRow[] | null) ?? [];
+  // Уншилт унасан, эсвэл тааз дүүрсэн бол тоонууд бүрэн БИШ.
+  const countsReady =
+    !variantRes.error && variants.length < BOTTLE_VARIANTS_CAP;
   const productCount = new Map<string, number>();
   const overrideCount = new Map<string, number>();
   const overrides: BottleOverrideRow[] = [];
@@ -1476,5 +1498,5 @@ export async function getBottleStock(): Promise<BottleStockData> {
     };
   });
 
-  return { cells, overrides, migrated: true };
+  return { cells, overrides, migrated: true, countsReady };
 }

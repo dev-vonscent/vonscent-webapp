@@ -39,11 +39,15 @@ export async function PATCH(
   const supabase = createAdminClient();
   if (!supabase) return NextResponse.json({ error: "NO_DB" }, { status: 500 });
 
-  const { error } = await supabase
+  // `select()` нь хөндөгдсөн мөрийг буцаана: тэр бараанд тэр хэмжээ огт
+  // байхгүй бол UPDATE нь 0 мөр засаад чимээгүй амжилттай болох тул админ
+  // чөлөөлөгдсөн гэж итгээд үлдэнэ.
+  const { data, error } = await supabase
     .from("product_variants")
     .update({ bottle_override: parsed.data.override })
     .eq("product_id", id)
-    .eq("ml", parsed.data.ml);
+    .eq("ml", parsed.data.ml)
+    .select("id");
 
   if (error) {
     // 42703 = bottle_override багана байхгүй — 0095 ажиллаагүй.
@@ -51,6 +55,9 @@ export async function PATCH(
       return NextResponse.json({ error: "NOT_MIGRATED" }, { status: 503 });
     }
     return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
+  }
+  if (((data as { id: string }[] | null) ?? []).length === 0) {
+    return NextResponse.json({ error: "VARIANT_NOT_FOUND" }, { status: 404 });
   }
 
   revalidatePublic();
