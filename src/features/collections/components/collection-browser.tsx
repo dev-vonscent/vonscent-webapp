@@ -127,11 +127,11 @@ function GenderChips({
 
 export function CollectionBrowser({
   collections,
-  trailing,
+  customEnabled,
 }: {
   collections: Collection[];
-  /** Grid-ийн сүүлчийн нүд — «Өөрөө угсрах» карт. */
-  trailing?: React.ReactNode;
+  /** Өөрөө багц угсрах боломж нээлттэй эсэх (хоосон төлөвийн санал). */
+  customEnabled: boolean;
 }) {
   /*
     Шүүлт нь URL-д амьдарна. Өмнө нь зөвхөн `useState` байсан тул нэг багц
@@ -362,11 +362,11 @@ export function CollectionBrowser({
               title="Тохирох багц олдсонгүй"
               description="Шүүлтүүрээ өөрчилж, дахин хайж үзээрэй."
               action={
-                // Grid байхгүй болохоор «Өөрөө угсрах» нүд ч алга болно —
-                // энэ хүн яг тэр саналыг сонсох ёстой хүн.
+                // Толгойн панель гүйлгээний дээр үлдсэн ч, шүүлтээрээ юу ч
+                // олоогүй хүн яг энэ мөчид тэр гарцыг дахин сонсох ёстой.
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Button onClick={clearAll}>Шүүлтүүр цэвэрлэх</Button>
-                  {trailing && (
+                  {customEnabled && (
                     <Button asChild variant="secondary">
                       <Link href="/collections/build">Багц угсрах</Link>
                     </Button>
@@ -375,7 +375,7 @@ export function CollectionBrowser({
               }
             />
           ) : (
-            <CollectionGrid collections={shown} trailing={trailing} />
+            <CollectionGrid collections={shown} />
           )}
         </div>
       </div>
