@@ -16,6 +16,13 @@ import { matchesSearch, searchTerms } from "@/lib/search";
 import { callRpc } from "@/lib/supabase/rpc";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createPublicClient } from "@/lib/supabase/public";
+import { variantAvailability } from "./sellable";
+import {
+  getBottleLocks,
+  isBottleLocked,
+  NO_BOTTLE_LOCKS,
+  type BottleLockState,
+} from "./bottle-stock";
 
 /**
  * Product data access (development.md §3 — features domain api).
@@ -94,7 +101,10 @@ const SELECT = `
   product_tags ( tags ( slug, kind ) )
 `;
 
-function mapProduct(row: DbProduct): ProductDetail {
+function mapProduct(
+  row: DbProduct,
+  locks: BottleLockState = NO_BOTTLE_LOCKS,
+): ProductDetail {
   // The gallery holds every picture the admin has for this product; only the
   // ones they ticked reach the shop (0049).
   const images = [...row.product_images]
@@ -105,25 +115,36 @@ function mapProduct(row: DbProduct): ProductDetail {
   const inv = Array.isArray(row.inventory) ? row.inventory[0] : row.inventory;
   const availableMl = inv ? inv.on_hand_ml - inv.reserved_ml : 0;
 
-  // A size is buyable only when the admin left it active AND the remaining
-  // source ml can still fill it (requirement_fb.md: a sold-out 20ml turns
-  // itself off while 5ml keeps selling).
+  // A size is buyable only when the admin left it active, the colour of bottle
+  // it needs is in stock (0095) AND the remaining source ml can still fill it
+  // (requirement_fb.md: a sold-out 20ml turns itself off while 5ml keeps
+  // selling). Энэ нь `variant_sellable()` (SQL)-ийн толь — хоёулаа зэрэг
+  // өөрчлөгдөх ёстой.
   const variants = [...row.product_variants]
     .sort((a, b) => a.ml - b.ml)
-    .map((v) => ({
-      id: v.id,
-      ml: v.ml,
-      // Хямдарсан үнэ байвал БОДИТООР төлөх дүн нь тэр (0054). Сагс, захиалга,
-      // тайлан бүгд `price`-аар явдаг тул хямдрал энэ нэг мөрөөр бүх урсгалд
-      // хүчин төгөлдөр болно; үндсэн үнэ нь зөвхөн зураастай харагдана.
-      price: v.sale_price ?? v.price,
-      basePrice: v.price,
-      isActive: v.is_active,
-      inStock: !inv?.is_sold_out && availableMl >= v.ml,
-    }));
+    .map((v) => {
+      // Админ энэ бараа/хэмжээг гараар чөлөөлсөн бол түгжээ үйлчлэхгүй —
+      // өөр өнгийн саванд цутгахыг зөвшөөрсөн гэсэн үг.
+      const bottleLocked = isBottleLocked(locks, row.gender, v.ml, v.id);
+      const isActive = v.is_active;
+      const inStock = !inv?.is_sold_out && availableMl >= v.ml;
+      return {
+        id: v.id,
+        ml: v.ml,
+        // Хямдарсан үнэ байвал БОДИТООР төлөх дүн нь тэр (0054). Сагс, захиалга,
+        // тайлан бүгд `price`-аар явдаг тул хямдрал энэ нэг мөрөөр бүх урсгалд
+        // хүчин төгөлдөр болно; үндсэн үнэ нь зөвхөн зураастай харагдана.
+        price: v.sale_price ?? v.price,
+        basePrice: v.price,
+        isActive,
+        inStock,
+        bottleLocked,
+        ...variantAvailability({ isActive, inStock, bottleLocked }),
+      };
+    });
 
   // "From" price quotes the cheapest size a customer can actually buy today.
-  const sellable = variants.filter((v) => v.isActive && v.inStock);
+  const sellable = variants.filter((v) => v.sellable);
   const quotable = sellable.length
     ? sellable
     : variants.filter((v) => v.isActive);
@@ -195,7 +216,10 @@ export const fetchProducts = cache(async (): Promise<ProductDetail[]> => {
     .eq("is_active", true);
 
   if (error || !data) return [];
-  const products = (data as unknown as DbProduct[]).map(mapProduct);
+  const locks = await getBottleLocks();
+  const products = (data as unknown as DbProduct[]).map((r) =>
+    mapProduct(r, locks),
+  );
   await attachCustomTags(supabase, products);
   return products;
 });
@@ -280,7 +304,10 @@ const fetchProductBy = cache(
       .maybeSingle();
     if (error || !data) return null;
 
-    const product = mapProduct(data as unknown as DbProduct);
+    const product = mapProduct(
+      data as unknown as DbProduct,
+      await getBottleLocks(),
+    );
     await attachCustomTags(supabase, [product]);
     return product;
   },
@@ -618,7 +645,8 @@ export async function getProductDetailsByIds(
   );
   if (!rows.length) return [];
 
-  const products = rows.map(mapProduct);
+  const locks = await getBottleLocks();
+  const products = rows.map((r) => mapProduct(r, locks));
   await attachCustomTags(supabase, products);
   return products;
 }

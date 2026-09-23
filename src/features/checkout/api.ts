@@ -1,5 +1,6 @@
 import "server-only";
 import { getProductById, fetchProducts } from "@/features/products/api";
+import { maxUnits } from "@/features/products/sellable";
 import {
   BUNDLE_ML_SIZES,
   GIFT_SAMPLE_ML,
@@ -57,17 +58,29 @@ export interface OrderSummary {
  */
 export async function priceLines(
   items: OrderItemInput[],
-): Promise<{ lines: PricedLine[]; missing: OrderItemInput[] }> {
+): Promise<{
+  lines: PricedLine[];
+  missing: OrderItemInput[];
+  stock: StockMap;
+}> {
   const lines: PricedLine[] = [];
   const missing: OrderItemInput[] = [];
+  const stock: StockMap = new Map();
   for (const item of items) {
     const product = await getProductById(item.productId);
     if (!product) {
       missing.push(item);
       continue;
     }
+    // Эх савны үлдэгдлийг мөрийн хажуугаар авч явна: `sellable` нь НЭГ
+    // ширхэгийн асуулт тул нийт ml-ийг `findStockShortages` тусад нь шалгана.
+    stock.set(product.id, product.soldOut ? 0 : product.availableMl);
     const variant = product.variants.find((v) => v.id === item.variantId);
-    if (!variant || !variant.isActive) {
+    // `sellable` нь идэвхтэй эсэх + эх савны үлдэгдэл + ХООСОН САВНЫ ТҮГЖЭЭ
+    // (0095) гурвыг агуулна. Үлдэгдлийг `place_order` нөөц түгжихдээ дахин
+    // шалгах ч савны түгжээг эндээс цааш нэвтрүүлэх нь утгагүй: тэр хэмжээг
+    // цутгах сав алга.
+    if (!variant || !variant.sellable) {
       missing.push(item);
       continue;
     }
@@ -83,7 +96,7 @@ export async function priceLines(
       lineTotal: unitPrice * item.qty,
     });
   }
-  return { lines, missing };
+  return { lines, missing, stock };
 }
 
 /**
@@ -102,8 +115,10 @@ export async function priceCollectionLines(
   lines: PricedLine[];
   pricedBundles: number;
   giftGuarantee: number;
+  stock: StockMap;
 }> {
-  if (!cols.length) return { lines: [], pricedBundles: 0, giftGuarantee: 0 };
+  if (!cols.length)
+    return { lines: [], pricedBundles: 0, giftGuarantee: 0, stock: new Map() };
   const [products, settings] = await Promise.all([
     fetchProducts(),
     getCollectionSettings(),
@@ -117,13 +132,16 @@ export async function priceCollectionLines(
       active: boolean;
     }
   >();
+  const stock: StockMap = new Map();
   for (const p of products) {
+    stock.set(p.id, p.soldOut ? 0 : p.availableMl);
     for (const v of p.variants) {
       variantIndex.set(v.id, {
         product: p,
         price: v.price,
         ml: v.ml,
-        active: v.isActive,
+        // Багцын гишүүн ч мөн адил: савгүй хэмжээ бүхий багц захиалагдахгүй.
+        active: v.sellable,
       });
     }
   }
@@ -230,7 +248,7 @@ export async function priceCollectionLines(
       qty: col.qty,
     });
   }
-  return { lines: out, pricedBundles, giftGuarantee };
+  return { lines: out, pricedBundles, giftGuarantee, stock };
 }
 
 /**
@@ -248,6 +266,12 @@ export async function priceGiftLines(
   giftProductIds: string[],
   goodsAfterDiscount: number,
   giftGuarantee = 0,
+  /**
+   * Төлбөртэй мөрүүд тухайн бараанаас аль хэдийн авсан ml (`mlByProduct`).
+   * Бэлэг нь эх савны ҮЛДСЭН хэсгээс гарна: сагс савыг бүрэн дуусгасан
+   * байхад бэлэг нэмбэл `place_order` нөөц түгжихдээ бүхэл захиалгыг унагана.
+   */
+  usedMl: ReadonlyMap<string, number> = new Map(),
 ): Promise<PricedLine[]> {
   if (!giftProductIds.length) return [];
   const allowance = giftAllowanceFor(goodsAfterDiscount, giftGuarantee);
@@ -265,7 +289,8 @@ export async function priceGiftLines(
     if (seen.has(id) || !pool.has(id)) continue;
     seen.add(id);
     const p = products.find((x) => x.id === id);
-    if (!p || p.soldOut || p.availableMl < GIFT_SAMPLE_ML) continue;
+    if (!p || p.soldOut) continue;
+    if (p.availableMl - (usedMl.get(p.id) ?? 0) < GIFT_SAMPLE_ML) continue;
     out.push({
       productId: p.id,
       variantId: "",
@@ -281,6 +306,93 @@ export async function priceGiftLines(
     });
   }
   return out;
+}
+
+/** productId → эх савны үлдэгдэл ml (`inventory.available_ml`). */
+export type StockMap = Map<string, number>;
+
+/** Мөрүүд бараа тус бүрээс хэдэн ml зарцуулж байгаа нийлбэр. */
+export function mlByProduct(lines: readonly PricedLine[]): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const l of lines) {
+    out.set(l.productId, (out.get(l.productId) ?? 0) + l.ml * l.qty);
+  }
+  return out;
+}
+
+/** Нэг мөр эх савны үлдэгдэлд багтахгүй байгаа нь. */
+export interface StockShortage {
+  productId: string;
+  /** Сагсны мөрийн түлхүүр — багцын гишүүн дээр ч бөглөгдөнө. */
+  variantId: string;
+  name: string;
+  brand: string;
+  ml: number;
+  /** Хүссэн тоо ширхэг. */
+  qty: number;
+  /** Үлдэгдэлд багтах дээд тоо ширхэг (0 бол огт болохгүй). */
+  maxQty: number;
+  availableMl: number;
+  /** Багцын мөр бол багцын нэр — гишүүнийг дангаар нь багасгах боломжгүй. */
+  collectionName?: string;
+}
+
+/**
+ * Эх савны үлдэгдэлд БАГТАХГҮЙ мөрүүд.
+ *
+ * `variant_sellable()` (0095) нь «нэг ширхэг цутгах ml хүрэлцэх үү» гэсэн
+ * асуулт тул үлдэгдэл 15ml байхад 10ml зарагдана — гэвч 10ml×2, эсвэл
+ * 10ml + 5ml гэсэн хоёр мөр нийлээд савыг хэтрүүлнэ. Үүнийг өнөөдөр зөвхөн
+ * `place_order` → `reserve_inventory` барьдаг ба хэрэглэгч аль барааг хэд
+ * болгохоо мэдэхгүй ерөнхий алдаа авдаг.
+ *
+ * Мөрүүдийг ДАРААЛЛААР нь төсвөөс хасаж явна: төлбөртэй мөр эхэлж, бэлгийн
+ * дээж сүүлд — `place_order`-ийн нөөц түгжих дараалалтай ижил.
+ */
+export function findStockShortages(
+  lines: readonly PricedLine[],
+  stock: ReadonlyMap<string, number>,
+): StockShortage[] {
+  const left = new Map<string, number>();
+  const out: StockShortage[] = [];
+  for (const l of lines) {
+    const remainingMl = left.get(l.productId) ?? stock.get(l.productId) ?? 0;
+    const need = l.ml * l.qty;
+    if (need <= remainingMl) {
+      left.set(l.productId, remainingMl - need);
+      continue;
+    }
+    const maxQty = maxUnits({ ml: l.ml, sellable: true, remainingMl });
+    out.push({
+      productId: l.productId,
+      variantId: l.variantId,
+      name: l.name,
+      brand: l.brand,
+      ml: l.ml,
+      qty: l.qty,
+      maxQty,
+      availableMl: stock.get(l.productId) ?? 0,
+      ...(l.collectionName !== undefined
+        ? { collectionName: l.collectionName }
+        : {}),
+    });
+    // Багтах хэсгийг нь зарцуулсан гэж үзнэ — нэг барааны дараагийн мөр ч
+    // үнэн зөв дүгнэгдэнэ.
+    left.set(l.productId, remainingMl - l.ml * maxQty);
+  }
+  return out;
+}
+
+/**
+ * Сагс эх савны үлдэгдлээс ИХ ml нэхэж байна. Аль бараа, хэд болгох ёстойг
+ * нэрлэж буцаана — хэрэглэгч «зарим бараа дууссан» гэсэн ерөнхий мессежээс
+ * юу засахаа таах шаардлагагүй.
+ */
+export class InsufficientStockError extends Error {
+  constructor(readonly items: StockShortage[]) {
+    super("Cart asks for more ml than the source bottles hold");
+    this.name = "InsufficientStockError";
+  }
 }
 
 /**
@@ -378,6 +490,15 @@ export async function computeSummary(
     throw new BundleUnavailableError();
   }
   const lines = [...itemResult.lines, ...bundleResult.lines];
+  // Хэмжээ тус бүр «зарагдана» гээд нийлбэр нь эх савыг хэтрүүлж болно
+  // (10ml×2, эсвэл 10ml + 5ml). Үүнийг энд барихгүй бол хэрэглэгч бүх
+  // маягтаа бөглөж дуусаад place_order-ийн ерөнхий алдаанд унана.
+  const stock: StockMap = new Map([
+    ...itemResult.stock,
+    ...bundleResult.stock,
+  ]);
+  const shortages = findStockShortages(lines, stock);
+  if (shortages.length > 0) throw new InsufficientStockError(shortages);
   const subtotal = lines.reduce((s, l) => s + l.lineTotal, 0);
   const { zone, fee: shippingFee } = await resolveShipping(input);
   // The coupon discount is applied inside place_order, which re-validates the

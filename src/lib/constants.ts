@@ -115,6 +115,20 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   cancelled: "Цуцлагдсан",
 };
 
+/**
+ * Төлвийн чипний өнгө. Дөрвөн файлд ижилхэн бичигдсэн байсан (хэрэглэгчийн
+ * захиалгын жагсаалт, дэлгэрэнгүй, /order/[token]) — админы хэсэгт бол огт
+ * өнгөгүй (жагсаалт) эсвэл гурван утгад л буурсан (дэлгэрэнгүй, confirmed/
+ * shipping/delivered бүгд ижил ногоон) байв. Нэг эх сурвалж болгов.
+ */
+export const ORDER_STATUS_STYLE: Record<OrderStatus, string> = {
+  pending: "bg-amber-500/15 text-amber-500",
+  confirmed: "bg-sky-500/15 text-sky-500",
+  shipping: "bg-violet-500/15 text-violet-400",
+  delivered: "bg-emerald-500/15 text-emerald-500",
+  cancelled: "bg-red-500/20 text-red-400",
+};
+
 export const PAYMENT_STATUSES = ["unpaid", "paid", "refunded"] as const;
 export type PaymentStatusValue = (typeof PAYMENT_STATUSES)[number];
 

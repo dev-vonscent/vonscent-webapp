@@ -15,7 +15,7 @@ import {
 } from "@/features/admin/api";
 import { getProductsByIds, getProductsByTag } from "@/features/products/api";
 import { NotificationCard } from "@/features/admin/components/notification-list";
-import { formatPrice, formatDate } from "@/lib/format";
+import { formatPrice, formatDateTime } from "@/lib/format";
 import { ORDER_STATUS_LABEL, ORDER_STATUSES } from "@/lib/constants";
 
 /**
@@ -167,7 +167,7 @@ export default async function AdminDashboard() {
                       {o.order_no}
                     </Link>
                     <span className="text-muted-foreground">
-                      {formatDate(o.created_at)}
+                      {formatDateTime(o.created_at)}
                     </span>
                     <span className="font-medium">{formatPrice(o.total)}</span>
                   </li>

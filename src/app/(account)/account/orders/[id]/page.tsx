@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
 import { getProductsByIds } from "@/features/products/api";
-import { formatPrice, formatDate } from "@/lib/format";
+import { formatPrice, formatDateTime } from "@/lib/format";
 import {
   DISPATCH_HOUR,
   deliveryDayOf,
@@ -17,23 +17,14 @@ import {
 } from "@/lib/time";
 import {
   ORDER_STATUS_LABEL,
+  ORDER_STATUS_STYLE,
   PAYMENT_STATUS_LABEL,
-  type OrderStatus,
 } from "@/lib/constants";
 import {
   OrderActions,
   type ReorderItem,
 } from "@/features/account/components/order-actions";
 import type { OrderRow, OrderItemRow, OrderStatusHistoryRow } from "@/db/types";
-
-/** Distinct chip colour per status (overrides the Badge variant via twMerge). */
-const STATUS_STYLE: Record<OrderStatus, string> = {
-  pending: "bg-amber-500/15 text-amber-500",
-  confirmed: "bg-sky-500/15 text-sky-500",
-  shipping: "bg-violet-500/15 text-violet-400",
-  delivered: "bg-emerald-500/15 text-emerald-500",
-  cancelled: "bg-red-500/20 text-red-400",
-};
 
 export default async function OrderDetailPage({
   params,
@@ -116,10 +107,10 @@ export default async function OrderDetailPage({
             {order.order_no}
           </h1>
           <p className="text-muted-foreground text-sm">
-            {formatDate(order.created_at)}
+            {formatDateTime(order.created_at)}
           </p>
         </div>
-        <Badge className={STATUS_STYLE[order.status]}>
+        <Badge className={ORDER_STATUS_STYLE[order.status]}>
           {ORDER_STATUS_LABEL[order.status]}
         </Badge>
       </div>
@@ -170,7 +161,7 @@ export default async function OrderDetailPage({
                           <p className="text-muted-foreground">{h.note}</p>
                         )}
                         <p className="text-muted-foreground text-xs">
-                          {formatDate(h.created_at)}
+                          {formatDateTime(h.created_at)}
                         </p>
                       </div>
                     </li>

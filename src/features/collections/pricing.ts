@@ -70,25 +70,27 @@ export function memberPrices(
     // Гишүүдийн үнэ нь БОДИТООР төлөх (хямдарсан) үнэ — тиймээс custom багц
     // ч хямдарсан үнээр бодогдоно (backlog B5).
     const memberSum = rows.reduce((sum, r) => sum + (r?.price ?? 0), 0);
-    const fixed = fixedPrices[ml];
-    const price = Number.isFinite(fixed)
-      ? Math.max(0, fixed as number)
-      : bundlePrice(
-          memberSum,
-          discountForMl(ml, defaultDiscountPct, overrides),
-          step,
-        );
+    const hasFixedPrice = Number.isFinite(fixedPrices[ml]);
+    const nominalPct = discountForMl(ml, defaultDiscountPct, overrides);
+    const price = hasFixedPrice
+      ? Math.max(0, fixedPrices[ml] as number)
+      : bundlePrice(memberSum, nominalPct, step);
     // Харуулах хувь нь ҮРГЭЛЖ бодит үнээс гарна. Тогтмол үнэтэй хэмжээнд
     // админы бичсэн хувь нь худал болох тул түүнийг давтаж болохгүй.
     const discountPct =
       memberSum > 0
         ? Math.max(0, Math.round(((memberSum - price) / memberSum) * 100))
         : 0;
+    // Зар сурталчилгаанд ашиглах хувь: admin-ий амласан хувь өөрөө, ₮-т
+    // тэгшлэхээс гарах 1пп-ийн зөрүүгүйгээр (`nominalDiscountPct`, types.ts).
+    // Тогтмол үнэтэй хэмжээнд амлалт байхгүй тул бодит хувиараа орлуулна.
+    const nominalDiscountPct = hasFixedPrice ? discountPct : nominalPct;
     return {
       ml,
       memberSum,
       price,
       discountPct,
+      nominalDiscountPct,
       saved: Math.max(0, memberSum - price),
       available,
     };
@@ -104,14 +106,17 @@ export function memberPrices(
  * full table rather than reporting nothing.
  */
 export function discountRange(
-  prices: CollectionPriceAtMl[],
+  prices: Pick<CollectionPriceAtMl, "ml" | "nominalDiscountPct">[],
   availableMls: number[] = [],
 ): { min: number; max: number } {
   const scope = availableMls.length
     ? prices.filter((p) => availableMls.includes(p.ml))
     : prices;
   if (!scope.length) return { min: 0, max: 0 };
-  const pcts = scope.map((p) => p.discountPct);
+  // `nominalDiscountPct`-ийг ашиглана, `discountPct`-г БИШ: сүүлийнх нь ₮-т
+  // 100-д тэгшлэхэд ml болгонд бага зэрэг өөр гарч, badge дээр «-4-5%» мэт
+  // худал range үүсгэдэг байсан (жинхэнэ ялгаа биш, зөвхөн тэгшлэлтийн шуугиан).
+  const pcts = scope.map((p) => p.nominalDiscountPct);
   return { min: Math.min(...pcts), max: Math.max(...pcts) };
 }
 

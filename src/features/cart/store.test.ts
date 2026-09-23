@@ -220,3 +220,38 @@ describe("buy now", () => {
     expect(useCart.getState().buyNow).toBeNull();
   });
 });
+
+/**
+ * Үлдэгдлийн хязгаар. Сагс `localStorage`-д суудаг тул үлдэгдлийг ӨӨРИЙГ нь
+ * хадгалж болохгүй — хязгаарыг дуудагч тал бүрд нь дамжуулна.
+ */
+describe("тоо ширхэгийн дээд хязгаар", () => {
+  beforeEach(() => {
+    useCart.setState({ items: [], collections: [], excludedItems: [] });
+  });
+
+  it("max өгвөл түүнээс хэтрэхгүй", () => {
+    useCart.getState().add(line("v1", 1000), 1);
+    useCart.getState().setQty("v1", 5, 2);
+    expect(useCart.getState().items[0].qty).toBe(2);
+  });
+
+  it("max өгөөгүй бол хуучин зан төлөв хэвээр", () => {
+    useCart.getState().add(line("v1", 1000), 1);
+    useCart.getState().setQty("v1", 5);
+    expect(useCart.getState().items[0].qty).toBe(5);
+  });
+
+  it("үлдэгдэл мэдэгдэхгүй (Infinity) бол хязгаарлахгүй", () => {
+    useCart.getState().add(line("v1", 1000), 1);
+    useCart.getState().setQty("v1", 4, Infinity);
+    expect(useCart.getState().items[0].qty).toBe(4);
+  });
+
+  it("багц ч мөн адил", () => {
+    useCart.getState().addCollection(bundle("c1", 5000), 1);
+    const key = useCart.getState().collections[0].key;
+    useCart.getState().setCollectionQty(key, 3, 1);
+    expect(useCart.getState().collections[0].qty).toBe(1);
+  });
+});

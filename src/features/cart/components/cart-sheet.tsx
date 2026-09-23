@@ -28,6 +28,10 @@ import {
 } from "@/features/cart/store";
 import { CartSizeSelect } from "@/features/cart/components/cart-size-select";
 import { useCartSelection } from "@/features/cart/use-cart-selection";
+import {
+  unavailableLabel,
+  useCartAvailability,
+} from "@/features/cart/use-cart-availability";
 
 export function CartSheet({
   triggerVariant = "ghost",
@@ -63,6 +67,12 @@ export function CartSheet({
   } = useCartSelection();
 
   const add = useCart((s) => s.add);
+
+  // Сагс `localStorage`-д долоо хоногоор суудаг: хаагдсан хэмжээ, буурсан
+  // үлдэгдэл энд хүртэл амьд үлдэнэ. Drawer НЭЭГДЭХЭД нэг удаа асууна.
+  const [open, setOpen] = React.useState(false);
+  const { statusOf, collectionStatus, maxQtyOf, maxCollectionQtyOf } =
+    useCartAvailability({ enabled: open });
 
   // Avoid hydration mismatch from persisted store.
   const [mounted, setMounted] = React.useState(false);
@@ -101,7 +111,7 @@ export function CartSheet({
   }
 
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button
           variant={triggerVariant}
@@ -244,6 +254,12 @@ export function CartSheet({
                         )}
                       </ul>
 
+                      {!collectionStatus(c.key).sellable && (
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          {unavailableLabel(collectionStatus(c.key))}
+                        </p>
+                      )}
+
                       <div className="mt-2 flex items-center justify-between">
                         <div className="bg-secondary flex items-center rounded-full">
                           <button
@@ -257,8 +273,15 @@ export function CartSheet({
                             {c.qty}
                           </span>
                           <button
-                            className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full md:size-9"
-                            onClick={() => setCollectionQty(c.key, c.qty + 1)}
+                            className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full disabled:opacity-40 md:size-9"
+                            onClick={() =>
+                              setCollectionQty(
+                                c.key,
+                                c.qty + 1,
+                                maxCollectionQtyOf(c.key),
+                              )
+                            }
+                            disabled={c.qty >= maxCollectionQtyOf(c.key)}
                             aria-label="Нэмэх"
                           >
                             <Plus className="size-4 md:size-3.5" />
@@ -325,6 +348,13 @@ export function CartSheet({
                             <Trash2 className="size-4" />
                           </button>
                         </div>
+                        {/* Мөрийг сонголтоос гаргасан шалтгаан — тайлбаргүй
+                            бол чагт нь өөрөө тайлагдсан мэт харагдана. */}
+                        {!statusOf(item.variantId).sellable && (
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            {unavailableLabel(statusOf(item.variantId))}
+                          </p>
+                        )}
                         <div className="mt-auto flex items-center justify-between pt-2">
                           <div className="bg-secondary flex items-center rounded-full">
                             <button
@@ -338,8 +368,11 @@ export function CartSheet({
                               {item.qty}
                             </span>
                             <button
-                              className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full md:size-9"
-                              onClick={() => setQty(item.key, item.qty + 1)}
+                              className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full disabled:opacity-40 md:size-9"
+                              onClick={() =>
+                                setQty(item.key, item.qty + 1, maxQtyOf(item.key))
+                              }
+                              disabled={item.qty >= maxQtyOf(item.key)}
                               aria-label="Нэмэх"
                             >
                               <Plus className="size-4 md:size-3.5" />

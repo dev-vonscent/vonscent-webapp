@@ -176,6 +176,7 @@ export default function CheckoutPage() {
   const coupon = useCart((s) => s.coupon);
   const removeOrdered = useCart((s) => s.clearOrdered);
   const removeLine = useCart((s) => s.remove);
+  const setQty = useCart((s) => s.setQty);
   const [mounted, setMounted] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   // Захиалга үүсээд төлбөрийн хуудас руу шилжих хооронд сагс хоосорсон тул
@@ -802,20 +803,78 @@ export default function CheckoutPage() {
           );
           return;
         }
+        // Хэмжээ бүр дангаараа зарагдах ч НИЙЛБЭР нь эх савны үлдэгдлээс
+        // давсан (10ml×2, эсвэл 10ml + 5ml). Сервер аль бараа, хэд болгохыг
+        // нэрлэж буцаадаг тул мөрийг тэр дороо засаад юу өөрчилснөө хэлнэ —
+        // «зарим бараа дууссан» гэсэн ерөнхий мессежээс хэрэглэгч юуг
+        // засахаа таах ёсгүй.
+        if (data.error === "INSUFFICIENT_STOCK") {
+          const shortages: {
+            variantId: string;
+            name: string;
+            ml: number;
+            maxQty: number;
+            collectionName?: string;
+          }[] = Array.isArray(data.items) ? data.items : [];
+          const notes: string[] = [];
+          for (const short of shortages) {
+            const label = `${short.name} ${short.ml}ml`;
+            // Багцын гишүүнийг дангаар нь багасгах боломжгүй (багц бол нэг
+            // мөр), «Захиалах» мөр ч сагсанд байхгүй — эдгээрийг зөвхөн
+            // хэлнэ, хэрэглэгч өөрөө шийднэ.
+            if (short.collectionName || buyNow) {
+              notes.push(
+                short.maxQty > 0
+                  ? `${label} — дээд тал нь ${short.maxQty} ш`
+                  : `${label} — үлдэгдэл хүрэлцэхгүй`,
+              );
+              continue;
+            }
+            if (short.maxQty > 0) {
+              setQty(short.variantId, short.maxQty);
+              notes.push(`${label} → ${short.maxQty} ш`);
+            } else {
+              removeLine(short.variantId);
+              notes.push(`${label} — сагснаас хаслаа`);
+            }
+          }
+          setServerError(
+            notes.length > 0
+              ? `Үлдэгдэл хүрэлцэхгүй байна: ${notes.join(", ")}. Шалгаад дахин үргэлжлүүлнэ үү.`
+              : "Сонгосон барааны үлдэгдэл хүрэлцэхгүй байна. Тоо ширхэгээ багасгана уу.",
+          );
+          return;
+        }
+        // Захиалга үүсэх ЗУУР өөр хүн нөөцийг авсан (computeSummary цэвэр
+        // өнгөрсөн). Сагснаас барааг нь нэрлэж чадвал хэлнэ.
+        const racedName =
+          data.error === "OUT_OF_STOCK" && data.productId
+            ? (items.find((i) => i.productId === data.productId)?.name ??
+              collections.find((c) =>
+                c.members.some((m) => m.productId === data.productId),
+              )?.name ??
+              null)
+            : null;
         setServerError(
           data.error === "EMPTY_CART"
             ? "Сагс хоосон байна — бараагаа дахин нэмнэ үү."
-            : data.error === "OUT_OF_STOCK"
-              ? "Уучлаарай, зарим бараа дууссан байна."
-              : data.error === "BUNDLE_UNAVAILABLE"
-                ? "Сагсан дахь багц худалдаанд байхгүй болсон байна. Багцаа шинэчилнэ үү."
-                : data.error === "ZONE_UNAVAILABLE"
-                  ? "Сонгосон бүсэд хүргэлт хийх боломжгүй байна."
-                  : // Ижил захиалга аль хэдийн боловсруулагдаж байна —
-                    // дахин дарвал давхар захиалга болох тул зогсооно.
-                    data.error === "ORDER_PENDING"
-                    ? "Таны захиалга боловсруулагдаж байна. Хэдэн секунд хүлээгээд «Захиалга хайх» хэсгээс шалгана уу."
-                    : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
+            : data.error === "BOTTLE_UNAVAILABLE"
+              ? // Савны түгжээ (0095): бараа өөрөө байгаа ч тэр хэмжээг цутгах
+                // сав дууссан — өөр хэмжээгээр нь авч болно.
+                "Сонгосон хэмжээний сав түр дууссан байна. Сагснаасаа өөр хэмжээ сонгоод дахин оролдоно уу."
+              : data.error === "OUT_OF_STOCK"
+                ? racedName
+                  ? `«${racedName}» таныг маягтаа бөглөж байх зуур дууслаа. Сагснаасаа хасаад дахин оролдоно уу.`
+                  : "Уучлаарай, зарим бараа дууссан байна."
+                : data.error === "BUNDLE_UNAVAILABLE"
+                  ? "Сагсан дахь багц худалдаанд байхгүй болсон байна. Багцаа шинэчилнэ үү."
+                  : data.error === "ZONE_UNAVAILABLE"
+                    ? "Сонгосон бүсэд хүргэлт хийх боломжгүй байна."
+                    : // Ижил захиалга аль хэдийн боловсруулагдаж байна —
+                      // дахин дарвал давхар захиалга болох тул зогсооно.
+                      data.error === "ORDER_PENDING"
+                      ? "Таны захиалга боловсруулагдаж байна. Хэдэн секунд хүлээгээд «Захиалга хайх» хэсгээс шалгана уу."
+                      : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
         );
         return;
       }
