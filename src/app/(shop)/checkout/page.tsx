@@ -63,7 +63,12 @@ import {
   parseLoyaltyRules,
   pointsEarnedFor,
 } from "@/lib/loyalty";
-import { useCart, selectCheckoutSubtotal } from "@/features/cart/store";
+import {
+  useCart,
+  selectCheckoutSubtotal,
+  selectCheckoutGross,
+  collectionBasePrice,
+} from "@/features/cart/store";
 import {
   useCheckoutLines,
   getCheckoutLines,
@@ -173,6 +178,13 @@ export default function CheckoutPage() {
   const { items, collections, buyNow } = useCheckoutLines();
   const cartLineCount = useCart((s) => s.items.length + s.collections.length);
   const subtotal = useCart(selectCheckoutSubtotal);
+  /**
+   * Хямдралын өмнөх барааны дүн. Багцын мөр нь хямдруулсан үнээрээ бичигдэж
+   * байсан тул хэмнэлт хаана ч харагдахгүй — тоймын мөр бүр үндсэн үнээ
+   * хэлж, хэмнэлт нь доороо тусдаа мөр болж байж л «яагаад ийм дүн гарав»
+   * гэдгийг дээрээс доош уншиж болно.
+   */
+  const grossSubtotal = useCart(selectCheckoutGross);
   const coupon = useCart((s) => s.coupon);
   const removeOrdered = useCart((s) => s.clearOrdered);
   const removeLine = useCart((s) => s.remove);
@@ -612,7 +624,13 @@ export default function CheckoutPage() {
   // Сагс, купон өөрчлөгдөхөд дээд хязгаар буурч болно — бичсэн дүнг ямагт
   // түүнд хумина, эс тэгвээс хуудас сервер хүлээж авахгүй дүн харуулна.
   const loyaltyApplied = Math.min(loyaltyWanted, maxLoyalty);
-  const total = Math.max(subtotal + shippingFee - discount - loyaltyApplied, 0);
+  /** Багцын хэмнэлт — үндсэн үнийн нийлбэр ба багцын үнийн зөрүү. */
+  const bundleSavings = Math.max(grossSubtotal - subtotal, 0);
+  /** Барааны дүнгээс хасагдсан бүх хямдрал (багц + купон) — оноо энд ороогүй. */
+  const totalSavings = bundleSavings + discount;
+  /** Хямдралын дараах барааны дүн: хүргэлт, оноо хоёрын өмнөх суурь. */
+  const goodsAfterDiscount = Math.max(subtotal - discount, 0);
+  const total = Math.max(goodsAfterDiscount + shippingFee - loyaltyApplied, 0);
   /**
    * Энэ захиалгаас хуримтлагдах оноо. Сан нь купоны дараах барааны дүнгээс
    * бодох тул оноогоор төлсөн хэсэг үүнийг бууруулахгүй (lib/loyalty.ts).
@@ -1199,7 +1217,7 @@ export default function CheckoutPage() {
             >
               <GiftSamplePicker
                 allowance={giftAllowance}
-                goodsAfterDiscount={Math.max(subtotal - discount, 0)}
+                goodsAfterDiscount={goodsAfterDiscount}
                 value={giftIds}
                 onChange={setGiftIds}
               />
@@ -1264,7 +1282,7 @@ export default function CheckoutPage() {
                         </ul>
                       </div>
                       <span className="text-sm font-medium">
-                        {formatPrice(c.unitPrice * c.qty)}
+                        {formatPrice(collectionBasePrice(c) * c.qty)}
                       </span>
                     </div>
                   ))}
@@ -1343,7 +1361,19 @@ export default function CheckoutPage() {
                   дээр 8,000₮ гэсэн тоо нэмэгдэж байна уу, хасагдаж байна уу
                   гэдэг зөвхөн шошгоноос таамаглагддаг байсан. */}
               <div className="space-y-2.5">
-                <SummaryRow label="Барааны дүн" value={formatPrice(subtotal)} />
+                {/* Мөр бүр үндсэн үнээрээ бичигдсэн тул эхний дүн нь тэдгээрийн
+                    ЯГ нийлбэр байх ёстой — хямдрал нь дараагийн мөрөнд гарна. */}
+                <SummaryRow
+                  label="Нийт үндсэн үнэ"
+                  value={formatPrice(grossSubtotal)}
+                />
+                {bundleSavings > 0 && (
+                  <SummaryRow
+                    label="Багцын хямдрал"
+                    value={`−${formatPrice(bundleSavings)}`}
+                    credit
+                  />
+                )}
                 {discount > 0 && (
                   <SummaryRow
                     label={
@@ -1351,6 +1381,13 @@ export default function CheckoutPage() {
                     }
                     value={`−${formatPrice(discount)}`}
                     credit
+                  />
+                )}
+                {totalSavings > 0 && (
+                  <SummaryRow
+                    label="Хямдарсан үнэ"
+                    value={formatPrice(goodsAfterDiscount)}
+                    strong
                   />
                 )}
                 {loyaltyApplied > 0 && (
@@ -1410,7 +1447,7 @@ export default function CheckoutPage() {
                   дараа нь өсөх нь амласнаа зөрчсөнтэй адил. */}
               <div className="flex items-baseline justify-between gap-3">
                 <span className="font-medium">
-                  {hasAddress ? "Нийт төлөх" : "Хүргэлтгүй дүн"}
+                  {hasAddress ? "Нийт төлөх төлбөр" : "Хүргэлтгүй дүн"}
                 </span>
                 <span className="text-2xl font-semibold tabular-nums">
                   {formatPrice(total)}
@@ -1642,16 +1679,25 @@ function SummaryRow({
   label,
   value,
   credit,
+  strong,
 }: {
   label: string;
   value: string;
   /** Хасагдаж буй мөр (купон, оноо) — өнгөөр нь ялгана. */
   credit?: boolean;
+  /** Завсрын дүн (хямдарсан үнэ) — хасалтуудын доор тодруулж уншуулна. */
+  strong?: boolean;
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3 text-sm">
-      <span className="text-muted-foreground min-w-0 truncate">{label}</span>
-      <span className={`shrink-0 tabular-nums ${credit ? "text-success" : ""}`}>
+      <span
+        className={`min-w-0 truncate ${strong ? "text-foreground font-medium" : "text-muted-foreground"}`}
+      >
+        {label}
+      </span>
+      <span
+        className={`shrink-0 tabular-nums ${credit ? "text-success" : ""} ${strong ? "font-medium" : ""}`}
+      >
         {value}
       </span>
     </div>
