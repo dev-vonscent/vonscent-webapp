@@ -6,22 +6,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getOrderDetail } from "@/features/admin/api";
 import { getStaffUser } from "@/lib/auth/guard";
-import { formatPrice, formatDate } from "@/lib/format";
+import { formatPrice, formatDateTime } from "@/lib/format";
 import { deliveryDayOf, formatDeliveryDay } from "@/lib/time";
 import {
   ORDER_STATUS_LABEL,
+  ORDER_STATUS_STYLE,
   PAYMENT_STATUS_LABEL,
-  type OrderStatus,
 } from "@/lib/constants";
 import { OrderStatusControl } from "@/features/admin/components/order-status-control";
-
-const STATUS_VARIANT: Record<OrderStatus, "secondary" | "new" | "sale"> = {
-  pending: "secondary",
-  confirmed: "new",
-  shipping: "new",
-  delivered: "new",
-  cancelled: "sale",
-};
+import { cn } from "@/lib/utils";
 
 export default async function AdminOrderDetail({
   params,
@@ -51,7 +44,7 @@ export default async function AdminOrderDetail({
             {order.order_no}
           </h1>
           <p className="text-muted-foreground text-sm">
-            {formatDate(order.created_at)} · Хүргэх:{" "}
+            {formatDateTime(order.created_at)} · Хүргэх:{" "}
             <span className="text-foreground font-medium">
               {formatDeliveryDay(deliveryDayOf(order))}
             </span>
@@ -60,8 +53,10 @@ export default async function AdminOrderDetail({
         {/* The order's state is read at a glance from here, so it is sized
             like a headline rather than a list chip. */}
         <Badge
-          variant={STATUS_VARIANT[order.status]}
-          className="px-4 py-1.5 text-sm md:text-base"
+          className={cn(
+            "px-4 py-1.5 text-sm md:text-base",
+            ORDER_STATUS_STYLE[order.status],
+          )}
         >
           {ORDER_STATUS_LABEL[order.status]}
         </Badge>
@@ -137,7 +132,7 @@ export default async function AdminOrderDetail({
                           <p className="text-muted-foreground">{h.note}</p>
                         )}
                         <p className="text-muted-foreground text-xs">
-                          {formatDate(h.created_at)}
+                          {formatDateTime(h.created_at)}
                         </p>
                       </div>
                     </li>
@@ -202,7 +197,7 @@ export default async function AdminOrderDetail({
                       <p className="text-muted-foreground">
                         {formatPrice(pmt.amount)}
                         {pmt.wallet ? ` · ${pmt.wallet}` : ""}
-                        {pmt.paid_at ? ` · ${formatDate(pmt.paid_at)}` : ""}
+                        {pmt.paid_at ? ` · ${formatDateTime(pmt.paid_at)}` : ""}
                       </p>
                     </div>
                   ))}

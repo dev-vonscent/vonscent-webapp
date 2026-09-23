@@ -8,6 +8,7 @@ import { formatPrice, formatDateTime } from "@/lib/format";
 import { deliveryDayOf, formatDeliveryDay } from "@/lib/time";
 import {
   ORDER_STATUS_LABEL,
+  ORDER_STATUS_STYLE,
   PAYMENT_STATUS_LABEL,
   type PaymentStatusValue,
 } from "@/lib/constants";
@@ -52,6 +53,16 @@ const columns: ColumnDef<OrderRow, unknown>[] = [
     header: "Хэрэглэгч",
   },
   {
+    accessorKey: "contact_phone",
+    header: "Утас",
+    enableSorting: false,
+    cell: ({ getValue }) => (
+      <span className="text-muted-foreground whitespace-nowrap">
+        {getValue<string>()}
+      </span>
+    ),
+  },
+  {
     accessorKey: "total",
     header: "Дүн",
     // Money reads as a column only when the digits line up.
@@ -73,7 +84,7 @@ const columns: ColumnDef<OrderRow, unknown>[] = [
     accessorKey: "status",
     header: "Төлөв",
     cell: ({ row }) => (
-      <Badge variant="secondary">
+      <Badge className={ORDER_STATUS_STYLE[row.original.status]}>
         {ORDER_STATUS_LABEL[row.original.status]}
       </Badge>
     ),
@@ -107,13 +118,20 @@ export function OrdersTable({ data }: { data: OrderRow[] }) {
             <span className="font-medium">{formatPrice(o.total)}</span>
           </div>
           <div className="flex items-center justify-between gap-3 text-sm">
-            <span>{o.contact_name}</span>
+            <span>
+              {o.contact_name}
+              <span className="text-muted-foreground block text-xs">
+                {o.contact_phone}
+              </span>
+            </span>
             <span className="text-muted-foreground">
               {formatDateTime(o.created_at)}
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge variant="secondary">{ORDER_STATUS_LABEL[o.status]}</Badge>
+            <Badge className={ORDER_STATUS_STYLE[o.status]}>
+              {ORDER_STATUS_LABEL[o.status]}
+            </Badge>
             <PaymentBadge status={o.payment_status} />
           </div>
         </Link>

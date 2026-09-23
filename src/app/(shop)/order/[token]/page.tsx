@@ -8,12 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getOrderStatusByToken } from "@/features/order-lookup/api";
-import { formatPrice, formatDate } from "@/lib/format";
+import { formatPrice, formatDateTime } from "@/lib/format";
 import {
   ORDER_STATUS_LABEL,
+  ORDER_STATUS_STYLE,
   PAYMENT_STATUS_LABEL,
   RESERVE_TIMEOUT_MINUTES,
-  type OrderStatus,
 } from "@/lib/constants";
 import { deliveryDayOf, formatDeliveryDay, DISPATCH_HOUR } from "@/lib/time";
 import { cn } from "@/lib/utils";
@@ -37,14 +37,6 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const STATUS_STYLE: Record<OrderStatus, string> = {
-  pending: "bg-amber-500/15 text-amber-500",
-  confirmed: "bg-sky-500/15 text-sky-500",
-  shipping: "bg-violet-500/15 text-violet-400",
-  delivered: "bg-emerald-500/15 text-emerald-500",
-  cancelled: "bg-red-500/20 text-red-400",
-};
-
 export default async function OrderStatusPage({
   params,
 }: {
@@ -66,11 +58,11 @@ export default async function OrderStatusPage({
               {order.orderNo}
             </h1>
             <p className="text-muted-foreground text-sm">
-              {formatDate(order.createdAt)}
+              {formatDateTime(order.createdAt)}
             </p>
           </div>
           <div className="flex flex-col items-end gap-1.5">
-            <Badge className={cn("gap-1", STATUS_STYLE[order.status])}>
+            <Badge className={cn("gap-1", ORDER_STATUS_STYLE[order.status])}>
               {ORDER_STATUS_LABEL[order.status]}
             </Badge>
             {order.paymentStatus !== "paid" && order.status !== "cancelled" && (
@@ -208,7 +200,7 @@ export default async function OrderStatusPage({
               <div key={i} className="flex justify-between gap-3 text-sm">
                 <span>{h.note || ORDER_STATUS_LABEL[h.status]}</span>
                 <span className="text-muted-foreground shrink-0 text-xs">
-                  {formatDate(h.createdAt)}
+                  {formatDateTime(h.createdAt)}
                 </span>
               </div>
             ))}
