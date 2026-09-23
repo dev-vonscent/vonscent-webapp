@@ -95,7 +95,9 @@ function toMember(p: ProductDetail): CollectionMember {
       variantByMl[v.ml] = {
         variantId: v.id,
         price: v.price,
-        inStock: v.inStock,
+        // Савны түгжээ (0095) орсон эсэх нь багцад ЧУХАЛ: эрэгтэй гишүүнтэй
+        // багцын 10ml нь эрэгтэй 10ml сав дуусахад бүхэлдээ боломжгүй болно.
+        inStock: v.sellable,
       };
     }
   }
@@ -358,7 +360,9 @@ export async function getBuilderProducts(
             .filter((v) => v.isActive)
             .map((v) => [
               v.ml,
-              { variantId: v.id, price: v.price, inStock: v.inStock },
+              // `inStock` нь «энэ хэмжээг одоо авч болох уу» — үлдэгдэл ба
+              // савны түгжээ (0095) хоёуланг агуулна (RPC-тэй ижил).
+              { variantId: v.id, price: v.price, inStock: v.sellable },
             ]),
         ),
       });
@@ -385,7 +389,7 @@ export async function getBuilderProducts(
               .filter((v) => v.isActive)
               .map((v) => [
                 v.ml,
-                { variantId: v.id, price: v.price, inStock: v.inStock },
+                { variantId: v.id, price: v.price, inStock: v.sellable },
               ]),
           ),
         });

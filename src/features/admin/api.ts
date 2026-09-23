@@ -12,6 +12,7 @@ import type {
   BlogPostRow,
   SpinWheelPrizeRow,
   Sillage,
+  Gender,
 } from "@/db/types";
 import {
   ORDER_STATUSES,
@@ -24,6 +25,12 @@ import { stockState } from "./lib/stock-state";
 import { PRODUCT_OPTION_LIMIT, type ProductOption } from "./lib/product-option";
 import { customerSearchFilter } from "./lib/customer-search";
 import { seriesBucket, ubIso } from "./lib/date-range";
+import {
+  getBottleLocks,
+  isBottleLocked,
+  NO_BOTTLE_LOCKS,
+  type BottleLockState,
+} from "@/features/products/bottle-stock";
 
 /**
  * Admin read access. Uses the cookie-bound client so staff RLS applies (admins
@@ -313,6 +320,11 @@ export interface AdminVariant {
   /** Хямдарсан үнэ, эсвэл null (0054) — байвал бодитоор төлөх дүн. */
   salePrice: number | null;
   isActive: boolean;
+  /**
+   * Савны түгжээнээс чөлөөлсөн эсэх (0095) — өөр өнгийн саванд цутгахыг
+   * админ зөвшөөрсөн ганц хэмжээ. `isActive`-ийг ОРЛОХГҮЙ.
+   */
+  bottleOverride: boolean;
 }
 
 /** A gallery row as the admin edits it (product_images). */
@@ -354,6 +366,12 @@ export interface AdminProduct {
   /** «Онцлох» тэмдэг (0055). */
   isFeatured: boolean;
   startingPrice: number;
+  /**
+   * Энэ барааны ӨНГӨНД (хүйс) хаагдсан хэмжээнүүд (0095). Бараанаас
+   * хамаарахгүй, дэлгүүрийн хэмжээнд хаагдсан — мөрөн дээр анхааруулга
+   * харуулж, «чөлөөлөх» үйлдлийг санал болгоход хэрэглэнэ.
+   */
+  bottleLockedMls: number[];
   /** on_hand_ml − reserved_ml: what the shop can actually still sell. */
   availableMl: number;
   /** Physical ml in the source bottle, reservations included. */
@@ -385,7 +403,7 @@ const ADMIN_PRODUCT_SELECT = `
   notes_top, notes_heart, notes_base, origin_country, release_year,
   bottle_price, bottle_ml, is_active, is_featured, reference_image_url,
   product_images ( id, url, alt, sort_order, is_visible ),
-  product_variants ( ml, price, sale_price, is_active ),
+  product_variants ( id, ml, price, sale_price, is_active ),
   inventory ( on_hand_ml, reserved_ml, low_stock_ml ),
   product_tags ( tags ( slug ) ),
   product_image_generations ( id, status, result_url, prompt, error, created_at )
@@ -426,6 +444,7 @@ interface AdminProductRow {
   reference_image_url: string | null;
   product_images: AdminProductImage[];
   product_variants: {
+    id: string;
     ml: number;
     price: number;
     sale_price: number | null;
@@ -439,7 +458,11 @@ interface AdminProductRow {
   product_image_generations?: GenRow[];
 }
 
-function mapAdminProduct(r: AdminProductRow): AdminProduct {
+function mapAdminProduct(
+  r: AdminProductRow,
+  /** Дэлгүүрийн хэмжээнд хаагдсан «хүйс:ml» хослолууд (0095). */
+  locks: BottleLockState = NO_BOTTLE_LOCKS,
+): AdminProduct {
   const inv = Array.isArray(r.inventory) ? r.inventory[0] : r.inventory;
   // Жагсаалтын «-аас» үнэ нь бодитоор төлөх дүнгээр (хямдрал орсон, 0054).
   const prices = r.product_variants
@@ -477,6 +500,9 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
         price: v.price,
         salePrice: v.sale_price,
         isActive: v.is_active,
+        // Чөлөөлөлтийг багана уншиж биш, кэштэй жагсаалтаас (0095) — 0095
+        // ажиллаагүй сан дээр админы жагсаалт унах ёсгүй.
+        bottleOverride: locks.exempt.has(v.id),
       })),
     notesTop: r.notes_top,
     notesHeart: r.notes_heart,
@@ -488,6 +514,12 @@ function mapAdminProduct(r: AdminProductRow): AdminProduct {
     isActive: r.is_active,
     isFeatured: r.is_featured === true,
     startingPrice: prices.length ? Math.min(...prices) : 0,
+    // Чөлөөлсөн хэмжээ ч ЭНД ОРНО: мөрөн дээр «чөлөөлсөн» гэж харуулж,
+    // цуцлах үйлдлийг санал болгох ёстой (variantId дамжуулахгүй).
+    bottleLockedMls: r.product_variants
+      .filter((v) => isBottleLocked(locks, r.gender as Gender, v.ml))
+      .map((v) => v.ml)
+      .sort((a, b) => a - b),
     availableMl: inv ? inv.on_hand_ml - inv.reserved_ml : 0,
     // Kept alongside `availableMl` because the products list now owns stock
     // management outright: an operator correcting ml downward has to see how
@@ -531,8 +563,9 @@ export async function getAdminProducts(): Promise<AdminProduct[]> {
     .select(ADMIN_PRODUCT_SELECT)
     .order("created_at", { ascending: false })
     .limit(ADMIN_PRODUCTS_CAP);
-  return ((data as unknown as AdminProductRow[] | null) ?? []).map(
-    mapAdminProduct,
+  const locks = await getBottleLocks();
+  return ((data as unknown as AdminProductRow[] | null) ?? []).map((r) =>
+    mapAdminProduct(r, locks),
   );
 }
 
@@ -792,10 +825,11 @@ export async function getAdminProductPage(
     .from("products")
     .select(ADMIN_PRODUCT_SELECT)
     .in("id", ids);
+  const locks = await getBottleLocks();
   const byId = new Map(
     ((rows as unknown as AdminProductRow[] | null) ?? []).map((r) => [
       r.id,
-      mapAdminProduct(r),
+      mapAdminProduct(r, locks),
     ]),
   );
   return {
@@ -867,7 +901,10 @@ export async function getAdminProduct(
     .eq("id", id)
     .maybeSingle();
   if (!data) return null;
-  const product = mapAdminProduct(data as unknown as AdminProductRow);
+  const product = mapAdminProduct(
+    data as unknown as AdminProductRow,
+    await getBottleLocks(),
+  );
 
   // Separate tolerant query (audit R2): a DB without 0035 still edits fine,
   // just without the custom-tag picker preselection.
@@ -1316,4 +1353,128 @@ export async function getWheelAdmin(): Promise<{
     settings: { ...WHEEL_SETTINGS_DEFAULTS, ...(stored ?? {}) },
     report: report && !report.error ? report : EMPTY_REPORT,
   };
+}
+
+// ── Савны нөөц (0095) ───────────────────────────────────────────────────────
+
+/** Нэг өнгө (хүйс) × хэмжээний хоосон савны төлөв. */
+export interface BottleStockCell {
+  gender: Gender;
+  ml: number;
+  isActive: boolean;
+  note: string;
+  updatedAt: string | null;
+  updatedByName: string | null;
+  /** Тэр хэмжээгээрээ зарагдаж буй идэвхтэй барааны тоо. */
+  productCount: number;
+  /** Түгжээнээс чөлөөлсөн бараа/хэмжээний тоо. */
+  overrideCount: number;
+}
+
+/** Түгжээнээс чөлөөлсөн нэг мөр — админд жагсаалтаар харагдана. */
+export interface BottleOverrideRow {
+  productId: string;
+  name: string;
+  brand: string;
+  gender: Gender;
+  ml: number;
+}
+
+export interface BottleStockData {
+  cells: BottleStockCell[];
+  overrides: BottleOverrideRow[];
+  /** 0095 ажиллаагүй бол хуудас тайлбар харуулна. */
+  migrated: boolean;
+}
+
+interface DbBottleRow {
+  gender: Gender;
+  ml: number;
+  is_active: boolean;
+  note: string | null;
+  updated_at: string | null;
+  profiles: { full_name: string | null } | { full_name: string | null }[] | null;
+}
+
+interface DbVariantRow {
+  ml: number;
+  is_active: boolean;
+  bottle_override: boolean | null;
+  products:
+    | { id: string; name: string; brand: string; gender: Gender; is_active: boolean }
+    | { id: string; name: string; brand: string; gender: Gender; is_active: boolean }[]
+    | null;
+}
+
+function one<T>(v: T | T[] | null): T | null {
+  return Array.isArray(v) ? (v[0] ?? null) : v;
+}
+
+/**
+ * Савны нөөцийн хуудасны бүх өгөгдөл.
+ *
+ * Нөлөөллийн тоог 12 удаагийн RPC-ээр биш, НЭГ уншилтаас бодов: админ
+ * унтраалга дарахаасаа өмнө «хэдэн бараа хөндөгдөх вэ» гэдгийг хүснэгт дээрээ
+ * шууд харах ёстой (дарсны дараа биш).
+ */
+export async function getBottleStock(): Promise<BottleStockData> {
+  const empty: BottleStockData = { cells: [], overrides: [], migrated: false };
+  const supabase = await createClient();
+  if (!supabase) return empty;
+
+  const [stockRes, variantRes] = await Promise.all([
+    supabase
+      .from("bottle_stock")
+      .select("gender, ml, is_active, note, updated_at, profiles(full_name)")
+      .order("ml"),
+    supabase
+      .from("product_variants")
+      .select(
+        "ml, is_active, bottle_override, products(id, name, brand, gender, is_active)",
+      ),
+  ]);
+
+  // 0095 ажиллаагүй сан дээр админ хуудас унах ёсгүй — тайлбартай хоосон
+  // байдлаар буцна.
+  if (stockRes.error || !stockRes.data) return empty;
+
+  const variants = (variantRes.data as DbVariantRow[] | null) ?? [];
+  const productCount = new Map<string, number>();
+  const overrideCount = new Map<string, number>();
+  const overrides: BottleOverrideRow[] = [];
+  for (const v of variants) {
+    const p = one(v.products);
+    if (!p) continue;
+    const key = `${p.gender}:${v.ml}`;
+    if (p.is_active && v.is_active) {
+      productCount.set(key, (productCount.get(key) ?? 0) + 1);
+    }
+    if (v.bottle_override) {
+      overrideCount.set(key, (overrideCount.get(key) ?? 0) + 1);
+      overrides.push({
+        productId: p.id,
+        name: p.name,
+        brand: p.brand,
+        gender: p.gender,
+        ml: v.ml,
+      });
+    }
+  }
+  overrides.sort((a, b) => a.ml - b.ml || a.name.localeCompare(b.name));
+
+  const cells = (stockRes.data as DbBottleRow[]).map((r) => {
+    const key = `${r.gender}:${r.ml}`;
+    return {
+      gender: r.gender,
+      ml: r.ml,
+      isActive: r.is_active,
+      note: r.note ?? "",
+      updatedAt: r.updated_at,
+      updatedByName: one(r.profiles)?.full_name ?? null,
+      productCount: productCount.get(key) ?? 0,
+      overrideCount: overrideCount.get(key) ?? 0,
+    };
+  });
+
+  return { cells, overrides, migrated: true };
 }
