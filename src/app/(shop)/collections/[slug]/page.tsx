@@ -3,15 +3,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Droplet } from "lucide-react";
 import { getCollectionBySlug } from "@/features/collections/api";
-import { getGiftSettings } from "@/features/content/api";
 import { CollectionDetail } from "@/features/collections/components/collection-detail";
 import { GENDER_LABEL } from "@/lib/constants";
-import {
-  formatDiscountRange,
-  giftBadgeLabel,
-} from "@/features/collections/pricing";
+import { formatDiscountRange } from "@/features/collections/pricing";
 
 export const revalidate = 60;
 
@@ -43,13 +38,6 @@ export default async function CollectionPage({
   const { slug } = await params;
   const collection = await getCollectionBySlug(slug);
   if (!collection) notFound();
-
-  // Бэлгийн эрх зөвхөн админы сангаас гарна — сан хоосон бол багц дээр
-  // бэлгийн тухай юу ч амлахгүй (backlog A2).
-  const gift = await getGiftSettings();
-  const giftPoolEnabled = gift.enabled && gift.productIds.length > 0;
-  // 2мл багц эрх өгдөггүй (lib/gift.ts) — тиймээс тэмдэг нь болзолоо хэлнэ.
-  const giftLabel = giftPoolEnabled ? giftBadgeLabel(collection) : null;
 
   return (
     <div className="mx-auto max-w-352 p-4 sm:py-8 md:px-8">
@@ -84,11 +72,6 @@ export default async function CollectionPage({
                   −{formatDiscountRange(collection.discountRange)}
                 </Badge>
               )}
-              {giftLabel && (
-                <Badge className="bg-foreground/85 text-background w-fit gap-1 backdrop-blur-sm">
-                  <Droplet className="size-3" /> {giftLabel}
-                </Badge>
-              )}
             </div>
           </div>
         </div>
@@ -103,10 +86,7 @@ export default async function CollectionPage({
             </h1>
           </div>
 
-          <CollectionDetail
-            collection={collection}
-            giftPoolEnabled={giftPoolEnabled}
-          />
+          <CollectionDetail collection={collection} />
         </div>
       </div>
     </div>

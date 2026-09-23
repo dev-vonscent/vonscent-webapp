@@ -155,8 +155,7 @@ export async function POST(req: Request) {
     }
 
     // Бэлгийн 1мл дээж: эрх нь купоны дараах барааны дүнгийн 200,000₮ тутамд
-    // 1, эсвэл preset 5/10/20мл багцын баталгаа — алийг нь ихийг нь (src/lib/
-    // gift.ts). Тиймээс купоныг энд place_order-той ижил аргаар шалгаад
+    // 1 (src/lib/gift.ts); багц тусдаа эрх өгөхгүй. Тиймээс купоныг энд place_order-той ижил аргаар шалгаад
     // хямдарсан дүнгээр эрхийг бодно. Сонголт бүр серверт дахин шалгагдана —
     // сан дотор байгаа эсэх, үлдэгдэл, эрхийн тоо.
     let giftLines: Awaited<ReturnType<typeof priceGiftLines>> = [];
@@ -176,7 +175,6 @@ export async function POST(req: Request) {
       giftLines = await priceGiftLines(
         input.giftProductIds,
         Math.max(summary.subtotal - discount, 0),
-        summary.giftGuarantee,
         // Төлбөртэй мөрүүд эх савнаас аль хэдийн авсан ml — бэлэг нь зөвхөн
         // ҮЛДСЭН хэсгээс гарна.
         mlByProduct(summary.lines),

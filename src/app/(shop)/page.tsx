@@ -15,11 +15,7 @@ import {
   getBrands,
 } from "@/features/products/api";
 import { getRecentReviews } from "@/features/reviews/api";
-import {
-  getPopupSettings,
-  getHomeSections,
-  getGiftSettings,
-} from "@/features/content/api";
+import { getPopupSettings, getHomeSections } from "@/features/content/api";
 import { getActiveBrands, getScentFamilies } from "@/features/taxonomy/api";
 import { getFeaturedCollections } from "@/features/collections/api";
 import { CollectionCard } from "@/features/collections/components/collection-card";
@@ -371,13 +367,8 @@ async function BestSellersSection() {
 }
 
 async function FeaturedBundlesSection() {
-  const [collections, gift] = await Promise.all([
-    getFeaturedCollections(3),
-    getGiftSettings(),
-  ]);
+  const collections = await getFeaturedCollections(3);
   if (collections.length === 0) return null;
-  // «Бэлэгтэй» тэмдэг зөвхөн бэлгийн сан ажиллаж байгаа үед (backlog A2).
-  const giftPoolEnabled = gift.enabled && gift.productIds.length > 0;
   return (
     <section>
       <SectionHeading
@@ -387,11 +378,7 @@ async function FeaturedBundlesSection() {
       />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-3">
         {collections.map((c) => (
-          <CollectionCard
-            key={c.id}
-            collection={c}
-            giftPoolEnabled={giftPoolEnabled}
-          />
+          <CollectionCard key={c.id} collection={c} />
         ))}
       </div>
     </section>

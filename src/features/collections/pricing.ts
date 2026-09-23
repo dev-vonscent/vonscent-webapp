@@ -1,10 +1,5 @@
 import { BUNDLE_ML_SIZES } from "@/lib/constants";
-import { GIFT_GUARANTEE_MIN_ML } from "@/lib/gift";
-import type {
-  Collection,
-  CollectionMember,
-  CollectionPriceAtMl,
-} from "./types";
+import type { CollectionMember, CollectionPriceAtMl } from "./types";
 
 /** Round to the nearest `step` (₮). step ≤ 1 rounds to the nearest whole ₮. */
 export function roundTo(value: number, step: number): number {
@@ -130,37 +125,4 @@ export function formatDiscountRange({
 }): string {
   if (max <= 0) return "";
   return min === max ? `${min}%` : `${min}-${max}%`;
-}
-
-/**
- * Хэдэн ml-ээс эхлээд энэ багц баталгаат бэлгийн эрх өгөх вэ (`null` = өгөхгүй).
- *
- * «Бэлэгтэй» тэмдгийг зөвхөн `giftPoolEnabled`-ээр тавьдаг байсан нь 2мл багц
- * дээр худал болдог: `bundleGiftGuarantee` нь 5мл-ээс доош, мөн custom багцад
- * 0 буцаадаг. Тэмдэг нь амлалт учраас эрх үүсэх хэмжээнээсээ л гарна.
- */
-export function giftFromMl(
-  collection: Pick<Collection, "type" | "availableMls">,
-): number | null {
-  if (collection.type !== "base") return null;
-  return (
-    collection.availableMls.find((ml) => ml >= GIFT_GUARANTEE_MIN_ML) ?? null
-  );
-}
-
-/**
- * Тэмдэг дээрх текст — бүх хэмжээ эрх өгдөг бол болзолгүй.
- *
- * «Бэлэгтэй» гэдэг нь хэнд өгөх нь тодорхойгүй: бэлэг авах гэж буй хүн үүнийг
- * «бэлэг болгон өгөхөд бэлэн» гэж уншдаг байв. Бодит утга нь ХУДАЛДАН АВАГЧ
- * өөрөө 1мл дээж авна гэсэн үг тул тэмдэг нь юу дагалдахыг шууд нэрлэнэ.
- */
-export function giftBadgeLabel(
-  collection: Pick<Collection, "type" | "availableMls">,
-): string | null {
-  const from = giftFromMl(collection);
-  if (from === null) return null;
-  return from === collection.availableMls[0]
-    ? "1мл дээж дагална"
-    : `${from}ml-ээс 1мл дээж`;
 }

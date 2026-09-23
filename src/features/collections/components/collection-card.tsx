@@ -1,30 +1,18 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Droplet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/format";
 import { GENDER_LABEL } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { Collection } from "../types";
-import {
-  formatDiscountRange,
-  giftBadgeLabel,
-} from "@/features/collections/pricing";
+import { formatDiscountRange } from "@/features/collections/pricing";
 
 /** A bundle card led by its poster image, with the member bottles as a small
  * avatar strip so the buyer still sees what's inside. */
-export function CollectionCard({
-  collection,
-  giftPoolEnabled = false,
-}: {
-  collection: Collection;
-  /** Бэлгийн сан идэвхтэй үед л дээжийн тэмдэг гарна (backlog A2). */
-  giftPoolEnabled?: boolean;
-}) {
+export function CollectionCard({ collection }: { collection: Collection }) {
   const start = collection.startingPrice;
   const startMl = collection.availableMls[0];
   const members = collection.members.slice(0, 4);
-  const giftLabel = giftPoolEnabled ? giftBadgeLabel(collection) : null;
 
   return (
     <div className="group flex flex-col">
@@ -48,11 +36,6 @@ export function CollectionCard({
           {collection.discountRange.max > 0 && (
             <Badge variant="sale" className="w-fit backdrop-blur-sm">
               −{formatDiscountRange(collection.discountRange)}
-            </Badge>
-          )}
-          {giftLabel && (
-            <Badge className="bg-foreground/85 text-background w-fit gap-1 backdrop-blur-sm">
-              <Droplet className="size-3" /> {giftLabel}
             </Badge>
           )}
         </div>

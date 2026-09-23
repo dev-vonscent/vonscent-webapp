@@ -6,7 +6,7 @@ import {
   GIFT_SAMPLE_ML,
   SHIPPING_ZONES,
 } from "@/lib/constants";
-import { bundleGiftGuarantee, giftAllowanceFor } from "@/lib/gift";
+import { giftAllowanceFor } from "@/lib/gift";
 import { getGiftSettings, getShippingSettings } from "@/features/content/api";
 import {
   getCollectionSettings,
@@ -43,8 +43,6 @@ export interface OrderSummary {
   shippingFee: number;
   discount: number;
   total: number;
-  /** Σ багцын баталгаат бэлгийн эрх (preset 5/10/20мл багц бүрээс 1). */
-  giftGuarantee: number;
 }
 
 /**
@@ -105,20 +103,17 @@ export async function priceLines(
  * custom rate. The discount is spread across member lines (each keeps a
  * discounted unit_price). Never trust prices sent by the client.
  *
- * Багц дотроо бэлэг АВЧИРДАГГҮЙ болов (backlog A2): бүх бэлэг зөвхөн админы
- * бэлгийн pool-оос, checkout дээр сонгогдоно. Багц нь эрхийн тоонд л нөлөөлнө
- * — тэр эрхийг энд `giftGuarantee` болгож буцаана.
+ * Багц бэлэг авчирдаггүй, тусдаа бэлгийн эрх ч өгдөггүй: бэлгийн эрх зөвхөн
+ * захиалгын нийт дүнгээс бодогдоно (src/lib/gift.ts).
  */
 export async function priceCollectionLines(
   cols: CollectionOrderInput[],
 ): Promise<{
   lines: PricedLine[];
   pricedBundles: number;
-  giftGuarantee: number;
   stock: StockMap;
 }> {
-  if (!cols.length)
-    return { lines: [], pricedBundles: 0, giftGuarantee: 0, stock: new Map() };
+  if (!cols.length) return { lines: [], pricedBundles: 0, stock: new Map() };
   const [products, settings] = await Promise.all([
     fetchProducts(),
     getCollectionSettings(),
@@ -148,7 +143,6 @@ export async function priceCollectionLines(
 
   const out: PricedLine[] = [];
   let pricedBundles = 0;
-  let giftGuarantee = 0;
   for (const col of cols) {
     // A bundle prices over the sizes the shop sells.
     if (!(BUNDLE_ML_SIZES as readonly number[]).includes(col.ml)) continue;
@@ -172,9 +166,6 @@ export async function priceCollectionLines(
     // хамаарахгүй эцсийн үнэ.
     let fixedPrice: number | null = null;
     let name = "Миний багц";
-    // «preset» гэдгийг сервер өөрөө шийднэ: collectionId-гүй, эсвэл roster нь
-    // тохирохгүй бол энэ багц custom дүрмээр яваад баталгаат бэлэг авахгүй.
-    let isPreset = false;
     if (col.type === "base" && col.collectionId) {
       const info = await getCollectionOrderInfo(col.collectionId);
       if (!info) continue; // base bundle vanished — drop it
@@ -195,7 +186,6 @@ export async function priceCollectionLines(
       const fixed = info.mlPrices[col.ml];
       fixedPrice = Number.isFinite(fixed) ? Math.max(0, fixed) : null;
       name = info.name;
-      isPreset = true;
     } else {
       // Custom bundles obey the shop-wide builder rules even when the payload
       // bypasses the UI.
@@ -240,22 +230,14 @@ export async function priceCollectionLines(
     });
 
     pricedBundles += 1;
-    // Баталгаат эрх нь ЗӨВХӨН серверийн баталсан төрөл/хэмжээнээс гарна —
-    // сагсны хэлсэн төрөлд итгэхгүй.
-    giftGuarantee += bundleGiftGuarantee({
-      type: isPreset ? "base" : "custom",
-      ml: col.ml,
-      qty: col.qty,
-    });
   }
-  return { lines: out, pricedBundles, giftGuarantee, stock };
+  return { lines: out, pricedBundles, stock };
 }
 
 /**
  * Validate the buyer's 1ml gift picks and turn them into 0₮ lines.
- * `goodsAfterDiscount` is subtotal − coupon discount (shipping excluded);
- * `giftGuarantee` is the bundles' guaranteed count — see giftAllowanceFor()
- * in src/lib/gift.ts. Picks outside the admin's pool, duplicates, or picks
+ * `goodsAfterDiscount` is subtotal − coupon discount (shipping excluded) —
+ * see giftAllowanceFor() in src/lib/gift.ts. Picks outside the admin's pool, duplicates, or picks
  * beyond the allowance are silently dropped — the order still goes through,
  * just without the invalid gift.
  *
@@ -265,7 +247,6 @@ export async function priceCollectionLines(
 export async function priceGiftLines(
   giftProductIds: string[],
   goodsAfterDiscount: number,
-  giftGuarantee = 0,
   /**
    * Төлбөртэй мөрүүд тухайн бараанаас аль хэдийн авсан ml (`mlByProduct`).
    * Бэлэг нь эх савны ҮЛДСЭН хэсгээс гарна: сагс савыг бүрэн дуусгасан
@@ -274,7 +255,7 @@ export async function priceGiftLines(
   usedMl: ReadonlyMap<string, number> = new Map(),
 ): Promise<PricedLine[]> {
   if (!giftProductIds.length) return [];
-  const allowance = giftAllowanceFor(goodsAfterDiscount, giftGuarantee);
+  const allowance = giftAllowanceFor(goodsAfterDiscount);
   if (allowance <= 0) return [];
 
   const settings = await getGiftSettings();
@@ -512,7 +493,6 @@ export async function computeSummary(
     shippingFee,
     discount,
     total,
-    giftGuarantee: bundleResult.giftGuarantee,
   };
 }
 

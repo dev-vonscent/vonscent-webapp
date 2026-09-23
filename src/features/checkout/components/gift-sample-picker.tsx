@@ -90,7 +90,9 @@ export function GiftSamplePicker({
               1 мл дээж бэлгээр сонгох эрхтэй ({value.length} сонгосон).
             </p>
             <p>
-              Мөн 5, 10, 20 мл-ийн бэлэн багц бүрд 1 дээжийн эрх дагалдана.
+              Купоны дараах барааны дүнгийн {formatPrice(threshold)} тутамд 1
+              дээж авна.
+              Дахиад {formatPrice(toNext)}-ийн бараа нэмбэл 1 дээж нэмэгдэнэ.
             </p>
           </div>
         ) : (
@@ -98,8 +100,8 @@ export function GiftSamplePicker({
              «алга болсон» хэсгээс хамаагүй ойлгомжтой, бас бодит санал. */
           <div className="text-muted-foreground space-y-1 text-sm">
             <p>
-              Барааны нийт дүн {formatPrice(threshold)}-д хүрвэл 1 мл дээжийг
-              бэлгээр сонгох боломжтой.
+              Купоны дараах барааны дүн {formatPrice(threshold)}-д хүрвэл 1 мл
+              дээжийг бэлгээр сонгох боломжтой.
             </p>
             <p>
               Одоогийн дүн:{" "}
@@ -109,9 +111,6 @@ export function GiftSamplePicker({
               — дээж авахад{" "}
               <strong className="text-foreground">{formatPrice(toNext)}</strong>{" "}
               дутуу байна.
-            </p>
-            <p>
-              Мөн 5, 10, 20 мл-ийн бэлэн багц бүрд 1 дээжийн эрх дагалдана.
             </p>
           </div>
         )}

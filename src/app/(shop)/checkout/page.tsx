@@ -25,11 +25,7 @@ import {
 } from "@/components/ui/select";
 import { checkoutSchema } from "@/lib/validators/order";
 import { SHIPPING_ZONES, type ShippingZoneConfig } from "@/lib/constants";
-import {
-  bundleGiftGuarantee,
-  giftAllowanceFor,
-  giftGuaranteeFor,
-} from "@/lib/gift";
+import { giftAllowanceFor } from "@/lib/gift";
 import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { GiftSamplePicker } from "@/features/checkout/components/gift-sample-picker";
 import { useGiftPool } from "@/features/gifts/use-gift-pool";
@@ -595,12 +591,9 @@ export default function CheckoutPage() {
     Math.floor(loyaltyPoints * loyaltyRules.redeemRate),
     Math.max(subtotal - discount, 0),
   );
-  // Бэлгийн 1мл дээж: купоны дараах барааны дүнгийн 200,000₮ тутамд 1, эсвэл
-  // preset 5/10/20мл багц бүрийн баталгаа — ихийг нь (src/lib/gift.ts).
-  const giftAllowance = giftAllowanceFor(
-    Math.max(subtotal - discount, 0),
-    giftGuaranteeFor(collections),
-  );
+  // Бэлгийн 1мл дээж: купоны дараах барааны дүнгийн 200,000₮ тутамд 1
+  // (src/lib/gift.ts). Хүргэлт, оноо тооцогдохгүй; багц тусдаа эрх өгөхгүй.
+  const giftAllowance = giftAllowanceFor(Math.max(subtotal - discount, 0));
   /** Эдлээгүй үлдсэн бэлгийн эрх — сануулга ба тоймын мөр хоёулаа үүнийг хардаг. */
   const giftRemaining = Math.max(giftAllowance - giftIds.length, 0);
   // Бэлгийн сан — сагс, багцын дэлгэрэнгүйтэй ижил цорын ганц эх сурвалж
@@ -1242,12 +1235,6 @@ export default function CheckoutPage() {
                         </p>
                         <p className="text-muted-foreground text-xs">
                           Багц · {c.ml}ml · {c.members.length} үнэртэн
-                          {/* Emoji биш үг: 🎁 нь тайлбаргүй байсан бөгөөд
-                              төхөөрөмж бүр дээр өөр өнгөөр зурагдаж,
-                              монохром системд ганц өнгөт толбо болдог. */}
-                          {giftPool?.enabled && bundleGiftGuarantee(c) > 0
-                            ? " · бэлэгтэй"
-                            : ""}
                         </p>
                         {/* Багц дотор ЯМАР ус байгааг тоймд нэрээр нь бичнэ.
                             Өмнө нь зөвхөн багцын нэр, нэг зураг, «N үнэртэн»
