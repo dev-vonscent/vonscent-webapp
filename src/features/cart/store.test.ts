@@ -7,6 +7,8 @@ import {
   selectCheckoutItems,
   selectCheckoutCollections,
   selectCheckoutSubtotal,
+  selectCheckoutGross,
+  type CartCollectionMember,
 } from "./store";
 
 const line = (variantId: string, unitPrice: number) => ({
@@ -20,6 +22,16 @@ const line = (variantId: string, unitPrice: number) => ({
   image: null,
 });
 
+const member = (variantId: string): CartCollectionMember => ({
+  productId: `p-${variantId}`,
+  variantId,
+  slug: `s-${variantId}`,
+  name: `M ${variantId}`,
+  brand: "B",
+  image: null,
+  price: 0,
+});
+
 const bundle = (collectionId: string, unitPrice: number) => ({
   collectionId,
   type: "base" as const,
@@ -28,7 +40,7 @@ const bundle = (collectionId: string, unitPrice: number) => ({
   image: null,
   discountPct: 10,
   ml: 5,
-  members: [],
+  members: [] as CartCollectionMember[],
   unitPrice,
 });
 
@@ -253,5 +265,42 @@ describe("тоо ширхэгийн дээд хязгаар", () => {
     const key = useCart.getState().collections[0].key;
     useCart.getState().setCollectionQty(key, 3, 1);
     expect(useCart.getState().collections[0].qty).toBe(1);
+  });
+});
+
+/**
+ * Багцын мөр сагсанд хямдруулсан үнээрээ сууж байсан тул тоймд хэмнэлт нь
+ * хаана ч харагддаггүй байв. Gross нь гишүүдийн үндсэн үнээр бодогдоно —
+ * түүнээс subtotal-ыг хасахад хямдралын дүн гарна.
+ */
+describe("хямдралын өмнөх дүн", () => {
+  beforeEach(() => {
+    useCart.setState({
+      items: [],
+      collections: [],
+      buyNow: null,
+      excludedItems: [],
+      excludedCollections: [],
+      coupon: null,
+    });
+  });
+
+  it("багцыг гишүүдийн үндсэн үнээр нийлбэрлэнэ", () => {
+    const b = bundle("c1", 27000);
+    b.members = [
+      { ...member("m1"), price: 10000 },
+      { ...member("m2"), price: 20000 },
+    ];
+    useCart.getState().addCollection(b, 2);
+
+    const state = useCart.getState();
+    expect(selectCheckoutGross(state)).toBe(60000);
+    expect(selectCheckoutSubtotal(state)).toBe(54000);
+  });
+
+  it("багцгүй сагсанд хоёр дүн тэнцүү", () => {
+    useCart.getState().add(line("v1", 10000), 3);
+    const state = useCart.getState();
+    expect(selectCheckoutGross(state)).toBe(selectCheckoutSubtotal(state));
   });
 });
