@@ -3,9 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Gift, Minus, Plus, Trash2, Truck, ShoppingCart } from "lucide-react";
-import { bundleGiftGuarantee } from "@/lib/gift";
-import { useGiftPool } from "@/features/gifts/use-gift-pool";
+import { Minus, Plus, Trash2, Truck, ShoppingCart } from "lucide-react";
+import { GiftProgressNote } from "@/features/gifts/components/gift-progress-note";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -32,7 +31,6 @@ export default function CartPage() {
   const collections = useCart((s) => s.collections);
   const setCollectionQty = useCart((s) => s.setCollectionQty);
   const removeCollection = useCart((s) => s.removeCollection);
-  const giftPool = useGiftPool();
   const setItemSelected = useCart((s) => s.setItemSelected);
   const setCollectionSelected = useCart((s) => s.setCollectionSelected);
   const {
@@ -175,12 +173,6 @@ export default function CartPage() {
                           • {m.brand} — {m.name}
                         </li>
                       ))}
-                      {giftPool?.enabled && bundleGiftGuarantee(c) > 0 && (
-                        <li className="text-foreground/80 flex items-center gap-1">
-                          <Gift className="text-gold-strong size-3 shrink-0" />
-                          1мл бэлгийн эрхтэй — бэлгээ төлбөрийн хуудсанд сонгоно
-                        </li>
-                      )}
                     </ul>
                     {blockedCollectionKeys.has(c.key) && (
                       <p className="text-destructive mt-2 text-xs">
@@ -327,6 +319,7 @@ export default function CartPage() {
                 <span className="text-muted-foreground">Барааны дүн</span>
                 <span className="font-medium">{formatPrice(subtotal)}</span>
               </div>
+              <GiftProgressNote subtotal={subtotal} />
 
               {/*
                 Хүргэлтийн төлбөрийг тоогоор бичихгүй — хаягийн бүсээс

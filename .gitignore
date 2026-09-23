@@ -65,4 +65,4 @@ shot.tmp.mjs
 /backups
 
 # vitest нь ESM тохиргоог ачаалахдаа үлдээдэг түр файл
-vitest.config.*.timestamp-*.mjs
+vitest*.config.*.timestamp-*.mjs

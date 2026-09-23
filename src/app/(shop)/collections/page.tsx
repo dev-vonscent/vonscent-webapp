@@ -6,7 +6,6 @@ import {
   getBaseCollections,
   getCollectionSettings,
 } from "@/features/collections/api";
-import { getGiftSettings } from "@/features/content/api";
 import { CollectionBrowser } from "@/features/collections/components/collection-browser";
 import { BuildCtaCard } from "@/features/collections/components/build-cta-card";
 import { Button } from "@/components/ui/button";
@@ -30,13 +29,10 @@ function range(values: number[]): string | null {
 }
 
 export default async function CollectionsPage() {
-  const [collections, gift, settings] = await Promise.all([
+  const [collections, settings] = await Promise.all([
     getBaseCollections(),
-    getGiftSettings(),
     getCollectionSettings(),
   ]);
-  // «Бэлэгтэй» тэмдэг зөвхөн бэлгийн сан ажиллаж байгаа үед (backlog A2).
-  const giftPoolEnabled = gift.enabled && gift.productIds.length > 0;
 
   /*
     Гурван тоо нь бодит багцуудаас тооцоологдоно — «4 үнэртэн», «5% хямд» гэж
@@ -100,7 +96,6 @@ export default async function CollectionsPage() {
         <Suspense>
           <CollectionBrowser
             collections={collections}
-            giftPoolEnabled={giftPoolEnabled}
             trailing={
               settings.customEnabled ? (
                 <BuildCtaCard

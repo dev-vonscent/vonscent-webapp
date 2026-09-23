@@ -127,11 +127,9 @@ function GenderChips({
 
 export function CollectionBrowser({
   collections,
-  giftPoolEnabled = false,
   trailing,
 }: {
   collections: Collection[];
-  giftPoolEnabled?: boolean;
   /** Grid-ийн сүүлчийн нүд — «Өөрөө угсрах» карт. */
   trailing?: React.ReactNode;
 }) {
@@ -377,11 +375,7 @@ export function CollectionBrowser({
               }
             />
           ) : (
-            <CollectionGrid
-              collections={shown}
-              giftPoolEnabled={giftPoolEnabled}
-              trailing={trailing}
-            />
+            <CollectionGrid collections={shown} trailing={trailing} />
           )}
         </div>
       </div>

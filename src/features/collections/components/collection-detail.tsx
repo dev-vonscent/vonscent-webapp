@@ -4,14 +4,13 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Check, Gift, ShoppingCart } from "lucide-react";
+import { Check, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
 import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { trackBeginCheckout } from "@/lib/analytics";
-import { bundleGiftGuarantee } from "@/lib/gift";
 import type { Collection } from "../types";
 
 /**
@@ -20,14 +19,7 @@ import type { Collection } from "../types";
  */
 const DESCRIPTION_CLAMP_CHARS = 220;
 
-export function CollectionDetail({
-  collection,
-  giftPoolEnabled,
-}: {
-  collection: Collection;
-  /** Админы бэлгийн сан идэвхтэй бөгөөд хоосон биш эсэх (backlog A2). */
-  giftPoolEnabled: boolean;
-}) {
+export function CollectionDetail({ collection }: { collection: Collection }) {
   const firstMl = collection.availableMls[0];
   const [ml, setMl] = React.useState<number>(
     firstMl ?? collection.prices[0]?.ml,
@@ -42,14 +34,6 @@ export function CollectionDetail({
 
   const priceRow = collection.prices.find((p) => p.ml === ml) ?? null;
   const available = priceRow?.available ?? false;
-  // Багц өөрөө бэлэг «авчирдаггүй» — зөвхөн бэлгийн эрх өгнө, бэлгээ
-  // худалдан авагч төлбөрийн хуудсанд админы сангаас сонгоно (backlog A2).
-  const giftGuarantee = bundleGiftGuarantee({
-    type: collection.type,
-    ml,
-    qty: 1,
-  });
-
   /**
    * Puts the bundle in the cart. Returns false when nothing was added.
    *
@@ -334,17 +318,6 @@ export function CollectionDetail({
           ))}
         </div>
       </div>
-
-      {/* Бэлгийн эрх — сонголт нь checkout дээр */}
-      {giftPoolEnabled && giftGuarantee > 0 && (
-        <p className="bg-secondary/60 flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm">
-          <Gift className="text-gold-strong mt-0.5 size-4 shrink-0" />
-          <span>
-            Энэ багц <strong>1мл бэлгийн дээж</strong> дагалдана — бэлгээ
-            төлбөрийн хуудсанд бэлгийн уснуудаас сонгоно.
-          </span>
-        </p>
-      )}
 
       {/* «Захиалах» leads: it is the shorter road to a paid order, and the
           cart stays one tap away underneath. */}
