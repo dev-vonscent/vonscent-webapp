@@ -4,6 +4,7 @@ import * as React from "react";
 import { useCart } from "./store";
 import { cartMlFor } from "./budget";
 import { maxUnits } from "@/features/products/sellable";
+import { toast } from "@/lib/toast";
 import type { ProductDetail } from "@/lib/types";
 
 /**
@@ -201,23 +202,43 @@ export function useCartAvailability({
   /**
    * Сагс `localStorage`-д долоо хоногоор сууна: тэр хугацаанд үлдэгдэл
    * буурч, дотор нь хэвтэж байсан 2 ширхэг захиалагдахаа болино. Мөрийг
-   * ЧИМЭЭГҮЙ хасалгүй багтах тоонд нь буулгаад, сонголтоос нь хасахгүй —
-   * хэрэглэгч сагсаа нээхэд шинэ тоог хараад шийднэ. Дор хаяж 1 ш ч
-   * багтахгүй бол дээрх `blocked*` шалгалт мөрийг аль хэдийн сонголтоос
-   * гаргасан байна.
+   * хасалгүй багтах тоонд нь буулгаад, сонголтоос нь хасахгүй — хэрэглэгч
+   * сагсаа нээхэд шинэ тоог хараад шийднэ. Дор хаяж 1 ш ч багтахгүй бол
+   * дээрх `blocked*` шалгалт мөрийг аль хэдийн сонголтоос гаргасан байна.
+   *
+   * Тоог ЧИМЭЭГҮЙ буулгахгүй: хэрэглэгч 2 ширхэг үлдээсэн сагсаа нээхэд
+   * 1 болсныг ямар ч тайлбаргүй хармаар байдаг нь итгэл алдуулна. Бүх
+   * буулгалтыг НЭГ мэдэгдэлд нэгтгэнэ.
    */
   const setQty = useCart((s) => s.setQty);
   const setCollectionQty = useCart((s) => s.setCollectionQty);
+  /** Хамгийн сүүлд мэдэгдсэн буулгалтууд — нэг зүйлийг давтаж хэлэхгүй. */
+  const announced = React.useRef("");
   React.useEffect(() => {
     if (!stock) return;
+    const notes: string[] = [];
     for (const i of items) {
       const cap = maxQtyOf(i.key);
-      if (cap >= 1 && i.qty > cap) setQty(i.key, cap, cap);
+      if (cap >= 1 && i.qty > cap) {
+        setQty(i.key, cap, cap);
+        notes.push(`${i.name} ${i.ml}ml → ${cap} ш`);
+      }
     }
     for (const c of collections) {
       const cap = maxCollectionQtyOf(c.key);
-      if (cap >= 1 && c.qty > cap) setCollectionQty(c.key, cap, cap);
+      if (cap >= 1 && c.qty > cap) {
+        setCollectionQty(c.key, cap, cap);
+        notes.push(`${c.name} ${c.ml}ml → ${cap} ш`);
+      }
     }
+    if (notes.length === 0) return;
+    const signature = notes.join("|");
+    if (announced.current === signature) return;
+    announced.current = signature;
+    toast(
+      `Үлдэгдэл хүрэлцэхгүй тул тоо ширхэгийг багасгалаа: ${notes.join(", ")}.`,
+      "Сагс шинэчлэгдлээ",
+    );
   }, [
     stock,
     items,
