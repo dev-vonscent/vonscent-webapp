@@ -17,7 +17,7 @@ export const env = {
   gaId: process.env.NEXT_PUBLIC_GA_ID ?? "",
   metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "",
 
-  /** OpenAI (gpt-image-1) — server-only, AI product-image generation. */
+  /** OpenAI (gpt-image-2) — server-only, AI product-image generation. */
   openaiKey: process.env.OPENAI_API_KEY ?? "",
 
   /**

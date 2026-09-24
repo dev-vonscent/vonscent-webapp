@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { checkoutSchema } from "@/lib/validators/order";
 import { SHIPPING_ZONES, type ShippingZoneConfig } from "@/lib/constants";
-import { giftAllowanceFor } from "@/lib/gift";
+import { giftSlotsFor } from "@/lib/gift";
 import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { GiftSamplePicker } from "@/features/checkout/components/gift-sample-picker";
 import { useGiftPool } from "@/features/gifts/use-gift-pool";
@@ -603,17 +603,23 @@ export default function CheckoutPage() {
     Math.floor(loyaltyPoints * loyaltyRules.redeemRate),
     Math.max(subtotal - discount, 0),
   );
-  // Бэлгийн 1мл дээж: купоны дараах барааны дүнгийн 200,000₮ тутамд 1
-  // (src/lib/gift.ts). Хүргэлт, оноо тооцогдохгүй; багц тусдаа эрх өгөхгүй.
-  const giftAllowance = giftAllowanceFor(Math.max(subtotal - discount, 0));
-  /** Эдлээгүй үлдсэн бэлгийн эрх — сануулга ба тоймын мөр хоёулаа үүнийг хардаг. */
-  const giftRemaining = Math.max(giftAllowance - giftIds.length, 0);
   // Бэлгийн сан — сагс, багцын дэлгэрэнгүйтэй ижил цорын ганц эх сурвалж
   // (backlog A2). Сан унтраалттай / хоосон бол доорх тоймд «бэлэгтэй» гэж
   // амлахгүй: `GiftSamplePicker` өөрөө нуугддаг тул тэмдэглэгээ нь хэзээ ч
   // сонгох боломжгүй бэлгийг зааж байх ёсгүй. Модуль дотор кэштэй hook тул
   // нэмэлт хүсэлт гарахгүй, ачаалж амжаагүй үед `null` (тэмдэг гарахгүй).
   const giftPool = useGiftPool();
+  // Бэлгийн 1мл дээж: купоны дараах барааны дүнгийн 200,000₮ тутамд 1,
+  // хамгийн ихдээ GIFT_MAX_SAMPLES (src/lib/gift.ts). Хүргэлт, оноо
+  // тооцогдохгүй; багц тусдаа эрх өгөхгүй. Санд байгаа ус × нэг уснаас авах
+  // дээд тоо гэсэн БАГТААМЖААР дахин хумина — сануулга, тоймын мөр, picker
+  // гурав нь биелэх боломжгүй тоо хэзээ ч хэлэх ёсгүй (4 ус / 5 эрх).
+  const { allowance: giftAllowance } = giftSlotsFor(
+    Math.max(subtotal - discount, 0),
+    giftPool?.products.length ?? 0,
+  );
+  /** Эдлээгүй үлдсэн бэлгийн эрх — сануулга ба тоймын мөр хоёулаа үүнийг хардаг. */
+  const giftRemaining = Math.max(giftAllowance - giftIds.length, 0);
   // Сагс, купон өөрчлөгдөхөд дээд хязгаар буурч болно — бичсэн дүнг ямагт
   // түүнд хумина, эс тэгвээс хуудас сервер хүлээж авахгүй дүн харуулна.
   const loyaltyApplied = Math.min(loyaltyWanted, maxLoyalty);

@@ -45,6 +45,23 @@ const PRICE_STEP = 1000;
 const RAIL_MIN_COLLECTIONS = 7;
 
 /**
+ * Хэдэн багцаас хойш хайлтын талбар гарах вэ.
+ *
+ * Нэр нь бүгд нэг дэлгэцэнд харагдаж байхад хайлт нь хэрэгсэл биш, чимэг:
+ * хүн уншаад олчихно. Хайлт нь toolbar-ын өргөний тал хувийг эзэлдэг байсан
+ * тул түүнийг хасахад хүйс, эрэмбэ хоёр нэг мөрөнд амархан багтдаг.
+ */
+const SEARCH_MIN_COLLECTIONS = 7;
+
+/**
+ * Үүнээс цөөн багцтай үед шүүлтүүрийн мөр огт гарахгүй — 1-2 багцыг хайж,
+ * шүүж, эрэмбэлэх гэж дөрвөн хэрэгсэл өгөх нь хуудсыг хоосон, ажилгүй
+ * харагдуулдаг. Ийм үед URL-ын шүүлтийг ч хэрэглэхгүй: хэрэглэгч засах
+ * аргагүй шүүлт нь зүгээр л алга болсон багц болж харагдана.
+ */
+const CONTROLS_MIN_COLLECTIONS = 3;
+
+/**
  * «Эрэгтэй»/«Эмэгтэй» багцад unisex багц ч багтана — каталогийн
  * `expandGenders`-тэй нэг логик. «Unisex»-ийг дангаар нь сонговол зөвхөн
  * unisex: тэр нь зориуд нарийсгасан асуулт.
@@ -93,29 +110,47 @@ function SearchInput({
   );
 }
 
-function GenderChips({
+/**
+ * Хүйсний шүүлтүүр — segmented control.
+ *
+ * Өмнө нь дөрвөн салангид chip байсан: «нэгийг нь л сонгоно» гэдэг нь
+ * хэлбэрээсээ уншигдахгүй, сонгогдсон нь бүдэг саарал (`bg-muted-foreground`)
+ * тул хажуугийнхаасаа бараг ялгардаггүй байв. Нэг гадаргуу дотор хуваасан
+ * хэсгүүд нь тэр хоёуланг нь шийднэ: багц нь «нэг сонголт» гэдгийг харуулж,
+ * сонгогдсон нь цул өнгөөр (`bg-foreground`) тодорно — сайтын бусад
+ * сонголттой (хэмжээний товч, багцын хуудас) ижил хэл.
+ */
+function GenderSegmented({
   value,
   onChange,
+  className,
 }: {
   value: GenderFilter;
   onChange: (g: GenderFilter) => void;
+  className?: string;
 }) {
   const opts: GenderFilter[] = ["all", ...GENDERS];
   return (
-    // Утсан дээр 2 багана — хүрэхэд өргөн. Өргөн дэлгэц дээр агуулгынхаа
-    // хэмжээгээр: 1400px өргөн «Бүгд» товч нь шүүлтүүр биш, хана болдог.
-    <div className="grid w-full grid-cols-2 gap-2 lg:flex lg:w-auto lg:flex-wrap">
+    <div
+      role="radiogroup"
+      aria-label="Хүйс"
+      className={cn(
+        "bg-secondary grid grid-cols-4 gap-1 rounded-lg p-1",
+        className,
+      )}
+    >
       {opts.map((g) => (
         <button
           key={g}
           type="button"
+          role="radio"
+          aria-checked={value === g}
           onClick={() => onChange(g)}
-          aria-pressed={value === g}
           className={cn(
-            "min-h-11 truncate rounded-sm px-3 py-2 text-center text-sm font-medium transition-colors lg:min-h-0",
+            "truncate rounded-md px-2.5 py-1.5 text-center text-sm font-medium transition-colors",
             value === g
-              ? "bg-muted-foreground text-background"
-              : "bg-secondary text-foreground hover:bg-accent",
+              ? "bg-foreground text-background"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
           {g === "all" ? "Бүгд" : GENDER_LABEL[g]}
@@ -127,11 +162,11 @@ function GenderChips({
 
 export function CollectionBrowser({
   collections,
-  trailing,
+  customEnabled,
 }: {
   collections: Collection[];
-  /** Grid-ийн сүүлчийн нүд — «Өөрөө угсрах» карт. */
-  trailing?: React.ReactNode;
+  /** Өөрөө багц угсрах боломж нээлттэй эсэх (хоосон төлөвийн санал). */
+  customEnabled: boolean;
 }) {
   /*
     Шүүлт нь URL-д амьдарна. Өмнө нь зөвхөн `useState` байсан тул нэг багц
@@ -141,6 +176,12 @@ export function CollectionBrowser({
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
+
+  const showRail = collections.length >= RAIL_MIN_COLLECTIONS;
+  const showControls = collections.length >= CONTROLS_MIN_COLLECTIONS;
+  // Хайлт нь хажуугийн баганатай нэг босготой: багана гармагц хайлт нь
+  // түүний дээр суудаг тул toolbar-ын өргөнийг идэхээ больдог.
+  const showSearch = collections.length >= SEARCH_MIN_COLLECTIONS;
 
   const [q, setQ] = React.useState(() => params.get("q") ?? "");
   const [gender, setGender] = React.useState<GenderFilter>(() => {
@@ -190,10 +231,18 @@ export function CollectionBrowser({
   }, []);
 
   const shown = React.useMemo(() => {
+    // Хяналт харагдахгүй үед URL-ын шүүлт ч хэрэглэгдэхгүй — хэрэглэгчийн
+    // засах аргагүй шүүлт нь зүгээр л «багц алга» болж харагдана.
+    if (!showControls) {
+      return [...collections].sort(
+        (a, b) => Number(b.isFeatured) - Number(a.isFeatured),
+      );
+    }
     const priced = range[0] > domainMin || range[1] < domainMax;
     const list = collections.filter((c) => {
       if (!matchesGender(c.gender, gender)) return false;
       if (
+        showSearch &&
         q &&
         !`${c.name} ${c.description}`.toLowerCase().includes(q.toLowerCase())
       )
@@ -218,11 +267,22 @@ export function CollectionBrowser({
           return Number(b.isFeatured) - Number(a.isFeatured);
       }
     });
-  }, [collections, q, gender, sort, range, domainMin, domainMax, savedOf]);
+  }, [
+    collections,
+    q,
+    gender,
+    sort,
+    range,
+    domainMin,
+    domainMax,
+    savedOf,
+    showControls,
+    showSearch,
+  ]);
 
   const activeCount =
     (gender !== "all" ? 1 : 0) +
-    (q ? 1 : 0) +
+    (showSearch && q ? 1 : 0) +
     (range[0] > domainMin || range[1] < domainMax ? 1 : 0);
 
   React.useEffect(() => {
@@ -279,7 +339,7 @@ export function CollectionBrowser({
       </div>
       <div className="space-y-3">
         <h3 className="text-sm font-semibold">Хүйс</h3>
-        <GenderChips value={gender} onChange={setGender} />
+        <GenderSegmented value={gender} onChange={setGender} />
       </div>
       {hasPriceRange && (
         <>
@@ -290,43 +350,60 @@ export function CollectionBrowser({
     </div>
   );
 
-  const showRail = collections.length >= RAIL_MIN_COLLECTIONS;
+  const sortSelect = (
+    <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
+      <SelectTrigger className="w-auto shrink-0">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {SORTS.map((s) => (
+          <SelectItem key={s.value} value={s.value}>
+            {s.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 
   return (
     <div>
-      {/* Compact controls — утсан дээр үргэлж, багц цөөхөн бол бүх өргөнд */}
-      <div
-        className={cn(
-          "border-border flex flex-col gap-3 border-y py-3",
-          showRail && "lg:hidden",
-        )}
-      >
-        <div className="flex items-center gap-2">
-          <SearchInput
-            value={q}
-            onChange={setQ}
-            className="flex-1 lg:max-w-xs"
+      {/*
+        Нэг мөрийн toolbar — утсан дээр үргэлж, багц цөөхөн бол бүх өргөнд.
+        Өмнө нь энэ нь гурван давхар (хайлт+эрэмбэ / chips / үнэ) 130px
+        өндөр блок байсан бөгөөд 1400px дэлгэцийн дөрөвний нэгийг л
+        ашигладаг, үлдсэнийг нь хоосон орхидог байв. Хүйс зүүн талдаа,
+        эрэмбэ ба хайлт баруун талдаа бөөгнөрснөөр гурав нь нэг систем мэт
+        уншигдана.
+      */}
+      {showControls && (
+        <div
+          className={cn(
+            "border-border flex flex-wrap items-center gap-3 border-y py-3",
+            showRail && "lg:hidden",
+          )}
+        >
+          <h2 className="sr-only">Шүүлтүүр</h2>
+          <GenderSegmented
+            value={gender}
+            onChange={setGender}
+            className="w-full sm:w-auto"
           />
-          <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
-            <SelectTrigger className="w-auto shrink-0 lg:ms-auto">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {SORTS.map((s) => (
-                <SelectItem key={s.value} value={s.value}>
-                  {s.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="ms-auto flex flex-1 items-center justify-end gap-2 sm:flex-none">
+            {showSearch && (
+              <SearchInput
+                value={q}
+                onChange={setQ}
+                className="min-w-0 flex-1 sm:w-56 sm:flex-none"
+              />
+            )}
+            {sortSelect}
+          </div>
+          {clearButton && <div className="ms-auto sm:ms-0">{clearButton}</div>}
+          {hasPriceRange && (
+            <div className="w-full pt-1 lg:max-w-xs">{priceFilter}</div>
+          )}
         </div>
-        <h2 className="sr-only">Шүүлтүүр</h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <GenderChips value={gender} onChange={setGender} />
-          {clearButton && <div className="ms-auto">{clearButton}</div>}
-        </div>
-        {hasPriceRange && <div className="pt-1 lg:max-w-xs">{priceFilter}</div>}
-      </div>
+      )}
 
       <div className="mt-6 flex gap-10 lg:mt-8">
         {/* Desktop sidebar */}
@@ -342,18 +419,7 @@ export function CollectionBrowser({
               showRail && "lg:flex",
             )}
           >
-            <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
-              <SelectTrigger className="w-auto">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SORTS.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {sortSelect}
           </div>
 
           {shown.length === 0 ? (
@@ -362,11 +428,11 @@ export function CollectionBrowser({
               title="Тохирох багц олдсонгүй"
               description="Шүүлтүүрээ өөрчилж, дахин хайж үзээрэй."
               action={
-                // Grid байхгүй болохоор «Өөрөө угсрах» нүд ч алга болно —
-                // энэ хүн яг тэр саналыг сонсох ёстой хүн.
+                // Толгойн панель гүйлгээний дээр үлдсэн ч, шүүлтээрээ юу ч
+                // олоогүй хүн яг энэ мөчид тэр гарцыг дахин сонсох ёстой.
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Button onClick={clearAll}>Шүүлтүүр цэвэрлэх</Button>
-                  {trailing && (
+                  {customEnabled && (
                     <Button asChild variant="secondary">
                       <Link href="/collections/build">Багц угсрах</Link>
                     </Button>
@@ -375,7 +441,7 @@ export function CollectionBrowser({
               }
             />
           ) : (
-            <CollectionGrid collections={shown} trailing={trailing} />
+            <CollectionGrid collections={shown} />
           )}
         </div>
       </div>

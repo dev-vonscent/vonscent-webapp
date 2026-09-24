@@ -240,11 +240,9 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                 className={cn(
                   "relative flex min-h-11 min-w-20 flex-col items-center justify-center rounded-lg px-4 py-2 transition-colors",
                   !v.isActive
-                    ? // Түр биш, тогтмол төлөв — зураас нь «үнэ нь хүчингүй
-                      // болсон» гэсэн утгатай тул энд тохирохгүй.
-                      "bg-secondary/40 text-muted-foreground cursor-not-allowed opacity-60"
+                    ? "bg-secondary/40 text-muted-foreground cursor-not-allowed opacity-60"
                     : !sellable
-                      ? "bg-secondary/50 text-muted-foreground cursor-not-allowed line-through opacity-50"
+                      ? "bg-secondary/50 text-muted-foreground cursor-not-allowed opacity-50"
                       : active
                         ? "bg-secondary ring-foreground ring-2"
                         : "bg-secondary hover:bg-accent",
@@ -255,7 +253,16 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                     Хамгийн ашигтай
                   </span>
                 )}
-                <span className="text-sm font-semibold">{v.ml}ml</span>
+                {/* Зураас зөвхөн хэмжээн дээр: доорх «Дууссан» / «Түр
+                    байхгүй» / «Зарахгүй» гэсэн үгийг зурвал уншигдахгүй. */}
+                <span
+                  className={cn(
+                    "text-sm font-semibold",
+                    !sellable && "line-through",
+                  )}
+                >
+                  {v.ml}ml
+                </span>
                 <span className="text-muted-foreground text-xs">
                   {!v.isActive
                     ? "Зарахгүй"

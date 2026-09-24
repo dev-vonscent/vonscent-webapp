@@ -17,6 +17,7 @@ import {
 } from "@/lib/constants";
 import { deliveryDayOf, formatDeliveryDay, DISPATCH_HOUR } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { orderSummaryRows, type OrderSummaryRow } from "@/lib/orders/summary";
 
 /**
  * `/order/<token>` — захиалгын төлөв, нэвтрэхгүйгээр.
@@ -159,7 +160,7 @@ export default async function OrderStatusPage({
                 </Badge>
               ) : (
                 <span className="shrink-0 font-medium tabular-nums">
-                  {formatPrice(l.lineTotal)}
+                  {formatPrice(l.baseTotal)}
                 </span>
               )}
             </div>
@@ -169,21 +170,9 @@ export default async function OrderStatusPage({
 
       <Card>
         <CardContent className="space-y-2 p-5 text-sm">
-          <Row label="Барааны дүн" value={formatPrice(order.subtotal)} />
-          {order.discount > 0 && (
-            <Row label="Хөнгөлөлт" value={`−${formatPrice(order.discount)}`} />
-          )}
-          {order.loyaltyUsed > 0 && (
-            <Row label="V point" value={`−${formatPrice(order.loyaltyUsed)}`} />
-          )}
-          <Row
-            label="Хүргэлт"
-            value={
-              order.shippingFee === 0
-                ? "Үнэгүй"
-                : `+${formatPrice(order.shippingFee)}`
-            }
-          />
+          {orderSummaryRows(order).map((row) => (
+            <Row key={row.label} {...row} />
+          ))}
           <Separator />
           <div className="flex justify-between gap-3 font-semibold">
             <span>Нийт төлөх</span>
@@ -219,11 +208,15 @@ export default async function OrderStatusPage({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, credit, strong }: OrderSummaryRow) {
   return (
     <div className="flex justify-between gap-3">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="tabular-nums">{value}</span>
+      <span className={strong ? "text-foreground" : "text-muted-foreground"}>
+        {label}
+      </span>
+      <span className={cn("tabular-nums", credit && "text-success")}>
+        {value}
+      </span>
     </div>
   );
 }

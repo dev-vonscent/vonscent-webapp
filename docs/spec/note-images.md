@@ -29,7 +29,7 @@ Prompt, нот→англи хөрвүүлэлт, хар дэвсгэрийн б
 ```
 products.product_images[sort_order 0]   ← лавлах зураг (DB дэх үндсэн зураг)
         ↓
-gpt-image-1.5  /v1/images/edits   1024×1024, quality=high
+gpt-image-2    /v1/images/edits   1024×1024, quality=high
         ↓
 хар цэгийн хавчилт (BLACK_POINT)  → дэвсгэр яг #000000
         ↓

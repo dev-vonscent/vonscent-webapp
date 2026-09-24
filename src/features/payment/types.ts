@@ -9,7 +9,10 @@ export interface PaymentLine {
   brand: string;
   ml: number;
   qty: number;
+  /** Төлсөн дүн — багцын гишүүнд хямдарсан. */
   lineTotal: number;
+  /** Хямдраагүй дүн (list_price × qty). Тоймд ЭНЭ нь харагдана — 0097. */
+  baseTotal: number;
   /** 1мл бэлгийн дээж (0₮ мөр). */
   isSample: boolean;
   /** Багцын нэр, багцын гишүүн мөр бол. */
@@ -28,6 +31,10 @@ export interface PaymentView {
    */
   lines: PaymentLine[];
   subtotal: number;
+  /** Багцын хямдралын өмнөх барааны дүн. Хуучин захиалгад null (0097). */
+  grossSubtotal: number | null;
+  /** Хэрэглэсэн купоны код — тооцооны мөрийн шошгонд гарна. */
+  couponCode: string | null;
   shippingFee: number;
   discount: number;
   loyaltyUsed: number;

@@ -48,6 +48,7 @@ const PRESET_BY_FOLDER: Record<string, PresetName> = {
   products: "photo",
   "products/new": "photo",
   blog: "photo",
+  collections: "photo",
   avatars: "avatar",
   families: "familyIcon",
   // A logo is a wordmark shown at 24-48px; `icon` bounds the long edge, so a

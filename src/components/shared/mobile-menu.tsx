@@ -12,6 +12,7 @@ import {
   Mail,
   Menu,
   Package,
+  PackageSearch,
   Ticket,
 } from "lucide-react";
 import { Logo } from "./logo";
@@ -41,10 +42,17 @@ const PRIMARY = [
   { href: "/lucky-wheel", label: "Азын хүрд" },
 ] as const;
 
-/** Уншиж танилцах хуудсууд — капсулаар, жижгээр. */
+/**
+ * Уншиж танилцах хуудсууд — капсулаар, жижгээр.
+ *
+ * «Захиалга хайх» нь зочны цорын ганц ил зам: нэвтрээгүй хүн захиалгаа
+ * дугаар + утсаараа эндээс олно (доорх `ACCOUNT_SHORTCUTS`-ын «Захиалга» нь
+ * нэвтэрсэн хүнд л гардаг).
+ */
 const SECONDARY = [
   { href: "/contact", label: "Холбоо барих", icon: Mail },
   { href: "/faq", label: "Түгээмэл асуулт", icon: HelpCircle },
+  { href: "/order/find", label: "Захиалга хайх", icon: PackageSearch },
 ] as const;
 
 /** Нэвтэрсэн хэрэглэгчийн богино замууд — таних хэсгийн доор. */

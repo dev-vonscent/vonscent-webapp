@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   Package,
+  PackageSearch,
   Disc3,
   HelpCircle,
   LogIn,
@@ -163,6 +164,16 @@ export function ProfileMenu() {
             <DropdownMenuItem asChild>
               <Link href="/lucky-wheel">
                 <Disc3 /> Азын хүрд
+              </Link>
+            </DropdownMenuItem>
+          )}
+          {/* Зочинд захиалгаа олох цорын ганц ил зам — дугаар + утсаар хайна.
+              Нэвтэрсэн хүн дээрх «Миний захиалга»-аас шууд ордог тул давхар
+              мөр гаргахгүй. */}
+          {!profile && (
+            <DropdownMenuItem asChild>
+              <Link href="/order/find">
+                <PackageSearch /> Захиалга хайх
               </Link>
             </DropdownMenuItem>
           )}

@@ -1,6 +1,11 @@
 import { notFound } from "next/navigation";
 import { getOrderDetail } from "@/features/admin/api";
 import { formatPrice, formatDateTime } from "@/lib/format";
+import {
+  orderSummaryRows,
+  summarySource,
+  type OrderSummaryRow,
+} from "@/lib/orders/summary";
 import { PrintButton } from "@/features/admin/components/print-button";
 
 export default async function InvoicePage({
@@ -54,22 +59,23 @@ export default async function InvoicePage({
                 {i.brand} {i.product_name} ({i.ml}ml)
               </td>
               <td className="py-2 text-center">{i.qty}</td>
-              <td className="py-2 text-right">{formatPrice(i.unit_price)}</td>
-              <td className="py-2 text-right">{formatPrice(i.line_total)}</td>
+              {/* Үндсэн үнээр — багцын хямдрал доорх тоймд ганц мөр болно,
+                  ингэснээр баганын нийлбэр «Нийт үндсэн үнэ»-тэй таарна. */}
+              <td className="py-2 text-right">
+                {formatPrice(i.list_price ?? i.unit_price)}
+              </td>
+              <td className="py-2 text-right">
+                {formatPrice((i.list_price ?? i.unit_price) * i.qty)}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
 
       <div className="ml-auto w-56 space-y-1">
-        <Row label="Барааны дүн" value={formatPrice(order.subtotal)} />
-        {order.discount > 0 && (
-          <Row label="Хөнгөлөлт" value={`−${formatPrice(order.discount)}`} />
-        )}
-        {order.loyalty_used > 0 && (
-          <Row label="V point" value={`−${formatPrice(order.loyalty_used)}`} />
-        )}
-        <Row label="Хүргэлт" value={formatPrice(order.shipping_fee)} />
+        {orderSummaryRows(summarySource(order)).map((row) => (
+          <Row key={row.label} {...row} />
+        ))}
         <div className="border-border flex justify-between border-t pt-1 font-semibold">
           <span>Нийт төлөх</span>
           <span>{formatPrice(order.total)}</span>
@@ -81,9 +87,15 @@ export default async function InvoicePage({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, strong }: OrderSummaryRow) {
   return (
-    <div className="text-muted-foreground flex justify-between">
+    <div
+      className={
+        strong
+          ? "text-foreground flex justify-between"
+          : "text-muted-foreground flex justify-between"
+      }
+    >
       <span>{label}</span>
       <span>{value}</span>
     </div>
