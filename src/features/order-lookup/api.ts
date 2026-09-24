@@ -28,6 +28,8 @@ interface OrderRow {
   created_at: string;
   deliver_on: string | null;
   subtotal: number;
+  gross_subtotal: number | null;
+  coupon_code: string | null;
   shipping_fee: number;
   discount: number;
   loyalty_used: number;
@@ -36,7 +38,7 @@ interface OrderRow {
 }
 
 const SELECT =
-  "id, order_no, status, payment_status, created_at, deliver_on, subtotal, shipping_fee, discount, loyalty_used, total, pay_token";
+  "id, order_no, status, payment_status, created_at, deliver_on, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, pay_token";
 
 export async function getOrderStatusByToken(
   token: string,
@@ -86,6 +88,8 @@ export async function getOrderStatusByToken(
     deliverOn: order.deliver_on,
     lines,
     subtotal: order.subtotal,
+    grossSubtotal: order.gross_subtotal,
+    couponCode: order.coupon_code,
     shippingFee: order.shipping_fee,
     discount: order.discount,
     loyaltyUsed: order.loyalty_used,

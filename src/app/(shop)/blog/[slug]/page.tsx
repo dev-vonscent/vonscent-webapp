@@ -3,6 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CONTENT_PAGES_HIDDEN } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { formatDate } from "@/lib/format";
 import { getBlogPost, getRelatedPosts } from "@/features/blog/api";
 import { JsonLd, articleJsonLd } from "@/components/shared/json-ld";
@@ -61,12 +69,19 @@ export default async function BlogPostPage({
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 md:px-8">
       <JsonLd data={articleJsonLd(post)} />
-      <nav className="text-muted-foreground mb-6 text-sm">
-        <Link href="/blog" className="hover:text-foreground">
-          Блог
-        </Link>{" "}
-        / <span className="text-foreground">{post.title}</span>
-      </nav>
+      <Breadcrumb aria-label="Замын мөр" className="mb-6">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link href="/blog">Блог</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{post.title}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       <Badge variant="secondary">{post.category}</Badge>
       <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight sm:text-4xl">

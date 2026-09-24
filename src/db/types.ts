@@ -198,6 +198,11 @@ export interface OrderRow {
   ship_zone: string | null;
   note: string | null;
   subtotal: number;
+  /**
+   * Багцын хямдралын өмнөх барааны дүн — sum(list_price * qty), 0097.
+   * `gross_subtotal − subtotal` нь багцын хямдрал. Хуучин захиалгад null.
+   */
+  gross_subtotal: number | null;
   shipping_fee: number;
   discount: number;
   loyalty_used: number;
@@ -275,9 +280,14 @@ export interface OrderItemRow {
   brand: string;
   ml: number;
   unit_price: number;
+  /** Хямдраагүй нэгж үнэ (0097). Багцын гишүүнд л unit_price-аас их. */
+  list_price: number | null;
   qty: number;
   is_sample: boolean;
   line_total: number;
+  collection_id: string | null;
+  collection_name: string | null;
+  is_gift: boolean;
 }
 
 export interface CouponRow {

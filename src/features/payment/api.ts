@@ -27,6 +27,8 @@ interface OrderRow {
   order_no: string;
   user_id: string | null;
   subtotal: number;
+  gross_subtotal: number | null;
+  coupon_code: string | null;
   shipping_fee: number;
   discount: number;
   loyalty_used: number;
@@ -43,16 +45,18 @@ interface ItemRow {
   brand: string;
   ml: number;
   qty: number;
+  unit_price: number;
+  list_price: number | null;
   line_total: number;
   is_sample: boolean;
   collection_name: string | null;
 }
 
 const SELECT =
-  "id, order_no, user_id, subtotal, shipping_fee, discount, loyalty_used, total, status, payment_method, payment_status, deliver_on";
+  "id, order_no, user_id, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, status, payment_method, payment_status, deliver_on";
 
 const ITEM_SELECT =
-  "product_id, product_name, brand, ml, qty, line_total, is_sample, collection_name";
+  "product_id, product_name, brand, ml, qty, unit_price, list_price, line_total, is_sample, collection_name";
 
 /**
  * The order's lines, with a product image where the product still exists.
@@ -83,6 +87,10 @@ export async function paymentLines(
     ml: r.ml,
     qty: r.qty,
     lineTotal: r.line_total,
+    // Мөр нь үндсэн үнээрээ бичигдэнэ — багцын хямдрал доор тусдаа мөр
+    // болж гарах тул. 0097-оос өмнөх захиалгад `list_price` алга: тэр үед
+    // хямдарсан дүн нь өөрөө цорын ганц мэдэгдэж буй үнэ.
+    baseTotal: (r.list_price ?? r.unit_price) * r.qty,
     isSample: r.is_sample,
     collectionName: r.collection_name,
     image: r.product_id ? (imageById.get(r.product_id) ?? null) : null,
@@ -154,6 +162,8 @@ export async function getPaymentByToken(
     total: order.total,
     lines,
     subtotal: order.subtotal,
+    grossSubtotal: order.gross_subtotal,
+    couponCode: order.coupon_code,
     shippingFee: order.shipping_fee,
     discount: order.discount,
     loyaltyUsed: order.loyalty_used,
