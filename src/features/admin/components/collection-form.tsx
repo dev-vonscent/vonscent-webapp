@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CustomTagField } from "./custom-tag-field";
+import { CollectionImageGenerator } from "./collection-image-generator";
 import { useToggleList } from "./multi-check";
 import { IMAGE_ACCEPT } from "@/lib/storage/limits";
 import { prepareUpload } from "@/lib/storage/prepare-upload";
@@ -388,6 +389,13 @@ export function CollectionForm({
             value={form.imageUrl}
             onChange={(url) => setForm((f) => ({ ...f, imageUrl: url }))}
           />
+          {collection && (
+            <CollectionImageGenerator
+              collectionId={collection.id}
+              value={form.imageUrl}
+              onUse={(url) => setForm((f) => ({ ...f, imageUrl: url }))}
+            />
+          )}
         </CardContent>
       </Card>
 
