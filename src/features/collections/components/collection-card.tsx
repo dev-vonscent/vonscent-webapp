@@ -3,22 +3,21 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/format";
 import { GENDER_LABEL } from "@/lib/constants";
-import { cn } from "@/lib/utils";
 import type { Collection } from "../types";
 import { formatDiscountRange } from "@/features/collections/pricing";
 
-/** A bundle card led by its poster image, with the member bottles as a small
- * avatar strip so the buyer still sees what's inside. */
+/** A bundle card: the poster image with the name and starting price over a
+ * dark shade along its bottom edge. The poster already shows the four
+ * bottles, so the card adds no member strip or shade over it. */
 export function CollectionCard({ collection }: { collection: Collection }) {
   const start = collection.startingPrice;
   const startMl = collection.availableMls[0];
-  const members = collection.members.slice(0, 4);
 
   return (
     <div className="group flex flex-col">
       <Link
         href={`/collections/${collection.slug}`}
-        className="group-hover:shadow-lift relative block aspect-square overflow-hidden rounded-2xl transition-all duration-300 active:scale-[0.99]"
+        className="group-hover:shadow-lift bg-muted relative block aspect-square overflow-hidden rounded-2xl transition-all duration-300 active:scale-[0.99]"
       >
         {collection.image && (
           <Image
@@ -29,7 +28,6 @@ export function CollectionCard({ collection }: { collection: Collection }) {
             className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           />
         )}
-        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/65 via-black/5 to-transparent" />
 
         {/* Badges */}
         <div className="absolute top-3 left-3 flex flex-col gap-1.5">
@@ -40,36 +38,32 @@ export function CollectionCard({ collection }: { collection: Collection }) {
           )}
         </div>
 
-        {/* Member bottles peeking at the bottom of the poster.
-
-            Хэмжээ нь 32px байсан: постерын зураг 400px өндөр байхад тэдгээр
-            нь «чимэг цэг» болж, аль ус болох нь танигдахаа больдог байв.
-            Багцын гол асуулт нь «дотор нь юу байгаа юм бэ» тул эдгээр нь
-            уншигдах ёстой — 44px дээр савны хэлбэр, өнгө нь ялгардаг. */}
-        <div className="absolute bottom-3 left-3 flex items-center">
-          {members.map((m, i) => (
-            <span
-              key={m.productId}
-              className={cn(
-                "border-background/80 bg-muted relative size-11 overflow-hidden rounded-full border-2 shadow-sm",
-                i > 0 && "-ml-3",
-              )}
-              style={{ zIndex: members.length - i }}
-            >
-              {m.image && (
-                <Image
-                  src={m.image.url}
-                  alt={m.name}
-                  fill
-                  sizes="44px"
-                  className="object-cover"
-                />
-              )}
+        {/* Мэдээлэл зурагны доод хэсэгт, доороос дээш бүдгэрэх хар
+            gradient дээр — ямар ч өнгөтэй poster дээр цагаан текст
+            уншигдана. Poster-ийн prompt савнуудын доор 30% зай үлдээдэг тул
+            текст савыг халхлахгүй. */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-black/75 via-black/30 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4">
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <span className="text-xs leading-none tracking-[0.15em] text-white/75 uppercase">
+              {GENDER_LABEL[collection.gender]}
             </span>
-          ))}
-          <span className="ml-2.5 text-sm font-medium text-white/90">
-            {collection.members.length} үнэртэн
-          </span>
+            <span className="block truncate font-serif text-xl/tight font-medium text-white">
+              {collection.name}
+            </span>
+          </div>
+          {/* «109,300₮» дангаараа «2ml нь 109,300₮» гэж уншигдана — доорх
+              мөр нь тэр дүн юуны үнэ болохыг хэлнэ (үнэртний тоо × хэмжээ). */}
+          {!collection.soldOut && start > 0 && (
+            <span className="flex shrink-0 flex-col items-end gap-1.5">
+              <span className="text-base leading-none font-semibold tracking-tight text-white">
+                {formatPrice(start)}-өөс
+              </span>
+              <span className="text-sm leading-none text-white/75">
+                {collection.members.length} × {startMl}ml
+              </span>
+            </span>
+          )}
         </div>
 
         {collection.soldOut && (
@@ -80,37 +74,6 @@ export function CollectionCard({ collection }: { collection: Collection }) {
           </div>
         )}
       </Link>
-
-      {/* Хоёр багана хоёулаа «жижиг шошго → гол мөр» бүтэцтэй тул мөр
-          хоорондын зай нь хоёуланд нь ижил байх ёстой: `leading-none` дээр
-          flex gap нэмж зайг нүдээр биш, тоогоор тэнцүүлнэ (нэрийн мөр нь
-          `truncate`-тай учир доод уртыг нь хайчлахгүйн тулд `tight`, түүний
-          2px-ийг баруун баганын gap-аас нөхнө). */}
-      <div className="mt-3 flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-1">
-          <span className="text-muted-foreground text-[11px] leading-none tracking-[0.15em] uppercase">
-            {GENDER_LABEL[collection.gender]}
-          </span>
-          <Link
-            href={`/collections/${collection.slug}`}
-            className="hover:text-gold-strong block truncate font-serif text-base/tight font-medium transition-colors"
-          >
-            {collection.name}
-          </Link>
-        </div>
-        {/* «109,300₮» дангаараа «2ml нь 109,300₮» гэж уншигдана — доорх мөр
-            нь тэр дүн юуны үнэ болохыг хэлнэ (үнэртний тоо × хэмжээ). */}
-        {!collection.soldOut && start > 0 && (
-          <span className="flex shrink-0 flex-col items-end gap-1.5">
-            <span className="text-foreground/80 text-sm leading-none font-semibold tracking-tight">
-              {formatPrice(start)}-өөс
-            </span>
-            <span className="text-muted-foreground text-xs leading-none">
-              {collection.members.length} × {startMl}ml
-            </span>
-          </span>
-        )}
-      </div>
     </div>
   );
 }

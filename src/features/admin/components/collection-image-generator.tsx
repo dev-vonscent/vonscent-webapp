@@ -28,7 +28,8 @@ const isBusy = (s: JobStatus) => s === "pending" || s === "generating";
  * Барааны зургийн студитэй ижил урсгал: товч дарахад сервер дараалалд
  * оруулж, энд 4 секунд тутам шалгана. Prompt, лавлахыг сервер өөрөө
  * бүрдүүлдэг — гишүүн дөрвөн барааны үндсэн зураг + хадгалсан нэр, тайлбар.
- * Үр дүн дээр «Ашиглах» дарвал формын зураг солигдоно; хадгалах хүртэл
+ * Багц зураггүй бол эхний үр дүн сервер дээр шууд багцын зураг болно.
+ * Бусад үед «Ашиглах» дарвал формын зураг солигдоно; хадгалах хүртэл
  * дэлгүүрт харагдахгүй.
  */
 export function CollectionImageGenerator({
@@ -45,11 +46,22 @@ export function CollectionImageGenerator({
   const [starting, setStarting] = React.useState(false);
   const [note, setNote] = React.useState<string | null>(null);
 
+  // Сүүлийн утгуудыг ref-ээр — `load` нь polling-ийн interval дотор амьдардаг.
+  const latest = React.useRef({ value, onUse });
+  React.useEffect(() => {
+    latest.current = { value, onUse };
+  });
+
   const load = React.useCallback(async () => {
-    const r = await adminFetch<{ jobs?: Job[] }>(
+    const r = await adminFetch<{ jobs?: Job[]; imageUrl?: string | null }>(
       `/api/admin/collections/${collectionId}/generate-image`,
     );
-    if (r.ok) setJobs(r.data?.jobs ?? []);
+    if (!r.ok) return;
+    setJobs(r.data?.jobs ?? []);
+    // Зураггүй багцад үр дүн сервер дээр шууд хадгалагдсан — формд ч
+    // тусгана, эс бөгөөс «Хадгалах» нь хоосон зургаар дарж бичнэ.
+    const saved = r.data?.imageUrl;
+    if (saved && !latest.current.value) latest.current.onUse(saved);
   }, [collectionId]);
 
   // Эхний уншилт шууд — өмнө үүсгэсэн зургууд хуудас нээгдэхэд харагдана.
@@ -101,7 +113,8 @@ export function CollectionImageGenerator({
           <h3 className="text-sm font-medium">AI poster</h3>
           <p className="text-muted-foreground text-xs">
             Дөрвөн үнэртний үндсэн зургийг лавлах болгож, хадгалсан нэр,
-            тайлбараас дүр зургийг үүсгэнэ. Нэг зураг 1–2 минут.
+            тайлбараас дүр зургийг үүсгэнэ. Нэг зураг 2 минут орчим. Багц
+            зураггүй бол үр дүн нь шууд багцын зураг болж хадгалагдана.
           </p>
         </div>
         <Button
@@ -128,7 +141,8 @@ export function CollectionImageGenerator({
       {visible.length > 0 && (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {visible.map((job) => {
-            const selected = Boolean(job.result_url) && job.result_url === value;
+            const selected =
+              Boolean(job.result_url) && job.result_url === value;
             return (
               <li key={job.id} className="space-y-1.5">
                 <div
