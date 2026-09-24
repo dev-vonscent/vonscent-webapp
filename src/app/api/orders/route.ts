@@ -14,11 +14,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { callRpc } from "@/lib/supabase/rpc";
 import { RESERVE_TIMEOUT_MINUTES } from "@/lib/constants";
-import { env } from "@/lib/env";
 import { isQpayMockMode } from "@/lib/payments/qpay";
 import { ensureInvoice } from "@/lib/payments/invoice";
-import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
-import { formatPrice } from "@/lib/format";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
 import { earliestDeliveryDay, latestDeliveryDay } from "@/lib/time";
 import { enforceRateLimit } from "@/lib/rate-limit";
@@ -321,22 +318,10 @@ export async function POST(req: Request) {
     // өөр буцах хаалга байхгүй. Best-effort: имэйл унасан ч захиалга зогсохгүй.
     if (order) await sendOrderCustomerEmail(order.id, "placed");
 
-    // Best-effort admin ping (no-op until Telegram env is set).
-    const itemList = allLines
-      .map(
-        (l) =>
-          `• ${tgEscape(l.name)} ${l.ml}ml × ${l.qty}` +
-          (l.isGift ? " 🎁" : ""),
-      )
-      .join("\n");
-    await notifyAdmin(
-      `🛒 <b>Шинэ захиалга</b> — ${tgEscape(orderNo)}\n` +
-        `👤 ${tgEscape(input.contactName)} · ${tgEscape(input.contactPhone)}\n` +
-        `📍 ${tgEscape([input.shipCity, input.shipDistrict, input.shipDetail].filter(Boolean).join(", "))}\n\n` +
-        `${itemList}\n\n` +
-        `💰 ${formatPrice(total)} · ${input.paymentMethod === "qpay" ? "QPay" : "Банкны шилжүүлэг"}` +
-        (order?.id ? `\n🔗 ${env.siteUrl}/admin/orders/${order.id}` : ""),
-    );
+    // Админ руу Telegram дохио ЭНД явуулахгүй. Захиалга үүсэх нь зөвхөн нөөц
+    // барьсан гэсэн үг — төлбөр ороогүй, reserve timeout-оор цуцлагдаж ч
+    // мэднэ. Дохио нь төлбөр баталгаажих мөчид, `confirm-order.ts`-ийн
+    // `commit()` дотроос нэг л удаа явна.
     // The browser only needs the token: the QR, the deeplinks and the live
     // payment state all come from the server when /pay/<token> renders.
     return NextResponse.json({
