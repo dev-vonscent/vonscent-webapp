@@ -11,29 +11,22 @@ import { ArrowRight, Plus } from "lucide-react";
  *
  * Багц угсрах нь жагсаалтын дараах алхам биш, жагсаалттай **зэрэгцээ зам**:
  * тиймээс шүүлтүүрээс ч дээр, сонголт эхлэхээс өмнө нь.
+ *
+ * Нэг мөр, нэг үйлдэл. Доор нь «4-с олон үнэртэн сонгоод 5% хямд» гэсэн
+ * тайлбар байсныг хаслаа: нөхцөлөө угсрах хуудас дээр нь бүрэн, зөв
+ * хэлдэг бөгөөд толгойд зөвхөн ЗАМ нь хэрэгтэй.
  */
-export function BuildRoutePanel({
-  minItems,
-  discountPct,
-}: {
-  minItems: number;
-  discountPct: number;
-}) {
+export function BuildRoutePanel() {
   return (
     <Link
       href="/collections/build"
-      className="group bg-secondary hover:bg-accent flex items-center gap-4 rounded-2xl p-5 transition-colors active:scale-[0.99] md:w-80 md:shrink-0"
+      className="group bg-secondary hover:bg-accent flex items-center gap-3 rounded-2xl p-4 transition-colors active:scale-[0.99] md:w-72 md:shrink-0"
     >
-      <span className="bg-background/60 flex size-11 shrink-0 items-center justify-center rounded-full transition-transform duration-300 ease-out group-hover:scale-110">
-        <Plus className="size-5" />
+      <span className="bg-background/60 flex size-9 shrink-0 items-center justify-center rounded-full transition-transform duration-300 ease-out group-hover:scale-110">
+        <Plus className="size-4" />
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-base/tight font-medium">
-          Өөрөө багц угсрах
-        </span>
-        <span className="text-muted-foreground mt-1.5 block text-sm text-balance">
-          {minItems}-с олон үнэртэн сонгоод {discountPct}% хямдруулж аваарай
-        </span>
+      <span className="min-w-0 flex-1 text-sm font-medium">
+        Өөрөө багц угсрах
       </span>
       <ArrowRight className="text-muted-foreground group-hover:text-foreground size-4 shrink-0 transition-[color,transform] duration-300 ease-out group-hover:translate-x-1" />
     </Link>
