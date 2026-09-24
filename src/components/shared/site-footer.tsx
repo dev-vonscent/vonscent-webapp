@@ -4,6 +4,7 @@ import { Logo } from "./logo";
 import { SITE } from "@/lib/constants";
 import { getSocialSettings } from "@/features/content/api";
 import { NewsletterForm } from "./newsletter-form";
+import { OrderTrackLink } from "./order-track-link";
 
 const COLUMNS = [
   {
@@ -21,8 +22,9 @@ const COLUMNS = [
     links: [
       { href: "/faq", label: "Түгээмэл асуулт" },
       { href: "/contact", label: "Холбоо барих" },
-      { href: "/account/orders", label: "Захиалга хянах" },
     ],
+    // Нэвтэрсэн эсэхээс хамаарах тул баганын доор тусдаа зурагдана.
+    trackOrder: true,
   },
 ];
 
@@ -86,6 +88,11 @@ export async function SiteFooter() {
                     </Link>
                   </li>
                 ))}
+                {col.trackOrder && (
+                  <li>
+                    <OrderTrackLink className="text-muted-foreground hover:text-foreground text-sm transition-colors" />
+                  </li>
+                )}
               </ul>
             </div>
           ))}

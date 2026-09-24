@@ -3,6 +3,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { getCollectionBySlug } from "@/features/collections/api";
 import { CollectionDetail } from "@/features/collections/components/collection-detail";
 import { GENDER_LABEL } from "@/lib/constants";
@@ -41,16 +49,25 @@ export default async function CollectionPage({
 
   return (
     <div className="mx-auto max-w-352 p-4 sm:py-8 md:px-8">
-      <nav className="text-muted-foreground mb-6 hidden text-sm sm:block">
-        <Link href="/" className="hover:text-foreground">
-          Нүүр
-        </Link>{" "}
-        /{" "}
-        <Link href="/collections" className="hover:text-foreground">
-          Багц
-        </Link>{" "}
-        / <span className="text-foreground">{collection.name}</span>
-      </nav>
+      <Breadcrumb aria-label="Замын мөр" className="mb-6 hidden sm:block">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link href="/">Нүүр</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link href="/collections">Багц</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{collection.name}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       <div className="grid gap-6 sm:gap-10 lg:grid-cols-2 lg:items-start">
         {/* Cover */}

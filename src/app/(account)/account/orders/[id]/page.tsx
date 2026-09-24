@@ -8,6 +8,12 @@ import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
 import { getProductsByIds } from "@/features/products/api";
 import { formatPrice, formatDateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import {
+  orderSummaryRows,
+  summarySource,
+  type OrderSummaryRow,
+} from "@/lib/orders/summary";
 import {
   DISPATCH_HOUR,
   deliveryDayOf,
@@ -137,7 +143,7 @@ export default async function OrderDetailPage({
                     )}
                   </span>
                   <span className="font-medium">
-                    {formatPrice(i.line_total)}
+                    {formatPrice((i.list_price ?? i.unit_price) * i.qty)}
                   </span>
                 </div>
               ))}
@@ -173,11 +179,9 @@ export default async function OrderDetailPage({
 
           {openStatus && !beforeCutoff && (
             <p className="bg-secondary text-muted-foreground rounded-xl px-4 py-3 text-sm">
-              Захиалга бэлтгэгдэж эхэлсэн тул ({formatEditCutoff(
-                deliveryDayOf(order),
-              )}{" "}
-              өнгөрсөн) цуцлах, өөрчлөх боломжгүй. Асуудал гарвал пэйж чат
-              эсвэл утсаар холбогдоно уу.
+              Захиалга бэлтгэгдэж эхэлсэн тул (
+              {formatEditCutoff(deliveryDayOf(order))} өнгөрсөн) цуцлах, өөрчлөх
+              боломжгүй. Асуудал гарвал пэйж чат эсвэл утсаар холбогдоно уу.
             </p>
           )}
 
@@ -198,27 +202,9 @@ export default async function OrderDetailPage({
               {/* Дараалал нь мөнгө хөдөлсний дараалал: барааны дүн → хасагдах
                   нь → нэмэгдэх хүргэлт → төлсөн дүн. Захиалгын тойм,
                   төлбөрийн хуудас, и-мэйл гурав нь энэ дараалалтай нэг мөр. */}
-              <Row label="Барааны дүн" value={formatPrice(order.subtotal)} />
-              {order.discount > 0 && (
-                <Row
-                  label="Хөнгөлөлт"
-                  value={`−${formatPrice(order.discount)}`}
-                />
-              )}
-              {order.loyalty_used > 0 && (
-                <Row
-                  label="V point"
-                  value={`−${formatPrice(order.loyalty_used)}`}
-                />
-              )}
-              <Row
-                label="Хүргэлт"
-                value={
-                  order.shipping_fee === 0
-                    ? "Үнэгүй"
-                    : `+${formatPrice(order.shipping_fee)}`
-                }
-              />
+              {orderSummaryRows(summarySource(order)).map((row) => (
+                <Row key={row.label} {...row} />
+              ))}
               <Separator />
               <div className="flex justify-between gap-3 font-semibold">
                 <span>Нийт төлөх</span>
@@ -270,11 +256,15 @@ export default async function OrderDetailPage({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, credit, strong }: OrderSummaryRow) {
   return (
     <div className="flex justify-between gap-3">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="tabular-nums">{value}</span>
+      <span className={strong ? "text-foreground" : "text-muted-foreground"}>
+        {label}
+      </span>
+      <span className={cn("tabular-nums", credit && "text-success")}>
+        {value}
+      </span>
     </div>
   );
 }
