@@ -130,7 +130,7 @@ export async function POST(
   return NextResponse.json({ jobId });
 }
 
-/** Энэ багцын сүүлийн оролдлогууд, шинэ нь эхэндээ. */
+/** Энэ багцын сүүлийн оролдлогууд (шинэ нь эхэндээ) ба одоогийн зураг. */
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -142,11 +142,19 @@ export async function GET(
   const supabase = createAdminClient();
   if (!supabase) return NextResponse.json({ error: "NO_DB" }, { status: 500 });
 
-  const { data } = await supabase
-    .from("collection_image_generations")
-    .select("id, status, result_url, error, created_at")
-    .eq("collection_id", id)
-    .order("created_at", { ascending: false })
-    .limit(HISTORY_LIMIT);
-  return NextResponse.json({ jobs: (data ?? []) as CollectionImageJob[] });
+  const [{ data }, { data: col }] = await Promise.all([
+    supabase
+      .from("collection_image_generations")
+      .select("id, status, result_url, error, created_at")
+      .eq("collection_id", id)
+      .order("created_at", { ascending: false })
+      .limit(HISTORY_LIMIT),
+    supabase.from("collections").select("image_url").eq("id", id).maybeSingle(),
+  ]);
+  return NextResponse.json({
+    jobs: (data ?? []) as CollectionImageJob[],
+    // Зураггүй багцад үр дүн автоматаар хадгалагддаг — форм үүнийг авч
+    // өөрийн утгаа шинэчилнэ, эс бөгөөс хадгалахад хоосноор дарж бичнэ.
+    imageUrl: (col as { image_url: string | null } | null)?.image_url ?? null,
+  });
 }

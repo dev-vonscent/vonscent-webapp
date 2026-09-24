@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadImage } from "@/lib/storage/storage";
+import { revalidatePublic } from "@/lib/cache";
 import { generateProductImage } from "./generate-image";
 
 /**
@@ -9,8 +10,9 @@ import { generateProductImage } from "./generate-image";
  * `after()` дотор service-role client-ээр ажиллана. Idempotent: аль хэдийн
  * `generating`/`done` болсон ажлыг алгасна.
  *
- * Үр дүн зөвхөн ажлын мөрөнд (`result_url`) бичигдэнэ; `collections.image_url`
- * руу админ «Ашиглах» дарж формоо хадгалсан үед л орно.
+ * Үр дүн ажлын мөрөнд (`result_url`) бичигдэнэ. Багц зураггүй бол
+ * `collections.image_url` болж шууд хадгалагдана; зурагтай бол солихгүй —
+ * админ «Ашиглах» дарж формоо хадгалсан үед л солигдоно.
  */
 
 interface JobRow {
@@ -69,6 +71,16 @@ export async function processCollectionGeneration(
       .from("collection_image_generations")
       .update({ status: "done", result_url: uploaded.url, error: null })
       .eq("id", jobId);
+
+    // Зураггүй багц бол энэ зураг шууд багцын зураг болно. Нөхцөл нь UPDATE
+    // дотор — хооронд нь админ зураг оруулсан бол дарж бичихгүй.
+    const { data: adopted } = await supabase
+      .from("collections")
+      .update({ image_url: uploaded.url })
+      .eq("id", job.collection_id)
+      .or("image_url.is.null,image_url.eq.")
+      .select("id");
+    if (adopted?.length) revalidatePublic();
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     await supabase
