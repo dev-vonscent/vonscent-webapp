@@ -41,17 +41,10 @@ export default async function OrderDetailPage({
   const supabase = await createClient();
   if (!supabase) notFound();
 
-  // Жагсаалтын адил эзнээр нь шүүнэ — RLS ажилтанд бүх захиалгыг нээдэг тул
-  // хувийн хуудсаар дамжуулан бусдын захиалга нээгдэх ёсгүй. (Ажилтан
-  // бусдын захиалгыг `/admin/orders`-оор хардаг.)
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) notFound();
-
   const { data: orderData } = await supabase
     .from("orders")
     .select("*")
     .eq("id", id)
-    .eq("user_id", auth.user.id)
     .maybeSingle();
   const order = orderData as OrderRow | null;
   if (!order) notFound();
