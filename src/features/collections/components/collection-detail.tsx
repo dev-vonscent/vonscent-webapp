@@ -172,18 +172,11 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
 
   return (
     <div className="space-y-6">
-      {/* Live price — updates with ml selection.
-          Дүнгийн хажууд «{n} үнэртэн × {ml}ml» гэж бичихгүй бол 2мл → 20мл
-          хооронд үнэ гурав дахин өсөх нь тайлбаргүй үсрэлт мэт харагдана. */}
+      {/* Live price — updates with ml selection. */}
       <div className="space-y-1" aria-live="polite">
-        <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
-          <span className="font-serif text-3xl font-semibold">
-            {formatPrice(priceRow?.price ?? 0)}
-          </span>
-          <span className="text-muted-foreground pb-1 text-sm">
-            {collection.members.length} үнэртэн × {ml}ml
-          </span>
-        </div>
+        <span className="font-serif text-3xl font-semibold">
+          {formatPrice(priceRow?.price ?? 0)}
+        </span>
         {priceRow && priceRow.saved > 0 && (
           <p className="text-muted-foreground text-sm text-pretty">
             Тусад нь авбал{" "}
@@ -198,36 +191,10 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
         )}
       </div>
 
-      {collection.description && (
-        <div className="space-y-1">
-          <p
-            className={cn(
-              "text-foreground/80 text-sm/relaxed",
-              !descOpen && "line-clamp-4",
-            )}
-          >
-            {collection.description}
-          </p>
-          {collection.description.length > DESCRIPTION_CLAMP_CHARS && (
-            <button
-              type="button"
-              onClick={() => setDescOpen((v) => !v)}
-              aria-expanded={descOpen}
-              className="text-gold-strong text-sm font-medium underline underline-offset-4"
-            >
-              {descOpen ? "Хураах" : "Дэлгэрэнгүй"}
-            </button>
-          )}
-        </div>
-      )}
-
       {/* ml segment */}
       <div className="space-y-3">
         <p id="bundle-size-label" className="text-sm font-medium">
-          Хэмжээ сонгох{" "}
-          <span className="text-muted-foreground font-normal">
-            — үнэртэн тус бүрд
-          </span>
+          Хэмжээ сонгох
         </p>
         {/*
           Дөрвүүлээ нэг мөрөнд: хоёр мөр болмогц сүүлчийн хэмжээ (хамгийн
@@ -257,7 +224,7 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
                 className={cn(
                   "flex flex-col items-center rounded-lg p-2 transition-colors",
                   !p.available
-                    ? "bg-muted text-muted-foreground cursor-not-allowed line-through"
+                    ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
                     : active
                       ? // Цул гадаргуу — «сонгогдсон» нь бүдэг өнгө биш,
                         // эргэсэн өнгө байх ёстой (/collections/build-тэй ижил).
@@ -265,7 +232,17 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
                       : "bg-secondary hover:bg-accent",
                 )}
               >
-                <span className="text-sm font-semibold">{p.ml}ml</span>
+                {/* Зураас нь ЗӨВХӨН хэмжээн дээр — «Байхгүй» гэдэг үг өөрөө
+                    төлвийг хэлж байгаа тул түүнийг дээрээс нь зурвал зүгээр
+                    л уншихад хэцүү болно. */}
+                <span
+                  className={cn(
+                    "text-sm font-semibold",
+                    !p.available && "line-through",
+                  )}
+                >
+                  {p.ml}ml
+                </span>
                 <span
                   className={cn(
                     "text-xs",
@@ -280,13 +257,40 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
         </div>
       </div>
 
+      {/* Тайлбар нь ХЭМЖЭЭНИЙ доор, гишүүдийн дээр.
+
+          Үнэ ба хэмжээ хоёрын хооронд байхад худалдан авалтын гинжийг дунд
+          нь тасалдаг байв. Энд бол хэмжээгээ сонгосны дараа «тэгээд энэ багц
+          юу юм бэ» гэсэн асуулт төрөх мөч: тайлбар нь доорх гишүүдийн
+          жагсаалтыг угтах танилцуулга болж, «Захиалах» товчийг ч доош
+          шахахгүй. */}
+      {collection.description && (
+        <div className="space-y-1">
+          <p
+            className={cn(
+              "text-muted-foreground text-sm/relaxed text-pretty",
+              !descOpen && "line-clamp-3",
+            )}
+          >
+            {collection.description}
+          </p>
+          {collection.description.length > DESCRIPTION_CLAMP_CHARS && (
+            <button
+              type="button"
+              onClick={() => setDescOpen((v) => !v)}
+              aria-expanded={descOpen}
+              className="text-gold-strong text-sm font-medium underline underline-offset-4"
+            >
+              {descOpen ? "Хураах" : "Дэлгэрэнгүй"}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Members */}
       <div className="space-y-3">
         <p className="text-sm font-medium">
-          Багцын үнэртэн ({collection.members.length}){" "}
-          <span className="text-muted-foreground font-normal">
-            — тус бүр {ml}ml
-          </span>
+          Багцын үнэртэн ({collection.members.length})
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
           {collection.members.map((m) => (

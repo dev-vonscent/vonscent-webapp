@@ -40,14 +40,19 @@ export function CollectionCard({ collection }: { collection: Collection }) {
           )}
         </div>
 
-        {/* Member bottles peeking at the bottom of the poster */}
+        {/* Member bottles peeking at the bottom of the poster.
+
+            Хэмжээ нь 32px байсан: постерын зураг 400px өндөр байхад тэдгээр
+            нь «чимэг цэг» болж, аль ус болох нь танигдахаа больдог байв.
+            Багцын гол асуулт нь «дотор нь юу байгаа юм бэ» тул эдгээр нь
+            уншигдах ёстой — 44px дээр савны хэлбэр, өнгө нь ялгардаг. */}
         <div className="absolute bottom-3 left-3 flex items-center">
           {members.map((m, i) => (
             <span
               key={m.productId}
               className={cn(
-                "border-background/80 bg-muted relative size-8 overflow-hidden rounded-full border-2 shadow-sm",
-                i > 0 && "-ml-2.5",
+                "border-background/80 bg-muted relative size-11 overflow-hidden rounded-full border-2 shadow-sm",
+                i > 0 && "-ml-3",
               )}
               style={{ zIndex: members.length - i }}
             >
@@ -56,13 +61,13 @@ export function CollectionCard({ collection }: { collection: Collection }) {
                   src={m.image.url}
                   alt={m.name}
                   fill
-                  sizes="32px"
+                  sizes="44px"
                   className="object-cover"
                 />
               )}
             </span>
           ))}
-          <span className="ml-2 text-xs font-medium text-white/90">
+          <span className="ml-2.5 text-sm font-medium text-white/90">
             {collection.members.length} үнэртэн
           </span>
         </div>
