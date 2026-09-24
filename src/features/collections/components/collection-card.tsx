@@ -18,7 +18,7 @@ export function CollectionCard({ collection }: { collection: Collection }) {
     <div className="group flex flex-col">
       <Link
         href={`/collections/${collection.slug}`}
-        className="group-hover:shadow-lift relative block aspect-3/2 overflow-hidden rounded-2xl transition-all duration-300 active:scale-[0.99]"
+        className="group-hover:shadow-lift relative block aspect-square overflow-hidden rounded-2xl transition-all duration-300 active:scale-[0.99]"
       >
         {collection.image && (
           <Image
