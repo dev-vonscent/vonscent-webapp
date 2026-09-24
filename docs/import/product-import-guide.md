@@ -192,7 +192,7 @@ pnpm db:regen-images <slug> <slug>      # зөвхөн заасныг (алда�
 pnpm db:regen-images --rollback         # хуучин зургийг буцаах
 ```
 
-`gpt-image-1.5` · `1024x1024` · `quality=high`. **Төлбөртэй** — бараа тутамд
+`gpt-image-2` · `1024x1024` · `quality=high`. **Төлбөртэй** — бараа тутамд
 нэг генерац.
 
 ### Квот
