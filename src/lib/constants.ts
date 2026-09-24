@@ -63,6 +63,20 @@ export const DEFAULT_LOW_STOCK_ML = 50;
 export const GIFT_THRESHOLD = 200_000;
 export const GIFT_SAMPLE_ML = 1;
 
+/**
+ * Эрхийн дээд хязгаар. Босго нь шугаман тул 5М₮-ийн захиалга 25 ширхэг 1мл
+ * шаардах байсан — сан тэр болгоныг даахгүй, савлах ажил ч боломжгүй. 5 нь
+ * 1М₮ дээр дүүрнэ; түүнээс дээш дүн эрх нэмэхгүй.
+ */
+export const GIFT_MAX_SAMPLES = 5;
+
+/**
+ * Нэг уснаас хамгийн ихдээ хэдэн 1мл дээж. Сан цөөн устай үед (4 ус / 5 эрх)
+ * давхардал зөвшөөрөхгүй бол хэрэглэгчийн эрх чимээгүй үрэгддэг; хязгааргүй
+ * зөвшөөрвөл нэг ус хурдан дуусаж бэлгийн олон янз байдал алдагдана.
+ */
+export const GIFT_PER_PRODUCT_LIMIT = 2;
+
 export const GENDERS = ["male", "female", "unisex"] as const;
 export type Gender = (typeof GENDERS)[number];
 

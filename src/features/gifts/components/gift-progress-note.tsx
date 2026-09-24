@@ -2,8 +2,8 @@
 
 import { Gift } from "lucide-react";
 import { formatPrice } from "@/lib/format";
-import { GIFT_THRESHOLD } from "@/lib/constants";
-import { giftProgress } from "@/lib/gift";
+import { GIFT_MAX_SAMPLES, GIFT_THRESHOLD } from "@/lib/constants";
+import { giftProgress, giftSlotsFor } from "@/lib/gift";
 import { cn } from "@/lib/utils";
 import { useGiftPool } from "../use-gift-pool";
 
@@ -26,7 +26,13 @@ export function GiftProgressNote({
   const pool = useGiftPool();
   if (!pool?.enabled || subtotal <= 0) return null;
 
-  const { allowance, toNext } = giftProgress(subtotal);
+  const { toNext, atMax } = giftProgress(subtotal);
+  // Сангийн багтаамжаар хумигдсан ТОО — checkout дээр сонгож чадах тоотой нь
+  // яг ижил байх ёстой, эс тэгвэл сагс «5» гэж амлаад checkout «4» гэнэ.
+  const { allowance, cappedByPool } = giftSlotsFor(
+    subtotal,
+    pool.products.length,
+  );
   const ml = pool.sampleMl;
 
   return (
@@ -50,9 +56,13 @@ export function GiftProgressNote({
           </p>
         )}
         <p className="text-muted-foreground text-xs text-balance">
-          {allowance > 0
-            ? `Дахиад ${formatPrice(toNext)}-ийн бараа нэмбэл 1 дээж нэмэгдэнэ. `
-            : `Барааны дүн ${formatPrice(GIFT_THRESHOLD)} тутамд 1 дээж бэлгээр сонгоно. `}
+          {cappedByPool
+            ? `Бэлгийн санд одоогоор боломжтой нь ${allowance} ширхэг. `
+            : atMax
+              ? `Нэг захиалгад хамгийн ихдээ ${GIFT_MAX_SAMPLES} дээж. `
+              : allowance > 0
+                ? `Дахиад ${formatPrice(toNext)}-ийн бараа нэмбэл 1 дээж нэмэгдэнэ. `
+                : `Барааны дүн ${formatPrice(GIFT_THRESHOLD)} тутамд 1 дээж бэлгээр сонгоно. `}
           Купон ашиглавал эрхийг хямдарсан дүнгээр бодно.
         </p>
       </div>

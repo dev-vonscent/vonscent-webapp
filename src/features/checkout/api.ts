@@ -6,7 +6,7 @@ import {
   GIFT_SAMPLE_ML,
   SHIPPING_ZONES,
 } from "@/lib/constants";
-import { giftAllowanceFor } from "@/lib/gift";
+import { giftAllowanceFor, limitGiftPicks } from "@/lib/gift";
 import { getGiftSettings, getShippingSettings } from "@/features/content/api";
 import {
   getCollectionSettings,
@@ -54,9 +54,7 @@ export interface OrderSummary {
  * localStorage and can easily outlive the catalogue, and quietly charging for
  * whatever survived would ship an order nobody placed.
  */
-export async function priceLines(
-  items: OrderItemInput[],
-): Promise<{
+export async function priceLines(items: OrderItemInput[]): Promise<{
   lines: PricedLine[];
   missing: OrderItemInput[];
   stock: StockMap;
@@ -237,9 +235,14 @@ export async function priceCollectionLines(
 /**
  * Validate the buyer's 1ml gift picks and turn them into 0₮ lines.
  * `goodsAfterDiscount` is subtotal − coupon discount (shipping excluded) —
- * see giftAllowanceFor() in src/lib/gift.ts. Picks outside the admin's pool, duplicates, or picks
- * beyond the allowance are silently dropped — the order still goes through,
- * just without the invalid gift.
+ * see giftAllowanceFor() in src/lib/gift.ts. Picks outside the admin's pool, picks past the
+ * per-product limit, or picks beyond the allowance are silently dropped — the
+ * order still goes through, just without the invalid gift.
+ *
+ * Нэг ус олон удаа орж болно (`GIFT_PER_PRODUCT_LIMIT` хүртэл): сан 4 устай
+ * байхад 5 эрхтэй хэрэглэгчийн сүүлчийн эрх үрэгдэхгүй байх нь зорилго.
+ * Ижил ус нь нэг мөр болж qty-гаараа нэгдэнэ — order_items, савлалтын хуудсанд
+ * «1мл × 2» гэж нэг мөрөөр гарах нь ойлгомжтой.
  *
  * Энэ бол бэлгийн ЦОРЫН ГАНЦ эх сурвалж: багц дотроос ирсэн бэлэг байхгүй,
  * сан хоосон / унтраалттай бол бэлэг огт олгогдохгүй.
@@ -263,22 +266,28 @@ export async function priceGiftLines(
   const pool = new Set(settings.productIds);
 
   const products = await fetchProducts();
-  const out: PricedLine[] = [];
-  const seen = new Set<string>();
-  for (const id of giftProductIds) {
-    if (out.length >= allowance) break;
-    if (seen.has(id) || !pool.has(id)) continue;
-    seen.add(id);
+  // `taken` нь тухайн уснаас энэ захиалгад аль хэдийн өгсөн бэлгийн тоо —
+  // хоёр дахь ширхэгт нь эх савнаас дахин 1мл үлдсэн байх ёстой.
+  const picks = limitGiftPicks(giftProductIds, allowance, (id, taken) => {
+    if (!pool.has(id)) return false;
     const p = products.find((x) => x.id === id);
-    if (!p || p.soldOut) continue;
-    if (p.availableMl - (usedMl.get(p.id) ?? 0) < GIFT_SAMPLE_ML) continue;
+    if (!p || p.soldOut) return false;
+    const left =
+      p.availableMl - (usedMl.get(p.id) ?? 0) - taken * GIFT_SAMPLE_ML;
+    return left >= GIFT_SAMPLE_ML;
+  });
+
+  const out: PricedLine[] = [];
+  for (const [id, qty] of picks) {
+    const p = products.find((x) => x.id === id);
+    if (!p) continue;
     out.push({
       productId: p.id,
       variantId: "",
       name: p.name,
       brand: p.brand,
       ml: GIFT_SAMPLE_ML,
-      qty: 1,
+      qty,
       unitPrice: 0,
       lineTotal: 0,
       collectionId: null,
@@ -474,10 +483,7 @@ export async function computeSummary(
   // Хэмжээ тус бүр «зарагдана» гээд нийлбэр нь эх савыг хэтрүүлж болно
   // (10ml×2, эсвэл 10ml + 5ml). Үүнийг энд барихгүй бол хэрэглэгч бүх
   // маягтаа бөглөж дуусаад place_order-ийн ерөнхий алдаанд унана.
-  const stock: StockMap = new Map([
-    ...itemResult.stock,
-    ...bundleResult.stock,
-  ]);
+  const stock: StockMap = new Map([...itemResult.stock, ...bundleResult.stock]);
   const shortages = findStockShortages(lines, stock);
   if (shortages.length > 0) throw new InsufficientStockError(shortages);
   const subtotal = lines.reduce((s, l) => s + l.lineTotal, 0);
