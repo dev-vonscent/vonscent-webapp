@@ -26,6 +26,7 @@ import { ThemeSwitcher } from "@/components/shared/theme-switcher";
 import { createClient } from "@/lib/supabase/browser";
 import { useIsStaff } from "@/features/account/use-staff";
 import { useSignOutConfirm } from "@/features/account/components/use-sign-out-confirm";
+import { LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
 
 interface Profile {
   name: string;
@@ -160,7 +161,7 @@ export function ProfileMenu() {
               </Link>
             </DropdownMenuItem>
           )}
-          {profile && (
+          {profile && !LUCKY_WHEEL_HIDDEN && (
             <DropdownMenuItem asChild>
               <Link href="/lucky-wheel">
                 <Disc3 /> Азын хүрд
