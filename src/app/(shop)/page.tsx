@@ -251,12 +251,21 @@ export default function HomePage() {
                 href={`/catalog?gender=${g}`}
                 className="group bg-secondary hover:shadow-lift relative flex aspect-3/4 flex-col justify-end overflow-hidden rounded-2xl p-5 transition-all hover:-translate-y-1 sm:aspect-3/2"
               >
+                {/* Mobile's 3:4 tile shows the full-body art too small, so it
+                    uses the quiz's face-only 3:4 crop; sm+ keeps the 3:2 art. */}
                 <Image
-                  src={`/gender-${g}.webp`}
+                  src={`/quiz/gender-${g}-face.webp`}
                   alt={GENDER_LABEL[g]}
                   fill
-                  sizes="(max-width: 640px) 33vw, 360px"
-                  className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                  sizes="33vw"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105 sm:hidden"
+                />
+                <Image
+                  src={`/gender-${g}.webp`}
+                  alt=""
+                  fill
+                  sizes="360px"
+                  className="hidden object-cover object-top transition-transform duration-500 group-hover:scale-105 sm:block"
                 />
                 <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/40 to-black/15" />
                 <span
