@@ -75,7 +75,7 @@ export default function AdminLoyaltyPage() {
       <h1 className="font-serif text-2xl font-semibold">V point тохиргоо</h1>
       <Card>
         <CardContent className="space-y-5 p-6">
-          <form onSubmit={save} className="space-y-4">
+          <form onSubmit={save} noValidate className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Оноо авах нэгж (₮ тутамд)</Label>

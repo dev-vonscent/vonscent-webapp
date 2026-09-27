@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { fieldErrorClass } from "@/components/ui/form-field";
 import { useRouter } from "next/navigation";
 import { adminFetch, mutate, mutateJson } from "@/features/admin/lib/mutate";
 import { toast } from "@/lib/toast";
@@ -42,6 +43,7 @@ export function CouponManager({
   const [confirm, confirmDialog] = useConfirm();
   const [showForm, setShowForm] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
+  const [codeError, setCodeError] = React.useState<string>();
   const [form, setForm] = React.useState({
     code: "",
     type: "percent",
@@ -64,6 +66,10 @@ export function CouponManager({
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
+    if (!form.code.trim()) {
+      setCodeError("Код оруулна уу.");
+      return;
+    }
     setBusy(true);
     try {
       const res = await adminFetch<{ id?: string }>("/api/admin/coupons", {
@@ -154,12 +160,19 @@ export function CouponManager({
       {showForm && (
         <Card>
           <CardContent className="p-6">
-            <form onSubmit={create} className="grid gap-4 sm:grid-cols-2">
-              <Field label="Код">
+            <form
+              onSubmit={create}
+              noValidate
+              className="grid gap-4 sm:grid-cols-2"
+            >
+              <Field label="Код" error={codeError}>
                 <Input
                   value={form.code}
-                  onChange={(e) => set("code", e.target.value)}
-                  required
+                  className={fieldErrorClass(codeError)}
+                  onChange={(e) => {
+                    set("code", e.target.value);
+                    setCodeError(undefined);
+                  }}
                 />
               </Field>
               <Field label="Төрөл">
@@ -232,10 +245,7 @@ export function CouponManager({
                   ажиллана.
                 </p>
               </Field>
-              <Field
-                label="Дуусах огноо"
-                hint="Хоосон бол хугацаагүй."
-              >
+              <Field label="Дуусах огноо" hint="Хоосон бол хугацаагүй.">
                 <DatePicker
                   value={form.endsAt}
                   placeholder="Хугацаагүй"
