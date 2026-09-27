@@ -31,7 +31,14 @@ export default function ShopLayout({
       {/* Хамгийн эхний фокус авах элемент байх ёстой тул толгойн ӨМНӨ. */}
       <SkipLink />
       <SiteHeader />
-      <main id="main" className="flex-1 pb-24 md:pb-0">
+      {/* Утсан дээрх `pb-24` нь доод навигацад контент дарагдахгүй байх зай.
+          Footer-той (нүүр) хуудсанд тэр зай footer-ийн доор очно — эс бөгөөс
+          сүүлийн хэсэг ба footer-ийн хооронд 96px хоосон зай үүсдэг. Footer нь
+          animation-ы wrapper дотор ирдэг тул `~*_footer` (шууд sibling биш). */}
+      <main
+        id="main"
+        className="flex-1 pb-24 has-[~footer,~*_footer]:pb-0 md:pb-0"
+      >
         {children}
       </main>
       {footer}

@@ -208,12 +208,11 @@ export function BrandManager({ brands }: { brands: BrandOption[] }) {
       <Card>
         <CardContent className="space-y-4 p-6">
           <h2 className="font-serif text-lg font-semibold">Шинэ брэнд нэмэх</h2>
-          <form onSubmit={add} className="space-y-4">
+          <form onSubmit={add} noValidate className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Нэр</Label>
                 <Input
-                  required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Dior"

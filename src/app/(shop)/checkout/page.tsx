@@ -362,18 +362,26 @@ export default function CheckoutPage() {
   }, [getValues, khoroo, draft, noteTags, giftIds]);
 
   /**
-   * Fills the form from a saved address.
+   * Fills the form from a saved address, recipient name and phone included.
    *
-   * Хүлээн авагчийн нэр, утсыг зөвхөн хэрэглэгч өөрөө хаяг сонгоход бөглөнө:
-   * хуудас нээгдэхэд үндсэн хаягийн хүн автоматаар бичигдчихвэл өөр хүнд
-   * хүргүүлэх захиалга дээр хэн ч тэр хоёр талбарыг хянаж үздэггүй.
+   * `contact: "overwrite"` — хэрэглэгч өөрөө хаяг сонгосон: тэр хаягийн хүн
+   * рүү шилжинэ. `"ifEmpty"` — хуудас нээгдэхэд үндсэн хаягаар: буцаж
+   * ирсэн draft эсвэл аль хэдийн бичсэн утгыг дарахгүй. Аль ч үед талбарууд
+   * засагдах боломжтой тул өөр хүнд хүргүүлэх бол шууд солино.
    */
   const applyAddress = React.useCallback(
-    (a: AddressRow, { contact = true }: { contact?: boolean } = {}) => {
-      if (contact) {
-        setValue("contactName", a.recipient);
-        setValue("contactPhone", a.phone);
-      }
+    (
+      a: AddressRow,
+      { contact = "overwrite" }: { contact?: "overwrite" | "ifEmpty" } = {},
+    ) => {
+      const fill = (key: "contactName" | "contactPhone", v: string) => {
+        if (!v) return;
+        if (contact === "ifEmpty" && getValues(key)) return;
+        // Өмнөх алдаа (жишээ нь хоосон утас) шинэ утгаар шууд арилна.
+        setValue(key, v, { shouldValidate: true });
+      };
+      fill("contactName", a.recipient);
+      fill("contactPhone", a.phone);
       setValue("shipCity", a.city);
       setValue("shipDistrict", a.district ?? "");
       // Хадгалсан хаяг нь хороогоо чөлөөт текстийн эхэнд авч явдаг
@@ -388,7 +396,7 @@ export default function CheckoutPage() {
       setValue("shipDetail", parts.detail);
       setKhoroo(parts.khoroo);
     },
-    [setValue],
+    [setValue, getValues],
   );
 
   // Бүртгүүлэх/нэвтрэх рүү явчихаад буцаж ирсэн бол бөглөсөн зүйлээ эргүүлж
@@ -500,26 +508,37 @@ export default function CheckoutPage() {
       } = await supabase.auth.getUser();
       if (!user) return;
       setAuthed(true);
-      const [{ data: profile }, { data: addrs }, { data: setting }] =
-        await Promise.all([
-          supabase
-            .from("profiles")
-            .select("loyalty_points")
-            .eq("id", user.id)
-            .maybeSingle(),
-          supabase
-            .from("addresses")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("is_default", { ascending: false }),
-          supabase
-            .from("settings")
-            .select("value")
-            .eq("key", "loyalty")
-            .maybeSingle(),
-        ]);
-      // Хүлээн авагчийн нэр, утсыг дансны мэдээллээр бөглөхгүй:
-      // талбарууд хоосон эхэлж, захиалга бүрт хэн хүлээж авахыг ил бичнэ.
+      const [
+        { data: profile },
+        { data: addrs },
+        { data: setting },
+        registeredEmail,
+      ] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("loyalty_points")
+          .eq("id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("addresses")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("is_default", { ascending: false }),
+        supabase
+          .from("settings")
+          .select("value")
+          .eq("key", "loyalty")
+          .maybeSingle(),
+        // Бүртгэлтэй имэйл (/account → Имэйл мэдэгдэл). Олдохгүй бол зүгээр
+        // л хоосон үлдэнэ — талбар нь заавал биш.
+        fetch("/api/newsletter/me")
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d: { email?: string | null } | null) => d?.email ?? null)
+          .catch(() => null),
+      ]);
+      if (registeredEmail && !getValues("contactEmail")) {
+        setValue("contactEmail", registeredEmail);
+      }
       const p = profile as { loyalty_points?: number } | null;
       setLoyaltyPoints(p?.loyalty_points ?? 0);
       const rows = (addrs as AddressRow[] | null) ?? [];
@@ -529,13 +548,13 @@ export default function CheckoutPage() {
       // the same one every time.
       if (rows[0]) {
         setAddressChoice(rows[0].id);
-        applyAddress(rows[0], { contact: false });
+        applyAddress(rows[0], { contact: "ifEmpty" });
       }
       setLoyaltyRules(
         parseLoyaltyRules((setting as { value?: unknown } | null)?.value),
       );
     })();
-  }, [setValue, applyAddress]);
+  }, [setValue, getValues, applyAddress]);
 
   const zone = watch("shipZone");
   const city = watch("shipCity");
@@ -949,6 +968,9 @@ export default function CheckoutPage() {
 
       <form
         onSubmit={handleSubmit(onSubmit, onInvalid)}
+        // Шалгалтыг Zod + талбарын доорх мессеж хийнэ; browser-ийн англи
+        // bubble (жишээ нь type="email") түүнээс түрүүлж гарахгүй.
+        noValidate
         className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-10"
       >
         <div className="space-y-6">
