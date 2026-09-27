@@ -210,6 +210,9 @@ sequence (0006). Хэн ч `VS-1000`-аас `VS-9999` хүртэл гүйлгэ�
 ## 4. Analytics ба хяналт
 
 - [ ] GA4 property үүсгэж Vercel env-д `NEXT_PUBLIC_GA_ID` (бодит ID).
+      Property-ийн валют **USD** байх ёстой — GA4 MNT дэмждэггүй тул код ₮
+      дүнг «USD» шошготой илгээдэг (`src/lib/analytics.ts`). Тайлангийн
+      `$145,000` = 145,000₮. Валютыг өөр болговол GA хөрвүүлж тоо эвдэрнэ.
 - [ ] Meta Pixel үүсгэж `NEXT_PUBLIC_META_PIXEL_ID`.
 - [ ] Sentry DSN production орчинд орсон эсэх.
 - [ ] Telegram мэдэгдэл: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`
