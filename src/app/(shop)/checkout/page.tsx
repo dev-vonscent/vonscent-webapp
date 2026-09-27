@@ -949,6 +949,9 @@ export default function CheckoutPage() {
 
       <form
         onSubmit={handleSubmit(onSubmit, onInvalid)}
+        // Шалгалтыг Zod + талбарын доорх мессеж хийнэ; browser-ийн англи
+        // bubble (жишээ нь type="email") түүнээс түрүүлж гарахгүй.
+        noValidate
         className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-10"
       >
         <div className="space-y-6">

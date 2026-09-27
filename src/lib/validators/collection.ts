@@ -56,7 +56,7 @@ export const collectionCreateSchema = z.object({
   customTags: z.array(z.string().min(1)).default([]),
   productIds: z
     .array(z.string().min(1))
-    .length(4, "Яг 4 үнэртэн сонгоно уу")
+    .length(4, "4 үнэртэн сонгоно уу")
     .refine((ids) => new Set(ids).size === ids.length, "Бараа давхардсан"),
 });
 

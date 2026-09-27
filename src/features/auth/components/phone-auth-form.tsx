@@ -1,6 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { cn } from "@/lib/utils";
+import {
+  FieldError,
+  fieldErrorClass,
+  fieldErrorProps,
+} from "@/components/ui/form-field";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, MessageSquareText, RotateCw } from "lucide-react";
@@ -98,14 +104,13 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
    */
   const withNext = React.useCallback(
     (path: string) =>
-      next && next !== "/"
-        ? `${path}?next=${encodeURIComponent(next)}`
-        : path,
+      next && next !== "/" ? `${path}?next=${encodeURIComponent(next)}` : path,
     [next],
   );
 
   const [phone, setPhone] = React.useState("");
   const [fullName, setFullName] = React.useState("");
+  const [nameError, setNameError] = React.useState<string>();
   const [passcode, setPasscode] = React.useState("");
   const [passcode2, setPasscode2] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -429,80 +434,83 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
             <ArrowLeft className="size-4" /> Дугаар солих
           </button>
           <div className="bg-card space-y-5 rounded-2xl p-6 text-center">
-          <div className="text-muted-foreground flex items-center justify-center gap-2 text-xs tracking-widest uppercase">
-            <span className="relative flex size-2">
-              <span className="bg-foreground absolute inline-flex size-full  animate-ping rounded-full opacity-60" />
-              <span className="bg-foreground relative inline-flex size-2 rounded-full" />
-            </span>
-            СМС хүлээж байна
-          </div>
-
-          {smsCode && (
-            <div className="space-y-1">
-              <p className="text-muted-foreground text-xs">
-                {verify.session.shortcode} дугаарт илгээх код
-              </p>
-              <p className="font-serif text-4xl font-semibold tracking-[0.3em]">
-                {smsCode}
-              </p>
+            <div className="text-muted-foreground flex items-center justify-center gap-2 text-xs tracking-widest uppercase">
+              <span className="relative flex size-2">
+                <span className="bg-foreground absolute inline-flex size-full animate-ping rounded-full opacity-60" />
+                <span className="bg-foreground relative inline-flex size-2 rounded-full" />
+              </span>
+              СМС хүлээж байна
             </div>
-          )}
 
-          <p className="text-muted-foreground text-sm">
-            {verify.session.displayInstruction}
-          </p>
+            {smsCode && (
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs">
+                  {verify.session.shortcode} дугаарт илгээх код
+                </p>
+                <p className="font-serif text-4xl font-semibold tracking-[0.3em]">
+                  {smsCode}
+                </p>
+              </div>
+            )}
 
-          <Button
-            asChild
-            className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
-          >
-            <a href={verify.session.smsUri}>
-              <MessageSquareText className="size-4" /> СМС илгээх
-            </a>
-          </Button>
-
-          <div className="space-y-2">
-            <p className="text-muted-foreground text-sm tabular-nums">
-              {mm}:{ss}
+            <p className="text-muted-foreground text-sm">
+              {verify.session.displayInstruction}
             </p>
-            <div className="bg-secondary h-1 overflow-hidden rounded-full">
-              <div
-                className="bg-foreground h-full rounded-full transition-[width] duration-1000 ease-linear"
-                style={{
-                  width: `${Math.min(100, (verify.secondsLeft / 300) * 100)}%`,
-                }}
-              />
+
+            <Button
+              asChild
+              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+            >
+              <a href={verify.session.smsUri}>
+                <MessageSquareText className="size-4" /> СМС илгээх
+              </a>
+            </Button>
+
+            <div className="space-y-2">
+              <p className="text-muted-foreground text-sm tabular-nums">
+                {mm}:{ss}
+              </p>
+              <div className="bg-secondary h-1 overflow-hidden rounded-full">
+                <div
+                  className="bg-foreground h-full rounded-full transition-[width] duration-1000 ease-linear"
+                  style={{
+                    width: `${Math.min(100, (verify.secondsLeft / 300) * 100)}%`,
+                  }}
+                />
+              </div>
             </div>
-          </div>
 
-          <p className="text-muted-foreground text-xs">
-            СМС-ийн төлбөр 150₮-ийг оператор таны дансаас суутгана.
-          </p>
+            <p className="text-muted-foreground text-xs">
+              СМС-ийн төлбөр 150₮-ийг оператор таны дансаас суутгана.
+            </p>
 
-          {/* Гарцууд: таймер дуусахыг хүлээх шаардлагагүй */}
-          <div className="flex gap-2.5">
-            <Button
-              type="button"
-              variant="outline"
-              className="ring-foreground/15 h-11 flex-1 rounded-xl ring-1"
-              onClick={() => {
-                verify.reset();
-                router.push(withNext("/login"));
-              }}
-            >
-              Болих
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="ring-foreground/15 h-11 flex-1 rounded-xl ring-1"
-              onClick={() =>
-                verify.start(phone, mode === "register" ? "register" : "reset")
-              }
-            >
-              <RotateCw className="size-4" /> Дахин илгээх
-            </Button>
-          </div>
+            {/* Гарцууд: таймер дуусахыг хүлээх шаардлагагүй */}
+            <div className="flex gap-2.5">
+              <Button
+                type="button"
+                variant="outline"
+                className="ring-foreground/15 h-11 flex-1 rounded-xl ring-1"
+                onClick={() => {
+                  verify.reset();
+                  router.push(withNext("/login"));
+                }}
+              >
+                Болих
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="ring-foreground/15 h-11 flex-1 rounded-xl ring-1"
+                onClick={() =>
+                  verify.start(
+                    phone,
+                    mode === "register" ? "register" : "reset",
+                  )
+                }
+              >
+                <RotateCw className="size-4" /> Дахин илгээх
+              </Button>
+            </div>
           </div>
         </div>
       ) : (
@@ -510,8 +518,14 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            if (mode === "register" && !fullName.trim()) {
+              setNameError("Нэрээ оруулна уу.");
+              document.getElementById("name")?.focus();
+              return;
+            }
             verify.start(phone, mode === "register" ? "register" : "reset");
           }}
+          noValidate
           className="space-y-6"
         >
           {mode === "register" && (
@@ -523,12 +537,15 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
                 Нэр
               </Label>
               <Input
-                id="name"
-                className="h-11"
+                {...fieldErrorProps("name", nameError)}
+                className={cn("h-11", fieldErrorClass(nameError))}
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
+                onChange={(e) => {
+                  setFullName(e.target.value);
+                  setNameError(undefined);
+                }}
               />
+              <FieldError id="name" message={nameError} />
             </Reveal>
           )}
           <Reveal delay={mode === "register" ? 120 : 60} className="space-y-2">
@@ -581,7 +598,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
           </div>
 
           {devEmailOpen && (
-            <form onSubmit={devEmailLogin} className="space-y-3">
+            <form onSubmit={devEmailLogin} noValidate className="space-y-3">
               <div className="space-y-1.5">
                 <Label htmlFor="dev-email">Имэйл</Label>
                 <Input
@@ -589,7 +606,6 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
                   type="email"
                   value={devEmail}
                   onChange={(e) => setDevEmail(e.target.value)}
-                  required
                 />
               </div>
               <div className="space-y-1.5">
@@ -599,14 +615,13 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
                   type="password"
                   value={devPassword}
                   onChange={(e) => setDevPassword(e.target.value)}
-                  required
                 />
               </div>
               <Button
                 type="submit"
                 variant="outline"
                 className="w-full"
-                disabled={pending}
+                disabled={pending || !devEmail.trim() || !devPassword}
               >
                 {pending ? "..." : "Имэйлээр нэвтрэх"}
               </Button>
@@ -618,31 +633,31 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
       {/* СМС хүлээх/нууц код алхамд өөрийн гарцууд бий — доод линк илүүц. */}
       {(mode === "login" ||
         (verify.stage !== "waiting" && verify.stage !== "verified")) && (
-      <Reveal delay={240}>
-        <p className="text-muted-foreground text-center text-sm">
-          {mode === "login" ? (
-            <>
-              Бүртгэлгүй юу?{" "}
-              <Link
-                href={withNext("/register")}
-                className="text-foreground underline-offset-4 hover:underline"
-              >
-                Бүртгүүлэх
-              </Link>
-            </>
-          ) : (
-            <>
-              {mode === "forgot" ? "Санаа орлоо?" : "Бүртгэлтэй юу?"}{" "}
-              <Link
-                href={withNext("/login")}
-                className="text-foreground underline-offset-4 hover:underline"
-              >
-                Нэвтрэх
-              </Link>
-            </>
-          )}
-        </p>
-      </Reveal>
+        <Reveal delay={240}>
+          <p className="text-muted-foreground text-center text-sm">
+            {mode === "login" ? (
+              <>
+                Бүртгэлгүй юу?{" "}
+                <Link
+                  href={withNext("/register")}
+                  className="text-foreground underline-offset-4 hover:underline"
+                >
+                  Бүртгүүлэх
+                </Link>
+              </>
+            ) : (
+              <>
+                {mode === "forgot" ? "Санаа орлоо?" : "Бүртгэлтэй юу?"}{" "}
+                <Link
+                  href={withNext("/login")}
+                  className="text-foreground underline-offset-4 hover:underline"
+                >
+                  Нэвтрэх
+                </Link>
+              </>
+            )}
+          </p>
+        </Reveal>
       )}
     </div>
   );
