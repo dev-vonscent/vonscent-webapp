@@ -29,7 +29,13 @@ function pixel(event: string, params: Record<string, unknown>) {
   window.fbq?.("track", event, params);
 }
 
-const CURRENCY = "MNT";
+// GA4 has no MNT (support.google.com/analytics/answer/9796179), so an MNT
+// value never reaches revenue reports. GA gets the ₮ amount labelled "USD"
+// with the property currency also USD — no conversion happens and the
+// numbers stay exact ₮ ("$145,000" in reports reads as 145,000₮).
+// Pixel keeps the real code.
+const GA_CURRENCY = "USD";
+const PIXEL_CURRENCY = "MNT";
 
 function gaItems(items: TrackedItem[]) {
   return items.map((i) => ({
@@ -43,7 +49,7 @@ function gaItems(items: TrackedItem[]) {
 
 export function trackViewItem(item: TrackedItem) {
   ga("view_item", {
-    currency: CURRENCY,
+    currency: GA_CURRENCY,
     value: item.price,
     items: gaItems([item]),
   });
@@ -52,29 +58,29 @@ export function trackViewItem(item: TrackedItem) {
     content_name: item.name,
     content_type: "product",
     value: item.price,
-    currency: CURRENCY,
+    currency: PIXEL_CURRENCY,
   });
 }
 
 export function trackAddToCart(item: TrackedItem) {
   const value = item.price * (item.quantity ?? 1);
-  ga("add_to_cart", { currency: CURRENCY, value, items: gaItems([item]) });
+  ga("add_to_cart", { currency: GA_CURRENCY, value, items: gaItems([item]) });
   pixel("AddToCart", {
     content_ids: [item.id],
     content_name: item.name,
     content_type: "product",
     value,
-    currency: CURRENCY,
+    currency: PIXEL_CURRENCY,
   });
 }
 
 export function trackBeginCheckout(items: TrackedItem[], value: number) {
-  ga("begin_checkout", { currency: CURRENCY, value, items: gaItems(items) });
+  ga("begin_checkout", { currency: GA_CURRENCY, value, items: gaItems(items) });
   pixel("InitiateCheckout", {
     content_ids: items.map((i) => i.id),
     num_items: items.reduce((n, i) => n + (i.quantity ?? 1), 0),
     value,
-    currency: CURRENCY,
+    currency: PIXEL_CURRENCY,
   });
 }
 
@@ -85,7 +91,7 @@ export function trackPurchase(
 ) {
   ga("purchase", {
     transaction_id: orderNo,
-    currency: CURRENCY,
+    currency: GA_CURRENCY,
     value,
     items: gaItems(items),
   });
@@ -93,6 +99,6 @@ export function trackPurchase(
     content_ids: items.map((i) => i.id),
     content_type: "product",
     value,
-    currency: CURRENCY,
+    currency: PIXEL_CURRENCY,
   });
 }
