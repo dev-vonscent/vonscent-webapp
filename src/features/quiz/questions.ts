@@ -69,26 +69,27 @@ export interface QuizQuestion {
 export const GENDER_QUESTION = {
   title: "Ямар төрлийн үнэртэн хайж байна вэ?",
   options: [
-    // The "Хүйсээр" cards (prompts/by-gender.md), cropped to their top 80%:
-    // the generated artwork carries a brand lockup along the bottom edge that
-    // the home page hides with object-top but the quiz tile's centered 3:4
-    // crop left visible. No new artwork — public/quiz/gender-*.webp.
+    // The "Хүйсээр" cards (prompts/by-gender.md), cropped 3:4 to the faces
+    // only: the generated bottles carry garbled label text, so each crop stops
+    // above the bottle (unisex keeps just the plain cap, under the label
+    // scrim). No new artwork — public/quiz/gender-*-face.webp; the `-face`
+    // suffix is a new URL so the 31-day image cache can't serve the old crop.
     {
       value: "male",
       emoji: "🤵",
-      image: "/quiz/gender-male.webp",
+      image: "/quiz/gender-male-face.webp",
       label: "Эрэгтэй",
     },
     {
       value: "female",
       emoji: "💃",
-      image: "/quiz/gender-female.webp",
+      image: "/quiz/gender-female-face.webp",
       label: "Эмэгтэй",
     },
     {
       value: "any",
       emoji: "✨",
-      image: "/quiz/gender-unisex.webp",
+      image: "/quiz/gender-unisex-face.webp",
       label: "Unisex",
     },
   ],
