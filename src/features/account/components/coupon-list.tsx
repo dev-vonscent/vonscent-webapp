@@ -19,6 +19,7 @@ import {
   TicketStub,
   couponLabel,
 } from "./coupon-ticket";
+import { LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
 
 /**
  * "Миний купонууд" on the account page.
@@ -92,11 +93,19 @@ export function CouponList() {
         </ul>
 
         <p className="text-muted-foreground text-xs">
-          Нэг захиалгад нэг купон.{" "}
-          <Link href="/lucky-wheel" className="hover:text-foreground underline">
-            Азын хүрд
-          </Link>{" "}
-          эргүүлж шинийг аваарай.
+          Нэг захиалгад нэг купон.
+          {!LUCKY_WHEEL_HIDDEN && (
+            <>
+              {" "}
+              <Link
+                href="/lucky-wheel"
+                className="hover:text-foreground underline"
+              >
+                Азын хүрд
+              </Link>{" "}
+              эргүүлж шинийг аваарай.
+            </>
+          )}
         </p>
       </CardContent>
     </Card>

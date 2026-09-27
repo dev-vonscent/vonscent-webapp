@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { LuckyWheel } from "@/features/lucky-wheel/components/lucky-wheel";
+import { notFound } from "next/navigation";
+import { LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
 
 /**
  * Азын хүрд (docs/lucky-wheel.md).
@@ -16,5 +18,7 @@ export const metadata: Metadata = {
 };
 
 export default function LuckyWheelPage() {
+  // Хүрд түр нуугдсан — шууд URL-ээр ч орохгүй (LUCKY_WHEEL_HIDDEN).
+  if (LUCKY_WHEEL_HIDDEN) notFound();
   return <LuckyWheel />;
 }

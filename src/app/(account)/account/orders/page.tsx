@@ -63,11 +63,19 @@ export default async function OrdersPage() {
   let orders: OrderWithItems[] = [];
 
   if (supabase) {
-    const { data } = await supabase
-      .from("orders")
-      .select("*, order_items(product_id, product_name, brand, ml, qty)")
-      .order("created_at", { ascending: false });
-    orders = (data as OrderWithItems[] | null) ?? [];
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    // RLS нь staff-д бүх захиалгыг харуулдаг (`is_staff()`) — «Миний
+    // захиалга» зөвхөн өөрийнхөө тул user_id-аар заавал шүүнэ.
+    if (user) {
+      const { data } = await supabase
+        .from("orders")
+        .select("*, order_items(product_id, product_name, brand, ml, qty)")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      orders = (data as OrderWithItems[] | null) ?? [];
+    }
   }
 
   // Resolve product thumbnails for every line item across all orders.

@@ -29,6 +29,7 @@ import { useIsStaff } from "@/features/account/use-staff";
 import { useProfileSummary } from "@/features/account/use-profile-summary";
 import { useSignOutConfirm } from "@/features/account/components/use-sign-out-confirm";
 import { cn } from "@/lib/utils";
+import { LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
 
 /**
  * Гол зорилгууд — том, бичвэрээр. Доод цэс (`BottomNav`) Нүүр/Каталог/Багц/
@@ -39,8 +40,10 @@ const PRIMARY = [
   { href: "/catalog", label: "Каталог" },
   { href: "/collections", label: "Багц" },
   { href: "/catalog?tags=sale", label: "Хямдрал" },
-  { href: "/lucky-wheel", label: "Азын хүрд" },
-] as const;
+  ...(LUCKY_WHEEL_HIDDEN
+    ? []
+    : [{ href: "/lucky-wheel", label: "Азын хүрд" } as const]),
+];
 
 /**
  * Уншиж танилцах хуудсууд — капсулаар, жижгээр.

@@ -480,3 +480,14 @@ export type RateLimitName = keyof typeof RATE_LIMITS;
  * кодыг хүрэшгүй гэж үзээд narrowing-оо алддаг.
  */
 export const CONTENT_PAGES_HIDDEN: boolean = true;
+
+/**
+ * Азын хүрд (`/lucky-wheel`) түр нуугдсан эсэх (2026-09-27).
+ *
+ * Цэс, профайлын dropdown, акаунтын карт, купоны жагсаалтын холбоосууд энэ
+ * тугаар нуугдаж, хуудас нь шууд URL-ээр 404 өгнө. API болон админы тохиргоо
+ * хэвээр — эргүүлж нээхэд `false` болгоход л хангалттай.
+ *
+ * `boolean` гэж зориуд бичив (`CONTENT_PAGES_HIDDEN`-ийн тайлбарыг үз).
+ */
+export const LUCKY_WHEEL_HIDDEN: boolean = true;
