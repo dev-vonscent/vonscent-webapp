@@ -211,6 +211,9 @@ export interface OrderRow {
   /** "yyyy-MM-dd" (UB) the customer picked at checkout — 0052_order_deliver_on. */
   deliver_on: string | null;
   reserve_expires_at: string | null;
+  /** Ажилтан бэлдсэн (грамлаж, уутласан) цаг — 0099. NULL = бэлдэгдээгүй. */
+  prepared_at: string | null;
+  prepared_by: string | null;
   qpay_invoice_id: string | null;
   /**
    * Opaque key for /pay/<token> — 0068. `order_no` is a sequence, so it can
