@@ -1,3 +1,4 @@
+import * as React from "react";
 import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -12,6 +13,7 @@ import {
 import {
   ORDER_STATUS_LABEL,
   ORDER_STATUSES,
+  UNPREPARED_FILTER,
   type OrderStatus,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -42,6 +44,8 @@ export default async function AdminOrdersPage({
   // pager needs. The old `.limit(200)` truncated silently, so past 200 orders
   // the list was simply wrong with nothing on screen saying so.
   let total: number | null = null;
+  // Shown on the chip so a backlog is visible without opening the filter.
+  let unpreparedCount: number | null = null;
   if (supabase) {
     let query = supabase
       .from("orders")
@@ -51,7 +55,9 @@ export default async function AdminOrdersPage({
         pageIndex * ORDERS_PER_PAGE,
         pageIndex * ORDERS_PER_PAGE + ORDERS_PER_PAGE - 1,
       );
-    if (status && ORDER_STATUSES.includes(status as OrderStatus)) {
+    if (status === UNPREPARED_FILTER) {
+      query = query.eq("status", "confirmed").is("prepared_at", null);
+    } else if (status && ORDER_STATUSES.includes(status as OrderStatus)) {
       query = query.eq("status", status);
     }
     if (q) {
@@ -66,16 +72,24 @@ export default async function AdminOrdersPage({
     const toIso = ubIso(to);
     if (fromIso) query = query.gte("created_at", fromIso);
     if (toIso) query = query.lte("created_at", toIso);
-    const { data, count } = await query;
+    const [{ data, count }, unprepared] = await Promise.all([
+      query,
+      supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "confirmed")
+        .is("prepared_at", null),
+    ]);
     orders = (data as OrderRow[] | null) ?? [];
     total = count ?? 0;
+    unpreparedCount = unprepared.count ?? 0;
   }
 
   // Paging keeps every filter; changing a filter resets to page 1.
   const hrefWith = makeHrefBuilder("/admin/orders", { status, q, from, to });
   const pageHref = (i: number) =>
     hrefWith({ page: i > 0 ? String(i + 1) : undefined });
-  const statusHref = (s?: OrderStatus) =>
+  const statusHref = (s?: OrderStatus | typeof UNPREPARED_FILTER) =>
     hrefWith({ status: s, page: undefined });
 
   return (
@@ -92,12 +106,26 @@ export default async function AdminOrdersPage({
           active={!status}
         />
         {ORDER_STATUSES.map((s) => (
-          <FilterChip
-            key={s}
-            label={ORDER_STATUS_LABEL[s]}
-            href={statusHref(s)}
-            active={status === s}
-          />
+          <React.Fragment key={s}>
+            <FilterChip
+              label={ORDER_STATUS_LABEL[s]}
+              href={statusHref(s)}
+              active={status === s}
+            />
+            {/* Right after «Баталгаажсан»: it is that list, minus what the
+                packer has already ticked off. */}
+            {s === "confirmed" && (
+              <FilterChip
+                label={
+                  unpreparedCount
+                    ? `Бэлдэгдээгүй (${unpreparedCount})`
+                    : "Бэлдэгдээгүй"
+                }
+                href={statusHref(UNPREPARED_FILTER)}
+                active={status === UNPREPARED_FILTER}
+              />
+            )}
+          </React.Fragment>
         ))}
       </div>
 

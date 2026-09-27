@@ -143,6 +143,18 @@ export const ORDER_STATUS_STYLE: Record<OrderStatus, string> = {
   cancelled: "bg-red-500/20 text-red-400",
 };
 
+/**
+ * Бэлдсэн эсэхийг (orders.prepared_at, 0099) солиж болох төлвүүд. Хүлээгдэж
+ * буй нь төлөгдөөгүй, хүргэгдсэн/цуцлагдсан нь хаагдсан.
+ */
+export const PREPARABLE_ORDER_STATUSES = [
+  "confirmed",
+  "shipping",
+] as const satisfies readonly OrderStatus[];
+
+/** `/admin/orders?status=` дээрх төлөв биш шүүлт: баталгаажсан + бэлдээгүй. */
+export const UNPREPARED_FILTER = "unprepared";
+
 export const PAYMENT_STATUSES = ["unpaid", "paid", "refunded"] as const;
 export type PaymentStatusValue = (typeof PAYMENT_STATUSES)[number];
 
