@@ -47,9 +47,6 @@ export const DEFAULT_CATALOG_SORT = "name";
  */
 export const HOT_PRODUCTS_COUNT = 12;
 
-/** Админ гараар тавьдаг тагууд. «Шинэ», «Эрэлттэй» нь автомат тул энд байхгүй. */
-export const MANUAL_TAGS = ["sale"] as const;
-
 /** Size a fresh bundle starts on — the most common decant tier. */
 export const DEFAULT_BUNDLE_ML = 5;
 
