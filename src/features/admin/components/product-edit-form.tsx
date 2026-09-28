@@ -54,9 +54,11 @@ import type {
   ConcentrationOption,
   ScentFamilyOption,
 } from "@/lib/types";
-/** «Шинэ» энд байхгүй: сүүлд нэмэгдсэн 12 усанд автоматаар оногдоно (0100). */
-const TAGS: { slug: "hot" | "sale"; label: string }[] = [
-  { slug: "hot", label: "Эрэлттэй" },
+/**
+ * «Шинэ», «Эрэлттэй» энд байхгүй: сүүлд нэмэгдсэн 12 ус (0100), хамгийн их
+ * зарагдсан 12 ус (0101) автоматаар авна.
+ */
+const TAGS: { slug: "sale"; label: string }[] = [
   { slug: "sale", label: "Хямдрал" },
 ];
 
@@ -135,8 +137,9 @@ export function ProductEditForm({
     }),
   );
   const [tags, setTags] = React.useState<string[]>(
-    // «Шинэ» автомат тул засах маягтад оролцохгүй, буцааж ч илгээхгүй.
-    product.tags.filter((t) => t !== "new"),
+    // «Шинэ», «Эрэлттэй» автомат тул засах маягтад оролцохгүй, буцааж ч
+    // илгээхгүй.
+    product.tags.filter((t) => t !== "new" && t !== "hot"),
   );
   const [customTags, rawToggleCustomTag] = useToggleList(product.customTags);
   const [isActive, setIsActive] = React.useState(product.isActive);
@@ -525,8 +528,8 @@ export function ProductEditForm({
             ))}
           </div>
           <p className="text-muted-foreground text-xs">
-            «Шинэ» тагийг гараар тавихгүй: хамгийн сүүлд нэмсэн 12 усанд
-            автоматаар оногдоно.
+            «Шинэ», «Эрэлттэй» тагийг гараар тавихгүй: хамгийн сүүлд нэмсэн 12
+            ус «Шинэ», хамгийн их зарагдсан 12 ус «Эрэлттэй» болно.
           </p>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox

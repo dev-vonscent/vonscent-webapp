@@ -769,8 +769,9 @@ export async function getProductsByTag(
 
 /**
  * Best sellers by actual paid sales volume (top_seller_products, security
- * definer). Falls back to the hot tag while there are no sales yet — a fresh
- * store still gets a filled rail.
+ * definer), in sales order. The catalog's «Эрэлттэй» chip filters the `hot`
+ * tag, which the DB keeps on the same top sellers (0101_auto_hot_tag), so the
+ * rail and the chip show the same products.
  */
 export async function getBestSellers(limit = 8): Promise<ProductListItem[]> {
   const supabase = createPublicClient();
