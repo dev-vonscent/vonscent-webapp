@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getAdminProduct } from "@/features/admin/api";
+import { getUntranslatedNotes } from "@/features/admin/note-translations";
 import { ProductEditForm } from "@/features/admin/components/product-edit-form";
 import {
   getScentFamilies,
@@ -29,6 +30,11 @@ export default async function EditProductPage({
       fetchConcentrations(),
     ]);
   if (!product) notFound();
+  const untranslatedNotes = await getUntranslatedNotes({
+    top: product.notesTop,
+    heart: product.notesHeart,
+    base: product.notesBase,
+  });
 
   return (
     <div className="space-y-6">
@@ -46,6 +52,7 @@ export default async function EditProductPage({
         concentrations={concentrations}
         customTagPool={customTagPool}
         aiEnabled={isImageGenConfigured}
+        untranslatedNotes={untranslatedNotes}
       />
     </div>
   );

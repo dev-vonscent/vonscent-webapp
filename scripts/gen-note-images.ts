@@ -38,6 +38,7 @@ import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { createClient } from "@supabase/supabase-js";
 import { pickNotes } from "@/lib/ai/notes-en";
+import { loadNoteOverrides } from "@/lib/ai/note-overrides";
 import {
   MAX_NOTES,
   buildNoteImagePrompt,
@@ -116,6 +117,7 @@ async function loadProducts(): Promise<Product[]> {
     )
     .order("slug");
   if (error) throw error;
+  const overrides = await loadNoteOverrides(sb);
 
   const out: Product[] = [];
   for (const p of (data ?? []) as unknown as {
@@ -139,6 +141,7 @@ async function loadProducts(): Promise<Product[]> {
     const notes = pickNotes(
       { top: p.notes_top, heart: p.notes_heart, base: p.notes_base },
       MAX_NOTES,
+      overrides,
     );
     if (!notes.length) {
       console.error(`  ⚠ ${p.slug}: зурагдах нот алга тул алгасав`);
