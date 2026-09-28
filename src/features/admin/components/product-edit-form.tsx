@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { InfoTip } from "@/components/shared/info-tip";
 import { fieldErrorClass } from "@/components/ui/form-field";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Trash2 } from "lucide-react";
@@ -55,13 +56,6 @@ import type {
   ConcentrationOption,
   ScentFamilyOption,
 } from "@/lib/types";
-/**
- * «Шинэ», «Эрэлттэй» энд байхгүй: сүүлд нэмэгдсэн 12 ус (0100), хамгийн их
- * зарагдсан 12 ус (0101) автоматаар авна.
- */
-const TAGS: { slug: "sale"; label: string }[] = [
-  { slug: "sale", label: "Хямдрал" },
-];
 
 export function ProductEditForm({
   product,
@@ -140,11 +134,6 @@ export function ProductEditForm({
         : { ml, price: 0, salePrice: null, active: false };
     }),
   );
-  const [tags, setTags] = React.useState<string[]>(
-    // «Шинэ», «Эрэлттэй» автомат тул засах маягтад оролцохгүй, буцааж ч
-    // илгээхгүй.
-    product.tags.filter((t) => t !== "new" && t !== "hot"),
-  );
   const [customTags, rawToggleCustomTag] = useToggleList(product.customTags);
   const [isActive, setIsActive] = React.useState(product.isActive);
   const [isFeatured, setIsFeatured] = React.useState(product.isFeatured);
@@ -173,12 +162,6 @@ export function ProductEditForm({
   function set<K extends keyof typeof form>(k: K, v: string) {
     setDirty(true);
     setForm((f) => ({ ...f, [k]: v }));
-  }
-  function toggleTag(slug: string) {
-    setDirty(true);
-    setTags((t) =>
-      t.includes(slug) ? t.filter((x) => x !== slug) : [...t, slug],
-    );
   }
 
   /** «Болих» throws away ~30 fields, so it asks first once anything changed. */
@@ -251,7 +234,6 @@ export function ProductEditForm({
           variants,
           isActive,
           isFeatured,
-          tags,
           customTags,
         }),
       });
@@ -517,25 +499,14 @@ export function ProductEditForm({
 
       <Card>
         <CardContent className="space-y-4 p-6">
-          <h2 className="font-serif text-lg font-semibold">Таг ба төлөв</h2>
-          <div className="flex flex-wrap gap-4">
-            {TAGS.map((t) => (
-              <label
-                key={t.slug}
-                className="flex cursor-pointer items-center gap-2 text-sm"
-              >
-                <Checkbox
-                  checked={tags.includes(t.slug)}
-                  onCheckedChange={() => toggleTag(t.slug)}
-                />
-                {t.label}
-              </label>
-            ))}
+          <div className="flex items-center gap-1.5">
+            <h2 className="font-serif text-lg font-semibold">Таг ба төлөв</h2>
+            <InfoTip label="Тагийн тайлбар">
+              Тагийг гараар тавихгүй, өөрөө шинэчлэгдэнэ: хамгийн сүүлд нэмсэн
+              12 ус «Шинэ», хамгийн их зарагдсан 12 ус «Эрэлттэй», аль нэг
+              хэмжээндээ хямдралын үнэтэй ус «Хямдрал» болно.
+            </InfoTip>
           </div>
-          <p className="text-muted-foreground text-xs">
-            «Шинэ», «Эрэлттэй» тагийг гараар тавихгүй: хамгийн сүүлд нэмсэн 12
-            ус «Шинэ», хамгийн их зарагдсан 12 ус «Эрэлттэй» болно.
-          </p>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox
               checked={isFeatured}

@@ -39,7 +39,6 @@ import { LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
 const PRIMARY = [
   { href: "/catalog", label: "Каталог" },
   { href: "/collections", label: "Багц" },
-  { href: "/catalog?tags=sale", label: "Хямдрал" },
   ...(LUCKY_WHEEL_HIDDEN
     ? []
     : [{ href: "/lucky-wheel", label: "Азын хүрд" } as const]),
@@ -71,10 +70,7 @@ export function MobileMenu({ className }: { className?: string }) {
   const isStaff = useIsStaff();
   const { profile, loading, configured } = useProfileSummary();
 
-  // Асуулт бүхий зам (`?tags=sale`) нь замаараа ялгагдахгүй тул идэвхтэй гэж
-  // тэмдэглэхгүй — /catalog дээр байхад «Хямдрал» гэрэлтвэл худал мэдээлэл.
-  const isActive = (href: string) =>
-    !href.includes("?") && pathname.startsWith(href);
+  const isActive = (href: string) => pathname.startsWith(href);
 
   return (
     <>
