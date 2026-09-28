@@ -54,8 +54,8 @@ import type {
   ConcentrationOption,
   ScentFamilyOption,
 } from "@/lib/types";
-const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
-  { slug: "new", label: "Шинэ" },
+/** «Шинэ» энд байхгүй: сүүлд нэмэгдсэн 12 усанд автоматаар оногдоно (0100). */
+const TAGS: { slug: "hot" | "sale"; label: string }[] = [
   { slug: "hot", label: "Эрэлттэй" },
   { slug: "sale", label: "Хямдрал" },
 ];
@@ -134,7 +134,10 @@ export function ProductEditForm({
         : { ml, price: 0, salePrice: null, active: false };
     }),
   );
-  const [tags, setTags] = React.useState<string[]>(product.tags);
+  const [tags, setTags] = React.useState<string[]>(
+    // «Шинэ» автомат тул засах маягтад оролцохгүй, буцааж ч илгээхгүй.
+    product.tags.filter((t) => t !== "new"),
+  );
   const [customTags, rawToggleCustomTag] = useToggleList(product.customTags);
   const [isActive, setIsActive] = React.useState(product.isActive);
   const [isFeatured, setIsFeatured] = React.useState(product.isFeatured);
@@ -521,6 +524,10 @@ export function ProductEditForm({
               </label>
             ))}
           </div>
+          <p className="text-muted-foreground text-xs">
+            «Шинэ» тагийг гараар тавихгүй: хамгийн сүүлд нэмсэн 12 усанд
+            автоматаар оногдоно.
+          </p>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox
               checked={isFeatured}

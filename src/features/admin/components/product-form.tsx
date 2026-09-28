@@ -50,8 +50,8 @@ import type {
 } from "@/lib/types";
 import type { CustomTagOption } from "@/features/taxonomy/api";
 
-const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
-  { slug: "new", label: "Шинэ" },
+/** «Шинэ» энд байхгүй: сүүлд нэмэгдсэн 12 усанд автоматаар оногдоно (0100). */
+const TAGS: { slug: "hot" | "sale"; label: string }[] = [
   { slug: "hot", label: "Эрэлттэй" },
   { slug: "sale", label: "Хямдрал" },
 ];
@@ -459,6 +459,10 @@ export function ProductForm({
               </label>
             ))}
           </div>
+          <p className="text-muted-foreground text-xs">
+            «Шинэ» тагийг гараар тавихгүй: хамгийн сүүлд нэмсэн 12 усанд
+            автоматаар оногдоно.
+          </p>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox
               checked={isFeatured}

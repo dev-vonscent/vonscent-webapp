@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAG_CATALOG } from "@/lib/cache-tags";
+import { NEW_PRODUCTS_COUNT } from "@/lib/constants";
 import * as Sentry from "@sentry/nextjs";
 import type {
   CatalogFilters,
@@ -738,8 +739,18 @@ export async function getFeaturedProducts(
   return items;
 }
 
-export async function getNewArrivals(limit = 8): Promise<ProductListItem[]> {
-  const { items } = await getCatalog({ sort: "new", perPage: limit });
+/**
+ * «Шинэ» тагтай ус, шинэ нь түрүүлж. Энэ нь каталогийн «Шинэ» chip-тэй ижил
+ * багц (хамгийн сүүлийн NEW_PRODUCTS_COUNT ус, 0100_auto_new_tag.sql).
+ */
+export async function getNewArrivals(
+  limit = NEW_PRODUCTS_COUNT,
+): Promise<ProductListItem[]> {
+  const { items } = await getCatalog({
+    tags: ["new"],
+    sort: "new",
+    perPage: limit,
+  });
   return items;
 }
 
