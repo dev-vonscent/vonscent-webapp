@@ -40,8 +40,15 @@ export const NEW_PRODUCTS_COUNT = 12;
  */
 export const DEFAULT_CATALOG_SORT = "name";
 
-/** Админ гараар тавьдаг тагууд. «Шинэ» нь автомат тул энд байхгүй. */
-export const MANUAL_TAGS = ["hot", "sale"] as const;
+/**
+ * «Эрэлттэй» таг автомат: төлөгдсөн захиалгаар хамгийн их зарагдсан ийм тооны
+ * идэвхтэй ус. DB дээр `hot_product_ids()` (0101_auto_hot_tag.sql) ижил
+ * тоогоор ажилладаг.
+ */
+export const HOT_PRODUCTS_COUNT = 12;
+
+/** Админ гараар тавьдаг тагууд. «Шинэ», «Эрэлттэй» нь автомат тул энд байхгүй. */
+export const MANUAL_TAGS = ["sale"] as const;
 
 /** Size a fresh bundle starts on — the most common decant tier. */
 export const DEFAULT_BUNDLE_ML = 5;
