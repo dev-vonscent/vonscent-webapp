@@ -57,7 +57,7 @@ export default function RootLayout({
     <html
       lang="mn"
       suppressHydrationWarning
-      className={`black ${sans.variable} h-full`}
+      className={`white ${sans.variable} h-full`}
     >
       <body className="flex min-h-full flex-col antialiased">
         <Script id="focus-method" strategy="beforeInteractive">
