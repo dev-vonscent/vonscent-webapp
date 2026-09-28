@@ -34,6 +34,12 @@ export const BUNDLE_ML_SIZES = ML_SIZES;
  */
 export const NEW_PRODUCTS_COUNT = 12;
 
+/**
+ * Каталогийн анхны эрэмбэ: `sort` параметргүй URL. Энэ утгыг сонгоход URL-аас
+ * `sort` хасагдана.
+ */
+export const DEFAULT_CATALOG_SORT = "name";
+
 /** Админ гараар тавьдаг тагууд. «Шинэ» нь автомат тул энд байхгүй. */
 export const MANUAL_TAGS = ["hot", "sale"] as const;
 

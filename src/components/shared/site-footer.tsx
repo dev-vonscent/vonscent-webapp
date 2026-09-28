@@ -12,7 +12,7 @@ const COLUMNS = [
     links: [
       { href: "/catalog", label: "Бүх бараа" },
       { href: "/catalog?featured=1", label: "Онцлох" },
-      { href: "/catalog?tags=new", label: "Шинэ" },
+      { href: "/catalog?tags=new&sort=new", label: "Шинэ" },
       { href: "/catalog?tags=hot", label: "Эрэлттэй" },
       { href: "/catalog?tags=sale", label: "Хямдрал" },
     ],

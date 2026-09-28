@@ -1,6 +1,11 @@
 import type { CatalogFilters } from "@/lib/types";
 import type { Gender, ScentFamily, Season, TagKind } from "@/db/types";
-import { GENDERS, ML_SIZES, SEASONS } from "@/lib/constants";
+import {
+  DEFAULT_CATALOG_SORT,
+  GENDERS,
+  ML_SIZES,
+  SEASONS,
+} from "@/lib/constants";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -39,10 +44,11 @@ export function parseFilters(params: Params): CatalogFilters {
     .map(Number)
     .filter((n) => (ML_SIZES as readonly number[]).includes(n));
 
-  const sortRaw = typeof params.sort === "string" ? params.sort : "new";
+  const sortRaw =
+    typeof params.sort === "string" ? params.sort : DEFAULT_CATALOG_SORT;
   const sort = (SORTS as readonly string[]).includes(sortRaw)
     ? (sortRaw as CatalogFilters["sort"])
-    : "new";
+    : DEFAULT_CATALOG_SORT;
 
   const num = (v: string | string[] | undefined) => {
     const n = Number(Array.isArray(v) ? v[0] : v);

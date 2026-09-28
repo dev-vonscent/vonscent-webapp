@@ -8,15 +8,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DEFAULT_CATALOG_SORT } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useFilterQuery } from "./use-filter-query";
 
 const OPTIONS: { value: string; label: string }[] = [
+  { value: "name", label: "Нэрээр (А-Я)" },
   { value: "new", label: "Шинэ эхэндээ" },
   { value: "popular", label: "Эрэлттэй" },
   { value: "price_asc", label: "Үнэ: бага → их" },
   { value: "price_desc", label: "Үнэ: их → бага" },
-  { value: "name", label: "Нэрээр (А-Я)" },
 ];
 
 export function CatalogSort({
@@ -27,12 +28,14 @@ export function CatalogSort({
   className?: string;
 }) {
   const { setSingle, searchParams } = useFilterQuery();
-  const current = searchParams.get("sort") ?? "new";
+  const current = searchParams.get("sort") ?? DEFAULT_CATALOG_SORT;
 
   return (
     <Select
       value={current}
-      onValueChange={(v) => setSingle("sort", v === "new" ? undefined : v)}
+      onValueChange={(v) =>
+        setSingle("sort", v === DEFAULT_CATALOG_SORT ? undefined : v)
+      }
     >
       <SelectTrigger
         aria-label="Эрэмбэлэх"
