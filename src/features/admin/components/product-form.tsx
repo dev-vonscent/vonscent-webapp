@@ -446,10 +446,6 @@ export function ProductForm({
               хэмжээндээ хямдралын үнэтэй ус «Хямдрал» болно.
             </InfoTip>
           </div>
-          <p className="text-muted-foreground text-xs">
-            «Шинэ», «Эрэлттэй» тагийг гараар тавихгүй: хамгийн сүүлд нэмсэн 12
-            ус «Шинэ», хамгийн их зарагдсан 12 ус «Эрэлттэй» болно.
-          </p>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox
               checked={isFeatured}
