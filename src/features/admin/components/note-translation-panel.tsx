@@ -69,8 +69,9 @@ export function NoteTranslationPanel({ notes }: { notes: string[] }) {
         <h3 className="text-sm font-semibold">Англи нэргүй нот</h3>
         <p className="text-muted-foreground text-xs">
           Нотын зураг үүсгэхэд англи нэр хэрэгтэй. Бөглөөгүй нот зурагт орохгүй.
-          Мускус, амбер шиг зурагдахгүй аккорд бол «Хийсвэр»-ийг чагтална. Нэг
-          удаа бөглөхөд бүх усанд хэрэглэгдэнэ.
+          Мускус, амбер шиг зургаар дүрслэх боломжгүй нот бол «Дүрслэх
+          боломжгүй» гэснийг чагтална. Нэг удаа бөглөхөд бүх усанд
+          хэрэглэгдэнэ.
         </p>
       </div>
       <ul className="space-y-2">
@@ -104,7 +105,7 @@ export function NoteTranslationPanel({ notes }: { notes: string[] }) {
                     patch(note, { isAbstract: Boolean(v) })
                   }
                 />
-                Хийсвэр
+                Дүрслэх боломжгүй
               </label>
             </li>
           );

@@ -18,7 +18,7 @@ export const noteTranslationItemSchema = z
     isAbstract: z.boolean().default(false),
   })
   .refine((v) => v.isAbstract || v.en.length > 0, {
-    message: "Англи нэр эсвэл «Хийсвэр» сонголт шаардлагатай.",
+    message: "Англи нэр эсвэл «Дүрслэх боломжгүй» сонголт шаардлагатай.",
     path: ["en"],
   });
 
