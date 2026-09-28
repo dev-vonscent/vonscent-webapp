@@ -8,7 +8,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
 import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatMl } from "@/lib/format";
+import { deliveryDayOf, formatDeliveryDay } from "@/lib/time";
 import { env } from "@/lib/env";
 
 /**
@@ -114,17 +115,110 @@ async function commit(
     return { ok: false, error: "COMMIT_FAILED" };
   }
 
-  await notifyAdmin(
-    `✅ <b>Төлбөр төлөгдлөө</b> — ${tgEscape(order.order_no)}\n` +
-      `💰 ${formatPrice(order.total)}\n` +
-      `🔗 ${env.siteUrl}/admin/orders/${order.id}`,
-  );
+  // Админы Telegram дохио ЗӨВХӨН энд — төлбөр бодитоор орж, захиалга
+  // баталгаажсаны дараа. Захиалга үүсэх мөчид (`api/orders`) юу ч явахгүй.
+  await notifyPaid(supabase, order);
   // Урамшууллын купоныг энд ҮҮСГЭХГҮЙ: `orders_reward_coupon` trigger (0025,
   // 0041) нь `payment_status → 'paid'` болох мөчид `grant_reward_coupon`-ыг
   // өөрөө дуудна. Тэр нь `mark_order_paid`-ийн UPDATE-ийн дотор явдаг тул
   // энэ мөрөнд хүрэхэд купон аль хэдийн бэлэн — имэйл түүнийг уншина.
   await sendOrderCustomerEmail(order.id, "paid");
   return { ok: true };
+}
+
+/**
+ * Төлбөр баталгаажсаны Telegram дохио — захиалсан барааны мэдээлэлтэйгээ.
+ *
+ * Админ дохиог хараад л шууд бэлтгэлд орох ёстой тул холбоо барих хүн, хаяг,
+ * мөр бүр (брэнд, хэмжээ, тоо) болон төлбөрийн задаргаа нэг мессежинд багтана.
+ * Best-effort: энэ query эсвэл илгээлт унасан ч төлбөрийн commit зогсохгүй —
+ * `notifyAdmin` өөрөө throw хийхгүй, харин `orders` уншилт унавал зөвхөн
+ * товч хувилбар явна.
+ */
+async function notifyPaid(
+  supabase: SupabaseClient,
+  order: OrderPaymentRow,
+): Promise<void> {
+  const link = `🔗 ${env.siteUrl}/admin/orders/${order.id}`;
+  const head = `✅ <b>Төлбөр төлөгдлөө</b> — ${tgEscape(order.order_no)}\n`;
+
+  const { data } = await supabase
+    .from("orders")
+    .select(
+      "contact_name, contact_phone, ship_city, ship_district, ship_detail, note, payment_method, subtotal, shipping_fee, discount, loyalty_used, total, deliver_on, created_at",
+    )
+    .eq("id", order.id)
+    .maybeSingle();
+  const row = data as {
+    contact_name: string | null;
+    contact_phone: string | null;
+    ship_city: string | null;
+    ship_district: string | null;
+    ship_detail: string | null;
+    note: string | null;
+    payment_method: string | null;
+    subtotal: number;
+    shipping_fee: number;
+    discount: number;
+    loyalty_used: number;
+    total: number;
+    deliver_on: string | null;
+    created_at: string;
+  } | null;
+  if (!row) {
+    await notifyAdmin(`${head}💰 ${formatPrice(order.total)}\n${link}`);
+    return;
+  }
+
+  const { data: itemData } = await supabase
+    .from("order_items")
+    .select("product_name, brand, ml, qty, line_total, is_gift")
+    .eq("order_id", order.id);
+  const items = (itemData ?? []) as {
+    product_name: string;
+    brand: string | null;
+    ml: number;
+    qty: number;
+    line_total: number;
+    is_gift: boolean;
+  }[];
+
+  const itemList = items
+    .map((i) => {
+      const name = i.brand ? `${i.brand} — ${i.product_name}` : i.product_name;
+      return (
+        `• ${tgEscape(name)} ${formatMl(i.ml)} × ${i.qty}` +
+        (i.is_gift ? " 🎁" : ` — ${formatPrice(i.line_total)}`)
+      );
+    })
+    .join("\n");
+
+  const address = [row.ship_city, row.ship_district, row.ship_detail]
+    .filter(Boolean)
+    .join(", ");
+  // Задаргаанд утга нь 0 биш мөрийг л оруулна — ихэнх захиалгад хөнгөлөлт ч,
+  // V point ч байхгүй, тэр мөрүүд зөвхөн дохиог уншихад хүндрүүлнэ.
+  const breakdown = [
+    `Бараа ${formatPrice(row.subtotal)}`,
+    row.shipping_fee > 0 ? `хүргэлт ${formatPrice(row.shipping_fee)}` : null,
+    row.discount > 0 ? `хөнгөлөлт −${formatPrice(row.discount)}` : null,
+    row.loyalty_used > 0 ? `V point −${formatPrice(row.loyalty_used)}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  await notifyAdmin(
+    head +
+      `👤 ${tgEscape(row.contact_name ?? "")} · ${tgEscape(row.contact_phone ?? "")}\n` +
+      (address ? `📍 ${tgEscape(address)}\n` : "") +
+      `🚚 ${tgEscape(formatDeliveryDay(deliveryDayOf(row)))}\n` +
+      (itemList ? `\n${itemList}\n` : "") +
+      (row.note ? `\n📝 ${tgEscape(row.note)}\n` : "") +
+      `\n💰 <b>${formatPrice(row.total)}</b> · ` +
+      `${row.payment_method === "qpay" ? "QPay" : "Банкны шилжүүлэг"}\n` +
+      `${breakdown}\n` +
+      link,
+  );
 }
 
 /**
