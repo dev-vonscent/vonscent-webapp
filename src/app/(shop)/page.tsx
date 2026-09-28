@@ -347,7 +347,7 @@ async function NewArrivalsSection() {
   if (products.length < 4) return null;
   return (
     <section>
-      <SectionHeading title="Шинээр буусан" href="/catalog?tags=new" />
+      <SectionHeading title="Шинээр буусан" href="/catalog?tags=new&sort=new" />
       <ProductCarousel products={products} />
     </section>
   );
