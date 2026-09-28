@@ -4,10 +4,13 @@
 
 /*
  * vonscent — three switchable themes (next-themes, attribute="class"):
- *   .black — default dark monochrome (black bg, white text)
- *   .white — light monochrome (white bg, near-black text)
+ *   .black — dark monochrome (black bg, white text)
+ *   .white — default light monochrome (white bg, near-black text)
  *   .pink  — soft pink palette
- * The default (:root) mirrors .black to avoid a flash before hydration.
+ * :root carries the black values as the base every theme builds on (.white
+ * and .pink override on top). The default theme is `white`: the server
+ * renders `<html class="white">` (layout.tsx) so there is no flash before
+ * hydration.
  *
  * `.force-black` is the same palette pinned to an element instead of the
  * document — the home page's quiz and bundle cards stay dark in all three
