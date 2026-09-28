@@ -4,6 +4,7 @@ import { Logo } from "./logo";
 import { SITE } from "@/lib/constants";
 import { getSocialSettings } from "@/features/content/api";
 import { NewsletterForm } from "./newsletter-form";
+import { OrderTrackLink } from "./order-track-link";
 
 const COLUMNS = [
   {
@@ -21,16 +22,21 @@ const COLUMNS = [
     links: [
       { href: "/faq", label: "Түгээмэл асуулт" },
       { href: "/contact", label: "Холбоо барих" },
-      { href: "/account/orders", label: "Захиалга хянах" },
     ],
+    // Нэвтэрсэн эсэхээс хамаарах тул баганын доор тусдаа зурагдана.
+    trackOrder: true,
   },
 ];
 
 export async function SiteFooter() {
   const social = await getSocialSettings();
   return (
-    <footer className="bg-surface-deep mt-10 sm:mt-20">
-      <div className="mx-auto max-w-352 px-4 py-10 sm:py-16">
+    // Дээд margin байхгүй — нүүрний сүүлийн хэсэг өөрийн доод padding-тай тул
+    // нэмэлт `mt` нь (dark-д footer хуудастай ижил хар) ~200px хоосон зай
+    // болж байв. Утсан дээрх `pb-20` нь доод навигацын зай: footer-той
+    // хуудсанд `<main>`-ээс энд шилждэг (layout.tsx).
+    <footer className="bg-surface-deep pb-20 md:pb-0">
+      <div className="mx-auto max-w-352 px-4 pt-8 pb-6 sm:pt-10 sm:pb-8">
         <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
           <div className="space-y-4">
             <Logo className="text-2xl" />
@@ -86,6 +92,11 @@ export async function SiteFooter() {
                     </Link>
                   </li>
                 ))}
+                {col.trackOrder && (
+                  <li>
+                    <OrderTrackLink className="text-muted-foreground hover:text-foreground text-sm transition-colors" />
+                  </li>
+                )}
               </ul>
             </div>
           ))}
@@ -101,7 +112,7 @@ export async function SiteFooter() {
           </div>
         </div>
 
-        <p className="text-muted-foreground/70 mt-8 text-xs sm:mt-12">
+        <p className="text-muted-foreground/70 mt-4 text-xs sm:mt-6">
           © {new Date().getFullYear()} {SITE.name}. Бүх эрх хуулиар
           хамгаалагдсан.
         </p>

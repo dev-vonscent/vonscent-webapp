@@ -1,3 +1,4 @@
+import { variantAvailability } from "./sellable";
 import { ML_SIZES } from "@/lib/constants";
 import type { ProductDetail } from "@/lib/types";
 import type {
@@ -229,14 +230,23 @@ function buildVariants(input: SeedInput) {
   const off = input.tags.includes("sale") ? 0.9 : 1;
   return ML_SIZES.filter((ml) => input.prices?.[ml] != null).map((ml) => {
     const basePrice = input.prices![ml]!;
+    // demo stock: a size is buyable while the bottle can still fill it
+    const inStock = input.onHandMl >= ml;
     return {
       id: `${input.slug}-${ml}`,
       ml,
       price: Math.round((basePrice * off) / 100) * 100,
       basePrice,
       isActive: true,
-      // demo stock: a size is buyable while the bottle can still fill it
-      inStock: input.onHandMl >= ml,
+      inStock,
+      // Демо өгөгдөлд савны түгжээ байхгүй (0095) — сан тохируулагдаагүй үед
+      // `bottle_stock` уншигдахгүй.
+      bottleLocked: false,
+      ...variantAvailability({
+        isActive: true,
+        inStock,
+        bottleLocked: false,
+      }),
     };
   });
 }
@@ -348,7 +358,7 @@ export const SEED_PRODUCTS: ProductDetail[] = RAW.map((input) => {
     startingBasePrice: cheapest.basePrice,
     tags: input.tags,
     isFeatured: false,
-    soldOut: !variants.some((v) => v.isActive && v.inStock),
+    soldOut: !variants.some((v) => v.sellable),
     ratingAvg: input.ratingAvg,
     ratingCount: input.ratingCount,
     createdAt: new Date(2024, 0, 1 + RAW.indexOf(input)).toISOString(),

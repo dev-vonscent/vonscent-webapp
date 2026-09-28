@@ -95,7 +95,13 @@ interface CartState {
    */
   startBuyNow: (item: Omit<CartItem, "key" | "qty">, qty?: number) => void;
   remove: (key: string) => void;
-  setQty: (key: string, qty: number) => void;
+  /**
+   * Мөрийн тоо ширхэг. `max` нь эх савны үлдэгдэлд багтах дээд тоо
+   * (`maxUnits`, sellable.ts) — үлдэгдлийг ӨӨРИЙГ нь сагсанд хадгалдаггүй
+   * (persist хийгддэг тул долоо хоногийн дараа худал болно), тиймээс
+   * хязгаарыг дуудагч тал бүрд нь дамжуулна.
+   */
+  setQty: (key: string, qty: number, max?: number) => void;
   /** Swap a line to a different ml of the same product (todo.md B5). */
   setVariant: (key: string, variant: CartVariant) => void;
   addCollection: (
@@ -110,7 +116,8 @@ interface CartState {
   /** «Захиалах» мөрийг хаях — сагснаас захиалга үргэлжлүүлэхэд дуудагдана. */
   clearBuyNow: () => void;
   removeCollection: (key: string) => void;
-  setCollectionQty: (key: string, qty: number) => void;
+  /** Багцын тоо ширхэг. `max` — `setQty`-тай ижил утгатай. */
+  setCollectionQty: (key: string, qty: number, max?: number) => void;
   /** Check/uncheck one product line for ordering. */
   setItemSelected: (key: string, selected: boolean) => void;
   /** Check/uncheck one bundle line for ordering. */
@@ -139,6 +146,16 @@ function collectionKey(c: Omit<CartCollection, "key" | "qty">): string {
       .sort()
       .join("+")}`;
   return [identity, c.ml].join(":");
+}
+
+/**
+ * 1-ээс дээш, үлдэгдэлд багтах тоо. `max` өгөөгүй (эсвэл мэдэгдэхгүй) бол
+ * зөвхөн доод хязгаар үйлчилнэ — сүлжээ унасан үед сагсыг буруу түгжихээс
+ * серверийн шалгалт руу оруулах нь дээр.
+ */
+function clampQty(qty: number, max?: number): number {
+  const capped = max != null && Number.isFinite(max) ? Math.min(qty, max) : qty;
+  return Math.max(1, capped);
 }
 
 export const useCart = create<CartState>()(
@@ -188,10 +205,12 @@ export const useCart = create<CartState>()(
               ? null
               : state.buyNow,
         })),
-      setQty: (key, qty) =>
+      setQty: (key, qty, max) =>
         set((state) => ({
           items: state.items
-            .map((i) => (i.key === key ? { ...i, qty: Math.max(1, qty) } : i))
+            .map((i) =>
+              i.key === key ? { ...i, qty: clampQty(qty, max) } : i,
+            )
             .filter((i) => i.qty > 0),
         })),
       setVariant: (key, variant) =>
@@ -264,10 +283,12 @@ export const useCart = create<CartState>()(
             (k) => k !== key,
           ),
         })),
-      setCollectionQty: (key, qty) =>
+      setCollectionQty: (key, qty, max) =>
         set((state) => ({
           collections: state.collections
-            .map((c) => (c.key === key ? { ...c, qty: Math.max(1, qty) } : c))
+            .map((c) =>
+              c.key === key ? { ...c, qty: clampQty(qty, max) } : c,
+            )
             .filter((c) => c.qty > 0),
         })),
       setItemSelected: (key, selected) =>
@@ -412,6 +433,23 @@ export const selectCheckoutCollections = (s: CartState) =>
 export const selectCheckoutSubtotal = (s: CartState) =>
   selectCheckoutItems(s).reduce((sum, i) => sum + i.unitPrice * i.qty, 0) +
   selectCheckoutCollections(s).reduce((sum, c) => sum + c.unitPrice * c.qty, 0);
+
+/**
+ * Багцын **хямдралын өмнөх** үнэ — гишүүдийн ганцаарчилсан үнийн нийлбэр.
+ * `unitPrice` нь хямдруулсан дүн тул хоёрын зөрүү нь тухайн багц хэдэн төгрөг
+ * хэмнэж байгааг харуулна; тойм дээр «үндсэн үнэ → хямдрал → төлөх дүн» гэсэн
+ * гурван мөр зөвхөн ийм эх дүнтэй байж утга учиртай болно.
+ */
+export const collectionBasePrice = (c: CartCollection) =>
+  c.members.reduce((sum, m) => sum + m.price, 0);
+
+/** Төлбөрийн хуудасны хямдралгүй дүн (багц бүр задарсан үнээрээ). */
+export const selectCheckoutGross = (s: CartState) =>
+  selectCheckoutItems(s).reduce((sum, i) => sum + i.unitPrice * i.qty, 0) +
+  selectCheckoutCollections(s).reduce(
+    (sum, c) => sum + collectionBasePrice(c) * c.qty,
+    0,
+  );
 
 /** True when at least one line is unchecked (for the «select all» box). */
 export const selectHasExcluded = (s: CartState) =>

@@ -3,7 +3,7 @@ import sharp from "sharp";
 import { env } from "@/lib/env";
 
 /**
- * Generate a product image with OpenAI gpt-image-1 (ai-image-generation §4).
+ * Generate a product image with OpenAI gpt-image-2 (ai-image-generation §4).
  * With a reference image → the edits endpoint (image-to-image); without one →
  * generations (text-to-image). Returns an optimised WebP buffer, or throws with
  * a readable message the job stores in `error`.
@@ -16,6 +16,11 @@ export interface GenerateOptions {
   prompt: string;
   /** Public URL of the reference perfume image (edits mode). */
   referenceUrl?: string | null;
+  /**
+   * Хэд хэдэн лавлах зураг (багцын poster — гишүүн бүрийн сав). Өгсөн бол
+   * `referenceUrl`-ийн оронд бүгдийг нэг edits хүсэлтэд илгээнэ.
+   */
+  referenceUrls?: string[];
   size?: ImageSize;
   quality?: ImageQuality;
   /**
@@ -28,11 +33,12 @@ export interface GenerateOptions {
 const OPENAI = "https://api.openai.com/v1";
 
 /**
- * One model for every image the shop generates. The batch scripts already ran
- * on 1.5 while the app was still on gpt-image-1; a catalogue whose pictures
- * come from two different models does not look like one catalogue.
+ * One model for every image the shop generates — the app and the batch
+ * scripts (`scripts/regen-product-images.ts`, `gen-note-images.ts`) move
+ * together; a catalogue whose pictures come from two different models does
+ * not look like one catalogue.
  */
-const MODEL = "gpt-image-1.5";
+const MODEL = "gpt-image-2";
 
 interface OpenAiImageResponse {
   data?: { b64_json?: string }[];
@@ -81,20 +87,29 @@ export async function generateProductImage(
   const quality = opts.quality ?? "medium";
   let b64: string;
 
-  if (opts.referenceUrl) {
+  const refUrls = opts.referenceUrls?.length
+    ? opts.referenceUrls
+    : opts.referenceUrl
+      ? [opts.referenceUrl]
+      : [];
+
+  if (refUrls.length) {
     // image-to-image: fetch the reference bytes and send as multipart.
-    const refRes = await fetch(opts.referenceUrl);
-    if (!refRes.ok) throw new Error("Лавлах зургийг татаж чадсангүй.");
-    const refBuf = Buffer.from(await refRes.arrayBuffer());
-    const refType = refRes.headers.get("content-type") || "image/png";
+    const refs = await Promise.all(
+      refUrls.map(async (url) => {
+        const refRes = await fetch(url);
+        if (!refRes.ok) throw new Error("Лавлах зургийг татаж чадсангүй.");
+        return new Blob([new Uint8Array(await refRes.arrayBuffer())], {
+          type: refRes.headers.get("content-type") || "image/png",
+        });
+      }),
+    );
 
     const form = new FormData();
     form.append("model", MODEL);
-    form.append(
-      "image",
-      new Blob([new Uint8Array(refBuf)], { type: refType }),
-      "reference.png",
-    );
+    // Нэг зураг бол `image`, олон бол `image[]` — OpenAI edits-ийн хэлбэр.
+    const field = refs.length === 1 ? "image" : "image[]";
+    refs.forEach((blob, i) => form.append(field, blob, `reference-${i}.png`));
     form.append("prompt", opts.prompt);
     form.append("size", size);
     form.append("quality", quality);

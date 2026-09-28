@@ -9,6 +9,7 @@ import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
+import { fieldErrorClass } from "@/components/ui/form-field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -19,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CustomTagField } from "./custom-tag-field";
+import { CollectionImageGenerator } from "./collection-image-generator";
 import { useToggleList } from "./multi-check";
 import { IMAGE_ACCEPT } from "@/lib/storage/limits";
 import { prepareUpload } from "@/lib/storage/prepare-upload";
@@ -255,7 +257,13 @@ export function CollectionForm({
   // үгүй бол хэрэглэгч дуусаагүй гэж бодоод дахин дардаг.
   const [leaving, setLeaving] = React.useState(false);
   const pending = busy || leaving;
-  const [error, setError] = React.useState<string | null>(null);
+  // Browser-ийн англи bubble-ийн оронд талбарын доорх өөрийн мессеж
+  // (`noValidate`, form-field.tsx). Засмагц тухайн талбарын алдаа арилна.
+  const productsRef = React.useRef<HTMLHeadingElement>(null);
+  const [errors, setErrors] = React.useState<{
+    name?: string;
+    discountPct?: string;
+  }>({});
 
   // Хайлт нь сервер дээр (0063). Багц угсрахад бүх усаа гүйлгэж хардаг тул
   // бэлгийн сантай ижил «бүгдийг харуул» горим — хайлт нь зөвхөн нэмэлт
@@ -326,19 +334,49 @@ export function CollectionForm({
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const name = form.name.trim();
+    const pct = Number(form.discountPct);
+    const next: typeof errors = {
+      name: !name
+        ? "Нэр оруулна уу."
+        : name.length < 2
+          ? "Нэр дор хаяж 2 тэмдэгт байна."
+          : undefined,
+      discountPct:
+        !Number.isFinite(pct) || pct < 0 || pct > 100
+          ? "Хямдрал 0–100% хооронд байна."
+          : undefined,
+    };
+    setErrors(next);
+    if (next.name || next.discountPct) {
+      // Эхний алдаатай талбар руу — урт маягтын дээд хэсэгт байж болно.
+      const el = e.currentTarget.querySelector<HTMLElement>(
+        "[aria-invalid=true]",
+      );
+      el?.focus();
+      el?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
     if (form.productIds.length !== REQUIRED_PRODUCTS) {
-      setError(`Яг ${REQUIRED_PRODUCTS} үнэртэн сонгоно уу.`);
+      // Toast — хадгалах товч утсан дээр sticky тул маягтын доод хэсгийн
+      // мэдэгдэл нь дэлгэцээс гадуур үлдэж, «юу ч болсонгүй» мэт санагддаг.
+      // Хэсэг рүү нь гүйлгэнэ: toast нь юу дутууг хэлнэ, хаана засахыг нь
+      // «Үнэртэн (n/4)» гарчиг өөрөө харуулна.
+      toast.error(`${REQUIRED_PRODUCTS} үнэртэн сонгоно уу.`);
+      productsRef.current?.scrollIntoView({
+        block: "start",
+        behavior: "smooth",
+      });
       return;
     }
     setBusy(true);
-    setError(null);
     const ok = await mutateJson(
       editing
         ? `/api/admin/collections/${collection!.id}`
         : "/api/admin/collections",
       editing ? "PATCH" : "POST",
       {
-        name: form.name,
+        name,
         gender: form.gender,
         description: form.description,
         discountPct: Number(form.discountPct),
@@ -364,10 +402,8 @@ export function CollectionForm({
       "Багц хадгалагдсангүй",
     );
     setBusy(false);
-    if (!ok) {
-      setError("Хадгалахад алдаа гарлаа.");
-      return;
-    }
+    // Алдааны toast-ыг `mutateJson` өөрөө гаргана.
+    if (!ok) return;
     toast.success(editing ? "Багц шинэчлэгдлээ." : "Багц үүслээ.");
     // `refresh()` нь `push()`-ээс ӨМНӨ: cache-ийг эхлээд хүчингүй болговол
     // жагсаалт шууд шинээр татагдана. Нөгөө дараалал нь ажилладаг ч хуучин
@@ -378,7 +414,7 @@ export function CollectionForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={onSubmit} noValidate className="space-y-6">
       {/* Зураг — first, matching the product form: the picture is what the
           operator has in hand when they start. */}
       <Card>
@@ -388,17 +424,27 @@ export function CollectionForm({
             value={form.imageUrl}
             onChange={(url) => setForm((f) => ({ ...f, imageUrl: url }))}
           />
+          {collection && (
+            <CollectionImageGenerator
+              collectionId={collection.id}
+              value={form.imageUrl}
+              onUse={(url) => setForm((f) => ({ ...f, imageUrl: url }))}
+            />
+          )}
         </CardContent>
       </Card>
 
       <Card>
         <CardContent className="space-y-4 p-6">
           <h2 className="font-serif text-lg font-semibold">Үндсэн мэдээлэл</h2>
-          <Field label="Нэр">
+          <Field label="Нэр" error={errors.name}>
             <Input
-              required
               value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className={fieldErrorClass(errors.name)}
+              onChange={(e) => {
+                setForm({ ...form, name: e.target.value });
+                setErrors((x) => ({ ...x, name: undefined }));
+              }}
             />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -436,7 +482,10 @@ export function CollectionForm({
       <Card>
         <CardContent className="space-y-4 p-6">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="font-serif text-lg font-semibold">
+            <h2
+              ref={productsRef}
+              className="scroll-mt-24 font-serif text-lg font-semibold"
+            >
               Үнэртэн ({form.productIds.length}/{REQUIRED_PRODUCTS})
             </h2>
             {/* Каталогийн нийт тоо — «бүх ус энд байна уу?» гэдгийг
@@ -520,6 +569,7 @@ export function CollectionForm({
 
           <Field
             label="Үндсэн хямдрал %"
+            error={errors.discountPct}
             className="max-w-40"
           >
             <Input
@@ -527,9 +577,11 @@ export function CollectionForm({
               min={0}
               max={100}
               value={form.discountPct}
-              onChange={(e) =>
-                setForm({ ...form, discountPct: Number(e.target.value) })
-              }
+              className={fieldErrorClass(errors.discountPct)}
+              onChange={(e) => {
+                setForm({ ...form, discountPct: Number(e.target.value) });
+                setErrors((x) => ({ ...x, discountPct: undefined }));
+              }}
             />
           </Field>
 
@@ -686,13 +738,6 @@ export function CollectionForm({
           />
         </CardContent>
       </Card>
-
-      {error && (
-        // role="alert" so a save failure is announced, not just painted.
-        <p role="alert" className="bg-secondary rounded-md px-4 py-3 text-sm">
-          {error}
-        </p>
-      )}
 
       {/* Sticky on a phone, matching the product form. */}
       <div className="bg-background/85 pb-safe sticky bottom-0 -mx-4 flex gap-3 px-4 py-3 backdrop-blur md:static md:mx-0 md:bg-transparent md:p-0 md:backdrop-blur-none">

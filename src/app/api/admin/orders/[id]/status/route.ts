@@ -168,6 +168,22 @@ export async function POST(
     // returns the ml, the V points and the coupon (0019/0040). Refunding a
     // live order would leave «Хүргэгдэж буй + Буцаагдсан» with none of that
     // undone. `mark_order_refunded` enforces the same rule under a row lock.
+    //
+    // Хүргэгдсэний дараах буцаалт (0094) нь `delivered`-ийг ч зөвшөөрдөг
+    // болсон — тэр зам нь ml/оноо/купоныг ЮУ Ч буцаадаггүй тул зөвхөн
+    // super_admin-д нээлттэй. UI ижил дүрмээр товчийг нуудаг ч энэ нь
+    // маршрут доторх давхар шалгалт (development.md §7.5).
+    const { data: refundRow } = await supabase
+      .from("orders")
+      .select("status")
+      .eq("id", id)
+      .maybeSingle();
+    if (
+      (refundRow as { status?: OrderStatus } | null)?.status === "delivered" &&
+      staff.role !== "super_admin"
+    ) {
+      return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+    }
     const { data, error } = await callRpc<{ ok: boolean; reason?: string }>(
       supabase,
       "mark_order_refunded",

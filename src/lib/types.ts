@@ -31,6 +31,24 @@ export interface Variant {
    * can no longer cover it.
    */
   inStock: boolean;
+  /**
+   * Хоосон савны түгжээ (0095): тухайн барааны ӨНГӨ (хүйс) × хэмжээний сав
+   * дууссан эсэх. `bottle_override`-оор чөлөөлсөн мөрөнд `false` — тэр
+   * тохиолдолд өөр өнгийн саванд цутгахыг админ зөвшөөрсөн байна.
+   */
+  bottleLocked: boolean;
+  /**
+   * Энэ хэмжээг ӨНӨӨДӨР худалдан авч болох уу — `isActive && inStock &&
+   * !bottleLocked`. Гурван шалтгааныг дуудагч бүрт `&&`-ээр холбохын оронд
+   * энд нэг удаа бодов (SQL талын `variant_sellable()`-ийн толь).
+   */
+  sellable: boolean;
+  /**
+   * Яагаад авах боломжгүй вэ — UI-ийн текст үүгээр сонгогдоно:
+   * `stock` → «Дууссан», `bottle` → «Түр байхгүй» (сав ирэхээр эргэж ирнэ),
+   * `inactive` → админ зориуд хаасан (ихэвчлэн UI-д огт харуулахгүй).
+   */
+  unavailableReason: null | "inactive" | "stock" | "bottle";
 }
 
 export interface ProductImage {

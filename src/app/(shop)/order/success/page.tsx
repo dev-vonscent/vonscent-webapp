@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { OrderTrackLink } from "@/components/shared/order-track-link";
 import { formatPrice } from "@/lib/format";
 import {
   DISPATCH_HOUR,
@@ -55,7 +56,7 @@ export default function OrderSuccessPage() {
         </p>
         <div className="mt-6 flex justify-center gap-3">
           <Button asChild variant="outline">
-            <Link href="/account/orders">Захиалгаа хянах</Link>
+            <OrderTrackLink>Захиалгаа хянах</OrderTrackLink>
           </Button>
           <Button asChild>
             <Link href="/catalog">Дэлгүүр рүү буцах</Link>
@@ -98,9 +99,13 @@ export default function OrderSuccessPage() {
         </CardContent>
       </Card>
 
+      {/* Дугаараа урьдчилж бөглөсөн хайлт: нэвтрээгүй зочин ч утсаа бичихэд
+          л захиалгадаа хүрнэ (`/order/find` нь `?no=` -г уншина). */}
       <div className="mt-6 flex gap-3">
         <Button asChild variant="outline" className="flex-1">
-          <Link href="/account/orders">Захиалга харах</Link>
+          <Link href={`/order/find?no=${encodeURIComponent(order.orderNo)}`}>
+            Захиалга харах
+          </Link>
         </Button>
         <Button asChild className="flex-1">
           <Link href="/catalog">Үргэлжлүүлэх</Link>

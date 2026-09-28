@@ -100,11 +100,14 @@ const columns: ColumnDef<AdminProduct, unknown>[] = [
     header: "Төлөв",
     enableSorting: false,
     cell: ({ row }) => (
-      <StockBadge
-        availableMl={row.original.availableMl}
-        lowStockMl={row.original.lowStockMl}
-        isActive={row.original.isActive}
-      />
+      <div className="flex flex-col items-start gap-1">
+        <StockBadge
+          availableMl={row.original.availableMl}
+          lowStockMl={row.original.lowStockMl}
+          isActive={row.original.isActive}
+        />
+        <BottleLockNote product={row.original} />
+      </div>
     ),
   },
   {
@@ -182,11 +185,14 @@ export function ProductsTable({ data }: { data: AdminProduct[] }) {
               </p>
               <ProductNameLink product={p} className="block truncate" />
             </div>
-            <StockBadge
-              availableMl={p.availableMl}
-              lowStockMl={p.lowStockMl}
-              isActive={p.isActive}
-            />
+            <div className="flex flex-col items-end gap-1">
+              <StockBadge
+                availableMl={p.availableMl}
+                lowStockMl={p.lowStockMl}
+                isActive={p.isActive}
+              />
+              <BottleLockNote product={p} />
+            </div>
           </div>
           {/* The same three numbers the stock dialog opens with, so the phone
               never has to guess what a correction is being measured against. */}
@@ -219,5 +225,35 @@ export function ProductsTable({ data }: { data: AdminProduct[] }) {
         </div>
       )}
     />
+  );
+}
+
+/**
+ * «Энэ өнгөний 10ml сав дууссан» гэсэн мөрийн тэмдэглэл (0095).
+ *
+ * Хэмжээ нь дэлгүүр дээр идэвхгүй байгаа шалтгаан нь ЭНЭ бараанд биш, түүний
+ * өнгөнд байгааг хэлнэ — эс бөгөөс оператор барааны тохиргоо руу ороод юу ч
+ * буруу зүйл олохгүй. Чөлөөлсөн хэмжээг тусад нь хэлнэ: зөвшөөрөл өгсөн нь
+ * мартагдаж, дараагийн түгжээнд нэвчих ёсгүй.
+ */
+function BottleLockNote({ product }: { product: AdminProduct }) {
+  if (product.bottleLockedMls.length === 0) return null;
+  const freed = product.bottleLockedMls.filter(
+    (ml) => product.variants.find((v) => v.ml === ml)?.bottleOverride,
+  );
+  const blocked = product.bottleLockedMls.filter((ml) => !freed.includes(ml));
+  return (
+    <>
+      {blocked.length > 0 && (
+        <span className="text-destructive text-[11px] whitespace-nowrap">
+          {blocked.join(", ")}ml сав дууссан
+        </span>
+      )}
+      {freed.length > 0 && (
+        <span className="text-muted-foreground text-[11px] whitespace-nowrap">
+          {freed.join(", ")}ml чөлөөлсөн
+        </span>
+      )}
+    </>
   );
 }

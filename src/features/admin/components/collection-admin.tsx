@@ -2,11 +2,12 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { mutate } from "@/features/admin/lib/mutate";
+import { adminFetch, mutate } from "@/features/admin/lib/mutate";
 import { useConfirm } from "@/components/shared/confirm-dialog";
 import { toast } from "@/lib/toast";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { ImageIcon, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GENDER_LABEL } from "@/lib/constants";
@@ -42,13 +43,58 @@ export interface AdminCollection {
  * This component keeps the list and the one action that has nowhere else to
  * go — delete, which needs its confirmation right where the row is.
  */
+const POLL_MS = 4000;
+
 export function CollectionAdmin({
   collections,
+  generatingIds = [],
 }: {
   collections: AdminCollection[];
+  /** AI зураг нь дараалалд эсвэл үүсч байгаа багцууд. */
+  generatingIds?: string[];
 }) {
   const router = useRouter();
   const [confirm, confirmDialog] = useConfirm();
+
+  // AI зураг үүсч байгаа багцуудыг 4 секунд тутам шалгана. Дуусахад
+  // зураггүй багцын зураг сервер дээр автоматаар хадгалагдсан байдаг тул
+  // шинэ зургийг нь шууд харуулна.
+  const [busy, setBusy] = React.useState(() => new Set(generatingIds));
+  const [images, setImages] = React.useState<Record<string, string | null>>({});
+  const busyKey = [...busy].sort().join(",");
+  React.useEffect(() => {
+    if (!busyKey) return;
+    let alive = true;
+    const read = async () => {
+      const r = await adminFetch<{
+        statuses?: {
+          collectionId: string;
+          busy: boolean;
+          imageUrl: string | null;
+        }[];
+      }>(`/api/admin/collections/image-status?ids=${busyKey}`);
+      const statuses = r.ok ? (r.data?.statuses ?? []) : [];
+      if (!alive || !statuses.length) return;
+      setImages((prev) => ({
+        ...prev,
+        ...Object.fromEntries(
+          statuses.map((s) => [s.collectionId, s.imageUrl]),
+        ),
+      }));
+      const done = statuses.filter((s) => !s.busy).map((s) => s.collectionId);
+      if (done.length)
+        setBusy((prev) => {
+          const next = new Set(prev);
+          done.forEach((id) => next.delete(id));
+          return next;
+        });
+    };
+    const iv = setInterval(() => void read(), POLL_MS);
+    return () => {
+      alive = false;
+      clearInterval(iv);
+    };
+  }, [busyKey]);
 
   async function remove(id: string, collectionName: string) {
     if (
@@ -93,6 +139,10 @@ export function CollectionAdmin({
             key={c.id}
             className="bg-card flex items-center gap-3 rounded-xl p-3"
           >
+            <CollectionThumb
+              url={c.id in images ? images[c.id] : c.image_url}
+              generating={busy.has(c.id)}
+            />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="font-medium">{c.name}</span>
@@ -126,6 +176,45 @@ export function CollectionAdmin({
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Багцын зургийн жижиг хувилбар; AI зураг үүсч байхад loader давхарлана. */
+function CollectionThumb({
+  url,
+  generating,
+}: {
+  url: string | null;
+  generating: boolean;
+}) {
+  return (
+    <div className="bg-muted/40 relative size-12 shrink-0 overflow-hidden rounded-lg">
+      {url ? (
+        <Image
+          src={url}
+          alt=""
+          fill
+          unoptimized
+          sizes="48px"
+          className="object-cover"
+        />
+      ) : (
+        !generating && (
+          <div className="text-muted-foreground flex size-full items-center justify-center">
+            <ImageIcon className="size-4" />
+          </div>
+        )
+      )}
+      {generating && (
+        <div
+          className="bg-background/60 absolute inset-0 flex items-center justify-center"
+          title="AI зураг үүсч байна"
+        >
+          <Loader2 className="text-foreground size-4 animate-spin" />
+          <span className="sr-only">AI зураг үүсч байна</span>
+        </div>
+      )}
     </div>
   );
 }

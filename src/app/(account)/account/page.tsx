@@ -24,6 +24,7 @@ import { CouponList } from "@/features/account/components/coupon-list";
 import { isPhoneEmail } from "@/lib/auth/phone-email";
 import { WheelEntryCard } from "@/features/lucky-wheel/components/wheel-entry-card";
 import type { ProductListItem } from "@/lib/types";
+import { LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
 
 export default function ProfilePage() {
   const [askSignOut, signOutDialog] = useSignOutConfirm();
@@ -231,7 +232,7 @@ export default function ProfilePage() {
       <div className="space-y-2">
         {/* Above the settings, not among them: the wheel is something to do,
             and it hides itself when there is nothing to collect. */}
-        {configured && <WheelEntryCard />}
+        {configured && !LUCKY_WHEEL_HIDDEN && <WheelEntryCard />}
 
         {/* Passcode change — phone accounts only (the 4-digit code is theirs;
             an email/OAuth account would just get a 401 from the route). */}

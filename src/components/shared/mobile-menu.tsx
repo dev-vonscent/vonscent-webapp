@@ -12,6 +12,7 @@ import {
   Mail,
   Menu,
   Package,
+  PackageSearch,
   Ticket,
 } from "lucide-react";
 import { Logo } from "./logo";
@@ -28,6 +29,7 @@ import { useIsStaff } from "@/features/account/use-staff";
 import { useProfileSummary } from "@/features/account/use-profile-summary";
 import { useSignOutConfirm } from "@/features/account/components/use-sign-out-confirm";
 import { cn } from "@/lib/utils";
+import { LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
 
 /**
  * Гол зорилгууд — том, бичвэрээр. Доод цэс (`BottomNav`) Нүүр/Каталог/Багц/
@@ -38,13 +40,22 @@ const PRIMARY = [
   { href: "/catalog", label: "Каталог" },
   { href: "/collections", label: "Багц" },
   { href: "/catalog?tags=sale", label: "Хямдрал" },
-  { href: "/lucky-wheel", label: "Азын хүрд" },
-] as const;
+  ...(LUCKY_WHEEL_HIDDEN
+    ? []
+    : [{ href: "/lucky-wheel", label: "Азын хүрд" } as const]),
+];
 
-/** Уншиж танилцах хуудсууд — капсулаар, жижгээр. */
+/**
+ * Уншиж танилцах хуудсууд — капсулаар, жижгээр.
+ *
+ * «Захиалга хайх» нь зочны цорын ганц ил зам: нэвтрээгүй хүн захиалгаа
+ * дугаар + утсаараа эндээс олно (доорх `ACCOUNT_SHORTCUTS`-ын «Захиалга» нь
+ * нэвтэрсэн хүнд л гардаг).
+ */
 const SECONDARY = [
   { href: "/contact", label: "Холбоо барих", icon: Mail },
   { href: "/faq", label: "Түгээмэл асуулт", icon: HelpCircle },
+  { href: "/order/find", label: "Захиалга хайх", icon: PackageSearch },
 ] as const;
 
 /** Нэвтэрсэн хэрэглэгчийн богино замууд — таних хэсгийн доор. */

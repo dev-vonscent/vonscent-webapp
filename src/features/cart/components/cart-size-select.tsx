@@ -35,7 +35,12 @@ export function CartSizeSelect({
 }) {
   const setVariant = useCart((s) => s.setVariant);
   const [options, setOptions] = React.useState<
-    (CartVariant & { inStock: boolean })[] | null
+    (CartVariant & {
+      sellable: boolean;
+      /** `bottle` бол сав түр дууссан (0095), `stock` бол эх савны үлдэгдэл. */
+      reason: ProductDetail["variants"][number]["unavailableReason"];
+    })[]
+    | null
   >(null);
   const [loading, setLoading] = React.useState(false);
   const [failed, setFailed] = React.useState(false);
@@ -54,7 +59,8 @@ export function CartSizeSelect({
           variantId: v.id,
           ml: v.ml,
           unitPrice: v.price,
-          inStock: v.inStock,
+          sellable: v.sellable,
+          reason: v.unavailableReason,
         }));
       // A deactivated or delisted product answers 404 / with no variants — a
       // real condition here, since a cart can sit in localStorage for weeks.
@@ -74,7 +80,7 @@ export function CartSizeSelect({
 
   function pick(id: string) {
     const next = options?.find((o) => o.variantId === id);
-    if (!next || !next.inStock) return;
+    if (!next || !next.sellable) return;
     setVariant(itemKey, {
       variantId: next.variantId,
       ml: next.ml,
@@ -104,9 +110,14 @@ export function CartSizeSelect({
             <SelectItem
               key={o.variantId}
               value={o.variantId}
-              disabled={!o.inStock}
+              disabled={!o.sellable}
             >
-              {o.ml}ml · {o.inStock ? formatPrice(o.unitPrice) : "дууссан"}
+              {o.ml}ml ·{" "}
+              {o.sellable
+                ? formatPrice(o.unitPrice)
+                : o.reason === "bottle"
+                  ? "түр байхгүй"
+                  : "дууссан"}
             </SelectItem>
           ))
         )}

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { khorooRequired } from "@/lib/geo/locations";
+import { GIFT_MAX_SAMPLES } from "@/lib/constants";
 
 export const orderItemSchema = z.object({
   productId: z.string().min(1),
@@ -64,10 +65,15 @@ export const checkoutSchema = z.object({
   collections: z.array(collectionOrderSchema).default([]),
   /**
    * Бэлгийн 1мл дээжийн сонголтууд. Сервер бүгдийг дахин шалгана: эрх нь
-   * купоны дараах барааны дүнгийн 200,000₮ тутамд 1 (эсвэл preset 5/10/20мл
-   * багцын баталгаа), сонгосон ус нь админы бэлгийн санд байх ёстой.
+   * купоны дараах барааны дүнгийн 200,000₮ тутамд 1 (`GIFT_MAX_SAMPLES`
+   * хүртэл), сонгосон ус нь админы бэлгийн санд байх ёстой.
+   *
+   * Нэг ус давтагдаж болно (`GIFT_PER_PRODUCT_LIMIT` хүртэл) тул энэ нь олонлог
+   * биш жагсаалт. Дээд урт нь `GIFT_MAX_SAMPLES`-аас гарна: хуучин 8 гэсэн
+   * тогтмол нь босготой уялдаагүй байсан бөгөөд эрх 9 болох дүнгийн үед бүхэл
+   * захиалгыг Zod дээр унагаадаг байв.
    */
-  giftProductIds: z.array(z.string().min(1)).max(8).default([]),
+  giftProductIds: z.array(z.string().min(1)).max(GIFT_MAX_SAMPLES).default([]),
   /**
    * Идемпотентын түлхүүр — нэг checkout оролдлогод нэг UUID. Хариу нь замдаа
    * алдагдаад хэрэглэгч дахин илгээхэд сервер шинэ захиалга үүсгэхгүй,

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { fieldErrorClass } from "@/components/ui/form-field";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
@@ -84,6 +85,8 @@ export function ProductForm({
   const pending = submitting || leaving;
   const [result, setResult] = React.useState<string | null>(null);
 
+  const [nameError, setNameError] = React.useState<string>();
+  const nameRef = React.useRef<HTMLInputElement>(null);
   const [form, setForm] = React.useState({
     name: "",
     brand: "",
@@ -130,6 +133,12 @@ export function ProductForm({
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!form.name.trim()) {
+      setNameError("Нэр оруулна уу.");
+      nameRef.current?.focus();
+      nameRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
     // A product with no picture at all is not sellable, and nothing downstream
     // can invent one — say so here rather than publishing an empty card.
     if (images.length === 0 && !referenceUrl) {
@@ -235,7 +244,7 @@ export function ProductForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={onSubmit} noValidate className="space-y-6">
       {/* First: the picture is what the operator has in hand when they start,
           and on the AI path it is what decides whether the product can even
           publish — so it leads the form rather than sitting between the notes
@@ -250,11 +259,15 @@ export function ProductForm({
         <CardContent className="space-y-4 p-6">
           <h2 className="font-serif text-lg font-semibold">Үндсэн мэдээлэл</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Нэр">
+            <Field label="Нэр" error={nameError}>
               <Input
-                required
+                ref={nameRef}
                 value={form.name}
-                onChange={(e) => set("name", e.target.value)}
+                className={fieldErrorClass(nameError)}
+                onChange={(e) => {
+                  set("name", e.target.value);
+                  setNameError(undefined);
+                }}
               />
             </Field>
             <Field label="Брэнд">

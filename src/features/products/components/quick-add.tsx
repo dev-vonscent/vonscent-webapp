@@ -14,6 +14,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
+import { cartMlFor } from "@/features/cart/budget";
+import { maxUnits } from "@/features/products/sellable";
 import { trackAddToCart } from "@/lib/analytics";
 import type { ProductDetail, ProductListItem } from "@/lib/types";
 
@@ -31,6 +33,8 @@ export function QuickAdd({
   const [added, setAdded] = React.useState(false);
 
   const add = useCart((s) => s.add);
+  const cartItems = useCart((s) => s.items);
+  const cartCollections = useCart((s) => s.collections);
 
   // Fetch the full product (with variants) the first time the dialog opens.
   React.useEffect(() => {
@@ -42,7 +46,10 @@ export function QuickAdd({
         if (cancelled || !data?.product) return;
         const d = data.product as ProductDetail;
         setDetail(d);
-        const first = d.variants.find((v) => v.isActive);
+        // Худалдаж БОЛОХ эхний хэмжээ — дууссан/савгүй хэмжээг урьдчилж
+        // сонговол хэрэглэгч идэвхгүй товчтой үлдэнэ.
+        const first =
+          d.variants.find((v) => v.sellable) ?? d.variants.find((v) => v.isActive);
         setVariantId(first?.id ?? "");
       });
     return () => {
@@ -53,9 +60,31 @@ export function QuickAdd({
   const activeVariants = detail?.variants.filter((v) => v.isActive) ?? [];
   const selected = activeVariants.find((v) => v.id === variantId) ?? null;
   const soldOut = detail?.soldOut ?? false;
+  /**
+   * Энэ хэмжээгээр авч болох дээд тоо — сагсанд аль хэдийн орсон ml-ийг
+   * хассан. `sellable` нь НЭГ ширхэгийн асуулт тул түүн дээр найдвал 15ml
+   * үлдэгдэлтэй бараанаас 10ml×2 сагсанд ордог.
+   */
+  const maxQty = !detail
+    ? Infinity
+    : maxUnits({
+        ml: selected?.ml ?? 0,
+        sellable: selected?.sellable ?? false,
+        remainingMl:
+          detail.availableMl -
+          cartMlFor(detail.id, {
+            items: cartItems,
+            collections: cartCollections,
+          }),
+      });
+  // Хэмжээ солиход, эсвэл сагс өөрчлөгдөхөд тоо ширхэг багтахаа болих нь бий.
+  React.useEffect(() => {
+    setQty((q) => (maxQty >= 1 ? Math.min(q, maxQty) : 1));
+  }, [maxQty]);
 
   function onAdd() {
-    if (!detail || !selected || soldOut) return;
+    if (!detail || !selected || soldOut || !selected.sellable) return;
+    if (maxQty < 1) return;
     add(
       {
         productId: detail.id,
@@ -151,22 +180,33 @@ export function QuickAdd({
             <div className="flex flex-wrap gap-2">
               {activeVariants.map((v) => {
                 const active = v.id === variantId;
+                // «Түр байхгүй» = савны түгжээ (0095), «Дууссан» = эх савны
+                // үлдэгдэл. Хоёулаа сонгогдохгүй.
+                const label =
+                  v.unavailableReason === "bottle"
+                    ? "Түр байхгүй"
+                    : v.sellable
+                      ? formatPrice(v.price)
+                      : "Дууссан";
                 return (
                   <button
                     key={v.id}
                     type="button"
-                    aria-pressed={active}
+                    disabled={!v.sellable}
+                    aria-pressed={v.sellable ? active : undefined}
                     onClick={() => setVariantId(v.id)}
                     className={cn(
                       "flex min-h-11 min-w-18 flex-col items-center justify-center rounded-lg px-4 py-2 transition-colors",
-                      active
-                        ? "bg-foreground/30"
-                        : "bg-secondary hover:bg-accent",
+                      !v.sellable
+                        ? "bg-secondary/50 text-muted-foreground cursor-not-allowed opacity-50"
+                        : active
+                          ? "bg-foreground/30"
+                          : "bg-secondary hover:bg-accent",
                     )}
                   >
                     <span className="text-sm font-semibold">{v.ml}ml</span>
                     <span className="text-muted-foreground text-xs">
-                      {formatPrice(v.price)}
+                      {label}
                     </span>
                   </button>
                 );
@@ -195,8 +235,9 @@ export function QuickAdd({
             <span className="w-10 text-center text-sm">{qty}</span>
             <button
               type="button"
-              className="hover:text-foreground px-3 py-2"
-              onClick={() => setQty((q) => q + 1)}
+              className="hover:text-foreground px-3 py-2 disabled:opacity-40"
+              onClick={() => setQty((q) => Math.min(q + 1, maxQty))}
+              disabled={qty >= maxQty}
               aria-label="Нэмэх"
             >
               <Plus className="size-4" />
@@ -206,7 +247,9 @@ export function QuickAdd({
           <Button
             size="lg"
             className="flex-1"
-            disabled={!detail || !selected || soldOut}
+            disabled={
+              !detail || !selected || soldOut || !selected.sellable || maxQty < 1
+            }
             onClick={onAdd}
           >
             {added ? (
@@ -215,6 +258,12 @@ export function QuickAdd({
               </>
             ) : soldOut ? (
               "Дууссан"
+            ) : selected && !selected.sellable ? (
+              selected.unavailableReason === "bottle" ? (
+                "Түр байхгүй"
+              ) : (
+                "Дууссан"
+              )
             ) : (
               <>
                 <ShoppingCart className="size-4" /> Сагслах

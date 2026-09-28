@@ -18,6 +18,7 @@ import { formatPrice } from "@/lib/format";
 import { trackPurchase } from "@/lib/analytics";
 import { BANK_TRANSFER, RESERVE_TIMEOUT_MINUTES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { orderSummaryRows, type OrderSummaryRow } from "@/lib/orders/summary";
 import {
   DISPATCH_HOUR,
   formatEditCutoff,
@@ -480,10 +481,10 @@ function OrderRecap({ view }: { view: PaymentView }) {
                     .join(" · ")}
                 </p>
               </div>
+              {/* Үндсэн үнэ — багцын хямдрал нь мөр бүрт тараагдахын оронд
+                  доорх тооцоонд ганц мөр болж гарна (0097). */}
               <span className="text-sm font-medium tabular-nums">
-                {line.isSample && line.lineTotal === 0
-                  ? "0₮"
-                  : formatPrice(line.lineTotal)}
+                {formatPrice(line.baseTotal)}
               </span>
             </li>
           ))}
@@ -501,29 +502,9 @@ function OrderRecap({ view }: { view: PaymentView }) {
       */}
         <div className="gold-rule mt-3" />
         <div className="mt-3 space-y-1.5 text-xs">
-          <RecapRow label="Барааны дүн" value={formatPrice(view.subtotal)} />
-          {view.discount > 0 && (
-            <RecapRow
-              label="Хөнгөлөлт"
-              value={`−${formatPrice(view.discount)}`}
-              accent
-            />
-          )}
-          {view.loyaltyUsed > 0 && (
-            <RecapRow
-              label="V point"
-              value={`−${formatPrice(view.loyaltyUsed)}`}
-              accent
-            />
-          )}
-          <RecapRow
-            label="Хүргэлт"
-            value={
-              view.shippingFee === 0
-                ? "Үнэгүй"
-                : `+${formatPrice(view.shippingFee)}`
-            }
-          />
+          {orderSummaryRows(view).map((row) => (
+            <RecapRow key={row.label} {...row} />
+          ))}
           {/* Тооцооны эцсийн мөр. Хэмжээний алхам нь checkout-ийн тоймтой нэг
               хэмжээст: жагсаалтын мөр → дүн нь ~1.7 дахин том, шошго нь дүнгээс
               нэг зэрэг жижиг. Урьд нь 12px мөрийн дараа 14px байсан тул «бага
@@ -566,20 +547,16 @@ function OrderRecap({ view }: { view: PaymentView }) {
   );
 }
 
-function RecapRow({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-}) {
+function RecapRow({ label, value, credit, strong }: OrderSummaryRow) {
   return (
     <div className="flex justify-between gap-3">
-      <span className="text-muted-foreground">{label}</span>
       <span
-        className={cn("tabular-nums", accent ? "text-success" : "font-medium")}
+        className={cn(strong ? "text-foreground" : "text-muted-foreground")}
+      >
+        {label}
+      </span>
+      <span
+        className={cn("tabular-nums", credit ? "text-success" : "font-medium")}
       >
         {value}
       </span>

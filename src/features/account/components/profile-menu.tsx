@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   Package,
+  PackageSearch,
   Disc3,
   HelpCircle,
   LogIn,
@@ -25,6 +26,7 @@ import { ThemeSwitcher } from "@/components/shared/theme-switcher";
 import { createClient } from "@/lib/supabase/browser";
 import { useIsStaff } from "@/features/account/use-staff";
 import { useSignOutConfirm } from "@/features/account/components/use-sign-out-confirm";
+import { LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
 
 interface Profile {
   name: string;
@@ -159,10 +161,20 @@ export function ProfileMenu() {
               </Link>
             </DropdownMenuItem>
           )}
-          {profile && (
+          {profile && !LUCKY_WHEEL_HIDDEN && (
             <DropdownMenuItem asChild>
               <Link href="/lucky-wheel">
                 <Disc3 /> Азын хүрд
+              </Link>
+            </DropdownMenuItem>
+          )}
+          {/* Зочинд захиалгаа олох цорын ганц ил зам — дугаар + утсаар хайна.
+              Нэвтэрсэн хүн дээрх «Миний захиалга»-аас шууд ордог тул давхар
+              мөр гаргахгүй. */}
+          {!profile && (
+            <DropdownMenuItem asChild>
+              <Link href="/order/find">
+                <PackageSearch /> Захиалга хайх
               </Link>
             </DropdownMenuItem>
           )}

@@ -1,14 +1,22 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "@/lib/toast";
+import { mutateJson } from "@/features/admin/lib/mutate";
 import { DataTable } from "@/features/admin/components/data-table";
 import { formatPrice, formatDateTime } from "@/lib/format";
 import { deliveryDayOf, formatDeliveryDay } from "@/lib/time";
 import {
   ORDER_STATUS_LABEL,
+  ORDER_STATUS_STYLE,
   PAYMENT_STATUS_LABEL,
+  PREPARABLE_ORDER_STATUSES,
+  type OrderStatus,
   type PaymentStatusValue,
 } from "@/lib/constants";
 import type { OrderRow } from "@/db/types";
@@ -52,6 +60,16 @@ const columns: ColumnDef<OrderRow, unknown>[] = [
     header: "Хэрэглэгч",
   },
   {
+    accessorKey: "contact_phone",
+    header: "Утас",
+    enableSorting: false,
+    cell: ({ getValue }) => (
+      <span className="text-muted-foreground whitespace-nowrap">
+        {getValue<string>()}
+      </span>
+    ),
+  },
+  {
     accessorKey: "total",
     header: "Дүн",
     // Money reads as a column only when the digits line up.
@@ -73,12 +91,76 @@ const columns: ColumnDef<OrderRow, unknown>[] = [
     accessorKey: "status",
     header: "Төлөв",
     cell: ({ row }) => (
-      <Badge variant="secondary">
+      <Badge className={ORDER_STATUS_STYLE[row.original.status]}>
         {ORDER_STATUS_LABEL[row.original.status]}
       </Badge>
     ),
   },
+  {
+    id: "prepared",
+    header: "Бэлдсэн",
+    accessorFn: (row) => Boolean(row.prepared_at),
+    cell: ({ row }) => <PreparedToggle order={row.original} />,
+  },
 ];
+
+function canPrepare(status: OrderStatus) {
+  return (PREPARABLE_ORDER_STATUSES as readonly OrderStatus[]).includes(status);
+}
+
+/**
+ * The packer ticks an order off straight from the list once it is weighed and
+ * bagged, so a confirmed order cannot sit unprepared unnoticed. Optimistic:
+ * the box flips at once and snaps back if the write is refused.
+ */
+function PreparedToggle({ order }: { order: OrderRow }) {
+  const router = useRouter();
+  const [checked, setChecked] = React.useState(Boolean(order.prepared_at));
+  const [pending, setPending] = React.useState(false);
+  React.useEffect(
+    () => setChecked(Boolean(order.prepared_at)),
+    [order.prepared_at],
+  );
+
+  const editable = canPrepare(order.status);
+  // Pending/cancelled orders were never prepared; a dash reads as «not
+  // applicable» rather than an unticked task.
+  if (!editable && !checked) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+
+  async function onChange(next: boolean) {
+    setChecked(next);
+    setPending(true);
+    const ok = await mutateJson(
+      `/api/admin/orders/${order.id}/prepared`,
+      "POST",
+      { prepared: next },
+      "Бэлдсэн төлөв солигдсонгүй",
+    );
+    setPending(false);
+    if (!ok) {
+      setChecked(!next);
+      return;
+    }
+    toast.success(
+      next
+        ? `${order.order_no} захиалгыг бэлдсэн гэж тэмдэглэлээ.`
+        : `${order.order_no} захиалгыг бэлдэгдээгүй болгож буцаалаа.`,
+      next ? "Бэлдсэн" : "Бэлдэгдээгүй",
+    );
+    router.refresh();
+  }
+
+  return (
+    <Checkbox
+      checked={checked}
+      disabled={!editable || pending}
+      onCheckedChange={(v) => onChange(v === true)}
+      aria-label={`${order.order_no} бэлдсэн`}
+    />
+  );
+}
 
 function PaymentBadge({ status }: { status: PaymentStatusValue }) {
   return (
@@ -101,22 +183,38 @@ export function OrdersTable({ data }: { data: OrderRow[] }) {
       emptyText="Захиалга алга"
       label="Захиалгын жагсаалт"
       renderCard={(o) => (
-        <Link href={`/admin/orders/${o.id}`} className="block space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <span className="font-mono font-medium">{o.order_no}</span>
-            <span className="font-medium">{formatPrice(o.total)}</span>
-          </div>
-          <div className="flex items-center justify-between gap-3 text-sm">
-            <span>{o.contact_name}</span>
-            <span className="text-muted-foreground">
-              {formatDateTime(o.created_at)}
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="secondary">{ORDER_STATUS_LABEL[o.status]}</Badge>
-            <PaymentBadge status={o.payment_status} />
-          </div>
-        </Link>
+        <div className="space-y-3">
+          <Link href={`/admin/orders/${o.id}`} className="block space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-mono font-medium">{o.order_no}</span>
+              <span className="font-medium">{formatPrice(o.total)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span>
+                {o.contact_name}
+                <span className="text-muted-foreground block text-xs">
+                  {o.contact_phone}
+                </span>
+              </span>
+              <span className="text-muted-foreground">
+                {formatDateTime(o.created_at)}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge className={ORDER_STATUS_STYLE[o.status]}>
+                {ORDER_STATUS_LABEL[o.status]}
+              </Badge>
+              <PaymentBadge status={o.payment_status} />
+            </div>
+          </Link>
+          {/* Outside the link: a tap on the box must not open the order. */}
+          {(canPrepare(o.status) || o.prepared_at) && (
+            <label className="flex items-center gap-2 text-sm">
+              <PreparedToggle order={o} />
+              Бэлдсэн
+            </label>
+          )}
+        </div>
       )}
     />
   );

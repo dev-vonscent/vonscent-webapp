@@ -1,6 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { z } from "zod";
+import {
+  FieldError,
+  fieldErrorClass,
+  fieldErrorProps,
+} from "@/components/ui/form-field";
 import { BellOff, Loader2, Mail, Pencil } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +34,7 @@ export function EmailSettings({
   const [loaded, setLoaded] = React.useState(false);
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState("");
+  const [draftError, setDraftError] = React.useState<string>();
   const [saving, setSaving] = React.useState(false);
   const [confirmOff, setConfirmOff] = React.useState(false);
 
@@ -126,17 +133,26 @@ export function EmailSettings({
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (draft.trim()) void save(draft);
+              const v = draft.trim();
+              if (!v) return setDraftError("Имэйл хаягаа оруулна уу.");
+              if (!z.string().email().safeParse(v).success)
+                return setDraftError("Имэйл хаяг буруу байна.");
+              void save(draft);
             }}
+            noValidate
             className="space-y-2"
           >
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input
+                {...fieldErrorProps("email-draft", draftError)}
+                className={fieldErrorClass(draftError)}
                 type="email"
-                required
                 autoFocus={editing}
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  setDraftError(undefined);
+                }}
                 aria-label="Имэйл хаяг"
                 placeholder="имэйл хаяг"
               />
@@ -162,6 +178,7 @@ export function EmailSettings({
                 )}
               </div>
             </div>
+            <FieldError id="email-draft" message={draftError} />
             <p className="text-muted-foreground text-xs">
               Нэг дансанд нэг хаяг. Солиход хуучин хаяг руу мэдэгдэл явахаа
               болино.

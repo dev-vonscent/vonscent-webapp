@@ -11,6 +11,7 @@ import {
   Crown,
   Disc3,
   FileText,
+  FlaskConical,
   Gift,
   Layers,
   LayoutDashboard,
@@ -89,6 +90,9 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
       // Түгжигдсэн мл нь барааны мөрөн дээрх «+N ml захиалагдсан» гэсэн
       // тоог задалдаг тул Бараа-гийн яг дор (0075 / backlog §2.4).
       { href: "/admin/reservations", label: "Түгжигдсэн мл", icon: Warehouse },
+      // Хоосон савны нөөц (0095) — «Түгжигдсэн мл»-ээс ТУСДАА ойлголт:
+      // тэр нь захиалгын барьсан шингэн, энэ нь өнгө/хэмжээний хоосон сав.
+      { href: "/admin/bottles", label: "Савны нөөц", icon: FlaskConical },
       { href: "/admin/collections", label: "Багц", icon: Layers },
       { href: "/admin/brands", label: "Брэнд", icon: Crown },
       { href: "/admin/scent-families", label: "Үнэрийн төрөл", icon: Tags },

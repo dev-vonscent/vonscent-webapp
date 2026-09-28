@@ -4,14 +4,13 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Check, Gift, ShoppingCart } from "lucide-react";
+import { Check, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
 import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { trackBeginCheckout } from "@/lib/analytics";
-import { bundleGiftGuarantee } from "@/lib/gift";
 import type { Collection } from "../types";
 
 /**
@@ -20,14 +19,7 @@ import type { Collection } from "../types";
  */
 const DESCRIPTION_CLAMP_CHARS = 220;
 
-export function CollectionDetail({
-  collection,
-  giftPoolEnabled,
-}: {
-  collection: Collection;
-  /** Админы бэлгийн сан идэвхтэй бөгөөд хоосон биш эсэх (backlog A2). */
-  giftPoolEnabled: boolean;
-}) {
+export function CollectionDetail({ collection }: { collection: Collection }) {
   const firstMl = collection.availableMls[0];
   const [ml, setMl] = React.useState<number>(
     firstMl ?? collection.prices[0]?.ml,
@@ -42,14 +34,6 @@ export function CollectionDetail({
 
   const priceRow = collection.prices.find((p) => p.ml === ml) ?? null;
   const available = priceRow?.available ?? false;
-  // Багц өөрөө бэлэг «авчирдаггүй» — зөвхөн бэлгийн эрх өгнө, бэлгээ
-  // худалдан авагч төлбөрийн хуудсанд админы сангаас сонгоно (backlog A2).
-  const giftGuarantee = bundleGiftGuarantee({
-    type: collection.type,
-    ml,
-    qty: 1,
-  });
-
   /**
    * Puts the bundle in the cart. Returns false when nothing was added.
    *
@@ -188,18 +172,11 @@ export function CollectionDetail({
 
   return (
     <div className="space-y-6">
-      {/* Live price — updates with ml selection.
-          Дүнгийн хажууд «{n} үнэртэн × {ml}ml» гэж бичихгүй бол 2мл → 20мл
-          хооронд үнэ гурав дахин өсөх нь тайлбаргүй үсрэлт мэт харагдана. */}
+      {/* Live price — updates with ml selection. */}
       <div className="space-y-1" aria-live="polite">
-        <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
-          <span className="font-serif text-3xl font-semibold">
-            {formatPrice(priceRow?.price ?? 0)}
-          </span>
-          <span className="text-muted-foreground pb-1 text-sm">
-            {collection.members.length} үнэртэн × {ml}ml
-          </span>
-        </div>
+        <span className="font-serif text-3xl font-semibold">
+          {formatPrice(priceRow?.price ?? 0)}
+        </span>
         {priceRow && priceRow.saved > 0 && (
           <p className="text-muted-foreground text-sm text-pretty">
             Тусад нь авбал{" "}
@@ -214,36 +191,10 @@ export function CollectionDetail({
         )}
       </div>
 
-      {collection.description && (
-        <div className="space-y-1">
-          <p
-            className={cn(
-              "text-foreground/80 text-sm/relaxed",
-              !descOpen && "line-clamp-4",
-            )}
-          >
-            {collection.description}
-          </p>
-          {collection.description.length > DESCRIPTION_CLAMP_CHARS && (
-            <button
-              type="button"
-              onClick={() => setDescOpen((v) => !v)}
-              aria-expanded={descOpen}
-              className="text-gold-strong text-sm font-medium underline underline-offset-4"
-            >
-              {descOpen ? "Хураах" : "Дэлгэрэнгүй"}
-            </button>
-          )}
-        </div>
-      )}
-
       {/* ml segment */}
       <div className="space-y-3">
         <p id="bundle-size-label" className="text-sm font-medium">
-          Хэмжээ сонгох{" "}
-          <span className="text-muted-foreground font-normal">
-            — үнэртэн тус бүрд
-          </span>
+          Хэмжээ сонгох
         </p>
         {/*
           Дөрвүүлээ нэг мөрөнд: хоёр мөр болмогц сүүлчийн хэмжээ (хамгийн
@@ -273,7 +224,7 @@ export function CollectionDetail({
                 className={cn(
                   "flex flex-col items-center rounded-lg p-2 transition-colors",
                   !p.available
-                    ? "bg-muted text-muted-foreground cursor-not-allowed line-through"
+                    ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
                     : active
                       ? // Цул гадаргуу — «сонгогдсон» нь бүдэг өнгө биш,
                         // эргэсэн өнгө байх ёстой (/collections/build-тэй ижил).
@@ -281,7 +232,17 @@ export function CollectionDetail({
                       : "bg-secondary hover:bg-accent",
                 )}
               >
-                <span className="text-sm font-semibold">{p.ml}ml</span>
+                {/* Зураас нь ЗӨВХӨН хэмжээн дээр — «Байхгүй» гэдэг үг өөрөө
+                    төлвийг хэлж байгаа тул түүнийг дээрээс нь зурвал зүгээр
+                    л уншихад хэцүү болно. */}
+                <span
+                  className={cn(
+                    "text-sm font-semibold",
+                    !p.available && "line-through",
+                  )}
+                >
+                  {p.ml}ml
+                </span>
                 <span
                   className={cn(
                     "text-xs",
@@ -296,13 +257,40 @@ export function CollectionDetail({
         </div>
       </div>
 
+      {/* Тайлбар нь ХЭМЖЭЭНИЙ доор, гишүүдийн дээр.
+
+          Үнэ ба хэмжээ хоёрын хооронд байхад худалдан авалтын гинжийг дунд
+          нь тасалдаг байв. Энд бол хэмжээгээ сонгосны дараа «тэгээд энэ багц
+          юу юм бэ» гэсэн асуулт төрөх мөч: тайлбар нь доорх гишүүдийн
+          жагсаалтыг угтах танилцуулга болж, «Захиалах» товчийг ч доош
+          шахахгүй. */}
+      {collection.description && (
+        <div className="space-y-1">
+          <p
+            className={cn(
+              "text-muted-foreground text-sm/relaxed text-pretty",
+              !descOpen && "line-clamp-3",
+            )}
+          >
+            {collection.description}
+          </p>
+          {collection.description.length > DESCRIPTION_CLAMP_CHARS && (
+            <button
+              type="button"
+              onClick={() => setDescOpen((v) => !v)}
+              aria-expanded={descOpen}
+              className="text-gold-strong text-sm font-medium underline underline-offset-4"
+            >
+              {descOpen ? "Хураах" : "Дэлгэрэнгүй"}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Members */}
       <div className="space-y-3">
         <p className="text-sm font-medium">
-          Багцын үнэртэн ({collection.members.length}){" "}
-          <span className="text-muted-foreground font-normal">
-            — тус бүр {ml}ml
-          </span>
+          Багцын үнэртэн ({collection.members.length})
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
           {collection.members.map((m) => (
@@ -334,17 +322,6 @@ export function CollectionDetail({
           ))}
         </div>
       </div>
-
-      {/* Бэлгийн эрх — сонголт нь checkout дээр */}
-      {giftPoolEnabled && giftGuarantee > 0 && (
-        <p className="bg-secondary/60 flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm">
-          <Gift className="text-gold-strong mt-0.5 size-4 shrink-0" />
-          <span>
-            Энэ багц <strong>1мл бэлгийн дээж</strong> дагалдана — бэлгээ
-            төлбөрийн хуудсанд бэлгийн уснуудаас сонгоно.
-          </span>
-        </p>
-      )}
 
       {/* «Захиалах» leads: it is the shorter road to a paid order, and the
           cart stays one tap away underneath. */}

@@ -239,6 +239,29 @@ export function OrderStatusControl({
     );
   }
 
+  /**
+   * Хүргэгдсэний дараах буцаалт (docs/analysis/order_status_ux_proposal.md
+   * §3.5). Захиалга биетээр хүргэгдсэн, хэрэглэгч хэрэглэсэн байж болзошгүй
+   * тул цуцлалтын механизмыг (ml/оноо/купон авто буцаалт) ДАХИН АШИГЛАХГүй
+   * — зөвхөн `payment_status`-ыг л шууд `refunded` болгоно, `order_status`
+   * хэвээрээ `delivered` үлдэнэ. Зөвхөн super_admin-д харагдана (доор).
+   */
+  async function refundDelivered() {
+    const ok = await confirm({
+      title: "Барааг биетээр хүлээж авсан уу?",
+      description:
+        "Барааг биетээр хүлээж авсны дараа л дарна уу. Захиалга «Хүргэгдсэн» хэвээр үлдэнэ, зөвхөн төлбөрийг «Буцаагдсан» гэж тэмдэглэнэ. Мл үлдэгдэлд автоматаар буцахгүй — шинэ, нээгдээгүй бол Үлдэгдэл хуудаснаас өөрөө гараар нэмнэ.",
+      confirmLabel: "Тийм, буцаалт хийх",
+      destructive: true,
+    });
+    if (!ok) return;
+    await post(
+      { refund: true },
+      "Буцаалт бүртгэгдлээ.",
+      "Буцаалт бүртгэгдсэнгүй",
+    );
+  }
+
   const all = [...steps, ...recovery];
   const selected = all.find((t) => t.to === target) ?? null;
 
@@ -252,8 +275,10 @@ export function OrderStatusControl({
 
         {all.length === 0 ? (
           <p className="bg-secondary text-muted-foreground rounded-md px-3 py-2 text-sm">
-            {TERMINAL_TEXT[current]} Андуурсан бол супер админаар сэргээлгэнэ
-            үү.
+            {TERMINAL_TEXT[current]}{" "}
+            {paymentStatus === "refunded"
+              ? "Мөнгийг буцаасан тул төлвийг цаашид сэргээх боломжгүй."
+              : "Андуурсан бол супер админаар сэргээлгэнэ үү."}
           </p>
         ) : (
           <>
@@ -330,6 +355,27 @@ export function OrderStatusControl({
                 Буцаалт хийх
               </Button>
             </>
+          ) : current === "delivered" && canRecover ? (
+            <>
+              <p className="bg-destructive/10 text-destructive rounded-md px-3 py-2 text-sm">
+                Захиалга хүргэгдсэн. Барааг биетээр буцааж хүлээж авсны
+                дараа доорх товчоор мөнгийг буцаасан гэж тэмдэглэнэ үү.
+                Захиалгын төлөв «Хүргэгдсэн» хэвээр үлдэнэ.
+              </p>
+              <Button
+                variant="destructive"
+                className="h-11 w-full md:h-10"
+                disabled={busy}
+                onClick={refundDelivered}
+              >
+                Хүргэгдсэний дараах буцаалт
+              </Button>
+            </>
+          ) : current === "delivered" ? (
+            <p className="text-muted-foreground text-xs">
+              Захиалга хүргэгдсэн. Хүргэгдсэний дараах буцаалтыг зөвхөн
+              super_admin хийж чадна.
+            </p>
           ) : (
             <p className="text-muted-foreground text-xs">
               Төлбөр буцаахын өмнө захиалгыг цуцлах ёстой — цуцлахад мл, V

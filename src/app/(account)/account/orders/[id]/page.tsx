@@ -7,7 +7,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
 import { getProductsByIds } from "@/features/products/api";
-import { formatPrice, formatDate } from "@/lib/format";
+import { formatPrice, formatDateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import {
+  orderSummaryRows,
+  summarySource,
+  type OrderSummaryRow,
+} from "@/lib/orders/summary";
 import {
   DISPATCH_HOUR,
   deliveryDayOf,
@@ -17,23 +23,14 @@ import {
 } from "@/lib/time";
 import {
   ORDER_STATUS_LABEL,
+  ORDER_STATUS_STYLE,
   PAYMENT_STATUS_LABEL,
-  type OrderStatus,
 } from "@/lib/constants";
 import {
   OrderActions,
   type ReorderItem,
 } from "@/features/account/components/order-actions";
 import type { OrderRow, OrderItemRow, OrderStatusHistoryRow } from "@/db/types";
-
-/** Distinct chip colour per status (overrides the Badge variant via twMerge). */
-const STATUS_STYLE: Record<OrderStatus, string> = {
-  pending: "bg-amber-500/15 text-amber-500",
-  confirmed: "bg-sky-500/15 text-sky-500",
-  shipping: "bg-violet-500/15 text-violet-400",
-  delivered: "bg-emerald-500/15 text-emerald-500",
-  cancelled: "bg-red-500/20 text-red-400",
-};
 
 export default async function OrderDetailPage({
   params,
@@ -44,17 +41,18 @@ export default async function OrderDetailPage({
   const supabase = await createClient();
   if (!supabase) notFound();
 
-  // Жагсаалтын адил эзнээр нь шүүнэ — RLS ажилтанд бүх захиалгыг нээдэг тул
-  // хувийн хуудсаар дамжуулан бусдын захиалга нээгдэх ёсгүй. (Ажилтан
-  // бусдын захиалгыг `/admin/orders`-оор хардаг.)
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) notFound();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) notFound();
 
+  // RLS staff-д бусдын захиалгыг ч нээдэг — энэ хуудас зөвхөн эзэндээ
+  // (staff бол админ самбараас харна).
   const { data: orderData } = await supabase
     .from("orders")
     .select("*")
     .eq("id", id)
-    .eq("user_id", auth.user.id)
+    .eq("user_id", user.id)
     .maybeSingle();
   const order = orderData as OrderRow | null;
   if (!order) notFound();
@@ -123,10 +121,10 @@ export default async function OrderDetailPage({
             {order.order_no}
           </h1>
           <p className="text-muted-foreground text-sm">
-            {formatDate(order.created_at)}
+            {formatDateTime(order.created_at)}
           </p>
         </div>
-        <Badge className={STATUS_STYLE[order.status]}>
+        <Badge className={ORDER_STATUS_STYLE[order.status]}>
           {ORDER_STATUS_LABEL[order.status]}
         </Badge>
       </div>
@@ -153,7 +151,7 @@ export default async function OrderDetailPage({
                     )}
                   </span>
                   <span className="font-medium">
-                    {formatPrice(i.line_total)}
+                    {formatPrice((i.list_price ?? i.unit_price) * i.qty)}
                   </span>
                 </div>
               ))}
@@ -177,7 +175,7 @@ export default async function OrderDetailPage({
                           <p className="text-muted-foreground">{h.note}</p>
                         )}
                         <p className="text-muted-foreground text-xs">
-                          {formatDate(h.created_at)}
+                          {formatDateTime(h.created_at)}
                         </p>
                       </div>
                     </li>
@@ -189,11 +187,9 @@ export default async function OrderDetailPage({
 
           {openStatus && !beforeCutoff && (
             <p className="bg-secondary text-muted-foreground rounded-xl px-4 py-3 text-sm">
-              Захиалга бэлтгэгдэж эхэлсэн тул ({formatEditCutoff(
-                deliveryDayOf(order),
-              )}{" "}
-              өнгөрсөн) цуцлах, өөрчлөх боломжгүй. Асуудал гарвал пэйж чат
-              эсвэл утсаар холбогдоно уу.
+              Захиалга бэлтгэгдэж эхэлсэн тул (
+              {formatEditCutoff(deliveryDayOf(order))} өнгөрсөн) цуцлах, өөрчлөх
+              боломжгүй. Асуудал гарвал пэйж чат эсвэл утсаар холбогдоно уу.
             </p>
           )}
 
@@ -214,27 +210,9 @@ export default async function OrderDetailPage({
               {/* Дараалал нь мөнгө хөдөлсний дараалал: барааны дүн → хасагдах
                   нь → нэмэгдэх хүргэлт → төлсөн дүн. Захиалгын тойм,
                   төлбөрийн хуудас, и-мэйл гурав нь энэ дараалалтай нэг мөр. */}
-              <Row label="Барааны дүн" value={formatPrice(order.subtotal)} />
-              {order.discount > 0 && (
-                <Row
-                  label="Хөнгөлөлт"
-                  value={`−${formatPrice(order.discount)}`}
-                />
-              )}
-              {order.loyalty_used > 0 && (
-                <Row
-                  label="V point"
-                  value={`−${formatPrice(order.loyalty_used)}`}
-                />
-              )}
-              <Row
-                label="Хүргэлт"
-                value={
-                  order.shipping_fee === 0
-                    ? "Үнэгүй"
-                    : `+${formatPrice(order.shipping_fee)}`
-                }
-              />
+              {orderSummaryRows(summarySource(order)).map((row) => (
+                <Row key={row.label} {...row} />
+              ))}
               <Separator />
               <div className="flex justify-between gap-3 font-semibold">
                 <span>Нийт төлөх</span>
@@ -286,11 +264,15 @@ export default async function OrderDetailPage({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, credit, strong }: OrderSummaryRow) {
   return (
     <div className="flex justify-between gap-3">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="tabular-nums">{value}</span>
+      <span className={strong ? "text-foreground" : "text-muted-foreground"}>
+        {label}
+      </span>
+      <span className={cn("tabular-nums", credit && "text-success")}>
+        {value}
+      </span>
     </div>
   );
 }

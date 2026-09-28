@@ -9,7 +9,11 @@ export interface CollectionMember {
   name: string;
   brand: string;
   image: ProductImage | null;
-  /** price + availability keyed by ml (5/10/20). */
+  /**
+   * price + availability keyed by ml (2/5/10/20). `inStock` нь «энэ хэмжээг
+   * ӨНӨӨДӨР авч болох уу»: эх савны үлдэгдэл БА хоосон савны түгжээ (0095)
+   * хоёуланг агуулна.
+   */
   variantByMl: Record<
     number,
     { variantId: string; price: number; inStock: boolean }
@@ -25,9 +29,21 @@ export interface CollectionPriceAtMl {
   price: number;
   /**
    * Бодит хэмнэлтийн хувь (`memberSum` → `price`). Админы бичсэн хувь биш —
-   * тогтмол үнэтэй хэмжээнд тэр хувь худал болно.
+   * тогтмол үнэтэй хэмжээнд тэр хувь худал болно. Нэг ТОДОРХОЙ хэмжээг
+   * харуулах газарт (сагс, дэлгэрэнгүй хуудас) үүнийг ашигла.
    */
   discountPct: number;
+  /**
+   * Зар сурталчилгааны (badge) хувь: admin-ий амласан ХУВЬ өөрөө
+   * (`discountForMl`-ийн үр дүн), ₮-т 100-д тэгшлэхээс гарах ойролцоо
+   * зөрүүг жинхэнэ ялгаа мэт үзүүлэхгүйн тулд. Тогтмол үнэтэй хэмжээнд
+   * (`MlPrices`) ийм амлалт байхгүй тул `discountPct`-тай адил.
+   *
+   * Хэд хэдэн хэмжээг НЭГ дор харьцуулах газарт (`discountRange`) үүнийг
+   * ашигла — эс бөгөөс 100₮-т тэгшлэхэд гарах 1пп-ийн зөрүү бодит ялгаа мэт
+   * badge дээр «-4-5%» гэж харагдана (0051-ийн дараа гарсан алдаа).
+   */
+  nominalDiscountPct: number;
   /** memberSum − price. */
   saved: number;
   /** Every member has an active, in-stock variant at this ml. */

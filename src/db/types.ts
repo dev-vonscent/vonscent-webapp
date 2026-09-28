@@ -198,6 +198,11 @@ export interface OrderRow {
   ship_zone: string | null;
   note: string | null;
   subtotal: number;
+  /**
+   * Багцын хямдралын өмнөх барааны дүн — sum(list_price * qty), 0097.
+   * `gross_subtotal − subtotal` нь багцын хямдрал. Хуучин захиалгад null.
+   */
+  gross_subtotal: number | null;
   shipping_fee: number;
   discount: number;
   loyalty_used: number;
@@ -206,6 +211,9 @@ export interface OrderRow {
   /** "yyyy-MM-dd" (UB) the customer picked at checkout — 0052_order_deliver_on. */
   deliver_on: string | null;
   reserve_expires_at: string | null;
+  /** Ажилтан бэлдсэн (грамлаж, уутласан) цаг — 0099. NULL = бэлдэгдээгүй. */
+  prepared_at: string | null;
+  prepared_by: string | null;
   qpay_invoice_id: string | null;
   /**
    * Opaque key for /pay/<token> — 0068. `order_no` is a sequence, so it can
@@ -275,9 +283,14 @@ export interface OrderItemRow {
   brand: string;
   ml: number;
   unit_price: number;
+  /** Хямдраагүй нэгж үнэ (0097). Багцын гишүүнд л unit_price-аас их. */
+  list_price: number | null;
   qty: number;
   is_sample: boolean;
   line_total: number;
+  collection_id: string | null;
+  collection_name: string | null;
+  is_gift: boolean;
 }
 
 export interface CouponRow {

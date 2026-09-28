@@ -9,7 +9,7 @@
  *
  * The catalogue's photos come from several sources and do not share a look —
  * different crops, different framing, different amounts of empty space. This
- * pass sends each one back through gpt-image-1.5 as an image-to-image edit with
+ * pass sends each one back through gpt-image-2 as an image-to-image edit with
  * one fixed prompt, so the bottles come out on one background, at one scale,
  * lit the same way.
  *
@@ -31,7 +31,7 @@ import { PACKSHOT_PROMPT } from "@/lib/ai/packshot-prompt";
 
 const BACKUP = "docs/import/enrichment/image-backup.json";
 const BUCKET = process.env.SUPABASE_STORAGE_BUCKET ?? "product-images";
-const MODEL = "gpt-image-1.5";
+const MODEL = "gpt-image-2";
 const SIZE = "1024x1024";
 const QUALITY = process.env.IMAGE_QUALITY ?? "high";
 /**

@@ -63,6 +63,20 @@ export const DEFAULT_LOW_STOCK_ML = 50;
 export const GIFT_THRESHOLD = 200_000;
 export const GIFT_SAMPLE_ML = 1;
 
+/**
+ * Эрхийн дээд хязгаар. Босго нь шугаман тул 5М₮-ийн захиалга 25 ширхэг 1мл
+ * шаардах байсан — сан тэр болгоныг даахгүй, савлах ажил ч боломжгүй. 5 нь
+ * 1М₮ дээр дүүрнэ; түүнээс дээш дүн эрх нэмэхгүй.
+ */
+export const GIFT_MAX_SAMPLES = 5;
+
+/**
+ * Нэг уснаас хамгийн ихдээ хэдэн 1мл дээж. Сан цөөн устай үед (4 ус / 5 эрх)
+ * давхардал зөвшөөрөхгүй бол хэрэглэгчийн эрх чимээгүй үрэгддэг; хязгааргүй
+ * зөвшөөрвөл нэг ус хурдан дуусаж бэлгийн олон янз байдал алдагдана.
+ */
+export const GIFT_PER_PRODUCT_LIMIT = 2;
+
 export const GENDERS = ["male", "female", "unisex"] as const;
 export type Gender = (typeof GENDERS)[number];
 
@@ -114,6 +128,32 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   delivered: "Хүргэгдсэн",
   cancelled: "Цуцлагдсан",
 };
+
+/**
+ * Төлвийн чипний өнгө. Дөрвөн файлд ижилхэн бичигдсэн байсан (хэрэглэгчийн
+ * захиалгын жагсаалт, дэлгэрэнгүй, /order/[token]) — админы хэсэгт бол огт
+ * өнгөгүй (жагсаалт) эсвэл гурван утгад л буурсан (дэлгэрэнгүй, confirmed/
+ * shipping/delivered бүгд ижил ногоон) байв. Нэг эх сурвалж болгов.
+ */
+export const ORDER_STATUS_STYLE: Record<OrderStatus, string> = {
+  pending: "bg-amber-500/15 text-amber-500",
+  confirmed: "bg-sky-500/15 text-sky-500",
+  shipping: "bg-violet-500/15 text-violet-400",
+  delivered: "bg-emerald-500/15 text-emerald-500",
+  cancelled: "bg-red-500/20 text-red-400",
+};
+
+/**
+ * Бэлдсэн эсэхийг (orders.prepared_at, 0099) солиж болох төлвүүд. Хүлээгдэж
+ * буй нь төлөгдөөгүй, хүргэгдсэн/цуцлагдсан нь хаагдсан.
+ */
+export const PREPARABLE_ORDER_STATUSES = [
+  "confirmed",
+  "shipping",
+] as const satisfies readonly OrderStatus[];
+
+/** `/admin/orders?status=` дээрх төлөв биш шүүлт: баталгаажсан + бэлдээгүй. */
+export const UNPREPARED_FILTER = "unprepared";
 
 export const PAYMENT_STATUSES = ["unpaid", "paid", "refunded"] as const;
 export type PaymentStatusValue = (typeof PAYMENT_STATUSES)[number];
@@ -440,3 +480,14 @@ export type RateLimitName = keyof typeof RATE_LIMITS;
  * кодыг хүрэшгүй гэж үзээд narrowing-оо алддаг.
  */
 export const CONTENT_PAGES_HIDDEN: boolean = true;
+
+/**
+ * Азын хүрд (`/lucky-wheel`) түр нуугдсан эсэх (2026-09-27).
+ *
+ * Цэс, профайлын dropdown, акаунтын карт, купоны жагсаалтын холбоосууд энэ
+ * тугаар нуугдаж, хуудас нь шууд URL-ээр 404 өгнө. API болон админы тохиргоо
+ * хэвээр — эргүүлж нээхэд `false` болгоход л хангалттай.
+ *
+ * `boolean` гэж зориуд бичив (`CONTENT_PAGES_HIDDEN`-ийн тайлбарыг үз).
+ */
+export const LUCKY_WHEEL_HIDDEN: boolean = true;

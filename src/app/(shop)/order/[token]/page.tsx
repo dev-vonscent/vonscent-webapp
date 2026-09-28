@@ -8,15 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getOrderStatusByToken } from "@/features/order-lookup/api";
-import { formatPrice, formatDate } from "@/lib/format";
+import { formatPrice, formatDateTime } from "@/lib/format";
 import {
   ORDER_STATUS_LABEL,
+  ORDER_STATUS_STYLE,
   PAYMENT_STATUS_LABEL,
   RESERVE_TIMEOUT_MINUTES,
-  type OrderStatus,
 } from "@/lib/constants";
 import { deliveryDayOf, formatDeliveryDay, DISPATCH_HOUR } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { orderSummaryRows, type OrderSummaryRow } from "@/lib/orders/summary";
 
 /**
  * `/order/<token>` — захиалгын төлөв, нэвтрэхгүйгээр.
@@ -35,14 +36,6 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Захиалгын төлөв",
   robots: { index: false, follow: false },
-};
-
-const STATUS_STYLE: Record<OrderStatus, string> = {
-  pending: "bg-amber-500/15 text-amber-500",
-  confirmed: "bg-sky-500/15 text-sky-500",
-  shipping: "bg-violet-500/15 text-violet-400",
-  delivered: "bg-emerald-500/15 text-emerald-500",
-  cancelled: "bg-red-500/20 text-red-400",
 };
 
 export default async function OrderStatusPage({
@@ -66,11 +59,11 @@ export default async function OrderStatusPage({
               {order.orderNo}
             </h1>
             <p className="text-muted-foreground text-sm">
-              {formatDate(order.createdAt)}
+              {formatDateTime(order.createdAt)}
             </p>
           </div>
           <div className="flex flex-col items-end gap-1.5">
-            <Badge className={cn("gap-1", STATUS_STYLE[order.status])}>
+            <Badge className={cn("gap-1", ORDER_STATUS_STYLE[order.status])}>
               {ORDER_STATUS_LABEL[order.status]}
             </Badge>
             {order.paymentStatus !== "paid" && order.status !== "cancelled" && (
@@ -167,7 +160,7 @@ export default async function OrderStatusPage({
                 </Badge>
               ) : (
                 <span className="shrink-0 font-medium tabular-nums">
-                  {formatPrice(l.lineTotal)}
+                  {formatPrice(l.baseTotal)}
                 </span>
               )}
             </div>
@@ -177,21 +170,9 @@ export default async function OrderStatusPage({
 
       <Card>
         <CardContent className="space-y-2 p-5 text-sm">
-          <Row label="Барааны дүн" value={formatPrice(order.subtotal)} />
-          {order.discount > 0 && (
-            <Row label="Хөнгөлөлт" value={`−${formatPrice(order.discount)}`} />
-          )}
-          {order.loyaltyUsed > 0 && (
-            <Row label="V point" value={`−${formatPrice(order.loyaltyUsed)}`} />
-          )}
-          <Row
-            label="Хүргэлт"
-            value={
-              order.shippingFee === 0
-                ? "Үнэгүй"
-                : `+${formatPrice(order.shippingFee)}`
-            }
-          />
+          {orderSummaryRows(order).map((row) => (
+            <Row key={row.label} {...row} />
+          ))}
           <Separator />
           <div className="flex justify-between gap-3 font-semibold">
             <span>Нийт төлөх</span>
@@ -208,7 +189,7 @@ export default async function OrderStatusPage({
               <div key={i} className="flex justify-between gap-3 text-sm">
                 <span>{h.note || ORDER_STATUS_LABEL[h.status]}</span>
                 <span className="text-muted-foreground shrink-0 text-xs">
-                  {formatDate(h.createdAt)}
+                  {formatDateTime(h.createdAt)}
                 </span>
               </div>
             ))}
@@ -227,11 +208,15 @@ export default async function OrderStatusPage({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, credit, strong }: OrderSummaryRow) {
   return (
     <div className="flex justify-between gap-3">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="tabular-nums">{value}</span>
+      <span className={strong ? "text-foreground" : "text-muted-foreground"}>
+        {label}
+      </span>
+      <span className={cn("tabular-nums", credit && "text-success")}>
+        {value}
+      </span>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { fieldErrorClass } from "@/components/ui/form-field";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -91,6 +92,8 @@ export function ProductEditForm({
   const [showVariantErrors, setShowVariantErrors] = React.useState(false);
   const [dirty, setDirty] = React.useState(false);
   const errorRef = React.useRef<HTMLParagraphElement | null>(null);
+  const [nameError, setNameError] = React.useState<string>();
+  const nameRef = React.useRef<HTMLInputElement>(null);
   const [form, setForm] = React.useState({
     name: product.name,
     brand: product.brand,
@@ -187,6 +190,12 @@ export function ProductEditForm({
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    if (!form.name.trim()) {
+      setNameError("Нэр оруулна уу.");
+      nameRef.current?.focus();
+      nameRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
     // Төрлийг жагсаалтаас устгавал талбар хоосрох тул серверийн FK алдаа
     // хүлээхгүйгээр энд хэлнэ.
     if (!form.concentration.trim()) {
@@ -292,7 +301,7 @@ export function ProductEditForm({
   }
 
   return (
-    <form onSubmit={save} className="space-y-6">
+    <form onSubmit={save} noValidate className="space-y-6">
       {confirmDialog}
       {/* The picture leads: it is the one part of a product an operator comes
           back to edit on its own, and the AI controls belong beside the gallery
@@ -315,11 +324,15 @@ export function ProductEditForm({
         <CardContent className="space-y-4 p-6">
           <h2 className="font-serif text-lg font-semibold">Үндсэн мэдээлэл</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Нэр">
+            <Field label="Нэр" error={nameError}>
               <Input
+                ref={nameRef}
                 value={form.name}
-                onChange={(e) => set("name", e.target.value)}
-                required
+                className={fieldErrorClass(nameError)}
+                onChange={(e) => {
+                  set("name", e.target.value);
+                  setNameError(undefined);
+                }}
               />
             </Field>
             <Field label="Брэнд">

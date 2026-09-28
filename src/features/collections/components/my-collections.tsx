@@ -149,7 +149,9 @@ function Card({ collection }: { collection: Collection }) {
                 className={cn(
                   "rounded-full px-3 py-1 text-xs font-medium transition-colors",
                   !p.available
-                    ? "text-muted-foreground cursor-not-allowed line-through opacity-50"
+                    ? // Энд зөвхөн хэмжээ бичигддэг (тайлбар үг байхгүй) тул
+                      // зураас нь өөрөө «байхгүй» гэдгийг хэлнэ.
+                      "text-muted-foreground cursor-not-allowed line-through opacity-50"
                     : p.ml === ml
                       ? "bg-foreground text-background"
                       : "bg-secondary hover:bg-accent",

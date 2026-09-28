@@ -8,6 +8,7 @@ import {
 } from "@/lib/email";
 import { env } from "@/lib/env";
 import { formatPrice, formatMl } from "@/lib/format";
+import { orderSummaryRows, summarySource } from "@/lib/orders/summary";
 import { RESERVE_TIMEOUT_MINUTES } from "@/lib/constants";
 import { DISPATCH_HOUR, deliveryDayOf, formatDeliveryDay } from "@/lib/time";
 
@@ -36,13 +37,15 @@ export async function sendOrderCustomerEmail(
   const { data } = await supabase
     .from("orders")
     .select(
-      "order_no, subtotal, shipping_fee, discount, loyalty_used, total, user_id, payment_status, created_at, deliver_on, contact_email, pay_token, status",
+      "order_no, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, user_id, payment_status, created_at, deliver_on, contact_email, pay_token, status",
     )
     .eq("id", orderId)
     .maybeSingle();
   const order = data as {
     order_no: string;
     subtotal: number;
+    gross_subtotal: number | null;
+    coupon_code: string | null;
     shipping_fee: number;
     discount: number;
     loyalty_used: number;
@@ -243,7 +246,7 @@ async function loadItems(
 ): Promise<EmailItem[] | undefined> {
   const { data } = await supabase
     .from("order_items")
-    .select("product_name, brand, ml, qty, line_total")
+    .select("product_name, brand, ml, qty, unit_price, list_price, line_total")
     .eq("order_id", orderId);
   const rows = data as
     | {
@@ -251,6 +254,8 @@ async function loadItems(
         brand: string;
         ml: number;
         qty: number;
+        unit_price: number;
+        list_price: number | null;
         line_total: number;
       }[]
     | null;
@@ -259,36 +264,25 @@ async function loadItems(
   return rows.map((r) => ({
     name: r.brand ? `${r.brand} — ${r.product_name}` : r.product_name,
     meta: `${formatMl(r.ml)} × ${r.qty}`,
-    amount: formatPrice(r.line_total),
+    // Үндсэн үнээр — багцын хямдрал тоймд тусдаа мөр болно (0097).
+    amount: formatPrice((r.list_price ?? r.unit_price) * r.qty),
   }));
 }
 
 function summaryLines(order: {
   subtotal: number;
+  gross_subtotal: number | null;
+  coupon_code?: string | null;
   shipping_fee: number;
   discount: number;
   loyalty_used: number;
   total: number;
 }) {
-  const lines = [{ label: "Барааны дүн", value: formatPrice(order.subtotal) }];
-  if (order.discount > 0) {
-    lines.push({
-      label: "Хөнгөлөлт",
-      value: `−${formatPrice(order.discount)}`,
-    });
-  }
-  if (order.loyalty_used > 0) {
-    lines.push({
-      label: "V point",
-      value: `−${formatPrice(order.loyalty_used)}`,
-    });
-  }
-  lines.push({
-    label: "Хүргэлт",
-    value: order.shipping_fee > 0 ? formatPrice(order.shipping_fee) : "Үнэгүй",
-  });
   return [
-    ...lines,
+    ...orderSummaryRows(summarySource(order)).map((r) => ({
+      label: r.label,
+      value: r.value,
+    })),
     { label: "Нийт төлөх", value: formatPrice(order.total), strong: true },
   ];
 }

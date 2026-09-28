@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminCollectionsPage() {
   const supabase = createAdminClient();
   let collections: AdminCollection[] = [];
+  let generatingIds: string[] = [];
   if (supabase) {
     const { data } = await supabase
       .from("collections")
@@ -20,15 +21,29 @@ export default async function AdminCollectionsPage() {
       .order("is_featured", { ascending: false })
       .order("name");
     collections = (data as AdminCollection[] | null) ?? [];
+
+    // Хуудас нээгдэхэд аль хэдийн үүсч байгаа AI зургууд — loader-ийг эхний
+    // polling хүлээлгүй шууд харуулна.
+    const { data: jobs } = await supabase
+      .from("collection_image_generations")
+      .select("collection_id")
+      .in("status", ["pending", "generating"]);
+    generatingIds = [
+      ...new Set(
+        ((jobs ?? []) as { collection_id: string }[]).map(
+          (j) => j.collection_id,
+        ),
+      ),
+    ];
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Багц"
-        count={collections.length}
+      <PageHeader title="Багц" count={collections.length} />
+      <CollectionAdmin
+        collections={collections}
+        generatingIds={generatingIds}
       />
-      <CollectionAdmin collections={collections} />
     </div>
   );
 }

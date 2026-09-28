@@ -7,7 +7,7 @@
  *   node --env-file=.env --import tsx scripts/gen-note-images.ts --rollback
  *
  * The reference is the product's **current main image** (`sort_order` 0), sent
- * back through gpt-image-1.5 as an image-to-image edit, so the bottle in the
+ * back through gpt-image-2 as an image-to-image edit, so the bottle in the
  * result is the bottle the shop actually sells rather than an invented one.
  *
  * **This spends money** — one paid generation per product — so nothing happens
@@ -46,7 +46,7 @@ import {
 
 const MANIFEST = "docs/import/enrichment/note-images.json";
 const BUCKET = process.env.SUPABASE_STORAGE_BUCKET ?? "product-images";
-const MODEL = "gpt-image-1.5";
+const MODEL = "gpt-image-2";
 const SIZE = "1024x1024";
 const QUALITY = process.env.IMAGE_QUALITY ?? "high";
 

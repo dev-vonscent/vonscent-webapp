@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCustomerDetail } from "@/features/admin/api";
 import { formatPrice, formatDate, formatDateTime } from "@/lib/format";
-import { ORDER_STATUS_LABEL } from "@/lib/constants";
+import { ORDER_STATUS_LABEL, ORDER_STATUS_STYLE } from "@/lib/constants";
 import { CustomerControl } from "@/features/admin/components/customer-control";
 
 export default async function AdminCustomerDetail({
@@ -108,7 +108,7 @@ export default async function AdminCustomerDetail({
                             {formatDateTime(o.created_at)}
                           </td>
                           <td className="p-2 ">
-                            <Badge variant="secondary">
+                            <Badge className={ORDER_STATUS_STYLE[o.status]}>
                               {ORDER_STATUS_LABEL[o.status]}
                             </Badge>
                           </td>

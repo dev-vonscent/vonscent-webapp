@@ -1,10 +1,5 @@
 import { BUNDLE_ML_SIZES } from "@/lib/constants";
-import { GIFT_GUARANTEE_MIN_ML } from "@/lib/gift";
-import type {
-  Collection,
-  CollectionMember,
-  CollectionPriceAtMl,
-} from "./types";
+import type { CollectionMember, CollectionPriceAtMl } from "./types";
 
 /** Round to the nearest `step` (₮). step ≤ 1 rounds to the nearest whole ₮. */
 export function roundTo(value: number, step: number): number {
@@ -70,25 +65,27 @@ export function memberPrices(
     // Гишүүдийн үнэ нь БОДИТООР төлөх (хямдарсан) үнэ — тиймээс custom багц
     // ч хямдарсан үнээр бодогдоно (backlog B5).
     const memberSum = rows.reduce((sum, r) => sum + (r?.price ?? 0), 0);
-    const fixed = fixedPrices[ml];
-    const price = Number.isFinite(fixed)
-      ? Math.max(0, fixed as number)
-      : bundlePrice(
-          memberSum,
-          discountForMl(ml, defaultDiscountPct, overrides),
-          step,
-        );
+    const hasFixedPrice = Number.isFinite(fixedPrices[ml]);
+    const nominalPct = discountForMl(ml, defaultDiscountPct, overrides);
+    const price = hasFixedPrice
+      ? Math.max(0, fixedPrices[ml] as number)
+      : bundlePrice(memberSum, nominalPct, step);
     // Харуулах хувь нь ҮРГЭЛЖ бодит үнээс гарна. Тогтмол үнэтэй хэмжээнд
     // админы бичсэн хувь нь худал болох тул түүнийг давтаж болохгүй.
     const discountPct =
       memberSum > 0
         ? Math.max(0, Math.round(((memberSum - price) / memberSum) * 100))
         : 0;
+    // Зар сурталчилгаанд ашиглах хувь: admin-ий амласан хувь өөрөө, ₮-т
+    // тэгшлэхээс гарах 1пп-ийн зөрүүгүйгээр (`nominalDiscountPct`, types.ts).
+    // Тогтмол үнэтэй хэмжээнд амлалт байхгүй тул бодит хувиараа орлуулна.
+    const nominalDiscountPct = hasFixedPrice ? discountPct : nominalPct;
     return {
       ml,
       memberSum,
       price,
       discountPct,
+      nominalDiscountPct,
       saved: Math.max(0, memberSum - price),
       available,
     };
@@ -104,14 +101,17 @@ export function memberPrices(
  * full table rather than reporting nothing.
  */
 export function discountRange(
-  prices: CollectionPriceAtMl[],
+  prices: Pick<CollectionPriceAtMl, "ml" | "nominalDiscountPct">[],
   availableMls: number[] = [],
 ): { min: number; max: number } {
   const scope = availableMls.length
     ? prices.filter((p) => availableMls.includes(p.ml))
     : prices;
   if (!scope.length) return { min: 0, max: 0 };
-  const pcts = scope.map((p) => p.discountPct);
+  // `nominalDiscountPct`-ийг ашиглана, `discountPct`-г БИШ: сүүлийнх нь ₮-т
+  // 100-д тэгшлэхэд ml болгонд бага зэрэг өөр гарч, badge дээр «-4-5%» мэт
+  // худал range үүсгэдэг байсан (жинхэнэ ялгаа биш, зөвхөн тэгшлэлтийн шуугиан).
+  const pcts = scope.map((p) => p.nominalDiscountPct);
   return { min: Math.min(...pcts), max: Math.max(...pcts) };
 }
 
@@ -125,37 +125,4 @@ export function formatDiscountRange({
 }): string {
   if (max <= 0) return "";
   return min === max ? `${min}%` : `${min}-${max}%`;
-}
-
-/**
- * Хэдэн ml-ээс эхлээд энэ багц баталгаат бэлгийн эрх өгөх вэ (`null` = өгөхгүй).
- *
- * «Бэлэгтэй» тэмдгийг зөвхөн `giftPoolEnabled`-ээр тавьдаг байсан нь 2мл багц
- * дээр худал болдог: `bundleGiftGuarantee` нь 5мл-ээс доош, мөн custom багцад
- * 0 буцаадаг. Тэмдэг нь амлалт учраас эрх үүсэх хэмжээнээсээ л гарна.
- */
-export function giftFromMl(
-  collection: Pick<Collection, "type" | "availableMls">,
-): number | null {
-  if (collection.type !== "base") return null;
-  return (
-    collection.availableMls.find((ml) => ml >= GIFT_GUARANTEE_MIN_ML) ?? null
-  );
-}
-
-/**
- * Тэмдэг дээрх текст — бүх хэмжээ эрх өгдөг бол болзолгүй.
- *
- * «Бэлэгтэй» гэдэг нь хэнд өгөх нь тодорхойгүй: бэлэг авах гэж буй хүн үүнийг
- * «бэлэг болгон өгөхөд бэлэн» гэж уншдаг байв. Бодит утга нь ХУДАЛДАН АВАГЧ
- * өөрөө 1мл дээж авна гэсэн үг тул тэмдэг нь юу дагалдахыг шууд нэрлэнэ.
- */
-export function giftBadgeLabel(
-  collection: Pick<Collection, "type" | "availableMls">,
-): string | null {
-  const from = giftFromMl(collection);
-  if (from === null) return null;
-  return from === collection.availableMls[0]
-    ? "1мл дээж дагална"
-    : `${from}ml-ээс 1мл дээж`;
 }

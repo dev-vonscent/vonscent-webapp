@@ -3,6 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -106,30 +114,25 @@ export default async function ProductPage({
         ]}
       />
       {/* Breadcrumb (hidden on mobile for a fuller hero image) */}
-      <nav
-        aria-label="Замын мөр"
-        className="text-muted-foreground mb-6 hidden text-sm sm:block"
-      >
-        <ol className="flex flex-wrap items-center gap-x-1.5">
-          <li>
-            <Link href="/" className="hover:text-foreground">
-              Нүүр
-            </Link>
-          </li>
-          <li aria-hidden>/</li>
-          <li>
-            <Link href="/catalog" className="hover:text-foreground">
-              Каталог
-            </Link>
-          </li>
-          <li aria-hidden>/</li>
-          <li>
-            <span className="text-foreground" aria-current="page">
-              {product.name}
-            </span>
-          </li>
-        </ol>
-      </nav>
+      <Breadcrumb aria-label="Замын мөр" className="mb-6 hidden sm:block">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link href="/">Нүүр</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link href="/catalog">Каталог</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{product.name}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       <div className="grid gap-0 sm:gap-10 lg:grid-cols-2 lg:items-start">
         {/* Left: gallery sticks below the header while the right column scrolls,

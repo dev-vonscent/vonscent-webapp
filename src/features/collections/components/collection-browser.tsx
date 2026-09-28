@@ -6,8 +6,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PackageOpen, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
@@ -16,7 +14,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { formatPrice } from "@/lib/format";
 import { GENDERS, GENDER_LABEL } from "@/lib/constants";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CollectionGrid } from "./collection-grid";
@@ -33,16 +30,22 @@ const SORTS: { value: Sort; label: string }[] = [
   { value: "saved", label: "Хэмнэлт: их → бага" },
 ];
 
-const PRICE_STEP = 1000;
+/**
+ * Хэдэн багцаас хойш хайлтын талбар гарах вэ.
+ *
+ * Нэр нь бүгд нэг дэлгэцэнд харагдаж байхад хайлт нь хэрэгсэл биш, чимэг:
+ * хүн уншаад олчихно. Хайлт нь toolbar-ын өргөний тал хувийг эзэлдэг байсан
+ * тул түүнийг хасахад хүйс, эрэмбэ хоёр нэг мөрөнд амархан багтдаг.
+ */
+const SEARCH_MIN_COLLECTIONS = 7;
 
 /**
- * Хэдэн багц байхаас хойш хажуугийн шүүлтүүрийн багана гарах вэ.
- *
- * Багц нь каталогаас ялгаатай нь цөөхөн байдаг: 3 баганын хоёр мөр (6 багц)
- * хүртэл 320px-ийн багана нь шүүх зүйлээсээ өөрөө том харагдана. Түүнээс
- * доош бол утсан дээрхтэй ижил дээд мөрийг бүх өргөнд хэрэглэнэ.
+ * Үүнээс цөөн багцтай үед шүүлтүүрийн мөр огт гарахгүй — 1-2 багцыг хайж,
+ * шүүж, эрэмбэлэх гэж дөрвөн хэрэгсэл өгөх нь хуудсыг хоосон, ажилгүй
+ * харагдуулдаг. Ийм үед URL-ын шүүлтийг ч хэрэглэхгүй: хэрэглэгч засах
+ * аргагүй шүүлт нь зүгээр л алга болсон багц болж харагдана.
  */
-const RAIL_MIN_COLLECTIONS = 7;
+const CONTROLS_MIN_COLLECTIONS = 3;
 
 /**
  * «Эрэгтэй»/«Эмэгтэй» багцад unisex багц ч багтана — каталогийн
@@ -93,29 +96,49 @@ function SearchInput({
   );
 }
 
-function GenderChips({
+/**
+ * Хүйсний шүүлтүүр — segmented control.
+ *
+ * Өмнө нь дөрвөн салангид chip байсан: «нэгийг нь л сонгоно» гэдэг нь
+ * хэлбэрээсээ уншигдахгүй, сонгогдсон нь бүдэг саарал (`bg-muted-foreground`)
+ * тул хажуугийнхаасаа бараг ялгардаггүй байв. Нэг гадаргуу дотор хуваасан
+ * хэсгүүд нь тэр хоёуланг нь шийднэ: багц нь «нэг сонголт» гэдгийг харуулж,
+ * сонгогдсон нь цул өнгөөр (`bg-foreground`) тодорно — сайтын бусад
+ * сонголттой (хэмжээний товч, багцын хуудас) ижил хэл.
+ */
+function GenderSegmented({
   value,
   onChange,
+  className,
 }: {
   value: GenderFilter;
   onChange: (g: GenderFilter) => void;
+  className?: string;
 }) {
   const opts: GenderFilter[] = ["all", ...GENDERS];
   return (
-    // Утсан дээр 2 багана — хүрэхэд өргөн. Өргөн дэлгэц дээр агуулгынхаа
-    // хэмжээгээр: 1400px өргөн «Бүгд» товч нь шүүлтүүр биш, хана болдог.
-    <div className="grid w-full grid-cols-2 gap-2 lg:flex lg:w-auto lg:flex-wrap">
+    <div
+      role="radiogroup"
+      aria-label="Хүйс"
+      // `repeat(4,1fr)` — багана нь бичгээсээ нарийсахгүй. `grid-cols-4`
+      // (minmax(0,1fr)) үед «Эрэгтэй», «Эмэгтэй» нь «Эрэгт…» болж тасардаг байв.
+      className={cn(
+        "bg-secondary grid grid-cols-[repeat(4,1fr)] gap-1 rounded-lg p-1",
+        className,
+      )}
+    >
       {opts.map((g) => (
         <button
           key={g}
           type="button"
+          role="radio"
+          aria-checked={value === g}
           onClick={() => onChange(g)}
-          aria-pressed={value === g}
           className={cn(
-            "min-h-11 truncate rounded-sm px-3 py-2 text-center text-sm font-medium transition-colors lg:min-h-0",
+            "rounded-md px-2.5 py-1.5 text-center text-sm font-medium whitespace-nowrap transition-colors",
             value === g
-              ? "bg-muted-foreground text-background"
-              : "bg-secondary text-foreground hover:bg-accent",
+              ? "bg-foreground text-background"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
           {g === "all" ? "Бүгд" : GENDER_LABEL[g]}
@@ -127,13 +150,11 @@ function GenderChips({
 
 export function CollectionBrowser({
   collections,
-  giftPoolEnabled = false,
-  trailing,
+  customEnabled,
 }: {
   collections: Collection[];
-  giftPoolEnabled?: boolean;
-  /** Grid-ийн сүүлчийн нүд — «Өөрөө угсрах» карт. */
-  trailing?: React.ReactNode;
+  /** Өөрөө багц угсрах боломж нээлттэй эсэх (хоосон төлөвийн санал). */
+  customEnabled: boolean;
 }) {
   /*
     Шүүлт нь URL-д амьдарна. Өмнө нь зөвхөн `useState` байсан тул нэг багц
@@ -143,6 +164,9 @@ export function CollectionBrowser({
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
+
+  const showControls = collections.length >= CONTROLS_MIN_COLLECTIONS;
+  const showSearch = collections.length >= SEARCH_MIN_COLLECTIONS;
 
   const [q, setQ] = React.useState(() => params.get("q") ?? "");
   const [gender, setGender] = React.useState<GenderFilter>(() => {
@@ -154,56 +178,25 @@ export function CollectionBrowser({
     return SORTS.some((o) => o.value === v) ? (v as Sort) : "featured";
   });
 
-  const prices = collections.map((c) => c.startingPrice).filter((n) => n > 0);
-  const domainMin = prices.length
-    ? Math.floor(Math.min(...prices) / PRICE_STEP) * PRICE_STEP
-    : 0;
-  const domainMax = prices.length
-    ? Math.ceil(Math.max(...prices) / PRICE_STEP) * PRICE_STEP
-    : 0;
-  // Нэг багцтай үед ч floor/ceil нь 1000₮-ийн зөрүү үлдээдэг тул «domainMax >
-  // domainMin» гэдэг нь юу ч шүүж чадахгүй гулсуур гаргаж ирдэг байсан.
-  const hasPriceRange =
-    new Set(prices).size > 1 && domainMax - domainMin >= PRICE_STEP * 2;
-  const [range, setRange] = React.useState<[number, number]>(() => {
-    const num = (key: string, fallback: number) => {
-      const n = Number(params.get(key));
-      return Number.isFinite(n) && n > 0 ? n : fallback;
-    };
-    return [
-      Math.max(domainMin, num("min", domainMin)),
-      Math.min(domainMax, num("max", domainMax)),
-    ];
-  });
-  // Анхны render дээр URL-ын утгыг дарж болохгүй — зөвхөн домэйн үнэхээр
-  // өөрчлөгдвөл тэглэнэ.
-  const domainSettled = React.useRef(true);
-  React.useEffect(() => {
-    if (domainSettled.current) {
-      domainSettled.current = false;
-      return;
-    }
-    setRange([domainMin, domainMax]);
-  }, [domainMin, domainMax]);
-
   const savedOf = React.useCallback((c: Collection) => {
     const row = c.prices.find((p) => p.ml === c.availableMls[0]);
     return row?.saved ?? 0;
   }, []);
 
   const shown = React.useMemo(() => {
-    const priced = range[0] > domainMin || range[1] < domainMax;
+    // Хяналт харагдахгүй үед URL-ын шүүлт ч хэрэглэгдэхгүй — хэрэглэгчийн
+    // засах аргагүй шүүлт нь зүгээр л «багц алга» болж харагдана.
+    if (!showControls) {
+      return [...collections].sort(
+        (a, b) => Number(b.isFeatured) - Number(a.isFeatured),
+      );
+    }
     const list = collections.filter((c) => {
       if (!matchesGender(c.gender, gender)) return false;
       if (
+        showSearch &&
         q &&
         !`${c.name} ${c.description}`.toLowerCase().includes(q.toLowerCase())
-      )
-        return false;
-      if (
-        priced &&
-        c.startingPrice > 0 &&
-        (c.startingPrice < range[0] || c.startingPrice > range[1])
       )
         return false;
       return true;
@@ -220,20 +213,15 @@ export function CollectionBrowser({
           return Number(b.isFeatured) - Number(a.isFeatured);
       }
     });
-  }, [collections, q, gender, sort, range, domainMin, domainMax, savedOf]);
+  }, [collections, q, gender, sort, savedOf, showControls, showSearch]);
 
-  const activeCount =
-    (gender !== "all" ? 1 : 0) +
-    (q ? 1 : 0) +
-    (range[0] > domainMin || range[1] < domainMax ? 1 : 0);
+  const activeCount = (gender !== "all" ? 1 : 0) + (showSearch && q ? 1 : 0);
 
   React.useEffect(() => {
     const next = new URLSearchParams();
     if (q) next.set("q", q);
     if (gender !== "all") next.set("gender", gender);
     if (sort !== "featured") next.set("sort", sort);
-    if (range[0] > domainMin) next.set("min", String(range[0]));
-    if (range[1] < domainMax) next.set("max", String(range[1]));
     const qs = next.toString();
     if (qs === params.toString()) return;
     // Бичих бүрд биш — бичиж дуусахад. Слайдер чирэхэд ч мөн адил.
@@ -241,12 +229,11 @@ export function CollectionBrowser({
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     }, 300);
     return () => clearTimeout(t);
-  }, [q, gender, sort, range, domainMin, domainMax, params, pathname, router]);
+  }, [q, gender, sort, params, pathname, router]);
 
   function clearAll() {
     setQ("");
     setGender("all");
-    setRange([domainMin, domainMax]);
   }
 
   const clearButton = activeCount > 0 && (
@@ -255,135 +242,75 @@ export function CollectionBrowser({
     </Button>
   );
 
-  const priceFilter = (
-    <div className="space-y-3">
-      <h3 className="text-sm font-semibold">Үнэ (₮)</h3>
-      <Slider
-        min={domainMin}
-        max={domainMax}
-        step={PRICE_STEP}
-        value={range}
-        minStepsBetweenThumbs={1}
-        onValueChange={(v) => setRange([v[0], v[1]])}
-      />
-      <div className="text-muted-foreground flex items-center justify-between text-sm">
-        <span>{formatPrice(range[0])}</span>
-        <span>{formatPrice(range[1])}</span>
-      </div>
-    </div>
+  const sortSelect = (
+    <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
+      <SelectTrigger className="w-auto shrink-0">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {SORTS.map((s) => (
+          <SelectItem key={s.value} value={s.value}>
+            {s.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
-
-  const Filters = (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="h-9 font-serif text-lg font-semibold">Шүүлтүүр</h2>
-        {clearButton}
-      </div>
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold">Хүйс</h3>
-        <GenderChips value={gender} onChange={setGender} />
-      </div>
-      {hasPriceRange && (
-        <>
-          <Separator />
-          {priceFilter}
-        </>
-      )}
-    </div>
-  );
-
-  const showRail = collections.length >= RAIL_MIN_COLLECTIONS;
 
   return (
     <div>
-      {/* Compact controls — утсан дээр үргэлж, багц цөөхөн бол бүх өргөнд */}
-      <div
-        className={cn(
-          "border-border flex flex-col gap-3 border-y py-3",
-          showRail && "lg:hidden",
-        )}
-      >
-        <div className="flex items-center gap-2">
-          <SearchInput
-            value={q}
-            onChange={setQ}
-            className="flex-1 lg:max-w-xs"
+      {/*
+        Нэг мөрийн toolbar — багцын тооноос үл хамааран үргэлж дээр.
+        Өмнө нь 7+ багцтай үед десктоп дээр 320px-ийн хажуугийн багана руу
+        шилждэг байв: хүйс, үнэ, эрэмбэ гэсэн гурван хяналтад дэлгэцийн
+        дөрөвний нэгийг зарцуулж, «Эрэгтэй»/«Эмэгтэй» нь тэнд тасардаг байсан.
+        Хүйс зүүн талдаа, хайлт ба эрэмбэ баруун талдаа. Үнийн гулсуур
+        байхгүй — хэдхэн багцад «Үнэ: бага → их» эрэмбэ нь хангалттай.
+      */}
+      {showControls && (
+        <div className="border-border flex flex-wrap items-center gap-x-6 gap-y-3 border-y py-3">
+          <h2 className="sr-only">Шүүлтүүр</h2>
+          <GenderSegmented
+            value={gender}
+            onChange={setGender}
+            className="w-full sm:w-auto"
           />
-          <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
-            <SelectTrigger className="w-auto shrink-0 lg:ms-auto">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {SORTS.map((s) => (
-                <SelectItem key={s.value} value={s.value}>
-                  {s.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <h2 className="sr-only">Шүүлтүүр</h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <GenderChips value={gender} onChange={setGender} />
-          {clearButton && <div className="ms-auto">{clearButton}</div>}
-        </div>
-        {hasPriceRange && <div className="pt-1 lg:max-w-xs">{priceFilter}</div>}
-      </div>
-
-      <div className="mt-6 flex gap-10 lg:mt-8">
-        {/* Desktop sidebar */}
-        <aside className={cn("hidden w-80 shrink-0", showRail && "lg:block")}>
-          <SearchInput value={q} onChange={setQ} className="mb-6" />
-          {Filters}
-        </aside>
-
-        <div className="flex-1">
-          <div
-            className={cn(
-              "mb-4 hidden items-center justify-end",
-              showRail && "lg:flex",
+          <div className="ms-auto flex flex-1 items-center justify-end gap-2 sm:flex-none">
+            {clearButton}
+            {showSearch && (
+              <SearchInput
+                value={q}
+                onChange={setQ}
+                className="min-w-0 flex-1 sm:w-56 sm:flex-none"
+              />
             )}
-          >
-            <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
-              <SelectTrigger className="w-auto">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SORTS.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {sortSelect}
           </div>
-
-          {shown.length === 0 ? (
-            <EmptyState
-              icon={PackageOpen}
-              title="Тохирох багц олдсонгүй"
-              description="Шүүлтүүрээ өөрчилж, дахин хайж үзээрэй."
-              action={
-                // Grid байхгүй болохоор «Өөрөө угсрах» нүд ч алга болно —
-                // энэ хүн яг тэр саналыг сонсох ёстой хүн.
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <Button onClick={clearAll}>Шүүлтүүр цэвэрлэх</Button>
-                  {trailing && (
-                    <Button asChild variant="secondary">
-                      <Link href="/collections/build">Багц угсрах</Link>
-                    </Button>
-                  )}
-                </div>
-              }
-            />
-          ) : (
-            <CollectionGrid
-              collections={shown}
-              giftPoolEnabled={giftPoolEnabled}
-              trailing={trailing}
-            />
-          )}
         </div>
+      )}
+
+      <div className="mt-6 lg:mt-8">
+        {shown.length === 0 ? (
+          <EmptyState
+            icon={PackageOpen}
+            title="Тохирох багц олдсонгүй"
+            description="Шүүлтүүрээ өөрчилж, дахин хайж үзээрэй."
+            action={
+              // Толгойн панель гүйлгээний дээр үлдсэн ч, шүүлтээрээ юу ч
+              // олоогүй хүн яг энэ мөчид тэр гарцыг дахин сонсох ёстой.
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button onClick={clearAll}>Шүүлтүүр цэвэрлэх</Button>
+                {customEnabled && (
+                  <Button asChild variant="secondary">
+                    <Link href="/collections/build">Багц угсрах</Link>
+                  </Button>
+                )}
+              </div>
+            }
+          />
+        ) : (
+          <CollectionGrid collections={shown} />
+        )}
       </div>
     </div>
   );

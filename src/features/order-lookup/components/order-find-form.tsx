@@ -1,6 +1,11 @@
 "use client";
 
 import * as React from "react";
+import {
+  FieldError,
+  fieldErrorClass,
+  fieldErrorProps,
+} from "@/components/ui/form-field";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,11 +27,21 @@ export function OrderFindForm({ initialOrderNo }: { initialOrderNo?: string }) {
   const [orderNo, setOrderNo] = React.useState(initialOrderNo ?? "");
   const [phone, setPhone] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = React.useState<{
+    orderNo?: string;
+    phone?: string;
+  }>({});
   const [submitting, setSubmitting] = React.useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (submitting) return;
+    const next = {
+      orderNo: orderNo.trim() ? undefined : "Захиалгын дугаараа оруулна уу.",
+      phone: phone.trim() ? undefined : "Утасны дугаараа оруулна уу.",
+    };
+    setFieldErrors(next);
+    if (next.orderNo || next.phone) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -52,31 +67,39 @@ export function OrderFindForm({ initialOrderNo }: { initialOrderNo?: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={onSubmit} noValidate className="space-y-4">
       <div className="space-y-1.5">
         <Label htmlFor="order-no">Захиалгын дугаар</Label>
         <Input
-          id="order-no"
+          {...fieldErrorProps("order-no", fieldErrors.orderNo)}
+          className={fieldErrorClass(fieldErrors.orderNo)}
           value={orderNo}
-          onChange={(e) => setOrderNo(e.target.value)}
+          onChange={(e) => {
+            setOrderNo(e.target.value);
+            setFieldErrors((x) => ({ ...x, orderNo: undefined }));
+          }}
           placeholder="VS-1042"
           autoComplete="off"
           autoCapitalize="characters"
-          required
         />
+        <FieldError id="order-no" message={fieldErrors.orderNo} />
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="order-phone">Захиалга өгөхдөө бичсэн утас</Label>
         <Input
-          id="order-phone"
+          {...fieldErrorProps("order-phone", fieldErrors.phone)}
+          className={fieldErrorClass(fieldErrors.phone)}
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          onChange={(e) => {
+            setPhone(e.target.value);
+            setFieldErrors((x) => ({ ...x, phone: undefined }));
+          }}
           placeholder="99112233"
           type="tel"
           inputMode="numeric"
           autoComplete="tel-national"
-          required
         />
+        <FieldError id="order-phone" message={fieldErrors.phone} />
       </div>
 
       {error && (

@@ -17,6 +17,9 @@ export interface OrderStatusView {
   deliverOn: string | null;
   lines: PaymentLine[];
   subtotal: number;
+  /** Багцын хямдралын өмнөх барааны дүн (0097). Хуучин захиалгад null. */
+  grossSubtotal: number | null;
+  couponCode: string | null;
   shippingFee: number;
   discount: number;
   loyaltyUsed: number;

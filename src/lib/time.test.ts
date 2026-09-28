@@ -121,12 +121,12 @@ describe("order dispatch & cut-off rules", () => {
   });
 
   describe("formatEditCutoff", () => {
-    it("names the last minute, the evening before the delivery day", () => {
-      expect(formatEditCutoff("2026-09-22")).toBe("09/21 23:59");
+    it("names the last second, the evening before the delivery day", () => {
+      expect(formatEditCutoff("2026-09-22")).toBe("09/21 23:59:59");
     });
 
     it("steps back across a month boundary", () => {
-      expect(formatEditCutoff("2026-09-01")).toBe("08/31 23:59");
+      expect(formatEditCutoff("2026-09-01")).toBe("08/31 23:59:59");
     });
   });
 

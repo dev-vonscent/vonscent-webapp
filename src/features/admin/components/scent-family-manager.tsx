@@ -1,10 +1,24 @@
 "use client";
 
 import * as React from "react";
+import {
+  FieldError,
+  fieldErrorClass,
+  fieldErrorProps,
+} from "@/components/ui/form-field";
 import { useRouter } from "next/navigation";
 import { adminFetch } from "@/features/admin/lib/mutate";
 import { useConfirm } from "@/components/shared/confirm-dialog";
-import { Plus, Eye, EyeOff, Loader2, Pencil, Trash2, Check, X } from "lucide-react";
+import {
+  Plus,
+  Eye,
+  EyeOff,
+  Loader2,
+  Pencil,
+  Trash2,
+  Check,
+  X,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -55,6 +69,10 @@ export function ScentFamilyManager({
   const [msg, setMsg] = React.useState<string | null>(null);
   const [slug, setSlug] = React.useState("");
   const [label, setLabel] = React.useState("");
+  const [addErrors, setAddErrors] = React.useState<{
+    label?: string;
+    slug?: string;
+  }>({});
   const [iconUrl, setIconUrl] = React.useState("");
 
   /**
@@ -121,6 +139,16 @@ export function ScentFamilyManager({
   async function add(e: React.FormEvent) {
     e.preventDefault();
     const newSlug = slug.trim();
+    const next = {
+      label: label.trim() ? undefined : "Нэр оруулна уу.",
+      slug: !newSlug
+        ? "Slug оруулна уу."
+        : /^[a-z0-9-]+$/.test(newSlug)
+          ? undefined
+          : "Зөвхөн латин жижиг үсэг, тоо, зураас (-) ашиглана.",
+    };
+    setAddErrors(next);
+    if (next.label || next.slug) return;
     const res = await send<{ generatingIcon?: boolean }>(
       "/api/admin/scent-families",
       {
@@ -371,26 +399,35 @@ export function ScentFamilyManager({
       <Card>
         <CardContent className="space-y-4 p-6">
           <h2 className="font-serif text-lg font-semibold">Шинэ төрөл нэмэх</h2>
-          <form onSubmit={add} className="space-y-4">
+          <form onSubmit={add} noValidate className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-1.5">
-                <Label>Нэр</Label>
+                <Label htmlFor="family-label">Нэр</Label>
                 <Input
-                  required
+                  {...fieldErrorProps("family-label", addErrors.label)}
+                  className={fieldErrorClass(addErrors.label)}
                   value={label}
-                  onChange={(e) => setLabel(e.target.value)}
+                  onChange={(e) => {
+                    setLabel(e.target.value);
+                    setAddErrors((x) => ({ ...x, label: undefined }));
+                  }}
                   placeholder="Гурмет"
                 />
+                <FieldError id="family-label" message={addErrors.label} />
               </div>
               <div className="space-y-1.5">
-                <Label>Slug (латинаар)</Label>
+                <Label htmlFor="family-slug">Slug (латинаар)</Label>
                 <Input
-                  required
+                  {...fieldErrorProps("family-slug", addErrors.slug)}
+                  className={fieldErrorClass(addErrors.slug)}
                   value={slug}
-                  onChange={(e) => setSlug(e.target.value.toLowerCase())}
-                  pattern="[a-z0-9-]+"
+                  onChange={(e) => {
+                    setSlug(e.target.value.toLowerCase());
+                    setAddErrors((x) => ({ ...x, slug: undefined }));
+                  }}
                   placeholder="gourmand"
                 />
+                <FieldError id="family-slug" message={addErrors.slug} />
               </div>
               <div className="space-y-1.5">
                 <Label>Дүрс (хоосон бол AI үүсгэнэ)</Label>

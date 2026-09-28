@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { BadgePercent, Check, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -93,8 +94,8 @@ function BuilderInner({
   const saved = memberSum - price;
 
   const atMax = settings.maxItems != null && ids.length >= settings.maxItems;
-  // Өөрөө угсарсан багц баталгаат бэлэг өгөхгүй (backlog A1) — бэлгийн эрх
-  // нь зөвхөн захиалгын дүнгээс гарч, checkout дээр сонгогдоно.
+  // Багц (ямар ч төрөл) тусдаа бэлэг өгөхгүй — бэлгийн эрх зөвхөн захиалгын
+  // дүнгээс гарч, checkout дээр сонгогдоно (src/lib/gift.ts).
   const canCreate =
     unavailableSelected.length === 0 && ids.length >= settings.minItems;
 
@@ -529,14 +530,12 @@ function BuilderInner({
             />
           </label>
           {isLoggedIn ? (
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
+            <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+              <Checkbox
                 checked={save}
-                onChange={(e) => setSave(e.target.checked)}
-                className="size-4"
+                onCheckedChange={(v) => setSave(Boolean(v))}
               />
-              «Миний багцууд»-д хадгалах
+              <span>«Миний багцууд»-д хадгалах</span>
             </label>
           ) : (
             <p className="text-muted-foreground text-xs">

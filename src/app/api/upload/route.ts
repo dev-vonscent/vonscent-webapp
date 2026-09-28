@@ -23,6 +23,8 @@ const FOLDERS = {
   families: "staff",
   /** Brand logos (0050_brands.sql) — the picker and the brand list. */
   brands: "staff",
+  /** Collection (bundle) cover images — the admin collection form. */
+  collections: "staff",
   blog: "staff",
   /** Marketing imagery — promo popup slides (admin A8). */
   marketing: "staff",
