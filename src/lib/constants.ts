@@ -27,6 +27,16 @@ export type MlSize = (typeof ML_SIZES)[number];
  */
 export const BUNDLE_ML_SIZES = ML_SIZES;
 
+/**
+ * «Шинэ» таг автомат: хамгийн сүүлд нэмэгдсэн ийм тооны идэвхтэй ус. Шинэ ус
+ * нэмэгдэхэд хамгийн хуучин нь гарна. DB дээр `refresh_new_tag()`
+ * (0100_auto_new_tag.sql) ижил тоогоор ажилладаг тул хоёуланг нь зэрэг сольно.
+ */
+export const NEW_PRODUCTS_COUNT = 12;
+
+/** Админ гараар тавьдаг тагууд. «Шинэ» нь автомат тул энд байхгүй. */
+export const MANUAL_TAGS = ["hot", "sale"] as const;
+
 /** Size a fresh bundle starts on — the most common decant tier. */
 export const DEFAULT_BUNDLE_ML = 5;
 
