@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import { ArrowDownLeft, ArrowUpRight, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/browser";
 import type { LoyaltyLedgerRow } from "@/db/types";
 import { EmptyState } from "@/components/shared/empty-state";
+import { VPointIcon } from "@/components/shared/v-point-icon";
+import { VPointMark } from "@/components/shared/v-point-mark";
 
 /** Ledger reasons the RPCs write, in the customer's words. */
 const REASON_LABEL: Record<string, string> = {
@@ -72,17 +73,12 @@ export default function LoyaltyHistoryPage() {
       {/* Balance */}
       <Card>
         <CardContent className="flex items-center gap-4 p-6">
-          <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full">
-            <Image
-              src="/v-point.png"
-              alt=""
-              width={48}
-              height={48}
-              className="size-full object-cover"
-            />
-          </span>
+          <VPointIcon className="text-gold size-12 shrink-0" />
           <div>
-            <p className="text-3xl font-semibold">{points}</p>
+            <p className="text-3xl font-semibold">
+              {points}
+              <VPointMark className="ml-1.5" />
+            </p>
             <p className="text-muted-foreground text-sm">Нийт боломжтой оноо</p>
           </div>
           {/* Points from an order that could still be cancelled aren't
@@ -92,7 +88,12 @@ export default function LoyaltyHistoryPage() {
             <div className="ml-auto text-right">
               <p className="text-muted-foreground flex items-center justify-end gap-1.5 text-2xl font-semibold">
                 <Lock className="size-4" />
-                {pending}
+                {/* Тоо, тэмдэг хоёр flex item болж салбал baseline зөрнө —
+                    нэг inline мөр дотор байлгана. */}
+                <span>
+                  {pending}
+                  <VPointMark className="ml-1" />
+                </span>
               </p>
               <p className="text-muted-foreground text-xs">
                 Түгжээтэй — хүргэгдсэний дараа нээгдэнэ
