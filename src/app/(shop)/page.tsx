@@ -341,13 +341,13 @@ async function PromoSlot() {
   return <PromoPopup settings={await getPopupSettings()} />;
 }
 
-/** Шинээр буусан — hidden until it can fill a row (5d). */
+/** Шинээр буусан = «Шинэ» тагтай 12 ус — hidden until it can fill a row (5d). */
 async function NewArrivalsSection() {
-  const products = await getNewArrivals(8);
+  const products = await getNewArrivals();
   if (products.length < 4) return null;
   return (
     <section>
-      <SectionHeading title="Шинээр буусан" href="/catalog?tags=new" />
+      <SectionHeading title="Шинээр буусан" href="/catalog?tags=new&sort=new" />
       <ProductCarousel products={products} />
     </section>
   );

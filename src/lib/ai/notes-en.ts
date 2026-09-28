@@ -300,9 +300,49 @@ export function isPhotographable(en: string): boolean {
   return !ABSTRACT.has(en.replace(/[®™]/g, "").trim().toLowerCase());
 }
 
+/**
+ * Admin-maintained translations (`note_translations`, 0102) layered over the
+ * inlined table: they fill notes the table lacks and win where both exist.
+ * Keyed by the trimmed Mongolian note.
+ */
+export type NoteOverrides = ReadonlyMap<
+  string,
+  { en: string; isAbstract: boolean }
+>;
+
 /** English name for one Mongolian note, or null if the table has no entry. */
 export function toEnglish(mn: string): string | null {
   return TABLE[mn.trim()] ?? null;
+}
+
+/**
+ * English name to draw for one note: null when it has no translation anywhere
+ * or is an abstract accord no camera could photograph.
+ */
+function drawable(mn: string, overrides?: NoteOverrides): string | null {
+  const o = overrides?.get(mn.trim());
+  if (o) return o.isAbstract ? null : o.en;
+  const en = toEnglish(mn);
+  return en && isPhotographable(en) ? en : null;
+}
+
+/**
+ * Notes with no English name in either the table or `overrides`, in order,
+ * without repeats. These are silently left out of the note image, so the admin
+ * is asked to fill them in (product edit page).
+ */
+export function untranslatedNotes(
+  tiers: { top: string[]; heart: string[]; base: string[] },
+  overrides?: NoteOverrides,
+): string[] {
+  const out: string[] = [];
+  for (const raw of [...tiers.top, ...tiers.heart, ...tiers.base]) {
+    const mn = raw.trim();
+    if (!mn || out.includes(mn)) continue;
+    if (overrides?.has(mn) || toEnglish(mn)) continue;
+    out.push(mn);
+  }
+  return out;
 }
 
 /**
@@ -317,6 +357,7 @@ export function toEnglish(mn: string): string | null {
 export function pickNotes(
   tiers: { top: string[]; heart: string[]; base: string[] },
   limit = 5,
+  overrides?: NoteOverrides,
 ): string[] {
   const queues = [[...tiers.top], [...tiers.heart], [...tiers.base]];
   const out: string[] = [];
@@ -325,8 +366,8 @@ export function pickNotes(
     for (const q of queues) {
       if (out.length >= limit) break;
       while (q.length) {
-        const en = toEnglish(q.shift()!);
-        if (!en || !isPhotographable(en)) continue;
+        const en = drawable(q.shift()!, overrides);
+        if (!en) continue;
         const key = en.toLowerCase();
         if (seen.has(key)) continue;
         seen.add(key);

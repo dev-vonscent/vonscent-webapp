@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { InfoTip } from "@/components/shared/info-tip";
 import { fieldErrorClass } from "@/components/ui/form-field";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Trash2 } from "lucide-react";
@@ -45,6 +46,7 @@ import { MultiCheck, useToggleList } from "./multi-check";
 import { CustomTagField } from "./custom-tag-field";
 import { DescriptionFields } from "./description-fields";
 import { ProductImageStudio } from "./product-image-studio";
+import { NoteTranslationPanel } from "./note-translation-panel";
 import { BrandSelect } from "./brand-select";
 import { ConcentrationSelect } from "./concentration-select";
 import type { AdminProduct } from "@/features/admin/api";
@@ -54,11 +56,6 @@ import type {
   ConcentrationOption,
   ScentFamilyOption,
 } from "@/lib/types";
-const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
-  { slug: "new", label: "Шинэ" },
-  { slug: "hot", label: "Эрэлттэй" },
-  { slug: "sale", label: "Хямдрал" },
-];
 
 export function ProductEditForm({
   product,
@@ -67,6 +64,7 @@ export function ProductEditForm({
   concentrations,
   customTagPool = [],
   aiEnabled = false,
+  untranslatedNotes = [],
 }: {
   product: AdminProduct;
   families: ScentFamilyOption[];
@@ -76,6 +74,8 @@ export function ProductEditForm({
   customTagPool?: CustomTagOption[];
   /** `isImageGenConfigured` — server-only env, handed down by the page. */
   aiEnabled?: boolean;
+  /** Хадгалсан нотуудаас англи нэргүй нь (0102) — зураг үүсгэхэд хэрэгтэй. */
+  untranslatedNotes?: string[];
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -134,7 +134,6 @@ export function ProductEditForm({
         : { ml, price: 0, salePrice: null, active: false };
     }),
   );
-  const [tags, setTags] = React.useState<string[]>(product.tags);
   const [customTags, rawToggleCustomTag] = useToggleList(product.customTags);
   const [isActive, setIsActive] = React.useState(product.isActive);
   const [isFeatured, setIsFeatured] = React.useState(product.isFeatured);
@@ -163,12 +162,6 @@ export function ProductEditForm({
   function set<K extends keyof typeof form>(k: K, v: string) {
     setDirty(true);
     setForm((f) => ({ ...f, [k]: v }));
-  }
-  function toggleTag(slug: string) {
-    setDirty(true);
-    setTags((t) =>
-      t.includes(slug) ? t.filter((x) => x !== slug) : [...t, slug],
-    );
   }
 
   /** «Болих» throws away ~30 fields, so it asks first once anything changed. */
@@ -241,7 +234,6 @@ export function ProductEditForm({
           variants,
           isActive,
           isFeatured,
-          tags,
           customTags,
         }),
       });
@@ -457,6 +449,7 @@ export function ProductEditForm({
               onChange={(e) => set("notesBase", e.target.value)}
             />
           </Field>
+          <NoteTranslationPanel notes={untranslatedNotes} />
         </CardContent>
       </Card>
 
@@ -506,20 +499,13 @@ export function ProductEditForm({
 
       <Card>
         <CardContent className="space-y-4 p-6">
-          <h2 className="font-serif text-lg font-semibold">Таг ба төлөв</h2>
-          <div className="flex flex-wrap gap-4">
-            {TAGS.map((t) => (
-              <label
-                key={t.slug}
-                className="flex cursor-pointer items-center gap-2 text-sm"
-              >
-                <Checkbox
-                  checked={tags.includes(t.slug)}
-                  onCheckedChange={() => toggleTag(t.slug)}
-                />
-                {t.label}
-              </label>
-            ))}
+          <div className="flex items-center gap-1.5">
+            <h2 className="font-serif text-lg font-semibold">Таг ба төлөв</h2>
+            <InfoTip label="Тагийн тайлбар">
+              Тагийг гараар тавихгүй, өөрөө шинэчлэгдэнэ: хамгийн сүүлд нэмсэн
+              12 ус «Шинэ», хамгийн их зарагдсан 12 ус «Эрэлттэй», аль нэг
+              хэмжээндээ хямдралын үнэтэй ус «Хямдрал» болно.
+            </InfoTip>
           </div>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox

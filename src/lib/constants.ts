@@ -27,6 +27,26 @@ export type MlSize = (typeof ML_SIZES)[number];
  */
 export const BUNDLE_ML_SIZES = ML_SIZES;
 
+/**
+ * «Шинэ» таг автомат: хамгийн сүүлд нэмэгдсэн ийм тооны идэвхтэй ус. Шинэ ус
+ * нэмэгдэхэд хамгийн хуучин нь гарна. DB дээр `refresh_new_tag()`
+ * (0100_auto_new_tag.sql) ижил тоогоор ажилладаг тул хоёуланг нь зэрэг сольно.
+ */
+export const NEW_PRODUCTS_COUNT = 12;
+
+/**
+ * Каталогийн анхны эрэмбэ: `sort` параметргүй URL. Энэ утгыг сонгоход URL-аас
+ * `sort` хасагдана.
+ */
+export const DEFAULT_CATALOG_SORT = "name";
+
+/**
+ * «Эрэлттэй» таг автомат: төлөгдсөн захиалгаар хамгийн их зарагдсан ийм тооны
+ * идэвхтэй ус. DB дээр `hot_product_ids()` (0101_auto_hot_tag.sql) ижил
+ * тоогоор ажилладаг.
+ */
+export const HOT_PRODUCTS_COUNT = 12;
+
 /** Size a fresh bundle starts on — the most common decant tier. */
 export const DEFAULT_BUNDLE_ML = 5;
 

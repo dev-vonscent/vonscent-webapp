@@ -164,19 +164,7 @@ export async function POST(req: Request) {
     low_stock_ml: input.lowStockMl,
   });
 
-  // Tags (new / hot / sale) straight from the create form — previously these
-  // could only be set by editing the product afterwards.
-  if (input.tags.length) {
-    const { data: tagRows } = await supabase
-      .from("tags")
-      .select("id, slug")
-      .in("slug", input.tags);
-    const links = ((tagRows as { id: string }[] | null) ?? []).map((t) => ({
-      product_id: productId,
-      tag_id: t.id,
-    }));
-    if (links.length) await supabase.from("product_tags").insert(links);
-  }
+  // Шинэ / Эрэлттэй / Хямдрал тагийг DB өөрөө тавина (0100, 0101, 0103).
 
   // Free-form internal tags (search / quiz pool, A2 «Нэмэлт Tag»).
   const customTags = await sanitizeCustomTags(input.customTags);

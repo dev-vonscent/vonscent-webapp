@@ -1,5 +1,5 @@
 import { variantAvailability } from "./sellable";
-import { ML_SIZES } from "@/lib/constants";
+import { ML_SIZES, NEW_PRODUCTS_COUNT } from "@/lib/constants";
 import type { ProductDetail } from "@/lib/types";
 import type {
   Concentration,
@@ -331,6 +331,17 @@ const SEED_SILLAGE: Record<string, ProductDetail["sillage"]> = {
   Elixir: "strong",
 };
 
+/**
+ * «Шинэ» нь DB дээр автомат (0100): хамгийн сүүлд нэмэгдсэн NEW_PRODUCTS_COUNT
+ * ус. Демо өгөгдөл ч ижил дүрмээр — `createdAt` нь RAW-ийн дарааллаар өсдөг
+ * тул сүүлийн N мөр «Шинэ».
+ */
+function seedTags(input: SeedInput): TagKind[] {
+  const isNew = RAW.indexOf(input) >= RAW.length - NEW_PRODUCTS_COUNT;
+  const rest = input.tags.filter((t) => t !== "new");
+  return isNew ? ["new", ...rest] : rest;
+}
+
 export const SEED_PRODUCTS: ProductDetail[] = RAW.map((input) => {
   const variants = buildVariants(input);
   const cheapest = variants.reduce((a, b) => (a.price <= b.price ? a : b));
@@ -356,7 +367,7 @@ export const SEED_PRODUCTS: ProductDetail[] = RAW.map((input) => {
     images,
     startingPrice,
     startingBasePrice: cheapest.basePrice,
-    tags: input.tags,
+    tags: seedTags(input),
     isFeatured: false,
     soldOut: !variants.some((v) => v.sellable),
     ratingAvg: input.ratingAvg,

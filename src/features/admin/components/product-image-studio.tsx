@@ -2,7 +2,13 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { AlertTriangle, ImagePlus, Loader2, Sparkles, UploadCloud } from "lucide-react";
+import {
+  AlertTriangle,
+  ImagePlus,
+  Loader2,
+  Sparkles,
+  UploadCloud,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { adminFetch, mutateJson } from "@/features/admin/lib/mutate";
@@ -282,12 +288,15 @@ export function ProductImageStudio({
       return;
     }
     setRunning((r) => r.filter((k) => k !== kind));
+    const missing = (res.data as { missing?: string[] } | null)?.missing ?? [];
     setNote(
       res.error.includes("NO_REFERENCE")
         ? "Эхлээд лавлах зураг оруулна уу."
-        : res.error.includes("NO_NOTES")
-          ? "Зурах боломжтой үнэрийн нот алга — барааны нот хоосон эсвэл бүгд хийсвэр."
-          : res.error,
+        : res.error.includes("NOTES_UNTRANSLATED")
+          ? `Дараах нотын англи нэр алга: ${missing.join(", ")}. «Үнэрийн нот» хэсэгт бөглөөд дахин оролдоно уу.`
+          : res.error.includes("NO_NOTES")
+            ? "Зурах боломжтой үнэрийн нот алга — барааны нот хоосон эсвэл бүгд дүрслэх боломжгүй."
+            : res.error,
     );
   }
 
@@ -443,7 +452,9 @@ export function ProductImageStudio({
                       gallery.images.length > 0 && (
                         <button
                           type="button"
-                          onClick={() => adoptFromGallery(gallery.images[0].url)}
+                          onClick={() =>
+                            adoptFromGallery(gallery.images[0].url)
+                          }
                           disabled={refBusy}
                           className="text-gold-strong text-left"
                         >
@@ -467,7 +478,6 @@ export function ProductImageStudio({
 
                 {/* Controls */}
                 <div className="min-w-0 flex-1 space-y-2">
-
                   {persisted ? (
                     <div className="grid gap-3 sm:grid-cols-2">
                       {GENERATORS.map((gen) => (
@@ -495,9 +505,7 @@ export function ProductImageStudio({
                                 Үүсгэж байна…
                               </>
                             ) : (
-                              <>
-                                Үүсгэх
-                              </>
+                              <>Үүсгэх</>
                             )}
                           </Button>
                         </div>
@@ -525,7 +533,6 @@ export function ProductImageStudio({
                   )}
                 </div>
               </div>
-
             </div>
           )}
 

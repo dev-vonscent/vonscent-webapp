@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAG_CATALOG } from "@/lib/cache-tags";
+import { NEW_PRODUCTS_COUNT } from "@/lib/constants";
 import * as Sentry from "@sentry/nextjs";
 import type {
   CatalogFilters,
@@ -738,8 +739,18 @@ export async function getFeaturedProducts(
   return items;
 }
 
-export async function getNewArrivals(limit = 8): Promise<ProductListItem[]> {
-  const { items } = await getCatalog({ sort: "new", perPage: limit });
+/**
+ * «Шинэ» тагтай ус, шинэ нь түрүүлж. Энэ нь каталогийн «Шинэ» chip-тэй ижил
+ * багц (хамгийн сүүлийн NEW_PRODUCTS_COUNT ус, 0100_auto_new_tag.sql).
+ */
+export async function getNewArrivals(
+  limit = NEW_PRODUCTS_COUNT,
+): Promise<ProductListItem[]> {
+  const { items } = await getCatalog({
+    tags: ["new"],
+    sort: "new",
+    perPage: limit,
+  });
   return items;
 }
 
@@ -758,8 +769,9 @@ export async function getProductsByTag(
 
 /**
  * Best sellers by actual paid sales volume (top_seller_products, security
- * definer). Falls back to the hot tag while there are no sales yet — a fresh
- * store still gets a filled rail.
+ * definer), in sales order. The catalog's «Эрэлттэй» chip filters the `hot`
+ * tag, which the DB keeps on the same top sellers (0101_auto_hot_tag), so the
+ * rail and the chip show the same products.
  */
 export async function getBestSellers(limit = 8): Promise<ProductListItem[]> {
   const supabase = createPublicClient();

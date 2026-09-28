@@ -127,19 +127,6 @@ export async function PATCH(
       .eq("product_id", id);
   }
 
-  // Tags: replace the whole set.
-  if (input.tags !== undefined) {
-    const { data: tagRows } = await supabase
-      .from("tags")
-      .select("id, slug")
-      .in("slug", input.tags.length ? input.tags : ["__none__"]);
-    await supabase.from("product_tags").delete().eq("product_id", id);
-    const links = (
-      (tagRows as { id: string; slug: string }[] | null) ?? []
-    ).map((t) => ({ product_id: id, tag_id: t.id }));
-    if (links.length) await supabase.from("product_tags").insert(links);
-  }
-
   // Free-form internal tags (A2 «Нэмэлт Tag»): replace the whole set.
   if (input.customTags !== undefined) {
     const slugs = await sanitizeCustomTags(input.customTags);

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { InfoTip } from "@/components/shared/info-tip";
 import { fieldErrorClass } from "@/components/ui/form-field";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
@@ -50,11 +51,6 @@ import type {
 } from "@/lib/types";
 import type { CustomTagOption } from "@/features/taxonomy/api";
 
-const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
-  { slug: "new", label: "Шинэ" },
-  { slug: "hot", label: "Эрэлттэй" },
-  { slug: "sale", label: "Хямдрал" },
-];
 
 export function ProductForm({
   families,
@@ -112,7 +108,6 @@ export function ProductForm({
 
   const [variants, setVariants] = React.useState<VariantDraft[]>(emptyVariants);
   const [showVariantErrors, setShowVariantErrors] = React.useState(false);
-  const [tags, toggleTag] = useToggleList([]);
   const [customTags, toggleCustomTag] = useToggleList([]);
   const [isActive, setIsActive] = React.useState(true);
   const [isFeatured, setIsFeatured] = React.useState(false);
@@ -180,7 +175,6 @@ export function ProductForm({
         scentFamilies,
         seasons,
         variants,
-        tags,
         customTags,
         isActive,
         isFeatured,
@@ -444,20 +438,13 @@ export function ProductForm({
 
       <Card>
         <CardContent className="space-y-4 p-6">
-          <h2 className="font-serif text-lg font-semibold">Таг ба төлөв</h2>
-          <div className="flex flex-wrap gap-4">
-            {TAGS.map((t) => (
-              <label
-                key={t.slug}
-                className="flex cursor-pointer items-center gap-2 text-sm"
-              >
-                <Checkbox
-                  checked={tags.includes(t.slug)}
-                  onCheckedChange={() => toggleTag(t.slug)}
-                />
-                {t.label}
-              </label>
-            ))}
+          <div className="flex items-center gap-1.5">
+            <h2 className="font-serif text-lg font-semibold">Таг ба төлөв</h2>
+            <InfoTip label="Тагийн тайлбар">
+              Тагийг гараар тавихгүй, өөрөө шинэчлэгдэнэ: хамгийн сүүлд нэмсэн
+              12 ус «Шинэ», хамгийн их зарагдсан 12 ус «Эрэлттэй», аль нэг
+              хэмжээндээ хямдралын үнэтэй ус «Хямдрал» болно.
+            </InfoTip>
           </div>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox
