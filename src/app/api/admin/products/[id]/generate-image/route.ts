@@ -6,7 +6,8 @@ import { getStaffUser } from "@/lib/auth/guard";
 import { processGeneration } from "@/lib/ai/process-generation";
 import { PACKSHOT_PROMPT } from "@/lib/ai/packshot-prompt";
 import { buildNoteImagePrompt, MAX_NOTES } from "@/lib/ai/note-image";
-import { pickNotes } from "@/lib/ai/notes-en";
+import { pickNotes, untranslatedNotes } from "@/lib/ai/notes-en";
+import { loadNoteOverrides } from "@/lib/ai/note-overrides";
 
 const schema = z.object({ kind: z.enum(["packshot", "notes"]) });
 
@@ -60,7 +61,8 @@ export async function POST(
     .eq("id", id)
     .maybeSingle();
   const product = data as ProductRow | null;
-  if (!product) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  if (!product)
+    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
   // Галерейн үндсэн зураг: сайтад харагдаж байгаагийн эхнийх, эс бөгөөс хамгийн
   // эхний мөр.
@@ -70,16 +72,16 @@ export async function POST(
     .eq("product_id", id)
     .order("sort_order", { ascending: true });
   const images = (rows ?? []) as { url: string; is_visible: boolean }[];
-  const mainImage = (images.find((r) => r.is_visible) ?? images[0])?.url ?? null;
+  const mainImage =
+    (images.find((r) => r.is_visible) ?? images[0])?.url ?? null;
 
-  const notes = pickNotes(
-    {
-      top: product.notes_top ?? [],
-      heart: product.notes_heart ?? [],
-      base: product.notes_base ?? [],
-    },
-    MAX_NOTES,
-  );
+  const tiers = {
+    top: product.notes_top ?? [],
+    heart: product.notes_heart ?? [],
+    base: product.notes_base ?? [],
+  };
+  const overrides = await loadNoteOverrides(supabase);
+  const notes = pickNotes(tiers, MAX_NOTES, overrides);
 
   const isNote = parsed.data.kind === "notes";
   const referenceUrl = isNote
@@ -88,9 +90,16 @@ export async function POST(
   if (!referenceUrl) {
     return NextResponse.json({ error: "NO_REFERENCE" }, { status: 400 });
   }
-  // Бүх нот нь хийсвэр аккорд (мускус, амбер) бол зурах юм алга.
+  // Зурах нот алга: англи нэргүй нот байвал түүнийг нэрлэж буцаана (админ
+  // засах хуудсан дээр бөглөнө), эс бөгөөс бүгд хийсвэр аккорд (мускус, амбер).
   if (isNote && notes.length === 0) {
-    return NextResponse.json({ error: "NO_NOTES" }, { status: 400 });
+    const missing = untranslatedNotes(tiers, overrides);
+    return NextResponse.json(
+      missing.length
+        ? { error: "NOTES_UNTRANSLATED", missing }
+        : { error: "NO_NOTES" },
+      { status: 400 },
+    );
   }
 
   const prompt = isNote ? buildNoteImagePrompt(notes) : PACKSHOT_PROMPT;

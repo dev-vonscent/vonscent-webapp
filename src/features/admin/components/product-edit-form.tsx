@@ -45,6 +45,7 @@ import { MultiCheck, useToggleList } from "./multi-check";
 import { CustomTagField } from "./custom-tag-field";
 import { DescriptionFields } from "./description-fields";
 import { ProductImageStudio } from "./product-image-studio";
+import { NoteTranslationPanel } from "./note-translation-panel";
 import { BrandSelect } from "./brand-select";
 import { ConcentrationSelect } from "./concentration-select";
 import type { AdminProduct } from "@/features/admin/api";
@@ -69,6 +70,7 @@ export function ProductEditForm({
   concentrations,
   customTagPool = [],
   aiEnabled = false,
+  untranslatedNotes = [],
 }: {
   product: AdminProduct;
   families: ScentFamilyOption[];
@@ -78,6 +80,8 @@ export function ProductEditForm({
   customTagPool?: CustomTagOption[];
   /** `isImageGenConfigured` — server-only env, handed down by the page. */
   aiEnabled?: boolean;
+  /** Хадгалсан нотуудаас англи нэргүй нь (0102) — зураг үүсгэхэд хэрэгтэй. */
+  untranslatedNotes?: string[];
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -463,6 +467,7 @@ export function ProductEditForm({
               onChange={(e) => set("notesBase", e.target.value)}
             />
           </Field>
+          <NoteTranslationPanel notes={untranslatedNotes} />
         </CardContent>
       </Card>
 

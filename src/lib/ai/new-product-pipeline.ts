@@ -8,6 +8,7 @@ import { generateProductImage } from "./generate-image";
 import { PACKSHOT_PROMPT } from "./packshot-prompt";
 import { buildNoteImagePrompt, finishNoteImage, MAX_NOTES } from "./note-image";
 import { pickNotes } from "./notes-en";
+import { loadNoteOverrides } from "./note-overrides";
 
 /**
  * The two pictures a new product gets from one uploaded reference bottle.
@@ -122,6 +123,7 @@ export async function runNewProductImages(
       base: product.notes_base ?? [],
     },
     MAX_NOTES,
+    await loadNoteOverrides(supabase),
   );
   const notePrompt = notes.length ? buildNoteImagePrompt(notes) : null;
 
@@ -134,7 +136,9 @@ export async function runNewProductImages(
   );
   // Лавлах нь packshot өөрөө болно — түүнийг гартал хоосон, төлөв нь
   // `pending` (дараалалд).
-  const noteJob = notePrompt ? await queueJob(supabase, productId, notePrompt) : null;
+  const noteJob = notePrompt
+    ? await queueJob(supabase, productId, notePrompt)
+    : null;
   let packshotUrl: string;
   try {
     const { buffer, contentType, ext } = await generateProductImage({
