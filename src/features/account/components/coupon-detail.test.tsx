@@ -64,7 +64,9 @@ describe("coupon detail", () => {
     expect(screen.getByText("Купоны код")).toBeTruthy();
     expect(screen.getByText("Хүчинтэй хугацаа")).toBeTruthy();
     expect(screen.getByText(/100,000₮-өөс дээш захиалга/)).toBeTruthy();
-    expect(screen.getByText("1 удаа үлдсэн")).toBeTruthy();
+    expect(
+      screen.getByText("Ашиглах тоо").nextElementSibling?.textContent,
+    ).toBe("1");
     // A wheel coupon says where it came from.
     expect(screen.getByText(/Азын хүрднээс/)).toBeTruthy();
     expect(screen.getByText("Идэвхтэй")).toBeTruthy();

@@ -190,9 +190,7 @@ export function CouponDetail({ code }: { code: string }) {
           </Detail>
         )}
         <Detail label="Ашиглах тоо">
-          {coupon.maxUses != null
-            ? `${Math.max(coupon.maxUses - coupon.usedCount, 0)} удаа үлдсэн`
-            : "Хязгааргүй"}
+          {coupon.maxUses != null ? coupon.maxUses : "Хязгааргүй"}
         </Detail>
         {coupon.source === "spin" && (
           <Detail label="Хаанаас">
