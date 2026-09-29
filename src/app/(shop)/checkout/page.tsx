@@ -32,7 +32,7 @@ import {
 import { checkoutSchema } from "@/lib/validators/order";
 import { SHIPPING_ZONES, type ShippingZoneConfig } from "@/lib/constants";
 import { giftSlotsFor } from "@/lib/gift";
-import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
+import { BottomBar } from "@/components/shared/bottom-bar";
 import { GiftSamplePicker } from "@/features/checkout/components/gift-sample-picker";
 import { useGiftPool } from "@/features/gifts/use-gift-pool";
 import {
@@ -176,6 +176,9 @@ const ERROR_SECTION: Record<string, string> = {
   contactPhone: "checkout-recipient",
   contactEmail: "checkout-recipient",
 };
+
+/** Portal-оор формоос гадна очдог төлбөрийн зурвасын submit товч үүгээр заана. */
+const CHECKOUT_FORM_ID = "checkout-form";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -378,9 +381,6 @@ export default function CheckoutPage() {
   /** Наалдсан төлбөрийн зурвас гарах эсэх — хоосон / шилжих төлөвт гарахгүй. */
   const showPayBar =
     mounted && !leaving && (items.length > 0 || collections.length > 0);
-  // Зурвас доод цэсний ОРОНД суудаг — хоёулаа зэрэг хөвж, дэлгэцийн 17%-ийг
-  // эзлэхээс сэргийлнэ. Зурвас байхгүй үед цэс эргэж гарна.
-  useClaimBottomBar(showPayBar);
 
   /** Бүртгэл рүү явахын өмнө бөглөсөн бүхнээ хадгална. */
   const keepDraft = React.useCallback(() => {
@@ -1037,6 +1037,7 @@ export default function CheckoutPage() {
   return (
     <div className="mx-auto max-w-352 px-4 pt-8 md:px-8 md:pb-24 lg:pb-8">
       <form
+        id={CHECKOUT_FORM_ID}
         onSubmit={handleSubmit(onSubmit, onInvalid)}
         // Шалгалтыг Zod + талбарын доорх мессеж хийнэ; browser-ийн англи
         // bubble (жишээ нь type="email") түүнээс түрүүлж гарахгүй.
@@ -1602,33 +1603,31 @@ export default function CheckoutPage() {
             Тойм нь `lg:sticky` — десктоп дээр л. Утсан дээр дүн ба цорын ганц
             товч нь ~1900px хуудасны ёроолд байсан тул хэрэглэгч шийдэж буй
             тоогоо форм бөглөх бүх хугацаанд харахгүй байв. Доод цэсний ДЭЭР
-            давхарлахгүй, түүний оронд суух тул (`useClaimBottomBar`) хэлбэрээ ч
+            давхарлахгүй, түүний оронд суух тул (`BottomBar`) хэлбэрээ ч
             түүнээс авна: хөвөгч капсул + Glass Trio. */}
-        {showPayBar && (
-          <div className="pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 lg:hidden">
-            <div className="bg-secondary/85 shadow-lift pointer-events-auto mb-3 flex w-full items-center gap-3 rounded-full py-2 pr-2 pl-4 backdrop-blur">
-              <div className="min-w-0 flex-1">
-                <p className="text-muted-foreground truncate text-[11px]">
-                  {hasAddress ? "Нийт төлөх" : "Хүргэлтгүй дүн"}
-                </p>
-                <p className="text-base/tight font-semibold tabular-nums">
-                  {formatPrice(total)}
-                </p>
-              </div>
-              <Button
-                type="submit"
-                disabled={submitting || zoneBlocked}
-                className="shrink-0 rounded-full"
-              >
-                {submitting
-                  ? "Илгээж байна…"
-                  : zoneBlocked
-                    ? "Хүргэлтгүй"
-                    : "Төлбөр төлөх"}
-              </Button>
-            </div>
+        <BottomBar show={showPayBar} hideFrom="lg">
+          <div className="min-w-0 flex-1">
+            <p className="text-muted-foreground truncate text-[11px]">
+              {hasAddress ? "Нийт төлөх" : "Хүргэлтгүй дүн"}
+            </p>
+            <p className="text-base/tight font-semibold tabular-nums">
+              {formatPrice(total)}
+            </p>
           </div>
-        )}
+          <Button
+            type="submit"
+            // Зурвас `document.body` руу portal-оор очдог тул формоо id-гаар заана.
+            form={CHECKOUT_FORM_ID}
+            disabled={submitting || zoneBlocked}
+            className="shrink-0 rounded-full"
+          >
+            {submitting
+              ? "Илгээж байна…"
+              : zoneBlocked
+                ? "Хүргэлтгүй"
+                : "Төлбөр төлөх"}
+          </Button>
+        </BottomBar>
       </form>
 
       {/* Шинэ хаяг — popup. Хуудсан дээр форм нээхээ больсон. */}

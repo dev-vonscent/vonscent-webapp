@@ -38,7 +38,7 @@ export function BottomNav() {
   return (
     <div
       className={cn(
-        "pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center transition-transform duration-300 ease-out motion-reduce:transition-none md:hidden",
+        "pb-safe bottom-visual pointer-events-none fixed inset-x-0 z-40 flex justify-center transition-transform duration-300 ease-out motion-reduce:transition-none md:hidden",
         hidden && "translate-y-[140%]",
       )}
     >

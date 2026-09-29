@@ -473,6 +473,16 @@
   height: calc(4rem + env(safe-area-inset-bottom));
 }
 
+/* Доод ирмэгт наалддаг fixed зурвасын `bottom-0`-ийн оронд.
+   iOS 26 WebKit: гар (хаягийн мөр, хайлт, input) хаагдсаны дараа
+   `visualViewport.offsetTop` 0 болж буцдаггүй — layout viewport харагдах
+   хэсгээсээ дээш гацаж, `bottom: 0` элемент гарын өндрөөр (~330px) дэлгэцийн
+   дунд хөвж үлддэг. `--visual-bottom` нь тэр зөрүүг (≤ 0) `VisualViewportSync`
+   хэмжиж тавина; эрүүл үед 0 тул энгийн `bottom: 0`. */
+@utility bottom-visual {
+  bottom: var(--visual-bottom, 0px);
+}
+
 @layer base {
   /* No borders anywhere — every border collapses to transparent. */
   *,

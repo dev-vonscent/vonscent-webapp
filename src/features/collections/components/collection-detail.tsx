@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
-import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
+import { BottomBar, useScrolledPast } from "@/components/shared/bottom-bar";
 import { trackBeginCheckout } from "@/lib/analytics";
 import type { Collection } from "../types";
 
@@ -112,21 +112,11 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
    * болсон хэрэг.
    */
   const ctaRef = React.useRef<HTMLDivElement>(null);
-  const [ctaAway, setCtaAway] = React.useState(false);
-  React.useEffect(() => {
-    const el = ctaRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(([entry]) =>
-      setCtaAway(!entry.isIntersecting),
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+  const ctaAway = useScrolledPast(ctaRef);
 
-  // Зурвас нь доод цэсийг НУУНА, дээр нь давхарлахгүй — хоёулаа зэрэг гарвал
-  // хоёр хөвөгч капсул дэлгэцийн доод хэсгийг бүрэн эзэлнэ.
+  // Зурвас нь доод цэсийг НУУНА, дээр нь давхарлахгүй (`BottomBar`) —
+  // хоёулаа зэрэг гарвал хоёр хөвөгч капсул дэлгэцийн доод хэсгийг эзэлнэ.
   const showBuyBar = ctaAway && available && !collection.soldOut;
-  useClaimBottomBar(showBuyBar);
 
   const addedTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   React.useEffect(
@@ -367,41 +357,37 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
 
       {/* Барааны хуудасны зурвасын хэлбэрийг яг давтана: хөвөгч капсул,
           Glass Trio (/85 + blur + lift), ирмэгээс доторлосон. */}
-      {showBuyBar && (
-        <div className="pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 md:hidden">
-          <div className="bg-secondary/85 shadow-lift pointer-events-auto mb-3 flex w-full items-center gap-3 rounded-full py-2 pr-2 pl-4 backdrop-blur">
-            <div className="min-w-0 flex-1">
-              <p className="text-muted-foreground truncate text-[11px]">
-                {collection.name} · {collection.members.length} × {ml}ml
-              </p>
-              <p className="font-serif text-base/tight font-semibold tabular-nums">
-                {formatPrice(priceRow?.price ?? 0)}
-              </p>
-            </div>
-            {/* Энэ өргөнд зөвхөн дүрс — шошго нь «Захиалах»-ыг зурваснаас
-                шахаж гаргана. */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 rounded-full"
-              onClick={onAdd}
-              aria-label="Сагсанд нэмэх"
-            >
-              {added ? (
-                <Check className="size-4" />
-              ) : (
-                <ShoppingCart className="size-4" />
-              )}
-            </Button>
-            <Button
-              onClick={onBuyNow}
-              className="shrink-0 rounded-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
-            >
-              Захиалах
-            </Button>
-          </div>
+      <BottomBar show={showBuyBar} hideFrom="md">
+        <div className="min-w-0 flex-1">
+          <p className="text-muted-foreground truncate text-[11px]">
+            {collection.name} · {collection.members.length} × {ml}ml
+          </p>
+          <p className="font-serif text-base/tight font-semibold tabular-nums">
+            {formatPrice(priceRow?.price ?? 0)}
+          </p>
         </div>
-      )}
+        {/* Энэ өргөнд зөвхөн дүрс — шошго нь «Захиалах»-ыг зурваснаас
+            шахаж гаргана. */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 rounded-full"
+          onClick={onAdd}
+          aria-label="Сагсанд нэмэх"
+        >
+          {added ? (
+            <Check className="size-4" />
+          ) : (
+            <ShoppingCart className="size-4" />
+          )}
+        </Button>
+        <Button
+          onClick={onBuyNow}
+          className="shrink-0 rounded-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+        >
+          Захиалах
+        </Button>
+      </BottomBar>
     </div>
   );
 }

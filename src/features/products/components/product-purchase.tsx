@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { RELATED_SECTION_ID } from "@/lib/constants";
-import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
+import { BottomBar, useScrolledPast } from "@/components/shared/bottom-bar";
 import { useCart } from "@/features/cart/store";
 import { cartMlFor } from "@/features/cart/budget";
 import { maxUnits } from "@/features/products/sellable";
@@ -30,18 +30,10 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   const startBuyNow = useCart((s) => s.startBuyNow);
   const router = useRouter();
 
-  // Mobile sticky buy bar (1e): appears once the in-page CTA scrolls away.
+  // Mobile sticky buy bar (1e): appears once the in-page CTA has been
+  // scrolled PAST — not while it is still below the fold (`useScrolledPast`).
   const ctaRef = React.useRef<HTMLDivElement>(null);
-  const [ctaAway, setCtaAway] = React.useState(false);
-  React.useEffect(() => {
-    const el = ctaRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(([entry]) =>
-      setCtaAway(!entry.isIntersecting),
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+  const ctaAway = useScrolledPast(ctaRef);
 
   // …and stands down again over «Төстэй бараа». At the bottom of the page the
   // bar was parked on top of the last row of *other* products' cards — their
@@ -55,10 +47,13 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
     if (!el) return;
     const observer = new IntersectionObserver(
       ([entry]) => setAtRelated(entry.isIntersecting),
-      // Positive bottom margin: the section counts as "here" while it is still
-      // just below the fold, so the bar is already gone by the time the first
-      // card is reachable rather than lifting off from under the thumb.
-      { rootMargin: "0px 0px 120px 0px" },
+      // The section counts as "here" once it has risen into the upper 60% of
+      // the screen — i.e. the visitor is actually looking at those cards.
+      // It used to be a *positive* 120px margin (still below the fold), but on
+      // a product with a short description the CTA leaves the top only ~30px
+      // of scroll before that line: the bar flashed in and straight back out
+      // and read as broken. Now it holds for the whole stretch in between.
+      { rootMargin: "0px 0px -40% 0px" },
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -106,7 +101,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
       : null;
 
   // Зурвас гарах цорын ганц нөхцөл — доод цэсэнд мэдэгдэх нэхэмжлэл ч үүнээс
-  // уншина, ингэснээр хоёулаа хэзээ ч зөрөхгүй.
+  // уншина (`BottomBar`), ингэснээр хоёулаа хэзээ ч зөрөхгүй.
   const showBuyBar =
     ctaAway &&
     !atRelated &&
@@ -114,7 +109,6 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
     selected != null &&
     selected.sellable &&
     maxQty >= 1;
-  useClaimBottomBar(showBuyBar);
 
   /**
    * Puts the selected size in the cart. Returns false when nothing was added.
@@ -394,46 +388,42 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
       )}
 
       {/* Mobile sticky buy bar. It takes the BottomNav's place rather than
-          stacking on it (`useClaimBottomBar`), so it also takes its shape: a
-          floating capsule with the Glass Trio (/85 + blur + lift), inset from
-          the edge. Flush against the bottom it read as stuck to the screen
-          instead of hovering over the page. */}
-      {showBuyBar && (
-        <div className="pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 md:hidden">
-          <div className="bg-secondary/85 shadow-lift pointer-events-auto mb-3 flex w-full items-center gap-3 rounded-full py-2 pr-2 pl-4 backdrop-blur">
-            <div className="min-w-0 flex-1">
-              <p className="text-muted-foreground truncate text-[11px]">
-                {product.name} · {selected.ml}ml
-                {qty > 1 && ` · ${qty} ш`}
-              </p>
-              <p className="font-serif text-base/tight font-semibold tabular-nums">
-                {formatPrice(unitPrice * qty)}
-              </p>
-            </div>
-            {/* Icon-only at this width — the label would push «Захиалах» off
-                the bar on a small phone. Both pills, to nest in the capsule. */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 rounded-full"
-              onClick={onAdd}
-              aria-label="Сагсанд нэмэх"
-            >
-              {added ? (
-                <Check className="size-4" />
-              ) : (
-                <ShoppingCart className="size-4" />
-              )}
-            </Button>
-            <Button
-              onClick={onBuyNow}
-              className="shrink-0 rounded-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
-            >
-              Захиалах
-            </Button>
-          </div>
+          stacking on it, so it also takes its shape (`BottomBar`). Stays
+          mounted while hidden so it can slide out; `selected` may then be
+          null, hence the optional read. */}
+      <BottomBar show={showBuyBar} hideFrom="md">
+        <div className="min-w-0 flex-1">
+          <p className="text-muted-foreground truncate text-[11px]">
+            {product.name}
+            {selected && ` · ${selected.ml}ml`}
+            {qty > 1 && ` · ${qty} ш`}
+          </p>
+          <p className="font-serif text-base/tight font-semibold tabular-nums">
+            {formatPrice(unitPrice * qty)}
+          </p>
         </div>
-      )}
+        {/* Icon-only at this width — the label would push «Захиалах» off
+            the bar on a small phone. Both pills, to nest in the capsule. */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 rounded-full"
+          onClick={onAdd}
+          aria-label="Сагсанд нэмэх"
+        >
+          {added ? (
+            <Check className="size-4" />
+          ) : (
+            <ShoppingCart className="size-4" />
+          )}
+        </Button>
+        <Button
+          onClick={onBuyNow}
+          className="shrink-0 rounded-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+        >
+          Захиалах
+        </Button>
+      </BottomBar>
     </div>
   );
 }
