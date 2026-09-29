@@ -3,7 +3,14 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Truck, ShieldCheck, ShoppingCart, Clock, Loader2 } from "lucide-react";
+import {
+  Truck,
+  ShieldCheck,
+  ShoppingCart,
+  Clock,
+  Loader2,
+  UserRound,
+} from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -289,6 +296,7 @@ export default function CheckoutPage() {
     setValue,
     getValues,
     setError,
+    setFocus,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -378,23 +386,37 @@ export default function CheckoutPage() {
   }, [getValues, khoroo, draft, noteTags, giftIds]);
 
   /**
+   * Хаягаас автоматаар бөглөсөн сүүлийн нэр, утас. Талбарын одоогийн утга
+   * үүнтэй ижил бол «хүн гараар бичээгүй» гэж үзэж, дараагийн хаягаар солино.
+   */
+  const autoContact = React.useRef<
+    Partial<Record<"contactName" | "contactPhone", string>>
+  >({});
+  /**
+   * Хүлээн авагчийг нэг мөрөөс задалж бүтэн талбараар засаж байгаа эсэх.
+   * Хаяг солигдоход хаагдана — шинэ хаягийн хүн дахин нэг мөр болно.
+   */
+  const [recipientEditing, setRecipientEditing] = React.useState(false);
+
+  /**
    * Fills the form from a saved address, recipient name and phone included.
    *
-   * `contact: "overwrite"` — хэрэглэгч өөрөө хаяг сонгосон: тэр хаягийн хүн
-   * рүү шилжинэ. `"ifEmpty"` — хуудас нээгдэхэд үндсэн хаягаар: буцаж
-   * ирсэн draft эсвэл аль хэдийн бичсэн утгыг дарахгүй. Аль ч үед талбарууд
-   * засагдах боломжтой тул өөр хүнд хүргүүлэх бол шууд солино.
+   * Нэр, утсыг зөвхөн ХООСОН эсвэл өмнөх хаягаас бөглөгдсөн хэвээрээ байвал
+   * солино. Өмнө нь хэрэглэгч хаяг сонгох бүрд дарагддаг байсан тул «бэлэг —
+   * өөр хүн хүлээж авна» гээд бичсэн нэр нь хаяг солиход алга болдог байв.
+   * Буцаж ирсэн draft-ын утга ч мөн адил хадгалагдана.
    */
   const applyAddress = React.useCallback(
-    (
-      a: AddressRow,
-      { contact = "overwrite" }: { contact?: "overwrite" | "ifEmpty" } = {},
-    ) => {
+    (a: AddressRow) => {
       const fill = (key: "contactName" | "contactPhone", v: string) => {
         if (!v) return;
-        if (contact === "ifEmpty" && getValues(key)) return;
-        // Өмнөх алдаа (жишээ нь хоосон утас) шинэ утгаар шууд арилна.
+        const current = getValues(key) ?? "";
+        if (current && current !== autoContact.current[key]) return;
+        // Өмнөх алдаа (жишээ нь хоосон утас) шинэ утгаар шууд арилна, харин
+        // хадгалсан хаягийн буруу утас (жишээ нь «123») тэр дороо алдаа болж
+        // гарна — илгээсний дараа биш.
         setValue(key, v, { shouldValidate: true });
+        autoContact.current[key] = v;
       };
       fill("contactName", a.recipient);
       fill("contactPhone", a.phone);
@@ -568,7 +590,7 @@ export default function CheckoutPage() {
       // the same one every time.
       if (rows[0]) {
         setAddressChoice(rows[0].id);
-        applyAddress(rows[0], { contact: "ifEmpty" });
+        applyAddress(rows[0]);
       }
       setLoyaltyRules(
         parseLoyaltyRules((setting as { value?: unknown } | null)?.value),
@@ -678,6 +700,30 @@ export default function CheckoutPage() {
     loyaltyRules,
   );
 
+  const contactName = watch("contactName") ?? "";
+  const contactPhone = watch("contactPhone") ?? "";
+  const savedAddress = addresses.find((a) => a.id === addressChoice);
+  /**
+   * Хүлээн авагч нь сонгосон хадгалсан хаягийнх хэвээр, зөв бөгөөд алдаагүй
+   * бол талбаруудыг дахин асуухгүй — хаягийн карт дээр нэр, утас нь аль хэдийн
+   * бичээстэй. Буруу утастай (хуучин «123») хаяг бүтэн форм хэвээр үлдэнэ.
+   */
+  const recipientCollapsed =
+    !recipientEditing &&
+    Boolean(savedAddress) &&
+    contactName === savedAddress?.recipient &&
+    contactPhone === savedAddress?.phone &&
+    formSchema.shape.contactName.safeParse(contactName).success &&
+    formSchema.shape.contactPhone.safeParse(contactPhone).success &&
+    !errors.contactName &&
+    !errors.contactPhone;
+
+  function editRecipient() {
+    setRecipientEditing(true);
+    // Талбарууд дараагийн render-т л гарна.
+    window.setTimeout(() => setFocus("contactName"), 0);
+  }
+
   /** Popup-ыг одоогийн хаягийн утгаар нээнэ — дутуу хороог гүйцээх зам. */
   function openAddressWith(seed: AddressFormValue | null) {
     setAddressSeed(seed);
@@ -695,6 +741,7 @@ export default function CheckoutPage() {
   }
 
   function onAddressChoice(next: string) {
+    setRecipientEditing(false);
     if (next === NEW_ADDRESS) {
       // Оруулсан хаяг байхгүй бол сонгох юм ч байхгүй — popup нээнэ.
       if (!draft) {
@@ -1203,36 +1250,61 @@ export default function CheckoutPage() {
           </CheckoutSection>
 
           {/* Хүлээн авагч — талбарууд зориуд хоосон эхэлнэ (дансны нэр, утсаар
-              бөглөхгүй), хаяг сонгоход л бөглөгдөнө. */}
+              бөглөхгүй), хаяг сонгоход л бөглөгдөнө. Хадгалсан хаягийн хүн
+              хэвээр бол нэг мөр — хаягийн карт дээрх мэдээллийг давтахгүй. */}
           <CheckoutSection
             id="checkout-recipient"
             step={2}
             title="Хүлээн авагчийн мэдээлэл"
           >
             <div className="grid gap-4 sm:grid-cols-2">
-              {/* `autoComplete` нь утсан дээрх хамгийн том хэмнэлт: Chrome-ийн
-                  автобөглөлт энэ хоёр талбарыг нэг товшилтоор дүүргэдэг.
-                  Нэрийг `name` биш `shipping name` гэж тэмдэглэв — хүлээн
-                  авагч нь захиалагч өөрөө байх албагүй (бэлэг). */}
-              <Field label="Нэр" error={errors.contactName?.message}>
-                <Input
-                  {...register("contactName")}
-                  placeholder="Хүлээн авах хүний нэр"
-                  autoComplete="shipping name"
-                />
-              </Field>
-              <Field label="Утас" error={errors.contactPhone?.message}>
-                <Input
-                  {...register("contactPhone")}
-                  placeholder="99112233"
-                  type="tel"
-                  inputMode="numeric"
-                  // Монголын дугаар 8 орон — 11 оронтой (улсын код түрүүлсэн)
-                  // дугаарыг илгээх хүртэл хүлээж байгаад буцаах нь хожуу.
-                  maxLength={8}
-                  autoComplete="shipping tel-national"
-                />
-              </Field>
+              {recipientCollapsed ? (
+                <div className="bg-secondary flex items-center gap-3 rounded-xl py-1.5 pr-1.5 pl-3 text-sm sm:col-span-2">
+                  <UserRound className="text-muted-foreground size-4 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate">
+                    <span className="font-medium">{contactName}</span>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {contactPhone}
+                    </span>
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0 text-xs"
+                    onClick={editRecipient}
+                  >
+                    Өөр хүн хүлээн авах
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {/* `autoComplete` нь утсан дээрх хамгийн том хэмнэлт: Chrome-ийн
+                      автобөглөлт энэ хоёр талбарыг нэг товшилтоор дүүргэдэг.
+                      Нэрийг `name` биш `shipping name` гэж тэмдэглэв — хүлээн
+                      авагч нь захиалагч өөрөө байх албагүй (бэлэг). */}
+                  <Field label="Нэр" error={errors.contactName?.message}>
+                    <Input
+                      {...register("contactName")}
+                      placeholder="Хүлээн авах хүний нэр"
+                      autoComplete="shipping name"
+                    />
+                  </Field>
+                  <Field label="Утас" error={errors.contactPhone?.message}>
+                    <Input
+                      {...register("contactPhone")}
+                      placeholder="99112233"
+                      type="tel"
+                      inputMode="numeric"
+                      // Монголын дугаар 8 орон — 11 оронтой (улсын код түрүүлсэн)
+                      // дугаарыг илгээх хүртэл хүлээж байгаад буцаах нь хожуу.
+                      maxLength={8}
+                      autoComplete="shipping tel-national"
+                    />
+                  </Field>
+                </>
+              )}
               {/* Заавал биш. Зочин хэрэглэгчийн хувьд захиалгаа дахин олох
                   шууд зам нь энэ хаяг руу ирэх линк — эс тэгвээс зөвхөн
                   захиалгын дугаар + утсаараа /order/find-ээс хайна. */}
