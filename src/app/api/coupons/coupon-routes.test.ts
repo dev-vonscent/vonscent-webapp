@@ -69,6 +69,22 @@ describe("POST /api/coupons/validate", () => {
     expect(callRpc).not.toHaveBeenCalled();
   });
 
+  it("names the minimum when the cart is below it", async () => {
+    user = { id: "u1" };
+    callRpc.mockResolvedValue({
+      data: {
+        valid: false,
+        discount: 0,
+        reason: "MIN_SUBTOTAL",
+        minSubtotal: 100000,
+      },
+    });
+    const res = await validate.POST(post({ code: "MIN100", subtotal: 60000 }));
+    expect((await res.json()).message).toBe(
+      "Энэ купон 100,000₮-өөс дээш захиалгад хэрэглэгдэнэ.",
+    );
+  });
+
   it("validates a signed-in customer's code against their own id", async () => {
     user = { id: "u-friend" };
     callRpc.mockResolvedValue({
@@ -126,5 +142,56 @@ describe("POST /api/coupons/available", () => {
       "SOON",
       "LATE",
     ]);
+  });
+
+  it("lists a coupon below its minimum as not yet usable, with the shortfall", async () => {
+    user = { id: "u1" };
+    rows = [
+      {
+        id: "m",
+        code: "MIN100",
+        type: "fixed",
+        value: 10000,
+        min_subtotal: 100000,
+        max_discount: null,
+        ends_at: null,
+        user_id: "u1",
+      },
+    ];
+    callRpc.mockResolvedValue({
+      data: { valid: false, discount: 0, reason: "MIN_SUBTOTAL" },
+    });
+    const res = await available.POST(post({ subtotal: 60000 }));
+    const { coupons } = await res.json();
+    expect(coupons).toEqual([
+      expect.objectContaining({
+        code: "MIN100",
+        eligible: false,
+        shortfall: 40000,
+        discount: 0,
+        minSubtotal: 100000,
+      }),
+    ]);
+  });
+
+  it("still drops coupons that fail for any other reason", async () => {
+    user = { id: "u1" };
+    rows = [
+      {
+        id: "x",
+        code: "GONE",
+        type: "fixed",
+        value: 1,
+        min_subtotal: 0,
+        max_discount: null,
+        ends_at: null,
+        user_id: "u1",
+      },
+    ];
+    callRpc.mockResolvedValue({
+      data: { valid: false, discount: 0, reason: "MAX_USES" },
+    });
+    const res = await available.POST(post({ subtotal: 60000 }));
+    expect((await res.json()).coupons).toEqual([]);
   });
 });

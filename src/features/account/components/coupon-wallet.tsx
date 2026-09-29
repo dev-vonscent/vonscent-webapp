@@ -24,7 +24,7 @@ import {
   TicketStub,
   couponLabel,
 } from "./coupon-ticket";
-import { CopyCodeButton, ShareCodeButton } from "./coupon-actions";
+import { CopyCodeButton } from "./coupon-actions";
 
 const TABS: { value: CouponStatus; label: string }[] = [
   { value: "active", label: "Идэвхтэй" },
@@ -54,9 +54,11 @@ const EMPTY: Record<CouponStatus, { title: string; description: string }> = {
  * rows, each with its own date. Campaign codes (`WELCOME11` and the like) are
  * not listed — they work by code alone, for whoever was told the code.
  *
- * A personal coupon can be handed to a friend: «Хуваалцах» opens the phone's
- * share sheet. Once anyone uses it, it moves to «Ашиглагдсан» with a masked
- * line saying who and when.
+ * A used coupon moves to «Ашиглагдсан» with a masked line saying who used it
+ * and when — the code still works for anyone signed in who types it (0104).
+ *
+ * A minimum order is its own line, not a footnote: it is the condition that
+ * decides whether the coupon applies to the cart at all.
  */
 export function CouponWallet() {
   const { data, isPending, isError, refetch } = useWallet();
@@ -152,8 +154,7 @@ export function CouponWallet() {
 
       {tab === "active" && rows.length > 0 && (
         <p className="text-muted-foreground text-xs/relaxed">
-          Нэг захиалгад нэг купон. Кодоо найздаа өгч болно — купон нэг л удаа
-          ашиглагдах тул найз тань ашигласан бол таных дуусна.
+          Нэг захиалгад нэг купон.
         </p>
       )}
     </div>
@@ -195,8 +196,10 @@ function CouponRow({ coupon: c }: { coupon: WalletCoupon }) {
         </p>
         <p className="text-muted-foreground text-xs">
           <ExpiryLine coupon={c} />
-          {terms && ` · ${terms}`}
         </p>
+        {terms && (
+          <p className="text-foreground text-xs font-medium">{terms}</p>
+        )}
 
         {c.status === "used" && last && (
           <p className="text-xs">
@@ -212,7 +215,6 @@ function CouponRow({ coupon: c }: { coupon: WalletCoupon }) {
         {c.status === "active" && (
           <div className="flex flex-wrap gap-2 pt-1">
             <CopyCodeButton code={c.code} />
-            <ShareCodeButton code={c.code} label={label} />
           </div>
         )}
       </div>

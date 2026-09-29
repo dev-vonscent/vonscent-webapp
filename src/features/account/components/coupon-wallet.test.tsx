@@ -63,14 +63,18 @@ describe("CouponWallet", () => {
     expect(screen.getByText("2 хоног үлдсэн")).toBeTruthy();
   });
 
-  it("gives each active coupon copy and share", () => {
+  it("gives each active coupon a copy button, and no share", () => {
     render(<CouponWallet />);
     expect(
       screen.getAllByRole("button", { name: /кодыг хуулах/ }),
     ).toHaveLength(2);
-    expect(
-      screen.getAllByRole("button", { name: /кодыг хуваалцах/ }),
-    ).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: /хуваалцах/ })).toBeNull();
+  });
+
+  it("puts a minimum order on its own line", () => {
+    data.mockReturnValue([coupon({ code: "MIN", minSubtotal: 100000 })]);
+    render(<CouponWallet />);
+    expect(screen.getByText("100,000₮-өөс дээш захиалгад")).toBeTruthy();
   });
 
   it("shows a shared coupon under «Ашиглагдсан» with the masked friend", async () => {
@@ -78,7 +82,7 @@ describe("CouponWallet", () => {
     await userEvent.click(screen.getByRole("tab", { name: /Ашиглагдсан/ }));
     expect(screen.getByText("GIVEN")).toBeTruthy();
     expect(screen.getByText("Б*** (••2233)")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /хуваалцах/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /хуулах/ })).toBeNull();
   });
 
   it("keeps expired coupons in their own tab", async () => {

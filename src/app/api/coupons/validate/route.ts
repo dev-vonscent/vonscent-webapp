@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { formatPrice } from "@/lib/format";
 
 const schema = z.object({
   code: z.string().trim().min(1).max(40),
@@ -89,8 +90,12 @@ export async function POST(req: Request) {
     discount: data.discount ?? 0,
     code: data.code,
     reason: data.valid ? undefined : data.reason,
+    minSubtotal: data.minSubtotal,
     message: data.valid
       ? undefined
-      : (REASON_MN[data.reason ?? ""] ?? "Купон хүчингүй байна."),
+      : data.reason === "MIN_SUBTOTAL" && data.minSubtotal
+        ? // Доод дүнгээ хэлэхгүй бол хэрэглэгч хэд нэмэхээ мэдэхгүй.
+          `Энэ купон ${formatPrice(data.minSubtotal)}-өөс дээш захиалгад хэрэглэгдэнэ.`
+        : (REASON_MN[data.reason ?? ""] ?? "Купон хүчингүй байна."),
   });
 }

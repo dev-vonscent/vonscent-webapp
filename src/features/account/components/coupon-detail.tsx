@@ -10,7 +10,7 @@ import { formatPrice, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { daysLeft, describeRedemption, type CouponStatus } from "./coupons";
 import { useWalletCoupon } from "../use-coupons";
-import { CopyCodeButton, ShareCodeButton } from "./coupon-actions";
+import { CopyCodeButton } from "./coupon-actions";
 import {
   STUB_RATIO,
   TicketOutline,
@@ -166,15 +166,6 @@ export function CouponDetail({ code }: { code: string }) {
         </span>
         {active && <CopyCodeButton code={coupon.code} />}
       </div>
-
-      {active && (
-        <div className="mt-3 flex items-center gap-3">
-          <ShareCodeButton code={coupon.code} label={label} />
-          <p className="text-muted-foreground text-[11px] leading-snug">
-            Найздаа өгч болно — нэг л удаа ашиглагдана.
-          </p>
-        </div>
-      )}
 
       <dl className="mt-6 space-y-px overflow-hidden rounded-xl">
         <Detail label="Хүчинтэй хугацаа">

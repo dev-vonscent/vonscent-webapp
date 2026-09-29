@@ -13,6 +13,8 @@ function offer(over: Partial<AvailableCoupon> = {}): AvailableCoupon {
     discount: 8000,
     minSubtotal: 0,
     maxDiscount: null,
+    eligible: true,
+    shortfall: 0,
     endsAt: null,
     personal: false,
     ...over,
@@ -170,7 +172,39 @@ describe("available coupons", () => {
         offers={[offer({ minSubtotal: 100000, maxDiscount: 20000 })]}
       />,
     );
-    expect(screen.getByText(/100,000₮-өөс · дээд тал нь 20,000₮/)).toBeTruthy();
+    expect(
+      screen.getByText(/100,000₮-өөс дээш захиалгад · дээд тал нь 20,000₮/),
+    ).toBeTruthy();
+  });
+
+  it("shows a coupon below its minimum with what is left to add, unpickable", async () => {
+    const onPick = vi.fn();
+    render(
+      <CouponField
+        {...NOOP}
+        applied={null}
+        onPick={onPick}
+        offers={[
+          offer({
+            code: "MIN100",
+            minSubtotal: 100000,
+            eligible: false,
+            shortfall: 40000,
+            discount: 0,
+          }),
+        ]}
+      />,
+    );
+    expect(screen.getByText(/100,000₮-өөс дээш захиалгад/)).toBeTruthy();
+    expect(
+      screen.getByText("Дахин 40,000₮-ийн бараа нэмбэл ашиглана"),
+    ).toBeTruthy();
+    const row = screen.getByText("MIN100").closest("button")!;
+    expect(row.hasAttribute("disabled")).toBe(true);
+    await userEvent.click(row);
+    expect(onPick).not.toHaveBeenCalled();
+    // Nothing pickable, so the manual input is open.
+    expect(screen.getByPlaceholderText("Купон код")).toBeTruthy();
   });
 
   it("links to the full wallet", () => {

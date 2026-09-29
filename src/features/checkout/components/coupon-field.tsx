@@ -62,13 +62,16 @@ export function CouponField({
   const [manualOpen, setManualOpen] = React.useState(false);
   // Хайлт дуусаагүй байхад «купон байхгүй» гэж шийдэхгүй — эс тэгвээс input
   // гарч ирээд, санал ирэхэд нь дахин алга болж анивчина.
-  const showManual = manualOpen || (!loading && offers.length === 0);
+  // Coupons still below their minimum are shown but cannot be picked, so they
+  // do not count as "something to choose" when deciding to show the input.
+  const usable = offers.filter((o) => o.eligible);
+  const showManual = manualOpen || (!loading && usable.length === 0);
   // Rows are ordered by expiry, so the biggest saving is not necessarily the
   // first one — mark it wherever it sits, and only if it is a clear winner.
-  const top = Math.max(0, ...offers.map((o) => o.discount));
+  const top = Math.max(0, ...usable.map((o) => o.discount));
   const bestId =
-    offers.length > 1 && offers.filter((o) => o.discount === top).length === 1
-      ? offers.find((o) => o.discount === top)?.id
+    usable.length > 1 && usable.filter((o) => o.discount === top).length === 1
+      ? usable.find((o) => o.discount === top)?.id
       : undefined;
 
   if (applied) {
@@ -103,7 +106,7 @@ export function CouponField({
       {offers.length > 0 && (
         <>
           <p className="text-muted-foreground text-xs font-medium">
-            Танд боломжтой купон
+            Таны купон
           </p>
           <ul className="space-y-2">
             {offers.map((o) => (
@@ -191,14 +194,16 @@ function OfferRow({
 }) {
   const expiry = expiryNote(offer.endsAt);
   const terms = couponTerms(offer);
+  const locked = !offer.eligible;
   return (
     <button
       type="button"
       onClick={onPick}
+      disabled={locked}
       // Хүрээ энэ системд тунгалаг тул мөрүүд огт хилгүй, дарж болохгүй текст
       // мэт харагддаг байв. Мөрийг `bg-secondary` дээр, доторх тэмдгийг нэг
       // давхарга ухааж (`bg-card`) тавьснаар хоёулаа уншигдана.
-      className="bg-secondary hover:bg-accent flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition-all"
+      className="bg-secondary enabled:hover:bg-accent flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition-all disabled:cursor-not-allowed"
     >
       {/* What the coupon *is*, so two codes are told apart without reading
           either of them. */}
@@ -238,11 +243,19 @@ function OfferRow({
             {terms}
           </span>
         )}
+        {/* Доод дүнд хүрээгүй: нөхцөлийг нь хэлж, хэдийг нэмэхийг тоолж өгнө. */}
+        {locked && offer.shortfall > 0 && (
+          <span className="text-foreground mt-0.5 block text-[11px] font-medium">
+            Дахин {formatPrice(offer.shortfall)}-ийн бараа нэмбэл ашиглана
+          </span>
+        )}
       </span>
 
-      <span className="text-gold-strong shrink-0 text-sm font-semibold">
-        −{formatPrice(offer.discount)}
-      </span>
+      {!locked && (
+        <span className="text-gold-strong shrink-0 text-sm font-semibold">
+          −{formatPrice(offer.discount)}
+        </span>
+      )}
     </button>
   );
 }

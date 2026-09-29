@@ -142,7 +142,7 @@ describe("couponTerms", () => {
   it("lists the minimum and a percent coupon's cap", () => {
     expect(
       couponTerms({ type: "percent", minSubtotal: 100000, maxDiscount: 20000 }),
-    ).toBe("100,000₮-өөс · дээд тал нь 20,000₮");
+    ).toBe("100,000₮-өөс дээш захиалгад · дээд тал нь 20,000₮");
   });
 
   it("is null when there are no conditions", () => {

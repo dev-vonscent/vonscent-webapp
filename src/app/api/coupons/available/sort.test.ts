@@ -12,6 +12,8 @@ function coupon(over: Partial<AvailableCoupon> = {}): AvailableCoupon {
     maxDiscount: null,
     endsAt: null,
     personal: true,
+    eligible: true,
+    shortfall: 0,
     ...over,
   };
 }
@@ -41,6 +43,18 @@ describe("sortOffers", () => {
       coupon({ code: "BIG", discount: 9000 }),
     ]);
     expect(out.map((c) => c.code)).toEqual(["BIG", "SMALL"]);
+  });
+
+  it("lists usable coupons before ones still below their minimum", () => {
+    const out = sortOffers([
+      coupon({
+        code: "LOCKED",
+        eligible: false,
+        endsAt: "2026-10-01T00:00:00Z",
+      }),
+      coupon({ code: "OK", endsAt: "2026-12-01T00:00:00Z" }),
+    ]);
+    expect(out.map((c) => c.code)).toEqual(["OK", "LOCKED"]);
   });
 
   it("does not mutate its input", () => {

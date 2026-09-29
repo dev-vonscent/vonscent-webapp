@@ -145,11 +145,6 @@ export function describeRedemption(r: WalletRedemption): string {
   return name ?? phone ?? "Өөр хэрэглэгч";
 }
 
-/** The share-sheet text for a coupon code. */
-export function shareText(label: string, code: string): string {
-  return `Vonscent-д ${label} хөнгөлөлт эдлээрэй — купон код: ${code}`;
-}
-
 /** The conditions attached to a coupon, in as few words as possible. */
 export function couponTerms(c: {
   type: "percent" | "fixed";
@@ -157,7 +152,9 @@ export function couponTerms(c: {
   maxDiscount: number | null;
 }): string | null {
   const parts: string[] = [];
-  if (c.minSubtotal > 0) parts.push(`${formatPrice(c.minSubtotal)}-өөс`);
+  if (c.minSubtotal > 0) {
+    parts.push(`${formatPrice(c.minSubtotal)}-өөс дээш захиалгад`);
+  }
   if (c.type === "percent" && c.maxDiscount != null) {
     parts.push(`дээд тал нь ${formatPrice(c.maxDiscount)}`);
   }

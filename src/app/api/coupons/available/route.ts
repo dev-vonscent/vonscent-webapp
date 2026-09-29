@@ -19,7 +19,9 @@ export type { AvailableCoupon } from "./sort";
  * coupons are for signed-in customers only.
  *
  * Every candidate is still run through `validate_coupon` for this exact
- * subtotal, so the list never suggests something that would then be refused.
+ * subtotal, so nothing offered as usable would then be refused. A coupon that
+ * fails only on its minimum order is listed too, as not yet usable with the
+ * amount still to add — the condition is the thing worth telling the customer.
  */
 const schema = z.object({
   subtotal: z.number().int().nonnegative(),
@@ -59,22 +61,30 @@ export async function POST(req: Request) {
     const { data: result } = await callRpc<{
       valid: boolean;
       discount: number;
+      reason?: string;
     }>(supabase, "validate_coupon", {
       p_code: c.code,
       p_subtotal: parsed.data.subtotal,
       p_user: user.id,
     });
-    if (!result?.valid || (result.discount ?? 0) <= 0) continue;
+    const belowMinimum = result?.reason === "MIN_SUBTOTAL";
+    if (!belowMinimum && (!result?.valid || (result.discount ?? 0) <= 0)) {
+      continue;
+    }
     coupons.push({
       id: c.id,
       code: c.code,
       type: c.type,
       value: c.value,
-      discount: result.discount,
+      discount: belowMinimum ? 0 : result!.discount,
       minSubtotal: c.min_subtotal,
       maxDiscount: c.max_discount,
       endsAt: c.ends_at,
       personal: c.user_id != null,
+      eligible: !belowMinimum,
+      shortfall: belowMinimum
+        ? Math.max(c.min_subtotal - parsed.data.subtotal, 0)
+        : 0,
     });
   }
 

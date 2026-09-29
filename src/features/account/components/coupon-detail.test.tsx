@@ -70,12 +70,9 @@ describe("coupon detail", () => {
     expect(screen.getByText("Идэвхтэй")).toBeTruthy();
   });
 
-  it("offers copy and share on an active coupon", () => {
+  it("offers copy on an active coupon", () => {
     render(<CouponDetail code="VW-3QAQYS" />);
     expect(screen.getByRole("button", { name: /кодыг хуулах/ })).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: /кодыг хуваалцах/ }),
-    ).toBeTruthy();
   });
 
   it("flags an expiry that is nearly up", () => {
@@ -106,7 +103,7 @@ describe("coupon detail", () => {
     expect(screen.getByText("Б*** (••2233)")).toBeTruthy();
     expect(screen.getByText("2026.09.28")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Ашиглах" })).toBeNull();
-    expect(screen.queryByRole("button", { name: /хуваалцах/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /хуулах/ })).toBeNull();
   });
 
   it("validates against the cart before applying, then goes to checkout", async () => {
