@@ -34,7 +34,7 @@ function useIsDesktop() {
 
 /**
  * Desktop дээр төвийн Dialog, мобайл (< sm) дээр grab handle-тай bottom
- * sheet болдог нэг wrapper. Sheet нь дэлгэцийн гар гарахад `--kb-inset`-ээр
+ * sheet болдог нэг wrapper. Sheet нь дэлгэцийн гар гарахад `--kb-overlap`-оор
  * дээшилнэ (KeyboardInset).
  */
 export function ResponsiveDialog({
@@ -74,7 +74,11 @@ export function ResponsiveDialog({
       <SheetContent
         side="bottom"
         className={cn(
-          "max-h-[85dvh] overflow-y-auto rounded-t-3xl border-t-0 pt-3 pb-[calc(var(--kb-inset,0px)+max(env(safe-area-inset-bottom),1.5rem))]",
+          // Гар нээлттэй үед: доод padding нь гарт БОДИТООР далдлагдсан хэсэг
+          // (`--kb-overlap`), өндөр нь гарын дээрх харагдах хэсэгтээ багтана
+          // — iOS viewport-оо өөрөө дээш гүйлгэдэг тул бүтэн гарын өндрөөр
+          // нөхвөл sheet хоёр дахин дээшилдэг байв (KeyboardInset).
+          "max-h-[calc(85dvh-var(--kb-inset,0px)+var(--kb-overlap,0px))] overflow-y-auto rounded-t-3xl border-t-0 pt-3 pb-[calc(var(--kb-overlap,0px)+max(env(safe-area-inset-bottom),1.5rem))]",
           className,
         )}
         aria-describedby={description ? undefined : ""}
