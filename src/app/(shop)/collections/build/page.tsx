@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import {
   getBuilderProducts,
@@ -13,6 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
+  ...pageMetadata("/collections/build"),
   title: "Багц угсрах",
   description: "Дуртай үнэртнүүдээ сонгож, хямдралтай өөрийн багц угсраарай.",
 };

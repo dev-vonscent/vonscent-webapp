@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { PackageOpen } from "lucide-react";
 import {
@@ -15,6 +16,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
+  ...pageMetadata("/collections"),
   title: "Багц",
   description:
     "Сонгож бэлдсэн үнэртний багцууд — хэд хэдэн үнэртнийг нэг хэмжээгээр, тусад нь авахаас хямдаар.",
