@@ -322,6 +322,22 @@ describe("manual entry", () => {
     expect(onApply).toHaveBeenCalled();
   });
 
+  it("calls apply without the click event as the code", async () => {
+    const onApply = vi.fn();
+    render(
+      <CouponField
+        {...NOOP}
+        applied={null}
+        offers={[]}
+        code="VW7K2X"
+        onApply={onApply}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Хэрэглэх" }));
+    expect(onApply).toHaveBeenCalledWith();
+  });
+
   it("surfaces a rejection message", () => {
     render(
       <CouponField

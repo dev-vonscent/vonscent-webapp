@@ -304,7 +304,9 @@ function ManualEntry({
         size="sm"
         className="h-10 shrink-0 md:h-9"
         disabled={applying || !code.trim()}
-        onClick={onApply}
+        // Шууд `onClick={onApply}` бол click event нь `apply(raw)`-ийн код
+        // болж ирээд `.trim()` дээр унадаг байв.
+        onClick={() => onApply()}
       >
         {applying ? "…" : "Хэрэглэх"}
       </Button>

@@ -95,8 +95,9 @@ export function useCoupon(
 
   /** Гараар бичсэн кодыг шалгаад хэрэглэнэ. */
   const apply = React.useCallback(
-    async (raw?: string) => {
-      const value = (raw ?? code).trim();
+    async (raw?: unknown) => {
+      // `onClick`-т шууд өгөгдвөл event ирдэг — зөвхөн мөрийг код гэж үзнэ.
+      const value = (typeof raw === "string" ? raw : code).trim();
       if (!value) return;
       if (!isSupabaseConfigured) {
         setMessage(DEMO_MESSAGE);

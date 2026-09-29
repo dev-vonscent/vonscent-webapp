@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/env", () => ({ isSupabaseConfigured: true }));
@@ -50,6 +50,20 @@ describe("useCoupon", () => {
         discount: 3000,
       }),
     );
+  });
+
+  it("uses the typed code when handed a click event instead", async () => {
+    mockFetch((url, body) =>
+      url.includes("validate")
+        ? { valid: true, code: String(body.code).toUpperCase(), discount: 3000 }
+        : { coupons: [] },
+    );
+
+    const { result } = renderHook(() => useCoupon(30000));
+    act(() => result.current.setCode("sale10"));
+    await act(() => result.current.apply({ type: "click" }));
+
+    expect(useCart.getState().coupon?.code).toBe("SALE10");
   });
 
   it("refreshes a discount that went stale when the cart changed", async () => {
