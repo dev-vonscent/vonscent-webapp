@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Check, Copy } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 async function copy(code: string): Promise<boolean> {
   try {
@@ -14,29 +14,41 @@ async function copy(code: string): Promise<boolean> {
   }
 }
 
-/** Copies the code, with a moment of «Хуулсан» so the tap is acknowledged. */
+/**
+ * Icon-only copy button. The tap is acknowledged by the icon turning into a
+ * check for a moment — no label, so nothing shifts in the layout.
+ */
 export function CopyCodeButton({
   code,
-  size = "sm",
+  className,
 }: {
   code: string;
-  size?: "sm" | "default";
+  className?: string;
 }) {
   const [copied, setCopied] = React.useState(false);
+  const timer = React.useRef<ReturnType<typeof setTimeout>>(undefined);
+  React.useEffect(() => () => clearTimeout(timer.current), []);
+
   return (
-    <Button
-      type="button"
-      variant="secondary"
-      size={size}
-      aria-label={`${code} кодыг хуулах`}
-      onClick={async () => {
-        if (!(await copy(code))) return;
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1600);
-      }}
-    >
-      {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-      {copied ? "Хуулсан" : "Хуулах"}
-    </Button>
+    <span className={cn("relative inline-flex", className)}>
+      <button
+        type="button"
+        aria-label={copied ? "Хуулсан" : `${code} кодыг хуулах`}
+        onClick={async () => {
+          if (!(await copy(code))) return;
+          setCopied(true);
+          clearTimeout(timer.current);
+          timer.current = setTimeout(() => setCopied(false), 1600);
+        }}
+        // 36px товч, 44px хүрэх талбар (WCAG 2.5.8).
+        className="text-muted-foreground hover:text-foreground hover:bg-accent relative flex size-9 items-center justify-center rounded-full transition-colors before:absolute before:top-1/2 before:left-1/2 before:size-11 before:-translate-1/2 before:content-['']"
+      >
+        {copied ? (
+          <Check className="text-foreground size-4" />
+        ) : (
+          <Copy className="size-4" />
+        )}
+      </button>
+    </span>
   );
 }

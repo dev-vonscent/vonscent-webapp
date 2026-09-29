@@ -26,10 +26,11 @@ import {
 } from "./coupon-ticket";
 import { CopyCodeButton } from "./coupon-actions";
 
-const TABS: { value: CouponStatus; label: string }[] = [
-  { value: "active", label: "Идэвхтэй" },
-  { value: "used", label: "Ашиглагдсан" },
-  { value: "expired", label: "Хугацаа дууссан" },
+/** `short` fits a phone's third of the row on one line; `label` is for sm+. */
+const TABS: { value: CouponStatus; label: string; short: string }[] = [
+  { value: "active", label: "Идэвхтэй", short: "Идэвхтэй" },
+  { value: "used", label: "Ашиглагдсан", short: "Ашиглагдсан" },
+  { value: "expired", label: "Хугацаа дууссан", short: "Дууссан" },
 ];
 
 const EMPTY: Record<CouponStatus, { title: string; description: string }> = {
@@ -81,7 +82,7 @@ export function CouponWallet() {
       <div
         role="tablist"
         aria-label="Купоны төлөв"
-        className="bg-secondary flex gap-1 rounded-xl p-1 text-sm"
+        className="bg-secondary flex gap-1 rounded-xl p-1 text-[13px] sm:text-sm"
       >
         {TABS.map((t) => {
           const n = count(t.value);
@@ -93,13 +94,14 @@ export function CouponWallet() {
               aria-selected={tab === t.value}
               onClick={() => setTab(t.value)}
               className={cn(
-                "flex-1 rounded-lg p-2 font-medium transition-colors",
+                "flex-1 rounded-lg px-1 py-1.5 font-medium whitespace-nowrap transition-colors",
                 tab === t.value
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {t.label}
+              <span className="sm:hidden">{t.short}</span>
+              <span className="hidden sm:inline">{t.label}</span>
               {n > 0 && (
                 <span className="text-muted-foreground ml-1 tabular-nums">
                   {n}
@@ -167,12 +169,12 @@ function CouponRow({ coupon: c }: { coupon: WalletCoupon }) {
   const last = c.redemptions[0];
 
   return (
-    <article className="bg-card flex gap-3 rounded-2xl p-3 sm:gap-4 sm:p-4">
+    <article className="bg-card relative flex items-center gap-3 rounded-2xl p-3 sm:gap-4">
       <Link
         href={`/account/coupons/${encodeURIComponent(c.code)}`}
         aria-label={`${label} купоны дэлгэрэнгүй`}
         className={cn(
-          "relative aspect-video w-24 shrink-0 transition-transform duration-300 hover:-translate-y-0.5 sm:w-32",
+          "relative aspect-video w-24 shrink-0 transition-transform duration-300 hover:-translate-y-0.5 sm:w-28",
           c.status === "active"
             ? "text-muted-foreground/50"
             : "text-muted-foreground/30 opacity-70",
@@ -190,19 +192,23 @@ function CouponRow({ coupon: c }: { coupon: WalletCoupon }) {
         </span>
       </Link>
 
-      <div className="min-w-0 flex-1 space-y-1.5">
+      {/* Код, дараа нь хоёр богино мөр: хугацаа, нөхцөл. Хуулах нь булан
+          дахь дүрс — мөрийн зайг эзлэхгүй. */}
+      <div className={cn("min-w-0 flex-1", c.status === "active" && "pr-8")}>
         <p className="truncate font-mono text-sm font-semibold tracking-wider">
           {c.code}
         </p>
-        <p className="text-muted-foreground text-xs">
+        <p className="text-muted-foreground mt-1 truncate text-xs">
           <ExpiryLine coupon={c} />
         </p>
         {terms && (
-          <p className="text-foreground text-xs font-medium">{terms}</p>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            {terms}
+          </p>
         )}
 
         {c.status === "used" && last && (
-          <p className="text-xs">
+          <p className="mt-0.5 text-xs">
             <span className="text-muted-foreground">Ашигласан: </span>
             {describeRedemption(last)}
             <span className="text-muted-foreground">
@@ -211,13 +217,11 @@ function CouponRow({ coupon: c }: { coupon: WalletCoupon }) {
             </span>
           </p>
         )}
-
-        {c.status === "active" && (
-          <div className="flex flex-wrap gap-2 pt-1">
-            <CopyCodeButton code={c.code} />
-          </div>
-        )}
       </div>
+
+      {c.status === "active" && (
+        <CopyCodeButton code={c.code} className="absolute top-2 right-2" />
+      )}
     </article>
   );
 }
