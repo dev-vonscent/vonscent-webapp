@@ -1,4 +1,9 @@
+import { Suspense } from "react";
 import { SiteHeader } from "@/components/shared/site-header";
+import {
+  HeaderSocialLinks,
+  MenuSocialLinks,
+} from "@/components/shared/social-links";
 import { BottomNav } from "@/components/shared/bottom-nav";
 import { WishlistSync } from "@/features/wishlist/sync";
 import { ScrollReset } from "@/components/shared/scroll-reset";
@@ -11,8 +16,9 @@ import { SkipLink } from "@/components/shared/skip-link";
  * A slot rather than a `usePathname()` check: `@footer/page.tsx` matches only
  * `/`, and every other route falls to `@footer/default.tsx`, which renders
  * nothing. So the footer is not merely hidden off the home page — it is never
- * rendered, and `getSocialSettings()` (a database read it does on mount) never
- * runs on the other forty-odd shop routes.
+ * rendered. (The header's social icons do read `getSocialSettings()` on every
+ * route, but through the request-cached settings fetch most pages already make,
+ * streamed in a `Suspense` slot so it never holds the header back.)
  *
  * It also stays a *sibling* of `<main>`. Moving it into the page would have
  * nested it inside `<main>`, where `<footer>` loses its `contentinfo` landmark
@@ -30,7 +36,18 @@ export default function ShopLayout({
       <ScrollReset />
       {/* Хамгийн эхний фокус авах элемент байх ёстой тул толгойн ӨМНӨ. */}
       <SkipLink />
-      <SiteHeader />
+      <SiteHeader
+        social={
+          <Suspense fallback={null}>
+            <HeaderSocialLinks />
+          </Suspense>
+        }
+        menuSocial={
+          <Suspense fallback={null}>
+            <MenuSocialLinks />
+          </Suspense>
+        }
+      />
       {/* Утсан дээрх `pb-24` нь доод навигацад контент дарагдахгүй байх зай.
           Footer-той (нүүр) хуудсанд тэр зай footer-ийн доор очно — эс бөгөөс
           сүүлийн хэсэг ба footer-ийн хооронд 96px хоосон зай үүсдэг. Footer нь

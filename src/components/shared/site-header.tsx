@@ -50,7 +50,15 @@ function getTitle(pathname: string): string {
   return match ? TITLES[match] : "vonscent";
 }
 
-export function SiteHeader() {
+export function SiteHeader({
+  social,
+  menuSocial,
+}: {
+  /** Desktop толгойн сошиал дүрсүүд — layout-аас server slot (social-links.tsx). */
+  social?: React.ReactNode;
+  /** Гар утасны цэсэн дэх сошиал холбоосууд. */
+  menuSocial?: React.ReactNode;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const isHome = pathname === "/";
@@ -152,7 +160,7 @@ export function SiteHeader() {
       <div className={cn("px-4 pt-4", isHome ? "block" : "hidden md:block")}>
         <div className="bg-secondary/85 shadow-lift relative mx-auto flex h-14 max-w-352 items-center gap-2 rounded-full px-3 backdrop-blur">
           {/* Left: mobile menu + logo */}
-          <MobileMenu className="md:hidden" />
+          <MobileMenu className="md:hidden" social={menuSocial} />
 
           <Logo className="px-1 text-lg md:text-xl" />
 
@@ -188,6 +196,8 @@ export function SiteHeader() {
 
           {/* Right: search + cart (mobile only) + profile menu (desktop only) */}
           <div className="ml-auto flex items-center gap-1">
+            {/* lg+: md дээр төвийн цэстэй мөргөлдөнө. */}
+            <div className="hidden lg:block">{social}</div>
             <GlobalSearch />
             <CartSheet triggerClassName="md:hidden" />
             <div className="hidden md:block">

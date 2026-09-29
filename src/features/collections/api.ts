@@ -214,6 +214,19 @@ export const getBaseCollections = cache(async (): Promise<Collection[]> => {
   return rows.map((row) => build(row, productById, settings));
 });
 
+/**
+ * «Хямдрал» таг дээрх «Хямдралтай багц» мөр (клиент, 2026-09 UG).
+ *
+ * Одоогоор ИДЭВХТЭЙ бүх бэлэн багц — багц бүр үндсэн хувиар хямдардаг тул.
+ * «Үндсэн хувиас илүү хямдралтай нь л уу» гэдэг нь клиентээс тодруулах
+ * асуулт (docs/planning/client-feedback-ug-2026-09.md). Худалдаж авч
+ * болохгүй (дууссан) багцыг онцлох мөрийнх шиг алгасна.
+ */
+export async function getSaleCollections(): Promise<Collection[]> {
+  const all = await getBaseCollections();
+  return all.filter((c) => !c.soldOut && c.discountRange.max > 0);
+}
+
 /** Featured base collections for the home rail. */
 export async function getFeaturedCollections(limit = 4): Promise<Collection[]> {
   const all = await getBaseCollections();

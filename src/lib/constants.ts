@@ -11,6 +11,11 @@ export const SITE = {
   description:
     "Дэлхийн шилдэг үнэртнүүдийг бага хэмжээгээр туршиж, өөрийн үнэрээ олоорой",
   tagline: "Үнэрээ ол",
+  /**
+   * Facebook хуудасны харагдах нэр. URL-аас гаргасан «vonscent» биш
+   * (клиент, 2026-09 UG).
+   */
+  facebookName: "Von Scent",
 } as const;
 
 /**
@@ -28,6 +33,18 @@ export type MlSize = (typeof ML_SIZES)[number];
  * bundle can be built out of 2ml decants too (client decision).
  */
 export const BUNDLE_ML_SIZES = ML_SIZES;
+
+/**
+ * «Туршиж үзэх» шошготой хэмжээ (ус ба багцын хэмжээний товч дээр). Зөвхөн
+ * UI санал — 2ml нь sample биш, бусадтай адил энгийн хэмжээ.
+ */
+export const TRIAL_SIZE_ML: MlSize = 2;
+
+/**
+ * Барааны хуудсанд «Үлдэгдэл хомс» гарах босго: сонгосон хэмжээгээр (сагсанд
+ * байгааг хассан) эх савнаас цутгаж болох ширхэг үүнээс бага буюу тэнцүү үед.
+ */
+export const LOW_STOCK_UNITS = 3;
 
 /**
  * «Шинэ» таг автомат: хамгийн сүүлд нэмэгдсэн ийм тооны идэвхтэй ус. Шинэ ус
