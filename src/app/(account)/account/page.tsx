@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/browser";
-import { useWishlist } from "@/features/wishlist/store";
+import { selectWishCount, useWishlist } from "@/features/wishlist/store";
 import { AddressBook } from "@/features/account/components/address-book";
 import { PasscodeDialog } from "@/features/account/components/passcode-dialog";
 import { ProfileEditDialog } from "@/features/account/components/profile-edit-dialog";
@@ -49,7 +49,8 @@ export default function ProfilePage() {
   const [passcodeOpen, setPasscodeOpen] = React.useState(false);
 
   const wishIds = useWishlist((s) => s.ids);
-  const wishCount = wishIds.length;
+  // Ус ба бэлэн багц (0107) хоёулаа «Хүслүүд»-д тоологдоно.
+  const wishCount = useWishlist(selectWishCount);
 
   React.useEffect(() => {
     const supabase = createClient();

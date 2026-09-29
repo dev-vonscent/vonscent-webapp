@@ -5,6 +5,15 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { DeliveryReturnsText } from "@/components/shared/delivery-returns-text";
+import { ReviewSection } from "@/features/reviews/components/review-section";
+import { WishlistButton } from "@/features/wishlist/components/wishlist-button";
+import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
@@ -99,14 +108,62 @@ export default async function CollectionPage({
             <span className="text-muted-foreground text-sm tracking-wide uppercase">
               {GENDER_LABEL[collection.gender]} багц
             </span>
-            <h1 className="font-serif text-3xl font-semibold tracking-tight">
-              {collection.name}
-            </h1>
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="font-serif text-3xl font-semibold tracking-tight">
+                {collection.name}
+              </h1>
+              <WishlistButton
+                collectionId={collection.id}
+                className="bg-secondary hover:bg-accent size-10 shrink-0"
+              />
+            </div>
           </div>
 
           <CollectionDetail collection={collection} />
+
+          {/* Дан усных шиг accordion (клиент, 2026-09 UG; 0106). Тайлбар нь
+              өмнө нь хэмжээний доор эвхэгддэг догол мөр байсан — одоо
+              «Дэлгэрэнгүй тайлбар». Хоосон хэсэг нээгдэхгүй, харин
+              «Хүргэлт ба буцаалт» нь бүх барааны нийтлэг текст тул үргэлж. */}
+          <Accordion
+            type="single"
+            collapsible
+            defaultValue={collection.description ? "desc" : undefined}
+          >
+            {collection.description && (
+              <AccordionItem value="desc">
+                <AccordionTrigger>Дэлгэрэнгүй тайлбар</AccordionTrigger>
+                <AccordionContent className="whitespace-pre-line">
+                  {collection.description}
+                </AccordionContent>
+              </AccordionItem>
+            )}
+            {collection.usageDescription && (
+              <AccordionItem value="usage">
+                <AccordionTrigger>Хэрэглэх нөхцөл</AccordionTrigger>
+                <AccordionContent className="whitespace-pre-line">
+                  {collection.usageDescription}
+                </AccordionContent>
+              </AccordionItem>
+            )}
+            <AccordionItem value="ship">
+              <AccordionTrigger>Хүргэлт ба буцаалт</AccordionTrigger>
+              <AccordionContent>
+                <DeliveryReturnsText />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </div>
+
+      {/* Үнэлгээ — барааны хуудастай ижил, бүтэн өргөнөөр (0107). */}
+      <section className="mt-16">
+        <ReviewSection
+          target={{ kind: "collection", id: collection.id }}
+          path={`/collections/${collection.slug}`}
+          ratingAvg={collection.ratingAvg}
+        />
+      </section>
     </div>
   );
 }

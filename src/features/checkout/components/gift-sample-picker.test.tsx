@@ -1,3 +1,4 @@
+import * as React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -40,13 +41,25 @@ function renderPicker(
 }
 
 describe("GiftSamplePicker", () => {
-  it("is a numbered step with a one-line summary", () => {
+  it("is a numbered step with the gift rules spelled out", () => {
     renderPicker();
     expect(screen.getByText("3")).toBeTruthy();
-    expect(screen.getByText("Бэлгийн 1 мл дээж")).toBeTruthy();
+    expect(
+      screen.getByText("Бэлэг /Захиалгын үнийн дүнгийн 200,000₮ тутамд 1мл/"),
+    ).toBeTruthy();
     // 244,200 → дараагийн эрх 400,000 дээр: 155,800₮ дутуу.
     expect(
-      screen.getByText("1 дээж сонгох эрхтэй · 155,800₮ нэмбэл +1"),
+      screen.getByText("Та бэлэгт 1мл үнэртэн сонгох эрхтэй байна."),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Дахиад 155,800₮-ийн бараа нэмснээр 1мл бэлэг нэмэгдэнэ.",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Купон ашигласан тохиолдолд хямдарсан дүнгээс бодогдоно.",
+      ),
     ).toBeTruthy();
     expect(screen.getByText("0/1 сонгосон")).toBeTruthy();
   });
@@ -84,11 +97,11 @@ describe("GiftSamplePicker", () => {
       value: ["g1"],
     });
     expect(
-      screen.getByText(/3 дээж сонгох эрхтэй · .* · нэг уснаас 2 хүртэл/),
+      screen.getByText("Нэг үнэртнээс дээд тал нь 2 ширхэг сонгох боломжтой."),
     ).toBeTruthy();
 
     await userEvent.click(
-      screen.getByRole("button", { name: /Santal 33 — 1 ширхэг/ }),
+      screen.getByRole("button", { name: "Santal 33 — нэгээр нэмэх" }),
     );
     expect(onChange).toHaveBeenLastCalledWith(["g1", "g1"]);
 
@@ -104,8 +117,9 @@ describe("GiftSamplePicker", () => {
       goodsAfterDiscount: 420000,
       value: ["g1"],
     });
-    const tile = screen.getByRole("button", { name: /Santal 33 — 1 ширхэг/ });
-    expect(tile.querySelector(".lucide-plus")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Santal 33 — нэгээр нэмэх" }),
+    ).toBeTruthy();
 
     // Хоёулаа авсан — нэмэх зай үлдээгүй тул тэмдэг алга.
     rerender(
@@ -136,8 +150,94 @@ describe("GiftSamplePicker", () => {
 
   it("says how far the first gift is when there is none yet", () => {
     renderPicker({ allowance: 0, goodsAfterDiscount: 150000 });
-    expect(screen.getByText(/дахиад 50,000₮ дутуу/)).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Дахиад 50,000₮-ийн бараа нэмснээр 1мл бэлэг нэмэгдэнэ.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/сонгох эрхтэй/)).toBeNull();
     expect(screen.queryByRole("radiogroup")).toBeNull();
+  });
+
+  describe("7→8 miscount (client, 2026-09 UG)", () => {
+    const BIG: GiftPool = {
+      ...POOL,
+      products: Array.from({ length: 10 }, (_, i) => ({
+        id: `p${i + 1}`,
+        name: `Water ${i + 1}`,
+        brand: "Brand",
+        image: null,
+      })),
+    };
+
+    /** Controlled harness — the page owns `value`, like checkout does. */
+    function Harness() {
+      const [value, setValue] = React.useState<string[]>([]);
+      return (
+        <GiftSamplePicker
+          step={3}
+          allowance={8}
+          goodsAfterDiscount={1_600_000}
+          value={value}
+          onChange={setValue}
+        />
+      );
+    }
+
+    it("lets the 8th distinct water be picked after 7", async () => {
+      pool = BIG;
+      render(<Harness />);
+      for (let i = 1; i <= 7; i += 1) {
+        await userEvent.click(
+          screen.getByRole("button", { name: new RegExp(`Water ${i} — `) }),
+        );
+      }
+      expect(screen.getByText("7/8 сонгосон")).toBeTruthy();
+      const eighth = screen.getByRole("button", { name: /Water 8 — сонгох/ });
+      expect(eighth.hasAttribute("disabled")).toBe(false);
+      await userEvent.click(eighth);
+      expect(screen.getByText("8/8 сонгосон")).toBeTruthy();
+      pool = POOL;
+    });
+
+    it("does not count a water twice when its tile is tapped again", async () => {
+      // Сонгосон хавтсыг дахин товших нь (сонголтоо болих гэж) 2 дахь
+      // ширхгийг НЭМДЭГ байсан: 7 ус сонгоход «8/8» болж, 8 дахь усыг
+      // сонгох боломжгүй болдог байв.
+      pool = BIG;
+      render(<Harness />);
+      for (let i = 1; i <= 7; i += 1) {
+        await userEvent.click(
+          screen.getByRole("button", { name: new RegExp(`Water ${i} — `) }),
+        );
+      }
+      await userEvent.click(
+        screen.getByRole("button", { name: /Water 7 — 1 ширхэг/ }),
+      );
+      expect(screen.getByText("6/8 сонгосон")).toBeTruthy();
+      expect(
+        screen
+          .getByRole("button", { name: /Water 8 — сонгох/ })
+          .hasAttribute("disabled"),
+      ).toBe(false);
+      pool = POOL;
+    });
+
+    it("adds a second of the same water only through its + button", async () => {
+      pool = BIG;
+      render(<Harness />);
+      await userEvent.click(
+        screen.getByRole("button", { name: /Water 1 — сонгох/ }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Water 1 — нэгээр нэмэх" }),
+      );
+      expect(screen.getByText("2/8 сонгосон")).toBeTruthy();
+      expect(
+        screen.queryByRole("button", { name: "Water 1 — нэгээр нэмэх" }),
+      ).toBeNull();
+      pool = POOL;
+    });
   });
 
   it("disappears when the pool is off", () => {

@@ -193,6 +193,7 @@ export function CollectionForm({
     name: collection?.name ?? "",
     gender: collection?.gender ?? ("unisex" as "male" | "female" | "unisex"),
     description: collection?.description ?? "",
+    usageDescription: collection?.usage_description ?? "",
     discountPct: collection
       ? Number(collection.discount_pct)
       : defaultDiscountPct,
@@ -265,7 +266,7 @@ export function CollectionForm({
     discountPct?: string;
   }>({});
 
-  // Хайлт нь сервер дээр (0063). Багц угсрахад бүх усаа гүйлгэж хардаг тул
+  // Хайлт нь сервер дээр (0063). Багц үүсгэхэд бүх усаа гүйлгэж хардаг тул
   // бэлгийн сантай ижил «бүгдийг харуул» горим — хайлт нь зөвхөн нэмэлт
   // шүүлтүүр, анхдагч 30 мөрийн хязгаар биш (сервер тал ч мөн адил уншина).
   const { q, setQ, items, loading, byId } = useProductOptions(
@@ -379,6 +380,7 @@ export function CollectionForm({
         name,
         gender: form.gender,
         description: form.description,
+        usageDescription: form.usageDescription,
         discountPct: Number(form.discountPct),
         // Only the sizes actually overridden travel; the rest fall back to the
         // default on the server exactly as they do here.
@@ -468,12 +470,27 @@ export function CollectionForm({
               </Select>
             </Field>
           </div>
-          <Field label="Тайлбар">
-            <Input
+          {/* Багцын хуудасны accordion (0106): «Дэлгэрэнгүй тайлбар»,
+              «Хэрэглэх нөхцөл». «Хүргэлт ба буцаалт» нь бүх барааны нийтлэг
+              текст тул энд талбаргүй. */}
+          <Field label="Дэлгэрэнгүй тайлбар">
+            <textarea
               value={form.description}
               onChange={(e) =>
                 setForm({ ...form, description: e.target.value })
               }
+              rows={4}
+              className="bg-secondary field-edge w-full rounded-md px-3 py-2 text-base md:text-sm"
+            />
+          </Field>
+          <Field label="Хэрэглэх нөхцөл">
+            <textarea
+              value={form.usageDescription}
+              onChange={(e) =>
+                setForm({ ...form, usageDescription: e.target.value })
+              }
+              rows={3}
+              className="bg-secondary field-edge w-full rounded-md px-3 py-2 text-base md:text-sm"
             />
           </Field>
         </CardContent>

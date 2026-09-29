@@ -411,8 +411,8 @@ export function CartSheet({
               {/* No figure here on purpose: the fee depends on the delivery
                   zone, which is only known once an address is chosen. */}
               <p className="text-muted-foreground text-xs text-balance">
-                Хүргэлтийн төлбөр хаягийн бүсээс хамаарч нэмэгдэнэ — эцсийн дүнг
-                захиалгын хуудсанд харна.
+                Хүргэлтийн төлбөр хаягийн байршлаас хамааран ялгаатай байна —
+                эцсийн дүнг захиалгын хуудаснаас харна уу.
               </p>
               {noneSelected ? (
                 <Button

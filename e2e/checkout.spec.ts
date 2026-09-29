@@ -88,3 +88,44 @@ test("guest places a demo order end to end", async ({ page }) => {
 
   await expect(page).toHaveURL(/\/order\/success/, { timeout: 15_000 });
 });
+
+/**
+ * Төлбөрийн хуудаснаас мөрөө засах (клиент, 2026-09 UG): урьд нь тоо, хэмжээ
+ * солих, устгах боломжгүй тул засах гэж буцсан хэрэглэгч сагсаа эхнээс нь
+ * бүрдүүлдэг байв. Засвар сагсны store руу шууд бичигдэх тул сагс ижил.
+ */
+test("edits a line in checkout and finds it the same in the cart", async ({
+  page,
+}) => {
+  await page.goto("/products/dior-sauvage-edp");
+  await page
+    .getByRole("button", { name: /Сагсанд нэмэх/ })
+    .first()
+    .click();
+
+  await page.goto("/checkout");
+  const plus = page.getByRole("button", { name: /— нэгээр нэмэх$/ }).first();
+  await expect(plus).toBeVisible();
+  await plus.click();
+  // 1 → 2: «−» идэвхжинэ (1 дээр идэвхгүй).
+  await expect(
+    page.getByRole("button", { name: /— нэгээр хасах$/ }).first(),
+  ).toBeEnabled();
+
+  await page.goto("/cart");
+  await expect(page.getByRole("heading", { name: "Таны сагс" })).toBeVisible();
+  // Сагсны мөрийн stepper нь 2-ыг харуулна.
+  await expect(
+    page.locator("span.tabular-nums").filter({ hasText: /^2$/ }).first(),
+  ).toBeVisible();
+
+  // Устгавал сагс ч хоосорно — checkout ба сагс нэг л store.
+  await page.goto("/checkout");
+  await page
+    .getByRole("button", { name: /— устгах$/ })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Сагс хоосон байна" }),
+  ).toBeVisible();
+});

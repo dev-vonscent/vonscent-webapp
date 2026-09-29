@@ -22,14 +22,6 @@ export const metadata: Metadata = {
     "Сонгож бэлдсэн үнэртний багцууд — хэд хэдэн үнэртнийг нэг хэмжээгээр, тусад нь авахаас хямдаар.",
 };
 
-/** «3-5» гэх мэт муж, эсвэл бүгд ижил бол ганц тоо. */
-function range(values: number[]): string | null {
-  if (values.length === 0) return null;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  return min === max ? `${min}` : `${min}-${max}`;
-}
-
 export default async function CollectionsPage() {
   const [collections, settings] = await Promise.all([
     getBaseCollections(),
@@ -38,26 +30,28 @@ export default async function CollectionsPage() {
 
   /*
     Хямдралын хувь нь бодит багцуудаас тооцоологдоно — «5%» гэж гараар бичвэл
-    админ хямдралаа өөрчлөхөд шууд худал болно. Хувь мэдэгдэхгүй (бүх багц
-    0%) үед толгойн өгүүлбэр тоогүйгээр л уншигдана.
+    админ хямдралаа өөрчлөхөд шууд худал болно. Клиент муж биш ганц тоо
+    хүссэн («5-6%» → «5%», 2026-09 UG) тул бүх багцын бүх хэмжээнд баталгаатай
+    ХАМГИЙН БАГА хувийг хэлнэ — ингэснээр аль ч багцад хэтрүүлж амлахгүй.
+    Хувь мэдэгдэхгүй (бүх багц 0%) үед толгойн өгүүлбэр тоогүйгээр л уншигдана.
 
     Өмнө нь энд «1 багц · 4 үнэртэн · 5 / 10 / 20ml» гэсэн тоймын мөр байв:
     доорх сүлжээ өөрөө багцуудаа, тэдгээрийн үнэртний тоо, хэмжээг нь
     харуулдаг тул тэр мөр нь нэг дэлгэцэнд ижил зүйлийг хоёр удаа хэлж
     байсан.
   */
-  const discountSpan = (() => {
+  const discountPct = (() => {
     const pcts = collections
-      .map((c) => c.discountRange.max)
+      .map((c) => c.discountRange.min)
       .filter((n) => n > 0);
-    return range(pcts);
+    return pcts.length > 0 ? Math.min(...pcts) : null;
   })();
 
   return (
     <div className="mx-auto max-w-352 px-4 py-6 md:px-8">
       {/*
         Толгой нь хоёр замыг зэрэг харуулна: зүүн талд бэлэн багцууд (энэ
-        хуудас өөрөө), баруун талд өөрөө угсрах.
+        хуудас өөрөө), баруун талд өөрөө үүсгэх.
 
         Тэгшлэлт нь ДЭЭД ирмэгээр. Өмнө нь `items-end` байсан: доод ирмэг нь
         таарч байсан ч панель нь гарчгаасаа өндөр тул нүдэнд гарчгаас дээш
@@ -69,9 +63,9 @@ export default async function CollectionsPage() {
             Багц
           </h1>
           <p className="text-muted-foreground text-sm text-balance">
-            {discountSpan
-              ? `Багцаар авбал тусад нь авснаас ${discountSpan}% хямд.`
-              : "Багцаар авбал тусад нь авснаас хямд."}
+            {discountPct
+              ? `Багцаар авбал дангаар нь авснаас ${discountPct}% хямд`
+              : "Багцаар авбал дангаар нь авснаас хямд"}
           </p>
         </div>
         {settings.customEnabled && <BuildRoutePanel />}

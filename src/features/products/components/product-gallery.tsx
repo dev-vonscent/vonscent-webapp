@@ -12,9 +12,7 @@ import "yet-another-react-lightbox/plugins/thumbnails.css";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import type { ProductImage } from "@/lib/types";
-
-/** Auto-advance interval — client asked for a 3-5s rotation. */
-const AUTOPLAY_MS = 4000;
+import { GALLERY_AUTOPLAY } from "./gallery-autoplay";
 
 /**
  * Product gallery on one Embla instance for every breakpoint: full-bleed
@@ -30,22 +28,16 @@ export function ProductGallery({
 }) {
   const many = images.length > 1;
   const reducedMotion = usePrefersReducedMotion();
+  // Санаатай сонголтын дараа autoplay-г plugin-ээр нь хасна: `stop()` хангалтгүй,
+  // учир нь plugin дараагийн mouseleave / focusout, эсвэл resize-ийн reInit
+  // дээр өөрөө дахин эхэлдэг (gallery-autoplay.ts). Plugin солих нь reInit
+  // хийдэг тул гүйлгэлт ДУУССАНЫ дараа (`settle`) — эс бөгөөс дарсан зураг
+  // руу гулсах хөдөлгөөн нь тасарч үсэрнэ.
+  const [userStopped, setUserStopped] = React.useState(false);
+  const stopOnSettle = React.useRef(false);
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { loop: many, watchDrag: many },
-    many && !reducedMotion
-      ? [
-          Autoplay({
-            delay: AUTOPLAY_MS,
-            stopOnInteraction: true,
-            // WCAG 2.2.2: автоматаар хөдөлдөг агуулгыг зогсоох арга байх
-            // ёстой. Цэг/жижиг зураг дээр дарахад бүрмөсөн зогсдог, дээр нь
-            // хулгана дээр нь очих ба гар фокус орох нь ч зогсооно — эс
-            // бөгөөс зураг уншиж байх үед нь солигдчихдог.
-            stopOnMouseEnter: true,
-            stopOnFocusIn: true,
-          }),
-        ]
-      : [],
+    many && !reducedMotion && !userStopped ? [Autoplay(GALLERY_AUTOPLAY)] : [],
   );
   const [active, setActive] = React.useState(0);
   const [lightboxAt, setLightboxAt] = React.useState<number | null>(null);
@@ -53,21 +45,31 @@ export function ProductGallery({
   React.useEffect(() => {
     if (!emblaApi) return;
     const onSelect = () => setActive(emblaApi.selectedScrollSnap());
+    const onSettle = () => {
+      if (stopOnSettle.current) setUserStopped(true);
+    };
     emblaApi.on("select", onSelect);
+    emblaApi.on("settle", onSettle);
     return () => {
       emblaApi.off("select", onSelect);
+      emblaApi.off("settle", onSettle);
     };
   }, [emblaApi]);
 
   // Any deliberate pick stops autoplay for good so we never yank the image
   // out from under someone who is looking at a specific shot.
   function pick(i: number) {
-    emblaApi?.plugins().autoplay?.stop();
-    emblaApi?.scrollTo(i);
+    if (!emblaApi) return;
+    emblaApi.plugins().autoplay?.stop();
+    // Одоо харагдаж буйг дарвал гүйлгэлт (тиймээс `settle`) байхгүй.
+    if (i === emblaApi.selectedScrollSnap()) setUserStopped(true);
+    else stopOnSettle.current = true;
+    emblaApi.scrollTo(i);
   }
 
   function openLightbox(i: number) {
     emblaApi?.plugins().autoplay?.stop();
+    setUserStopped(true);
     setLightboxAt(i);
   }
 

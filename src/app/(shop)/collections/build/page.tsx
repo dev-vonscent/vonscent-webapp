@@ -15,8 +15,8 @@ import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   ...pageMetadata("/collections/build"),
-  title: "Багц угсрах",
-  description: "Дуртай үнэртнүүдээ сонгож, хямдралтай өөрийн багц угсраарай.",
+  title: "Багц үүсгэх",
+  description: "Дуртай үнэртнүүдээ сонгож, хямдралтай өөрийн багц үүсгээрэй.",
 };
 
 export default async function BuildPage({
@@ -52,9 +52,9 @@ export default async function BuildPage({
   if (!settings.customEnabled) {
     return (
       <div className="mx-auto max-w-xl px-4 py-24 text-center">
-        <h1 className="font-serif text-2xl font-semibold">Багц угсрах</h1>
+        <h1 className="font-serif text-2xl font-semibold">Багц үүсгэх</h1>
         <p className="text-muted-foreground mt-2">
-          Өөрийн багц угсрах боломж одоогоор идэвхгүй байна.
+          Өөрийн багц үүсгэх боломж одоогоор идэвхгүй байна.
         </p>
         <Button asChild variant="outline" className="mt-6">
           <Link href="/collections">Бэлэн багцууд үзэх</Link>
@@ -66,7 +66,7 @@ export default async function BuildPage({
   return (
     <div className="mx-auto max-w-352 px-4 py-6 md:px-8">
       <h1 className="mb-4 font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
-        Багц угсрах
+        Багц үүсгэх
       </h1>
       <CollectionBuilder
         products={page.items}

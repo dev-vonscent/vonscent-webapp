@@ -115,6 +115,13 @@ interface CartState {
   ) => void;
   /** «Захиалах» мөрийг хаях — сагснаас захиалга үргэлжлүүлэхэд дуудагдана. */
   clearBuyNow: () => void;
+  /**
+   * «Захиалах» мөрийн тоо ширхэг — төлбөрийн хуудаснаас засна (клиент,
+   * 2026-09 UG). Сагсанд хүрэхгүй: тэр мөр сагсанд хэзээ ч ороогүй.
+   */
+  setBuyNowQty: (qty: number, max?: number) => void;
+  /** «Захиалах» (дан ус) мөрийн хэмжээ солих — `setVariant`-ийн buy-now хувилбар. */
+  setBuyNowVariant: (variant: CartVariant) => void;
   removeCollection: (key: string) => void;
   /** Багцын тоо ширхэг. `max` — `setQty`-тай ижил утгатай. */
   setCollectionQty: (key: string, qty: number, max?: number) => void;
@@ -208,9 +215,7 @@ export const useCart = create<CartState>()(
       setQty: (key, qty, max) =>
         set((state) => ({
           items: state.items
-            .map((i) =>
-              i.key === key ? { ...i, qty: clampQty(qty, max) } : i,
-            )
+            .map((i) => (i.key === key ? { ...i, qty: clampQty(qty, max) } : i))
             .filter((i) => i.qty > 0),
         })),
       setVariant: (key, variant) =>
@@ -276,6 +281,31 @@ export const useCart = create<CartState>()(
           },
         }),
       clearBuyNow: () => set({ buyNow: null }),
+      setBuyNowQty: (qty, max) =>
+        set((state) => {
+          const b = state.buyNow;
+          if (!b) return state;
+          return {
+            buyNow:
+              b.kind === "item"
+                ? { ...b, item: { ...b.item, qty: clampQty(qty, max) } }
+                : {
+                    ...b,
+                    collection: { ...b.collection, qty: clampQty(qty, max) },
+                  },
+          };
+        }),
+      setBuyNowVariant: (variant) =>
+        set((state) => {
+          const b = state.buyNow;
+          if (b?.kind !== "item") return state;
+          return {
+            buyNow: {
+              kind: "item",
+              item: { ...b.item, ...variant, key: variant.variantId },
+            },
+          };
+        }),
       removeCollection: (key) =>
         set((state) => ({
           collections: state.collections.filter((c) => c.key !== key),
@@ -286,9 +316,7 @@ export const useCart = create<CartState>()(
       setCollectionQty: (key, qty, max) =>
         set((state) => ({
           collections: state.collections
-            .map((c) =>
-              c.key === key ? { ...c, qty: clampQty(qty, max) } : c,
-            )
+            .map((c) => (c.key === key ? { ...c, qty: clampQty(qty, max) } : c))
             .filter((c) => c.qty > 0),
         })),
       setItemSelected: (key, selected) =>

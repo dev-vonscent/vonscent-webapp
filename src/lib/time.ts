@@ -30,6 +30,12 @@ export const UB_TIMEZONE = "Asia/Ulaanbaatar";
 export const DISPATCH_HOUR = 11;
 
 /**
+ * The end of the customer-facing delivery window (UB): a delivery arrives
+ * between `DISPATCH_HOUR` and this hour on its day, with no exact time slot.
+ */
+export const DELIVERY_END_HOUR = 20;
+
+/**
  * After this hour (UB) on the delivery day, no changes or cancellation.
  * 00:00 — the window shuts the moment the delivery day starts, so the whole
  * day is left for preparing the decants (client, 2026-09-21; it was 09:00).

@@ -346,8 +346,8 @@ export default function CartPage() {
                 <span className="text-sm">Хаягаас хамаарна</span>
               </div>
               <p className="text-muted-foreground text-xs text-balance">
-                Хүргэлтийн төлбөр, купон, V point бүгд дараагийн хуудсанд —
-                хаягаа сонгомогц эцсийн дүн гарна.
+                Хүргэлтийн төлбөр хаягийн байршлаас хамааран ялгаатай байна —
+                эцсийн дүнг захиалгын хуудаснаас харна уу.
               </p>
               <Button
                 asChild={!noneSelected}

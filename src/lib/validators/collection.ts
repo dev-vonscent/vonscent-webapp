@@ -38,6 +38,8 @@ export const collectionCreateSchema = z.object({
     .optional(),
   gender: z.enum(["male", "female", "unisex"]).default("unisex"),
   description: z.string().max(1000).optional().default(""),
+  /** «Хэрэглэх нөхцөл» (0106). */
+  usageDescription: z.string().max(1000).optional().default(""),
   discountPct: z.number().min(0).max(100).default(5),
   /** Per-size overrides; a size may appear at most once. */
   mlDiscounts: z

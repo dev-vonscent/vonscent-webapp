@@ -6,11 +6,17 @@ import { Minus, Plus, ShoppingCart, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
-import { RELATED_SECTION_ID } from "@/lib/constants";
+import {
+  LOW_STOCK_UNITS,
+  RELATED_SECTION_ID,
+  TRIAL_SIZE_ML,
+} from "@/lib/constants";
+import { toast } from "@/lib/toast";
 import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { useCart } from "@/features/cart/store";
 import { cartMlFor } from "@/features/cart/budget";
 import { maxUnits } from "@/features/products/sellable";
+import { bestValueOf } from "@/features/products/best-value";
 import { trackAddToCart, trackBeginCheckout } from "@/lib/analytics";
 import type { ProductDetail } from "@/lib/types";
 
@@ -87,7 +93,6 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   // Савны түгжээ (0095) нь түр зуурынх — «дууссан» гэхээс өөр үг хэрэгтэй.
   const selectedBottleLocked =
     selected != null && selected.unavailableReason === "bottle";
-  // Lowest ₮/ml among in-stock sizes gets the «Хамгийн ашигтай» badge.
   /** Энэ хэмжээгээр өнөөдөр авч болох ДЭЭД тоо ширхэг. */
   const maxQty = maxUnits({
     ml: selected?.ml ?? 0,
@@ -102,13 +107,9 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   React.useEffect(() => {
     setQty((q) => (maxQty >= 1 ? Math.min(q, maxQty) : 1));
   }, [maxQty]);
-  const inStockVariants = activeVariants.filter((v) => v.sellable);
-  const bestValue =
-    inStockVariants.length > 1
-      ? inStockVariants.reduce((a, b) =>
-          a.price / a.ml <= b.price / b.ml ? a : b,
-        )
-      : null;
+  // «Хамгийн ашигтай» — зарах бүх хэмжээнээс, нөөцөөс үл хамааран
+  // (best-value.ts): 20ml дуусахад тэмдэг 10ml руу үсэрдэг байв.
+  const bestValue = bestValueOf(activeVariants);
 
   // Зурвас гарах цорын ганц нөхцөл — доод цэсэнд мэдэгдэх нэхэмжлэл ч үүнээс
   // уншина, ингэснээр хоёулаа хэзээ ч зөрөхгүй.
@@ -149,6 +150,21 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
       quantity: qty,
     });
     return true;
+  }
+
+  /** Сонгосон хэмжээгээр нэмж авч болох тоо дууссан (сагсных ч тооцогдоно). */
+  const atMaxQty = !buyDisabled && qty >= maxQty;
+
+  function onIncrement() {
+    if (buyDisabled) return;
+    if (atMaxQty) {
+      toast(
+        `${selected?.ml}ml-ээс ${maxQty} ш л авах боломжтой.`,
+        "Үлдэгдэл хомс",
+      );
+      return;
+    }
+    setQty((q) => Math.min(q + 1, maxQty));
   }
 
   function onAdd() {
@@ -222,6 +238,9 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           {product.variants.map((v) => {
             const active = v.id === variantId;
             const isBestValue = bestValue != null && v.id === bestValue.id;
+            // 2ml нь sample БИШ — энгийн хэмжээ (CLAUDE.md); шошго нь зөвхөн
+            // «эхлээд бага хэмжээгээр туршаад үз» гэсэн санал.
+            const isTrial = v.ml === TRIAL_SIZE_ML && v.isActive;
             const sellable = v.sellable;
             // Савны түгжээ нь «бидэнд энэ өнгийн сав дууслаа» гэсэн ТҮР зуурын
             // төлөв — үлдэгдэл дуусахаас өөр үг хэрэглэнэ, ингэснээр
@@ -253,10 +272,16 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                         : "bg-secondary hover:bg-accent",
                 )}
               >
-                {isBestValue && (
+                {isBestValue ? (
                   <span className="bg-foreground text-background absolute -top-2 rounded-full px-1.5 py-px text-[9px] font-semibold whitespace-nowrap">
                     Хамгийн ашигтай
                   </span>
+                ) : (
+                  isTrial && (
+                    <span className="bg-card text-foreground absolute -top-2 rounded-full px-1.5 py-px text-[9px] font-semibold whitespace-nowrap shadow-sm">
+                      Туршиж үзэх
+                    </span>
+                  )
                 )}
                 {/* Зураас зөвхөн хэмжээн дээр: доорх «Дууссан» / «Түр
                     байхгүй» / «Зарахгүй» гэсэн үгийг зурвал уншигдахгүй. */}
@@ -300,17 +325,20 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
         )}
         {/* Хэмжээ зарагдаж байгаа ч эх савны үлдэгдэл цөөхөн ширхэг л
             гүйцээнэ — тоо ширхэгийн товч дээр мөргөхөөс нь өмнө хэлнэ.
-            4-өөс дээш бол дэмий сандаргахгүй. */}
+            `LOW_STOCK_UNITS`-ээс дээш бол дэмий сандаргахгүй. */}
         {!soldOut && selected?.sellable && maxQty < 1 && (
           <p className="text-muted-foreground text-xs">
             Энэ барааны үлдэгдэл сагсанд чинь бүрэн орсон байна.
           </p>
         )}
-        {!soldOut && selected?.sellable && maxQty >= 1 && maxQty <= 3 && (
-          <p className="text-muted-foreground text-xs">
-            Үлдэгдэл хомс — {selected.ml}ml-ээс {maxQty} ш авах боломжтой.
-          </p>
-        )}
+        {!soldOut &&
+          selected?.sellable &&
+          maxQty >= 1 &&
+          maxQty <= LOW_STOCK_UNITS && (
+            <p className="text-muted-foreground text-xs">
+              Үлдэгдэл хомс — {selected.ml}ml-ээс {maxQty} ш авах боломжтой.
+            </p>
+          )}
       </div>
 
       <div ref={ctaRef} className="space-y-3">
@@ -330,9 +358,13 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
               {qty}
             </span>
             <button
-              className="text-muted-foreground hover:text-foreground disabled:hover:text-muted-foreground flex h-full w-11 items-center justify-center rounded-r-md transition-colors disabled:opacity-40"
-              onClick={() => setQty((q) => Math.min(q + 1, maxQty))}
-              disabled={qty >= maxQty}
+              className="text-muted-foreground hover:text-foreground disabled:hover:text-muted-foreground data-limit:hover:text-muted-foreground flex h-full w-11 items-center justify-center rounded-r-md transition-colors disabled:opacity-40 data-limit:opacity-40"
+              onClick={onIncrement}
+              // Дээд тоондоо хүрсэн ч товч ИДЭВХТЭЙ: зүгээр л унтарсан «+» нь
+              // яагаад гэдгийг хэлдэггүй байв — одоо дарахад «Үлдэгдэл хомс».
+              disabled={buyDisabled}
+              aria-disabled={atMaxQty || undefined}
+              data-limit={atMaxQty || undefined}
               aria-label="Нэмэх"
             >
               <Plus className="size-4" />

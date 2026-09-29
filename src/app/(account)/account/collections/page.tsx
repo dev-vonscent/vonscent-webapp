@@ -38,11 +38,11 @@ export default async function MyCollectionsPage() {
       */}
       <div className="flex items-center justify-between gap-3">
         <p className="text-muted-foreground text-sm">
-          Өөрийн угсарсан багцууд — сагсанд нэмэх, нэр солих, устгах.
+          Өөрийн үүсгэсэн багцууд — сагсанд нэмэх, нэр солих, устгах.
         </p>
         <Button asChild className="shrink-0">
           <Link href="/collections/build">
-            Багц угсрах
+            Багц үүсгэх
           </Link>
         </Button>
       </div>

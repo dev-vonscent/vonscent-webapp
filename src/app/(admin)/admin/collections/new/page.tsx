@@ -9,7 +9,7 @@ import { CollectionForm } from "@/features/admin/components/collection-form";
 export const dynamic = "force-dynamic";
 
 export default async function NewCollectionPage() {
-  // Багц угсрахад каталогоо ГҮЙЛГЭЖ хардаг — нэрийг нь урьдчилж мэдэхгүй
+  // Багц үүсгэхэд каталогоо ГҮЙЛГЭЖ хардаг — нэрийг нь урьдчилж мэдэхгүй
   // байж хайлтаар таамаглах биш. Тиймээс бэлгийн сантай (`/admin/gifts`)
   // ижил «бүгдийг харуул» горим: сонгогчийн хөнгөн мөр тул ~80 бараа хэдхэн
   // КБ болно, хайлт нь зөвхөн нэмэлт шүүлтүүр.

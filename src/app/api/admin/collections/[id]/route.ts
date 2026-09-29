@@ -32,6 +32,8 @@ export async function PATCH(
   if (input.slug !== undefined) patch.slug = input.slug;
   if (input.gender !== undefined) patch.gender = input.gender;
   if (input.description !== undefined) patch.description = input.description;
+  if (input.usageDescription !== undefined)
+    patch.usage_description = input.usageDescription;
   if (input.discountPct !== undefined) patch.discount_pct = input.discountPct;
   if (input.imageUrl !== undefined) patch.image_url = input.imageUrl;
   if (input.isActive !== undefined) patch.is_active = input.isActive;

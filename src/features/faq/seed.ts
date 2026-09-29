@@ -1,10 +1,16 @@
+import { FAQ_CATEGORIES, type FaqCategory } from "@/lib/constants";
+
 export interface FaqItem {
-  category: string;
+  /** DB-ийн хуучин мөр өөр ангилалтай байж болох тул `string` ч зөвшөөрнө. */
+  category: FaqCategory | (string & {});
   question: string;
   answer: string;
 }
 
-/** Group a flat FAQ list by category, preserving first-seen order. */
+/**
+ * Group a flat FAQ list by category: the fixed `FAQ_CATEGORIES` first, in
+ * their order, then any legacy category in first-seen order.
+ */
 export function groupFaqs(
   items: FaqItem[],
 ): { title: string; items: FaqItem[] }[] {
@@ -14,11 +20,17 @@ export function groupFaqs(
     arr.push(item);
     map.set(item.category, arr);
   }
-  return [...map.entries()].map(([title, items]) => ({ title, items }));
+  const rank = (c: string) => {
+    const i = (FAQ_CATEGORIES as readonly string[]).indexOf(c);
+    return i < 0 ? FAQ_CATEGORIES.length : i;
+  };
+  return [...map.entries()]
+    .sort(([a], [b]) => rank(a) - rank(b))
+    .map(([title, items]) => ({ title, items }));
 }
 
 /** Seed FAQ used in demo mode and by the DB seed (admin can edit live). */
-export const FAQ_SEED: FaqItem[] = [
+export const FAQ_SEED: (FaqItem & { category: FaqCategory })[] = [
   {
     category: "Бараа",
     question: "Decant бараа жинхэнэ юу?",

@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/format";
 import { trackPurchase } from "@/lib/analytics";
-import { BANK_TRANSFER, RESERVE_TIMEOUT_MINUTES } from "@/lib/constants";
+import { BANK_TRANSFER } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { orderSummaryRows, type OrderSummaryRow } from "@/lib/orders/summary";
 import {
@@ -337,16 +337,9 @@ export function PaymentPanel({
           </p>
         )}
 
-        {/* Нөөцийн хугацааг ЭНД хэлнэ. Өмнө нь энэ дүрэм зөвхөн алдагдал
-            учирсан мөчид («нөөцийн хугацаа дууссан») задардаг байсан —
-            хэрэглэгч хэзээ ч урьдчилж сонсоогүй дүрмээр шийтгэгддэг байв.
-            Countdown биш өгүүлбэр: тоолуур нь хэрэггүй яаралтай байдал
-            үүсгэдэг бол өгүүлбэр нь шударга байдлыг сэргээхэд хангалттай. */}
-        {waiting && (
-          <p className="text-muted-foreground mt-4 text-center text-xs md:text-left">
-            Барааг тань {RESERVE_TIMEOUT_MINUTES} минут нөөцөлж байна.
-          </p>
-        )}
+        {/* «Барааг тань N минут нөөцөлж байна» мөрийг клиентийн хүсэлтээр
+            нуув (2026-09 UG) — нөөцийн логик өөрчлөгдөөгүй, хугацаа дуусвал
+            захиалга цуцлагдсаныг хэлэх мессеж хэвээр. */}
       </div>
 
       {/*
@@ -525,11 +518,11 @@ function OrderRecap({ view }: { view: PaymentView }) {
           зүйл байх ёсгүй. */}
         {view.pointsEarned > 0 && (
           <p className="text-muted-foreground mt-3 text-xs">
-            Төлбөр батлагдмагц{" "}
+            Энэ захиалгаас{" "}
             <strong className="text-foreground font-medium tabular-nums">
               +{view.pointsEarned.toLocaleString("mn-MN")} V point
             </strong>{" "}
-            хуримтлагдана.
+            цугларна
           </p>
         )}
 
