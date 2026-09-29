@@ -2,21 +2,13 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CouponDetail } from "./coupon-detail";
-import type { CouponRecord } from "./coupons";
+import type { WalletCoupon } from "./coupons";
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
-const rows = vi.fn<() => (CouponRecord & { source: string })[]>();
-vi.mock("@/lib/supabase/browser", () => ({
-  createClient: () => ({
-    from: () => ({
-      select: () => ({
-        eq: () => Promise.resolve({ data: rows() }),
-      }),
-    }),
-  }),
-}));
+const wallet = vi.fn<() => { data: WalletCoupon | null; isPending: boolean }>();
+vi.mock("../use-coupons", () => ({ useWalletCoupon: () => wallet() }));
 
 const setCoupon = vi.fn();
 const clearBuyNow = vi.fn();
@@ -34,25 +26,27 @@ function pick(selector: (s: unknown) => unknown) {
   return typeof viaSelector === "number" ? viaSelector : selector(state);
 }
 
-function coupon(over: Partial<CouponRecord & { source: string }> = {}) {
+function coupon(over: Partial<WalletCoupon> = {}): WalletCoupon {
   return {
     id: "c1",
     code: "VW-3QAQYS",
-    type: "percent" as const,
+    type: "percent",
     value: 10,
-    min_subtotal: 100000,
-    ends_at: new Date(Date.now() + 2 * 86_400_000).toISOString(),
-    max_uses: 1,
-    used_count: 0,
-    user_id: "u1",
+    minSubtotal: 100000,
+    maxDiscount: null,
+    endsAt: new Date(Date.now() + 2 * 86_400_000).toISOString(),
+    maxUses: 1,
+    usedCount: 0,
     source: "spin",
+    status: "active",
+    redemptions: [],
     ...over,
   };
 }
 
 beforeEach(() => {
   subtotal = 150000;
-  rows.mockReturnValue([coupon()]);
+  wallet.mockReturnValue({ data: coupon(), isPending: false });
   vi.stubGlobal("fetch", vi.fn());
 });
 
@@ -62,10 +56,10 @@ afterEach(() => {
 });
 
 describe("coupon detail", () => {
-  it("shows the code and every condition attached to it", async () => {
+  it("shows the code and every condition attached to it", () => {
     render(<CouponDetail code="VW-3QAQYS" />);
 
-    expect(await screen.findByText("VW-3QAQYS")).toBeTruthy();
+    expect(screen.getByText("VW-3QAQYS")).toBeTruthy();
     expect(screen.getByText("10%")).toBeTruthy();
     expect(screen.getByText("Купоны код")).toBeTruthy();
     expect(screen.getByText("Хүчинтэй хугацаа")).toBeTruthy();
@@ -73,25 +67,46 @@ describe("coupon detail", () => {
     expect(screen.getByText("1 удаа үлдсэн")).toBeTruthy();
     // A wheel coupon says where it came from.
     expect(screen.getByText(/Азын хүрднээс/)).toBeTruthy();
-    expect(screen.getByText("Зөвхөн танд")).toBeTruthy();
+    expect(screen.getByText("Идэвхтэй")).toBeTruthy();
   });
 
-  it("flags an expiry that is nearly up", async () => {
+  it("offers copy and share on an active coupon", () => {
     render(<CouponDetail code="VW-3QAQYS" />);
-    expect(await screen.findByText(/2 хоног үлдсэн/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /кодыг хуулах/ })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /кодыг хуваалцах/ }),
+    ).toBeTruthy();
   });
 
-  it("says the coupon is gone rather than rendering a blank ticket", async () => {
-    rows.mockReturnValue([]);
+  it("flags an expiry that is nearly up", () => {
+    render(<CouponDetail code="VW-3QAQYS" />);
+    expect(screen.getByText(/2 хоног үлдсэн/)).toBeTruthy();
+  });
+
+  it("says the coupon is not theirs rather than rendering a blank ticket", () => {
+    wallet.mockReturnValue({ data: null, isPending: false });
     render(<CouponDetail code="NOPE" />);
-    expect(await screen.findByText("Купон олдсонгүй")).toBeTruthy();
+    expect(screen.getByText("Купон олдсонгүй")).toBeTruthy();
   });
 
-  it("hides a coupon that has already been spent", async () => {
-    // usable() drops it, so the URL of a redeemed code is a dead end.
-    rows.mockReturnValue([coupon({ used_count: 1, max_uses: 1 })]);
+  it("shows who used a shared coupon — masked — and no way to apply it", () => {
+    wallet.mockReturnValue({
+      data: coupon({
+        status: "used",
+        usedCount: 1,
+        redemptions: [
+          { by: { name: "Б***", phone: "••2233" }, at: "2026-09-28T04:00:00Z" },
+        ],
+      }),
+      isPending: false,
+    });
     render(<CouponDetail code="VW-3QAQYS" />);
-    expect(await screen.findByText("Купон олдсонгүй")).toBeTruthy();
+
+    expect(screen.getByText("Ашиглагдсан")).toBeTruthy();
+    expect(screen.getByText("Б*** (••2233)")).toBeTruthy();
+    expect(screen.getByText("2026.09.28")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Ашиглах" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /хуваалцах/ })).toBeNull();
   });
 
   it("validates against the cart before applying, then goes to checkout", async () => {
@@ -100,9 +115,7 @@ describe("coupon detail", () => {
     });
     render(<CouponDetail code="VW-3QAQYS" />);
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Ашиглах" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Ашиглах" }));
 
     expect(fetch).toHaveBeenCalledWith(
       "/api/coupons/validate",
@@ -121,9 +134,7 @@ describe("coupon detail", () => {
     });
     render(<CouponDetail code="VW-3QAQYS" />);
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Ашиглах" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Ашиглах" }));
     expect(await screen.findByText("Дүн хүрэхгүй байна.")).toBeTruthy();
     expect(setCoupon).not.toHaveBeenCalled();
     expect(push).not.toHaveBeenCalled();
@@ -133,8 +144,7 @@ describe("coupon detail", () => {
     subtotal = 0;
     render(<CouponDetail code="VW-3QAQYS" />);
 
-    const button = await screen.findByRole("button", { name: "Дэлгүүр үзэх" });
-    await userEvent.click(button);
+    await userEvent.click(screen.getByRole("button", { name: "Дэлгүүр үзэх" }));
     expect(fetch).not.toHaveBeenCalled();
     expect(push).toHaveBeenCalledWith("/catalog");
   });

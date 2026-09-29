@@ -1,117 +1,154 @@
 import { describe, expect, it } from "vitest";
-import { daysLeft, groupCoupons, usable, type CouponRecord } from "./coupons";
+import {
+  couponStatus,
+  couponTerms,
+  daysLeft,
+  describeRedemption,
+  sortForTab,
+  toWalletCoupon,
+  type CouponRecord,
+  type WalletCoupon,
+  type WalletRedemption,
+} from "./coupons";
 import { couponLabel } from "./coupon-ticket";
 
 const NOW = Date.parse("2026-09-08T00:00:00Z");
 const inDays = (n: number) => new Date(NOW + n * 86_400_000).toISOString();
 
-function coupon(over: Partial<CouponRecord> = {}): CouponRecord {
+function record(over: Partial<CouponRecord> = {}): CouponRecord {
   return {
-    id: crypto.randomUUID(),
+    id: over.code ?? crypto.randomUUID(),
     code: "VW-AAAA",
-    type: "fixed",
-    value: 5000,
-    min_subtotal: 100000,
+    type: "percent",
+    value: 10,
+    min_subtotal: 0,
+    max_discount: null,
     ends_at: inDays(30),
     max_uses: 1,
     used_count: 0,
-    user_id: "u1",
+    is_active: true,
+    source: "manual",
     ...over,
   };
 }
 
-describe("usable", () => {
-  it("drops a coupon that has already been redeemed", () => {
-    // The bug this fixes: `is_active` stays true after redemption, so the
-    // account page listed spent wheel codes under "Идэвхтэй купонууд".
-    const out = usable(
-      [
-        coupon({ code: "SPENT", max_uses: 1, used_count: 1 }),
-        coupon({ code: "FRESH", max_uses: 1, used_count: 0 }),
-      ],
-      NOW,
+function wallet(
+  over: Partial<CouponRecord> = {},
+  redemptions: WalletRedemption[] = [],
+): WalletCoupon {
+  return toWalletCoupon(record(over), redemptions, NOW);
+}
+
+describe("couponStatus", () => {
+  it("is active while unused, switched on and not yet ended", () => {
+    expect(couponStatus(record(), NOW)).toBe("active");
+    expect(couponStatus(record({ ends_at: null, max_uses: null }), NOW)).toBe(
+      "active",
     );
-    expect(out.map((c) => c.code)).toEqual(["FRESH"]);
   });
 
-  it("drops a coupon whose end date has passed", () => {
-    const out = usable(
-      [
-        coupon({ code: "OVER", ends_at: inDays(-1) }),
-        coupon({ code: "LIVE", ends_at: inDays(1) }),
-      ],
-      NOW,
+  it("is used once the cap is reached — even though is_active stays true", () => {
+    expect(couponStatus(record({ used_count: 1, max_uses: 1 }), NOW)).toBe(
+      "used",
     );
-    expect(out.map((c) => c.code)).toEqual(["LIVE"]);
   });
 
-  it("keeps a coupon with no usage cap and no end date", () => {
+  it("is expired past its end date or when switched off", () => {
+    expect(couponStatus(record({ ends_at: inDays(-1) }), NOW)).toBe("expired");
+    expect(couponStatus(record({ is_active: false }), NOW)).toBe("expired");
+  });
+
+  it("prefers used over expired — who used it is the news", () => {
     expect(
-      usable([coupon({ max_uses: null, ends_at: null })], NOW),
-    ).toHaveLength(1);
+      couponStatus(
+        record({ used_count: 1, max_uses: 1, ends_at: inDays(-5) }),
+        NOW,
+      ),
+    ).toBe("used");
   });
 });
 
-describe("groupCoupons", () => {
-  it("collapses identical offers into one row that keeps every code", () => {
-    const groups = groupCoupons(
+describe("sortForTab", () => {
+  it("never merges identical coupons", () => {
+    // Three 10% codes, three expiry dates — three rows (0104).
+    const rows = sortForTab(
       [
-        coupon({ code: "A", ends_at: inDays(20) }),
-        coupon({ code: "B", ends_at: inDays(10) }),
-        coupon({ code: "C", ends_at: inDays(30) }),
+        wallet({ code: "A", ends_at: inDays(20) }),
+        wallet({ code: "B", ends_at: inDays(10) }),
+        wallet({ code: "C", ends_at: inDays(30) }),
       ],
-      NOW,
+      "active",
     );
-    expect(groups).toHaveLength(1);
-    // Soonest expiry leads — that is the one worth spending next.
-    expect(groups[0].coupons.map((c) => c.code)).toEqual(["B", "A", "C"]);
+    expect(rows.map((c) => c.code)).toEqual(["B", "A", "C"]);
   });
 
-  it("keeps different offers apart", () => {
-    const groups = groupCoupons(
+  it("puts a never-ending coupon last among the active ones", () => {
+    const rows = sortForTab(
       [
-        coupon({ code: "PCT", type: "percent", value: 10, min_subtotal: 0 }),
-        coupon({ code: "FIX", type: "fixed", value: 5000 }),
-        // Same amount, different minimum — a different offer to the customer.
-        coupon({ code: "FIX0", type: "fixed", value: 5000, min_subtotal: 0 }),
+        wallet({ code: "NEVER", ends_at: null }),
+        wallet({ code: "SOON", ends_at: inDays(1) }),
       ],
-      NOW,
+      "active",
     );
-    expect(groups).toHaveLength(3);
-    // Percent first, then the larger amount.
-    expect(groups[0].coupons[0].code).toBe("PCT");
+    expect(rows.map((c) => c.code)).toEqual(["SOON", "NEVER"]);
   });
 
-  it("orders amounts largest first", () => {
-    const groups = groupCoupons(
-      [
-        coupon({ code: "SMALL", value: 5000 }),
-        coupon({ code: "BIG", value: 10000 }),
-      ],
-      NOW,
-    );
-    expect(groups.map((g) => g.value)).toEqual([10000, 5000]);
+  it("keeps each tab to its own status", () => {
+    const all = [
+      wallet({ code: "LIVE" }),
+      wallet({ code: "SPENT", used_count: 1 }),
+      wallet({ code: "OVER", ends_at: inDays(-1) }),
+    ];
+    expect(sortForTab(all, "active").map((c) => c.code)).toEqual(["LIVE"]);
+    expect(sortForTab(all, "used").map((c) => c.code)).toEqual(["SPENT"]);
+    expect(sortForTab(all, "expired").map((c) => c.code)).toEqual(["OVER"]);
   });
 
-  it("marks a personal coupon and never merges it with a public one", () => {
-    const groups = groupCoupons(
+  it("shows the most recently used first", () => {
+    const rows = sortForTab(
       [
-        coupon({ code: "MINE", user_id: "u1" }),
-        coupon({ code: "PUBLIC", user_id: null }),
+        wallet({ code: "OLD", used_count: 1 }, [
+          { by: "self", at: inDays(-10) },
+        ]),
+        wallet({ code: "NEW", used_count: 1 }, [
+          { by: "self", at: inDays(-1) },
+        ]),
       ],
-      NOW,
+      "used",
     );
-    expect(groups).toHaveLength(2);
-    expect(groups.map((g) => g.personal).sort()).toEqual([false, true]);
+    expect(rows.map((c) => c.code)).toEqual(["NEW", "OLD"]);
+  });
+});
+
+describe("describeRedemption", () => {
+  it("names the owner as «Та өөрөө»", () => {
+    expect(describeRedemption({ by: "self", at: inDays(0) })).toBe("Та өөрөө");
   });
 
-  it("excludes spent coupons from the grouping too", () => {
-    const groups = groupCoupons(
-      [coupon({ used_count: 1, max_uses: 1 }), coupon({ code: "OK" })],
-      NOW,
-    );
-    expect(groups).toHaveLength(1);
-    expect(groups[0].coupons).toHaveLength(1);
+  it("shows a friend only masked", () => {
+    expect(
+      describeRedemption({
+        by: { name: "Б***", phone: "••2233" },
+        at: inDays(0),
+      }),
+    ).toBe("Б*** (••2233)");
+    expect(
+      describeRedemption({ by: { name: null, phone: null }, at: inDays(0) }),
+    ).toBe("Өөр хэрэглэгч");
+  });
+});
+
+describe("couponTerms", () => {
+  it("lists the minimum and a percent coupon's cap", () => {
+    expect(
+      couponTerms({ type: "percent", minSubtotal: 100000, maxDiscount: 20000 }),
+    ).toBe("100,000₮-өөс · дээд тал нь 20,000₮");
+  });
+
+  it("is null when there are no conditions", () => {
+    expect(
+      couponTerms({ type: "fixed", minSubtotal: 0, maxDiscount: 5000 }),
+    ).toBeNull();
   });
 });
 

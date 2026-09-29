@@ -10,6 +10,7 @@ import {
   KeyRound,
   LogOut,
   Pencil,
+  Ticket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,7 +21,6 @@ import { PasscodeDialog } from "@/features/account/components/passcode-dialog";
 import { ProfileEditDialog } from "@/features/account/components/profile-edit-dialog";
 import { EmailSettings } from "@/features/account/components/email-settings";
 import { useSignOutConfirm } from "@/features/account/components/use-sign-out-confirm";
-import { CouponList } from "@/features/account/components/coupon-list";
 import { isPhoneEmail } from "@/lib/auth/phone-email";
 import { WheelEntryCard } from "@/features/lucky-wheel/components/wheel-entry-card";
 import type { ProductListItem } from "@/lib/types";
@@ -234,6 +234,18 @@ export default function ProfilePage() {
             and it hides itself when there is nothing to collect. */}
         {configured && !LUCKY_WHEEL_HIDDEN && <WheelEntryCard />}
 
+        {/* Купонууд өөрийн хуудсанд шилжсэн (0104) — энд зөвхөн орох зам. */}
+        {configured && (
+          <Link
+            href="/account/coupons"
+            className="bg-card hover:bg-accent flex w-full items-center gap-4 rounded-xl p-4 text-left transition-colors"
+          >
+            <IconCircle icon={Ticket} />
+            <span className="font-medium">Миний купон</span>
+            <ChevronRight className="text-muted-foreground ml-auto size-4" />
+          </Link>
+        )}
+
         {/* Passcode change — phone accounts only (the 4-digit code is theirs;
             an email/OAuth account would just get a 401 from the route). */}
         {configured && isPhoneEmail(authEmail) && (
@@ -253,13 +265,6 @@ export default function ProfilePage() {
 
       {/* Delivery addresses */}
       {configured && <AddressBook />}
-
-      {/* Available coupons */}
-      {configured && (
-        <div id="coupons" className="scroll-mt-24">
-          <CouponList />
-        </div>
-      )}
 
       {/* Sign out */}
       {configured && (

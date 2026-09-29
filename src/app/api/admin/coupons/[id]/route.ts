@@ -52,9 +52,28 @@ export async function PATCH(
   if (parsed.data.maxUsesPerUser !== undefined)
     update.max_uses_per_user = parsed.data.maxUsesPerUser;
   if (parsed.data.userId !== undefined) update.user_id = parsed.data.userId;
+  // Assigning an owner makes the coupon shareable, so it needs a total cap
+  // (0104 check): keep the one it has, or fall back to a single use.
+  if (parsed.data.userId && parsed.data.maxUses === undefined) {
+    const { data: row } = await g.supabase
+      .from("coupons")
+      .select("max_uses")
+      .eq("id", id)
+      .maybeSingle();
+    if ((row as { max_uses: number | null } | null)?.max_uses == null) {
+      update.max_uses = 1;
+    }
+  }
+  if (parsed.data.userId && parsed.data.maxUses === null) update.max_uses = 1;
   if (parsed.data.endsAt !== undefined) update.ends_at = parsed.data.endsAt;
 
-  await g.supabase.from("coupons").update(update).eq("id", id);
+  const { error } = await g.supabase
+    .from("coupons")
+    .update(update)
+    .eq("id", id);
+  if (error) {
+    return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }
 

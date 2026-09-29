@@ -1,12 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { Check, Tag, X } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Check, Tag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatPrice } from "@/lib/format";
+import { formatDate, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { AvailableCoupon } from "@/app/api/coupons/available/route";
+import { couponTerms } from "@/features/account/components/coupons";
 
 /**
  * The coupon field in the order summary.
@@ -23,8 +25,10 @@ import type { AvailableCoupon } from "@/app/api/coupons/available/route";
  * input steps aside when the customer already has coupons to choose from.
  *
  * `/api/coupons/available` only ever returns coupons that validate against the
- * current subtotal, best first — so every row here is one tap from working,
- * and nothing needs to render a disabled or "not yet" state.
+ * current subtotal — so every row here is one tap from working, and nothing
+ * needs to render a disabled or "not yet" state. Rows arrive soonest-expiry
+ * first and are never merged (0104): two 10% codes ending on different days
+ * are two rows, each with its own date and terms.
  */
 
 export function CouponField({
@@ -38,6 +42,7 @@ export function CouponField({
   message,
   onPick,
   onRemove,
+  walletHref,
 }: {
   applied: { code: string; discount: number } | null;
   offers: AvailableCoupon[];
@@ -50,12 +55,21 @@ export function CouponField({
   message: string | null;
   onPick: (coupon: AvailableCoupon) => void;
   onRemove: () => void;
+  /** «Миний купоныг харах» — the full wallet, beyond the few offered here. */
+  walletHref?: string;
 }) {
   // With offers on screen the input is the fallback, so it starts folded away.
   const [manualOpen, setManualOpen] = React.useState(false);
   // Хайлт дуусаагүй байхад «купон байхгүй» гэж шийдэхгүй — эс тэгвээс input
   // гарч ирээд, санал ирэхэд нь дахин алга болж анивчина.
   const showManual = manualOpen || (!loading && offers.length === 0);
+  // Rows are ordered by expiry, so the biggest saving is not necessarily the
+  // first one — mark it wherever it sits, and only if it is a clear winner.
+  const top = Math.max(0, ...offers.map((o) => o.discount));
+  const bestId =
+    offers.length > 1 && offers.filter((o) => o.discount === top).length === 1
+      ? offers.find((o) => o.discount === top)?.id
+      : undefined;
 
   if (applied) {
     return (
@@ -92,11 +106,11 @@ export function CouponField({
             Танд боломжтой купон
           </p>
           <ul className="space-y-2">
-            {offers.map((o, i) => (
-              <li key={o.code}>
+            {offers.map((o) => (
+              <li key={o.id}>
                 <OfferRow
                   offer={o}
-                  best={i === 0 && offers.length > 1}
+                  best={o.id === bestId}
                   onPick={() => onPick(o)}
                 />
               </li>
@@ -153,6 +167,15 @@ export function CouponField({
           {message}
         </p>
       )}
+
+      {walletHref && (
+        <Link
+          href={walletHref}
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs underline-offset-2 transition-colors hover:underline"
+        >
+          Миний купоныг харах <ArrowRight className="size-3" />
+        </Link>
+      )}
     </div>
   );
 }
@@ -167,6 +190,7 @@ function OfferRow({
   onPick: () => void;
 }) {
   const expiry = expiryNote(offer.endsAt);
+  const terms = couponTerms(offer);
   return (
     <button
       type="button"
@@ -203,14 +227,15 @@ function OfferRow({
             </span>
           )}
         </span>
-        {expiry && (
-          <span
-            className={cn(
-              "mt-0.5 block text-[11px]",
-              expiry.urgent ? "text-destructive" : "text-muted-foreground",
+        {(expiry || terms) && (
+          <span className="text-muted-foreground mt-0.5 block text-[11px]">
+            {expiry && (
+              <span className={cn(expiry.urgent && "text-destructive")}>
+                {expiry.label}
+              </span>
             )}
-          >
-            {expiry.label}
+            {expiry && terms && " · "}
+            {terms}
           </span>
         )}
       </span>
@@ -228,9 +253,9 @@ function compactAmount(value: number): string {
 }
 
 /**
- * Only mentions an expiry that is close enough to act on. Wheel coupons last a
- * month (docs/lucky-wheel.md §1), and "24 хоногийн дараа дуусна" on every row
- * is noise that trains people to ignore the line that matters.
+ * When the coupon ends. Rows are no longer merged, so the date is what tells
+ * two otherwise identical coupons apart: a countdown when it is close enough
+ * to act on, the plain date otherwise.
  */
 function expiryNote(
   endsAt: string | null,
@@ -239,7 +264,7 @@ function expiryNote(
   const ms = new Date(endsAt).getTime() - Date.now();
   if (!Number.isFinite(ms) || ms <= 0) return null;
   const days = Math.ceil(ms / 86_400_000);
-  if (days > 7) return null;
+  if (days > 7) return { label: `${formatDate(endsAt)} хүртэл`, urgent: false };
   return {
     label: days <= 1 ? "Өнөөдөр дуусна" : `${days} хоногийн дараа дуусна`,
     urgent: days <= 3,

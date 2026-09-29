@@ -14,6 +14,7 @@ import {
   Mail,
   LayoutDashboard,
   Palette,
+  Ticket,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -26,7 +27,9 @@ import { ThemeSwitcher } from "@/components/shared/theme-switcher";
 import { createClient } from "@/lib/supabase/browser";
 import { useIsStaff } from "@/features/account/use-staff";
 import { useSignOutConfirm } from "@/features/account/components/use-sign-out-confirm";
-import { LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
+import { Badge } from "@/components/ui/badge";
+import { useNewBadge } from "@/features/account/use-new-badge";
+import { COUPONS_NEW_BADGE_UNTIL, LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
 
 interface Profile {
   name: string;
@@ -36,6 +39,7 @@ interface Profile {
 
 export function ProfileMenu() {
   const [askSignOut, signOutDialog] = useSignOutConfirm();
+  const couponsNew = useNewBadge("coupons", COUPONS_NEW_BADGE_UNTIL);
   const [profile, setProfile] = React.useState<Profile | null>(null);
   const [configured, setConfigured] = React.useState(true);
   const isStaff = useIsStaff();
@@ -158,6 +162,21 @@ export function ProfileMenu() {
             <DropdownMenuItem asChild>
               <Link href="/account/orders">
                 <Package /> Миний захиалга
+              </Link>
+            </DropdownMenuItem>
+          )}
+          {profile && (
+            <DropdownMenuItem asChild>
+              <Link href="/account/coupons">
+                <Ticket /> Миний купон
+                {couponsNew && (
+                  <Badge
+                    variant="new"
+                    className="ml-auto px-1.5 py-0 text-[10px]"
+                  >
+                    Шинэ
+                  </Badge>
+                )}
               </Link>
             </DropdownMenuItem>
           )}

@@ -7,7 +7,7 @@ import { callRpc } from "@/lib/supabase/rpc";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
-  code: z.string().min(1),
+  code: z.string().trim().min(1).max(40),
   subtotal: z.number().int().nonnegative(),
 });
 
@@ -27,7 +27,7 @@ const REASON_MN: Record<string, string> = {
   EXPIRED: "Купоны хугацаа дууссан байна.",
   MAX_USES: "Купоны ашиглах эрх дууссан байна.",
   MAX_USES_USER: "Та энэ купоныг аль хэдийн ашигласан байна.",
-  LOGIN_REQUIRED: "Энэ купоныг ашиглахын тулд нэвтэрнэ үү.",
+  LOGIN_REQUIRED: "Купон ашиглахын тулд нэвтэрнэ үү.",
   MIN_SUBTOTAL: "Захиалгын дүн хүрэхгүй байна.",
 };
 
@@ -47,13 +47,26 @@ export async function POST(req: Request) {
   const limited = await enforceRateLimit("coupon", req);
   if (limited) return limited;
 
-  // The session client answers "who is asking"; the admin client does the
-  // lookup so a personal coupon can be checked without exposing the row.
+  // Купон зөвхөн бүртгэлтэй хэрэглэгчид (0104). RPC ч мөн зочинд татгалздаг,
+  // гэхдээ энд эрт буцаах нь кодыг огт хайлгахгүй.
   const session = await createClient();
   const { data: { user } = { user: null } } =
     (await session?.auth.getUser()) ?? { data: { user: null } };
+  if (!user) {
+    return NextResponse.json(
+      {
+        valid: false,
+        discount: 0,
+        reason: "LOGIN_REQUIRED",
+        message: REASON_MN.LOGIN_REQUIRED,
+      },
+      { status: 401 },
+    );
+  }
 
-  const supabase = createAdminClient() ?? session;
+  // validate_coupon нь service_role-д л нээлттэй (0104) — session руу унах
+  // зам байхгүй.
+  const supabase = createAdminClient();
   if (!supabase) {
     return NextResponse.json({ valid: false, discount: 0 }, { status: 500 });
   }
@@ -64,7 +77,7 @@ export async function POST(req: Request) {
     {
       p_code: parsed.data.code,
       p_subtotal: parsed.data.subtotal,
-      p_user: user?.id ?? null,
+      p_user: user.id,
     },
   );
   if (error || !data) {
@@ -75,6 +88,7 @@ export async function POST(req: Request) {
     valid: data.valid,
     discount: data.discount ?? 0,
     code: data.code,
+    reason: data.valid ? undefined : data.reason,
     message: data.valid
       ? undefined
       : (REASON_MN[data.reason ?? ""] ?? "Купон хүчингүй байна."),

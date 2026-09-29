@@ -6,11 +6,13 @@ import type { AvailableCoupon } from "@/app/api/coupons/available/route";
 
 function offer(over: Partial<AvailableCoupon> = {}): AvailableCoupon {
   return {
+    id: over.code ?? "VW7K2X",
     code: "VW7K2X",
     type: "percent",
     value: 10,
     discount: 8000,
     minSubtotal: 0,
+    maxDiscount: null,
     endsAt: null,
     personal: false,
     ...over,
@@ -122,9 +124,69 @@ describe("available coupons", () => {
       />,
     );
 
-    // A month-long wheel coupon on every row would be noise.
+    // Close: a countdown. Far: the plain date, never "25 хоногийн дараа".
     expect(screen.getByText("2 хоногийн дараа дуусна")).toBeTruthy();
     expect(screen.queryByText(/25 хоног/)).toBeNull();
+    expect(screen.getByText(/хүртэл$/)).toBeTruthy();
+  });
+
+  it("lists every coupon separately, even identical offers", () => {
+    render(
+      <CouponField
+        {...NOOP}
+        applied={null}
+        offers={[
+          offer({ code: "A1", endsAt: "2026-12-01T00:00:00Z" }),
+          offer({ code: "A2", endsAt: "2026-12-20T00:00:00Z" }),
+        ]}
+      />,
+    );
+    expect(screen.getByText("A1")).toBeTruthy();
+    expect(screen.getByText("A2")).toBeTruthy();
+    // Equal savings: no "best" to single out.
+    expect(screen.queryByText("Хамгийн их")).toBeNull();
+  });
+
+  it("marks the biggest saving even when it is not first", () => {
+    render(
+      <CouponField
+        {...NOOP}
+        applied={null}
+        offers={[
+          offer({ code: "SOON", discount: 3000 }),
+          offer({ code: "BIG", discount: 9000 }),
+        ]}
+      />,
+    );
+    const badge = screen.getByText("Хамгийн их");
+    expect(badge.closest("button")?.textContent).toContain("BIG");
+  });
+
+  it("shows the coupon's conditions", () => {
+    render(
+      <CouponField
+        {...NOOP}
+        applied={null}
+        offers={[offer({ minSubtotal: 100000, maxDiscount: 20000 })]}
+      />,
+    );
+    expect(screen.getByText(/100,000₮-өөс · дээд тал нь 20,000₮/)).toBeTruthy();
+  });
+
+  it("links to the full wallet", () => {
+    render(
+      <CouponField
+        {...NOOP}
+        applied={null}
+        offers={[]}
+        walletHref="/account/coupons"
+      />,
+    );
+    expect(
+      screen
+        .getByRole("link", { name: /Миний купоныг харах/ })
+        .getAttribute("href"),
+    ).toBe("/account/coupons");
   });
 });
 

@@ -511,3 +511,10 @@ export const CONTENT_PAGES_HIDDEN: boolean = true;
  * `boolean` гэж зориуд бичив (`CONTENT_PAGES_HIDDEN`-ийн тайлбарыг үз).
  */
 export const LUCKY_WHEEL_HIDDEN: boolean = true;
+
+/**
+ * «Миний купон» цэсний «Шинэ» тэмдэг (0104) энэ өдрөөс хойш хэнд ч гарахгүй.
+ * Өмнө нь ч хэрэглэгч хуудсыг нэг нээмэгц алга болно (`useNewBadge`).
+ * Мэдээ бол түр зуурынх — мөнхөд гялалзах тэмдэг анхаарал татахаа больдог.
+ */
+export const COUPONS_NEW_BADGE_UNTIL = "2026-11-01T00:00:00+08:00";

@@ -51,6 +51,7 @@ import {
   type AddressFormValue,
 } from "@/features/checkout/components/address-dialog";
 import { CouponField } from "@/features/checkout/components/coupon-field";
+import { GuestPerksPrompt } from "@/features/checkout/components/guest-perks-prompt";
 import { LoyaltyField } from "@/features/checkout/components/loyalty-field";
 import { useCoupon } from "@/features/checkout/use-coupon";
 import { formatPrice } from "@/lib/format";
@@ -138,6 +139,8 @@ function takeDraft(): CheckoutDraft | null {
  * буцаж ирэх замгүй /-д хаягддаг байв.
  */
 const REGISTER_HREF = "/register?next=%2Fcheckout";
+/** Купон, V point зөвхөн бүртгэлтэй хэрэглэгчид (0104) — нэвтрээд буцна. */
+const LOGIN_HREF = "/login?next=%2Fcheckout";
 
 /**
  * Алдаатай талбар аль хэсэгт байгаа вэ. Утсан дээр товч нь 4 дэлгэцийн доор
@@ -182,6 +185,7 @@ export default function CheckoutPage() {
    */
   const grossSubtotal = useCart(selectCheckoutGross);
   const coupon = useCart((s) => s.coupon);
+  const setCartCoupon = useCart((s) => s.setCoupon);
   const removeOrdered = useCart((s) => s.clearOrdered);
   const removeLine = useCart((s) => s.remove);
   const setQty = useCart((s) => s.setQty);
@@ -204,6 +208,11 @@ export default function CheckoutPage() {
   const serverErrorRef = React.useRef<HTMLParagraphElement>(null);
 
   const [authed, setAuthed] = React.useState(false);
+  /**
+   * Нэвтрэлтийг шалгаж дууссан эсэх. `authed` нь хариу иртэл false байдаг тул
+   * үүнгүйгээр нэвтэрсэн хэрэглэгчид «нэвтэрнэ үү» мөр нэг хором анивчина.
+   */
+  const [authChecked, setAuthChecked] = React.useState(false);
   const [addresses, setAddresses] = React.useState<AddressRow[]>([]);
   /** Chosen saved address id, or NEW_ADDRESS for the one typed in the dialog. */
   const [addressChoice, setAddressChoice] = React.useState(NEW_ADDRESS);
@@ -264,7 +273,13 @@ export default function CheckoutPage() {
     message: couponMsg,
     pick: pickCoupon,
     clear: clearCoupon,
-  } = useCoupon(subtotal, { enabled: mounted });
+  } = useCoupon(subtotal, { enabled: mounted && authed });
+
+  // Гарсан хэрэглэгчийн сагсанд үлдсэн купон зочинд хамаарахгүй — сервер ч
+  // татгалзана (0104), тиймээс харуулж хуурахгүй.
+  React.useEffect(() => {
+    if (authChecked && !authed && coupon) setCartCoupon(null);
+  }, [authChecked, authed, coupon, setCartCoupon]);
 
   const {
     register,
@@ -501,11 +516,15 @@ export default function CheckoutPage() {
   React.useEffect(() => {
     setMounted(true);
     const supabase = createClient();
-    if (!supabase) return;
+    if (!supabase) {
+      setAuthChecked(true);
+      return;
+    }
     (async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      setAuthChecked(true);
       if (!user) return;
       setAuthed(true);
       const [
@@ -793,7 +812,7 @@ export default function CheckoutPage() {
           shipKhoroo: khoroo,
           shipDetail: composeDetail(khoroo, values.shipDetail),
           note: note || undefined,
-          couponCode: coupon?.code,
+          couponCode: authed ? coupon?.code : undefined,
           deliverOn: values.deliverOn,
           loyaltyUsed: loyaltyApplied,
           saveAddress: saveAddr,
@@ -906,11 +925,13 @@ export default function CheckoutPage() {
                   ? "Сагсан дахь багц худалдаанд байхгүй болсон байна. Багцаа шинэчилнэ үү."
                   : data.error === "ZONE_UNAVAILABLE"
                     ? "Сонгосон бүсэд хүргэлт хийх боломжгүй байна."
-                    : // Ижил захиалга аль хэдийн боловсруулагдаж байна —
-                      // дахин дарвал давхар захиалга болох тул зогсооно.
-                      data.error === "ORDER_PENDING"
-                      ? "Таны захиалга боловсруулагдаж байна. Хэдэн секунд хүлээгээд «Захиалга хайх» хэсгээс шалгана уу."
-                      : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
+                    : data.error === "LOGIN_REQUIRED"
+                      ? "Купон, V point ашиглахын тулд нэвтэрнэ үү."
+                      : // Ижил захиалга аль хэдийн боловсруулагдаж байна —
+                        // дахин дарвал давхар захиалга болох тул зогсооно.
+                        data.error === "ORDER_PENDING"
+                        ? "Таны захиалга боловсруулагдаж байна. Хэдэн секунд хүлээгээд «Захиалга хайх» хэсгээс шалгана уу."
+                        : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
         );
         return;
       }
@@ -1345,19 +1366,31 @@ export default function CheckoutPage() {
                   байсан тул дүн хэрхэн гарсныг дээрээс доош уншиж
                   болдоггүй байв. */}
               <div className="space-y-2.5">
-                {/* Coupon — also offered here, not just in the cart. */}
-                <CouponField
-                  applied={coupon}
-                  offers={offers}
-                  code={code}
-                  onCodeChange={setCode}
-                  onApply={applyCoupon}
-                  applying={applying}
-                  loading={offersLoading}
-                  message={couponMsg}
-                  onPick={pickCoupon}
-                  onRemove={clearCoupon}
-                />
+                {/* Купон — зөвхөн нэвтэрсэн хэрэглэгчид (0104). Зочинд
+                    яг энэ байрлалд нэвтрэх нэг мөр. */}
+                {mounted && authed ? (
+                  <CouponField
+                    applied={coupon}
+                    offers={offers}
+                    code={code}
+                    onCodeChange={setCode}
+                    onApply={applyCoupon}
+                    applying={applying}
+                    loading={offersLoading}
+                    message={couponMsg}
+                    onPick={pickCoupon}
+                    onRemove={clearCoupon}
+                    walletHref="/account/coupons"
+                  />
+                ) : (
+                  mounted &&
+                  authChecked && (
+                    <GuestPerksPrompt
+                      href={LOGIN_HREF}
+                      onNavigate={keepDraft}
+                    />
+                  )
+                )}
 
                 {mounted && authed && maxLoyalty > 0 && (
                   <LoyaltyField
