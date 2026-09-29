@@ -158,4 +158,33 @@ describe("SavedAddresses", () => {
     expect(onAddNew).toHaveBeenCalled();
     expect(onEditDraft).not.toHaveBeenCalled();
   });
+
+  it("flags a saved phone the order form would reject", () => {
+    render(
+      <SavedAddresses
+        addresses={[address({ id: "bad", phone: "123" })]}
+        value="bad"
+        onChange={() => {}}
+        onAddNew={() => {}}
+        onEditDraft={() => {}}
+      />,
+    );
+    expect(
+      screen.getByText("123 · утасны дугаар буруу — доор засна уу"),
+    ).toBeTruthy();
+  });
+
+  it("shows a valid phone plainly", () => {
+    render(
+      <SavedAddresses
+        addresses={ROWS}
+        value="a1"
+        onChange={() => {}}
+        onAddNew={() => {}}
+        onEditDraft={() => {}}
+      />,
+    );
+    expect(screen.queryByText(/утасны дугаар буруу/)).toBeNull();
+    expect(screen.getAllByText("99112233")).toHaveLength(2);
+  });
 });
