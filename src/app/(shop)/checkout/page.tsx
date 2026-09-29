@@ -265,6 +265,7 @@ export default function CheckoutPage() {
   const {
     discount,
     offers,
+    autoApplied: couponAutoApplied,
     code,
     setCode,
     apply: applyCoupon,
@@ -1371,6 +1372,7 @@ export default function CheckoutPage() {
                 {mounted && authed ? (
                   <CouponField
                     applied={coupon}
+                    autoApplied={couponAutoApplied}
                     offers={offers}
                     code={code}
                     onCodeChange={setCode}
