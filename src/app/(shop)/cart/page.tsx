@@ -80,7 +80,11 @@ export default function CartPage() {
     <div className="mx-auto max-w-352 px-4 py-8 md:px-8">
       <h1 className="mb-8 font-serif text-3xl font-semibold">Таны сагс</h1>
 
-      <div className="grid gap-10 lg:grid-cols-[1fr_360px]">
+      {/* `minmax(0,1fr)`: загваргүй grid багана агуулгынхаа min-content
+          хүртэл тэлдэг — мөр багтахгүй бол дэлгэцээс хэтэрч, iOS хуудсыг
+          zoom out хийгээд тэр zoom нь checkout руу (soft navigation) дагаж
+          очдог байв (iPhone 15, 393px). */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-4">
           {/* Сонголтын толгой мөр — хүссэн барааг л захиалах боломж */}
           <div className="flex items-center justify-between gap-3 px-1">
@@ -138,7 +142,7 @@ export default function CartPage() {
                       />
                     )}
                   </div>
-                  <div className="flex flex-1 flex-col">
+                  <div className="flex min-w-0 flex-1 flex-col">
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-muted-foreground text-xs uppercase">
@@ -179,7 +183,7 @@ export default function CartPage() {
                         {unavailableLabel(collectionStatus(c.key))}
                       </p>
                     )}
-                    <div className="mt-auto flex items-center justify-between pt-2">
+                    <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pt-2">
                       <div className="bg-secondary flex items-center rounded-full">
                         <button
                           className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full md:size-9"
@@ -239,7 +243,7 @@ export default function CartPage() {
                     />
                   )}
                 </div>
-                <div className="flex flex-1 flex-col">
+                <div className="flex min-w-0 flex-1 flex-col">
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-muted-foreground text-xs uppercase">
@@ -274,7 +278,7 @@ export default function CartPage() {
                       <Trash2 className="size-4" />
                     </button>
                   </div>
-                  <div className="mt-auto flex items-center justify-between pt-2">
+                  <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pt-2">
                     <div className="bg-secondary flex items-center rounded-full">
                       <button
                         className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full md:size-9"

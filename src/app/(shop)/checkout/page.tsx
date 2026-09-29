@@ -1041,7 +1041,11 @@ export default function CheckoutPage() {
         // Шалгалтыг Zod + талбарын доорх мессеж хийнэ; browser-ийн англи
         // bubble (жишээ нь type="email") түүнээс түрүүлж гарахгүй.
         noValidate
-        className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-10"
+        // `minmax(0,1fr)`: загваргүй `grid`-ийн багана агуулгынхаа min-content
+        // хүртэл тэлдэг. Бэлгийн дээжийн хэвтээ мөр (overflow-x-auto) нь дотроо
+        // гүйхийн оронд баганыг ~960px болгож, iPhone 15 (393px) дээр хуудас
+        // бүхэлдээ zoom out болж хажуу тийш гүйдэг байв.
+        className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-10"
       >
         <div className="space-y-6">
           {/* «Сагс руу буцах» линк байхгүй: сагс нь толгойн навигацид ямагт
