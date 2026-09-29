@@ -117,11 +117,17 @@ export function SiteHeader() {
             `-z-10` is contained by the header's own stacking context (it is
             `sticky z-40`), so this paints under the bar's controls and over the
             page — never behind the page itself.
+
+            Only when there is a title to protect: the product page has none
+            (full-bleed photo hero), and there the scrim only laid a
+            background-coloured haze over the top of the image.
           */}
-          <span
-            aria-hidden
-            className="from-background pointer-events-none absolute inset-x-0 top-0 -z-10 h-24 bg-linear-to-b to-transparent"
-          />
+          {getTitle(pathname) && (
+            <span
+              aria-hidden
+              className="from-background pointer-events-none absolute inset-x-0 top-0 -z-10 h-24 bg-linear-to-b to-transparent"
+            />
+          )}
           <button
             type="button"
             onClick={() => router.back()}
