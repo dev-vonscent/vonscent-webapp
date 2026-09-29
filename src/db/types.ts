@@ -296,13 +296,17 @@ export interface OrderItemRow {
 export interface CouponRow {
   id: string;
   code: string;
-  /** Non-null = personal coupon, usable only by that customer (0020). */
+  /**
+   * Non-null = personal coupon: listed only to this customer, but any signed-in
+   * customer who knows the code may redeem it (shared, 0104).
+   */
   user_id: string | null;
   /** Set when the coupon was granted automatically for an order (0025). */
   source_order_id: string | null;
   type: CouponType;
   value: number;
   min_subtotal: number;
+  /** Shop-wide cap. Always set on a personal coupon (0104 check). */
   max_uses: number | null;
   /** Per-account cap, counted from coupon_redemptions (0025). */
   max_uses_per_user: number | null;
@@ -389,6 +393,8 @@ export interface CouponRedemptionRow {
   user_id: string | null;
   order_id: string | null;
   created_at: string;
+  /** Order cancelled → coupon given back; the row stays as the log (0104). */
+  cancelled_at: string | null;
 }
 
 /** A curated home page rail (0023_home_sections). */

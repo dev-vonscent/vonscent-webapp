@@ -23,9 +23,11 @@ export function ProductCard({
 }) {
   return (
     <div className="group relative flex flex-col">
+      {/* touch-callout: iOS дээр удаан дарахад зургийг preview болгож
+          харлуулдаг — гүйлгэх гэж хуруугаа тавихад ч идэвхждэг байв. */}
       <Link
         href={`/products/${product.slug}`}
-        className="group-hover:shadow-lift relative aspect-4/5 overflow-hidden rounded-2xl bg-none transition-all duration-300"
+        className="group-hover:shadow-lift relative aspect-4/5 overflow-hidden rounded-2xl bg-none transition-all duration-300 [-webkit-touch-callout:none]"
       >
         {product.image && (
           <Image

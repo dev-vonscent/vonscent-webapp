@@ -18,6 +18,10 @@ export function ProductCarousel({
     // Сум дарахад нэг бараагаар — "auto" нь харагдах бүлгээрээ (3-4 бараа)
     // үсэрдэг байсан.
     slidesToScroll: 1,
+    // Хуруугаар гүйлгэхэд snap хийхгүй, инерцээрээ чөлөөтэй гулсана — өмнө
+    // нь хэдэн ч хүчтэй шидсэн нэг нэг бараагаар түгжигддэг байв. Сум нь
+    // `scrollNext/Prev`-ээр нэг бараагаар шилжсээр байна.
+    dragFree: true,
   });
   const [atStart, setAtStart] = React.useState(true);
   const [atEnd, setAtEnd] = React.useState(true);
@@ -37,9 +41,12 @@ export function ProductCarousel({
       setReady(true);
     };
     update();
-    emblaApi.on("select", update).on("reInit", update);
+    emblaApi.on("select", update).on("settle", update).on("reInit", update);
     return () => {
-      emblaApi.off("select", update).off("reInit", update);
+      emblaApi
+        .off("select", update)
+        .off("settle", update)
+        .off("reInit", update);
     };
   }, [emblaApi]);
 

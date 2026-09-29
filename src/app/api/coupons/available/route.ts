@@ -5,31 +5,27 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
 import type { CouponRow } from "@/db/types";
+import { sortOffers, type AvailableCoupon } from "./sort";
+
+export type { AvailableCoupon } from "./sort";
 
 /**
  * Coupons this customer could actually use on the cart in front of them
  * (todo.md B4: "Checkout дээр купон санал болгох").
  *
- * A customer shouldn't have to remember a code that was issued to them. Every
- * candidate is run through `validate_coupon` for this exact subtotal and
- * buyer, so the list can never suggest something that would then be refused —
- * and personal codes belonging to other people are filtered out by ownership
- * before that, not merely hidden in the UI.
+ * Only coupons ISSUED TO this customer are offered (0104). Shop-wide campaign
+ * coupons (`user_id` null) work by code alone — a customer who was told
+ * `WELCOME11` types it in; one who wasn't never sees it. Guests get nothing:
+ * coupons are for signed-in customers only.
+ *
+ * Every candidate is still run through `validate_coupon` for this exact
+ * subtotal, so nothing offered as usable would then be refused. A coupon that
+ * fails only on its minimum order is listed too, as not yet usable with the
+ * amount still to add — the condition is the thing worth telling the customer.
  */
 const schema = z.object({
   subtotal: z.number().int().nonnegative(),
 });
-
-export interface AvailableCoupon {
-  code: string;
-  type: "percent" | "fixed";
-  value: number;
-  discount: number;
-  minSubtotal: number;
-  endsAt: string | null;
-  /** Issued to this customer alone. */
-  personal: boolean;
-}
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -42,23 +38,19 @@ export async function POST(req: Request) {
   const session = await createClient();
   const { data: { user } = { user: null } } =
     (await session?.auth.getUser()) ?? { data: { user: null } };
+  if (!user) return NextResponse.json({ coupons: [] });
 
-  const supabase = createAdminClient() ?? session;
+  const supabase = createAdminClient();
   if (!supabase) return NextResponse.json({ coupons: [] }, { status: 500 });
 
-  // The admin client bypasses RLS, so ownership is filtered here: public
-  // coupons plus the signed-in customer's own.
-  let query = supabase
+  // The admin client bypasses RLS, so ownership is filtered here.
+  const { data } = await supabase
     .from("coupons")
     .select("*")
     .eq("is_active", true)
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(50);
-  query = user
-    ? query.or(`user_id.is.null,user_id.eq.${user.id}`)
-    : query.is("user_id", null);
-
-  const { data } = await query;
   const rows = (data as CouponRow[] | null) ?? [];
 
   const coupons: AvailableCoupon[] = [];
@@ -66,52 +58,36 @@ export async function POST(req: Request) {
     const { data: result } = await callRpc<{
       valid: boolean;
       discount: number;
+      reason?: string;
     }>(supabase, "validate_coupon", {
       p_code: c.code,
       p_subtotal: parsed.data.subtotal,
-      p_user: user?.id ?? null,
+      p_user: user.id,
     });
-    if (!result?.valid || (result.discount ?? 0) <= 0) continue;
+    const belowMinimum = result?.reason === "MIN_SUBTOTAL";
+    if (!belowMinimum && (!result?.valid || (result.discount ?? 0) <= 0)) {
+      continue;
+    }
     coupons.push({
+      id: c.id,
       code: c.code,
       type: c.type,
       value: c.value,
-      discount: result.discount,
+      discount: belowMinimum ? 0 : result!.discount,
       minSubtotal: c.min_subtotal,
+      maxDiscount: c.max_discount,
       endsAt: c.ends_at,
       personal: c.user_id != null,
+      eligible: !belowMinimum,
+      shortfall: belowMinimum
+        ? Math.max(c.min_subtotal - parsed.data.subtotal, 0)
+        : 0,
     });
   }
 
-  // Best offer first — that is the one worth a single tap.
-  coupons.sort((a, b) => b.discount - a.discount);
-  return NextResponse.json({ coupons: dedupe(coupons).slice(0, 5) });
-}
-
-/**
- * Collapse coupons that are the same offer.
- *
- * Since the lucky wheel stopped replacing unused coupons (docs/lucky-wheel.md
- * §0 №1) one customer can hold six identical 5,000₮ codes. Listing them all is
- * noise — applying any one has the same effect — and worse, they crowd the
- * five-row cap so a genuinely different coupon never reaches the customer.
- *
- * The survivor is the one expiring soonest: it is the one that would otherwise
- * be wasted, and spending it leaves the longer-lived duplicates in hand.
- */
-export function dedupe(coupons: AvailableCoupon[]): AvailableCoupon[] {
-  const byOffer = new Map<string, AvailableCoupon>();
-  for (const c of coupons) {
-    const key = `${c.type}:${c.value}:${c.discount}:${c.minSubtotal}`;
-    const held = byOffer.get(key);
-    if (!held) {
-      byOffer.set(key, c);
-      continue;
-    }
-    // A coupon with no end date never expires, so it never wins this contest.
-    const a = c.endsAt ? Date.parse(c.endsAt) : Infinity;
-    const b = held.endsAt ? Date.parse(held.endsAt) : Infinity;
-    if (a < b) byOffer.set(key, c);
-  }
-  return [...byOffer.values()];
+  // Бүгдийг буцаана. Өмнө нь дуусах огноогоор эрэмбэлээд эхний 5-ыг л
+  // өгдөг байсан тул 10 купонтой хүний хамгийн их хэмнэдэг купон тасарч,
+  // автомат сонголт ч түүнийг хэзээ ч олохгүй байв. Checkout-ын жагсаалт
+  // dialog дотроо гүйдэг болсон; дээд хязгаар нь дээрх `.limit(50)`.
+  return NextResponse.json({ coupons: sortOffers(coupons) });
 }

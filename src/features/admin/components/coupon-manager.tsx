@@ -22,6 +22,7 @@ import {
 import { useConfirm } from "@/components/shared/confirm-dialog";
 import { formatPrice, formatDate } from "@/lib/format";
 import type { CouponRow } from "@/db/types";
+import { CouponRedemptionsSheet } from "./coupon-redemptions-sheet";
 
 /** Just enough of a profile to pick an owner for a personal coupon. */
 export interface CouponCustomer {
@@ -44,6 +45,8 @@ export function CouponManager({
   const [showForm, setShowForm] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [codeError, setCodeError] = React.useState<string>();
+  /** The coupon whose usage log is open in the side sheet. */
+  const [viewing, setViewing] = React.useState<CouponRow | null>(null);
   const [form, setForm] = React.useState({
     code: "",
     type: "percent",
@@ -148,6 +151,15 @@ export function CouponManager({
   return (
     <div className="space-y-6">
       {confirmDialog}
+      <CouponRedemptionsSheet
+        coupon={viewing}
+        ownerName={
+          viewing?.user_id
+            ? (customerName.get(viewing.user_id) ?? "Хэрэглэгч")
+            : null
+        }
+        onOpenChange={(open) => !open && setViewing(null)}
+      />
       <div className="flex items-center justify-between">
         <h1 className="font-serif text-2xl font-semibold">
           Урамшуулал / Купон
@@ -205,8 +217,13 @@ export function CouponManager({
                   type="number"
                   value={form.maxUses}
                   onChange={(e) => set("maxUses", e.target.value)}
-                  placeholder="Хязгааргүй"
+                  placeholder={form.userId === PUBLIC ? "Хязгааргүй" : "1"}
                 />
+                {form.userId !== PUBLIC && (
+                  <p className="text-muted-foreground text-xs">
+                    Хувийн купон заавал нийт хязгаартай — хоосон бол 1.
+                  </p>
+                )}
               </Field>
               <Field label="Нэг хүн хэдэн удаа">
                 <Input
@@ -216,8 +233,7 @@ export function CouponManager({
                   placeholder="Хязгааргүй"
                 />
                 <p className="text-muted-foreground text-xs">
-                  Бөглөвөл зочноор захиалахад ашиглах боломжгүй — нэвтрэх
-                  шаардлагатай (тоолохын тулд).
+                  Купон ямагт нэвтэрсэн хэрэглэгчид л ажиллана.
                 </p>
               </Field>
               <Field label="Хэрэглэгч">
@@ -241,8 +257,8 @@ export function CouponManager({
                   </SelectContent>
                 </Select>
                 <p className="text-muted-foreground text-xs">
-                  Тодорхой хүнийг сонговол код зөвхөн тэр хүнд харагдаж,
-                  ажиллана.
+                  Сонгосон хүний «Миний купон»-д харагдана. Нийтийн купон хэнд ч
+                  харагдахгүй — кодоо мэддэг хүн л бичиж ашиглана.
                 </p>
               </Field>
               <Field label="Дуусах огноо" hint="Хоосон бол хугацаагүй.">
@@ -284,7 +300,14 @@ export function CouponManager({
               {initial.map((c) => (
                 <tr key={c.id} className="even:bg-muted/40">
                   <td className="px-4 py-3 font-mono font-semibold">
-                    {c.code}
+                    <button
+                      type="button"
+                      onClick={() => setViewing(c)}
+                      className="underline-offset-2 hover:underline"
+                      aria-label={`${c.code} — хэн ашигласныг харах`}
+                    >
+                      {c.code}
+                    </button>
                   </td>
                   <td className="px-4 py-3">
                     {c.type === "percent"

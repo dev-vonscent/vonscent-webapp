@@ -56,7 +56,7 @@ export const checkoutSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/u, "Огноо буруу байна")
     .optional(),
   note: z.string().max(500).optional(),
-  couponCode: z.string().optional(),
+  couponCode: z.string().trim().max(40).optional(),
   loyaltyUsed: z.number().int().nonnegative().default(0),
   saveAddress: z.boolean().default(false),
   // Either loose items or bundles may be empty; the server rejects a truly

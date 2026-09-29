@@ -29,7 +29,8 @@ import { useIsStaff } from "@/features/account/use-staff";
 import { useProfileSummary } from "@/features/account/use-profile-summary";
 import { useSignOutConfirm } from "@/features/account/components/use-sign-out-confirm";
 import { cn } from "@/lib/utils";
-import { LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
+import { useNewBadge } from "@/features/account/use-new-badge";
+import { COUPONS_NEW_BADGE_UNTIL, LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
 
 /**
  * Гол зорилгууд — том, бичвэрээр. Доод цэс (`BottomNav`) Нүүр/Каталог/Багц/
@@ -61,7 +62,7 @@ const SECONDARY = [
 const ACCOUNT_SHORTCUTS = [
   { href: "/account/orders", label: "Захиалга", icon: Package },
   { href: "/account/loyalty", label: "V point", icon: Gift },
-  { href: "/account/coupons", label: "Купон", icon: Ticket },
+  { href: "/account/coupons", label: "Купон", icon: Ticket, badge: "coupons" },
 ] as const;
 
 export function MobileMenu({ className }: { className?: string }) {
@@ -69,6 +70,7 @@ export function MobileMenu({ className }: { className?: string }) {
   const [askSignOut, signOutDialog] = useSignOutConfirm();
   const isStaff = useIsStaff();
   const { profile, loading, configured } = useProfileSummary();
+  const couponsNew = useNewBadge("coupons", COUPONS_NEW_BADGE_UNTIL);
 
   const isActive = (href: string) => pathname.startsWith(href);
 
@@ -130,8 +132,13 @@ export function MobileMenu({ className }: { className?: string }) {
                       <SheetClose asChild key={item.href}>
                         <Link
                           href={item.href}
-                          className="bg-muted hover:bg-accent flex h-16 flex-col items-center justify-center gap-1.5 rounded-[0.875rem] transition-colors"
+                          className="bg-muted hover:bg-accent relative flex h-16 flex-col items-center justify-center gap-1.5 rounded-[0.875rem] transition-colors"
                         >
+                          {"badge" in item && couponsNew && (
+                            <span className="bg-success/10 text-success absolute top-1.5 right-1.5 rounded-full px-1.5 text-[10px]/4 font-medium">
+                              Шинэ
+                            </span>
+                          )}
                           <item.icon className="text-muted-foreground size-5" />
                           <span className="text-sm font-medium">
                             {item.label}
