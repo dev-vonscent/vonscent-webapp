@@ -1036,13 +1036,6 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-352 px-4 pt-8 md:px-8 md:pb-24 lg:pb-8">
-      {/* «Сагс руу буцах» линк байхгүй: сагс нь толгойн навигацид ямагт
-          байдаг, харин захиалгын хуудсын толгойд гарц тавих нь эндээс гарах
-          сонголтыг хамгийн түрүүнд уншуулна. */}
-      <h1 className="mb-8 text-3xl font-semibold tracking-tight">
-        Захиалга өгөх
-      </h1>
-
       <form
         onSubmit={handleSubmit(onSubmit, onInvalid)}
         // Шалгалтыг Zod + талбарын доорх мессеж хийнэ; browser-ийн англи
@@ -1051,6 +1044,18 @@ export default function CheckoutPage() {
         className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-10"
       >
         <div className="space-y-6">
+          {/* «Сагс руу буцах» линк байхгүй: сагс нь толгойн навигацид ямагт
+              байдаг, харин захиалгын хуудсын толгойд гарц тавих нь эндээс
+              гарах сонголтыг хамгийн түрүүнд уншуулна.
+
+              Гарчиг зүүн баганад: хоёр баганын дээр байхдаа тоймыг ~68px доош
+              түлхэж, хуудас нээгдэх мөчид «Төлбөр төлөх» дэлгэцээс хагас
+              гардаг байв — картын `max-h` нь sticky үеийн `top-24`-өөр
+              бодогддог. Одоо тойм толгойн доор шууд эхэлнэ. */}
+          <h1 className="mb-8 text-3xl font-semibold tracking-tight">
+            Захиалга өгөх
+          </h1>
+
           {/* Guest prompt: register to earn loyalty points */}
           {mounted && !authed && (
             <div className="bg-secondary rounded-2xl px-4 py-3.5 text-sm">
