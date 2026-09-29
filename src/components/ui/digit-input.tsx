@@ -121,25 +121,43 @@ export const DigitInput = React.forwardRef<HTMLInputElement, DigitInputProps>(
                 {groupAt !== undefined && i === groupAt && (
                   <span className="bg-muted-foreground/40 h-px w-2 shrink-0 rounded-full" />
                 )}
-                {/* flat cells — the blinking caret alone marks the active one */}
+                {/* flat cells — the blinking caret alone marks the active one.
+                    Цэг, курсор, орон нь DOM-оос хасагдахгүй — ямагт render
+                    хийгдэж, opacity-оор л солигдоно; нүд бүр өөрийн давхаргатай
+                    (`transform-gpu`). Нэвтрэх карт `backdrop-filter`-тэй тул
+                    WebKit тэр дотроос хасагдсан элементийн байрыг дахин
+                    зурдаггүй — устгасан нүдэнд хуучин цэг (курсор өнгөрсөн
+                    1px багана нь л цэвэрлэгдэн) хагархай дугуй болж үлддэг байв. */}
                 <div
                   className={cn(
-                    "bg-secondary field-edge flex h-12 w-full max-w-10 min-w-0 flex-1 items-center justify-center rounded-xl text-lg font-semibold tabular-nums",
+                    "bg-secondary field-edge relative flex h-12 w-full max-w-10 min-w-0 flex-1 transform-gpu items-center justify-center rounded-xl text-lg font-semibold tabular-nums",
                     disabled && "opacity-50",
                     cellClassName,
                   )}
                 >
-                  {char ? (
-                    mask ? (
-                      <span className="bg-foreground block size-2.5 rounded-full" />
-                    ) : (
-                      <span className="animate-in zoom-in-75 duration-150">
-                        {char}
-                      </span>
-                    )
-                  ) : active ? (
-                    <span className="bg-foreground h-5 w-px animate-pulse" />
-                  ) : null}
+                  {mask ? (
+                    <span
+                      className={cn(
+                        "bg-foreground block size-2.5 rounded-full transition-[opacity,scale] duration-150",
+                        char ? "scale-100 opacity-100" : "scale-50 opacity-0",
+                      )}
+                    />
+                  ) : (
+                    <span
+                      className={cn(
+                        "transition-[opacity,scale] duration-150",
+                        char ? "scale-100 opacity-100" : "scale-75 opacity-0",
+                      )}
+                    >
+                      {char ?? "0"}
+                    </span>
+                  )}
+                  <span
+                    className={cn(
+                      "bg-foreground absolute top-1/2 left-1/2 h-5 w-px -translate-1/2",
+                      !char && active ? "animate-pulse" : "opacity-0",
+                    )}
+                  />
                 </div>
               </React.Fragment>
             );

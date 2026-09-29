@@ -34,8 +34,8 @@ function useIsDesktop() {
 
 /**
  * Desktop дээр төвийн Dialog, мобайл (< sm) дээр grab handle-тай bottom
- * sheet болдог нэг wrapper. Sheet нь дэлгэцийн гар гарахад `--kb-overlap`-оор
- * дээшилнэ (KeyboardInset).
+ * sheet болдог нэг wrapper. Гар гарахад sheet нь харагдах хэсгийн доод
+ * ирмэгт бэхлэгдэнэ (`--vv-bottom`, KeyboardInset).
  */
 export function ResponsiveDialog({
   open,
@@ -73,14 +73,17 @@ export function ResponsiveDialog({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
+        // Гар нээлттэй үед sheet-ийг layout viewport биш, ХАРАГДАЖ БУЙ хэсгийн
+        // доод ирмэгт бэхэлнэ (`--vv-bottom`, KeyboardInset) — гарын яг дээр
+        // зогсоно, завсраар ард нь юу ч харагдахгүй. Overlay ч мөн адил доош
+        // сунана. Өндөр нь харагдах хэсэгтээ бүрэн багтана.
+        overlayClassName="bottom-[min(0px,var(--vv-bottom,0px))]"
         className={cn(
-          // Гар нээлттэй үед: доод padding нь гарт БОДИТООР далдлагдсан хэсэг
-          // (`--kb-overlap`), өндөр нь гарын дээрх харагдах хэсэгтээ багтана
-          // — iOS viewport-оо өөрөө дээш гүйлгэдэг тул бүтэн гарын өндрөөр
-          // нөхвөл sheet хоёр дахин дээшилдэг байв (KeyboardInset).
-          "max-h-[calc(85dvh-var(--kb-inset,0px)+var(--kb-overlap,0px))] overflow-y-auto rounded-t-3xl border-t-0 pt-3 pb-[calc(var(--kb-overlap,0px)+max(env(safe-area-inset-bottom),1.5rem))]",
+          "max-h-[min(85dvh,calc(var(--vv-height,100dvh)-0.5rem))] rounded-t-3xl border-t-0 px-0 pt-3 pb-[max(env(safe-area-inset-bottom),1.5rem)]",
           className,
         )}
+        // Inline: `side="bottom"`-ийн `bottom-0`-той tailwind-merge нийлүүлдэггүй.
+        style={{ bottom: "var(--vv-bottom, 0px)" }}
         aria-describedby={description ? undefined : ""}
         // Утсан дээр эхний input руу автоматаар focus хийхгүй: гар шууд
         // гарч sheet-ийн талыг таглаад, хэрэглэгч юу бөглөхөө харахаас өмнө
@@ -93,13 +96,20 @@ export function ResponsiveDialog({
         }}
       >
         <KeyboardInset />
-        <div
-          aria-hidden
-          className="bg-muted-foreground/40 mx-auto h-1 w-10 shrink-0 rounded-full"
-        />
-        <SheetTitle>{title}</SheetTitle>
-        {description && <SheetDescription>{description}</SheetDescription>}
-        {children}
+        {/* Толгой гүйдэггүй: агуулга багтахгүй үед зөвхөн доорх хэсэг гүйж,
+            гарчиг ямагт харагдана. Хоёулаа sheet-ийн `gap`-ийг удамшуулна —
+            дуудагч `className="gap-3"` өгвөл урьдын адил бүх мөрөнд үйлчилнэ. */}
+        <div className="flex shrink-0 flex-col px-6 gap-[inherit]">
+          <div
+            aria-hidden
+            className="bg-muted-foreground/40 mx-auto h-1 w-10 shrink-0 rounded-full"
+          />
+          <SheetTitle>{title}</SheetTitle>
+          {description && <SheetDescription>{description}</SheetDescription>}
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-6 pb-1 gap-[inherit]">
+          {children}
+        </div>
       </SheetContent>
     </Sheet>
   );
