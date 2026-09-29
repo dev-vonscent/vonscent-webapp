@@ -78,6 +78,15 @@ export function ResponsiveDialog({
           className,
         )}
         aria-describedby={description ? undefined : ""}
+        // Утсан дээр эхний input руу автоматаар focus хийхгүй: гар шууд
+        // гарч sheet-ийн талыг таглаад, хэрэглэгч юу бөглөхөө харахаас өмнө
+        // бичих горимд оруулдаг байв. Focus-ыг sheet өөр дээрээ (tabIndex=-1)
+        // авч үлдэнэ — focus trap, Esc, screen reader хэвээр; гар нь input
+        // дээр дарахад л гарна.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          (e.currentTarget as HTMLElement).focus();
+        }}
       >
         <KeyboardInset />
         <div

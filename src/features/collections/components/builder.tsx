@@ -7,7 +7,7 @@ import { BadgePercent, Check, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { toast } from "@/lib/toast";
@@ -508,49 +508,51 @@ function BuilderInner({
       </div>
 
       {/* Create dialog */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-sm gap-3">
-          <DialogTitle className="font-serif">Багц үүсгэх</DialogTitle>
-          <label className="text-sm font-medium">
-            Нэр
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Жишээ: Миний дуртай 4"
-              className="mt-1"
+      <ResponsiveDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Багц үүсгэх"
+        className="gap-3 sm:max-w-sm"
+      >
+        <label className="text-sm font-medium">
+          Нэр
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Жишээ: Миний дуртай 4"
+            className="mt-1"
+          />
+        </label>
+        <label className="text-sm font-medium">
+          Тайлбар
+          <Input
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            placeholder="Сонголттой"
+            className="mt-1"
+          />
+        </label>
+        {isLoggedIn ? (
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+            <Checkbox
+              checked={save}
+              onCheckedChange={(v) => setSave(Boolean(v))}
             />
+            <span>«Миний багцууд»-д хадгалах</span>
           </label>
-          <label className="text-sm font-medium">
-            Тайлбар
-            <Input
-              value={desc}
-              onChange={(e) => setDesc(e.target.value)}
-              placeholder="Сонголттой"
-              className="mt-1"
-            />
-          </label>
-          {isLoggedIn ? (
-            <label className="flex cursor-pointer items-center gap-2.5 text-sm">
-              <Checkbox
-                checked={save}
-                onCheckedChange={(v) => setSave(Boolean(v))}
-              />
-              <span>«Миний багцууд»-д хадгалах</span>
-            </label>
-          ) : (
-            <p className="text-muted-foreground text-xs">
-              Багцаа хадгалахын тулд нэвтэрнэ үү. Одоо шууд сагсанд нэмнэ.
-            </p>
-          )}
-          <Button
-            disabled={busy || !canCreate}
-            onClick={create}
-            className="w-full"
-          >
-            Сагсанд нэмэх
-          </Button>
-        </DialogContent>
-      </Dialog>
+        ) : (
+          <p className="text-muted-foreground text-xs">
+            Багцаа хадгалахын тулд нэвтэрнэ үү. Одоо шууд сагсанд нэмнэ.
+          </p>
+        )}
+        <Button
+          disabled={busy || !canCreate}
+          onClick={create}
+          className="w-full"
+        >
+          Сагсанд нэмэх
+        </Button>
+      </ResponsiveDialog>
     </div>
   );
 }
