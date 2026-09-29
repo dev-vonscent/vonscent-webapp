@@ -30,14 +30,19 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   const startBuyNow = useCart((s) => s.startBuyNow);
   const router = useRouter();
 
-  // Mobile sticky buy bar (1e): appears once the in-page CTA scrolls away.
+  // Mobile sticky buy bar (1e): appears once the in-page CTA has been scrolled
+  // *past* — above the viewport — not merely out of view. Утсан дээр зургийн
+  // галерей эхэнд тул хуудас нээгдэх үед товч дэлгэцийн ДООР байдаг; «харагдахгүй
+  // байна» гэсэн нөхцөл нь зурвасыг орох даруйд гаргаад, товч дээр ирэхэд
+  // нууж, тоймын хэсэгт дахин халт гаргадаг байв. Одоо товчийг өнгөрсний дараа
+  // л нэг удаа гарч, «Төстэй бараа» хүртэл тогтвортой үлдэнэ.
   const ctaRef = React.useRef<HTMLDivElement>(null);
   const [ctaAway, setCtaAway] = React.useState(false);
   React.useEffect(() => {
     const el = ctaRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(([entry]) =>
-      setCtaAway(!entry.isIntersecting),
+      setCtaAway(!entry.isIntersecting && entry.boundingClientRect.bottom <= 0),
     );
     observer.observe(el);
     return () => observer.disconnect();
