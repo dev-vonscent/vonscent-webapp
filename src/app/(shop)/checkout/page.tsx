@@ -336,9 +336,17 @@ export default function CheckoutPage() {
     // Хэсэг дотроо бичих талбартай бол түүнийг фокуслана (гар утсан дээр
     // гар нь дараагийн алхмыг өөрөө хэлнэ). `preventScroll` — эс тэгвээс
     // браузар дөнгөж эхэлсэн гүйлгэлтийг таслана.
-    section
-      ?.querySelector<HTMLElement>('[aria-invalid="true"]')
-      ?.focus({ preventScroll: true });
+    //
+    // Хаяг огт оруулаагүй үед хэсэгт `aria-invalid` талбар байхгүй (талбарууд
+    // popup дотор) тул фокус товч дээрээ үлдэж, гарын хэрэглэгч, дэлгэц
+    // уншигч хаашаа явахаа мэддэггүй байв — хэсгийн эхний үйлдэл рүү
+    // (сонгосон хаяг / «Шинэ хаяг нэмэх») шилжүүлнэ.
+    const focusTarget =
+      section?.querySelector<HTMLElement>('[aria-invalid="true"]') ??
+      section?.querySelector<HTMLElement>(
+        '[role="radio"][aria-checked="true"], button, input',
+      );
+    focusTarget?.focus({ preventScroll: true });
   }, []);
 
   /**
