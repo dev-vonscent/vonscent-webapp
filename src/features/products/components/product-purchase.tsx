@@ -30,14 +30,19 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   const startBuyNow = useCart((s) => s.startBuyNow);
   const router = useRouter();
 
-  // Mobile sticky buy bar (1e): appears once the in-page CTA scrolls away.
+  // Mobile sticky buy bar (1e): appears once the in-page CTA has been scrolled
+  // *past* — above the viewport — not merely out of view. Утсан дээр зургийн
+  // галерей эхэнд тул хуудас нээгдэх үед товч дэлгэцийн ДООР байдаг; «харагдахгүй
+  // байна» гэсэн нөхцөл нь зурвасыг орох даруйд гаргаад, товч дээр ирэхэд
+  // нууж, тоймын хэсэгт дахин халт гаргадаг байв. Одоо товчийг өнгөрсний дараа
+  // л нэг удаа гарч, «Төстэй бараа» хүртэл тогтвортой үлдэнэ.
   const ctaRef = React.useRef<HTMLDivElement>(null);
   const [ctaAway, setCtaAway] = React.useState(false);
   React.useEffect(() => {
     const el = ctaRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(([entry]) =>
-      setCtaAway(!entry.isIntersecting),
+      setCtaAway(!entry.isIntersecting && entry.boundingClientRect.bottom <= 0),
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -397,9 +402,19 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           stacking on it (`useClaimBottomBar`), so it also takes its shape: a
           floating capsule with the Glass Trio (/85 + blur + lift), inset from
           the edge. Flush against the bottom it read as stuck to the screen
-          instead of hovering over the page. */}
-      {showBuyBar && (
-        <div className="pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 md:hidden">
+          instead of hovering over the page.
+
+          Цэстэй адил гулсаж орж гарна: нөхцөлөөр mount хийхэд цэс доошоо
+          гулсаж байхад зурвас нь нэг frame-д халт гарч ирдэг байв. Цэс эхэлж
+          гарах зайг `delay-150` өгнө — хоёр капсул хэзээ ч давхцахгүй. */}
+      {selected && (
+        <div
+          className={cn(
+            "pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 transition-transform duration-300 ease-out motion-reduce:transition-none md:hidden",
+            showBuyBar ? "delay-150" : "translate-y-[140%]",
+          )}
+          inert={!showBuyBar}
+        >
           <div className="bg-secondary/85 shadow-lift pointer-events-auto mb-3 flex w-full items-center gap-3 rounded-full py-2 pr-2 pl-4 backdrop-blur">
             <div className="min-w-0 flex-1">
               <p className="text-muted-foreground truncate text-[11px]">

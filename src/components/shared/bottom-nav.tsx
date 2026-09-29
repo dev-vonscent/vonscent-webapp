@@ -39,7 +39,8 @@ export function BottomNav() {
     <div
       className={cn(
         "pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center transition-transform duration-300 ease-out motion-reduce:transition-none md:hidden",
-        hidden && "translate-y-[140%]",
+        // Буцаж гарахдаа «Захиалах» зурвас гулсаж гарахыг хүлээнэ.
+        hidden ? "translate-y-[140%]" : "delay-150",
       )}
     >
       <nav
