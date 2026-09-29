@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { Truck, ShieldCheck, ShoppingCart, Clock, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -51,6 +50,7 @@ import {
   type AddressFormValue,
 } from "@/features/checkout/components/address-dialog";
 import { CouponField } from "@/features/checkout/components/coupon-field";
+import { OrderLines } from "@/features/checkout/components/order-lines";
 import { GuestPerksPrompt } from "@/features/checkout/components/guest-perks-prompt";
 import { LoyaltyField } from "@/features/checkout/components/loyalty-field";
 import { useCoupon } from "@/features/checkout/use-coupon";
@@ -64,7 +64,6 @@ import {
   useCart,
   selectCheckoutSubtotal,
   selectCheckoutGross,
-  collectionBasePrice,
 } from "@/features/cart/store";
 import {
   useCheckoutLines,
@@ -1268,97 +1267,19 @@ export default function CheckoutPage() {
           )}
         </div>
 
-        {/* Summary */}
-        <div className="lg:sticky lg:top-24 lg:h-fit">
-          <Card className="overflow-hidden">
-            <CardContent className="space-y-5 p-6">
+        {/* Summary.
+            Десктоп дээр карт нь дэлгэцийн өндрөөс хэтрэхгүй: дүн ба «Төлбөр
+            төлөх» доод хэсэгт ямагт харагдана, илүү гарсан агуулга нь дээд
+            хэсэг дотроо гүйнэ. Өмнө нь ~1340px карт наалдах зайгүй байсан тул
+            товч 1366×768 дээр ч fold-оос доош ордог байв. */}
+        <div className="lg:sticky lg:top-24 lg:self-start">
+          <Card className="overflow-hidden lg:flex lg:max-h-[calc(100dvh-7rem)] lg:flex-col">
+            <CardContent className="space-y-4 p-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
               <h2 className="text-lg font-semibold">Захиалгын тойм</h2>
 
-              <div className="space-y-3">
-                {mounted &&
-                  collections.map((c) => (
-                    <div key={c.key} className="flex items-center gap-3">
-                      {/* Тоо ширхгийн тэмдэг зургийн хүрээний *гадна* байх
-                          ёстой: `overflow-hidden` дотор байхдаа хагас
-                          хайчлагдаж, зураг дээр хар зэрэг шиг харагддаг. */}
-                      <div className="relative size-14 shrink-0">
-                        <div className="bg-muted relative size-full overflow-hidden rounded-xl">
-                          {c.image && (
-                            <Image
-                              src={c.image}
-                              alt={c.name}
-                              fill
-                              sizes="56px"
-                              className="object-cover"
-                            />
-                          )}
-                        </div>
-                        <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">
-                          {c.qty}
-                        </span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm/tight font-medium">
-                          {c.name}
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          Багц · {c.ml}ml · {c.members.length} үнэртэн
-                        </p>
-                        {/* Багц дотор ЯМАР ус байгааг тоймд нэрээр нь бичнэ.
-                            Өмнө нь зөвхөн багцын нэр, нэг зураг, «N үнэртэн»
-                            гэсэн тоо л харагддаг байсан тул худалдан авагч
-                            төлөхийн өмнө сонголтоо шалгах ямар ч арга
-                            байгаагүй — сагсанд аль хэдийн ингэж бичдэг
-                            (cart/page.tsx), тойм нь л хоцорч байв. */}
-                        <ul className="text-muted-foreground mt-0.5 space-y-0.5 text-xs">
-                          {c.members.map((m) => (
-                            <li key={m.variantId} className="truncate">
-                              • {m.brand} — {m.name}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <span className="text-sm font-medium">
-                        {formatPrice(collectionBasePrice(c) * c.qty)}
-                      </span>
-                    </div>
-                  ))}
-                {mounted &&
-                  items.map((i) => (
-                    <div key={i.key} className="flex items-center gap-3">
-                      {/* Тоо ширхгийн тэмдэг зургийн хүрээний *гадна* байх
-                          ёстой: `overflow-hidden` дотор байхдаа хагас
-                          хайчлагдаж, зураг дээр хар зэрэг шиг харагддаг. */}
-                      <div className="relative size-14 shrink-0">
-                        <div className="bg-muted relative size-full overflow-hidden rounded-xl">
-                          {i.image && (
-                            <Image
-                              src={i.image}
-                              alt={i.name}
-                              fill
-                              sizes="56px"
-                              className="object-cover"
-                            />
-                          )}
-                        </div>
-                        <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">
-                          {i.qty}
-                        </span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm/tight font-medium">
-                          {i.name}
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          {i.brand} · {i.ml}ml
-                        </p>
-                      </div>
-                      <span className="text-sm font-medium">
-                        {formatPrice(i.unitPrice * i.qty)}
-                      </span>
-                    </div>
-                  ))}
-              </div>
+              {mounted && (
+                <OrderLines items={items} collections={collections} />
+              )}
 
               <div className="gold-rule" />
 
@@ -1490,25 +1411,6 @@ export default function CheckoutPage() {
                 />
               </div>
 
-              <div className="gold-rule" />
-
-              {/* Хаяг гарч ирэх хүртэл энэ тоо нь эцсийн дүн БИШ — шошго нь
-                  түүнийг шууд хэлнэ, эс тэгвээс «Нийт төлөх» гэж уншсан дүн
-                  дараа нь өсөх нь амласнаа зөрчсөнтэй адил. */}
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="font-medium">
-                  {hasAddress ? "Нийт төлөх төлбөр" : "Хүргэлтгүй дүн"}
-                </span>
-                <span className="text-2xl font-semibold tabular-nums">
-                  {formatPrice(total)}
-                </span>
-              </div>
-              {!hasAddress && (
-                <p className="text-muted-foreground text-xs">
-                  Хаягаа оруулмагц хүргэлтийн төлбөр нэмэгдэж, эцсийн дүн гарна.
-                </p>
-              )}
-
               {/* Энэ худалдан авалт хэдэн оноо авчрах вэ. Зочинд ижил тоог
                   хуудасны толгой дахь бүртгэлийн санамж аль хэдийн хэлдэг тул
                   энд давтахгүй — тойм нь ЭНЭ захиалгын баримт байх ёстой. */}
@@ -1519,19 +1421,6 @@ export default function CheckoutPage() {
                     +{pointsEarned.toLocaleString("mn-MN")} V point
                   </strong>{" "}
                   хуримтлагдана — хүргэгдсэний дараа зарцуулах боломжтой.
-                </p>
-              )}
-
-              {/* `role="alert"` — эс тэгвээс захиалга татгалзсаныг дэлгэц
-                  уншигч хэрэглэгч огт мэдэхгүй өнгөрнө (WCAG 4.1.3). */}
-              {serverError && (
-                <p
-                  ref={serverErrorRef}
-                  role="alert"
-                  tabIndex={-1}
-                  className="bg-destructive/10 text-destructive scroll-mt-24 rounded-xl px-3 py-2.5 text-sm"
-                >
-                  {serverError}
                 </p>
               )}
 
@@ -1550,12 +1439,46 @@ export default function CheckoutPage() {
                   -с хойш захиалга цуцлах, өөрчлөх боломжгүй.
                 </p>
               )}
+            </CardContent>
+
+            {/* Дүн + товч — десктоп дээр гүйдэггүй доод хэсэг. */}
+            <div className="space-y-3 px-5 pb-5 lg:shrink-0">
+              <div className="gold-rule" />
+              {/* Хаяг гарч ирэх хүртэл энэ тоо нь эцсийн дүн БИШ — шошго нь
+                    түүнийг шууд хэлнэ, эс тэгвээс «Нийт төлөх» гэж уншсан дүн
+                    дараа нь өсөх нь амласнаа зөрчсөнтэй адил. */}
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="font-medium">
+                  {hasAddress ? "Нийт төлөх төлбөр" : "Хүргэлтгүй дүн"}
+                </span>
+                <span className="text-2xl font-semibold tabular-nums">
+                  {formatPrice(total)}
+                </span>
+              </div>
+              {!hasAddress && (
+                <p className="text-muted-foreground text-xs">
+                  Хаягаа оруулмагц хүргэлтийн төлбөр нэмэгдэж, эцсийн дүн гарна.
+                </p>
+              )}
+
+              {/* `role="alert"` — эс тэгвээс захиалга татгалзсаныг дэлгэц
+                    уншигч хэрэглэгч огт мэдэхгүй өнгөрнө (WCAG 4.1.3). */}
+              {serverError && (
+                <p
+                  ref={serverErrorRef}
+                  role="alert"
+                  tabIndex={-1}
+                  className="bg-destructive/10 text-destructive scroll-mt-24 rounded-xl px-3 py-2.5 text-sm"
+                >
+                  {serverError}
+                </p>
+              )}
 
               {/* Товч нь захиалгыг БАТАЛГААЖУУЛДАГГҮЙ — төлөгдөөгүй захиалга
-                  үүсгээд QPay рүү дамжуулна. «Захиалга баталгаажуулах» гэдэг нь
-                  эндээс бүх зүйл дуусна гэсэн амлалт өгч байсан. */}
+                    үүсгээд QPay рүү дамжуулна. «Захиалга баталгаажуулах» гэдэг нь
+                    эндээс бүх зүйл дуусна гэсэн амлалт өгч байсан. */}
               {/* Утсан дээр энэ товчийг наалдсан зурвас орлоно — хоёулаа зэрэг
-                  харагдвал нэг дэлгэц дээр ижил хоёр CTA болно. */}
+                    харагдвал нэг дэлгэц дээр ижил хоёр CTA болно. */}
               <Button
                 type="submit"
                 size="lg"
@@ -1566,13 +1489,17 @@ export default function CheckoutPage() {
                   ? "Илгээж байна…"
                   : zoneBlocked
                     ? "Энэ хаяг руу хүргэлт хийхгүй"
-                    : "Төлбөр төлөх"}
+                    : // Дүн нь хаяг тодорсны дараа л эцсийнх — түүнээс
+                      // өмнө товч дээр тоо амлахгүй.
+                      hasAddress
+                      ? `Төлбөр төлөх · ${formatPrice(total)}`
+                      : "Төлбөр төлөх"}
               </Button>
               <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-center text-xs">
                 <ShieldCheck className="size-3.5" />
                 Аюулгүй төлбөр · QPay
               </p>
-            </CardContent>
+            </div>
           </Card>
         </div>
 
