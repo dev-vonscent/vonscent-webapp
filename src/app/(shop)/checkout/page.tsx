@@ -273,7 +273,7 @@ export default function CheckoutPage() {
     message: couponMsg,
     pick: pickCoupon,
     clear: clearCoupon,
-  } = useCoupon(subtotal, { enabled: mounted && authed });
+  } = useCoupon(subtotal, { enabled: mounted && authed, autoPickBest: true });
 
   // Гарсан хэрэглэгчийн сагсанд үлдсэн купон зочинд хамаарахгүй — сервер ч
   // татгалзана (0104), тиймээс харуулж хуурахгүй.
