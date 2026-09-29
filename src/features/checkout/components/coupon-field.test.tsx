@@ -224,6 +224,26 @@ describe("available coupons", () => {
   });
 });
 
+describe("links under the field", () => {
+  it("keeps «Өөр код оруулах» and the wallet link apart", () => {
+    render(
+      <CouponField
+        {...NOOP}
+        applied={null}
+        offers={[offer()]}
+        walletHref="/account/coupons"
+      />,
+    );
+    const toggle = screen.getByText("Өөр код оруулах");
+    const link = screen.getByRole("link", { name: /Миний купоныг харах/ });
+    // Нэг мөрөнд, хооронд нь тусгаарлагчтай — нийлсэн текст биш.
+    expect(toggle.parentElement).toBe(link.parentElement);
+    expect(toggle.parentElement?.textContent).toMatch(
+      /Өөр код оруулах·Миний купоныг харах/,
+    );
+  });
+});
+
 describe("manual entry", () => {
   it("stays disabled until something is typed", () => {
     render(<CouponField {...NOOP} applied={null} offers={[]} />);

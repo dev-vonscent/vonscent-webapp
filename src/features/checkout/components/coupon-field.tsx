@@ -129,7 +129,7 @@ export function CouponField({
         </div>
       )}
 
-      {showManual ? (
+      {showManual && (
         <div className="flex gap-2">
           <Input
             value={code}
@@ -155,14 +155,6 @@ export function CouponField({
             {applying ? "…" : "Хэрэглэх"}
           </Button>
         </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setManualOpen(true)}
-          className="text-muted-foreground hover:text-foreground text-xs underline-offset-2 transition-colors hover:underline"
-        >
-          Өөр код оруулах
-        </button>
       )}
 
       {message && (
@@ -171,13 +163,34 @@ export function CouponField({
         </p>
       )}
 
-      {walletHref && (
-        <Link
-          href={walletHref}
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs underline-offset-2 transition-colors hover:underline"
-        >
-          Миний купоныг харах <ArrowRight className="size-3" />
-        </Link>
+      {/* Хоёр холбоос нэг мөрөнд, `·`-ээр тусгаарлагдана. Өмнө нь хоёулаа
+          inline элемент байсан тул «Өөр код оруулахМиний купоныг харах»
+          гэж нийлж уншигддаг байв. */}
+      {(!showManual || walletHref) && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          {!showManual && (
+            <button
+              type="button"
+              onClick={() => setManualOpen(true)}
+              className="text-muted-foreground hover:text-foreground underline-offset-2 transition-colors hover:underline"
+            >
+              Өөр код оруулах
+            </button>
+          )}
+          {!showManual && walletHref && (
+            <span className="text-muted-foreground" aria-hidden>
+              ·
+            </span>
+          )}
+          {walletHref && (
+            <Link
+              href={walletHref}
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 underline-offset-2 transition-colors hover:underline"
+            >
+              Миний купоныг харах <ArrowRight className="size-3" />
+            </Link>
+          )}
+        </div>
       )}
     </div>
   );
