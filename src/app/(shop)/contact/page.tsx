@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { Phone, Mail, MapPin, Instagram, Facebook, Clock } from "lucide-react";
 import { ContactForm } from "@/features/contact/components/contact-form";
 import { getSocialSettings, getStoreSettings } from "@/features/content/api";
@@ -12,6 +13,7 @@ import { DISPATCH_HOUR } from "@/lib/time";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
+  ...pageMetadata("/contact"),
   title: "Холбоо барих",
   description: "Бидэнтэй холбогдоорой — утас, имэйл, сошиал, мессеж.",
 };

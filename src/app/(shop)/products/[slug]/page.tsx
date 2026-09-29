@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +64,7 @@ export async function generateMetadata({
     title: `${product.name} — ${product.brand}`,
     description: product.description.slice(0, 160),
     // og:image comes from the sibling opengraph-image.tsx file convention.
-    openGraph: { url: `/products/${product.slug}` },
+    ...pageMetadata(`/products/${product.slug}`, { ownImage: true }),
   };
 }
 

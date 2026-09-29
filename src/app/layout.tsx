@@ -30,12 +30,12 @@ export const metadata: Metadata = {
     template: `%s · ${SITE.name}`,
   },
   description: SITE.description,
+  // No title/description/url here: Next fills og:title/og:description from
+  // each page's own metadata, and pages set og:url via pageMetadata().
   openGraph: {
     type: "website",
     siteName: SITE.name,
-    title: SITE.name,
-    description: SITE.description,
-    url: SITE.url,
+    locale: "mn_MN",
   },
 };
 

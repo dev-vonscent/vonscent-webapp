@@ -5,7 +5,9 @@
 export const SITE = {
   name: "vonscent",
   domain: "vonscent.mn",
-  url: "https://vonscent.mn",
+  // Canonical host — vonscent.mn 308-redirects here, so every absolute URL
+  // (canonical, og:url, JSON-LD) points at www to avoid a redirect hop.
+  url: "https://www.vonscent.mn",
   description:
     "Дэлхийн шилдэг үнэртнүүдийг бага хэмжээгээр туршиж, өөрийн үнэрээ олоорой.",
   tagline: "Үнэрээ ол",

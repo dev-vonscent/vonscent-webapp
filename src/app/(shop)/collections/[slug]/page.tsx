@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -34,7 +35,7 @@ export async function generateMetadata({
     title: `${collection.name} — Багц`,
     description: collection.description.slice(0, 160),
     // og:image comes from the sibling opengraph-image.tsx file convention.
-    openGraph: { url: `/collections/${collection.slug}` },
+    ...pageMetadata(`/collections/${collection.slug}`, { ownImage: true }),
   };
 }
 

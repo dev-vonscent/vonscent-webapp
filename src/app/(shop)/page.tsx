@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { BadgeCheck, ArrowRight, Quote } from "lucide-react";
@@ -15,7 +16,17 @@ import {
   getBrands,
 } from "@/features/products/api";
 import { getRecentReviews } from "@/features/reviews/api";
-import { getPopupSettings, getHomeSections } from "@/features/content/api";
+import {
+  getPopupSettings,
+  getHomeSections,
+  getSocialSettings,
+} from "@/features/content/api";
+import {
+  JsonLd,
+  organizationJsonLd,
+  websiteJsonLd,
+} from "@/components/shared/json-ld";
+import { pageMetadata } from "@/lib/seo";
 import { getActiveBrands, getScentFamilies } from "@/features/taxonomy/api";
 import { getFeaturedCollections } from "@/features/collections/api";
 import { CollectionCard } from "@/features/collections/components/collection-card";
@@ -39,6 +50,8 @@ import {
  */
 export const revalidate = 60;
 
+export const metadata: Metadata = pageMetadata("/");
+
 /**
  * The page function itself is deliberately **not** async: nothing above blocks
  * on the database, so the hero, the trust strip and the static category grids
@@ -60,6 +73,9 @@ export default function HomePage() {
       {/* An overlay with nothing to reserve, so it streams with no fallback. */}
       <Suspense fallback={null}>
         <PromoSlot />
+      </Suspense>
+      <Suspense fallback={null}>
+        <SiteJsonLd />
       </Suspense>
 
       {/* Hero — a full-bleed banner. The artwork keeps its own 1672×941 ratio
@@ -335,6 +351,11 @@ export default function HomePage() {
       </div>
     </>
   );
+}
+
+async function SiteJsonLd() {
+  const social = await getSocialSettings();
+  return <JsonLd data={[organizationJsonLd(social), websiteJsonLd()]} />;
 }
 
 async function PromoSlot() {

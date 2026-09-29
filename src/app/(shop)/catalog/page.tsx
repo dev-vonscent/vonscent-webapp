@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { SearchX } from "lucide-react";
 import { getCatalog, getBrands, getPriceBounds } from "@/features/products/api";
@@ -25,6 +26,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
+  ...pageMetadata("/catalog"),
   title: "Каталог",
   description: "Бүх үнэртэн — брэнд, хүйс, үнэрийн төрлөөр шүүж сонгоорой.",
 };
