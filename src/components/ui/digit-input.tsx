@@ -64,6 +64,23 @@ export const DigitInput = React.forwardRef<HTMLInputElement, DigitInputProps>(
       }
     }
 
+    /**
+     * Сонголтыг үргэлж төгсгөлд нь нэг цэг болгож хураана.
+     *
+     * Нүднүүд зөвхөн дүрслэл — бичих, устгах нь ямагт төгсгөлд болно. Гэтэл
+     * iOS үл харагдах input дотор ч текст сонгодог (удаан дарах, давхар
+     * товших, устгахдаа): сонголтын бариул, томруулагч нь хуудасны давхарга
+     * биш, системийн UI тул `opacity-0`-д нуугдахгүй, цэгүүдийн дээгүүр
+     * зураас, хагархай дугуй болж харагддаг байв. Мөн дунд нь байрласан
+     * курсор дараагийн оронг буруу байранд оруулна. `input-otp`-ийн адил.
+     */
+    function collapseToEnd(el: HTMLInputElement) {
+      const end = el.value.length;
+      if (el.selectionStart !== end || el.selectionEnd !== end) {
+        el.setSelectionRange(end, end);
+      }
+    }
+
     const activeIndex = Math.min(value.length, length - 1);
 
     return (
@@ -79,11 +96,17 @@ export const DigitInput = React.forwardRef<HTMLInputElement, DigitInputProps>(
           aria-label={label}
           value={value}
           onChange={handleChange}
-          onFocus={() => setFocused(true)}
+          onSelect={(e) => collapseToEnd(e.currentTarget)}
+          onFocus={(e) => {
+            setFocused(true);
+            collapseToEnd(e.currentTarget);
+          }}
           onBlur={() => setFocused(false)}
           autoFocus={autoFocus}
           disabled={disabled}
-          className="absolute inset-0 z-10 cursor-pointer text-base opacity-0"
+          // Системийн давхарга `opacity`-г үл тоосон ч текст, курсор,
+          // сонголтын өнгө өөрөө тунгалаг; удаан дарахад callout цэс гарахгүй.
+          className="absolute inset-0 z-10 cursor-pointer bg-transparent text-base text-transparent opacity-0 selection:bg-transparent [-webkit-text-fill-color:transparent] [-webkit-touch-callout:none]"
           style={{ caretColor: "transparent" }}
         />
         <div
