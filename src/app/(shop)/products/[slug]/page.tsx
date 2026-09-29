@@ -37,7 +37,7 @@ import {
   RELATED_SECTION_ID,
   SEASON_LABEL,
 } from "@/lib/constants";
-import { DISPATCH_HOUR } from "@/lib/time";
+import { DeliveryReturnsText } from "@/components/shared/delivery-returns-text";
 
 /**
  * ISR: public data comes from the cookie-less client, so the page is
@@ -261,11 +261,7 @@ export default async function ProductPage({
             <AccordionItem value="ship">
               <AccordionTrigger>Хүргэлт ба буцаалт</AccordionTrigger>
               <AccordionContent>
-                Улаанбаатар хотод хамгийн эртдээ маргааш хүргэнэ. Хүргүүлэх
-                өдрөө төлбөр төлөх хэсэгт сонгох боломжтой бөгөөд захиалга
-                сонгосон өдрийн {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна. Орон
-                нутагт 2–4 хоногт хүргэнэ. Decant бараа тул эрүүл ахуйн
-                шалтгаанаар буцаалт хийгдэхгүй.
+                <DeliveryReturnsText />
               </AccordionContent>
             </AccordionItem>
           </Accordion>

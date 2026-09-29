@@ -320,7 +320,7 @@ export async function getCollectionOrderInfo(id: string): Promise<{
 }
 
 /**
- * Багц угсрах хуудсын НЭГ ХУУДАС бараа.
+ * Багц үүсгэх хуудсын НЭГ ХУУДАС бараа.
  *
  * Шүүлт / эрэмбэ / хуудаслалт нь `catalog_search()` дотор — каталогийн
  * хуудастай ЯГ нэг эх сурвалж, тиймээс хоёр дэлгэц хэзээ ч өөр бараа
@@ -380,7 +380,7 @@ export async function getBuilderProducts(
       }[]
     >(supabase, "product_variants_for", { p_ids: items.map((i) => i.id) });
     if (!data?.length) {
-      // 0064 хэрэгжээгүй сан дээр ч угсрагч ажиллана.
+      // 0064 хэрэгжээгүй сан дээр ч үүсгэгч ажиллана.
       for (const p of await getProductDetailsByIds(items.map((i) => i.id))) {
         extra.set(p.id, {
           availableMl: p.availableMl,
@@ -431,6 +431,6 @@ export async function getBuilderProducts(
   };
 }
 
-/** Багц угсрагчийн нэг хуудсанд хэдэн бараа. Каталогийнхаас өгөөмөр: энд
+/** Багц үүсгэгчийн нэг хуудсанд хэдэн бараа. Каталогийнхаас өгөөмөр: энд
  *  сонголт хийж байгаа тул нэг дэлгэцэнд илүү олон ус харагдах нь дээр. */
 export const BUILDER_PER_PAGE = 24;

@@ -215,7 +215,7 @@ export interface HomeSection {
  * Home page rails the admin composes (0023_home_sections).
  *
  * A 'manual' section keeps the admin's exact order; a 'tag' section is the
- * old marketing-tag rail expressed as a row, so «Онцлох» and «Шинээр буусан»
+ * old marketing-tag rail expressed as a row, so «Онцлох» and «Шинээр ирсэн»
  * can be reordered against each other; a 'featured' section (0055) shows
  * whatever the admin ticked «Онцлох» on the product itself, so the two ways
  * of curating the home page never disagree. Empty sections are dropped rather

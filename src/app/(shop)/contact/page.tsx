@@ -3,7 +3,6 @@ import { pageMetadata } from "@/lib/seo";
 import { Phone, Mail, MapPin, Instagram, Facebook, Clock } from "lucide-react";
 import { ContactForm } from "@/features/contact/components/contact-form";
 import { getSocialSettings, getStoreSettings } from "@/features/content/api";
-import { DISPATCH_HOUR } from "@/lib/time";
 
 /**
  * ISR: public data comes from the cookie-less client, so the page is
@@ -64,7 +63,7 @@ export default async function ContactPage() {
             )}
             <Item icon={Clock} label="Хүргэлт">
               <p className="font-medium">
-                Өдөр бүр {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна
+                Хүргэлт 12–48 цагийн дотор
               </p>
             </Item>
           </div>

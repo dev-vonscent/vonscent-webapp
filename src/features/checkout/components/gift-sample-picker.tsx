@@ -102,23 +102,25 @@ export function GiftSamplePicker({
   }
 
   const single = allowance === 1;
-  /** Нэг мөр, хоёр ажил: хэдэн эрхтэй, дараагийнх хүртэл хэд дутуу. */
-  const summary =
+  const ml = pool?.sampleMl ?? 1;
+  /**
+   * Текст В (клиент, 2026-09 UG) — мөр бүр нөхцөлтэй: эрхгүй үед «0мл эрхтэй»,
+   * тагт хүрсэн үед «дахиад нэмбэл» гэж худал амлахгүй.
+   */
+  const summary = [
     allowance > 0
-      ? [
-          `${allowance} дээж сонгох эрхтэй`,
-          cappedByPool
-            ? "бэлгийн сангийн багтаамжаар хязгаарлагдсан"
-            : atMax
-              ? `нэг захиалгад хамгийн ихдээ ${GIFT_MAX_SAMPLES}`
-              : `${formatPrice(toNext)} нэмбэл +1`,
-          allowance > 1 && GIFT_PER_PRODUCT_LIMIT > 1
-            ? `нэг уснаас ${GIFT_PER_PRODUCT_LIMIT} хүртэл`
-            : null,
-        ]
-          .filter(Boolean)
-          .join(" · ")
-      : `Купоны дараах барааны дүн ${formatPrice(threshold)} хүрвэл 1 дээж бэлгээр сонгоно — дахиад ${formatPrice(toNext)} дутуу.`;
+      ? `Та бэлэгт ${allowance * ml}мл үнэртэн сонгох эрхтэй байна.`
+      : null,
+    allowance > 1 && GIFT_PER_PRODUCT_LIMIT > 1
+      ? `Нэг үнэртнээс дээд тал нь ${GIFT_PER_PRODUCT_LIMIT} ширхэг сонгох боломжтой.`
+      : null,
+    cappedByPool
+      ? "Бэлгийн сангийн багтаамжаар хязгаарлагдсан."
+      : atMax
+        ? `Нэг захиалгад хамгийн ихдээ ${GIFT_MAX_SAMPLES * ml}мл.`
+        : `Дахиад ${formatPrice(toNext)}-ийн бараа нэмснээр ${ml}мл бэлэг нэмэгдэнэ.`,
+    "Купон ашигласан тохиолдолд хямдарсан дүнгээс бодогдоно.",
+  ].filter((line): line is string => Boolean(line));
 
   function pick(id: string) {
     const count = counts.get(id) ?? 0;
@@ -134,7 +136,7 @@ export function GiftSamplePicker({
   return (
     <CheckoutSection
       step={step}
-      title={`Бэлгийн ${pool?.sampleMl ?? 1} мл дээж`}
+      title={`Бэлэг /Захиалгын үнийн дүнгийн ${formatPrice(threshold)} тутамд ${ml}мл/`}
       aside={
         allowance > 0 ? (
           <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
@@ -143,7 +145,11 @@ export function GiftSamplePicker({
         ) : undefined
       }
     >
-      <p className="text-muted-foreground -mt-2 text-sm">{summary}</p>
+      <div className="text-muted-foreground -mt-2 space-y-0.5 text-sm">
+        {summary.map((line) => (
+          <p key={line}>{line}</p>
+        ))}
+      </div>
 
       {/* Том 4 карт (~800px) нэг ширхэг сонгохын тулд хуудасны хамгийн том
           блок болдог байв. Одоо ~120px өндөр хэвтээ мөр; ус нэмэгдвэл

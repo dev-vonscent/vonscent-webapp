@@ -41,7 +41,7 @@ export default async function EditCollectionPage({
   if (!collection) notFound();
 
   // Гишүүд (нэрээрээ харагдах ёстой) + сонгогчийн бүтэн жагсаалт. Багц
-  // угсрахад каталогоо гүйлгэж хардаг тул бэлгийн сантай ижил «бүгдийг
+  // үүсгэхэд каталогоо гүйлгэж хардаг тул бэлгийн сантай ижил «бүгдийг
   // харуул» горим (`PRODUCT_OPTION_MAX`), хайлт нь нэмэлт шүүлтүүр.
   const memberIds = (collection.collection_items ?? []).map(
     (i) => i.product_id,

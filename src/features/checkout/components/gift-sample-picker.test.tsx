@@ -40,13 +40,25 @@ function renderPicker(
 }
 
 describe("GiftSamplePicker", () => {
-  it("is a numbered step with a one-line summary", () => {
+  it("is a numbered step with the gift rules spelled out", () => {
     renderPicker();
     expect(screen.getByText("3")).toBeTruthy();
-    expect(screen.getByText("Бэлгийн 1 мл дээж")).toBeTruthy();
+    expect(
+      screen.getByText("Бэлэг /Захиалгын үнийн дүнгийн 200,000₮ тутамд 1мл/"),
+    ).toBeTruthy();
     // 244,200 → дараагийн эрх 400,000 дээр: 155,800₮ дутуу.
     expect(
-      screen.getByText("1 дээж сонгох эрхтэй · 155,800₮ нэмбэл +1"),
+      screen.getByText("Та бэлэгт 1мл үнэртэн сонгох эрхтэй байна."),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Дахиад 155,800₮-ийн бараа нэмснээр 1мл бэлэг нэмэгдэнэ.",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Купон ашигласан тохиолдолд хямдарсан дүнгээс бодогдоно.",
+      ),
     ).toBeTruthy();
     expect(screen.getByText("0/1 сонгосон")).toBeTruthy();
   });
@@ -84,7 +96,7 @@ describe("GiftSamplePicker", () => {
       value: ["g1"],
     });
     expect(
-      screen.getByText(/3 дээж сонгох эрхтэй · .* · нэг уснаас 2 хүртэл/),
+      screen.getByText("Нэг үнэртнээс дээд тал нь 2 ширхэг сонгох боломжтой."),
     ).toBeTruthy();
 
     await userEvent.click(
@@ -136,7 +148,12 @@ describe("GiftSamplePicker", () => {
 
   it("says how far the first gift is when there is none yet", () => {
     renderPicker({ allowance: 0, goodsAfterDiscount: 150000 });
-    expect(screen.getByText(/дахиад 50,000₮ дутуу/)).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Дахиад 50,000₮-ийн бараа нэмснээр 1мл бэлэг нэмэгдэнэ.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/сонгох эрхтэй/)).toBeNull();
     expect(screen.queryByRole("radiogroup")).toBeNull();
   });
 

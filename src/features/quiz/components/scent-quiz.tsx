@@ -348,7 +348,7 @@ export function ScentQuiz() {
                   className="text-muted-foreground"
                 >
                   Ямар үнэртэй ус сонгохоо мэдэхгүй байна уу? Хэдхэн асуултад
-                  хариулаад тохирох үнэртнүүдээ олоорой.
+                  хариулаад тохирох үнэртнүүдээ олоорой
                 </motion.p>
                 <motion.p
                   variants={itemVariants}

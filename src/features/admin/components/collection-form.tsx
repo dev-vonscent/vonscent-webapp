@@ -265,7 +265,7 @@ export function CollectionForm({
     discountPct?: string;
   }>({});
 
-  // Хайлт нь сервер дээр (0063). Багц угсрахад бүх усаа гүйлгэж хардаг тул
+  // Хайлт нь сервер дээр (0063). Багц үүсгэхэд бүх усаа гүйлгэж хардаг тул
   // бэлгийн сантай ижил «бүгдийг харуул» горим — хайлт нь зөвхөн нэмэлт
   // шүүлтүүр, анхдагч 30 мөрийн хязгаар биш (сервер тал ч мөн адил уншина).
   const { q, setQ, items, loading, byId } = useProductOptions(
@@ -469,11 +469,13 @@ export function CollectionForm({
             </Field>
           </div>
           <Field label="Тайлбар">
-            <Input
+            <textarea
               value={form.description}
               onChange={(e) =>
                 setForm({ ...form, description: e.target.value })
               }
+              rows={4}
+              className="bg-secondary field-edge w-full rounded-md px-3 py-2 text-base md:text-sm"
             />
           </Field>
         </CardContent>

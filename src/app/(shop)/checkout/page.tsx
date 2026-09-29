@@ -36,6 +36,7 @@ import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { GiftSamplePicker } from "@/features/checkout/components/gift-sample-picker";
 import { useGiftPool } from "@/features/gifts/use-gift-pool";
 import {
+  DELIVERY_END_HOUR,
   DISPATCH_HOUR,
   MAX_PREORDER_DAYS,
   formatEditCutoff,
@@ -437,7 +438,7 @@ export default function CheckoutPage() {
       // хадгалсан хаягаар захиалсан хүн хороо-тусгай бүсийн үнийг хэзээ ч
       // авдаггүй, шинээр бичсэн хүн авдаг байв — нэг хаяг, хоёр өөр үнэ.
       // Одоо хадгалсан мөрийг `address-book` шиг задалж, хоёуланг нь сэргээнэ
-      // (`composeDetail` дахин угсрах тул давхар угтвар үүсэхгүй).
+      // (`composeDetail` дахин үүсгэх тул давхар угтвар үүсэхгүй).
       const parts = splitDetail(a.detail);
       setValue("shipDetail", parts.detail);
       setKhoroo(parts.khoroo);
@@ -1167,7 +1168,7 @@ export default function CheckoutPage() {
               <Field
                 label="Хүргүүлэх өдөр"
                 error={errors.deliverOn?.message}
-                hint={`Хамгийн эртдээ маргааш хүргэнэ. Захиалгыг бэлтгэхэд 1 өдөр шаардлагатай бөгөөд сонгосон өдрийн ${DISPATCH_HOUR}:00 цагаас хүргэлтэд гарна.`}
+                hint={`Сонгосон өдрийн ${DISPATCH_HOUR}:00–${DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ. Цаг заах боломжгүйг анхаарна уу.`}
               >
                 <Select
                   value={watch("deliverOn") ?? deliveryDays[0]}
@@ -1251,16 +1252,16 @@ export default function CheckoutPage() {
               error={errors.note?.message}
               hint={
                 remoteZone
-                  ? "Орон нутгийн унаа хөдлөх буудал эсвэл терминалын нэрийг бичнэ үү."
-                  : undefined
+                  ? "Улаанбаатар дахь тухайн орон нутаг руу явах унаа хаанаас хөдлөх, такси автобус алинд дайх, хэдэн цагаас хөдлөх болон хэд хүртэл унаа байх гэх мэт…"
+                  : "Хүргэлт хийгдэхтэй холбоотой мэдээллээ бичнэ үү"
               }
             >
               <Input
                 {...register("note")}
                 placeholder={
                   remoteZone
-                    ? "Жишээ: Драгон терминал, Дархан чиглэл"
-                    : "Жишээ: оройн цагаар залгаарай"
+                    ? "Тэнгэр плаза, Хэнтий Бор-Өндөрийн таксинд тавих, орой 18:00 хүртэл унаа явдаг гэх мэт"
+                    : "Үүдний ресепшинд үлдээх, нэмэлт утасны дугаар гэх мэт"
                 }
               />
             </Field>
@@ -1515,7 +1516,7 @@ export default function CheckoutPage() {
                   <strong className="text-foreground font-medium tabular-nums">
                     +{pointsEarned.toLocaleString("mn-MN")} V point
                   </strong>{" "}
-                  хуримтлагдана — хүргэгдсэний дараа зарцуулах боломжтой.
+                  цугларна
                 </p>
               )}
 

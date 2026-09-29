@@ -9,7 +9,7 @@ export const SITE = {
   // (canonical, og:url, JSON-LD) points at www to avoid a redirect hop.
   url: "https://www.vonscent.mn",
   description:
-    "Дэлхийн шилдэг үнэртнүүдийг бага хэмжээгээр туршиж, өөрийн үнэрээ олоорой.",
+    "Дэлхийн шилдэг үнэртнүүдийг бага хэмжээгээр туршиж, өөрийн үнэрээ олоорой",
   tagline: "Үнэрээ ол",
 } as const;
 

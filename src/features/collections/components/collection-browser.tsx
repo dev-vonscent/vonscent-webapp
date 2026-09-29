@@ -153,7 +153,7 @@ export function CollectionBrowser({
   customEnabled,
 }: {
   collections: Collection[];
-  /** Өөрөө багц угсрах боломж нээлттэй эсэх (хоосон төлөвийн санал). */
+  /** Өөрөө багц үүсгэх боломж нээлттэй эсэх (хоосон төлөвийн санал). */
   customEnabled: boolean;
 }) {
   /*
@@ -302,7 +302,7 @@ export function CollectionBrowser({
                 <Button onClick={clearAll}>Шүүлтүүр цэвэрлэх</Button>
                 {customEnabled && (
                   <Button asChild variant="secondary">
-                    <Link href="/collections/build">Багц угсрах</Link>
+                    <Link href="/collections/build">Багц үүсгэх</Link>
                   </Button>
                 )}
               </div>

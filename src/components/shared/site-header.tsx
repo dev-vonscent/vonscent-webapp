@@ -23,7 +23,7 @@ const PILL_NAV = [
 const TITLES: Record<string, string> = {
   "/catalog": "Каталог",
   "/collections": "Багц",
-  "/collections/build": "Багц угсрах",
+  "/collections/build": "Багц үүсгэх",
   "/account/collections": "Миний багцууд",
   "/contact": "Холбоо барих",
   "/cart": "Сагс",
