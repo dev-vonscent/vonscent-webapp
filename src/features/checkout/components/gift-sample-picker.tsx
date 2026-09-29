@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Check, Minus } from "lucide-react";
+import { Check, Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { toast } from "@/lib/toast";
@@ -188,6 +188,18 @@ export function GiftSamplePicker({
                         sizes="80px"
                         className="object-cover"
                       />
+                    )}
+                    {/* Нэг уснаас 2 дахийг нь авч болохыг харуулна — хавтан
+                        өөрөө +1 нэмдэг ч сонгогдсоны дараа дахин дарж болно
+                        гэдэг нь «−» ганцаараа байхад харагддаггүй байв.
+                        Товч биш тэмдэг: дарах нь хавтан руу л очно. */}
+                    {!single && count > 0 && canAdd && (
+                      <span
+                        aria-hidden
+                        className="bg-card text-foreground absolute top-1 right-1 flex size-6 items-center justify-center rounded-full shadow-sm"
+                      >
+                        <Plus className="size-3.5" />
+                      </span>
                     )}
                     {count > 0 && (
                       <span className="bg-gold-strong text-background absolute right-1 bottom-1 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">

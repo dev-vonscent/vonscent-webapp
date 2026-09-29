@@ -98,6 +98,29 @@ describe("GiftSamplePicker", () => {
     expect(onChange).toHaveBeenLastCalledWith([]);
   });
 
+  it("shows a + on a picked water while a second one is still allowed", () => {
+    const { container, rerender, onChange } = renderPicker({
+      allowance: 2,
+      goodsAfterDiscount: 420000,
+      value: ["g1"],
+    });
+    const tile = screen.getByRole("button", { name: /Santal 33 — 1 ширхэг/ });
+    expect(tile.querySelector(".lucide-plus")).toBeTruthy();
+
+    // Хоёулаа авсан — нэмэх зай үлдээгүй тул тэмдэг алга.
+    rerender(
+      <GiftSamplePicker
+        step={3}
+        allowance={2}
+        goodsAfterDiscount={420000}
+        value={["g1", "g1"]}
+        onChange={onChange}
+      />,
+    );
+    expect(container.querySelector(".lucide-plus")).toBeNull();
+    expect(screen.getByText("2")).toBeTruthy();
+  });
+
   it("dims the rest once every allowance is used", () => {
     renderPicker({
       allowance: 2,
