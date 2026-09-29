@@ -82,7 +82,7 @@ export function CouponWallet() {
       <div
         role="tablist"
         aria-label="Купоны төлөв"
-        className="bg-secondary flex gap-1 rounded-xl p-1 text-[13px] sm:text-sm"
+        className="bg-secondary flex gap-1 rounded-xl p-1 text-xs sm:text-sm"
       >
         {TABS.map((t) => {
           const n = count(t.value);
