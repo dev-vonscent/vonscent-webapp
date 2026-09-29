@@ -89,7 +89,7 @@ export function OrderLines({
             ? "Хураах"
             : hidden > 0
               ? `Дэлгэх · дахиад ${hidden} бараа`
-              : "Дэлгэх · багцын үнэртэнүүд"}
+              : "Дэлгэх · багцын үнэртнүүд"}
           <ChevronDown
             className={cn(
               "size-3.5 transition-transform",
