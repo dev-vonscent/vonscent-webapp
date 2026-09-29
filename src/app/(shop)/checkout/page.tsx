@@ -1374,7 +1374,12 @@ export default function CheckoutPage() {
               <h2 className="text-lg font-semibold">Захиалгын тойм</h2>
 
               {mounted && (
-                <OrderLines items={items} collections={collections} />
+                <OrderLines
+                  items={items}
+                  collections={collections}
+                  editable
+                  buyNow={buyNow}
+                />
               )}
 
               <div className="gold-rule" />
