@@ -23,7 +23,8 @@ export async function POST(req: Request) {
     type: input.type,
     value: input.value,
     min_subtotal: input.minSubtotal,
-    max_uses: input.maxUses,
+    // A personal coupon can be shared, so it needs a shop-wide cap (0104 check).
+    max_uses: input.userId ? (input.maxUses ?? 1) : input.maxUses,
     max_uses_per_user: input.maxUsesPerUser,
     user_id: input.userId,
     starts_at: input.startsAt,

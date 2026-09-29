@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { CouponField } from "./coupon-field";
@@ -6,11 +6,15 @@ import type { AvailableCoupon } from "@/app/api/coupons/available/route";
 
 function offer(over: Partial<AvailableCoupon> = {}): AvailableCoupon {
   return {
+    id: over.code ?? "VW7K2X",
     code: "VW7K2X",
     type: "percent",
     value: 10,
     discount: 8000,
     minSubtotal: 0,
+    maxDiscount: null,
+    eligible: true,
+    shortfall: 0,
     endsAt: null,
     personal: false,
     ...over,
@@ -27,8 +31,14 @@ const NOOP = {
   onRemove: () => {},
 };
 
+/** «Солих» / «Сонгох» — бүх санал dialog дотор. */
+async function openPicker(name: RegExp = /Солих|Сонгох/) {
+  await userEvent.click(screen.getByRole("button", { name }));
+  return screen.findByRole("dialog");
+}
+
 describe("applied coupon", () => {
-  it("shows the code and what it saved", () => {
+  it("fits on one line: code · saving", () => {
     render(
       <CouponField
         {...NOOP}
@@ -38,9 +48,21 @@ describe("applied coupon", () => {
     );
 
     expect(screen.getByText("VWQ13B")).toBeTruthy();
-    expect(screen.getByText("10,000₮ хэмнэлээ")).toBeTruthy();
-    // Nothing left to choose while one is applied.
+    expect(screen.getByText("−10,000₮")).toBeTruthy();
+    // Nothing to type while one is applied — the input lives in the dialog.
     expect(screen.queryByPlaceholderText("Купон код")).toBeNull();
+  });
+
+  it("says when the page picked it", () => {
+    render(
+      <CouponField
+        {...NOOP}
+        applied={{ code: "VWQ13B", discount: 10000 }}
+        autoApplied
+        offers={[]}
+      />,
+    );
+    expect(screen.getByText("Хамгийн их хэмнэлттэйг сонголоо")).toBeTruthy();
   });
 
   it("can be removed", async () => {
@@ -57,6 +79,24 @@ describe("applied coupon", () => {
     await userEvent.click(screen.getByLabelText("Купон хасах"));
     expect(onRemove).toHaveBeenCalled();
   });
+
+  it("counts the coupons to swap between, and marks the one in use", async () => {
+    const offers = [
+      offer({ code: "VWQ13B", discount: 10000 }),
+      offer({ code: "VW7K2X", discount: 8000 }),
+    ];
+    render(
+      <CouponField
+        {...NOOP}
+        applied={{ code: "VWQ13B", discount: 10000 }}
+        offers={offers}
+      />,
+    );
+
+    const dialog = await openPicker(/Солих \(2\)/);
+    const inUse = within(dialog).getByText("Хэрэглэж байна");
+    expect(inUse.closest("button")?.getAttribute("aria-pressed")).toBe("true");
+  });
 });
 
 describe("available coupons", () => {
@@ -65,42 +105,71 @@ describe("available coupons", () => {
     offer({ code: "VWQ13B", type: "fixed", value: 5000, discount: 5000 }),
   ];
 
-  it("leads with what each coupon is, not just its code", () => {
+  it("sums them up in one row instead of listing every card", () => {
     render(<CouponField {...NOOP} applied={null} offers={OFFERS} />);
 
-    expect(screen.getByText("10%")).toBeTruthy();
-    // A fixed amount is compacted so it fits the tile.
-    expect(screen.getByText("5мянга")).toBeTruthy();
+    expect(screen.getByText("2 купон ашиглах боломжтой")).toBeTruthy();
     expect(screen.getByText("−8,000₮")).toBeTruthy();
+    // The codes themselves wait in the dialog.
+    expect(screen.queryByText("VWQ13B")).toBeNull();
   });
 
-  it("marks the best saving, and only when there is a choice", () => {
+  it("leads with what each coupon is, not just its code", async () => {
+    render(<CouponField {...NOOP} applied={null} offers={OFFERS} />);
+    const dialog = await openPicker();
+
+    expect(within(dialog).getByText("10%")).toBeTruthy();
+    // A fixed amount is compacted so it fits the tile.
+    expect(within(dialog).getByText("5мянга")).toBeTruthy();
+    expect(within(dialog).getByText("−8,000₮")).toBeTruthy();
+  });
+
+  it("marks the best saving, and only when there is a choice", async () => {
     const { unmount } = render(
       <CouponField {...NOOP} applied={null} offers={OFFERS} />,
     );
-    expect(screen.getAllByText("Хамгийн их")).toHaveLength(1);
+    expect(within(await openPicker()).getAllByText("Хамгийн их")).toHaveLength(
+      1,
+    );
     unmount();
 
     render(<CouponField {...NOOP} applied={null} offers={[OFFERS[0]]} />);
-    expect(screen.queryByText("Хамгийн их")).toBeNull();
+    expect(within(await openPicker()).queryByText("Хамгийн их")).toBeNull();
   });
 
-  it("applies one on a tap", async () => {
+  it("applies one on a tap and closes", async () => {
     const onPick = vi.fn();
     render(
       <CouponField {...NOOP} applied={null} offers={OFFERS} onPick={onPick} />,
     );
 
-    await userEvent.click(screen.getByText("VWQ13B"));
+    const dialog = await openPicker();
+    await userEvent.click(within(dialog).getByText("VWQ13B"));
     expect(onPick).toHaveBeenCalledWith(OFFERS[1]);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
-  it("folds the manual input away when there are offers to pick", async () => {
+  it("lists every coupon, however many, with the code field outside the scroll", async () => {
+    const ten = Array.from({ length: 10 }, (_, i) =>
+      offer({ code: `C${i}`, discount: 1000 + i }),
+    );
+    render(<CouponField {...NOOP} applied={null} offers={ten} />);
+    expect(screen.getByText("10 купон ашиглах боломжтой")).toBeTruthy();
+
+    const dialog = await openPicker();
+    const list = within(dialog).getByRole("list", { name: "Таны купон" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(10);
+    expect(list.className).toContain("overflow-y-auto");
+    const input = within(dialog).getByPlaceholderText("Купон код");
+    expect(list.contains(input)).toBe(false);
+  });
+
+  it("keeps a code field in the dialog", async () => {
     render(<CouponField {...NOOP} applied={null} offers={OFFERS} />);
 
     expect(screen.queryByPlaceholderText("Купон код")).toBeNull();
-    await userEvent.click(screen.getByText("Өөр код оруулах"));
-    expect(screen.getByPlaceholderText("Купон код")).toBeTruthy();
+    const dialog = await openPicker();
+    expect(within(dialog).getByPlaceholderText("Купон код")).toBeTruthy();
   });
 
   it("shows the input straight away when there are none", () => {
@@ -108,7 +177,7 @@ describe("available coupons", () => {
     expect(screen.getByPlaceholderText("Купон код")).toBeTruthy();
   });
 
-  it("flags an expiry only when it is close enough to act on", () => {
+  it("flags an expiry only when it is close enough to act on", async () => {
     const days = (n: number) =>
       new Date(Date.now() + n * 86_400_000).toISOString();
     render(
@@ -121,10 +190,126 @@ describe("available coupons", () => {
         ]}
       />,
     );
+    const dialog = await openPicker();
 
-    // A month-long wheel coupon on every row would be noise.
-    expect(screen.getByText("2 хоногийн дараа дуусна")).toBeTruthy();
-    expect(screen.queryByText(/25 хоног/)).toBeNull();
+    // Close: a countdown. Far: the plain date, never "25 хоногийн дараа".
+    expect(within(dialog).getByText("2 хоногийн дараа дуусна")).toBeTruthy();
+    expect(within(dialog).queryByText(/25 хоног/)).toBeNull();
+    expect(within(dialog).getByText(/хүртэл$/)).toBeTruthy();
+  });
+
+  it("lists every coupon separately, even identical offers", async () => {
+    render(
+      <CouponField
+        {...NOOP}
+        applied={null}
+        offers={[
+          offer({ code: "A1", endsAt: "2026-12-01T00:00:00Z" }),
+          offer({ code: "A2", endsAt: "2026-12-20T00:00:00Z" }),
+        ]}
+      />,
+    );
+    const dialog = await openPicker();
+    expect(within(dialog).getByText("A1")).toBeTruthy();
+    expect(within(dialog).getByText("A2")).toBeTruthy();
+    // Equal savings: no "best" to single out.
+    expect(within(dialog).queryByText("Хамгийн их")).toBeNull();
+  });
+
+  it("marks the biggest saving even when it is not first", async () => {
+    render(
+      <CouponField
+        {...NOOP}
+        applied={null}
+        offers={[
+          offer({ code: "SOON", discount: 3000 }),
+          offer({ code: "BIG", discount: 9000 }),
+        ]}
+      />,
+    );
+    const badge = within(await openPicker()).getByText("Хамгийн их");
+    expect(badge.closest("button")?.textContent).toContain("BIG");
+  });
+
+  it("shows the coupon's conditions", async () => {
+    render(
+      <CouponField
+        {...NOOP}
+        applied={null}
+        offers={[offer({ minSubtotal: 100000, maxDiscount: 20000 })]}
+      />,
+    );
+    expect(
+      within(await openPicker()).getByText(
+        /100,000₮-өөс дээш захиалгад · дээд тал нь 20,000₮/,
+      ),
+    ).toBeTruthy();
+  });
+
+  it("shows a coupon below its minimum with what is left to add, unpickable", async () => {
+    const onPick = vi.fn();
+    render(
+      <CouponField
+        {...NOOP}
+        applied={null}
+        onPick={onPick}
+        offers={[
+          offer({
+            code: "MIN100",
+            minSubtotal: 100000,
+            eligible: false,
+            shortfall: 40000,
+            discount: 0,
+          }),
+        ]}
+      />,
+    );
+    // Nothing pickable, so the manual input is open on the page …
+    expect(screen.getByPlaceholderText("Купон код")).toBeTruthy();
+    // … and the locked coupon is one tap away.
+    const dialog = await openPicker(/Бусад купон \(1\)/);
+    expect(
+      within(dialog).getByText("Дахин 40,000₮-ийн бараа нэмбэл ашиглана"),
+    ).toBeTruthy();
+    const row = within(dialog).getByText("MIN100").closest("button")!;
+    expect(row.hasAttribute("disabled")).toBe(true);
+    await userEvent.click(row);
+    expect(onPick).not.toHaveBeenCalled();
+  });
+
+  it("links to the full wallet", () => {
+    render(
+      <CouponField
+        {...NOOP}
+        applied={null}
+        offers={[]}
+        walletHref="/account/coupons"
+      />,
+    );
+    expect(
+      screen
+        .getByRole("link", { name: /Миний купоныг харах/ })
+        .getAttribute("href"),
+    ).toBe("/account/coupons");
+  });
+});
+
+describe("links under the field", () => {
+  it("keeps «Бусад купон» and the wallet link apart", () => {
+    render(
+      <CouponField
+        {...NOOP}
+        applied={null}
+        offers={[offer({ eligible: false, discount: 0, shortfall: 1000 })]}
+        walletHref="/account/coupons"
+      />,
+    );
+    const other = screen.getByRole("button", { name: /Бусад купон/ });
+    const link = screen.getByRole("link", { name: /Миний купоныг харах/ });
+    // Нэг мөрөнд, хооронд нь тусгаарлагчтай — нийлсэн текст биш.
+    const row = other.closest("div");
+    expect(row).toBe(link.closest("div"));
+    expect(row?.textContent).toMatch(/Бусад купон \(1\)·Миний купоныг харах/);
   });
 });
 
@@ -152,6 +337,22 @@ describe("manual entry", () => {
     expect(onApply).toHaveBeenCalled();
   });
 
+  it("calls apply without the click event as the code", async () => {
+    const onApply = vi.fn();
+    render(
+      <CouponField
+        {...NOOP}
+        applied={null}
+        offers={[]}
+        code="VW7K2X"
+        onApply={onApply}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Хэрэглэх" }));
+    expect(onApply).toHaveBeenCalledWith();
+  });
+
   it("surfaces a rejection message", () => {
     render(
       <CouponField
@@ -162,6 +363,21 @@ describe("manual entry", () => {
       />,
     );
     expect(screen.getByText("Купон хүчингүй байна.")).toBeTruthy();
+  });
+
+  it("closes the dialog once a typed code goes through", async () => {
+    const { rerender } = render(
+      <CouponField {...NOOP} applied={null} offers={[offer()]} />,
+    );
+    await openPicker();
+    rerender(
+      <CouponField
+        {...NOOP}
+        applied={{ code: "TYPED1", discount: 2000 }}
+        offers={[offer()]}
+      />,
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 });
 
@@ -179,13 +395,6 @@ describe("while the offers are still loading", () => {
       <CouponField {...NOOP} applied={null} offers={[]} loading={false} />,
     );
 
-    expect(screen.getByPlaceholderText("Купон код")).toBeTruthy();
-  });
-
-  it("lets the customer open the input by hand mid-load", async () => {
-    render(<CouponField {...NOOP} applied={null} offers={[offer()]} loading />);
-
-    await userEvent.click(screen.getByText("Өөр код оруулах"));
     expect(screen.getByPlaceholderText("Купон код")).toBeTruthy();
   });
 });

@@ -35,7 +35,7 @@ const TITLES: Record<string, string> = {
   "/account/orders": "Миний захиалга",
   "/account/loyalty": "Урамшуулал",
   "/account/addresses": "Хаягууд",
-  "/account/coupons": "Купон",
+  "/account/coupons": "Миний купон",
   "/products": "", // full-bleed image hero — no title, just back + cart
   "/order/success": "Захиалга",
   // /pay/<token> — the prefix match covers the token segment.

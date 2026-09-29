@@ -29,9 +29,10 @@ describe("giftAllowanceFor", () => {
     expect(giftAllowanceFor(-5000)).toBe(0);
   });
 
-  it("дээд тагтай: 1М₮ → 5, түүнээс дээш дүн эрх нэмэхгүй", () => {
+  it("дээд тагтай: 1.6М₮ → 8, түүнээс дээш дүн эрх нэмэхгүй", () => {
     expect(giftAllowanceFor(1_000_000)).toBe(5);
-    expect(giftAllowanceFor(3_000_000)).toBe(5);
+    expect(giftAllowanceFor(1_600_000)).toBe(8);
+    expect(giftAllowanceFor(3_000_000)).toBe(8);
   });
 });
 
@@ -49,6 +50,14 @@ describe("giftSlotsFor", () => {
     expect(giftSlotsFor(1_000_000, 4)).toEqual({
       earned: 5,
       allowance: 5,
+      cappedByPool: false,
+    });
+  });
+
+  it("4 ус × 2 = 8 багтаамж — дээд 8 эрх яг багтана", () => {
+    expect(giftSlotsFor(1_600_000, 4)).toEqual({
+      earned: 8,
+      allowance: 8,
       cappedByPool: false,
     });
   });
@@ -134,9 +143,17 @@ describe("giftProgress", () => {
     });
   });
 
-  it("тагт хүрсэн үед дараагийн эрх амлахгүй", () => {
+  it("хуучин 5-ын тагаас давж өснө", () => {
     expect(giftProgress(1_200_000)).toEqual({
-      allowance: 5,
+      allowance: 6,
+      toNext: 200_000,
+      atMax: false,
+    });
+  });
+
+  it("тагт хүрсэн үед дараагийн эрх амлахгүй", () => {
+    expect(giftProgress(1_700_000)).toEqual({
+      allowance: 8,
       toNext: 0,
       atMax: true,
     });

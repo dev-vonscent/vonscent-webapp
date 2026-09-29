@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { safeNext } from "@/lib/safe-next";
 import { cn } from "@/lib/utils";
 import {
   FieldError,
@@ -96,7 +97,8 @@ function Reveal({
 export function PhoneAuthForm({ mode }: { mode: Mode }) {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") ?? "/";
+  // Сайтаас гаргах `next`-ийг хаяна (open redirect).
+  const next = safeNext(params.get("next"));
   /**
    * `?next=` нь login ↔ register хооронд үсрэхэд хадгалагдах ёстой: checkout-
    * оос ирсэн хүн «Бүртгэлтэй юу? Нэвтрэх» дараад буцах замаа алдвал энэ

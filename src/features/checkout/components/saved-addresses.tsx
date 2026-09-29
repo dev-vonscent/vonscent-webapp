@@ -3,7 +3,18 @@
 import { Check, MapPin, Pencil, Plus } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
+import { checkoutSchema } from "@/lib/validators/order";
 import type { AddressRow } from "@/db/types";
+
+/**
+ * Хадгалсан хаягийн утас захиалгын шалгалтыг давах эсэх. Хаягийн дэвтэр нь
+ * утсыг профайлаас авдаг тул хуучин / туршилтын мөрөнд «123» мэт утга үлдсэн
+ * байж болно — картан дээр нь хэлэхгүй бол алдаа нь зөвхөн доорх талбарт гарч,
+ * хаана нь буруу байгааг хэрэглэгч холбож чадахгүй.
+ */
+function phoneValid(phone: string): boolean {
+  return checkoutSchema.shape.contactPhone.safeParse(phone).success;
+}
 
 /**
  * The saved-address picker at the head of checkout.
@@ -69,9 +80,16 @@ export function SavedAddresses({
                 </span>
               )}
             </span>
-            <span className="text-muted-foreground mt-0.5 block text-xs">
-              {a.phone}
-            </span>
+            {phoneValid(a.phone) ? (
+              <span className="text-muted-foreground mt-0.5 block text-xs">
+                {a.phone}
+              </span>
+            ) : (
+              <span className="text-destructive mt-0.5 block text-xs">
+                {a.phone ? `${a.phone} · ` : ""}утасны дугаар буруу — доор засна
+                уу
+              </span>
+            )}
             <span className="text-muted-foreground mt-1 block text-xs">
               {[a.city, a.district, a.detail].filter(Boolean).join(", ")}
             </span>

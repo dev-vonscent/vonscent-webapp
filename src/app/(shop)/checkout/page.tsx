@@ -3,8 +3,14 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
-import { Truck, ShieldCheck, ShoppingCart, Clock, Loader2 } from "lucide-react";
+import {
+  Truck,
+  ShieldCheck,
+  ShoppingCart,
+  Clock,
+  Loader2,
+  UserRound,
+} from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -50,7 +56,10 @@ import {
   AddressDialog,
   type AddressFormValue,
 } from "@/features/checkout/components/address-dialog";
+import { CheckoutSection } from "@/features/checkout/components/checkout-section";
 import { CouponField } from "@/features/checkout/components/coupon-field";
+import { OrderLines } from "@/features/checkout/components/order-lines";
+import { GuestPerksPrompt } from "@/features/checkout/components/guest-perks-prompt";
 import { LoyaltyField } from "@/features/checkout/components/loyalty-field";
 import { useCoupon } from "@/features/checkout/use-coupon";
 import { formatPrice } from "@/lib/format";
@@ -63,7 +72,6 @@ import {
   useCart,
   selectCheckoutSubtotal,
   selectCheckoutGross,
-  collectionBasePrice,
 } from "@/features/cart/store";
 import {
   useCheckoutLines,
@@ -138,11 +146,13 @@ function takeDraft(): CheckoutDraft | null {
  * буцаж ирэх замгүй /-д хаягддаг байв.
  */
 const REGISTER_HREF = "/register?next=%2Fcheckout";
+/** Купон, V point зөвхөн бүртгэлтэй хэрэглэгчид (0104) — нэвтрээд буцна. */
+const LOGIN_HREF = "/login?next=%2Fcheckout";
 
 /**
  * Алдаатай талбар аль хэсэгт байгаа вэ. Утсан дээр товч нь 4 дэлгэцийн доор
  * байдаг тул «дарсан ч юу ч болохгүй» гэсэн мэдрэмжийг зөвхөн энэ зураглал
- * дээр суурилсан гүйлгэлт л арилгана (`Section` дээрх `scroll-mt-24`).
+ * дээр суурилсан гүйлгэлт л арилгана (`CheckoutSection` дээрх `scroll-mt-24`).
  */
 /**
  * Модал хаагдаж, Radix фокусаа нээсэн товч руу буцаах хүртэлх зай.
@@ -182,6 +192,7 @@ export default function CheckoutPage() {
    */
   const grossSubtotal = useCart(selectCheckoutGross);
   const coupon = useCart((s) => s.coupon);
+  const setCartCoupon = useCart((s) => s.setCoupon);
   const removeOrdered = useCart((s) => s.clearOrdered);
   const removeLine = useCart((s) => s.remove);
   const setQty = useCart((s) => s.setQty);
@@ -204,6 +215,11 @@ export default function CheckoutPage() {
   const serverErrorRef = React.useRef<HTMLParagraphElement>(null);
 
   const [authed, setAuthed] = React.useState(false);
+  /**
+   * Нэвтрэлтийг шалгаж дууссан эсэх. `authed` нь хариу иртэл false байдаг тул
+   * үүнгүйгээр нэвтэрсэн хэрэглэгчид «нэвтэрнэ үү» мөр нэг хором анивчина.
+   */
+  const [authChecked, setAuthChecked] = React.useState(false);
   const [addresses, setAddresses] = React.useState<AddressRow[]>([]);
   /** Chosen saved address id, or NEW_ADDRESS for the one typed in the dialog. */
   const [addressChoice, setAddressChoice] = React.useState(NEW_ADDRESS);
@@ -256,6 +272,7 @@ export default function CheckoutPage() {
   const {
     discount,
     offers,
+    autoApplied: couponAutoApplied,
     code,
     setCode,
     apply: applyCoupon,
@@ -264,7 +281,13 @@ export default function CheckoutPage() {
     message: couponMsg,
     pick: pickCoupon,
     clear: clearCoupon,
-  } = useCoupon(subtotal, { enabled: mounted });
+  } = useCoupon(subtotal, { enabled: mounted && authed, autoPickBest: true });
+
+  // Гарсан хэрэглэгчийн сагсанд үлдсэн купон зочинд хамаарахгүй — сервер ч
+  // татгалзана (0104), тиймээс харуулж хуурахгүй.
+  React.useEffect(() => {
+    if (authChecked && !authed && coupon) setCartCoupon(null);
+  }, [authChecked, authed, coupon, setCartCoupon]);
 
   const {
     register,
@@ -273,6 +296,7 @@ export default function CheckoutPage() {
     setValue,
     getValues,
     setError,
+    setFocus,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -312,9 +336,17 @@ export default function CheckoutPage() {
     // Хэсэг дотроо бичих талбартай бол түүнийг фокуслана (гар утсан дээр
     // гар нь дараагийн алхмыг өөрөө хэлнэ). `preventScroll` — эс тэгвээс
     // браузар дөнгөж эхэлсэн гүйлгэлтийг таслана.
-    section
-      ?.querySelector<HTMLElement>('[aria-invalid="true"]')
-      ?.focus({ preventScroll: true });
+    //
+    // Хаяг огт оруулаагүй үед хэсэгт `aria-invalid` талбар байхгүй (талбарууд
+    // popup дотор) тул фокус товч дээрээ үлдэж, гарын хэрэглэгч, дэлгэц
+    // уншигч хаашаа явахаа мэддэггүй байв — хэсгийн эхний үйлдэл рүү
+    // (сонгосон хаяг / «Шинэ хаяг нэмэх») шилжүүлнэ.
+    const focusTarget =
+      section?.querySelector<HTMLElement>('[aria-invalid="true"]') ??
+      section?.querySelector<HTMLElement>(
+        '[role="radio"][aria-checked="true"], button, input',
+      );
+    focusTarget?.focus({ preventScroll: true });
   }, []);
 
   /**
@@ -362,23 +394,37 @@ export default function CheckoutPage() {
   }, [getValues, khoroo, draft, noteTags, giftIds]);
 
   /**
+   * Хаягаас автоматаар бөглөсөн сүүлийн нэр, утас. Талбарын одоогийн утга
+   * үүнтэй ижил бол «хүн гараар бичээгүй» гэж үзэж, дараагийн хаягаар солино.
+   */
+  const autoContact = React.useRef<
+    Partial<Record<"contactName" | "contactPhone", string>>
+  >({});
+  /**
+   * Хүлээн авагчийг нэг мөрөөс задалж бүтэн талбараар засаж байгаа эсэх.
+   * Хаяг солигдоход хаагдана — шинэ хаягийн хүн дахин нэг мөр болно.
+   */
+  const [recipientEditing, setRecipientEditing] = React.useState(false);
+
+  /**
    * Fills the form from a saved address, recipient name and phone included.
    *
-   * `contact: "overwrite"` — хэрэглэгч өөрөө хаяг сонгосон: тэр хаягийн хүн
-   * рүү шилжинэ. `"ifEmpty"` — хуудас нээгдэхэд үндсэн хаягаар: буцаж
-   * ирсэн draft эсвэл аль хэдийн бичсэн утгыг дарахгүй. Аль ч үед талбарууд
-   * засагдах боломжтой тул өөр хүнд хүргүүлэх бол шууд солино.
+   * Нэр, утсыг зөвхөн ХООСОН эсвэл өмнөх хаягаас бөглөгдсөн хэвээрээ байвал
+   * солино. Өмнө нь хэрэглэгч хаяг сонгох бүрд дарагддаг байсан тул «бэлэг —
+   * өөр хүн хүлээж авна» гээд бичсэн нэр нь хаяг солиход алга болдог байв.
+   * Буцаж ирсэн draft-ын утга ч мөн адил хадгалагдана.
    */
   const applyAddress = React.useCallback(
-    (
-      a: AddressRow,
-      { contact = "overwrite" }: { contact?: "overwrite" | "ifEmpty" } = {},
-    ) => {
+    (a: AddressRow) => {
       const fill = (key: "contactName" | "contactPhone", v: string) => {
         if (!v) return;
-        if (contact === "ifEmpty" && getValues(key)) return;
-        // Өмнөх алдаа (жишээ нь хоосон утас) шинэ утгаар шууд арилна.
+        const current = getValues(key) ?? "";
+        if (current && current !== autoContact.current[key]) return;
+        // Өмнөх алдаа (жишээ нь хоосон утас) шинэ утгаар шууд арилна, харин
+        // хадгалсан хаягийн буруу утас (жишээ нь «123») тэр дороо алдаа болж
+        // гарна — илгээсний дараа биш.
         setValue(key, v, { shouldValidate: true });
+        autoContact.current[key] = v;
       };
       fill("contactName", a.recipient);
       fill("contactPhone", a.phone);
@@ -501,11 +547,15 @@ export default function CheckoutPage() {
   React.useEffect(() => {
     setMounted(true);
     const supabase = createClient();
-    if (!supabase) return;
+    if (!supabase) {
+      setAuthChecked(true);
+      return;
+    }
     (async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      setAuthChecked(true);
       if (!user) return;
       setAuthed(true);
       const [
@@ -548,7 +598,7 @@ export default function CheckoutPage() {
       // the same one every time.
       if (rows[0]) {
         setAddressChoice(rows[0].id);
-        applyAddress(rows[0], { contact: "ifEmpty" });
+        applyAddress(rows[0]);
       }
       setLoyaltyRules(
         parseLoyaltyRules((setting as { value?: unknown } | null)?.value),
@@ -658,6 +708,30 @@ export default function CheckoutPage() {
     loyaltyRules,
   );
 
+  const contactName = watch("contactName") ?? "";
+  const contactPhone = watch("contactPhone") ?? "";
+  const savedAddress = addresses.find((a) => a.id === addressChoice);
+  /**
+   * Хүлээн авагч нь сонгосон хадгалсан хаягийнх хэвээр, зөв бөгөөд алдаагүй
+   * бол талбаруудыг дахин асуухгүй — хаягийн карт дээр нэр, утас нь аль хэдийн
+   * бичээстэй. Буруу утастай (хуучин «123») хаяг бүтэн форм хэвээр үлдэнэ.
+   */
+  const recipientCollapsed =
+    !recipientEditing &&
+    Boolean(savedAddress) &&
+    contactName === savedAddress?.recipient &&
+    contactPhone === savedAddress?.phone &&
+    formSchema.shape.contactName.safeParse(contactName).success &&
+    formSchema.shape.contactPhone.safeParse(contactPhone).success &&
+    !errors.contactName &&
+    !errors.contactPhone;
+
+  function editRecipient() {
+    setRecipientEditing(true);
+    // Талбарууд дараагийн render-т л гарна.
+    window.setTimeout(() => setFocus("contactName"), 0);
+  }
+
   /** Popup-ыг одоогийн хаягийн утгаар нээнэ — дутуу хороог гүйцээх зам. */
   function openAddressWith(seed: AddressFormValue | null) {
     setAddressSeed(seed);
@@ -675,6 +749,7 @@ export default function CheckoutPage() {
   }
 
   function onAddressChoice(next: string) {
+    setRecipientEditing(false);
     if (next === NEW_ADDRESS) {
       // Оруулсан хаяг байхгүй бол сонгох юм ч байхгүй — popup нээнэ.
       if (!draft) {
@@ -793,7 +868,7 @@ export default function CheckoutPage() {
           shipKhoroo: khoroo,
           shipDetail: composeDetail(khoroo, values.shipDetail),
           note: note || undefined,
-          couponCode: coupon?.code,
+          couponCode: authed ? coupon?.code : undefined,
           deliverOn: values.deliverOn,
           loyaltyUsed: loyaltyApplied,
           saveAddress: saveAddr,
@@ -906,11 +981,13 @@ export default function CheckoutPage() {
                   ? "Сагсан дахь багц худалдаанд байхгүй болсон байна. Багцаа шинэчилнэ үү."
                   : data.error === "ZONE_UNAVAILABLE"
                     ? "Сонгосон бүсэд хүргэлт хийх боломжгүй байна."
-                    : // Ижил захиалга аль хэдийн боловсруулагдаж байна —
-                      // дахин дарвал давхар захиалга болох тул зогсооно.
-                      data.error === "ORDER_PENDING"
-                      ? "Таны захиалга боловсруулагдаж байна. Хэдэн секунд хүлээгээд «Захиалга хайх» хэсгээс шалгана уу."
-                      : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
+                    : data.error === "LOGIN_REQUIRED"
+                      ? "Купон, V point ашиглахын тулд нэвтэрнэ үү."
+                      : // Ижил захиалга аль хэдийн боловсруулагдаж байна —
+                        // дахин дарвал давхар захиалга болох тул зогсооно.
+                        data.error === "ORDER_PENDING"
+                        ? "Таны захиалга боловсруулагдаж байна. Хэдэн секунд хүлээгээд «Захиалга хайх» хэсгээс шалгана уу."
+                        : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
         );
         return;
       }
@@ -959,13 +1036,6 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-352 px-4 pt-8 md:px-8 md:pb-24 lg:pb-8">
-      {/* «Сагс руу буцах» линк байхгүй: сагс нь толгойн навигацид ямагт
-          байдаг, харин захиалгын хуудсын толгойд гарц тавих нь эндээс гарах
-          сонголтыг хамгийн түрүүнд уншуулна. */}
-      <h1 className="mb-8 text-3xl font-semibold tracking-tight">
-        Захиалга өгөх
-      </h1>
-
       <form
         onSubmit={handleSubmit(onSubmit, onInvalid)}
         // Шалгалтыг Zod + талбарын доорх мессеж хийнэ; browser-ийн англи
@@ -974,6 +1044,18 @@ export default function CheckoutPage() {
         className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-10"
       >
         <div className="space-y-6">
+          {/* «Сагс руу буцах» линк байхгүй: сагс нь толгойн навигацид ямагт
+              байдаг, харин захиалгын хуудсын толгойд гарц тавих нь эндээс
+              гарах сонголтыг хамгийн түрүүнд уншуулна.
+
+              Гарчиг зүүн баганад: хоёр баганын дээр байхдаа тоймыг ~68px доош
+              түлхэж, хуудас нээгдэх мөчид «Төлбөр төлөх» дэлгэцээс хагас
+              гардаг байв — картын `max-h` нь sticky үеийн `top-24`-өөр
+              бодогддог. Одоо тойм толгойн доор шууд эхэлнэ. */}
+          <h1 className="mb-8 text-3xl font-semibold tracking-tight">
+            Захиалга өгөх
+          </h1>
+
           {/* Guest prompt: register to earn loyalty points */}
           {mounted && !authed && (
             <div className="bg-secondary rounded-2xl px-4 py-3.5 text-sm">
@@ -1002,7 +1084,11 @@ export default function CheckoutPage() {
           )}
 
           {/* Хүргэлтийн хаяг — хадгалсан хаягууд + popup-аар нэмсэн шинэ хаяг */}
-          <Section id="checkout-address" step={1} title="Хүргэлтийн хаяг">
+          <CheckoutSection
+            id="checkout-address"
+            step={1}
+            title="Хүргэлтийн хаяг"
+          >
             <SavedAddresses
               addresses={authed ? addresses : []}
               value={addressChoice}
@@ -1174,39 +1260,64 @@ export default function CheckoutPage() {
                 }
               />
             </Field>
-          </Section>
+          </CheckoutSection>
 
           {/* Хүлээн авагч — талбарууд зориуд хоосон эхэлнэ (дансны нэр, утсаар
-              бөглөхгүй), хаяг сонгоход л бөглөгдөнө. */}
-          <Section
+              бөглөхгүй), хаяг сонгоход л бөглөгдөнө. Хадгалсан хаягийн хүн
+              хэвээр бол нэг мөр — хаягийн карт дээрх мэдээллийг давтахгүй. */}
+          <CheckoutSection
             id="checkout-recipient"
             step={2}
             title="Хүлээн авагчийн мэдээлэл"
           >
             <div className="grid gap-4 sm:grid-cols-2">
-              {/* `autoComplete` нь утсан дээрх хамгийн том хэмнэлт: Chrome-ийн
-                  автобөглөлт энэ хоёр талбарыг нэг товшилтоор дүүргэдэг.
-                  Нэрийг `name` биш `shipping name` гэж тэмдэглэв — хүлээн
-                  авагч нь захиалагч өөрөө байх албагүй (бэлэг). */}
-              <Field label="Нэр" error={errors.contactName?.message}>
-                <Input
-                  {...register("contactName")}
-                  placeholder="Хүлээн авах хүний нэр"
-                  autoComplete="shipping name"
-                />
-              </Field>
-              <Field label="Утас" error={errors.contactPhone?.message}>
-                <Input
-                  {...register("contactPhone")}
-                  placeholder="99112233"
-                  type="tel"
-                  inputMode="numeric"
-                  // Монголын дугаар 8 орон — 11 оронтой (улсын код түрүүлсэн)
-                  // дугаарыг илгээх хүртэл хүлээж байгаад буцаах нь хожуу.
-                  maxLength={8}
-                  autoComplete="shipping tel-national"
-                />
-              </Field>
+              {recipientCollapsed ? (
+                <div className="bg-secondary flex items-center gap-3 rounded-xl py-1.5 pr-1.5 pl-3 text-sm sm:col-span-2">
+                  <UserRound className="text-muted-foreground size-4 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate">
+                    <span className="font-medium">{contactName}</span>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {contactPhone}
+                    </span>
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0 text-xs"
+                    onClick={editRecipient}
+                  >
+                    Өөр хүн хүлээн авах
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {/* `autoComplete` нь утсан дээрх хамгийн том хэмнэлт: Chrome-ийн
+                      автобөглөлт энэ хоёр талбарыг нэг товшилтоор дүүргэдэг.
+                      Нэрийг `name` биш `shipping name` гэж тэмдэглэв — хүлээн
+                      авагч нь захиалагч өөрөө байх албагүй (бэлэг). */}
+                  <Field label="Нэр" error={errors.contactName?.message}>
+                    <Input
+                      {...register("contactName")}
+                      placeholder="Хүлээн авах хүний нэр"
+                      autoComplete="shipping name"
+                    />
+                  </Field>
+                  <Field label="Утас" error={errors.contactPhone?.message}>
+                    <Input
+                      {...register("contactPhone")}
+                      placeholder="99112233"
+                      type="tel"
+                      inputMode="numeric"
+                      // Монголын дугаар 8 орон — 11 оронтой (улсын код түрүүлсэн)
+                      // дугаарыг илгээх хүртэл хүлээж байгаад буцаах нь хожуу.
+                      maxLength={8}
+                      autoComplete="shipping tel-national"
+                    />
+                  </Field>
+                </>
+              )}
               {/* Заавал биш. Зочин хэрэглэгчийн хувьд захиалгаа дахин олох
                   шууд зам нь энэ хаяг руу ирэх линк — эс тэгвээс зөвхөн
                   захиалгын дугаар + утсаараа /order/find-ээс хайна. */}
@@ -1227,7 +1338,7 @@ export default function CheckoutPage() {
                 </p>
               </Field>
             </div>
-          </Section>
+          </CheckoutSection>
 
           {/* Бэлгийн 1мл дээж — эрхийн тоогоор, зөвхөн админы сангаас. */}
           {mounted && (
@@ -1237,6 +1348,7 @@ export default function CheckoutPage() {
               className="scroll-mt-24 focus:outline-none"
             >
               <GiftSamplePicker
+                step={3}
                 allowance={giftAllowance}
                 goodsAfterDiscount={goodsAfterDiscount}
                 value={giftIds}
@@ -1246,97 +1358,19 @@ export default function CheckoutPage() {
           )}
         </div>
 
-        {/* Summary */}
-        <div className="lg:sticky lg:top-24 lg:h-fit">
-          <Card className="overflow-hidden">
-            <CardContent className="space-y-5 p-6">
+        {/* Summary.
+            Десктоп дээр карт нь дэлгэцийн өндрөөс хэтрэхгүй: дүн ба «Төлбөр
+            төлөх» доод хэсэгт ямагт харагдана, илүү гарсан агуулга нь дээд
+            хэсэг дотроо гүйнэ. Өмнө нь ~1340px карт наалдах зайгүй байсан тул
+            товч 1366×768 дээр ч fold-оос доош ордог байв. */}
+        <div className="lg:sticky lg:top-24 lg:self-start">
+          <Card className="overflow-hidden lg:flex lg:max-h-[calc(100dvh-7rem)] lg:flex-col">
+            <CardContent className="space-y-4 p-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
               <h2 className="text-lg font-semibold">Захиалгын тойм</h2>
 
-              <div className="space-y-3">
-                {mounted &&
-                  collections.map((c) => (
-                    <div key={c.key} className="flex items-center gap-3">
-                      {/* Тоо ширхгийн тэмдэг зургийн хүрээний *гадна* байх
-                          ёстой: `overflow-hidden` дотор байхдаа хагас
-                          хайчлагдаж, зураг дээр хар зэрэг шиг харагддаг. */}
-                      <div className="relative size-14 shrink-0">
-                        <div className="bg-muted relative size-full overflow-hidden rounded-xl">
-                          {c.image && (
-                            <Image
-                              src={c.image}
-                              alt={c.name}
-                              fill
-                              sizes="56px"
-                              className="object-cover"
-                            />
-                          )}
-                        </div>
-                        <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">
-                          {c.qty}
-                        </span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm/tight font-medium">
-                          {c.name}
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          Багц · {c.ml}ml · {c.members.length} үнэртэн
-                        </p>
-                        {/* Багц дотор ЯМАР ус байгааг тоймд нэрээр нь бичнэ.
-                            Өмнө нь зөвхөн багцын нэр, нэг зураг, «N үнэртэн»
-                            гэсэн тоо л харагддаг байсан тул худалдан авагч
-                            төлөхийн өмнө сонголтоо шалгах ямар ч арга
-                            байгаагүй — сагсанд аль хэдийн ингэж бичдэг
-                            (cart/page.tsx), тойм нь л хоцорч байв. */}
-                        <ul className="text-muted-foreground mt-0.5 space-y-0.5 text-xs">
-                          {c.members.map((m) => (
-                            <li key={m.variantId} className="truncate">
-                              • {m.brand} — {m.name}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <span className="text-sm font-medium">
-                        {formatPrice(collectionBasePrice(c) * c.qty)}
-                      </span>
-                    </div>
-                  ))}
-                {mounted &&
-                  items.map((i) => (
-                    <div key={i.key} className="flex items-center gap-3">
-                      {/* Тоо ширхгийн тэмдэг зургийн хүрээний *гадна* байх
-                          ёстой: `overflow-hidden` дотор байхдаа хагас
-                          хайчлагдаж, зураг дээр хар зэрэг шиг харагддаг. */}
-                      <div className="relative size-14 shrink-0">
-                        <div className="bg-muted relative size-full overflow-hidden rounded-xl">
-                          {i.image && (
-                            <Image
-                              src={i.image}
-                              alt={i.name}
-                              fill
-                              sizes="56px"
-                              className="object-cover"
-                            />
-                          )}
-                        </div>
-                        <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">
-                          {i.qty}
-                        </span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm/tight font-medium">
-                          {i.name}
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          {i.brand} · {i.ml}ml
-                        </p>
-                      </div>
-                      <span className="text-sm font-medium">
-                        {formatPrice(i.unitPrice * i.qty)}
-                      </span>
-                    </div>
-                  ))}
-              </div>
+              {mounted && (
+                <OrderLines items={items} collections={collections} />
+              )}
 
               <div className="gold-rule" />
 
@@ -1345,19 +1379,32 @@ export default function CheckoutPage() {
                   байсан тул дүн хэрхэн гарсныг дээрээс доош уншиж
                   болдоггүй байв. */}
               <div className="space-y-2.5">
-                {/* Coupon — also offered here, not just in the cart. */}
-                <CouponField
-                  applied={coupon}
-                  offers={offers}
-                  code={code}
-                  onCodeChange={setCode}
-                  onApply={applyCoupon}
-                  applying={applying}
-                  loading={offersLoading}
-                  message={couponMsg}
-                  onPick={pickCoupon}
-                  onRemove={clearCoupon}
-                />
+                {/* Купон — зөвхөн нэвтэрсэн хэрэглэгчид (0104). Зочинд
+                    яг энэ байрлалд нэвтрэх нэг мөр. */}
+                {mounted && authed ? (
+                  <CouponField
+                    applied={coupon}
+                    autoApplied={couponAutoApplied}
+                    offers={offers}
+                    code={code}
+                    onCodeChange={setCode}
+                    onApply={applyCoupon}
+                    applying={applying}
+                    loading={offersLoading}
+                    message={couponMsg}
+                    onPick={pickCoupon}
+                    onRemove={clearCoupon}
+                    walletHref="/account/coupons"
+                  />
+                ) : (
+                  mounted &&
+                  authChecked && (
+                    <GuestPerksPrompt
+                      href={LOGIN_HREF}
+                      onNavigate={keepDraft}
+                    />
+                  )
+                )}
 
                 {mounted && authed && maxLoyalty > 0 && (
                   <LoyaltyField
@@ -1455,25 +1502,6 @@ export default function CheckoutPage() {
                 />
               </div>
 
-              <div className="gold-rule" />
-
-              {/* Хаяг гарч ирэх хүртэл энэ тоо нь эцсийн дүн БИШ — шошго нь
-                  түүнийг шууд хэлнэ, эс тэгвээс «Нийт төлөх» гэж уншсан дүн
-                  дараа нь өсөх нь амласнаа зөрчсөнтэй адил. */}
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="font-medium">
-                  {hasAddress ? "Нийт төлөх төлбөр" : "Хүргэлтгүй дүн"}
-                </span>
-                <span className="text-2xl font-semibold tabular-nums">
-                  {formatPrice(total)}
-                </span>
-              </div>
-              {!hasAddress && (
-                <p className="text-muted-foreground text-xs">
-                  Хаягаа оруулмагц хүргэлтийн төлбөр нэмэгдэж, эцсийн дүн гарна.
-                </p>
-              )}
-
               {/* Энэ худалдан авалт хэдэн оноо авчрах вэ. Зочинд ижил тоог
                   хуудасны толгой дахь бүртгэлийн санамж аль хэдийн хэлдэг тул
                   энд давтахгүй — тойм нь ЭНЭ захиалгын баримт байх ёстой. */}
@@ -1484,19 +1512,6 @@ export default function CheckoutPage() {
                     +{pointsEarned.toLocaleString("mn-MN")} V point
                   </strong>{" "}
                   хуримтлагдана — хүргэгдсэний дараа зарцуулах боломжтой.
-                </p>
-              )}
-
-              {/* `role="alert"` — эс тэгвээс захиалга татгалзсаныг дэлгэц
-                  уншигч хэрэглэгч огт мэдэхгүй өнгөрнө (WCAG 4.1.3). */}
-              {serverError && (
-                <p
-                  ref={serverErrorRef}
-                  role="alert"
-                  tabIndex={-1}
-                  className="bg-destructive/10 text-destructive scroll-mt-24 rounded-xl px-3 py-2.5 text-sm"
-                >
-                  {serverError}
                 </p>
               )}
 
@@ -1515,12 +1530,46 @@ export default function CheckoutPage() {
                   -с хойш захиалга цуцлах, өөрчлөх боломжгүй.
                 </p>
               )}
+            </CardContent>
+
+            {/* Дүн + товч — десктоп дээр гүйдэггүй доод хэсэг. */}
+            <div className="space-y-3 px-5 pb-5 lg:shrink-0">
+              <div className="gold-rule" />
+              {/* Хаяг гарч ирэх хүртэл энэ тоо нь эцсийн дүн БИШ — шошго нь
+                    түүнийг шууд хэлнэ, эс тэгвээс «Нийт төлөх» гэж уншсан дүн
+                    дараа нь өсөх нь амласнаа зөрчсөнтэй адил. */}
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="font-medium">
+                  {hasAddress ? "Нийт төлөх төлбөр" : "Хүргэлтгүй дүн"}
+                </span>
+                <span className="text-2xl font-semibold tabular-nums">
+                  {formatPrice(total)}
+                </span>
+              </div>
+              {!hasAddress && (
+                <p className="text-muted-foreground text-xs">
+                  Хаягаа оруулмагц хүргэлтийн төлбөр нэмэгдэж, эцсийн дүн гарна.
+                </p>
+              )}
+
+              {/* `role="alert"` — эс тэгвээс захиалга татгалзсаныг дэлгэц
+                    уншигч хэрэглэгч огт мэдэхгүй өнгөрнө (WCAG 4.1.3). */}
+              {serverError && (
+                <p
+                  ref={serverErrorRef}
+                  role="alert"
+                  tabIndex={-1}
+                  className="bg-destructive/10 text-destructive scroll-mt-24 rounded-xl px-3 py-2.5 text-sm"
+                >
+                  {serverError}
+                </p>
+              )}
 
               {/* Товч нь захиалгыг БАТАЛГААЖУУЛДАГГҮЙ — төлөгдөөгүй захиалга
-                  үүсгээд QPay рүү дамжуулна. «Захиалга баталгаажуулах» гэдэг нь
-                  эндээс бүх зүйл дуусна гэсэн амлалт өгч байсан. */}
+                    үүсгээд QPay рүү дамжуулна. «Захиалга баталгаажуулах» гэдэг нь
+                    эндээс бүх зүйл дуусна гэсэн амлалт өгч байсан. */}
               {/* Утсан дээр энэ товчийг наалдсан зурвас орлоно — хоёулаа зэрэг
-                  харагдвал нэг дэлгэц дээр ижил хоёр CTA болно. */}
+                    харагдвал нэг дэлгэц дээр ижил хоёр CTA болно. */}
               <Button
                 type="submit"
                 size="lg"
@@ -1531,13 +1580,17 @@ export default function CheckoutPage() {
                   ? "Илгээж байна…"
                   : zoneBlocked
                     ? "Энэ хаяг руу хүргэлт хийхгүй"
-                    : "Төлбөр төлөх"}
+                    : // Дүн нь хаяг тодорсны дараа л эцсийнх — түүнээс
+                      // өмнө товч дээр тоо амлахгүй.
+                      hasAddress
+                      ? `Төлбөр төлөх · ${formatPrice(total)}`
+                      : "Төлбөр төлөх"}
               </Button>
               <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-center text-xs">
                 <ShieldCheck className="size-3.5" />
                 Аюулгүй төлбөр · QPay
               </p>
-            </CardContent>
+            </div>
           </Card>
         </div>
 
@@ -1652,37 +1705,6 @@ export default function CheckoutPage() {
         </div>
       </ResponsiveDialog>
     </div>
-  );
-}
-
-/**
- * Дугаарласан алхам. `id` нь заавал: форм буруу үед `onInvalid` яг энэ хэсэг
- * рүү гүйлгэдэг (`scroll-mt-24` нь толгойн доор нуугдахаас хамгаална).
- *
- * `icon` prop байсан ч `step > 0` үед хэзээ ч хүрдэггүй байсан тул хассан —
- * хоёулаа дугаартай дуудагддаг байв.
- */
-function Section({
-  id,
-  step,
-  title,
-  children,
-}: {
-  id: string;
-  step: number;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section id={id} className="bg-card scroll-mt-24 rounded-2xl p-5 sm:p-6">
-      <div className="mb-5 flex items-center gap-3">
-        <span className="bg-secondary flex size-9 shrink-0 items-center justify-center rounded-full">
-          <span className="text-sm font-semibold">{step}</span>
-        </span>
-        <h2 className="text-lg font-semibold">{title}</h2>
-      </div>
-      <div className="space-y-4">{children}</div>
-    </section>
   );
 }
 

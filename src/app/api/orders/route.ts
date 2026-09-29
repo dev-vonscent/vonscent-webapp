@@ -134,6 +134,13 @@ export async function POST(req: Request) {
     userId = user?.id ?? null;
   }
 
+  // Купон ба V point зөвхөн бүртгэлтэй хэрэглэгчид (0104). place_order ч мөн
+  // зочны кодыг үл хэрэгсдэг, гэхдээ чимээгүй хаявал хэрэглэгч хүлээж байсан
+  // хөнгөлөлтгүй захиалга үүсгэнэ — тиймээс энд тод татгалзана.
+  if (!userId && (input.couponCode || input.loyaltyUsed > 0)) {
+    return NextResponse.json({ error: "LOGIN_REQUIRED" }, { status: 401 });
+  }
+
   if (supabase) {
     // Идемпотентын эзэмшил — нөөц түгжих, захиалга үүсгэх, QPay руу залгахаас
     // БҮГДЭЭС нь өмнө. Сүлжээ тасарч хариу нь алдагдсан үед хэрэглэгч дахин
