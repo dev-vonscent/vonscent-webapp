@@ -4,6 +4,7 @@ import { SITE } from "@/lib/constants";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/toaster";
 import { Analytics } from "@/components/shared/analytics";
+import { KeyboardDismissRepair } from "@/components/shared/keyboard-dismiss-repair";
 import Script from "next/script";
 import "./globals.css";
 
@@ -65,6 +66,7 @@ export default function RootLayout({
         </Script>
         <Providers>{children}</Providers>
         <Toaster />
+        <KeyboardDismissRepair />
         <Analytics />
       </body>
     </html>
