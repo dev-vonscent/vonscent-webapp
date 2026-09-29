@@ -332,7 +332,12 @@ function OfferList({
       ? usable.find((o) => o.discount === top)?.id
       : undefined;
   return (
-    <ul className="space-y-2">
+    // Жагсаалт өөрөө гүйнэ — «Код оруулах» нь доор нь ямагт харагдана.
+    // `px-1 py-1` нь сонгосон мөрийн ring-ийг overflow хайчлахаас хамгаална.
+    <ul
+      aria-label="Таны купон"
+      className="-mx-1 max-h-[min(50dvh,22rem)] space-y-2 overflow-y-auto overscroll-contain px-1 py-1"
+    >
       {offers.map((o) => (
         <li key={o.id}>
           <OfferRow

@@ -27,9 +27,6 @@ const schema = z.object({
   subtotal: z.number().int().nonnegative(),
 });
 
-/** How many offers the checkout shows; the rest live on /account/coupons. */
-const OFFER_LIMIT = 5;
-
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
@@ -88,7 +85,9 @@ export async function POST(req: Request) {
     });
   }
 
-  return NextResponse.json({
-    coupons: sortOffers(coupons).slice(0, OFFER_LIMIT),
-  });
+  // Бүгдийг буцаана. Өмнө нь дуусах огноогоор эрэмбэлээд эхний 5-ыг л
+  // өгдөг байсан тул 10 купонтой хүний хамгийн их хэмнэдэг купон тасарч,
+  // автомат сонголт ч түүнийг хэзээ ч олохгүй байв. Checkout-ын жагсаалт
+  // dialog дотроо гүйдэг болсон; дээд хязгаар нь дээрх `.limit(50)`.
+  return NextResponse.json({ coupons: sortOffers(coupons) });
 }

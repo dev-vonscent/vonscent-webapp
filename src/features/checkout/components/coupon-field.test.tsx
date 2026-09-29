@@ -149,6 +149,21 @@ describe("available coupons", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
+  it("lists every coupon, however many, with the code field outside the scroll", async () => {
+    const ten = Array.from({ length: 10 }, (_, i) =>
+      offer({ code: `C${i}`, discount: 1000 + i }),
+    );
+    render(<CouponField {...NOOP} applied={null} offers={ten} />);
+    expect(screen.getByText("10 купон ашиглах боломжтой")).toBeTruthy();
+
+    const dialog = await openPicker();
+    const list = within(dialog).getByRole("list", { name: "Таны купон" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(10);
+    expect(list.className).toContain("overflow-y-auto");
+    const input = within(dialog).getByPlaceholderText("Купон код");
+    expect(list.contains(input)).toBe(false);
+  });
+
   it("keeps a code field in the dialog", async () => {
     render(<CouponField {...NOOP} applied={null} offers={OFFERS} />);
 
