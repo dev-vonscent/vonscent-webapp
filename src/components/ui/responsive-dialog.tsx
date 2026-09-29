@@ -14,6 +14,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { KeyboardInset } from "@/components/shared/keyboard-inset";
+import { KeyboardGapFill } from "@/components/shared/keyboard-gap-fill";
 import { cn } from "@/lib/utils";
 
 function useIsDesktop() {
@@ -75,8 +76,8 @@ export function ResponsiveDialog({
         side="bottom"
         // Гар нээлттэй үед sheet-ийг layout viewport биш, ХАРАГДАЖ БУЙ хэсгийн
         // доод ирмэгт бэхэлнэ (`--vv-bottom`, KeyboardInset) — гарын яг дээр
-        // зогсоно, завсраар ард нь юу ч харагдахгүй. Overlay ч мөн адил доош
-        // сунана. Өндөр нь харагдах хэсэгтээ бүрэн багтана.
+        // зогсоно. Өндөр нь харагдах хэсэгтээ бүрэн багтана. Доорх iOS
+        // toolbar-ын зурвасыг `KeyboardGapFill` дүүргэнэ.
         overlayClassName="bottom-[min(0px,var(--vv-bottom,0px))]"
         className={cn(
           "max-h-[min(85dvh,calc(var(--vv-height,100dvh)-0.5rem))] rounded-t-3xl border-t-0 px-0 pt-3 pb-[max(env(safe-area-inset-bottom),1.5rem)]",
@@ -96,6 +97,7 @@ export function ResponsiveDialog({
         }}
       >
         <KeyboardInset />
+        <KeyboardGapFill />
         {/* Толгой гүйдэггүй: агуулга багтахгүй үед зөвхөн доорх хэсэг гүйж,
             гарчиг ямагт харагдана. Хоёулаа sheet-ийн `gap`-ийг удамшуулна —
             дуудагч `className="gap-3"` өгвөл урьдын адил бүх мөрөнд үйлчилнэ. */}
