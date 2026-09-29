@@ -30,3 +30,9 @@ export function revalidateProductReviews(slug: string | null) {
   revalidatePath("/products");
   revalidatePath("/");
 }
+
+/** Бэлэн багцын сэтгэгдэл (0107) — багцын хуудас ба жагсаалт. */
+export function revalidateCollectionReviews(slug: string | null) {
+  if (slug) revalidatePath(`/collections/${slug}`);
+  revalidatePath("/collections");
+}

@@ -224,6 +224,39 @@ describe("buy now", () => {
     expect(state.coupon).toBeNull();
   });
 
+  it("edits the «Захиалах» line in place from checkout, cart untouched", () => {
+    useCart.getState().add(line("v1", 10000));
+    useCart.getState().startBuyNow(line("v2", 5000));
+
+    useCart.getState().setBuyNowQty(3);
+    useCart.getState().setBuyNowVariant({
+      variantId: "v2-20",
+      ml: 20,
+      unitPrice: 16000,
+    });
+
+    const state = useCart.getState();
+    expect(selectCheckoutItems(state)).toMatchObject([
+      { key: "v2-20", variantId: "v2-20", ml: 20, unitPrice: 16000, qty: 3 },
+    ]);
+    expect(selectCheckoutSubtotal(state)).toBe(48000);
+    expect(state.items.map((i) => [i.key, i.qty])).toEqual([["v1", 1]]);
+  });
+
+  it("clamps the «Захиалах» qty to [1, max]", () => {
+    useCart.getState().startBuyNow(line("v2", 5000));
+    useCart.getState().setBuyNowQty(0);
+    expect(selectCheckoutItems(useCart.getState())[0].qty).toBe(1);
+    useCart.getState().setBuyNowQty(9, 4);
+    expect(selectCheckoutItems(useCart.getState())[0].qty).toBe(4);
+  });
+
+  it("changes a bundle «Захиалах» line's qty too", () => {
+    useCart.getState().startBuyNowCollection(bundle("c1", 40000));
+    useCart.getState().setBuyNowQty(2);
+    expect(selectCheckoutSubtotal(useCart.getState())).toBe(80000);
+  });
+
   it("drops a line that the server reports as unavailable", () => {
     useCart.getState().startBuyNow(line("v1", 10000));
 

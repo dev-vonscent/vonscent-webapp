@@ -22,6 +22,7 @@
 |---|---|
 | [roadmap.md](./planning/roadmap.md) | 8 фазын замын зураг |
 | [todo.md](./planning/todo.md) | Хийх ажлын жагсаалт (гүйцэтгэлийн төлөв) |
+| [client-feedback-ug-2026-09.md](./planning/client-feedback-ug-2026-09.md) | Клиентийн UG presentation санал — todo + төлөвлөгөө (2026-09) |
 | [valuation.md](./planning/valuation.md) | Үнэлгээ / өртөг |
 
 ### `import/` — Дата импортын заавар ба загвар

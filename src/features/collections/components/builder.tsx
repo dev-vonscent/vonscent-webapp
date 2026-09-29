@@ -60,7 +60,6 @@ function BuilderInner({
   const ids = picked.map((p) => p.productId);
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
-  const [desc, setDesc] = React.useState("");
   const [save, setSave] = React.useState(isLoggedIn);
   const [busy, setBusy] = React.useState(false);
 
@@ -151,7 +150,6 @@ function BuilderInner({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
-          description: desc.trim(),
           gender: "unisex",
           productIds: ids,
         }),
@@ -162,14 +160,13 @@ function BuilderInner({
     setOpen(false);
     setPicked([]);
     setName("");
-    setDesc("");
     router.refresh();
 
     // Урьд нь энэ мөчид дэлгэц зүгээр л цэвэрлэгдэж, юу ч болсон эсэх нь
     // мэдэгдэхгүй байсан — хамгийн өндөр зорилготой алхам чимээгүй төгсдөг
     // байв. Toast нь root layout-д аль хэдийн холбогдсон (`lib/toast`).
     toast.success(
-      `${count} үнэртэн бүхий ${ml}ml багц сагсанд нэмэгдлээ.`,
+      `${ml}мл-ээр ${count} үнэртэн бүхий багц сагсанд нэмэгдлээ.`,
       "Багц үүслээ",
     );
   }
@@ -184,7 +181,7 @@ function BuilderInner({
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="mb-2 flex w-full items-center justify-between gap-2">
             <span className="text-muted-foreground text-xs font-medium">
-              Хэмжээ
+              Үнэртэн нэг тус бүрийн хэмжээ сонгох
             </span>
             <div className="bg-secondary flex items-center gap-0.5 rounded-full p-0.5">
               {BUNDLE_ML_SIZES.map((size) => (
@@ -258,8 +255,9 @@ function BuilderInner({
         <div className="mt-3">
           {selected.length === 0 ? (
             <div className="border-border text-muted-foreground flex h-16 items-center justify-center rounded-xl border border-dashed px-3 text-center text-sm">
-              Доорх үнэртнүүдээс {settings.minItems}+ сонгож багцаа бүрдүүлээд{" "}
-              {settings.customDiscountPct}%-ийн хэмнэлттэй аваарай.
+              {settings.minItems} ба түүнээс дээш төрлийн үнэртэн сонгож багцаа
+              бүрдүүлээд нийт үнийн дүнгээс {settings.customDiscountPct}%
+              хямдралтай үнээр аваарай
             </div>
           ) : (
             <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
@@ -356,7 +354,6 @@ function BuilderInner({
             disabled={!canCreate}
             onClick={() => {
               setName("");
-              setDesc("");
               setOpen(true);
             }}
             className="mt-3 w-full"
@@ -519,16 +516,7 @@ function BuilderInner({
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Жишээ: Миний дуртай 4"
-            className="mt-1"
-          />
-        </label>
-        <label className="text-sm font-medium">
-          Тайлбар
-          <Input
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-            placeholder="Сонголттой"
+            placeholder="Жишээ: Миний дуртай"
             className="mt-1"
           />
         </label>
@@ -559,7 +547,7 @@ function BuilderInner({
 
 /**
  * Каталогийн шүүлт/эрэмбэ/хайлтын хэрэгслүүд нэг л query state хуваалцдаг тул
- * багц угсрагчийг ч каталогийн адил provider дотор боох ёстой.
+ * багц үүсгэгчийг ч каталогийн адил provider дотор боох ёстой.
  */
 export function CollectionBuilder(
   props: React.ComponentProps<typeof BuilderInner>,
@@ -612,12 +600,12 @@ function DiscountHint({
       {count === 0 ? (
         <>
           <strong className="text-foreground">{minItems} үнэртэн</strong>{" "}
-          сонговол {pct}% хямдрал нэмэгдэнэ
+          сонговол {pct}% хямдарна
         </>
       ) : (
         <>
           <strong className="text-foreground">Дахин {missing} үнэртэн</strong>{" "}
-          сонговол {pct}% хямдрал нэмэгдэнэ
+          сонговол {pct}% хямдарна
         </>
       )}
     </p>

@@ -21,6 +21,61 @@ export function JsonLd({ data }: { data: Json | Json[] }) {
   );
 }
 
+/**
+ * Home-page entity: brand name, logo and contact channels for Google's
+ * knowledge panel / sitelinks. Blank social fields are dropped.
+ */
+export function organizationJsonLd(social: {
+  instagram: string;
+  facebook: string;
+  phone: string;
+  email: string;
+}): Json {
+  const sameAs = [social.instagram, social.facebook].filter(Boolean);
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": `${SITE.url}/#organization`,
+    name: SITE.name,
+    url: SITE.url,
+    logo: `${SITE.url}/icon.png`,
+    ...(sameAs.length ? { sameAs } : {}),
+    ...(social.phone || social.email
+      ? {
+          contactPoint: {
+            "@type": "ContactPoint",
+            contactType: "customer service",
+            areaServed: "MN",
+            availableLanguage: "mn",
+            ...(social.phone ? { telephone: social.phone } : {}),
+            ...(social.email ? { email: social.email } : {}),
+          },
+        }
+      : {}),
+  };
+}
+
+/** Site name + catalog search box (the catalog reads `?q=`). */
+export function websiteJsonLd(): Json {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${SITE.url}/#website`,
+    name: SITE.name,
+    url: SITE.url,
+    inLanguage: "mn",
+    publisher: { "@id": `${SITE.url}/#organization` },
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${SITE.url}/catalog?q={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
+  };
+}
+
 export function breadcrumbJsonLd(
   items: { name: string; path?: string }[],
 ): Json {

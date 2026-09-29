@@ -1,17 +1,10 @@
 import { NextResponse } from "next/server";
 import { revalidatePublic } from "@/lib/cache";
-import { z } from "zod";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const patchSchema = z.object({
-  category: z.string().optional(),
-  question: z.string().optional(),
-  answer: z.string().optional(),
-  sortOrder: z.number().int().optional(),
-  isActive: z.boolean().optional(),
-});
+import { faqPatchSchema as patchSchema } from "@/lib/validators/faq";
 
 async function guard() {
   if (!isSupabaseConfigured) return { demo: true as const };

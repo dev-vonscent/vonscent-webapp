@@ -32,6 +32,9 @@ interface DbCollection {
   name: string;
   gender: Gender;
   description: string | null;
+  usage_description?: string | null;
+  rating_avg?: number | string | null;
+  rating_count?: number | null;
   discount_pct: number | string;
   image_url: string | null;
   is_active: boolean;
@@ -46,8 +49,8 @@ interface DbCollection {
 }
 
 const SELECT = `
-  id, slug, type, user_id, name, gender, description,
-  discount_pct, image_url, is_active, is_featured,
+  id, slug, type, user_id, name, gender, description, usage_description,
+  rating_avg, rating_count, discount_pct, image_url, is_active, is_featured,
   collection_items ( product_id, sort_order ),
   collection_ml_discounts ( ml, discount_pct, price ),
   collection_tags ( tags ( kind ) )
@@ -152,6 +155,9 @@ function build(
     name: row.name,
     gender: row.gender,
     description: row.description ?? "",
+    usageDescription: row.usage_description ?? "",
+    ratingAvg: Number(row.rating_avg ?? 0),
+    ratingCount: row.rating_count ?? 0,
     discountPct,
     mlDiscounts,
     mlPrices,
@@ -213,6 +219,19 @@ export const getBaseCollections = cache(async (): Promise<Collection[]> => {
   const productById = await membersById(rows);
   return rows.map((row) => build(row, productById, settings));
 });
+
+/**
+ * «Хямдрал» таг дээрх «Хямдралтай багц» мөр (клиент, 2026-09 UG).
+ *
+ * Одоогоор ИДЭВХТЭЙ бүх бэлэн багц — багц бүр үндсэн хувиар хямдардаг тул.
+ * «Үндсэн хувиас илүү хямдралтай нь л уу» гэдэг нь клиентээс тодруулах
+ * асуулт (docs/planning/client-feedback-ug-2026-09.md). Худалдаж авч
+ * болохгүй (дууссан) багцыг онцлох мөрийнх шиг алгасна.
+ */
+export async function getSaleCollections(): Promise<Collection[]> {
+  const all = await getBaseCollections();
+  return all.filter((c) => !c.soldOut && c.discountRange.max > 0);
+}
 
 /** Featured base collections for the home rail. */
 export async function getFeaturedCollections(limit = 4): Promise<Collection[]> {
@@ -320,7 +339,7 @@ export async function getCollectionOrderInfo(id: string): Promise<{
 }
 
 /**
- * Багц угсрах хуудсын НЭГ ХУУДАС бараа.
+ * Багц үүсгэх хуудсын НЭГ ХУУДАС бараа.
  *
  * Шүүлт / эрэмбэ / хуудаслалт нь `catalog_search()` дотор — каталогийн
  * хуудастай ЯГ нэг эх сурвалж, тиймээс хоёр дэлгэц хэзээ ч өөр бараа
@@ -380,7 +399,7 @@ export async function getBuilderProducts(
       }[]
     >(supabase, "product_variants_for", { p_ids: items.map((i) => i.id) });
     if (!data?.length) {
-      // 0064 хэрэгжээгүй сан дээр ч угсрагч ажиллана.
+      // 0064 хэрэгжээгүй сан дээр ч үүсгэгч ажиллана.
       for (const p of await getProductDetailsByIds(items.map((i) => i.id))) {
         extra.set(p.id, {
           availableMl: p.availableMl,
@@ -431,6 +450,6 @@ export async function getBuilderProducts(
   };
 }
 
-/** Багц угсрагчийн нэг хуудсанд хэдэн бараа. Каталогийнхаас өгөөмөр: энд
+/** Багц үүсгэгчийн нэг хуудсанд хэдэн бараа. Каталогийнхаас өгөөмөр: энд
  *  сонголт хийж байгаа тул нэг дэлгэцэнд илүү олон ус харагдах нь дээр. */
 export const BUILDER_PER_PAGE = 24;

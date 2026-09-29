@@ -202,7 +202,7 @@ export default function AdminSettingsPage() {
                   })
                 }
               />
-              Өөрөө угсрах багц идэвхтэй
+              Өөрөө үүсгэх багц идэвхтэй
             </label>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -232,8 +232,8 @@ export default function AdminSettingsPage() {
               />
             </Field>
             <Field
-              label="Өөрөө угсарсан багцын хямдрал %"
-              hint="Худалдан авагч өөрөө сонгож угсарсан багцад."
+              label="Өөрөө үүсгэсэн багцын хямдрал %"
+              hint="Худалдан авагч өөрөө сонгож үүсгэсэн багцад."
             >
               <Input
                 type="number"

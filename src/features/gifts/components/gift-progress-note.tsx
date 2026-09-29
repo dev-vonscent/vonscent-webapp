@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils";
 import { useGiftPool } from "../use-gift-pool";
 
 /**
- * Сагсан дээрх бэлгийн сануулга: «1 мл дээж авахад X₮ дутуу» эсвэл «N дээж
- * сонгох эрхтэй».
+ * Сагсан дээрх бэлгийн сануулга: босгын дүрэм, одоогийн эрх (мл), дараагийн
+ * эрх хүртэл дутуу дүн.
  *
  * Сагсанд купон ордоггүй тул энд купоны өмнөх дүнгээр бодно — эцсийн эрхийг
  * checkout-ийн `GiftSamplePicker` купоны дараах дүнгээр харуулна. Сан
@@ -43,28 +43,32 @@ export function GiftProgressNote({
       )}
     >
       <Gift className="text-gold-strong mt-0.5 size-4 shrink-0" />
+      {/* Текст Б (клиент, 2026-09 UG). Тоо бүр constants / тохиргооноос. */}
       <div className="space-y-0.5">
-        {allowance > 0 ? (
-          <p>
-            Та <strong>{allowance}</strong> ширхэг {ml} мл дээжийг бэлгээр
-            сонгох эрхтэй. Төлбөрийн хуудсанд сонгоно.
-          </p>
-        ) : (
-          <p>
-            {ml} мл бэлгийн дээж авахад <strong>{formatPrice(toNext)}</strong>{" "}
-            дутуу байна.
-          </p>
-        )}
-        <p className="text-muted-foreground text-xs text-balance">
-          {cappedByPool
-            ? `Бэлгийн санд одоогоор боломжтой нь ${allowance} ширхэг. `
-            : atMax
-              ? `Нэг захиалгад хамгийн ихдээ ${GIFT_MAX_SAMPLES} дээж. `
-              : allowance > 0
-                ? `Дахиад ${formatPrice(toNext)}-ийн бараа нэмбэл 1 дээж нэмэгдэнэ. `
-                : `Барааны дүн ${formatPrice(GIFT_THRESHOLD)} тутамд 1 дээж бэлгээр сонгоно. `}
-          Купон ашиглавал эрхийг хямдарсан дүнгээр бодно.
+        <p>
+          {formatPrice(GIFT_THRESHOLD)} тутамд сонгогдсон үнэртнүүдээс {ml}мл
+          бэлэгт дагалдана. (Дараагийн хуудсанд бэлгээ сонгоорой)
         </p>
+        <div className="text-muted-foreground text-xs text-balance">
+          {allowance > 0 && (
+            <p>
+              Та бэлэгт{" "}
+              <strong className="text-foreground">{allowance * ml}мл</strong>{" "}
+              үнэртэн сонгох эрхтэй байна.
+            </p>
+          )}
+          {cappedByPool ? (
+            <p>Бэлгийн санд одоогоор боломжтой нь {allowance * ml}мл.</p>
+          ) : atMax ? (
+            <p>Нэг захиалгад хамгийн ихдээ {GIFT_MAX_SAMPLES * ml}мл.</p>
+          ) : (
+            <p>
+              Дахиад {formatPrice(toNext)}-ийн бараа нэмснээр {ml}мл бэлэг
+              нэмэгдэнэ.
+            </p>
+          )}
+          <p>Купон ашигласан тохиолдолд хямдарсан дүнгээс бодогдоно.</p>
+        </div>
       </div>
     </div>
   );

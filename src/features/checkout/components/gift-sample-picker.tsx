@@ -29,9 +29,12 @@ import { CheckoutSection } from "./checkout-section";
  *    хэрэг.
  * 3. **Нэг усыг `GIFT_PER_PRODUCT_LIMIT` хүртэл авч болно.** Сан 4 устай
  *    байхад 1М₮-ийн захиалга 5 эрх өгдөг — toggle үед сүүлчийн эрх нь
- *    мухардаж, тайлбаргүй үрэгддэг байв. Тиймээс олон эрхтэй үед хавтан бүр
- *    тоолно (дарахад +1, «−»-ээр хасна). `value` нь давхардал агуулсан
+ *    мухардаж, тайлбаргүй үрэгддэг байв. `value` нь давхардал агуулсан
  *    ЖАГСААЛТ (олонлог биш). Нэг эрхтэй үед (хамгийн элбэг) radio.
+ * 4. **Хавтас дарах = сонгох / болих; 2 дахь ширхэг нь зөвхөн «+» товчоор.**
+ *    Өмнө нь сонгосон хавтсыг дахин дарахад 2 дахь ширхэг НЭМЭГДДЭГ байсан:
+ *    сонголтоо болих гэж дарсан хэрэглэгчийн 7 ус «8/8» гэж тоологдоод 8 дахь
+ *    усыг сонгох боломжгүй болдог байв (клиент, 2026-09 UG).
  *
  * Энэ нь сар бүрийн 1мл БЭЛГИЙН дээж — 2ml хэмжээний сонголттой хамаагүй.
  */
@@ -102,23 +105,25 @@ export function GiftSamplePicker({
   }
 
   const single = allowance === 1;
-  /** Нэг мөр, хоёр ажил: хэдэн эрхтэй, дараагийнх хүртэл хэд дутуу. */
-  const summary =
+  const ml = pool?.sampleMl ?? 1;
+  /**
+   * Текст В (клиент, 2026-09 UG) — мөр бүр нөхцөлтэй: эрхгүй үед «0мл эрхтэй»,
+   * тагт хүрсэн үед «дахиад нэмбэл» гэж худал амлахгүй.
+   */
+  const summary = [
     allowance > 0
-      ? [
-          `${allowance} дээж сонгох эрхтэй`,
-          cappedByPool
-            ? "бэлгийн сангийн багтаамжаар хязгаарлагдсан"
-            : atMax
-              ? `нэг захиалгад хамгийн ихдээ ${GIFT_MAX_SAMPLES}`
-              : `${formatPrice(toNext)} нэмбэл +1`,
-          allowance > 1 && GIFT_PER_PRODUCT_LIMIT > 1
-            ? `нэг уснаас ${GIFT_PER_PRODUCT_LIMIT} хүртэл`
-            : null,
-        ]
-          .filter(Boolean)
-          .join(" · ")
-      : `Купоны дараах барааны дүн ${formatPrice(threshold)} хүрвэл 1 дээж бэлгээр сонгоно — дахиад ${formatPrice(toNext)} дутуу.`;
+      ? `Та бэлэгт ${allowance * ml}мл үнэртэн сонгох эрхтэй байна.`
+      : null,
+    allowance > 1 && GIFT_PER_PRODUCT_LIMIT > 1
+      ? `Нэг үнэртнээс дээд тал нь ${GIFT_PER_PRODUCT_LIMIT} ширхэг сонгох боломжтой.`
+      : null,
+    cappedByPool
+      ? "Бэлгийн сангийн багтаамжаар хязгаарлагдсан."
+      : atMax
+        ? `Нэг захиалгад хамгийн ихдээ ${GIFT_MAX_SAMPLES * ml}мл.`
+        : `Дахиад ${formatPrice(toNext)}-ийн бараа нэмснээр ${ml}мл бэлэг нэмэгдэнэ.`,
+    "Купон ашигласан тохиолдолд хямдарсан дүнгээс бодогдоно.",
+  ].filter((line): line is string => Boolean(line));
 
   function pick(id: string) {
     const count = counts.get(id) ?? 0;
@@ -128,13 +133,18 @@ export function GiftSamplePicker({
       onChange(count > 0 ? [] : [id]);
       return;
     }
-    if (left > 0 && count < GIFT_PER_PRODUCT_LIMIT) add(id);
+    // Сонгосон хавтас нь toggle: дахин дарвал тэр усны бүх ширхгийг болино.
+    if (count > 0) {
+      onChange(value.filter((v) => v !== id));
+      return;
+    }
+    if (left > 0) add(id);
   }
 
   return (
     <CheckoutSection
       step={step}
-      title={`Бэлгийн ${pool?.sampleMl ?? 1} мл дээж`}
+      title={`Бэлэг /Захиалгын үнийн дүнгийн ${formatPrice(threshold)} тутамд ${ml}мл/`}
       aside={
         allowance > 0 ? (
           <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
@@ -143,7 +153,11 @@ export function GiftSamplePicker({
         ) : undefined
       }
     >
-      <p className="text-muted-foreground -mt-2 text-sm">{summary}</p>
+      <div className="text-muted-foreground -mt-2 space-y-0.5 text-sm">
+        {summary.map((line) => (
+          <p key={line}>{line}</p>
+        ))}
+      </div>
 
       {/* Том 4 карт (~800px) нэг ширхэг сонгохын тулд хуудасны хамгийн том
           блок болдог байв. Одоо ~120px өндөр хэвтээ мөр; ус нэмэгдвэл
@@ -157,7 +171,7 @@ export function GiftSamplePicker({
           {options.map((o) => {
             const count = counts.get(o.id) ?? 0;
             const canAdd = left > 0 && count < GIFT_PER_PRODUCT_LIMIT;
-            const disabled = !single && count === 0 && !canAdd;
+            const disabled = !single && count === 0 && left <= 0;
             return (
               <div key={o.id} className="relative w-20 shrink-0 snap-start">
                 <button
@@ -170,7 +184,7 @@ export function GiftSamplePicker({
                   aria-label={
                     single
                       ? `${o.brand} ${o.name}`
-                      : `${o.brand} ${o.name} — ${count > 0 ? `${count} ширхэг, нэгээр нэмэх` : "сонгох"}`
+                      : `${o.brand} ${o.name} — ${count > 0 ? `${count} ширхэг, сонголтоо болих` : "сонгох"}`
                   }
                   className="block w-full text-left disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -189,18 +203,6 @@ export function GiftSamplePicker({
                         className="object-cover"
                       />
                     )}
-                    {/* Нэг уснаас 2 дахийг нь авч болохыг харуулна — хавтан
-                        өөрөө +1 нэмдэг ч сонгогдсоны дараа дахин дарж болно
-                        гэдэг нь «−» ганцаараа байхад харагддаггүй байв.
-                        Товч биш тэмдэг: дарах нь хавтан руу л очно. */}
-                    {!single && count > 0 && canAdd && (
-                      <span
-                        aria-hidden
-                        className="bg-card text-foreground absolute top-1 right-1 flex size-6 items-center justify-center rounded-full shadow-sm"
-                      >
-                        <Plus className="size-3.5" />
-                      </span>
-                    )}
                     {count > 0 && (
                       <span className="bg-gold-strong text-background absolute right-1 bottom-1 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">
                         {single ? (
@@ -218,7 +220,19 @@ export function GiftSamplePicker({
                     {o.name}
                   </span>
                 </button>
-                {/* Олон эрхтэй үед: хавтан дарахад нэмэгдэнэ, энэ нь хасна. */}
+                {/* Нэг уснаас 2 дахийг нь авах ЦОРЫН ГАНЦ зам — хавтас дарах нь
+                    зөвхөн сонгох / болих (дээрх №4). */}
+                {!single && count > 0 && canAdd && (
+                  <button
+                    type="button"
+                    onClick={() => add(o.id)}
+                    aria-label={`${o.name} — нэгээр нэмэх`}
+                    className="bg-card text-foreground absolute top-1 right-1 flex size-6 items-center justify-center rounded-full shadow-sm before:absolute before:size-8 before:content-['']"
+                  >
+                    <Plus className="size-3.5" />
+                  </button>
+                )}
+                {/* Олон эрхтэй үед: нэгээр хасна. */}
                 {!single && count > 0 && (
                   <button
                     type="button"

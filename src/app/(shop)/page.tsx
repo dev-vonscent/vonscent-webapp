@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { BadgeCheck, ArrowRight, Quote } from "lucide-react";
@@ -15,7 +16,17 @@ import {
   getBrands,
 } from "@/features/products/api";
 import { getRecentReviews } from "@/features/reviews/api";
-import { getPopupSettings, getHomeSections } from "@/features/content/api";
+import {
+  getPopupSettings,
+  getHomeSections,
+  getSocialSettings,
+} from "@/features/content/api";
+import {
+  JsonLd,
+  organizationJsonLd,
+  websiteJsonLd,
+} from "@/components/shared/json-ld";
+import { pageMetadata } from "@/lib/seo";
 import { getActiveBrands, getScentFamilies } from "@/features/taxonomy/api";
 import { getFeaturedCollections } from "@/features/collections/api";
 import { CollectionCard } from "@/features/collections/components/collection-card";
@@ -39,6 +50,8 @@ import {
  */
 export const revalidate = 60;
 
+export const metadata: Metadata = pageMetadata("/");
+
 /**
  * The page function itself is deliberately **not** async: nothing above blocks
  * on the database, so the hero, the trust strip and the static category grids
@@ -60,6 +73,9 @@ export default function HomePage() {
       {/* An overlay with nothing to reserve, so it streams with no fallback. */}
       <Suspense fallback={null}>
         <PromoSlot />
+      </Suspense>
+      <Suspense fallback={null}>
+        <SiteJsonLd />
       </Suspense>
 
       {/* Hero — a full-bleed banner. The artwork keeps its own 1672×941 ratio
@@ -179,7 +195,7 @@ export default function HomePage() {
                   variant="secondary"
                   className="in-[.black]:bg-white/10 in-[.black]:text-white in-[.black]:hover:bg-white/20"
                 >
-                  <Link href="/collections/build">Багц угсрах</Link>
+                  <Link href="/collections/build">Багц үүсгэх</Link>
                 </Button>
               </div>
             </div>
@@ -188,8 +204,8 @@ export default function HomePage() {
       </section>
 
       <div className="mx-auto max-w-352 space-y-10 px-4 py-8 sm:space-y-16 sm:py-14 md:px-8">
-        {/* Админы угсарсан rail-ууд («Онцлох», «Багц уснууд») эхэнд —
-            «Шинээр буусан» тэдний оронд доошоо шилжсэн. */}
+        {/* Админы үүсгэсэн rail-ууд («Онцлох», «Багц уснууд») эхэнд —
+            «Шинээр ирсэн» тэдний оронд доошоо шилжсэн. */}
         <Suspense fallback={<CarouselSkeleton action />}>
           <CuratedSections />
         </Suspense>
@@ -227,11 +243,11 @@ export default function HomePage() {
             </h2>
             <p className="text-muted-foreground">
               4 ба түүнээс дээш үнэртэн сонгоод хямдралтай үнээр аваарай — Өөрт
-              таалагдсан хослолоо хүссэнээрээ бүрдүүл.
+              таалагдсан хослолоо хүссэнээрээ бүрдүүл
             </p>
             <Button asChild size="lg">
               <Link href="/collections/build">
-                Багц угсарч эхлэх <ArrowRight className="size-4" />
+                Багц үүсгэж эхлэх <ArrowRight className="size-4" />
               </Link>
             </Button>
           </div>
@@ -337,17 +353,22 @@ export default function HomePage() {
   );
 }
 
+async function SiteJsonLd() {
+  const social = await getSocialSettings();
+  return <JsonLd data={[organizationJsonLd(social), websiteJsonLd()]} />;
+}
+
 async function PromoSlot() {
   return <PromoPopup settings={await getPopupSettings()} />;
 }
 
-/** Шинээр буусан = «Шинэ» тагтай 12 ус — hidden until it can fill a row (5d). */
+/** Шинээр ирсэн = «Шинэ» тагтай 12 ус — hidden until it can fill a row (5d). */
 async function NewArrivalsSection() {
   const products = await getNewArrivals();
   if (products.length < 4) return null;
   return (
     <section>
-      <SectionHeading title="Шинээр буусан" href="/catalog?tags=new&sort=new" />
+      <SectionHeading title="Шинээр ирсэн" href="/catalog?tags=new&sort=new" />
       <ProductCarousel products={products} />
     </section>
   );

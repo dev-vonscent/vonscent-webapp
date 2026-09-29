@@ -1,17 +1,10 @@
 import { NextResponse } from "next/server";
 import { revalidatePublic } from "@/lib/cache";
-import { z } from "zod";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const schema = z.object({
-  category: z.string().default(""),
-  question: z.string().min(1),
-  answer: z.string().min(1),
-  sortOrder: z.number().int().default(0),
-  isActive: z.boolean().default(true),
-});
+import { faqCreateSchema as schema } from "@/lib/validators/faq";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);

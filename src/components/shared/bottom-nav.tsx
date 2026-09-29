@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Search, Heart, User, Boxes } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useWishlist } from "@/features/wishlist/store";
+import { selectWishCount, useWishlist } from "@/features/wishlist/store";
 import { useBottomNavHidden } from "@/components/shared/bottom-nav-store";
 
 const LEFT = [
@@ -21,7 +21,7 @@ const RIGHT = [
 
 export function BottomNav() {
   const pathname = usePathname();
-  const wishCount = useWishlist((s) => s.ids.length);
+  const wishCount = useWishlist(selectWishCount);
   // Хуудасны үйлдлийн зурвас доод ирмэгийг эзэлсэн үед цэс замаа тавьж өгнө
   // (`useClaimBottomBar`). Унтраахын оронд гулсаж буух нь хаашаа явсныг
   // харуулж, буцаж гарахдаа ч гэнэт үсэрдэггүй.

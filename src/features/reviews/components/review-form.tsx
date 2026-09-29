@@ -10,6 +10,11 @@ import { createClient } from "@/lib/supabase/browser";
 import { reviewInputSchema } from "@/lib/validators/review";
 import { REVIEW_BODY_MAX } from "@/lib/constants";
 import { rateLimitMessage } from "@/lib/rate-limit-client";
+import {
+  targetColumn,
+  targetParam,
+  type ReviewTarget,
+} from "@/features/reviews/types";
 
 type Existing = { rating: number; body: string } | null;
 
@@ -22,11 +27,12 @@ type Existing = { rating: number; body: string } | null;
  * is loaded first, so editing is visible and deliberate.
  */
 export function ReviewForm({
-  productId,
-  slug,
+  target,
+  path,
 }: {
-  productId: string;
-  slug: string;
+  target: ReviewTarget;
+  /** Нэвтрээд буцах хуудас. */
+  path: string;
 }) {
   const router = useRouter();
   const [authed, setAuthed] = React.useState<boolean | null>(null);
@@ -37,6 +43,8 @@ export function ReviewForm({
   const [submitting, setSubmitting] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  // `target` нь объект — render бүрт шинэ лавлагаа тул effect утгуудаар нь.
+  const { kind, id } = target;
 
   React.useEffect(() => {
     let active = true;
@@ -56,7 +64,7 @@ export function ReviewForm({
       const { data: mine } = await supabase
         .from("reviews")
         .select("rating, body")
-        .eq("product_id", productId)
+        .eq(targetColumn({ kind, id }), id)
         .eq("user_id", data.user.id)
         .maybeSingle();
       if (!active || !mine) return;
@@ -68,7 +76,7 @@ export function ReviewForm({
     return () => {
       active = false;
     };
-  }, [productId]);
+  }, [kind, id]);
 
   // Reserve the form's rough height so the column doesn't jump once auth lands.
   if (authed === null) return <div className="bg-card/40 h-48 rounded-2xl" />;
@@ -78,7 +86,7 @@ export function ReviewForm({
       <p className="border-border bg-card/40 text-muted-foreground rounded-2xl border px-4 py-6 text-center text-sm">
         Сэтгэгдэл үлдээхийн тулд{" "}
         <Link
-          href={`/login?next=${encodeURIComponent(`/products/${slug}`)}`}
+          href={`/login?next=${encodeURIComponent(path)}`}
           className="text-gold-strong hover:underline"
         >
           нэвтэрнэ үү
@@ -94,7 +102,11 @@ export function ReviewForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     // Same schema the API route enforces, so a bad payload never leaves here.
-    const parsed = reviewInputSchema.safeParse({ productId, rating, body });
+    const parsed = reviewInputSchema.safeParse({
+      ...targetParam(target),
+      rating,
+      body,
+    });
     if (!parsed.success) {
       setError(
         `Үнэлгээ 1–5 од, сэтгэгдэл ${REVIEW_BODY_MAX} тэмдэгтээс хэтрэхгүй байна.`,
@@ -190,7 +202,9 @@ export function ReviewForm({
       </Button>
       {existing && (
         <p className="text-muted-foreground text-xs">
-          Нэг бүтээгдэхүүнд нэг сэтгэгдэл үлдээнэ.
+          {target.kind === "product"
+            ? "Нэг бүтээгдэхүүнд нэг сэтгэгдэл үлдээнэ."
+            : "Нэг багцад нэг сэтгэгдэл үлдээнэ."}
         </p>
       )}
     </form>

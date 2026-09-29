@@ -1,9 +1,15 @@
 import "server-only";
 import { createPublicClient } from "@/lib/supabase/public";
 import { REVIEWS_PAGE_SIZE } from "@/lib/constants";
-import type { RecentReview, Review, ReviewPage } from "./types";
+import {
+  targetColumn,
+  type RecentReview,
+  type Review,
+  type ReviewPage,
+  type ReviewTarget,
+} from "./types";
 
-export type { RecentReview, Review, ReviewPage } from "./types";
+export type { RecentReview, Review, ReviewPage, ReviewTarget } from "./types";
 
 /**
  * Review data access.
@@ -18,7 +24,7 @@ export type { RecentReview, Review, ReviewPage } from "./types";
 
 interface PublicReviewRow {
   id: string;
-  product_id: string;
+  product_id: string | null;
   user_id: string;
   rating: number;
   body: string | null;
@@ -53,11 +59,12 @@ function mapReview(r: PublicReviewRow): Review {
 }
 
 /**
- * One page of a product's reviews, newest first. `total` comes back from the
- * same query as the rows, so the header count can never disagree with the list.
+ * One page of a product's (or bundle's, 0107) reviews, newest first. `total`
+ * comes back from the same query as the rows, so the header count can never
+ * disagree with the list.
  */
-export async function getProductReviewPage(
-  productId: string,
+export async function getReviewPage(
+  target: ReviewTarget,
   offset = 0,
   limit: number = REVIEWS_PAGE_SIZE,
 ): Promise<ReviewPage> {
@@ -66,7 +73,7 @@ export async function getProductReviewPage(
   const { data, count } = await supabase
     .from("public_reviews")
     .select(REVIEW_COLUMNS, { count: "exact" })
-    .eq("product_id", productId)
+    .eq(targetColumn(target), target.id)
     .order("created_at", { ascending: false })
     // Tiebreaker: without it, two reviews sharing a timestamp can swap between
     // page requests and the "Цааш үзэх" window would skip or repeat a row.
@@ -80,15 +87,13 @@ export async function getProductReviewPage(
  * How many of those reviews actually carry text. A rating-only review is a
  * valid review but not a "сэтгэгдэл", and the header states both separately.
  */
-export async function getProductCommentCount(
-  productId: string,
-): Promise<number> {
+export async function getCommentCount(target: ReviewTarget): Promise<number> {
   const supabase = createPublicClient();
   if (!supabase) return 0;
   const { count } = await supabase
     .from("public_reviews")
     .select("id", { count: "exact", head: true })
-    .eq("product_id", productId)
+    .eq(targetColumn(target), target.id)
     .neq("body", "");
   return count ?? 0;
 }

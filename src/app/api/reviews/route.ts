@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
-import { revalidateProductReviews } from "@/lib/cache";
+import {
+  revalidateCollectionReviews,
+  revalidateProductReviews,
+} from "@/lib/cache";
 import {
   reviewDeleteSchema,
   reviewInputSchema,
   reviewPageSchema,
 } from "@/lib/validators/review";
-import { getProductReviewPage } from "@/features/reviews/api";
+import { getReviewPage } from "@/features/reviews/api";
+import type { ReviewTarget } from "@/features/reviews/types";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -13,17 +17,30 @@ import { getStaffUser } from "@/lib/auth/guard";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** Slug for the cache purge — the review rows only carry the product id. */
-async function productSlug(
+/** Validated `{ productId? , collectionId? }` → one target (schema ensures one). */
+function toTarget(v: {
+  productId?: string;
+  collectionId?: string;
+}): ReviewTarget {
+  return v.collectionId
+    ? { kind: "collection", id: v.collectionId }
+    : { kind: "product", id: v.productId! };
+}
+
+/** Purge the page the review lives on — the rows only carry the id. */
+async function revalidateTarget(
   supabase: SupabaseClient,
-  productId: string,
-): Promise<string | null> {
+  target: ReviewTarget,
+) {
+  const table = target.kind === "product" ? "products" : "collections";
   const { data } = await supabase
-    .from("products")
+    .from(table)
     .select("slug")
-    .eq("id", productId)
+    .eq("id", target.id)
     .maybeSingle();
-  return (data as { slug?: string } | null)?.slug ?? null;
+  const slug = (data as { slug?: string } | null)?.slug ?? null;
+  if (target.kind === "product") revalidateProductReviews(slug);
+  else revalidateCollectionReviews(slug);
 }
 
 /**
@@ -33,22 +50,20 @@ async function productSlug(
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const parsed = reviewPageSchema.safeParse({
-    productId: searchParams.get("productId"),
+    productId: searchParams.get("productId") ?? undefined,
+    collectionId: searchParams.get("collectionId") ?? undefined,
     offset: searchParams.get("offset") ?? 0,
   });
   if (!parsed.success) {
     return NextResponse.json({ error: "VALIDATION" }, { status: 400 });
   }
-  const page = await getProductReviewPage(
-    parsed.data.productId,
-    parsed.data.offset,
-  );
+  const page = await getReviewPage(toTarget(parsed.data), parsed.data.offset);
   return NextResponse.json(page);
 }
 
 /**
- * Submit (or update) a review for a product. Requires an authenticated user;
- * one review per (product, user) — upserted. The rating aggregate is kept in
+ * Submit (or update) a review for a product or a base bundle (0107). Requires
+ * an authenticated user; one review per (target, user) — upserted. The rating aggregate is kept in
  * sync by the `reviews_rating_sync` trigger (0070), not from here.
  */
 export async function POST(req: Request) {
@@ -80,21 +95,42 @@ export async function POST(req: Request) {
   const limited = await enforceRateLimit("review", req, { subject: user.id });
   if (limited) return limited;
 
+  const target = toTarget(input);
+  // Багцын сэтгэгдэл зөвхөн нийтийн (base), идэвхтэй багцад — хэрэглэгчийн
+  // хадгалсан custom багц бол хувийн зүйл, сэтгэгдлийн хуудас байхгүй.
+  if (target.kind === "collection") {
+    const { data: coll } = await supabase
+      .from("collections")
+      .select("id")
+      .eq("id", target.id)
+      .eq("type", "base")
+      .eq("is_active", true)
+      .maybeSingle();
+    if (!coll)
+      return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  }
+
   // Owner-scoped RLS lets the user upsert their own review.
   const { error } = await supabase.from("reviews").upsert(
     {
-      product_id: input.productId,
+      product_id: target.kind === "product" ? target.id : null,
+      collection_id: target.kind === "collection" ? target.id : null,
       user_id: user.id,
       rating: input.rating,
       body: input.body,
     },
-    { onConflict: "product_id,user_id" },
+    {
+      onConflict:
+        target.kind === "product"
+          ? "product_id,user_id"
+          : "collection_id,user_id",
+    },
   );
   if (error) {
     return NextResponse.json({ error: "INSERT_FAILED" }, { status: 500 });
   }
 
-  revalidateProductReviews(await productSlug(supabase, input.productId));
+  await revalidateTarget(supabase, target);
   return NextResponse.json({ ok: true });
 }
 
@@ -122,14 +158,22 @@ export async function DELETE(req: Request) {
     .from("reviews")
     .delete()
     .eq("id", parsed.data.id)
-    .select("product_id")
+    .select("product_id, collection_id")
     .maybeSingle();
   if (error)
     return NextResponse.json({ error: "DELETE_FAILED" }, { status: 500 });
 
-  const productId = (data as { product_id?: string } | null)?.product_id;
-  if (productId) {
-    revalidateProductReviews(await productSlug(supabase, productId));
+  const row = data as {
+    product_id: string | null;
+    collection_id: string | null;
+  } | null;
+  if (row?.product_id) {
+    await revalidateTarget(supabase, { kind: "product", id: row.product_id });
+  } else if (row?.collection_id) {
+    await revalidateTarget(supabase, {
+      kind: "collection",
+      id: row.collection_id,
+    });
   }
   return NextResponse.json({ ok: true });
 }

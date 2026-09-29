@@ -1,8 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { OrderLines } from "./order-lines";
-import type { CartCollection, CartItem } from "@/features/cart/store";
+import {
+  useCart,
+  type CartCollection,
+  type CartItem,
+} from "@/features/cart/store";
+import { useCheckoutLines } from "@/features/cart/use-cart-selection";
 
 function item(over: Partial<CartItem> = {}): CartItem {
   return {
@@ -91,5 +96,102 @@ describe("OrderLines", () => {
     render(<OrderLines items={[]} collections={[bundle({ qty: 2 })]} />);
     // 30,000 × 2 — not the discounted 27,000.
     expect(screen.getByText("60,000₮")).toBeTruthy();
+  });
+});
+
+/**
+ * Төлбөрийн хуудаснаас мөрөө засах (клиент, 2026-09 UG): урьд нь тоо, хэмжээ
+ * солих, устгах боломжгүй тул хэрэглэгч буцаж, сагсаа эхнээс нь бүрдүүлдэг
+ * байв. Засвар бүр сагсны store руу ШУУД бичигдэнэ — буцахад сагс ижил.
+ */
+/** Сагсны `add` / `addCollection`-д өгөх хэлбэр (key, qty-гүй). */
+function input<T extends { key: string; qty: number }>(
+  line: T,
+): Omit<T, "key" | "qty"> {
+  const copy: Partial<T> = { ...line };
+  delete copy.key;
+  delete copy.qty;
+  return copy as Omit<T, "key" | "qty">;
+}
+
+describe("OrderLines editable", () => {
+  function Live() {
+    // Хуудастай ижил hook — мөрүүд нь memo-той.
+    const { items, collections, buyNow } = useCheckoutLines();
+    return (
+      <OrderLines
+        items={items}
+        collections={collections}
+        editable
+        buyNow={buyNow}
+      />
+    );
+  }
+
+  beforeEach(() => {
+    useCart.setState({
+      items: [],
+      collections: [],
+      buyNow: null,
+      excludedItems: [],
+      excludedCollections: [],
+      coupon: null,
+    });
+  });
+
+  it("changes a cart line's qty in the cart itself", async () => {
+    const line = input(item());
+    useCart.getState().add(line, 1);
+    render(<Live />);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Aventus — нэгээр нэмэх" }),
+    );
+    expect(useCart.getState().items[0].qty).toBe(2);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Aventus — нэгээр хасах" }),
+    );
+    expect(useCart.getState().items[0].qty).toBe(1);
+  });
+
+  it("removes a cart line from the cart", async () => {
+    const line = input(item());
+    useCart.getState().add(line, 1);
+    render(<Live />);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Aventus — устгах" }),
+    );
+    expect(useCart.getState().items).toEqual([]);
+  });
+
+  it("edits a bundle's qty and can remove it", async () => {
+    const b = input(bundle());
+    useCart.getState().addCollection(b, 1);
+    render(<Live />);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Зуны багц — нэгээр нэмэх" }),
+    );
+    expect(useCart.getState().collections[0].qty).toBe(2);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Зуны багц — устгах" }),
+    );
+    expect(useCart.getState().collections).toEqual([]);
+  });
+
+  it("edits the «Захиалах» line without touching the cart", async () => {
+    const cartLine = input(item({ variantId: "c1" }));
+    useCart.getState().add({ ...cartLine, name: "In cart" }, 1);
+    const line = input(item());
+    useCart.getState().startBuyNow(line, 1);
+    render(<Live />);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Aventus — нэгээр нэмэх" }),
+    );
+    expect(useCart.getState().buyNow).toMatchObject({ item: { qty: 2 } });
+    expect(useCart.getState().items.map((i) => i.qty)).toEqual([1]);
+    // Ганц мөрийг хасвал checkout сагсны мөрүүд рүү чимээгүй шилжинэ —
+    // тиймээс «Захиалах» мөрөнд устгах товч байхгүй.
+    expect(
+      screen.queryByRole("button", { name: "Aventus — устгах" }),
+    ).toBeNull();
   });
 });

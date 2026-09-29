@@ -65,7 +65,14 @@ const ACCOUNT_SHORTCUTS = [
   { href: "/account/coupons", label: "Купон", icon: Ticket, badge: "coupons" },
 ] as const;
 
-export function MobileMenu({ className }: { className?: string }) {
+export function MobileMenu({
+  className,
+  social,
+}: {
+  className?: string;
+  /** Сошиал холбоосууд — server slot (social-links.tsx), капсулуудын ард. */
+  social?: React.ReactNode;
+}) {
   const pathname = usePathname();
   const [askSignOut, signOutDialog] = useSignOutConfirm();
   const isStaff = useIsStaff();
@@ -223,6 +230,7 @@ export function MobileMenu({ className }: { className?: string }) {
                   </Link>
                 </SheetClose>
               ))}
+              {social}
             </div>
           </div>
 

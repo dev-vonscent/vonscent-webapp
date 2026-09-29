@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { getFaqs } from "@/features/faq/api";
 import { FaqSearch } from "@/features/faq/components/faq-search";
 import { JsonLd, faqJsonLd } from "@/components/shared/json-ld";
@@ -12,6 +13,7 @@ import { sanitizeHtml, isRichText } from "@/lib/sanitize";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
+  ...pageMetadata("/faq"),
   title: "Түгээмэл асуулт",
   description: "Захиалга, хүргэлт, төлбөр, бараатай холбоотой түгээмэл асуулт.",
 };

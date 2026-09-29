@@ -26,20 +26,26 @@ export function CartSizeSelect({
   variantId,
   ml,
   className,
+  onPick,
 }: {
   itemKey: string;
   slug: string;
   variantId: string;
   ml: number;
   className?: string;
+  /**
+   * Сагсны мөрийн оронд өөр газар бичих — төлбөрийн хуудасны «Захиалах» мөр
+   * сагсанд байдаггүй тул `setBuyNowVariant` руу (order-lines.tsx).
+   */
+  onPick?: (variant: CartVariant) => void;
 }) {
   const setVariant = useCart((s) => s.setVariant);
   const [options, setOptions] = React.useState<
-    (CartVariant & {
-      sellable: boolean;
-      /** `bottle` бол сав түр дууссан (0095), `stock` бол эх савны үлдэгдэл. */
-      reason: ProductDetail["variants"][number]["unavailableReason"];
-    })[]
+    | (CartVariant & {
+        sellable: boolean;
+        /** `bottle` бол сав түр дууссан (0095), `stock` бол эх савны үлдэгдэл. */
+        reason: ProductDetail["variants"][number]["unavailableReason"];
+      })[]
     | null
   >(null);
   const [loading, setLoading] = React.useState(false);
@@ -81,11 +87,13 @@ export function CartSizeSelect({
   function pick(id: string) {
     const next = options?.find((o) => o.variantId === id);
     if (!next || !next.sellable) return;
-    setVariant(itemKey, {
+    const variant = {
       variantId: next.variantId,
       ml: next.ml,
       unitPrice: next.unitPrice,
-    });
+    };
+    if (onPick) onPick(variant);
+    else setVariant(itemKey, variant);
   }
 
   return (

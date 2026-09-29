@@ -11,13 +11,9 @@ import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
 import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { trackBeginCheckout } from "@/lib/analytics";
+import { TRIAL_SIZE_ML } from "@/lib/constants";
+import { bestValueOf } from "@/features/products/best-value";
 import type { Collection } from "../types";
-
-/**
- * Үүнээс урт тайлбарыг эвхэнэ. Админ дөрвөн догол мөр бичихэд хэмжээний
- * сонголт ба хоёр товч утасны дэлгэцээс бүрмөсөн гарч байсан.
- */
-const DESCRIPTION_CLAMP_CHARS = 220;
 
 export function CollectionDetail({ collection }: { collection: Collection }) {
   const firstMl = collection.availableMls[0];
@@ -25,7 +21,6 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
     firstMl ?? collection.prices[0]?.ml,
   );
   const [added, setAdded] = React.useState(false);
-  const [descOpen, setDescOpen] = React.useState(false);
   const sizeRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
 
   const addCollection = useCart((s) => s.addCollection);
@@ -33,6 +28,14 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
   const router = useRouter();
 
   const priceRow = collection.prices.find((p) => p.ml === ml) ?? null;
+  /** Нэг хэмжээний багцад нийт хэдэн ml орох вэ: «2ml ×4» = 8ml. */
+  const memberCount = collection.members.length;
+  const totalMl = (size: number) => size * Math.max(memberCount, 1);
+  // Дан усных шиг: хамгийн бага ₮/ml, нөөцөөс үл хамааран (best-value.ts).
+  const bestValueMl =
+    bestValueOf(
+      collection.prices.map((p) => ({ ml: totalMl(p.ml), price: p.price })),
+    )?.ml ?? null;
   const available = priceRow?.available ?? false;
   /**
    * Puts the bundle in the cart. Returns false when nothing was added.
@@ -209,6 +212,9 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
         >
           {collection.prices.map((p, i) => {
             const active = p.ml === ml;
+            const isBestValue = bestValueMl === totalMl(p.ml);
+            // 2ml нь sample биш — энгийн хэмжээ; шошго нь зөвхөн UI санал.
+            const isTrial = p.ml === TRIAL_SIZE_ML;
             return (
               <button
                 key={p.ml}
@@ -221,8 +227,9 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
                   sizeRefs.current[i] = el;
                 }}
                 onClick={() => p.available && setMl(p.ml)}
+                aria-label={`${p.ml}ml ×${memberCount}${p.available ? "" : " — байхгүй"}`}
                 className={cn(
-                  "flex flex-col items-center rounded-lg p-2 transition-colors",
+                  "relative flex flex-col items-center rounded-lg px-1 pt-2.5 pb-2 transition-colors",
                   !p.available
                     ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
                     : active
@@ -232,16 +239,28 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
                       : "bg-secondary hover:bg-accent",
                 )}
               >
+                {isBestValue ? (
+                  <span className="bg-foreground text-background absolute -top-2 rounded-full px-1.5 py-px text-[9px] font-semibold whitespace-nowrap">
+                    Хамгийн ашигтай
+                  </span>
+                ) : (
+                  isTrial && (
+                    <span className="bg-card text-foreground absolute -top-2 rounded-full px-1.5 py-px text-[9px] font-semibold whitespace-nowrap shadow-sm">
+                      Туршиж үзэх
+                    </span>
+                  )
+                )}
                 {/* Зураас нь ЗӨВХӨН хэмжээн дээр — «Байхгүй» гэдэг үг өөрөө
                     төлвийг хэлж байгаа тул түүнийг дээрээс нь зурвал зүгээр
-                    л уншихад хэцүү болно. */}
+                    л уншихад хэцүү болно. «2ml ×4» — нэг үнэртний хэмжээ ×
+                    үнэртний тоо, багцад нийт хэдэн ml орохыг хэлнэ. */}
                 <span
                   className={cn(
-                    "text-sm font-semibold",
+                    "text-sm font-semibold whitespace-nowrap",
                     !p.available && "line-through",
                   )}
                 >
-                  {p.ml}ml
+                  {p.ml}ml ×{memberCount}
                 </span>
                 <span
                   className={cn(
@@ -251,41 +270,21 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
                 >
                   {p.available ? formatPrice(p.price) : "Байхгүй"}
                 </span>
+                {p.available && (
+                  <span
+                    className={cn(
+                      "text-[10px]",
+                      active ? "text-background/75" : "text-muted-foreground",
+                    )}
+                  >
+                    {formatPrice(Math.round(p.price / totalMl(p.ml)))}/ml
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
       </div>
-
-      {/* Тайлбар нь ХЭМЖЭЭНИЙ доор, гишүүдийн дээр.
-
-          Үнэ ба хэмжээ хоёрын хооронд байхад худалдан авалтын гинжийг дунд
-          нь тасалдаг байв. Энд бол хэмжээгээ сонгосны дараа «тэгээд энэ багц
-          юу юм бэ» гэсэн асуулт төрөх мөч: тайлбар нь доорх гишүүдийн
-          жагсаалтыг угтах танилцуулга болж, «Захиалах» товчийг ч доош
-          шахахгүй. */}
-      {collection.description && (
-        <div className="space-y-1">
-          <p
-            className={cn(
-              "text-muted-foreground text-sm/relaxed text-pretty",
-              !descOpen && "line-clamp-3",
-            )}
-          >
-            {collection.description}
-          </p>
-          {collection.description.length > DESCRIPTION_CLAMP_CHARS && (
-            <button
-              type="button"
-              onClick={() => setDescOpen((v) => !v)}
-              aria-expanded={descOpen}
-              className="text-gold-strong text-sm font-medium underline underline-offset-4"
-            >
-              {descOpen ? "Хураах" : "Дэлгэрэнгүй"}
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Members */}
       <div className="space-y-3">
@@ -355,14 +354,6 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
             </>
           )}
         </Button>
-
-        {/* Харагдаж буй үнэ нь төлөх дүн биш: хүргэлт үргэлж нэмэгддэг
-            (үнэгүй хүргэлтийн босго байхгүй). Хүргэх өдрийг худалдан авагч
-            төлбөрийн хуудсанд өөрөө сонгоно (lib/time.ts — хамгийн эрт нь
-            маргааш). */}
-        <p className="text-muted-foreground text-xs text-balance">
-          Үнэд хүргэлт ороогүй · Хүргэх өдрөө төлбөрийн хуудсанд сонгоно
-        </p>
       </div>
 
       {/* Барааны хуудасны зурвасын хэлбэрийг яг давтана: хөвөгч капсул,

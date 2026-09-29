@@ -57,7 +57,13 @@ export interface Collection {
   type: "base" | "custom";
   name: string;
   gender: Gender;
+  /** «Дэлгэрэнгүй тайлбар» accordion. */
   description: string;
+  /** «Хэрэглэх нөхцөл» accordion (0106) — хоосон бол хэсэг харагдахгүй. */
+  usageDescription: string;
+  /** Үнэлгээний нийлбэр (0107) — `reviews` trigger-ээр шинэчлэгдэнэ. */
+  ratingAvg: number;
+  ratingCount: number;
   /** Default %, applied to any size without its own override. */
   discountPct: number;
   /** Per-size overrides, keyed by ml (0051). Empty when the default rules all. */

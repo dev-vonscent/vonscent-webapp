@@ -6,7 +6,11 @@ import { Stars } from "@/components/shared/stars";
 import { Button } from "@/components/ui/button";
 import { formatTimeAgo } from "@/lib/format";
 import { REVIEWS_PAGE_SIZE } from "@/lib/constants";
-import type { Review } from "@/features/reviews/types";
+import {
+  targetParam,
+  type Review,
+  type ReviewTarget,
+} from "@/features/reviews/types";
 import { DeleteReviewButton } from "./delete-review-button";
 
 /** Round avatar — photo when available, otherwise the author's initial. */
@@ -79,11 +83,11 @@ function ReviewCard({
  * hundreds of cards up front.
  */
 export function ReviewList({
-  productId,
+  target,
   initial,
   total,
 }: {
-  productId: string;
+  target: ReviewTarget;
   initial: Review[];
   total: number;
 }) {
@@ -105,9 +109,11 @@ export function ReviewList({
     setLoading(true);
     setError(false);
     try {
-      const res = await fetch(
-        `/api/reviews?productId=${productId}&offset=${items.length}`,
-      );
+      const query = new URLSearchParams({
+        ...targetParam(target),
+        offset: String(items.length),
+      });
+      const res = await fetch(`/api/reviews?${query}`);
       if (!res.ok) throw new Error();
       const page = (await res.json()) as { reviews: Review[]; total: number };
       // Guard against a review inserted between page loads shifting the window.

@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { SearchX } from "lucide-react";
 import { getCatalog, getBrands, getPriceBounds } from "@/features/products/api";
 import { getActiveBrands, getScentFamilies } from "@/features/taxonomy/api";
+import { getSaleCollections } from "@/features/collections/api";
+import { CollectionCard } from "@/features/collections/components/collection-card";
 import { parseFilters } from "@/features/catalog/parse";
 import { CatalogFilters } from "@/features/catalog/components/catalog-filters";
 import { CatalogFilterSheet } from "@/features/catalog/components/catalog-filter-sheet";
@@ -25,6 +28,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
+  ...pageMetadata("/catalog"),
   title: "Каталог",
   description: "Бүх үнэртэн — брэнд, хүйс, үнэрийн төрлөөр шүүж сонгоорой.",
 };
@@ -36,13 +40,19 @@ export default async function CatalogPage({
 }) {
   const params = await searchParams;
   const filters = parseFilters(params);
-  const [result, brands, priceBounds, families, brandRows] = await Promise.all([
-    getCatalog(filters),
-    getBrands(),
-    getPriceBounds(),
-    getScentFamilies(),
-    getActiveBrands(),
-  ]);
+  // «Хямдрал» таг: багцууд усны grid-д холилдохгүй, дээр нь тусдаа хэвтээ
+  // мөр болно (картын харьцаа өөр). Эхний хуудсанд л — хуудас бүрт давтахгүй.
+  const showSaleBundles =
+    (filters.tags?.includes("sale") ?? false) && filters.page === 1;
+  const [result, brands, priceBounds, families, brandRows, saleBundles] =
+    await Promise.all([
+      getCatalog(filters),
+      getBrands(),
+      getPriceBounds(),
+      getScentFamilies(),
+      getActiveBrands(),
+      showSaleBundles ? getSaleCollections() : Promise.resolve([]),
+    ]);
   // `getBrands()` is the list that actually has products (and their order);
   // the brands table only supplies the artwork.
   const brandLogos = Object.fromEntries(
@@ -98,6 +108,27 @@ export default async function CatalogPage({
             <div className="mb-4 hidden items-center justify-end lg:flex">
               <CatalogSort />
             </div>
+
+            {saleBundles.length > 0 && (
+              <section aria-labelledby="sale-bundles" className="mb-8">
+                <h2
+                  id="sale-bundles"
+                  className="mb-3 font-serif text-xl font-semibold tracking-tight"
+                >
+                  Хямдралтай багц
+                </h2>
+                <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+                  {saleBundles.map((c) => (
+                    <div
+                      key={c.id}
+                      className="w-60 shrink-0 snap-start sm:w-64"
+                    >
+                      <CollectionCard collection={c} />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <CatalogResults>
               {result.items.length === 0 ? (

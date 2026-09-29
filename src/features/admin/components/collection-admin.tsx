@@ -18,6 +18,8 @@ export interface AdminCollection {
   name: string;
   gender: "male" | "female" | "unisex";
   description: string | null;
+  /** «Хэрэглэх нөхцөл» (0106) — зөвхөн засах хуудас уншина. */
+  usage_description?: string | null;
   /** Default %, used for any size without its own row (0051). */
   discount_pct: number | string;
   image_url: string | null;

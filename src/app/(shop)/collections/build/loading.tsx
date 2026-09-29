@@ -1,7 +1,7 @@
 import { SkeletonBlock } from "@/components/shared/skeletons";
 
 /**
- * Багц угсрах — a filter sidebar beside a picker grid, nothing like the card
+ * Багц үүсгэх — a filter sidebar beside a picker grid, nothing like the card
  * grid on `/collections`. Without this it inherited that parent skeleton and
  * drew collection cards over a page that has none.
  *
@@ -25,7 +25,7 @@ export default function Loading() {
     <div
       className="mx-auto max-w-352 px-4 py-6 md:px-8"
       role="status"
-      aria-label="Багц угсрагч ачаалж байна"
+      aria-label="Багц үүсгэгч ачаалж байна"
     >
       <SkeletonBlock className="mb-4 h-8 w-44 sm:h-9" />
 

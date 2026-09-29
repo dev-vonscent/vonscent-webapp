@@ -192,10 +192,10 @@ export function MyCollections({ collections }: { collections: Collection[] }) {
     return (
       <EmptyState
         title="Хадгалсан багц алга байна"
-        description="Дуртай 4 үнэрээ сонгоод өөрийн багцаа угсраарай."
+        description="Дуртай 4 үнэрээ сонгоод өөрийн багцаа үүсгээрэй."
         action={
           <Button asChild>
-            <Link href="/collections/build">Багц угсрах</Link>
+            <Link href="/collections/build">Багц үүсгэх</Link>
           </Button>
         }
       />
