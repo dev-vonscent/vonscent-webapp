@@ -15,19 +15,12 @@ import { TRIAL_SIZE_ML } from "@/lib/constants";
 import { bestValueOf } from "@/features/products/best-value";
 import type { Collection } from "../types";
 
-/**
- * Үүнээс урт тайлбарыг эвхэнэ. Админ дөрвөн догол мөр бичихэд хэмжээний
- * сонголт ба хоёр товч утасны дэлгэцээс бүрмөсөн гарч байсан.
- */
-const DESCRIPTION_CLAMP_CHARS = 220;
-
 export function CollectionDetail({ collection }: { collection: Collection }) {
   const firstMl = collection.availableMls[0];
   const [ml, setMl] = React.useState<number>(
     firstMl ?? collection.prices[0]?.ml,
   );
   const [added, setAdded] = React.useState(false);
-  const [descOpen, setDescOpen] = React.useState(false);
   const sizeRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
 
   const addCollection = useCart((s) => s.addCollection);
@@ -292,36 +285,6 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
           })}
         </div>
       </div>
-
-      {/* Тайлбар нь ХЭМЖЭЭНИЙ доор, гишүүдийн дээр.
-
-          Үнэ ба хэмжээ хоёрын хооронд байхад худалдан авалтын гинжийг дунд
-          нь тасалдаг байв. Энд бол хэмжээгээ сонгосны дараа «тэгээд энэ багц
-          юу юм бэ» гэсэн асуулт төрөх мөч: тайлбар нь доорх гишүүдийн
-          жагсаалтыг угтах танилцуулга болж, «Захиалах» товчийг ч доош
-          шахахгүй. */}
-      {collection.description && (
-        <div className="space-y-1">
-          <p
-            className={cn(
-              "text-muted-foreground text-sm/relaxed text-pretty",
-              !descOpen && "line-clamp-3",
-            )}
-          >
-            {collection.description}
-          </p>
-          {collection.description.length > DESCRIPTION_CLAMP_CHARS && (
-            <button
-              type="button"
-              onClick={() => setDescOpen((v) => !v)}
-              aria-expanded={descOpen}
-              className="text-gold-strong text-sm font-medium underline underline-offset-4"
-            >
-              {descOpen ? "Хураах" : "Дэлгэрэнгүй"}
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Members */}
       <div className="space-y-3">

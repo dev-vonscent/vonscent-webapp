@@ -32,6 +32,9 @@ interface DbCollection {
   name: string;
   gender: Gender;
   description: string | null;
+  usage_description?: string | null;
+  rating_avg?: number | string | null;
+  rating_count?: number | null;
   discount_pct: number | string;
   image_url: string | null;
   is_active: boolean;
@@ -46,8 +49,8 @@ interface DbCollection {
 }
 
 const SELECT = `
-  id, slug, type, user_id, name, gender, description,
-  discount_pct, image_url, is_active, is_featured,
+  id, slug, type, user_id, name, gender, description, usage_description,
+  rating_avg, rating_count, discount_pct, image_url, is_active, is_featured,
   collection_items ( product_id, sort_order ),
   collection_ml_discounts ( ml, discount_pct, price ),
   collection_tags ( tags ( kind ) )
@@ -152,6 +155,9 @@ function build(
     name: row.name,
     gender: row.gender,
     description: row.description ?? "",
+    usageDescription: row.usage_description ?? "",
+    ratingAvg: Number(row.rating_avg ?? 0),
+    ratingCount: row.rating_count ?? 0,
     discountPct,
     mlDiscounts,
     mlPrices,

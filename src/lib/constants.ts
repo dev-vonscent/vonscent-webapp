@@ -35,6 +35,18 @@ export type MlSize = (typeof ML_SIZES)[number];
 export const BUNDLE_ML_SIZES = ML_SIZES;
 
 /**
+ * FAQ-ийн тогтмол ангилал (клиент, 2026-09 UG) — нийтийн FAQ хуудас ийм
+ * дарааллаар бүлэглэнэ. Админы «Ангилал» нь чөлөөт текст биш select, API нь
+ * Zod enum-оор шалгана (`lib/validators/faq.ts`).
+ */
+export const FAQ_CATEGORIES = [
+  "Бараа",
+  "Захиалга & Төлбөр",
+  "Хүргэлт",
+] as const;
+export type FaqCategory = (typeof FAQ_CATEGORIES)[number];
+
+/**
  * «Туршиж үзэх» шошготой хэмжээ (ус ба багцын хэмжээний товч дээр). Зөвхөн
  * UI санал — 2ml нь sample биш, бусадтай адил энгийн хэмжээ.
  */

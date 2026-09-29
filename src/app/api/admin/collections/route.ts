@@ -56,6 +56,7 @@ export async function POST(req: Request) {
       name: input.name,
       gender: input.gender,
       description: input.description,
+      usage_description: input.usageDescription,
       discount_pct: input.discountPct,
       image_url: input.imageUrl ?? null,
       is_active: input.isActive,

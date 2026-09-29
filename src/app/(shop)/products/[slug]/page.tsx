@@ -273,8 +273,8 @@ export default async function ProductPage({
           бараа»-г дэлгэцээс шахаж гаргадаг байсан. */}
       <section className="mt-16">
         <ReviewSection
-          productId={product.id}
-          slug={product.slug}
+          target={{ kind: "product", id: product.id }}
+          path={`/products/${product.slug}`}
           ratingAvg={product.ratingAvg}
         />
       </section>

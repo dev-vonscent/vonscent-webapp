@@ -25,15 +25,16 @@ const UUID_RE =
  * updated every wishlist subscriber (BottomNav) mid-render — the
  * "Cannot update a component while rendering a different component" warning.
  * The ref lets the callback read the current user without an updater.
+ *
+ * Бэлэн багцууд (0107) нь `collection_wishlists`-д, ижил дүрмээр — тиймээс
+ * merge / mirror нь хүснэгт бүрт нэг `useMirror`.
  */
 export function WishlistSync() {
   const ids = useWishlist((s) => s.ids);
+  const collectionIds = useWishlist((s) => s.collectionIds);
   const [userId, setUserId] = React.useState<string | null>(null);
   /** Same value as `userId`, readable from callbacks without an updater. */
   const userIdRef = React.useRef<string | null>(null);
-  /** Mirroring is armed only after the merge for the CURRENT user finished. */
-  const mergedFor = React.useRef<string | null>(null);
-  const prev = React.useRef<string[]>([]);
 
   React.useEffect(() => {
     const supabase = createClient();
@@ -45,8 +46,7 @@ export function WishlistSync() {
         // Sign-out: the local list belongs to the account that left. This runs
         // in an event callback, never inside a state updater, so subscribers
         // are notified outside of render.
-        mergedFor.current = null;
-        useWishlist.setState({ ids: [] });
+        useWishlist.setState({ ids: [], collectionIds: [] });
       }
       userIdRef.current = next;
       setUserId(next);
@@ -63,6 +63,58 @@ export function WishlistSync() {
     return () => subscription.unsubscribe();
   }, []);
 
+  useMirror({
+    userId,
+    list: ids,
+    table: "wishlists",
+    column: "product_id",
+    read: () => useWishlist.getState().ids,
+    write: (next) => useWishlist.setState({ ids: next }),
+  });
+  useMirror({
+    userId,
+    list: collectionIds ?? EMPTY,
+    table: "collection_wishlists",
+    column: "collection_id",
+    read: () => useWishlist.getState().collectionIds ?? EMPTY,
+    write: (next) => useWishlist.setState({ collectionIds: next }),
+  });
+
+  return null;
+}
+
+const EMPTY: string[] = [];
+
+/**
+ * Нэг хүснэгтийн merge + mirror: нэвтрэхэд remote ∪ local, дараа нь toggle
+ * бүрийг DB руу. Mirror нь тухайн хэрэглэгчийн merge дуусах хүртэл унтраалттай
+ * (merge-ийн дундах toggle нь union-д орно).
+ */
+function useMirror({
+  userId,
+  list,
+  table,
+  column,
+  read,
+  write,
+}: {
+  userId: string | null;
+  list: string[];
+  table: "wishlists" | "collection_wishlists";
+  column: "product_id" | "collection_id";
+  /** Store-ын ОДООГИЙН утга — await-ын дараа хуучин snapshot биш. */
+  read: () => string[];
+  write: (next: string[]) => void;
+}) {
+  /** Mirroring is armed only after the merge for the CURRENT user finished. */
+  const mergedFor = React.useRef<string | null>(null);
+  const prev = React.useRef<string[]>([]);
+
+  // Sign-out: дараагийн хэрэглэгчид merge дахин хийгдэнэ.
+  React.useEffect(() => {
+    if (!userId) mergedFor.current = null;
+  }, [userId]);
+
   // One merge per signed-in user: remote ∪ local, pushed both ways.
   React.useEffect(() => {
     if (!userId || mergedFor.current === userId) return;
@@ -71,59 +123,56 @@ export function WishlistSync() {
     let cancelled = false;
     (async () => {
       const { data, error } = await supabase
-        .from("wishlists")
-        .select("product_id")
+        .from(table)
+        .select(column)
         .eq("user_id", userId);
       if (cancelled || error) return; // retry on next render/auth event
-      const remote = ((data as { product_id: string }[] | null) ?? []).map(
-        (r) => r.product_id,
-      );
+      const remote = (
+        (data as unknown as Record<string, string>[] | null) ?? []
+      ).map((r) => r[column]);
       // Union against the LIVE local list (not a pre-await snapshot), so a
       // toggle made while the fetch was in flight is preserved.
-      const local = useWishlist.getState().ids;
-      const union = [...new Set([...local, ...remote])];
+      const union = [...new Set([...read(), ...remote])];
       prev.current = union;
       mergedFor.current = userId;
-      useWishlist.setState({ ids: union });
+      write(union);
       const missing = union.filter(
         (id) => UUID_RE.test(id) && !remote.includes(id),
       );
       if (missing.length) {
         await supabase
-          .from("wishlists")
-          .upsert(
-            missing.map((product_id) => ({ user_id: userId, product_id })),
-          );
+          .from(table)
+          .upsert(missing.map((id) => ({ user_id: userId, [column]: id })));
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+    // `read` / `write` нь store руу заадаг тогтмол функц — deps биш.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, table, column]);
 
   // Mirror later toggles — armed only once this user's merge completed.
   React.useEffect(() => {
     if (!userId || mergedFor.current !== userId) return;
     const before = prev.current;
-    prev.current = ids;
-    const added = ids.filter((i) => UUID_RE.test(i) && !before.includes(i));
-    const removed = before.filter((i) => UUID_RE.test(i) && !ids.includes(i));
+    prev.current = list;
+    const added = list.filter((i) => UUID_RE.test(i) && !before.includes(i));
+    const removed = before.filter((i) => UUID_RE.test(i) && !list.includes(i));
     if (!added.length && !removed.length) return;
     const supabase = createClient();
     if (!supabase) return;
     if (added.length) {
       void supabase
-        .from("wishlists")
-        .upsert(added.map((product_id) => ({ user_id: userId, product_id })));
+        .from(table)
+        .upsert(added.map((id) => ({ user_id: userId, [column]: id })));
     }
     if (removed.length) {
       void supabase
-        .from("wishlists")
+        .from(table)
         .delete()
         .eq("user_id", userId)
-        .in("product_id", removed);
+        .in(column, removed);
     }
-  }, [ids, userId]);
-
-  return null;
+  }, [list, userId, table, column]);
 }

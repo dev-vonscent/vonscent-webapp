@@ -1,14 +1,16 @@
 import { Stars } from "@/components/shared/stars";
 import {
-  getProductCommentCount,
-  getProductReviewPage,
+  getCommentCount,
+  getReviewPage,
+  type ReviewTarget,
 } from "@/features/reviews/api";
 import { ReviewForm } from "./review-form";
 import { ReviewList } from "./review-list";
 
 /**
- * Server-rendered reviews block for the product page: rating summary, the
- * first page of reviews, and the (client) submission form.
+ * Server-rendered reviews block for the product page — and, since 0107, the
+ * bundle page: rating summary, the first page of reviews, and the (client)
+ * submission form.
  *
  * Both numbers in the summary come from the review rows themselves, so the
  * header can't claim a different count from the list below it — and ratings
@@ -16,17 +18,18 @@ import { ReviewList } from "./review-list";
  * allowed and renders as a card with stars and no text.
  */
 export async function ReviewSection({
-  productId,
-  slug,
+  target,
+  path,
   ratingAvg,
 }: {
-  productId: string;
-  slug: string;
+  target: ReviewTarget;
+  /** Нэвтрээд буцах хуудас — `/products/<slug>` эсвэл `/collections/<slug>`. */
+  path: string;
   ratingAvg: number;
 }) {
   const [page, commentCount] = await Promise.all([
-    getProductReviewPage(productId),
-    getProductCommentCount(productId),
+    getReviewPage(target),
+    getCommentCount(target),
   ]);
 
   return (
@@ -49,13 +52,9 @@ export async function ReviewSection({
       {/* Жагсаалт зүүн талдаа бүтэн өргөнөө авч, форм нь баруун талд наалдаж
           үлдэнэ — уншиж байхад форм хайх шаардлагагүй. */}
       <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
-        <ReviewList
-          productId={productId}
-          initial={page.reviews}
-          total={page.total}
-        />
+        <ReviewList target={target} initial={page.reviews} total={page.total} />
         <div className="lg:sticky lg:top-(--header-offset)">
-          <ReviewForm productId={productId} slug={slug} />
+          <ReviewForm target={target} path={path} />
         </div>
       </div>
     </section>

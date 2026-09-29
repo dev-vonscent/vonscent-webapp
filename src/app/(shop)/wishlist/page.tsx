@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ProductCard } from "@/features/products/components/product-card";
+import { CollectionCard } from "@/features/collections/components/collection-card";
+import type { Collection } from "@/features/collections/types";
 import { useWishlist } from "@/features/wishlist/store";
 import { useCart } from "@/features/cart/store";
 import { formatPrice } from "@/lib/format";
@@ -22,6 +24,15 @@ async function fetchDetails(ids: string[]): Promise<ProductDetail[]> {
   return data.items;
 }
 
+/** Хадгалсан бэлэн багцууд (0107) — идэвхгүй болсон нь буцахгүй. */
+async function fetchCollections(ids: string[]): Promise<Collection[]> {
+  if (!ids.length) return [];
+  const res = await fetch(`/api/collections?ids=${ids.join(",")}`);
+  if (!res.ok) return [];
+  const data = (await res.json()) as { items: Collection[] };
+  return data.items;
+}
+
 /** Cheapest active decant for a product (matches the "from …" display price). */
 function cheapestVariant(p: ProductDetail): Variant | null {
   const active = p.variants.filter((v) => v.isActive);
@@ -29,8 +40,11 @@ function cheapestVariant(p: ProductDetail): Variant | null {
   return active.reduce((a, b) => (b.price < a.price ? b : a));
 }
 
+const EMPTY_IDS: string[] = [];
+
 export default function WishlistPage() {
   const ids = useWishlist((s) => s.ids);
+  const collectionIds = useWishlist((s) => s.collectionIds ?? EMPTY_IDS);
   const clearWishlist = useWishlist((s) => s.clear);
   const addToCart = useCart((s) => s.add);
 
@@ -43,6 +57,18 @@ export default function WishlistPage() {
     enabled: mounted,
   });
 
+  const { data: bundleData, isLoading: bundlesLoading } = useQuery({
+    queryKey: ["wishlist-collections", collectionIds],
+    queryFn: () => fetchCollections(collectionIds),
+    enabled: mounted,
+  });
+  const bundles = React.useMemo(() => {
+    const map = new Map((bundleData ?? []).map((c) => [c.id, c]));
+    return collectionIds
+      .map((id) => map.get(id))
+      .filter(Boolean) as Collection[];
+  }, [bundleData, collectionIds]);
+
   // Keep the original wishlist order (store ids drive the layout).
   const items = React.useMemo(() => {
     const map = new Map((data ?? []).map((p) => [p.id, p]));
@@ -50,7 +76,15 @@ export default function WishlistPage() {
   }, [data, ids]);
 
   const inStock = items.filter((p) => !p.soldOut);
-  const totalValue = inStock.reduce((sum, p) => sum + p.startingPrice, 0);
+  const liveBundles = bundles.filter((c) => !c.soldOut);
+  // Багцын «эхлэх үнэ» ч нийтэд орно — эс бөгөөс «3 хадгалсан» гээд хоёрынх
+  // нь л дүнг хэлнэ.
+  const totalValue =
+    inStock.reduce((sum, p) => sum + p.startingPrice, 0) +
+    liveBundles.reduce((sum, c) => sum + c.startingPrice, 0);
+  const savedCount = items.length + bundles.length;
+  const soldOutCount =
+    items.length - inStock.length + (bundles.length - liveBundles.length);
 
   const [confirmClear, setConfirmClear] = React.useState(false);
   const [addedAll, setAddedAll] = React.useState(false);
@@ -86,7 +120,7 @@ export default function WishlistPage() {
         Хүслийн жагсаалт
       </h1>
 
-      {!mounted || isLoading ? (
+      {!mounted || isLoading || bundlesLoading ? (
         <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="space-y-3">
@@ -96,7 +130,7 @@ export default function WishlistPage() {
             </div>
           ))}
         </div>
-      ) : items.length === 0 ? (
+      ) : items.length === 0 && bundles.length === 0 ? (
         <EmptyState
           size="lg"
           icon={Heart}
@@ -122,20 +156,19 @@ export default function WishlistPage() {
               <div className="relative flex size-12 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-red-500/20 to-pink-500/10">
                 <Heart className="size-5 fill-red-500 text-red-500" />
                 <span className="bg-foreground text-background absolute -top-1 -right-1 flex min-w-5 items-center justify-center rounded-full px-1 text-xs font-semibold">
-                  {items.length}
+                  {savedCount}
                 </span>
               </div>
               <div>
                 <p className="leading-tight font-medium">
-                  {items.length} бараа хадгалсан
+                  {savedCount} бараа хадгалсан
                 </p>
                 <p className="text-muted-foreground text-sm">
                   Нийт{" "}
                   <span className="text-foreground font-semibold">
                     {formatPrice(totalValue)}
                   </span>
-                  {items.length - inStock.length > 0 &&
-                    ` · ${items.length - inStock.length} дууссан`}
+                  {soldOutCount > 0 && ` · ${soldOutCount} дууссан`}
                 </p>
               </div>
             </div>
@@ -185,6 +218,26 @@ export default function WishlistPage() {
               )}
             </div>
           </div>
+
+          {/* Багц нь өөр харьцаатай карт — усны grid-д холихгүй, дээр нь
+              тусдаа хэвтээ мөр («Хямдрал» тагийнхтай ижил). */}
+          {bundles.length > 0 && (
+            <section aria-labelledby="wish-bundles" className="mb-8">
+              <h2
+                id="wish-bundles"
+                className="mb-3 font-serif text-xl font-semibold tracking-tight"
+              >
+                Багц
+              </h2>
+              <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+                {bundles.map((c) => (
+                  <div key={c.id} className="w-60 shrink-0 snap-start sm:w-64">
+                    <CollectionCard collection={c} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
             {items.map((p) => (

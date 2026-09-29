@@ -13,6 +13,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { FAQ_CATEGORIES } from "@/lib/constants";
 import { ImageUpload } from "@/features/admin/components/image-upload";
 import type {
   PopupSettings,
@@ -260,7 +268,7 @@ function FaqSection({ initial }: { initial: FaqRow[] }) {
   const [question, setQuestion] = React.useState("");
   const [answer, setAnswer] = React.useState("");
   async function add() {
-    if (!question || !answer) return;
+    if (!category || !question || !answer) return;
     const ok = await mutate(
       "/api/admin/faqs",
       {
@@ -319,7 +327,12 @@ function FaqSection({ initial }: { initial: FaqRow[] }) {
             onDelete={() => del(f.id, f.question)}
             dialogTitle="FAQ засах"
             fields={[
-              { key: "category", label: "Ангилал", value: f.category ?? "" },
+              {
+                key: "category",
+                label: "Ангилал",
+                value: f.category ?? "",
+                options: FAQ_CATEGORIES,
+              },
               { key: "question", label: "Асуулт", value: f.question },
               {
                 key: "answer",
@@ -351,11 +364,18 @@ function FaqSection({ initial }: { initial: FaqRow[] }) {
         ))}
       </ul>
       <div className="grid gap-2">
-        <Input
-          placeholder="Ангилал"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        />
+        <Select value={category} onValueChange={setCategory}>
+          <SelectTrigger aria-label="Ангилал">
+            <SelectValue placeholder="Ангилал сонгох" />
+          </SelectTrigger>
+          <SelectContent>
+            {FAQ_CATEGORIES.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Input
           placeholder="Асуулт"
           value={question}
@@ -629,6 +649,8 @@ interface EditableField {
   richtext?: boolean;
   /** Image picker — the value is a Storage URL set by <ImageUpload>. */
   image?: boolean;
+  /** Хаалттай жагсаалт — select болж гарна (жишээ нь FAQ-ийн ангилал). */
+  options?: readonly string[];
 }
 
 /**
@@ -689,6 +711,27 @@ function EditableRow({
                 setValues((v) => ({ ...v, [f.key]: url ?? "" }))
               }
             />
+          </div>
+        ) : f.options ? (
+          <div key={f.key} className="space-y-1">
+            <Label className="text-xs">{f.label}</Label>
+            {/* Жагсаалтад байхгүй хуучин утга (ангилал солигдохоос өмнөх
+                мөр) placeholder болж харагдана — хадгалахаас өмнө сонгуулна. */}
+            <Select
+              value={f.options.includes(values[f.key]) ? values[f.key] : ""}
+              onValueChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))}
+            >
+              <SelectTrigger aria-label={f.label}>
+                <SelectValue placeholder={values[f.key] || "Сонгох"} />
+              </SelectTrigger>
+              <SelectContent>
+                {f.options.map((o) => (
+                  <SelectItem key={o} value={o}>
+                    {o}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         ) : f.richtext ? (
           <div key={f.key} className="space-y-1">
