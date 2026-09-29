@@ -79,10 +79,7 @@ export function CouponField({
   if (applied) {
     row = (
       <div className="bg-secondary flex items-center gap-2.5 rounded-xl py-2 pr-1 pl-3">
-        <Check
-          className="text-gold-strong size-4 shrink-0"
-          strokeWidth={2.5}
-        />
+        <Check className="text-gold-strong size-4 shrink-0" strokeWidth={2.5} />
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-1.5 text-sm">
             <span className="truncate font-mono font-semibold">

@@ -2,14 +2,14 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Gift, Minus, Plus } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Check, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { GIFT_MAX_SAMPLES, GIFT_PER_PRODUCT_LIMIT } from "@/lib/constants";
 import { giftAllowanceFor } from "@/lib/gift";
 import { useGiftPool } from "@/features/gifts/use-gift-pool";
+import { CheckoutSection } from "./checkout-section";
 
 /**
  * Бэлгийн 1мл дээж сонгох хэсэг. Эрх нь купоны дараах барааны дүнгийн
@@ -29,15 +29,21 @@ import { useGiftPool } from "@/features/gifts/use-gift-pool";
  *    хэрэг.
  * 3. **Нэг усыг `GIFT_PER_PRODUCT_LIMIT` хүртэл авч болно.** Сан 4 устай
  *    байхад 1М₮-ийн захиалга 5 эрх өгдөг — toggle үед сүүлчийн эрх нь
- *    мухардаж, тайлбаргүй үрэгддэг байв. Тиймээс toggle биш, тоо хэмжээний
- *    сонголт (stepper). `value` нь давхардал агуулсан ЖАГСААЛТ (олонлог биш).
+ *    мухардаж, тайлбаргүй үрэгддэг байв. Тиймээс олон эрхтэй үед хавтан бүр
+ *    тоолно (дарахад +1, «−»-ээр хасна). `value` нь давхардал агуулсан
+ *    ЖАГСААЛТ (олонлог биш). Нэг эрхтэй үед (хамгийн элбэг) radio.
+ *
+ * Энэ нь сар бүрийн 1мл БЭЛГИЙН дээж — 2ml хэмжээний сонголттой хамаагүй.
  */
 export function GiftSamplePicker({
   allowance,
   goodsAfterDiscount,
   value,
   onChange,
+  step,
 }: {
+  /** Хуудасны алхмын дугаар. */
+  step: number;
   /**
    * Бодитоор сонгож болох тоо — дүнгээс олсон эрхийг сангийн багтаамжаар
    * хумьсан (`giftSlotsFor`). Хуудас нь сангаа мэддэг тул тэндээс ирнэ.
@@ -95,133 +101,127 @@ export function GiftSamplePicker({
     onChange([...value.slice(0, i), ...value.slice(i + 1)]);
   }
 
+  const single = allowance === 1;
+  /** Нэг мөр, хоёр ажил: хэдэн эрхтэй, дараагийнх хүртэл хэд дутуу. */
+  const summary =
+    allowance > 0
+      ? [
+          `${allowance} дээж сонгох эрхтэй`,
+          cappedByPool
+            ? "бэлгийн сангийн багтаамжаар хязгаарлагдсан"
+            : atMax
+              ? `нэг захиалгад хамгийн ихдээ ${GIFT_MAX_SAMPLES}`
+              : `${formatPrice(toNext)} нэмбэл +1`,
+          allowance > 1 && GIFT_PER_PRODUCT_LIMIT > 1
+            ? `нэг уснаас ${GIFT_PER_PRODUCT_LIMIT} хүртэл`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : `Купоны дараах барааны дүн ${formatPrice(threshold)} хүрвэл 1 дээж бэлгээр сонгоно — дахиад ${formatPrice(toNext)} дутуу.`;
+
+  function pick(id: string) {
+    const count = counts.get(id) ?? 0;
+    // Нэг эрхтэй үед radio: өөрийг дарвал сонголт солигдоно, сонгосноо дахин
+    // дарвал болино.
+    if (single) {
+      onChange(count > 0 ? [] : [id]);
+      return;
+    }
+    if (left > 0 && count < GIFT_PER_PRODUCT_LIMIT) add(id);
+  }
+
   return (
-    <Card>
-      <CardContent className="space-y-3 p-6">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <Gift className="text-gold-strong size-5" />
-          Бэлгийн 1 мл дээж
-        </h2>
+    <CheckoutSection
+      step={step}
+      title={`Бэлгийн ${pool?.sampleMl ?? 1} мл дээж`}
+      aside={
+        allowance > 0 ? (
+          <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+            {value.length}/{allowance} сонгосон
+          </span>
+        ) : undefined
+      }
+    >
+      <p className="text-muted-foreground -mt-2 text-sm">{summary}</p>
 
-        {allowance > 0 ? (
-          <div className="text-muted-foreground space-y-1 text-sm">
-            <p>
-              Та <strong className="text-foreground">{allowance}</strong> ширхэг
-              1 мл дээж бэлгээр сонгох эрхтэй ({value.length} сонгосон).
-            </p>
-            <p>
-              Купоны дараах барааны дүнгийн {formatPrice(threshold)} тутамд 1
-              дээж авна.{" "}
-              {/* Сангаар хумигдсан үед «дахиад нэмбэл дээж нэмэгдэнэ» гэж
-                  амлах нь худал — тэр эрх биелэх боломжгүй. */}
-              {cappedByPool
-                ? `Танд ${earned} эрх ноогдсон ч бэлгийн санд одоогоор ${options.length} ус байгаа тул ${allowance} ширхэгийг сонгоно.`
-                : atMax
-                  ? `Нэг захиалгад хамгийн ихдээ ${GIFT_MAX_SAMPLES} дээж.`
-                  : `Дахиад ${formatPrice(toNext)}-ийн бараа нэмбэл 1 дээж нэмэгдэнэ.`}
-            </p>
-            {GIFT_PER_PRODUCT_LIMIT > 1 && (
-              <p>Нэг уснаас хамгийн ихдээ {GIFT_PER_PRODUCT_LIMIT} ширхэг.</p>
-            )}
-          </div>
-        ) : (
-          /* Эрхгүй ч хэсэг нь үлддэг: хэдэн төгрөг дутуу байгааг хэлэх нь
-             «алга болсон» хэсгээс хамаагүй ойлгомжтой, бас бодит санал. */
-          <div className="text-muted-foreground space-y-1 text-sm">
-            <p>
-              Купоны дараах барааны дүн {formatPrice(threshold)}-д хүрвэл 1 мл
-              дээжийг бэлгээр сонгох боломжтой.
-            </p>
-            <p>
-              Одоогийн дүн:{" "}
-              <strong className="text-foreground">
-                {formatPrice(goodsAfterDiscount)}
-              </strong>{" "}
-              — дээж авахад{" "}
-              <strong className="text-foreground">{formatPrice(toNext)}</strong>{" "}
-              дутуу байна.
-            </p>
-          </div>
-        )}
-
-        {allowance > 0 && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {options.map((o) => {
-              const count = counts.get(o.id) ?? 0;
-              const canAdd = left > 0 && count < GIFT_PER_PRODUCT_LIMIT;
-              return (
-                <div
-                  key={o.id}
-                  className={cn(
-                    // Хүрээ энэ системд тунгалаг тул сонгоогүй хавтан огт
-                    // хилгүй, дарагддаггүй зураг мэт харагддаг байв.
-                    "bg-secondary rounded-lg p-2 text-left text-xs transition-all",
-                    count > 0
-                      ? "ring-gold-strong ring-2"
-                      : !canAdd && "opacity-40",
-                  )}
+      {/* Том 4 карт (~800px) нэг ширхэг сонгохын тулд хуудасны хамгийн том
+          блок болдог байв. Одоо ~120px өндөр хэвтээ мөр; ус нэмэгдвэл
+          хажуу тийш гүйнэ (themed scrollbar нь `html`-ээс удамшина). */}
+      {allowance > 0 && (
+        <div
+          role={single ? "radiogroup" : "group"}
+          aria-label="Бэлгийн дээж сонгох"
+          className="-mx-5 flex snap-x gap-3 overflow-x-auto px-5 pt-1 pb-2 sm:-mx-6 sm:px-6"
+        >
+          {options.map((o) => {
+            const count = counts.get(o.id) ?? 0;
+            const canAdd = left > 0 && count < GIFT_PER_PRODUCT_LIMIT;
+            const disabled = !single && count === 0 && !canAdd;
+            return (
+              <div key={o.id} className="relative w-20 shrink-0 snap-start">
+                <button
+                  type="button"
+                  onClick={() => pick(o.id)}
+                  disabled={disabled}
+                  {...(single
+                    ? { role: "radio", "aria-checked": count > 0 }
+                    : { "aria-pressed": count > 0 })}
+                  aria-label={
+                    single
+                      ? `${o.brand} ${o.name}`
+                      : `${o.brand} ${o.name} — ${count > 0 ? `${count} ширхэг, нэгээр нэмэх` : "сонгох"}`
+                  }
+                  className="block w-full text-left disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <div className="bg-muted relative mb-2 aspect-square w-full overflow-hidden rounded-md">
+                  <span
+                    className={cn(
+                      "bg-muted relative block size-20 overflow-hidden rounded-lg ring-2 ring-transparent transition-all",
+                      count > 0 && "ring-gold-strong",
+                    )}
+                  >
                     {o.image && (
                       <Image
                         src={o.image}
-                        alt={o.name}
+                        alt=""
                         fill
-                        // Хавтан нь десктоп дээр ~270px өргөн (зүүн багана 3
-                        // багана болж хуваагдана) — `120px` гэж хэлэхэд Next
-                        // 128px өргөн хувилбар татаж, хоёр дахин томсгож
-                        // бүдгэрүүлдэг байв. Утсан дээр тод байсан нь тэнд
-                        // хавтан нь жинхэнэдээ 120px орчим байсных.
-                        sizes="(min-width: 1024px) 280px, (min-width: 640px) 30vw, 45vw"
+                        sizes="80px"
                         className="object-cover"
                       />
                     )}
-                  </div>
-                  <p className="text-muted-foreground uppercase">{o.brand}</p>
-                  <p className="mb-2 font-medium">{o.name}</p>
-
-                  {count === 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => add(o.id)}
-                      disabled={!canAdd}
-                      className="hover:bg-accent w-full rounded-md border py-1.5 font-medium disabled:opacity-50"
-                    >
-                      Сонгох
-                    </button>
-                  ) : (
-                    <div className="flex items-center justify-between gap-1">
-                      <button
-                        type="button"
-                        onClick={() => remove(o.id)}
-                        aria-label={`${o.name} — нэгээр хасах`}
-                        className="hover:bg-accent rounded-md border p-1.5"
-                      >
-                        <Minus className="size-3.5" />
-                      </button>
-                      <span
-                        className="font-medium"
-                        aria-label={`${o.name} — ${count} ширхэг`}
-                      >
-                        {count} ш
+                    {count > 0 && (
+                      <span className="bg-gold-strong text-background absolute right-1 bottom-1 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">
+                        {single ? (
+                          <Check className="size-3" strokeWidth={3} />
+                        ) : (
+                          count
+                        )}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => add(o.id)}
-                        disabled={!canAdd}
-                        aria-label={`${o.name} — нэгээр нэмэх`}
-                        className="hover:bg-accent rounded-md border p-1.5 disabled:opacity-40"
-                      >
-                        <Plus className="size-3.5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                    )}
+                  </span>
+                  <span className="text-muted-foreground mt-1.5 block truncate text-[11px] uppercase">
+                    {o.brand}
+                  </span>
+                  <span className="block truncate text-xs font-medium">
+                    {o.name}
+                  </span>
+                </button>
+                {/* Олон эрхтэй үед: хавтан дарахад нэмэгдэнэ, энэ нь хасна. */}
+                {!single && count > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => remove(o.id)}
+                    aria-label={`${o.name} — нэгээр хасах`}
+                    className="bg-card text-foreground absolute top-1 left-1 flex size-6 items-center justify-center rounded-full shadow-sm before:absolute before:size-8 before:content-['']"
+                  >
+                    <Minus className="size-3.5" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </CheckoutSection>
   );
 }

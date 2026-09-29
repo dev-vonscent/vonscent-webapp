@@ -49,6 +49,7 @@ import {
   AddressDialog,
   type AddressFormValue,
 } from "@/features/checkout/components/address-dialog";
+import { CheckoutSection } from "@/features/checkout/components/checkout-section";
 import { CouponField } from "@/features/checkout/components/coupon-field";
 import { OrderLines } from "@/features/checkout/components/order-lines";
 import { GuestPerksPrompt } from "@/features/checkout/components/guest-perks-prompt";
@@ -144,7 +145,7 @@ const LOGIN_HREF = "/login?next=%2Fcheckout";
 /**
  * Алдаатай талбар аль хэсэгт байгаа вэ. Утсан дээр товч нь 4 дэлгэцийн доор
  * байдаг тул «дарсан ч юу ч болохгүй» гэсэн мэдрэмжийг зөвхөн энэ зураглал
- * дээр суурилсан гүйлгэлт л арилгана (`Section` дээрх `scroll-mt-24`).
+ * дээр суурилсан гүйлгэлт л арилгана (`CheckoutSection` дээрх `scroll-mt-24`).
  */
 /**
  * Модал хаагдаж, Radix фокусаа нээсэн товч руу буцаах хүртэлх зай.
@@ -1023,7 +1024,11 @@ export default function CheckoutPage() {
           )}
 
           {/* Хүргэлтийн хаяг — хадгалсан хаягууд + popup-аар нэмсэн шинэ хаяг */}
-          <Section id="checkout-address" step={1} title="Хүргэлтийн хаяг">
+          <CheckoutSection
+            id="checkout-address"
+            step={1}
+            title="Хүргэлтийн хаяг"
+          >
             <SavedAddresses
               addresses={authed ? addresses : []}
               value={addressChoice}
@@ -1195,11 +1200,11 @@ export default function CheckoutPage() {
                 }
               />
             </Field>
-          </Section>
+          </CheckoutSection>
 
           {/* Хүлээн авагч — талбарууд зориуд хоосон эхэлнэ (дансны нэр, утсаар
               бөглөхгүй), хаяг сонгоход л бөглөгдөнө. */}
-          <Section
+          <CheckoutSection
             id="checkout-recipient"
             step={2}
             title="Хүлээн авагчийн мэдээлэл"
@@ -1248,7 +1253,7 @@ export default function CheckoutPage() {
                 </p>
               </Field>
             </div>
-          </Section>
+          </CheckoutSection>
 
           {/* Бэлгийн 1мл дээж — эрхийн тоогоор, зөвхөн админы сангаас. */}
           {mounted && (
@@ -1258,6 +1263,7 @@ export default function CheckoutPage() {
               className="scroll-mt-24 focus:outline-none"
             >
               <GiftSamplePicker
+                step={3}
                 allowance={giftAllowance}
                 goodsAfterDiscount={goodsAfterDiscount}
                 value={giftIds}
@@ -1614,37 +1620,6 @@ export default function CheckoutPage() {
         </div>
       </ResponsiveDialog>
     </div>
-  );
-}
-
-/**
- * Дугаарласан алхам. `id` нь заавал: форм буруу үед `onInvalid` яг энэ хэсэг
- * рүү гүйлгэдэг (`scroll-mt-24` нь толгойн доор нуугдахаас хамгаална).
- *
- * `icon` prop байсан ч `step > 0` үед хэзээ ч хүрдэггүй байсан тул хассан —
- * хоёулаа дугаартай дуудагддаг байв.
- */
-function Section({
-  id,
-  step,
-  title,
-  children,
-}: {
-  id: string;
-  step: number;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section id={id} className="bg-card scroll-mt-24 rounded-2xl p-5 sm:p-6">
-      <div className="mb-5 flex items-center gap-3">
-        <span className="bg-secondary flex size-9 shrink-0 items-center justify-center rounded-full">
-          <span className="text-sm font-semibold">{step}</span>
-        </span>
-        <h2 className="text-lg font-semibold">{title}</h2>
-      </div>
-      <div className="space-y-4">{children}</div>
-    </section>
   );
 }
 
