@@ -74,12 +74,23 @@ export function ResponsiveDialog({
       <SheetContent
         side="bottom"
         // Гар нээлттэй үед sheet-ийг layout viewport биш, ХАРАГДАЖ БУЙ хэсгийн
-        // доод ирмэгт бэхэлнэ (`--vv-bottom`, KeyboardInset) — гарын яг дээр
-        // зогсоно, завсраар ард нь юу ч харагдахгүй. Overlay ч мөн адил доош
-        // сунана. Өндөр нь харагдах хэсэгтээ бүрэн багтана.
-        overlayClassName="bottom-[min(0px,var(--vv-bottom,0px))]"
+        // доод ирмэгт бэхэлнэ (`--vv-bottom`, KeyboardInset); өндөр нь
+        // харагдах хэсэгтээ бүрэн багтана.
+        //
+        // Доошоо «үргэлжилдэг» байх ёстой: iOS 26 гарын toolbar, URL pill нь
+        // хагас тунгалаг бөгөөд viewport-ын ГАДНА хөвдөг — ард нь хуудас
+        // зурагдана. Хоёр засвар:
+        //  • `after:` — sheet-ийн өнгөт хэсэг доод ирмэгээсээ цааш 50vh
+        //    үргэлжилж, тэр завсрыг дүүргэнэ (native sheet шиг гарын ард
+        //    үргэлжилнэ).
+        //  • `/99` — Safari 26 бүрэн opaque fixed давхаргыг хөвөгч мөрний
+        //    хэсэгт тайрдаг; 99% тунгалаг давхаргыг бүтэн зурдаг (WebKit
+        //    алдаа). Зөвхөн гадна давхарга /99 — агуулга нь дотроо бүрэн
+        //    `bg-card` тул ард нь юу ч тусахгүй.
+        // Overlay нь мөн адил доошоо сунана.
+        overlayClassName="-bottom-[50vh]"
         className={cn(
-          "max-h-[min(85dvh,calc(var(--vv-height,100dvh)-0.5rem))] rounded-t-3xl border-t-0 px-0 pt-3 pb-[max(env(safe-area-inset-bottom),1.5rem)]",
+          "bg-card/99 after:bg-card/99 max-h-[min(85dvh,calc(var(--vv-height,100dvh)-0.5rem))] rounded-t-3xl border-t-0 p-0 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-[50vh]",
           className,
         )}
         // Inline: `side="bottom"`-ийн `bottom-0`-той tailwind-merge нийлүүлдэггүй.
@@ -96,19 +107,22 @@ export function ResponsiveDialog({
         }}
       >
         <KeyboardInset />
-        {/* Толгой гүйдэггүй: агуулга багтахгүй үед зөвхөн доорх хэсэг гүйж,
-            гарчиг ямагт харагдана. Хоёулаа sheet-ийн `gap`-ийг удамшуулна —
-            дуудагч `className="gap-3"` өгвөл урьдын адил бүх мөрөнд үйлчилнэ. */}
-        <div className="flex shrink-0 flex-col px-6 gap-[inherit]">
-          <div
-            aria-hidden
-            className="bg-muted-foreground/40 mx-auto h-1 w-10 shrink-0 rounded-full"
-          />
-          <SheetTitle>{title}</SheetTitle>
-          {description && <SheetDescription>{description}</SheetDescription>}
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-6 pb-1 gap-[inherit]">
-          {children}
+        {/* Бүх агуулга нэг бүрэн opaque давхарга дотор — гадна /99 давхаргын
+            ард юу ч тусахгүй. Толгой гүйдэггүй: агуулга багтахгүй үед зөвхөн
+            доорх хэсэг гүйж, гарчиг ямагт харагдана. `gap`-ийг sheet-ээс
+            удамшуулна — дуудагч `className="gap-3"` өгвөл урьдын адил. */}
+        <div className="bg-card flex min-h-0 flex-1 flex-col gap-[inherit] rounded-t-3xl pt-3 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
+          <div className="flex shrink-0 flex-col gap-[inherit] px-6">
+            <div
+              aria-hidden
+              className="bg-muted-foreground/40 mx-auto h-1 w-10 shrink-0 rounded-full"
+            />
+            <SheetTitle>{title}</SheetTitle>
+            {description && <SheetDescription>{description}</SheetDescription>}
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col gap-[inherit] overflow-y-auto overscroll-contain px-6 pb-1">
+            {children}
+          </div>
         </div>
       </SheetContent>
     </Sheet>
