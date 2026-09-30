@@ -3,7 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import { Stars } from "@/components/shared/stars";
-import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { formatTimeAgo } from "@/lib/format";
 import { REVIEWS_PAGE_SIZE } from "@/lib/constants";
 import {
@@ -43,7 +43,7 @@ function ReviewCard({
 }) {
   const edited = review.updatedAt > review.createdAt;
   return (
-    <div className="border-border bg-card/40 hover:border-foreground/20 h-full rounded-2xl border p-5 transition-colors">
+    <article className="py-5 first:pt-0">
       <div className="flex items-start gap-3">
         <Avatar name={review.authorName} src={review.authorAvatar} />
         <div className="min-w-0 flex-1">
@@ -64,13 +64,13 @@ function ReviewCard({
           </div>
           <Stars rating={review.rating} size={14} className="mt-2" />
           {review.body && (
-            <p className="text-foreground/90 mt-3 text-sm/relaxed wrap-break-word">
+            <p className="text-foreground/90 mt-2 max-w-prose text-sm/relaxed wrap-break-word">
               {review.body}
             </p>
           )}
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -86,15 +86,20 @@ export function ReviewList({
   target,
   initial,
   total,
+  own = null,
 }: {
   target: ReviewTarget;
   initial: Review[];
   total: number;
+  /** Хэрэглэгчийн дөнгөж хадгалсан сэтгэгдэл (ReviewBoard). */
+  own?: Review | null;
 }) {
   const [items, setItems] = React.useState(initial);
   const [count, setCount] = React.useState(total);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState(false);
+  // Устгасан id — `own`-оор оройд барьсан мөрийг ч дахин гаргахгүй.
+  const [removed, setRemoved] = React.useState<ReadonlySet<string>>(new Set());
 
   // A fresh server render (router.refresh() after a submit or a delete) hands
   // us a new array — adopt it as the new truth instead of keeping stale state.
@@ -130,11 +135,19 @@ export function ReviewList({
   }
 
   function handleDeleted(id: string) {
+    setRemoved((prev) => new Set(prev).add(id));
     setItems((prev) => prev.filter((r) => r.id !== id));
     setCount((c) => Math.max(0, c - 1));
   }
 
-  if (items.length === 0) {
+  // Өөрийн сэтгэгдэл оройд — серверийн шинэ render ирээгүй байсан ч харагдана.
+  // Ирсэн бол id-аар давхардлыг хасна.
+  const pinned = own && !removed.has(own.id) ? own : null;
+  const shown = pinned
+    ? [pinned, ...items.filter((r) => r.id !== pinned.id)]
+    : items;
+
+  if (shown.length === 0) {
     return (
       <p className="text-muted-foreground text-sm">
         Одоогоор сэтгэгдэл алга. Хамгийн түрүүнд үнэлгээ өгөөрэй.
@@ -143,30 +156,24 @@ export function ReviewList({
   }
 
   return (
-    // Хоёр багана — нэг урт баганад жагсаахад хуудас хэт сунаж, нэг баганад
-    // мөрийн урт ~200 тэмдэгт болж уншихад хүндэрдэг.
-    //
-    // Мөр доторх картууд ТЭГШ өндөртэй (`h-full`, `items-start` БИШ): өмнө нь
-    // богино сэтгэгдлийн доор санамсаргүй цоорхой үүсч, сүлжээ эвдэрсэн
-    // харагддаг байв. Текст 200 тэмдэгтээр хязгаарлагдсан тул мөрийн өндрийн
-    // зөрүү нь хязгаарлагдмал.
-    <div className="grid gap-4 sm:grid-cols-2">
-      {items.map((r) => (
-        <ReviewCard key={r.id} review={r} onDeleted={handleDeleted} />
-      ))}
+    // Нэг багана, зураасаар тусгаарласан — сэтгэгдлийн урт тэс өөр тул картын
+    // сүлжээнд эгнээ бүр хамгийн урт сэтгэгдлээрээ сунаж, богинохон нь хоосон
+    // хайрцаг болж харагддаг байв. Уншигдах мөрийн уртыг `max-w-prose` барина.
+    <div>
+      <div className="divide-border divide-y">
+        {shown.map((r) => (
+          <ReviewCard key={r.id} review={r} onDeleted={handleDeleted} />
+        ))}
+      </div>
 
       {items.length < count && (
-        <div className="space-y-2 sm:col-span-2">
-          <Button
+        <div className="mt-2 space-y-2">
+          <LoadingButton
+            loading={loading}
             variant="secondary"
             className="w-full"
             onClick={loadMore}
-            disabled={loading}
-          >
-            {loading
-              ? "Ачааллаж байна…"
-              : `Цааш үзэх (${Math.min(REVIEWS_PAGE_SIZE, count - items.length)})`}
-          </Button>
+          >{`Цааш үзэх (${Math.min(REVIEWS_PAGE_SIZE, count - items.length)})`}</LoadingButton>
           {error && (
             <p className="text-destructive text-sm">
               Сэтгэгдэл ачаалахад алдаа гарлаа. Дахин оролдоно уу.
