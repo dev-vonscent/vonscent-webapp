@@ -1,9 +1,6 @@
 import { Suspense } from "react";
 import { SiteHeader } from "@/components/shared/site-header";
-import {
-  HeaderSocialLinks,
-  MenuSocialLinks,
-} from "@/components/shared/social-links";
+import { ContactFab, MenuSocialLinks } from "@/components/shared/social-links";
 import { BottomNav } from "@/components/shared/bottom-nav";
 import { WishlistSync } from "@/features/wishlist/sync";
 import { ScrollReset } from "@/components/shared/scroll-reset";
@@ -16,9 +13,9 @@ import { SkipLink } from "@/components/shared/skip-link";
  * A slot rather than a `usePathname()` check: `@footer/page.tsx` matches only
  * `/`, and every other route falls to `@footer/default.tsx`, which renders
  * nothing. So the footer is not merely hidden off the home page — it is never
- * rendered. (The header's social icons do read `getSocialSettings()` on every
- * route, but through the request-cached settings fetch most pages already make,
- * streamed in a `Suspense` slot so it never holds the header back.)
+ * rendered. (The contact button does read `getSocialSettings()` on every
+ * route, but through the request-cached settings fetch most pages already
+ * make, streamed in a `Suspense` slot so it never holds the page back.)
  *
  * It also stays a *sibling* of `<main>`. Moving it into the page would have
  * nested it inside `<main>`, where `<footer>` loses its `contentinfo` landmark
@@ -37,11 +34,6 @@ export default function ShopLayout({
       {/* Хамгийн эхний фокус авах элемент байх ёстой тул толгойн ӨМНӨ. */}
       <SkipLink />
       <SiteHeader
-        social={
-          <Suspense fallback={null}>
-            <HeaderSocialLinks />
-          </Suspense>
-        }
         menuSocial={
           <Suspense fallback={null}>
             <MenuSocialLinks />
@@ -60,6 +52,9 @@ export default function ShopLayout({
       </main>
       {footer}
       <BottomNav />
+      <Suspense fallback={null}>
+        <ContactFab />
+      </Suspense>
       <WishlistSync />
     </>
   );

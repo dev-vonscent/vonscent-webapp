@@ -1,14 +1,19 @@
 import { Facebook, Instagram } from "lucide-react";
 import { getSocialSettings } from "@/features/content/api";
-import { cn } from "@/lib/utils";
+import {
+  ContactFabMenu,
+  type ContactLink,
+} from "@/components/shared/contact-fab-menu";
 
 /**
- * Толгой ба гар утасны цэсэн дэх Facebook / Instagram холбоос (клиент,
- * 2026-09 UG). Хаягууд нь админы «Контент → Сошиал»-оос — footer, контакт
+ * Гар утасны цэсэн дэх Facebook / Instagram холбоос ба desktop-ийн
+ * «Холбогдох» товч (клиент, 2026-09 UG). Хаягууд нь админы «Контент → Сошиал»-оос — footer, контакт
  * хуудастай нэг эх сурвалж.
  *
- * Server component: `SiteHeader` нь client тул layout энийг `Suspense`-ээр
- * боож slot болгон дамжуулна — тохиргооны уншилт толгойг хүлээлгэхгүй.
+ * Server component: layout эдгээрийг `Suspense`-ээр боож дамжуулна —
+ * тохиргооны уншилт толгойг хүлээлгэхгүй. Desktop толгойд сошиал дүрс
+ * байхгүй: худалдан авалтын хамгийн ил газраас сайтаас гадагш хөтлөх нь
+ * алдагдалтай тул баруун доод булангийн товч руу шилжсэн.
  */
 async function links() {
   const social = await getSocialSettings();
@@ -26,26 +31,57 @@ async function links() {
   ].filter((l): l is Exclude<typeof l, "" | undefined> => Boolean(l));
 }
 
-/** Desktop толгойн баруун тал — дүрс товч, хайлтын хажууд. */
-export async function HeaderSocialLinks({ className }: { className?: string }) {
-  const items = await links();
+/**
+ * FB хуудасны хаягаас Messenger-ийн шууд чат (`m.me/<хуудас>`) гаргана —
+ * хуудас руу биш, яриа руу шууд оруулна. Задлах боломжгүй бол (profile.php?id=
+ * г.м) анхны хаягаа буцаана.
+ */
+function messengerHref(facebook: string) {
+  try {
+    const slug = new URL(facebook).pathname.split("/").filter(Boolean)[0];
+    return slug && slug !== "profile.php" ? `https://m.me/${slug}` : facebook;
+  } catch {
+    return facebook;
+  }
+}
+
+/** Instagram хаягаас DM-ийн шууд холбоос (`ig.me/m/<хэрэглэгч>`). */
+function instagramDmHref(instagram: string) {
+  try {
+    const slug = new URL(instagram).pathname.split("/").filter(Boolean)[0];
+    return slug ? `https://ig.me/m/${slug}` : instagram;
+  } catch {
+    return instagram;
+  }
+}
+
+/** Desktop-ийн баруун доод булангийн «Холбогдох» товч (contact-fab-menu.tsx). */
+export async function ContactFab() {
+  const social = await getSocialSettings();
+  const items: ContactLink[] = [
+    social.facebook && {
+      href: messengerHref(social.facebook),
+      label: "Messenger-ээр асуух",
+      icon: "messenger" as const,
+    },
+    social.instagram && {
+      href: instagramDmHref(social.instagram),
+      label: "Instagram DM",
+      icon: "instagram" as const,
+    },
+    social.phone && {
+      href: `tel:${social.phone.replace(/\s+/g, "")}`,
+      label: social.phone,
+      icon: "phone" as const,
+    },
+    social.email && {
+      href: `mailto:${social.email}`,
+      label: "Имэйл бичих",
+      icon: "email" as const,
+    },
+  ].filter((l): l is ContactLink => Boolean(l));
   if (items.length === 0) return null;
-  return (
-    <div className={cn("flex items-center", className)}>
-      {items.map(({ href, label, icon: Icon }) => (
-        <a
-          key={label}
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={label}
-          className="text-muted-foreground hover:bg-secondary/60 hover:text-foreground flex size-9 items-center justify-center rounded-full transition-colors"
-        >
-          <Icon className="size-4" />
-        </a>
-      ))}
-    </div>
-  );
+  return <ContactFabMenu links={items} />;
 }
 
 /** Гар утасны цэсний капсул эгнээ — «Холбоо барих» г.м-тэй нэг хэлбэр. */
