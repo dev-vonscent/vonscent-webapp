@@ -8,7 +8,7 @@ import {
   reviewInputSchema,
   reviewPageSchema,
 } from "@/lib/validators/review";
-import { getReviewPage } from "@/features/reviews/api";
+import { getReviewById, getReviewPage } from "@/features/reviews/api";
 import type { ReviewTarget } from "@/features/reviews/types";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
@@ -111,27 +111,34 @@ export async function POST(req: Request) {
   }
 
   // Owner-scoped RLS lets the user upsert their own review.
-  const { error } = await supabase.from("reviews").upsert(
-    {
-      product_id: target.kind === "product" ? target.id : null,
-      collection_id: target.kind === "collection" ? target.id : null,
-      user_id: user.id,
-      rating: input.rating,
-      body: input.body,
-    },
-    {
-      onConflict:
-        target.kind === "product"
-          ? "product_id,user_id"
-          : "collection_id,user_id",
-    },
-  );
-  if (error) {
+  const { data: saved, error } = await supabase
+    .from("reviews")
+    .upsert(
+      {
+        product_id: target.kind === "product" ? target.id : null,
+        collection_id: target.kind === "collection" ? target.id : null,
+        user_id: user.id,
+        rating: input.rating,
+        body: input.body,
+      },
+      {
+        onConflict:
+          target.kind === "product"
+            ? "product_id,user_id"
+            : "collection_id,user_id",
+      },
+    )
+    .select("id")
+    .single();
+  if (error || !saved) {
     return NextResponse.json({ error: "INSERT_FAILED" }, { status: 500 });
   }
 
   await revalidateTarget(supabase, target);
-  return NextResponse.json({ ok: true });
+  // Хадгалсан мөрийг буцаана — ISR цэвэрлэгээ router.refresh()-ээс хоцорч
+  // болох тул жагсаалт үүгээр шууд шинэчлэгдэнэ.
+  const review = await getReviewById((saved as { id: string }).id);
+  return NextResponse.json({ ok: true, review });
 }
 
 /** Delete a review — staff only (client decision: зөвхөн админ устгана). */

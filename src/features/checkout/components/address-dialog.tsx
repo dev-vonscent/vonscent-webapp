@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldError, fieldErrorClass } from "@/components/ui/form-field";
@@ -185,9 +186,9 @@ export function AddressDialog({
           >
             Болих
           </Button>
-          <Button type="submit" disabled={saving}>
-            {saving ? "Хадгалж байна…" : (submitLabel ?? "Хадгалах")}
-          </Button>
+          <LoadingButton loading={saving} type="submit">
+            {submitLabel ?? "Хадгалах"}
+          </LoadingButton>
         </div>
       </form>
     </ResponsiveDialog>

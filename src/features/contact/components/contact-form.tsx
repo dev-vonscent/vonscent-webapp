@@ -5,19 +5,20 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import {
   contactInputSchema,
   type ContactInput,
 } from "@/lib/validators/contact";
 import { rateLimitMessage } from "@/lib/rate-limit-client";
+import { toast } from "@/lib/toast";
 
 export function ContactForm() {
-  const [done, setDone] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<ContactInput>({
     resolver: zodResolver(contactInputSchema),
@@ -37,27 +38,23 @@ export function ContactForm() {
         return;
       }
       if (!res.ok) throw new Error();
-      setDone(true);
+      // Форм хэвээр үлдэнэ — дахин бичих гэж хуудсаа reload хийх ёсгүй. Нэр,
+      // имэйлийг үлдээж зөвхөн мессежийг цэвэрлэнэ.
+      reset({ ...values, message: "" });
+      toast.success(
+        "Таны мессежийг хүлээн авлаа. Удахгүй хариу өгье.",
+        "Баярлалаа!",
+      );
     } catch {
       setServerError("Илгээхэд алдаа гарлаа. Дахин оролдоно уу.");
     }
-  }
-
-  if (done) {
-    return (
-      <div className="border-border flex items-center justify-center rounded-lg border p-8 text-center">
-        <p className="text-sm">
-          Баярлалаа! Таны мессежийг хүлээн авлаа. Удахгүй хариу өгье.
-        </p>
-      </div>
-    );
   }
 
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
       noValidate
-      className="border-border space-y-4 rounded-lg border p-6"
+      className="bg-card h-fit space-y-4 rounded-xl p-6"
     >
       <div className="space-y-1.5">
         <Label htmlFor="name">Нэр</Label>
@@ -113,9 +110,9 @@ export function ContactForm() {
           {serverError}
         </p>
       )}
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? "Илгээж байна…" : "Илгээх"}
-      </Button>
+      <LoadingButton loading={isSubmitting} type="submit" className="w-full">
+        Илгээх
+      </LoadingButton>
     </form>
   );
 }

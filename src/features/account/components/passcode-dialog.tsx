@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Label } from "@/components/ui/label";
 import { DigitInput } from "@/components/ui/digit-input";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
@@ -140,17 +141,15 @@ export function PasscodeDialog({
           >
             Болих
           </Button>
-          <Button
+          <LoadingButton
+            loading={busy}
             type="submit"
             disabled={
-              busy ||
-              current.length !== 4 ||
-              next.length !== 4 ||
-              confirm.length !== 4
+              current.length !== 4 || next.length !== 4 || confirm.length !== 4
             }
           >
-            {busy ? "Солиж байна…" : "Солих"}
-          </Button>
+            Солих
+          </LoadingButton>
         </div>
       </form>
     </ResponsiveDialog>

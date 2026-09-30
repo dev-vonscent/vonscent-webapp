@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -307,16 +308,15 @@ export function OrderStatusControl({
               placeholder="Тэмдэглэл (заавал биш)"
             />
 
-            <Button
+            <LoadingButton
               variant={selected?.tone ?? "default"}
               className="h-11 w-full md:h-10"
-              disabled={busy || !selected}
+              loading={busy}
+              disabled={!selected}
               onClick={() => selected && run(selected)}
             >
-              {busy
-                ? "Шинэчилж байна…"
-                : (selected?.label ?? "Төлөв сонгоно уу")}
-            </Button>
+              {selected?.label ?? "Төлөв сонгоно уу"}
+            </LoadingButton>
           </>
         )}
       </section>
@@ -358,9 +358,9 @@ export function OrderStatusControl({
           ) : current === "delivered" && canRecover ? (
             <>
               <p className="bg-destructive/10 text-destructive rounded-md px-3 py-2 text-sm">
-                Захиалга хүргэгдсэн. Барааг биетээр буцааж хүлээж авсны
-                дараа доорх товчоор мөнгийг буцаасан гэж тэмдэглэнэ үү.
-                Захиалгын төлөв «Хүргэгдсэн» хэвээр үлдэнэ.
+                Захиалга хүргэгдсэн. Барааг биетээр буцааж хүлээж авсны дараа
+                доорх товчоор мөнгийг буцаасан гэж тэмдэглэнэ үү. Захиалгын
+                төлөв «Хүргэгдсэн» хэвээр үлдэнэ.
               </p>
               <Button
                 variant="destructive"

@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { Check, Loader2, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import {
@@ -272,25 +273,16 @@ export function AddressBook() {
 
                       {/* Дарах газар нь тодорхой байх ёстой — icon биш, бичигтэй товч. */}
                       {!a.is_default && (
-                        <Button
+                        <LoadingButton
                           variant="outline"
                           size="sm"
                           className="w-full"
+                          loading={savingId === a.id}
                           disabled={savingId !== null}
-                          aria-busy={savingId === a.id}
                           onClick={() => makeDefault(a.id)}
                         >
-                          {savingId === a.id ? (
-                            <>
-                              <Loader2 className="size-4 animate-spin" /> Солиж
-                              байна…
-                            </>
-                          ) : (
-                            <>
-                              <Check className="size-4" /> Үндсэн хаяг болгох
-                            </>
-                          )}
-                        </Button>
+                          <Check className="size-4" /> Үндсэн хаяг болгох
+                        </LoadingButton>
                       )}
                     </CardContent>
                   </Card>

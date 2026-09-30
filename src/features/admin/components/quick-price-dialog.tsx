@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Field } from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
@@ -43,7 +44,9 @@ export function QuickPriceDialog({
   const [msg, setMsg] = React.useState<string | null>(null);
   const [showErrors, setShowErrors] = React.useState(false);
   const [isActive, setIsActive] = React.useState(product.isActive);
-  const [lowStockMl, setLowStockMl] = React.useState(String(product.lowStockMl));
+  const [lowStockMl, setLowStockMl] = React.useState(
+    String(product.lowStockMl),
+  );
   const [variants, setVariants] = React.useState<VariantDraft[]>(() =>
     draftFrom(product),
   );
@@ -153,9 +156,9 @@ export function QuickPriceDialog({
           >
             Болих
           </Button>
-          <Button onClick={save} disabled={busy}>
-            {busy ? "Хадгалж байна…" : "Хадгалах"}
-          </Button>
+          <LoadingButton loading={busy} onClick={save}>
+            Хадгалах
+          </LoadingButton>
         </div>
       </div>
     </ResponsiveDialog>

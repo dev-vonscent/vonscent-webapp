@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Loader2 } from "lucide-react";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
@@ -194,17 +194,15 @@ export function RefundCancelDialog({
           >
             Буцах
           </Button>
-          <Button
+          <LoadingButton
             type="submit"
             variant="destructive"
             size="lg"
-            disabled={busy}
-            aria-busy={busy}
+            loading={busy}
             className="flex-1"
           >
-            {busy && <Loader2 className="animate-spin" aria-hidden />}
             Захиалга цуцлах
-          </Button>
+          </LoadingButton>
         </div>
       </form>
     </ResponsiveDialog>

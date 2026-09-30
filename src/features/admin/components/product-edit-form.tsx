@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Field } from "@/components/ui/field";
 import { adminFetch } from "@/features/admin/lib/mutate";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -552,14 +553,14 @@ export function ProductEditForm({
       {/* Sticky on a phone — see product-form.tsx. */}
       <div className="bg-background/85 pb-safe sticky bottom-0 -mx-4 flex items-center justify-between gap-3 px-4 py-3 backdrop-blur md:static md:mx-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
         <div className="flex flex-1 gap-3 md:flex-none">
-          <Button
+          <LoadingButton
+            loading={pending}
             type="submit"
             size="lg"
-            disabled={pending}
             className="flex-1 md:flex-none"
           >
-            {pending ? "Хадгалж байна…" : "Хадгалах"}
-          </Button>
+            Хадгалах
+          </LoadingButton>
           <Button type="button" variant="secondary" size="lg" onClick={cancel}>
             Болих
           </Button>

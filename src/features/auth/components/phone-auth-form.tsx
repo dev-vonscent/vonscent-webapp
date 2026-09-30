@@ -14,6 +14,7 @@ import { ArrowLeft, MessageSquareText, RotateCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Separator } from "@/components/ui/separator";
 import { DigitInput } from "@/components/ui/digit-input";
 import { createClient } from "@/lib/supabase/browser";
@@ -353,13 +354,14 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
           </Reveal>
 
           <Reveal delay={180}>
-            <Button
+            <LoadingButton
+              loading={pending}
               type="submit"
               className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
-              disabled={pending || !validPhone || !validPasscode}
+              disabled={!validPhone || !validPasscode}
             >
-              {pending ? "Түр хүлээнэ үү…" : copy.cta}
-            </Button>
+              {copy.cta}
+            </LoadingButton>
           </Reveal>
         </form>
       ) : verify.stage === "verified" ? (
@@ -403,13 +405,14 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
               />
             </div>
 
-            <Button
+            <LoadingButton
+              loading={pending}
               type="submit"
               className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
-              disabled={pending || !validPasscode || passcode2.length !== 4}
+              disabled={!validPasscode || passcode2.length !== 4}
             >
-              {pending ? "Түр хүлээнэ үү…" : copy.cta}
-            </Button>
+              {copy.cta}
+            </LoadingButton>
 
             {/* Ил гарц — бүртгэлээ дуусгалгүй нэвтрэх рүү буцаж болно */}
             <Button
@@ -564,21 +567,20 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
             />
           </Reveal>
           <Reveal delay={mode === "register" ? 180 : 120}>
-            <Button
+            <LoadingButton
               type="submit"
               className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
-              disabled={!validPhone || verify.stage === "starting"}
+              loading={verify.stage === "starting"}
+              disabled={!validPhone}
             >
-              {verify.stage === "starting" ? (
-                "Түр хүлээнэ үү…"
-              ) : verify.stage === "expired" ? (
+              {verify.stage === "expired" ? (
                 <>
                   <RotateCw className="size-4" /> Дахин баталгаажуулах
                 </>
               ) : (
                 "Дугаар баталгаажуулах"
               )}
-            </Button>
+            </LoadingButton>
           </Reveal>
         </form>
       )}

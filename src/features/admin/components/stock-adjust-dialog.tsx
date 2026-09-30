@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Minus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Field } from "@/components/ui/field";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import {
@@ -258,18 +259,14 @@ export function StockAdjustDialog({
           >
             Болих
           </Button>
-          <Button type="submit" disabled={!canSubmit}>
+          <LoadingButton loading={busy} type="submit" disabled={!canSubmit}>
             {isRestock ? (
               <Plus className="size-4" />
             ) : (
               <Minus className="size-4" />
             )}
-            {busy
-              ? "Хадгалж байна…"
-              : isRestock
-                ? "Нөөц нэмэх"
-                : "Үлдэгдэл хасах"}
-          </Button>
+            {isRestock ? "Нөөц нэмэх" : "Үлдэгдэл хасах"}
+          </LoadingButton>
         </div>
       </form>
     </ResponsiveDialog>

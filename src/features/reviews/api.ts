@@ -84,6 +84,21 @@ export async function getReviewPage(
 }
 
 /**
+ * One review by id — the POST handler hands the saved row back so the page
+ * can show it at once instead of waiting on the ISR purge to land.
+ */
+export async function getReviewById(id: string): Promise<Review | null> {
+  const supabase = createPublicClient();
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from("public_reviews")
+    .select(REVIEW_COLUMNS)
+    .eq("id", id)
+    .maybeSingle();
+  return data ? mapReview(data as unknown as PublicReviewRow) : null;
+}
+
+/**
  * How many of those reviews actually carry text. A rating-only review is a
  * valid review but not a "сэтгэгдэл", and the header states both separately.
  */

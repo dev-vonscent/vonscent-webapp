@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { adminFetch } from "@/features/admin/lib/mutate";
 import { toast } from "@/lib/toast";
@@ -70,8 +70,7 @@ export function NoteTranslationPanel({ notes }: { notes: string[] }) {
         <p className="text-muted-foreground text-xs">
           Нотын зураг үүсгэхэд англи нэр хэрэгтэй. Бөглөөгүй нот зурагт орохгүй.
           Мускус, амбер шиг зургаар дүрслэх боломжгүй нот бол «Дүрслэх
-          боломжгүй» гэснийг чагтална. Нэг удаа бөглөхөд бүх усанд
-          хэрэглэгдэнэ.
+          боломжгүй» гэснийг чагтална. Нэг удаа бөглөхөд бүх усанд хэрэглэгдэнэ.
         </p>
       </div>
       <ul className="space-y-2">
@@ -112,14 +111,15 @@ export function NoteTranslationPanel({ notes }: { notes: string[] }) {
         })}
       </ul>
       <div className="flex flex-wrap items-center gap-3">
-        <Button
+        <LoadingButton
+          loading={busy}
           type="button"
           size="sm"
           onClick={save}
-          disabled={busy || filled.length === 0}
+          disabled={filled.length === 0}
         >
-          {busy ? "Хадгалж байна…" : "Англи нэрийг хадгалах"}
-        </Button>
+          Англи нэрийг хадгалах
+        </LoadingButton>
         {msg && <p className="text-destructive text-xs">{msg}</p>}
       </div>
     </div>

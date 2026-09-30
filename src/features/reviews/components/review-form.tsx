@@ -4,15 +4,17 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Star } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/browser";
 import { reviewInputSchema } from "@/lib/validators/review";
 import { REVIEW_BODY_MAX } from "@/lib/constants";
 import { rateLimitMessage } from "@/lib/rate-limit-client";
+import { toast } from "@/lib/toast";
 import {
   targetColumn,
   targetParam,
+  type Review,
   type ReviewTarget,
 } from "@/features/reviews/types";
 
@@ -29,10 +31,13 @@ type Existing = { rating: number; body: string } | null;
 export function ReviewForm({
   target,
   path,
+  onSaved,
 }: {
   target: ReviewTarget;
   /** Нэвтрээд буцах хуудас. */
   path: string;
+  /** Хадгалсан мөр — жагсаалтад шууд харуулахад. */
+  onSaved?: (review: Review) => void;
 }) {
   const router = useRouter();
   const [authed, setAuthed] = React.useState<boolean | null>(null);
@@ -41,7 +46,6 @@ export function ReviewForm({
   const [hover, setHover] = React.useState(0);
   const [body, setBody] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
-  const [saved, setSaved] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   // `target` нь объект — render бүрт шинэ лавлагаа тул effect утгуудаар нь.
   const { kind, id } = target;
@@ -115,7 +119,6 @@ export function ReviewForm({
     }
     setSubmitting(true);
     setError(null);
-    setSaved(false);
     try {
       const res = await fetch("/api/reviews", {
         method: "POST",
@@ -128,9 +131,14 @@ export function ReviewForm({
         return;
       }
       if (!res.ok) throw new Error();
+      const { review } = (await res.json()) as { review?: Review | null };
+      const isNew = !existing;
       setExisting({ rating: parsed.data.rating, body: parsed.data.body });
       setBody(parsed.data.body);
-      setSaved(true);
+      if (review) onSaved?.(review);
+      toast.success(
+        isNew ? "Сэтгэгдэл нийтлэгдлээ. Баярлалаа!" : "Өөрчлөлт хадгалагдлаа.",
+      );
       router.refresh();
     } catch {
       setError("Сэтгэгдэл хадгалахад алдаа гарлаа.");
@@ -154,7 +162,6 @@ export function ReviewForm({
             type="button"
             onClick={() => {
               setRating(n);
-              setSaved(false);
             }}
             onMouseEnter={() => setHover(n)}
             onMouseLeave={() => setHover(0)}
@@ -176,7 +183,6 @@ export function ReviewForm({
           value={body}
           onChange={(e) => {
             setBody(e.target.value);
-            setSaved(false);
           }}
           rows={3}
           maxLength={REVIEW_BODY_MAX}
@@ -188,18 +194,9 @@ export function ReviewForm({
         </p>
       </div>
       {error && <p className="text-destructive text-sm">{error}</p>}
-      {saved && !error && (
-        <p className="text-muted-foreground text-sm">
-          Хадгаллаа. Баярлалаа! Хүссэн үедээ дахин засаж болно.
-        </p>
-      )}
-      <Button type="submit" disabled={submitting || !dirty}>
-        {submitting
-          ? "Илгээж байна…"
-          : existing
-            ? "Өөрчлөлтөө хадгалах"
-            : "Сэтгэгдэл илгээх"}
-      </Button>
+      <LoadingButton loading={submitting} type="submit" disabled={!dirty}>
+        {existing ? "Өөрчлөлтөө хадгалах" : "Сэтгэгдэл илгээх"}
+      </LoadingButton>
       {existing && (
         <p className="text-muted-foreground text-xs">
           {target.kind === "product"
