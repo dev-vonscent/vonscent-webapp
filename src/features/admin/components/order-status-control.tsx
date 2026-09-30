@@ -242,22 +242,25 @@ export function OrderStatusControl({
 
   /**
    * Хүргэгдсэний дараах буцаалт (docs/analysis/order_status_ux_proposal.md
-   * §3.5). Захиалга биетээр хүргэгдсэн, хэрэглэгч хэрэглэсэн байж болзошгүй
-   * тул цуцлалтын механизмыг (ml/оноо/купон авто буцаалт) ДАХИН АШИГЛАХГүй
-   * — зөвхөн `payment_status`-ыг л шууд `refunded` болгоно, `order_status`
-   * хэвээрээ `delivered` үлдэнэ. Зөвхөн super_admin-д харагдана (доор).
+   * §3.5). Захиалга «Хүргэгдсэн» хэвээр үлдэж, төлбөр «Буцаагдсан» болно.
+   * Оноо, урамшууллын купон цуцлалттай адил урвуулагдана (0112). Декантыг
+   * админ заавал шийднэ: нөөцөд буцаах эсвэл зарах боломжгүй — эс бөгөөс
+   * ml-ийн хасалт тайлбаргүй үлдэнэ. Зөвхөн super_admin-д харагдана (доор).
    */
-  async function refundDelivered() {
+  async function refundDelivered(restock: boolean) {
     const ok = await confirm({
-      title: "Барааг биетээр хүлээж авсан уу?",
-      description:
-        "Барааг биетээр хүлээж авсны дараа л дарна уу. Захиалга «Хүргэгдсэн» хэвээр үлдэнэ, зөвхөн төлбөрийг «Буцаагдсан» гэж тэмдэглэнэ. Мл үлдэгдэлд автоматаар буцахгүй — шинэ, нээгдээгүй бол Үлдэгдэл хуудаснаас өөрөө гараар нэмнэ.",
+      title: restock
+        ? "Декантыг нөөцөд буцаах уу?"
+        : "Декант зарах боломжгүй юу?",
+      description: restock
+        ? "Мөнгийг нь буцаасан, декант шинэ, нээгдээгүй хэвээр буцаж ирсэн бол дарна уу. Мл нь үлдэгдэлд нэмэгдэнэ (зардалд нөлөөлөхгүй). Хэрэглэгчийн олсон V point, урамшууллын купон хүчингүй болно."
+        : "Мөнгийг нь буцаасан, декант нээгдсэн эсвэл буцаж ирээгүй бол дарна уу. Мл үлдэгдэлд нэмэгдэхгүй — хэдэн мл хасагдсаныг захиалгын түүхэнд бичнэ. Хэрэглэгчийн олсон V point, урамшууллын купон хүчингүй болно.",
       confirmLabel: "Тийм, буцаалт хийх",
       destructive: true,
     });
     if (!ok) return;
     await post(
-      { refund: true },
+      { refund: true, restock },
       "Буцаалт бүртгэгдлээ.",
       "Буцаалт бүртгэгдсэнгүй",
     );
@@ -358,18 +361,28 @@ export function OrderStatusControl({
           ) : current === "delivered" && canRecover ? (
             <>
               <p className="bg-destructive/10 text-destructive rounded-md px-3 py-2 text-sm">
-                Захиалга хүргэгдсэн. Барааг биетээр буцааж хүлээж авсны дараа
-                доорх товчоор мөнгийг буцаасан гэж тэмдэглэнэ үү. Захиалгын
-                төлөв «Хүргэгдсэн» хэвээр үлдэнэ.
+                Захиалга хүргэгдсэн. Мөнгийг нь буцаасны дараа декант буцаж
+                ирсэн эсэхээс хамаарч доорх товчны аль нэгийг дарна уу.
+                Захиалгын төлөв «Хүргэгдсэн» хэвээр үлдэнэ.
               </p>
-              <Button
-                variant="destructive"
-                className="h-11 w-full md:h-10"
-                disabled={busy}
-                onClick={refundDelivered}
-              >
-                Хүргэгдсэний дараах буцаалт
-              </Button>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button
+                  variant="destructive"
+                  className="h-11 w-full md:h-10"
+                  disabled={busy}
+                  onClick={() => refundDelivered(true)}
+                >
+                  Буцаалт — нөөцөд буцаах
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="h-11 w-full md:h-10"
+                  disabled={busy}
+                  onClick={() => refundDelivered(false)}
+                >
+                  Буцаалт — зарах боломжгүй
+                </Button>
+              </div>
             </>
           ) : current === "delivered" ? (
             <p className="text-muted-foreground text-xs">

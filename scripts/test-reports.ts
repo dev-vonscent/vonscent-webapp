@@ -173,10 +173,15 @@ const setStatus = (c: Client, id: string, s: string) =>
     id,
     s,
   ]);
-async function refund(c: Client, id: string, fee = 0) {
+async function refund(
+  c: Client,
+  id: string,
+  fee = 0,
+  restock: boolean | null = null,
+) {
   const { rows } = await c.query<{
     r: { ok: boolean; reason?: string; already?: boolean };
-  }>("select mark_order_refunded($1, null, $2) as r", [id, fee]);
+  }>("select mark_order_refunded($1, null, $2, $3) as r", [id, fee, restock]);
   return rows[0].r;
 }
 
@@ -704,7 +709,18 @@ async function main() {
     await setStatus(a, id, "shipping");
     await setStatus(a, id, "delivered");
     const janBefore = await report(a, JAN.from, JAN.to);
-    const res = await refund(a, id);
+    const cpBefore = await a.query(
+      "select 1 from coupons where source_order_id = $1",
+      [id],
+    );
+    check("урамшууллын купон олгогдсон байсан", cpBefore.rowCount === 1);
+    const noChoice = await refund(a, id);
+    check(
+      "декантын сонголтгүй бол татгалзана (RESTOCK_REQUIRED)",
+      noChoice.ok === false && noChoice.reason === "RESTOCK_REQUIRED",
+      noChoice,
+    );
+    const res = await refund(a, id, 0, false);
     // Бодит байдалд refund нь 2-р сард хийгдэнэ; history-ийн огноог
     // ч тэр сард шилжүүлнэ.
     await a.query("update orders set refunded_at = $2 where id = $1", [
@@ -739,10 +755,20 @@ async function main() {
       janAfter.revenue + feb.revenue === 0,
     );
     const i = await inv(a, p);
+    check("зарах боломжгүй: ml нөөцөд буцаагүй (90)", i.on_hand_ml === 90, i);
+    const note = await a.query<{ note: string }>(
+      "select note from order_status_history where order_id = $1 and note like 'Төлбөр буцаагдсан%'",
+      [id],
+    );
     check(
-      "ml буцаагдаагүй (0094 зориуд — админ гараар)",
-      i.on_hand_ml === 90,
-      i,
+      "түүхэнд хасагдсан 10ml тайлбартай",
+      note.rows[0]?.note.includes("10ml") === true,
+      note.rows,
+    );
+    check(
+      "2-р сарын «Зарсан мл»-ээс −10",
+      feb.series[0]?.ml === -10,
+      feb.series,
     );
     const pr = await profile(a, ctx.customer);
     check(
@@ -754,13 +780,72 @@ async function main() {
       "select is_active from coupons where source_order_id = $1",
       [id],
     );
-    check("урамшууллын купон олгогдсон байсан", cp.rows.length === 1, cp.rows);
     check(
-      "[F8] буцаасан захиалгын урамшууллын купон идэвхгүй болсон",
-      cp.rows[0]?.is_active === false,
+      "[F8] ашиглаагүй урамшууллын купон хүчингүй (устгагдсан)",
+      cp.rows.every((r) => !r.is_active),
       cp.rows,
     );
   });
+
+  await scenario(
+    a,
+    ctx,
+    "F2) Хүргэсний дараа refund — декант нөөцөд буцсан",
+    async () => {
+      const p = await makeProduct(a, ctx, "F2");
+      await givePoints(a, ctx.customer, 5000);
+      const id = await placeOrder(a, {
+        user: ctx.customer,
+        lines: [{ p, ml: 10 }],
+        loyalty: 5000,
+        createdAt: "2031-01-22T12:00:00",
+      });
+      await pay(a, id);
+      await setStatus(a, id, "shipping");
+      await setStatus(a, id, "delivered");
+      const before = await report(a, Y.from, Y.to);
+      const res = await refund(a, id, 0, true);
+      await a.query("update orders set refunded_at = $2 where id = $1", [
+        id,
+        at("2031-01-25T10:00:00"),
+      ]);
+      const after = await report(a, Y.from, Y.to);
+      check("refund ok", res.ok === true, res);
+      check("ml нөөцөд буцсан (100)", (await inv(a, p)).on_hand_ml === 100);
+      const log = await a.query<{
+        cost: number;
+        delta_ml: number;
+        order_id: string;
+      }>(
+        "select cost, delta_ml, order_id from restock_log where product_id = $1 and reason = 'refund_return'",
+        [p.id],
+      );
+      check(
+        "restock_log: +10ml, өртөг 0, захиалгатай холбоотой",
+        log.rows.length === 1 &&
+          log.rows[0].cost === 0 &&
+          log.rows[0].delta_ml === 10 &&
+          log.rows[0].order_id === id,
+        log.rows,
+      );
+      check("худалдан авалт өөрчлөгдөөгүй", after.cost === before.cost, {
+        before: before.cost,
+        after: after.cost,
+      });
+      check("цэвэр борлуулалт 0", after.revenue === 0, after.revenue);
+      const pr = await profile(a, ctx.customer);
+      check(
+        "ашигласан 5,000 оноо буцсан, олсон 900 хасагдсан",
+        pr.loyalty_points === 5000,
+        pr,
+      );
+      const o = await a.query<{ refund_restocked: boolean }>(
+        "select refund_restocked from orders where id = $1",
+        [id],
+      );
+      check("refund_restocked = true", o.rows[0].refund_restocked === true);
+    },
+  );
 
   await scenario(
     a,
@@ -954,6 +1039,37 @@ async function main() {
         i.reserved_ml === 10,
         { ...i, pendingOrder: o2 },
       );
+    },
+  );
+
+  await scenario(
+    a,
+    ctx,
+    "I3) Үлдэгдэл хүрэхгүй бол сэргээлтийг татгалзана",
+    async () => {
+      const p = await makeProduct(a, ctx, "I3", { onHand: 10 });
+      const o1 = await placeOrder(a, {
+        lines: [{ p, ml: 10 }],
+        createdAt: "2031-01-17T12:00:00",
+      });
+      await setStatus(a, o1, "cancelled");
+      await placeOrder(a, {
+        lines: [{ p, ml: 10 }],
+        createdAt: "2031-01-17T13:00:00",
+      });
+      let refused = false;
+      try {
+        await a.query("savepoint s");
+        await setStatus(a, o1, "pending");
+      } catch (e) {
+        refused = (e as Error).message.includes("INSUFFICIENT_STOCK");
+        await a.query("rollback to savepoint s");
+      }
+      check("сэргээлт INSUFFICIENT_STOCK-оор татгалзсан", refused);
+      const i = await inv(a, p);
+      check("reserved хэвээр 10 (нөгөө захиалгынх)", i.reserved_ml === 10, i);
+      const o = await orderRow(a, o1);
+      check("захиалга цуцлагдсан хэвээр", o.status === "cancelled", o);
     },
   );
 
