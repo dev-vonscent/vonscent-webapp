@@ -24,6 +24,30 @@ export interface CartVariant {
   unitPrice: number;
 }
 
+/**
+ * Багцыг өөр хэмжээ рүү шилжүүлэхэд солигдох хэсэг — гишүүн бүрийн variant,
+ * үнэ ба багцын үнэ хамт солигдоно (серверийн `quoteBundleSizes`-аас).
+ */
+export type CartCollectionSize = Pick<
+  CartCollection,
+  "ml" | "members" | "unitPrice" | "discountPct"
+>;
+
+/**
+ * Төлбөрийн хуудасны «Засах» dialog-ийн нэг хадгалалт: хэмжээ ба тоо ширхэг
+ * НЭГ бичилтээр. Хоёр тусдаа action (`setVariant` → `setQty`) дараалуулбал
+ * хэмжээ солиход түлхүүр өөрчлөгдөж, хоёр дахь нь хуучин түлхүүрээр алга
+ * болсон мөрийг хайна.
+ */
+export interface ItemEdit {
+  variant: CartVariant;
+  qty: number;
+}
+export interface CollectionEdit {
+  size: CartCollectionSize;
+  qty: number;
+}
+
 export interface AppliedCoupon {
   code: string;
   discount: number;
@@ -125,6 +149,15 @@ interface CartState {
   removeCollection: (key: string) => void;
   /** Багцын тоо ширхэг. `max` — `setQty`-тай ижил утгатай. */
   setCollectionQty: (key: string, qty: number, max?: number) => void;
+  /**
+   * Мөрийн хэмжээ + тоог зэрэг хадгалах (`ItemEdit`). Шинэ хэмжээ сагсанд
+   * аль хэдийн байвал `setVariant`-ийн адил нэг мөр болж нийлнэ.
+   */
+  editItem: (key: string, edit: ItemEdit) => void;
+  /** Багцын хэмжээ + тоо — ижил багц тэр хэмжээгээр байвал нийлнэ. */
+  editCollection: (key: string, edit: CollectionEdit) => void;
+  /** «Захиалах» мөрийг засах — сагсанд хүрэхгүй. */
+  editBuyNow: (edit: ItemEdit | CollectionEdit) => void;
   /** Check/uncheck one product line for ordering. */
   setItemSelected: (key: string, selected: boolean) => void;
   /** Check/uncheck one bundle line for ordering. */
@@ -319,6 +352,105 @@ export const useCart = create<CartState>()(
             .map((c) => (c.key === key ? { ...c, qty: clampQty(qty, max) } : c))
             .filter((c) => c.qty > 0),
         })),
+      editItem: (key, { variant, qty }) =>
+        set((state) => {
+          const index = state.items.findIndex((i) => i.key === key);
+          if (index < 0) return state;
+          const nextKey = variant.variantId;
+          const dupe =
+            nextKey === key
+              ? -1
+              : state.items.findIndex((i) => i.key === nextKey);
+          // Сонголт variant id-аар түлхүүрлэгдсэн — хэмжээ солиход чагт
+          // шинэ түлхүүр рүү дагаж шилжинэ (`setVariant`-тай ижил).
+          const wasExcluded = state.excludedItems.includes(key);
+          const excludedItems = state.excludedItems.filter(
+            (k) => k !== key && k !== nextKey,
+          );
+          return {
+            excludedItems: wasExcluded
+              ? [...excludedItems, nextKey]
+              : excludedItems,
+            items: state.items
+              .map((i, n) =>
+                n === index
+                  ? {
+                      ...i,
+                      ...variant,
+                      key: nextKey,
+                      qty:
+                        clampQty(qty) + (dupe >= 0 ? state.items[dupe].qty : 0),
+                    }
+                  : i,
+              )
+              .filter((_, n) => n !== dupe),
+          };
+        }),
+      editCollection: (key, { size, qty }) =>
+        set((state) => {
+          const index = state.collections.findIndex((c) => c.key === key);
+          if (index < 0) return state;
+          const next = { ...state.collections[index], ...size };
+          const nextKey = collectionKey(next);
+          const dupe =
+            nextKey === key
+              ? -1
+              : state.collections.findIndex((c) => c.key === nextKey);
+          const wasExcluded = state.excludedCollections.includes(key);
+          const excludedCollections = state.excludedCollections.filter(
+            (k) => k !== key && k !== nextKey,
+          );
+          return {
+            excludedCollections: wasExcluded
+              ? [...excludedCollections, nextKey]
+              : excludedCollections,
+            collections: state.collections
+              .map((c, n) =>
+                n === index
+                  ? {
+                      ...next,
+                      key: nextKey,
+                      qty:
+                        clampQty(qty) +
+                        (dupe >= 0 ? state.collections[dupe].qty : 0),
+                    }
+                  : c,
+              )
+              .filter((_, n) => n !== dupe),
+          };
+        }),
+      editBuyNow: (edit) =>
+        set((state) => {
+          const b = state.buyNow;
+          if (!b) return state;
+          if (b.kind === "item" && "variant" in edit) {
+            return {
+              buyNow: {
+                kind: "item",
+                item: {
+                  ...b.item,
+                  ...edit.variant,
+                  key: edit.variant.variantId,
+                  qty: clampQty(edit.qty),
+                },
+              },
+            };
+          }
+          if (b.kind === "collection" && "size" in edit) {
+            const next = { ...b.collection, ...edit.size };
+            return {
+              buyNow: {
+                kind: "collection",
+                collection: {
+                  ...next,
+                  key: collectionKey(next),
+                  qty: clampQty(edit.qty),
+                },
+              },
+            };
+          }
+          return state;
+        }),
       setItemSelected: (key, selected) =>
         set((state) => ({
           excludedItems: selected
@@ -407,10 +539,13 @@ export const useCart = create<CartState>()(
 const EMPTY_ITEMS: CartItem[] = [];
 const EMPTY_COLLECTIONS: CartCollection[] = [];
 
-/** Every line in the cart, checked or not — what the header badge counts. */
+/**
+ * Сагсны МӨРИЙН тоо (чагттай эсэхээс үл хамааран) — толгойн badge ба
+ * «Таны сагс (n)». Ширхгийн нийлбэр биш: 5 ширхэгтэй ганц мөр «5» гэж
+ * харагдаад, сагсаа нээхэд ганц бараа, «1/1» тоолууртай зөрдөг байв.
+ */
 export const selectCount = (s: CartState) =>
-  s.items.reduce((n, i) => n + i.qty, 0) +
-  s.collections.reduce((n, c) => n + c.qty, 0);
+  s.items.length + s.collections.length;
 
 export const isItemSelected = (s: CartState, key: string) =>
   !s.excludedItems.includes(key);

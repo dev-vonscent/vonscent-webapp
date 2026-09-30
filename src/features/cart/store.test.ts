@@ -74,8 +74,9 @@ describe("cart selection", () => {
     useCart.getState().setItemSelected("v2", false);
 
     expect(selectSubtotal(useCart.getState())).toBe(10000);
-    // Толгойн badge нь сагсанд байгаа бүх барааг тоолсоор байна.
-    expect(selectCount(useCart.getState())).toBe(3);
+    // Толгойн badge нь чагтаас үл хамааран сагсны бүх МӨРИЙГ тоолно
+    // (v2 нь 2 ширхэгтэй ч нэг мөр).
+    expect(selectCount(useCart.getState())).toBe(2);
     expect(selectSelectedCount(useCart.getState())).toBe(1);
   });
 
@@ -335,5 +336,94 @@ describe("хямдралын өмнөх дүн", () => {
     useCart.getState().add(line("v1", 10000), 3);
     const state = useCart.getState();
     expect(selectCheckoutGross(state)).toBe(selectCheckoutSubtotal(state));
+  });
+});
+
+/**
+ * Төлбөрийн хуудасны «Засах» dialog-ийн хадгалалт: хэмжээ + тоо НЭГ бичилтээр.
+ * Шинэ хэмжээ сагсанд аль хэдийн байвал мөрүүд нийлж, чагт дагаж шилжинэ.
+ */
+describe("засах dialog-ийн хадгалалт", () => {
+  beforeEach(() => {
+    useCart.setState({
+      items: [],
+      collections: [],
+      buyNow: null,
+      excludedItems: [],
+      excludedCollections: [],
+      coupon: null,
+    });
+  });
+
+  it("changes size and qty of a line together", () => {
+    useCart.getState().add(line("v1", 10000));
+    useCart.getState().editItem("v1", {
+      variant: { variantId: "v2", ml: 10, unitPrice: 18000 },
+      qty: 3,
+    });
+    expect(useCart.getState().items).toEqual([
+      expect.objectContaining({
+        key: "v2",
+        variantId: "v2",
+        ml: 10,
+        unitPrice: 18000,
+        qty: 3,
+      }),
+    ]);
+  });
+
+  it("folds into a line already at the new size, keeping the uncheck", () => {
+    useCart.getState().add(line("v1", 10000), 1);
+    useCart.getState().add(line("v2", 18000), 2);
+    useCart.getState().setItemSelected("v1", false);
+    useCart.getState().editItem("v1", {
+      variant: { variantId: "v2", ml: 10, unitPrice: 18000 },
+      qty: 1,
+    });
+    expect(useCart.getState().items).toEqual([
+      expect.objectContaining({ key: "v2", qty: 3 }),
+    ]);
+    expect(useCart.getState().excludedItems).toEqual(["v2"]);
+  });
+
+  it("moves a bundle to another ml under a new key", () => {
+    useCart
+      .getState()
+      .addCollection({ ...bundle("c1", 27000), members: [member("m5")] });
+    useCart.getState().setCollectionSelected("c1:5", false);
+    useCart.getState().editCollection("c1:5", {
+      size: {
+        ml: 10,
+        members: [{ ...member("m10"), price: 50000 }],
+        unitPrice: 45000,
+        discountPct: 10,
+      },
+      qty: 2,
+    });
+    expect(useCart.getState().collections).toEqual([
+      expect.objectContaining({
+        key: "c1:10",
+        ml: 10,
+        qty: 2,
+        unitPrice: 45000,
+      }),
+    ]);
+    expect(useCart.getState().excludedCollections).toEqual(["c1:10"]);
+  });
+
+  it("edits the «Захиалах» line and leaves the cart alone", () => {
+    useCart.getState().add(line("v1", 10000));
+    useCart.getState().startBuyNow(line("v1", 10000), 1);
+    useCart.getState().editBuyNow({
+      variant: { variantId: "v2", ml: 10, unitPrice: 18000 },
+      qty: 2,
+    });
+    expect(useCart.getState().buyNow).toMatchObject({
+      kind: "item",
+      item: { key: "v2", variantId: "v2", qty: 2 },
+    });
+    expect(useCart.getState().items).toEqual([
+      expect.objectContaining({ key: "v1", qty: 1 }),
+    ]);
   });
 });

@@ -30,7 +30,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { checkoutSchema } from "@/lib/validators/order";
-import { SHIPPING_ZONES, type ShippingZoneConfig } from "@/lib/constants";
+import {
+  REFUND_FEE_PCT,
+  SHIPPING_ZONES,
+  type ShippingZoneConfig,
+} from "@/lib/constants";
 import { giftSlotsFor } from "@/lib/gift";
 import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { GiftSamplePicker } from "@/features/checkout/components/gift-sample-picker";
@@ -1537,7 +1541,8 @@ export default function CheckoutPage() {
                       watch("deliverOn") ?? deliveryDays[0] ?? "",
                     )}
                   </strong>
-                  -с хойш захиалга цуцлах, өөрчлөх боломжгүй.
+                  -с хойш захиалга цуцлах, өөрчлөх боломжгүй.{" "}
+                  {`Хэрэглэгчийн хүсэлтээр цуцалсан тохиолдолд банкны ${REFUND_FEE_PCT}%-ийн шимтгэл хасагдаж бодогдохыг анхаарна уу.`}
                 </p>
               )}
             </CardContent>

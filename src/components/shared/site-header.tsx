@@ -51,11 +51,8 @@ function getTitle(pathname: string): string {
 }
 
 export function SiteHeader({
-  social,
   menuSocial,
 }: {
-  /** Desktop толгойн сошиал дүрсүүд — layout-аас server slot (social-links.tsx). */
-  social?: React.ReactNode;
   /** Гар утасны цэсэн дэх сошиал холбоосууд. */
   menuSocial?: React.ReactNode;
 }) {
@@ -196,8 +193,6 @@ export function SiteHeader({
 
           {/* Right: search + cart (mobile only) + profile menu (desktop only) */}
           <div className="ml-auto flex items-center gap-1">
-            {/* lg+: md дээр төвийн цэстэй мөргөлдөнө. */}
-            <div className="hidden lg:block">{social}</div>
             <GlobalSearch />
             <CartSheet triggerClassName="md:hidden" />
             <div className="hidden md:block">

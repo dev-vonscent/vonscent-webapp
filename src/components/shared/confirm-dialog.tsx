@@ -8,6 +8,7 @@ import {
   DialogDescription,
   DialogClose,
 } from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -92,6 +93,13 @@ export interface ConfirmOptions {
   cancelLabel?: string;
   /** Paints the confirm button red — use for deletes. */
   destructive?: boolean;
+  /**
+   * Баталгаажуулсны дараах ажил. Өгвөл цонх ажил ДУУСТАЛ нээлттэй үлдэж,
+   * товч нь loader харуулна — эс бөгөөс цонх шууд хаагдаад хэрэглэгч хуучин
+   * төлвийг хэсэг харж, юу ч болоогүй мэт санагддаг (захиалга цуцлах).
+   * Амжилтгүй болсон ч цонх хаагдана; алдааг дуудагч тал өөрөө харуулна.
+   */
+  action?: () => Promise<void>;
 }
 
 /**
@@ -108,6 +116,7 @@ export function useConfirm(): [
   React.ReactNode,
 ] {
   const [state, setState] = React.useState<ConfirmOptions | null>(null);
+  const [busy, setBusy] = React.useState(false);
   // Held in a ref so resolving doesn't depend on a re-render landing first.
   const resolver = React.useRef<((ok: boolean) => void) | null>(null);
 
@@ -124,12 +133,27 @@ export function useConfirm(): [
     resolver.current = null;
   }, []);
 
+  async function accept() {
+    const action = state?.action;
+    if (!action) return settle(true);
+    setBusy(true);
+    try {
+      await action();
+    } catch {
+      // Дуудагч тал алдаагаа өөрөө харуулна — энд зөвхөн цонхыг хаана.
+    } finally {
+      setBusy(false);
+      settle(true);
+    }
+  }
+
   const dialog = (
     <Dialog
       open={state !== null}
-      // Covers Escape, the X and outside clicks — all mean "cancel".
+      // Covers Escape, the X and outside clicks — all mean "cancel". Ажил
+      // явж байхад хаагдахгүй: хагас хийгдсэн үйлдлийг «болих» гэж ойлгоно.
       onOpenChange={(open) => {
-        if (!open) settle(false);
+        if (!open && !busy) settle(false);
       }}
     >
       <DialogContent role="alertdialog">
@@ -138,13 +162,20 @@ export function useConfirm(): [
           <DialogDescription>{state.description}</DialogDescription>
         )}
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => settle(false)}>
+          <Button
+            variant="outline"
+            onClick={() => settle(false)}
+            disabled={busy}
+          >
             {state?.cancelLabel ?? "Болих"}
           </Button>
           <Button
             variant={state?.destructive ? "destructive" : "default"}
-            onClick={() => settle(true)}
+            onClick={accept}
+            disabled={busy}
+            aria-busy={busy}
           >
+            {busy && <Loader2 className="animate-spin" aria-hidden />}
             {state?.confirmLabel ?? "Тийм"}
           </Button>
         </div>
