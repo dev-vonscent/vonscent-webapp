@@ -539,10 +539,13 @@ export const useCart = create<CartState>()(
 const EMPTY_ITEMS: CartItem[] = [];
 const EMPTY_COLLECTIONS: CartCollection[] = [];
 
-/** Every line in the cart, checked or not — what the header badge counts. */
+/**
+ * Сагсны МӨРИЙН тоо (чагттай эсэхээс үл хамааран) — толгойн badge ба
+ * «Таны сагс (n)». Ширхгийн нийлбэр биш: 5 ширхэгтэй ганц мөр «5» гэж
+ * харагдаад, сагсаа нээхэд ганц бараа, «1/1» тоолууртай зөрдөг байв.
+ */
 export const selectCount = (s: CartState) =>
-  s.items.reduce((n, i) => n + i.qty, 0) +
-  s.collections.reduce((n, c) => n + c.qty, 0);
+  s.items.length + s.collections.length;
 
 export const isItemSelected = (s: CartState, key: string) =>
   !s.excludedItems.includes(key);

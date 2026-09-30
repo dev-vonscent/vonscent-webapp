@@ -74,8 +74,9 @@ describe("cart selection", () => {
     useCart.getState().setItemSelected("v2", false);
 
     expect(selectSubtotal(useCart.getState())).toBe(10000);
-    // Толгойн badge нь сагсанд байгаа бүх барааг тоолсоор байна.
-    expect(selectCount(useCart.getState())).toBe(3);
+    // Толгойн badge нь чагтаас үл хамааран сагсны бүх МӨРИЙГ тоолно
+    // (v2 нь 2 ширхэгтэй ч нэг мөр).
+    expect(selectCount(useCart.getState())).toBe(2);
     expect(selectSelectedCount(useCart.getState())).toBe(1);
   });
 
