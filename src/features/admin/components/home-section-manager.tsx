@@ -11,7 +11,6 @@ import {
   EyeOff,
   Plus,
   Star,
-  Trash2,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useConfirm } from "@/components/shared/confirm-dialog";
 import type { AdminHomeSection } from "@/features/admin/api";
 import { useProductOptions } from "@/features/admin/hooks/use-product-options";
 import type { ProductOption } from "@/features/admin/lib/product-option";
@@ -51,8 +49,10 @@ const KIND_LABEL: Record<SectionKind, string> = {
 };
 
 /**
- * Home page rails (todo.md B7): create «Онцлох» / «Багц уснууд», pick the
- * products by hand and order both the rails and the products inside them.
+ * Home page rails (todo.md B7): order the existing rails and pick what goes
+ * inside them. Rails are neither created nor deleted here — the home page is
+ * drawn only from these rows, so a deleted «Онцлох» could not be brought back.
+ * Hiding (the eye) is the reversible way to take one off the home page.
  *
  * Ordering is arrow buttons rather than drag: these lists are short, and the
  * same page has to work under a finger without competing with page scroll.
@@ -66,10 +66,7 @@ export function HomeSectionManager({
   options: ProductOption[];
 }) {
   const router = useRouter();
-  const [confirm, confirmDialog] = useConfirm();
   const [busy, setBusy] = React.useState(false);
-  const [title, setTitle] = React.useState("");
-
   async function send(url: string, init: RequestInit, errorTitle: string) {
     setBusy(true);
     try {
@@ -92,38 +89,6 @@ export function HomeSectionManager({
       { method: "PATCH", body: JSON.stringify(body) },
       "Хэсэг шинэчлэгдсэнгүй",
     );
-
-  async function create(e: React.FormEvent) {
-    e.preventDefault();
-    if (!title.trim()) return;
-    await send(
-      "/api/admin/home-sections",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          title: title.trim(),
-          sortOrder: sections.length + 1,
-        }),
-      },
-      "Хэсэг нэмэгдсэнгүй",
-    );
-    setTitle("");
-  }
-
-  async function remove(section: AdminHomeSection) {
-    const ok = await confirm({
-      title: `«${section.title}» хэсгийг устгах уу?`,
-      description: "Нүүр хуудаснаас алга болно. Бараа өөрөө устахгүй.",
-      confirmLabel: "Устгах",
-      destructive: true,
-    });
-    if (!ok) return;
-    await send(
-      `/api/admin/home-sections/${section.id}`,
-      { method: "DELETE" },
-      "Хэсэг устсангүй",
-    );
-  }
 
   /** Swap two rails' sort_order — one PATCH each, so a refresh is enough. */
   async function moveSection(index: number, delta: number) {
@@ -152,8 +117,6 @@ export function HomeSectionManager({
 
   return (
     <div className="space-y-6">
-      {confirmDialog}
-
       {sections.map((section, i) => (
         <SectionCard
           key={section.id}
@@ -164,33 +127,14 @@ export function HomeSectionManager({
           last={i === sections.length - 1}
           onMove={(delta) => moveSection(i, delta)}
           onPatch={(body) => patch(section.id, body)}
-          onRemove={() => remove(section)}
         />
       ))}
 
       {sections.length === 0 && (
         <p className="bg-muted/40 text-muted-foreground rounded-lg py-16 text-center text-sm">
-          Хэсэг алга. Доор нэр өгч эхний хэсгээ үүсгэнэ үү.
+          Нүүрийн хэсэг алга.
         </p>
       )}
-
-      <Card>
-        <CardContent className="p-6">
-          <form onSubmit={create} className="flex flex-wrap items-end gap-3">
-            <div className="min-w-56 flex-1 space-y-1.5">
-              <Label>Шинэ хэсгийн гарчиг</Label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Онцлох"
-              />
-            </div>
-            <Button type="submit" disabled={busy || !title.trim()}>
-              <Plus className="size-4" /> Хэсэг нэмэх
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
     </div>
   );
 }
@@ -203,7 +147,6 @@ function SectionCard({
   last,
   onMove,
   onPatch,
-  onRemove,
 }: {
   section: AdminHomeSection;
   options: ProductOption[];
@@ -212,7 +155,6 @@ function SectionCard({
   last: boolean;
   onMove: (delta: number) => void;
   onPatch: (body: unknown) => Promise<void>;
-  onRemove: () => void;
 }) {
   // Local copies so typing doesn't round-trip on every keystroke; saved on
   // blur / on the explicit save button.
@@ -281,15 +223,6 @@ function SectionCard({
             ) : (
               <EyeOff className="text-muted-foreground size-4" />
             )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            disabled={busy}
-            onClick={onRemove}
-            aria-label="Устгах"
-          >
-            <Trash2 className="text-destructive size-4" />
           </Button>
         </div>
 

@@ -204,7 +204,7 @@ export default function HomePage() {
       </section>
 
       <div className="mx-auto max-w-352 space-y-10 px-4 py-8 sm:space-y-16 sm:py-14 md:px-8">
-        {/* Админы үүсгэсэн rail-ууд («Онцлох», «Багц уснууд») эхэнд —
+        {/* Админы үүсгэсэн rail-ууд («Онцлох» г.м.) эхэнд —
             «Шинээр ирсэн» тэдний оронд доошоо шилжсэн. */}
         <Suspense fallback={<CarouselSkeleton action />}>
           <CuratedSections />
@@ -416,7 +416,7 @@ async function FeaturedBundlesSection() {
 }
 
 /**
- * Curated rails — «Онцлох», «Багц уснууд» and anything else the admin composed
+ * Curated rails — «Онцлох» and the other rails the admin arranged
  * (todo.md B7), in the order they set. They share one boundary because they are
  * one query and their count isn't known until it resolves.
  */

@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { LoadingButton } from "@/components/shared/loading-button";
@@ -32,7 +31,6 @@ export default function AdminSettingsPage() {
   const [zones, setZones] = React.useState<ShippingZoneConfig[]>([
     ...SHIPPING_ZONES,
   ]);
-  const [invoiceCode, setInvoiceCode] = React.useState("");
   const [autoGrant, setAutoGrant] = React.useState({
     enabled: false,
     minTotal: 300000,
@@ -56,7 +54,7 @@ export default function AdminSettingsPage() {
     autoOnCreate: true,
   });
 
-  // Seven independent forms with seven save buttons used to share no state at
+  // Independent forms with their own save buttons used to share no state at
   // all: an operator who edited store info and a shipping zone, then pressed
   // one Хадгалах, silently lost the other. Each section now compares itself to
   // what was last written and says so.
@@ -70,9 +68,8 @@ export default function AdminSettingsPage() {
       imageGen: JSON.stringify(imageGen),
       shipping: JSON.stringify(zones),
       coupons: JSON.stringify(autoGrant),
-      payment: JSON.stringify(invoiceCode),
     }),
-    [store, collection, imageGen, zones, autoGrant, invoiceCode],
+    [store, collection, imageGen, zones, autoGrant],
   );
   type SectionKey = keyof typeof snapshot;
   // Before the settings row has loaded there is nothing to compare against, so
@@ -125,8 +122,6 @@ export default function AdminSettingsPage() {
           }
           if (row.key === "coupons" && v && v.autoGrant)
             setAutoGrant((g) => ({ ...g, ...(v.autoGrant as object) }));
-          if (row.key === "payment" && v)
-            setInvoiceCode(String(v.invoiceCode ?? ""));
           if (row.key === "collection" && v)
             setCollection((c) => ({ ...c, ...(v as object) }));
           if (row.key === "imageGen" && v)
@@ -175,6 +170,10 @@ export default function AdminSettingsPage() {
             />
           </Field>
         </div>
+        <p className="text-muted-foreground text-xs">
+          Утас, имэйл нь сайтын хөл, «Холбоо барих» хуудас, checkout дээр
+          харагдана — өөр газар давхар оруулах шаардлагагүй.
+        </p>
       </Saver>
 
       {/* Collections (Багц) */}
@@ -271,33 +270,6 @@ export default function AdminSettingsPage() {
           гарцууд (packshot / үнэрийн нот / засвар) хэмжээ, чанараа өөрсдөө
           тогтоодог тул энэ хэсэг практикт хэрэглэгдэхээ больсон. */}
 
-      {/* Shipping */}
-      <Saver
-        title="Хүргэлтийн бүс ба төлбөр"
-        onSave={() =>
-          saveSetting("shipping", { zones }, "Хүргэлтийн бүс хадгалагдсангүй")
-        }
-        dirty={isDirty("shipping")}
-        onSaved={() => commit("shipping")}
-      >
-        <div className="space-y-3">
-          <ZoneEditor zones={zones} onChange={setZones} />
-          <p className="text-muted-foreground text-xs">
-            Дугуй доторх үсэг бол бүсийн <b>код</b> (A/B/C/R/X) — захиалга дээр
-            хадгалагдах тогтвортой утга тул засагдахгүй. Нэр, төлбөрийг хэзээ ч
-            чөлөөтэй өөрчилж болно. Хороогоо оноовол checkout дээр бүс нь
-            хаягаас автоматаар тодорхойлогдоно. <b>X</b> бүс бол хүргэлт хийхгүй
-            газрууд — тэнд орсон хороог сонгосон хэрэглэгч захиалга өгч
-            чадахгүй.
-            <b> R</b> бүсэд хороо оноох шаардлагагүй: Улаанбаатараас гадуурх бүх
-            хаяг өөрөө тэнд тооцогдоно. Хороог нэг бүсээс нөгөө рүү зөөхдөө
-            товшоод доод самбараас зорих бүсээ сонгоно; «Оноогдоогүй хороо
-            нэмэх» нь зөвхөн улсын хэмжээнд шинэ хороо байгуулагдсан үед л
-            хэрэгтэй.
-          </p>
-        </div>
-      </Saver>
-
       {/* Automatic reward coupon */}
       <Saver
         title="Автомат купон"
@@ -378,53 +350,39 @@ export default function AdminSettingsPage() {
         </p>
       </Saver>
 
-      {/* Payment */}
+      {/* Shipping */}
       <Saver
-        title="Төлбөрийн тохиргоо (QPay)"
+        title="Хүргэлтийн бүс ба төлбөр"
         onSave={() =>
-          saveSetting("payment", { invoiceCode }, "Төлбөр хадгалагдсангүй")
+          saveSetting("shipping", { zones }, "Хүргэлтийн бүс хадгалагдсангүй")
         }
-        dirty={isDirty("payment")}
-        onSaved={() => commit("payment")}
+        dirty={isDirty("shipping")}
+        onSaved={() => commit("shipping")}
       >
-        <Field label="QPay Invoice Code">
-          <Input
-            value={invoiceCode}
-            onChange={(e) => setInvoiceCode(e.target.value)}
-            placeholder="QPAY_INVOICE_CODE"
-          />
-        </Field>
-        <p className="text-muted-foreground text-xs">
-          QPay-ийн нэвтрэх нууц мэдээлэл (username/password) нь серверийн орчны
-          хувьсагчид (env) хадгалагдана.
-        </p>
-      </Saver>
-
-      {/* Admin users / roles */}
-      <Card>
-        <CardContent className="space-y-3 p-6">
-          <h2 className="font-serif text-lg font-semibold">
-            Админ хэрэглэгч ба эрхийн түвшин
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            Хэрэглэгчдэд оператор / супер админ эрх олгох, хураах үйлдлийг{" "}
-            <Link
-              href="/admin/customers"
-              className="text-gold-strong hover:underline"
-            >
-              Хэрэглэгч
-            </Link>{" "}
-            хэсгээс хийнэ. (Эрх өөрчлөхөд super admin шаардлагатай.)
+        <div className="space-y-3">
+          <ZoneEditor zones={zones} onChange={setZones} />
+          <p className="text-muted-foreground text-xs">
+            Дугуй доторх үсэг бол бүсийн <b>код</b> (A/B/C/R/X) — захиалга дээр
+            хадгалагдах тогтвортой утга тул засагдахгүй. Нэр, төлбөрийг хэзээ ч
+            чөлөөтэй өөрчилж болно. Хороогоо оноовол checkout дээр бүс нь
+            хаягаас автоматаар тодорхойлогдоно. <b>X</b> бүс бол хүргэлт хийхгүй
+            газрууд — тэнд орсон хороог сонгосон хэрэглэгч захиалга өгч
+            чадахгүй.
+            <b> R</b> бүсэд хороо оноох шаардлагагүй: Улаанбаатараас гадуурх бүх
+            хаяг өөрөө тэнд тооцогдоно. Хороог нэг бүсээс нөгөө рүү зөөхдөө
+            товшоод доод самбараас зорих бүсээ сонгоно; «Оноогдоогүй хороо
+            нэмэх» нь зөвхөн улсын хэмжээнд шинэ хороо байгуулагдсан үед л
+            хэрэгтэй.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </Saver>
     </div>
   );
 }
 
 /**
  * One settings section: its own fields, its own save, and its own unsaved
- * marker. The marker is the point — this page stacks seven of these, so
+ * marker. The marker is the point — this page stacks several of these, so
  * "which of these did I actually save?" is a question the page has to answer
  * on its own rather than leaving the operator to remember.
  */
@@ -468,7 +426,7 @@ function Saver({
         {children}
         {/* Disabled when clean: a save that writes the same values back still
             reads as "something happened", which is how the operator learns to
-            press all seven buttons every time. */}
+            press every button every time. */}
         <LoadingButton loading={busy} onClick={handle} disabled={!dirty}>
           {dirty ? "Хадгалах" : "Хадгалсан"}
         </LoadingButton>

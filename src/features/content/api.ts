@@ -187,12 +187,18 @@ export const getPopupSettings = async (): Promise<PopupSettings> =>
 export const getSocialSettings = async (): Promise<SocialSettings> => {
   // The 0013 seed left instagram/facebook as "", which would otherwise win
   // over the defaults in the merge — treat blank fields as unset.
-  const stored = await getSetting("social", DEFAULT_SOCIAL);
+  // Утас/имэйл нэг л эх сурвалжтай: Тохиргоо → Дэлгүүрийн мэдээлэл. Өмнө нь
+  // «Сошиал холбоос» дээр ч давхар оруулдаг байсан тул хуучин утга нь зөвхөн
+  // дэлгүүрийнх хоосон үед л нөөц болж үлдэнэ.
+  const [stored, store] = await Promise.all([
+    getSetting("social", DEFAULT_SOCIAL),
+    getStoreSettings(),
+  ]);
   return {
     instagram: stored.instagram || DEFAULT_SOCIAL.instagram,
     facebook: stored.facebook || DEFAULT_SOCIAL.facebook,
-    phone: stored.phone || DEFAULT_SOCIAL.phone,
-    email: stored.email || DEFAULT_SOCIAL.email,
+    phone: store.phone || stored.phone || DEFAULT_SOCIAL.phone,
+    email: store.email || stored.email || DEFAULT_SOCIAL.email,
   };
 };
 export const getAboutSettings = () => getSetting("about", DEFAULT_ABOUT);

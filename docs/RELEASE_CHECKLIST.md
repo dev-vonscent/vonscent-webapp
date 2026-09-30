@@ -1,6 +1,6 @@
 # Release-ээс өмнө хийх зүйлс — vonscent.mn
 
-Сүүлд шинэчилсэн: 2026-09-12. Хийсэн зүйл бүрийг `[x]` болгож тэмдэглэ.
+Сүүлд шинэчилсэн: 2026-09-30. Хийсэн зүйл бүрийг `[x]` болгож тэмдэглэ.
 
 ---
 
@@ -32,7 +32,7 @@ release хүртэл юу ч эвдрэхгүй — гэхдээ release дээ�
       EMAIL_FROM=Vonscent <no-reply@vonscent.mn>
       ```
       `STORE_INBOX_EMAIL` default нь vonscent.store@gmail.com — өөрчлөх бол л нэмнэ.
-- [~] **Шалгах:** локал дээр захиалга баталгаажуулж шалгасан (2026-09-03,
+- [x] **Шалгах:** локал дээр захиалга баталгаажуулж шалгасан (2026-09-03,
       Resend: Sent → Delivered). Vercel дээрх deploy дээр давтан шалгах үлдсэн —
       env тавьсны дараа **redeploy** шаардлагатай, мөн
       `NEXT_PUBLIC_SITE_URL=https://dev.vonscent.mn` байх ёстой (эс бөгөөс имэйл
@@ -44,8 +44,8 @@ release хүртэл юу ч эвдрэхгүй — гэхдээ release дээ�
 
 ## 2. Домэйн ба hosting
 
-- [ ] **vonscent.mn** домэйныг Vercel project-д холбох (Vercel → Domains).
-- [ ] Vercel env: `NEXT_PUBLIC_SITE_URL=https://vonscent.mn` (имэйл доторх
+- [x] **vonscent.mn** домэйныг Vercel project-д холбох (Vercel → Domains).
+- [x] Vercel env: `NEXT_PUBLIC_SITE_URL=https://vonscent.mn` (имэйл доторх
       линк, sitemap, OG бүгд үүнээс уншина).
 - [x] **Vercel Pro** багц авах — $20/сар (1 deploy seat) + $20 credit, дотор нь
       1 TB Fast Data Transfer, 10 сая Edge Request. Hobby нь **арилжааны
@@ -59,7 +59,7 @@ release хүртэл юу ч эвдрэхгүй — гэхдээ release дээ�
       Free project 1 долоо хоног идэвхгүй бол унтардаг; Pro-д өдрийн backup
       (7 хоног), лог 7 хоног, pg_cron найдвартай. Багтсан: 8 GB DB, 250 GB
       egress, 100 GB storage, 100k MAU.
-- [ ] Pro орчинд **pg_cron ажиллаж буйг шалгах** (Pro болсны ДАРАА заавал —
+- [x] Pro орчинд **pg_cron ажиллаж буйг шалгах** (Pro болсны ДАРАА заавал —
       Free үед job-ууд бүртгэгдсэн ч төсөл унтарвал ажиллахгүй байсан):
 
       ```sql
@@ -83,22 +83,21 @@ release хүртэл юу ч эвдрэхгүй — гэхдээ release дээ�
 Дэлгэрэнгүй: Vercel-ийн багтсан нөөцөөс гадуур ISR write $5.20/1M (8KB unit),
 Edge Request $2.60/1M, Fast Origin Transfer $0.24/GB, invocation $0.60/1M.
 
-- [ ] **Vercel Spend Management** асаах (Hobby дээр байхгүй): threshold ~$100,
+- [x] **Vercel Spend Management** асаах (Hobby дээр байхгүй): threshold ~$100,
       и-мэйл мэдэгдэл + шаардлагатай бол project-ийг автоматаар зогсоох.
-- [ ] **ISR зардал багасгах:** дэлгүүрийн хуудсуудын `export const revalidate = 60`
-      → `3600` болгох (`(shop)/page.tsx`, `catalog`, `products/[slug]`, `blog`,
-      `blog/[slug]`, `collections`, `collections/[slug]`, `about`, `faq`,
-      `contact`). Урсгал сийрэг үед 60 секундын ISR нь **үзэлт тутам** хуудсыг
-      дахин бичдэг (~$0.00017/үзэлт ≈ 100k үзэлтэд $17/сар). Өгөгдөл шинэчлэгдэх
-      нь алдагдахгүй — `src/lib/cache.ts`-ийн on-demand `revalidatePath`/
-      `revalidateTag` админы бичилт бүр дээр аль хэдийн дуудагддаг.
-- [ ] **Төлбөрийн polling зөөлрүүлэх:** `payment-panel.tsx` (`POLL_MS = 3_000`,
-      timeout 20 мин) нь нэг захиалгад 400 хүртэл хүсэлт үүсгэнэ. Шатласан
-      interval (3с → 5с → 10с) + tab нуугдсан үед (`visibilityState`) зогсоох.
-      QPay webhook аль хэдийн байгаа тул polling нь зөвхөн UI-н баталгаа.
-- [ ] **Vercel Firewall / rate limiting** тавих задгай route-уудад: `/api/search`,
-      `/api/products`, `/api/reviews` (bot-ын урсгал Edge Request-ыг тэсрүүлэх
-      гол эрсдэл).
+- [ ] **ISR — release-ийн дараа өгөгдлөөр шийдэх (заавал биш).** 2 долоо хоногийн
+      дараа Vercel → Usage → ISR Writes-ийг харж, Pro-гийн багтсан хэмжээнээс
+      хэтэрвэл л өөрчилнө. ISR нь хуудас тутамд минутад дээд тал нь 1 дахин
+      үүсгэдэг тул жижиг урсгалд зардал бага.
+      ⚠ Home / catalog / products / collections-ыг **3600 болгохгүй**: админ,
+      захиалга, цуцлалт `revalidatePublic()` дууддаг ч pg_cron-ийн
+      `release-expired-reserves` (5 мин) ба `refresh-sold-out` (15 мин) кэш
+      цэвэрлэдэггүй — 3600 үед буцаж ирсэн бараа 1 цаг «Дууссан», дууссан бараа
+      1 цаг «Байгаа» харагдана. Үлдэгдэлгүй хуудсууд (faq, contact, about, blog)
+      л 3600 болгож болно.
+- [x] **Төлбөрийн polling — хийх шаардлагагүй (2026-09-30 audit).** Tab нуугдахад
+      зогсдог, 3с шалгалт нь зөвхөн DB, QPay `payment/check` 60с тутамд
+      (`VERIFY_EVERY = 20`). Нэг захиалгад ~10–40 хямд хүсэлт.
 - [ ] **Supabase compute:** Micro-оор эхлэх ($10 credit-д багтана), 2 долоо
       хоногийн дараа metric харж Small ($15) шаардлагатай эсэхийг шийдэх.
       Spend cap эхлээд ON (тасрах эрсдэлтэй) — амьд болсны дараа OFF болгоод
@@ -107,6 +106,65 @@ Edge Request $2.60/1M, Fast Origin Transfer $0.24/GB, invocation $0.60/1M.
       ($10/сар), Advanced MFA Phone ($75/сар — утасны баталгаажуулалт verify.mn
       дээр байгаа тул хэрэггүй). Supabase Storage image transformation
       ($5/1000 зураг) бүү асаа — next/image Vercel дээр аль хэдийн хийж байна.
+
+#### Заавар А — Spend Management
+
+Firewall-оос **тусдаа** цэс. Project биш, **Team**-ийн тохиргоонд байдаг.
+
+1. Vercel dashboard → зүүн дээд буланд **team**-ээ сонго (project биш).
+2. **Settings → Billing** → доош гүйлгээд **Spend Management**.
+3. Pro team дээр аль хэдийн асаалттай байж магадгүй — дүнг нь шалга.
+   Асаалтгүй бол **Enable**.
+4. **Amount: $100**. Энэ нь Pro-гийн $20 суурь төлбөрөөс **давсан** хэрэглээний
+   дээд хязгаар.
+5. **Notifications:** 50% / 75% / 100% гурвууланг нь асаа. Имэйл нь team-ийн
+   owner руу явна — клиентийн имэйл owner/billing эрхтэй эсэхийг шалга.
+6. **Pause production deployment** (100%-д хүрэхэд сайтыг зогсоох) — эхний
+   сард **УНТРААЛТТАЙ** үлдээ. Асаавал хязгаарт хүрмэгц vonscent.mn бүхэлдээ
+   унтарна; бодит урсгалаа 2–4 долоо хоног харсны дараа шийднэ.
+7. **Save**.
+
+#### Заавар Б — Firewall дүрмүүд
+
+Project → **Firewall** → **Configure** → **Add Rule**. Засвар бүрийн дараа
+**Review Changes → Publish** дарахгүй бол хэрэгжихгүй. Дүрмүүд **дээрээс
+доош** шалгагдаж, **Bypass таарсан хүсэлт доорх дүрмүүдийг алгасна** —
+тиймээс Bypass дүрэм зөвхөн гадны callback-ийг л хамрах ёстой.
+
+⚠ **Action-ийг «Bypass» биш «Rate Limit» болгох.** Rate limit дүрэм дээр
+Bypass сонгосон бол хязгаарлалт огт хийгдэхгүй, харин тэр урсгалыг Firewall-оос
+бүр мөсөн чөлөөлнө.
+
+| # | Нэр | If (нөхцөл) | Then |
+|---|-----|-------------|------|
+| 1 | `bypass-payments` | Request Path **starts with** `/api/payments/qpay/webhook` | Bypass |
+| 2 | `bypass-verify-mn` | Request Path **equals** `/api/auth/verify-mn/callback` | Bypass |
+| 3 | `ratelimit-auth` | Request Path **starts with** `/api/auth/phone/` **OR** Request Path **equals** `/api/auth/verify-mn/start` | Rate Limit: Fixed Window, **60s**, **10**, key **IP** → **Too Many Requests (429)** |
+| 4 | `ratelimit-orders` | Request Path **equals** `/api/orders` **AND** Method **equals** `POST` | Rate Limit: 60s, **20**, IP → 429 |
+| 5 | `ratelimit-public` | Request Path **equals** `/api/search` **OR** `/api/products` **OR** `/api/reviews` | Rate Limit: 60s, **60**, IP → 429 |
+
+**Хамруулж БОЛОХГҮЙ замууд** (client нь 3 секунд тутам = минутад 20 дууддаг
+тул 10/мин хязгаар шууд эвдэнэ):
+
+- `/api/auth/verify-mn/status` — бүртгэл/нэвтрэлтийн SMS хүлээх polling
+- `/api/payments/status` — төлбөрийн хуудасны polling
+
+Тиймээс дүрэм 3-т `/api/auth/` гэж ерөнхий **starts with** бүү тавь.
+
+**Шалгах** (Publish-ийн дараа):
+
+```bash
+# 11 дэх хүсэлт 429 буцаах ёстой
+for i in $(seq 1 12); do
+  curl -s -o /dev/null -w "%{http_code}\n" -X POST https://vonscent.mn/api/auth/phone/login \
+    -H 'content-type: application/json' -d '{}'
+done
+```
+
+Эхний долоо хоногт **Firewall → Traffic/Logs**-оос 429-ийг ажигла. Монголын
+мобайл оператор олон хэрэглэгчийг нэг IP-ийн ард (CGNAT) гаргадаг тул жинхэнэ
+хэрэглэгч хаагдаж эхэлбэл хязгаарыг 2 дахин өсгө. Аппын өөрийн хязгаар
+(`RATE_LIMITS`, `0076`) давхар ажилладаг тул Firewall-ыг сул тавих нь аюулгүй.
 
 ### 2.2 Төлбөрийн хоёр нууц (ЗААВАЛ — release-ийн өмнө)
 
@@ -156,10 +214,10 @@ sequence (0006). Хэн ч `VS-1000`-аас `VS-9999` хүртэл гүйлгэ�
 төлбөрийн хуудасны poller ба тулгалтын cron хоёулаа барих тул алдагдахгүй —
 гэхдээ **ачаалал багатай цагт тавь**.
 
-- [ ] `QPAY_CALLBACK_SECRET` Production env-д тавигдсан
+- [x] `QPAY_CALLBACK_SECRET` Production env-д тавигдсан
 - [ ] Deploy хийсний дараа бодит нэг төлбөр хийж, callback ирснийг
       `order_status_history`-оос батлав
-- [ ] Хуучин нууцгүй зам 404 буцааж байгааг шалгав:
+- [x] Хуучин нууцгүй зам 404 буцааж байгааг шалгав:
       `curl -i "https://vonscent.mn/api/payments/qpay/webhook?order=VS-1042"`
 
 ---
@@ -186,40 +244,43 @@ sequence (0006). Хэн ч `VS-1000`-аас `VS-9999` хүртэл гүйлгэ�
 ⚠️ **Vercel Pro шаардлагатай:** Hobby дээр cron өдөрт нэг л удаа ажилладаг
 тул `*/5 * * * *` бүтэхгүй.
 
-- [ ] `CRON_SECRET` Production env-д тавигдсан
-- [ ] Vercel → Settings → Cron Jobs дээр `/api/cron/reconcile-payments`
+- [x] `CRON_SECRET` Production env-д тавигдсан
+- [x] Vercel → Settings → Cron Jobs дээр `/api/cron/reconcile-payments`
       бүртгэгдсэн
-- [ ] Нууцгүй дуудлага 401 буцаана:
+- [x] Нууцгүй дуудлага 401 буцаана:
       `curl -i https://vonscent.mn/api/cron/reconcile-payments`
-- [ ] Нууцтай дуудлага 200 буцаана:
+- [x] Нууцтай дуудлага 200 буцаана:
       `curl -i -H "Authorization: Bearer $CRON_SECRET" https://vonscent.mn/api/cron/reconcile-payments`
 
 ---
 
 ## 3. Төлбөр — QPay ба банк
 
-- [ ] QPay-тэй **гэрээ хийж** бодит credential авах.
-- [ ] Vercel env: `QPAY_USERNAME`, `QPAY_PASSWORD`, `QPAY_INVOICE_CODE`
+- [x] QPay-тэй **гэрээ хийж** бодит credential авах.
+- [x] Vercel env: `QPAY_USERNAME`, `QPAY_PASSWORD`, `QPAY_INVOICE_CODE`
       бөглөж, `QPAY_MOCK`-ыг устгах/`false` болгох.
-- [ ] Бодит жижиг дүнгээр туршилтын төлбөр хийж webhook + payment/check
+- [x] Бодит жижиг дүнгээр туршилтын төлбөр хийж webhook + payment/check
       урсгалыг баталгаажуулах (одоо хүртэл зөвхөн mock-оор туршигдсан).
-- [ ] **Банкны данс** — `src/app/(shop)/order/success/page.tsx` доторх `BANK`
+- [x] **Банкны данс** — `src/app/(shop)/order/success/page.tsx` доторх `BANK`
       constant одоо placeholder («Хаан банк 5000 1234 5678»). Бодит дансаар
       солих (эсвэл админ Тохиргооноос уншдаг болгох).
 
 ## 4. Analytics ба хяналт
 
-- [ ] GA4 property үүсгэж Vercel env-д `NEXT_PUBLIC_GA_ID` (бодит ID).
+- [x] GA4 property үүсгэж Vercel env-д `NEXT_PUBLIC_GA_ID` (бодит ID).
       Property-ийн валют **USD** байх ёстой — GA4 MNT дэмждэггүй тул код ₮
       дүнг «USD» шошготой илгээдэг (`src/lib/analytics.ts`). Тайлангийн
       `$145,000` = 145,000₮. Валютыг өөр болговол GA хөрвүүлж тоо эвдэрнэ.
-- [ ] Meta Pixel үүсгэж `NEXT_PUBLIC_META_PIXEL_ID`.
-- [ ] Sentry DSN production орчинд орсон эсэх.
-- [ ] Telegram мэдэгдэл: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`
+- [ ] Meta Pixel үүсгэж `NEXT_PUBLIC_META_PIXEL_ID`. Код бэлэн
+      (`src/components/shared/analytics.tsx`) — ID хоосон бол pixel ачаалагдахгүй.
+- [ ] Sentry DSN production орчинд орсон эсэх: `NEXT_PUBLIC_SENTRY_DSN`
+      (+ source map-д `SENTRY_ORG`, `SENTRY_PROJECT`). Код бэлэн
+      (`src/instrumentation*.ts`) — DSN хоосон бол алдаа хаашаа ч илгээгдэхгүй.
+- [x] Telegram мэдэгдэл: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`
       production утгаараа Vercel дээр байгаа эсэх.
-- [ ] Утасны баталгаажуулалт: `VERIFY_MN_API_KEY` production key,
+- [x] Утасны баталгаажуулалт: `VERIFY_MN_API_KEY` production key,
       `AUTH_PASSCODE_PEPPER` тогтмол (солибол бүх нууц үг хүчингүй болно!).
-- [ ] **Хүсэлтийн хязгаар** (development.md §9.7): `0076_rate_limits.sql`
+- [x] **Хүсэлтийн хязгаар** (development.md §9.7): `0076_rate_limits.sql`
       production дээр хэрэгжсэн эсэх, `prune-rate-limits` pg_cron ажил
       бүртгэгдсэн эсэх (`select * from cron.job;`). `RATE_LIMIT_SALT` нь
       заавал биш — тавихгүй бол `AUTH_PASSCODE_PEPPER` ашиглагдана.
@@ -228,19 +289,19 @@ sequence (0006). Хэн ч `VS-1000`-аас `VS-9999` хүртэл гүйлгэ�
 
 ## 5. Админ контент (Тохиргоо самбараас)
 
-- [ ] Хүргэлтийн бүсийн үнэ, хамрах хороод эцсийн байдлаар хянах
+- [x] Хүргэлтийн бүсийн үнэ, хамрах хороод эцсийн байдлаар хянах
       (X бүсэд Налайх, Шарга морьт, 22 товчоо орсон эсэх).
-- [ ] **Бэлгийн үнэрүүд** — 6–8 ус сонгох (Админ → Бэлгийн үнэрүүд). Сан хоосон
+- [x] **Бэлгийн үнэрүүд** — 6–8 ус сонгох (Админ → Бэлгийн үнэрүүд). Сан хоосон
       эсвэл унтраалттай бол бэлгийн сонголт бүхэлдээ гарахгүй: багцын хуудсан
       дээрх «Бэлэгтэй» тэмдэг, сагсны сануулга, checkout-ийн сонгох хэсэг
       гурвуулаа алга болно.
-- [ ] Автомат урамшууллын купон хэрэгтэй бол асаах
+- [x] Автомат урамшууллын купон хэрэгтэй бол асаах
       (Тохиргоо → Купон autoGrant — одоогоор унтраалттай).
-- [ ] Popup, hero баннер, нүүрний хэсгүүд, About, FAQ, блогийн эхний
+- [x] Popup, hero баннер, нүүрний хэсгүүд, About, FAQ, блогийн эхний
       контентоо оруулах.
-- [ ] Custom tag-уудыг бараа бүр дээр оноох (хайлт, quiz, төстэй бараа
+- [x] Custom tag-уудыг бараа бүр дээр оноох (хайлт, quiz, төстэй бараа
       бүгд үүнээс сайжирна).
-- [ ] Барааны үнэ, үлдэгдэл, зургууд бүрэн эсэхийг шалгах.
+- [x] Барааны үнэ, үлдэгдэл, зургууд бүрэн эсэхийг шалгах.
 
 ## 6. Мэдэж байх зүйл — бэлгийн хамгаалалт ⚠
 
@@ -302,53 +363,59 @@ Vercel-ийн env өөрчлөлт нь **байгаа deploy-д хэрэгжи�
 дээр л уншигдана. Redeploy-ээс ӨМНӨ үүсгэсэн аккаунт хуучин pepper-ээр
 hash-лагдаж, redeploy болмогц нэвтэрч чадахгүй болно.
 
-- [ ] **1.** Prod-оос release-ийн өмнөх тестийн дата устгав.
+- [x] **1.** Prod-оос release-ийн өмнөх тестийн дата устгав.
       `auth.users` устгахад дараах нь **cascade**-ээр дагаж устана:
       `profiles`, `addresses`, `loyalty_ledger`, `newsletter_subscribers`,
       `collections`, `spin_*`. `orders.user_id` нь **`set null`** болж
       захиалга зочны захиалга шиг үлдэнэ (`0006_orders.sql:8`) — захиалгыг ч
       устгах бол тусад нь устгана.
-- [ ] **2.** Үлдэх ёстой аккаунт **БАЙХГҮЙ** гэдгийг батлав (өөрийн
+- [x] **2.** Үлдэх ёстой аккаунт **БАЙХГҮЙ** гэдгийг батлав (өөрийн
       аккаунтыг ч устгана — эс тэгвээс тэр нэвтэрч чадахгүй болно).
-- [ ] **3.** `openssl rand -hex 32` → Vercel **Production** дээрх
+- [x] **3.** `openssl rand -hex 32` → Vercel **Production** дээрх
       `AUTH_PASSCODE_PEPPER`, мөн локал `.env.prod`-д ижил утга.
       ⚠️ Хувьсагч «All Environments» гэж нэг утгаар тавигдсан бол эхлээд
       **салгана**: байгаа мөрийг Production-only болгоод, Preview-д одоогийн
       утгаар тусад нь нэмнэ.
-- [ ] **4.** ⚠️ **Redeploy хийсэн** (Vercel → Deployments → Redeploy).
-- [ ] **5.** Redeploy-ийн **ДАРАА** engineer + client аккаунтыг prod дээр
+- [x] **4.** ⚠️ **Redeploy хийсэн** (Vercel → Deployments → Redeploy).
+- [x] **5.** Redeploy-ийн **ДАРАА** engineer + client аккаунтыг prod дээр
       шинээр үүсгэв.
 - [ ] **6.** Dev-ийн passcode-оор prod руу нэвтрэх **БҮТЭХГҮЙ** гэдгийг
       шалгав.
 - [ ] **7.** Dev дээрх хуучин тест аккаунт **нэвтэрсээр** байгааг шалгав
       (dev хөндөгдөөгүйг батална).
 
+> **2026-09-30 төлөв:** 1–5 хийгдсэн — Vercel Production ба Preview өөр pepper-тэй,
+> prod-ын одоогийн аккаунтууд (owner, engineer, цөөн тест) солилтын **дараа**
+> үүссэн. Үлдсэн: тест аккаунт + тестийн захиалгыг release-ийн өмнө устгах;
+> локал `.env.prod`-ийн pepper хуучин (dev-тэй ижил) — ямар ч script уншдаггүй
+> тул хоргүй, гэхдээ Vercel Production-ийн утгаар шинэчлэх эсвэл мөрийг устга.
+
 > `RATE_LIMIT_SALT` нь хоосон үед pepper руу унадаг (`src/lib/env.ts`) тул
 > энэ солилтоор тэр ч мөн хоёр орчинд сална — нэмэлт үйлдэл шаардахгүй.
 
 ### 7.1 Env-ийн цэвэрлэлт (мөн release-ийн өмнө)
 
-- [ ] **`R2_*` 5 мөрийг устгав** (`.env.dev`, `.env.prod`) — Cloudflare R2
+- [x] **`R2_*` 5 мөрийг устгав** (`.env.dev`, `.env.prod`) — Cloudflare R2
       хэрэглэхээ больсон, кодод хаана ч лавлагаа байхгүй
       (`grep -rn "R2_" src scripts` → хоосон). `.env.example`-д ч байхгүй.
 - [ ] **`DATABASE_PASS`** хэрэгтэй эсэхийг шийдэв — кодод хэрэглэгддэггүй,
       нууц үг нь `DATABASE_URL` дотор аль хэдийн байна. Хэрэгтэй бол
       `.env.example`-д тайлбартай нэм, эс бөгөөс устга.
-- [ ] **`.env.prod`-ийн `NEXT_PUBLIC_SITE_URL` → `https://vonscent.mn`**
+- [x] **`.env.prod`-ийн `NEXT_PUBLIC_SITE_URL` → `https://vonscent.mn`**
       (одоо `https://dev.vonscent.mn`). Локалд инерт — `.env.prod`-оор
       ажилладаг script (`db:migrate-prod`, `db:backup`, `check:*`) siteUrl
       уншдаггүй — гэхдээ «prod» файлд dev домэйн байх нь дараа нь апп-түвшний
       script ажиллуулахад заль болно.
-- [ ] **Vercel Production `NEXT_PUBLIC_SITE_URL = https://vonscent.mn`**
+- [x] **Vercel Production `NEXT_PUBLIC_SITE_URL = https://vonscent.mn`**
       (домэйн холбогдсоны дараа). Бодитоор нөлөөлдөг цорын ганц газар:
       имэйлийн линк, QPay callback, Telegram-ийн админ линк, sitemap/robots.
-- [ ] **`STORE_INBOX_EMAIL`** — хоосон орхих нь **зөв**. Код
+- [x] **`STORE_INBOX_EMAIL`** — хоосон орхих нь **зөв**. Код
       `vonscent.store@gmail.com`-оор өгөгдмөл авдаг
       (`src/lib/email/send.ts:65`), тэр нь PRODUCT.md-ийн хаягтай таарна.
-- [ ] **`VERIFY_MN_API_KEY`** — dev/prod ижил байгаа нь release-ийн өмнө
+- [x] **`VERIFY_MN_API_KEY`** — dev/prod ижил байгаа нь release-ийн өмнө
       зөвшөөрөгдсөн (тест хэдхэн user). Release-д тусдаа key авах эсэхийг
       шийднэ — SMS квот, лог хольцолдож байгааг санах.
-- [ ] **`TELEGRAM_BOT_TOKEN` + `TELEGRAM_ADMIN_CHAT_ID`** — одоо engineer-ийн
+- [x] **`TELEGRAM_BOT_TOKEN` + `TELEGRAM_ADMIN_CHAT_ID`** — одоо engineer-ийн
       bot, dev/prod ижил. **Release-д:** клиентийн утсан дээр bot үүсгээд
       зөвхөн **Vercel Production**-д солино. `.env.dev` ба Preview нь
       engineer-ийн bot-д хэвээр үлдэнэ.
@@ -360,5 +427,5 @@ hash-лагдаж, redeploy болмогц нэвтэрч чадахгүй бо�
       урсгалыг нэг удаа гараар туршина (development.md §7.7 critical flow).
 - [ ] Имэйл бүртгүүлээд захиалга хийж баталгаажуулах имэйл + unsubscribe
       линк ажиллаж буйг шалгах.
-- [ ] robots/sitemap production домэйнтэй гарч буйг шалгах
+- [x] robots/sitemap production домэйнтэй гарч буйг шалгах
       (`https://vonscent.mn/sitemap.xml`).
