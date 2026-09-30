@@ -18,6 +18,7 @@ import type {
 import {
   ORDER_STATUSES,
   DEFAULT_LOW_STOCK_ML,
+  QPAY_FEE_PCT,
   type OrderStatus,
 } from "@/lib/constants";
 import * as Sentry from "@sentry/nextjs";
@@ -25,7 +26,13 @@ import { matchesSearch, searchTerms } from "@/lib/search";
 import { stockState } from "./lib/stock-state";
 import { PRODUCT_OPTION_LIMIT, type ProductOption } from "./lib/product-option";
 import { customerSearchFilter } from "./lib/customer-search";
-import { seriesBucket, ubIso } from "./lib/date-range";
+import { seriesBucket, ubIso, ubIsoEnd } from "./lib/date-range";
+import {
+  EMPTY_FINANCE,
+  financeFromRow,
+  type FinanceRow,
+  type ReportFinance,
+} from "./lib/report-finance";
 import {
   getBottleLocks,
   isBottleLocked,
@@ -1003,18 +1010,11 @@ export interface ReportRange {
 }
 
 export interface ReportData {
-  totalRevenue: number;
   /**
-   * Зардал: эх савнуудын үнэ + restock-ийн худалдан авсан үнэ.
-   *
-   * Муж өгөгдсөн үед зөвхөн ТЭР МУЖИД бүртгэгдсэн бараа ба тэр мужид
-   * хийгдсэн restock тоологдоно — «энэ сард хэдэн төгрөг хөрөнгө оруулав»
-   * гэсэн утгатай. Мужгүй үед бүгд (§2.7-гийн тэмдэглэл хэвээр).
+   * Мөнгөний тоо (0111): цэвэр борлуулалт, ашиг ба тэдгээрийн задаргаа.
+   * Томьёо нь `features/admin/lib/report-finance.ts`-ийн тайлбарт.
    */
-  totalCost: number;
-  /** Борлуулалт − зардал. */
-  profit: number;
-  paidOrders: number;
+  finance: ReportFinance;
   topProducts: { name: string; brand: string; qty: number; revenue: number }[];
   topBrands: { brand: string; revenue: number }[];
   /** Захиалгын төлвийн тоо — мужид хамаарна. */
@@ -1040,10 +1040,7 @@ export async function getReportData(
   const supabase = await createClient();
   const bucket = seriesBucket(range.from, range.to);
   const empty: ReportData = {
-    totalRevenue: 0,
-    totalCost: 0,
-    profit: 0,
-    paidOrders: 0,
+    finance: EMPTY_FINANCE,
     topProducts: [],
     topBrands: [],
     statusCounts: {},
@@ -1060,23 +1057,27 @@ export async function getReportData(
   //
   // Цагийн бүс: багана нь `timestamptz` тул UB хананы цагийг `+08:00`-оор
   // тогтооно (`ubIso`) — серверийн бүс шийдвэл «энэ сар» 8 цагаар гулсана.
+  // Дээд хил exclusive (0111): `to`-гийн минут бүтнээрээ мужид орно.
   const p_from = ubIso(range.from) ?? null;
-  const p_to = ubIso(range.to) ?? null;
+  const p_to = ubIsoEnd(range.to) ?? null;
+  const p_qpay_pct = QPAY_FEE_PCT;
 
   const [
-    { data: totals },
+    { data: totals, error: totalsError },
     { data: series },
     { data: products },
     { data: brands },
     { data: statuses },
   ] = await Promise.all([
-    callRpc<
-      { total_revenue: number; paid_orders: number; total_cost: number }[]
-    >(supabase, "admin_report_totals", { p_from, p_to }),
+    callRpc<FinanceRow[]>(supabase, "admin_report_finance", {
+      p_from,
+      p_to,
+      p_qpay_pct,
+    }),
     callRpc<{ bucket: string; revenue: number; orders: number; ml: number }[]>(
       supabase,
       "admin_report_series",
-      { p_from, p_to, p_bucket: bucket },
+      { p_from, p_to, p_bucket: bucket, p_qpay_pct },
     ),
     callRpc<{ name: string; brand: string; qty: number; revenue: number }[]>(
       supabase,
@@ -1096,7 +1097,12 @@ export async function getReportData(
   ]);
 
   const t = totals?.[0];
-  if (!t) return empty;
+  if (!t) {
+    // Чимээгүй «0₮» харуулах нь буруу тооноос ч дор — цалин, ашиг хоёулаа
+    // үүнээс шийдэгдэнэ. Алдааг Sentry-д, хуудсанд хоосон төлөв.
+    if (totalsError) Sentry.captureException(new Error(totalsError.message));
+    return empty;
+  }
 
   const statusCounts: Partial<Record<OrderStatus, number>> = {};
   for (const row of statuses ?? []) {
@@ -1104,10 +1110,7 @@ export async function getReportData(
   }
 
   return {
-    totalRevenue: t.total_revenue,
-    totalCost: t.total_cost,
-    profit: t.total_revenue - t.total_cost,
-    paidOrders: t.paid_orders,
+    finance: financeFromRow(t),
     topProducts: products ?? [],
     topBrands: brands ?? [],
     statusCounts,

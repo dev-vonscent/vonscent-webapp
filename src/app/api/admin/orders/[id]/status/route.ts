@@ -8,6 +8,7 @@ import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
 import { verifyAndMarkOrderPaid } from "@/lib/payments/confirm-order";
 import { cancelOrderInvoice } from "@/lib/payments/cancel-invoice";
 import { ORDER_STATUSES, type OrderStatus } from "@/lib/constants";
+import { refundBreakdown } from "@/lib/refund";
 
 const schema = z.object({
   status: z.enum(ORDER_STATUSES).optional(),
@@ -175,19 +176,28 @@ export async function POST(
     // маршрут доторх давхар шалгалт (development.md §7.5).
     const { data: refundRow } = await supabase
       .from("orders")
-      .select("status")
+      .select("status, total")
       .eq("id", id)
       .maybeSingle();
-    if (
-      (refundRow as { status?: OrderStatus } | null)?.status === "delivered" &&
-      staff.role !== "super_admin"
-    ) {
+    const refundOrder = refundRow as {
+      status?: OrderStatus;
+      total?: number;
+    } | null;
+    if (refundOrder?.status === "delivered" && staff.role !== "super_admin") {
       return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
     }
+    // Суутгал (1%) нь зөвхөн цуцлагдсан захиалгын буцаалтад — админы
+    // захиалгын хуудас, хэрэглэгчийн цуцлах цонх хоёрын харуулдаг дүн.
+    // Хүргэгдсэний дараах буцаалт бүтэн дүнгээр. Тайлан (0111) суутгалыг
+    // дэлгүүрт үлдсэн мөнгө гэж тоолно.
+    const fee =
+      refundOrder?.status === "cancelled"
+        ? refundBreakdown(refundOrder.total ?? 0).fee
+        : 0;
     const { data, error } = await callRpc<{ ok: boolean; reason?: string }>(
       supabase,
       "mark_order_refunded",
-      { p_order: id, p_by: staff.id },
+      { p_order: id, p_by: staff.id, p_fee: fee },
     );
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

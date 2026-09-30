@@ -171,6 +171,21 @@ export function ubIso(local: string | undefined): string | undefined {
   return `${v}+08:00`;
 }
 
+/**
+ * Мужийн дээд хилийг EXCLUSIVE болгоно: `2026-08-31T23:59` → 23:59-ийн
+ * ДАРААГИЙН минут (`2026-08-31T16:00:00.000Z` = 09-01 00:00 УБ).
+ *
+ * URL нь минутын нарийвчлалтай тул `<= 23:59:00` гэж шүүвэл 23:59:00–23:59:59
+ * хооронд үүссэн захиалга аль ч өдөр, сарын мужид ордоггүй байв. Тайлангийн
+ * SQL (0111) нь `created_at < p_to` гэж шүүнэ.
+ */
+export function ubIsoEnd(local: string | undefined): string | undefined {
+  const iso = ubIso(local);
+  if (!iso) return undefined;
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? undefined : new Date(t + 60_000).toISOString();
+}
+
 /** `2026-09` → `2026-09-01`. */
 function firstOfMonth(dateKey: string): string {
   return `${dateKey.slice(0, 7)}-01`;

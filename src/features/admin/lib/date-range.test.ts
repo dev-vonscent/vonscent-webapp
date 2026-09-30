@@ -13,6 +13,7 @@ import {
   rangeSummary,
   seriesBucket,
   ubIso,
+  ubIsoEnd,
 } from "./date-range";
 
 describe("addDaysKey", () => {
@@ -180,5 +181,66 @@ describe("rangeSummary", () => {
     expect(rangeSummary("2026-09-13T00:00", "2026-09-13T23:59")).toBe(
       "2026-09-13",
     );
+  });
+});
+
+/**
+ * Тайлангийн мужийн хил (docs/planning/report-audit.md F13). SQL (0111) нь
+ * `created_at >= ubIso(from) and created_at < ubIsoEnd(to)` гэж шүүнэ.
+ */
+describe("тайлангийн мужийн хил", () => {
+  const inRange = (instant: string, from: string, to: string) => {
+    const t = Date.parse(instant);
+    return t >= Date.parse(ubIso(from)!) && t < Date.parse(ubIsoEnd(to)!);
+  };
+  const preset = (id: string, today: string) =>
+    REPORT_DATE_PRESETS.find((p) => p.id === id)!.range(today)!;
+
+  it("УБ-ийн 00:00 нь UTC-ийн өмнөх өдрийн 16:00", () => {
+    expect(new Date(ubIso("2026-09-01T00:00")!).toISOString()).toBe(
+      "2026-08-31T16:00:00.000Z",
+    );
+  });
+
+  it("ubIsoEnd нь `to`-гийн дараагийн минут", () => {
+    expect(ubIsoEnd("2026-08-31T23:59")).toBe("2026-08-31T16:00:00.000Z");
+    expect(ubIsoEnd(undefined)).toBeUndefined();
+    expect(ubIsoEnd("garbage")).toBeUndefined();
+  });
+
+  it("23:30 УБ-ийн захиалга тэр өдрийнхөө мужид багтана", () => {
+    expect(
+      inRange(
+        "2026-08-31T23:30:00+08:00",
+        "2026-08-01T00:00",
+        "2026-08-31T23:59",
+      ),
+    ).toBe(true);
+    expect(
+      inRange(
+        "2026-08-31T23:30:00+08:00",
+        "2026-09-01T00:00",
+        "2026-09-30T23:59",
+      ),
+    ).toBe(false);
+  });
+
+  it("23:59:30 УБ-ийн захиалга тэр өдрийн «Өнөөдөр» мужид багтана", () => {
+    const r = preset("today", "2026-08-31");
+    expect(inRange("2026-08-31T23:59:30+08:00", r.from, r.to)).toBe(true);
+  });
+
+  it("«Өнгөрсөн сар» ба «Энэ сар» давхцахгүй, цоорхойгүй", () => {
+    const prev = preset("prev-month", "2026-09-13");
+    const cur = preset("month", "2026-09-13");
+    for (const edge of [
+      "2026-08-31T23:59:59.500+08:00",
+      "2026-09-01T00:00:00.000+08:00",
+    ]) {
+      const hits =
+        Number(inRange(edge, prev.from, prev.to)) +
+        Number(inRange(edge, cur.from, cur.to));
+      expect(hits).toBe(1);
+    }
   });
 });
