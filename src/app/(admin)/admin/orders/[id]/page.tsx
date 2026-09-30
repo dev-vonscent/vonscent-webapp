@@ -19,6 +19,8 @@ import {
   PAYMENT_STATUS_LABEL,
 } from "@/lib/constants";
 import { OrderStatusControl } from "@/features/admin/components/order-status-control";
+import { CopyRow } from "@/features/payment/components/copy-row";
+import { refundBreakdown } from "@/lib/refund";
 import { cn } from "@/lib/utils";
 
 export default async function AdminOrderDetail({
@@ -32,7 +34,12 @@ export default async function AdminOrderDetail({
     getStaffUser(),
   ]);
   if (!detail) notFound();
-  const { order, items, history, customer, payments } = detail;
+  const { order, items, history, customer, payments, refundAccount } = detail;
+  // Цуцлагдсан, төлсөн (хараахан буцаагаагүй) захиалга — админ мөнгө
+  // шилжүүлэх ёстой. Дүн нь нийт дүнгээс 1% шимтгэл хассан (src/lib/refund.ts).
+  const awaitingRefund =
+    order.status === "cancelled" && order.payment_status === "paid";
+  const refund = refundBreakdown(order.total);
 
   return (
     <div className="space-y-6">
@@ -192,6 +199,47 @@ export default async function AdminOrderDetail({
               )}
             </CardContent>
           </Card>
+
+          {awaitingRefund && (
+            <Card>
+              <CardContent className="space-y-2 p-5 text-sm">
+                <h2 className="font-medium">Буцаалт</h2>
+                <CopyRow
+                  label="Шилжүүлэх дүн"
+                  value={String(refund.amount)}
+                  copy
+                  mono
+                />
+                <p className="text-muted-foreground text-xs">
+                  {formatPrice(order.total)} − банкны шимтгэл{" "}
+                  {formatPrice(refund.fee)} = {formatPrice(refund.amount)}
+                </p>
+                {refundAccount ? (
+                  <>
+                    <Separator />
+                    <CopyRow label="Банк" value={refundAccount.bank} />
+                    <CopyRow
+                      label="Данс"
+                      value={refundAccount.account_number}
+                      copy
+                      mono
+                    />
+                    <CopyRow
+                      label="Эзэмшигч"
+                      value={refundAccount.holder_name}
+                      copy
+                    />
+                  </>
+                ) : (
+                  // Админ цуцалсан, эсвэл данс хадгалагдахаас өмнөх захиалга.
+                  <p className="text-muted-foreground">
+                    Хэрэглэгч буцаалтын данс бичээгүй байна —{" "}
+                    {order.contact_phone} дугаараар холбогдоно уу.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardContent className="space-y-3 p-5">

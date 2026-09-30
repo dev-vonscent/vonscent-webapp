@@ -30,7 +30,13 @@ import {
   OrderActions,
   type ReorderItem,
 } from "@/features/account/components/order-actions";
-import type { OrderRow, OrderItemRow, OrderStatusHistoryRow } from "@/db/types";
+import { maskAccount, refundBreakdown } from "@/lib/refund";
+import type {
+  OrderRow,
+  OrderItemRow,
+  OrderRefundAccountRow,
+  OrderStatusHistoryRow,
+} from "@/db/types";
 
 export default async function OrderDetailPage({
   params,
@@ -63,14 +69,27 @@ export default async function OrderDetailPage({
     order.status !== "cancelled" &&
     Boolean(order.pay_token);
 
-  const [{ data: itemData }, { data: historyData }] = await Promise.all([
-    supabase.from("order_items").select("*").eq("order_id", id),
-    supabase
-      .from("order_status_history")
-      .select("*")
-      .eq("order_id", id)
-      .order("created_at", { ascending: true }),
-  ]);
+  // Цуцлагдсан, төлсөн (буцаагдаагүй) захиалга — мөнгө замдаа явж байна.
+  const refundPending =
+    order.status === "cancelled" && order.payment_status === "paid";
+
+  const [{ data: itemData }, { data: historyData }, { data: refundData }] =
+    await Promise.all([
+      supabase.from("order_items").select("*").eq("order_id", id),
+      supabase
+        .from("order_status_history")
+        .select("*")
+        .eq("order_id", id)
+        .order("created_at", { ascending: true }),
+      refundPending
+        ? supabase
+            .from("order_refund_accounts")
+            .select("*")
+            .eq("order_id", id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+  const refundAccount = refundData as OrderRefundAccountRow | null;
   const items = (itemData as OrderItemRow[] | null) ?? [];
   const history = (historyData as OrderStatusHistoryRow[] | null) ?? [];
 
@@ -198,6 +217,8 @@ export default async function OrderDetailPage({
               orderId={order.id}
               items={reorderItems}
               cancellable={cancellable}
+              paid={order.payment_status === "paid"}
+              total={order.total}
             />
           )}
         </div>
@@ -223,6 +244,23 @@ export default async function OrderDetailPage({
               >
                 {PAYMENT_STATUS_LABEL[order.payment_status]}
               </Badge>
+              {refundPending && (
+                // Цуцалсны дараа «мөнгө минь хаана байна» гэдгийг энд хэлнэ —
+                // дүн нь нийт − 1% шимтгэл (src/lib/refund.ts).
+                <div className="bg-secondary space-y-1 rounded-lg p-3">
+                  <p className="font-medium">
+                    Буцаалт хүлээгдэж байна ·{" "}
+                    <span className="tabular-nums">
+                      {formatPrice(refundBreakdown(order.total).amount)}
+                    </span>
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    {refundAccount
+                      ? `${refundAccount.bank} · ${maskAccount(refundAccount.account_number)} данс руу шилжүүлнэ.`
+                      : "Бид тантай холбогдож буцаалтын дансыг тань тодруулна."}
+                  </p>
+                </div>
+              )}
               {awaitingPayment && (
                 <Button asChild size="lg" className="w-full">
                   <Link href={`/pay/${order.pay_token}`}>Төлбөр төлөх</Link>
