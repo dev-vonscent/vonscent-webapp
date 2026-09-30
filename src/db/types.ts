@@ -274,6 +274,18 @@ export interface QpayPaymentRow {
   created_at: string;
 }
 
+/**
+ * Буцаалтын данс (0108) — хэрэглэгч төлсөн захиалгаа цуцлахад бичнэ,
+ * админ буцаалт хийсний дараа устгагдана.
+ */
+export interface OrderRefundAccountRow {
+  order_id: string;
+  bank: string;
+  account_number: string;
+  holder_name: string;
+  created_at: string;
+}
+
 export interface OrderItemRow {
   id: string;
   order_id: string;
@@ -495,6 +507,7 @@ export interface Database {
       addresses: Table<AddressRow, "id" | "created_at">;
       orders: Table<OrderRow, "id" | "order_no" | "created_at" | "updated_at">;
       order_items: Table<OrderItemRow, "id">;
+      order_refund_accounts: Table<OrderRefundAccountRow, "created_at">;
       coupons: Table<CouponRow, "id" | "created_at">;
       coupon_redemptions: Table<CouponRedemptionRow, "id" | "created_at">;
       home_sections: Table<HomeSectionRow, "id" | "created_at">;

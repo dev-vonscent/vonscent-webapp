@@ -33,15 +33,41 @@ export function useCartAvailability({
    * хүсэлт явуулах шалтгаан байхгүй.
    */
   enabled = true,
-}: { enabled?: boolean } = {}) {
-  const items = useCart((s) => s.items);
-  const collections = useCart((s) => s.collections);
+  /**
+   * «Захиалах» мөрийг шалгах — тэр мөр сагсанд ордоггүй тул сагсны бусад
+   * мөртэй үлдэгдэл хуваалцахгүй, ганцаараа эх савнаас тооцогдоно (сервер ч
+   * зөвхөн түүнийг reserve хийнэ). Төлбөрийн хуудасны тойм (`OrderLines`).
+   */
+  buyNow = false,
+}: { enabled?: boolean; buyNow?: boolean } = {}) {
+  const cartItems = useCart((s) => s.items);
+  const cartCollections = useCart((s) => s.collections);
+  const buyNowLine = useCart((s) => s.buyNow);
+  const items = React.useMemo(
+    () =>
+      !buyNow
+        ? cartItems
+        : buyNowLine?.kind === "item"
+          ? [buyNowLine.item]
+          : [],
+    [buyNow, buyNowLine, cartItems],
+  );
+  const collections = React.useMemo(
+    () =>
+      !buyNow
+        ? cartCollections
+        : buyNowLine?.kind === "collection"
+          ? [buyNowLine.collection]
+          : [],
+    [buyNow, buyNowLine, cartCollections],
+  );
 
   // Барааны id-ууд — өөрчлөгдөхөд л дахин асууна.
   const idKey = React.useMemo(() => {
     const ids = new Set<string>();
     for (const i of items) ids.add(i.productId);
-    for (const c of collections) for (const m of c.members) ids.add(m.productId);
+    for (const c of collections)
+      for (const m of c.members) ids.add(m.productId);
     return [...ids].sort().join(",");
   }, [items, collections]);
 
@@ -190,9 +216,13 @@ export function useCartAvailability({
   const setItemSelected = useCart((s) => s.setItemSelected);
   const setCollectionSelected = useCart((s) => s.setCollectionSelected);
   React.useEffect(() => {
+    // «Захиалах» мөр сагсны сонголтод хамаарахгүй — ижил variant-ийн сагсны
+    // мөрийг андуурч чагтаас гаргана.
+    if (buyNow) return;
     for (const key of blockedItemKeys) setItemSelected(key, false);
     for (const key of blockedCollectionKeys) setCollectionSelected(key, false);
   }, [
+    buyNow,
     blockedItemKeys,
     blockedCollectionKeys,
     setItemSelected,
@@ -212,6 +242,7 @@ export function useCartAvailability({
    */
   const setQty = useCart((s) => s.setQty);
   const setCollectionQty = useCart((s) => s.setCollectionQty);
+  const setBuyNowQty = useCart((s) => s.setBuyNowQty);
   /** Хамгийн сүүлд мэдэгдсэн буулгалтууд — нэг зүйлийг давтаж хэлэхгүй. */
   const announced = React.useRef("");
   React.useEffect(() => {
@@ -220,14 +251,16 @@ export function useCartAvailability({
     for (const i of items) {
       const cap = maxQtyOf(i.key);
       if (cap >= 1 && i.qty > cap) {
-        setQty(i.key, cap, cap);
+        if (buyNow) setBuyNowQty(cap, cap);
+        else setQty(i.key, cap, cap);
         notes.push(`${i.name} ${i.ml}ml → ${cap} ш`);
       }
     }
     for (const c of collections) {
       const cap = maxCollectionQtyOf(c.key);
       if (cap >= 1 && c.qty > cap) {
-        setCollectionQty(c.key, cap, cap);
+        if (buyNow) setBuyNowQty(cap, cap);
+        else setCollectionQty(c.key, cap, cap);
         notes.push(`${c.name} ${c.ml}ml → ${cap} ш`);
       }
     }
@@ -237,9 +270,10 @@ export function useCartAvailability({
     announced.current = signature;
     toast(
       `Үлдэгдэл хүрэлцэхгүй тул тоо ширхэгийг багасгалаа: ${notes.join(", ")}.`,
-      "Сагс шинэчлэгдлээ",
+      buyNow ? "Захиалга шинэчлэгдлээ" : "Сагс шинэчлэгдлээ",
     );
   }, [
+    buyNow,
     stock,
     items,
     collections,
@@ -247,6 +281,7 @@ export function useCartAvailability({
     maxCollectionQtyOf,
     setQty,
     setCollectionQty,
+    setBuyNowQty,
   ]);
 
   return {

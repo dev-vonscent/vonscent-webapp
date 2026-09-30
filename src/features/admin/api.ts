@@ -4,6 +4,7 @@ import { callRpc } from "@/lib/supabase/rpc";
 import type {
   OrderRow,
   OrderItemRow,
+  OrderRefundAccountRow,
   OrderStatusHistoryRow,
   ProfileRow,
   CouponRow,
@@ -225,6 +226,8 @@ export async function getOrderDetail(id: string): Promise<{
    * түлхүүр бөгөөд маргаантай төлбөрийн цорын ганц нотолгоо.
    */
   payments: QpayPaymentRecord[];
+  /** Хэрэглэгчийн бичсэн буцаалтын данс (0108) — буцаагдмагц устгагдана. */
+  refundAccount: OrderRefundAccountRow | null;
 } | null> {
   const supabase = await createClient();
   if (!supabase) return null;
@@ -236,27 +239,37 @@ export async function getOrderDetail(id: string): Promise<{
   const order = data as OrderRow | null;
   if (!order) return null;
 
-  const [{ data: items }, { data: history }, { data: payments }, customer] =
-    await Promise.all([
-      supabase.from("order_items").select("*").eq("order_id", id),
-      supabase
-        .from("order_status_history")
-        .select("*")
-        .eq("order_id", id)
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("qpay_payments")
-        .select("qpay_payment_id, amount, paid_at, wallet")
-        .eq("order_id", id)
-        .order("paid_at", { ascending: true }),
-      order.user_id
-        ? supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", order.user_id)
-            .maybeSingle()
-        : Promise.resolve({ data: null }),
-    ]);
+  const [
+    { data: items },
+    { data: history },
+    { data: payments },
+    customer,
+    { data: refundAccount },
+  ] = await Promise.all([
+    supabase.from("order_items").select("*").eq("order_id", id),
+    supabase
+      .from("order_status_history")
+      .select("*")
+      .eq("order_id", id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("qpay_payments")
+      .select("qpay_payment_id, amount, paid_at, wallet")
+      .eq("order_id", id)
+      .order("paid_at", { ascending: true }),
+    order.user_id
+      ? supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", order.user_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("order_refund_accounts")
+      .select("*")
+      .eq("order_id", id)
+      .maybeSingle(),
+  ]);
 
   return {
     order,
@@ -264,6 +277,7 @@ export async function getOrderDetail(id: string): Promise<{
     history: (history as OrderStatusHistoryRow[] | null) ?? [],
     customer: (customer.data as ProfileRow | null) ?? null,
     payments: (payments as QpayPaymentRecord[] | null) ?? [],
+    refundAccount: (refundAccount as OrderRefundAccountRow | null) ?? null,
   };
 }
 
@@ -1406,7 +1420,10 @@ interface DbBottleRow {
   is_active: boolean;
   note: string | null;
   updated_at: string | null;
-  profiles: { full_name: string | null } | { full_name: string | null }[] | null;
+  profiles:
+    | { full_name: string | null }
+    | { full_name: string | null }[]
+    | null;
 }
 
 interface DbVariantRow {
@@ -1414,8 +1431,20 @@ interface DbVariantRow {
   is_active: boolean;
   bottle_override: boolean | null;
   products:
-    | { id: string; name: string; brand: string; gender: Gender; is_active: boolean }
-    | { id: string; name: string; brand: string; gender: Gender; is_active: boolean }[]
+    | {
+        id: string;
+        name: string;
+        brand: string;
+        gender: Gender;
+        is_active: boolean;
+      }
+    | {
+        id: string;
+        name: string;
+        brand: string;
+        gender: Gender;
+        is_active: boolean;
+      }[]
     | null;
 }
 

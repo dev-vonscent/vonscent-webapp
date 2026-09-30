@@ -2,20 +2,21 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { ChevronDown, Minus, Plus, Trash2 } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
   collectionBasePrice,
-  useCart,
   type CartCollection,
   type CartItem,
 } from "@/features/cart/store";
 import { useCartAvailability } from "@/features/cart/use-cart-availability";
-import { CartSizeSelect } from "@/features/cart/components/cart-size-select";
+import { OrderLineEditor } from "@/features/checkout/components/order-line-editor";
 
 /** Хураасан үед харагдах мөрийн тоо. */
 const COLLAPSED_LINES = 2;
+
+type EditTarget = React.ComponentProps<typeof OrderLineEditor>["target"];
 
 /**
  * Захиалгын тоймын барааны жагсаалт — default-оор ХУРААСАН.
@@ -25,12 +26,11 @@ const COLLAPSED_LINES = 2;
  * дээр fold-оос доош түлхдэг байв. Нэрсийг нь хасаагүй — төлөхийн өмнө
  * сонголтоо шалгах зам (cart/page.tsx-тэй ижил) «Дэлгэх»-ийн цаана үлдэнэ.
  *
- * `editable` үед мөр бүр тоо ширхэг, хэмжээ (дан ус), устгах товчтой
- * (клиент, 2026-09 UG): урьд нь засах гэж буцсан хэрэглэгч сагсаа эхнээс нь
- * бүрдүүлдэг байв. Засвар нь сагсны store руу ШУУД бичигдэх тул буцахад сагс
- * ижил, купон / бэлэг / оноо ч store-ын дүнгээс дахин бодогдоно. «Захиалах»
- * мөр сагсанд байдаггүй тул түүний засвар `buyNow` руу очно, устгах товчгүй —
- * ганц мөрөө хасвал хуудас сагсны мөрүүд рүү чимээгүй шилжих байсан.
+ * `editable` үед мөр бүр «Засах» товчтой (клиент, 2026-09 UG): урьд нь засах
+ * гэж буцсан хэрэглэгч сагсаа эхнээс нь бүрдүүлдэг байв. Засвар нь
+ * `OrderLineEditor` dialog-д — мөр дотор select, stepper байхад үнэ урт болмогц
+ * хяналтууд доош унаж, тойм уншигдахаа больдог байсан. Тойм өөрөө зөвхөн
+ * уншина: юу, хэдэн ширхэг, ямар хэмжээ, хэд.
  */
 export function OrderLines({
   items,
@@ -46,31 +46,34 @@ export function OrderLines({
 }) {
   const [open, setOpen] = React.useState(false);
   const listId = React.useId();
+  /**
+   * Засаж буй мөр — нээх үеийн хуулбар. Dialog хаагдах animation-ы турш
+   * агуулга нь алга болохгүйн тулд `editing` нь `editorOpen`-оос тусдаа.
+   */
+  const [editing, setEditing] = React.useState<EditTarget | null>(null);
+  const [editorOpen, setEditorOpen] = React.useState(false);
+  // Хуучирсан сагсны тоог үлдэгдэлд буулгаж мэдэгдэнэ («Захиалах» мөр ч мөн
+  // адил) — dialog-ийг нээгээгүй байсан ч.
+  useCartAvailability({ enabled: editable, buyNow });
 
-  const setQty = useCart((s) => s.setQty);
-  const remove = useCart((s) => s.remove);
-  const setCollectionQty = useCart((s) => s.setCollectionQty);
-  const removeCollection = useCart((s) => s.removeCollection);
-  const setBuyNowQty = useCart((s) => s.setBuyNowQty);
-  const setBuyNowVariant = useCart((s) => s.setBuyNowVariant);
-  // Сагсны мөрийн дээд тоо (эх савны үлдэгдэл). «Захиалах» мөр сагсанд
-  // байдаггүй тул хязгааргүй — серверийн INSUFFICIENT_STOCK шалгалт хамгаална.
-  const { maxQtyOf, maxCollectionQtyOf } = useCartAvailability({
-    enabled: editable && !buyNow,
-  });
+  function edit(target: EditTarget) {
+    setEditing(target);
+    setEditorOpen(true);
+  }
 
   const lines = [
     ...collections.map((c) => ({ kind: "collection" as const, c })),
     ...items.map((i) => ({ kind: "item" as const, i })),
   ];
-  const hasMembers = collections.some((c) => c.members.length > 0);
+  // Засах горимд гишүүдийн жагсаалт dialog-д — тоймд давтахгүй.
+  const hasMembers = !editable && collections.some((c) => c.members.length > 0);
   const hidden = Math.max(lines.length - COLLAPSED_LINES, 0);
   const collapsible = hidden > 0 || hasMembers;
   const shown = open ? lines : lines.slice(0, COLLAPSED_LINES);
 
   return (
     <div className="space-y-3">
-      <div id={listId} className="space-y-3">
+      <div id={listId} className="space-y-4">
         {shown.map((line) =>
           line.kind === "collection" ? (
             <Line
@@ -80,25 +83,13 @@ export function OrderLines({
               qty={line.c.qty}
               meta={`Багц · ${line.c.ml}ml · ${line.c.members.length} үнэртэн`}
               price={collectionBasePrice(line.c) * line.c.qty}
-              controls={
-                editable && (
-                  <LineControls
-                    name={line.c.name}
-                    qty={line.c.qty}
-                    max={buyNow ? Infinity : maxCollectionQtyOf(line.c.key)}
-                    onQty={(q, max) =>
-                      buyNow
-                        ? setBuyNowQty(q, max)
-                        : setCollectionQty(line.c.key, q, max)
-                    }
-                    onRemove={
-                      buyNow ? undefined : () => removeCollection(line.c.key)
-                    }
-                  />
-                )
+              onEdit={
+                editable
+                  ? () => edit({ kind: "collection", line: line.c })
+                  : undefined
               }
             >
-              {open && (
+              {open && hasMembers && (
                 <ul className="text-muted-foreground mt-0.5 space-y-0.5 text-xs">
                   {line.c.members.map((m) => (
                     <li key={m.variantId} className="truncate">
@@ -114,31 +105,12 @@ export function OrderLines({
               image={line.i.image}
               name={line.i.name}
               qty={line.i.qty}
-              meta={
-                editable ? line.i.brand : `${line.i.brand} · ${line.i.ml}ml`
-              }
+              meta={`${line.i.brand} · ${line.i.ml}ml`}
               price={line.i.unitPrice * line.i.qty}
-              controls={
-                editable && (
-                  <LineControls
-                    name={line.i.name}
-                    qty={line.i.qty}
-                    max={buyNow ? Infinity : maxQtyOf(line.i.key)}
-                    onQty={(q, max) =>
-                      buyNow ? setBuyNowQty(q, max) : setQty(line.i.key, q, max)
-                    }
-                    onRemove={buyNow ? undefined : () => remove(line.i.key)}
-                  >
-                    <CartSizeSelect
-                      itemKey={line.i.key}
-                      slug={line.i.slug}
-                      variantId={line.i.variantId}
-                      ml={line.i.ml}
-                      onPick={buyNow ? setBuyNowVariant : undefined}
-                      className="h-8 w-28 text-xs"
-                    />
-                  </LineControls>
-                )
+              onEdit={
+                editable
+                  ? () => edit({ kind: "item", line: line.i })
+                  : undefined
               }
             />
           ),
@@ -166,61 +138,14 @@ export function OrderLines({
           />
         </button>
       )}
-    </div>
-  );
-}
 
-/** Мөр засах эгнээ: [хэмжээ] [− n +] … [устгах]. */
-function LineControls({
-  name,
-  qty,
-  max,
-  onQty,
-  onRemove,
-  children,
-}: {
-  name: string;
-  qty: number;
-  max: number;
-  onQty: (qty: number, max?: number) => void;
-  /** Байхгүй бол устгах товч гарахгүй («Захиалах» мөр). */
-  onRemove?: () => void;
-  /** Хэмжээ сонгох (зөвхөн дан ус). */
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-2">
-      {children}
-      <div className="bg-secondary flex items-center rounded-full">
-        <button
-          type="button"
-          onClick={() => onQty(qty - 1)}
-          disabled={qty <= 1}
-          aria-label={`${name} — нэгээр хасах`}
-          className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full disabled:opacity-40 md:size-8"
-        >
-          <Minus className="size-3.5" />
-        </button>
-        <span className="w-6 text-center text-sm tabular-nums">{qty}</span>
-        <button
-          type="button"
-          onClick={() => onQty(qty + 1, max)}
-          disabled={qty >= max}
-          aria-label={`${name} — нэгээр нэмэх`}
-          className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full disabled:opacity-40 md:size-8"
-        >
-          <Plus className="size-3.5" />
-        </button>
-      </div>
-      {onRemove && (
-        <button
-          type="button"
-          onClick={onRemove}
-          aria-label={`${name} — устгах`}
-          className="text-muted-foreground hover:text-destructive flex size-11 items-center justify-center rounded-full md:size-8"
-        >
-          <Trash2 className="size-4" />
-        </button>
+      {editing && (
+        <OrderLineEditor
+          target={editing}
+          buyNow={buyNow}
+          open={editorOpen}
+          onOpenChange={setEditorOpen}
+        />
       )}
     </div>
   );
@@ -232,7 +157,7 @@ function Line({
   qty,
   meta,
   price,
-  controls,
+  onEdit,
   children,
 }: {
   image: string | null | undefined;
@@ -240,8 +165,8 @@ function Line({
   qty: number;
   meta: string;
   price: number;
-  /** Засах эгнээ (`editable`) — нэр, тайлбарын доор. */
-  controls?: React.ReactNode;
+  /** Байвал «Засах» товч гарна (`editable`). */
+  onEdit?: () => void;
   children?: React.ReactNode;
 }) {
   return (
@@ -261,22 +186,33 @@ function Line({
             />
           )}
         </div>
-        {/* Засах үед тоо нь stepper дээр — давхар хэлэхгүй. */}
-        {!controls && (
-          <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">
-            {qty}
-          </span>
-        )}
+        <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-semibold tabular-nums">
+          {qty}
+        </span>
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm/tight font-medium">{name}</p>
         <p className="text-muted-foreground truncate text-xs">{meta}</p>
         {children}
-        {controls}
       </div>
-      <span className="text-sm font-medium tabular-nums">
-        {formatPrice(price)}
-      </span>
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        <span className="text-sm font-medium tabular-nums">
+          {formatPrice(price)}
+        </span>
+        {onEdit && (
+          // Утсан дээр 44px хүрэлтийн талбай (`after:`), харагдах нь жижиг
+          // капсул — тоймын нягтралыг эвдэхгүй.
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label={`${name} — засах`}
+            aria-haspopup="dialog"
+            className="bg-secondary hover:bg-accent relative h-7 rounded-full px-3 text-xs font-medium transition-colors after:absolute after:-inset-x-1 after:-inset-y-2 md:after:hidden"
+          >
+            Засах
+          </button>
+        )}
+      </div>
     </div>
   );
 }

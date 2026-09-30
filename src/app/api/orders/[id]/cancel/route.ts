@@ -9,14 +9,21 @@ import { isOrderEditable } from "@/lib/time";
 import { sendEmail, STORE_INBOX, renderEmail } from "@/lib/email";
 import { formatPrice } from "@/lib/format";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
+import { cancelOrderSchema } from "@/lib/validators/refund";
+import { maskAccount, refundBreakdown } from "@/lib/refund";
 import type { OrderRow } from "@/db/types";
 
 /**
  * Customer-initiated cancellation. Allowed only while the order is still
  * `pending` or `confirmed`; releases the reserved inventory via cancel_order.
+ *
+ * Төлсөн захиалгад буцаалтын данс ЗААВАЛ (`refundAccount`, клиент
+ * 2026-09-30): QPay зөвхөн картын гүйлгээг буцаадаг тул админ гараар
+ * шилжүүлнэ. Данс нь цуцлахаас ӨМНӨ хадгалагдана — хадгалж чадаагүй бол
+ * захиалга цуцлагдахгүй, эс бөгөөс мөнгө нь хаашаа ч буцахгүй цуцлалт үлдэнэ.
  */
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
@@ -34,14 +41,21 @@ export async function POST(
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   // RLS lets the owner read their own order; confirm ownership + status.
+  // Хоосон бие (төлөөгүй захиалга, хуучин клиент) = данс байхгүй.
+  const raw = await req.text();
+  const parsed = cancelOrderSchema.safeParse(raw ? safeJson(raw) : {});
+  if (!parsed.success) {
+    return NextResponse.json({ error: "VALIDATION" }, { status: 400 });
+  }
+
   const { data } = await supabase
     .from("orders")
-    .select("id, user_id, status, created_at, deliver_on")
+    .select("id, user_id, status, payment_status, created_at, deliver_on")
     .eq("id", id)
     .maybeSingle();
   const order = data as Pick<
     OrderRow,
-    "id" | "user_id" | "status" | "created_at" | "deliver_on"
+    "id" | "user_id" | "status" | "payment_status" | "created_at" | "deliver_on"
   > | null;
   if (!order || order.user_id !== user.id) {
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
@@ -63,6 +77,30 @@ export async function POST(
   if (!admin) {
     return NextResponse.json({ error: "NO_DB" }, { status: 500 });
   }
+  const refundAccount = parsed.data.refundAccount;
+  if (order.payment_status === "paid") {
+    if (!refundAccount) {
+      return NextResponse.json(
+        { error: "REFUND_ACCOUNT_REQUIRED" },
+        { status: 400 },
+      );
+    }
+    const { error: accountError } = await admin
+      .from("order_refund_accounts")
+      .upsert({
+        order_id: id,
+        bank: refundAccount.bank,
+        account_number: refundAccount.accountNumber,
+        holder_name: refundAccount.holderName,
+      });
+    if (accountError) {
+      return NextResponse.json(
+        { error: "REFUND_ACCOUNT_FAILED" },
+        { status: 500 },
+      );
+    }
+  }
+
   const { error: cancelError } = await callRpc(admin, "update_order_status", {
     p_order: id,
     p_status: "cancelled",
@@ -94,6 +132,8 @@ export async function POST(
     payment_status: string;
   } | null;
   if (o) {
+    const refund =
+      o.payment_status === "paid" ? refundBreakdown(o.total) : null;
     const { html, text } = renderEmail({
       preheader: `${o.order_no} — цуцлагдсан захиалга`,
       heading: `Захиалга цуцлагдлаа — ${o.order_no}`,
@@ -101,12 +141,25 @@ export async function POST(
       lines: [
         { label: "Хэрэглэгч", value: o.contact_name ?? "—" },
         { label: "Утас", value: o.contact_phone ?? "—" },
-        { label: "Дүн", value: formatPrice(o.total), strong: true },
+        { label: "Дүн", value: formatPrice(o.total), strong: !refund },
+        ...(refund && refundAccount
+          ? [
+              {
+                label: "Буцаах дүн",
+                value: `${formatPrice(refund.amount)} (шимтгэл ${formatPrice(refund.fee)})`,
+                strong: true,
+              },
+              {
+                label: "Данс",
+                // Бүтэн дугаар имэйлээр явахгүй — админы хуудсанд л.
+                value: `${refundAccount.bank} · ${maskAccount(refundAccount.accountNumber)} · ${refundAccount.holderName}`,
+              },
+            ]
+          : []),
       ],
-      note:
-        o.payment_status === "paid"
-          ? "Төлбөр төлөгдсөн байсан — хэрэглэгчтэй холбогдож мөнгийг нь буцаана уу."
-          : "Төлбөр төлөгдөөгүй байсан.",
+      note: refund
+        ? "Төлбөр төлөгдсөн байсан — захиалгын хуудаснаас дансыг харж мөнгийг нь буцаагаад «Буцаалт хийх» гэж тэмдэглэнэ үү."
+        : "Төлбөр төлөгдөөгүй байсан.",
       cta: {
         label: "Захиалгыг нээх",
         href: `${env.siteUrl}/admin/orders/${id}`,
@@ -124,4 +177,12 @@ export async function POST(
 
   revalidatePublic();
   return NextResponse.json({ ok: true });
+}
+
+function safeJson(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }

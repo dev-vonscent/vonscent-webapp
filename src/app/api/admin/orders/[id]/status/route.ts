@@ -198,6 +198,10 @@ export async function POST(
         { status: 409 },
       );
     }
+    // Буцаалтын данс нь зөвхөн шилжүүлэг хийгдэх хүртэл хэрэгтэй санхүүгийн
+    // мэдээлэл (0108) — буцаасан даруйд устгана. Алдаа гарвал буцаалтыг
+    // унагахгүй: мөнгө аль хэдийн шилжсэн, мөр нь дараагийн удаа ч устгагдана.
+    await supabase.from("order_refund_accounts").delete().eq("order_id", id);
   }
 
   return NextResponse.json({ ok: true });
