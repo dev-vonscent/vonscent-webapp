@@ -30,6 +30,7 @@ import { CustomTagField } from "./custom-tag-field";
 import { DescriptionFields } from "./description-fields";
 import { type GalleryImage } from "./product-images";
 import { ProductImageStudio } from "./product-image-studio";
+import { BottleStylePicker } from "./bottle-style-picker";
 import { BrandSelect } from "./brand-select";
 import { ConcentrationSelect } from "./concentration-select";
 import {
@@ -43,7 +44,7 @@ import {
   SILLAGE_HINT,
   DEFAULT_LOW_STOCK_ML,
 } from "@/lib/constants";
-import type { Sillage } from "@/lib/constants";
+import type { BottleStyle, Sillage } from "@/lib/constants";
 import type {
   BrandOption,
   ConcentrationOption,
@@ -121,6 +122,10 @@ export function ProductForm({
   // Choosing a reference *is* the intent to generate — there is no second
   // "and do it" checkbox to forget to tick.
   const [referenceUrl, setReferenceUrl] = React.useState<string | null>(null);
+  // Галерейд нэмэх савны зураг — AI-тай бол 3 дахь, гараар бол хамгийн ард.
+  const [bottleStyle, setBottleStyle] = React.useState<BottleStyle | null>(
+    null,
+  );
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -180,6 +185,7 @@ export function ProductForm({
         isFeatured,
         referenceUrl,
         generateImage: Boolean(referenceUrl),
+        bottleStyle,
         images: images.map((img) => ({
           url: img.url,
           alt: img.alt,
@@ -248,6 +254,19 @@ export function ProductForm({
         onImagesChange={setImages}
         onReferenceChange={setReferenceUrl}
       />
+
+      <Card>
+        <CardContent className="space-y-4 p-6">
+          <div className="flex items-center gap-1.5">
+            <h2 className="font-serif text-lg font-semibold">Савны зураг</h2>
+            <InfoTip label="Савны зургийн тайлбар">
+              Сонгосон савны зураг галерейд нэмэгдэнэ: AI-аар зураг үүсгэвэл 3
+              дахь зураг, гараар оруулсан бол хамгийн сүүлийн зураг болно.
+            </InfoTip>
+          </div>
+          <BottleStylePicker value={bottleStyle} onChange={setBottleStyle} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="space-y-4 p-6">

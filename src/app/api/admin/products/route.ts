@@ -12,6 +12,7 @@ import {
   sanitizeFamilies,
 } from "@/features/taxonomy/api";
 import { runNewProductImages } from "@/lib/ai/new-product-pipeline";
+import { addBottleImage } from "@/features/admin/bottle-image";
 
 function slugify(name: string, brand: string) {
   return `${brand}-${name}`
@@ -153,9 +154,16 @@ export async function POST(req: Request) {
     // the note image shot from that packshot (lib/ai/new-product-pipeline.ts).
     // Runs after the response is sent — the admin lands on the table while the
     // images generate; the table polls until they're done (§6.3).
+    // Сонгосон савны зураг AI-ийн хоёр зургийн дараа — 3 дахь байранд.
     after(async () => {
       await runNewProductImages(productId, referenceImageUrl!);
+      if (input.bottleStyle) {
+        await addBottleImage(supabase, productId, slug, input.bottleStyle, "third");
+      }
     });
+  } else if (input.bottleStyle) {
+    // Гараар оруулсан зургууд эхэлж, савны зураг хамгийн ард.
+    await addBottleImage(supabase, productId, slug, input.bottleStyle, "end");
   }
 
   await supabase.from("inventory").insert({

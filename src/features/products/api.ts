@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAG_CATALOG } from "@/lib/cache-tags";
-import { NEW_PRODUCTS_COUNT } from "@/lib/constants";
+import { BOTTLE_IMAGE_URL_RE, NEW_PRODUCTS_COUNT } from "@/lib/constants";
 import * as Sentry from "@sentry/nextjs";
 import type {
   CatalogFilters,
@@ -111,7 +111,11 @@ function mapProduct(
   const images = [...row.product_images]
     .filter((i) => i.is_visible !== false)
     .sort((a, b) => a.sort_order - b.sort_order)
-    .map((i) => ({ url: i.url, alt: i.alt ?? row.name }));
+    .map((i) => ({
+      url: i.url,
+      alt: i.alt ?? row.name,
+      contain: BOTTLE_IMAGE_URL_RE.test(i.url),
+    }));
 
   const inv = Array.isArray(row.inventory) ? row.inventory[0] : row.inventory;
   const availableMl = inv ? inv.on_hand_ml - inv.reserved_ml : 0;
