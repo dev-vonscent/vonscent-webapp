@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
-import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -469,9 +469,9 @@ function Saver({
         {/* Disabled when clean: a save that writes the same values back still
             reads as "something happened", which is how the operator learns to
             press all seven buttons every time. */}
-        <Button onClick={handle} disabled={busy || !dirty}>
-          {busy ? "Хадгалж байна…" : dirty ? "Хадгалах" : "Хадгалсан"}
-        </Button>
+        <LoadingButton loading={busy} onClick={handle} disabled={!dirty}>
+          {dirty ? "Хадгалах" : "Хадгалсан"}
+        </LoadingButton>
       </CardContent>
     </Card>
   );

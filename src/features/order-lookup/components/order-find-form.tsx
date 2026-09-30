@@ -7,7 +7,7 @@ import {
   fieldErrorProps,
 } from "@/components/ui/form-field";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -108,9 +108,14 @@ export function OrderFindForm({ initialOrderNo }: { initialOrderNo?: string }) {
         </p>
       )}
 
-      <Button type="submit" size="lg" className="w-full" disabled={submitting}>
-        {submitting ? "Хайж байна…" : "Захиалга хайх"}
-      </Button>
+      <LoadingButton
+        loading={submitting}
+        type="submit"
+        size="lg"
+        className="w-full"
+      >
+        Захиалга хайх
+      </LoadingButton>
     </form>
   );
 }

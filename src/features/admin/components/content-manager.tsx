@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ImageOff, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Field } from "@/components/ui/field";
@@ -203,9 +204,9 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
         </Button>
       </div>
 
-      <Button onClick={save} disabled={busy}>
-        {busy ? "Хадгалж байна…" : "Хадгалах"}
-      </Button>
+      <LoadingButton loading={busy} onClick={save}>
+        Хадгалах
+      </LoadingButton>
     </Section>
   );
 }
@@ -254,9 +255,9 @@ function SocialSection({ initial }: { initial: SocialSettings }) {
           />
         </Field>
       </div>
-      <Button onClick={save} disabled={busy}>
-        {busy ? "Хадгалж байна…" : "Хадгалах"}
-      </Button>
+      <LoadingButton loading={busy} onClick={save}>
+        Хадгалах
+      </LoadingButton>
     </Section>
   );
 }
@@ -633,9 +634,9 @@ function AboutSection({ initial }: { initial: AboutSettings }) {
         value={story}
         onChange={setStory}
       />
-      <Button variant="secondary" onClick={save} disabled={busy}>
-        {busy ? "Хадгалж байна…" : "Хадгалах"}
-      </Button>
+      <LoadingButton loading={busy} variant="secondary" onClick={save}>
+        Хадгалах
+      </LoadingButton>
     </Section>
   );
 }
@@ -766,9 +767,9 @@ function EditableRow({
         ),
       )}
       <div className="flex gap-2 pt-1">
-        <Button size="sm" onClick={save} disabled={busy}>
-          {busy ? "Хадгалж байна…" : "Хадгалах"}
-        </Button>
+        <LoadingButton loading={busy} size="sm" onClick={save}>
+          Хадгалах
+        </LoadingButton>
         <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
           Болих
         </Button>

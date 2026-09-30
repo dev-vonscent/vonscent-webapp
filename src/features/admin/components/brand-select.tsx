@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { adminFetch } from "@/features/admin/lib/mutate";
 import type { BrandOption } from "@/lib/types";
 
@@ -137,7 +138,7 @@ export function BrandSelect({
             brand names show through. The matching negative margins let it span
             that padding on all sides instead of floating inside it.
           */}
-          <div className="bg-popover border-border sticky -top-1 z-10 -mx-1 -mt-1 mb-1 border-b p-1 ">
+          <div className="bg-popover border-border sticky -top-1 z-10 -mx-1 -mt-1 mb-1 border-b p-1">
             <button
               type="button"
               onClick={() => {
@@ -299,13 +300,14 @@ function NewBrandDialog({
             >
               Болих
             </Button>
-            <Button
+            <LoadingButton
               type="button"
-              disabled={busy || !name.trim()}
+              loading={busy}
+              disabled={!name.trim()}
               onClick={submit}
             >
-              {duplicate ? "Сонгох" : busy ? "Хадгалж байна…" : "Нэмэх"}
-            </Button>
+              {duplicate ? "Сонгох" : "Нэмэх"}
+            </LoadingButton>
           </div>
         </div>
       </DialogContent>

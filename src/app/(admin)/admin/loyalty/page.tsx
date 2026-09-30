@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/browser";
 import { saveSetting } from "@/features/admin/lib/mutate";
@@ -119,9 +119,9 @@ export default function AdminLoyaltyPage() {
                 </p>
               </div>
             </div>
-            <Button type="submit" disabled={busy}>
-              {busy ? "Хадгалж байна…" : "Хадгалах"}
-            </Button>
+            <LoadingButton loading={busy} type="submit">
+              Хадгалах
+            </LoadingButton>
           </form>
           <p className="text-muted-foreground text-sm">
             Хэрэглэгчийн оноо удирдах нь{" "}

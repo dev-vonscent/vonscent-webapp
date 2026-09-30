@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { adminFetch } from "@/features/admin/lib/mutate";
 import { useConfirm } from "@/components/shared/confirm-dialog";
 import { toast } from "@/lib/toast";
@@ -217,13 +218,14 @@ function RenameTagDialog({
             >
               Болих
             </Button>
-            <Button
+            <LoadingButton
+              loading={busy}
               type="button"
-              disabled={busy || !name.trim()}
+              disabled={!name.trim()}
               onClick={save}
             >
-              {busy ? "Хадгалж байна…" : "Хадгалах"}
-            </Button>
+              Хадгалах
+            </LoadingButton>
           </div>
         </div>
       </DialogContent>
