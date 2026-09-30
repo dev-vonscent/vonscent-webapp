@@ -189,6 +189,32 @@ export const GENDER_LABEL: Record<Gender, string> = {
   unisex: "Unisex",
 };
 
+/**
+ * Шинэ бараа нэмэхэд галерейд сонгож нэмдэг савны зураг. Эх хувь нь
+ * Storage-ийн `bottles/<style>.webp` (scripts/upload-bottle-images.ts),
+ * формын урьдчилан харах зураг нь `public/bottles/`.
+ */
+export const BOTTLE_STYLES = ["black", "pink", "silver"] as const;
+export type BottleStyle = (typeof BOTTLE_STYLES)[number];
+
+export const BOTTLE_STYLE_LABEL: Record<BottleStyle, string> = {
+  black: "Хар сав",
+  pink: "Ягаан сав",
+  silver: "Мөнгөлөг сав",
+};
+
+/**
+ * Галерей дахь савны зургийн хуулбарын нэр (`addBottleImage`). Дэлгүүр түүнийг
+ * тайрахгүй, бүтнээр нь харуулахад ашиглана.
+ */
+export const BOTTLE_IMAGE_URL_RE = /\/bottle-[0-9a-f-]{36}\.webp$/;
+
+export const BOTTLE_STYLE_PREVIEW: Record<BottleStyle, string> = {
+  black: "/bottles/black-bottle.png",
+  pink: "/bottles/pink-bottles.jpg",
+  silver: "/bottles/silver-bottle.png",
+};
+
 export const ORDER_STATUSES = [
   "pending",
   "confirmed",
