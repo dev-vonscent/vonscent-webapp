@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CONCENTRATION_CODE_MAX } from "@/lib/constants";
+import { BOTTLE_STYLES, CONCENTRATION_CODE_MAX } from "@/lib/constants";
 
 /**
  * "all" (бүх улирал) already covers every season, so it cannot sit next to an
@@ -115,6 +115,8 @@ export const productInputSchema = z.object({
   referenceUrl: z.string().url().max(2048).nullable().default(null),
   /** Enqueue a generation on save. Needs `referenceUrl` to do anything (§2). */
   generateImage: z.boolean().default(false),
+  /** Галерейд нэмэх савны зураг (constants `BOTTLE_STYLES`); null = нэмэхгүй. */
+  bottleStyle: z.enum(BOTTLE_STYLES).nullable().default(null),
   originCountry: z.string().optional(),
   releaseYear: z.number().int().nullable().optional(),
   onHandMl: z.number().int().nonnegative(),

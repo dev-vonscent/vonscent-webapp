@@ -54,6 +54,8 @@ export interface Variant {
 export interface ProductImage {
   url: string;
   alt: string;
+  /** Тайрахгүй, бүтнээр нь харуулах (савны зураг) — ProductGallery. */
+  contain?: boolean;
 }
 
 /** Compact shape used in catalog grids and home rails. */

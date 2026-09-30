@@ -35,7 +35,9 @@
     "db:regen-images-dev": "node --env-file=.env.dev --import tsx scripts/regen-product-images.ts",
     "db:regen-images-prod": "node --env-file=.env.prod --import tsx scripts/regen-product-images.ts",
     "db:gen-note-images-dev": "node --env-file=.env.dev --import tsx scripts/gen-note-images.ts",
-    "db:gen-note-images-prod": "node --env-file=.env.prod --import tsx scripts/gen-note-images.ts"
+    "db:gen-note-images-prod": "node --env-file=.env.prod --import tsx scripts/gen-note-images.ts",
+    "db:bottle-images-dev": "node --env-file=.env.dev --import tsx scripts/upload-bottle-images.ts",
+    "db:bottle-images-prod": "node --env-file=.env.prod --import tsx scripts/upload-bottle-images.ts"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",
