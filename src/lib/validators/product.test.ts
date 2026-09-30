@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { variantDraftSchema, unpricedActiveSizes } from "./product";
+import {
+  productInputSchema,
+  variantDraftSchema,
+  unpricedActiveSizes,
+} from "./product";
 
 /**
  * The rule these cover is a money rule, not a formatting one: a size marked
@@ -121,5 +125,46 @@ describe("variantDraftSchema — хямдарсан үнэ", () => {
     if (!res.success) {
       expect(res.error.issues[0].path).toEqual(["salePrice"]);
     }
+  });
+});
+
+describe("productInputSchema.bottleStyle", () => {
+  // Шинэ бараа нэмэх формын хамгийн бага хүчинтэй хүсэлт.
+  const base = {
+    name: "Aventus",
+    brand: "Creed",
+    gender: "male",
+    concentration: "edp",
+    onHandMl: 100,
+    lowStockMl: 20,
+    bottlePrice: 900000,
+    bottleMl: 100,
+    variants: [{ ml: 5, price: 45000, active: true }],
+  };
+
+  it("сонгоогүй бол null — савны зураг нэмэхгүй", () => {
+    const res = productInputSchema.safeParse(base);
+    expect(res.success).toBe(true);
+    if (res.success) expect(res.data.bottleStyle).toBeNull();
+  });
+
+  it.each(["black", "pink", "silver"])("%s савыг хүлээн авна", (style) => {
+    const res = productInputSchema.safeParse({ ...base, bottleStyle: style });
+    expect(res.success).toBe(true);
+    if (res.success) expect(res.data.bottleStyle).toBe(style);
+  });
+
+  it("жагсаалтад байхгүй савыг татгалзана", () => {
+    // Эх хувь нь Storage-д байхгүй тул хуулах гээд чимээгүй бүтэлгүйтэхээс
+    // өмнө энд зогсооно.
+    expect(
+      productInputSchema.safeParse({ ...base, bottleStyle: "gold" }).success,
+    ).toBe(false);
+  });
+
+  it("хүйсээр савны зургийг таамаглахгүй", () => {
+    // Хүйсээс авто сонгодог байсныг буцаасан — сонголт зөвхөн админых.
+    const res = productInputSchema.safeParse({ ...base, gender: "female" });
+    expect(res.success && res.data.bottleStyle).toBeNull();
   });
 });

@@ -107,7 +107,11 @@ export function ProductGallery({
                   fill
                   priority={i === 0}
                   sizes="(max-width: 1024px) 100vw, (max-width: 1408px) 50vw, 652px"
-                  className="object-cover"
+                  // Савны зураг дөрвөлжин — утасны 4:5 слайдад cover нь хоёр
+                  // талыг нь тайрдаг тул бүтнээр, зургийнхаа цагаан дэвсгэр дээр.
+                  className={
+                    img.contain ? "bg-white object-contain" : "object-cover"
+                  }
                 />
               </button>
             ))}
