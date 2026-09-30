@@ -40,7 +40,7 @@ function BrandLink({
       aria-hidden={hidden}
       tabIndex={hidden ? -1 : 0}
       aria-label={brand}
-      className="flex h-14 shrink-0 items-center justify-center opacity-70 transition-opacity hover:opacity-100"
+      className="flex h-14 shrink-0 items-center justify-center transition-opacity hover:opacity-60"
     >
       {logo ? (
         // A 5:1 box suits a long wordmark and crushes a stacked mark: Chanel
