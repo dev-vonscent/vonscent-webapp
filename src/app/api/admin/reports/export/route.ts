@@ -1,10 +1,34 @@
 import { NextResponse } from "next/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getReportData, getAdminProducts } from "@/features/admin/api";
-import { ubDateKey, ubIso } from "@/features/admin/lib/date-range";
-import type { OrderRow } from "@/db/types";
+import { createClient } from "@/lib/supabase/server";
+import { getAdminProducts } from "@/features/admin/api";
+import { ubDateKey, ubIso, ubIsoEnd } from "@/features/admin/lib/date-range";
+import { QPAY_FEE_PCT } from "@/lib/constants";
+
+/** `admin_report_events`-ийн мөр (0111) — борлуулалт (+) ба буцаалт (−). */
+interface EventRow {
+  order_no: string;
+  kind: "sale" | "refund";
+  at: string;
+  contact_name: string;
+  status: string;
+  payment_method: string;
+  goods: number;
+  coupon: number;
+  points: number;
+  net_goods: number;
+  shipping: number;
+  cash: number;
+  qpay_fee: number;
+  refund_fee: number;
+}
+
+/**
+ * PostgREST нэг хариунд `max_rows` (1000) мөр л өгнө — өмнө нь үүнээс олон
+ * захиалгатай муж CSV дээр чимээгүй тасардаг байв. Хуудаслаж бүгдийг авна.
+ */
+const PAGE = 1000;
 
 function toCsv(rows: (string | number)[][]): string {
   return rows
@@ -32,15 +56,27 @@ export async function GET(req: Request) {
   // шүүлт хэрэглэсэн ч экспорт үргэлж БҮХ цаг үеийг өгдөг байв.
   const from = params.get("from") ?? undefined;
   const to = params.get("to") ?? undefined;
-  const fromIso = ubIso(from);
-  const toIso = ubIso(to);
   let rows: (string | number)[][] = [];
 
+  // Тайлангийн RPC-ууд `is_staff()`-оор хаалттай тул сессийн client.
+  const supabase = await createClient();
+  const range = { p_from: ubIso(from) ?? null, p_to: ubIsoEnd(to) ?? null };
+
   if (type === "products") {
-    const report = await getReportData({ from, to });
+    // Дэлгэц дээр top 10, файлд бүгд.
+    const { data } = supabase
+      ? await supabase.rpc("admin_report_top_products", {
+          p_limit: 100_000,
+          ...range,
+        })
+      : { data: [] };
+    const top =
+      (data as
+        | { name: string; brand: string; qty: number; revenue: number }[]
+        | null) ?? [];
     rows = [
-      ["Брэнд", "Нэр", "Тоо", "Орлого"],
-      ...report.topProducts.map((p) => [p.brand, p.name, p.qty, p.revenue]),
+      ["Брэнд", "Нэр", "Тоо", "Барааны дүн (купоноос өмнө)"],
+      ...top.map((p) => [p.brand, p.name, p.qty, p.revenue]),
     ];
   } else if (type === "inventory") {
     const products = await getAdminProducts();
@@ -55,37 +91,53 @@ export async function GET(req: Request) {
       ]),
     ];
   } else {
-    // sales
-    const supabase = createAdminClient();
-    let query = supabase
-      ?.from("orders")
-      .select("*")
-      .eq("payment_status", "paid")
-      .order("created_at", { ascending: false });
-    if (query && fromIso) query = query.gte("created_at", fromIso);
-    if (query && toIso) query = query.lte("created_at", toIso);
-    const { data } = query ? await query : { data: [] };
-    const orders = (data as OrderRow[] | null) ?? [];
+    // sales — дэлгэц дээрх «Цэвэр борлуулалт» нь энэ файлын «Цэвэр
+    // борлуулалт» баганын нийлбэр (нэг RPC, 0111).
+    const events: EventRow[] = [];
+    for (let offset = 0; supabase; offset += PAGE) {
+      const { data, error } = await supabase
+        .rpc("admin_report_events", { ...range, p_qpay_pct: QPAY_FEE_PCT })
+        .range(offset, offset + PAGE - 1);
+      if (error) {
+        return NextResponse.json({ error: "EXPORT_FAILED" }, { status: 500 });
+      }
+      const page = (data as EventRow[] | null) ?? [];
+      events.push(...page);
+      if (page.length < PAGE) break;
+    }
     rows = [
       [
+        "Төрөл",
         "Дугаар",
         "Огноо",
         "Хэрэглэгч",
         "Барааны дүн",
-        "Хямдрал",
-        "Нийт",
+        "Купон",
+        "V-point",
+        "Цэвэр борлуулалт",
+        "Хүргэлт",
+        "Дансанд орсон / буцаасан",
+        "QPay шимтгэл",
+        "Буцаалтын шимтгэл",
+        "Төлбөрийн хэлбэр",
         "Төлөв",
       ],
-      ...orders.map((o) => [
-        o.order_no,
-        // `toISOString()` нь UTC — 08:00-аас өмнө ирсэн захиалга бүр
-        // өмнөх өдрөөр бичигдэж байв. Огноо нь дэлгүүрийн бүсээр гарна.
-        ubDateKey(new Date(o.created_at)),
-        o.contact_name,
-        o.subtotal,
-        o.discount,
-        o.total,
-        o.status,
+      ...events.map((e) => [
+        e.kind === "sale" ? "Борлуулалт" : "Буцаалт",
+        e.order_no,
+        // Огноо нь дэлгүүрийн бүсээр — `toISOString()` нь UTC.
+        ubDateKey(new Date(e.at)),
+        e.contact_name,
+        e.goods,
+        e.coupon,
+        e.points,
+        e.net_goods,
+        e.shipping,
+        e.cash,
+        e.qpay_fee,
+        e.refund_fee,
+        e.payment_method,
+        e.status,
       ]),
     ];
   }

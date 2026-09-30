@@ -3,6 +3,7 @@ import { getReportData, getStockOverview } from "@/features/admin/api";
 import { rangeSummary } from "@/features/admin/lib/date-range";
 import { getStoreSettings } from "@/features/content/api";
 import { PrintButton } from "@/features/admin/components/print-button";
+import { FinanceBreakdown } from "@/features/admin/components/finance-breakdown";
 import { formatPrice, formatDate } from "@/lib/format";
 import { STOCK_STATE_LABEL } from "@/features/admin/lib/stock-state";
 
@@ -67,18 +68,29 @@ export default async function ReportPrintPage({
 
       <div className="border-border grid grid-cols-3 gap-3 border-y py-4">
         <Stat
-          label="Нийт борлуулалт"
-          value={formatPrice(report.totalRevenue)}
+          label="Цэвэр борлуулалт"
+          value={formatPrice(report.finance.netSales)}
         />
-        <Stat label="Төлсөн захиалга" value={String(report.paidOrders)} />
+        <Stat
+          label="Төлсөн захиалга"
+          value={String(report.finance.saleOrders)}
+        />
         {/* Үлдэгдэл нь хугацаанаас хамаарахгүй — цаасан дээр ч тэрийг
             хэлнэ, эс бөгөөс «9-р сарын үлдэгдэл» мэт уншигдана. */}
         <Stat label="Нийт үлдэгдэл (одоо)" value={`${totalMl}ml`} />
       </div>
 
+      <section className="break-inside-avoid space-y-2">
+        <h2 className="font-medium">Борлуулалт ба ашгийн задаргаа</h2>
+        <FinanceBreakdown
+          finance={report.finance}
+          caption={`Борлуулалт ба ашгийн задаргаа — ${rangeSummary(from, to)}`}
+        />
+      </section>
+
       <Table
         title="Эрэлттэй бараа"
-        head={["Брэнд", "Нэр", "Тоо", "Орлого"]}
+        head={["Брэнд", "Нэр", "Тоо", "Барааны дүн"]}
         rows={report.topProducts.map((p) => [
           p.brand,
           p.name,
@@ -89,7 +101,7 @@ export default async function ReportPrintPage({
 
       <Table
         title="Эрэлттэй брэнд"
-        head={["Брэнд", "Орлого"]}
+        head={["Брэнд", "Барааны дүн"]}
         rows={report.topBrands.map((b) => [b.brand, formatPrice(b.revenue)])}
       />
 

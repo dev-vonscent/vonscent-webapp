@@ -20,6 +20,7 @@
     "db:migrate-prod": "node --env-file=.env.prod --import tsx scripts/migrate.ts",
     "db:migrate-dev": "node --env-file=.env.dev --import tsx scripts/migrate.ts",
     "db:test-coupons-dev": "node --env-file=.env.dev --import tsx scripts/test-coupons.ts",
+    "db:test-reports-dev": "node --env-file=.env.dev --import tsx scripts/test-reports.ts",
     "db:backup": "node --env-file=.env.prod --import tsx scripts/db-backup.ts",
     "db:backup-dev": "node --env-file=.env.dev --import tsx scripts/db-backup.ts",
     "db:seed": "node --env-file=.env.dev --import tsx scripts/seed.ts",
