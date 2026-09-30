@@ -40,7 +40,18 @@ export function GiftPoolManager({
   // Сервер тоог өгөөгүй бол ирсэн жагсаалтаараа л хэлнэ.
   const total = totalProducts ?? options.length;
   const [enabled, setEnabled] = React.useState(initial.enabled);
-  const [ids, setIds] = React.useState<string[]>(initial.productIds);
+  // Устгагдсан бараа санд id-гаараа үлдэж болно: жагсаалтад гарахгүй тул
+  // болиулах ч аргагүй, гэтэл MAX_POOL-ийн нэг слотыг эзэлсээр — «8/8» гэж
+  // дүүрээд шинэ ус нэмүүлэхгүй болдог байв. Тиймээс каталогт байхгүй id-г
+  // эхлэхдээ хасна (options хоосон бол — demo/алдаа — юуг ч хасахгүй).
+  const [pruned] = React.useState(() =>
+    options.length > 0
+      ? initial.productIds.filter((id) => !options.some((p) => p.id === id))
+      : [],
+  );
+  const [ids, setIds] = React.useState<string[]>(() =>
+    initial.productIds.filter((id) => !pruned.includes(id)),
+  );
   const [saving, setSaving] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
 
@@ -203,6 +214,13 @@ export function GiftPoolManager({
               Барааг идэвхжүүлэх, эсвэл сангаас хасаад өөр ус сонгоно уу.
             </p>
           </div>
+        )}
+
+        {pruned.length > 0 && (
+          <p className="bg-secondary rounded-md px-3 py-2 text-sm">
+            Устгагдсан {pruned.length} бараа сангаас хасагдлаа — «Хадгалах»
+            дарж баталгаажуулна уу.
+          </p>
         )}
 
         {enabled && visibleCount === 0 && (
