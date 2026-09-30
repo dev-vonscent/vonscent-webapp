@@ -40,9 +40,12 @@ export const BUNDLE_ML_SIZES = ML_SIZES;
  * Zod enum-оор шалгана (`lib/validators/faq.ts`).
  */
 export const FAQ_CATEGORIES = [
-  "Бараа",
-  "Захиалга & Төлбөр",
+  "Decant гэж юу вэ",
+  "Хэмжээ ба багц",
+  "Захиалга ба төлбөр",
   "Хүргэлт",
+  "Цуцлалт ба буцаалт",
+  "V point ба бэлэг",
 ] as const;
 export type FaqCategory = (typeof FAQ_CATEGORIES)[number];
 

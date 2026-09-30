@@ -5,12 +5,12 @@ import { FAQ_CATEGORIES } from "@/lib/constants";
 import { FAQ_SEED } from "./seed";
 
 /**
- * `0105_faq_seed.sql` нь `FAQ_SEED`-ийг хүснэгтэд суулгадаг — хоёр нь зөрвөл
- * demo горим ба сан өөр FAQ харуулна.
+ * `0109_faq_sync.sql` нь `FAQ_SEED`-тэй ижил FAQ-г хүснэгтэд суулгадаг — хоёр
+ * нь зөрвөл demo горим ба сан өөр FAQ харуулна.
  */
 describe("FAQ_SEED", () => {
   const sql = readFileSync(
-    join(process.cwd(), "supabase", "migrations", "0105_faq_seed.sql"),
+    join(process.cwd(), "supabase", "migrations", "0109_faq_sync.sql"),
     "utf8",
   );
 
@@ -18,16 +18,13 @@ describe("FAQ_SEED", () => {
     for (const f of FAQ_SEED) expect(FAQ_CATEGORIES).toContain(f.category);
   });
 
-  it("matches the 0105 migration row for row, in order", () => {
+  it("matches the 0109 migration row for row, in order", () => {
     FAQ_SEED.forEach((f, i) => {
       expect(sql).toContain(
-        `($faq$${f.category}$faq$, $faq$${f.question}$faq$, $faq$${f.answer}$faq$, ${i})`,
+        `$faq$${f.category}$faq$, $faq$${f.question}$faq$, $faq$${f.answer}$faq$, ${i}, true,`,
       );
     });
-  });
-
-  it("only seeds an empty table", () => {
-    expect(sql).toMatch(/where not exists \(select 1 from faqs\)/);
+    expect(sql.match(/^  \('/gm)).toHaveLength(FAQ_SEED.length);
   });
 });
 
@@ -37,8 +34,12 @@ describe("groupFaqs", () => {
     const groups = groupFaqs([
       { category: "Хүргэлт", question: "a", answer: "" },
       { category: "Хуучин", question: "b", answer: "" },
-      { category: "Бараа", question: "c", answer: "" },
+      { category: "Хэмжээ ба багц", question: "c", answer: "" },
     ]);
-    expect(groups.map((g) => g.title)).toEqual(["Бараа", "Хүргэлт", "Хуучин"]);
+    expect(groups.map((g) => g.title)).toEqual([
+      "Хэмжээ ба багц",
+      "Хүргэлт",
+      "Хуучин",
+    ]);
   });
 });

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { FAQ_CATEGORIES } from "@/lib/constants";
 
-/** FAQ-ийн ангилал — тогтмол гурав (`FAQ_CATEGORIES`). */
+/** FAQ-ийн ангилал — тогтмол жагсаалт (`FAQ_CATEGORIES`). */
 export const faqCategorySchema = z.enum(FAQ_CATEGORIES);
 
 export const faqCreateSchema = z.object({
