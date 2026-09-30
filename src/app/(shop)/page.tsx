@@ -247,7 +247,7 @@ export default function HomePage() {
             </p>
             <Button asChild size="lg">
               <Link href="/collections/build">
-                Багц үүсгэж эхлэх <ArrowRight className="size-4" />
+                Багц үүсгэх <ArrowRight className="size-4" />
               </Link>
             </Button>
           </div>
