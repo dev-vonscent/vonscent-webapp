@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import {
-  LOW_STOCK_UNITS,
   RELATED_SECTION_ID,
   TRIAL_SIZE_ML,
 } from "@/lib/constants";
@@ -323,22 +322,11 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
               : "Энэ хэмжээ түр дууссан байна. Өөр хэмжээ сонгоно уу."}
           </p>
         )}
-        {/* Хэмжээ зарагдаж байгаа ч эх савны үлдэгдэл цөөхөн ширхэг л
-            гүйцээнэ — тоо ширхэгийн товч дээр мөргөхөөс нь өмнө хэлнэ.
-            `LOW_STOCK_UNITS`-ээс дээш бол дэмий сандаргахгүй. */}
         {!soldOut && selected?.sellable && maxQty < 1 && (
           <p className="text-muted-foreground text-xs">
             Энэ барааны үлдэгдэл сагсанд чинь бүрэн орсон байна.
           </p>
         )}
-        {!soldOut &&
-          selected?.sellable &&
-          maxQty >= 1 &&
-          maxQty <= LOW_STOCK_UNITS && (
-            <p className="text-muted-foreground text-xs">
-              Үлдэгдэл хомс — {selected.ml}ml-ээс {maxQty} ш авах боломжтой.
-            </p>
-          )}
       </div>
 
       <div ref={ctaRef} className="space-y-3">
