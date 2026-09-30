@@ -3,8 +3,9 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ArrowLeft, Gift, Loader2, Ticket } from "lucide-react";
+import { AlertCircle, ArrowLeft, Gift, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { useCart, selectSubtotal } from "@/features/cart/store";
 import { formatPrice, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -233,22 +234,14 @@ export function CouponDetail({ code }: { code: string }) {
       {active && (
         <div className="bg-background/95 border-border fixed inset-x-0 bottom-20 z-40 border-t px-4 py-3 backdrop-blur md:bottom-0">
           <div className="mx-auto max-w-md">
-            <Button
+            <LoadingButton
               size="lg"
               className="w-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
-              disabled={pending}
+              loading={pending}
               onClick={onUse}
             >
-              {pending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" /> Шалгаж байна…
-                </>
-              ) : subtotal > 0 ? (
-                "Ашиглах"
-              ) : (
-                "Дэлгүүр үзэх"
-              )}
-            </Button>
+              {subtotal > 0 ? "Ашиглах" : "Дэлгүүр үзэх"}
+            </LoadingButton>
             {subtotal <= 0 && (
               <p className="text-muted-foreground mt-2 text-center text-[11px]">
                 Сагс хоосон байна — бараа нэмээд купоноо хэрэглээрэй.

@@ -9,6 +9,7 @@ import { Field } from "@/components/ui/field";
 import { adminFetch } from "@/features/admin/lib/mutate";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -51,7 +52,6 @@ import type {
   ScentFamilyOption,
 } from "@/lib/types";
 import type { CustomTagOption } from "@/features/taxonomy/api";
-
 
 export function ProductForm({
   families,
@@ -500,14 +500,14 @@ export function ProductForm({
           meant scrolling the whole form back down. `pb-safe` keeps it clear of
           the iOS home indicator. */}
       <div className="bg-background/85 pb-safe sticky bottom-0 -mx-4 flex gap-3 px-4 py-3 backdrop-blur md:static md:mx-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
-        <Button
+        <LoadingButton
+          loading={pending}
           type="submit"
           size="lg"
-          disabled={pending}
           className="flex-1 md:flex-none"
         >
-          {pending ? "Хадгалж байна…" : "Бараа хадгалах"}
-        </Button>
+          Бараа хадгалах
+        </LoadingButton>
         <Button
           type="button"
           variant="secondary"

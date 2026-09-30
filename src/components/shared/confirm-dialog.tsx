@@ -8,8 +8,8 @@ import {
   DialogDescription,
   DialogClose,
 } from "@/components/ui/dialog";
-import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 
 /**
  * Custom confirmation dialog — a styled replacement for the native `confirm()`.
@@ -72,13 +72,13 @@ export function ConfirmDialog({
               {cancelLabel}
             </Button>
           </DialogClose>
-          <Button
+          <LoadingButton
+            loading={busy}
             variant={destructive ? "destructive" : "default"}
-            disabled={busy}
             onClick={handleConfirm}
           >
-            {busy ? "Түр хүлээнэ үү…" : confirmLabel}
-          </Button>
+            {confirmLabel}
+          </LoadingButton>
         </div>
       </DialogContent>
     </Dialog>
@@ -169,15 +169,13 @@ export function useConfirm(): [
           >
             {state?.cancelLabel ?? "Болих"}
           </Button>
-          <Button
+          <LoadingButton
             variant={state?.destructive ? "destructive" : "default"}
             onClick={accept}
-            disabled={busy}
-            aria-busy={busy}
+            loading={busy}
           >
-            {busy && <Loader2 className="animate-spin" aria-hidden />}
             {state?.confirmLabel ?? "Тийм"}
-          </Button>
+          </LoadingButton>
         </div>
       </DialogContent>
     </Dialog>

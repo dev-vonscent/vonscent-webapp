@@ -5,15 +5,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import {
-  Check,
-  ChevronDown,
-  Loader2,
-  QrCode,
-  RefreshCw,
-  XCircle,
-} from "lucide-react";
+import { Check, ChevronDown, QrCode, RefreshCw, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { formatPrice } from "@/lib/format";
 import { trackPurchase } from "@/lib/analytics";
 import { BANK_TRANSFER } from "@/lib/constants";
@@ -756,19 +750,13 @@ function QpaySection({
         )}
 
         {view.mock ? (
-          <Button
+          <LoadingButton
             className="w-full"
-            disabled={checking}
+            loading={checking}
             onClick={onMockConfirm}
           >
-            {checking ? (
-              <>
-                <Loader2 className="size-4 animate-spin" /> Баталгаажуулж байна…
-              </>
-            ) : (
-              "Төлбөр баталгаажуулах (mock)"
-            )}
-          </Button>
+            Төлбөр баталгаажуулах (mock)
+          </LoadingButton>
         ) : (
           <>
             {/* Автомат шалгалт зогссон бол энэ товч нь цорын ганц ажиллаж буй
@@ -780,23 +768,15 @@ function QpaySection({
                 шалгуулна уу.
               </p>
             )}
-            <Button
+            <LoadingButton
               variant={stale ? "default" : "secondary"}
               size={stale ? "lg" : "default"}
               className="w-full"
-              disabled={checking}
+              loading={checking}
               onClick={onManualCheck}
             >
-              {checking ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" /> Шалгаж байна…
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="size-4" /> Төлбөр шалгах
-                </>
-              )}
-            </Button>
+              <RefreshCw className="size-4" /> Төлбөр шалгах
+            </LoadingButton>
             {stale && <ContactLine />}
           </>
         )}

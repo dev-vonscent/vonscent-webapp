@@ -3,10 +3,11 @@
 import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Check, ImagePlus, Loader2, Search, Trash2, X } from "lucide-react";
+import { Check, ImagePlus, Search, Trash2, X } from "lucide-react";
 import { adminFetch, mutateJson } from "@/features/admin/lib/mutate";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { fieldErrorClass } from "@/components/ui/form-field";
@@ -114,22 +115,14 @@ function CoverImageField({
         </div>
         <div className="space-y-2">
           <div className="flex gap-2">
-            <Button
+            <LoadingButton
               type="button"
               variant="secondary"
-              disabled={busy}
+              loading={busy}
               onClick={() => inputRef.current?.click()}
             >
-              {busy ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" /> Оруулж байна…
-                </>
-              ) : (
-                <>
-                  <ImagePlus className="size-4" /> Зураг сонгох
-                </>
-              )}
-            </Button>
+              <ImagePlus className="size-4" /> Зураг сонгох
+            </LoadingButton>
             {value && (
               <Button
                 type="button"
@@ -758,14 +751,14 @@ export function CollectionForm({
 
       {/* Sticky on a phone, matching the product form. */}
       <div className="bg-background/85 pb-safe sticky bottom-0 -mx-4 flex gap-3 px-4 py-3 backdrop-blur md:static md:mx-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
-        <Button
+        <LoadingButton
+          loading={pending}
           type="submit"
           size="lg"
-          disabled={pending}
           className="flex-1 md:flex-none"
         >
-          {pending ? "Хадгалж байна…" : "Багц хадгалах"}
-        </Button>
+          Багц хадгалах
+        </LoadingButton>
         <Button
           type="button"
           variant="secondary"

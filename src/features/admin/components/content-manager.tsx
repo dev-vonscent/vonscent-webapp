@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ImageOff, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Field } from "@/components/ui/field";
@@ -203,9 +205,9 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
         </Button>
       </div>
 
-      <Button onClick={save} disabled={busy}>
-        {busy ? "Хадгалж байна…" : "Хадгалах"}
-      </Button>
+      <LoadingButton loading={busy} onClick={save}>
+        Хадгалах
+      </LoadingButton>
     </Section>
   );
 }
@@ -216,9 +218,10 @@ function SocialSection({ initial }: { initial: SocialSettings }) {
   async function save() {
     setBusy(true);
     try {
+      // Утас/имэйл нь «store» тохиргоонд л хадгалагдана — энд зөвхөн холбоос.
       const ok = await saveSetting(
         "social",
-        s,
+        { instagram: s.instagram, facebook: s.facebook },
         "Сошиал холбоос хадгалагдсангүй",
       );
       if (ok) toast.success("Сошиал холбоос хадгалагдлаа.");
@@ -241,22 +244,20 @@ function SocialSection({ initial }: { initial: SocialSettings }) {
             onChange={(e) => setS({ ...s, facebook: e.target.value })}
           />
         </Field>
-        <Field label="Утас">
-          <Input
-            value={s.phone}
-            onChange={(e) => setS({ ...s, phone: e.target.value })}
-          />
-        </Field>
-        <Field label="Имэйл">
-          <Input
-            value={s.email}
-            onChange={(e) => setS({ ...s, email: e.target.value })}
-          />
-        </Field>
       </div>
-      <Button onClick={save} disabled={busy}>
-        {busy ? "Хадгалж байна…" : "Хадгалах"}
-      </Button>
+      <p className="text-muted-foreground text-xs">
+        Сайт дээр харагдах утас, имэйлийг{" "}
+        <Link
+          href="/admin/settings"
+          className="text-foreground underline underline-offset-2"
+        >
+          Тохиргоо → Дэлгүүрийн мэдээлэл
+        </Link>
+        -ээс нэг л газар засна.
+      </p>
+      <LoadingButton loading={busy} onClick={save}>
+        Хадгалах
+      </LoadingButton>
     </Section>
   );
 }
@@ -633,9 +634,9 @@ function AboutSection({ initial }: { initial: AboutSettings }) {
         value={story}
         onChange={setStory}
       />
-      <Button variant="secondary" onClick={save} disabled={busy}>
-        {busy ? "Хадгалж байна…" : "Хадгалах"}
-      </Button>
+      <LoadingButton loading={busy} variant="secondary" onClick={save}>
+        Хадгалах
+      </LoadingButton>
     </Section>
   );
 }
@@ -766,9 +767,9 @@ function EditableRow({
         ),
       )}
       <div className="flex gap-2 pt-1">
-        <Button size="sm" onClick={save} disabled={busy}>
-          {busy ? "Хадгалж байна…" : "Хадгалах"}
-        </Button>
+        <LoadingButton loading={busy} size="sm" onClick={save}>
+          Хадгалах
+        </LoadingButton>
         <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
           Болих
         </Button>

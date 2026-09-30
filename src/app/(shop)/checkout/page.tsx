@@ -15,6 +15,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Field } from "@/components/ui/field";
@@ -1585,22 +1586,21 @@ export default function CheckoutPage() {
                     эндээс бүх зүйл дуусна гэсэн амлалт өгч байсан. */}
               {/* Утсан дээр энэ товчийг наалдсан зурвас орлоно — хоёулаа зэрэг
                     харагдвал нэг дэлгэц дээр ижил хоёр CTA болно. */}
-              <Button
+              <LoadingButton
+                loading={submitting}
                 type="submit"
                 size="lg"
                 className="hidden w-full lg:inline-flex"
-                disabled={submitting || zoneBlocked}
+                disabled={zoneBlocked}
               >
-                {submitting
-                  ? "Илгээж байна…"
-                  : zoneBlocked
-                    ? "Энэ хаяг руу хүргэлт хийхгүй"
-                    : // Дүн нь хаяг тодорсны дараа л эцсийнх — түүнээс
-                      // өмнө товч дээр тоо амлахгүй.
-                      hasAddress
-                      ? `Төлбөр төлөх · ${formatPrice(total)}`
-                      : "Төлбөр төлөх"}
-              </Button>
+                {zoneBlocked
+                  ? "Энэ хаяг руу хүргэлт хийхгүй"
+                  : // Дүн нь хаяг тодорсны дараа л эцсийнх — түүнээс
+                    // өмнө товч дээр тоо амлахгүй.
+                    hasAddress
+                    ? `Төлбөр төлөх · ${formatPrice(total)}`
+                    : "Төлбөр төлөх"}
+              </LoadingButton>
               <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-center text-xs">
                 <ShieldCheck className="size-3.5" />
                 Аюулгүй төлбөр · QPay
@@ -1626,17 +1626,14 @@ export default function CheckoutPage() {
                   {formatPrice(total)}
                 </p>
               </div>
-              <Button
+              <LoadingButton
+                loading={submitting}
                 type="submit"
-                disabled={submitting || zoneBlocked}
+                disabled={zoneBlocked}
                 className="shrink-0 rounded-full"
               >
-                {submitting
-                  ? "Илгээж байна…"
-                  : zoneBlocked
-                    ? "Хүргэлтгүй"
-                    : "Төлбөр төлөх"}
-              </Button>
+                {zoneBlocked ? "Хүргэлтгүй" : "Төлбөр төлөх"}
+              </LoadingButton>
             </div>
           </div>
         )}

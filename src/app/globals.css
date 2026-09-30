@@ -395,10 +395,12 @@
   pointer-events: none;
 }
 
-/* Brand wall logos: dark artwork by default (shows on the light themes);
-   inverted to white on the black theme. */
+/* Brand wall logos: flattened to one ink so the wall reads as a set — pure
+   black on the light themes, white on the black theme. Left as-is, each logo
+   kept its own artwork colour (Coach brown, Creed grey, a pale VS wordmark)
+   and the wall looked patchy. */
 .brand-logo {
-  filter: none;
+  filter: brightness(0);
 }
 .black .brand-logo {
   filter: brightness(0) invert(1);

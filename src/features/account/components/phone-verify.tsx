@@ -3,6 +3,7 @@
 import * as React from "react";
 import { BadgeCheck, MessageSquareText, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { toast } from "@/lib/toast";
 import { useVerifyMn } from "@/features/auth/use-verify-mn";
 
@@ -121,11 +122,12 @@ export function PhoneVerify({
   return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap items-center gap-3">
-        <Button
+        <LoadingButton
           type="button"
           variant="outline"
           size="sm"
-          disabled={!validPhone || stage === "starting"}
+          loading={stage === "starting"}
+          disabled={!validPhone}
           onClick={() => start(phone, "register")}
         >
           {stage === "expired" ? (
@@ -134,11 +136,10 @@ export function PhoneVerify({
             </>
           ) : (
             <>
-              <BadgeCheck className="size-4" />
-              {stage === "starting" ? "Түр хүлээнэ үү…" : "Баталгаажуулах"}
+              <BadgeCheck className="size-4" /> Баталгаажуулах
             </>
           )}
-        </Button>
+        </LoadingButton>
         {!validPhone && (
           <span className="text-muted-foreground text-xs">
             8 оронтой дугаар оруулаад баталгаажуулна уу.

@@ -4,8 +4,7 @@ import {
   getReviewPage,
   type ReviewTarget,
 } from "@/features/reviews/api";
-import { ReviewForm } from "./review-form";
-import { ReviewList } from "./review-list";
+import { ReviewBoard } from "./review-board";
 
 /**
  * Server-rendered reviews block for the product page — and, since 0107, the
@@ -49,14 +48,12 @@ export async function ReviewSection({
         )}
       </div>
 
-      {/* Жагсаалт зүүн талдаа бүтэн өргөнөө авч, форм нь баруун талд наалдаж
-          үлдэнэ — уншиж байхад форм хайх шаардлагагүй. */}
-      <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
-        <ReviewList target={target} initial={page.reviews} total={page.total} />
-        <div className="lg:sticky lg:top-(--header-offset)">
-          <ReviewForm target={target} path={path} />
-        </div>
-      </div>
+      <ReviewBoard
+        target={target}
+        path={path}
+        initial={page.reviews}
+        total={page.total}
+      />
     </section>
   );
 }

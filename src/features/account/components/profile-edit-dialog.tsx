@@ -4,6 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import { Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -247,9 +248,9 @@ export function ProfileEditDialog({
           >
             Болих
           </Button>
-          <Button type="submit" disabled={saving || !configured}>
-            {saving ? "Хадгалж байна…" : "Хадгалах"}
-          </Button>
+          <LoadingButton loading={saving} type="submit" disabled={!configured}>
+            Хадгалах
+          </LoadingButton>
         </div>
       </form>
     </ResponsiveDialog>

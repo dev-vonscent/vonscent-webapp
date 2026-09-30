@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -218,8 +218,8 @@ export function GiftPoolManager({
 
         {pruned.length > 0 && (
           <p className="bg-secondary rounded-md px-3 py-2 text-sm">
-            Устгагдсан {pruned.length} бараа сангаас хасагдлаа — «Хадгалах»
-            дарж баталгаажуулна уу.
+            Устгагдсан {pruned.length} бараа сангаас хасагдлаа — «Хадгалах» дарж
+            баталгаажуулна уу.
           </p>
         )}
 
@@ -233,9 +233,9 @@ export function GiftPoolManager({
         {msg && (
           <p className="bg-secondary rounded-md px-3 py-2 text-sm">{msg}</p>
         )}
-        <Button onClick={save} disabled={saving}>
-          {saving ? "Хадгалж байна…" : "Хадгалах"}
-        </Button>
+        <LoadingButton loading={saving} onClick={save}>
+          Хадгалах
+        </LoadingButton>
       </CardContent>
     </Card>
   );
