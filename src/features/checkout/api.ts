@@ -232,6 +232,87 @@ export async function priceCollectionLines(
   return { lines: out, pricedBundles, stock };
 }
 
+/** Багцын нэг хэмжээний үнэ — захиалгын үеийн тооцоотой яг ижил. */
+export interface BundleSizeQuote {
+  ml: number;
+  /** Гишүүн бүр энэ хэмжээгээр зарагдаж, багц үнэлэгдсэн эсэх. */
+  available: boolean;
+  /** Багцын эцсийн (хямдарсан) үнэ, 1 ширхэг. */
+  price: number;
+  /** Гишүүдийн үнийн нийлбэр (хямдралын өмнөх). */
+  memberSum: number;
+  discountPct: number;
+  /** Тухайн хэмжээний гишүүн variant-ууд, багцын гишүүдийн дарааллаар. */
+  members: { productId: string; variantId: string; price: number }[];
+}
+
+/**
+ * Сагсан дахь багцыг ӨӨР хэмжээ рүү шилжүүлэхэд хэрэгтэй үнийн хүснэгт
+ * (төлбөрийн хуудасны «Засах» dialog).
+ *
+ * Үнийг клиент дээр дахин бодохгүй: preset / хадгалсан custom / шинэ custom
+ * гурав өөр хөнгөлөлтийн эх сурвалжтай (0051 хувь, 0054 тогтмол үнэ,
+ * дэлгүүрийн custom хувь) тул хуулбар тооцоо эрт орой зөрнө. Хэмжээ бүрийг
+ * `priceCollectionLines`-аар — захиалга үүсгэхтэй ЯГ ИЖИЛ замаар — үнэлнэ.
+ * Үнэлэгдээгүй хэмжээ (гишүүн дууссан, багц хаагдсан) `available: false`.
+ */
+export async function quoteBundleSizes(input: {
+  collectionId: string | null;
+  type: "base" | "custom";
+  productIds: string[];
+}): Promise<{ sizes: BundleSizeQuote[]; stock: Record<string, number> }> {
+  const products = await fetchProducts();
+  const byId = new Map(products.map((p) => [p.id, p]));
+  const stock: Record<string, number> = {};
+  for (const id of input.productIds) {
+    const p = byId.get(id);
+    if (p) stock[id] = p.soldOut ? 0 : p.availableMl;
+  }
+
+  const sizes = await Promise.all(
+    BUNDLE_ML_SIZES.map(async (ml): Promise<BundleSizeQuote> => {
+      const members = input.productIds.map((id) => {
+        const v = byId.get(id)?.variants.find((x) => x.ml === ml);
+        return v ? { productId: id, variantId: v.id, price: v.price } : null;
+      });
+      const empty = {
+        ml,
+        available: false,
+        price: 0,
+        memberSum: 0,
+        discountPct: 0,
+        members: [],
+      };
+      if (members.some((m) => m == null)) return empty;
+      const resolved = members as NonNullable<(typeof members)[number]>[];
+      const { lines } = await priceCollectionLines([
+        {
+          collectionId: input.collectionId,
+          type: input.type,
+          ml,
+          qty: 1,
+          memberVariantIds: resolved.map((m) => m.variantId),
+        },
+      ]);
+      if (lines.length === 0) return empty;
+      const price = lines.reduce((sum, l) => sum + l.unitPrice, 0);
+      const memberSum = resolved.reduce((sum, m) => sum + m.price, 0);
+      return {
+        ml,
+        available: true,
+        price,
+        memberSum,
+        discountPct:
+          memberSum > 0
+            ? Math.max(0, Math.round(((memberSum - price) / memberSum) * 100))
+            : 0,
+        members: resolved,
+      };
+    }),
+  );
+  return { sizes, stock };
+}
+
 /**
  * Validate the buyer's 1ml gift picks and turn them into 0₮ lines.
  * `goodsAfterDiscount` is subtotal − coupon discount (shipping excluded) —
