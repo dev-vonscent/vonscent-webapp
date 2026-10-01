@@ -4,7 +4,7 @@ import { SITE } from "@/lib/constants";
 export const revalidate = 86400;
 export const size = OG_SIZE;
 export const contentType = "image/png";
-export const alt = SITE.name;
+export const alt = SITE.brandName;
 
 /** Site-wide fallback OG card — pages without their own image inherit this. */
 export default async function Image() {

@@ -87,7 +87,7 @@ export default async function ContactPage() {
                   icon={Facebook}
                   href={social.facebook}
                   name="Facebook"
-                  handle={SITE.facebookName}
+                  handle={SITE.brandName}
                 />
               )}
             </div>
