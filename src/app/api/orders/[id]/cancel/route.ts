@@ -9,6 +9,7 @@ import { isOrderEditable } from "@/lib/time";
 import { sendEmail, STORE_INBOX, renderEmail } from "@/lib/email";
 import { formatPrice } from "@/lib/format";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
+import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
 import { cancelOrderSchema } from "@/lib/validators/refund";
 import { maskAccount, refundBreakdown } from "@/lib/refund";
 import type { OrderRow } from "@/db/types";
@@ -117,8 +118,8 @@ export async function POST(
   await cancelOrderInvoice(id);
 
   // The DB trigger (0032) already dropped an admin_notifications row; the
-  // email is a best-effort extra channel so the admin hears about it fast
-  // enough to arrange the refund.
+  // email and Telegram are best-effort extra channels so the admin hears
+  // about it fast enough to arrange the refund.
   const { data: full } = await admin
     .from("orders")
     .select("order_no, contact_name, contact_phone, total, payment_status")
@@ -171,6 +172,22 @@ export async function POST(
       text,
       html,
     });
+    // Telegram зөвхөн төлсөн захиалгад — буцаалт хийх ажил тэр үед л үүснэ.
+    // Төлөөгүй цуцлалтад админд хийх зүйл байхгүй (нөөц өөрөө чөлөөлөгдсөн).
+    // Цуцлахаас өмнөх `order.payment_status`-ийг хэрэглэнэ: мөнгө орсон эсэх.
+    if (order.payment_status === "paid") {
+      const { fee, amount } = refundBreakdown(o.total);
+      await notifyAdmin(
+        `⚠️ <b>Хэрэглэгч цуцаллаа — буцаалт хийх</b> — ${tgEscape(o.order_no)}\n` +
+          `👤 ${tgEscape(o.contact_name ?? "—")} · ${tgEscape(o.contact_phone ?? "—")}\n` +
+          `💰 Буцаах: ${formatPrice(amount)} (шимтгэл ${formatPrice(fee)})\n` +
+          (refundAccount
+            ? // Бүтэн дугаар Telegram-аар явахгүй — админы хуудсанд л.
+              `🏦 ${tgEscape(refundAccount.bank)} · ${tgEscape(maskAccount(refundAccount.accountNumber))} · ${tgEscape(refundAccount.holderName)}\n`
+            : "") +
+          `🔗 ${env.siteUrl}/admin/orders/${id}`,
+      );
+    }
   }
   // The customer gets their own copy on the email they registered (if any).
   await sendOrderCustomerEmail(id, "cancelled");

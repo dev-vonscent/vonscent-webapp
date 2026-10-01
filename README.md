@@ -75,6 +75,8 @@ ln -s .env.dev .env.local
 | `AUTH_PASSCODE_PEPPER`          | Ижил байвал нэг орчны passcode hash нөгөөд хүчинтэй болно              |
 | `QPAY_MOCK`                     | Prod: `false` · **Preview: `true`** (жинхэнэ мөнгө татахаас сэргийлнэ) |
 | `VERIFY_MN_API_KEY`             | SMS квот, лог хоёр орчинд хольж болохгүй                               |
+| `TELEGRAM_BOT_TOKEN`            | Prod: клиентийн bot · Preview/dev: engineer-ийн bot                    |
+| `TELEGRAM_ADMIN_CHAT_ID`        | Prod: клиентийн чат · Preview/dev: engineer-ийн чат                    |
 
 **Зөвхөн Production-д** (Preview-д хоосон орхино — тэгвэл тухайн боломж
 автоматаар унтарч, гаднах сервис рүү санамсаргүй хүсэлт явахгүй):
@@ -82,7 +84,6 @@ ln -s .env.dev .env.local
 | Хувьсагч                                              | Preview-д хоосон орхивол                       |
 | ----------------------------------------------------- | ---------------------------------------------- |
 | `RESEND_API_KEY`, `EMAIL_FROM`, `STORE_INBOX_EMAIL`   | Тест захиалга жинхэнэ хүн рүү и-мэйл илгээхгүй |
-| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`        | Ажилтны чат тест мэдэгдлээр дүүрэхгүй          |
 | `NEXT_PUBLIC_GA_ID`, `NEXT_PUBLIC_META_PIXEL_ID`      | Тест трафик аналитикийг бохирдуулахгүй         |
 | `OPENAI_API_KEY`                                      | Санамсаргүй зарцуулалт гарахгүй                |
 | `QPAY_USERNAME`, `QPAY_PASSWORD`, `QPAY_INVOICE_CODE` | QPay автоматаар mock болно                     |
