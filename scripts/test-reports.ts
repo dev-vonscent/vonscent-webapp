@@ -794,9 +794,12 @@ async function main() {
     async () => {
       const p = await makeProduct(a, ctx, "F2");
       await givePoints(a, ctx.customer, 5000);
+      const code = `AUD-${ctx.tag}-F2`;
+      await insertCoupon(a, code, ctx.customer, 10_000);
       const id = await placeOrder(a, {
         user: ctx.customer,
         lines: [{ p, ml: 10 }],
+        coupon: code,
         loyalty: 5000,
         createdAt: "2031-01-22T12:00:00",
       });
@@ -844,6 +847,21 @@ async function main() {
         [id],
       );
       check("refund_restocked = true", o.rows[0].refund_restocked === true);
+      const cp = await a.query<{ used_count: number }>(
+        "select used_count from coupons where code = $1",
+        [code],
+      );
+      check(
+        "ашигласан купон хэрэглэгчид буцсан (used_count 0)",
+        cp.rows[0].used_count === 0,
+        cp.rows[0],
+      );
+      const ord = await orderRow(a, id);
+      check(
+        "мөнгөөр буцаах дүн = total (90,000 − 10,000 − 5,000 + 5,000)",
+        ord.total === 80_000,
+        ord,
+      );
     },
   );
 
