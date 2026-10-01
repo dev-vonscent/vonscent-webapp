@@ -3,7 +3,6 @@ import Link from "next/link";
 import { getMyCollections } from "@/features/collections/api";
 import { MyCollections } from "@/features/collections/components/my-collections";
 import { createClient } from "@/lib/supabase/server";
-import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Миний багцууд" };
