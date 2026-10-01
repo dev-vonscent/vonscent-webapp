@@ -23,22 +23,22 @@ import { useConfirm } from "@/components/shared/confirm-dialog";
 import { formatPrice, formatDate } from "@/lib/format";
 import type { CouponRow } from "@/db/types";
 import { CouponRedemptionsSheet } from "./coupon-redemptions-sheet";
-
-/** Just enough of a profile to pick an owner for a personal coupon. */
-export interface CouponCustomer {
-  id: string;
-  full_name: string;
-  phone: string | null;
-}
-
-const PUBLIC = "__public__";
+import { CustomerPicker } from "./customer-picker";
+import {
+  customerLabel,
+  type CustomerOption,
+} from "@/features/admin/lib/customer-option";
 
 export function CouponManager({
   initial,
-  customers = [],
+  owners = [],
+  customerOptions = [],
 }: {
   initial: CouponRow[];
-  customers?: CouponCustomer[];
+  /** Хүснэгтэд байгаа хувийн купонуудын эзэд — нэрийг нь харуулахад. */
+  owners?: CustomerOption[];
+  /** Сонгогчийн эхний хуудас; цааш нь хайлтаар серверээс. */
+  customerOptions?: CustomerOption[];
 }) {
   const router = useRouter();
   const [confirm, confirmDialog] = useConfirm();
@@ -54,13 +54,14 @@ export function CouponManager({
     minSubtotal: "0",
     maxUses: "",
     maxUsesPerUser: "",
-    userId: PUBLIC,
     endsAt: "",
   });
+  /** `null` = нийтийн купон. */
+  const [owner, setOwner] = React.useState<CustomerOption | null>(null);
 
   const customerName = React.useMemo(
-    () => new Map(customers.map((c) => [c.id, c.full_name || c.phone || "—"])),
-    [customers],
+    () => new Map(owners.map((c) => [c.id, customerLabel(c)])),
+    [owners],
   );
 
   function set<K extends keyof typeof form>(k: K, v: string) {
@@ -87,7 +88,7 @@ export function CouponManager({
           maxUsesPerUser: form.maxUsesPerUser
             ? Number(form.maxUsesPerUser)
             : null,
-          userId: form.userId === PUBLIC ? null : form.userId,
+          userId: owner?.id ?? null,
           endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null,
           isActive: true,
         }),
@@ -105,9 +106,9 @@ export function CouponManager({
           minSubtotal: "0",
           maxUses: "",
           maxUsesPerUser: "",
-          userId: PUBLIC,
           endsAt: "",
         });
+        setOwner(null);
         setShowForm(false);
         router.refresh();
       }
@@ -217,9 +218,9 @@ export function CouponManager({
                   type="number"
                   value={form.maxUses}
                   onChange={(e) => set("maxUses", e.target.value)}
-                  placeholder={form.userId === PUBLIC ? "Хязгааргүй" : "1"}
+                  placeholder={owner ? "1" : "Хязгааргүй"}
                 />
-                {form.userId !== PUBLIC && (
+                {owner && (
                   <p className="text-muted-foreground text-xs">
                     Хувийн купон заавал нийт хязгаартай — хоосон бол 1.
                   </p>
@@ -237,25 +238,11 @@ export function CouponManager({
                 </p>
               </Field>
               <Field label="Хэрэглэгч">
-                <Select
-                  value={form.userId}
-                  onValueChange={(v) => set("userId", v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={PUBLIC}>
-                      Бүх хэрэглэгч (нийтийн)
-                    </SelectItem>
-                    {customers.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.full_name || "Нэргүй"}
-                        {c.phone ? ` · ${c.phone}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CustomerPicker
+                  initial={customerOptions}
+                  value={owner}
+                  onChange={setOwner}
+                />
                 <p className="text-muted-foreground text-xs">
                   Сонгосон хүний «Миний купон»-д харагдана. Нийтийн купон хэнд ч
                   харагдахгүй — кодоо мэддэг хүн л бичиж ашиглана.
