@@ -6,10 +6,7 @@ import { Minus, Plus, ShoppingCart, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
-import {
-  RELATED_SECTION_ID,
-  TRIAL_SIZE_ML,
-} from "@/lib/constants";
+import { RELATED_SECTION_ID, TRIAL_SIZE_ML } from "@/lib/constants";
 import { toast } from "@/lib/toast";
 import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { useCart } from "@/features/cart/store";
@@ -233,8 +230,10 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           Зарахгүй хэмжээн дээр үнэ ХАРУУЛАХГҮЙ: зарахгүй зүйлийн үнэ нь
           худалдан авах боломжтой мэт ойлголт өгнө.
         */}
-        <div className="flex flex-wrap gap-2">
-          {product.variants.map((v) => {
+        {/* Хэмжээ хаалттай жагсаалт (ML_SIZES = 4) — утсан дээр ч нэг мөрөнд
+            багтаахын тулд тэнцүү 4 багана; flex-wrap үед 20ml доош унадаг байв. */}
+        <div className="grid grid-cols-4 gap-2">
+          {product.variants.map((v, i, all) => {
             const active = v.id === variantId;
             const isBestValue = bestValue != null && v.id === bestValue.id;
             // 2ml нь sample БИШ — энгийн хэмжээ (CLAUDE.md); шошго нь зөвхөн
@@ -245,6 +244,14 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
             // төлөв — үлдэгдэл дуусахаас өөр үг хэрэглэнэ, ингэснээр
             // хэрэглэгч эргэж ирэхээ мэднэ.
             const bottle = v.unavailableReason === "bottle";
+            // Шошго нь утсан дээр товчноосоо өргөн — захын баганад дэлгэцээс
+            // гарч хажуу тийш scroll үүсгэхгүйн тулд дотогш нь наана.
+            const badgePos =
+              i === 0
+                ? "left-0"
+                : i === all.length - 1
+                  ? "right-0"
+                  : "left-1/2 -translate-x-1/2";
             return (
               <button
                 key={v.id}
@@ -261,7 +268,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                         : `${v.ml}ml — зарахгүй`
                 }
                 className={cn(
-                  "relative flex min-h-11 min-w-20 flex-col items-center justify-center rounded-lg px-4 py-2 transition-colors",
+                  "relative flex min-h-11 min-w-0 flex-col items-center justify-center rounded-lg px-1 py-2 transition-colors",
                   !v.isActive
                     ? "bg-secondary/40 text-muted-foreground cursor-not-allowed opacity-60"
                     : !sellable
@@ -272,12 +279,22 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                 )}
               >
                 {isBestValue ? (
-                  <span className="bg-foreground text-background absolute -top-2 rounded-full px-1.5 py-px text-[9px] font-semibold whitespace-nowrap">
+                  <span
+                    className={cn(
+                      "bg-foreground text-background absolute -top-2 rounded-full px-1.5 py-px text-[9px] font-semibold whitespace-nowrap",
+                      badgePos,
+                    )}
+                  >
                     Хамгийн ашигтай
                   </span>
                 ) : (
                   isTrial && (
-                    <span className="bg-card text-foreground absolute -top-2 rounded-full px-1.5 py-px text-[9px] font-semibold whitespace-nowrap shadow-sm">
+                    <span
+                      className={cn(
+                        "bg-card text-foreground absolute -top-2 rounded-full px-1.5 py-px text-[9px] font-semibold whitespace-nowrap shadow-sm",
+                        badgePos,
+                      )}
+                    >
                       Туршиж үзэх
                     </span>
                   )
