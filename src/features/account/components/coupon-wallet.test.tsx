@@ -63,11 +63,13 @@ describe("CouponWallet", () => {
     expect(screen.getByText("2 хоног үлдсэн")).toBeTruthy();
   });
 
-  it("gives each active coupon a copy button, and no share", () => {
+  it("opens each coupon's detail from its ticket, with no share", () => {
     render(<CouponWallet />);
-    expect(
-      screen.getAllByRole("button", { name: /кодыг хуулах/ }),
-    ).toHaveLength(2);
+    const links = screen.getAllByRole("link", { name: /купоны дэлгэрэнгүй/ });
+    expect(links.map((l) => l.getAttribute("href"))).toEqual([
+      "/account/coupons/SOON",
+      "/account/coupons/LATE",
+    ]);
     expect(screen.queryByRole("button", { name: /хуваалцах/ })).toBeNull();
   });
 

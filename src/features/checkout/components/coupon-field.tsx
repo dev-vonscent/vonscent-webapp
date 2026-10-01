@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { ArrowRight, Check, Tag, X } from "lucide-react";
+import { Check, Tag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatDate, formatPrice } from "@/lib/format";
@@ -10,6 +9,11 @@ import { cn } from "@/lib/utils";
 import type { AvailableCoupon } from "@/app/api/coupons/available/route";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { couponTerms } from "@/features/account/components/coupons";
+import {
+  Perforation,
+  couponLabel,
+  ticketMask,
+} from "@/features/account/components/coupon-ticket";
 
 /**
  * The coupon field in the order summary.
@@ -44,8 +48,6 @@ export function CouponField({
   message,
   onPick,
   onRemove,
-  walletHref,
-  onWalletNavigate,
 }: {
   applied: { code: string; discount: number } | null;
   /** Одоогийн купоныг хэрэглэгч биш, хуудас өөрөө сонгосон. */
@@ -60,13 +62,6 @@ export function CouponField({
   message: string | null;
   onPick: (coupon: AvailableCoupon) => void;
   onRemove: () => void;
-  /** «Миний купоныг харах» — the full wallet, beyond the few offered here. */
-  walletHref?: string;
-  /**
-   * Wallet руу гарахын өмнө — checkout бөглөсөн зүйлээ хадгалж, буцаж ирэхэд
-   * сэргээнэ. Үгүй бол хаяг, хүлээн авагч бүгд хоосорч буцдаг байв.
-   */
-  onWalletNavigate?: () => void;
 }) {
   const [open, setOpen] = React.useState(false);
   // Гараар оруулсан код dialog дотор хүчинтэй болмогц dialog хаагдана —
@@ -164,21 +159,14 @@ export function CouponField({
       <p className="text-muted-foreground text-xs font-medium">Купон</p>
       {row}
       {!open && message && <Message text={message} />}
-      {lockedOnly && (offers.length > 0 || walletHref) && (
-        <LinkRow>
-          {offers.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className={LINK_CLASS}
-            >
-              Бусад купон ({offers.length})
-            </button>
-          )}
-          {walletHref && (
-            <WalletLink href={walletHref} onNavigate={onWalletNavigate} />
-          )}
-        </LinkRow>
+      {lockedOnly && offers.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={LINK_CLASS}
+        >
+          Бусад купон ({offers.length})
+        </button>
       )}
 
       <ResponsiveDialog
@@ -210,11 +198,6 @@ export function CouponField({
             />
             {message && <Message text={message} />}
           </div>
-          {walletHref && (
-            <LinkRow>
-              <WalletLink href={walletHref} onNavigate={onWalletNavigate} />
-            </LinkRow>
-          )}
         </div>
       </ResponsiveDialog>
     </div>
@@ -223,39 +206,6 @@ export function CouponField({
 
 const LINK_CLASS =
   "text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs underline-offset-2 transition-colors hover:underline";
-
-/** Холбоосуудыг хооронд нь `·`-ээр тусгаарласан мөр — нийлж уншигдахгүй. */
-function LinkRow({ children }: { children: React.ReactNode }) {
-  const items = React.Children.toArray(children).filter(Boolean);
-  return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-      {items.map((child, i) => (
-        <React.Fragment key={i}>
-          {i > 0 && (
-            <span className="text-muted-foreground text-xs" aria-hidden>
-              ·
-            </span>
-          )}
-          {child}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-}
-
-function WalletLink({
-  href,
-  onNavigate,
-}: {
-  href: string;
-  onNavigate?: () => void;
-}) {
-  return (
-    <Link href={href} onClick={onNavigate} className={LINK_CLASS}>
-      Миний купоныг харах <ArrowRight className="size-3" />
-    </Link>
-  );
-}
 
 function ChangeButton({
   onClick,
@@ -366,6 +316,20 @@ function OfferList({
   );
 }
 
+/** Shallower bites than the wallet's: the row is a third of its height. */
+const ROW_MASK = ticketMask("10px");
+
+/**
+ * One offer as a low ticket — the wallet's shape, cut to a list row: the value
+ * on the stub, a perforation, the code and its terms, and what it saves.
+ *
+ * The saving is the loudest thing on the row: it is the number the customer is
+ * choosing by, not the code or the coupon's type. Choosing is a radio on the
+ * right, not a heavy ring and an «in use» badge on top of it.
+ *
+ * The mask sits on a background layer, not on the button: a masked button
+ * would also clip its own focus ring.
+ */
 function OfferRow({
   offer,
   best,
@@ -387,43 +351,49 @@ function OfferRow({
       onClick={onPick}
       disabled={locked}
       aria-pressed={active}
-      // Хүрээ энэ системд тунгалаг тул мөрүүд огт хилгүй, дарж болохгүй текст
-      // мэт харагддаг байв. Мөрийг `bg-secondary` дээр, доторх тэмдгийг нэг
-      // давхарга ухааж (`bg-card`) тавьснаар хоёулаа уншигдана.
-      className={cn(
-        "bg-secondary enabled:hover:bg-accent flex w-full items-center gap-3 rounded-xl p-2.5 text-left ring-2 ring-transparent transition-all disabled:cursor-not-allowed",
-        active && "ring-foreground",
-      )}
+      className="group relative flex min-h-19 w-full items-stretch rounded-xl text-left disabled:cursor-not-allowed"
     >
-      {/* What the coupon *is*, so two codes are told apart without reading
-          either of them. */}
-      <span className="bg-card flex size-11 shrink-0 flex-col items-center justify-center rounded-lg">
-        <Tag className="text-muted-foreground mb-0.5 size-3" />
-        <span className="text-[11px] leading-none font-bold">
-          {offer.type === "percent"
-            ? `${offer.value}%`
-            : compactAmount(offer.value)}
-        </span>
+      <span
+        aria-hidden
+        style={ROW_MASK}
+        className={cn(
+          "absolute inset-0 rounded-xl transition-colors",
+          active
+            ? "bg-accent"
+            : "bg-secondary group-enabled:group-hover:bg-accent",
+        )}
+      />
+
+      <span
+        className={cn(
+          "relative flex w-20 shrink-0 items-center justify-center pl-2 text-lg font-bold tabular-nums",
+          locked && "text-muted-foreground",
+        )}
+      >
+        {couponLabel(offer.type, offer.value)}
       </span>
 
-      <span className="min-w-0 flex-1">
+      <Perforation className="relative h-11" />
+
+      <span
+        className={cn(
+          "relative flex min-w-0 flex-1 flex-col justify-center py-2.5 pr-3 pl-4",
+          locked && "opacity-70",
+        )}
+      >
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="truncate font-mono text-xs font-semibold">
+          <span className="truncate font-mono text-xs font-semibold tracking-wider">
             {offer.code}
           </span>
-          {offer.personal && (
-            <span className="bg-card text-muted-foreground rounded-full px-1.5 py-px text-[11px] font-medium">
-              Танд
-            </span>
-          )}
-          {active && (
-            <span className="bg-card text-foreground rounded-full px-1.5 py-px text-[11px] font-semibold">
-              Хэрэглэж байна
-            </span>
-          )}
           {best && (
             <span className="bg-foreground text-background rounded-full px-1.5 py-px text-[11px] font-semibold">
-              Хамгийн их
+              Хамгийн их хэмнэлт
+            </span>
+          )}
+          {/* Most offers are the customer's own; the shared code is the odd one. */}
+          {!offer.personal && (
+            <span className="bg-card text-muted-foreground rounded-full px-1.5 py-px text-[11px] font-medium">
+              Бүгдэд
             </span>
           )}
         </span>
@@ -447,17 +417,26 @@ function OfferRow({
       </span>
 
       {!locked && (
-        <span className="text-gold-strong shrink-0 text-sm font-semibold">
-          −{formatPrice(offer.discount)}
+        <span className="relative flex shrink-0 items-center gap-3 pr-7">
+          <span className="text-gold-strong text-base font-bold tabular-nums">
+            −{formatPrice(offer.discount)}
+          </span>
+          <span
+            aria-hidden
+            className={cn(
+              "flex size-5 items-center justify-center rounded-full ring-2 transition-colors",
+              active
+                ? "bg-foreground ring-foreground"
+                : "ring-muted-foreground/40",
+            )}
+          >
+            {active && <span className="bg-background size-2 rounded-full" />}
+          </span>
+          {active && <span className="sr-only">Хэрэглэж байна</span>}
         </span>
       )}
     </button>
   );
-}
-
-/** "10,000₮" is too wide for a 44px tile; "10мянга" is not a thing. */
-function compactAmount(value: number): string {
-  return value >= 1000 ? `${Math.round(value / 1000)}мянга` : `${value}₮`;
 }
 
 /**

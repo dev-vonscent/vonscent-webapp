@@ -19,12 +19,10 @@ import {
   type WalletCoupon,
 } from "./coupons";
 import {
-  STUB_RATIO,
-  TicketOutline,
-  TicketStub,
+  CouponTicket,
+  CouponTicketSkeleton,
   couponLabel,
 } from "./coupon-ticket";
-import { CopyCodeButton } from "./coupon-actions";
 
 /** `short` fits a phone's third of the row on one line; `label` is for sm+. */
 const TABS: { value: CouponStatus; label: string; short: string }[] = [
@@ -113,12 +111,11 @@ export function CouponWallet() {
       </div>
 
       {isPending ? (
-        <ul className="space-y-3" aria-hidden>
-          {[0, 1, 2].map((i) => (
-            <li
-              key={i}
-              className="bg-secondary h-28 animate-pulse rounded-2xl"
-            />
+        <ul className="grid gap-4 sm:grid-cols-2 sm:gap-x-6" aria-hidden>
+          {[0, 1, 2, 3].map((i) => (
+            <li key={i} className={cn(i > 2 && "hidden sm:block")}>
+              <CouponTicketSkeleton />
+            </li>
           ))}
         </ul>
       ) : isError ? (
@@ -145,7 +142,7 @@ export function CouponWallet() {
           }
         />
       ) : (
-        <ul className="space-y-3">
+        <ul className="grid gap-4 sm:grid-cols-2 sm:gap-x-6">
           {rows.map((c) => (
             <li key={c.id}>
               <CouponRow coupon={c} />
@@ -163,52 +160,25 @@ export function CouponWallet() {
   );
 }
 
-function CouponRow({ coupon: c }: { coupon: WalletCoupon }) {
-  const label = couponLabel(c.type, c.value);
+/** One coupon in the wallet — the whole ticket opens its detail. */
+export function CouponRow({ coupon: c }: { coupon: WalletCoupon }) {
   const terms = couponTerms(c);
   const last = c.redemptions[0];
 
   return (
-    <article className="bg-card relative flex items-center gap-3 rounded-2xl p-3 sm:gap-4">
-      <Link
-        href={`/account/coupons/${encodeURIComponent(c.code)}`}
-        aria-label={`${label} купоны дэлгэрэнгүй`}
-        className={cn(
-          "relative aspect-video w-24 shrink-0 transition-transform duration-300 hover:-translate-y-0.5 sm:w-28",
-          c.status === "active"
-            ? "text-muted-foreground/50"
-            : "text-muted-foreground/30 opacity-70",
-        )}
+    <article className="relative transition-transform duration-300 hover:-translate-y-0.5">
+      <CouponTicket
+        type={c.type}
+        value={c.value}
+        code={c.code}
+        muted={c.status !== "active"}
       >
-        <TicketOutline />
-        <TicketStub className="text-muted-foreground/70" />
-        <span
-          className="absolute inset-y-0 right-0 flex items-center justify-center"
-          style={{ left: `${STUB_RATIO * 100}%` }}
-        >
-          <span className="text-foreground font-serif text-lg leading-none font-semibold sm:text-xl">
-            {label}
-          </span>
-        </span>
-      </Link>
-
-      {/* Код, дараа нь хоёр богино мөр: хугацаа, нөхцөл. Хуулах нь булан
-          дахь дүрс — мөрийн зайг эзлэхгүй. */}
-      <div className={cn("min-w-0 flex-1", c.status === "active" && "pr-8")}>
-        <p className="truncate font-mono text-sm font-semibold tracking-wider">
-          {c.code}
-        </p>
-        <p className="text-muted-foreground mt-1 truncate text-xs">
+        <p className="truncate">
           <ExpiryLine coupon={c} />
         </p>
-        {terms && (
-          <p className="text-muted-foreground mt-0.5 text-xs">
-            {terms}
-          </p>
-        )}
-
+        {terms && <p className="truncate">{terms}</p>}
         {c.status === "used" && last && (
-          <p className="mt-0.5 text-xs">
+          <p className="text-foreground/80 mt-0.5 truncate">
             <span className="text-muted-foreground">Ашигласан: </span>
             {describeRedemption(last)}
             <span className="text-muted-foreground">
@@ -217,11 +187,12 @@ function CouponRow({ coupon: c }: { coupon: WalletCoupon }) {
             </span>
           </p>
         )}
-      </div>
-
-      {c.status === "active" && (
-        <CopyCodeButton code={c.code} className="absolute top-2 right-2" />
-      )}
+      </CouponTicket>
+      <Link
+        href={`/account/coupons/${encodeURIComponent(c.code)}`}
+        aria-label={`${couponLabel(c.type, c.value)} купоны дэлгэрэнгүй`}
+        className="absolute inset-0 rounded-xl"
+      />
     </article>
   );
 }

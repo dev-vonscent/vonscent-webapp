@@ -1422,8 +1422,6 @@ export default function CheckoutPage() {
                     message={couponMsg}
                     onPick={pickCoupon}
                     onRemove={clearCoupon}
-                    walletHref="/account/coupons"
-                    onWalletNavigate={keepDraft}
                   />
                 ) : (
                   mounted &&
