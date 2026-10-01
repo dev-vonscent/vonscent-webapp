@@ -138,7 +138,6 @@ describe("productInputSchema.bottleStyle", () => {
     onHandMl: 100,
     lowStockMl: 20,
     bottlePrice: 900000,
-    bottleMl: 100,
     variants: [{ ml: 5, price: 45000, active: true }],
   };
 

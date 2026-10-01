@@ -122,7 +122,6 @@ export const productInputSchema = z.object({
   onHandMl: z.number().int().nonnegative(),
   lowStockMl: z.number().int().nonnegative(),
   bottlePrice: z.number().int().nonnegative(),
-  bottleMl: z.number().int().positive(),
   variants: z.array(variantDraftSchema).min(1),
   isActive: z.boolean().default(true),
   /** «Онцлох бараа» — нүүрийн онцлох хэсэгт автоматаар орно (0055). */
@@ -159,7 +158,6 @@ export const productEditSchema = z.object({
   isActive: z.boolean().optional(),
   isFeatured: z.boolean().optional(),
   bottlePrice: z.number().int().nonnegative().optional(),
-  bottleMl: z.number().int().positive().optional(),
   lowStockMl: z.number().int().nonnegative().optional(),
   /** Per-size edits — `ml` identifies the existing variant to reprice. */
   variants: z.array(variantDraftSchema).optional(),
