@@ -61,6 +61,9 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "docs/**",
+    // Git-ignored local agent state: worktrees carry their own .next builds
+    // and node_modules, which flat config would otherwise lint (~40k hits).
+    ".claude/**",
   ]),
 ]);
 

@@ -40,7 +40,8 @@ export const SelectContent = React.forwardRef<
       position={position}
       className={cn(
         "border-border bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 relative z-50 max-h-96 min-w-32 overflow-hidden rounded-md border shadow-md",
-        position === "popper" && "translate-y-1",
+        position === "popper" &&
+          "min-w-(--radix-select-trigger-width) translate-y-1",
         className,
       )}
       {...props}
@@ -53,6 +54,10 @@ export const SelectContent = React.forwardRef<
 ));
 SelectContent.displayName = "SelectContent";
 
+/**
+ * Deliberate deviation from upstream shadcn: the check sits on the right so
+ * item text lines up with the trigger's text instead of a reserved left gutter.
+ */
 export const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
@@ -60,12 +65,12 @@ export const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "focus:bg-accent focus:text-accent-foreground relative flex w-full cursor-pointer items-center rounded-sm py-1.5 pr-2 pl-8 text-sm outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50",
+      "focus:bg-accent focus:text-accent-foreground relative flex w-full cursor-pointer items-center rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50",
       className,
     )}
     {...props}
   >
-    <span className="absolute left-2 flex size-3.5 items-center justify-center">
+    <span className="absolute right-2 flex size-3.5 items-center justify-center">
       <SelectPrimitive.ItemIndicator>
         <Check className="size-4" />
       </SelectPrimitive.ItemIndicator>

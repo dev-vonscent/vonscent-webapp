@@ -2,20 +2,19 @@ import { getCoupons, getCustomerOptions } from "@/features/admin/api";
 import { CouponManager } from "@/features/admin/components/coupon-manager";
 
 export default async function AdminPromotionsPage() {
-  // Customers come along so a coupon can be issued to one of them by name
-  // (todo.md B4) and so the table can show who owns each personal code.
-  const [coupons, customers] = await Promise.all([
+  // Хувийн купоны эзэн хайлтаар сонгогдоно (todo.md B4) — энд зөвхөн
+  // сонгогчийн эхний хуудас, хүснэгтэд байгаа эздийн нэр л ирнэ.
+  const [coupons, customerOptions] = await Promise.all([
     getCoupons(),
     getCustomerOptions(),
   ]);
+  const ownerIds = coupons.flatMap((c) => (c.user_id ? [c.user_id] : []));
+  const owners = await getCustomerOptions({ ids: ownerIds });
   return (
     <CouponManager
       initial={coupons}
-      customers={customers.map((c) => ({
-        id: c.id,
-        full_name: c.full_name ?? "",
-        phone: c.phone,
-      }))}
+      owners={owners}
+      customerOptions={customerOptions}
     />
   );
 }

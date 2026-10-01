@@ -292,6 +292,46 @@ describe("available coupons", () => {
         .getAttribute("href"),
     ).toBe("/account/coupons");
   });
+
+  it("saves the checkout draft before leaving for the wallet", async () => {
+    // Wallet руу гараад буцаж ирэхэд хаяг, хүлээн авагч хоосорч байсан —
+    // checkout энэ callback-аар бөглөсөн зүйлээ хадгална.
+    const onWalletNavigate = vi.fn();
+    render(
+      <CouponField
+        {...NOOP}
+        applied={null}
+        offers={[]}
+        walletHref="/account/coupons"
+        onWalletNavigate={onWalletNavigate}
+      />,
+    );
+    const link = screen.getByRole("link", { name: /Миний купоныг харах/ });
+    // jsdom навигаци хийхгүй — зөвхөн дарахад хадгалагдаж байгааг шалгана.
+    link.addEventListener("click", (e) => e.preventDefault());
+    await userEvent.click(link);
+    expect(onWalletNavigate).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves the draft from the picker dialog's wallet link too", async () => {
+    const onWalletNavigate = vi.fn();
+    render(
+      <CouponField
+        {...NOOP}
+        applied={{ code: "VWQ13B", discount: 10000 }}
+        offers={[]}
+        walletHref="/account/coupons"
+        onWalletNavigate={onWalletNavigate}
+      />,
+    );
+    const dialog = await openPicker();
+    const link = within(dialog).getByRole("link", {
+      name: /Миний купоныг харах/,
+    });
+    link.addEventListener("click", (e) => e.preventDefault());
+    await userEvent.click(link);
+    expect(onWalletNavigate).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("links under the field", () => {

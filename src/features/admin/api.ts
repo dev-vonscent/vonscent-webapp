@@ -26,6 +26,10 @@ import { matchesSearch, searchTerms } from "@/lib/search";
 import { stockState } from "./lib/stock-state";
 import { PRODUCT_OPTION_LIMIT, type ProductOption } from "./lib/product-option";
 import { customerSearchFilter } from "./lib/customer-search";
+import {
+  CUSTOMER_OPTION_LIMIT,
+  type CustomerOption,
+} from "./lib/customer-option";
 import { seriesBucket, ubIso, ubIsoEnd } from "./lib/date-range";
 import {
   EMPTY_FINANCE,
@@ -288,26 +292,67 @@ export async function getOrderDetail(id: string): Promise<{
   };
 }
 
+/** `.in("id", …)` нэг удаад хэдэн id илгээх вэ — URL урт хэтрэхээс сэргийлнэ. */
+const CUSTOMER_ID_CHUNK = 100;
+
 /**
- * Every customer as a pick-list option (id + display name), for the coupon
- * targeting Select. Deliberately separate from `getCustomers`: that one is
- * paginated for the list screen, and paginating a dropdown would silently
- * hide anyone past the first page.
+ * Хэрэглэгчийн сонгогчийн мөрүүд (купоны эзэн сонгох).
+ *
+ * Хоёр горимтой:
+ *   · `q` — нэр эсвэл утсаар (хэрэглэгчийн жагсаалттай ижил шүүлтүүр) эхний
+ *     `limit` мөр. Өмнө нь бүх `profiles`-ыг нэг дор татдаг байсан нь Supabase-ийн
+ *     1000 мөрийн хязгаарт хүрэхэд үлдсэнийг нь чимээгүй нууна.
+ *   · `ids` — купоны хүснэгтийн эзэмшигчдийн нэр. Хэчнээн купон байхаас үл
+ *     хамааран бүгдийг буцаана (хэсэгчлэн асууна), хязгаар үйлчлэхгүй.
  */
-export async function getCustomerOptions(): Promise<
-  { id: string; full_name: string | null; phone: string | null }[]
-> {
+export async function getCustomerOptions({
+  q,
+  ids,
+  limit = CUSTOMER_OPTION_LIMIT,
+}: {
+  q?: string;
+  ids?: string[];
+  limit?: number;
+} = {}): Promise<CustomerOption[]> {
+  if (ids && ids.length === 0) return [];
   const supabase = await createClient();
   if (!supabase) return [];
-  const { data } = await supabase
+
+  type Row = { id: string; full_name: string | null; phone: string | null };
+  const toOption = (r: Row): CustomerOption => ({
+    id: r.id,
+    full_name: r.full_name ?? "",
+    phone: r.phone,
+  });
+
+  if (ids) {
+    const unique = [...new Set(ids)];
+    const chunks: string[][] = [];
+    for (let i = 0; i < unique.length; i += CUSTOMER_ID_CHUNK) {
+      chunks.push(unique.slice(i, i + CUSTOMER_ID_CHUNK));
+    }
+    const results = await Promise.all(
+      chunks.map((chunk) =>
+        supabase
+          .from("profiles")
+          .select("id, full_name, phone")
+          .in("id", chunk),
+      ),
+    );
+    return results.flatMap((r) =>
+      ((r.data as Row[] | null) ?? []).map(toOption),
+    );
+  }
+
+  let query = supabase
     .from("profiles")
     .select("id, full_name, phone")
-    .order("full_name", { ascending: true });
-  return (
-    (data as
-      | { id: string; full_name: string | null; phone: string | null }[]
-      | null) ?? []
-  );
+    .order("full_name", { ascending: true })
+    .limit(limit);
+  const filter = q ? customerSearchFilter(q) : null;
+  if (filter) query = query.or(filter);
+  const { data } = await query;
+  return ((data as Row[] | null) ?? []).map(toOption);
 }
 
 /** Rows per page for the customers list — server-side, like orders. */

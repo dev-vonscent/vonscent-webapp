@@ -11,6 +11,7 @@ import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
 import { formatPrice, formatMl } from "@/lib/format";
 import { deliveryDayOf, formatDeliveryDay } from "@/lib/time";
 import { env } from "@/lib/env";
+import { orderSummaryRows, summarySource } from "@/lib/orders/summary";
 
 /**
  * Committing a payment.
@@ -145,7 +146,7 @@ async function notifyPaid(
   const { data } = await supabase
     .from("orders")
     .select(
-      "contact_name, contact_phone, ship_city, ship_district, ship_detail, note, payment_method, subtotal, shipping_fee, discount, loyalty_used, total, deliver_on, created_at",
+      "contact_name, contact_phone, ship_city, ship_district, ship_detail, note, payment_method, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, deliver_on, created_at",
     )
     .eq("id", order.id)
     .maybeSingle();
@@ -158,6 +159,8 @@ async function notifyPaid(
     note: string | null;
     payment_method: string | null;
     subtotal: number;
+    gross_subtotal: number | null;
+    coupon_code: string | null;
     shipping_fee: number;
     discount: number;
     loyalty_used: number;
@@ -172,23 +175,34 @@ async function notifyPaid(
 
   const { data: itemData } = await supabase
     .from("order_items")
-    .select("product_name, brand, ml, qty, line_total, is_gift")
+    .select(
+      "product_name, brand, ml, qty, unit_price, list_price, is_gift, collection_name",
+    )
     .eq("order_id", order.id);
   const items = (itemData ?? []) as {
     product_name: string;
     brand: string | null;
     ml: number;
     qty: number;
-    line_total: number;
+    unit_price: number;
+    list_price: number | null;
     is_gift: boolean;
+    collection_name: string | null;
   }[];
 
+  // Мөр бүр ҮНДСЭН үнээрээ — pay хуудастай адил (`features/payment/api.ts`).
+  // `line_total` нь багцын хямдралыг мөр бүрт хувааж тараасан тул бутархай
+  // мэт дүн гардаг байв; хямдрал нь доорх задаргаанд ганц мөр болж гарна. 0097-оос өмнөх мөрөнд `list_price` алга.
   const itemList = items
     .map((i) => {
       const name = i.brand ? `${i.brand} — ${i.product_name}` : i.product_name;
+      const bundle = i.collection_name
+        ? ` · ${tgEscape(i.collection_name)}`
+        : "";
+      const base = (i.list_price ?? i.unit_price) * i.qty;
       return (
-        `• ${tgEscape(name)} ${formatMl(i.ml)} × ${i.qty}` +
-        (i.is_gift ? " 🎁" : ` — ${formatPrice(i.line_total)}`)
+        `• ${tgEscape(name)} ${formatMl(i.ml)} × ${i.qty}${bundle}` +
+        (i.is_gift ? " 🎁" : ` — ${formatPrice(base)}`)
       );
     })
     .join("\n");
@@ -196,16 +210,12 @@ async function notifyPaid(
   const address = [row.ship_city, row.ship_district, row.ship_detail]
     .filter(Boolean)
     .join(", ");
-  // Задаргаанд утга нь 0 биш мөрийг л оруулна — ихэнх захиалгад хөнгөлөлт ч,
-  // V point ч байхгүй, тэр мөрүүд зөвхөн дохиог уншихад хүндрүүлнэ.
-  const breakdown = [
-    `Бараа ${formatPrice(row.subtotal)}`,
-    row.shipping_fee > 0 ? `хүргэлт ${formatPrice(row.shipping_fee)}` : null,
-    row.discount > 0 ? `хөнгөлөлт −${formatPrice(row.discount)}` : null,
-    row.loyalty_used > 0 ? `V point −${formatPrice(row.loyalty_used)}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  // Задаргаа нь pay хуудасны тооцоотой нэг эх сурвалжаас (`orderSummaryRows`):
+  // үндсэн үнэ → багцын хямдрал → купон → V point → хүргэлт → нийт.
+  // Купоны код хэрэглэгчийн оруулсан утга тул escape хийнэ.
+  const breakdown = orderSummaryRows(summarySource(row))
+    .map((r) => tgEscape(`${r.label} ${r.value}`))
+    .join("\n");
 
   await notifyAdmin(
     head +
@@ -214,9 +224,9 @@ async function notifyPaid(
       `🚚 ${tgEscape(formatDeliveryDay(deliveryDayOf(row)))}\n` +
       (itemList ? `\n${itemList}\n` : "") +
       (row.note ? `\n📝 ${tgEscape(row.note)}\n` : "") +
-      `\n💰 <b>${formatPrice(row.total)}</b> · ` +
+      `\n${breakdown}\n` +
+      `💰 <b>Нийт ${formatPrice(row.total)}</b> · ` +
       `${row.payment_method === "qpay" ? "QPay" : "Банкны шилжүүлэг"}\n` +
-      `${breakdown}\n` +
       link,
   );
 }

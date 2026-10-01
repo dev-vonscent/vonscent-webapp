@@ -106,7 +106,7 @@ export default function HomePage() {
             height={861}
             priority
             sizes="100vw"
-            className="block h-auto w-full in-[.pink]:hidden in-[.white]:hidden"
+            className="block h-auto w-full in-[.navy]:hidden in-[.pink]:hidden in-[.white]:hidden"
           />
           <Image
             src="/hero-mobile-white.png"
@@ -115,7 +115,7 @@ export default function HomePage() {
             height={861}
             loading="eager"
             sizes="100vw"
-            className="hidden h-auto w-full in-[.white]:block"
+            className="hidden h-auto w-full in-[.navy]:block in-[.white]:block"
           />
           <Image
             src="/hero-mobile-pink.png"
@@ -137,7 +137,7 @@ export default function HomePage() {
             height={941}
             priority
             sizes="100vw"
-            className="block h-auto w-full in-[.pink]:hidden in-[.white]:hidden"
+            className="block h-auto w-full in-[.navy]:hidden in-[.pink]:hidden in-[.white]:hidden"
           />
           <Image
             src="/hero-whitev1.png"
@@ -146,7 +146,7 @@ export default function HomePage() {
             height={941}
             loading="eager"
             sizes="100vw"
-            className="hidden h-auto w-full in-[.white]:block"
+            className="hidden h-auto w-full in-[.navy]:block in-[.white]:block"
           />
           <Image
             src="/hero-pinkv1.png"
