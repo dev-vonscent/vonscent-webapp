@@ -1,14 +1,18 @@
 /**
- * Release-ийн өмнөх тест өгөгдлийн цэвэрлэгээ (2026-10-01).
+ * Dev сангийн тест өгөгдлийн цэвэрлэгээ.
  *
  *   pnpm db:reset-test-data-dev              # хуурай: тоо харуулаад ROLLBACK
  *   pnpm db:reset-test-data-dev -- --apply   # бодитоор COMMIT
- *   pnpm db:backup && pnpm db:reset-test-data-prod -- --apply
- *   ... -- --keep=VS-1043,VS-1050   # жинхэнэ захиалгыг (ба хэрэглэгчийнх нь
+ *   ... -- --keep=VS-1043,VS-1050   # заасан захиалгыг (ба хэрэглэгчийнх нь
  *                                   # оноо, купон, хаяг, сэтгэгдлийг) үлдээнэ
  *
- * Release-ээс өмнөх захиалга бүгд тест байсан тул захиалга, тайлан, оноо,
- * купон, сэтгэгдэл бүгд тэгээс эхэлнэ. Каталог (бараа, багц, зураг, үнэ,
+ * ⛔ ЗӨВХӨН DEV. Prod-ыг release-ийн өмнө (2026-10-01) нэг удаа цэвэрлэсэн;
+ * түүнээс хойш prod-ын захиалга бүхэн жинхэнэ. Тиймээс prod команд байхгүй,
+ * скрипт нь `DEV_PROJECT_REFS`-д байхгүй төсөл рүү холбогдохоос татгалзана
+ * (хориглох биш ЗӨВШӨӨРӨХ жагсаалт — `.env.dev`-д prod URL санамсаргүй
+ * орсон ч, prod төсөл солигдсон ч ажиллахгүй).
+ *
+ * Захиалга, тайлан, оноо, купон, сэтгэгдэл бүгд тэгээс эхэлнэ. Каталог (бараа, багц, зураг, үнэ,
  * таг, брэнд, тохиргоо) болон бүртгэлүүд ХӨНДӨГДӨХГҮЙ.
  *
  * Хадгалах ёстой гурван зүйл:
@@ -31,6 +35,14 @@ import { connectDb } from "./db";
 const url = process.env.DATABASE_URL;
 if (!url) {
   console.error("✖ DATABASE_URL is not set (use --env-file=.env.dev).");
+  process.exit(1);
+}
+/** Цэвэрлэж болох Supabase төслүүд — зөвхөн dev. Prod-ыг ЭНД БҮҮ НЭМ. */
+const DEV_PROJECT_REFS = ["zxvbgsnhldntcuswdpqm"];
+if (!DEV_PROJECT_REFS.some((ref) => url.includes(ref))) {
+  console.error(
+    "✖ Энэ скрипт зөвхөн dev сан дээр ажиллана. Prod-ын өгөгдөл бүгд жинхэнэ — цэвэрлэхгүй.",
+  );
   process.exit(1);
 }
 const apply = process.argv.includes("--apply");
