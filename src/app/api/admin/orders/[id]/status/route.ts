@@ -15,6 +15,12 @@ const schema = z.object({
   note: z.string().max(300).optional(),
   paid: z.boolean().optional(),
   refund: z.boolean().optional(),
+  /**
+   * Хүргэгдсэний дараах буцаалтад заавал (0112): декант нөөцөд буцсан
+   * (`true`) эсвэл зарах боломжгүй (`false`). Цуцлагдсан захиалгад хэрэггүй —
+   * цуцлалт ml-ийг аль хэдийн буцаасан.
+   */
+  restock: z.boolean().optional(),
   /** QPay-ээс дахин асууж баталгаажуулах (гараар тэмдэглэхээс өөр). */
   recheck: z.boolean().optional(),
 });
@@ -153,6 +159,16 @@ export async function POST(
       p_by: staff.id,
     });
     if (error) {
+      // Сэргээлт ml-ийг дахин барина (0112) — үлдэгдэл хүрэхгүй бол татгалзана.
+      if (error.message.includes("INSUFFICIENT_STOCK")) {
+        return NextResponse.json(
+          {
+            error:
+              "Үлдэгдэл хүрэлцэхгүй тул захиалгыг сэргээх боломжгүй. Эхлээд нөөцөө нэмнэ үү.",
+          },
+          { status: 409 },
+        );
+      }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     if (next === "cancelled") {
@@ -183,8 +199,13 @@ export async function POST(
       status?: OrderStatus;
       total?: number;
     } | null;
-    if (refundOrder?.status === "delivered" && staff.role !== "super_admin") {
+    const delivered = refundOrder?.status === "delivered";
+    if (delivered && staff.role !== "super_admin") {
       return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+    }
+    // Декантын хувь заяагүй бол ml-ийн хасалт тайлбаргүй үлдэнэ (SQL ч татгалзана).
+    if (delivered && parsed.data.restock === undefined) {
+      return NextResponse.json({ error: "RESTOCK_REQUIRED" }, { status: 400 });
     }
     // Суутгал (1%) нь зөвхөн цуцлагдсан захиалгын буцаалтад — админы
     // захиалгын хуудас, хэрэглэгчийн цуцлах цонх хоёрын харуулдаг дүн.
@@ -197,7 +218,12 @@ export async function POST(
     const { data, error } = await callRpc<{ ok: boolean; reason?: string }>(
       supabase,
       "mark_order_refunded",
-      { p_order: id, p_by: staff.id, p_fee: fee },
+      {
+        p_order: id,
+        p_by: staff.id,
+        p_fee: fee,
+        p_restock: delivered ? parsed.data.restock : null,
+      },
     );
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
