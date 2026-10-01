@@ -415,10 +415,9 @@ hash-лагдаж, redeploy болмогц нэвтэрч чадахгүй бо�
 - [x] **`VERIFY_MN_API_KEY`** — dev/prod ижил байгаа нь release-ийн өмнө
       зөвшөөрөгдсөн (тест хэдхэн user). Release-д тусдаа key авах эсэхийг
       шийднэ — SMS квот, лог хольцолдож байгааг санах.
-- [x] **`TELEGRAM_BOT_TOKEN` + `TELEGRAM_ADMIN_CHAT_ID`** — одоо engineer-ийн
-      bot, dev/prod ижил. **Release-д:** клиентийн утсан дээр bot үүсгээд
-      зөвхөн **Vercel Production**-д солино. `.env.dev` ба Preview нь
-      engineer-ийн bot-д хэвээр үлдэнэ.
+- [x] **`TELEGRAM_BOT_TOKEN` + `TELEGRAM_ADMIN_CHAT_ID`** — Vercel
+      **Production** нь клиентийн bot/чатад холбогдсон. `.env.dev` ба Preview
+      нь engineer-ийн bot-д үлдэнэ.
 
 ## 8. Эцсийн шалгалт
 

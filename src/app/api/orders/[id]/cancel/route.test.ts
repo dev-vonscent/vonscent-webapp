@@ -10,6 +10,7 @@ let user: { id: string } | null = { id: "u1" };
 let order: Record<string, unknown> | null = null;
 const callRpc = vi.fn();
 const upsert = vi.fn();
+const notifyAdmin = vi.fn();
 /** Үйлдлүүдийн дараалал — данс цуцлалтаас өмнө бичигдэж буйг шалгана. */
 const steps: string[] = [];
 
@@ -32,6 +33,10 @@ vi.mock("@/lib/email", () => ({
 }));
 vi.mock("@/lib/notify/customer-email", () => ({
   sendOrderCustomerEmail: async () => {},
+}));
+vi.mock("@/lib/notify/telegram", () => ({
+  notifyAdmin: (html: string) => notifyAdmin(html),
+  tgEscape: (s: string) => s,
 }));
 vi.mock("@/lib/supabase/rpc", () => ({
   callRpc: (...args: unknown[]) => {
@@ -105,6 +110,7 @@ beforeEach(() => {
   steps.length = 0;
   callRpc.mockReset().mockResolvedValue({ data: null, error: null });
   upsert.mockReset().mockResolvedValue({ error: null });
+  notifyAdmin.mockReset().mockResolvedValue(undefined);
 });
 
 describe("POST /api/orders/[id]/cancel", () => {
@@ -155,5 +161,29 @@ describe("POST /api/orders/[id]/cancel", () => {
     const res = await cancel({ refundAccount: ACCOUNT });
     expect(res.status).toBe(404);
     expect(steps).toEqual([]);
+  });
+
+  it("pings Telegram for a paid cancel with the refund and a masked account", async () => {
+    const res = await cancel({ refundAccount: ACCOUNT });
+    expect(res.status).toBe(200);
+    expect(notifyAdmin).toHaveBeenCalledTimes(1);
+    const html = notifyAdmin.mock.calls[0]![0] as string;
+    expect(html).toContain("V-1");
+    expect(html).toContain("•••• 5678");
+    expect(html).not.toContain("500012345678");
+    expect(html).toContain("/admin/orders/o1");
+  });
+
+  it("stays quiet on Telegram for an unpaid cancel", async () => {
+    order = { ...order, payment_status: "unpaid" };
+    await cancel();
+    expect(notifyAdmin).not.toHaveBeenCalled();
+  });
+
+  it("stays quiet on Telegram when the cancel failed", async () => {
+    callRpc.mockResolvedValue({ data: null, error: { message: "boom" } });
+    const res = await cancel({ refundAccount: ACCOUNT });
+    expect(res.status).toBe(500);
+    expect(notifyAdmin).not.toHaveBeenCalled();
   });
 });
