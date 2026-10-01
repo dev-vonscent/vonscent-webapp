@@ -120,7 +120,7 @@ describe("available coupons", () => {
 
     expect(within(dialog).getByText("10%")).toBeTruthy();
     // A fixed amount is compacted so it fits the tile.
-    expect(within(dialog).getByText("5мянга")).toBeTruthy();
+    expect(within(dialog).getByText("5k")).toBeTruthy();
     expect(within(dialog).getByText("−8,000₮")).toBeTruthy();
   });
 
@@ -128,13 +128,15 @@ describe("available coupons", () => {
     const { unmount } = render(
       <CouponField {...NOOP} applied={null} offers={OFFERS} />,
     );
-    expect(within(await openPicker()).getAllByText("Хамгийн их")).toHaveLength(
-      1,
-    );
+    expect(
+      within(await openPicker()).getAllByText("Хамгийн их хэмнэлт"),
+    ).toHaveLength(1);
     unmount();
 
     render(<CouponField {...NOOP} applied={null} offers={[OFFERS[0]]} />);
-    expect(within(await openPicker()).queryByText("Хамгийн их")).toBeNull();
+    expect(
+      within(await openPicker()).queryByText("Хамгийн их хэмнэлт"),
+    ).toBeNull();
   });
 
   it("applies one on a tap and closes", async () => {
@@ -213,7 +215,7 @@ describe("available coupons", () => {
     expect(within(dialog).getByText("A1")).toBeTruthy();
     expect(within(dialog).getByText("A2")).toBeTruthy();
     // Equal savings: no "best" to single out.
-    expect(within(dialog).queryByText("Хамгийн их")).toBeNull();
+    expect(within(dialog).queryByText("Хамгийн их хэмнэлт")).toBeNull();
   });
 
   it("marks the biggest saving even when it is not first", async () => {
@@ -227,7 +229,7 @@ describe("available coupons", () => {
         ]}
       />,
     );
-    const badge = within(await openPicker()).getByText("Хамгийн их");
+    const badge = within(await openPicker()).getByText("Хамгийн их хэмнэлт");
     expect(badge.closest("button")?.textContent).toContain("BIG");
   });
 
@@ -276,80 +278,28 @@ describe("available coupons", () => {
     await userEvent.click(row);
     expect(onPick).not.toHaveBeenCalled();
   });
-
-  it("links to the full wallet", () => {
-    render(
-      <CouponField
-        {...NOOP}
-        applied={null}
-        offers={[]}
-        walletHref="/account/coupons"
-      />,
-    );
-    expect(
-      screen
-        .getByRole("link", { name: /Миний купоныг харах/ })
-        .getAttribute("href"),
-    ).toBe("/account/coupons");
-  });
-
-  it("saves the checkout draft before leaving for the wallet", async () => {
-    // Wallet руу гараад буцаж ирэхэд хаяг, хүлээн авагч хоосорч байсан —
-    // checkout энэ callback-аар бөглөсөн зүйлээ хадгална.
-    const onWalletNavigate = vi.fn();
-    render(
-      <CouponField
-        {...NOOP}
-        applied={null}
-        offers={[]}
-        walletHref="/account/coupons"
-        onWalletNavigate={onWalletNavigate}
-      />,
-    );
-    const link = screen.getByRole("link", { name: /Миний купоныг харах/ });
-    // jsdom навигаци хийхгүй — зөвхөн дарахад хадгалагдаж байгааг шалгана.
-    link.addEventListener("click", (e) => e.preventDefault());
-    await userEvent.click(link);
-    expect(onWalletNavigate).toHaveBeenCalledTimes(1);
-  });
-
-  it("saves the draft from the picker dialog's wallet link too", async () => {
-    const onWalletNavigate = vi.fn();
-    render(
-      <CouponField
-        {...NOOP}
-        applied={{ code: "VWQ13B", discount: 10000 }}
-        offers={[]}
-        walletHref="/account/coupons"
-        onWalletNavigate={onWalletNavigate}
-      />,
-    );
-    const dialog = await openPicker();
-    const link = within(dialog).getByRole("link", {
-      name: /Миний купоныг харах/,
-    });
-    link.addEventListener("click", (e) => e.preventDefault());
-    await userEvent.click(link);
-    expect(onWalletNavigate).toHaveBeenCalledTimes(1);
-  });
 });
 
 describe("links under the field", () => {
-  it("keeps «Бусад купон» and the wallet link apart", () => {
+  it("offers the locked coupons when none can be used yet", async () => {
     render(
       <CouponField
         {...NOOP}
         applied={null}
         offers={[offer({ eligible: false, discount: 0, shortfall: 1000 })]}
-        walletHref="/account/coupons"
       />,
     );
-    const other = screen.getByRole("button", { name: /Бусад купон/ });
-    const link = screen.getByRole("link", { name: /Миний купоныг харах/ });
-    // Нэг мөрөнд, хооронд нь тусгаарлагчтай — нийлсэн текст биш.
-    const row = other.closest("div");
-    expect(row).toBe(link.closest("div"));
-    expect(row?.textContent).toMatch(/Бусад купон \(1\)·Миний купоныг харах/);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Бусад купон (1)" }),
+    );
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("no longer links out to the wallet", () => {
+    render(<CouponField {...NOOP} applied={null} offers={[]} />);
+    expect(
+      screen.queryByRole("link", { name: /Миний купоныг харах/ }),
+    ).toBeNull();
   });
 });
 
