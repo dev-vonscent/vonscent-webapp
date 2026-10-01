@@ -13,6 +13,7 @@ import {
   StockBarChart,
 } from "@/features/admin/components/report-charts";
 import { DateRangeFilter } from "@/features/admin/components/date-range-filter";
+import { FinanceBreakdown } from "@/features/admin/components/finance-breakdown";
 import { bucketLabel, rangeSummary } from "@/features/admin/lib/date-range";
 import { PageHeader } from "@/components/shared/page-header";
 import { formatPrice } from "@/lib/format";
@@ -40,6 +41,7 @@ export default async function AdminReportsPage({
     getStockOverview({ limit: REPORT_STOCK_LIMIT, activeOnly: true }),
   ]);
   const totalMl = stock.totalAvailableMl;
+  const { finance } = report;
   // `admin_report_series` шинэ нь түрүүлж өгдөг; цагийн тэнхлэг эсрэгээр.
   const seriesAsc = [...report.series].reverse().map((d) => ({
     label: bucketLabel(d.bucket),
@@ -97,29 +99,31 @@ export default async function AdminReportsPage({
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
-          value={formatPrice(report.totalRevenue)}
-          label="Борлуулалт (хүргэлт, купон, оноо хассан)"
+          value={formatPrice(finance.netSales)}
+          label="Цэвэр борлуулалт (хүргэлт, купон, оноо, буцаалт хассан)"
         />
         <Stat
-          value={formatPrice(report.totalCost)}
-          label={
-            from || to
-              ? "Энэ хугацааны зардал (эх сав + restock)"
-              : "Зардал (эх сав + restock)"
-          }
-        />
-        <Stat
-          value={formatPrice(report.profit)}
+          value={formatPrice(finance.profit)}
           label="Ашиг"
-          negative={report.profit < 0}
+          negative={finance.profit < 0}
         />
-        <Stat value={String(report.paidOrders)} label="Төлсөн захиалга" />
+        <Stat value={String(finance.saleOrders)} label="Төлсөн захиалга" />
         {/* Үлдэгдэл нь ОДООГИЙНХ — доорх тэмдэглэгээ нь хугацааны шүүлт
             үүнд хамаарахгүйг хэлнэ. */}
         <Stat value={`${totalMl}ml`} label="Нийт үлдэгдэл (одоо)" />
       </div>
+
+      <Card>
+        <CardContent className="p-5">
+          <h2 className="mb-4 font-medium">Борлуулалт ба ашгийн задаргаа</h2>
+          <FinanceBreakdown
+            finance={finance}
+            caption={`Борлуулалт ба ашгийн задаргаа — ${summary}`}
+          />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="p-5">
@@ -156,7 +160,7 @@ export default async function AdminReportsPage({
                         Зарсан мл
                       </th>
                       <th scope="col" className="pb-2 text-right font-medium">
-                        Борлуулалт
+                        Цэвэр борлуулалт
                       </th>
                     </tr>
                   </thead>
@@ -208,7 +212,12 @@ export default async function AdminReportsPage({
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardContent className="p-5">
-            <h2 className="mb-4 font-medium">Эрэлттэй бараа</h2>
+            <h2 className="mb-4 font-medium">
+              Эрэлттэй бараа{" "}
+              <span className="text-muted-foreground text-xs font-normal">
+                (барааны дүн, купоноос өмнө)
+              </span>
+            </h2>
             {report.topProducts.length === 0 ? (
               <p className="text-muted-foreground text-sm">Өгөгдөл алга.</p>
             ) : (
@@ -234,7 +243,12 @@ export default async function AdminReportsPage({
 
         <Card>
           <CardContent className="p-5">
-            <h2 className="mb-4 font-medium">Эрэлттэй брэнд</h2>
+            <h2 className="mb-4 font-medium">
+              Эрэлттэй брэнд{" "}
+              <span className="text-muted-foreground text-xs font-normal">
+                (барааны дүн, купоноос өмнө)
+              </span>
+            </h2>
             {report.topBrands.length === 0 ? (
               <p className="text-muted-foreground text-sm">Өгөгдөл алга.</p>
             ) : (

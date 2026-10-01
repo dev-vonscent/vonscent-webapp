@@ -39,7 +39,15 @@ export default async function AdminOrderDetail({
   // шилжүүлэх ёстой. Дүн нь нийт дүнгээс 1% шимтгэл хассан (src/lib/refund.ts).
   const awaitingRefund =
     order.status === "cancelled" && order.payment_status === "paid";
-  const refund = refundBreakdown(order.total);
+  // Хүргэгдсэний дараах буцаалт (0113): шимтгэлгүй — клиентийн дансанд
+  // бодитоор орсон `total`-ыг л буцаана, V point ба купон автоматаар буцна.
+  const deliveredRefund =
+    order.status === "delivered" &&
+    order.payment_status === "paid" &&
+    staff?.role === "super_admin";
+  const refund = deliveredRefund
+    ? { fee: 0, amount: order.total }
+    : refundBreakdown(order.total);
 
   return (
     <div className="space-y-6">
@@ -200,7 +208,7 @@ export default async function AdminOrderDetail({
             </CardContent>
           </Card>
 
-          {awaitingRefund && (
+          {(awaitingRefund || deliveredRefund) && (
             <Card>
               <CardContent className="space-y-2 p-5 text-sm">
                 <h2 className="font-medium">Буцаалт</h2>
@@ -210,10 +218,20 @@ export default async function AdminOrderDetail({
                   copy
                   mono
                 />
-                <p className="text-muted-foreground text-xs">
-                  {formatPrice(order.total)} − банкны шимтгэл{" "}
-                  {formatPrice(refund.fee)} = {formatPrice(refund.amount)}
-                </p>
+                {deliveredRefund ? (
+                  <p className="text-muted-foreground text-xs">
+                    Хэрэглэгчийн бодитоор төлсөн дүн.
+                    {order.loyalty_used > 0 &&
+                      ` V point-оор төлсөн ${formatPrice(order.loyalty_used)} мөнгөөр биш, оноо болж буцна.`}
+                    {order.discount > 0 &&
+                      " Ашигласан купон нь хэрэглэгчид буцна."}
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground text-xs">
+                    {formatPrice(order.total)} − банкны шимтгэл{" "}
+                    {formatPrice(refund.fee)} = {formatPrice(refund.amount)}
+                  </p>
+                )}
                 {refundAccount ? (
                   <>
                     <Separator />
