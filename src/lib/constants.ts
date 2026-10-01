@@ -9,13 +9,17 @@ export const SITE = {
   // (canonical, og:url, JSON-LD) points at www to avoid a redirect hop.
   url: "https://www.vonscent.mn",
   description:
-    "Дэлхийн шилдэг үнэртнүүдийг бага хэмжээгээр туршиж, өөрийн үнэрээ олоорой",
+    "Von Scent — дэлхийн шилдэг оригинал үнэртнүүдийг 2, 5, 10, 20 мл-ээр туршиж, өөрийн үнэрээ олоорой",
   tagline: "Үнэрээ ол",
   /**
-   * Facebook хуудасны харагдах нэр. URL-аас гаргасан «vonscent» биш
-   * (клиент, 2026-09 UG).
+   * Брэндийн бичигдэх нэр — Facebook хуудасны нэртэй ижил (клиент, 2026-09 UG).
+   * Хайлтад харагдах бүх газарт (title, og:site_name, JSON-LD) үүнийг
+   * хэрэглэнэ: зөвхөн «vonscent» гэж бичвэл Google «von scent» (зайтай)
+   * хайлтыг сайттай холбодоггүй. Лого/UI дахь жижиг «vonscent» нь `name`.
    */
-  facebookName: "Von Scent",
+  brandName: "Von Scent",
+  /** JSON-LD `alternateName` — Google-ийн site name-д хувилбар болгон өгнө. */
+  alternateNames: ["vonscent", "VonScent", "vonscent.mn"],
 } as const;
 
 /**
