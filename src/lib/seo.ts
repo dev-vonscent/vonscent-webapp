@@ -19,7 +19,7 @@ export function pageMetadata(
     alternates: { canonical: path },
     openGraph: {
       type: "website",
-      siteName: SITE.name,
+      siteName: SITE.brandName,
       locale: "mn_MN",
       url: path,
       ...(ownImage ? {} : { images: "/opengraph-image" }),

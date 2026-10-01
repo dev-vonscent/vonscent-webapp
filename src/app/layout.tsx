@@ -26,15 +26,16 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
   title: {
-    default: `${SITE.name} — ${SITE.tagline}`,
-    template: `%s · ${SITE.name}`,
+    default: `${SITE.brandName} — ${SITE.tagline}`,
+    template: `%s · ${SITE.brandName}`,
   },
   description: SITE.description,
+  applicationName: SITE.brandName,
   // No title/description/url here: Next fills og:title/og:description from
   // each page's own metadata, and pages set og:url via pageMetadata().
   openGraph: {
     type: "website",
-    siteName: SITE.name,
+    siteName: SITE.brandName,
     locale: "mn_MN",
   },
 };
