@@ -59,8 +59,10 @@ describe("coupon detail", () => {
   it("shows the code and every condition attached to it", () => {
     render(<CouponDetail code="VW-3QAQYS" />);
 
-    expect(screen.getByText("VW-3QAQYS")).toBeTruthy();
-    expect(screen.getByText("10%")).toBeTruthy();
+    // On the ticket and in the copy box.
+    expect(screen.getAllByText("VW-3QAQYS")).toHaveLength(2);
+    expect(screen.getByText("10")).toBeTruthy();
+    expect(screen.getByText("% хөнгөлөлт")).toBeTruthy();
     expect(screen.getByText("Купоны код")).toBeTruthy();
     expect(screen.getByText("Хүчинтэй хугацаа")).toBeTruthy();
     expect(screen.getByText(/100,000₮-өөс дээш захиалга/)).toBeTruthy();

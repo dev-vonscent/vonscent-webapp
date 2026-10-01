@@ -12,12 +12,7 @@ import { cn } from "@/lib/utils";
 import { daysLeft, describeRedemption, type CouponStatus } from "./coupons";
 import { useWalletCoupon } from "../use-coupons";
 import { CopyCodeButton } from "./coupon-actions";
-import {
-  STUB_RATIO,
-  TicketOutline,
-  TicketStub,
-  couponLabel,
-} from "./coupon-ticket";
+import { CouponTicket } from "./coupon-ticket";
 
 /**
  * One coupon, in full.
@@ -116,7 +111,6 @@ export function CouponDetail({ code }: { code: string }) {
     );
   }
 
-  const label = couponLabel(coupon.type, coupon.value);
   const active = coupon.status === "active";
   const days = active ? daysLeft(coupon.endsAt) : null;
   const urgent = days != null && days <= 3;
@@ -133,28 +127,16 @@ export function CouponDetail({ code }: { code: string }) {
       </Link>
 
       {/* The same ticket as the wallet, at hero size. */}
-      <div
-        className={cn(
-          "relative mt-4 aspect-video",
-          active
-            ? "text-muted-foreground/50"
-            : "text-muted-foreground/30 opacity-70",
-        )}
+      <CouponTicket
+        type={coupon.type}
+        value={coupon.value}
+        code={coupon.code}
+        muted={!active}
+        size="hero"
+        className="mt-4"
       >
-        <TicketOutline />
-        <TicketStub className="text-muted-foreground/70" />
-        <span
-          className="absolute inset-y-0 right-0 flex flex-col items-center justify-center gap-1"
-          style={{ left: `${STUB_RATIO * 100}%` }}
-        >
-          <span className="text-foreground font-serif text-6xl font-semibold">
-            {label}
-          </span>
-          <span className="text-muted-foreground text-xs font-medium">
-            {STATUS_LABEL[coupon.status]}
-          </span>
-        </span>
-      </div>
+        {STATUS_LABEL[coupon.status]}
+      </CouponTicket>
 
       <div className="bg-secondary mt-4 flex items-center gap-3 rounded-xl px-4 py-3">
         <span className="min-w-0 flex-1">

@@ -1,108 +1,172 @@
+import Image from "next/image";
+import type * as React from "react";
+import { SkeletonBlock } from "@/components/shared/skeletons";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /**
- * A coupon drawn as a line-art ticket.
+ * A coupon drawn as a printed voucher: the brand on a stub, a perforation,
+ * then the code, the value set large, and whatever lines the caller adds.
  *
- * An outlined SVG rather than a filled box with masked notches: the reference
- * shape has a stroke that runs *around* the notches, and a mask can only
- * remove pixels — it cannot draw the cut edge. One path gives the rounded
- * corners, the two side bites, the small tears where the dashed rule meets the
- * top and bottom edges, and a single continuous line through all of them.
+ * The side bites are cut out of the card with a mask, not painted over it in
+ * the page colour: a painted circle sits on top of the shadow and shows as a
+ * white dot wherever the page is not exactly `background`. A real hole lets
+ * whatever is behind the ticket show through, and the shadow (a `drop-shadow`
+ * on the wrapper, which follows the masked outline) curves into the bite.
  *
- * The body is filled (`fill-secondary`) rather than left transparent: an
- * unfilled outline on a light card read as a blank rectangle with a number in
- * it — the ticket needs its own ground to look like an object you could pick
- * up. The fill is the page's own `secondary`, not a colour of its own: the
- * ticket is one surface among the rest, and `.black` / `.white` stay
- * grayscale as globals.css intends.
- *
- * The geometry lives in a 160×90 viewBox — the same 16:9 the cards are laid
- * out at (`aspect-video`) — so the ticket scales uniformly and the notches
- * never go oval. Change the card's aspect and this viewBox moves with it.
- *
- * Direction matters for the arcs: the outline is drawn clockwise, so its four
- * corners are `sweep=1` (convex) and every notch is `sweep=0` (concave). Get
- * one wrong and that arc balloons outward instead of biting in.
+ * Proportions follow the reference card (~11:4); the card only grows taller
+ * when a used coupon adds its extra line.
  */
-
-/** Where the stub is torn off, in viewBox units — ~27% in, as the reference. */
-const TEAR_X = 44;
-/** The stub's share of the width — the label sits centred in what is left. */
-export const STUB_RATIO = TEAR_X / 160;
-
-const TICKET_PATH = [
-  "M 8 1",
-  "H 41",
-  "A 3 3 0 0 0 47 1", // tear notch, top
-  "H 152",
-  "A 7 7 0 0 1 159 8", // corner, top-right
-  "V 35",
-  "A 10 10 0 0 0 159 55", // bite, right
-  "V 82",
-  "A 7 7 0 0 1 152 89", // corner, bottom-right
-  "H 47",
-  "A 3 3 0 0 0 41 89", // tear notch, bottom
-  "H 8",
-  "A 7 7 0 0 1 1 82", // corner, bottom-left
-  "V 55",
-  "A 10 10 0 0 0 1 35", // bite, left
-  "V 8",
-  "A 7 7 0 0 1 8 1", // corner, top-left
-  "Z",
-].join(" ");
 
 /**
- * The outline on its own. Absolutely positioned by the caller so real HTML
- * text can sit on top of it and inherit the app's fonts and theme tokens —
- * `<text>` inside the SVG would need its own font plumbing.
+ * The mask that cuts the two side bites, `radius` deep. Each half of the card
+ * carries one bite; together they cover it all.
  */
-export function TicketOutline({ className }: { className?: string }) {
+export function ticketMask(radius: string): React.CSSProperties {
+  const bite = (x: string) =>
+    `radial-gradient(circle ${radius} at ${x} 50%, transparent calc(${radius} - 0.5px), #000 ${radius})`;
+  const mask = `${bite("0")} left / 51% 100% no-repeat, ${bite("100%")} right / 51% 100% no-repeat`;
+  return { mask, WebkitMask: mask };
+}
+
+const MASK_STYLE = ticketMask("14px");
+
+export function CouponTicket({
+  type,
+  value,
+  code,
+  muted = false,
+  size = "row",
+  className,
+  children,
+}: {
+  type: "percent" | "fixed";
+  value: number;
+  /** The top line — where a printed voucher names the brand. */
+  code: string;
+  /** Used or expired: greyed out. */
+  muted?: boolean;
+  /** `hero` is the detail page's larger ticket. */
+  size?: "row" | "hero";
+  className?: string;
+  /** The small lines under the value: expiry, terms, last use. */
+  children?: React.ReactNode;
+}) {
+  const face = couponFace(type, value);
+  const hero = size === "hero";
+
+  return (
+    <div className={cn("drop-shadow-md", muted && "opacity-70", className)}>
+      <div
+        style={MASK_STYLE}
+        className="bg-card flex aspect-11/4 items-stretch rounded-xl"
+      >
+        <div className="flex w-[37%] shrink-0 items-center justify-center">
+          <Image
+            src="/von-logo.png"
+            alt=""
+            width={96}
+            height={96}
+            className={cn(
+              "rounded-xl",
+              hero ? "size-20" : "size-14",
+              muted && "grayscale",
+            )}
+          />
+        </div>
+
+        <Perforation />
+
+        <div className="text-foreground/80 flex min-w-0 flex-1 flex-col justify-center px-6 py-3 *:shrink-0">
+          <p
+            className={cn(
+              "truncate font-medium tracking-[0.15em] uppercase",
+              hero ? "text-base" : "text-sm",
+            )}
+          >
+            {code}
+          </p>
+          <p className="mt-1 flex items-baseline gap-1.5">
+            <span
+              className={cn(
+                "leading-none font-bold tabular-nums",
+                hero ? "text-5xl" : "text-4xl",
+              )}
+            >
+              {face.amount}
+            </span>
+            <span className="text-[11px] font-medium tracking-[0.12em] whitespace-nowrap uppercase">
+              {face.unit}
+            </span>
+          </p>
+          {children && (
+            <div className="text-muted-foreground/80 mt-2 text-[11px] tracking-wide">
+              {children}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** The perforation: long dashes, shorter than the card is tall. */
+export function Perforation({ className }: { className?: string }) {
   return (
     <svg
       aria-hidden
-      viewBox="0 0 160 90"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      className={cn("absolute inset-0 size-full", className)}
+      viewBox="0 0 2 100"
+      preserveAspectRatio="none"
+      className={cn(
+        "text-muted-foreground/70 h-[62%] w-0.5 shrink-0 self-center",
+        className,
+      )}
     >
-      <path d={TICKET_PATH} className="fill-secondary" />
-      {/* The perforation, running between the two tear notches. */}
       <line
-        x1={TEAR_X}
-        y1={5}
-        x2={TEAR_X}
-        y2={85}
-        strokeDasharray="4 4"
-        strokeWidth={1.25}
+        x1={1}
+        y1={0}
+        x2={1}
+        y2={100}
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeDasharray="9 7"
       />
     </svg>
   );
 }
 
 /**
- * The word running up the stub.
- *
- * The stub is a quarter of the ticket and held nothing, which is what made the
- * card look empty. Vertical type is what is actually printed there on a real
- * ticket, and it costs no horizontal room the value needs.
+ * The ticket while it loads — the same cut-out card and perforation, with
+ * pulsing bars where the logo, code, value and expiry will land, so nothing
+ * jumps when the data arrives.
  */
-export function TicketStub({ className }: { className?: string }) {
+export function CouponTicketSkeleton({
+  size = "row",
+  className,
+}: {
+  size?: "row" | "hero";
+  className?: string;
+}) {
+  const hero = size === "hero";
   return (
-    <span
-      aria-hidden
-      className={cn(
-        "absolute inset-y-0 left-0 flex items-center justify-center",
-        className,
-      )}
-      style={{ width: `${STUB_RATIO * 100}%` }}
-    >
-      <span className="rotate-180 text-[9px] font-semibold tracking-[0.2em] uppercase [writing-mode:vertical-rl]">
-        Купон
-      </span>
-    </span>
+    <div aria-hidden className={cn("drop-shadow-md", className)}>
+      <div
+        style={MASK_STYLE}
+        className="bg-card flex aspect-11/4 items-stretch rounded-xl"
+      >
+        <div className="flex w-[37%] shrink-0 items-center justify-center">
+          <SkeletonBlock
+            className={cn("rounded-xl", hero ? "size-20" : "size-14")}
+          />
+        </div>
+        <Perforation />
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-2.5 px-6">
+          <SkeletonBlock className="h-3.5 w-2/5" />
+          <SkeletonBlock className={cn("w-3/5", hero ? "h-11" : "h-8")} />
+          <SkeletonBlock className="h-2.5 w-1/2" />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -117,4 +181,21 @@ export function couponLabel(type: "percent" | "fixed", value: number): string {
   return value >= 1000 && value % 1000 === 0
     ? `${value / 1000}k`
     : formatPrice(value);
+}
+
+/**
+ * The coupon's face split in two — the big number and the small word after
+ * it, the way a printed voucher sets «25 % OFF». A round thousand still reads
+ * `10k`, as in `couponLabel`.
+ */
+export function couponFace(
+  type: "percent" | "fixed",
+  value: number,
+): { amount: string; unit: string } {
+  if (type === "percent") return { amount: String(value), unit: "% хөнгөлөлт" };
+  const amount =
+    value >= 1000 && value % 1000 === 0
+      ? `${value / 1000}k`
+      : formatPrice(value).replace("₮", "");
+  return { amount, unit: "₮ хөнгөлөлт" };
 }
