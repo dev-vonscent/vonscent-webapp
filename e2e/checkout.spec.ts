@@ -135,3 +135,50 @@ test("edits a line in checkout and finds it the same in the cart", async ({
     page.getByRole("heading", { name: "Сагс хоосон байна" }),
   ).toBeVisible();
 });
+
+/**
+ * Checkout-оос гараад буцаж ирэхэд бөглөсөн зүйл үлдэнэ (клиент, 2026-10):
+ * шинэ хаяг нэмж форм бөглөсний дараа «Миний купоныг харах» руу ороод буцахад
+ * бүгд хоосорч байсан. Купоны холбоос нь нэвтэрсэн хэрэглэгчид л гардаг (demo
+ * горимд нэвтрэлт байхгүй) тул ижил хадгалах/сэргээх замыг (`keepDraft` →
+ * `takeDraft`) зочны «нэвтэрнэ үү» холбоосоор шалгана. Купоны холбоос энэ
+ * callback-ыг дуудаж байгааг coupon-field.test.tsx хамгаална.
+ */
+test("keeps the filled form after leaving checkout and coming back", async ({
+  page,
+}) => {
+  await page.goto("/products/dior-sauvage-edp");
+  await page
+    .getByRole("button", { name: /Сагсанд нэмэх/ })
+    .first()
+    .click();
+  await page.goto("/checkout");
+
+  await page.getByPlaceholder("Хүлээн авах хүний нэр").fill("Тест Хэрэглэгч");
+  const phone = page.getByPlaceholder("99112233");
+  await phone.fill("99118822");
+  await expect(phone).toHaveValue("99118822");
+
+  await page.getByRole("button", { name: "Шинэ хаяг нэмэх" }).click();
+  const dialog = page.getByRole("dialog");
+  await pickOption(dialog, 0, "Улаанбаатар");
+  await pickOption(dialog, 1, "Баянгол");
+  await pickOption(dialog, 2, "1-р хороо");
+  await dialog.getByPlaceholder("Байр, орц, тоот").fill("45-р байр 12 тоот");
+  await dialog.getByRole("button", { name: "Хаяг хэрэглэх" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText(/45-р байр 12 тоот/).first()).toBeVisible();
+
+  // Checkout-оос гарна…
+  await page.getByRole("link", { name: "нэвтэрнэ үү" }).click();
+  await expect(page).toHaveURL(/\/login/);
+  // …тэгээд буцна.
+  await page.goBack();
+  await expect(page).toHaveURL(/\/checkout/);
+
+  await expect(page.getByPlaceholder("Хүлээн авах хүний нэр")).toHaveValue(
+    "Тест Хэрэглэгч",
+  );
+  await expect(page.getByPlaceholder("99112233")).toHaveValue("99118822");
+  await expect(page.getByText(/45-р байр 12 тоот/).first()).toBeVisible();
+});

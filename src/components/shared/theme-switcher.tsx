@@ -5,6 +5,7 @@ import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 
 const THEMES = [
+  { value: "navy", label: "Хар хөх", swatch: "#1a2e5a" },
   { value: "black", label: "Хар", swatch: "#000000" },
   { value: "white", label: "Цагаан", swatch: "#ffffff" },
   { value: "pink", label: "Ягаан", swatch: "#c2245c" },

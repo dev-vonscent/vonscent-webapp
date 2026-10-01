@@ -17,8 +17,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider
       attribute="class"
-      defaultTheme="white"
-      themes={["black", "white", "pink"]}
+      defaultTheme="navy"
+      themes={["navy", "black", "white", "pink"]}
       enableSystem={false}
       disableTransitionOnChange
     >

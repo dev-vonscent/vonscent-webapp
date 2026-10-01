@@ -45,6 +45,7 @@ export function CouponField({
   onPick,
   onRemove,
   walletHref,
+  onWalletNavigate,
 }: {
   applied: { code: string; discount: number } | null;
   /** Одоогийн купоныг хэрэглэгч биш, хуудас өөрөө сонгосон. */
@@ -61,6 +62,11 @@ export function CouponField({
   onRemove: () => void;
   /** «Миний купоныг харах» — the full wallet, beyond the few offered here. */
   walletHref?: string;
+  /**
+   * Wallet руу гарахын өмнө — checkout бөглөсөн зүйлээ хадгалж, буцаж ирэхэд
+   * сэргээнэ. Үгүй бол хаяг, хүлээн авагч бүгд хоосорч буцдаг байв.
+   */
+  onWalletNavigate?: () => void;
 }) {
   const [open, setOpen] = React.useState(false);
   // Гараар оруулсан код dialog дотор хүчинтэй болмогц dialog хаагдана —
@@ -169,7 +175,9 @@ export function CouponField({
               Бусад купон ({offers.length})
             </button>
           )}
-          {walletHref && <WalletLink href={walletHref} />}
+          {walletHref && (
+            <WalletLink href={walletHref} onNavigate={onWalletNavigate} />
+          )}
         </LinkRow>
       )}
 
@@ -204,7 +212,7 @@ export function CouponField({
           </div>
           {walletHref && (
             <LinkRow>
-              <WalletLink href={walletHref} />
+              <WalletLink href={walletHref} onNavigate={onWalletNavigate} />
             </LinkRow>
           )}
         </div>
@@ -235,9 +243,15 @@ function LinkRow({ children }: { children: React.ReactNode }) {
   );
 }
 
-function WalletLink({ href }: { href: string }) {
+function WalletLink({
+  href,
+  onNavigate,
+}: {
+  href: string;
+  onNavigate?: () => void;
+}) {
   return (
-    <Link href={href} className={LINK_CLASS}>
+    <Link href={href} onClick={onNavigate} className={LINK_CLASS}>
       Миний купоныг харах <ArrowRight className="size-3" />
     </Link>
   );

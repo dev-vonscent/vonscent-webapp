@@ -3,13 +3,14 @@
 @plugin "@tailwindcss/typography";
 
 /*
- * vonscent — three switchable themes (next-themes, attribute="class"):
+ * vonscent — four switchable themes (next-themes, attribute="class"):
+ *   .navy  — default light theme (white bg, navy text and accents)
  *   .black — dark monochrome (black bg, white text)
- *   .white — default light theme (white bg, navy text and accents)
+ *   .white — light monochrome (white bg, near-black text)
  *   .pink  — soft pink palette
- * :root carries the black values as the base every theme builds on (.white
- * and .pink override on top). The default theme is `white`: the server
- * renders `<html class="white">` (layout.tsx) so there is no flash before
+ * :root carries the black values as the base every theme builds on (.navy,
+ * .white and .pink override on top). The default theme is `navy`: the server
+ * renders `<html class="navy">` (layout.tsx) so there is no flash before
  * hydration.
  *
  * `.force-black` is the same palette pinned to an element instead of the
@@ -90,7 +91,7 @@
   --orb-c: rgba(212, 212, 212, 0.1);
 }
 
-/* ── White (white bg, navy) ────────────────────────────────────────────── */
+/* ── White (light monochrome) ─────────────────────────────────────────── */
 /* Redefining the tokens is not enough on its own: `color` is inherited as a
    computed value, so text with no colour utility of its own — the cards'
    `<h2>`s — keeps whatever `body` resolved from the *document* theme, and
@@ -103,6 +104,60 @@
 }
 
 .white {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+
+  --card: #fafafa;
+  --card-foreground: #0a0a0a;
+
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+
+  --primary: #171717; /* dark CTA on light bg */
+  --primary-foreground: #ffffff;
+
+  --secondary: #f0f0f0;
+  --secondary-foreground: #0a0a0a;
+
+  --muted: #f4f4f4;
+  --muted-foreground: #5f5f5f;
+
+  --accent: #e8e8e8;
+  --accent-foreground: #0a0a0a;
+
+  --gold: #4d4d4d;
+  --gold-soft: #6b6b6b;
+  --gold-strong: #171717;
+
+  --destructive: #c02626;
+  --destructive-foreground: #ffffff;
+  --success: #4b5563;
+  --warning: #8a5200; /* 6.12:1 on card */
+
+  --border: transparent;
+  --input: transparent;
+  --ring: #171717;
+  --field-edge: #d8d8d8;
+
+  --surface-deep: #f4f4f4;
+
+  --chart-1: #0a0a0a;
+  --chart-2: #333333;
+  --chart-3: #4f4f4f;
+  --chart-4: #626262;
+  --chart-5: #757575;
+
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-lift: 0 8px 30px -12px rgba(0, 0, 0, 0.18);
+  --shadow-gold: none;
+
+  --orb-a: rgba(0, 0, 0, 0.1);
+  --orb-b: rgba(255, 255, 255, 0.95);
+  --orb-c: rgba(160, 129, 69, 0.14);
+}
+
+/* ── Navy (white bg, navy ink) — default ──────────────────────────────── */
+.navy {
   /* White bg, navy ink: every neutral is a navy tint/shade, so text, CTAs,
      surfaces and charts read as one palette (contrast noted vs card). */
   --background: #ffffff;
@@ -367,7 +422,7 @@
   background: color-mix(in oklab, var(--foreground) 12%, transparent);
 }
 
-/* Typography plugin colors follow the active theme (.black/.white/.pink),
+/* Typography plugin colors follow the active theme (.navy/.black/…),
    not prefers-color-scheme — map every prose token to our theme vars. */
 .prose {
   --tw-prose-body: var(--foreground);

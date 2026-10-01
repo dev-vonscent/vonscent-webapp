@@ -109,7 +109,8 @@ const formSchema = checkoutSchema.omit({ items: true, collections: true });
 type FormValues = z.infer<typeof formSchema>;
 
 /**
- * Бүртгүүлэх / нэвтрэх рүү явахад бөглөсөн зүйл нь алга болохгүй байх түлхүүр.
+ * Бүртгүүлэх / нэвтрэх / «Миний купон» руу явахад бөглөсөн зүйл нь алга
+ * болохгүй байх түлхүүр.
  *
  * Энэ хуудсын төлөв бүхэлдээ React state — «Бүртгүүлэх» дарахад хүлээн авагч,
  * утас, хаягийн ноорог, хүргэх өдөр, тэмдэглэл, бэлгийн сонголт бүгд устдаг
@@ -123,6 +124,8 @@ interface CheckoutDraft {
   address: AddressFormValue | null;
   noteTags: string[];
   giftIds: string[];
+  /** «Энэ хаягийг хадгалах» — хуучин ноорогт байхгүй байж болно. */
+  saveAddr?: boolean;
 }
 
 /** Бөглөсөн хэсгийг хадгална — `?next=`-ээр буцаж ирэхэд л уншигдана. */
@@ -388,7 +391,7 @@ export default function CheckoutPage() {
   // эзлэхээс сэргийлнэ. Зурвас байхгүй үед цэс эргэж гарна.
   useClaimBottomBar(showPayBar);
 
-  /** Бүртгэл рүү явахын өмнө бөглөсөн бүхнээ хадгална. */
+  /** Бүртгэл, купоны хуудас руу явахын өмнө бөглөсөн бүхнээ хадгална. */
   const keepDraft = React.useCallback(() => {
     saveDraft({
       values: getValues(),
@@ -396,8 +399,9 @@ export default function CheckoutPage() {
       address: draft,
       noteTags,
       giftIds,
+      saveAddr,
     });
-  }, [getValues, khoroo, draft, noteTags, giftIds]);
+  }, [getValues, khoroo, draft, noteTags, giftIds, saveAddr]);
 
   /**
    * Хаягаас автоматаар бөглөсөн сүүлийн нэр, утас. Талбарын одоогийн утга
@@ -454,6 +458,13 @@ export default function CheckoutPage() {
   // Бүртгүүлэх/нэвтрэх рүү явчихаад буцаж ирсэн бол бөглөсөн зүйлээ эргүүлж
   // авна. Нэг л удаа уншигдана (`takeDraft` уншаад устгана) тул дараагийн
   // цэвэр захиалга хуучин хүний нэрээр эхлэхгүй.
+  /**
+   * Ноорогоос шинэ хаяг сэргээсэн эсэх. Нэвтрэлт ачаалагдсаны дараа үндсэн
+   * хадгалсан хаягийг автоматаар сонгох нь түүнийг (ба «Энэ хаягийг хадгалах»
+   * сонголтыг) дарж бичдэг байв — ref учир async хариунд ч харагдана.
+   */
+  const restoredNewAddress = React.useRef(false);
+
   React.useEffect(() => {
     const saved = takeDraft();
     if (!saved) return;
@@ -468,7 +479,9 @@ export default function CheckoutPage() {
     if (saved.address) {
       setDraft(saved.address);
       setAddressChoice(NEW_ADDRESS);
+      restoredNewAddress.current = true;
     }
+    setSaveAddr(saved.saveAddr ?? false);
   }, [setValue]);
 
   // Сонгож болох хүргэлтийн өдрүүд. Mount-ийн дараа бодогдоно: сервер ба
@@ -602,7 +615,7 @@ export default function CheckoutPage() {
       // The query orders `is_default` first, so the head of the list is the
       // address to start on — a returning customer should not have to choose
       // the same one every time.
-      if (rows[0]) {
+      if (rows[0] && !restoredNewAddress.current) {
         setAddressChoice(rows[0].id);
         applyAddress(rows[0]);
       }
@@ -1410,6 +1423,7 @@ export default function CheckoutPage() {
                     onPick={pickCoupon}
                     onRemove={clearCoupon}
                     walletHref="/account/coupons"
+                    onWalletNavigate={keepDraft}
                   />
                 ) : (
                   mounted &&
