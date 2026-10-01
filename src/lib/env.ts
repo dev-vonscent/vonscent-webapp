@@ -4,6 +4,23 @@
  * wired up. Server-only secrets must never be prefixed with NEXT_PUBLIC_.
  */
 
+/**
+ * Нийтийн үндсэн хаяг — имэйл, Telegram-ийн админ линк, QPay callback, sitemap.
+ *
+ * `NEXT_PUBLIC_*` нь build хийх мөчид кодонд шингэдэг. Тухайн Vercel scope-д
+ * (Preview г.м.) тавиагүй байхад урьд нь чимээгүй `localhost` руу унаж,
+ * Telegram-ийн линк `http://localhost:3000/admin/...` болж очдог байв.
+ * Одоо Vercel дээр deploy-ийн өөрийн хаяг руу унана; `localhost` зөвхөн
+ * локал ажилд. Төгсгөлийн `/`-ийг хасна — эс бөгөөс `//admin/...` болно.
+ */
+function resolveSiteUrl(): string {
+  const raw =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+    "http://localhost:3000";
+  return raw.replace(/\/+$/, "");
+}
+
 export const env = {
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
   supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
@@ -13,7 +30,7 @@ export const env = {
   storageBucket:
     process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? "product-images",
 
-  siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  siteUrl: resolveSiteUrl(),
   gaId: process.env.NEXT_PUBLIC_GA_ID ?? "",
   metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "",
 
