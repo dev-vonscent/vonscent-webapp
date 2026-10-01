@@ -16,7 +16,7 @@ export default function Loading() {
     >
       <SkeletonBlock className="mb-6 hidden h-4 w-64 opacity-60 sm:block" />
 
-      <div className="grid gap-0 sm:gap-10 lg:grid-cols-2 lg:items-start">
+      <div className="grid grid-cols-1 gap-0 sm:gap-10 lg:grid-cols-2 lg:items-start">
         <SkeletonBlock className="aspect-square w-full rounded-2xl" />
 
         <div className="space-y-10 pt-8 sm:pt-0">

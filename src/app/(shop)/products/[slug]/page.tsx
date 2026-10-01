@@ -135,7 +135,7 @@ export default async function ProductPage({
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="grid gap-0 sm:gap-10 lg:grid-cols-2 lg:items-start">
+      <div className="grid grid-cols-1 gap-0 sm:gap-10 lg:grid-cols-2 lg:items-start">
         {/* Left: gallery sticks below the header while the right column scrolls,
             and releases when the grid ends (i.e. the related section appears). */}
         <div className="lg:sticky lg:top-(--header-offset) lg:self-start lg:transition-[top] lg:duration-300 lg:ease-out">
