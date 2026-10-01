@@ -5,7 +5,7 @@
 /*
  * vonscent — three switchable themes (next-themes, attribute="class"):
  *   .black — dark monochrome (black bg, white text)
- *   .white — default light monochrome (white bg, near-black text)
+ *   .white — default light theme (white bg, navy text and accents)
  *   .pink  — soft pink palette
  * :root carries the black values as the base every theme builds on (.white
  * and .pink override on top). The default theme is `white`: the server
@@ -90,7 +90,7 @@
   --orb-c: rgba(212, 212, 212, 0.1);
 }
 
-/* ── White (light monochrome) ─────────────────────────────────────────── */
+/* ── White (white bg, navy) ────────────────────────────────────────────── */
 /* Redefining the tokens is not enough on its own: `color` is inherited as a
    computed value, so text with no colour utility of its own — the cards'
    `<h2>`s — keeps whatever `body` resolved from the *document* theme, and
@@ -103,56 +103,58 @@
 }
 
 .white {
+  /* White bg, navy ink: every neutral is a navy tint/shade, so text, CTAs,
+     surfaces and charts read as one palette (contrast noted vs card). */
   --background: #ffffff;
-  --foreground: #0a0a0a;
+  --foreground: #0b1d3a; /* navy ink — 15.79:1 */
 
-  --card: #fafafa;
-  --card-foreground: #0a0a0a;
+  --card: #f6f8fc;
+  --card-foreground: #0b1d3a;
 
   --popover: #ffffff;
-  --popover-foreground: #0a0a0a;
+  --popover-foreground: #0b1d3a;
 
-  --primary: #171717; /* dark CTA on light bg */
+  --primary: #1a2e5a; /* navy CTA — white text 13.27:1 */
   --primary-foreground: #ffffff;
 
-  --secondary: #f0f0f0;
-  --secondary-foreground: #0a0a0a;
+  --secondary: #edf1f8;
+  --secondary-foreground: #0b1d3a;
 
-  --muted: #f4f4f4;
-  --muted-foreground: #5f5f5f;
+  --muted: #f1f4f9;
+  --muted-foreground: #4a5b7a; /* 6.44:1 */
 
-  --accent: #e8e8e8;
-  --accent-foreground: #0a0a0a;
+  --accent: #e2e8f3;
+  --accent-foreground: #0b1d3a;
 
-  --gold: #4d4d4d;
-  --gold-soft: #6b6b6b;
-  --gold-strong: #171717;
+  --gold: #2d4373;
+  --gold-soft: #4b5f88; /* 6.00:1 */
+  --gold-strong: #1a2e5a;
 
   --destructive: #c02626;
   --destructive-foreground: #ffffff;
-  --success: #4b5563;
-  --warning: #8a5200; /* 6.12:1 on card */
+  --success: #3b5578;
+  --warning: #8a5200; /* 6.01:1 on card */
 
   --border: transparent;
   --input: transparent;
-  --ring: #171717;
-  --field-edge: #d8d8d8;
+  --ring: #1a2e5a;
+  --field-edge: #cfd8e6;
 
-  --surface-deep: #f4f4f4;
+  --surface-deep: #edf1f8;
 
-  --chart-1: #0a0a0a;
-  --chart-2: #333333;
-  --chart-3: #4f4f4f;
-  --chart-4: #626262;
-  --chart-5: #757575;
+  --chart-1: #0b1d3a;
+  --chart-2: #1a2e5a;
+  --chart-3: #34508a;
+  --chart-4: #5a72a3;
+  --chart-5: #8296bd;
 
-  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.08);
-  --shadow-lift: 0 8px 30px -12px rgba(0, 0, 0, 0.18);
+  --shadow-soft: 0 1px 2px rgba(11, 29, 58, 0.08);
+  --shadow-lift: 0 8px 30px -12px rgba(11, 29, 58, 0.2);
   --shadow-gold: none;
 
-  --orb-a: rgba(0, 0, 0, 0.1);
+  --orb-a: rgba(26, 46, 90, 0.12);
   --orb-b: rgba(255, 255, 255, 0.95);
-  --orb-c: rgba(160, 129, 69, 0.14);
+  --orb-c: rgba(52, 80, 138, 0.14);
 }
 
 /* ── Pink ─────────────────────────────────────────────────────────────── */
