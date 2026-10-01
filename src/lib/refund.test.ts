@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { maskAccount, refundBreakdown } from "./refund";
+import { deliveredRefund, maskAccount, refundBreakdown } from "./refund";
 
 describe("refundBreakdown", () => {
   it("takes 1% of the whole total, in whole ₮", () => {
@@ -18,5 +18,24 @@ describe("maskAccount", () => {
   it("keeps only the last four digits", () => {
     expect(maskAccount("5000 1234 5678")).toBe("•••• 5678");
     expect(maskAccount("MN120005005001234567")).toBe("•••• 4567");
+  });
+});
+
+describe("deliveredRefund", () => {
+  it("returns the goods, keeps the shipping, takes no fee", () => {
+    expect(deliveredRefund(32_000, 8_000)).toEqual({
+      fee: 0,
+      shipping: 8_000,
+      amount: 24_000,
+    });
+  });
+
+  it("never goes below zero", () => {
+    expect(deliveredRefund(5_000, 8_000)).toEqual({
+      fee: 0,
+      shipping: 5_000,
+      amount: 0,
+    });
+    expect(deliveredRefund(10_000, 0).amount).toBe(10_000);
   });
 });

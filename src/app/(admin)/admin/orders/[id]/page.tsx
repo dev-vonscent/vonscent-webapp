@@ -20,7 +20,10 @@ import {
 } from "@/lib/constants";
 import { OrderStatusControl } from "@/features/admin/components/order-status-control";
 import { CopyRow } from "@/features/payment/components/copy-row";
-import { refundBreakdown } from "@/lib/refund";
+import {
+  deliveredRefund as deliveredRefundAmount,
+  refundBreakdown,
+} from "@/lib/refund";
 import { cn } from "@/lib/utils";
 
 export default async function AdminOrderDetail({
@@ -39,15 +42,15 @@ export default async function AdminOrderDetail({
   // шилжүүлэх ёстой. Дүн нь нийт дүнгээс 1% шимтгэл хассан (src/lib/refund.ts).
   const awaitingRefund =
     order.status === "cancelled" && order.payment_status === "paid";
-  // Хүргэгдсэний дараах буцаалт (0113): шимтгэлгүй — клиентийн дансанд
-  // бодитоор орсон `total`-ыг л буцаана, V point ба купон автоматаар буцна.
+  // Хүргэгдсэний дараах буцаалт (0114): шимтгэлгүй, хүргэлтийн төлбөргүй —
+  // барааны төлсөн дүнг л буцаана, V point ба купон автоматаар буцна.
   const deliveredRefund =
     order.status === "delivered" &&
     order.payment_status === "paid" &&
     staff?.role === "super_admin";
   const refund = deliveredRefund
-    ? { fee: 0, amount: order.total }
-    : refundBreakdown(order.total);
+    ? deliveredRefundAmount(order.total, order.shipping_fee)
+    : { ...refundBreakdown(order.total), shipping: 0 };
 
   return (
     <div className="space-y-6">
@@ -220,7 +223,9 @@ export default async function AdminOrderDetail({
                 />
                 {deliveredRefund ? (
                   <p className="text-muted-foreground text-xs">
-                    Хэрэглэгчийн бодитоор төлсөн дүн.
+                    Барааны төлсөн дүн.
+                    {refund.shipping > 0 &&
+                      ` Хүргэлтийн төлбөр ${formatPrice(refund.shipping)} буцаагдахгүй — хүргэлт хийгдсэн.`}
                     {order.loyalty_used > 0 &&
                       ` V point-оор төлсөн ${formatPrice(order.loyalty_used)} мөнгөөр биш, оноо болж буцна.`}
                     {order.discount > 0 &&
