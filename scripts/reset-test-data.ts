@@ -4,6 +4,8 @@
  *   pnpm db:reset-test-data-dev              # хуурай: тоо харуулаад ROLLBACK
  *   pnpm db:reset-test-data-dev -- --apply   # бодитоор COMMIT
  *   pnpm db:backup && pnpm db:reset-test-data-prod -- --apply
+ *   ... -- --keep=VS-1043,VS-1050   # жинхэнэ захиалгыг (ба хэрэглэгчийнх нь
+ *                                   # оноо, купон, хаяг, сэтгэгдлийг) үлдээнэ
  *
  * Release-ээс өмнөх захиалга бүгд тест байсан тул захиалга, тайлан, оноо,
  * купон, сэтгэгдэл бүгд тэгээс эхэлнэ. Каталог (бараа, багц, зураг, үнэ,
@@ -32,6 +34,11 @@ if (!url) {
   process.exit(1);
 }
 const apply = process.argv.includes("--apply");
+/** `--keep=VS-1043,VS-1050` — release-ээс өмнөх ЖИНХЭНЭ захиалгууд. */
+const keep = (process.argv.find((a) => a.startsWith("--keep="))?.slice(7) ?? "")
+  .split(",")
+  .map((x) => x.trim().toUpperCase())
+  .filter(Boolean);
 
 /** Өмнө/дараа нь тоолох хүснэгтүүд — цэвэрлэгээ ба хадгалагдах ёстойнх. */
 const COUNTED = [
@@ -72,19 +79,46 @@ const COUNTED = [
  * cascade-аар хамт устна).
  */
 const STEPS: { label: string; sql: string }[] = [
-  { label: "Купоны ашиглалт", sql: "delete from coupon_redemptions" },
-  { label: "Хүрдний эргүүлэлт", sql: "delete from spin_wheel_spins" },
-  { label: "V-point түүх", sql: "delete from loyalty_ledger" },
-  { label: "Купон (нийтийн + хувийн)", sql: "delete from coupons" },
+  {
+    label: "Купоны ашиглалт",
+    sql: `delete from coupon_redemptions
+           where (order_id is null or order_id not in (select id from keep_orders))
+             and (user_id is null or user_id not in (select id from keep_users))`,
+  },
+  {
+    label: "Хүрдний эргүүлэлт",
+    sql: "delete from spin_wheel_spins where user_id is null or user_id not in (select id from keep_users)",
+  },
+  {
+    label: "V-point түүх",
+    sql: "delete from loyalty_ledger where user_id is null or user_id not in (select id from keep_users)",
+  },
+  {
+    label: "Купон (нийтийн + хувийн)",
+    sql: `delete from coupons
+           where (user_id is null or user_id not in (select id from keep_users))
+             and (source_order_id is null or source_order_id not in (select id from keep_orders))`,
+  },
   // reviews_rating_sync trigger нь бараа/багцын rating_avg, rating_count-ийг
   // мөр бүр дээр дахин бодно.
-  { label: "Сэтгэгдэл (бараа + багц)", sql: "delete from reviews" },
-  { label: "Админы мэдэгдэл", sql: "delete from admin_notifications" },
-  // orders_refresh_hot_tag (statement trigger) «Эрэлттэй» тагийг цэвэрлэнэ.
-  { label: "Захиалга (+ cascade)", sql: "delete from orders" },
+  {
+    label: "Сэтгэгдэл (бараа + багц)",
+    sql: "delete from reviews where user_id is null or user_id not in (select id from keep_users)",
+  },
+  {
+    label: "Админы мэдэгдэл",
+    sql: "delete from admin_notifications where order_id is null or order_id not in (select id from keep_orders)",
+  },
+  // orders_refresh_hot_tag (statement trigger) «Эрэлттэй» тагийг дахин бодно.
+  {
+    label: "Захиалга (+ cascade)",
+    sql: "delete from orders where id not in (select id from keep_orders)",
+  },
   {
     label: "Нөөцийн түүх ('initial'-ээс бусад)",
-    sql: "delete from restock_log where reason <> 'initial'",
+    sql: `delete from restock_log
+           where reason <> 'initial'
+             and (order_id is null or order_id not in (select id from keep_orders))`,
   },
   {
     label: "Эх савны өртгийн огноо → одоо",
@@ -92,23 +126,41 @@ const STEPS: { label: string; sql: string }[] = [
   },
   {
     label: "V-point үлдэгдэл → 0",
-    sql: "update profiles set loyalty_points = 0, pending_points = 0 where loyalty_points <> 0 or pending_points <> 0",
+    sql: `update profiles set loyalty_points = 0, pending_points = 0
+           where (loyalty_points <> 0 or pending_points <> 0)
+             and id not in (select id from keep_users)`,
   },
+  // Үлдээх захиалга бүгд төлөгдсөн/цуцлагдсан (доор шалгана) — төлөгдөхөд
+  // ml commit хийгдэж түгжээ суллагддаг (mark_order_paid) тул 0 зөв.
   {
     label: "Захиалгын түгжээ → 0",
     sql: "update inventory set reserved_ml = 0, is_sold_out = on_hand_ml <= 0",
   },
-  { label: "Хүслийн жагсаалт (бараа)", sql: "delete from wishlists" },
-  { label: "Хүслийн жагсаалт (багц)", sql: "delete from collection_wishlists" },
-  { label: "Хүргэлтийн хаяг", sql: "delete from addresses" },
+  {
+    label: "Хүслийн жагсаалт (бараа)",
+    sql: "delete from wishlists where user_id is null or user_id not in (select id from keep_users)",
+  },
+  {
+    label: "Хүслийн жагсаалт (багц)",
+    sql: "delete from collection_wishlists where user_id is null or user_id not in (select id from keep_users)",
+  },
+  {
+    label: "Хүргэлтийн хаяг",
+    sql: "delete from addresses where user_id is null or user_id not in (select id from keep_users)",
+  },
   { label: "Холбоо барих мессеж", sql: "delete from contact_messages" },
-  { label: "Мэдээллийн бүртгэл", sql: "delete from newsletter_subscribers" },
+  {
+    label: "Мэдээллийн бүртгэл",
+    sql: "delete from newsletter_subscribers where user_id is null or user_id not in (select id from keep_users)",
+  },
   { label: "verify.mn сесс", sql: "delete from verify_mn_sessions" },
   { label: "Нэвтрэх оролдлого", sql: "delete from phone_login_attempts" },
   { label: "Rate limit", sql: "delete from rate_limits" },
+  // Үлдсэн захиалгын дугаартай мөргөлдөхгүйн тулд хамгийн их дугаарын дараагаас.
   {
-    label: "Захиалгын дугаар VS-1000-аас",
-    sql: "alter sequence order_no_seq restart with 1000",
+    label: "Захиалгын дугаар",
+    sql: `select setval('order_no_seq', greatest(999, coalesce(
+            (select max(substring(order_no from 4)::int) from orders), 999)))`,
   },
 ];
 
@@ -134,10 +186,49 @@ async function main() {
     await c.query("begin");
     const before = await counts(c);
 
+    // Үлдээх захиалга ба тэдгээрийн хэрэглэгч — алхам бүр эдгээрийг тойрно.
+    await c.query(
+      `create temp table keep_orders on commit drop as
+         select id, order_no, user_id, status::text, payment_status::text, contact_name, total
+           from orders where order_no = any($1::text[])`,
+      [keep],
+    );
+    await c.query(
+      `create temp table keep_users on commit drop as
+         select distinct user_id as id from keep_orders where user_id is not null`,
+    );
+    const kept = await c.query<{
+      order_no: string; status: string; payment_status: string;
+      contact_name: string; total: number; user_id: string | null;
+    }>("select * from keep_orders order by order_no");
+    const missing = keep.filter((k) => !kept.rows.some((r) => r.order_no === k));
+    if (missing.length > 0) throw new Error(`Захиалга олдсонгүй: ${missing.join(", ")}`);
+    // Төлөгдөөгүй идэвхтэй захиалга ml түгжсэн байдаг — түгжээг 0 болгох нь
+    // түүнийг oversell руу түлхэнэ. Ийм захиалгыг үлдээхгүй.
+    const open = kept.rows.filter(
+      (r) => r.payment_status === "pending" && r.status !== "cancelled",
+    );
+    if (open.length > 0) {
+      throw new Error(
+        `Төлөгдөөгүй захиалга үлдээх боломжгүй: ${open.map((r) => r.order_no).join(", ")}`,
+      );
+    }
+    if (kept.rows.length > 0) {
+      console.log("  Үлдээх захиалга:");
+      for (const r of kept.rows) {
+        console.log(
+          `    ${r.order_no}  ${r.contact_name}  ${r.total.toLocaleString()}₮  ${r.status}/${r.payment_status}  ${r.user_id ? "бүртгэлтэй" : "зочин"}`,
+        );
+      }
+      console.log("");
+    }
+
     for (const s of STEPS) {
       const r = await c.query(s.sql);
       const n = r.rowCount ?? 0;
-      console.log(`  ${s.label.padEnd(36)} ${r.command === "ALTER" ? "ok" : n}`);
+      console.log(
+        `  ${s.label.padEnd(36)} ${r.command === "SELECT" ? `→ VS-${Number(r.rows[0].setval) + 1}` : n}`,
+      );
     }
 
     const after = await counts(c);
