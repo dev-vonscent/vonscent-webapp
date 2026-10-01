@@ -86,7 +86,6 @@ export async function PATCH(
     productUpdate.is_featured = input.isFeatured;
   if (input.bottlePrice !== undefined)
     productUpdate.bottle_price = input.bottlePrice;
-  if (input.bottleMl !== undefined) productUpdate.bottle_ml = input.bottleMl;
 
   if (Object.keys(productUpdate).length > 0) {
     const { error } = await supabase

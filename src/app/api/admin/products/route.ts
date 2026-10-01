@@ -86,7 +86,10 @@ export async function POST(req: Request) {
     origin_country: input.originCountry ?? null,
     release_year: input.releaseYear ?? null,
     bottle_price: input.bottlePrice,
-    bottle_ml: input.bottleMl,
+    // `bottle_ml` нь 0027-оос хойш юунд ч нөлөөлдөггүй (үнэ гараар, үлдэгдэл
+    // `inventory`-д) тул формд асуудаггүй. NOT NULL > 0 баганыг анхны
+    // үлдэгдлээр бөглөнө.
+    bottle_ml: Math.max(input.onHandMl, 1),
   };
 
   const hostedImages = input.images.filter((img) => isStorageUrl(img.url));

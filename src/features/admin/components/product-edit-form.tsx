@@ -4,7 +4,7 @@ import * as React from "react";
 import { InfoTip } from "@/components/shared/info-tip";
 import { fieldErrorClass } from "@/components/ui/form-field";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { Minus, Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Field } from "@/components/ui/field";
@@ -50,6 +50,7 @@ import { ProductImageStudio } from "./product-image-studio";
 import { NoteTranslationPanel } from "./note-translation-panel";
 import { BrandSelect } from "./brand-select";
 import { ConcentrationSelect } from "./concentration-select";
+import { StockAdjustDialog, type StockMode } from "./stock-adjust-dialog";
 import type { AdminProduct } from "@/features/admin/api";
 import type { CustomTagOption } from "@/features/taxonomy/api";
 import type {
@@ -111,7 +112,6 @@ export function ProductEditForm({
     originCountry: product.originCountry ?? "",
     releaseYear: product.releaseYear ? String(product.releaseYear) : "",
     bottlePrice: String(product.bottlePrice),
-    bottleMl: String(product.bottleMl),
     lowStockMl: String(product.lowStockMl),
   });
   const [scentFamilies, rawToggleFamily] = useToggleList(product.scentFamilies);
@@ -138,6 +138,7 @@ export function ProductEditForm({
   const [customTags, rawToggleCustomTag] = useToggleList(product.customTags);
   const [isActive, setIsActive] = React.useState(product.isActive);
   const [isFeatured, setIsFeatured] = React.useState(product.isFeatured);
+  const [stockMode, setStockMode] = React.useState<StockMode | null>(null);
 
   useUnsavedGuard(dirty);
 
@@ -230,7 +231,6 @@ export function ProductEditForm({
           originCountry: form.originCountry || null,
           releaseYear: form.releaseYear ? Number(form.releaseYear) : null,
           bottlePrice: Number(form.bottlePrice),
-          bottleMl: Number(form.bottleMl),
           lowStockMl: Number(form.lowStockMl),
           variants,
           isActive,
@@ -480,13 +480,6 @@ export function ProductEditForm({
                 onChange={(e) => set("bottlePrice", e.target.value)}
               />
             </Field>
-            <Field label="Багтаамж (ml)">
-              <Input
-                type="number"
-                value={form.bottleMl}
-                onChange={(e) => set("bottleMl", e.target.value)}
-              />
-            </Field>
             <Field label="Доод хязгаар (ml)">
               <Input
                 type="number"
@@ -494,7 +487,55 @@ export function ProductEditForm({
                 onChange={(e) => set("lowStockMl", e.target.value)}
               />
             </Field>
+            {/* Үлдэгдэл энэ формоор хадгалагдахгүй — restock_log-т шалтгаан,
+                өртөгтэй мөр үлдэх ёстой тул нөөцийн цонхоор л өөрчлөгдөнө.
+                Талбар шиг харагдуулбал оператор тоог нь засаад «Хадгалах»
+                дарна, юу ч болохгүй. Тиймээс тоо + хоёр товч. */}
+            <div className="space-y-1.5">
+              <Label>Эх савны үлдэгдэл</Label>
+              <div className="flex h-10 items-center gap-2">
+                <span className="flex-1 text-lg font-semibold tabular-nums">
+                  {product.onHandMl}ml
+                </span>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  aria-label="Үлдэгдэл хасах"
+                  disabled={product.onHandMl - product.reservedMl <= 0}
+                  onClick={() => setStockMode("correction")}
+                >
+                  <Minus className="size-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  aria-label="Нөөц нэмэх"
+                  onClick={() => setStockMode("restock")}
+                >
+                  <Plus className="size-4" />
+                </Button>
+              </div>
+              {/* Жагсаалтын «Боломжит»-оос зөрөх цорын ганц шалтгаан. */}
+              {product.reservedMl > 0 && (
+                <p className="text-muted-foreground text-xs">
+                  {product.reservedMl}ml нь захиалгад түгжигдсэн
+                </p>
+              )}
+            </div>
           </div>
+          {stockMode !== null && (
+            <StockAdjustDialog
+              open
+              onOpenChange={(o) => !o && setStockMode(null)}
+              mode={stockMode}
+              productId={product.id}
+              productLabel={`${product.brand} — ${product.name}`}
+              onHandMl={product.onHandMl}
+              reservedMl={product.reservedMl}
+            />
+          )}
         </CardContent>
       </Card>
 

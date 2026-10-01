@@ -102,7 +102,6 @@ export function ProductForm({
     originCountry: "",
     releaseYear: "",
     bottlePrice: "",
-    bottleMl: "100",
     onHandMl: "100",
     lowStockMl: String(DEFAULT_LOW_STOCK_ML),
   });
@@ -193,7 +192,6 @@ export function ProductForm({
         })),
         releaseYear: form.releaseYear ? Number(form.releaseYear) : null,
         bottlePrice: Number(form.bottlePrice) || 0,
-        bottleMl: Number(form.bottleMl) || 0,
         onHandMl: Number(form.onHandMl),
         lowStockMl: Number(form.lowStockMl),
         notesTop: form.notesTop
@@ -422,19 +420,12 @@ export function ProductForm({
           <h2 className="font-serif text-lg font-semibold">
             Эх сав ба үлдэгдэл
           </h2>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Эх савны үнэ (₮)">
               <Input
                 type="number"
                 value={form.bottlePrice}
                 onChange={(e) => set("bottlePrice", e.target.value)}
-              />
-            </Field>
-            <Field label="Эх савны багтаамж (ml)">
-              <Input
-                type="number"
-                value={form.bottleMl}
-                onChange={(e) => set("bottleMl", e.target.value)}
               />
             </Field>
             <Field label="Эх савны үлдэгдэл (ml)">
