@@ -24,58 +24,23 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { ThemeSwitcher } from "@/components/shared/theme-switcher";
-import { createClient } from "@/lib/supabase/browser";
+import { useProfileSummary } from "@/features/account/use-profile-summary";
 import { useIsStaff } from "@/features/account/use-staff";
 import { useSignOutConfirm } from "@/features/account/components/use-sign-out-confirm";
 import { Badge } from "@/components/ui/badge";
 import { useNewBadge } from "@/features/account/use-new-badge";
 import { COUPONS_NEW_BADGE_UNTIL, LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
 
-interface Profile {
-  name: string;
-  email: string;
-  avatar: string | null;
-}
-
 export function ProfileMenu() {
   const [askSignOut, signOutDialog] = useSignOutConfirm();
   const couponsNew = useNewBadge("coupons", COUPONS_NEW_BADGE_UNTIL);
-  const [profile, setProfile] = React.useState<Profile | null>(null);
-  const [configured, setConfigured] = React.useState(true);
+  // Таб даяар кэштэй — админаас дэлгүүр рүү буцахад header дахин mount
+  // болсон ч зураг, нэр шууд зурагдана (use-profile-summary.ts).
+  const { profile, loading, configured } = useProfileSummary();
   const isStaff = useIsStaff();
 
-  React.useEffect(() => {
-    const supabase = createClient();
-    if (!supabase) {
-      setConfigured(false);
-      return;
-    }
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) return;
-      const { data: row } = await supabase
-        .from("profiles")
-        .select("full_name, avatar_url")
-        .eq("id", data.user.id)
-        .maybeSingle();
-      const p = row as {
-        full_name?: string;
-        avatar_url?: string | null;
-      } | null;
-      const email = data.user.email ?? "";
-      // Утас-passcode бүртгэлийн дотоод имэйлээс зөвхөн дугаарыг нь харуулна.
-      const displayId = email.endsWith("@phone.vonscent.mn")
-        ? email.split("@")[0]
-        : email;
-      setProfile({
-        name: p?.full_name || displayId || "vonscent гишүүн",
-        email: displayId,
-        avatar: p?.avatar_url ?? null,
-      });
-    });
-  }, []);
-
   const name = profile?.name ?? "Зочин";
-  const initial = (profile?.name || profile?.email || "?")
+  const initial = (profile?.name || profile?.handle || "?")
     .charAt(0)
     .toUpperCase();
 
@@ -98,8 +63,9 @@ export function ProfileMenu() {
                 className="object-cover"
               />
             ) : (
+              // Анх ачаалж байхад хоосон дугуй — «?» гараад нэр рүү үсрэхгүй.
               <span className="flex h-full items-center justify-center text-sm font-semibold">
-                {initial}
+                {loading ? null : initial}
               </span>
             )}
           </button>
@@ -107,7 +73,7 @@ export function ProfileMenu() {
 
         <DropdownMenuContent align="end">
           {/* Нэвтрээгүй зочинд эхлээд нэвтрэх/бүртгүүлэх замыг тод харуулна. */}
-          {configured && !profile && (
+          {configured && !loading && !profile && (
             <>
               <DropdownMenuItem asChild>
                 <Link href="/login" className="font-semibold">
@@ -146,9 +112,9 @@ export function ProfileMenu() {
                   <span className="block truncate text-sm font-semibold">
                     {name}
                   </span>
-                  {profile?.email && (
+                  {profile?.handle && (
                     <span className="text-muted-foreground block truncate text-xs">
-                      {profile.email}
+                      {profile.handle}
                     </span>
                   )}
                 </span>

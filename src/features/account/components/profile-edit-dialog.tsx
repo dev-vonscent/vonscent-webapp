@@ -13,7 +13,9 @@ import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { PhoneVerify } from "@/features/account/components/phone-verify";
 import { prepareUpload } from "@/lib/storage/prepare-upload";
 import { IMAGE_ACCEPT } from "@/lib/storage/limits";
+import { useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/browser";
+import { PROFILE_SUMMARY_KEY } from "@/features/account/use-profile-summary";
 import { rateLimitMessage } from "@/lib/rate-limit-client";
 import { toast } from "@/lib/toast";
 
@@ -49,6 +51,10 @@ export function ProfileEditDialog({
   onAvatarChange: (url: string) => void;
   onPhoneVerified: () => void;
 }) {
+  const queryClient = useQueryClient();
+  // Header-ийн профайл таб даяар кэштэй — засвар тэнд ч шууд харагдах ёстой.
+  const refreshHeader = () =>
+    queryClient.invalidateQueries({ queryKey: PROFILE_SUMMARY_KEY });
   const [name, setName] = React.useState(fullName);
   const [errors, setErrors] = React.useState<Errors>({});
   const [avatarError, setAvatarError] = React.useState<string | null>(null);
@@ -93,6 +99,7 @@ export function ProfileEditDialog({
       toast.error("Хадгалж чадсангүй. Дахин оролдоно уу.");
       return;
     }
+    void refreshHeader();
     onSaved({ fullName: name.trim(), phone });
     toast.success("Мэдээлэл хадгалагдлаа.");
     onOpenChange(false);
@@ -134,6 +141,7 @@ export function ProfileEditDialog({
         .from("profiles")
         .update({ avatar_url: url })
         .eq("id", userId);
+      void refreshHeader();
     }
     onAvatarChange(url);
   }
