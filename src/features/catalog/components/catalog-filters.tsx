@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
+import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
@@ -13,6 +14,14 @@ import type { ScentFamilyOption } from "@/lib/types";
 import type { BrandLogos } from "@/features/products/components/brand-marquee";
 
 const PRICE_STEP = 1000;
+
+/**
+ * Хураасан үед харагдах брэндийн тоо (2 баганаар 5 мөр). Жагсаалт өөрөө
+ * гүйлгэгддэг хайрцаг байхаа больсон: sidebar болон гар утасны sheet аль
+ * аль нь гүйлгэгддэг тул дотор нь дахин scroll хийвэл хоёр scroll давхарлаж,
+ * хулгана аль нэгэнд нь «гацдаг» байв.
+ */
+const BRANDS_COLLAPSED = 10;
 
 const TAGS: { value: string; label: string }[] = [
   { value: "new", label: "Шинэ" },
@@ -73,6 +82,7 @@ export function CatalogFilters({
   brandLogos,
   priceBounds,
   families,
+  showClear = true,
 }: {
   brands: string[];
   /**
@@ -85,6 +95,8 @@ export function CatalogFilters({
   priceBounds: { min: number; max: number };
   /** Live taxonomy from `scent_families` — the admin owns this list. */
   families: ScentFamilyOption[];
+  /** The mobile sheet puts «Цэвэрлэх» in its title row instead. */
+  showClear?: boolean;
 }) {
   const {
     values,
@@ -116,6 +128,16 @@ export function CatalogFilters({
 
   const featured = searchParams.get("featured") === "1";
 
+  // Хураасан үед ч сонгосон брэнд харагдсаар байна — эс тэгвээс идэвхтэй
+  // шүүлтүүр нүднээс далд болж, яаж арилгахаа олохгүй.
+  const [showAllBrands, setShowAllBrands] = React.useState(false);
+  const pickedBrands = values("brand");
+  const collapsedBrands = brands.filter(
+    (b, i) => i < BRANDS_COLLAPSED || pickedBrands.includes(b),
+  );
+  const visibleBrands = showAllBrands ? brands : collapsedBrands;
+  const hiddenBrandCount = brands.length - collapsedBrands.length;
+
   // Round bounds out to nice slider stops.
   const domainMin = Math.floor(priceBounds.min / PRICE_STEP) * PRICE_STEP;
   const domainMax = Math.ceil(priceBounds.max / PRICE_STEP) * PRICE_STEP;
@@ -137,14 +159,18 @@ export function CatalogFilters({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="h-9 font-serif text-lg font-semibold">Шүүлтүүр</h2>
-        {activeCount > 0 && (
+      {/*
+        No «Шүүлтүүр» heading: the chips say what this is, and on desktop the
+        heading only pushed the filters down. The mobile sheet titles itself
+        (and carries its own clear button next to the close button).
+      */}
+      {showClear && activeCount > 0 && (
+        <div className="flex justify-end">
           <Button variant="ghost" size="sm" onClick={clearAll}>
             Цэвэрлэх ({activeCount})
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       <Group title="Хүйс">
         <div className="grid grid-cols-3 gap-2">
@@ -256,13 +282,13 @@ export function CatalogFilters({
       )}
 
       <Group title="Брэнд">
-        <div className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-2">
-          {brands.map((b) => {
+        <div id="catalog-brands" className="grid grid-cols-2 gap-2">
+          {visibleBrands.map((b) => {
             const logo = brandLogos[b];
             return (
               <Chip
                 key={b}
-                active={values("brand").includes(b)}
+                active={pickedBrands.includes(b)}
                 onClick={() => toggle("brand", b)}
               >
                 {logo ? (
@@ -273,9 +299,6 @@ export function CatalogFilters({
                       width={120}
                       height={24}
                       unoptimized
-                      // The list is a short scroll box, so a lazy logo blinks
-                      // in under the cursor as the shopper scrolls the brands.
-                      loading="eager"
                       className="brand-logo h-5 w-auto object-contain"
                     />
                   </span>
@@ -286,6 +309,26 @@ export function CatalogFilters({
             );
           })}
         </div>
+        {hiddenBrandCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowAllBrands((v) => !v)}
+            aria-expanded={showAllBrands}
+            aria-controls="catalog-brands"
+            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm font-medium transition-colors"
+          >
+            {showAllBrands
+              ? "Хураах"
+              : `Бүх брэнд харах (+${hiddenBrandCount})`}
+            <ChevronDown
+              aria-hidden
+              className={cn(
+                "size-4 transition-transform",
+                showAllBrands && "rotate-180",
+              )}
+            />
+          </button>
+        )}
       </Group>
     </div>
   );
