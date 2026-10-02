@@ -4,13 +4,13 @@
 
 /*
  * vonscent — four switchable themes (next-themes, attribute="class"):
- *   .navy  — default light theme (white bg, navy text and accents)
- *   .black — dark monochrome (black bg, white text)
+ *   .navy  — light theme (white bg, navy text and accents)
+ *   .black — default; dark monochrome (black bg, white text)
  *   .white — light monochrome (white bg, near-black text)
  *   .pink  — soft pink palette
  * :root carries the black values as the base every theme builds on (.navy,
- * .white and .pink override on top). The default theme is `navy`: the server
- * renders `<html class="navy">` (layout.tsx) so there is no flash before
+ * .white and .pink override on top). The default theme is `black`: the server
+ * renders `<html class="black">` (layout.tsx) so there is no flash before
  * hydration.
  *
  * `.force-black` is the same palette pinned to an element instead of the
