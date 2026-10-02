@@ -54,6 +54,7 @@ export function BottomNav() {
             key={item.href}
             {...item}
             active={isActive(item.href)}
+            current={pathname === item.href}
             badge={badgeFor(item.href)}
           />
         ))}
@@ -63,6 +64,7 @@ export function BottomNav() {
             key={item.href}
             {...item}
             active={isActive(item.href)}
+            current={pathname === item.href}
             badge={badgeFor(item.href)}
           />
         ))}
@@ -76,17 +78,33 @@ function Tab({
   label,
   icon: Icon,
   active,
+  current,
   badge,
 }: {
   href: string;
   label: string;
   icon: React.ElementType;
   active: boolean;
+  /** Яг энэ хуудсан дээр байгаа эсэх (дэд хуудас биш). */
+  current: boolean;
   badge: number;
 }) {
+  // Аль хэдийн нээлттэй байгаа таб дээр дахин дарахад дахин ачаалахын оронд
+  // дээш гүйлгэнэ (iOS-ийн таб цэсний зуршил). Query (каталогийн шүүлтүүр)
+  // хадгалагдана — Link рүү явбал `/catalog` болж шүүлтүүр арилах байсан.
+  const onClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!current || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    const reduce = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+  };
+
   return (
     <Link
       href={href}
+      onClick={onClick}
       aria-label={label}
       aria-current={active ? "page" : undefined}
       className={cn(
