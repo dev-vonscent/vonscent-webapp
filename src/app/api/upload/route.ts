@@ -4,7 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getStaffUser } from "@/lib/auth/guard";
 import { uploadImage } from "@/lib/storage/storage";
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/lib/storage/limits";
-import { processImage, presetForFolder } from "@/lib/storage/process-image";
+import {
+  isOpaqueImage,
+  presetForFolder,
+  processImage,
+} from "@/lib/storage/process-image";
 import { imageUploadFailure } from "@/lib/storage/report";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
@@ -80,12 +84,16 @@ async function handle(req: Request) {
     if (limited) return limited;
   }
 
+  const bytes = await file.arrayBuffer();
+  // Refused up front rather than stored: on the storefront an opaque logo is a
+  // black box, and the admin would only find out after it went live.
+  if (folder === "brands" && (await isOpaqueImage(bytes))) {
+    return NextResponse.json({ error: "OPAQUE_LOGO" }, { status: 400 });
+  }
+
   // Re-encoded to a bounded WebP, so the extension comes from the processed
   // image rather than whatever the client happened to name the file.
-  const image = await processImage(
-    await file.arrayBuffer(),
-    presetForFolder(folder),
-  );
+  const image = await processImage(bytes, presetForFolder(folder));
   if (!image) {
     return NextResponse.json({ error: "BAD_IMAGE" }, { status: 400 });
   }

@@ -40,7 +40,11 @@ function isHeic(file: File): boolean {
  * quality JPEG in between costs a few hundred KB of upload and keeps the only
  * visible encode the one sharp does.
  */
-async function downscale(file: File, maxEdge: number): Promise<File | null> {
+async function downscale(
+  file: File,
+  maxEdge: number,
+  keepAlpha: boolean,
+): Promise<File | null> {
   if (typeof createImageBitmap !== "function") return file; // ancient browser
   let bitmap: ImageBitmap;
   try {
@@ -95,13 +99,18 @@ async function downscale(file: File, maxEdge: number): Promise<File | null> {
       canvas = final;
     }
 
+    // JPEG has no alpha: a transparent logo came back on a black field, and
+    // the storefront's `.brand-logo` filter then painted the whole tile black.
+    // PNG is lossless, so the server's WebP pass is still the only lossy one.
+    const png = keepAlpha && file.type !== "image/jpeg";
+    const type = png ? "image/png" : "image/jpeg";
     const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", 0.92),
+      canvas.toBlob(resolve, type, 0.92),
     );
     if (!blob) return file;
 
-    const name = file.name.replace(/\.[^.]+$/, "") + ".jpg";
-    return new File([blob], name, { type: "image/jpeg" });
+    const name = file.name.replace(/\.[^.]+$/, "") + (png ? ".png" : ".jpg");
+    return new File([blob], name, { type });
   } catch {
     return file; // canvas trouble — let the server have the original
   }
@@ -114,6 +123,8 @@ async function downscale(file: File, maxEdge: number): Promise<File | null> {
 export async function prepareUpload(
   file: File,
   maxEdge: number = UPLOAD_MAX_EDGE,
+  /** Keep transparency (icons, brand logos) instead of flattening to JPEG. */
+  { keepAlpha = false }: { keepAlpha?: boolean } = {},
 ): Promise<PreparedUpload> {
   if (isHeic(file)) {
     return { ok: false, message: HEIC_MESSAGE };
@@ -126,7 +137,7 @@ export async function prepareUpload(
   }
   // An unrecognised type is only rejected if we also can't decode it, so a
   // valid image the browser happens to label oddly still gets through.
-  const shrunk = await downscale(file, maxEdge);
+  const shrunk = await downscale(file, maxEdge, keepAlpha);
   if (!shrunk) {
     return {
       ok: false,
