@@ -4,13 +4,13 @@
 
 /*
  * vonscent — four switchable themes (next-themes, attribute="class"):
- *   .navy  — default light theme (white bg, navy text and accents)
- *   .black — dark monochrome (black bg, white text)
+ *   .navy  — light theme (white bg, navy text and accents)
+ *   .black — default; dark monochrome (black bg, white text)
  *   .white — light monochrome (white bg, near-black text)
  *   .pink  — soft pink palette
  * :root carries the black values as the base every theme builds on (.navy,
- * .white and .pink override on top). The default theme is `navy`: the server
- * renders `<html class="navy">` (layout.tsx) so there is no flash before
+ * .white and .pink override on top). The default theme is `black`: the server
+ * renders `<html class="black">` (layout.tsx) so there is no flash before
  * hydration.
  *
  * `.force-black` is the same palette pinned to an element instead of the
@@ -320,6 +320,7 @@
   --animate-marquee: marquee 28s linear infinite;
   --animate-shimmer: shimmer 2.2s linear infinite;
   --animate-sheen: sheen-rotate 80s linear infinite;
+  --animate-nudge-up: nudge-up 2s ease-in-out infinite;
 }
 
 @keyframes accordion-down {
@@ -346,6 +347,16 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+/* A small upward bob — the arrow on «Дээш буцах» pointing where it goes. */
+@keyframes nudge-up {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
   }
 }
 @keyframes marquee {
