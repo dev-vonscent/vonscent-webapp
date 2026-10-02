@@ -66,7 +66,9 @@ export function CatalogInfiniteGrid({
     isFetchingNextPage,
     isFetchNextPageError,
   } = useInfiniteQuery({
-    queryKey: ["catalog", query],
+    // Эхлэх хуудас түлхүүрт орно: `?page=3`-аас эхэлсэн жагсаалт энгийн
+    // `/catalog`-ийн кэшийг эзлэх ёсгүй.
+    queryKey: ["catalog", query, initial.page],
     queryFn: ({ pageParam }) => fetchCatalogPage(query, pageParam),
     initialPageParam: initial.page,
     getNextPageParam: nextCatalogPage,
@@ -74,7 +76,15 @@ export function CatalogInfiniteGrid({
   });
 
   const pages = data.pages;
-  const items = pages.flatMap((p) => p.items);
+  // LIMIT/OFFSET хуудаслалт: хоёр ачааллын хооронд бараа нэмэгдвэл (эсвэл
+  // эрэмбэ тэнцвэл) нэг бараа хоёр хуудсанд давтагдаж болно — давхардсан
+  // React key-ээс сэргийлж эхний тохиолдлыг л үлдээнэ.
+  const items = React.useMemo(() => {
+    const seen = new Set<string>();
+    return pages
+      .flatMap((p) => p.items)
+      .filter((item) => !seen.has(item.id) && !!seen.add(item.id));
+  }, [pages]);
   const last = pages[pages.length - 1];
   const nextPage = nextCatalogPage(last);
   // Богино жагсаалтад (нэг-хоёр мөр) дээш буцах зүйл байхгүй.
