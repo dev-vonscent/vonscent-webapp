@@ -61,7 +61,8 @@ export function IconUpload({
   async function upload(file: File) {
     setError(null);
     // Icons render at 48px, so they need far less than the default bound.
-    const prepared = await prepareUpload(file, 512);
+    // Both logos and family icons sit on a transparent field.
+    const prepared = await prepareUpload(file, 512, { keepAlpha: true });
     if (!prepared.ok) {
       setError(prepared.message);
       return;
@@ -76,7 +77,13 @@ export function IconUpload({
         { method: "POST", body: fd },
       );
       if (!res.ok) {
-        setError(res.demo ? "Demo горим: зураг хадгалагдсангүй." : res.error);
+        setError(
+          res.demo
+            ? "Demo горим: зураг хадгалагдсангүй."
+            : res.error.includes("OPAQUE_LOGO")
+              ? "Лого тунгалаг дэвсгэртэй PNG/WebP байх ёстой — цагаан дэвсгэртэй зураг сайт дээр хар дөрвөлжин болж харагдана."
+              : res.error,
+        );
       } else if (!res.data?.url) {
         setError("Оруулахад алдаа гарлаа.");
       } else {

@@ -46,7 +46,8 @@ export function BrandManager({ brands }: { brands: BrandOption[] }) {
           return false;
         }
         const known = Object.entries({
-          DUPLICATE: "Энэ брэнд аль хэдийн бүртгэлтэй байна.",
+          DUPLICATE:
+            "Энэ брэнд жагсаалтад аль хэдийн бий. Логог нь солих бол жагсаалтын мөрөн дээрх лого дээр дарж шинэ зураг сонгоно уу.",
           BAD_NAME: "Нэрийг латин үсгээр бичнэ үү.",
           NOT_MIGRATED:
             "Өгөгдлийн сан бэлэн биш байна — 0050_brands.sql migration ажиллуулаагүй байна.",

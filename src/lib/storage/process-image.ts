@@ -138,3 +138,23 @@ export async function processImage(
     return null;
   }
 }
+
+/**
+ * True when every pixel is fully opaque. A brand logo is rendered through
+ * `filter: brightness(0)` (globals.css `.brand-logo`), so an opaque one — a
+ * JPEG, or a PNG on a white field — shows as a solid black rectangle. Errors
+ * count as "not opaque" and leave the decode verdict to processImage.
+ */
+export async function isOpaqueImage(
+  input: ArrayBuffer | Uint8Array | Buffer,
+): Promise<boolean> {
+  const buffer = Buffer.isBuffer(input)
+    ? input
+    : Buffer.from(input as ArrayBuffer);
+  const sharp = await loadSharp();
+  try {
+    return (await sharp(buffer).stats()).isOpaque;
+  } catch {
+    return false;
+  }
+}
