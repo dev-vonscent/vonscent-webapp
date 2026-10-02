@@ -92,6 +92,24 @@ function Reveal({
 }
 
 /**
+ * Нэвтэрсний дараа сайт руу — хуудсыг бүтнээр ачаална.
+ *
+ * `router.refresh(); router.push(next)` байсан. Нэвтрээгүй үед доод цэсний
+ * «Профайл» холбоос `/account`-ийг prefetch хийхэд middleware `/login` руу
+ * redirect буцаадаг бөгөөд Next.js router үүнийг кэшэлдэг; `refresh()` тэр
+ * кэшийг цэвэрлэдэггүй (`push()` нь хүлээгдэж буй refresh-ийг цуцалдаг ч), тул
+ * нэвтэрсэн хүн дахин нэвтрэх хуудас руу буцдаг байв — vercel/next.js#88937.
+ * Бүтэн ачаалал router, TanStack Query, header-ийн бүх кэшийг нэг дор
+ * цэвэрлэнэ; сагс, хүслийн жагсаалт localStorage-д тул алдагдахгүй.
+ *
+ * `replace` — түүхэнд `/login` үлдэхгүй: Back дарахад нэвтрэх форм биш, түүнээс
+ * өмнөх хуудас гарна. `next` нь `safeNext`-ээр цэвэрлэгдсэн дотоод зам.
+ */
+function enterSite(next: string) {
+  window.location.replace(next);
+}
+
+/**
  * Утас + 4 оронтой passcode-той нэвтрэлт (verify.mn MO-SMS дээр суурилсан).
  * register/forgot: дугаар баталгаажуулах → passcode тохируулах хоёр алхам.
  */
@@ -117,7 +135,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
   const [passcode, setPasscode] = React.useState("");
   const [passcode2, setPasscode2] = React.useState("");
   const [loading, setLoading] = React.useState(false);
-  // Амжилттай болсны дараа router.push дуустал хуудас шилжих төлөвт үлдэнэ.
+  // Амжилттай болсны дараа шинэ хуудас ачаалагдтал шилжих төлөвт үлдэнэ.
   // Үүнгүйгээр `finally` нь loading-ийг тэглээд товч «Нэвтрэх» рүү буцаж,
   // хэрэглэгч дахин дардаг байсан (мобайлд ялангуяа — навигаци удаан).
   const [leaving, setLeaving] = React.useState(false);
@@ -152,10 +170,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
         });
         if (res.ok) {
           setLeaving(true);
-          // `refresh()` нь `push()`-ээс ӨМНӨ: client router cache-ийг хүчингүй
-          // болговол зорих хуудас шинэ auth cookie-тойгоо шууд татагдана.
-          router.refresh();
-          router.push(next);
+          enterSite(next);
           return;
         }
         const body = (await res.json().catch(() => null)) as {
@@ -185,7 +200,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
         setLoading(false);
       }
     },
-    [loading, leaving, phone, passcode, next, router],
+    [loading, leaving, phone, passcode, next],
   );
 
   async function submitPasscode(e: React.FormEvent) {
@@ -215,8 +230,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
       );
       if (res.ok) {
         setLeaving(true);
-        router.refresh();
-        router.push(next);
+        enterSite(next);
         return;
       }
       const body = (await res.json().catch(() => null)) as {
@@ -267,8 +281,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
       return;
     }
     setLeaving(true);
-    router.refresh();
-    router.push(next);
+    enterSite(next);
   }
 
   // Товчны «ажиллаж байна» төлөв: хүсэлт явж буй ч, хуудас шилжиж буй ч адил.
