@@ -16,7 +16,12 @@ const LEFT = [
 
 const RIGHT = [
   { href: "/wishlist", label: "Хүсэл", icon: Heart },
-  { href: "/account", label: "Профайл", icon: User },
+  // No prefetch: for a guest, middleware answers /account with a redirect to
+  // /login, and the router caches that redirect. After signing in, a tap here
+  // (or the post-login navigation) replayed it and showed the login form
+  // again — vercel/next.js#88937. The page is behind auth either way, so
+  // there is nothing useful to warm.
+  { href: "/account", label: "Профайл", icon: User, prefetch: false },
 ] as const;
 
 export function BottomNav() {
@@ -77,6 +82,7 @@ function Tab({
   href,
   label,
   icon: Icon,
+  prefetch,
   active,
   current,
   badge,
@@ -84,6 +90,8 @@ function Tab({
   href: string;
   label: string;
   icon: React.ElementType;
+  /** `false` for auth-gated pages — see `RIGHT`. */
+  prefetch?: false;
   active: boolean;
   /** Яг энэ хуудсан дээр байгаа эсэх (дэд хуудас биш). */
   current: boolean;
@@ -104,6 +112,7 @@ function Tab({
   return (
     <Link
       href={href}
+      prefetch={prefetch}
       onClick={onClick}
       aria-label={label}
       aria-current={active ? "page" : undefined}

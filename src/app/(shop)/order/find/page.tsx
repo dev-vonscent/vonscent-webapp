@@ -48,7 +48,13 @@ export default async function OrderFindPage({
 
       <p className="text-muted-foreground text-center text-sm">
         Бүртгэлтэй бол{" "}
-        <Link href="/account/orders" className="text-gold-strong underline">
+        {/* No prefetch: a guest's prefetch caches the /login redirect and
+            replays it after they sign in (see bottom-nav.tsx). */}
+        <Link
+          href="/account/orders"
+          prefetch={false}
+          className="text-gold-strong underline"
+        >
           Миний захиалга
         </Link>{" "}
         хэсгээс шууд харна. Асуух зүйл байвал{" "}
