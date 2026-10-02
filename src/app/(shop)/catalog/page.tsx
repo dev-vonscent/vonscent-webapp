@@ -9,12 +9,12 @@ import { CatalogFilters } from "@/features/catalog/components/catalog-filters";
 import { CatalogFilterSheet } from "@/features/catalog/components/catalog-filter-sheet";
 import { CatalogSort } from "@/features/catalog/components/catalog-sort";
 import { CatalogSearch } from "@/features/catalog/components/catalog-search";
-import { CatalogPagination } from "@/features/catalog/components/catalog-pagination";
+import { CatalogInfiniteGrid } from "@/features/catalog/components/catalog-infinite-grid";
 import { CatalogResults } from "@/features/catalog/components/catalog-results";
 import { FilterQueryProvider } from "@/features/catalog/components/use-filter-query";
-import { ProductGrid } from "@/features/products/components/product-grid";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
+import { CATALOG_PAGE_SIZE } from "@/lib/constants";
 
 /**
  * The route itself is dynamic — it reads `searchParams`, so a filtered view is
@@ -38,10 +38,17 @@ export default async function CatalogPage({
 }) {
   const params = await searchParams;
   const filters = parseFilters(params);
+  // `page`-гүй шүүлтүүр: доош гүйлгэх жагсаалтын түлхүүр. Шүүлтүүр солигдоход
+  // жагсаалт шинээр эхэлнэ.
+  const query = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (k === "page" || v === undefined) continue;
+    query.set(k, Array.isArray(v) ? v.join(",") : v);
+  }
   // «Хямдрал» таг зөвхөн ус шүүнэ — багцууд /collections-д (клиент,
   // 2026-09-30: «Хямдралтай багц» мөрийг каталогоос хассан).
   const [result, brands, priceBounds, families, brandRows] = await Promise.all([
-    getCatalog(filters),
+    getCatalog({ ...filters, perPage: CATALOG_PAGE_SIZE }),
     getBrands(),
     getPriceBounds(),
     getScentFamilies(),
@@ -117,14 +124,11 @@ export default async function CatalogPage({
                   }
                 />
               ) : (
-                <>
-                  <ProductGrid products={result.items} />
-                  <CatalogPagination
-                    page={result.page}
-                    perPage={result.perPage}
-                    total={result.total}
-                  />
-                </>
+                <CatalogInfiniteGrid
+                  key={query.toString()}
+                  initial={result}
+                  query={query.toString()}
+                />
               )}
             </CatalogResults>
           </div>

@@ -16,7 +16,12 @@ const LEFT = [
 
 const RIGHT = [
   { href: "/wishlist", label: "Хүсэл", icon: Heart },
-  { href: "/account", label: "Профайл", icon: User },
+  // No prefetch: for a guest, middleware answers /account with a redirect to
+  // /login, and the router caches that redirect. After signing in, a tap here
+  // (or the post-login navigation) replayed it and showed the login form
+  // again — vercel/next.js#88937. The page is behind auth either way, so
+  // there is nothing useful to warm.
+  { href: "/account", label: "Профайл", icon: User, prefetch: false },
 ] as const;
 
 export function BottomNav() {
@@ -54,6 +59,7 @@ export function BottomNav() {
             key={item.href}
             {...item}
             active={isActive(item.href)}
+            current={pathname === item.href}
             badge={badgeFor(item.href)}
           />
         ))}
@@ -63,6 +69,7 @@ export function BottomNav() {
             key={item.href}
             {...item}
             active={isActive(item.href)}
+            current={pathname === item.href}
             badge={badgeFor(item.href)}
           />
         ))}
@@ -75,18 +82,38 @@ function Tab({
   href,
   label,
   icon: Icon,
+  prefetch,
   active,
+  current,
   badge,
 }: {
   href: string;
   label: string;
   icon: React.ElementType;
+  /** `false` for auth-gated pages — see `RIGHT`. */
+  prefetch?: false;
   active: boolean;
+  /** Яг энэ хуудсан дээр байгаа эсэх (дэд хуудас биш). */
+  current: boolean;
   badge: number;
 }) {
+  // Аль хэдийн нээлттэй байгаа таб дээр дахин дарахад дахин ачаалахын оронд
+  // дээш гүйлгэнэ (iOS-ийн таб цэсний зуршил). Query (каталогийн шүүлтүүр)
+  // хадгалагдана — Link рүү явбал `/catalog` болж шүүлтүүр арилах байсан.
+  const onClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!current || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    const reduce = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+  };
+
   return (
     <Link
       href={href}
+      prefetch={prefetch}
+      onClick={onClick}
       aria-label={label}
       aria-current={active ? "page" : undefined}
       className={cn(

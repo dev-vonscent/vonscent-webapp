@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { IMAGE_PRESETS, presetForFolder, processImage } from "./process-image";
+import {
+  IMAGE_PRESETS,
+  isOpaqueImage,
+  presetForFolder,
+  processImage,
+} from "./process-image";
 
 /** A solid-colour JPEG of the given size — stands in for a camera original. */
 function jpeg(width: number, height: number) {
@@ -82,5 +87,29 @@ describe("presetForFolder", () => {
 
   it("falls back to the photo preset for an unknown folder", () => {
     expect(presetForFolder("something-new")).toBe(IMAGE_PRESETS.photo);
+  });
+});
+
+describe("isOpaqueImage", () => {
+  it("flags a JPEG logo, which the storefront would render as a black box", async () => {
+    expect(await isOpaqueImage(await jpeg(400, 100))).toBe(true);
+  });
+
+  it("passes a logo on a transparent field", async () => {
+    const png = await sharp({
+      create: {
+        width: 400,
+        height: 100,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    })
+      .png()
+      .toBuffer();
+    expect(await isOpaqueImage(png)).toBe(false);
+  });
+
+  it("leaves undecodable bytes to processImage", async () => {
+    expect(await isOpaqueImage(Buffer.from("not an image"))).toBe(false);
   });
 });

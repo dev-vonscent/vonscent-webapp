@@ -30,7 +30,7 @@ export function CatalogFilterSheet({
   priceBounds: { min: number; max: number };
   families: ScentFamilyOption[];
 }) {
-  const { activeCount } = useFilterQuery();
+  const { activeCount, clearAll } = useFilterQuery();
   const [open, setOpen] = React.useState(false);
   const contentRef = React.useRef<HTMLDivElement>(null);
   const startY = React.useRef<number | null>(null);
@@ -79,13 +79,27 @@ export function CatalogFilterSheet({
         overlayClassName="bg-black/10"
         className="border-border bg-card/60 flex max-h-[80vh] flex-col gap-4 rounded-b-2xl pb-3 backdrop-blur-lg lg:hidden"
       >
-        <SheetTitle className="sr-only">Шүүлтүүр</SheetTitle>
+        {/*
+          One row with the sheet's close button: that button sits at
+          `top-2 right-2 size-11`, so a 44px row pulled up into the `p-6`
+          padding (`-mt-4`) shares its centre line. `pr-12` keeps the clear
+          button clear of it.
+        */}
+        <div className="-mt-4 flex h-11 shrink-0 items-center justify-between gap-2 pr-12">
+          <SheetTitle className="pr-0 font-serif">Шүүлтүүр</SheetTitle>
+          {activeCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={clearAll}>
+              Цэвэрлэх ({activeCount})
+            </Button>
+          )}
+        </div>
         <div className="no-scrollbar -mx-2 flex-1 overflow-y-auto px-2">
           <CatalogFilters
             brands={brands}
             brandLogos={brandLogos}
             priceBounds={priceBounds}
             families={families}
+            showClear={false}
           />
         </div>
         <button
