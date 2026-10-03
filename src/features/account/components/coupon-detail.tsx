@@ -218,7 +218,7 @@ export function CouponDetail({ code }: { code: string }) {
           <div className="mx-auto max-w-md">
             <LoadingButton
               size="lg"
-              className="w-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+              className="bg-cta text-cta-foreground hover:bg-cta/90 w-full"
               loading={pending}
               onClick={onUse}
             >

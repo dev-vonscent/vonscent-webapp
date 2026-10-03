@@ -1602,7 +1602,7 @@ export default function CheckoutPage() {
                 loading={submitting}
                 type="submit"
                 size="lg"
-                className="hidden w-full lg:inline-flex"
+                className="bg-cta text-cta-foreground hover:bg-cta/90 hidden w-full lg:inline-flex"
                 disabled={zoneBlocked}
               >
                 {zoneBlocked
@@ -1642,7 +1642,7 @@ export default function CheckoutPage() {
                 loading={submitting}
                 type="submit"
                 disabled={zoneBlocked}
-                className="shrink-0 rounded-full"
+                className="bg-cta text-cta-foreground hover:bg-cta/90 shrink-0 rounded-full"
               >
                 {zoneBlocked ? "Хүргэлтгүй" : "Төлбөр төлөх"}
               </LoadingButton>

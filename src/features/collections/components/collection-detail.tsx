@@ -317,7 +317,7 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
       <div ref={ctaRef} className="space-y-3">
         <Button
           size="lg"
-          className="w-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+          className="bg-cta text-cta-foreground hover:bg-cta/90 w-full"
           disabled={!available}
           onClick={onBuyNow}
         >

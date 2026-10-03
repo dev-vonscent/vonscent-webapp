@@ -362,7 +362,11 @@ export function CartSheet({
                             <button
                               className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full disabled:opacity-40 md:size-9"
                               onClick={() =>
-                                setQty(item.key, item.qty + 1, maxQtyOf(item.key))
+                                setQty(
+                                  item.key,
+                                  item.qty + 1,
+                                  maxQtyOf(item.key),
+                                )
                               }
                               disabled={item.qty >= maxQtyOf(item.key)}
                               aria-label="Нэмэх"
@@ -416,7 +420,7 @@ export function CartSheet({
               </p>
               {noneSelected ? (
                 <Button
-                  className="w-full in-[.black]:bg-white in-[.black]:text-black"
+                  className="bg-cta text-cta-foreground hover:bg-cta/90 w-full"
                   size="lg"
                   disabled
                 >
@@ -426,7 +430,7 @@ export function CartSheet({
                 <SheetClose asChild>
                   <Button
                     asChild
-                    className="w-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+                    className="bg-cta text-cta-foreground hover:bg-cta/90 w-full"
                     size="lg"
                   >
                     <Link href="/checkout" onClick={clearBuyNow}>
