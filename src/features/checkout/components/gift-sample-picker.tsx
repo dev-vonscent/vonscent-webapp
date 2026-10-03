@@ -144,7 +144,9 @@ export function GiftSamplePicker({
   return (
     <CheckoutSection
       step={step}
-      title={`Бэлэг /Захиалгын үнийн дүнгийн ${formatPrice(threshold)} тутамд ${ml}мл/`}
+      // Клиентийн гарчиг (UG 2026-09) үгээрээ — налуу зураастай нэг мөр нь
+      // утсан дээр хоёр мөрөнд тасардаг байсан тул гарчиг + дэд мөр болгов.
+      title="Бэлэг"
       aside={
         allowance > 0 ? (
           <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
@@ -154,6 +156,12 @@ export function GiftSamplePicker({
       }
     >
       <div className="text-muted-foreground -mt-2 space-y-0.5 text-sm">
+        <p className="text-foreground">
+          Захиалгын үнийн дүнгийн{" "}
+          <span className="whitespace-nowrap">
+            {formatPrice(threshold)} тутамд {ml}мл
+          </span>
+        </p>
         {summary.map((line) => (
           <p key={line}>{line}</p>
         ))}

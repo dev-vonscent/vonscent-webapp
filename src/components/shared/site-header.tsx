@@ -59,6 +59,7 @@ export function SiteHeader({
   const pathname = usePathname();
   const router = useRouter();
   const isHome = pathname === "/";
+  const hideCart = pathname === "/cart" || pathname === "/checkout";
 
   // Hide on scroll down, reveal on scroll up.
   const [hidden, setHidden] = React.useState(false);
@@ -146,10 +147,17 @@ export function SiteHeader({
               {getTitle(pathname)}
             </span>
           )}
-          <CartSheet
-            triggerVariant="secondary"
-            triggerClassName="shrink-0 rounded-full bg-secondary/85 backdrop-blur hover:bg-secondary"
-          />
+          {/* Сагс, төлбөрийн хуудсанд сагсны товч хэрэггүй: сагсан дээр
+              өөрийгөө давхардуулна, төлбөр дээр хэрэглэгчийг төлбөрөөс гаргах
+              зам болно. Гарчиг төвдөө үлдэхийн тулд ижил хэмжээний зай. */}
+          {hideCart ? (
+            <span aria-hidden className="size-10 shrink-0" />
+          ) : (
+            <CartSheet
+              triggerVariant="secondary"
+              triggerClassName="shrink-0 rounded-full bg-secondary/85 backdrop-blur hover:bg-secondary"
+            />
+          )}
         </div>
       )}
 
