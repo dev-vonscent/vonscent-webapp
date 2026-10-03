@@ -338,6 +338,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
               value={phone}
               onChange={setPhone}
               label="Утасны дугаар"
+              autoComplete="tel-national"
               autoFocus
               onComplete={() => passcodeRef.current?.focus()}
             />
@@ -370,7 +371,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
             <LoadingButton
               loading={pending}
               type="submit"
-              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+              className="bg-cta text-cta-foreground hover:bg-cta/90 h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98]"
               disabled={!validPhone || !validPasscode}
             >
               {copy.cta}
@@ -421,7 +422,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
             <LoadingButton
               loading={pending}
               type="submit"
-              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+              className="bg-cta text-cta-foreground hover:bg-cta/90 h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98]"
               disabled={!validPasscode || passcode2.length !== 4}
             >
               {copy.cta}
@@ -477,7 +478,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
 
             <Button
               asChild
-              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+              className="bg-cta text-cta-foreground hover:bg-cta/90 h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98]"
             >
               <a href={verify.session.smsUri}>
                 <MessageSquareText className="size-4" /> СМС илгээх
@@ -576,13 +577,14 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
               value={phone}
               onChange={setPhone}
               label="Утасны дугаар"
+              autoComplete="tel-national"
               autoFocus={mode === "forgot"}
             />
           </Reveal>
           <Reveal delay={mode === "register" ? 180 : 120}>
             <LoadingButton
               type="submit"
-              className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+              className="bg-cta text-cta-foreground hover:bg-cta/90 h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98]"
               loading={verify.stage === "starting"}
               disabled={!validPhone}
             >

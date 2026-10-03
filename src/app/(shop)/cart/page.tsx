@@ -6,11 +6,12 @@ import Image from "next/image";
 import { Minus, Plus, Trash2, Truck, ShoppingCart } from "lucide-react";
 import { GiftProgressNote } from "@/features/gifts/components/gift-progress-note";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
+import { CartCheckbox } from "@/features/cart/components/cart-checkbox";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
+import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { formatPrice } from "@/lib/format";
 import { useCart, selectSubtotal } from "@/features/cart/store";
 import { CartSizeSelect } from "@/features/cart/components/cart-size-select";
@@ -59,6 +60,16 @@ export default function CartPage() {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
 
+  /**
+   * Утасны наалдсан «Захиалах» зурвас — төлбөрийн хуудасныхтай ижил.
+   * Тоймын карт утсан дээр бүх мөрийн ДООР, бэлгийн тайлбарын ард байдаг тул
+   * сагс нээгдэхэд гол товч дэлгэцэнд огт харагддаггүй, мөр нэмэгдэх тусам
+   * улам доошилдог байв. Доод цэсний оронд суудаг (`useClaimBottomBar`).
+   */
+  const showCheckoutBar =
+    mounted && (items.length > 0 || collections.length > 0);
+  useClaimBottomBar(showCheckoutBar);
+
   if (!mounted) return <div className="mx-auto max-w-352 px-4 py-16 md:px-8" />;
 
   if (items.length === 0 && collections.length === 0) {
@@ -89,7 +100,7 @@ export default function CartPage() {
           {/* Сонголтын толгой мөр — хүссэн барааг л захиалах боломж */}
           <div className="flex items-center justify-between gap-3 px-1">
             <label className="flex cursor-pointer items-center gap-2.5 text-sm">
-              <Checkbox
+              <CartCheckbox
                 checked={allSelected}
                 onCheckedChange={(v) => setAllSelected(Boolean(v))}
                 aria-label="Бүгдийг сонгох"
@@ -119,7 +130,7 @@ export default function CartPage() {
             <Card key={c.key}>
               <CardContent className="p-4">
                 <div className="flex gap-4">
-                  <Checkbox
+                  <CartCheckbox
                     checked={
                       isCollectionSelected(c.key) &&
                       !blockedCollectionKeys.has(c.key)
@@ -223,7 +234,7 @@ export default function CartPage() {
           {items.map((item) => (
             <Card key={item.key}>
               <CardContent className="flex gap-4 p-4">
-                <Checkbox
+                <CartCheckbox
                   checked={
                     isItemSelected(item.key) && !blockedItemKeys.has(item.key)
                   }
@@ -352,7 +363,7 @@ export default function CartPage() {
               <Button
                 asChild={!noneSelected}
                 size="lg"
-                className="w-full"
+                className="bg-cta text-cta-foreground hover:bg-cta/90 w-full"
                 disabled={noneSelected}
               >
                 {noneSelected ? (
@@ -370,6 +381,34 @@ export default function CartPage() {
           </Card>
         </div>
       </div>
+
+      {showCheckoutBar && (
+        <div className="pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 lg:hidden">
+          <div className="bg-secondary/85 shadow-lift pointer-events-auto mb-3 flex w-full items-center gap-3 rounded-full py-2 pr-2 pl-4 backdrop-blur">
+            <div className="min-w-0 flex-1">
+              <p className="text-muted-foreground truncate text-[11px]">
+                {noneSelected ? "Бараа сонгоогүй байна" : "Барааны дүн"}
+              </p>
+              <p className="text-base/tight font-semibold tabular-nums">
+                {formatPrice(subtotal)}
+              </p>
+            </div>
+            <Button
+              asChild={!noneSelected}
+              disabled={noneSelected}
+              className="bg-cta text-cta-foreground hover:bg-cta/90 shrink-0 rounded-full"
+            >
+              {noneSelected ? (
+                "Захиалах"
+              ) : (
+                <Link href="/checkout" onClick={clearBuyNow}>
+                  Захиалах
+                </Link>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Сонгосон мөрүүдийг устгах нь буцаагдахгүй тул нэг баталгаажуулалт —
           сагсны толгойн дээрх хогийн савны icon үүнийг нээнэ. */}

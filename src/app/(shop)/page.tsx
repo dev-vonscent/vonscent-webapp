@@ -185,7 +185,7 @@ export default function HomePage() {
                 <Button
                   asChild
                   size="lg"
-                  className="in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+                  className="bg-cta text-cta-foreground hover:bg-cta/90"
                 >
                   <Link href="/catalog">Каталог үзэх</Link>
                 </Button>

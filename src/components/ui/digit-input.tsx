@@ -23,6 +23,11 @@ export interface DigitInputProps {
   className?: string;
   /** Нүдний хэмжээг дарж бичих (жишээ нь дөрвөлжин болгох). */
   cellClassName?: string;
+  /**
+   * Хөтчийн автобөглөлт. Өгөгдмөл `off` — нууц код, OTP. Утасны дугаарт
+   * `tel-national`: iOS/Android хэрэглэгчийн өөрийн дугаарыг санал болгоно.
+   */
+  autoComplete?: "off" | "tel-national";
 }
 
 export const DigitInput = React.forwardRef<HTMLInputElement, DigitInputProps>(
@@ -39,6 +44,7 @@ export const DigitInput = React.forwardRef<HTMLInputElement, DigitInputProps>(
       onComplete,
       className,
       cellClassName,
+      autoComplete = "off",
     },
     ref,
   ) => {
@@ -55,7 +61,14 @@ export const DigitInput = React.forwardRef<HTMLInputElement, DigitInputProps>(
     }, [value]);
 
     function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-      const next = e.target.value.replace(/\D/gu, "").slice(0, length);
+      const digits = e.target.value.replace(/\D/gu, "");
+      // Утасны автобөглөлт заримдаа улсын кодтой ирдэг («+976 9911 2233»):
+      // эхнээс нь тасалбал «97699112» болно — сүүлийн оронгуудыг авна. Нэг
+      // товчлуурын илүү орон (дүүрсэн үед дарсан) хуучин шигээ хаягдана.
+      const next =
+        autoComplete === "tel-national" && digits.length > length + 1
+          ? digits.slice(-length)
+          : digits.slice(0, length);
       const prev = prevRef.current;
       prevRef.current = next;
       onChange(next);
@@ -92,7 +105,7 @@ export const DigitInput = React.forwardRef<HTMLInputElement, DigitInputProps>(
           ref={inputRef}
           type="text"
           inputMode="numeric"
-          autoComplete="off"
+          autoComplete={autoComplete}
           aria-label={label}
           value={value}
           onChange={handleChange}
@@ -106,13 +119,10 @@ export const DigitInput = React.forwardRef<HTMLInputElement, DigitInputProps>(
           disabled={disabled}
           // Системийн давхарга `opacity`-г үл тоосон ч текст, курсор,
           // сонголтын өнгө өөрөө тунгалаг; удаан дарахад callout цэс гарахгүй.
-          className="absolute inset-0 z-10 cursor-pointer bg-transparent text-base text-transparent opacity-0 selection:bg-transparent [-webkit-text-fill-color:transparent] [-webkit-touch-callout:none]"
+          className="absolute inset-0 z-10 cursor-pointer bg-transparent text-base text-transparent opacity-0 [-webkit-text-fill-color:transparent] [-webkit-touch-callout:none] selection:bg-transparent"
           style={{ caretColor: "transparent" }}
         />
-        <div
-          aria-hidden
-          className="flex items-center justify-center gap-1.5"
-        >
+        <div aria-hidden className="flex items-center justify-center gap-1.5">
           {Array.from({ length }).map((_, i) => {
             const char = value[i];
             const active = focused && i === activeIndex && !disabled;

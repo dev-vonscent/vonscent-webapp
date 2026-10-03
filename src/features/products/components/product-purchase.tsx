@@ -6,9 +6,12 @@ import { Minus, Plus, ShoppingCart, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
-import { RELATED_SECTION_ID, TRIAL_SIZE_ML } from "@/lib/constants";
+import { TRIAL_SIZE_ML } from "@/lib/constants";
 import { toast } from "@/lib/toast";
-import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
+import {
+  MobileBuyBar,
+  useScrolledPast,
+} from "@/components/shared/mobile-buy-bar";
 import { useCart } from "@/features/cart/store";
 import { cartMlFor } from "@/features/cart/budget";
 import { maxUnits } from "@/features/products/sellable";
@@ -39,37 +42,14 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   // нууж, тоймын хэсэгт дахин халт гаргадаг байв. Одоо товчийг өнгөрсний дараа
   // л нэг удаа гарч, «Төстэй бараа» хүртэл тогтвортой үлдэнэ.
   const ctaRef = React.useRef<HTMLDivElement>(null);
-  const [ctaAway, setCtaAway] = React.useState(false);
-  React.useEffect(() => {
-    const el = ctaRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(([entry]) =>
-      setCtaAway(!entry.isIntersecting && entry.boundingClientRect.bottom <= 0),
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+  const ctaAway = useScrolledPast(ctaRef);
 
-  // …and stands down again over «Төстэй бараа». At the bottom of the page the
-  // bar was parked on top of the last row of *other* products' cards — their
-  // wishlist and quick-add buttons became untappable, and a «Захиалах» for this
-  // perfume sitting over a different one is misleading on top of being in the
-  // way. The section is absent when the product has no related items, in which
-  // case there is nothing to collide with and the bar simply stays.
-  const [atRelated, setAtRelated] = React.useState(false);
-  React.useEffect(() => {
-    const el = document.getElementById(RELATED_SECTION_ID);
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setAtRelated(entry.isIntersecting),
-      // Positive bottom margin: the section counts as "here" while it is still
-      // just below the fold, so the bar is already gone by the time the first
-      // card is reachable rather than lifting off from under the thumb.
-      { rootMargin: "0px 0px 120px 0px" },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+  // «Төстэй бараа» дээр ирэхэд нуудаг байсныг авсан: товч ба тэр хэсгийн
+  // хоорондох контент утасны дэлгэцээс богино (тайлбар цөөн, үнэлгээгүй)
+  // бараан дээр зурвас хэдхэн зуун px-ийн цонхонд гялс гараад алга болж,
+  // доод цэс ч хамт анивчдаг байв. Одоо товчийг өнгөрсний дараа хуудасны
+  // төгсгөл хүртэл тогтвортой үлдэнэ; сүүлийн мөрийг layout-ын `pb-24`
+  // (цэстэй ижил өндөр) чөлөөлнө.
 
   // Сагсанд ЭНЭ бараанаас аль хэдийн орсон ml. `sellable` нь «нэг ширхэг
   // цутгах ml хүрэлцэх үү» гэсэн асуулт тул түүнд найдвал 15ml үлдэгдэлтэй
@@ -110,13 +90,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   // Зурвас гарах цорын ганц нөхцөл — доод цэсэнд мэдэгдэх нэхэмжлэл ч үүнээс
   // уншина, ингэснээр хоёулаа хэзээ ч зөрөхгүй.
   const showBuyBar =
-    ctaAway &&
-    !atRelated &&
-    !soldOut &&
-    selected != null &&
-    selected.sellable &&
-    maxQty >= 1;
-  useClaimBottomBar(showBuyBar);
+    ctaAway && !soldOut && selected != null && selected.sellable && maxQty >= 1;
 
   /**
    * Puts the selected size in the cart. Returns false when nothing was added.
@@ -380,7 +354,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
               the cart stays one tap away underneath. */}
           <Button
             size="lg"
-            className="flex-1 in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+            className="bg-cta text-cta-foreground hover:bg-cta/90 flex-1"
             disabled={buyDisabled}
             onClick={onBuyNow}
           >
@@ -435,56 +409,15 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
         </p>
       )}
 
-      {/* Mobile sticky buy bar. It takes the BottomNav's place rather than
-          stacking on it (`useClaimBottomBar`), so it also takes its shape: a
-          floating capsule with the Glass Trio (/85 + blur + lift), inset from
-          the edge. Flush against the bottom it read as stuck to the screen
-          instead of hovering over the page.
-
-          Цэстэй адил гулсаж орж гарна: нөхцөлөөр mount хийхэд цэс доошоо
-          гулсаж байхад зурвас нь нэг frame-д халт гарч ирдэг байв. Цэс эхэлж
-          гарах зайг `delay-150` өгнө — хоёр капсул хэзээ ч давхцахгүй. */}
       {selected && (
-        <div
-          className={cn(
-            "pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 transition-transform duration-300 ease-out motion-reduce:transition-none md:hidden",
-            showBuyBar ? "delay-150" : "translate-y-[140%]",
-          )}
-          inert={!showBuyBar}
-        >
-          <div className="bg-secondary/85 shadow-lift pointer-events-auto mb-3 flex w-full items-center gap-3 rounded-full py-2 pr-2 pl-4 backdrop-blur">
-            <div className="min-w-0 flex-1">
-              <p className="text-muted-foreground truncate text-[11px]">
-                {product.name} · {selected.ml}ml
-                {qty > 1 && ` · ${qty} ш`}
-              </p>
-              <p className="font-serif text-base/tight font-semibold tabular-nums">
-                {formatPrice(unitPrice * qty)}
-              </p>
-            </div>
-            {/* Icon-only at this width — the label would push «Захиалах» off
-                the bar on a small phone. Both pills, to nest in the capsule. */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 rounded-full"
-              onClick={onAdd}
-              aria-label="Сагсанд нэмэх"
-            >
-              {added ? (
-                <Check className="size-4" />
-              ) : (
-                <ShoppingCart className="size-4" />
-              )}
-            </Button>
-            <Button
-              onClick={onBuyNow}
-              className="shrink-0 rounded-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
-            >
-              Захиалах
-            </Button>
-          </div>
-        </div>
+        <MobileBuyBar
+          show={showBuyBar}
+          label={`${product.name} · ${selected.ml}ml${qty > 1 ? ` · ${qty} ш` : ""}`}
+          price={formatPrice(unitPrice * qty)}
+          added={added}
+          onAdd={onAdd}
+          onBuyNow={onBuyNow}
+        />
       )}
     </div>
   );

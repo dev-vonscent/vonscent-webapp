@@ -49,26 +49,24 @@ export function GiftProgressNote({
           {formatPrice(GIFT_THRESHOLD)} тутамд сонгогдсон үнэртнүүдээс {ml}мл
           бэлэгт дагалдана. (Дараагийн хуудсанд бэлгээ сонгоорой)
         </p>
-        <div className="text-muted-foreground text-xs text-balance">
+        {/* Нэг догол мөр: өгүүлбэр бүр тусдаа <p> + text-balance байхад
+            «Та бэлэгт…» бүр шинэ мөрөөс эхэлж, мөрүүд хагас өргөнд тасарч
+            баруун талд том хоосон зай үлддэг байв. */}
+        <p className="text-muted-foreground text-xs">
           {allowance > 0 && (
-            <p>
+            <>
               Та бэлэгт{" "}
               <strong className="text-foreground">{allowance * ml}мл</strong>{" "}
-              үнэртэн сонгох эрхтэй байна.
-            </p>
+              үнэртэн сонгох эрхтэй байна.{" "}
+            </>
           )}
-          {cappedByPool ? (
-            <p>Бэлгийн санд одоогоор боломжтой нь {allowance * ml}мл.</p>
-          ) : atMax ? (
-            <p>Нэг захиалгад хамгийн ихдээ {GIFT_MAX_SAMPLES * ml}мл.</p>
-          ) : (
-            <p>
-              Дахиад {formatPrice(toNext)}-ийн бараа нэмснээр {ml}мл бэлэг
-              нэмэгдэнэ.
-            </p>
-          )}
-          <p>Купон ашигласан тохиолдолд хямдарсан дүнгээс бодогдоно.</p>
-        </div>
+          {cappedByPool
+            ? `Бэлгийн санд одоогоор боломжтой нь ${allowance * ml}мл. `
+            : atMax
+              ? `Нэг захиалгад хамгийн ихдээ ${GIFT_MAX_SAMPLES * ml}мл. `
+              : `Дахиад ${formatPrice(toNext)}-ийн бараа нэмснээр ${ml}мл бэлэг нэмэгдэнэ. `}
+          Купон ашигласан тохиолдолд хямдарсан дүнгээс бодогдоно.
+        </p>
       </div>
     </div>
   );

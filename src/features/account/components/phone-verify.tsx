@@ -71,7 +71,7 @@ export function PhoneVerify({
 
         <Button
           asChild
-          className="h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98] in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+          className="bg-cta text-cta-foreground hover:bg-cta/90 h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98]"
         >
           <a href={session.smsUri}>
             <MessageSquareText className="size-4" /> СМС илгээх

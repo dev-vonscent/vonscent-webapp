@@ -49,7 +49,8 @@ export function QuickAdd({
         // Худалдаж БОЛОХ эхний хэмжээ — дууссан/савгүй хэмжээг урьдчилж
         // сонговол хэрэглэгч идэвхгүй товчтой үлдэнэ.
         const first =
-          d.variants.find((v) => v.sellable) ?? d.variants.find((v) => v.isActive);
+          d.variants.find((v) => v.sellable) ??
+          d.variants.find((v) => v.isActive);
         setVariantId(first?.id ?? "");
       });
     return () => {
@@ -176,8 +177,11 @@ export function QuickAdd({
         {/* Size options */}
         <div className="space-y-2">
           <p className="text-sm font-medium">Хэмжээ сонгох</p>
+          {/* Барааны хуудасных шиг тэнцүү 4 багана (ML_SIZES = 4): flex-wrap
+              үед «Түр байхгүй» шошготой товч өргөсөж 20ml доош унаад цонхыг
+              нэг мөрөөр өндөрсгөдөг байв. */}
           {detail ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {activeVariants.map((v) => {
                 const active = v.id === variantId;
                 // «Түр байхгүй» = савны түгжээ (0095), «Дууссан» = эх савны
@@ -196,7 +200,7 @@ export function QuickAdd({
                     aria-pressed={v.sellable ? active : undefined}
                     onClick={() => setVariantId(v.id)}
                     className={cn(
-                      "flex min-h-11 min-w-18 flex-col items-center justify-center rounded-lg px-4 py-2 transition-colors",
+                      "flex min-h-11 min-w-0 flex-col items-center justify-center rounded-lg px-1 py-2 transition-colors",
                       !v.sellable
                         ? "bg-secondary/50 text-muted-foreground cursor-not-allowed opacity-50"
                         : active
@@ -213,10 +217,11 @@ export function QuickAdd({
               })}
             </div>
           ) : (
-            <div className="flex gap-2">
-              <Skeleton className="h-12 w-18 rounded-lg" />
-              <Skeleton className="h-12 w-18 rounded-lg" />
-              <Skeleton className="h-12 w-18 rounded-lg" />
+            <div className="grid grid-cols-4 gap-2">
+              <Skeleton className="h-14 rounded-lg" />
+              <Skeleton className="h-14 rounded-lg" />
+              <Skeleton className="h-14 rounded-lg" />
+              <Skeleton className="h-14 rounded-lg" />
             </div>
           )}
         </div>
@@ -248,7 +253,11 @@ export function QuickAdd({
             size="lg"
             className="flex-1"
             disabled={
-              !detail || !selected || soldOut || !selected.sellable || maxQty < 1
+              !detail ||
+              !selected ||
+              soldOut ||
+              !selected.sellable ||
+              maxQty < 1
             }
             onClick={onAdd}
           >

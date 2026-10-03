@@ -7,7 +7,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { Minus, Plus, ShoppingCart, Trash2, Undo2 } from "lucide-react";
 import { GiftProgressNote } from "@/features/gifts/components/gift-progress-note";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
+import { CartCheckbox } from "@/features/cart/components/cart-checkbox";
 import {
   Sheet,
   SheetContent,
@@ -163,7 +163,7 @@ export function CartSheet({
           <>
             {/* Хүссэн барааг л захиалахын тулд мөр тус бүр checkbox-той */}
             <label className="flex cursor-pointer items-center gap-2.5 pt-3 text-sm">
-              <Checkbox
+              <CartCheckbox
                 checked={allSelected}
                 onCheckedChange={(v) => setAllSelected(Boolean(v))}
                 aria-label="Бүгдийг сонгох"
@@ -187,7 +187,7 @@ export function CartSheet({
                       className="bg-secondary/50 rounded-lg p-3"
                     >
                       <div className="flex gap-3">
-                        <Checkbox
+                        <CartCheckbox
                           checked={isCollectionSelected(c.key)}
                           onCheckedChange={(v) =>
                             setCollectionSelected(c.key, Boolean(v))
@@ -294,7 +294,7 @@ export function CartSheet({
                       transition={{ duration: 0.2 }}
                       className="flex gap-3"
                     >
-                      <Checkbox
+                      <CartCheckbox
                         checked={isItemSelected(item.key)}
                         onCheckedChange={(v) =>
                           setItemSelected(item.key, Boolean(v))
@@ -362,7 +362,11 @@ export function CartSheet({
                             <button
                               className="hover:text-gold-strong flex size-11 items-center justify-center rounded-full disabled:opacity-40 md:size-9"
                               onClick={() =>
-                                setQty(item.key, item.qty + 1, maxQtyOf(item.key))
+                                setQty(
+                                  item.key,
+                                  item.qty + 1,
+                                  maxQtyOf(item.key),
+                                )
                               }
                               disabled={item.qty >= maxQtyOf(item.key)}
                               aria-label="Нэмэх"
@@ -416,7 +420,7 @@ export function CartSheet({
               </p>
               {noneSelected ? (
                 <Button
-                  className="w-full in-[.black]:bg-white in-[.black]:text-black"
+                  className="bg-cta text-cta-foreground hover:bg-cta/90 w-full"
                   size="lg"
                   disabled
                 >
@@ -426,7 +430,7 @@ export function CartSheet({
                 <SheetClose asChild>
                   <Button
                     asChild
-                    className="w-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+                    className="bg-cta text-cta-foreground hover:bg-cta/90 w-full"
                     size="lg"
                   >
                     <Link href="/checkout" onClick={clearBuyNow}>
