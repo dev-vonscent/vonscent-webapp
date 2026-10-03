@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Minus, Plus, Trash2, Truck, ShoppingCart } from "lucide-react";
 import { GiftProgressNote } from "@/features/gifts/components/gift-progress-note";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
+import { CartCheckbox } from "@/features/cart/components/cart-checkbox";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
@@ -100,7 +100,7 @@ export default function CartPage() {
           {/* Сонголтын толгой мөр — хүссэн барааг л захиалах боломж */}
           <div className="flex items-center justify-between gap-3 px-1">
             <label className="flex cursor-pointer items-center gap-2.5 text-sm">
-              <Checkbox
+              <CartCheckbox
                 checked={allSelected}
                 onCheckedChange={(v) => setAllSelected(Boolean(v))}
                 aria-label="Бүгдийг сонгох"
@@ -130,7 +130,7 @@ export default function CartPage() {
             <Card key={c.key}>
               <CardContent className="p-4">
                 <div className="flex gap-4">
-                  <Checkbox
+                  <CartCheckbox
                     checked={
                       isCollectionSelected(c.key) &&
                       !blockedCollectionKeys.has(c.key)
@@ -234,7 +234,7 @@ export default function CartPage() {
           {items.map((item) => (
             <Card key={item.key}>
               <CardContent className="flex gap-4 p-4">
-                <Checkbox
+                <CartCheckbox
                   checked={
                     isItemSelected(item.key) && !blockedItemKeys.has(item.key)
                   }

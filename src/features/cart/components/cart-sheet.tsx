@@ -7,7 +7,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { Minus, Plus, ShoppingCart, Trash2, Undo2 } from "lucide-react";
 import { GiftProgressNote } from "@/features/gifts/components/gift-progress-note";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
+import { CartCheckbox } from "@/features/cart/components/cart-checkbox";
 import {
   Sheet,
   SheetContent,
@@ -163,7 +163,7 @@ export function CartSheet({
           <>
             {/* Хүссэн барааг л захиалахын тулд мөр тус бүр checkbox-той */}
             <label className="flex cursor-pointer items-center gap-2.5 pt-3 text-sm">
-              <Checkbox
+              <CartCheckbox
                 checked={allSelected}
                 onCheckedChange={(v) => setAllSelected(Boolean(v))}
                 aria-label="Бүгдийг сонгох"
@@ -187,7 +187,7 @@ export function CartSheet({
                       className="bg-secondary/50 rounded-lg p-3"
                     >
                       <div className="flex gap-3">
-                        <Checkbox
+                        <CartCheckbox
                           checked={isCollectionSelected(c.key)}
                           onCheckedChange={(v) =>
                             setCollectionSelected(c.key, Boolean(v))
@@ -294,7 +294,7 @@ export function CartSheet({
                       transition={{ duration: 0.2 }}
                       className="flex gap-3"
                     >
-                      <Checkbox
+                      <CartCheckbox
                         checked={isItemSelected(item.key)}
                         onCheckedChange={(v) =>
                           setItemSelected(item.key, Boolean(v))
