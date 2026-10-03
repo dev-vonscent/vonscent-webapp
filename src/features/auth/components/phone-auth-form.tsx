@@ -338,6 +338,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
               value={phone}
               onChange={setPhone}
               label="Утасны дугаар"
+              autoComplete="tel-national"
               autoFocus
               onComplete={() => passcodeRef.current?.focus()}
             />
@@ -576,6 +577,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
               value={phone}
               onChange={setPhone}
               label="Утасны дугаар"
+              autoComplete="tel-national"
               autoFocus={mode === "forgot"}
             />
           </Reveal>
