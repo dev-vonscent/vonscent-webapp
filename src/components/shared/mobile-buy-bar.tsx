@@ -87,7 +87,7 @@ export function MobileBuyBar({
         </Button>
         <Button
           onClick={onBuyNow}
-          className="shrink-0 rounded-full in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+          className="bg-cta text-cta-foreground hover:bg-cta/90 shrink-0 rounded-full"
         >
           Захиалах
         </Button>

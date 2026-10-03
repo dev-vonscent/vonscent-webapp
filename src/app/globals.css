@@ -34,6 +34,11 @@
   /* gray button */
   --primary: #262626;
   --primary-foreground: #ffffff;
+  /* Хуудасны ГОЛ үйлдэл (Захиалах, Төлбөр төлөх, Нэвтрэх). Саарал primary нь
+     энгийн товчинд зориулагдсан — хар дэвсгэр дээр нэг товч л цагаанаар
+     тодорно. Бусад theme-д primary өөрөө тод тул түүнтэй ижил. */
+  --cta: #ffffff;
+  --cta-foreground: #000000;
 
   --secondary: #1c1c1c;
   --secondary-foreground: #ffffff;
@@ -115,6 +120,8 @@
 
   --primary: #171717; /* dark CTA on light bg */
   --primary-foreground: #ffffff;
+  --cta: var(--primary);
+  --cta-foreground: var(--primary-foreground);
 
   --secondary: #f0f0f0;
   --secondary-foreground: #0a0a0a;
@@ -171,6 +178,8 @@
 
   --primary: #1a2e5a; /* navy CTA — white text 13.27:1 */
   --primary-foreground: #ffffff;
+  --cta: var(--primary);
+  --cta-foreground: var(--primary-foreground);
 
   --secondary: #edf1f8;
   --secondary-foreground: #0b1d3a;
@@ -225,6 +234,8 @@
 
   --primary: #c2245c; /* deep rose CTA — white text reads at 5.67:1 */
   --primary-foreground: #ffffff;
+  --cta: var(--primary);
+  --cta-foreground: var(--primary-foreground);
 
   --secondary: #ffd9e5;
   --secondary-foreground: #3d1f2b;
@@ -275,6 +286,8 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-cta: var(--cta);
+  --color-cta-foreground: var(--cta-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);

@@ -354,7 +354,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
               the cart stays one tap away underneath. */}
           <Button
             size="lg"
-            className="flex-1 in-[.black]:bg-white in-[.black]:text-black in-[.black]:hover:bg-white/90"
+            className="bg-cta text-cta-foreground hover:bg-cta/90 flex-1"
             disabled={buyDisabled}
             onClick={onBuyNow}
           >

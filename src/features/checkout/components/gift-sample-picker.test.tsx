@@ -44,8 +44,13 @@ describe("GiftSamplePicker", () => {
   it("is a numbered step with the gift rules spelled out", () => {
     renderPicker();
     expect(screen.getByText("3")).toBeTruthy();
+    expect(screen.getByText("Бэлэг")).toBeTruthy();
     expect(
-      screen.getByText("Бэлэг /Захиалгын үнийн дүнгийн 200,000₮ тутамд 1мл/"),
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === "P" &&
+          el.textContent === "Захиалгын үнийн дүнгийн 200,000₮ тутамд 1мл",
+      ),
     ).toBeTruthy();
     // 244,200 → дараагийн эрх 400,000 дээр: 155,800₮ дутуу.
     expect(
