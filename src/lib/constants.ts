@@ -97,8 +97,8 @@ export const CATALOG_PAGE_SIZE = 24;
  */
 export const HOT_PRODUCTS_COUNT = 12;
 
-/** Size a fresh bundle starts on — the most common decant tier. */
-export const DEFAULT_BUNDLE_ML = 5;
+/** Size a fresh bundle starts on — the smallest (2ml) tier. */
+export const DEFAULT_BUNDLE_ML = 2;
 
 /**
  * Reserve hold (minutes) for orders awaiting payment before auto-release.

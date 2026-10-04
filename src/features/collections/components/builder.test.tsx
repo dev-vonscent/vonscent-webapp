@@ -55,6 +55,7 @@ function product(id: string, over: Partial<BuilderProduct> = {}): BuilderProduct
     soldOut: false,
     availableMl: 200,
     variantByMl: {
+      2: { variantId: `${id}-2`, price: 9000, inStock: true },
       5: { variantId: `${id}-5`, price: 19000, inStock: true },
       10: { variantId: `${id}-10`, price: 32000, inStock: true },
     },
@@ -148,9 +149,10 @@ describe("CollectionBuilder selection", () => {
 
   it("flags a pick the chosen size cannot fill instead of dropping it", async () => {
     const user = userEvent.setup();
-    // In stock at 5ml, gone at 10ml.
+    // In stock at 2ml/5ml, gone at 10ml.
     const only5 = product("Tobacco", {
       variantByMl: {
+        2: { variantId: "t-2", price: 9000, inStock: true },
         5: { variantId: "t-5", price: 19000, inStock: true },
         10: { variantId: "t-10", price: 32000, inStock: false },
       },
