@@ -183,7 +183,14 @@ export interface CatalogFilters {
    * `featured` нь URL-аас ирдэггүй, зөвхөн дотоод хэрэглээ: дууссан барааг
    * ард нь, үлдсэнийг шинэ нь түрүүлж (нүүрийн «Онцлох» хэсэг).
    */
-  sort?: "new" | "price_asc" | "price_desc" | "name" | "popular" | "featured";
+  sort?:
+    | "recommended"
+    | "new"
+    | "price_asc"
+    | "price_desc"
+    | "name"
+    | "popular"
+    | "featured";
   page?: number;
   perPage?: number;
 }

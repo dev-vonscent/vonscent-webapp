@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { useFilterQuery } from "./use-filter-query";
 
 const OPTIONS: { value: string; label: string }[] = [
+  { value: "recommended", label: "Санал болгох" },
   { value: "name", label: "Нэрээр (А-Я)" },
   { value: "new", label: "Шинэ эхэндээ" },
   { value: "popular", label: "Эрэлттэй" },

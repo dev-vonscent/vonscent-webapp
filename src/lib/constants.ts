@@ -20,6 +20,17 @@ export const SITE = {
   brandName: "Von Scent",
   /** JSON-LD `alternateName` — Google-ийн site name-д хувилбар болгон өгнө. */
   alternateNames: ["vonscent", "VonScent", "vonscent.mn"],
+  /**
+   * Сайтын ерөнхий share зураг (og:image) — линк Messenger/Facebook-д
+   * илгээхэд, Google-ийн thumbnail-д гарна. `public/`-д байрлах, вэб дээр
+   * хаана ч харагддаггүй тусгай зураг; 1200×630 (1.91:1).
+   */
+  ogImage: { url: "/og-image.jpg", width: 1200, height: 630 },
+  /**
+   * `ogImage`-ийн 1:1 хос — Google хайлтын дөрвөлжин thumbnail-д зориулсан,
+   * нүүр хуудасны JSON-LD `primaryImageOfPage`. Мөн вэб дээр харагддаггүй.
+   */
+  searchImage: { url: "/og-image-square.jpg", width: 1200, height: 1200 },
 } as const;
 
 /**
@@ -68,9 +79,9 @@ export const NEW_PRODUCTS_COUNT = 12;
 
 /**
  * Каталогийн анхны эрэмбэ: `sort` параметргүй URL. Энэ утгыг сонгоход URL-аас
- * `sort` хасагдана.
+ * `sort` хасагдана. «Санал болгох» = Эрэлттэй → Шинэ → Онцлох → бусад (0115).
  */
-export const DEFAULT_CATALOG_SORT = "name";
+export const DEFAULT_CATALOG_SORT = "recommended";
 
 /**
  * Каталогийн нэг ачаалалт (эхний серверийн render ба доош гүйлгэх бүр).

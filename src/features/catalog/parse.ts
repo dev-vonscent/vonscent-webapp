@@ -16,7 +16,14 @@ function list(v: string | string[] | undefined): string[] {
 }
 
 const TAGS: TagKind[] = ["new", "hot", "sale"];
-const SORTS = ["new", "price_asc", "price_desc", "name", "popular"] as const;
+const SORTS = [
+  "recommended",
+  "new",
+  "price_asc",
+  "price_desc",
+  "name",
+  "popular",
+] as const;
 
 /** Parse Next.js searchParams into typed catalog filters. */
 export function parseFilters(params: Params): CatalogFilters {
