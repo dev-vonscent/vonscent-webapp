@@ -3,7 +3,9 @@ import { ImageResponse } from "next/og";
 import { SITE } from "@/lib/constants";
 
 /**
- * Shared scaffolding for the dynamic `opengraph-image.tsx` routes.
+ * Shared scaffolding for the per-page dynamic `opengraph-image.tsx` routes
+ * (products, collections, blog). The site-wide card is a static file —
+ * see `SITE.ogImage`.
  *
  * next/og (satori) ships only a latin Inter subset, so Cyrillic titles would
  * render as tofu — we fetch a per-request Google-Fonts subset containing

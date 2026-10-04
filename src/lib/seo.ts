@@ -6,7 +6,7 @@ import { SITE } from "@/lib/constants";
  * metadataBase (SITE.url), without query — so filtered/sorted catalog URLs
  * all fold into one canonical. openGraph replaces the parent's object rather
  * than merging, so type/siteName/locale are repeated here and the site-wide
- * og:image (app/opengraph-image.tsx) has to be named again — except for a
+ * og:image (SITE.ogImage, a static file in public/) has to be named again — except for a
  * segment with its own opengraph-image file (`ownImage`), where an explicit
  * image would win over that file. og:title/og:description are left for Next
  * to fill from the page's own title and description.
@@ -22,7 +22,7 @@ export function pageMetadata(
       siteName: SITE.brandName,
       locale: "mn_MN",
       url: path,
-      ...(ownImage ? {} : { images: "/opengraph-image" }),
+      ...(ownImage ? {} : { images: { ...SITE.ogImage, alt: SITE.brandName } }),
     },
   };
 }

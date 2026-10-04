@@ -20,6 +20,12 @@ export const SITE = {
   brandName: "Von Scent",
   /** JSON-LD `alternateName` — Google-ийн site name-д хувилбар болгон өгнө. */
   alternateNames: ["vonscent", "VonScent", "vonscent.mn"],
+  /**
+   * Сайтын ерөнхий share зураг (og:image) — линк Messenger/Facebook-д
+   * илгээхэд, Google-ийн thumbnail-д гарна. `public/`-д байрлах, вэб дээр
+   * хаана ч харагддаггүй тусгай зураг; 1200×630 (1.91:1).
+   */
+  ogImage: { url: "/og-image.jpg", width: 1200, height: 630 },
 } as const;
 
 /**
