@@ -23,6 +23,7 @@ import {
 } from "@/features/content/api";
 import {
   JsonLd,
+  homePageJsonLd,
   organizationJsonLd,
   websiteJsonLd,
 } from "@/components/shared/json-ld";
@@ -355,7 +356,11 @@ export default function HomePage() {
 
 async function SiteJsonLd() {
   const social = await getSocialSettings();
-  return <JsonLd data={[organizationJsonLd(social), websiteJsonLd()]} />;
+  return (
+    <JsonLd
+      data={[organizationJsonLd(social), websiteJsonLd(), homePageJsonLd()]}
+    />
+  );
 }
 
 async function PromoSlot() {
