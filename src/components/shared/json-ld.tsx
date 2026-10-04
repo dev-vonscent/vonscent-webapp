@@ -56,6 +56,38 @@ export function organizationJsonLd(social: {
   };
 }
 
+/**
+ * Home page itself. Google picks the result thumbnail from the page's images
+ * on its own (it once chose a season tile); naming the image here is the
+ * strongest hint we can give. Square first for the 1:1 search thumbnail,
+ * the 1.91:1 share card as the wide alternative.
+ */
+export function homePageJsonLd(): Json {
+  const imageObject = (img: {
+    url: string;
+    width: number;
+    height: number;
+  }) => ({
+    "@type": "ImageObject",
+    url: `${SITE.url}${img.url}`,
+    width: img.width,
+    height: img.height,
+  });
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "@id": `${SITE.url}/#webpage`,
+    url: SITE.url,
+    name: `${SITE.brandName} — ${SITE.tagline}`,
+    description: SITE.description,
+    inLanguage: "mn",
+    isPartOf: { "@id": `${SITE.url}/#website` },
+    about: { "@id": `${SITE.url}/#organization` },
+    primaryImageOfPage: imageObject(SITE.searchImage),
+    image: [imageObject(SITE.searchImage), imageObject(SITE.ogImage)],
+  };
+}
+
 /** Site name + catalog search box (the catalog reads `?q=`). */
 export function websiteJsonLd(): Json {
   return {
