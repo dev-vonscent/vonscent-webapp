@@ -79,9 +79,9 @@ export const NEW_PRODUCTS_COUNT = 12;
 
 /**
  * Каталогийн анхны эрэмбэ: `sort` параметргүй URL. Энэ утгыг сонгоход URL-аас
- * `sort` хасагдана.
+ * `sort` хасагдана. «Санал болгох» = Эрэлттэй → Шинэ → Онцлох → бусад (0115).
  */
-export const DEFAULT_CATALOG_SORT = "name";
+export const DEFAULT_CATALOG_SORT = "recommended";
 
 /**
  * Каталогийн нэг ачаалалт (эхний серверийн render ба доош гүйлгэх бүр).

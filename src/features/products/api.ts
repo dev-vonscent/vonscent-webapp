@@ -355,7 +355,32 @@ function sortProducts(
     case "name":
       return copy.sort((a, b) => a.name.localeCompare(b.name));
     case "popular":
-      return copy.sort((a, b) => b.ratingCount - a.ratingCount);
+      // Борлуулалтын тоо энд байхгүй (SQL нь `top_seller_products()`-оор
+      // эрэмбэлнэ, 0115) — борлуулалтаар тавигддаг `hot` таг нь хамгийн ойр.
+      return copy.sort(
+        (a, b) =>
+          Number(b.tags.includes("hot")) - Number(a.tags.includes("hot")) ||
+          b.createdAt.localeCompare(a.createdAt),
+      );
+    case "recommended": {
+      // `catalog_search()` (0115)-ийн толь: дууссан нь ард, дараа нь
+      // Эрэлттэй → Шинэ → Онцлох → бусад, бүлэг дотроо нэрээр (SQL дээр
+      // Эрэлттэй нь борлуулалтаар).
+      const tier = (p: ProductDetail) =>
+        p.tags.includes("hot")
+          ? 0
+          : p.tags.includes("new")
+            ? 1
+            : p.isFeatured
+              ? 2
+              : 3;
+      return copy.sort(
+        (a, b) =>
+          Number(a.soldOut) - Number(b.soldOut) ||
+          tier(a) - tier(b) ||
+          a.name.localeCompare(b.name),
+      );
+    }
     case "featured":
       // Дууссан нь ард, дотор нь шинэ нь түрүүлж.
       return copy.sort(
