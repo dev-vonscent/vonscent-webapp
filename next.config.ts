@@ -125,4 +125,8 @@ export default withSentryConfig(nextConfig, {
   project: process.env.SENTRY_PROJECT,
   silent: true,
   telemetry: false,
+  // Adblocker-ууд `*.ingest.sentry.io` руу явах хүсэлтийг хаадаг тул (prod дээр
+  // `ERR_BLOCKED_BY_CLIENT`) browser-ийн event-үүдийг өөрийн домэйноор дамжуулна.
+  // Middleware matcher энэ замыг алгасдаг (src/middleware.ts).
+  tunnelRoute: "/monitoring",
 });
