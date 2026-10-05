@@ -17,7 +17,7 @@ Prompt, нот→англи хөрвүүлэлт, хар дэвсгэрийн б
 - `src/lib/ai/packshot-prompt.ts` — `PACKSHOT_PROMPT`
 - `src/lib/ai/notes-en.ts` — MN→EN хүснэгт + `pickNotes()`
 
-> Энэ нь `ai-image-generation-requirement.md`-д тайлбарласан **админы нэг
+> Энэ нь `src/lib/ai/generate-image.ts` дахь **админы нэг
 > бүрчлэн үүсгэх** функцээс тусдаа. Энэ нь нэг удаагийн багц ажиллагаа: бүх
 > барааг дамжуулж, галерейд нэг мөр **нэмнэ**. Каталогийн карт дээрх үндсэн
 > зураг (`sort_order 0`) хөндөгдөхгүй.

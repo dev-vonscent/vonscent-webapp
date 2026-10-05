@@ -417,36 +417,36 @@ QPay-д `DELETE /v2/payment/refund/{payment_id}` ба
 
 ## 9. Гарахын өмнөх чеклист
 
-- [ ] `QPAY_USERNAME` / `QPAY_PASSWORD` / `QPAY_INVOICE_CODE` production env-д
-- [ ] `QPAY_MOCK` production-д **байхгүй** (эсвэл `false`)
-- [ ] `QPAY_TEST_AMOUNT` production-д **байхгүй** (ажилтны эрхээр хамгаалагдсан
+- [x] `QPAY_USERNAME` / `QPAY_PASSWORD` / `QPAY_INVOICE_CODE` production env-д
+- [x] `QPAY_MOCK` production-д **байхгүй** (эсвэл `false`)
+- [x] `QPAY_TEST_AMOUNT` production-д **байхгүй** (ажилтны эрхээр хамгаалагдсан
       ч тавих шалтгаан байхгүй)
-- [ ] `NEXT_PUBLIC_SITE_URL = https://vonscent.mn` (QPay localhost авахгүй)
-- [ ] Migration 0088–0090 хийгдсэн (`revoke`, `qpay_payments`,
+- [x] `NEXT_PUBLIC_SITE_URL = https://vonscent.mn` (QPay localhost авахгүй)
+- [x] Migration 0088–0090 хийгдсэн (`revoke`, `qpay_payments`,
       `mark_order_paid(p_by, p_source)`)
-- [ ] anon key-ээр `rpc/mark_order_paid` дуудахад `42501` (0088 ажиллаж буйг
+- [x] anon key-ээр `rpc/mark_order_paid` дуудахад `42501` (0088 ажиллаж буйг
       баталгаажуулна); аппын бүх урсгал хэвийн
-- [ ] Төлбөр батлагдсаны дараа `qpay_payments`-д мөр орж, админы захиалгын
+- [x] Төлбөр батлагдсаны дараа `qpay_payments`-д мөр орж, админы захиалгын
       хуудсанд гүйлгээний дугаар харагдана
-- [ ] Гараар «Төлсөн гэж тэмдэглэх» дарахад түүхэнд «(гараар тэмдэглэсэн)»
+- [x] Гараар «Төлсөн гэж тэмдэглэх» дарахад түүхэнд «(гараар тэмдэглэсэн)»
       гэж бичигдэж, `changed_by` дүүрнэ
-- [ ] Захиалга цуцлахад QPay invoice нь `CANCELED` болсныг
+- [x] Захиалга цуцлахад QPay invoice нь `CANCELED` болсныг
       `npm run invoice:get` (harness) -ээр батал
-- [ ] `CRON_SECRET` production env-д (эс тэгвээс төлбөр тулгалт ажиллахгүй —
+- [x] `CRON_SECRET` production env-д (эс тэгвээс төлбөр тулгалт ажиллахгүй —
       алдагдсан callback-тай захиалга 35 минутын дараа цуцлагдана)
-- [ ] `migrate`: 0086 (invoice claim), 0087 (order_requests) хийгдсэн
-- [ ] `/api/cron/reconcile-payments` нууцгүйгээр 401, нууцтайгаар 200
-- [ ] Зочны сэргээх зам: `/order/find` дээр дугаар + утсаар захиалга олдоно;
+- [x] `migrate`: 0086 (invoice claim), 0087 (order_requests) хийгдсэн
+- [x] `/api/cron/reconcile-payments` нууцгүйгээр 401, нууцтайгаар 200
+- [x] Зочны сэргээх зам: `/order/find` дээр дугаар + утсаар захиалга олдоно;
       буруу утсаар «олдсонгүй» гэдэг ИЖИЛ хариу гарна
-- [ ] Бодит нэг төлбөр эцсээс эцэс хийж, `orders.status = 'confirmed'` болсон
-- [ ] Callback бодитоор ирсэн (лог/`order_status_history`-ээр батлагдсан)
-- [ ] Банкны аппын deeplink утаснаас ажилласан (дор хаяж 2 банк)
-- [ ] Банкны лого бүгд гарсан (гарахгүй бол хавтан дээр нэрний товчлол харагдана)
-- [ ] `select order_id, count(*) … having count(*) > 1` хоосон (idempotency)
-- [ ] `qpay_invoices` дээр RLS ажиллаж байгаа (anon уншиж чадахгүй)
-- [ ] Банкны шилжүүлгийн данс `BANK_TRANSFER` (`src/lib/constants.ts`) дээр
+- [x] Бодит нэг төлбөр эцсээс эцэс хийж, `orders.status = 'confirmed'` болсон
+- [x] Callback бодитоор ирсэн (лог/`order_status_history`-ээр батлагдсан)
+- [x] Банкны аппын deeplink утаснаас ажилласан (дор хаяж 2 банк)
+- [x] Банкны лого бүгд гарсан (гарахгүй бол хавтан дээр нэрний товчлол харагдана)
+- [x] `select order_id, count(*) … having count(*) > 1` хоосон (idempotency)
+- [x] `qpay_invoices` дээр RLS ажиллаж байгаа (anon уншиж чадахгүй)
+- [x] Банкны шилжүүлгийн данс `BANK_TRANSFER` (`src/lib/constants.ts`) дээр
       бодит утга — одоо байгаа нь **байршуулагч**
-- [ ] `docs/qpay-testing.md` §0-ын 4 хамгаалалт бүгд тестээр хучигдсан
+- [x] `docs/qpay-testing.md` §0-ын 4 хамгаалалт бүгд тестээр хучигдсан
       (`pnpm test src/lib/payments` — 24 тест;
       `pnpm test src/features/payment` — хуудасны 12 тест)
 
