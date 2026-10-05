@@ -4,26 +4,29 @@
 
 ## 📁 Бүтэц
 
-### `spec/` — Шаардлага ба архитектур
+### `spec/` — Архитектур ба дизайн
 | Файл | Тайлбар |
 |---|---|
-| [requirement.md](./spec/requirement.md) | Үндсэн шаардлага (хуудас бүрийн функц) |
-| [requirement_fb.md](./spec/requirement_fb.md) | Клиентийн нэмэлт санал |
-| [requirement_fb_gap_analysis.md](./spec/requirement_fb_gap_analysis.md) | Санал ↔ хэрэгжилтийн зөрүүний шинжилгээ |
-| [collection-requirement.md](./spec/collection-requirement.md) | Багц (Collection) функцийн бүрэн шаардлага + UI/UX |
-| [ai-image-generation-requirement.md](./spec/ai-image-generation-requirement.md) | AI (gpt-image-1) барааны зураг үүсгэх функцийн шаардлага |
-| [note-images.md](./spec/note-images.md) | Үнэрийн нотын зураг — prompt, багц скрипт, шинэ бараа нэмэх үеийн авто урсгал |
-| [design.md](./spec/design.md) | Дизайн систем, токен |
-| [a11y.md](./spec/a11y.md) | Хүртээмжийн шалгалт (2026-09-13) — зассан зүйлс ба тогтсон дүрмүүд |
 | [development.md](./spec/development.md) | Хөгжүүлэлтийн архитектур, дүрэм |
+| [design.md](./spec/design.md) | Дизайн систем, токен, хүртээмжийн дүрэм |
+| [collection-requirement.md](./spec/collection-requirement.md) | Багц (Collection) функцийн бүрэн шаардлага + UI/UX |
+| [note-images.md](./spec/note-images.md) | Үнэрийн нотын зураг — prompt, багц скрипт, шинэ бараа нэмэх үеийн авто урсгал |
 
 ### `planning/` — Төлөвлөгөө
 | Файл | Тайлбар |
 |---|---|
-| [roadmap.md](./planning/roadmap.md) | 8 фазын замын зураг |
 | [todo.md](./planning/todo.md) | Хийх ажлын жагсаалт (гүйцэтгэлийн төлөв) |
-| [client-feedback-ug-2026-09.md](./planning/client-feedback-ug-2026-09.md) | Клиентийн UG presentation санал — todo + төлөвлөгөө (2026-09) |
-| [valuation.md](./planning/valuation.md) | Үнэлгээ / өртөг |
+| [bottle-lock-plan.md](./planning/bottle-lock-plan.md) | Хоосон савны түгжээ (өнгө × хэмжээ) — хэрэгжүүлэлт |
+| [report-audit.md](./planning/report-audit.md) | Санхүүгийн тайлангийн аудит + тест |
+
+### `analysis/` — Судалгаа, санаа
+| Файл | Тайлбар |
+|---|---|
+| [questions.md](./analysis/questions.md) | Клиентийн хариултууд (бизнесийн дүрмийн шийдвэр) |
+| [order_status_ux_proposal.md](./analysis/order_status_ux_proposal.md) | Захиалгын төлөв/буцаалтын UI/UX санал |
+| [library_upgrade_plan.md](./analysis/library_upgrade_plan.md) | Library/package сайжруулалтын төлөвлөгөө |
+| [improvement_idea.md](./analysis/improvement_idea.md) | Техникийн сайжруулалтын санаа |
+| [ideas.md](./analysis/ideas.md) | Бизнесийн санаанууд |
 
 ### `import/` — Дата импортын заавар ба загвар
 | Файл | Тайлбар |
@@ -48,6 +51,7 @@
 ### Үндсэн хавтас — функцийн гүнзгий баримт
 | Файл | Тайлбар |
 |---|---|
+| [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) | Release-ийн үлдсэн зүйлс (зардал, env, бэлгийн хамгаалалт) |
 | [qpay-testing.md](./qpay-testing.md) | QPay төлбөрийн тестийн гарын авлага — mock, harness, бодит төлбөр, callback, чеклист |
 | [lucky-wheel.md](./lucky-wheel.md) | Азын хүрд — шагнал, магадлал, эдийн засгийн тооцоо |
 | [requirement_final.md](./requirement_final.md) | Клиентийн эцсийн бизнес шаардлага |
