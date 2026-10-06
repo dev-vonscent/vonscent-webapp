@@ -24,6 +24,7 @@
     "db:reset-test-data-dev": "node --env-file=.env.dev --import tsx scripts/reset-test-data.ts",
     "db:backup": "node --env-file=.env.prod --import tsx scripts/db-backup.ts",
     "db:backup-dev": "node --env-file=.env.dev --import tsx scripts/db-backup.ts",
+    "db:clone-catalog-dev": "SRC_ENV=.env.prod DST_ENV=.env.dev node --import tsx scripts/db-clone.ts",
     "db:seed": "node --env-file=.env.dev --import tsx scripts/seed.ts",
     "db:seed-sql": "node --env-file=.env.dev --import tsx scripts/seed-sql.ts",
     "db:diff": "node --import tsx scripts/schema-diff.ts",
