@@ -205,16 +205,16 @@ export default function HomePage() {
       </section>
 
       <div className="mx-auto max-w-352 space-y-10 px-4 py-8 sm:space-y-16 sm:py-14 md:px-8">
-        {/* Админы үүсгэсэн rail-ууд («Онцлох» г.м.) эхэнд —
-            «Шинээр ирсэн» тэдний оронд доошоо шилжсэн. */}
+        {/* Дараалал: Эрэлттэй → Онцлох (админы rail-ууд) → Шинээр ирсэн
+            (клиент, 2026-10). */}
         <Suspense fallback={<CarouselSkeleton action />}>
-          <CuratedSections />
+          <BestSellersSection />
         </Suspense>
 
         <QuizSection />
 
         <Suspense fallback={<CarouselSkeleton action />}>
-          <BestSellersSection />
+          <CuratedSections />
         </Suspense>
 
         <Suspense fallback={<CollectionGridSkeleton />}>

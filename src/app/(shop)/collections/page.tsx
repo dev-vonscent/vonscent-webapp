@@ -50,14 +50,11 @@ export default async function CollectionsPage() {
   return (
     <div className="mx-auto max-w-352 px-4 py-6 md:px-8">
       {/*
-        Толгой нь хоёр замыг зэрэг харуулна: зүүн талд бэлэн багцууд (энэ
-        хуудас өөрөө), баруун талд өөрөө үүсгэх.
-
-        Тэгшлэлт нь ДЭЭД ирмэгээр. Өмнө нь `items-end` байсан: доод ирмэг нь
-        таарч байсан ч панель нь гарчгаасаа өндөр тул нүдэнд гарчгаас дээш
-        хөвж, хоёр нь өөр түвшинд байгаа мэт харагддаг байв.
+        Толгой нь хоёр замыг зэрэг харуулна: дээр нь бэлэн багцууд (энэ
+        хуудас өөрөө), доор нь бүтэн өргөнөөр өөрөө үүсгэх banner. Өмнө нь
+        панель баруун талд жижгээр зогсож анзаарагддаггүй байв (клиент, 2026-10).
       */}
-      <div className="mb-6 flex flex-col gap-5 md:mb-8 md:flex-row md:items-start md:justify-between md:gap-10">
+      <div className="mb-6 space-y-5 md:mb-8">
         <div className="space-y-2">
           <h1 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
             Багц
@@ -68,7 +65,9 @@ export default async function CollectionsPage() {
               : "Багцаар авбал дангаар нь авснаас хямд"}
           </p>
         </div>
-        {settings.customEnabled && <BuildRoutePanel />}
+        {settings.customEnabled && (
+          <BuildRoutePanel minItems={settings.minItems} />
+        )}
       </div>
 
       {collections.length === 0 ? (

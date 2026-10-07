@@ -20,6 +20,7 @@ import {
   formatDeliveryDay,
   projectedDeliveryDay,
 } from "@/lib/time";
+import { clearPendingOrder } from "@/features/checkout/pending-order";
 import type { PaymentView } from "../types";
 import { BankApps } from "./bank-apps";
 import { CopyRow } from "./copy-row";
@@ -207,6 +208,12 @@ export function PaymentPanel({
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [isQpay, waiting, view.mock, check]);
+
+  // Төлөгдсөн / цуцлагдсан захиалгыг checkout дээр дахин сэргээхгүй
+  // (pending-order.ts) — буцсан хүн хоосон, цэвэр checkout олно.
+  React.useEffect(() => {
+    if (paid || cancelled) clearPendingOrder(token);
+  }, [paid, cancelled, token]);
 
   // Purchase analytics fire on confirmed payment only. An unpaid invoice on
   // this page is an abandoned checkout, not a purchase.

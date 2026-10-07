@@ -26,6 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { OrderRow } from "@/db/types";
 import { EmptyState } from "@/components/shared/empty-state";
+import { SavedCheckouts } from "@/features/checkout/components/saved-checkouts";
 
 const STATUS_ICON: Record<
   OrderStatus,
@@ -96,6 +97,7 @@ export default async function OrdersPage() {
     return (
       <div className="space-y-6">
         <PageHeader />
+        <SavedCheckouts />
         <EmptyState
           size="lg"
           icon={Package}
@@ -114,6 +116,8 @@ export default async function OrdersPage() {
   return (
     <div className="space-y-6">
       <PageHeader count={orders.length} />
+      {/* Checkout-оос «Дараа авахаар хадгалах»-аар хадгалсан захиалгууд. */}
+      <SavedCheckouts />
 
       <div className="space-y-4">
         {orders.map((o) => {
@@ -150,7 +154,9 @@ export default async function OrdersPage() {
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1.5">
-                      <Badge className={cn("gap-1", ORDER_STATUS_STYLE[o.status])}>
+                      <Badge
+                        className={cn("gap-1", ORDER_STATUS_STYLE[o.status])}
+                      >
                         <StatusIcon className="size-3.5" />
                         {ORDER_STATUS_LABEL[o.status]}
                       </Badge>
