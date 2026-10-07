@@ -3,7 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Heart, User, Boxes } from "lucide-react";
+import {
+  Home,
+  Search,
+  Heart,
+  User,
+  Boxes,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { selectWishCount, useWishlist } from "@/features/wishlist/store";
 import { useBottomNavHidden } from "@/components/shared/bottom-nav-store";
@@ -89,7 +96,7 @@ function Tab({
 }: {
   href: string;
   label: string;
-  icon: React.ElementType;
+  icon: LucideIcon;
   /** `false` for auth-gated pages — see `RIGHT`. */
   prefetch?: false;
   active: boolean;

@@ -50,6 +50,13 @@ export type MlSize = (typeof ML_SIZES)[number];
 export const BUNDLE_ML_SIZES = ML_SIZES;
 
 /**
+ * Нүүрний decant visualizer-т «≈ N шүршилт» гэж харуулах ойролцоо тоо.
+ * 1мл ≈ 15 шүршилт (клиентийн тоо: 2/5/10/20мл → 30/75/150/300) —
+ * маркетингийн тооцоо, захиалга/үнэд оролцохгүй.
+ */
+export const SPRAYS_PER_ML = 15;
+
+/**
  * FAQ-ийн тогтмол ангилал (клиент, 2026-09 UG) — нийтийн FAQ хуудас ийм
  * дарааллаар бүлэглэнэ. Админы «Ангилал» нь чөлөөт текст биш select, API нь
  * Zod enum-оор шалгана (`lib/validators/faq.ts`).

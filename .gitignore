@@ -66,3 +66,8 @@ shot.tmp.mjs
 
 # vitest нь ESM тохиргоог ачаалахдаа үлдээдэг түр файл
 vitest*.config.*.timestamp-*.mjs
+
+# Claude-ийн түр гаралт, Blender-ийн preview/render (эх нь .blend/.py)
+/Claude outputs/
+/scripts/blender/preview_*.png
+/scripts/blender/renders/

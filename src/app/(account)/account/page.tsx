@@ -11,6 +11,7 @@ import {
   LogOut,
   Pencil,
   Ticket,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -304,7 +305,7 @@ export default function ProfilePage() {
   );
 }
 
-function IconCircle({ icon: Icon }: { icon: React.ElementType }) {
+function IconCircle({ icon: Icon }: { icon: LucideIcon }) {
   return (
     <span className="bg-secondary flex size-10 shrink-0 items-center justify-center rounded-full">
       <Icon className="size-4" />
