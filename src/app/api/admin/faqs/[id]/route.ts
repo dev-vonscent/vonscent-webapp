@@ -3,6 +3,8 @@ import { revalidatePublic } from "@/lib/cache";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { CHAT_FAQ_LIMIT } from "@/lib/constants";
+import { CHAT_LIMIT_ERROR, isChatLimitError } from "@/features/faq/chat";
 
 import { faqPatchSchema as patchSchema } from "@/lib/validators/faq";
 
@@ -39,8 +41,24 @@ export async function PATCH(
   if (d.answer !== undefined) update.answer = d.answer;
   if (d.sortOrder !== undefined) update.sort_order = d.sortOrder;
   if (d.isActive !== undefined) update.is_active = d.isActive;
+  if (d.chatPinned !== undefined) update.chat_pinned = d.chatPinned;
 
-  await g.supabase.from("faqs").update(update).eq("id", id);
+  if (d.chatPinned) {
+    const { count } = await g.supabase
+      .from("faqs")
+      .select("id", { count: "exact", head: true })
+      .eq("chat_pinned", true)
+      .neq("id", id);
+    if ((count ?? 0) >= CHAT_FAQ_LIMIT)
+      return NextResponse.json({ error: CHAT_LIMIT_ERROR }, { status: 409 });
+  }
+
+  const { error } = await g.supabase.from("faqs").update(update).eq("id", id);
+  // Урьдчилсан шалгалтыг зэрэг хүсэлт давж гарвал trigger (0117) барина.
+  if (error && isChatLimitError(error))
+    return NextResponse.json({ error: CHAT_LIMIT_ERROR }, { status: 409 });
+  if (error)
+    return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
   revalidatePublic();
   return NextResponse.json({ ok: true });
 }

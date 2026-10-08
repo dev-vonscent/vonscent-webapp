@@ -1,9 +1,10 @@
 import { Facebook, Instagram } from "lucide-react";
 import { getSocialSettings } from "@/features/content/api";
+import { getChatFaqs } from "@/features/faq/api";
 import {
-  ContactFabMenu,
+  ChatWidget,
   type ContactLink,
-} from "@/components/shared/contact-fab-menu";
+} from "@/features/chat/components/chat-widget";
 
 /**
  * Гар утасны цэсэн дэх Facebook / Instagram холбоос ба desktop-ийн
@@ -55,9 +56,12 @@ function instagramDmHref(instagram: string) {
   }
 }
 
-/** Desktop-ийн баруун доод булангийн «Холбогдох» товч (contact-fab-menu.tsx). */
+/** Баруун доод булангийн чатын товч — бэлэн асуулт + сувгууд (chat-widget.tsx). */
 export async function ContactFab() {
-  const social = await getSocialSettings();
+  const [social, faqs] = await Promise.all([
+    getSocialSettings(),
+    getChatFaqs(),
+  ]);
   const items: ContactLink[] = [
     social.facebook && {
       href: messengerHref(social.facebook),
@@ -80,8 +84,7 @@ export async function ContactFab() {
       icon: "email" as const,
     },
   ].filter((l): l is ContactLink => Boolean(l));
-  if (items.length === 0) return null;
-  return <ContactFabMenu links={items} />;
+  return <ChatWidget faqs={faqs} links={items} />;
 }
 
 /** Гар утасны цэсний капсул эгнээ — «Холбоо барих» г.м-тэй нэг хэлбэр. */

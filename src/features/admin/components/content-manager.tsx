@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ImageOff, Pencil, Plus, Trash2 } from "lucide-react";
+import { ImageOff, MessageCircle, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FAQ_CATEGORIES } from "@/lib/constants";
+import { CHAT_FAQ_LIMIT, FAQ_CATEGORIES } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 import { ImageUpload } from "@/features/admin/components/image-upload";
 import type {
   PopupSettings,
@@ -310,9 +311,33 @@ function FaqSection({ initial }: { initial: FaqRow[] }) {
     toast.success("FAQ устлаа.");
     router.refresh();
   }
+  const pinnedCount = initial.filter((f) => f.chat_pinned).length;
+  async function toggleChat(f: FaqRow) {
+    const ok = await mutate(
+      `/api/admin/faqs/${f.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatPinned: !f.chat_pinned }),
+      },
+      "Чатын асуулт хадгалагдсангүй",
+    );
+    if (!ok) return;
+    toast.success(
+      f.chat_pinned ? "Чатаас хасагдлаа." : "Чатын цонхонд нэмэгдлээ.",
+    );
+    router.refresh();
+  }
   return (
     <Section title="FAQ">
       {confirmDialog}
+      <p className="text-muted-foreground text-xs">
+        <MessageCircle className="mr-1 inline size-3.5 align-[-2px]" />
+        тэмдэгтэй асуултууд сайтын чатын цонхонд бэлэн асуулт болж гарна (
+        {pinnedCount}/{CHAT_FAQ_LIMIT}).
+        {pinnedCount === 0 &&
+          ` Нэгийг ч сонгоогүй бол эхний ${CHAT_FAQ_LIMIT} нь гарна.`}
+      </p>
       <ul className="space-y-2">
         {initial.map((f) => (
           <EditableRow
@@ -326,6 +351,32 @@ function FaqSection({ initial }: { initial: FaqRow[] }) {
               </span>
             }
             onDelete={() => del(f.id, f.question)}
+            actions={
+              <button
+                type="button"
+                onClick={() => toggleChat(f)}
+                disabled={!f.chat_pinned && pinnedCount >= CHAT_FAQ_LIMIT}
+                aria-pressed={f.chat_pinned}
+                aria-label={f.chat_pinned ? "Чатаас хасах" : "Чатад харуулах"}
+                title={
+                  !f.chat_pinned && pinnedCount >= CHAT_FAQ_LIMIT
+                    ? `Чатад ${CHAT_FAQ_LIMIT} асуулт аль хэдийн байна`
+                    : f.chat_pinned
+                      ? "Чатаас хасах"
+                      : "Чатад харуулах"
+                }
+                className={cn(
+                  "disabled:cursor-not-allowed disabled:opacity-40",
+                  f.chat_pinned
+                    ? "text-gold-strong"
+                    : "text-muted-foreground hover:text-gold-strong",
+                )}
+              >
+                <MessageCircle
+                  className={cn("size-4", f.chat_pinned && "fill-current")}
+                />
+              </button>
+            }
             dialogTitle="FAQ засах"
             fields={[
               {
@@ -668,8 +719,11 @@ function EditableRow({
   onSave,
   onDelete,
   dialogTitle,
+  actions,
 }: {
   summary: React.ReactNode;
+  /** Засах/устгах товчны өмнө гарах нэмэлт товч (жишээ нь FAQ-ийн чат). */
+  actions?: React.ReactNode;
   fields: EditableField[];
   /** Resolves true when the write landed; false keeps the form open. */
   onSave: (values: Record<string, string>) => Promise<boolean>;
@@ -782,6 +836,7 @@ function EditableRow({
       <div className="flex items-center justify-between gap-2">
         {summary}
         <span className="flex shrink-0 items-center gap-2">
+          {actions}
           <button
             type="button"
             onClick={() => (editing ? setEditing(false) : open())}
