@@ -874,6 +874,28 @@ function PaidState({
             </p>
           </>
         )}
+
+        {/* Сэтгэгдлийн урамшуулал (0117) — зөвхөн бүртгэлтэй хэрэглэгчид:
+            зочин сэтгэгдэл бичиж чадахгүй тул `reviewPoints` нь 0 ирнэ. */}
+        {view.reviewPoints > 0 && (
+          <>
+            <div className="gold-rule mt-3" />
+            <p className="text-muted-foreground mt-3 text-xs">
+              Бараагаа хэрэглэж үзээд сэтгэгдлээ бичээд{" "}
+              <strong className="text-foreground font-medium tabular-nums">
+                +{view.reviewPoints.toLocaleString("mn-MN")} V point
+              </strong>{" "}
+              цуглуулаарай. Сэтгэгдлээ{" "}
+              <Link
+                href="/account/orders"
+                className="text-foreground underline underline-offset-2"
+              >
+                «Миний захиалга»
+              </Link>{" "}
+              хэсгээс бичнэ.
+            </p>
+          </>
+        )}
       </div>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">

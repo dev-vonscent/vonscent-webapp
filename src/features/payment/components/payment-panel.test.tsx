@@ -80,6 +80,7 @@ function view(over: Partial<PaymentView> = {}): PaymentView {
     discount: 0,
     loyaltyUsed: 0,
     pointsEarned: 0,
+    reviewPoints: 0,
     paymentMethod: "qpay",
     paid: false,
     cancelled: false,

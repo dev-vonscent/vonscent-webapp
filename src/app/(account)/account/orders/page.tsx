@@ -9,6 +9,7 @@ import {
   XCircle,
   ChevronRight,
   ArrowLeft,
+  MessageSquarePlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +28,7 @@ import { cn } from "@/lib/utils";
 import type { OrderRow } from "@/db/types";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SavedCheckouts } from "@/features/checkout/components/saved-checkouts";
+import { reviewPointsOf } from "@/lib/loyalty";
 
 const STATUS_ICON: Record<
   OrderStatus,
@@ -62,6 +64,7 @@ type OrderWithItems = OrderRow & { order_items: OrderItemPreview[] };
 export default async function OrdersPage() {
   const supabase = await createClient();
   let orders: OrderWithItems[] = [];
+  let reviewPoints = 0;
 
   if (supabase) {
     const {
@@ -76,6 +79,14 @@ export default async function OrdersPage() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
       orders = (data as OrderWithItems[] | null) ?? [];
+      const { data: loyalty } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "loyalty")
+        .maybeSingle();
+      reviewPoints = reviewPointsOf(
+        (loyalty as { value?: unknown } | null)?.value,
+      );
     }
   }
 
@@ -136,6 +147,13 @@ export default async function OrdersPage() {
             o.payment_status === "unpaid" &&
             o.status !== "cancelled" &&
             Boolean(o.pay_token);
+          // Сэтгэгдлийн урилга (0117) — төлөгдсөн, явж буй/хүргэгдсэн захиалгад.
+          const reviewInvite =
+            reviewPoints > 0 &&
+            o.payment_status === "paid" &&
+            (o.status === "confirmed" ||
+              o.status === "shipping" ||
+              o.status === "delivered");
 
           return (
             <Card
@@ -242,6 +260,24 @@ export default async function OrdersPage() {
                   линк тул үүрлэсэн <a> үүсгэхгүйн тулд. */}
               <div className="px-5 pb-5">
                 <Separator className="my-3" />
+
+                {reviewInvite && (
+                  <Link
+                    href={`/account/orders/${o.id}`}
+                    className="bg-secondary text-muted-foreground hover:text-foreground mb-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-colors"
+                  >
+                    <MessageSquarePlus className="size-4 shrink-0" />
+                    <span>
+                      {o.status === "delivered"
+                        ? "Бараагаа хэрэглэж үзээд сэтгэгдлээ бичээд "
+                        : "Бараагаа хүлээж аваад, хэрэглэж үзээд сэтгэгдлээ бичээд "}
+                      <strong className="text-foreground font-medium tabular-nums">
+                        +{reviewPoints.toLocaleString("mn-MN")} V point
+                      </strong>{" "}
+                      цуглуулаарай.
+                    </span>
+                  </Link>
+                )}
 
                 <div className="flex items-center justify-between gap-3">
                   <div>

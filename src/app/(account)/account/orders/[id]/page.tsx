@@ -31,6 +31,11 @@ import {
   type ReorderItem,
 } from "@/features/account/components/order-actions";
 import { maskAccount, refundBreakdown } from "@/lib/refund";
+import { reviewPointsOf } from "@/lib/loyalty";
+import {
+  OrderReviewPrompt,
+  type ReviewableItem,
+} from "@/features/reviews/components/order-review-prompt";
 import type {
   OrderRow,
   OrderItemRow,
@@ -118,6 +123,59 @@ export default async function OrderDetailPage({
     })
     .filter((i) => i.slug);
 
+  // Сэтгэгдлийн урилга (0117): төлөгдсөн, цуцлагдаагүй захиалгад. Бэлгийн
+  // мөр худалдаж авсан бараа биш тул урамшуулалд ч, жагсаалтад ч орохгүй.
+  const reviewPromptOpen =
+    order.payment_status === "paid" &&
+    (order.status === "confirmed" ||
+      order.status === "shipping" ||
+      order.status === "delivered");
+  let reviewItems: ReviewableItem[] = [];
+  let reviewPoints = 0;
+  if (reviewPromptOpen) {
+    const purchased = [
+      ...new Set(
+        items
+          .filter((i) => i.product_id && !i.is_gift && !i.is_sample)
+          .map((i) => i.product_id as string),
+      ),
+    ].filter((pid) => byId.get(pid)?.slug);
+    if (purchased.length > 0) {
+      const [{ data: reviewData }, { data: loyaltyData }] = await Promise.all([
+        supabase
+          .from("reviews")
+          .select("product_id")
+          .eq("user_id", user.id)
+          .in("product_id", purchased),
+        supabase
+          .from("settings")
+          .select("value")
+          .eq("key", "loyalty")
+          .maybeSingle(),
+      ]);
+      const reviewed = new Set(
+        ((reviewData as { product_id: string }[] | null) ?? []).map(
+          (r) => r.product_id,
+        ),
+      );
+      reviewPoints = reviewPointsOf(
+        (loyaltyData as { value?: unknown } | null)?.value,
+      );
+      reviewItems = purchased.map((pid) => {
+        const p = byId.get(pid)!;
+        const line = items.find((i) => i.product_id === pid)!;
+        return {
+          productId: pid,
+          slug: p.slug,
+          name: line.product_name,
+          brand: line.brand,
+          image: p.image?.url ?? null,
+          reviewed: reviewed.has(pid),
+        };
+      });
+    }
+  }
+
   // Cancellable only while the status allows it AND the delivery day has not
   // started yet (cut-off 00:00 UB, client 2026-09-21) — which for a pre-order
   // can be a week or more away.
@@ -176,6 +234,14 @@ export default async function OrderDetailPage({
               ))}
             </CardContent>
           </Card>
+
+          {reviewPromptOpen && (
+            <OrderReviewPrompt
+              delivered={order.status === "delivered"}
+              reviewPoints={reviewPoints}
+              items={reviewItems}
+            />
+          )}
 
           {/* Status history */}
           {history.length > 0 && (
