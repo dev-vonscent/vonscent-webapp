@@ -3,6 +3,8 @@ import {
   checkoutSchema,
   checkoutOrderSchema,
   KHOROO_REQUIRED_MESSAGE,
+  detailMissing,
+  stripDetail,
 } from "@/lib/validators/order";
 
 /**
@@ -111,5 +113,19 @@ describe("checkoutOrderSchema — requestId", () => {
   it("rejects a non-uuid — a guessable key would let one customer's retry collide with another's order", () => {
     const r = checkoutOrderSchema.safeParse({ ...ub, requestId: "abc" });
     expect(r.success).toBe(false);
+  });
+});
+
+describe("detailMissing / stripDetail", () => {
+  it("does not count the folded khoroo prefix as a detail", () => {
+    expect(detailMissing("12-р хороо")).toBe(true);
+    expect(detailMissing("12-р хороо, ")).toBe(true);
+    expect(detailMissing("")).toBe(true);
+    expect(detailMissing("12-р хороо, 45-р байр 12 тоот")).toBe(false);
+  });
+
+  it("keeps only the khoroo when dropping a home address", () => {
+    expect(stripDetail("12-р хороо, 45-р байр")).toBe("12-р хороо");
+    expect(stripDetail("Төв гудамж 5")).toBe("");
   });
 });

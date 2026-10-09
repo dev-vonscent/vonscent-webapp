@@ -9,7 +9,12 @@ import { FieldError, fieldErrorClass } from "@/components/ui/form-field";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { AddressFields } from "@/features/checkout/components/address-fields";
 import { khorooRequired } from "@/lib/geo/locations";
-import { KHOROO_REQUIRED_MESSAGE } from "@/lib/validators/order";
+import { isRemoteAddress } from "@/lib/geo/zone";
+import { useShippingZones } from "@/features/checkout/use-shipping-zones";
+import {
+  DETAIL_REQUIRED_MESSAGE,
+  KHOROO_REQUIRED_MESSAGE,
+} from "@/lib/validators/order";
 
 export interface AddressFormValue {
   city: string;
@@ -66,6 +71,20 @@ export function AddressDialog({
   const [saving, setSaving] = React.useState(false);
 
   const detailRef = React.useRef<HTMLInputElement>(null);
+  const zones = useShippingZones();
+  /**
+   * Дэлгэрэнгүй хаяг зөвхөн үүдэнд хүргэх хаягт. Унаагаар явах хаягт (орон
+   * нутаг, мөн Налайх мэт R бүсийн дүүрэг) «Байр, орц, тоот» асуувал
+   * хэрэглэгч гэрийн хаягаа бичээд «гэрт хүргэнэ» гэж ойлгодог — тэнд унаа
+   * явах газрыг checkout-ийн тэмдэглэлд бичүүлнэ. Хот сонгоогүй үед ч нуугдана.
+   */
+  const showDetail =
+    Boolean(form.city) &&
+    !isRemoteAddress(zones, {
+      city: form.city,
+      district: form.district,
+      khoroo: form.khoroo,
+    });
   const regionRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -110,7 +129,9 @@ export function AddressDialog({
     ) {
       next.khoroo = KHOROO_REQUIRED_MESSAGE;
     }
-    if (!form.detail.trim()) next.detail = "Дэлгэрэнгүй хаягаа оруулна уу";
+    if (showDetail && form.detail.trim().length < 3) {
+      next.detail = DETAIL_REQUIRED_MESSAGE;
+    }
     setErrors(next);
     if (Object.values(next).some(Boolean)) {
       focusFirstError(next);
@@ -118,7 +139,8 @@ export function AddressDialog({
     }
     setSaving(true);
     try {
-      await onSave(form);
+      // Орон нутаг руу сольсон бол өмнө нь бичсэн УБ-ын хаяг үлдэхгүй.
+      await onSave(showDetail ? form : { ...form, detail: "" });
       onOpenChange(false);
     } finally {
       setSaving(false);
@@ -154,26 +176,29 @@ export function AddressDialog({
               clearError("city");
               clearError("district");
               clearError("khoroo");
+              clearError("detail");
             }}
           />
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="address-detail">Дэлгэрэнгүй хаяг</Label>
-          <Input
-            id="address-detail"
-            ref={detailRef}
-            value={form.detail}
-            placeholder="Байр, орц, тоот"
-            aria-invalid={errors.detail ? "true" : undefined}
-            className={fieldErrorClass(errors.detail)}
-            onChange={(e) => {
-              setForm({ ...form, detail: e.target.value });
-              clearError("detail");
-            }}
-          />
-          <FieldError message={errors.detail} />
-        </div>
+        {showDetail && (
+          <div className="space-y-1.5">
+            <Label htmlFor="address-detail">Дэлгэрэнгүй хаяг</Label>
+            <Input
+              id="address-detail"
+              ref={detailRef}
+              value={form.detail}
+              placeholder="Байр, орц, тоот"
+              aria-invalid={errors.detail ? "true" : undefined}
+              className={fieldErrorClass(errors.detail)}
+              onChange={(e) => {
+                setForm({ ...form, detail: e.target.value });
+                clearError("detail");
+              }}
+            />
+            <FieldError message={errors.detail} />
+          </div>
+        )}
 
         {extra}
 

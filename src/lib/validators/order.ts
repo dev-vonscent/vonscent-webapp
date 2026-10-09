@@ -39,7 +39,9 @@ export const checkoutSchema = z.object({
   // the values are Cyrillic names (the DB columns are plain text).
   shipCity: z.string().min(1, "Хот / аймгаа сонгоно уу"),
   shipDistrict: z.string().min(1, "Сум / дүүргээ сонгоно уу"),
-  shipDetail: z.string().min(3, "Хаягаа дэлгэрэнгүй оруулна уу"),
+  // Үүдэнд хүргэх хаягт заавал, унаагаар явах хаягт хоосон — бүсээс
+  // хамаарах тул orders route шалгана (`detailMissing`).
+  shipDetail: z.string().max(300).default(""),
   // Capital only, and folded into shipDetail for storage — kept as its own
   // field so the server can derive the delivery zone from it (todo.md B5b).
   // Хороотой хаягт заавал — доорх `checkoutOrderSchema`-г үз.
@@ -88,6 +90,9 @@ export const checkoutSchema = z.object({
 /** Хорооны мессежийг нэг эх сурвалжаас — форм ба сервер ижил үг хэлнэ. */
 export const KHOROO_REQUIRED_MESSAGE = "Хороогоо сонгоно уу";
 
+/** Дэлгэрэнгүй хаягийн мессеж — форм ба сервер ижил үг хэлнэ. */
+export const DETAIL_REQUIRED_MESSAGE = "Байр, орц, тоотоо оруулна уу";
+
 /**
  * Захиалга хүлээж авах схем — `checkoutSchema` дээр хорооны нөхцөлт дүрэм.
  *
@@ -108,6 +113,26 @@ export const checkoutOrderSchema = checkoutSchema.superRefine((v, ctx) => {
     });
   }
 });
+
+/** Хадгалагдсан хэлбэрийн эхэнд нийлүүлсэн «12-р хороо, » угтвар. */
+const KHOROO_PREFIX = /^\d+-р хороо(?:,\s*)?/u;
+
+/**
+ * Дэлгэрэнгүй хаяг (байр, орц, тоот) дутуу эсэх. Клиент хороог
+ * `composeDetail`-аар мөрийн эхэнд нийлүүлдэг тул «12-р хороо» ганцаараа
+ * хаяг болохгүй — угтварыг хасаж байж шалгана.
+ *
+ * Schema дээр биш: шаардах эсэх нь бүсээс (`isRemoteAddress`) хамаардаг бөгөөд
+ * бүс нь админы тохиргоо — orders route түүнийг уншсаны дараа дуудна.
+ */
+export function detailMissing(shipDetail: string): boolean {
+  return shipDetail.trim().replace(KHOROO_PREFIX, "").trim().length < 3;
+}
+
+/** Унаагаар явах хаягт гэрийн хаяг хадгалахгүй — зөвхөн хорооны угтвар. */
+export function stripDetail(shipDetail: string): string {
+  return KHOROO_PREFIX.exec(shipDetail.trim())?.[0].replace(/,\s*$/u, "") ?? "";
+}
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 export type OrderItemInput = z.infer<typeof orderItemSchema>;
