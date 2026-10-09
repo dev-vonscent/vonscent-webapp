@@ -265,6 +265,170 @@ async function main() {
     },
   );
 
+  // ── Автомат урамшууллын шатлал (0118) ────────────────────────────────
+  // Захиалгын subtotal-ыг шууд тавьж, `grant_reward_coupon`-ыг дуудна —
+  // каталогийн үнээс хамааралгүй яг босгон дээр шалгахын тулд.
+  async function rewardFor(settings: unknown, subtotal: number, discount = 0) {
+    await a.query(
+      `insert into settings (key, value) values ('coupons', $1::jsonb)
+         on conflict (key) do update set value = excluded.value`,
+      [JSON.stringify(settings)],
+    );
+    const o = await placeOrder(a, f, f.owner, "");
+    await a.query(
+      "update orders set subtotal = $2, discount = $3 where id = $1",
+      [o.id, subtotal, discount],
+    );
+    const g = await a.query<{ code: string | null }>(
+      "select grant_reward_coupon($1) as code",
+      [o.id],
+    );
+    const cp = await a.query<{
+      type: string;
+      value: number;
+      max_uses: number;
+      days: number;
+    }>(
+      `select type, value, max_uses,
+              round(extract(epoch from ends_at - now()) / 86400)::int as days
+         from coupons where source_order_id = $1`,
+      [o.id],
+    );
+    return { id: o.id, code: g.rows[0].code, coupons: cp.rows };
+  }
+  const t = (minTotal: number, value: number, extra: object = {}) => ({
+    id: `t${minTotal}-${value}`,
+    enabled: true,
+    minTotal,
+    type: "percent",
+    value,
+    validDays: 30,
+    maxUsesPerUser: 1,
+    ...extra,
+  });
+  const ladder = { tiers: [t(100_000, 5), t(300_000, 15)] };
+
+  await scenario(a, "Шатлал: 300k+ зөвхөн 300k-ийн купон", async () => {
+    const r = await rewardFor(ladder, 350_000);
+    check(
+      "ганц купон, 15%",
+      r.coupons.length === 1 && r.coupons[0].value === 15,
+      r.coupons,
+    );
+  });
+
+  await scenario(a, "Шатлал: яг 300,000 → 300k-ийнх", async () => {
+    const r = await rewardFor(ladder, 300_000);
+    check("15%", r.coupons[0]?.value === 15, r.coupons);
+  });
+
+  await scenario(a, "Шатлал: 299,999 → 100k-ийнх", async () => {
+    const r = await rewardFor(ladder, 299_999);
+    check("5%", r.coupons.length === 1 && r.coupons[0].value === 5, r.coupons);
+  });
+
+  await scenario(a, "Шатлал: купоны хямдрал суурийг бууруулна", async () => {
+    const r = await rewardFor(ladder, 310_000, 20_000);
+    check("290k суурь → 5%", r.coupons[0]?.value === 5, r.coupons);
+  });
+
+  await scenario(a, "Шатлал: аль ч босгод хүрээгүй → купонгүй", async () => {
+    const r = await rewardFor(ladder, 99_999);
+    check("купонгүй", r.code === null && r.coupons.length === 0, r);
+  });
+
+  await scenario(a, "Шатлал: дээд нь унтраалттай → доод нь", async () => {
+    const r = await rewardFor(
+      { tiers: [t(100_000, 5), t(300_000, 15, { enabled: false })] },
+      500_000,
+    );
+    check("5%", r.coupons[0]?.value === 5, r.coupons);
+  });
+
+  await scenario(a, "Шатлал: тогтсон дүн, хугацаа, хязгаар", async () => {
+    const r = await rewardFor(
+      {
+        tiers: [
+          t(200_000, 20_000, {
+            type: "fixed",
+            validDays: 14,
+            maxUsesPerUser: 2,
+          }),
+        ],
+      },
+      250_000,
+    );
+    const c = r.coupons[0];
+    check(
+      "fixed 20,000₮, 14 хоног, 2 удаа",
+      c?.type === "fixed" &&
+        c.value === 20_000 &&
+        c.days === 14 &&
+        c.max_uses === 2,
+      c,
+    );
+  });
+
+  await scenario(a, "Шатлал: давхар баталгаажуулалт → нэг купон", async () => {
+    const r = await rewardFor(ladder, 350_000);
+    const again = await a.query("select grant_reward_coupon($1) as code", [
+      r.id,
+    ]);
+    const n = await a.query(
+      "select count(*)::int as n from coupons where source_order_id = $1",
+      [r.id],
+    );
+    check(
+      "хоёр дахь дуудалт null, купон 1",
+      again.rows[0].code === null && n.rows[0].n === 1,
+    );
+  });
+
+  await scenario(a, "Шатлал: хуучин autoGrant хэлбэр ажилласаар", async () => {
+    const legacy = {
+      autoGrant: { enabled: true, type: "percent", value: 10, validDays: 30 },
+    };
+    const below = await rewardFor(legacy, 299_999);
+    check(
+      "minTotal-гүй → 300k анхдагч (доор нь купонгүй)",
+      below.code === null,
+    );
+    const r = await rewardFor(legacy, 300_000);
+    check("300k → 10%", r.coupons[0]?.value === 10, r.coupons);
+  });
+
+  await scenario(a, "Шатлал: эвдэрсэн мөр төлбөрийг унагахгүй", async () => {
+    const r = await rewardFor(
+      {
+        tiers: [
+          "junk",
+          { enabled: true, minTotal: "abc", value: 10 },
+          t(100_000, 1e12),
+          t(100_000, 7.5, { validDays: 99_999, maxUsesPerUser: 1e9 }),
+        ],
+      },
+      150_000,
+    );
+    const c = r.coupons[0];
+    check(
+      "зөв хэлбэртэй нь л үйлчилж, утгууд хавчигдсан",
+      c?.value === 7 && c.days === 365 && c.max_uses === 100,
+      r.coupons,
+    );
+  });
+
+  await scenario(a, "Шатлал: зочинд купонгүй", async () => {
+    await a.query(
+      `insert into settings (key, value) values ('coupons', $1::jsonb)
+         on conflict (key) do update set value = excluded.value`,
+      [JSON.stringify(ladder)],
+    );
+    const o = await placeOrder(a, f, null, "");
+    await a.query("update orders set subtotal = 500000 where id = $1", [o.id]);
+    const g = await a.query("select grant_reward_coupon($1) as code", [o.id]);
+    check("null", g.rows[0].code === null);
+  });
+
   // ── Зэрэг ашиглалт: хоёр холболт ────────────────────────────────────
   console.log("\nЗэрэг ашиглалт (row lock)");
   const code = `${tag}-RACE`;

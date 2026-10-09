@@ -4,6 +4,7 @@ import {
   couponTerms,
   daysLeft,
   describeRedemption,
+  hiddenFromWallet,
   sortForTab,
   toWalletCoupon,
   type CouponRecord,
@@ -177,5 +178,73 @@ describe("couponLabel", () => {
   it("spells out an amount that is not a round thousand", () => {
     expect(couponLabel("fixed", 7500)).toBe("7,500₮");
     expect(couponLabel("fixed", 500)).toBe("500₮");
+  });
+});
+
+describe("hiddenFromWallet (30 хоног)", () => {
+  const hidden = (
+    over: Partial<CouponRecord>,
+    lastUsed: string | null = null,
+  ) => hiddenFromWallet(record(over), lastUsed, NOW);
+
+  it("идэвхтэй купон хэзээ ч нуугдахгүй", () => {
+    expect(hidden({ ends_at: null, max_uses: null })).toBe(false);
+    expect(hidden({ ends_at: inDays(1) })).toBe(false);
+  });
+
+  it("ашигласан: сүүлчийн ашиглалтаас 30 хоног", () => {
+    const used = { used_count: 1, max_uses: 1 };
+    expect(hidden(used, inDays(-29))).toBe(false);
+    expect(hidden(used, inDays(-31))).toBe(true);
+  });
+
+  it("ашигласан ч ашиглалтын огноо байхгүй бол харагдана", () => {
+    expect(hidden({ used_count: 1, max_uses: 1 }, null)).toBe(false);
+  });
+
+  it("ашигласан нь дууссанаас давамгайлна — хугацаа нь эрт өнгөрсөн ч", () => {
+    expect(
+      hidden({ used_count: 1, max_uses: 1, ends_at: inDays(-90) }, inDays(-5)),
+    ).toBe(false);
+  });
+
+  it("хугацаа дууссан: ends_at-аас 30 хоног", () => {
+    expect(hidden({ ends_at: inDays(-29) })).toBe(false);
+    expect(hidden({ ends_at: inDays(-31) })).toBe(true);
+  });
+
+  it("унтраасан: deactivated_at-аас 30 хоног", () => {
+    expect(
+      hidden({ is_active: false, ends_at: null, deactivated_at: inDays(-10) }),
+    ).toBe(false);
+    expect(
+      hidden({ is_active: false, ends_at: null, deactivated_at: inDays(-40) }),
+    ).toBe(true);
+  });
+
+  it("унтраасан ба хугацаа дууссан: эрт болсноос нь тоолно", () => {
+    expect(
+      hidden({
+        is_active: false,
+        ends_at: inDays(-40),
+        deactivated_at: inDays(-2),
+      }),
+    ).toBe(true);
+  });
+
+  it("ирээдүйд дуусах ч унтраасан бол унтарсан өдрөөс", () => {
+    expect(
+      hidden({
+        is_active: false,
+        ends_at: inDays(60),
+        deactivated_at: inDays(-31),
+      }),
+    ).toBe(true);
+  });
+
+  it("унтраасан огноо мэдэгдэхгүй бол харагдана", () => {
+    expect(
+      hidden({ is_active: false, ends_at: null, deactivated_at: null }),
+    ).toBe(false);
   });
 });
