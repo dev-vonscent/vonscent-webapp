@@ -378,6 +378,8 @@ export interface FaqRow {
   answer: string;
   sort_order: number;
   is_active: boolean;
+  /** Чатын цонхны бэлэн асуулт эсэх — дээд тал нь `CHAT_FAQ_LIMIT` (0117). */
+  chat_pinned: boolean;
   created_at: string;
 }
 

@@ -65,6 +65,12 @@ export const FAQ_CATEGORIES = [
 export type FaqCategory = (typeof FAQ_CATEGORIES)[number];
 
 /**
+ * Чатын цонхонд гарах бэлэн асуултын дээд тоо. DB-ийн trigger
+ * (0117_faq_chat_pinned) ижил тоог шалгана — хоёуланг нь хамт өөрчил.
+ */
+export const CHAT_FAQ_LIMIT = 10;
+
+/**
  * «Туршиж үзэх» шошготой хэмжээ (ус ба багцын хэмжээний товч дээр). Зөвхөн
  * UI санал — 2ml нь sample биш, бусадтай адил энгийн хэмжээ.
  */

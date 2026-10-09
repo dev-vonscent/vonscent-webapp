@@ -19,4 +19,13 @@ describe("faq validators", () => {
     expect(faqPatchSchema.safeParse({ answer: "A" }).success).toBe(true);
     expect(faqPatchSchema.safeParse({ category: "" }).success).toBe(false);
   });
+
+  it("keeps a new FAQ out of the chat unless asked", () => {
+    const base = { category: "Хүргэлт", question: "Q?", answer: "A" };
+    expect(faqCreateSchema.parse(base).chatPinned).toBe(false);
+    expect(faqCreateSchema.parse({ ...base, chatPinned: true }).chatPinned).toBe(
+      true,
+    );
+    expect(faqPatchSchema.parse({}).chatPinned).toBeUndefined();
+  });
 });
