@@ -43,6 +43,11 @@ export interface PaymentView {
    * бүртгэлтэй хэрэглэгчид олгогдоно (`mark_order_paid`).
    */
   pointsEarned: number;
+  /**
+   * Хүргэгдсэний дараа худалдаж авсан усандаа сэтгэгдэл бичвэл ус бүрт олгох
+   * оноо (0117). Зочны захиалга болон урамшуулал унтарсан үед 0.
+   */
+  reviewPoints: number;
   paymentMethod: PaymentMethod;
   paid: boolean;
   /** Захиалга цуцлагдсан (нөөцийн хугацаа дууссан эсвэл гараар). */

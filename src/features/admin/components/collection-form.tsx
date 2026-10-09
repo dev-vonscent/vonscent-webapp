@@ -38,12 +38,6 @@ import type { AdminCollection } from "./collection-admin";
 /** A bundle is exactly four perfumes — the shop prices and ships it that way. */
 const REQUIRED_PRODUCTS = 4;
 
-const TAGS: { slug: "new" | "hot" | "sale"; label: string }[] = [
-  { slug: "new", label: "Шинэ" },
-  { slug: "hot", label: "Эрэлттэй" },
-  { slug: "sale", label: "Хямдрал" },
-];
-
 /** A perfume as the picker needs it: identity plus its price at every size. */
 /**
  * Багцын гишүүн болох боломжтой бараа.
@@ -235,11 +229,6 @@ export function CollectionForm({
     },
   );
 
-  const [tags, toggleTag] = useToggleList(
-    (collection?.collection_tags ?? [])
-      .map((t) => t.tags?.slug)
-      .filter((s): s is string => Boolean(s)),
-  );
   const [customTags, toggleCustomTag] = useToggleList(
     (collection?.collection_custom_tags ?? [])
       .map((t) => t.custom_tags?.slug)
@@ -391,7 +380,8 @@ export function CollectionForm({
         isActive: form.isActive,
         isFeatured: form.isFeatured,
         productIds: form.productIds,
-        tags,
+        // Шинэ/Эрэлттэй/Хямдрал багцад хэрэггүй — хуучин сонголтыг цэвэрлэнэ.
+        tags: [],
         customTags,
       },
       "Багц хадгалагдсангүй",
@@ -707,40 +697,24 @@ export function CollectionForm({
       <Card>
         <CardContent className="space-y-4 p-6">
           <h2 className="font-serif text-lg font-semibold">Таг ба төлөв</h2>
-          <div className="flex flex-wrap gap-4">
-            {TAGS.map((t) => (
-              <label
-                key={t.slug}
-                className="flex cursor-pointer items-center gap-2 text-sm"
-              >
-                <Checkbox
-                  checked={tags.includes(t.slug)}
-                  onCheckedChange={() => toggleTag(t.slug)}
-                />
-                {t.label}
-              </label>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-4 text-sm">
-            <label className="flex cursor-pointer items-center gap-2">
-              <Checkbox
-                checked={form.isActive}
-                onCheckedChange={(v) =>
-                  setForm({ ...form, isActive: Boolean(v) })
-                }
-              />
-              Идэвхтэй (нийтлэх)
-            </label>
-            <label className="flex cursor-pointer items-center gap-2">
-              <Checkbox
-                checked={form.isFeatured}
-                onCheckedChange={(v) =>
-                  setForm({ ...form, isFeatured: Boolean(v) })
-                }
-              />
-              Онцлох
-            </label>
-          </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Checkbox
+              checked={form.isFeatured}
+              onCheckedChange={(v) =>
+                setForm({ ...form, isFeatured: Boolean(v) })
+              }
+            />
+            <span>Онцлох багц</span>
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Checkbox
+              checked={form.isActive}
+              onCheckedChange={(v) =>
+                setForm({ ...form, isActive: Boolean(v) })
+              }
+            />
+            Идэвхтэй (нийтлэх)
+          </label>
           <CustomTagField
             pool={customTagPool}
             selected={customTags}
