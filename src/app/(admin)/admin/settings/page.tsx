@@ -7,13 +7,6 @@ import { LoadingButton } from "@/components/shared/loading-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { SHIPPING_ZONES, type ShippingZoneConfig } from "@/lib/constants";
 import { ZoneEditor } from "@/features/admin/components/zone-editor";
 import { createClient } from "@/lib/supabase/browser";
@@ -31,14 +24,6 @@ export default function AdminSettingsPage() {
   const [zones, setZones] = React.useState<ShippingZoneConfig[]>([
     ...SHIPPING_ZONES,
   ]);
-  const [autoGrant, setAutoGrant] = React.useState({
-    enabled: false,
-    minTotal: 300000,
-    type: "percent",
-    value: 10,
-    validDays: 30,
-    maxUsesPerUser: 1,
-  });
   const [collection, setCollection] = React.useState({
     customEnabled: true,
     minItems: 4,
@@ -67,9 +52,8 @@ export default function AdminSettingsPage() {
       collection: JSON.stringify(collection),
       imageGen: JSON.stringify(imageGen),
       shipping: JSON.stringify(zones),
-      coupons: JSON.stringify(autoGrant),
     }),
-    [store, collection, imageGen, zones, autoGrant],
+    [store, collection, imageGen, zones],
   );
   type SectionKey = keyof typeof snapshot;
   // Before the settings row has loaded there is nothing to compare against, so
@@ -120,8 +104,6 @@ export default function AdminSettingsPage() {
               );
             }
           }
-          if (row.key === "coupons" && v && v.autoGrant)
-            setAutoGrant((g) => ({ ...g, ...(v.autoGrant as object) }));
           if (row.key === "collection" && v)
             setCollection((c) => ({ ...c, ...(v as object) }));
           if (row.key === "imageGen" && v)
@@ -270,85 +252,8 @@ export default function AdminSettingsPage() {
           гарцууд (packshot / үнэрийн нот / засвар) хэмжээ, чанараа өөрсдөө
           тогтоодог тул энэ хэсэг практикт хэрэглэгдэхээ больсон. */}
 
-      {/* Automatic reward coupon */}
-      <Saver
-        title="Автомат купон"
-        onSave={() =>
-          saveSetting("coupons", { autoGrant }, "Купон хадгалагдсангүй")
-        }
-        dirty={isDirty("coupons")}
-        onSaved={() => commit("coupons")}
-      >
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <Checkbox
-            checked={autoGrant.enabled}
-            onCheckedChange={(c) =>
-              setAutoGrant({ ...autoGrant, enabled: Boolean(c) })
-            }
-          />
-          Идэвхжүүлэх
-        </label>
-        <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
-          <Field label="Барааны доод дүн (₮)">
-            <Input
-              type="number"
-              value={autoGrant.minTotal}
-              onChange={(e) =>
-                setAutoGrant({
-                  ...autoGrant,
-                  minTotal: Number(e.target.value) || 0,
-                })
-              }
-            />
-          </Field>
-          <Field label="Хямдралын төрөл">
-            <Select
-              value={autoGrant.type}
-              onValueChange={(v) => setAutoGrant({ ...autoGrant, type: v })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="percent">Хувь (%)</SelectItem>
-                <SelectItem value="fixed">Тогтсон дүн (₮)</SelectItem>
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field label={autoGrant.type === "percent" ? "Хувь" : "Дүн (₮)"}>
-            <Input
-              type="number"
-              value={autoGrant.value}
-              onChange={(e) =>
-                setAutoGrant({
-                  ...autoGrant,
-                  value: Number(e.target.value) || 0,
-                })
-              }
-            />
-          </Field>
-          <Field label="Хүчинтэй хугацаа (хоног)">
-            <Input
-              type="number"
-              value={autoGrant.validDays}
-              onChange={(e) =>
-                setAutoGrant({
-                  ...autoGrant,
-                  validDays: Number(e.target.value) || 1,
-                })
-              }
-            />
-          </Field>
-        </div>
-        <p className="text-muted-foreground text-xs">
-          Төлбөр нь баталгаажсан захиалгын <strong>барааны цэвэр дүн</strong>{" "}
-          (барааны дүн − купоны хямдрал;{" "}
-          <strong>хүргэлт ба оноо ороогүй</strong>) энэ тоонд хүрвэл худалдан
-          авагчид зөвхөн түүнд зориулсан купон автоматаар үүснэ. Бэлгийн эрх
-          тооцдогтой яг ижил дүн. Нэг захиалга дээд тал нь нэг купон; зочны
-          захиалгад үүсэхгүй (хаана хадгалах бүртгэл байхгүй).
-        </p>
-      </Saver>
+      {/* «Автомат купон» → «Урамшуулал» хуудасны «Автомат» таб руу шилжсэн:
+          купонтой холбоотой бүх зүйл нэг дор (клиентийн хүсэлт). */}
 
       {/* Shipping */}
       <Saver

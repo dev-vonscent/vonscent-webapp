@@ -27,6 +27,13 @@ import { stockState } from "./lib/stock-state";
 import { PRODUCT_OPTION_LIMIT, type ProductOption } from "./lib/product-option";
 import { customerSearchFilter } from "./lib/customer-search";
 import {
+  COUPON_TABS,
+  filterCoupons,
+  type CouponFilterQuery,
+  type CouponStatusFilter,
+  type CouponTab,
+} from "./lib/coupon-tabs";
+import {
   CUSTOMER_OPTION_LIMIT,
   type CustomerOption,
 } from "./lib/customer-option";
@@ -1033,14 +1040,102 @@ export async function getCustomerDetail(id: string): Promise<{
   };
 }
 
-export async function getCoupons(): Promise<CouponRow[]> {
+/** Rows per page on the promotions list. */
+export const COUPONS_PER_PAGE = 50;
+/** Most customers one name/phone search may match into the coupon filter. */
+const COUPON_OWNER_SEARCH_LIMIT = 200;
+
+export interface CouponPage {
+  rows: CouponRow[];
+  /** Matching rows across all pages; null in demo mode. */
+  total: number | null;
+  /** Per-tab count under the current status filter (search ignored). */
+  counts: Record<CouponTab, number> | null;
+  /** Owners of the personal coupons on this page, for their names. */
+  owners: CustomerOption[];
+}
+
+/**
+ * One tab of the promotions list: filtered by origin (`tab`), status and a
+ * search that matches the code or the owner's name/phone.
+ */
+export async function getCouponPage({
+  tab,
+  status,
+  q,
+  page = 0,
+}: {
+  tab: CouponTab;
+  status: CouponStatusFilter;
+  q?: string;
+  page?: number;
+}): Promise<CouponPage> {
   const supabase = await createClient();
-  if (!supabase) return [];
+  if (!supabase) return { rows: [], total: null, counts: null, owners: [] };
+  const now = new Date().toISOString();
+
+  const base = supabase.from("coupons").select("*", { count: "exact" });
+  let query = (
+    filterCoupons(
+      base as unknown as CouponFilterQuery,
+      tab,
+      status,
+      now,
+    ) as unknown as typeof base
+  )
+    .order("created_at", { ascending: false })
+    .range(page * COUPONS_PER_PAGE, (page + 1) * COUPONS_PER_PAGE - 1);
+
+  const term = q?.trim().replace(/["\\%,()]/gu, "") ?? "";
+  if (term) {
+    const clauses = [`code.ilike."%${term}%"`];
+    // A public code has no owner, so only its code can match.
+    if (tab !== "code") {
+      const owners = await getCustomerOptions({
+        q: term,
+        limit: COUPON_OWNER_SEARCH_LIMIT,
+      });
+      if (owners.length) {
+        clauses.push(`user_id.in.(${owners.map((o) => o.id).join(",")})`);
+      }
+    }
+    query = query.or(clauses.join(","));
+  }
+
+  const [{ data, count }, ...tabCounts] = await Promise.all([
+    query,
+    ...COUPON_TABS.map((t) => {
+      const head = supabase
+        .from("coupons")
+        .select("id", { count: "exact", head: true });
+      return filterCoupons(
+        head as unknown as CouponFilterQuery,
+        t,
+        status,
+        now,
+      ) as unknown as typeof head;
+    }),
+  ]);
+  const rows = (data as CouponRow[] | null) ?? [];
+  const counts = Object.fromEntries(
+    COUPON_TABS.map((t, i) => [t, tabCounts[i].count ?? 0]),
+  ) as Record<CouponTab, number>;
+  const owners = await getCustomerOptions({
+    ids: rows.flatMap((c) => (c.user_id ? [c.user_id] : [])),
+  });
+  return { rows, total: count ?? 0, counts, owners };
+}
+
+/** The stored `settings.coupons` value — the automatic reward tiers. */
+export async function getCouponSettings(): Promise<unknown> {
+  const supabase = await createClient();
+  if (!supabase) return null;
   const { data } = await supabase
-    .from("coupons")
-    .select("*")
-    .order("created_at", { ascending: false });
-  return (data as CouponRow[] | null) ?? [];
+    .from("settings")
+    .select("value")
+    .eq("key", "coupons")
+    .maybeSingle();
+  return (data as { value: unknown } | null)?.value ?? null;
 }
 
 /**

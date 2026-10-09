@@ -694,9 +694,9 @@ async function main() {
 
   await scenario(a, ctx, "F) Хүргэсний дараа refund (дараа сард)", async () => {
     await a.query(
-      `update settings set value = jsonb_set(value, '{autoGrant}',
-         '{"enabled":true,"minTotal":50000,"type":"percent","value":10,"validDays":30,"maxUsesPerUser":1}'::jsonb)
-       where key = 'coupons'`,
+      `insert into settings (key, value) values ('coupons',
+         '{"tiers":[{"id":"t","enabled":true,"minTotal":50000,"type":"percent","value":10,"validDays":30,"maxUsesPerUser":1}]}'::jsonb)
+       on conflict (key) do update set value = excluded.value`,
     );
     const p = await makeProduct(a, ctx, "F");
     const id = await placeOrder(a, {

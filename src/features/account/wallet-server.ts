@@ -2,6 +2,7 @@ import "server-only";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import { maskName, maskPhone } from "@/lib/mask";
 import {
+  hiddenFromWallet,
   toWalletCoupon,
   type CouponRecord,
   type WalletCoupon,
@@ -11,7 +12,7 @@ import {
 type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
 
 const COLUMNS =
-  "id, code, type, value, min_subtotal, max_discount, ends_at, max_uses, used_count, is_active, source";
+  "id, code, type, value, min_subtotal, max_discount, ends_at, max_uses, used_count, is_active, source, deactivated_at";
 
 /** Enough for years of wheel spins; the wallet is not paginated. */
 const WALLET_LIMIT = 200;
@@ -26,6 +27,10 @@ const WALLET_LIMIT = 200;
  *
  * `code` narrows to one coupon (the detail page). Ownership is always part of
  * the query, so another customer's code simply returns nothing.
+ *
+ * The list drops coupons spent or ended more than `WALLET_HISTORY_DAYS` ago
+ * (`hiddenFromWallet`). The detail page does not: a link to one coupon — from
+ * an email, say — still opens it.
  */
 export async function loadWallet(
   supabase: Admin,
@@ -98,5 +103,14 @@ export async function loadWallet(
   }
 
   const now = Date.now();
-  return rows.map((c) => toWalletCoupon(c, byCoupon.get(c.id) ?? [], now));
+  return rows.flatMap((c) => {
+    const reds = byCoupon.get(c.id) ?? [];
+    const lastUsedAt = reds.reduce<string | null>(
+      (latest, r) =>
+        !latest || Date.parse(r.at) > Date.parse(latest) ? r.at : latest,
+      null,
+    );
+    if (!code && hiddenFromWallet(c, lastUsedAt, now)) return [];
+    return [toWalletCoupon(c, reds, now)];
+  });
 }

@@ -323,6 +323,8 @@ export interface CouponRow {
   /** Per-account cap, counted from coupon_redemptions (0025). */
   max_uses_per_user: number | null;
   used_count: number;
+  /** Generated: shop-wide cap reached (0119). Read-only. */
+  used_up: boolean;
   /** Cap on a percent coupon's ₮ discount (0053). null = uncapped. */
   max_discount: number | null;
   /** Who issued it: 'manual' | 'spin' (0053). */
@@ -508,7 +510,7 @@ export interface Database {
       orders: Table<OrderRow, "id" | "order_no" | "created_at" | "updated_at">;
       order_items: Table<OrderItemRow, "id">;
       order_refund_accounts: Table<OrderRefundAccountRow, "created_at">;
-      coupons: Table<CouponRow, "id" | "created_at">;
+      coupons: Table<CouponRow, "id" | "created_at" | "used_up">;
       coupon_redemptions: Table<CouponRedemptionRow, "id" | "created_at">;
       home_sections: Table<HomeSectionRow, "id" | "created_at">;
       home_section_products: Table<HomeSectionProductRow, "sort_order">;
