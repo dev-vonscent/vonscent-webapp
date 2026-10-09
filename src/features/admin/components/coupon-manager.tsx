@@ -106,7 +106,10 @@ export function CouponTable({
         ownerName={viewing?.user_id ? ownerName(viewing.user_id) : null}
         onOpenChange={(open) => !open && setViewing(null)}
       />
-      <Card className="overflow-x-auto">
+      {/* `relative`: the header's `sr-only` label is absolutely positioned.
+          Without a positioned ancestor it escaped this scroller to x≈624 and
+          widened the whole page, so a phone could pinch-zoom out to 0.7. */}
+      <Card className="relative overflow-x-auto">
         <table className="w-full min-w-160 text-sm">
           <thead className="bg-muted/50 text-muted-foreground text-left text-xs">
             <tr>
