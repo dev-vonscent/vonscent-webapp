@@ -21,6 +21,8 @@ import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import type { AddressRow } from "@/db/types";
+import { isRemoteAddress } from "@/lib/geo/zone";
+import { useShippingZones } from "@/features/checkout/use-shipping-zones";
 import { EmptyState } from "@/components/shared/empty-state";
 
 /** Үндсэн хаяг үргэлж хамгийн дээр — жагсаалтын дараалал нэг эх сурвалжтай. */
@@ -29,6 +31,7 @@ function sortDefaultFirst(list: AddressRow[]): AddressRow[] {
 }
 
 export function AddressBook() {
+  const zones = useShippingZones();
   const [userId, setUserId] = React.useState<string | null>(null);
   /** Хүлээн авагчийн нэр, утас — хаяг бүр дээр асуухын оронд дансаас. */
   const [contact, setContact] = React.useState({ name: "", phone: "" });
@@ -250,7 +253,13 @@ export function AddressBook() {
                               )}
                             </AnimatePresence>
                           </div>
-                          <p className="mt-1 text-sm">{a.detail}</p>
+                          {/* Унаагаар явах хаягт (орон нутаг, R бүс) хуучин
+                              гэрийн хаягийг харуулахгүй. */}
+                          {a.detail &&
+                            !isRemoteAddress(zones, {
+                              city: a.city,
+                              district: a.district ?? "",
+                            }) && <p className="mt-1 text-sm">{a.detail}</p>}
                         </div>
 
                         <div className="flex shrink-0 items-center">
