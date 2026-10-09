@@ -4,6 +4,8 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+const LOG_LIMIT = 500;
+
 export interface AdminRedemption {
   id: string;
   at: string;
@@ -13,6 +15,8 @@ export interface AdminRedemption {
   phone: string | null;
   orderId: string | null;
   orderNo: string | null;
+  /** The order's coupon discount, ₮ (`orders.discount` — coupon only). */
+  discount: number | null;
 }
 
 /**
@@ -43,7 +47,7 @@ export async function GET(
     .select("id, user_id, order_id, created_at, cancelled_at")
     .eq("coupon_id", id.data)
     .order("created_at", { ascending: false })
-    .limit(500);
+    .limit(LOG_LIMIT);
   const rows =
     (data as
       | {
@@ -69,7 +73,10 @@ export async function GET(
           .in("id", userIds)
       : Promise.resolve({ data: [] }),
     orderIds.length
-      ? supabase.from("orders").select("id, order_no").in("id", orderIds)
+      ? supabase
+          .from("orders")
+          .select("id, order_no, discount")
+          .in("id", orderIds)
       : Promise.resolve({ data: [] }),
   ]);
   const people = new Map(
@@ -79,11 +86,12 @@ export async function GET(
         | null) ?? []
     ).map((p) => [p.id, p]),
   );
-  const orderNo = new Map(
-    ((orders as { id: string; order_no: string }[] | null) ?? []).map((o) => [
-      o.id,
-      o.order_no,
-    ]),
+  const orderById = new Map(
+    (
+      (orders as
+        | { id: string; order_no: string; discount: number | null }[]
+        | null) ?? []
+    ).map((o) => [o.id, o]),
   );
 
   const redemptions: AdminRedemption[] = rows.map((r) => {
@@ -96,8 +104,17 @@ export async function GET(
       name: p?.full_name ?? null,
       phone: p?.phone ?? null,
       orderId: r.order_id,
-      orderNo: r.order_id ? (orderNo.get(r.order_id) ?? null) : null,
+      orderNo: r.order_id
+        ? (orderById.get(r.order_id)?.order_no ?? null)
+        : null,
+      discount: r.order_id
+        ? (orderById.get(r.order_id)?.discount ?? null)
+        : null,
     };
   });
-  return NextResponse.json({ redemptions });
+  // At the cap the summary would undercount; the sheet says so.
+  return NextResponse.json({
+    redemptions,
+    truncated: rows.length >= LOG_LIMIT,
+  });
 }

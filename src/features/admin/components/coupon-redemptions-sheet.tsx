@@ -12,7 +12,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { adminFetch } from "@/features/admin/lib/mutate";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatPrice } from "@/lib/format";
+import { summarizeRedemptions } from "@/features/admin/lib/redemption-summary";
 import type { CouponRow } from "@/db/types";
 import type { AdminRedemption } from "@/app/api/admin/coupons/[id]/redemptions/route";
 
@@ -31,18 +32,21 @@ export function CouponRedemptionsSheet({
 }) {
   const [rows, setRows] = React.useState<AdminRedemption[] | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [truncated, setTruncated] = React.useState(false);
 
   React.useEffect(() => {
     if (!coupon) return;
     let cancelled = false;
     setRows(null);
     setError(null);
-    adminFetch<{ redemptions: AdminRedemption[] }>(
+    adminFetch<{ redemptions: AdminRedemption[]; truncated?: boolean }>(
       `/api/admin/coupons/${coupon.id}/redemptions`,
     ).then((res) => {
       if (cancelled) return;
-      if (res.ok) setRows(res.data?.redemptions ?? []);
-      else setError(res.error);
+      if (res.ok) {
+        setRows(res.data?.redemptions ?? []);
+        setTruncated(res.data?.truncated === true);
+      } else setError(res.error);
     });
     return () => {
       cancelled = true;
@@ -56,10 +60,12 @@ export function CouponRedemptionsSheet({
           <SheetTitle className="font-mono">{coupon?.code}</SheetTitle>
           <SheetDescription>
             {ownerName ? `Эзэмшигч: ${ownerName}` : "Нийтийн купон"}
-            {coupon &&
-              ` · ${coupon.used_count}${coupon.max_uses ? ` / ${coupon.max_uses}` : ""} ашигласан`}
           </SheetDescription>
         </SheetHeader>
+
+        {rows && rows.length > 0 && (
+          <RedemptionStats rows={rows} truncated={truncated} />
+        )}
 
         {error ? (
           <p className="text-destructive text-sm">{error}</p>
@@ -90,6 +96,17 @@ export function CouponRedemptionsSheet({
                     </Badge>
                   )}
                 </div>
+                {r.discount != null && r.discount > 0 && (
+                  <div
+                    className={
+                      r.cancelledAt
+                        ? "text-muted-foreground text-sm tabular-nums line-through"
+                        : "text-sm font-medium tabular-nums"
+                    }
+                  >
+                    −{formatPrice(r.discount)}
+                  </div>
+                )}
                 <div className="text-muted-foreground flex items-center gap-2 text-xs">
                   {formatDateTime(r.at)}
                   {r.orderId && (
@@ -107,5 +124,43 @@ export function CouponRedemptionsSheet({
         )}
       </SheetContent>
     </Sheet>
+  );
+}
+
+/**
+ * Дээд талын гурван тоо. Цуцлагдсан ашиглалт оролцохгүй (жагсаалтад харагдсаар).
+ */
+function RedemptionStats({
+  rows,
+  truncated,
+}: {
+  rows: AdminRedemption[];
+  truncated: boolean;
+}) {
+  const s = summarizeRedemptions(rows);
+  const stats = [
+    { value: `${s.uses} удаа`, label: "ашигласан" },
+    { value: `${s.people} хүн`, label: "ашигласан" },
+    { value: formatPrice(s.discount), label: "нийт хөнгөлөлт" },
+  ];
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-3 gap-2">
+        {stats.map((st) => (
+          <div
+            key={st.label + st.value}
+            className="bg-secondary rounded-xl p-3"
+          >
+            <p className="text-base font-semibold tabular-nums">{st.value}</p>
+            <p className="text-muted-foreground text-xs">{st.label}</p>
+          </div>
+        ))}
+      </div>
+      {truncated && (
+        <p className="text-muted-foreground text-xs">
+          Сүүлийн 500 ашиглалтаар тооцов.
+        </p>
+      )}
+    </div>
   );
 }
