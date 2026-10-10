@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { preload } from "react-dom";
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
@@ -39,6 +40,7 @@ import { DecantPlayground } from "@/features/marketing/components/decant-playgro
 import { HeroPosterPreload } from "@/features/marketing/components/hero-poster-preload";
 import { HERO_DEFAULT_ML } from "@/features/marketing/vial-specs";
 import { PromoPopup } from "@/features/marketing/components/promo-popup";
+import { firstPopupImage } from "@/features/marketing/popup-schedule";
 import {
   GENDERS,
   GENDER_LABEL,
@@ -275,7 +277,14 @@ async function SiteJsonLd() {
 }
 
 async function PromoSlot() {
-  return <PromoPopup settings={await getPopupSettings()} />;
+  const settings = await getPopupSettings();
+  // Popup нээгдэхэд түүний зураг нүүрний LCP болдог (Sentry, prod 30 хоног:
+  // p75 4.8с). Зураг нь hydration + effect-ийн дараа л татагдаж эхэлдэг байсан
+  // тул HTML parse хийх үед JS-тэй зэрэг эхлүүлнэ. Priority-г өсгөхгүй —
+  // popup-ийг нээх JS-тэй өрсөлдөх ёсгүй.
+  const first = firstPopupImage(settings);
+  if (first) preload(first, { as: "image" });
+  return <PromoPopup settings={settings} />;
 }
 
 /**

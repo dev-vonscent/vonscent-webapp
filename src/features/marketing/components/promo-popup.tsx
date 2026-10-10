@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import type { PopupSettings, PopupSlide } from "@/features/content/api";
+import { liveSlides } from "../popup-schedule";
 
 const AUTOPLAY_MS = 5000;
 /** Дэлгэцэд багтаах хязгаар: хажуу тал тус бүр 1rem, өндрийн 85%. */
@@ -43,18 +44,30 @@ function useNaturalSizes(urls: string[]): Record<string, Size> {
   const key = urls.join("\u0000");
   React.useEffect(() => {
     let alive = true;
-    for (const url of key ? key.split("\u0000") : []) {
+    const list = key ? key.split("\u0000") : [];
+    // Нэг нэгээр: эхний слайд (LCP болдог) бусадтайгаа зурвас хуваалцахгүй —
+    // хамт татахад 2 дахь слайд (185KB) эхнийхийг ~2 дахин удаашруулдаг байв.
+    const load = (i: number) => {
+      const url = list[i];
+      if (!url || !alive) return;
       const img = new window.Image();
-      img.onload = () => {
+      img.onload = img.onerror = () => {
         if (!alive) return;
-        setSizes((prev) =>
-          prev[url]
-            ? prev
-            : { ...prev, [url]: { w: img.naturalWidth, h: img.naturalHeight } },
-        );
+        if (img.naturalWidth) {
+          setSizes((prev) =>
+            prev[url]
+              ? prev
+              : {
+                  ...prev,
+                  [url]: { w: img.naturalWidth, h: img.naturalHeight },
+                },
+          );
+        }
+        load(i + 1);
       };
       img.src = url;
-    }
+    };
+    load(0);
     return () => {
       alive = false;
     };
@@ -73,13 +86,6 @@ function useViewport(): Size | null {
     return () => window.removeEventListener("resize", read);
   }, []);
   return viewport;
-}
-
-/** True when `now` falls within the slide's optional [startsAt, endsAt] window. */
-function isLive(slide: PopupSlide, now: number): boolean {
-  if (slide.startsAt && now < new Date(slide.startsAt).getTime()) return false;
-  if (slide.endsAt && now > new Date(slide.endsAt).getTime()) return false;
-  return true;
 }
 
 /**
@@ -144,9 +150,7 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
 
   React.useEffect(() => {
     const now = Date.now();
-    const live = (settings.slides ?? []).filter(
-      (s) => Boolean(s.imageUrl) && isLive(s, now),
-    );
+    const live = liveSlides(settings.slides ?? [], now);
     setSlides(live);
     if (!settings.enabled || live.length === 0) return;
     if (shownForThisDocument) return;
