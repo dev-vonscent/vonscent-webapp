@@ -62,13 +62,7 @@ function useCan3D(
       deviceMemory?: number;
     };
     if (nav.connection?.saveData || (nav.deviceMemory ?? 8) <= 2) return;
-    let ok = false;
-    try {
-      ok = Boolean(document.createElement("canvas").getContext("webgl2"));
-    } catch {
-      ok = false;
-    }
-    if (!ok) return;
+    if (!hasHardwareWebGL2()) return;
     setCapable(window.matchMedia("(pointer: fine)").matches ? "fine" : "touch");
   }, [reduced]);
 
@@ -112,6 +106,27 @@ function useCan3D(
 
   const wake = React.useCallback(() => setWoke(true), []);
   return { can, wake };
+}
+
+/**
+ * WebGL2 байгаа, бас программаар зурдаг (GPU-гүй) renderer биш эсэх.
+ * SwiftShader / llvmpipe дээр 4 шилэн материалтай үзэгдлийн нэг frame
+ * 70мс–10с болж (2026-10-11 хэмжсэн) хуудсыг бүхэлд нь гацаадаг — poster нь
+ * ялгаагүй харагдана.
+ */
+function hasHardwareWebGL2(): boolean {
+  try {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    if (!gl) return false;
+    const info = gl.getExtension("WEBGL_debug_renderer_info");
+    const renderer = String(
+      gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER),
+    );
+    gl.getExtension("WEBGL_lose_context")?.loseContext();
+    return !/swiftshader|llvmpipe|softpipe|software/i.test(renderer);
+  } catch {
+    return false;
+  }
 }
 
 /**

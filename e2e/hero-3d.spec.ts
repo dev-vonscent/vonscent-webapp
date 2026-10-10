@@ -33,10 +33,17 @@ async function gotoHome(page: Page) {
     .waitFor({ state: "attached", timeout: 60_000 });
 }
 
+/** Апп-ын `hasHardwareWebGL2`-тэй ижил: программ renderer (SwiftShader) дээр 3D ачаалагдахгүй. */
 async function hasWebGL2(page: Page) {
-  return page.evaluate(() =>
-    Boolean(document.createElement("canvas").getContext("webgl2")),
-  );
+  return page.evaluate(() => {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    if (!gl) return false;
+    const info = gl.getExtension("WEBGL_debug_renderer_info");
+    const r = String(
+      gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER),
+    );
+    return !/swiftshader|llvmpipe|softpipe|software/i.test(r);
+  });
 }
 
 test.describe("reduced-motion", () => {
@@ -97,7 +104,10 @@ test.describe("хүрэлтийн дэлгэц", () => {
     expect(assets.models()).toEqual([]);
     expect(assets.posters()).toEqual(["/hero/vials-black-sm-10.avif"]);
 
-    test.skip(!(await hasWebGL2(page)), "WebGL2-гүй орчин — 3D ачаалагдахгүй");
+    test.skip(
+      !(await hasWebGL2(page)),
+      "GPU-тэй WebGL2 алга (SwiftShader) — 3D ачаалагдахгүй",
+    );
     await page.getByText("5мл", { exact: true }).tap();
     await expect(page.locator("[data-hero-3d]")).not.toHaveAttribute(
       "data-hero-3d",
@@ -111,7 +121,10 @@ test.describe("хулгана (desktop)", () => {
   test("3D idle үед ачаалагдаж, gainmap JPG татна", async ({ page }) => {
     const assets = trackHeroAssets(page);
     await gotoHome(page);
-    test.skip(!(await hasWebGL2(page)), "WebGL2-гүй орчин — 3D ачаалагдахгүй");
+    test.skip(
+      !(await hasWebGL2(page)),
+      "GPU-тэй WebGL2 алга (SwiftShader) — 3D ачаалагдахгүй",
+    );
     await expect(page.locator("[data-hero-3d]")).toHaveAttribute(
       "data-hero-3d",
       "ready",

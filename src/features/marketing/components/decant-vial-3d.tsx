@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, addAfterEffect, useFrame, useThree } from "@react-three/fiber";
 import { Environment, useGLTF } from "@react-three/drei";
 import { GltfVial, SoftShadow, VIALS_URL } from "./vial-gltf";
 import { LiquidSlosh } from "./liquid-material";
+import { MAX_FRAME_MS, SAMPLE_COUNT, nextDpr } from "../adaptive-dpr";
 import * as THREE from "three";
 import type { MlSize } from "@/lib/constants";
 import {
@@ -135,11 +136,15 @@ export default function DecantLineup3D({
 }: DecantLineup3DProps) {
   const theme = useThemeInfo();
   const onScreen = useOnScreen(trackRef);
+  // DPR-ийн дээд хязгаар — `AdaptiveDpr` бууруулна. Prop-оор өгөх ёстой:
+  // r3f Canvas дахин render болох бүрд `dpr` prop-оос DPR-ийг дахин тооцдог
+  // тул `setDpr`-ийг шууд дуудвал хэмжээ солиход буцаад 2 болдог байв.
+  const [maxDpr, setMaxDpr] = React.useState(2);
   return (
     <Canvas
       className={className}
       frameloop={onScreen ? "demand" : "never"}
-      dpr={[1, 2]}
+      dpr={[1, maxDpr]}
       gl={{ alpha: true, antialias: true, powerPreference: "low-power" }}
       camera={{ fov: FOV, position: [0, CENTER_Y + 3, 40] }}
       onCreated={({ gl }) => {
@@ -155,6 +160,7 @@ export default function DecantLineup3D({
       <color attach="background" args={[theme.bg]} />
       <FitCamera />
       <ResumeOnShow />
+      <AdaptiveDpr onLower={setMaxDpr} />
       {/* Blender-ийн ЯГ ТЭР студи (scripts/blender/vial20.py --env) 360° HDR —
           металл/шилний тусгал рендертэй ижил болно. Blender нь Z-дээш,
           камер нь +Y руу харсан тул тэнхлэгийг эргүүлж тааруулна. */}
@@ -282,6 +288,36 @@ function ReadySignal({ onReady }: { onReady?: () => void }) {
     // Эхний frame-д transmission FBO дүүрнэ; 2 дахь нь бүрэн зураг.
     if (frames.current === 2) cb.current?.();
     else invalidate();
+  });
+  return null;
+}
+
+/**
+ * Удаан GPU дээр DPR-ийг 2 → 1.5 → 1 болгоно (#6, `adaptive-dpr.ts`).
+ * Зөвхөн дараалсан frame-ийн `dt`-г хэмждэг тул `demand` горимын idle
+ * завсар «удаан» гэж тооцогдохгүй.
+ */
+function AdaptiveDpr({ onLower }: { onLower: (dpr: number) => void }) {
+  const get = useThree((s) => s.get);
+  const samples = React.useRef<number[]>([]);
+  /** Өмнөх frame дараагийнхаа frame-ийг хүссэн эсэх (r3f loop-ийн төгсгөлд). */
+  const chained = React.useRef(false);
+  React.useEffect(
+    () =>
+      addAfterEffect(() => {
+        chained.current = get().internal.frames > 0;
+      }),
+    [get],
+  );
+  useFrame((state, dt) => {
+    const ms = dt * 1000;
+    if (!chained.current || ms <= 0 || ms > MAX_FRAME_MS) return;
+    samples.current.push(ms);
+    if (samples.current.length < SAMPLE_COUNT) return;
+    const current = state.viewport.dpr;
+    const next = nextDpr(samples.current, current);
+    samples.current = [];
+    if (next !== current) onLower(next);
   });
   return null;
 }
