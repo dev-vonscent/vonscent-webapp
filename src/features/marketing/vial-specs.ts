@@ -61,6 +61,9 @@ export function finishForTheme(themeClass: string): VialFinish {
  * navy/white хоёул цагаан дэвсгэр + мөнгөлөг сав тул нэг зураг (`light`).
  * Layout: `sm` = утас (< md), `md` = md+ — канвасын харьцаа өөр.
  */
+/** Hero анх нээгдэхэд сонгогдсон хэмжээ (poster preload ч үүнийг ашиглана). */
+export const HERO_DEFAULT_ML: MlSize = 10;
+
 export const POSTER_THEMES = ["black", "light", "pink"] as const;
 export type PosterTheme = (typeof POSTER_THEMES)[number];
 export type PosterLayout = "sm" | "md";

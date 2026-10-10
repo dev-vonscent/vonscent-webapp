@@ -10,6 +10,7 @@ Vonscent decant савнууд — 2/5/10/20мл, бодит хэмжээ (1 Ble
   python vials.py -- <out> --shadows          # сав бүрийн доорх сүүдэр (shadow_<ml>.png)
   python vials.py -- <out> --render <finish>  # 4 савны студийн рендер (black|pink|silver)
   python vials.py -- <out> --env              # студийн 360° HDR (вэбийн орчны гэрэл)
+                                              #   → scripts/hero-env/ руу хуулаад `pnpm hero:gainmap`
   python vials.py -- <out> --env-dark         # хар theme-ийн студи (хар шал/дэвсгэр)
 
 Вэбийн GLB-д шингэн БҮТЭН өндрөөр (түвшин/цалгилтыг shader тайрна); дүүргэлтийн

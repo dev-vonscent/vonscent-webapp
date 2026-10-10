@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { ML_SIZES, SPRAYS_PER_ML, type MlSize } from "@/lib/constants";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import {
+  HERO_DEFAULT_ML,
   POSTER_THEMES,
   posterUrl,
   type PosterTheme,
@@ -24,14 +25,36 @@ const DecantLineup3D = dynamic(() => import("./decant-vial-3d"), {
 
 /**
  * 3D-г ачаалах эсэх: reduced-motion биш, WebGL2 байгаа, сул төхөөрөмж /
- * Save-Data биш, хуудас ачаалагдаж дууссаны дараа (idle) — LCP болон эхний
- * интерактивд саад болохгүй. Бусад үед poster хангалттай бодит харагдана.
+ * Save-Data биш, hero дэлгэцэн дээр байгаа үед. Бусад үед poster (3D-ийн
+ * өөрийнх нь рендер) хангалттай бодит харагдана.
+ *
+ * Хэзээ:
+ *  - Хулгана (`pointer: fine`): хуудас ачаалагдаж дууссаны дараа (idle).
+ *  - Хүрэлтийн дэлгэц: hero-г анх хүрэх / хэмжээ сонгох үед л. Утсанд 3D нь
+ *    ~1MB татаж, shader compile-оор main thread-ийг түгждэг (Lighthouse-ийн
+ *    утасны эмуляцид TBT 0.6–9.7с, 2026-10-10) — хүрээгүй хэрэглэгчид
+ *    poster-оос ялгагдахгүй тул тэр зардал дэмий.
+ *
+ * `wake()` — hero-тэй харьцсан дохио (pointerdown / хэмжээ солих).
  */
-function useCan3D(reduced: boolean) {
+function useCan3D(
+  reduced: boolean,
+  areaRef: React.RefObject<HTMLElement | null>,
+) {
   const [can, setCan] = React.useState(false);
+  const [woke, setWoke] = React.useState(false);
+  const [visible, setVisible] = React.useState(false);
+  const [capable, setCapable] = React.useState<"no" | "fine" | "touch">("no");
+
   React.useEffect(() => {
-    if (reduced) {
-      setCan(false);
+    // `reduced` эхний render дээр үргэлж false (hook-ийн effect хараахан
+    // ажиллаагүй) — шууд уншихгүй бол 3D-г эхлүүлэх idle callback
+    // reduced-motion-ий шинэчлэлтээс түрүүлж ажиллаж болно (e2e-д барьсан).
+    if (
+      reduced ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      setCapable("no");
       return;
     }
     const nav = navigator as Navigator & {
@@ -46,6 +69,33 @@ function useCan3D(reduced: boolean) {
       ok = false;
     }
     if (!ok) return;
+    setCapable(window.matchMedia("(pointer: fine)").matches ? "fine" : "touch");
+  }, [reduced]);
+
+  // Hero-гоос доош гүйлгэсэн хойно ачаалж эхлэхгүй (буцаж ирэхэд л).
+  React.useEffect(() => {
+    const el = areaRef.current;
+    if (!el || !("IntersectionObserver" in window)) {
+      setVisible(true);
+      return;
+    }
+    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), {
+      rootMargin: "200px 0px",
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [areaRef]);
+
+  const want =
+    capable === "fine" || (capable === "touch" && woke) ? visible : false;
+
+  React.useEffect(() => {
+    if (can || !want) return;
+    // Хүрсэн бол шууд; хулганатай үед эхний интерактивт саад болохгүйн тулд idle.
+    if (capable === "touch") {
+      setCan(true);
+      return;
+    }
     const start = () => setCan(true);
     if ("requestIdleCallback" in window) {
       const id = window.requestIdleCallback(start, { timeout: 2500 });
@@ -53,8 +103,15 @@ function useCan3D(reduced: boolean) {
     }
     const t = setTimeout(start, 1200);
     return () => clearTimeout(t);
+  }, [can, want, capable]);
+
+  // reduced-motion асаавал ачаалсан 3D-г ч буулгана.
+  React.useEffect(() => {
+    if (reduced) setCan(false);
   }, [reduced]);
-  return can;
+
+  const wake = React.useCallback(() => setWoke(true), []);
+  return { can, wake };
 }
 
 /**
@@ -65,14 +122,37 @@ function useCan3D(reduced: boolean) {
  * каталог руу.
  */
 export function DecantPlayground({ intro }: { intro?: React.ReactNode }) {
-  const [ml, setMl] = React.useState<MlSize>(10);
+  const [ml, setMl] = React.useState<MlSize>(HERO_DEFAULT_ML);
   const reduced = usePrefersReducedMotion();
   const areaRef = React.useRef<HTMLDivElement>(null);
   const groupId = React.useId();
-  const can3d = useCan3D(reduced);
+  const { can: can3d, wake } = useCan3D(reduced, areaRef);
   const [ready3d, setReady3d] = React.useState(false);
   const show3d = can3d && ready3d;
   const sprays = ml * SPRAYS_PER_ML;
+
+  // 3D-гүй үед poster-ийг шинэ зураг decode хийгдтэл ХУУЧНААР нь үлдээнэ —
+  // background-image шууд солигдвол татагдах хооронд хоосон анивчдаг (P5).
+  const [posterMl, setPosterMl] = React.useState<MlSize>(ml);
+  React.useEffect(() => {
+    if (ml === posterMl) return;
+    if (show3d) {
+      setPosterMl(ml);
+      return;
+    }
+    let alive = true;
+    const img = new Image();
+    img.src = viewportPosterUrl(ml);
+    img
+      .decode()
+      .catch(() => undefined)
+      .then(() => {
+        if (alive) setPosterMl(ml);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [ml, posterMl, show3d]);
 
   // 3D гарч ирээд fade дууссаны дараа poster-ийг DOM-оос хасна — тэгэхгүй бол
   // хэмжээ/theme солих бүрд харагдахгүй poster дахин татагдана.
@@ -89,6 +169,10 @@ export function DecantPlayground({ intro }: { intro?: React.ReactNode }) {
   return (
     <div
       ref={areaRef}
+      // CTA холбоос дарвал хуудас солигдох тул 3D-г дэмий татахгүй.
+      onPointerDown={(e) => {
+        if (!(e.target as Element).closest("a")) wake();
+      }}
       data-hero-3d={show3d ? "ready" : can3d ? "loading" : "off"}
       className="grid w-full items-center gap-6 md:grid-cols-[9fr_11fr] md:gap-8 lg:gap-12"
     >
@@ -98,7 +182,7 @@ export function DecantPlayground({ intro }: { intro?: React.ReactNode }) {
       >
         {!posterGone && (
           <VialPoster
-            ml={ml}
+            ml={posterMl}
             className={cn(
               STAGE,
               "transition-[opacity,filter] ease-out",
@@ -133,14 +217,19 @@ export function DecantPlayground({ intro }: { intro?: React.ReactNode }) {
                   key={size}
                   className="relative"
                   // 3D-гүй үед: дарахаас өмнө тэр хэмжээний poster-ийг татаж эхэлнэ.
-                  onPointerEnter={() => !show3d && preloadPoster(size)}
+                  onPointerEnter={() => {
+                    if (!show3d) new Image().src = viewportPosterUrl(size);
+                  }}
                 >
                   <input
                     type="radio"
                     name={groupId}
                     value={size}
                     checked={ml === size}
-                    onChange={() => setMl(size)}
+                    onChange={() => {
+                      setMl(size);
+                      wake();
+                    }}
                     className="peer sr-only"
                   />
                   <span
@@ -206,7 +295,8 @@ function posterVars(ml: MlSize) {
   return vars as React.CSSProperties;
 }
 
-function preloadPoster(ml: MlSize) {
+/** Одоогийн theme × дэлгэцийн өргөнд таарах poster-ийн URL. */
+function viewportPosterUrl(ml: MlSize) {
   const cls = document.documentElement.className;
   const theme: PosterTheme = /\bblack\b/.test(cls)
     ? "black"
@@ -214,7 +304,7 @@ function preloadPoster(ml: MlSize) {
       ? "pink"
       : "light";
   const layout = window.matchMedia("(min-width: 48rem)").matches ? "md" : "sm";
-  new Image().src = posterUrl(theme, layout, ml);
+  return posterUrl(theme, layout, ml);
 }
 
 /**

@@ -10,6 +10,7 @@
     "hero:posters": "node --import tsx scripts/hero-posters.ts",
     "hero:glb": "pnpm dlx @gltf-transform/cli@4 meshopt public/models/vials.glb public/models/vials.glb --level medium && pnpm hero:assets",
     "hero:assets": "node --import tsx scripts/hero-assets.ts",
+    "hero:gainmap": "node --import tsx scripts/hero-gainmap.ts && pnpm hero:assets",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",

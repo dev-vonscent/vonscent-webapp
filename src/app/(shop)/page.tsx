@@ -36,6 +36,8 @@ import {
 import { fillRail, interleave, mixRandom } from "@/features/products/rail";
 import { ScentQuiz } from "@/features/quiz/components/scent-quiz";
 import { DecantPlayground } from "@/features/marketing/components/decant-playground";
+import { HeroPosterPreload } from "@/features/marketing/components/hero-poster-preload";
+import { HERO_DEFAULT_ML } from "@/features/marketing/vial-specs";
 import { PromoPopup } from "@/features/marketing/components/promo-popup";
 import {
   GENDERS,
@@ -93,6 +95,7 @@ export default function HomePage() {
           загвар, цалгидаг шингэн). Утсан дээр 3D дээрээ, текст доор нь.
           Сурталчилгааны зар (popup) өмнөх шигээ тусдаа popup-аар гарна. */}
       <section className="relative w-full overflow-hidden">
+        <HeroPosterPreload ml={HERO_DEFAULT_ML} />
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 opacity-[0.05] mix-blend-overlay"

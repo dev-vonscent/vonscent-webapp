@@ -61,13 +61,17 @@ const FINISHES: Record<VialFinish, Finish> = {
  */
 const LIQUID_COLOR = "#FFFFFF";
 
-/** Blender студийн 360° HDR (scripts/blender/vial20.py --env, ~0.7MB). */
-const STUDIO_HDR = heroAsset("/models/studio.hdr");
+/**
+ * Blender студийн 360° орчин — gainmap JPG (UltraHDR, ~50KB). Эх нь
+ * `scripts/hero-env/studio.hdr` (vial20.py --env, 0.7MB); `pnpm hero:gainmap`.
+ * drei `Environment` `.jpg`-г `HDRJPGLoader`-оор HDR болгон задална.
+ */
+const STUDIO_HDR = heroAsset("/models/studio.jpg");
 /**
  * Хар theme: шал/дэвсгэр нь хар студи (vials.py --env-dark). Цайвар шал
  * гялгар хар гэрийн доод хэсэгт саарал болж тусдаг байв.
  */
-const STUDIO_HDR_DARK = heroAsset("/models/studio_dark.hdr");
+const STUDIO_HDR_DARK = heroAsset("/models/studio_dark.jpg");
 const ENV_ROTATION = new THREE.Euler(0, Math.PI / 2, 0);
 /** Хар гэр нь орчныг бага тусгадаг тул арай хүчтэй. */
 const ENV_INTENSITY: Record<VialFinish, number> = {

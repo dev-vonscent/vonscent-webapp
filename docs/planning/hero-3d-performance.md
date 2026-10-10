@@ -27,7 +27,7 @@
    | Файл | Одоо | Оновчилсны дараа |
    |---|---|---|
    | `public/models/vials.glb` | 637KB | **168KB** meshopt (gzip ~54KB), хэмжсэн |
-   | `studio.hdr` / `studio_dark.hdr` | 0.7 / 0.87MB | gainmap `.jpg` ~100KB орчим |
+   | `studio.hdr` / `studio_dark.hdr` | 0.7 / 0.87MB | gainmap `.jpg` **52 / 56KB** (хийсэн, 3-р шат) |
    | three + r3f + drei JS | ~250KB gzip | lazy chunk — зөв хийгдсэн |
 
    `public/models/vial20.glb`, `shadow_*.png` — кодонд **ашиглагдаагүй**, deploy-д хэрэггүй.
@@ -142,16 +142,56 @@ WebGL-гүй, Save-Data, `deviceMemory ≤ 2` үед байнгын хувилб
 тусгалд анзаарагдаж болзошгүй тул `medium` (10 бит) сонгов. Шахсан файлыг **дахин
 бүү шах** (vials.py-ийн толгойд тэмдэглэсэн).
 
-### Хийгээгүй (шалтгаантай)
+### Хийгээгүй (шалтгаантай) — 3-р шатанд шинэчилсэн
 
-- **#4 HDR → gainmap JPG.** drei дэмждэг (`HDRJPGLoader`), гэхдээ `useEnvironment.preload`
+- ~~**#4 HDR → gainmap JPG.**~~ → 3-р шатанд хийсэн. drei дэмждэг (`HDRJPGLoader`), гэхдээ `useEnvironment.preload`
   gainmap-д ажилладаггүй, encode хийх хэрэгсэл pipeline-д нэмэгдэнэ, металлын
   тусгалын чанарыг харьцуулж баталгаажуулаагүй. Буцаж ирсэн хэрэглэгч immutable
   кэшийн (#8) ачаар HDR-ийг дахин татахгүй болсон. Дараа нь тусад нь туршина.
 - **#6 `PerformanceMonitor`.** drei эх код: FPS-ийг зөвхөн `useFrame` дотор хэмждэг —
   `demand` горимд хөдөлгөөнгүй хугацааны завсар «бага FPS» гэж тооцогдож хүчтэй
   төхөөрөмж дээр ч DPR-ийг дэмий бууруулна. Манай тохиргоонд буруу дохио өгнө.
-- **P3** (утсан дээр LCP хэмжих), **P5** (fallback үед хэмжээ солиход анивчих),
-  **P6** (360/375px дээр poster↔3D таарах) — хэмжилт/гар шалгалт, кодоор шийдэх
-  зүйл тодорхой болоогүй.
-- **P7** E2E тест — хэрэгтэй хэвээр, Playwright орчинд ажиллуулж шалгах шаардлагатай.
+- ~~**P3, P5, P6, P7**~~ → 3-р шатанд хийсэн / хэмжсэн.
+
+## 3-р шат — 2026-10-11 (rebase `origin/dev` + үлдсэн ажил)
+
+### Суурь хэмжилт (өөрчлөлтөөс өмнө)
+
+Production build (`pnpm build && pnpm start`, dev сан), Lighthouse 12.8 утасны
+эмуляц (simulate throttling), 3 удаа:
+
+| | Оноо | TBT | LCP | LCP элемент |
+|---|---|---|---|---|
+| Өмнө | 37 / 43 / 55 | 9716 / 1548 / 617мс | 12.4–18.2с | сурталчилгааны popup-ийн зураг |
+| **Дараа** | **68 / 70 / 71** | **297 / 230 / 218мс** | 12.8–13.9с | мөн popup |
+
+Өмнө нь утасны эмуляцид 3D бүрэн ачаалагдаж (`studio_dark.hdr` **854KB gzip-гүй**,
+GLB 64KB), three.js-ийн chunk main thread-ийг 10с хүртэл түгждэг байв. Одоо
+утсан дээр `/models/*` огт татагдахгүй, poster 32мс-д High priority-тэй эхэлнэ.
+
+**LCP-ийн үлдсэн асуудал 3D биш:** LCP элемент нь `PromoPopup`-ийн 1080×1350
+зураг (reload бүрт 800мс-ийн дараа нээгддэг). Энэ нь dev-д ч адил — тусад нь
+шийдэх (жишээ нь popup-ийн зургийг `sizes`-аар жижигрүүлэх, LCP-ээс гаргах).
+
+### Хийсэн
+
+| # | Юу хийсэн | Баталгаа |
+|---|---|---|
+| #1+ | `useCan3D`: хулганатай үед idle + hero харагдаж байхад; **хүрэлтийн дэлгэц (`pointer: coarse`) дээр hero-г анх хүрэх / хэмжээ сонгох хүртэл 3D ачаалахгүй** (CTA холбоос дарвал үл тооцно). Hero-гоос доош гүйлгэсэн бол ачаалж эхлэхгүй (IntersectionObserver, 200px). | Lighthouse (дээрх хүснэгт); e2e `hero-3d.spec.ts` «хүрэлтийн дэлгэц» |
+| #4 | HDR → gainmap JPG (UltraHDR): `studio.jpg` 52KB, `studio_dark.jpg` 56KB (нийт 1.5MB → 108KB). `pnpm hero:gainmap` (Playwright Chromium дотор `@monogrid/gainmap-js` encoder). Эх HDR → `scripts/hero-env/` | 12 рендерийг (3 theme × 2 layout × 2 хэмжээ) HDR-тэй пикселээр харьцуулсан: дундаж зөрүү **0.01–0.03/255**. Poster дахин гаргах шаардлагагүй |
+| P3 | `HeroPosterPreload`: next-themes-ийн шиг inline script theme × өргөнд таарах НЭГ poster-ийг `fetchpriority=high`-аар preload | Lighthouse: poster эхний хүсэлтүүдийн нэг (32мс). Popup 800мс-ийн дараа тул өрсөлдөхгүй |
+| P5 | 3D-гүй үед хэмжээ солиход шинэ poster `decode()` хийгдтэл хуучнаар үлдээнэ | e2e «хэмжээ солиход poster солигдоно» |
+| P6 | 360/375/430px дээр poster ↔ 3D хэмжсэн | Савнуудын хүрээ: 430px — яг тэнцүү; 375px — 1.6%; 360px — 2.2% (~2 CSS px). 700мс-ийн opacity+blur шилжилтэд анзаарагдахгүй тул нэмэлт poster үүсгээгүй |
+| P7 | `e2e/hero-3d.spec.ts` — reduced-motion (poster ганц, 3D-гүй, theme-ийн poster), хэмжээ солих, хүрэлтийн дэлгэц (хүрэх хүртэл 3D-гүй), desktop (3D + gainmap, `.hdr` татахгүй) | `--repeat-each=3`: 15/15 |
+| — | `usePrefersReducedMotion` эхний render-т false буцаадаг тул `useCan3D` нь `matchMedia`-г шууд давхар шалгана | Idle callback шинэчлэлтээс түрүүлэх боломжийг хаана |
+
+**gainmap-ийн анхаарах зүйл:** encoder-т `flipY: true` заавал — эс бөгөөс орчин
+доошоо харж, мөнгөлөг сав шалны оронд таазыг тусгана (харьцуулалтад цайвар
+theme-д дундаж 9/255 зөрүү гарч илэрсэн). Playwright-д reduced-motion-ийг
+`contextOptions: { reducedMotion }`-оор өгнө — `test.use({ reducedMotion })`
+чимээгүй үйлчлэхгүй.
+
+### Хийгээгүй (шалтгаантай)
+
+- **#6 `PerformanceMonitor`** — өмнөх шалтгаан хэвээр (`demand` горимд FPS буруу).
+- **Desktop Lighthouse** — хэмжээгүй; desktop-д 3D idle үед ачаалагдах нь хэвээр.
