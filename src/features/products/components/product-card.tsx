@@ -7,20 +7,20 @@ import { WishlistButton } from "@/features/wishlist/components/wishlist-button";
 import { QuickAdd } from "./quick-add";
 import { GenderBadge } from "./gender-badge";
 
-const TAG_LABEL: Record<string, string> = {
-  new: "Шинэ",
-  hot: "Эрэлттэй",
-  sale: "Хямдрал",
-};
+import { CARD_STATUS_LABEL, cardStatus, type CardStatus } from "../card-status";
 
 export function ProductCard({
   product,
   matchPct,
+  prefer,
 }: {
   product: ProductListItem;
   /** Quiz match percentage — shows a corner badge when set (3b). */
   matchPct?: number;
+  /** Харж буй жагсаалтын төлөв түрүүлнэ (`cardStatus`). */
+  prefer?: CardStatus[];
 }) {
+  const status = cardStatus(product, prefer);
   return (
     <div className="group relative flex flex-col">
       {/* touch-callout: iOS дээр удаан дарахад зургийг preview болгож
@@ -39,15 +39,23 @@ export function ProductCard({
           />
         )}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
-          {product.tags.map((t) => (
+          {/* Нэг төлөв + хямдрал — хамгийн ихдээ хоёр badge. */}
+          {status && (
             <Badge
-              key={t}
-              variant={t}
+              variant="outline"
+              className="bg-background/85! w-fit border-transparent backdrop-blur-sm"
+            >
+              {CARD_STATUS_LABEL[status]}
+            </Badge>
+          )}
+          {product.tags.includes("sale") && (
+            <Badge
+              variant="sale"
               className="bg-background/85! w-fit backdrop-blur-sm"
             >
-              {TAG_LABEL[t]}
+              Хямдрал
             </Badge>
-          ))}
+          )}
         </div>
         {matchPct !== undefined && (
           <span className="bg-foreground text-background absolute bottom-2.5 left-2.5 rounded-full px-2 py-0.5 text-[11px] font-semibold">

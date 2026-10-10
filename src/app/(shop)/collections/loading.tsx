@@ -37,10 +37,10 @@ export default function Loading() {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:mt-8 lg:grid-cols-3">
+      <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:mt-8 lg:grid-cols-4">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="flex flex-col">
-            <SkeletonBlock className="aspect-3/2 w-full rounded-2xl" />
+            <SkeletonBlock className="aspect-4/5 w-full rounded-2xl" />
             <div className="mt-3 flex items-start justify-between gap-3">
               <div className="flex min-w-0 flex-col gap-1">
                 <SkeletonBlock className="h-3 w-16" />

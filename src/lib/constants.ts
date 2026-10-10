@@ -97,6 +97,14 @@ export const CATALOG_PAGE_SIZE = 24;
  */
 export const HOT_PRODUCTS_COUNT = 12;
 
+/**
+ * Багцын «Шинэ» / «Эрэлттэй» таг автомат (админ тавихаа больсон): хамгийн
+ * сүүлд нэмэгдсэн / төлөгдсөн захиалгаар хамгийн их зарагдсан ийм тооны
+ * идэвхтэй багц (0122). Нүүрний rail дахь багцын дээд тоотой ижил.
+ */
+export const NEW_COLLECTIONS_COUNT = 6;
+export const HOT_COLLECTIONS_COUNT = 6;
+
 /** Size a fresh bundle starts on — the smallest (2ml) tier. */
 export const DEFAULT_BUNDLE_ML = 2;
 

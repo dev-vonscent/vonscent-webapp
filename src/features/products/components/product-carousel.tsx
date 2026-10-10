@@ -4,13 +4,22 @@ import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import { ProductCard } from "./product-card";
+import { CollectionCard } from "@/features/collections/components/collection-card";
 import { cn } from "@/lib/utils";
 import type { ProductListItem } from "@/lib/types";
+import type { RailItem } from "../rail";
+import type { CardStatus } from "../card-status";
 
+/** `items` өгвөл ус, багц холилдсон rail; эс бөгөөс зөвхөн `products`. */
 export function ProductCarousel({
-  products,
+  products = [],
+  items,
+  prefer,
 }: {
-  products: (ProductListItem & { matchPct?: number })[];
+  products?: (ProductListItem & { matchPct?: number })[];
+  items?: RailItem[];
+  /** Rail-ийн төлөв («Онцлох» хэсэгт «Онцлох») card дээр түрүүлнэ. */
+  prefer?: CardStatus[];
 }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "start",
@@ -59,14 +68,35 @@ export function ProductCarousel({
     >
       <div ref={emblaRef} className="-mx-4 overflow-hidden sm:mx-0">
         <div className="flex gap-4 px-4 sm:px-0">
-          {products.map((p) => (
-            <div
-              key={p.id}
-              className="w-[44%] min-w-0 shrink-0 sm:w-[31%] lg:w-[23.5%]"
-            >
-              <ProductCard product={p} matchPct={p.matchPct} />
-            </div>
-          ))}
+          {items
+            ? items.map((it) => (
+                <div
+                  key={`${it.kind}-${it.kind === "product" ? it.product.id : it.collection.id}`}
+                  className="w-[44%] min-w-0 shrink-0 sm:w-[31%] lg:w-[23.5%]"
+                >
+                  {it.kind === "product" ? (
+                    <ProductCard product={it.product} prefer={prefer} />
+                  ) : (
+                    <CollectionCard
+                      collection={it.collection}
+                      variant="rail"
+                      prefer={prefer}
+                    />
+                  )}
+                </div>
+              ))
+            : products.map((p) => (
+                <div
+                  key={p.id}
+                  className="w-[44%] min-w-0 shrink-0 sm:w-[31%] lg:w-[23.5%]"
+                >
+                  <ProductCard
+                    product={p}
+                    matchPct={p.matchPct}
+                    prefer={prefer}
+                  />
+                </div>
+              ))}
         </div>
       </div>
 

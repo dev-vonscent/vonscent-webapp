@@ -23,6 +23,12 @@ const PRICE_STEP = 1000;
  */
 const BRANDS_COLLAPSED = 10;
 
+const KINDS: { value: string | undefined; label: string }[] = [
+  { value: undefined, label: "Бүгд" },
+  { value: "perfume", label: "Ус" },
+  { value: "bundle", label: "Багц" },
+];
+
 const TAGS: { value: string; label: string }[] = [
   { value: "new", label: "Шинэ" },
   { value: "hot", label: "Эрэлттэй" },
@@ -171,6 +177,22 @@ export function CatalogFilters({
           </Button>
         </div>
       )}
+
+      {/* Ус, багц хоёулаа нэг жагсаалтад холилддог — нэгийг нь л харах. */}
+      <Group title="Төрөл">
+        <div className="grid grid-cols-3 gap-2">
+          {KINDS.map((k) => (
+            <Chip
+              key={k.label}
+              active={(searchParams.get("kind") ?? undefined) === k.value}
+              onClick={() => setSingle("kind", k.value)}
+            >
+              {k.label}
+            </Chip>
+          ))}
+        </div>
+      </Group>
+      <Separator />
 
       <Group title="Хүйс">
         <div className="grid grid-cols-3 gap-2">

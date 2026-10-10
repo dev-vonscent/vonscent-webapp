@@ -12,6 +12,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 /** Params that count as an active filter for the "Цэвэрлэх (n)" badge. */
 const FILTER_KEYS = [
+  "kind",
   "brand",
   "gender",
   "family",

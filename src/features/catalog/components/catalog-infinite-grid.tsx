@@ -7,7 +7,10 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ProductGrid } from "@/features/products/components/product-grid";
 import { ProductGridSkeleton } from "@/components/shared/skeletons";
-import type { CatalogResult } from "@/lib/types";
+import { mixCatalog } from "@/features/products/rail";
+import type { Collection } from "@/features/collections/types";
+import type { CardStatus } from "@/features/products/card-status";
+import type { CatalogFilters, CatalogResult } from "@/lib/types";
 
 /** Дараагийн хуудасны дугаар, эсвэл бүгд ачаалагдсан бол `undefined`. */
 export function nextCatalogPage(last: CatalogResult): number | undefined {
@@ -55,9 +58,18 @@ async function fetchCatalogPage(
 export function CatalogInfiniteGrid({
   initial,
   query,
+  collections = [],
+  sort,
+  prefer,
 }: {
   initial: CatalogResult;
   query: string;
+  /** Шүүлтүүрт таарсан багцууд (`getCatalogCollections`) — эрэмбээрээ
+   *  усуудтай холилдоно. */
+  collections?: Collection[];
+  sort?: CatalogFilters["sort"];
+  /** Шүүсэн төлөв card дээр түрүүлнэ (`preferredStatuses`). */
+  prefer?: CardStatus[];
 }) {
   const {
     data,
@@ -126,7 +138,14 @@ export function CatalogInfiniteGrid({
         </div>
       )}
 
-      <ProductGrid products={items} />
+      {collections.length > 0 ? (
+        <ProductGrid
+          items={mixCatalog(items, collections, sort, nextPage === undefined)}
+          prefer={prefer}
+        />
+      ) : (
+        <ProductGrid products={items} prefer={prefer} />
+      )}
 
       {isFetchingNextPage && (
         <div className="mt-8">

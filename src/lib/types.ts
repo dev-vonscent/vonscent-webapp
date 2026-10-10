@@ -173,6 +173,8 @@ export interface CatalogFilters {
   tags?: TagKind[];
   /** Зөвхөн «Онцлох» гэж тэмдэглэсэн бараа. */
   featured?: boolean;
+  /** «Төрөл»: зөвхөн ус эсвэл зөвхөн багц; хоосон бол хоёулаа холилдоно. */
+  kind?: "perfume" | "bundle";
   /** Зөвхөн эдгээр id — нүүрийн эрэмбэлэгдсэн жагсаалт, хүслийн жагсаалт. */
   ids?: string[];
   ml?: number[];

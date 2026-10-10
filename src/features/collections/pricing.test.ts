@@ -19,6 +19,8 @@ function member(
     name: "P",
     brand: "B",
     image: null,
+    scentFamilies: [],
+    seasons: [],
     variantByMl: Object.fromEntries(
       Object.entries(prices).map(([ml, price]) => [
         Number(ml),
