@@ -16,8 +16,18 @@ const AUTOPLAY_MS = 5000;
 /** Дэлгэцэд багтаах хязгаар: хажуу тал тус бүр 1rem, өндрийн 85%. */
 const VIEWPORT_PAD = 32;
 const MAX_HEIGHT_RATIO = 0.85;
-/** Хуудас зурагдаж амжсаны дараа гарна — дээрээс нь шууд унахгүй. */
-const OPEN_DELAY_MS = 800;
+/**
+ * Хэрэглэгч хуудастай анх харьцсаны (гүйлгэх / хүрэх / товч) дараа гарна.
+ *
+ * Хуудас ачаалагдмагц (өмнө нь 800мс) гарахад popup-ийн зураг нүүрний LCP
+ * болдог байв — Sentry, prod 30 хоног: popup LCP үед p75 4.8с. Браузер
+ * хэрэглэгчийн анхны үйлдлээр LCP-ийг хаадаг тул түүний дараа гарсан popup
+ * LCP-д огт нөлөөлөхгүй. Цагаар (N секундын дараа) гаргах нөөц хувилбар
+ * САНААТАЙГААР байхгүй: үйлдэлгүй үед гарвал тэр мөч өөрөө LCP болно.
+ */
+const POPUP_TRIGGERS = ["scroll", "pointerdown", "keydown"] as const;
+/** Үйлдлээс хойш — гүйлгэж буй хуруун доор шууд унахгүй. */
+const OPEN_DELAY_MS = 400;
 
 /**
  * Нэг document-д ганц удаа. Модулийн хувьсагч нь client navigation-ы үед
@@ -154,11 +164,20 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
     setSlides(live);
     if (!settings.enabled || live.length === 0) return;
     if (shownForThisDocument) return;
-    const t = setTimeout(() => {
-      shownForThisDocument = true;
-      setOpen(true);
-    }, OPEN_DELAY_MS);
-    return () => clearTimeout(t);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onFirst = () => {
+      for (const t of POPUP_TRIGGERS) window.removeEventListener(t, onFirst);
+      timer = setTimeout(() => {
+        shownForThisDocument = true;
+        setOpen(true);
+      }, OPEN_DELAY_MS);
+    };
+    for (const t of POPUP_TRIGGERS)
+      window.addEventListener(t, onFirst, { passive: true });
+    return () => {
+      for (const t of POPUP_TRIGGERS) window.removeEventListener(t, onFirst);
+      if (timer) clearTimeout(timer);
+    };
   }, [settings.enabled, settings.slides]);
 
   function stopAutoplay() {
