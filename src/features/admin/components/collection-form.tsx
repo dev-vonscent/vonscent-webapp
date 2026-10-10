@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { CustomTagField } from "./custom-tag-field";
 import { CollectionImageGenerator } from "./collection-image-generator";
+import { BottleStylePicker } from "./bottle-style-picker";
 import { useToggleList } from "./multi-check";
 import { IMAGE_ACCEPT } from "@/lib/storage/limits";
 import { prepareUpload } from "@/lib/storage/prepare-upload";
@@ -31,7 +32,12 @@ import { cn } from "@/lib/utils";
 import { useProductOptions } from "@/features/admin/hooks/use-product-options";
 import { PRODUCT_OPTION_MAX } from "@/features/admin/lib/product-option";
 import type { ProductOption } from "@/features/admin/lib/product-option";
-import { GENDERS, GENDER_LABEL, BUNDLE_ML_SIZES } from "@/lib/constants";
+import {
+  GENDERS,
+  GENDER_LABEL,
+  BUNDLE_ML_SIZES,
+  type BottleStyle,
+} from "@/lib/constants";
 import type { CustomTagOption } from "@/features/taxonomy/api";
 import type { AdminCollection } from "./collection-admin";
 
@@ -185,6 +191,7 @@ export function CollectionForm({
       ? Number(collection.discount_pct)
       : defaultDiscountPct,
     imageUrl: collection?.image_url ?? "",
+    bottleStyle: (collection?.bottle_style ?? null) as BottleStyle | null,
     isActive: collection?.is_active ?? true,
     isFeatured: collection?.is_featured ?? false,
     productIds: collection
@@ -377,6 +384,7 @@ export function CollectionForm({
           price: mlPrices[ml] === "" ? null : Number(mlPrices[ml]),
         })),
         imageUrl: form.imageUrl || null,
+        bottleStyle: form.bottleStyle,
         isActive: form.isActive,
         isFeatured: form.isFeatured,
         productIds: form.productIds,
@@ -416,6 +424,18 @@ export function CollectionForm({
               onUse={(url) => setForm((f) => ({ ...f, imageUrl: url }))}
             />
           )}
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Савны зураг</p>
+            <p className="text-muted-foreground text-xs">
+              Багцын хуудсанд cover-ийн дараа хоёр дахь зураг болж харагдана.
+            </p>
+            <BottleStylePicker
+              value={form.bottleStyle}
+              onChange={(bottleStyle) =>
+                setForm((f) => ({ ...f, bottleStyle }))
+              }
+            />
+          </div>
         </CardContent>
       </Card>
 

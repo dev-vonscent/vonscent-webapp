@@ -1,7 +1,13 @@
 import "server-only";
 import { cache } from "react";
 import { isSupabaseConfigured } from "@/lib/env";
-import { HOT_COLLECTIONS_COUNT, NEW_COLLECTIONS_COUNT } from "@/lib/constants";
+import {
+  HOT_COLLECTIONS_COUNT,
+  NEW_COLLECTIONS_COUNT,
+  type BottleStyle,
+} from "@/lib/constants";
+import { publicUrl } from "@/lib/storage/storage";
+import { BOTTLE_MASTER_PATH } from "@/features/admin/bottle-image";
 import { createPublicClient } from "@/lib/supabase/public";
 import { callRpc } from "@/lib/supabase/rpc";
 import type { CatalogFilters } from "@/lib/types";
@@ -47,6 +53,7 @@ interface DbCollection {
   rating_count?: number | null;
   discount_pct: number | string;
   image_url: string | null;
+  bottle_style?: BottleStyle | null;
   is_active: boolean;
   is_featured: boolean;
   created_at: string;
@@ -61,8 +68,8 @@ interface DbCollection {
 
 const SELECT = `
   id, slug, type, user_id, name, gender, description, usage_description,
-  rating_avg, rating_count, discount_pct, image_url, is_active, is_featured,
-  created_at, collection_items ( product_id, sort_order ),
+  rating_avg, rating_count, discount_pct, image_url, bottle_style, is_active,
+  is_featured, created_at, collection_items ( product_id, sort_order ),
   collection_ml_discounts ( ml, discount_pct, price ),
   collection_tags ( tags ( kind ) )
 `;
@@ -179,6 +186,9 @@ function build(
       .map((t) => t.tags?.kind)
       .filter((k): k is TagKind => Boolean(k)),
     image: row.image_url ?? members[0]?.image?.url ?? null,
+    bottleImage: row.bottle_style
+      ? publicUrl(BOTTLE_MASTER_PATH(row.bottle_style))
+      : null,
     isActive: row.is_active,
     isFeatured: row.is_featured,
     members,
