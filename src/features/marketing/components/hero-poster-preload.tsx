@@ -11,8 +11,9 @@ import type { MlSize } from "@/lib/constants";
  * уншаад яг тэр НЭГ зургийг `fetchpriority=high`-аар preload хийнэ.
  * URL нь `VialPoster`-ийн CSS-тэй ижил (`posterUrl`) тул кэшээс авна.
  *
- * Popup-ийн зураг (LCP байж болох) 800мс-ийн дараа нээгддэг — 6–13KB
- * poster тэр хүртэл дуусна, өрсөлдөхгүй.
+ * Сурталчилгааны popup хэрэглэгчийн анхны үйлдлийн дараа л нээгддэг тул
+ * (promo-popup.tsx) poster нь нүүрний LCP элемент — 6–13KB тул өрсөлдөх
+ * зүйл бараг үгүй.
  */
 export function HeroPosterPreload({ ml }: { ml: MlSize }) {
   const urls: Record<string, string> = {};
