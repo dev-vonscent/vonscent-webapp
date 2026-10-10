@@ -28,9 +28,13 @@ function trackHeroAssets(page: Page) {
  */
 async function gotoHome(page: Page) {
   await page.goto("/");
-  await page
-    .locator("[data-hero-3d]")
-    .waitFor({ state: "attached", timeout: 60_000 });
+  // Stream-ийн солилтын үед hero түр хоёр хувь DOM-д байдаг (`S:0`) —
+  // ганц үлдтэл хүлээнэ, эс бөгөөс locator strict mode-оор унана.
+  await page.waitForFunction(
+    () => document.querySelectorAll("[data-hero-3d]").length === 1,
+    undefined,
+    { timeout: 60_000 },
+  );
 }
 
 /** Апп-ын `hasHardwareWebGL2`-тэй ижил: программ renderer (SwiftShader) дээр 3D ачаалагдахгүй. */
@@ -118,13 +122,25 @@ test.describe("хүрэлтийн дэлгэц", () => {
 });
 
 test.describe("хулгана (desktop)", () => {
-  test("3D idle үед ачаалагдаж, gainmap JPG татна", async ({ page }) => {
+  test("hero-тэй харьцах хүртэл 3D-гүй, дараа нь gainmap JPG татна", async ({
+    page,
+  }) => {
     const assets = trackHeroAssets(page);
     await gotoHome(page);
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1500);
+    await expect(page.locator("[data-hero-3d]")).toHaveAttribute(
+      "data-hero-3d",
+      "off",
+    );
+    expect(assets.models()).toEqual([]);
+
     test.skip(
       !(await hasWebGL2(page)),
       "GPU-тэй WebGL2 алга (SwiftShader) — 3D ачаалагдахгүй",
     );
+    await page.locator("[data-hero-3d]").hover();
+    await page.mouse.move(400, 300);
     await expect(page.locator("[data-hero-3d]")).toHaveAttribute(
       "data-hero-3d",
       "ready",

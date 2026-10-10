@@ -28,14 +28,15 @@ const DecantLineup3D = dynamic(() => import("./decant-vial-3d"), {
  * Save-Data биш, hero дэлгэцэн дээр байгаа үед. Бусад үед poster (3D-ийн
  * өөрийнх нь рендер) хангалттай бодит харагдана.
  *
- * Хэзээ:
- *  - Хулгана (`pointer: fine`): хуудас ачаалагдаж дууссаны дараа (idle).
- *  - Хүрэлтийн дэлгэц: hero-г анх хүрэх / хэмжээ сонгох үед л. Утсанд 3D нь
- *    ~1MB татаж, shader compile-оор main thread-ийг түгждэг (Lighthouse-ийн
- *    утасны эмуляцид TBT 0.6–9.7с, 2026-10-10) — хүрээгүй хэрэглэгчид
- *    poster-оос ялгагдахгүй тул тэр зардал дэмий.
- *
- * `wake()` — hero-тэй харьцсан дохио (pointerdown / хэмжээ солих).
+ * Хэзээ: hero-тэй анх харьцах үед л (`wake()`) — poster нь 3D-ийн өөрийнх нь
+ * рендер тул харьцаагүй хэрэглэгчид ялгагдахгүй, ачааллын зардал дэмий:
+ *  - Хүрэлтийн дэлгэц: hero-г хүрэх / хэмжээ сонгох → шууд. Утсанд 3D нь
+ *    shader compile-оор main thread-ийг түгждэг (Lighthouse-ийн утасны
+ *    эмуляцид TBT 0.6–9.7с, 2026-10-10).
+ *  - Хулгана: hero дээр хулгана хөдлөх / focus → idle үед. 3D нь хулганыг
+ *    дагаж эргэдэг тул тэр мөчөөс л утгатай. Хуудас нээгдмэгц ачаалбал
+ *    сурталчилгааны popup-ийн зурагтай (LCP) өрсөлдөж desktop Lighthouse
+ *    4–10 оноо алддаг байв (2026-10-11).
  */
 function useCan3D(
   reduced: boolean,
@@ -80,22 +81,21 @@ function useCan3D(
     return () => io.disconnect();
   }, [areaRef]);
 
-  const want =
-    capable === "fine" || (capable === "touch" && woke) ? visible : false;
+  const want = capable !== "no" && woke && visible;
 
   React.useEffect(() => {
     if (can || !want) return;
-    // Хүрсэн бол шууд; хулганатай үед эхний интерактивт саад болохгүйн тулд idle.
+    // Хүрсэн бол шууд; хулгана хөдөлж буй үед гацалт гаргахгүйн тулд idle.
     if (capable === "touch") {
       setCan(true);
       return;
     }
     const start = () => setCan(true);
     if ("requestIdleCallback" in window) {
-      const id = window.requestIdleCallback(start, { timeout: 2500 });
+      const id = window.requestIdleCallback(start, { timeout: 1000 });
       return () => window.cancelIdleCallback(id);
     }
-    const t = setTimeout(start, 1200);
+    const t = setTimeout(start, 300);
     return () => clearTimeout(t);
   }, [can, want, capable]);
 
@@ -188,6 +188,10 @@ export function DecantPlayground({ intro }: { intro?: React.ReactNode }) {
       onPointerDown={(e) => {
         if (!(e.target as Element).closest("a")) wake();
       }}
+      onPointerMove={(e) => {
+        if (e.pointerType === "mouse") wake();
+      }}
+      onFocus={wake}
       data-hero-3d={show3d ? "ready" : can3d ? "loading" : "off"}
       className="grid w-full items-center gap-6 md:grid-cols-[9fr_11fr] md:gap-8 lg:gap-12"
     >
