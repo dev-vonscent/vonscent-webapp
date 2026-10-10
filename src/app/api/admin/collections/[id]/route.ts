@@ -36,6 +36,7 @@ export async function PATCH(
     patch.usage_description = input.usageDescription;
   if (input.discountPct !== undefined) patch.discount_pct = input.discountPct;
   if (input.imageUrl !== undefined) patch.image_url = input.imageUrl;
+  if (input.bottleStyle !== undefined) patch.bottle_style = input.bottleStyle;
   if (input.isActive !== undefined) patch.is_active = input.isActive;
   if (input.isFeatured !== undefined) patch.is_featured = input.isFeatured;
 

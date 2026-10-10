@@ -82,6 +82,11 @@ export interface Collection {
   tags: TagKind[];
   /** Cover image (collection.image_url, or the first member's image). */
   image: string | null;
+  /**
+   * Админы сонгосон савны зураг (0123) — хуудсанд cover-ийн дараа, бүтнээр
+   * (`contain`). Сонгоогүй бол null.
+   */
+  bottleImage: string | null;
   isActive: boolean;
   isFeatured: boolean;
   members: CollectionMember[];

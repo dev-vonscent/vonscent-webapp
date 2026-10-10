@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -23,6 +22,8 @@ import {
 } from "@/components/ui/breadcrumb";
 import { getCollectionBySlug } from "@/features/collections/api";
 import { CollectionDetail } from "@/features/collections/components/collection-detail";
+import { ProductGallery } from "@/features/products/components/product-gallery";
+import type { ProductImage } from "@/lib/types";
 import { GENDER_LABEL } from "@/lib/constants";
 import { formatDiscountRange } from "@/features/collections/pricing";
 
@@ -57,6 +58,14 @@ export default async function CollectionPage({
   const collection = await getCollectionBySlug(slug);
   if (!collection) notFound();
 
+  // Cover + админы сонгосон савны зураг (0123) — савыг барааных шиг бүтнээр.
+  const images: ProductImage[] = [];
+  if (collection.image)
+    images.push({ url: collection.image, alt: collection.name });
+  if (collection.bottleImage) {
+    images.push({ url: collection.bottleImage, alt: "", contain: true });
+  }
+
   return (
     <div className="mx-auto max-w-352 p-4 sm:py-8 md:px-8">
       <Breadcrumb aria-label="Замын мөр" className="mb-6 hidden sm:block">
@@ -82,18 +91,17 @@ export default async function CollectionPage({
       <div className="grid gap-6 sm:gap-10 lg:grid-cols-2 lg:items-start">
         {/* Cover */}
         <div className="lg:sticky lg:top-(--header-offset) lg:self-start">
-          <div className="border-border bg-muted relative aspect-square overflow-hidden rounded-2xl border">
-            {collection.image && (
-              <Image
-                src={collection.image}
-                alt={collection.name}
-                fill
-                sizes="(max-width: 1024px) 100vw, 44rem"
-                className="object-cover"
-                priority
+          <div className="relative">
+            {images.length > 0 ? (
+              <ProductGallery
+                images={images}
+                name={collection.name}
+                bleed={false}
               />
+            ) : (
+              <div className="border-border bg-muted aspect-square rounded-2xl border" />
             )}
-            <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+            <div className="pointer-events-none absolute top-3 left-3 flex flex-col gap-1.5">
               {collection.discountRange.max > 0 && (
                 <Badge variant="sale" className="w-fit backdrop-blur-sm">
                   −{formatDiscountRange(collection.discountRange)}
