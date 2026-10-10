@@ -18,8 +18,16 @@ const settings: PopupSettings = {
 };
 
 /** `shownForThisDocument` модулийн түвшинд — тест бүрд шинэ модуль. */
-async function renderPopup() {
+/**
+ * jsdom-д dispatchEvent нь үргэлж `isTrusted=false` тул `trusted` үед
+ * `isUserInput`-ийг хэрэглэгчийн үйлдэл гэж үзүүлнэ.
+ */
+async function renderPopup({ trusted = true } = {}) {
   vi.resetModules();
+  vi.doMock("../popup-schedule", async (orig) => ({
+    ...(await orig<typeof import("../popup-schedule")>()),
+    isUserInput: (e: Event) => trusted || e.isTrusted,
+  }));
   const { PromoPopup } = await import("./promo-popup");
   render(<PromoPopup settings={settings} />);
 }
@@ -45,10 +53,28 @@ describe("PromoPopup", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("анх гүйлгэсний дараа гарна", async () => {
+  it("код өдөөсөн (isTrusted=false) товч дарахад гарахгүй", async () => {
+    await renderPopup({ trusted: false });
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("гүйлгэлтийн байрлал сэргээгдэхэд (scroll) гарахгүй", async () => {
     await renderPopup();
     await act(async () => {
       window.dispatchEvent(new Event("scroll"));
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("хулганы дугуйгаар гүйлгэхэд гарна", async () => {
+    await renderPopup();
+    await act(async () => {
+      window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
       vi.advanceTimersByTime(500);
     });
     expect(screen.getByRole("dialog")).toBeTruthy();

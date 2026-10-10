@@ -21,3 +21,8 @@ export function firstPopupImage(settings: PopupSettings): string | null {
   if (!settings.enabled) return null;
   return liveSlides(settings.slides ?? [], Date.now())[0]?.imageUrl ?? null;
 }
+
+/** Хэрэглэгчийн жинхэнэ үйлдэл үү (код өдөөсөн event биш). */
+export function isUserInput(e: Event): boolean {
+  return e.isTrusted;
+}

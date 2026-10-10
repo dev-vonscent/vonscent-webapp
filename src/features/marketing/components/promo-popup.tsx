@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import type { PopupSettings, PopupSlide } from "@/features/content/api";
-import { liveSlides } from "../popup-schedule";
+import { isUserInput, liveSlides } from "../popup-schedule";
 
 const AUTOPLAY_MS = 5000;
 /** Дэлгэцэд багтаах хязгаар: хажуу тал тус бүр 1rem, өндрийн 85%. */
@@ -25,7 +25,13 @@ const MAX_HEIGHT_RATIO = 0.85;
  * LCP-д огт нөлөөлөхгүй. Цагаар (N секундын дараа) гаргах нөөц хувилбар
  * САНААТАЙГААР байхгүй: үйлдэлгүй үед гарвал тэр мөч өөрөө LCP болно.
  */
-const POPUP_TRIGGERS = ["scroll", "pointerdown", "keydown"] as const;
+//
+// `scroll` САНААТАЙГААР биш: reload дээр браузер гүйлгэлтийн байрлалыг
+// сэргээхэд хэрэглэгчгүйгээр scroll event гардаг (popup нь reload бүрт
+// гардаг). Google-ийн web-vitals ч LCP-ийг scroll-оор хаадаггүй (код
+// өдөөж болдог). Хуруугаар гүйлгэх нь pointerdown, хулганы дугуй нь wheel,
+// гараар гүйлгэх нь keydown — бүгд `isTrusted`.
+const POPUP_TRIGGERS = ["pointerdown", "keydown", "wheel"] as const;
 /** Үйлдлээс хойш — гүйлгэж буй хуруун доор шууд унахгүй. */
 const OPEN_DELAY_MS = 400;
 
@@ -165,7 +171,8 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
     if (!settings.enabled || live.length === 0) return;
     if (shownForThisDocument) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const onFirst = () => {
+    const onFirst = (e: Event) => {
+      if (!isUserInput(e)) return;
       for (const t of POPUP_TRIGGERS) window.removeEventListener(t, onFirst);
       timer = setTimeout(() => {
         shownForThisDocument = true;
