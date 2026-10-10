@@ -284,7 +284,7 @@ export function PanelSkeleton({
 }
 
 /** Bundle cards — heading, then the `aspect-3/2` posters `CollectionCard` uses. */
-export function CollectionGridSkeleton({ cards = 3 }: { cards?: number }) {
+export function CollectionGridSkeleton({ cards = 4 }: { cards?: number }) {
   return (
     <div role="status" aria-label="Ачаалж байна">
       <div className="mb-6 flex items-end justify-between gap-4">
@@ -294,10 +294,10 @@ export function CollectionGridSkeleton({ cards = 3 }: { cards?: number }) {
         </div>
         <SkeletonBlock className="h-4 w-28" />
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 md:gap-6 lg:grid-cols-4">
         {Array.from({ length: cards }).map((_, i) => (
           <div key={i} className="flex flex-col">
-            <SkeletonBlock className="aspect-3/2 w-full rounded-2xl" />
+            <SkeletonBlock className="aspect-4/5 w-full rounded-2xl" />
             <div className="mt-3 flex flex-col gap-1.5">
               <SkeletonBlock className="h-4 w-3/4" />
               <SkeletonBlock className="h-4 w-24" />

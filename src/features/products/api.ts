@@ -518,6 +518,9 @@ export async function getCatalog(
     gender: expandGenders(input.gender),
   };
   const { sort = "new", page = 1, perPage = DEFAULT_PER_PAGE } = filters;
+  // «Төрөл: Багц» — ус огт гарахгүй; багцуудыг каталог хуудас өөрөө
+  // `getCatalogCollections`-оор авна.
+  if (filters.kind === "bundle") return { items: [], total: 0, page, perPage };
 
   if (isSupabaseConfigured) {
     try {

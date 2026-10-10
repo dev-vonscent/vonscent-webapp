@@ -50,3 +50,14 @@ describe("buildCollectionImagePrompt", () => {
     expect(p.length).toBeLessThan(COLLECTION_BASE_PROMPT.length + 2000);
   });
 });
+
+describe("COLLECTION_BASE_PROMPT", () => {
+  it("4:5 хүрээ, тогтмол суурь, бүдэг гадаргуу", () => {
+    expect(COLLECTION_BASE_PROMPT).toContain("4:5 portrait frame");
+    expect(COLLECTION_BASE_PROMPT).toContain("68% of the frame height");
+    expect(COLLECTION_BASE_PROMPT).toContain("spans 84% of the frame width");
+    expect(COLLECTION_BASE_PROMPT).toContain("NOT a mirror");
+    // Тусгалыг уур амьсгалын сонголт болгож санал болгохгүй.
+    expect(COLLECTION_BASE_PROMPT).not.toContain("surface reflections");
+  });
+});

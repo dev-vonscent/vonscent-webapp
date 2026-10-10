@@ -1,11 +1,21 @@
 import "server-only";
 import { cache } from "react";
 import { isSupabaseConfigured } from "@/lib/env";
+import { HOT_COLLECTIONS_COUNT, NEW_COLLECTIONS_COUNT } from "@/lib/constants";
 import { createPublicClient } from "@/lib/supabase/public";
 import { callRpc } from "@/lib/supabase/rpc";
 import type { CatalogFilters } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
-import { getCatalog, getProductDetailsByIds } from "@/features/products/api";
+import {
+  expandGenders,
+  getCatalog,
+  getProductDetailsByIds,
+} from "@/features/products/api";
+import {
+  catalogPrice,
+  filterCatalogCollections,
+  sortCatalogCollections,
+} from "./catalog-filter";
 import { memberPrices, discountRange } from "./pricing";
 import { DEFAULT_COLLECTION_SETTINGS } from "./types";
 import type {
@@ -39,6 +49,7 @@ interface DbCollection {
   image_url: string | null;
   is_active: boolean;
   is_featured: boolean;
+  created_at: string;
   collection_items: { product_id: string; sort_order: number }[];
   collection_ml_discounts?: {
     ml: number;
@@ -51,7 +62,7 @@ interface DbCollection {
 const SELECT = `
   id, slug, type, user_id, name, gender, description, usage_description,
   rating_avg, rating_count, discount_pct, image_url, is_active, is_featured,
-  collection_items ( product_id, sort_order ),
+  created_at, collection_items ( product_id, sort_order ),
   collection_ml_discounts ( ml, discount_pct, price ),
   collection_tags ( tags ( kind ) )
 `;
@@ -110,6 +121,8 @@ function toMember(p: ProductDetail): CollectionMember {
     name: p.name,
     brand: p.brand,
     image: p.image,
+    scentFamilies: p.scentFamilies,
+    seasons: p.seasons,
     variantByMl,
   };
 }
@@ -173,6 +186,7 @@ function build(
     availableMls,
     startingPrice,
     soldOut: availableMls.length === 0,
+    createdAt: row.created_at,
   };
 }
 
@@ -203,7 +217,7 @@ export const getBaseCollections = cache(async (): Promise<Collection[]> => {
   const supabase = createPublicClient();
   if (!supabase) return [];
 
-  const [{ data, error }, settings] = await Promise.all([
+  const [{ data, error }, settings, newIds, hotIds] = await Promise.all([
     supabase
       .from("collections")
       .select(SELECT)
@@ -212,18 +226,119 @@ export const getBaseCollections = cache(async (): Promise<Collection[]> => {
       .order("is_featured", { ascending: false })
       .order("name"),
     getCollectionSettings(),
+    newestCollectionIds(),
+    bestSellerCollectionIds(),
   ]);
   if (error || !data) return [];
 
   const rows = data as unknown as DbCollection[];
   const productById = await membersById(rows);
-  return rows.map((row) => build(row, productById, settings));
+  const newSet = new Set(newIds.slice(0, NEW_COLLECTIONS_COUNT));
+  const hotSet = new Set(hotIds.slice(0, HOT_COLLECTIONS_COUNT));
+  return rows.map((row) => {
+    const c = build(row, productById, settings);
+    // «Шинэ»/«Эрэлттэй» нь устай адил автомат — админы хуучин сонголтыг
+    // (collection_tags) үл тооно; «Хямдрал»-ыг хөнгөлөлтийн badge хэлнэ.
+    const tags: TagKind[] = [];
+    if (hotSet.has(c.id)) tags.push("hot");
+    if (newSet.has(c.id)) tags.push("new");
+    return { ...c, tags };
+  });
 });
 
-/** Featured base collections for the home rail. */
-export async function getFeaturedCollections(limit = 4): Promise<Collection[]> {
+/** Идэвхтэй багцын id-ууд, шинэ нь эхэндээ. */
+const newestCollectionIds = cache(async (): Promise<string[]> => {
+  const supabase = createPublicClient();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("collections")
+    .select("id")
+    .eq("type", "base")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
+  return ((data as { id: string }[] | null) ?? []).map((r) => r.id);
+});
+
+/** Төлөгдсөн борлуулалтаар эрэмбэлсэн багцын id-ууд (0122). */
+const bestSellerCollectionIds = cache(async (): Promise<string[]> => {
+  const supabase = createPublicClient();
+  if (!supabase) return [];
+  const { data } = await supabase.rpc("top_seller_collections", {
+    p_limit: 50,
+  });
+  return ((data as { collection_id: string }[] | null) ?? []).map(
+    (r) => r.collection_id,
+  );
+});
+
+/** Featured base collections for the home rail (all of them without `limit`). */
+export async function getFeaturedCollections(
+  limit?: number,
+): Promise<Collection[]> {
   const all = await getBaseCollections();
   return all.filter((c) => c.isFeatured && !c.soldOut).slice(0, limit);
+}
+
+/** `ids`-ийн дарааллаар, зарагдаж байгаа багцуудаас эхний `limit`. */
+async function pickInOrder(ids: string[], limit: number) {
+  const byId = new Map((await getBaseCollections()).map((c) => [c.id, c]));
+  return ids
+    .map((id) => byId.get(id))
+    .filter((c): c is Collection => c !== undefined && !c.soldOut)
+    .slice(0, limit);
+}
+
+/** Хамгийн сүүлд нэмэгдсэн багцууд (нүүрний «Шинээр ирсэн»). */
+export async function getNewestCollections(
+  limit: number,
+): Promise<Collection[]> {
+  if (!isSupabaseConfigured) return [];
+  return pickInOrder(await newestCollectionIds(), limit);
+}
+
+/** Төлөгдсөн борлуулалтаар хамгийн их зарагдсан багцууд (0122). */
+export async function getBestSellerCollections(
+  limit: number,
+): Promise<Collection[]> {
+  if (!isSupabaseConfigured) return [];
+  return pickInOrder(await bestSellerCollectionIds(), limit);
+}
+
+/**
+ * Каталогт гарах багцууд — устай ижил шүүлтүүр, эрэмбээр
+ * (`filterCatalogCollections`), дууссан нь ч. Зөвхөн эхний хуудсанд, таарсан
+ * бүгдээрээ — гарчгийн «N багц» харагдаж буйтайгаа таарна.
+ */
+export async function getCatalogCollections(
+  filters: CatalogFilters,
+): Promise<{ items: Collection[]; total: number }> {
+  if (filters.kind === "perfume") return { items: [], total: 0 };
+  const matched = sortCatalogCollections(
+    filterCatalogCollections(await getBaseCollections(), {
+      ...filters,
+      gender: expandGenders(filters.gender),
+    }),
+    filters.sort,
+  );
+  return {
+    items: (filters.page ?? 1) > 1 ? [] : matched,
+    total: matched.length,
+  };
+}
+
+/**
+ * Каталогт гардаг багцын (дууссан нь ч) үнийн муж — үнийн slider-ийг
+ * (`getPriceBounds`, зөвхөн ус) өргөтгөхөд. Багцгүй бол null.
+ */
+export async function getCollectionPriceBounds(): Promise<{
+  min: number;
+  max: number;
+} | null> {
+  const prices = (await getBaseCollections())
+    .map(catalogPrice)
+    .filter((p) => p > 0);
+  if (!prices.length) return null;
+  return { min: Math.min(...prices), max: Math.max(...prices) };
 }
 
 /** One active base collection by slug (null when missing / not sellable roster). */

@@ -147,7 +147,7 @@ export function CollectionImageGenerator({
               <li key={job.id} className="space-y-1.5">
                 <div
                   className={cn(
-                    "bg-muted/40 relative aspect-square overflow-hidden rounded-lg border",
+                    "bg-muted/40 relative aspect-4/5 overflow-hidden rounded-lg border",
                     selected && "ring-primary ring-2",
                   )}
                 >

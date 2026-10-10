@@ -4,7 +4,12 @@ import Link from "next/link";
 import { SearchX } from "lucide-react";
 import { getCatalog, getBrands, getPriceBounds } from "@/features/products/api";
 import { getActiveBrands, getScentFamilies } from "@/features/taxonomy/api";
+import {
+  getCatalogCollections,
+  getCollectionPriceBounds,
+} from "@/features/collections/api";
 import { parseFilters } from "@/features/catalog/parse";
+import { preferredStatuses } from "@/features/products/card-status";
 import { CatalogFilters } from "@/features/catalog/components/catalog-filters";
 import { CatalogFilterSheet } from "@/features/catalog/components/catalog-filter-sheet";
 import { CatalogSort } from "@/features/catalog/components/catalog-sort";
@@ -45,15 +50,42 @@ export default async function CatalogPage({
     if (k === "page" || v === undefined) continue;
     query.set(k, Array.isArray(v) ? v.join(",") : v);
   }
-  // «Хямдрал» таг зөвхөн ус шүүнэ — багцууд /collections-д (клиент,
-  // 2026-09-30: «Хямдралтай багц» мөрийг каталогоос хассан).
-  const [result, brands, priceBounds, families, brandRows] = await Promise.all([
+  // Багцууд устай нэг дүрмээр шүүгдэж, эрэмбээрээ холилдоно
+  // (`getCatalogCollections`). «Хямдрал» таг багцгүй (клиент, 2026-09-30).
+  const [
+    result,
+    brands,
+    perfumeBounds,
+    families,
+    brandRows,
+    bundles,
+    bundleBounds,
+  ] = await Promise.all([
     getCatalog({ ...filters, perPage: CATALOG_PAGE_SIZE }),
     getBrands(),
     getPriceBounds(),
     getScentFamilies(),
     getActiveBrands(),
+    getCatalogCollections(filters),
+    getCollectionPriceBounds(),
   ]);
+  // Үнийн slider ус, багц хоёуланг хамарна — эс бөгөөс багцууд (усны дээд
+  // үнээс үнэтэй) slider-ийн мужаас гадна үлдэж, сонгох боломжгүй байв.
+  const priceBounds = bundleBounds
+    ? {
+        min: perfumeBounds.min
+          ? Math.min(perfumeBounds.min, bundleBounds.min)
+          : bundleBounds.min,
+        max: Math.max(perfumeBounds.max, bundleBounds.max),
+      }
+    : perfumeBounds;
+  const collections = bundles.items;
+  const counts = [
+    filters.kind !== "bundle" && `${result.total} бараа`,
+    bundles.total > 0 && `${bundles.total} багц`,
+  ]
+    .filter(Boolean)
+    .join(", ");
   // `getBrands()` is the list that actually has products (and their order);
   // the brands table only supplies the artwork.
   const brandLogos = Object.fromEntries(
@@ -68,9 +100,7 @@ export default async function CatalogPage({
             {filters.search ? `«${filters.search}» хайлтын үр дүн` : "Каталог"}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {filters.search
-              ? `${result.total} илэрц олдлоо`
-              : `${result.total} бараа олдлоо`}
+            {counts || "0 бараа"} олдлоо
           </p>
         </div>
 
@@ -111,7 +141,7 @@ export default async function CatalogPage({
             </div>
 
             <CatalogResults>
-              {result.items.length === 0 ? (
+              {result.items.length === 0 && collections.length === 0 ? (
                 <EmptyState
                   size="lg"
                   icon={SearchX}
@@ -128,6 +158,9 @@ export default async function CatalogPage({
                   key={query.toString()}
                   initial={result}
                   query={query.toString()}
+                  collections={collections}
+                  sort={filters.sort}
+                  prefer={preferredStatuses(filters)}
                 />
               )}
             </CatalogResults>

@@ -29,16 +29,23 @@ import {
 } from "@/components/shared/json-ld";
 import { pageMetadata } from "@/lib/seo";
 import { getActiveBrands, getScentFamilies } from "@/features/taxonomy/api";
-import { getFeaturedCollections } from "@/features/collections/api";
-import { CollectionCard } from "@/features/collections/components/collection-card";
+import {
+  getBestSellerCollections,
+  getNewestCollections,
+} from "@/features/collections/api";
+import { fillRail, interleave, mixRandom } from "@/features/products/rail";
 import { ScentQuiz } from "@/features/quiz/components/scent-quiz";
 import { PromoPopup } from "@/features/marketing/components/promo-popup";
-import { GENDERS, GENDER_LABEL } from "@/lib/constants";
+import {
+  GENDERS,
+  GENDER_LABEL,
+  HOT_COLLECTIONS_COUNT,
+  NEW_COLLECTIONS_COUNT,
+} from "@/lib/constants";
 import { GRAIN } from "@/lib/textures";
 import { SideImage } from "@/components/shared/side-image";
 import {
   CarouselSkeleton,
-  CollectionGridSkeleton,
   MarqueeSkeleton,
   ReviewsSkeleton,
   TileGridSkeleton,
@@ -217,10 +224,6 @@ export default function HomePage() {
           <CuratedSections />
         </Suspense>
 
-        <Suspense fallback={<CollectionGridSkeleton />}>
-          <FeaturedBundlesSection />
-        </Suspense>
-
         {/* Build-your-own bundle promo — the side image (5c) bleeds to the
             card edge and fades into the bg-card surface; a CSS glow stands
             in until public/bundle-side.webp is generated. */}
@@ -367,14 +370,33 @@ async function PromoSlot() {
   return <PromoPopup settings={await getPopupSettings()} />;
 }
 
-/** Шинээр ирсэн = «Шинэ» тагтай 12 ус — hidden until it can fill a row (5d). */
+/**
+ * Нүүрний rail бүрийн нүдний тоо. Багцын дээд тоо нь багцын автомат
+ * «Шинэ»/«Эрэлттэй» тагийн тоо — rail дахь багц бүр тэр тагаа харуулна.
+ */
+const RAIL_SIZE = 12;
+
+/**
+ * Шинээр ирсэн = хамгийн сүүлийн ус ба багц (6 + 6, багц дутвал ус нөхнө),
+ * санамсаргүй холилдоно. Нэг мөр дүүрэхгүй бол нуугдана (5d).
+ */
 async function NewArrivalsSection() {
-  const products = await getNewArrivals();
-  if (products.length < 4) return null;
+  const [products, collections] = await Promise.all([
+    getNewArrivals(RAIL_SIZE),
+    getNewestCollections(NEW_COLLECTIONS_COUNT),
+  ]);
+  const rail = fillRail(
+    products,
+    collections,
+    RAIL_SIZE,
+    NEW_COLLECTIONS_COUNT,
+  );
+  const items = mixRandom(rail.products, rail.collections);
+  if (items.length < 4) return null;
   return (
     <section>
       <SectionHeading title="Шинээр ирсэн" href="/catalog?tags=new&sort=new" />
-      <ProductCarousel products={products} />
+      <ProductCarousel items={items} prefer={["new"]} />
     </section>
   );
 }
@@ -392,30 +414,28 @@ function QuizSection() {
   );
 }
 
+/**
+ * Эрэлттэй = ус, багц тус тусдаа борлуулалтаар эрэмбэлэгдэж (6 + 6, багц
+ * дутвал ус нөхнө — 3 багц бол 9 ус), эрэмбээрээ ээлжилнэ.
+ */
 async function BestSellersSection() {
+  const [products, collections] = await Promise.all([
+    getBestSellers(RAIL_SIZE),
+    getBestSellerCollections(HOT_COLLECTIONS_COUNT),
+  ]);
+  const rail = fillRail(
+    products,
+    collections,
+    RAIL_SIZE,
+    HOT_COLLECTIONS_COUNT,
+  );
   return (
     <section>
       <SectionHeading title="Эрэлттэй" href="/catalog?tags=hot" />
-      <ProductCarousel products={await getBestSellers(8)} />
-    </section>
-  );
-}
-
-async function FeaturedBundlesSection() {
-  const collections = await getFeaturedCollections(3);
-  if (collections.length === 0) return null;
-  return (
-    <section>
-      <SectionHeading
-        title="Онцлох багц"
-        subtitle="Сонгож бэлдсэн үнэртний багцууд"
-        href="/collections"
+      <ProductCarousel
+        items={interleave(rail.products, rail.collections)}
+        prefer={["hot"]}
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-3">
-        {collections.map((c) => (
-          <CollectionCard key={c.id} collection={c} />
-        ))}
-      </div>
     </section>
   );
 }
@@ -429,12 +449,25 @@ async function CuratedSections() {
   const sections = await getHomeSections();
   return (
     <>
-      {sections.map((s) => (
-        <section key={s.id}>
-          <SectionHeading title={s.title} href={s.href || undefined} />
-          <ProductCarousel products={s.products} />
-        </section>
-      ))}
+      {sections.map((s) => {
+        // Хэсгийн төлөв card бүр дээр: «Онцлох» дотор «Онцлох».
+        const prefer = s.status ? [s.status] : undefined;
+        return (
+          <section key={s.id}>
+            <SectionHeading title={s.title} href={s.href || undefined} />
+            {/* «Онцлох» (featured) хэсэгт онцлох багцууд усуудтай
+              санамсаргүй холилдоно; бусад хэсэг админы дарааллаараа. */}
+            {s.collections.length > 0 ? (
+              <ProductCarousel
+                items={mixRandom(s.products, s.collections)}
+                prefer={prefer}
+              />
+            ) : (
+              <ProductCarousel products={s.products} prefer={prefer} />
+            )}
+          </section>
+        );
+      })}
     </>
   );
 }
