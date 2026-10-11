@@ -18,6 +18,14 @@ import { selectWishCount, useWishlist } from "@/features/wishlist/store";
 import { useBottomNavHidden } from "@/components/shared/bottom-nav-store";
 import { useChatLauncher } from "@/features/chat/use-chat-launcher";
 
+/**
+ * Шил гадаргуу — цэс ба чатын товч хоёуланд. Тунгалаг дэвсгэр + хүчтэй
+ * blur/saturate нь ард гүйж буй зургийн өнгийг шингээнэ; нимгэн хүрээ ба
+ * дээд ирмэгийн гэрэл (inset) нь шилний ирмэгийг заана. Gradient-гүй.
+ */
+const GLASS =
+  "bg-secondary/55 border-foreground/10 inset-shadow-foreground/10 shadow-lift border inset-shadow-2xs backdrop-blur-xl backdrop-saturate-150";
+
 const LEFT = [
   { href: "/", label: "Нүүр", icon: Home },
   { href: "/catalog", label: "Каталог", icon: Search },
@@ -65,7 +73,10 @@ export function BottomNav() {
           aria-label="Үндсэн цэс"
           // Дэлгэцээс гарсан цэс гарын товчлуураар ч бариулахгүй байх ёстой.
           inert={hidden}
-          className="bg-secondary/85 shadow-lift pointer-events-auto flex items-center gap-1 rounded-full px-2.5 py-2 backdrop-blur"
+          className={cn(
+            GLASS,
+            "pointer-events-auto flex items-center gap-1 rounded-full px-2.5 py-2",
+          )}
         >
           {LEFT.map((item) => (
             <Tab
@@ -109,7 +120,10 @@ function ChatTab({ hidden }: { hidden: boolean }) {
       aria-label={
         unread > 0 ? `Админаас ${unread} шинэ мессеж` : "Бидэнтэй чатлах"
       }
-      className="bg-secondary/85 shadow-lift text-foreground pointer-events-auto relative flex size-15 shrink-0 items-center justify-center rounded-full backdrop-blur"
+      className={cn(
+        GLASS,
+        "text-foreground pointer-events-auto relative flex size-15 shrink-0 items-center justify-center rounded-full",
+      )}
     >
       {connecting ? (
         <Loader2 className="size-5.5 animate-spin" />
