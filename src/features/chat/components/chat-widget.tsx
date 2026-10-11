@@ -122,8 +122,10 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
   // товчноос гартал hover-ийг унтраана.
   const [prevAdminOpen, setPrevAdminOpen] = React.useState(adminOpen);
   const [hoverMuted, setHoverMuted] = React.useState(false);
-  // Долгион хуудас ачаалагдахад нэг л удаа (цэс нээгээд хаахад дахин биш).
-  const [pulsed, setPulsed] = React.useState(false);
+  // Долгион: цэсийг нэг ч удаа нээгээгүй үед л. Нээсэн бол хэрэглэгч
+  // товчийг олсон — анхаарал татах шаардлагагүй, бүрмөсөн зогсоно.
+  const [engaged, setEngaged] = React.useState(false);
+  const [hovered, setHovered] = React.useState(false);
   const reduceMotion = useReducedMotion();
   if (prevAdminOpen !== adminOpen) {
     setPrevAdminOpen(adminOpen);
@@ -132,6 +134,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
   }
 
   async function openChat() {
+    setEngaged(true);
     if (await launch()) setOpen(false);
   }
 
@@ -140,6 +143,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
       void openChat();
       return;
     }
+    setEngaged(true);
     setOpen((v) => !v);
   }
 
@@ -229,7 +233,11 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
           ref={buttonRef}
           type="button"
           onClick={toggle}
-          onPointerLeave={() => setHoverMuted(false)}
+          onPointerEnter={() => setHovered(true)}
+          onPointerLeave={() => {
+            setHovered(false);
+            setHoverMuted(false);
+          }}
           aria-busy={connecting}
           {...(!chatOnly && {
             "aria-expanded": open,
@@ -258,23 +266,23 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
             "focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
           )}
         >
-          {/* Анхаарал татах долгион: товч орж ирсний дараа 3 удаа цагираг
-              томорч бүдгэрээд зогсоно — тасралтгүй давтвал мэдэгдэл мэт
-              ядаргаатай. Хөдөлгөөн багасгах тохиргоотой бол огт үгүй. */}
-          {!open && !pulsed && !reduceMotion && (
+          {/* Анхаарал татах долгион: ~3.5с тутам цагираг томорч бүдгэрнэ.
+              Hover-т зогсоно (товч томорч шошго дэлгэгдэхэд цагираг сунаж
+              хэт томордог байсан), цэсийг нээсний дараа бүрмөсөн.
+              Хөдөлгөөн багасгах тохиргоотой бол огт үгүй. */}
+          {!open && !engaged && !hovered && !reduceMotion && (
             <motion.span
               aria-hidden
-              className="bg-primary in-[.black]:bg-foreground/60 pointer-events-none absolute inset-0 -z-10 rounded-full"
+              className="bg-primary in-[.black]:bg-foreground pointer-events-none absolute inset-0 -z-10 rounded-full"
               initial={{ scale: 1, opacity: 0 }}
-              animate={{ scale: [1, 1.75], opacity: [0.55, 0] }}
+              animate={{ scale: [1, 1.6], opacity: [0.75, 0] }}
               transition={{
-                duration: 1.4,
+                duration: 1.6,
                 ease: "easeOut",
                 delay: 1.6,
-                repeat: 2,
-                repeatDelay: 0.5,
+                repeat: Infinity,
+                repeatDelay: 1.9,
               }}
-              onAnimationComplete={() => setPulsed(true)}
             />
           )}
           {/* Hover-т «Асуух зүйл байна уу?» гэсэн шошго зүүн тийш гулсаж нээгдэнэ. */}
