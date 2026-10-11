@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
+  ArrowRight,
   Gift,
   HelpCircle,
   LayoutDashboard,
@@ -38,11 +39,21 @@ import { COUPONS_NEW_BADGE_UNTIL, LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
  * дэлгүүрийн бүрэн зургийг өгөх ёстой.
  */
 const PRIMARY = [
-  { href: "/catalog", label: "Каталог" },
-  { href: "/collections", label: "Багц" },
+  { href: "/catalog", label: "Каталог", hint: "Бүх үнэртэн · 2–20 мл" },
+  {
+    href: "/collections",
+    label: "Багц",
+    hint: "Хамтад нь аваад хэмнээрэй",
+  },
   ...(LUCKY_WHEEL_HIDDEN
     ? []
-    : [{ href: "/lucky-wheel", label: "Азын хүрд" } as const]),
+    : [
+        {
+          href: "/lucky-wheel",
+          label: "Азын хүрд",
+          hint: "Эргүүлээд бэлгээ аваарай",
+        } as const,
+      ]),
 ];
 
 /**
@@ -70,7 +81,7 @@ export function MobileMenu({
   social,
 }: {
   className?: string;
-  /** Сошиал холбоосууд — server slot (social-links.tsx), капсулуудын ард. */
+  /** Сошиал холбоосууд — server slot (social-links.tsx), өөрийн гарчигтай хэсэг. */
   social?: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -139,7 +150,7 @@ export function MobileMenu({
                       <SheetClose asChild key={item.href}>
                         <Link
                           href={item.href}
-                          className="bg-muted hover:bg-accent relative flex h-16 flex-col items-center justify-center gap-1.5 rounded-[0.875rem] transition-colors"
+                          className="bg-background hover:bg-accent relative flex h-16 flex-col items-center justify-center gap-1.5 rounded-[0.875rem] transition-colors"
                         >
                           {"badge" in item && couponsNew && (
                             <span className="bg-success/10 text-success absolute top-1.5 right-1.5 rounded-full px-1.5 text-[10px]/4 font-medium">
@@ -186,8 +197,9 @@ export function MobileMenu({
               )}
             </div>
 
-            {/* 2. Гол зорилгууд — бичвэрийн хэмжээ нь шатлалыг үүрнэ */}
-            <nav className="mt-6 flex flex-col">
+            {/* 2. Гол зорилгууд — мөр бүр гарчиг + тайлбар + сум; хуваагч
+              зураасаар жагсаалт гэдэг нь танигдана */}
+            <nav className="divide-border mt-5 flex flex-col divide-y">
               {PRIMARY.map((item, i) => {
                 const active = isActive(item.href);
                 return (
@@ -198,16 +210,30 @@ export function MobileMenu({
                       style={{ animationDelay: `${60 + i * 45}ms` }}
                       className={cn(
                         "animate-fade-up animation-duration-[380ms] motion-reduce:animate-none",
-                        "flex items-center gap-3 py-2.5 text-lg font-semibold tracking-tight transition-colors",
-                        active
-                          ? "text-foreground"
-                          : "text-foreground/70 hover:text-foreground",
+                        "group flex items-center gap-3 py-3.5",
                       )}
                     >
-                      {item.label}
-                      {active && (
-                        <span className="bg-foreground size-1.5 shrink-0 rounded-full" />
-                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+                          {item.label}
+                          {active && (
+                            <span className="bg-foreground size-1.5 shrink-0 rounded-full" />
+                          )}
+                        </span>
+                        <span className="text-muted-foreground mt-0.5 block truncate text-xs">
+                          {item.hint}
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          "flex size-9 shrink-0 items-center justify-center rounded-full transition-colors",
+                          active
+                            ? "bg-foreground text-background"
+                            : "bg-secondary text-foreground group-hover:bg-foreground group-hover:text-background",
+                        )}
+                      >
+                        <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                      </span>
                     </Link>
                   </SheetClose>
                 );
@@ -230,11 +256,13 @@ export function MobileMenu({
                   </Link>
                 </SheetClose>
               ))}
-              {social}
             </div>
+
+            {/* 4. Сошиал — сайтаас гадагш хөтөлдөг тул тусдаа хэсэг */}
+            {social}
           </div>
 
-          {/* 4. Тавцан: загвар сонгох — гар утаснаас хүрэх цорын ганц зам */}
+          {/* 5. Тавцан: загвар сонгох — гар утаснаас хүрэх цорын ганц зам */}
           <div className="pb-safe bg-secondary/40 shrink-0 px-5 pt-4">
             <div className="flex h-11 items-center justify-between">
               <span className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase">
@@ -285,7 +313,7 @@ function Avatar({
 }) {
   const initial = profile.name.charAt(0).toUpperCase();
   return (
-    <span className="bg-muted relative size-11 shrink-0 overflow-hidden rounded-full">
+    <span className="bg-background relative size-11 shrink-0 overflow-hidden rounded-full">
       {profile.avatar ? (
         <Image
           src={profile.avatar}
