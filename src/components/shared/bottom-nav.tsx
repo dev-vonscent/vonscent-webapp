@@ -68,17 +68,18 @@ export function BottomNav() {
     >
       {/* Цэс + баруун талд нь тусдаа чатын товч (Crisp-ийн апп шиг). Нэг
           wrapper дотор тул «Захиалах» зурвас гарахад хамт нуугдана. */}
-      {/* Чатын дугуй цэстэй ижил өндөр: таб 48 + padding 12 + хүрээ 2 = 62px.
+      {/* Дээд pill шиг дэлгэцийн өргөнийг (хоёр талд 16px) дүүргэнэ — табууд
+          жигд тарна. Чатын дугуй цэстэй ижил өндөр: таб 48 + padding 12 + хүрээ 2 = 62px.
           `aspect-square` + stretch нь өргөнийг хожуу тогтоож төвлөрөлтийг
           эвддэг (360px дээр дэлгэцээс гардаг байсан) тул тогтмол хэмжээ. */}
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex w-full items-center gap-2 px-4">
         <nav
           aria-label="Үндсэн цэс"
           // Дэлгэцээс гарсан цэс гарын товчлуураар ч бариулахгүй байх ёстой.
           inert={hidden}
           className={cn(
             GLASS,
-            "pointer-events-auto flex items-center gap-0.5 rounded-full p-1.5",
+            "pointer-events-auto flex flex-1 items-center justify-between rounded-full p-1.5",
           )}
         >
           {LEFT.map((item) => (
@@ -185,7 +186,7 @@ function Tab({
       // Icon дангаараа «Каталог» (сүлжээ) ба «Багц» (хайрцаг)-ийг ялгахад
       // хэцүү — шошго нь таамаглалыг арилгана. Идэвхтэйг тод жингээр заана.
       className={cn(
-        "relative flex size-12 flex-col items-center justify-center gap-1 rounded-full transition-colors",
+        "relative flex h-12 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-full transition-colors",
         active
           ? "text-foreground"
           : "text-muted-foreground hover:text-foreground",
