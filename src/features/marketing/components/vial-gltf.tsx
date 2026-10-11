@@ -22,6 +22,35 @@ import { createLiquidMaterial, LiquidSlosh } from "./liquid-material";
  */
 export const VIALS_URL = heroAsset("/models/vials.glb");
 
+/**
+ * Transmission-ийн `thickness`-ийг three.js нь mesh-ийн world scale-аар
+ * үржүүлдэг. Шахалтын quantization scale нь савны хэмжээгээр өөр (2мл
+ * шингэн 0.88, 20мл 3.49) тул world нэгжээр өгч node scale-д хуваана —
+ * эс бөгөөс 2мл-ийн шингэн цайвар, том савны зузаан ёроол хэт хугарч
+ * (дэвсгэр рүү «гарч») ирмэгт нь хар шүд үүсдэг байв.
+ */
+const LIQUID_THICKNESS = 1.5;
+/**
+ * three.js нэг `thickness`-ээр хугарал ба өнгөний шингээлтийг хоёуланг нь
+ * тооцдог. Зузааныг өсгөж өнгө тодруулбал хугарал хэт томорч, нарийн 2мл-ийн
+ * шингэн хажуугийн дэвсгэрийг «харж» доошоо нарийссан мэт харагддаг байв —
+ * тиймээс зузаан бодит хэмжээндээ, өнгөний хүч нь шингээлтийн зайгаар.
+ */
+const LIQUID_ATTENUATION_DISTANCE = 2.45;
+const GLASS_THICKNESS = 0.14;
+const GLASS_BACKSIDE_THICKNESS = 0.09;
+
+/**
+ * Шилний backside буфер (MeshTransmissionMaterial). Үндсэн буфер нь
+ * `resolution` өгөхгүй үед канвасын хэмжээ × DPR — тогтмол 512 нь ~2800px
+ * канваст 5 дахин сунаж шингэн бүдэг, ирмэг нь шаталсан харагддаг байв
+ * (adaptive DPR буурахад буфер ч дагаж багасна). Backside нь зөвхөн шилний
+ * дотор хана — бага нарийвчлал хангалттай.
+ */
+const GLASS_BACKSIDE_RESOLUTION = 512;
+/** Гэрийн тунгалаг байдал эндээс доош бол шил/шингэн «нуугдсан». */
+const HIDDEN_BELOW_REVEAL = 0.02;
+
 /** 2мл-ийн хөвөө/таг — бүх загварт ижил хар хуванцар. */
 const PLASTIC = new THREE.MeshPhysicalMaterial({
   color: "#111113",
@@ -42,6 +71,7 @@ export function GltfVial({
   liquidGlow = 0,
   capRef,
   slosh,
+  revealRef,
 }: {
   ml: MlSize;
   mats: VialMaterials;
@@ -51,6 +81,12 @@ export function GltfVial({
   capRef: React.RefObject<THREE.Object3D | null>;
   /** Гаднаас kick() хийхэд — сонгоход «үсрэх» г.м. */
   slosh: LiquidSlosh;
+  /**
+   * Рентгений явц (0 = гэр битүү, 1 = тунгалаг). Гэр битүү үед шил/шингэн
+   * харагддаггүй ч шил бүр frame тутамд scene-ийг 2 удаа дахин зурдаг —
+   * нуугдсан үед унтрааж GPU хэмнэнэ. Гэргүй сав (2мл) үргэлж харагдана.
+   */
+  revealRef: React.RefObject<number>;
 }) {
   const invalidate = useThree((s) => s.invalidate);
   const { scene } = useGLTF(VIALS_URL);
@@ -66,6 +102,7 @@ export function GltfVial({
     let liquidMesh: THREE.Mesh | null = null;
     let glass: THREE.Mesh | null = null;
     let cap: THREE.Object3D | null = null;
+    let hasSleeve = false;
     let fill = 0;
     const center = new THREE.Vector3();
 
@@ -77,6 +114,7 @@ export function GltfVial({
         case "sleeve":
           m.material = mats.shell;
           m.renderOrder = 3;
+          hasSleeve = true;
           break;
         case "cap":
           // 2мл-ийн таг хар хуванцар (theme-ээс үл хамаарна); өөрийн хувь
@@ -109,6 +147,8 @@ export function GltfVial({
           break;
         case "liquid":
           m.material = liquid.material;
+          liquid.material.thickness = LIQUID_THICKNESS / m.scale.y;
+          liquid.material.attenuationDistance = LIQUID_ATTENUATION_DISTANCE;
           m.renderOrder = 1;
           liquidMesh = m;
           // `fill` нь Blender-ийн (савны) координат; mesh-ийн local руу.
@@ -125,6 +165,7 @@ export function GltfVial({
       liquid,
       center,
       fill,
+      hasSleeve,
       cap: cap as THREE.Object3D | null,
       liquidMesh: liquidMesh as THREE.Mesh | null,
       glass: glass as THREE.Mesh | null,
@@ -153,8 +194,12 @@ export function GltfVial({
     [parts],
   );
 
+  // drei-ийн ref төрөл нь props-ийн төрөл (жинхэнэ instance нь THREE.Material).
+  const glassMat = React.useRef<THREE.Material>(null);
   useFrame((state, dt) => {
-    if (!parts.liquidMesh) return;
+    const inside = !parts.hasSleeve || revealRef.current > HIDDEN_BELOW_REVEAL;
+    setInsideVisible(inside, parts.liquid.material, glassMat.current);
+    if (!parts.liquidMesh || !inside) return;
     const moving = slosh.update(
       parts.liquidMesh,
       parts.center,
@@ -178,17 +223,18 @@ export function GltfVial({
           renderOrder={2}
         >
           <MeshTransmissionMaterial
+            ref={glassMat as React.Ref<never>}
+            backsideResolution={GLASS_BACKSIDE_RESOLUTION}
             transmission={1}
-            thickness={0.12}
+            thickness={GLASS_THICKNESS / parts.glass.scale.y}
             roughness={0}
             ior={1.5}
             chromaticAberration={0.03}
             anisotropicBlur={0}
             distortion={0}
             samples={6}
-            resolution={512}
             backside
-            backsideThickness={0.08}
+            backsideThickness={GLASS_BACKSIDE_THICKNESS / parts.glass.scale.y}
             // Шилэн дээр студийн softbox-ын 2 босоо тусгал гуурс шиг
             // харагддаг байсан тул шилний тусгалыг бараг унтраав (clearcoat
             // 0, сул env/specular). Шүршигч/толгойн тусгал хэвээр.
@@ -201,6 +247,19 @@ export function GltfVial({
       )}
     </group>
   );
+}
+
+/**
+ * Hook-ийн гадна: шил/шингэнийг нуух. drei MTM нь material.visible=false үед
+ * буферийн рендерээ алгасна.
+ */
+function setInsideVisible(
+  visible: boolean,
+  liquid: THREE.Material,
+  glass: THREE.Material | null,
+) {
+  liquid.visible = visible;
+  if (glass) glass.visible = visible;
 }
 
 /**

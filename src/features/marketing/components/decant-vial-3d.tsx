@@ -57,10 +57,16 @@ const FINISHES: Record<VialFinish, Finish> = {
 };
 
 /**
- * Шингэн — ус шиг тунгалаг (бүх theme дээр). Цагаан = өнгө шингээхгүй;
- * туяа нэмэх бол энд үл ялиг өнгө өгнө (зузаанд шингэнэ, attenuation).
+ * Шингэн theme бүрт тусдаа. Хар: ус шиг тунгалаг цагаан (бараан дэвсгэр дээр
+ * бүдэг гэрэлтэнэ). Цайвар theme-үүд дээр цагаан шингэн хоосон шилнээс
+ * ялгардаггүй тул үнэртэн шиг өнгөтэй — `glow` өндөр үед emissive нь мөн энэ
+ * өнгөөр гэрэлтэнэ (liquid-material.ts).
  */
-const LIQUID_COLOR = "#FFFFFF";
+const LIQUIDS: Record<VialFinish, { color: string; glow: number }> = {
+  black: { color: "#FFFFFF", glow: 0.1 },
+  pink: { color: "#F2A7BE", glow: 2 },
+  silver: { color: "#c1d3fe", glow: 1 },
+};
 
 /**
  * Blender студийн 360° орчин — gainmap JPG (UltraHDR, ~50KB). Эх нь
@@ -659,10 +665,11 @@ function Vial({
         <GltfVial
           ml={spec.ml}
           mats={mats}
-          liquidColor={LIQUID_COLOR}
-          liquidGlow={finish === "black" ? 0.1 : 3}
+          liquidColor={LIQUIDS[finish].color}
+          liquidGlow={LIQUIDS[finish].glow}
           capRef={cap}
           slosh={slosh}
+          revealRef={reveal}
         />
       </group>
     </group>
