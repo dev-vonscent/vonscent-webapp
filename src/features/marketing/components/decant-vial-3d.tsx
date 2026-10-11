@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Canvas, addAfterEffect, useFrame, useThree } from "@react-three/fiber";
-import { Environment, useGLTF } from "@react-three/drei";
+import { Environment, Lightformer, useGLTF } from "@react-three/drei";
 import { GltfVial, SoftShadow, VIALS_URL } from "./vial-gltf";
 import { LiquidSlosh } from "./liquid-material";
 import { MAX_FRAME_MS, SAMPLE_COUNT, nextDpr } from "../adaptive-dpr";
@@ -246,9 +246,43 @@ function StudioEnv({
       files={STUDIO_FILES[finish]}
       environmentIntensity={ENV_INTENSITY[finish]}
       environmentRotation={ENV_ROTATION}
-    />
+    >
+      {finish === "black" && <RimStrips />}
+    </Environment>
   );
 }
+
+/**
+ * Хар theme-ийн «strip softbox»: хар гялгар гэр хар дэвсгэрт уусаж, зөвхөн
+ * цагирагийн гялбаа л харагддаг байв. Ар-хажуугийн 2 нарийн босоо гэрэл
+ * цилиндрийн ирмэг дагуу урт гэрэл тусгал (rim) үүсгэж савны хэлбэрийг
+ * зурна; дээрх сул гэрэл тагны мөрийг тодруулна. Орчны cube-д нэг удаа
+ * зурагддаг тул frame бүрд зардалгүй.
+ * Group: ENV_ROTATION-ийг нөхнө — байрлалууд дэлхийн тэнхлэгээр (камер +Z).
+ */
+function RimStrips() {
+  return (
+    <group rotation={[0, -ENV_ROTATION.y, 0]}>
+      {([-1, 1] as const).map((side) => (
+        <Lightformer
+          key={side}
+          form="rect"
+          intensity={RIM_INTENSITY}
+          position={[side * 6, 1, -4]}
+          scale={[0.7, 9, 1]}
+        />
+      ))}
+      <Lightformer
+        form="rect"
+        intensity={RIM_INTENSITY * 0.35}
+        position={[0, 7, 1]}
+        scale={[6, 1.2, 1]}
+      />
+    </group>
+  );
+}
+
+const RIM_INTENSITY = 6;
 
 /**
  * Poster → 3D солилтын дохио. `onCreated` дээр дуудвал GLB/HDR ачаалагдаагүй,

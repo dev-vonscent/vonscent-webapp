@@ -193,11 +193,11 @@ export function DecantPlayground({ intro }: { intro?: React.ReactNode }) {
       }}
       onFocus={wake}
       data-hero-3d={show3d ? "ready" : can3d ? "loading" : "off"}
-      className="grid w-full items-center gap-6 md:grid-cols-[9fr_11fr] md:gap-8 lg:gap-12"
+      className="grid w-full items-center gap-6 md:grid-cols-2 md:gap-8 lg:grid-cols-[11fr_9fr] lg:gap-12"
     >
       <div
         aria-hidden
-        className="relative order-1 aspect-16/11 w-full max-md:mx-auto max-md:max-w-sm md:order-2 md:aspect-4/3"
+        className="relative order-1 aspect-16/11 w-full max-md:mx-auto max-md:max-w-sm md:order-2 md:aspect-10/9"
       >
         {!posterGone && (
           <VialPoster

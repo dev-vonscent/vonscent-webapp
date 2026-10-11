@@ -73,10 +73,11 @@ async function main() {
         }, THEME_CLASS[theme]);
         const page = await ctx.newPage();
         await page.goto(BASE, { waitUntil: "networkidle" });
-        await page.addStyleTag({ content: ONLY_CANVAS });
         // 3D нь hero-тэй харьцахад л ачаалагдана. Хулгана хөдөлгөвөл савнууд
-        // эргэх тул focus-оор сэрээнэ.
+        // эргэх тул focus-оор сэрээнэ. ONLY_CANVAS-аас ӨМНӨ: visibility:hidden
+        // input focus авдаггүй тул 3D огт сэрэхгүй байв.
         await page.locator("[data-hero-3d] input").first().focus();
+        await page.addStyleTag({ content: ONLY_CANVAS });
         await page
           .locator('[data-hero-3d="ready"]')
           .waitFor({ state: "attached", timeout: 60_000 });
