@@ -68,20 +68,18 @@ export const env = {
   qpayCallbackSecret: process.env.QPAY_CALLBACK_SECRET ?? "",
 
   /**
-   * tawk.to чат — embed хаягийн `embed.tawk.to/<property>/<widget>` хоёр
-   * хэсэг. Тавигдаагүй бол чатын «Админтай холбогдох» товч Messenger руу
-   * шилжүүлнэ (`ChatPanel`).
+   * Crisp чат — Settings → Website Settings → Setup instructions-ийн
+   * Website ID. Тавигдаагүй бол чатын «Админтай холбогдох» товч Messenger
+   * руу шилжүүлнэ (`ChatWidget`).
    */
-  tawkPropertyId: process.env.NEXT_PUBLIC_TAWK_PROPERTY_ID ?? "",
-  tawkWidgetId: process.env.NEXT_PUBLIC_TAWK_WIDGET_ID ?? "",
+  crispWebsiteId: process.env.NEXT_PUBLIC_CRISP_WEBSITE_ID ?? "",
 
   /**
-   * tawk.to-ийн API key (Admin → Property Settings) — server-only.
-   * Нэвтэрсэн хэрэглэгчийн `userId`-г HMAC-аар гарын үсэглэж
-   * (`/api/chat/tawk-identity`), өөр хүний нэрээр чатлахаас сэргийлнэ.
-   * Тавигдаагүй бол хэрэглэгч бүр tawk-д зочноор орно.
+   * Server-only. Нэвтэрсэн хэрэглэгчийн Crisp token-ийг HMAC-аар гаргана
+   * (`/api/chat/crisp-identity`) — өөр төхөөрөмжөөс ч яриагаа харна.
+   * Тавигдаагүй бол түүх зөвхөн тухайн хөтөчид үлдэнэ.
    */
-  tawkApiKey: process.env.TAWK_API_KEY ?? "",
+  crispTokenSecret: process.env.CRISP_TOKEN_SECRET ?? "",
 } as const;
 
 /** True when Supabase env is present — otherwise the app falls back to seed data. */
@@ -92,8 +90,8 @@ export const isSupabaseConfigured = Boolean(
 /** True when an OpenAI key is set — otherwise AI image generation is disabled. */
 export const isImageGenConfigured = Boolean(env.openaiKey);
 
-/** True when the tawk.to widget is wired — otherwise chat falls back to Messenger. */
-export const isTawkConfigured = Boolean(env.tawkPropertyId && env.tawkWidgetId);
+/** True when the Crisp widget is wired — otherwise chat falls back to Messenger. */
+export const isCrispConfigured = Boolean(env.crispWebsiteId);
 
 /** Storage lives in Supabase, so it's ready whenever Supabase is configured. */
 export const isStorageConfigured = isSupabaseConfigured;

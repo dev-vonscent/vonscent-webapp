@@ -16,17 +16,17 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isTawkConfigured } from "@/lib/env";
+import { isCrispConfigured } from "@/lib/env";
 import { trackChat } from "@/lib/analytics";
 import { toast } from "@/lib/toast";
 import { FaqAnswer } from "@/features/faq/components/faq-search";
 import type { FaqItem } from "@/features/faq/seed";
 import {
   getUnread,
-  isTawkReady,
+  isChatReady,
   openAdminChat,
   subscribeUnread,
-} from "@/features/chat/tawk";
+} from "@/features/chat/crisp";
 
 export interface ContactLink {
   href: string;
@@ -57,9 +57,9 @@ const spring = { type: "spring", stiffness: 420, damping: 30 } as const;
  * Баруун доод булангийн чатын товч ба цонх.
  *
  * Эхний шат нь манай цонх: админы сонгосон бэлэн асуултууд (`getChatFaqs`),
- * дарахад хариулт нь цонхондоо гарна — tawk.to огт ачаалагдахгүй. Хариулт
- * олдохгүй бол «Админтай чатлах» нь tawk.to-г тэр мөчид ачаалж нээнэ
- * (`openAdminChat`). tawk тохируулаагүй эсвэл adblocker хаасан бол Messenger.
+ * дарахад хариулт нь цонхондоо гарна — Crisp огт ачаалагдахгүй. Хариулт
+ * олдохгүй бол «Админтай чатлах» нь Crisp-г тэр мөчид ачаалж нээнэ
+ * (`openAdminChat`). Crisp тохируулаагүй эсвэл adblocker хаасан бол Messenger.
  *
  * Гар утсанд доод навигац (эсвэл түүнийг орлосон «Захиалах» зурвас)-ын дээр
  * суух тул тэдгээрийн өндрөөр дээш өргөгдөнө.
@@ -124,7 +124,7 @@ export function ChatWidget({
 
   function toggle() {
     // Админ бичсэн бол цонхоор дамжуулахгүй шууд яриа руу нь оруулна.
-    if (!open && unread > 0 && isTawkReady()) {
+    if (!open && unread > 0 && isChatReady()) {
       void openAdminChat();
       return;
     }
@@ -142,7 +142,7 @@ export function ChatWidget({
 
   async function contactAdmin() {
     trackChat("handoff", selected?.question);
-    if (isTawkConfigured) {
+    if (isCrispConfigured) {
       setConnecting(true);
       const ok = await openAdminChat();
       setConnecting(false);
@@ -161,7 +161,7 @@ export function ChatWidget({
     );
   }
 
-  const adminLabel = isTawkReady() ? "Яриагаа үргэлжлүүлэх" : "Админтай чатлах";
+  const adminLabel = isChatReady() ? "Яриагаа үргэлжлүүлэх" : "Админтай чатлах";
 
   return (
     <MotionConfig reducedMotion="user">

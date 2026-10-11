@@ -13,7 +13,7 @@ export function isChatLimitError(error: { message?: string }): boolean {
 /**
  * Чатын цонхны бэлэн асуултууд: админы тэмдэглэсэн (`chat_pinned`) идэвхтэй
  * FAQ-ууд, `sort_order`-оор. Нэгийг ч тэмдэглээгүй бол эхний
- * `CHAT_FAQ_LIMIT` FAQ — tawk.to-г дөнгөж асаасан өдөр цонх хоосон гарахгүй.
+ * `CHAT_FAQ_LIMIT` FAQ — чатыг дөнгөж асаасан өдөр цонх хоосон гарахгүй.
  *
  * `rows` нь аль хэдийн `is_active` шүүгдэж, `sort_order`-оор эрэмбэлэгдсэн.
  */
