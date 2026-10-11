@@ -5,8 +5,6 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import {
-  Facebook,
-  Instagram,
   Loader2,
   MessageCircle,
   Phone,
@@ -14,6 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FacebookIcon, InstagramIcon } from "@/components/icons/brand-icons";
 import { isChatReady, setChatTheme } from "@/features/chat/crisp";
 import {
   setChatFallbackLinks,
@@ -25,10 +24,10 @@ export type { ContactLink };
 
 const CHANNELS: Record<
   ContactLink["icon"],
-  { icon: LucideIcon; className: string }
+  { icon: LucideIcon | typeof FacebookIcon; className: string }
 > = {
-  messenger: { icon: Facebook, className: "bg-facebook text-white" },
-  instagram: { icon: Instagram, className: "bg-instagram text-white" },
+  messenger: { icon: FacebookIcon, className: "bg-facebook text-white" },
+  instagram: { icon: InstagramIcon, className: "bg-instagram text-white" },
   phone: { icon: Phone, className: "bg-phone text-white" },
 };
 
@@ -134,9 +133,13 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
     setOpen((v) => !v);
   }
 
-  // Чат нумын голд.
-  const items: Item[] = links.map((link) => ({ kind: "link", link }));
-  items.splice(Math.ceil(items.length / 2), 0, { kind: "chat" });
+  // Нум доороос (180°) дээш (90°): утас хамгийн доор, сошиал дунд, чат
+  // хамгийн дээр — нүд хамгийн түрүүнд тусах, гол суваг.
+  const items: Item[] = [
+    ...links.filter((l) => l.icon === "phone"),
+    ...links.filter((l) => l.icon !== "phone"),
+  ].map((link) => ({ kind: "link", link }));
+  items.push({ kind: "chat" });
   const positions = arc(items.length);
 
   return (
@@ -190,7 +193,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
                         onClick={openChat}
                         aria-busy={connecting}
                         aria-label="Сайтаар чатлах"
-                        className="bg-primary text-primary-foreground ring-background group relative flex size-full items-center justify-center rounded-full shadow-lg ring-2 transition-transform hover:scale-105"
+                        className="bg-foreground text-background ring-background group relative flex size-full items-center justify-center rounded-full shadow-lg ring-2 transition-transform hover:scale-105"
                       >
                         {connecting ? (
                           <Loader2 className="size-5 animate-spin" />
@@ -238,7 +241,9 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
             "group relative flex h-14 items-center rounded-full shadow-xl transition-colors",
             open
               ? "bg-background text-foreground border-border border"
-              : "bg-primary text-primary-foreground",
+              : // `primary` black theme-д #262626 — хар дэвсгэр дээр бараг
+                // үл харагдана; `foreground` бүх theme-д тод.
+                "bg-foreground text-background",
             "focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
           )}
         >
