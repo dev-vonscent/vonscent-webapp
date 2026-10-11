@@ -9,7 +9,7 @@ import {
   Instagram,
   Loader2,
   MessageCircle,
-  MessageCircleMore,
+  MessagesSquare,
   Phone,
   X,
   type LucideIcon,
@@ -196,7 +196,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
                         {connecting ? (
                           <Loader2 className="size-5 animate-spin" />
                         ) : (
-                          <MessageCircleMore className="size-5" />
+                          <MessagesSquare className="size-5" />
                         )}
                         <Tip>Чатлах</Tip>
                       </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, MessageCircleMore } from "lucide-react";
+import { Loader2, MessagesSquare } from "lucide-react";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useChatLauncher } from "@/features/chat/use-chat-launcher";
@@ -32,7 +32,7 @@ export function HeaderChatButton({
       {connecting ? (
         <Loader2 className="size-5 animate-spin" />
       ) : (
-        <MessageCircleMore className="size-5" />
+        <MessagesSquare className="size-5" />
       )}
       {unread > 0 && (
         <span

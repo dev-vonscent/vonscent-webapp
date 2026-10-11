@@ -10,7 +10,7 @@ import {
   User,
   Boxes,
   Loader2,
-  MessageCircleMore,
+  MessagesSquare,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -126,20 +126,14 @@ function ChatTab({ hidden }: { hidden: boolean }) {
       }
       className={cn(
         GLASS,
-        "text-foreground pointer-events-auto relative flex size-15.5 shrink-0 flex-col items-center justify-center gap-1 rounded-full",
+        "text-foreground pointer-events-auto relative flex size-15.5 shrink-0 items-center justify-center rounded-full",
       )}
     >
       {connecting ? (
-        <Loader2 className="size-5 animate-spin" />
+        <Loader2 className="size-6 animate-spin" />
       ) : (
-        <MessageCircleMore className="size-5" strokeWidth={1.8} />
+        <MessagesSquare className="size-6" strokeWidth={1.8} />
       )}
-      <span
-        aria-hidden
-        className="text-[10px] leading-none font-medium max-[359px]:hidden"
-      >
-        Чат
-      </span>
       {unread > 0 && (
         <span className="bg-destructive text-destructive-foreground absolute top-1.5 right-2 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold tabular-nums">
           {unread > 9 ? "9+" : unread}
