@@ -1,6 +1,9 @@
 import { Facebook, Instagram } from "lucide-react";
 import { getSocialSettings } from "@/features/content/api";
-import { ChatWidget } from "@/features/chat/components/chat-widget";
+import {
+  ChatWidget,
+  type ContactLink,
+} from "@/features/chat/components/chat-widget";
 
 /**
  * Гар утасны цэсэн дэх Facebook / Instagram холбоос ба desktop-ийн
@@ -42,16 +45,42 @@ function messengerHref(facebook: string) {
   }
 }
 
-/** Баруун доод булангийн чатын товч — Crisp, ачаалагдахгүй бол Messenger (chat-widget.tsx). */
+/** Instagram хаягаас DM-ийн шууд холбоос (`ig.me/m/<хэрэглэгч>`). */
+function instagramDmHref(instagram: string) {
+  try {
+    const slug = new URL(instagram).pathname.split("/").filter(Boolean)[0];
+    return slug ? `https://ig.me/m/${slug}` : instagram;
+  } catch {
+    return instagram;
+  }
+}
+
+/** Баруун доод булангийн чатын товч — Crisp + сошиал сувгууд (chat-widget.tsx). */
 export async function ContactFab() {
   const social = await getSocialSettings();
-  return (
-    <ChatWidget
-      messengerHref={
-        social.facebook ? messengerHref(social.facebook) : undefined
-      }
-    />
-  );
+  const items: ContactLink[] = [
+    social.facebook && {
+      href: messengerHref(social.facebook),
+      label: "Messenger",
+      icon: "messenger" as const,
+    },
+    social.instagram && {
+      href: instagramDmHref(social.instagram),
+      label: "Instagram DM",
+      icon: "instagram" as const,
+    },
+    social.phone && {
+      href: `tel:${social.phone.replace(/\s+/g, "")}`,
+      label: social.phone,
+      icon: "phone" as const,
+    },
+    social.email && {
+      href: `mailto:${social.email}`,
+      label: "Имэйл бичих",
+      icon: "email" as const,
+    },
+  ].filter((l): l is ContactLink => Boolean(l));
+  return <ChatWidget links={items} />;
 }
 
 /** Гар утасны цэсний капсул эгнээ — «Холбоо барих» г.м-тэй нэг хэлбэр. */

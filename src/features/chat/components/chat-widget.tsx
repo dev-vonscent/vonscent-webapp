@@ -1,8 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { MotionConfig, motion } from "motion/react";
-import { Loader2, MessageCircle } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import {
+  Facebook,
+  Instagram,
+  Loader2,
+  Mail,
+  MessageCircle,
+  MessageCircleMore,
+  Phone,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isCrispConfigured } from "@/lib/env";
 import { trackChatOpen } from "@/lib/analytics";
@@ -10,25 +21,73 @@ import { toast } from "@/lib/toast";
 import {
   getUnread,
   isChatOpen,
+  isChatReady,
   openAdminChat,
   subscribeChat,
 } from "@/features/chat/crisp";
 
-const spring = { type: "spring", stiffness: 420, damping: 30 } as const;
+export interface ContactLink {
+  href: string;
+  label: string;
+  icon: "messenger" | "instagram" | "phone" | "email";
+}
+
+const CHANNELS: Record<
+  ContactLink["icon"],
+  { icon: LucideIcon; className: string }
+> = {
+  messenger: { icon: Facebook, className: "bg-facebook text-white" },
+  instagram: { icon: Instagram, className: "bg-instagram text-white" },
+  phone: { icon: Phone, className: "bg-phone text-white" },
+  email: { icon: Mail, className: "bg-secondary text-foreground" },
+};
 
 /**
- * Баруун доод булангийн чатын товч — дарахад Crisp-г тэр мөчид ачаалж
- * шууд яриа руу оруулна (`openAdminChat`). Crisp тохируулаагүй эсвэл
- * adblocker хаасан бол Messenger.
+ * Эдгээр хуудсанд цэс нээгдэхгүй, товч шууд чат руу оруулна: төлбөрийн
+ * урсгалд сайтаас гадагш хөтлөх нь алдагдалтай (гэхдээ асуудал гарах
+ * магадлал хамгийн өндөр газар), контакт хуудас өөрөө бүх сувгийг харуулдаг.
+ */
+const CHAT_ONLY_ON = ["/checkout", "/pay", "/contact"];
+
+const spring = { type: "spring", stiffness: 420, damping: 30 } as const;
+
+const CHAT_SIZE = 52;
+const LINK_SIZE = 44;
+
+/**
+ * Товчнуудыг гол товчны эргэн тойронд зүүнээс (180°) дээш (90°) нумаар
+ * тараана. Олон болох тусам радиусыг томсгож хоорондоо давхцуулахгүй.
+ */
+function arc(count: number) {
+  const radius = count <= 3 ? 84 : count === 4 ? 100 : 128;
+  return Array.from({ length: count }, (_, i) => {
+    const deg = count === 1 ? 135 : 180 - (i * 90) / (count - 1);
+    const rad = (deg * Math.PI) / 180;
+    return { x: Math.cos(rad) * radius, y: -Math.sin(rad) * radius };
+  });
+}
+
+type Item = { kind: "chat" } | { kind: "link"; link: ContactLink };
+
+/**
+ * Баруун доод булангийн «Холбогдох» товч. Дарахад сувгууд нумаар дэлгэгдэнэ;
+ * голд нь сайтын чат (Crisp) — сайтаас гадагш гаргадаггүй цорын ганц суваг
+ * тул томоор, брэндийн өнгөөр. Crisp нь «Чатлах» дарагдсан мөчид л ачаалагдана.
  *
- * Crisp нээлттэй үед өөрийн ✕ товчийг яг энэ байрлалд гаргадаг тул энэ
- * товч нуугдана — давхардахгүй.
+ * Админ бичсэн (уншаагүй мессеж) үед цэсгүйгээр шууд яриа руу оруулна.
+ * Crisp нээлттэй үед өөрийн ✕-ийг яг энэ байрлалд гаргадаг тул бүхэлдээ
+ * нуугдана. Crisp ачаалагдахгүй бол (adblocker) Messenger.
  *
  * Гар утсанд доод навигац (эсвэл түүнийг орлосон «Захиалах» зурвас)-ын дээр
  * суух тул тэдгээрийн өндрөөр дээш өргөгдөнө.
  */
-export function ChatWidget({ messengerHref }: { messengerHref?: string }) {
+export function ChatWidget({ links }: { links: ContactLink[] }) {
+  const pathname = usePathname();
+  const [open, setOpen] = React.useState(false);
   const [connecting, setConnecting] = React.useState(false);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const menuId = React.useId();
   const unread = React.useSyncExternalStore(subscribeChat, getUnread, () => 0);
   const adminOpen = React.useSyncExternalStore(
     subscribeChat,
@@ -36,19 +95,47 @@ export function ChatWidget({ messengerHref }: { messengerHref?: string }) {
     () => false,
   );
 
+  const chatOnly =
+    links.length === 0 || CHAT_ONLY_ON.some((p) => pathname.startsWith(p));
+
+  // Хуудас солигдоход цэс нээлттэй үлдэхгүй.
+  React.useEffect(() => setOpen(false), [pathname]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: PointerEvent) {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      buttonRef.current?.focus();
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
   if (adminOpen) return null;
 
-  async function open() {
+  async function openChat() {
     if (connecting) return;
     trackChatOpen();
     if (isCrispConfigured) {
       setConnecting(true);
       const ok = await openAdminChat();
       setConnecting(false);
-      if (ok) return;
+      if (ok) {
+        setOpen(false);
+        return;
+      }
     }
-    if (messengerHref) {
-      window.open(messengerHref, "_blank", "noopener,noreferrer");
+    const messenger = links.find((l) => l.icon === "messenger");
+    if (messenger) {
+      window.open(messenger.href, "_blank", "noopener,noreferrer");
       return;
     }
     toast.error(
@@ -57,49 +144,200 @@ export function ChatWidget({ messengerHref }: { messengerHref?: string }) {
     );
   }
 
+  function toggle() {
+    if (chatOnly || (unread > 0 && isChatReady())) {
+      void openChat();
+      return;
+    }
+    setOpen((v) => !v);
+  }
+
+  // Чат нумын голд.
+  const items: Item[] = links.map((link) => ({ kind: "link", link }));
+  items.splice(Math.ceil(items.length / 2), 0, { kind: "chat" });
+  const positions = arc(items.length);
+
   return (
     <MotionConfig reducedMotion="user">
-      <motion.button
-        type="button"
-        onClick={open}
-        aria-busy={connecting}
-        aria-label={
-          unread > 0 ? `Админаас ${unread} шинэ мессеж` : "Бидэнтэй чатлах"
-        }
-        initial={{ opacity: 0, scale: 0.6, y: 16 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ ...spring, delay: 0.8 }}
-        whileHover={{ scale: 1.06 }}
-        whileTap={{ scale: 0.94 }}
-        className={cn(
-          "bg-primary text-primary-foreground group fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 flex h-12 items-center rounded-full shadow-xl md:right-6 md:bottom-6 md:h-14",
-          "focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
-        )}
+      <div
+        ref={rootRef}
+        className="fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 md:right-6 md:bottom-6"
       >
-        {/* Hover-т «Асуух зүйл байна уу?» гэсэн шошго зүүн тийш гулсаж нээгдэнэ. */}
-        <span className="hidden grid-cols-[0fr] transition-[grid-template-columns] duration-300 ease-out group-hover:grid-cols-[1fr] group-focus-visible:grid-cols-[1fr] md:grid">
-          <span className="overflow-hidden">
-            <span className="block pl-5 text-sm font-medium whitespace-nowrap">
-              Асуух зүйл байна уу?
+        <AnimatePresence>
+          {open && (
+            <motion.ul
+              id={menuId}
+              aria-label="Холбогдох суваг"
+              className="absolute inset-0"
+              initial="closed"
+              animate="open"
+              exit="closed"
+              variants={{
+                open: { transition: { staggerChildren: 0.04 } },
+                closed: {
+                  transition: { staggerChildren: 0.03, staggerDirection: -1 },
+                },
+              }}
+            >
+              {items.map((item, i) => {
+                const size = item.kind === "chat" ? CHAT_SIZE : LINK_SIZE;
+                const { x, y } = positions[i];
+                return (
+                  <motion.li
+                    key={item.kind === "chat" ? "chat" : item.link.label}
+                    className="absolute top-1/2 left-1/2"
+                    style={{
+                      width: size,
+                      height: size,
+                      marginLeft: -size / 2,
+                      marginTop: -size / 2,
+                    }}
+                    variants={{
+                      open: { opacity: 1, x, y, scale: 1 },
+                      closed: { opacity: 0, x: 0, y: 0, scale: 0.4 },
+                    }}
+                    transition={spring}
+                  >
+                    {item.kind === "chat" ? (
+                      <button
+                        type="button"
+                        onClick={openChat}
+                        aria-busy={connecting}
+                        aria-label="Сайтаар чатлах"
+                        className="bg-primary text-primary-foreground ring-background group relative flex size-full items-center justify-center rounded-full shadow-lg ring-2 transition-transform hover:scale-105"
+                      >
+                        {connecting ? (
+                          <Loader2 className="size-5 animate-spin" />
+                        ) : (
+                          <MessageCircleMore className="size-5" />
+                        )}
+                        <Tip>Чатлах</Tip>
+                      </button>
+                    ) : (
+                      <ChannelLink
+                        link={item.link}
+                        onSelect={() => setOpen(false)}
+                      />
+                    )}
+                  </motion.li>
+                );
+              })}
+            </motion.ul>
+          )}
+        </AnimatePresence>
+
+        <motion.button
+          ref={buttonRef}
+          type="button"
+          onClick={toggle}
+          aria-busy={connecting}
+          {...(!chatOnly && {
+            "aria-expanded": open,
+            "aria-controls": menuId,
+          })}
+          aria-label={
+            open
+              ? "Хаах"
+              : unread > 0
+                ? `Админаас ${unread} шинэ мессеж`
+                : "Бидэнтэй холбогдох"
+          }
+          initial={{ opacity: 0, scale: 0.6, y: 16 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ ...spring, delay: 0.8 }}
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.94 }}
+          className={cn(
+            "group relative flex h-12 items-center rounded-full shadow-xl transition-colors md:h-14",
+            open
+              ? "bg-background text-foreground border-border border"
+              : "bg-primary text-primary-foreground",
+            "focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+          )}
+        >
+          {/* Hover-т «Асуух зүйл байна уу?» гэсэн шошго зүүн тийш гулсаж нээгдэнэ. */}
+          <span
+            className={cn(
+              "hidden transition-[grid-template-columns] duration-300 ease-out md:grid",
+              open
+                ? "grid-cols-[0fr]"
+                : "grid-cols-[0fr] group-hover:grid-cols-[1fr] group-focus-visible:grid-cols-[1fr]",
+            )}
+          >
+            <span className="overflow-hidden">
+              <span className="block pl-5 text-sm font-medium whitespace-nowrap">
+                Асуух зүйл байна уу?
+              </span>
             </span>
           </span>
-        </span>
-        <span className="flex size-12 items-center justify-center md:size-14">
-          {connecting ? (
-            <Loader2 className="size-5 animate-spin md:size-6" />
-          ) : (
-            <MessageCircle className="size-5 md:size-6" />
-          )}
-        </span>
-        {unread > 0 && (
-          <span
-            aria-hidden
-            className="bg-destructive text-destructive-foreground absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums"
-          >
-            {unread > 9 ? "9+" : unread}
+          <span className="relative flex size-12 items-center justify-center md:size-14">
+            <AnimatePresence initial={false} mode="popLayout">
+              <motion.span
+                key={open ? "close" : connecting ? "loading" : "chat"}
+                initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                transition={{ duration: 0.2 }}
+                className="flex"
+              >
+                {open ? (
+                  <X className="size-5 md:size-6" />
+                ) : connecting ? (
+                  <Loader2 className="size-5 animate-spin md:size-6" />
+                ) : (
+                  <MessageCircle className="size-5 md:size-6" />
+                )}
+              </motion.span>
+            </AnimatePresence>
           </span>
-        )}
-      </motion.button>
+          {unread > 0 && !open && (
+            <span
+              aria-hidden
+              className="bg-destructive text-destructive-foreground absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums"
+            >
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
+        </motion.button>
+      </div>
     </MotionConfig>
+  );
+}
+
+function ChannelLink({
+  link: { href, label, icon },
+  onSelect,
+}: {
+  link: ContactLink;
+  onSelect: () => void;
+}) {
+  const { icon: Icon, className } = CHANNELS[icon];
+  const external = href.startsWith("http");
+  return (
+    <a
+      href={href}
+      aria-label={label}
+      {...(external && { target: "_blank", rel: "noopener noreferrer" })}
+      onClick={onSelect}
+      className={cn(
+        "group relative flex size-full items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105",
+        className,
+      )}
+    >
+      <Icon className="size-4.5" />
+      <Tip>{label}</Tip>
+    </a>
+  );
+}
+
+/** Desktop hover/focus-д товчны зүүн талд гарах шошго. */
+function Tip({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      aria-hidden
+      className="bg-popover text-popover-foreground pointer-events-none absolute top-1/2 right-full mr-2 hidden -translate-y-1/2 rounded-md px-2 py-1 text-xs font-medium whitespace-nowrap opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 md:block"
+    >
+      {children}
+    </span>
   );
 }
