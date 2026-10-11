@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { FacebookLogo, InstagramLogo } from "@/components/icons/brand-icons";
 import { isChatReady, setChatTheme } from "@/features/chat/crisp";
+import { TypingChatIcon } from "@/features/chat/components/typing-chat-icon";
 import {
   setChatFallbackLinks,
   useChatLauncher,
@@ -199,7 +200,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
                         {connecting ? (
                           <Loader2 className="size-5 animate-spin" />
                         ) : (
-                          <MessageCircle className="size-5" />
+                          <TypingChatIcon className="size-6" />
                         )}
                         <Tip>Чатлах</Tip>
                       </button>
