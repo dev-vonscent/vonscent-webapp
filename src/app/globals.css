@@ -315,6 +315,11 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-field-edge: var(--field-edge);
+  /* Гуравдагч талын брэндийн өнгө (чатын дугуй цэс) — theme-ээс үл хамаарна.
+     Gradient хэрэглэхгүй тул Instagram-ийнх ганц өнгө. */
+  --color-facebook: #1877f2;
+  --color-instagram: #e1306c;
+  --color-phone: #34c759;
 
   --font-sans: var(--font-sans);
   /* single minimalist font everywhere — serif utilities resolve to sans */

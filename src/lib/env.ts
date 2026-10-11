@@ -66,6 +66,20 @@ export const env = {
    * мартсан env нь бүх төлбөрийн callback-ыг унагаана.
    */
   qpayCallbackSecret: process.env.QPAY_CALLBACK_SECRET ?? "",
+
+  /**
+   * Crisp чат — Settings → Website Settings → Setup instructions-ийн
+   * Website ID. Тавигдаагүй бол чатын «Админтай холбогдох» товч Messenger
+   * руу шилжүүлнэ (`ChatWidget`).
+   */
+  crispWebsiteId: process.env.NEXT_PUBLIC_CRISP_WEBSITE_ID ?? "",
+
+  /**
+   * Server-only. Нэвтэрсэн хэрэглэгчийн Crisp token-ийг HMAC-аар гаргана
+   * (`/api/chat/crisp-identity`) — өөр төхөөрөмжөөс ч яриагаа харна.
+   * Тавигдаагүй бол түүх зөвхөн тухайн хөтөчид үлдэнэ.
+   */
+  crispTokenSecret: process.env.CRISP_TOKEN_SECRET ?? "",
 } as const;
 
 /** True when Supabase env is present — otherwise the app falls back to seed data. */
@@ -75,6 +89,9 @@ export const isSupabaseConfigured = Boolean(
 
 /** True when an OpenAI key is set — otherwise AI image generation is disabled. */
 export const isImageGenConfigured = Boolean(env.openaiKey);
+
+/** True when the Crisp widget is wired — otherwise chat falls back to Messenger. */
+export const isCrispConfigured = Boolean(env.crispWebsiteId);
 
 /** Storage lives in Supabase, so it's ready whenever Supabase is configured. */
 export const isStorageConfigured = isSupabaseConfigured;

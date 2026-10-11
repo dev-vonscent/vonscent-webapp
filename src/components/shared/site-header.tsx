@@ -7,6 +7,7 @@ import { ArrowLeft, Boxes, Heart, Home, Search } from "lucide-react";
 import { Logo } from "./logo";
 import { MobileMenu } from "./mobile-menu";
 import { CartSheet } from "@/features/cart/components/cart-sheet";
+import { HeaderChatButton } from "@/features/chat/components/header-chat-button";
 import { ProfileMenu } from "@/features/account/components/profile-menu";
 import { GlobalSearch } from "./global-search";
 import { cn } from "@/lib/utils";
@@ -149,15 +150,20 @@ export function SiteHeader({
           )}
           {/* Сагс, төлбөрийн хуудсанд сагсны товч хэрэггүй: сагсан дээр
               өөрийгөө давхардуулна, төлбөр дээр хэрэглэгчийг төлбөрөөс гаргах
-              зам болно. Гарчиг төвдөө үлдэхийн тулд ижил хэмжээний зай. */}
-          {hideCart ? (
-            <span aria-hidden className="size-10 shrink-0" />
-          ) : (
-            <CartSheet
-              triggerVariant="secondary"
-              triggerClassName="shrink-0 rounded-full bg-secondary/85 backdrop-blur hover:bg-secondary"
+              зам болно. Чат харин үлдэнэ — асуудал гарах магадлал хамгийн
+              өндөр газар. */}
+          <div className="flex shrink-0 items-center gap-2">
+            <HeaderChatButton
+              variant="secondary"
+              className="bg-secondary/85 hover:bg-secondary rounded-full backdrop-blur"
             />
-          )}
+            {!hideCart && (
+              <CartSheet
+                triggerVariant="secondary"
+                triggerClassName="shrink-0 rounded-full bg-secondary/85 backdrop-blur hover:bg-secondary"
+              />
+            )}
+          </div>
         </div>
       )}
 
@@ -199,9 +205,10 @@ export function SiteHeader({
             />
           </nav>
 
-          {/* Right: search + cart (mobile only) + profile menu (desktop only) */}
+          {/* Right: search + chat, cart (mobile only) + profile menu (desktop only) */}
           <div className="ml-auto flex items-center gap-1">
             <GlobalSearch />
+            <HeaderChatButton className="md:hidden" />
             <CartSheet triggerClassName="md:hidden" />
             <div className="hidden md:block">
               <ProfileMenu />
