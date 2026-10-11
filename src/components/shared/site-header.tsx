@@ -61,6 +61,11 @@ export function SiteHeader({
   const router = useRouter();
   const isHome = pathname === "/";
   const hideCart = pathname === "/cart" || pathname === "/checkout";
+  // Утсан дээр чат доод цэсний хажууд (`BottomNav`). Төлбөрийн хуудсанд
+  // «Төлөх» зурвас доод цэсийг (чатын хамт) нуудаг ч асуудал гарах магадлал
+  // хамгийн өндөр газар тул тэнд чат толгойд гарна.
+  const headerChat =
+    pathname.startsWith("/checkout") || pathname.startsWith("/pay");
 
   // Hide on scroll down, reveal on scroll up.
   const [hidden, setHidden] = React.useState(false);
@@ -150,13 +155,14 @@ export function SiteHeader({
           )}
           {/* Сагс, төлбөрийн хуудсанд сагсны товч хэрэггүй: сагсан дээр
               өөрийгөө давхардуулна, төлбөр дээр хэрэглэгчийг төлбөрөөс гаргах
-              зам болно. Чат харин үлдэнэ — асуудал гарах магадлал хамгийн
-              өндөр газар. */}
+              зам болно. */}
           <div className="flex shrink-0 items-center gap-2">
-            <HeaderChatButton
-              variant="secondary"
-              className="bg-secondary/85 hover:bg-secondary rounded-full backdrop-blur"
-            />
+            {headerChat && (
+              <HeaderChatButton
+                variant="secondary"
+                className="bg-secondary/85 hover:bg-secondary rounded-full backdrop-blur"
+              />
+            )}
             {!hideCart && (
               <CartSheet
                 triggerVariant="secondary"
@@ -205,10 +211,9 @@ export function SiteHeader({
             />
           </nav>
 
-          {/* Right: search + chat, cart (mobile only) + profile menu (desktop only) */}
+          {/* Right: search + cart (mobile only) + profile menu (desktop only) */}
           <div className="ml-auto flex items-center gap-1">
             <GlobalSearch />
-            <HeaderChatButton className="md:hidden" />
             <CartSheet triggerClassName="md:hidden" />
             <div className="hidden md:block">
               <ProfileMenu />

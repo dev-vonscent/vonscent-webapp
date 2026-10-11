@@ -6,9 +6,8 @@ import { cn } from "@/lib/utils";
 import { useChatLauncher } from "@/features/chat/use-chat-launcher";
 
 /**
- * Утасны толгойн чатын товч (сагсны хажууд). Утсан дээр хөвөгч товч
- * бараа, доод навигацыг дардаг тул чатын орох хаалга энд — desktop-д
- * баруун доод булангийн дугуй цэс хэвээр (`ChatWidget`).
+ * Утасны толгойн чатын товч — зөвхөн төлбөрийн хуудсанд, доод цэс (түүний
+ * хажуугийн чатын товч) «Төлөх» зурвасаар нуугдах үед.
  */
 export function HeaderChatButton({
   variant = "ghost",

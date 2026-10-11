@@ -70,7 +70,7 @@ type Item = { kind: "chat" } | { kind: "link"; link: ContactLink };
  * нуугдана. Crisp ачаалагдахгүй бол (adblocker) toast-оор Messenger / утас.
  *
  * Зөвхөн desktop: утсан дээр хөвөгч товч бараа, сагслах товч, доод
- * навигацыг дардаг тул чат толгой хэсэгт (`HeaderChatButton`), сошиал
+ * навигацыг дардаг тул чат доод цэсний хажууд (`BottomNav`), сошиал
  * сувгууд цэс дотор (`MenuSocialLinks`).
  */
 export function ChatWidget({ links }: { links: ContactLink[] }) {

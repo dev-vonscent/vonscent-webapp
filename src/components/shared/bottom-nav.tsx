@@ -9,11 +9,14 @@ import {
   Heart,
   User,
   Boxes,
+  Loader2,
+  MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { selectWishCount, useWishlist } from "@/features/wishlist/store";
 import { useBottomNavHidden } from "@/components/shared/bottom-nav-store";
+import { useChatLauncher } from "@/features/chat/use-chat-launcher";
 
 const LEFT = [
   { href: "/", label: "Нүүр", icon: Home },
@@ -55,33 +58,70 @@ export function BottomNav() {
         hidden ? "translate-y-[140%]" : "delay-150",
       )}
     >
-      <nav
-        aria-label="Үндсэн цэс"
-        // Дэлгэцээс гарсан цэс гарын товчлуураар ч бариулахгүй байх ёстой.
-        inert={hidden}
-        className="bg-secondary/85 shadow-lift pointer-events-auto mb-3 flex items-center gap-1 rounded-full px-2.5 py-2 backdrop-blur"
-      >
-        {LEFT.map((item) => (
-          <Tab
-            key={item.href}
-            {...item}
-            active={isActive(item.href)}
-            current={pathname === item.href}
-            badge={badgeFor(item.href)}
-          />
-        ))}
+      {/* Цэс + баруун талд нь тусдаа чатын товч (Crisp-ийн апп шиг). Нэг
+          wrapper дотор тул «Захиалах» зурвас гарахад хамт нуугдана. */}
+      <div className="mb-3 flex items-center gap-2">
+        <nav
+          aria-label="Үндсэн цэс"
+          // Дэлгэцээс гарсан цэс гарын товчлуураар ч бариулахгүй байх ёстой.
+          inert={hidden}
+          className="bg-secondary/85 shadow-lift pointer-events-auto flex items-center gap-1 rounded-full px-2.5 py-2 backdrop-blur"
+        >
+          {LEFT.map((item) => (
+            <Tab
+              key={item.href}
+              {...item}
+              active={isActive(item.href)}
+              current={pathname === item.href}
+              badge={badgeFor(item.href)}
+            />
+          ))}
 
-        {RIGHT.map((item) => (
-          <Tab
-            key={item.href}
-            {...item}
-            active={isActive(item.href)}
-            current={pathname === item.href}
-            badge={badgeFor(item.href)}
-          />
-        ))}
-      </nav>
+          {RIGHT.map((item) => (
+            <Tab
+              key={item.href}
+              {...item}
+              active={isActive(item.href)}
+              current={pathname === item.href}
+              badge={badgeFor(item.href)}
+            />
+          ))}
+        </nav>
+        <ChatTab hidden={hidden} />
+      </div>
     </div>
+  );
+}
+
+/**
+ * Утасны чатын орох хаалга. Хөвөгч товч бараа, сагслах товчийг дардаг
+ * байсан тул цэсний хажууд, цэстэй ижил өндөр (60px) дугуй товч болгосон.
+ */
+function ChatTab({ hidden }: { hidden: boolean }) {
+  const { connecting, unread, launch } = useChatLauncher();
+  return (
+    <button
+      type="button"
+      onClick={() => void launch()}
+      inert={hidden}
+      data-chat-entry
+      aria-busy={connecting}
+      aria-label={
+        unread > 0 ? `Админаас ${unread} шинэ мессеж` : "Бидэнтэй чатлах"
+      }
+      className="bg-secondary/85 shadow-lift text-foreground pointer-events-auto relative flex size-15 shrink-0 items-center justify-center rounded-full backdrop-blur"
+    >
+      {connecting ? (
+        <Loader2 className="size-5.5 animate-spin" />
+      ) : (
+        <MessageCircle className="size-5.5" strokeWidth={1.8} />
+      )}
+      {unread > 0 && (
+        <span className="bg-destructive text-destructive-foreground absolute top-2 right-2 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold tabular-nums">
+          {unread > 9 ? "9+" : unread}
+        </span>
+      )}
+    </button>
   );
 }
 
