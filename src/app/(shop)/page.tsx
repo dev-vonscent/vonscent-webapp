@@ -103,7 +103,7 @@ export default function HomePage() {
           className="pointer-events-none absolute inset-0 opacity-[0.05] mix-blend-overlay"
           style={{ backgroundImage: GRAIN }}
         />
-        <div className="relative mx-auto max-w-352 px-4 pt-4 pb-12 md:px-8 md:pt-8 lg:pb-16">
+        <div className="relative mx-auto max-w-352 px-4 pt-4 pb-6 md:p-8">
           <DecantPlayground
             intro={
               <div className="space-y-4">
@@ -121,7 +121,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-352 space-y-10 px-4 py-8 sm:space-y-16 sm:py-14 md:px-8">
+      <div className="mx-auto max-w-352 space-y-10 px-4 pt-6 pb-8 sm:space-y-16 sm:pt-10 sm:pb-14 md:px-8">
         {/* Дараалал: Эрэлттэй → Онцлох (админы rail-ууд) → Шинээр ирсэн
             (клиент, 2026-10). */}
         <Suspense fallback={<CarouselSkeleton action />}>
