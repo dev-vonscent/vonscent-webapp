@@ -757,3 +757,36 @@
     }
   }
 }
+
+/* Crisp чатын толгойн «Яриа» товч — dashboard-аас унтраах тохиргоогүй.
+   Crisp-ийн class нэрс (cc-xxxx) хувилбар бүрт солигддог тул товчны
+   aria-label-аар (chatbox-ийн хэл монголоор тогтмол) эх блокийг нь нууна. */
+#crisp-chatbox div:has(> [role="button"][aria-label="Яриа"]),
+/* Толгойн ˅ сувгийн цэсийн имэйл — утас/Messenger/Instagram үлдэнэ.
+   Class-ийн hash солигдоно, `--email` төгсгөл нь тогтвортой. */
+#crisp-chatbox a[class*="--email"],
+#crisp-chatbox a[href^="mailto:"] {
+  display: none !important;
+}
+
+/* Crisp-ийн толгой тогтмол 160px — «Яриа» нуугдсаны дараа доод талд нь
+   хоосон зай үлддэг. ⋮ товчтой блокоор нь олж, өндрийг агуулгаар нь. */
+#crisp-chatbox div:has(> span > [aria-label="Түргэн үйлдлүүд"]) {
+  height: auto !important;
+  padding-bottom: 16px !important;
+}
+
+/* Crisp-ийн «Бид ашиглаж байна crisp» тэмдэглэгээ (chatbox-ийн доод мөр). */
+/* #crisp-chatbox div:has(> a[href*="crisp.chat"][href*="ref=chatbox"]) {
+  opacity: 0.3 !important;
+} */
+
+/* Crisp-ийн хаалттай үеийн бөмбөлөг (launcher). Орох хаалга нь зөвхөн манай
+   товчнууд — `chat:show` → `chat:open`-ийн хооронд (~100мс) энэ бөмбөлөг
+   логотойгоо анивчдаг байв. Нээх анимейшний үеэр (`data-animate-maximize`)
+   бөмбөлөг ✕ болж хувирдаг — утсанд манай pill дээр гарч ирдэг байсан тул
+   тэр хооронд ч нууна. Нээлттэй үеийн ✕ (`data-maximized="true"`) үлдэнэ. */
+#crisp-chatbox [data-maximized="false"],
+#crisp-chatbox [data-animate-maximize="true"] {
+  display: none !important;
+}

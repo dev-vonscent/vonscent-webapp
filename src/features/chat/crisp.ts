@@ -247,6 +247,9 @@ export async function openAdminChat(): Promise<boolean> {
     await loadCrisp();
     push("do", "chat:show");
     push("do", "chat:open");
+    // Crisp өмнөх session-оос (refresh) нээлттэй төлвөө сэргээсэн бол
+    // `chat:opened` дахин ирдэггүй — манай товч нуугдахгүй давхцдаг байв.
+    setOpen(true);
     return true;
   } catch {
     return false;
