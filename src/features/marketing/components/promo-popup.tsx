@@ -32,6 +32,12 @@ const MAX_HEIGHT_RATIO = 0.85;
 // өдөөж болдог). Хуруугаар гүйлгэх нь pointerdown, хулганы дугуй нь wheel,
 // гараар гүйлгэх нь keydown — бүгд `isTrusted`.
 const POPUP_TRIGGERS = ["pointerdown", "keydown", "wheel"] as const;
+/**
+ * Чатын товч (`ChatWidget`, `HeaderChatButton`) ба Crisp-ийн цонх. Анхны
+ * үйлдэл нь чат бол хэрэглэгч асуух зүйлтэй ирсэн — сурталчилгаа түүнийг
+ * таслан дарах ёсгүй тул энэ document-д popup огт гарахгүй.
+ */
+const CHAT_SELECTOR = "[data-chat-entry], #crisp-chatbox, .crisp-client";
 /** Үйлдлээс хойш — гүйлгэж буй хуруун доор шууд унахгүй. */
 const OPEN_DELAY_MS = 400;
 
@@ -174,6 +180,10 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
     const onFirst = (e: Event) => {
       if (!isUserInput(e)) return;
       for (const t of POPUP_TRIGGERS) window.removeEventListener(t, onFirst);
+      if (e.target instanceof Element && e.target.closest(CHAT_SELECTOR)) {
+        shownForThisDocument = true;
+        return;
+      }
       timer = setTimeout(() => {
         shownForThisDocument = true;
         setOpen(true);

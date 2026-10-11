@@ -23,6 +23,7 @@ export function HeaderChatButton({
       variant={variant}
       size="icon"
       onClick={() => void launch()}
+      data-chat-entry
       aria-busy={connecting}
       aria-label={
         unread > 0 ? `Админаас ${unread} шинэ мессеж` : "Бидэнтэй чатлах"

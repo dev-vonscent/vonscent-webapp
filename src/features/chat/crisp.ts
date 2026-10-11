@@ -39,7 +39,11 @@ declare global {
   }
 }
 
-const LOAD_TIMEOUT_MS = 15_000;
+/**
+ * Энэнээс удвал бүтэлгүйд тооцож дуудагч fallback (Messenger / утас) санал
+ * болгоно. Хэрэглэгч товч дараад хүлээж байгаа тул урт хүлээлгэхгүй.
+ */
+const LOAD_TIMEOUT_MS = 8_000;
 
 /**
  * Энэ хөтөч дээр Crisp-д нэвтэрсэн хүн байсан эсэх. Гарах үед Crisp
@@ -114,52 +118,84 @@ function storage<T>(fn: () => T): T | undefined {
   }
 }
 
+let configured = false;
+let script: HTMLScriptElement | null = null;
+let scriptReady: Promise<void> | null = null;
+
+/** Identity, тохиргоо, event-үүдийг нэг л удаа — дахин оролдоход давхардахгүй. */
+async function configure() {
+  if (configured) return;
+  // Token нь скриптээс өмнө тавигдах ёстой тул эхлээд хэн болохыг тодруулна.
+  const identity = await fetchIdentity();
+  if (configured) return;
+  configured = true;
+  window.CRISP_WEBSITE_ID = env.crispWebsiteId;
+  window.CRISP_TOKEN_ID = identity?.token ?? null;
+
+  // Ачаалагдмагц өөрийн бөмбөлөгөө гаргахгүй.
+  push("safe", true);
+  push("do", "chat:hide");
+
+  if (identity) {
+    if (identity.name) push("set", "user:nickname", [identity.name]);
+    if (identity.phone) push("set", "user:phone", [identity.phone]);
+    storage(() => localStorage.setItem(LOGIN_FLAG, "1"));
+  } else if (storage(() => localStorage.getItem(LOGIN_FLAG))) {
+    push("do", "session:reset");
+    storage(() => localStorage.removeItem(LOGIN_FLAG));
+  }
+
+  push("on", "chat:closed", () => {
+    push("do", "chat:hide");
+    setOpen(false);
+  });
+  push("on", "chat:opened", () => setOpen(true));
+  push("on", "message:received", syncUnread);
+}
+
+/**
+ * Скриптийг нэг л удаа нэмнэ. Timeout болсон ч скрипт ачаалагдсаар байж
+ * болох тул дараагийн даралт шинээр нэмэлгүй тэр л ачаалалтыг хүлээнэ;
+ * зөвхөн сүлжээ/adblocker хаасан (`onerror`) үед дахин нэмнэ.
+ */
+function injectScript(): Promise<void> {
+  if (scriptReady) return scriptReady;
+  scriptReady = new Promise<void>((resolve, reject) => {
+    window.CRISP_READY_TRIGGER = () => {
+      ready = true;
+      syncUnread();
+      resolve();
+    };
+    script = document.createElement("script");
+    script.async = true;
+    script.src = "https://client.crisp.chat/l.js";
+    script.onerror = () => {
+      script?.remove();
+      script = null;
+      scriptReady = null;
+      reject(new Error("CRISP_BLOCKED"));
+    };
+    document.head.appendChild(script);
+  });
+  return scriptReady;
+}
+
 function loadCrisp(): Promise<void> {
+  if (ready) return Promise.resolve();
   if (loading) return loading;
   const attempt = (async () => {
-    // Token нь скриптээс өмнө тавигдах ёстой тул эхлээд хэн болохыг тодруулна.
-    const identity = await fetchIdentity();
-    window.CRISP_WEBSITE_ID = env.crispWebsiteId;
-    window.CRISP_TOKEN_ID = identity?.token ?? null;
-
-    // Ачаалагдмагц өөрийн бөмбөлөгөө гаргахгүй.
-    push("safe", true);
-    push("do", "chat:hide");
-
-    if (identity) {
-      if (identity.name) push("set", "user:nickname", [identity.name]);
-      if (identity.phone) push("set", "user:phone", [identity.phone]);
-      storage(() => localStorage.setItem(LOGIN_FLAG, "1"));
-    } else if (storage(() => localStorage.getItem(LOGIN_FLAG))) {
-      push("do", "session:reset");
-      storage(() => localStorage.removeItem(LOGIN_FLAG));
-    }
-
-    push("on", "chat:closed", () => {
-      push("do", "chat:hide");
-      setOpen(false);
-    });
-    push("on", "chat:opened", () => setOpen(true));
-    push("on", "message:received", syncUnread);
-
-    await new Promise<void>((resolve, reject) => {
-      window.CRISP_READY_TRIGGER = () => {
-        ready = true;
-        syncUnread();
-        resolve();
-      };
-      const script = document.createElement("script");
-      script.async = true;
-      script.src = "https://client.crisp.chat/l.js";
-      // Adblocker эсвэл сүлжээ — дараагийн даралтаар дахин оролдох боломжтой.
-      script.onerror = () => reject(new Error("CRISP_BLOCKED"));
-      document.head.appendChild(script);
-      setTimeout(() => reject(new Error("CRISP_TIMEOUT")), LOAD_TIMEOUT_MS);
-    });
+    await configure();
+    await injectScript();
   })();
-  loading = attempt.catch((e: unknown) => {
+  // Timeout түрүүлсэн бол хожуу ирэх алдаа unhandled rejection болохгүй.
+  attempt.catch(() => undefined);
+  // Identity-ийн fetch ч хугацаанд багтана — сервер гацсан ч хэрэглэгч
+  // хязгааргүй хүлээхгүй.
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("CRISP_TIMEOUT")), LOAD_TIMEOUT_MS),
+  );
+  loading = Promise.race([attempt, timeout]).finally(() => {
     loading = null;
-    throw e;
   });
   return loading;
 }

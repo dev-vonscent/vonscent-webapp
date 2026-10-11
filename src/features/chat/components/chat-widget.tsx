@@ -15,13 +15,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isChatReady } from "@/features/chat/crisp";
-import { useChatLauncher } from "@/features/chat/use-chat-launcher";
+import {
+  setChatFallbackLinks,
+  useChatLauncher,
+  type ContactLink,
+} from "@/features/chat/use-chat-launcher";
 
-export interface ContactLink {
-  href: string;
-  label: string;
-  icon: "messenger" | "instagram" | "phone";
-}
+export type { ContactLink };
 
 const CHANNELS: Record<
   ContactLink["icon"],
@@ -66,7 +66,7 @@ type Item = { kind: "chat" } | { kind: "link"; link: ContactLink };
  *
  * Админ бичсэн (уншаагүй мессеж) үед цэсгүйгээр шууд яриа руу оруулна.
  * Crisp нээлттэй үед өөрийн ✕-ийг яг энэ байрлалд гаргадаг тул бүхэлдээ
- * нуугдана. Crisp ачаалагдахгүй бол (adblocker) Messenger.
+ * нуугдана. Crisp ачаалагдахгүй бол (adblocker) toast-оор Messenger / утас.
  *
  * Зөвхөн desktop: утсан дээр хөвөгч товч бараа, сагслах товч, доод
  * навигацыг дардаг тул чат толгой хэсэгт (`HeaderChatButton`), сошиал
@@ -78,13 +78,10 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
   const rootRef = React.useRef<HTMLDivElement>(null);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const menuId = React.useId();
-  const messenger = links.find((l) => l.icon === "messenger");
-  const {
-    connecting,
-    unread,
-    chatOpen: adminOpen,
-    launch,
-  } = useChatLauncher(messenger?.href);
+  const { connecting, unread, chatOpen: adminOpen, launch } = useChatLauncher();
+  // Утасны толгойн товч ч эдгээр гарцыг ашиглана (энэ компонент утсан дээр
+  // CSS-ээр нуугдсан ч mount хэвээр).
+  React.useEffect(() => setChatFallbackLinks(links), [links]);
 
   const chatOnly =
     links.length === 0 || CHAT_ONLY_ON.some((p) => pathname.startsWith(p));
@@ -142,6 +139,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
     <MotionConfig reducedMotion="user">
       <div
         ref={rootRef}
+        data-chat-entry
         // Crisp нээлттэй үед unmount биш нууна — дахин mount болбол орж ирэх
         // анимейшн дахин тоглож анивчина.
         hidden={adminOpen}
