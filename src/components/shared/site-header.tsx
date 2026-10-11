@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, Boxes, Heart, Home, Search } from "lucide-react";
+import { ArrowLeft, Boxes, Heart, Home, LayoutGrid } from "lucide-react";
 import { Logo } from "./logo";
 import { MobileMenu } from "./mobile-menu";
 import { CartSheet } from "@/features/cart/components/cart-sheet";
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 /** Desktop pill nav — left side links; the cart sits last (see render). */
 const PILL_NAV = [
   { href: "/", label: "Нүүр", icon: Home },
-  { href: "/catalog", label: "Каталог", icon: Search },
+  { href: "/catalog", label: "Каталог", icon: LayoutGrid },
   { href: "/collections", label: "Багц", icon: Boxes },
   { href: "/wishlist", label: "Хүсэл", icon: Heart },
 ] as const;

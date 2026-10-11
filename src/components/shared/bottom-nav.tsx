@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home,
-  Search,
+  LayoutGrid,
   Heart,
   User,
   Boxes,
@@ -28,7 +28,7 @@ const GLASS =
 
 const LEFT = [
   { href: "/", label: "Нүүр", icon: Home },
-  { href: "/catalog", label: "Каталог", icon: Search },
+  { href: "/catalog", label: "Каталог", icon: LayoutGrid },
   { href: "/collections", label: "Багц", icon: Boxes },
 ] as const;
 
