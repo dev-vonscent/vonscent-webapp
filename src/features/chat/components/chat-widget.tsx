@@ -3,7 +3,12 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import {
+  AnimatePresence,
+  MotionConfig,
+  motion,
+  useReducedMotion,
+} from "motion/react";
 import {
   Loader2,
   MessageCircle,
@@ -117,6 +122,9 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
   // товчноос гартал hover-ийг унтраана.
   const [prevAdminOpen, setPrevAdminOpen] = React.useState(adminOpen);
   const [hoverMuted, setHoverMuted] = React.useState(false);
+  // Долгион хуудас ачаалагдахад нэг л удаа (цэс нээгээд хаахад дахин биш).
+  const [pulsed, setPulsed] = React.useState(false);
+  const reduceMotion = useReducedMotion();
   if (prevAdminOpen !== adminOpen) {
     setPrevAdminOpen(adminOpen);
     if (adminOpen) setOpen(false);
@@ -250,6 +258,25 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
             "focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
           )}
         >
+          {/* Анхаарал татах долгион: товч орж ирсний дараа 3 удаа цагираг
+              томорч бүдгэрээд зогсоно — тасралтгүй давтвал мэдэгдэл мэт
+              ядаргаатай. Хөдөлгөөн багасгах тохиргоотой бол огт үгүй. */}
+          {!open && !pulsed && !reduceMotion && (
+            <motion.span
+              aria-hidden
+              className="bg-primary in-[.black]:bg-foreground/60 pointer-events-none absolute inset-0 -z-10 rounded-full"
+              initial={{ scale: 1, opacity: 0 }}
+              animate={{ scale: [1, 1.75], opacity: [0.55, 0] }}
+              transition={{
+                duration: 1.4,
+                ease: "easeOut",
+                delay: 1.6,
+                repeat: 2,
+                repeatDelay: 0.5,
+              }}
+              onAnimationComplete={() => setPulsed(true)}
+            />
+          )}
           {/* Hover-т «Асуух зүйл байна уу?» гэсэн шошго зүүн тийш гулсаж нээгдэнэ. */}
           <span
             className={cn(
