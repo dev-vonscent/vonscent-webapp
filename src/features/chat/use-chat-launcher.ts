@@ -29,6 +29,12 @@ export function setChatFallbackLinks(links: ContactLink[]) {
   fallbackLinks = links;
 }
 
+/** Toast-ын тайлбарт: «Messenger эсвэл утсаар …» — байгаа гарцаараа. */
+const CHANNEL_WORD: Record<string, string> = {
+  Messenger: "Messenger-ээр",
+  Залгах: "утсаар",
+};
+
 function fallbackActions(): ToastAction[] {
   const actions: ToastAction[] = [];
   const messenger = fallbackLinks.find((l) => l.icon === "messenger");
@@ -83,7 +89,7 @@ export function useChatLauncher() {
     const actions = fallbackActions();
     if (actions.length > 0) {
       toast.errorWithActions(
-        "Доорх сувгаар бидэнтэй шууд холбогдоорой.",
+        `${actions.map((a) => CHANNEL_WORD[a.label]).join(" эсвэл ")} бидэнтэй шууд холбогдоорой.`,
         "Чат нээгдсэнгүй",
         actions,
       );

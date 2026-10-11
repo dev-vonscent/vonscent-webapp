@@ -39,8 +39,12 @@ toast.errorWithActions = (
     duration: 10_000,
     ...(primary && { action: primary }),
     ...(secondary && { cancel: secondary }),
-    // Sonner-ийн cancel товч бүдэг саарал — энд хоёр гарц ижил чухал.
-    classNames: { cancelButton: "!bg-secondary !text-foreground" },
+    // Sonner-ийн өгөгдмөл товч theme-ийг үл тоож хар (navy дээр ч), cancel нь
+    // бүдэг саарал — theme token-оор. Хоёр гарц ижил чухал тул хоёулаа тод.
+    classNames: {
+      actionButton: "!bg-foreground !text-background",
+      cancelButton: "!bg-secondary !text-foreground",
+    },
   });
 };
 
