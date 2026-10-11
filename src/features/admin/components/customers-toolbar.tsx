@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +17,32 @@ import { cn } from "@/lib/utils";
  * `loading.tsx` blanking the table a character at a time.
  */
 export function CustomersToolbar() {
+  return (
+    <UrlSearchField
+      id="customer-search"
+      label="Хэрэглэгчийг нэр эсвэл утасны дугаараар хайх"
+      placeholder="Нэр, утсаар хайх…"
+    />
+  );
+}
+
+/**
+ * The debounced `?q=` search field behind {@link CustomersToolbar}, for any
+ * server-filtered admin list. Keeps the page's other params (tab, status) and
+ * drops only `page`.
+ */
+export function UrlSearchField({
+  id,
+  label,
+  placeholder,
+}: {
+  id: string;
+  /** Screen-reader label. */
+  label: string;
+  placeholder: string;
+}) {
   const router = useRouter();
+  const pathname = usePathname();
   const params = useSearchParams();
   const urlQ = params.get("q") ?? "";
   const [q, setQ] = React.useState(urlQ);
@@ -48,12 +73,10 @@ export function CustomersToolbar() {
       next.delete("page");
       startTransition(() => {
         const query = next.toString();
-        router.replace(
-          query ? `/admin/customers?${query}` : "/admin/customers",
-        );
+        router.replace(query ? `${pathname}?${query}` : pathname);
       });
     },
-    [params, router],
+    [params, router, pathname],
   );
 
   React.useEffect(() => {
@@ -70,18 +93,18 @@ export function CustomersToolbar() {
       className={cn("transition-opacity", pending && "opacity-60")}
       aria-busy={pending}
     >
-      <label htmlFor="customer-search" className="sr-only">
-        Хэрэглэгчийг нэр эсвэл утасны дугаараар хайх
+      <label htmlFor={id} className="sr-only">
+        {label}
       </label>
       <Input
-        id="customer-search"
+        id={id}
         value={q}
         onChange={(e) => setQ(e.target.value)}
         type="search"
         // `search` keeps the browser's clear button; the type is not `tel`
         // because the same field takes a name.
         inputMode="text"
-        placeholder="Нэр, утсаар хайх…"
+        placeholder={placeholder}
         className="h-11 md:h-9 md:w-64"
       />
     </div>

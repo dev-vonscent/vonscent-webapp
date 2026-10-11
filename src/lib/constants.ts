@@ -50,6 +50,13 @@ export type MlSize = (typeof ML_SIZES)[number];
 export const BUNDLE_ML_SIZES = ML_SIZES;
 
 /**
+ * Нүүрний decant visualizer-т «≈ N шүршилт» гэж харуулах ойролцоо тоо.
+ * 1мл ≈ 15 шүршилт (клиентийн тоо: 2/5/10/20мл → 30/75/150/300) —
+ * маркетингийн тооцоо, захиалга/үнэд оролцохгүй.
+ */
+export const SPRAYS_PER_ML = 15;
+
+/**
  * FAQ-ийн тогтмол ангилал (клиент, 2026-09 UG) — нийтийн FAQ хуудас ийм
  * дарааллаар бүлэглэнэ. Админы «Ангилал» нь чөлөөт текст биш select, API нь
  * Zod enum-оор шалгана (`lib/validators/faq.ts`).
@@ -102,6 +109,14 @@ export const CATALOG_PAGE_SIZE = 24;
  * тоогоор ажилладаг.
  */
 export const HOT_PRODUCTS_COUNT = 12;
+
+/**
+ * Багцын «Шинэ» / «Эрэлттэй» таг автомат (админ тавихаа больсон): хамгийн
+ * сүүлд нэмэгдсэн / төлөгдсөн захиалгаар хамгийн их зарагдсан ийм тооны
+ * идэвхтэй багц (0122). Нүүрний rail дахь багцын дээд тоотой ижил.
+ */
+export const NEW_COLLECTIONS_COUNT = 6;
+export const HOT_COLLECTIONS_COUNT = 6;
 
 /** Size a fresh bundle starts on — the smallest (2ml) tier. */
 export const DEFAULT_BUNDLE_ML = 2;
@@ -638,4 +653,12 @@ export const LUCKY_WHEEL_HIDDEN: boolean = true;
  * Өмнө нь ч хэрэглэгч хуудсыг нэг нээмэгц алга болно (`useNewBadge`).
  * Мэдээ бол түр зуурынх — мөнхөд гялалзах тэмдэг анхаарал татахаа больдог.
  */
+/**
+ * «Миний купон»-д ашигласан / дууссан купон хэдэн хоног харагдах вэ. Дараа нь
+ * жагсаалтаас нуугдана (сангаас устахгүй — админы log, тайланд үлдэнэ).
+ * Тоолох эхлэл: ашигласан бол сүүлчийн ашиглалт, дууссан бол `ends_at` эсвэл
+ * `deactivated_at` (0120).
+ */
+export const WALLET_HISTORY_DAYS = 30;
+
 export const COUPONS_NEW_BADGE_UNTIL = "2026-11-01T00:00:00+08:00";

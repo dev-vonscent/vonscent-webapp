@@ -3,6 +3,8 @@ import {
   DEFAULT_LOYALTY_RULES,
   parseLoyaltyRules,
   pointsEarnedFor,
+  reviewPointsOf,
+  DEFAULT_REVIEW_POINTS,
 } from "./loyalty";
 
 describe("parseLoyaltyRules", () => {
@@ -38,7 +40,25 @@ describe("pointsEarnedFor", () => {
 
   it("honours a coarser admin rule", () => {
     expect(
-      pointsEarnedFor(45_000, { earnPer: 10_000, earnPoints: 50, redeemRate: 1 }),
+      pointsEarnedFor(45_000, {
+        earnPer: 10_000,
+        earnPoints: 50,
+        redeemRate: 1,
+      }),
     ).toBe(200);
+  });
+});
+
+describe("reviewPointsOf", () => {
+  it("falls back to the default when the setting predates 0117", () => {
+    expect(reviewPointsOf({ earnPer: 100 })).toBe(DEFAULT_REVIEW_POINTS);
+    expect(reviewPointsOf(null)).toBe(DEFAULT_REVIEW_POINTS);
+  });
+
+  it("keeps 0 as «off» and rejects junk", () => {
+    expect(reviewPointsOf({ reviewPoints: 0 })).toBe(0);
+    expect(reviewPointsOf({ reviewPoints: -10 })).toBe(0);
+    expect(reviewPointsOf({ reviewPoints: "x" })).toBe(0);
+    expect(reviewPointsOf({ reviewPoints: 250 })).toBe(250);
   });
 });

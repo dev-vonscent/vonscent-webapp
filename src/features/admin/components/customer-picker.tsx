@@ -4,7 +4,6 @@ import * as React from "react";
 import { Loader2 } from "lucide-react";
 import {
   Combobox,
-  ComboboxContent,
   ComboboxEmpty,
   ComboboxInput,
   ComboboxItem,
@@ -14,18 +13,13 @@ import {
   ComboboxTrigger,
   ComboboxValue,
 } from "@/components/ui/combobox";
+import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
+import { DrawerPortalContext } from "@/features/admin/components/form-drawer";
 import { adminFetch } from "@/features/admin/lib/mutate";
 import {
   customerLabel,
   type CustomerOption,
 } from "@/features/admin/lib/customer-option";
-
-/** «Хэнд ч биш» — жагсаалтын оройд үргэлж байх нийтийн сонголт. */
-const PUBLIC: CustomerOption = {
-  id: "__public__",
-  full_name: "Бүх хэрэглэгч (нийтийн)",
-  phone: null,
-};
 
 /**
  * Хувийн купоны эзэн сонгогч — хайлт нь СЕРВЕР дээр.
@@ -36,7 +30,8 @@ const PUBLIC: CustomerOption = {
  *   · сонгосон хүн хайлт солигдсон ч жагсаалтаас алга болохгүй (Base UI-ийн
  *     async загвар: сонгосныг `items`-д үлдээнэ).
  *
- * `null` = нийтийн купон.
+ * `null` = хэн ч сонгогдоогүй. Нийтийн купон тусдаа табтай болсон тул
+ * «Бүх хэрэглэгч» гэсэн сонголт энд байхгүй — хувийн купон заавал эзэнтэй.
  */
 export function CustomerPicker({
   initial,
@@ -79,10 +74,10 @@ export function CustomerPicker({
   }, [term, initial]);
 
   const items = React.useMemo(() => {
-    const list = term ? [...results] : [PUBLIC, ...results];
+    const list = [...results];
     if (value && !list.some((c) => c.id === value.id)) list.push(value);
     return list;
-  }, [term, results, value]);
+  }, [results, value]);
 
   const status = loading ? (
     <>
@@ -96,10 +91,8 @@ export function CustomerPicker({
   return (
     <Combobox
       items={items}
-      value={value ?? PUBLIC}
-      onValueChange={(next: CustomerOption | null) =>
-        onChange(!next || next.id === PUBLIC.id ? null : next)
-      }
+      value={value}
+      onValueChange={(next: CustomerOption | null) => onChange(next ?? null)}
       itemToStringLabel={customerLabel}
       isItemEqualToValue={(a: CustomerOption, b: CustomerOption) =>
         a.id === b.id
@@ -114,9 +107,9 @@ export function CustomerPicker({
       }}
     >
       <ComboboxTrigger>
-        <ComboboxValue />
+        <ComboboxValue placeholder="Хэрэглэгч сонгоно уу" />
       </ComboboxTrigger>
-      <ComboboxContent aria-busy={loading || undefined}>
+      <PickerPopup aria-busy={loading || undefined}>
         <ComboboxInput
           placeholder="Нэр эсвэл утасны дугаар"
           aria-label="Хэрэглэгч хайх"
@@ -130,7 +123,7 @@ export function CustomerPicker({
             {(c: CustomerOption) => (
               <ComboboxItem key={c.id} value={c}>
                 <span className="truncate">
-                  {c.id === PUBLIC.id ? c.full_name : customerLabel(c)}
+                  {customerLabel(c)}
                   {c.full_name && c.phone && (
                     <span className="text-muted-foreground"> · {c.phone}</span>
                   )}
@@ -139,7 +132,35 @@ export function CustomerPicker({
             )}
           </ComboboxList>
         </ComboboxScroll>
-      </ComboboxContent>
+      </PickerPopup>
     </Combobox>
+  );
+}
+
+/**
+ * `ComboboxContent`-тэй ижил, гэхдээ drawer дотор байвал popup-ыг drawer-ийн
+ * панел руу portal хийнэ (`DrawerPortalContext`). `<body>`-д гарвал Radix
+ * modal-ын фокусын түгжээ хайлтын талбарыг ашиглах боломжгүй болгодог.
+ */
+function PickerPopup({
+  children,
+  ...props
+}: React.ComponentProps<typeof ComboboxPrimitive.Popup>) {
+  const container = React.useContext(DrawerPortalContext);
+  return (
+    <ComboboxPrimitive.Portal container={container ?? undefined}>
+      <ComboboxPrimitive.Positioner
+        align="start"
+        sideOffset={4}
+        className="z-50 outline-none"
+      >
+        <ComboboxPrimitive.Popup
+          className="border-border bg-popover text-popover-foreground flex max-h-[min(24rem,var(--available-height))] w-(--anchor-width) max-w-(--available-width) min-w-56 origin-(--transform-origin) flex-col overflow-hidden rounded-md border shadow-md transition-[opacity,scale] duration-100 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0"
+          {...props}
+        >
+          {children}
+        </ComboboxPrimitive.Popup>
+      </ComboboxPrimitive.Positioner>
+    </ComboboxPrimitive.Portal>
   );
 }

@@ -10,12 +10,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/browser";
 import { saveSetting } from "@/features/admin/lib/mutate";
 import { toast } from "@/lib/toast";
+import { DEFAULT_REVIEW_POINTS, reviewPointsOf } from "@/lib/loyalty";
 
 export default function AdminLoyaltyPage() {
   const [earnPer, setEarnPer] = React.useState(100);
   const [earnPoints, setEarnPoints] = React.useState(1);
   const [redeemRate, setRedeemRate] = React.useState(1);
   const [lockHours, setLockHours] = React.useState(24);
+  const [reviewPoints, setReviewPoints] = React.useState(DEFAULT_REVIEW_POINTS);
   const [busy, setBusy] = React.useState(false);
   const [loaded, setLoaded] = React.useState(false);
 
@@ -37,6 +39,7 @@ export default function AdminLoyaltyPage() {
           setEarnPoints(v.earnPoints ?? 1);
           setRedeemRate(v.redeemRate ?? 1);
           setLockHours(v.lockHours ?? 24);
+          setReviewPoints(reviewPointsOf(v));
         }
         setLoaded(true);
       });
@@ -48,7 +51,7 @@ export default function AdminLoyaltyPage() {
     try {
       const ok = await saveSetting(
         "loyalty",
-        { earnPer, earnPoints, redeemRate, lockHours },
+        { earnPer, earnPoints, redeemRate, lockHours, reviewPoints },
         "V point тохиргоо хадгалагдсангүй",
       );
       if (ok) toast.success("V point тохиргоо хадгалагдлаа.");
@@ -116,6 +119,21 @@ export default function AdminLoyaltyPage() {
                   түгжээтэй байна (0091) — захиалга «Хүргэгдсэн» болвол
                   хугацаанаас өмнө ч нээгдэнэ. 0 бол хүргэх өдөр нь эхлэхэд
                   нээгдэнэ.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Сэтгэгдлийн урамшуулал (оноо)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={reviewPoints}
+                  onChange={(e) =>
+                    setReviewPoints(Math.max(Number(e.target.value) || 0, 0))
+                  }
+                />
+                <p className="text-muted-foreground text-xs">
+                  Хүргэгдсэн захиалгаараа авсан усандаа сэтгэгдэл бичихэд ус
+                  бүрт нэг удаа олгоно. 0 бол урамшуулал унтарна.
                 </p>
               </div>
             </div>

@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { revalidatePublic } from "@/lib/cache";
-import { checkoutOrderSchema } from "@/lib/validators/order";
+import {
+  checkoutOrderSchema,
+  detailMissing,
+  stripDetail,
+} from "@/lib/validators/order";
+import { isRemoteAddress } from "@/lib/geo/zone";
+import { getShippingSettings } from "@/features/content/api";
 import {
   BundleUnavailableError,
   computeSummary,
@@ -13,7 +19,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { callRpc } from "@/lib/supabase/rpc";
-import { RESERVE_TIMEOUT_MINUTES } from "@/lib/constants";
+import { RESERVE_TIMEOUT_MINUTES, SHIPPING_ZONES } from "@/lib/constants";
 import { isQpayMockMode } from "@/lib/payments/qpay";
 import { ensureInvoice } from "@/lib/payments/invoice";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
@@ -83,6 +89,22 @@ export async function POST(req: Request) {
   // тул түлхүүр нь IP — checkout-д нэвтэрсэн байх шаардлага байхгүй.
   const limited = await enforceRateLimit("order", req);
   if (limited) return limited;
+
+  // Дэлгэрэнгүй хаяг: үүдэнд хүргэх хаягт заавал, унаагаар явах хаягт
+  // (орон нутаг, Налайх гэх мэт R бүс) хадгалахгүй — хуучин хадгалсан хаяг
+  // гэрийн хаягаа авч ирсэн ч захиалга дээр «гэрт хүргэнэ» мэт үлдэхгүй.
+  const shipping = await getShippingSettings();
+  const zones = shipping.zones?.length ? shipping.zones : [...SHIPPING_ZONES];
+  const remote = isRemoteAddress(zones, {
+    city: input.shipCity,
+    district: input.shipDistrict,
+    khoroo: input.shipKhoroo,
+  });
+  if (remote) {
+    input.shipDetail = stripDetail(input.shipDetail);
+  } else if (detailMissing(input.shipDetail)) {
+    return NextResponse.json({ error: "DETAIL_REQUIRED" }, { status: 400 });
+  }
 
   // Authoritative server-side pricing.
   let summary;
@@ -250,14 +272,15 @@ export async function POST(req: Request) {
       // хүртэл ирнэ гэдэг нь захиалга явж байх зуур өөр хэрэглэгч нөөцийг
       // авсан гэсэн үг (computeSummary аль хэдийн шалгасан) — тэр барааг
       // нэрлэж чадвал хэрэглэгч юуг засахаа мэднэ.
-      const insufficient = /INSUFFICIENT_STOCK:(\S+)/.exec(
-        error.message ?? "",
-      );
+      const insufficient = /INSUFFICIENT_STOCK:(\S+)/.exec(error.message ?? "");
       // Савны түгжээ (0095) — сүүлийн шатны хамгаалалт. Энэ хүртэл ирнэ гэдэг
       // нь сагс хуучирсан, эсвэл захиалга явж байх зуур админ хаасан гэсэн үг.
       const bottle = error.message?.includes("BOTTLE_UNAVAILABLE");
       if (bottle) {
-        return NextResponse.json({ error: "BOTTLE_UNAVAILABLE" }, { status: 409 });
+        return NextResponse.json(
+          { error: "BOTTLE_UNAVAILABLE" },
+          { status: 409 },
+        );
       }
       return NextResponse.json(
         insufficient

@@ -9,6 +9,7 @@ let searchParams = new URLSearchParams();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace }),
   useSearchParams: () => searchParams,
+  usePathname: () => "/admin/customers",
 }));
 
 /**

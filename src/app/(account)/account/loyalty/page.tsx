@@ -15,6 +15,7 @@ const REASON_LABEL: Record<string, string> = {
   redeem: "Захиалгад ашигласан",
   cancel_reverse: "Захиалга цуцлагдсан",
   cancel_pending: "Цуцлагдсан захиалгын оноо",
+  review: "Сэтгэгдлийн урамшуулал",
 };
 
 function formatDate(iso: string) {

@@ -18,6 +18,7 @@
 | [todo.md](./planning/todo.md) | Хийх ажлын жагсаалт (гүйцэтгэлийн төлөв) |
 | [bottle-lock-plan.md](./planning/bottle-lock-plan.md) | Хоосон савны түгжээ (өнгө × хэмжээ) — хэрэгжүүлэлт |
 | [report-audit.md](./planning/report-audit.md) | Санхүүгийн тайлангийн аудит + тест |
+| [hero-3d-performance.md](./planning/hero-3d-performance.md) | Hero 3D-ийн гүйцэтгэлийн эрсдэл, оновчлолын төлөвлөгөө (2026-10) |
 
 ### `analysis/` — Судалгаа, санаа
 | Файл | Тайлбар |

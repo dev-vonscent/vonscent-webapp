@@ -4,7 +4,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getProductsByIds } from "@/features/products/api";
 import { ensureInvoice } from "@/lib/payments/invoice";
 import { isQpayMockMode } from "@/lib/payments/qpay";
-import { parseLoyaltyRules, pointsEarnedFor } from "@/lib/loyalty";
+import {
+  parseLoyaltyRules,
+  pointsEarnedFor,
+  reviewPointsOf,
+} from "@/lib/loyalty";
 import type { PaymentLine, PaymentView } from "./types";
 import type { PaymentMethod } from "@/db/types";
 
@@ -98,25 +102,31 @@ export async function paymentLines(
 }
 
 /**
- * Энэ захиалга хэдэн V point авчрах вэ.
+ * Энэ захиалга хэдэн V point авчрах вэ, мөн сэтгэгдэл бичвэл ус бүрт хэд.
  *
  * Оноо нь `mark_order_paid`-д, төлбөр батлагдсаны дараа бичигддэг — энд
  * байгаа нь түүнийг давтан бодож байгаа юм биш, төлөхийн ӨМНӨ «юу
  * хүлээгдэж байна» гэдгийг хэлэх зорилготой (lib/loyalty.ts). Зочны
- * захиалга оноо авахгүй тул тохиргоог ч уншихгүй.
+ * захиалга оноо авахгүй (сэтгэгдэл ч бичиж чадахгүй) тул тохиргоог ч уншихгүй.
  */
-async function earnedPointsFor(
+async function loyaltyFor(
   supabase: NonNullable<ReturnType<typeof createAdminClient>>,
   order: OrderRow,
-): Promise<number> {
-  if (!order.user_id) return 0;
+): Promise<{ pointsEarned: number; reviewPoints: number }> {
+  if (!order.user_id) return { pointsEarned: 0, reviewPoints: 0 };
   const { data } = await supabase
     .from("settings")
     .select("value")
     .eq("key", "loyalty")
     .maybeSingle();
-  const rules = parseLoyaltyRules((data as { value?: unknown } | null)?.value);
-  return pointsEarnedFor(Math.max(order.subtotal - order.discount, 0), rules);
+  const value = (data as { value?: unknown } | null)?.value;
+  return {
+    pointsEarned: pointsEarnedFor(
+      Math.max(order.subtotal - order.discount, 0),
+      parseLoyaltyRules(value),
+    ),
+    reviewPoints: reviewPointsOf(value),
+  };
 }
 
 export async function getPaymentByToken(
@@ -137,7 +147,7 @@ export async function getPaymentByToken(
   const paid = order.payment_status === "paid";
   const cancelled = order.status === "cancelled";
   const lines = await paymentLines(supabase, order.id);
-  const pointsEarned = await earnedPointsFor(supabase, order);
+  const { pointsEarned, reviewPoints } = await loyaltyFor(supabase, order);
 
   // An invoice is only worth having while the order can still be paid. Asking
   // QPay for one on a cancelled or already-paid order would create a live
@@ -168,6 +178,7 @@ export async function getPaymentByToken(
     discount: order.discount,
     loyaltyUsed: order.loyalty_used,
     pointsEarned,
+    reviewPoints,
     paymentMethod: order.payment_method,
     paid,
     cancelled,

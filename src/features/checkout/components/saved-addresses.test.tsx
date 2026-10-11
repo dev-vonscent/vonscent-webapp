@@ -3,6 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { NEW_ADDRESS, SavedAddresses } from "./saved-addresses";
 import type { AddressRow } from "@/db/types";
+import { SHIPPING_ZONES } from "@/lib/constants";
+
+// Бүсийн тохиргоо — сүлжээгүй, анхдагч хүснэгтээр.
+vi.mock("@/features/checkout/use-shipping-zones", () => ({
+  useShippingZones: () => SHIPPING_ZONES,
+}));
 
 function address(over: Partial<AddressRow> = {}): AddressRow {
   return {
@@ -26,6 +32,25 @@ const ROWS = [
 ];
 
 describe("SavedAddresses", () => {
+  it("hides an old home address on a ride-delivered address", () => {
+    render(
+      <SavedAddresses
+        addresses={[
+          address({ id: "r1", city: "Дархан-Уул", district: "Дархан" }),
+          address({ id: "r2", district: "Налайх", detail: "7-р байр" }),
+        ]}
+        value="r1"
+        onChange={() => {}}
+        onAddNew={() => {}}
+        onEditDraft={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("Дархан-Уул, Дархан")).toBeTruthy();
+    // Налайх нь УБ-ын дүүрэг ч R бүс — ачаа унаагаар явна.
+    expect(screen.getByText("Улаанбаатар, Налайх")).toBeTruthy();
+  });
+
   it("marks the default address and shows each one in full", () => {
     render(
       <SavedAddresses

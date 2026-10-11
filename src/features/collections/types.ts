@@ -9,6 +9,9 @@ export interface CollectionMember {
   name: string;
   brand: string;
   image: ProductImage | null;
+  /** Каталогийн «Үнэрийн төрөл», «Улирал» шүүлтүүр багцад гишүүдээр нь хүрнэ. */
+  scentFamilies: ScentFamily[];
+  seasons: Season[];
   /**
    * price + availability keyed by ml (2/5/10/20). `inStock` нь «энэ хэмжээг
    * ӨНӨӨДӨР авч болох уу»: эх савны үлдэгдэл БА хоосон савны түгжээ (0095)
@@ -79,6 +82,11 @@ export interface Collection {
   tags: TagKind[];
   /** Cover image (collection.image_url, or the first member's image). */
   image: string | null;
+  /**
+   * Админы сонгосон савны зураг (0123) — хуудсанд cover-ийн дараа, бүтнээр
+   * (`contain`). Сонгоогүй бол null.
+   */
+  bottleImage: string | null;
   isActive: boolean;
   isFeatured: boolean;
   members: CollectionMember[];
@@ -90,6 +98,7 @@ export interface Collection {
   startingPrice: number;
   /** True once no ml is fully in stock / any member is inactive. */
   soldOut: boolean;
+  createdAt: string;
 }
 
 /** A product offered in the custom-bundle builder, with price/stock per ml.

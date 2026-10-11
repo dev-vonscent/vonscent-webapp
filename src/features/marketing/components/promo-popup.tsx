@@ -10,13 +10,30 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import type { PopupSettings, PopupSlide } from "@/features/content/api";
+import { isUserInput, liveSlides } from "../popup-schedule";
 
 const AUTOPLAY_MS = 5000;
 /** Дэлгэцэд багтаах хязгаар: хажуу тал тус бүр 1rem, өндрийн 85%. */
 const VIEWPORT_PAD = 32;
 const MAX_HEIGHT_RATIO = 0.85;
-/** Хуудас зурагдаж амжсаны дараа гарна — дээрээс нь шууд унахгүй. */
-const OPEN_DELAY_MS = 800;
+/**
+ * Хэрэглэгч хуудастай анх харьцсаны (гүйлгэх / хүрэх / товч) дараа гарна.
+ *
+ * Хуудас ачаалагдмагц (өмнө нь 800мс) гарахад popup-ийн зураг нүүрний LCP
+ * болдог байв — Sentry, prod 30 хоног: popup LCP үед p75 4.8с. Браузер
+ * хэрэглэгчийн анхны үйлдлээр LCP-ийг хаадаг тул түүний дараа гарсан popup
+ * LCP-д огт нөлөөлөхгүй. Цагаар (N секундын дараа) гаргах нөөц хувилбар
+ * САНААТАЙГААР байхгүй: үйлдэлгүй үед гарвал тэр мөч өөрөө LCP болно.
+ */
+//
+// `scroll` САНААТАЙГААР биш: reload дээр браузер гүйлгэлтийн байрлалыг
+// сэргээхэд хэрэглэгчгүйгээр scroll event гардаг (popup нь reload бүрт
+// гардаг). Google-ийн web-vitals ч LCP-ийг scroll-оор хаадаггүй (код
+// өдөөж болдог). Хуруугаар гүйлгэх нь pointerdown, хулганы дугуй нь wheel,
+// гараар гүйлгэх нь keydown — бүгд `isTrusted`.
+const POPUP_TRIGGERS = ["pointerdown", "keydown", "wheel"] as const;
+/** Үйлдлээс хойш — гүйлгэж буй хуруун доор шууд унахгүй. */
+const OPEN_DELAY_MS = 400;
 
 /**
  * Нэг document-д ганц удаа. Модулийн хувьсагч нь client navigation-ы үед
@@ -43,18 +60,30 @@ function useNaturalSizes(urls: string[]): Record<string, Size> {
   const key = urls.join("\u0000");
   React.useEffect(() => {
     let alive = true;
-    for (const url of key ? key.split("\u0000") : []) {
+    const list = key ? key.split("\u0000") : [];
+    // Нэг нэгээр: эхний слайд (LCP болдог) бусадтайгаа зурвас хуваалцахгүй —
+    // хамт татахад 2 дахь слайд (185KB) эхнийхийг ~2 дахин удаашруулдаг байв.
+    const load = (i: number) => {
+      const url = list[i];
+      if (!url || !alive) return;
       const img = new window.Image();
-      img.onload = () => {
+      img.onload = img.onerror = () => {
         if (!alive) return;
-        setSizes((prev) =>
-          prev[url]
-            ? prev
-            : { ...prev, [url]: { w: img.naturalWidth, h: img.naturalHeight } },
-        );
+        if (img.naturalWidth) {
+          setSizes((prev) =>
+            prev[url]
+              ? prev
+              : {
+                  ...prev,
+                  [url]: { w: img.naturalWidth, h: img.naturalHeight },
+                },
+          );
+        }
+        load(i + 1);
       };
       img.src = url;
-    }
+    };
+    load(0);
     return () => {
       alive = false;
     };
@@ -73,13 +102,6 @@ function useViewport(): Size | null {
     return () => window.removeEventListener("resize", read);
   }, []);
   return viewport;
-}
-
-/** True when `now` falls within the slide's optional [startsAt, endsAt] window. */
-function isLive(slide: PopupSlide, now: number): boolean {
-  if (slide.startsAt && now < new Date(slide.startsAt).getTime()) return false;
-  if (slide.endsAt && now > new Date(slide.endsAt).getTime()) return false;
-  return true;
 }
 
 /**
@@ -144,17 +166,25 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
 
   React.useEffect(() => {
     const now = Date.now();
-    const live = (settings.slides ?? []).filter(
-      (s) => Boolean(s.imageUrl) && isLive(s, now),
-    );
+    const live = liveSlides(settings.slides ?? [], now);
     setSlides(live);
     if (!settings.enabled || live.length === 0) return;
     if (shownForThisDocument) return;
-    const t = setTimeout(() => {
-      shownForThisDocument = true;
-      setOpen(true);
-    }, OPEN_DELAY_MS);
-    return () => clearTimeout(t);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onFirst = (e: Event) => {
+      if (!isUserInput(e)) return;
+      for (const t of POPUP_TRIGGERS) window.removeEventListener(t, onFirst);
+      timer = setTimeout(() => {
+        shownForThisDocument = true;
+        setOpen(true);
+      }, OPEN_DELAY_MS);
+    };
+    for (const t of POPUP_TRIGGERS)
+      window.addEventListener(t, onFirst, { passive: true });
+    return () => {
+      for (const t of POPUP_TRIGGERS) window.removeEventListener(t, onFirst);
+      if (timer) clearTimeout(timer);
+    };
   }, [settings.enabled, settings.slides]);
 
   function stopAutoplay() {

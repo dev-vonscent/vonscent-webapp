@@ -49,7 +49,7 @@ import {
   formatDeliveryDay,
   ubDayFromNow,
 } from "@/lib/time";
-import { resolveZone, zoneKey } from "@/lib/geo/zone";
+import { isRemoteAddress, resolveZone, zoneKey } from "@/lib/geo/zone";
 import { khorooRequired } from "@/lib/geo/locations";
 import {
   composeDetail,
@@ -759,8 +759,14 @@ export default function CheckoutPage() {
   }, [autoZone, zones, setValue]);
   const selectedZone = zones.find((z) => zoneKey(z) === zone) ?? zones[0];
   const zoneBlocked = selectedZone ? !selectedZone.deliverable : false;
+  /**
+   * Унаагаар явах хаяг (орон нутаг, R бүсийн дүүрэг) — үүдэнд хүргэдэггүй тул
+   * дэлгэрэнгүй хаяг асуухгүй, хадгалсан хуучин хаягийн гэрийн хаяг ч
+   * захиалгад орохгүй (сервер ч мөн адил хасна).
+   */
+  const remoteAddress = isRemoteAddress(zones, { city, district, khoroo });
   /** Хаяг бүрэн эсэх — бүс, хүргэлтийн үнэ зөвхөн үүний дараа гарна. */
-  const hasAddress = Boolean(city && district && detail);
+  const hasAddress = Boolean(city && district && (detail || remoteAddress));
   /**
    * Хадгалсан хуучин хаяг хороогүй байх тохиолдол.
    *
@@ -774,10 +780,11 @@ export default function CheckoutPage() {
     Boolean(city && district && khoroo == null) &&
     khorooRequired(city, district);
 
-  /** Алслагдсан бүс — хаяг тодорсны дараа л мэдэгдэнэ. */
-  const remoteZone = Boolean(
-    hasAddress && selectedZone?.remote && !zoneBlocked,
-  );
+  /**
+   * Унаа явах газар бичүүлэх эсэх — хаяг тодорсны дараа л. Гэрийн хаяг
+   * асуухаа больсон тул тэр нь цорын ганц хүргэх мэдээлэл болно.
+   */
+  const remoteZone = hasAddress && !zoneBlocked && remoteAddress;
   /** Хаягийн блокийн доор гарах цорын нэг мессеж (талбарууд popup дотор). */
   const addressError =
     errors.shipCity?.message ??
@@ -1049,7 +1056,7 @@ export default function CheckoutPage() {
     const payload = {
       ...values,
       shipKhoroo: khoroo,
-      shipDetail: composeDetail(khoroo, values.shipDetail),
+      shipDetail: composeDetail(khoroo, remoteAddress ? "" : values.shipDetail),
       note: note || undefined,
       couponCode: authed ? coupon?.code : undefined,
       deliverOn: values.deliverOn,
@@ -1192,15 +1199,17 @@ export default function CheckoutPage() {
                   : "Уучлаарай, зарим бараа дууссан байна."
                 : data.error === "BUNDLE_UNAVAILABLE"
                   ? "Сагсан дахь багц худалдаанд байхгүй болсон байна. Багцаа шинэчилнэ үү."
-                  : data.error === "ZONE_UNAVAILABLE"
-                    ? "Сонгосон бүсэд хүргэлт хийх боломжгүй байна."
-                    : data.error === "LOGIN_REQUIRED"
-                      ? "Купон, V point ашиглахын тулд нэвтэрнэ үү."
-                      : // Ижил захиалга аль хэдийн боловсруулагдаж байна —
-                        // дахин дарвал давхар захиалга болох тул зогсооно.
-                        data.error === "ORDER_PENDING"
-                        ? "Таны захиалга боловсруулагдаж байна. Хэдэн секунд хүлээгээд «Захиалга хайх» хэсгээс шалгана уу."
-                        : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
+                  : data.error === "DETAIL_REQUIRED"
+                    ? "Хаягийн байр, орц, тоотоо оруулна уу."
+                    : data.error === "ZONE_UNAVAILABLE"
+                      ? "Сонгосон бүсэд хүргэлт хийх боломжгүй байна."
+                      : data.error === "LOGIN_REQUIRED"
+                        ? "Купон, V point ашиглахын тулд нэвтэрнэ үү."
+                        : // Ижил захиалга аль хэдийн боловсруулагдаж байна —
+                          // дахин дарвал давхар захиалга болох тул зогсооно.
+                          data.error === "ORDER_PENDING"
+                          ? "Таны захиалга боловсруулагдаж байна. Хэдэн секунд хүлээгээд «Захиалга хайх» хэсгээс шалгана уу."
+                          : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
         );
         return;
       }
@@ -1506,7 +1515,7 @@ export default function CheckoutPage() {
               error={errors.note?.message}
               hint={
                 remoteZone
-                  ? "Улаанбаатар дахь тухайн орон нутаг руу явах унаа хаанаас хөдлөх, такси автобус алинд дайх, хэдэн цагаас хөдлөх болон хэд хүртэл унаа байх гэх мэт…"
+                  ? "Бид ачааг таны заасан унаанд тавьж өгнө. Унаа хаанаас хөдөлдөг, такси эсвэл автобусны аль нь, хэдэн цаг хүртэл явдгийг бичнэ үү."
                   : "Хүргэлт хийгдэхтэй холбоотой мэдээллээ бичнэ үү"
               }
             >

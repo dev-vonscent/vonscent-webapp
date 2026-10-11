@@ -14,7 +14,11 @@ import { CustomerPicker } from "./customer-picker";
 const bat: CustomerOption = { id: "u1", full_name: "Бат", phone: "99112233" };
 const dorj: CustomerOption = { id: "u2", full_name: "Дорж", phone: "88001122" };
 
-function Harness({ onChange }: { onChange: (c: CustomerOption | null) => void }) {
+function Harness({
+  onChange,
+}: {
+  onChange: (c: CustomerOption | null) => void;
+}) {
   const [value, setValue] = React.useState<CustomerOption | null>(null);
   return (
     <CustomerPicker
@@ -29,19 +33,20 @@ function Harness({ onChange }: { onChange: (c: CustomerOption | null) => void })
 }
 
 describe("CustomerPicker", () => {
-  it("утсаар серверээс хайж олоод сонгоно; нийтийн сонголт руу буцаж болно", async () => {
+  it("утсаар серверээс хайж олоод сонгоно; «нийтийн» сонголт байхгүй", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     adminFetch.mockResolvedValue({ ok: true, data: { items: [dorj] } });
     render(<Harness onChange={onChange} />);
 
-    // Анхдагч нь нийтийн купон.
+    // Анхдагчаар хэн ч сонгогдоогүй.
     const trigger = screen.getByRole("combobox");
-    expect(trigger.textContent).toContain("Бүх хэрэглэгч (нийтийн)");
+    expect(trigger.textContent).toContain("Хэрэглэгч сонгоно уу");
 
     await user.click(trigger);
-    // Нээхэд серверийн эхний хуудас + нийтийн сонголт — хүсэлтгүйгээр.
+    // Нээхэд серверийн эхний хуудас — хүсэлтгүйгээр, нийтийн сонголтгүй.
     expect(await screen.findByRole("option", { name: /Бат/ })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /Бүх хэрэглэгч/ })).toBeNull();
     expect(adminFetch).not.toHaveBeenCalled();
 
     await user.type(screen.getByLabelText("Хэрэглэгч хайх"), "8800");
@@ -55,11 +60,5 @@ describe("CustomerPicker", () => {
     await user.click(option);
     expect(onChange).toHaveBeenLastCalledWith(dorj);
     await waitFor(() => expect(trigger.textContent).toContain("Дорж"));
-
-    await user.click(trigger);
-    await user.click(
-      await screen.findByRole("option", { name: /Бүх хэрэглэгч/ }),
-    );
-    expect(onChange).toHaveBeenLastCalledWith(null);
   });
 });

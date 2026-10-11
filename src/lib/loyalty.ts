@@ -54,3 +54,18 @@ export function pointsEarnedFor(
   const base = Math.max(Math.round(goodsAfterDiscount), 0);
   return Math.floor(base / rules.earnPer) * rules.earnPoints;
 }
+
+/** 0117-ийн анхдагч: худалдаж авсан усандаа сэтгэгдэл бичвэл олгох оноо. */
+export const DEFAULT_REVIEW_POINTS = 500;
+
+/**
+ * `settings.loyalty.reviewPoints` — сэтгэгдлийн урамшуулал. `parseLoyaltyRules`
+ * -аас ялгаатай нь 0-ийг хүлээн авна: 0 бол урамшуулал унтарсан гэсэн үг
+ * (`award_review_points`, 0117).
+ */
+export function reviewPointsOf(value: unknown): number {
+  const raw = (value ?? {}) as { reviewPoints?: unknown };
+  if (raw.reviewPoints === undefined) return DEFAULT_REVIEW_POINTS;
+  const n = Number(raw.reviewPoints);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}

@@ -45,11 +45,12 @@ export async function processCollectionGeneration(
     .eq("id", jobId);
 
   try {
-    // Card нь 1:1 тул дөрвөлжин; дөрвөн сав, шошготой тул өндөр чанар.
+    // Card нь 4:5 (барааны card-тай ижил) — 1:1 зураг хоёр талаараа
+    // тайрагдаж байв. Дөрвөн сав, шошготой тул өндөр чанар.
     const generated = await generateProductImage({
       prompt: job.prompt,
       referenceUrls: job.reference_urls,
-      size: "1024x1024",
+      size: "1024x1280",
       quality: "high",
     });
 
