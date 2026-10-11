@@ -119,7 +119,16 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
     };
   }, [open]);
 
-  if (adminOpen) return null;
+  // Crisp хаагдах мөчид хулгана яг энэ товч дээр байдаг (Crisp-ийн ✕ ижил
+  // байрлалд). Тэр үед hover шошго дэлгэгдэж анивчихгүйн тулд хулгана
+  // товчноос гартал hover-ийг унтраана.
+  const [prevAdminOpen, setPrevAdminOpen] = React.useState(adminOpen);
+  const [hoverMuted, setHoverMuted] = React.useState(false);
+  if (prevAdminOpen !== adminOpen) {
+    setPrevAdminOpen(adminOpen);
+    if (adminOpen) setOpen(false);
+    else setHoverMuted(true);
+  }
 
   async function openChat() {
     if (connecting) return;
@@ -161,6 +170,9 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
     <MotionConfig reducedMotion="user">
       <div
         ref={rootRef}
+        // Crisp нээлттэй үед unmount биш нууна — дахин mount болбол орж ирэх
+        // анимейшн дахин тоглож анивчина.
+        hidden={adminOpen}
         className="fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 md:right-6 md:bottom-6"
       >
         <AnimatePresence>
@@ -230,6 +242,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
           ref={buttonRef}
           type="button"
           onClick={toggle}
+          onPointerLeave={() => setHoverMuted(false)}
           aria-busy={connecting}
           {...(!chatOnly && {
             "aria-expanded": open,
@@ -245,7 +258,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
           initial={{ opacity: 0, scale: 0.6, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ ...spring, delay: 0.8 }}
-          whileHover={{ scale: 1.06 }}
+          whileHover={hoverMuted ? undefined : { scale: 1.06 }}
           whileTap={{ scale: 0.94 }}
           className={cn(
             "group relative flex h-12 items-center rounded-full shadow-xl transition-colors md:h-14",
@@ -259,7 +272,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
           <span
             className={cn(
               "hidden transition-[grid-template-columns] duration-300 ease-out md:grid",
-              open
+              open || hoverMuted
                 ? "grid-cols-[0fr]"
                 : "grid-cols-[0fr] group-hover:grid-cols-[1fr] group-focus-visible:grid-cols-[1fr]",
             )}
