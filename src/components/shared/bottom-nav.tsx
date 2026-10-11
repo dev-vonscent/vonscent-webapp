@@ -68,6 +68,9 @@ export function BottomNav() {
     >
       {/* Цэс + баруун талд нь тусдаа чатын товч (Crisp-ийн апп шиг). Нэг
           wrapper дотор тул «Захиалах» зурвас гарахад хамт нуугдана. */}
+      {/* Чатын дугуй цэстэй ижил өндөр: таб 48 + padding 12 + хүрээ 2 = 62px.
+          `aspect-square` + stretch нь өргөнийг хожуу тогтоож төвлөрөлтийг
+          эвддэг (360px дээр дэлгэцээс гардаг байсан) тул тогтмол хэмжээ. */}
       <div className="mb-3 flex items-center gap-2">
         <nav
           aria-label="Үндсэн цэс"
@@ -75,7 +78,7 @@ export function BottomNav() {
           inert={hidden}
           className={cn(
             GLASS,
-            "pointer-events-auto flex items-center gap-1 rounded-full px-2.5 py-2",
+            "pointer-events-auto flex items-center gap-0.5 rounded-full p-1.5",
           )}
         >
           {LEFT.map((item) => (
@@ -106,7 +109,7 @@ export function BottomNav() {
 
 /**
  * Утасны чатын орох хаалга. Хөвөгч товч бараа, сагслах товчийг дардаг
- * байсан тул цэсний хажууд, цэстэй ижил өндөр (60px) дугуй товч болгосон.
+ * байсан тул цэсний хажууд, цэстэй ижил өндөр дугуй товч болгосон.
  */
 function ChatTab({ hidden }: { hidden: boolean }) {
   const { connecting, unread, launch } = useChatLauncher();
@@ -122,16 +125,19 @@ function ChatTab({ hidden }: { hidden: boolean }) {
       }
       className={cn(
         GLASS,
-        "text-foreground pointer-events-auto relative flex size-15 shrink-0 items-center justify-center rounded-full",
+        "text-foreground pointer-events-auto relative flex size-15.5 shrink-0 flex-col items-center justify-center gap-1 rounded-full",
       )}
     >
       {connecting ? (
-        <Loader2 className="size-5.5 animate-spin" />
+        <Loader2 className="size-5 animate-spin" />
       ) : (
-        <MessageCircle className="size-5.5" strokeWidth={1.8} />
+        <MessageCircle className="size-5" strokeWidth={1.8} />
       )}
+      <span aria-hidden className="text-[10px] leading-none font-medium">
+        Чат
+      </span>
       {unread > 0 && (
-        <span className="bg-destructive text-destructive-foreground absolute top-2 right-2 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold tabular-nums">
+        <span className="bg-destructive text-destructive-foreground absolute top-1.5 right-2 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold tabular-nums">
           {unread > 9 ? "9+" : unread}
         </span>
       )}
@@ -175,26 +181,29 @@ function Tab({
       href={href}
       prefetch={prefetch}
       onClick={onClick}
-      aria-label={label}
       aria-current={active ? "page" : undefined}
+      // Icon дангаараа «Каталог» (сүлжээ) ба «Багц» (хайрцаг)-ийг ялгахад
+      // хэцүү — шошго нь таамаглалыг арилгана. Идэвхтэйг тод жингээр заана.
       className={cn(
-        "relative flex size-11 items-center justify-center rounded-full transition-colors",
+        "relative flex size-12 flex-col items-center justify-center gap-1 rounded-full transition-colors",
         active
           ? "text-foreground"
           : "text-muted-foreground hover:text-foreground",
       )}
     >
-      <Icon
-        className="size-5.5 transition-transform"
-        strokeWidth={active ? 2.3 : 1.8}
-      />
+      <Icon className="size-5" strokeWidth={active ? 2.3 : 1.8} />
+      <span
+        className={cn(
+          "text-[10px] leading-none",
+          active ? "font-semibold" : "font-medium",
+        )}
+      >
+        {label}
+      </span>
       {badge > 0 && (
-        <span className="bg-foreground text-background absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold">
+        <span className="bg-foreground text-background absolute top-0 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold">
           {badge}
         </span>
-      )}
-      {active && (
-        <span className="bg-foreground absolute bottom-1 size-1 rounded-full" />
       )}
     </Link>
   );
