@@ -12,7 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FacebookIcon, InstagramIcon } from "@/components/icons/brand-icons";
+import { FacebookLogo, InstagramLogo } from "@/components/icons/brand-icons";
 import { isChatReady, setChatTheme } from "@/features/chat/crisp";
 import {
   setChatFallbackLinks,
@@ -24,10 +24,11 @@ export type { ContactLink };
 
 const CHANNELS: Record<
   ContactLink["icon"],
-  { icon: LucideIcon | typeof FacebookIcon; className: string }
+  { icon: LucideIcon | typeof FacebookLogo; className: string }
 > = {
-  messenger: { icon: FacebookIcon, className: "bg-facebook text-white" },
-  instagram: { icon: InstagramIcon, className: "bg-instagram text-white" },
+  // Өнгөт лого бөмбөлгийг бүтэн дүүргэнэ (`[&>svg]:size-full`).
+  messenger: { icon: FacebookLogo, className: "[&>svg]:size-full" },
+  instagram: { icon: InstagramLogo, className: "[&>svg]:size-full" },
   phone: { icon: Phone, className: "bg-phone text-white" },
 };
 
@@ -193,7 +194,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
                         onClick={openChat}
                         aria-busy={connecting}
                         aria-label="Сайтаар чатлах"
-                        className="bg-foreground text-background ring-background group relative flex size-full items-center justify-center rounded-full shadow-lg ring-2 transition-transform hover:scale-105"
+                        className="bg-primary text-primary-foreground group in-[.black]:bg-secondary in-[.black]:text-foreground in-[.black]:ring-foreground/20 relative flex size-full items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105 in-[.black]:ring-1"
                       >
                         {connecting ? (
                           <Loader2 className="size-5 animate-spin" />
@@ -240,10 +241,11 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
           className={cn(
             "group relative flex h-14 items-center rounded-full shadow-xl transition-colors",
             open
-              ? "bg-background text-foreground border-border border"
+              ? "bg-secondary text-foreground ring-foreground/15 ring-1"
               : // `primary` black theme-д #262626 — хар дэвсгэр дээр бараг
-                // үл харагдана; `foreground` бүх theme-д тод.
-                "bg-foreground text-background",
+                // үл харагдана. Тэнд цагаан дугуй хэт хурц тул бараан
+                // гадаргуу + нимгэн гэрэлтэй ирмэг.
+                "bg-primary text-primary-foreground in-[.black]:bg-secondary in-[.black]:text-foreground in-[.black]:ring-foreground/20 in-[.black]:ring-1",
             "focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
           )}
         >
