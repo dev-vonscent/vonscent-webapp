@@ -10,7 +10,6 @@ export const faqCreateSchema = z.object({
   answer: z.string().min(1),
   sortOrder: z.number().int().default(0),
   isActive: z.boolean().default(true),
-  chatPinned: z.boolean().default(false),
 });
 
 export const faqPatchSchema = z.object({
@@ -19,5 +18,4 @@ export const faqPatchSchema = z.object({
   answer: z.string().min(1).optional(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
-  chatPinned: z.boolean().optional(),
 });

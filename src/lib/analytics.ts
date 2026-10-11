@@ -103,13 +103,7 @@ export function trackPurchase(
   });
 }
 
-/**
- * Чатын цонх: аль бэлэн асуулт дарагдсан (`faq`), хэдэн хүн админ руу
- * шилжсэн (`handoff`). Хэрэггүй асуултыг солих, FAQ-ийн хангалтыг хэмжихэд.
- */
-export function trackChat(
-  action: "open" | "faq" | "handoff",
-  label?: string,
-) {
-  ga("chat_" + action, label ? { label } : {});
+/** Чатын товч дарагдсан тоо — хэдэн хүн админтай холбогдохыг оролдсоныг хэмжинэ. */
+export function trackChatOpen() {
+  ga("chat_open", {});
 }

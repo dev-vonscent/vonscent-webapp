@@ -22,7 +22,7 @@ function stripTags(html: string): string {
   return html.replace(/<[^>]*>/gu, " ");
 }
 
-export function FaqAnswer({ answer }: { answer: string }) {
+function Answer({ answer }: { answer: string }) {
   if (/^\s*</u.test(answer)) {
     return (
       <div
@@ -99,7 +99,7 @@ export function FaqSearch({ items }: { items: FaqItem[] }) {
                   <AccordionItem key={i} value={`${g.title}-${i}`}>
                     <AccordionTrigger>{item.question}</AccordionTrigger>
                     <AccordionContent>
-                      <FaqAnswer answer={item.answer} />
+                      <Answer answer={item.answer} />
                     </AccordionContent>
                   </AccordionItem>
                 ))}
