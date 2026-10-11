@@ -5,19 +5,30 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home,
-  Search,
+  LayoutGrid,
   Heart,
   User,
   Boxes,
+  Loader2,
+  MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { selectWishCount, useWishlist } from "@/features/wishlist/store";
 import { useBottomNavHidden } from "@/components/shared/bottom-nav-store";
+import { useChatLauncher } from "@/features/chat/use-chat-launcher";
+
+/**
+ * Шил гадаргуу — цэс ба чатын товч хоёуланд. Тунгалаг дэвсгэр + хүчтэй
+ * blur/saturate нь ард гүйж буй зургийн өнгийг шингээнэ; нимгэн хүрээ ба
+ * дээд ирмэгийн гэрэл (inset) нь шилний ирмэгийг заана. Gradient-гүй.
+ */
+const GLASS =
+  "bg-secondary/55 border-foreground/10 inset-shadow-foreground/10 shadow-lift border inset-shadow-2xs backdrop-blur-xl backdrop-saturate-150";
 
 const LEFT = [
   { href: "/", label: "Нүүр", icon: Home },
-  { href: "/catalog", label: "Каталог", icon: Search },
+  { href: "/catalog", label: "Каталог", icon: LayoutGrid },
   { href: "/collections", label: "Багц", icon: Boxes },
 ] as const;
 
@@ -55,33 +66,80 @@ export function BottomNav() {
         hidden ? "translate-y-[140%]" : "delay-150",
       )}
     >
-      <nav
-        aria-label="Үндсэн цэс"
-        // Дэлгэцээс гарсан цэс гарын товчлуураар ч бариулахгүй байх ёстой.
-        inert={hidden}
-        className="bg-secondary/85 shadow-lift pointer-events-auto mb-3 flex items-center gap-1 rounded-full px-2.5 py-2 backdrop-blur"
-      >
-        {LEFT.map((item) => (
-          <Tab
-            key={item.href}
-            {...item}
-            active={isActive(item.href)}
-            current={pathname === item.href}
-            badge={badgeFor(item.href)}
-          />
-        ))}
+      {/* Цэс + баруун талд нь тусдаа чатын товч (Crisp-ийн апп шиг). Нэг
+          wrapper дотор тул «Захиалах» зурвас гарахад хамт нуугдана. */}
+      {/* Дээд pill шиг дэлгэцийн өргөнийг (хоёр талд 16px) дүүргэнэ — табууд
+          жигд тарна. Чатын дугуй цэстэй ижил өндөр: таб 48 + padding 12 + хүрээ 2 = 62px.
+          `aspect-square` + stretch нь өргөнийг хожуу тогтоож төвлөрөлтийг
+          эвддэг (360px дээр дэлгэцээс гардаг байсан) тул тогтмол хэмжээ. */}
+      <div className="mb-3 flex w-full items-center gap-2 px-4">
+        <nav
+          aria-label="Үндсэн цэс"
+          // Дэлгэцээс гарсан цэс гарын товчлуураар ч бариулахгүй байх ёстой.
+          inert={hidden}
+          className={cn(
+            GLASS,
+            "pointer-events-auto flex flex-1 items-center justify-between rounded-full p-1.5",
+          )}
+        >
+          {LEFT.map((item) => (
+            <Tab
+              key={item.href}
+              {...item}
+              active={isActive(item.href)}
+              current={pathname === item.href}
+              badge={badgeFor(item.href)}
+            />
+          ))}
 
-        {RIGHT.map((item) => (
-          <Tab
-            key={item.href}
-            {...item}
-            active={isActive(item.href)}
-            current={pathname === item.href}
-            badge={badgeFor(item.href)}
-          />
-        ))}
-      </nav>
+          {RIGHT.map((item) => (
+            <Tab
+              key={item.href}
+              {...item}
+              active={isActive(item.href)}
+              current={pathname === item.href}
+              badge={badgeFor(item.href)}
+            />
+          ))}
+        </nav>
+        <ChatTab hidden={hidden} />
+      </div>
     </div>
+  );
+}
+
+/**
+ * Утасны чатын орох хаалга. Хөвөгч товч бараа, сагслах товчийг дардаг
+ * байсан тул цэсний хажууд, цэстэй ижил өндөр дугуй товч болгосон.
+ */
+function ChatTab({ hidden }: { hidden: boolean }) {
+  const { connecting, unread, launch } = useChatLauncher();
+  return (
+    <button
+      type="button"
+      onClick={() => void launch()}
+      inert={hidden}
+      data-chat-entry
+      aria-busy={connecting}
+      aria-label={
+        unread > 0 ? `Админаас ${unread} шинэ мессеж` : "Бидэнтэй чатлах"
+      }
+      className={cn(
+        GLASS,
+        "text-foreground pointer-events-auto relative flex size-15.5 shrink-0 items-center justify-center rounded-full",
+      )}
+    >
+      {connecting ? (
+        <Loader2 className="size-6 animate-spin" />
+      ) : (
+        <MessageCircle className="size-6" strokeWidth={1.8} />
+      )}
+      {unread > 0 && (
+        <span className="bg-destructive text-destructive-foreground absolute top-1.5 right-2 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold tabular-nums">
+          {unread > 9 ? "9+" : unread}
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -121,26 +179,37 @@ function Tab({
       href={href}
       prefetch={prefetch}
       onClick={onClick}
+      // Жижиг дэлгэцэнд шошго нуугдах тул нэр энд.
       aria-label={label}
       aria-current={active ? "page" : undefined}
+      // Icon дангаараа «Каталог» (сүлжээ) ба «Багц» (хайрцаг)-ийг ялгахад
+      // хэцүү — шошго нь таамаглалыг арилгана. Идэвхтэйг тод жингээр заана.
       className={cn(
-        "relative flex size-11 items-center justify-center rounded-full transition-colors",
+        "relative flex h-12 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-full transition-colors max-[359px]:min-w-10",
         active
           ? "text-foreground"
           : "text-muted-foreground hover:text-foreground",
       )}
     >
-      <Icon
-        className="size-5.5 transition-transform"
-        strokeWidth={active ? 2.3 : 1.8}
-      />
+      <Icon className="size-5" strokeWidth={active ? 2.3 : 1.8} />
+      {/* 360px-ээс жижиг дэлгэцэнд шошго багтахгүй — зөвхөн icon. */}
+      <span
+        aria-hidden
+        className={cn(
+          "text-[10px] leading-none max-[359px]:hidden",
+          active ? "font-semibold" : "font-medium",
+        )}
+      >
+        {label}
+      </span>
+      {/* Шошгогүй (жижиг дэлгэц) үед идэвхтэйг цэгээр заана. */}
+      {active && (
+        <span className="bg-foreground absolute bottom-1 hidden size-1 rounded-full max-[359px]:block" />
+      )}
       {badge > 0 && (
-        <span className="bg-foreground text-background absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold">
+        <span className="bg-foreground text-background absolute top-0 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold">
           {badge}
         </span>
-      )}
-      {active && (
-        <span className="bg-foreground absolute bottom-1 size-1 rounded-full" />
       )}
     </Link>
   );

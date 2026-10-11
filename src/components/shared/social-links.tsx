@@ -1,4 +1,4 @@
-import { Facebook, Instagram } from "lucide-react";
+import { FacebookIcon, InstagramIcon } from "@/components/icons/brand-icons";
 import { getSocialSettings } from "@/features/content/api";
 import {
   ChatWidget,
@@ -21,12 +21,12 @@ async function links() {
     social.instagram && {
       href: social.instagram,
       label: "Instagram",
-      icon: Instagram,
+      icon: InstagramIcon,
     },
     social.facebook && {
       href: social.facebook,
       label: "Facebook",
-      icon: Facebook,
+      icon: FacebookIcon,
     },
   ].filter((l): l is Exclude<typeof l, "" | undefined> => Boolean(l));
 }

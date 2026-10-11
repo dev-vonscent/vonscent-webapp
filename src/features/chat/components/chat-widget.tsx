@@ -2,19 +2,24 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import { useTheme } from "next-themes";
 import {
-  Facebook,
-  Instagram,
+  AnimatePresence,
+  MotionConfig,
+  motion,
+  useReducedMotion,
+} from "motion/react";
+import {
   Loader2,
   MessageCircle,
-  MessageCircleMore,
   Phone,
   X,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isChatReady } from "@/features/chat/crisp";
+import { FacebookLogo, InstagramLogo } from "@/components/icons/brand-icons";
+import { isChatReady, setChatTheme } from "@/features/chat/crisp";
+import { TypingChatIcon } from "@/features/chat/components/typing-chat-icon";
 import {
   setChatFallbackLinks,
   useChatLauncher,
@@ -25,10 +30,11 @@ export type { ContactLink };
 
 const CHANNELS: Record<
   ContactLink["icon"],
-  { icon: LucideIcon; className: string }
+  { icon: LucideIcon | typeof FacebookLogo; className: string }
 > = {
-  messenger: { icon: Facebook, className: "bg-facebook text-white" },
-  instagram: { icon: Instagram, className: "bg-instagram text-white" },
+  // Өнгөт лого бөмбөлгийг бүтэн дүүргэнэ (`[&>svg]:size-full`).
+  messenger: { icon: FacebookLogo, className: "[&>svg]:size-full" },
+  instagram: { icon: InstagramLogo, className: "[&>svg]:size-full" },
   phone: { icon: Phone, className: "bg-phone text-white" },
 };
 
@@ -69,7 +75,7 @@ type Item = { kind: "chat" } | { kind: "link"; link: ContactLink };
  * нуугдана. Crisp ачаалагдахгүй бол (adblocker) toast-оор Messenger / утас.
  *
  * Зөвхөн desktop: утсан дээр хөвөгч товч бараа, сагслах товч, доод
- * навигацыг дардаг тул чат толгой хэсэгт (`HeaderChatButton`), сошиал
+ * навигацыг дардаг тул чат доод цэсний хажууд (`BottomNav`), сошиал
  * сувгууд цэс дотор (`MenuSocialLinks`).
  */
 export function ChatWidget({ links }: { links: ContactLink[] }) {
@@ -82,6 +88,10 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
   // Утасны толгойн товч ч эдгээр гарцыг ашиглана (энэ компонент утсан дээр
   // CSS-ээр нуугдсан ч mount хэвээр).
   React.useEffect(() => setChatFallbackLinks(links), [links]);
+  // Crisp-ийн өнгө сайтын theme-ийг дагана (утсан дээр ч — энэ компонент
+  // CSS-ээр нуугдсан ч mount хэвээр).
+  const { resolvedTheme } = useTheme();
+  React.useEffect(() => setChatTheme(resolvedTheme), [resolvedTheme]);
 
   const chatOnly =
     links.length === 0 || CHAT_ONLY_ON.some((p) => pathname.startsWith(p));
@@ -112,6 +122,11 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
   // товчноос гартал hover-ийг унтраана.
   const [prevAdminOpen, setPrevAdminOpen] = React.useState(adminOpen);
   const [hoverMuted, setHoverMuted] = React.useState(false);
+  // Долгион: цэсийг нэг ч удаа нээгээгүй үед л. Нээсэн бол хэрэглэгч
+  // товчийг олсон — анхаарал татах шаардлагагүй, бүрмөсөн зогсоно.
+  const [engaged, setEngaged] = React.useState(false);
+  const [hovered, setHovered] = React.useState(false);
+  const reduceMotion = useReducedMotion();
   if (prevAdminOpen !== adminOpen) {
     setPrevAdminOpen(adminOpen);
     if (adminOpen) setOpen(false);
@@ -119,6 +134,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
   }
 
   async function openChat() {
+    setEngaged(true);
     if (await launch()) setOpen(false);
   }
 
@@ -127,12 +143,17 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
       void openChat();
       return;
     }
+    setEngaged(true);
     setOpen((v) => !v);
   }
 
-  // Чат нумын голд.
-  const items: Item[] = links.map((link) => ({ kind: "link", link }));
-  items.splice(Math.ceil(items.length / 2), 0, { kind: "chat" });
+  // Нум доороос (180°) дээш (90°): утас хамгийн доор, сошиал дунд, чат
+  // хамгийн дээр — нүд хамгийн түрүүнд тусах, гол суваг.
+  const items: Item[] = [
+    ...links.filter((l) => l.icon === "phone"),
+    ...links.filter((l) => l.icon !== "phone"),
+  ].map((link) => ({ kind: "link", link }));
+  items.push({ kind: "chat" });
   const positions = arc(items.length);
 
   return (
@@ -186,12 +207,12 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
                         onClick={openChat}
                         aria-busy={connecting}
                         aria-label="Сайтаар чатлах"
-                        className="bg-primary text-primary-foreground ring-background group relative flex size-full items-center justify-center rounded-full shadow-lg ring-2 transition-transform hover:scale-105"
+                        className="bg-primary text-primary-foreground group in-[.black]:bg-secondary in-[.black]:text-foreground in-[.black]:ring-foreground/20 relative flex size-full items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105 in-[.black]:ring-1"
                       >
                         {connecting ? (
                           <Loader2 className="size-5 animate-spin" />
                         ) : (
-                          <MessageCircleMore className="size-5" />
+                          <TypingChatIcon className="size-6" />
                         )}
                         <Tip>Чатлах</Tip>
                       </button>
@@ -212,7 +233,11 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
           ref={buttonRef}
           type="button"
           onClick={toggle}
-          onPointerLeave={() => setHoverMuted(false)}
+          onPointerEnter={() => setHovered(true)}
+          onPointerLeave={() => {
+            setHovered(false);
+            setHoverMuted(false);
+          }}
           aria-busy={connecting}
           {...(!chatOnly && {
             "aria-expanded": open,
@@ -233,11 +258,33 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
           className={cn(
             "group relative flex h-14 items-center rounded-full shadow-xl transition-colors",
             open
-              ? "bg-background text-foreground border-border border"
-              : "bg-primary text-primary-foreground",
+              ? "bg-secondary text-foreground ring-foreground/15 ring-1"
+              : // `primary` black theme-д #262626 — хар дэвсгэр дээр бараг
+                // үл харагдана. Тэнд цагаан дугуй хэт хурц тул бараан
+                // гадаргуу + нимгэн гэрэлтэй ирмэг.
+                "bg-primary text-primary-foreground in-[.black]:bg-secondary in-[.black]:text-foreground in-[.black]:ring-foreground/20 in-[.black]:ring-1",
             "focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
           )}
         >
+          {/* Анхаарал татах долгион: ~3.5с тутам цагираг томорч бүдгэрнэ.
+              Hover-т зогсоно (товч томорч шошго дэлгэгдэхэд цагираг сунаж
+              хэт томордог байсан), цэсийг нээсний дараа бүрмөсөн.
+              Хөдөлгөөн багасгах тохиргоотой бол огт үгүй. */}
+          {!open && !engaged && !hovered && !reduceMotion && (
+            <motion.span
+              aria-hidden
+              className="bg-primary in-[.black]:bg-foreground pointer-events-none absolute inset-0 -z-10 rounded-full"
+              initial={{ scale: 1, opacity: 0 }}
+              animate={{ scale: [1, 1.6], opacity: [0.75, 0] }}
+              transition={{
+                duration: 1.6,
+                ease: "easeOut",
+                delay: 1.6,
+                repeat: Infinity,
+                repeatDelay: 1.9,
+              }}
+            />
+          )}
           {/* Hover-т «Асуух зүйл байна уу?» гэсэн шошго зүүн тийш гулсаж нээгдэнэ. */}
           <span
             className={cn(
