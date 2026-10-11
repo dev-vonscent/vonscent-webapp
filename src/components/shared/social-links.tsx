@@ -74,11 +74,6 @@ export async function ContactFab() {
       label: social.phone,
       icon: "phone" as const,
     },
-    social.email && {
-      href: `mailto:${social.email}`,
-      label: "Имэйл бичих",
-      icon: "email" as const,
-    },
   ].filter((l): l is ContactLink => Boolean(l));
   return <ChatWidget links={items} />;
 }

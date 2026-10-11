@@ -7,7 +7,6 @@ import {
   Facebook,
   Instagram,
   Loader2,
-  Mail,
   MessageCircle,
   MessageCircleMore,
   Phone,
@@ -29,7 +28,7 @@ import {
 export interface ContactLink {
   href: string;
   label: string;
-  icon: "messenger" | "instagram" | "phone" | "email";
+  icon: "messenger" | "instagram" | "phone";
 }
 
 const CHANNELS: Record<
@@ -39,7 +38,6 @@ const CHANNELS: Record<
   messenger: { icon: Facebook, className: "bg-facebook text-white" },
   instagram: { icon: Instagram, className: "bg-instagram text-white" },
   phone: { icon: Phone, className: "bg-phone text-white" },
-  email: { icon: Mail, className: "bg-secondary text-foreground" },
 };
 
 /**
