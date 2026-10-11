@@ -52,19 +52,33 @@ const LOGIN_FLAG = "vs-crisp-user";
 let loading: Promise<void> | null = null;
 let ready = false;
 let unread = 0;
+let open = false;
 const listeners = new Set<() => void>();
 
 function emit() {
   for (const l of listeners) l();
 }
 
-/** `useSyncExternalStore`-д: админы уншаагүй мессежийн тоо. */
-export function subscribeUnread(listener: () => void) {
+/** `useSyncExternalStore`-д: `getUnread` ба `isChatOpen` хоёулаа энүүгээр. */
+export function subscribeChat(listener: () => void) {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
+/** Админы уншаагүй мессежийн тоо. */
 export function getUnread() {
   return unread;
+}
+/**
+ * Crisp-ийн цонх нээлттэй эсэх. Нээлттэй үед Crisp өөрийн ✕ товчийг манай
+ * товчны байрлалд гаргадаг тул `ChatWidget` өөрийгөө нууна — давхардахгүй.
+ */
+export function isChatOpen() {
+  return open;
+}
+
+function setOpen(value: boolean) {
+  open = value;
+  syncUnread();
 }
 
 /** Скрипт ачаалагдахаас өмнө ч ажиллана — Crisp дараалсан командуудыг ачаалагдмагц гүйцэтгэнэ. */
@@ -123,9 +137,9 @@ function loadCrisp(): Promise<void> {
 
     push("on", "chat:closed", () => {
       push("do", "chat:hide");
-      syncUnread();
+      setOpen(false);
     });
-    push("on", "chat:opened", syncUnread);
+    push("on", "chat:opened", () => setOpen(true));
     push("on", "message:received", syncUnread);
 
     await new Promise<void>((resolve, reject) => {

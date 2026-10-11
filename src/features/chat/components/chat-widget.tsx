@@ -23,9 +23,10 @@ import { FaqAnswer } from "@/features/faq/components/faq-search";
 import type { FaqItem } from "@/features/faq/seed";
 import {
   getUnread,
+  isChatOpen,
   isChatReady,
   openAdminChat,
-  subscribeUnread,
+  subscribeChat,
 } from "@/features/chat/crisp";
 
 export interface ContactLink {
@@ -80,10 +81,11 @@ export function ChatWidget({
   const titleRef = React.useRef<HTMLHeadingElement>(null);
   const panelId = React.useId();
   const titleId = React.useId();
-  const unread = React.useSyncExternalStore(
-    subscribeUnread,
-    getUnread,
-    () => 0,
+  const unread = React.useSyncExternalStore(subscribeChat, getUnread, () => 0);
+  const adminOpen = React.useSyncExternalStore(
+    subscribeChat,
+    isChatOpen,
+    () => false,
   );
 
   const contactOnly = CONTACT_ONLY_ON.some((p) => pathname.startsWith(p));
@@ -120,7 +122,7 @@ export function ChatWidget({
     if (open) titleRef.current?.focus();
   }, [selected, open]);
 
-  if (HIDDEN_ON.some((p) => pathname.startsWith(p))) return null;
+  if (adminOpen || HIDDEN_ON.some((p) => pathname.startsWith(p))) return null;
 
   function toggle() {
     // Админ бичсэн бол цонхоор дамжуулахгүй шууд яриа руу нь оруулна.
