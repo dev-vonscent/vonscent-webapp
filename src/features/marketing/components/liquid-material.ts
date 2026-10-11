@@ -24,9 +24,9 @@ export interface LiquidUniforms {
 }
 
 /**
- * `glow` — цагаан бүдэг дотоод гэрэл (emissive) + арай хүчтэй тусгал.
- * Тунгалаг ус хар дэвсгэр дээр харагдахгүй, цайвар дэвсгэр дээр хоосон
- * шилнээс ялгарахгүй байсан — бүх theme дээр шингэнийг цагаан өнгөөр ялгана.
+ * `glow` — шингэний өнгөөр бүдэг дотоод гэрэл (emissive) + арай хүчтэй
+ * тусгал. Тунгалаг ус хар дэвсгэр дээр харагдахгүй, цайвар дэвсгэр дээр
+ * хоосон шилнээс ялгарахгүй байсан тул гэрэлтүүлж ялгана.
  */
 export function createLiquidMaterial(color: string, glow = 0) {
   const uniforms: LiquidUniforms = {
@@ -55,7 +55,7 @@ export function createLiquidMaterial(color: string, glow = 0) {
     // Шилтэй адил — босоо тусгалын зураас үүсгэхгүйн тулд сул.
     specularIntensity: 0.3 + 0.4 * glow,
     envMapIntensity: 0.3 + 0.5 * glow,
-    emissive: new THREE.Color("#ffffff"),
+    emissive: new THREE.Color(color),
     emissiveIntensity: 0.2 * glow,
     transparent: false,
     side: THREE.DoubleSide,

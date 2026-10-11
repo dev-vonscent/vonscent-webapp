@@ -1,4 +1,5 @@
 import { test, expect, devices, type Page } from "@playwright/test";
+import { HERO_DEFAULT_ML } from "../src/features/marketing/vial-specs";
 
 /**
  * Hero-гийн 3D / poster-ийн ачаалах дүрэм (docs/planning/hero-3d-performance.md):
@@ -60,7 +61,9 @@ test.describe("reduced-motion", () => {
     await expect(hero).toHaveAttribute("data-hero-3d", "off");
     await page.waitForLoadState("networkidle");
 
-    expect(assets.posters()).toEqual(["/hero/vials-black-md-10.avif"]);
+    expect(assets.posters()).toEqual([
+      `/hero/vials-black-md-${HERO_DEFAULT_ML}.avif`,
+    ]);
     expect(assets.models()).toEqual([]);
     await expect(hero.locator("canvas")).toHaveCount(0);
   });
@@ -70,7 +73,9 @@ test.describe("reduced-motion", () => {
     const assets = trackHeroAssets(page);
     await gotoHome(page);
     await page.waitForLoadState("networkidle");
-    expect(assets.posters()).toEqual(["/hero/vials-pink-md-10.avif"]);
+    expect(assets.posters()).toEqual([
+      `/hero/vials-pink-md-${HERO_DEFAULT_ML}.avif`,
+    ]);
   });
 
   test("хэмжээ солиход poster солигдоно", async ({ page }) => {
@@ -106,7 +111,9 @@ test.describe("хүрэлтийн дэлгэц", () => {
       "off",
     );
     expect(assets.models()).toEqual([]);
-    expect(assets.posters()).toEqual(["/hero/vials-black-sm-10.avif"]);
+    expect(assets.posters()).toEqual([
+      `/hero/vials-black-sm-${HERO_DEFAULT_ML}.avif`,
+    ]);
 
     test.skip(
       !(await hasWebGL2(page)),

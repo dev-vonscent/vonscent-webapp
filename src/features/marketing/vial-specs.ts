@@ -62,7 +62,7 @@ export function finishForTheme(themeClass: string): VialFinish {
  * Layout: `sm` = утас (< md), `md` = md+ — канвасын харьцаа өөр.
  */
 /** Hero анх нээгдэхэд сонгогдсон хэмжээ (poster preload ч үүнийг ашиглана). */
-export const HERO_DEFAULT_ML: MlSize = 10;
+export const HERO_DEFAULT_ML: MlSize = 20;
 
 export const POSTER_THEMES = ["black", "light", "pink"] as const;
 export type PosterTheme = (typeof POSTER_THEMES)[number];
