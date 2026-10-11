@@ -10,7 +10,7 @@ import {
   User,
   Boxes,
   Loader2,
-  MessageCircle,
+  MessageCircleMore,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -132,7 +132,7 @@ function ChatTab({ hidden }: { hidden: boolean }) {
       {connecting ? (
         <Loader2 className="size-5 animate-spin" />
       ) : (
-        <MessageCircle className="size-5" strokeWidth={1.8} />
+        <MessageCircleMore className="size-5" strokeWidth={1.8} />
       )}
       <span
         aria-hidden
