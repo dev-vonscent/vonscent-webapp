@@ -134,7 +134,10 @@ function ChatTab({ hidden }: { hidden: boolean }) {
       ) : (
         <MessageCircle className="size-5" strokeWidth={1.8} />
       )}
-      <span aria-hidden className="text-[10px] leading-none font-medium">
+      <span
+        aria-hidden
+        className="text-[10px] leading-none font-medium max-[359px]:hidden"
+      >
         Чат
       </span>
       {unread > 0 && (
@@ -182,25 +185,33 @@ function Tab({
       href={href}
       prefetch={prefetch}
       onClick={onClick}
+      // Жижиг дэлгэцэнд шошго нуугдах тул нэр энд.
+      aria-label={label}
       aria-current={active ? "page" : undefined}
       // Icon дангаараа «Каталог» (сүлжээ) ба «Багц» (хайрцаг)-ийг ялгахад
       // хэцүү — шошго нь таамаглалыг арилгана. Идэвхтэйг тод жингээр заана.
       className={cn(
-        "relative flex h-12 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-full transition-colors",
+        "relative flex h-12 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-full transition-colors max-[359px]:min-w-10",
         active
           ? "text-foreground"
           : "text-muted-foreground hover:text-foreground",
       )}
     >
       <Icon className="size-5" strokeWidth={active ? 2.3 : 1.8} />
+      {/* 360px-ээс жижиг дэлгэцэнд шошго багтахгүй — зөвхөн icon. */}
       <span
+        aria-hidden
         className={cn(
-          "text-[10px] leading-none",
+          "text-[10px] leading-none max-[359px]:hidden",
           active ? "font-semibold" : "font-medium",
         )}
       >
         {label}
       </span>
+      {/* Шошгогүй (жижиг дэлгэц) үед идэвхтэйг цэгээр заана. */}
+      {active && (
+        <span className="bg-foreground absolute bottom-1 hidden size-1 rounded-full max-[359px]:block" />
+      )}
       {badge > 0 && (
         <span className="bg-foreground text-background absolute top-0 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold">
           {badge}
