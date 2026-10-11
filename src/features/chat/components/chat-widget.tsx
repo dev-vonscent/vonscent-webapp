@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import {
   Facebook,
@@ -14,7 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isChatReady } from "@/features/chat/crisp";
+import { isChatReady, setChatTheme } from "@/features/chat/crisp";
 import {
   setChatFallbackLinks,
   useChatLauncher,
@@ -82,6 +83,10 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
   // Утасны толгойн товч ч эдгээр гарцыг ашиглана (энэ компонент утсан дээр
   // CSS-ээр нуугдсан ч mount хэвээр).
   React.useEffect(() => setChatFallbackLinks(links), [links]);
+  // Crisp-ийн өнгө сайтын theme-ийг дагана (утсан дээр ч — энэ компонент
+  // CSS-ээр нуугдсан ч mount хэвээр).
+  const { resolvedTheme } = useTheme();
+  React.useEffect(() => setChatTheme(resolvedTheme), [resolvedTheme]);
 
   const chatOnly =
     links.length === 0 || CHAT_ONLY_ON.some((p) => pathname.startsWith(p));

@@ -118,6 +118,38 @@ function storage<T>(fn: () => T): T | undefined {
   }
 }
 
+/**
+ * Сайтын theme → Crisp-ийн өнгө. Crisp зөвхөн бэлэн палитртай (Material);
+ * navy байхгүй тул хамгийн ойр нь indigo.
+ */
+const CRISP_THEMES: Record<string, { color: string; mode: "light" | "dark" }> =
+  {
+    black: { color: "black", mode: "dark" },
+    white: { color: "black", mode: "light" },
+    navy: { color: "indigo", mode: "light" },
+    pink: { color: "pink", mode: "light" },
+  };
+
+let siteTheme: string | undefined;
+
+function applyTheme() {
+  const t = siteTheme ? CRISP_THEMES[siteTheme] : undefined;
+  if (!t) return;
+  push("config", "color:theme", [t.color]);
+  push("config", "color:mode", [t.mode]);
+}
+
+/**
+ * Сайтын theme солигдоход нээлттэй чатын өнгө ч дахин ачаалалгүй солигдоно
+ * (`$crisp` config нь runtime-д ажилладаг). Ачаалагдаагүй бол зөвхөн
+ * санана — `configure` ачаалахдаа тавина, дараалал дүүргэхгүй.
+ */
+export function setChatTheme(theme: string | undefined) {
+  if (theme === siteTheme) return;
+  siteTheme = theme;
+  if (configured) applyTheme();
+}
+
 let configured = false;
 let script: HTMLScriptElement | null = null;
 let scriptReady: Promise<void> | null = null;
@@ -135,6 +167,7 @@ async function configure() {
   // Ачаалагдмагц өөрийн бөмбөлөгөө гаргахгүй.
   push("safe", true);
   push("do", "chat:hide");
+  applyTheme();
 
   if (identity) {
     if (identity.name) push("set", "user:nickname", [identity.name]);
