@@ -14,16 +14,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isCrispConfigured } from "@/lib/env";
-import { trackChatOpen } from "@/lib/analytics";
-import { toast } from "@/lib/toast";
-import {
-  getUnread,
-  isChatOpen,
-  isChatReady,
-  openAdminChat,
-  subscribeChat,
-} from "@/features/chat/crisp";
+import { isChatReady } from "@/features/chat/crisp";
+import { useChatLauncher } from "@/features/chat/use-chat-launcher";
 
 export interface ContactLink {
   href: string;
@@ -76,22 +68,23 @@ type Item = { kind: "chat" } | { kind: "link"; link: ContactLink };
  * Crisp нээлттэй үед өөрийн ✕-ийг яг энэ байрлалд гаргадаг тул бүхэлдээ
  * нуугдана. Crisp ачаалагдахгүй бол (adblocker) Messenger.
  *
- * Гар утсанд доод навигац (эсвэл түүнийг орлосон «Захиалах» зурвас)-ын дээр
- * суух тул тэдгээрийн өндрөөр дээш өргөгдөнө.
+ * Зөвхөн desktop: утсан дээр хөвөгч товч бараа, сагслах товч, доод
+ * навигацыг дардаг тул чат толгой хэсэгт (`HeaderChatButton`), сошиал
+ * сувгууд цэс дотор (`MenuSocialLinks`).
  */
 export function ChatWidget({ links }: { links: ContactLink[] }) {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
-  const [connecting, setConnecting] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const menuId = React.useId();
-  const unread = React.useSyncExternalStore(subscribeChat, getUnread, () => 0);
-  const adminOpen = React.useSyncExternalStore(
-    subscribeChat,
-    isChatOpen,
-    () => false,
-  );
+  const messenger = links.find((l) => l.icon === "messenger");
+  const {
+    connecting,
+    unread,
+    chatOpen: adminOpen,
+    launch,
+  } = useChatLauncher(messenger?.href);
 
   const chatOnly =
     links.length === 0 || CHAT_ONLY_ON.some((p) => pathname.startsWith(p));
@@ -129,26 +122,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
   }
 
   async function openChat() {
-    if (connecting) return;
-    trackChatOpen();
-    if (isCrispConfigured) {
-      setConnecting(true);
-      const ok = await openAdminChat();
-      setConnecting(false);
-      if (ok) {
-        setOpen(false);
-        return;
-      }
-    }
-    const messenger = links.find((l) => l.icon === "messenger");
-    if (messenger) {
-      window.open(messenger.href, "_blank", "noopener,noreferrer");
-      return;
-    }
-    toast.error(
-      "Чат түр ачаалагдсангүй. «Холбоо барих» хуудаснаас утас, имэйлээр холбогдоорой.",
-      "Холбогдож чадсангүй",
-    );
+    if (await launch()) setOpen(false);
   }
 
   function toggle() {
@@ -171,7 +145,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
         // Crisp нээлттэй үед unmount биш нууна — дахин mount болбол орж ирэх
         // анимейшн дахин тоглож анивчина.
         hidden={adminOpen}
-        className="fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 md:right-6 md:bottom-6"
+        className="fixed right-6 bottom-6 z-40 hidden md:block"
       >
         <AnimatePresence>
           {open && (
@@ -259,7 +233,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
           whileHover={hoverMuted ? undefined : { scale: 1.06 }}
           whileTap={{ scale: 0.94 }}
           className={cn(
-            "group relative flex h-12 items-center rounded-full shadow-xl transition-colors md:h-14",
+            "group relative flex h-14 items-center rounded-full shadow-xl transition-colors",
             open
               ? "bg-background text-foreground border-border border"
               : "bg-primary text-primary-foreground",
@@ -269,7 +243,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
           {/* Hover-т «Асуух зүйл байна уу?» гэсэн шошго зүүн тийш гулсаж нээгдэнэ. */}
           <span
             className={cn(
-              "hidden transition-[grid-template-columns] duration-300 ease-out md:grid",
+              "grid transition-[grid-template-columns] duration-300 ease-out",
               open || hoverMuted
                 ? "grid-cols-[0fr]"
                 : "grid-cols-[0fr] group-hover:grid-cols-[1fr] group-focus-visible:grid-cols-[1fr]",
@@ -281,7 +255,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
               </span>
             </span>
           </span>
-          <span className="relative flex size-12 items-center justify-center md:size-14">
+          <span className="relative flex size-14 items-center justify-center">
             <AnimatePresence initial={false} mode="popLayout">
               <motion.span
                 key={open ? "close" : connecting ? "loading" : "chat"}
@@ -292,11 +266,11 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
                 className="flex"
               >
                 {open ? (
-                  <X className="size-5 md:size-6" />
+                  <X className="size-6" />
                 ) : connecting ? (
-                  <Loader2 className="size-5 animate-spin md:size-6" />
+                  <Loader2 className="size-6 animate-spin" />
                 ) : (
-                  <MessageCircle className="size-5 md:size-6" />
+                  <MessageCircle className="size-6" />
                 )}
               </motion.span>
             </AnimatePresence>
@@ -341,12 +315,12 @@ function ChannelLink({
   );
 }
 
-/** Desktop hover/focus-д товчны зүүн талд гарах шошго. */
+/** Hover/focus-д товчны зүүн талд гарах шошго. */
 function Tip({ children }: { children: React.ReactNode }) {
   return (
     <span
       aria-hidden
-      className="bg-popover text-popover-foreground pointer-events-none absolute top-1/2 right-full mr-2 hidden -translate-y-1/2 rounded-md px-2 py-1 text-xs font-medium whitespace-nowrap opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 md:block"
+      className="bg-popover text-popover-foreground pointer-events-none absolute top-1/2 right-full mr-2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-medium whitespace-nowrap opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
     >
       {children}
     </span>
