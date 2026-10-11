@@ -78,24 +78,39 @@ export async function ContactFab() {
   return <ChatWidget links={items} />;
 }
 
-/** Гар утасны цэсний капсул эгнээ — «Холбоо барих» г.м-тэй нэг хэлбэр. */
+/**
+ * Гар утасны цэсний сошиал хэсэг — гарчигтай, тусдаа. Хаяг тохируулаагүй бол
+ * гарчигтайгаа хамт бүтэн алга болно.
+ */
 export async function MenuSocialLinks() {
   const items = await links();
   if (items.length === 0) return null;
   return (
-    <>
-      {items.map(({ href, label, icon: Icon }) => (
-        <a
-          key={label}
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bg-secondary hover:bg-accent flex h-11 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors"
-        >
-          <Icon className="text-muted-foreground size-4 shrink-0" />
-          {label}
-        </a>
-      ))}
-    </>
+    <section
+      aria-labelledby="menu-social-heading"
+      style={{ animationDelay: "300ms" }}
+      className="animate-fade-up animation-duration-[380ms] mt-7 motion-reduce:animate-none"
+    >
+      <h2
+        id="menu-social-heading"
+        className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase"
+      >
+        Биднийг дагаарай
+      </h2>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {items.map(({ href, label, icon: Icon }) => (
+          <a
+            key={label}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="border-border hover:bg-secondary flex h-12 items-center gap-2.5 rounded-2xl border px-4 text-sm font-medium transition-colors"
+          >
+            <Icon className="size-5 shrink-0" />
+            {label}
+          </a>
+        ))}
+      </div>
+    </section>
   );
 }
