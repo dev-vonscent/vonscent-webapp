@@ -11,6 +11,7 @@ import {
   Loader2,
   UserRound,
   Bookmark,
+  Trash2,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -72,8 +73,12 @@ import { useCoupon } from "@/features/checkout/use-coupon";
 import {
   CHECKOUT_DRAFT_KEY,
   SAVED_CHECKOUTS_QUERY_KEY,
+  clearResumedSaved,
+  deleteSavedCheckout,
   postSavedCheckout,
+  readResumedSaved,
 } from "@/features/checkout/saved-checkouts";
+import { useConfirm } from "@/components/shared/confirm-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   clearPendingOrder,
@@ -229,6 +234,7 @@ export default function CheckoutPage() {
   const coupon = useCart((s) => s.coupon);
   const setCartCoupon = useCart((s) => s.setCoupon);
   const removeOrdered = useCart((s) => s.clearOrdered);
+  const [confirm, confirmDialog] = useConfirm();
   const removeLine = useCart((s) => s.remove);
   const setQty = useCart((s) => s.setQty);
   const [mounted, setMounted] = React.useState(false);
@@ -962,6 +968,42 @@ export default function CheckoutPage() {
    * Бүртгэлд хадгалдаг тул нэвтрэх шаардлагатай. Зочин нэвтрэх рүү очиж,
    * бөглөсөн нь ноорогоор (`keepDraft`) буцаж ирээд дахин дарна.
    */
+  /**
+   * «Миний захиалга» → «Захиалах»-аар ирсэн бол тэр хадгалсан захиалгын id
+   * (saved-checkouts.ts). Хадгалсан нь захиалга үүсэх, дахин хадгалах,
+   * эсвэл «Устгах» дарах хүртэл серверт үлдэнэ — буцаж гарвал алга болохгүй.
+   */
+  const resumedSavedId = mounted ? readResumedSaved(items, collections) : null;
+
+  /** Хадгалсан хуулбарыг серверээс авч хаяна — алдаа нь урсгал таслахгүй. */
+  async function dropResumedSaved() {
+    if (!resumedSavedId) return;
+    clearResumedSaved();
+    await deleteSavedCheckout(resumedSavedId).catch(() => {});
+    void queryClient.invalidateQueries({ queryKey: SAVED_CHECKOUTS_QUERY_KEY });
+  }
+
+  /**
+   * Хадгалсан захиалгыг checkout дотроос устгах (клиент, 2026-10): серверийн
+   * хуулбар ба сагсанд буцаж орсон мөрүүд хоёулаа арилна.
+   */
+  async function deleteResumedSaved() {
+    await confirm({
+      title: "Хадгалсан захиалгыг устгах уу?",
+      description: "Энэ захиалга «Дараа захиалах» жагсаалтаас устана.",
+      confirmLabel: "Устгах",
+      cancelLabel: "Буцах",
+      destructive: true,
+      action: async () => {
+        await dropResumedSaved();
+        setLeaving(true);
+        removeOrdered();
+        toast("Хадгалсан захиалга устгагдлаа.");
+        router.push("/account/orders?tab=saved");
+      },
+    });
+  }
+
   async function saveForLater() {
     if (!authed) {
       keepDraft();
@@ -992,6 +1034,8 @@ export default function CheckoutPage() {
       setSavingForLater(false);
       return;
     }
+    // Хадгалсан захиалгаас ирсэн бол хуучин хуулбар нь шинээр солигдоно.
+    await dropResumedSaved();
     void queryClient.invalidateQueries({
       queryKey: SAVED_CHECKOUTS_QUERY_KEY,
     });
@@ -1242,6 +1286,10 @@ export default function CheckoutPage() {
       // ижил сесс дотор хийсэн хоёр дахь захиалга нэгдүгээрийнх нь хариуг
       // авна.
       requestIdRef.current = null;
+      // Хадгалсан захиалгаас ирсэн бол одоо л жинхэнэ захиалга болсон —
+      // хуулбар нь хэрэггүй. Төлөгдөөгүй үлдвэл 30 минутын дараа «Дараа
+      // захиалах» руу өөрөө буцна (0124).
+      void dropResumedSaved();
       // Хасахаас ӨМНӨ хуулна: төлбөрийн хуудаснаас буцвал мөр, маягт хоёул
       // сэргэж, өөрчлөөгүй бол энэ захиалга руу шууд буцна (pending-order.ts).
       if (order.payToken) {
@@ -1309,6 +1357,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-352 px-4 pt-8 md:px-8 md:pb-24 lg:pb-8">
+      {confirmDialog}
       <form
         onSubmit={handleSubmit(onSubmit, onInvalid)}
         // Шалгалтыг Zod + талбарын доорх мессеж хийнэ; browser-ийн англи
@@ -1890,8 +1939,21 @@ export default function CheckoutPage() {
                 onClick={saveForLater}
               >
                 <Bookmark className="size-4" />
-                Дараа авахаар хадгалах
+                Дараа захиалах
               </LoadingButton>
+              {resumedSavedId && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="lg"
+                  className="text-muted-foreground hover:text-destructive w-full gap-2"
+                  disabled={submitting || savingForLater}
+                  onClick={deleteResumedSaved}
+                >
+                  <Trash2 className="size-4" />
+                  Устгах
+                </Button>
+              )}
               <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-center text-xs">
                 <ShieldCheck className="size-3.5" />
                 Аюулгүй төлбөр · QPay

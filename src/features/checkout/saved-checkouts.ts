@@ -20,6 +20,69 @@ export const CHECKOUT_DRAFT_KEY = "vonscent-checkout-draft";
 
 export const SAVED_CHECKOUTS_QUERY_KEY = ["saved-checkouts"] as const;
 
+/**
+ * «Захиалах»-аар checkout руу авчирсан хадгалсан захиалга (клиент, 2026-10).
+ *
+ * Өмнө нь «Захиалах» дармагц серверээс шууд устгадаг байсан тул checkout-оос
+ * буцаж гарсан хүний хадгалсан захиалга ор мөргүй алга болдог байв. Одоо
+ * устгал нь зөвхөн захиалга бодитоор үүссэн (эсвэл хэрэглэгч «Устгах»
+ * дарсан) мөчид — тэр болтол аль захиалга байсныг энд санана.
+ *
+ * `variantIds` — хадгалсан мөрүүдийн хээ. Хэрэглэгч сагсаа өөрчилж огт өөр
+ * захиалга өгвөл хадгалсныг нь андуурч устгахгүй.
+ */
+const RESUMED_KEY = "vonscent-resumed-saved";
+
+interface ResumedSaved {
+  id: string;
+  variantIds: string;
+}
+
+function variantFingerprint(
+  items: Pick<CartItem, "variantId">[],
+  collections: Pick<CartCollection, "members">[],
+): string {
+  return [
+    ...items.map((i) => i.variantId),
+    ...collections.flatMap((c) => c.members.map((m) => m.variantId)),
+  ]
+    .sort()
+    .join(",");
+}
+
+/** Одоогийн checkout-ийн мөрүүд хадгалсан захиалгаас ирсэн бол түүний id. */
+export function readResumedSaved(
+  items: Pick<CartItem, "variantId">[],
+  collections: Pick<CartCollection, "members">[],
+): string | null {
+  try {
+    const raw = sessionStorage.getItem(RESUMED_KEY);
+    if (!raw) return null;
+    const resumed = JSON.parse(raw) as ResumedSaved;
+    return resumed.variantIds === variantFingerprint(items, collections)
+      ? resumed.id
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearResumedSaved() {
+  try {
+    sessionStorage.removeItem(RESUMED_KEY);
+  } catch {
+    // storage хаалттай — санах юм байхгүй.
+  }
+}
+
+/** Серверээс устгана. Алдааг дуудагч тал шийднэ. */
+export async function deleteSavedCheckout(id: string) {
+  const res = await fetch(`/api/account/saved-checkouts/${id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error("DELETE_FAILED");
+}
+
 export interface SavedCheckout {
   id: string;
   /** ISO — `created_at`. */
@@ -85,12 +148,7 @@ export async function postSavedCheckout(input: SavedCheckoutInput) {
 export function useDeleteSavedCheckout() {
   const queryClient = useQueryClient();
   return useMutation<void, Error, string>({
-    mutationFn: async (id) => {
-      const res = await fetch(`/api/account/saved-checkouts/${id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("DELETE_FAILED");
-    },
+    mutationFn: deleteSavedCheckout,
     // Шууд жагсаалтаас авна — сүлжээ удаан ч карт тэр дороо алга болно.
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: SAVED_CHECKOUTS_QUERY_KEY });
@@ -140,6 +198,25 @@ export function resumeSavedCheckout(entry: SavedCheckout) {
     else if (bundle) cart.startBuyNowCollection(...toLineInput(bundle));
   } else {
     cart.clearBuyNow();
+    // Сагсанд ижил мөр аль хэдийн байвал (жишээ нь өмнө нь «Захиалах» дараад
+    // буцсан) тоо нь нэмэгдэж давхардахгүй — хадгалсан тоо нь хүчинтэй.
+    const before = useCart.getState();
+    for (const item of entry.items) {
+      if (before.items.some((i) => i.key === item.variantId))
+        cart.remove(item.variantId);
+    }
+    for (const c of before.collections) {
+      if (
+        entry.collections.some(
+          (e) =>
+            e.ml === c.ml &&
+            e.collectionId === c.collectionId &&
+            e.members.map((m) => m.variantId).join() ===
+              c.members.map((m) => m.variantId).join(),
+        )
+      )
+        cart.removeCollection(c.key);
+    }
     for (const item of entry.items) cart.add(...toLineInput(item));
     for (const bundle of entry.collections)
       cart.addCollection(...toLineInput(bundle));
@@ -175,6 +252,13 @@ export function resumeSavedCheckout(entry: SavedCheckout) {
     });
   }
   try {
+    sessionStorage.setItem(
+      RESUMED_KEY,
+      JSON.stringify({
+        id: entry.id,
+        variantIds: variantFingerprint(entry.items, entry.collections),
+      } satisfies ResumedSaved),
+    );
     sessionStorage.setItem(CHECKOUT_DRAFT_KEY, JSON.stringify(entry.draft));
   } catch {
     // Ноорог алга болно — мөрүүд нь сагсанд орсон тул урсгал таслахгүй.
