@@ -1481,6 +1481,8 @@ export interface WheelSettings {
   enabled: boolean;
   freeSpinHours: number;
   spinCost: number;
+  /** One spin per this many ₮ of an order's goods total; 0 = off (0129). */
+  orderSpinStep: number;
   monthlyPointCap: number;
   rareCouponPerMonth: number;
   couponValidDays: number;
@@ -1490,7 +1492,8 @@ export interface WheelSettings {
 export const WHEEL_SETTINGS_DEFAULTS: WheelSettings = {
   enabled: true,
   freeSpinHours: 24,
-  spinCost: 2000,
+  spinCost: 1000,
+  orderSpinStep: 100_000,
   // 0 = хязгааргүй. Клиент 2026-09-07-д хоёр тагийг цуцаллаа: «магадлал нь
   // таарсан бол хэдэн ч удаа хожиж болно» (0067, docs §5).
   monthlyPointCap: 0,
@@ -1505,6 +1508,11 @@ export interface WheelReport {
   spins: number;
   freeSpins: number;
   paidSpins: number;
+  orderSpins: number;
+  /** Order credits issued in the window, cancelled orders excluded. */
+  orderSpinsGranted: number;
+  /** Spins that landed on «Баярлалаа». */
+  thanks: number;
   pointsAwarded: number;
   pointsSpent: number;
   couponsIssued: number;
@@ -1525,6 +1533,9 @@ const EMPTY_REPORT: WheelReport = {
   spins: 0,
   freeSpins: 0,
   paidSpins: 0,
+  orderSpins: 0,
+  orderSpinsGranted: 0,
+  thanks: 0,
   pointsAwarded: 0,
   pointsSpent: 0,
   couponsIssued: 0,

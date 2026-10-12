@@ -444,13 +444,15 @@ export function TileGridSkeleton({ tiles = 6 }: { tiles?: number }) {
 export function WheelSkeleton() {
   return (
     <div
-      className="mx-auto max-w-3xl space-y-6 px-4 py-10"
+      className="mx-auto max-w-352 space-y-6 px-4 py-10 md:px-8 lg:grid lg:grid-cols-2 lg:space-y-0 lg:gap-x-12 xl:gap-x-20"
       role="status"
       aria-label="Азын хүрд ачаалж байна"
     >
-      <SkeletonBlock className="mx-auto h-8 w-56" />
-      <SkeletonBlock className="mx-auto aspect-square w-full max-w-[min(88vw,30rem)] rounded-full" />
-      <SkeletonBlock className="mx-auto h-11 w-64 rounded-md" />
+      <SkeletonBlock className="mx-auto h-8 w-56 lg:col-start-2 lg:row-start-1 lg:mx-0 lg:h-12 lg:w-72" />
+      <div className="space-y-6 lg:col-start-1 lg:row-span-2 lg:row-start-1">
+        <SkeletonBlock className="mx-auto aspect-square w-full max-w-[min(88vw,30rem)] rounded-full lg:max-w-136" />
+        <SkeletonBlock className="mx-auto h-11 w-64 rounded-md" />
+      </div>
     </div>
   );
 }

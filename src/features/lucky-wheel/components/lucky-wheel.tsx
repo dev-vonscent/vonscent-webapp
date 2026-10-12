@@ -2,15 +2,13 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import {
   Clock,
-  Coins,
   Crown,
-  Gift,
-  History,
+  Heart,
   Lock,
-  Sparkles,
+  ShoppingBag,
   Ticket,
   Volume2,
   VolumeX,
@@ -24,11 +22,12 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { WheelSkeleton } from "@/components/shared/skeletons";
-import { formatDateTime } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { VPointIcon } from "@/components/shared/v-point-icon";
 import { Confetti } from "./confetti";
 import { PrizeReveal } from "./prize-reveal";
+import { SpinHistory } from "./spin-history";
 import { Wheel3D, type WheelHandle } from "./wheel-3d";
 import {
   useCountdown,
@@ -36,13 +35,20 @@ import {
   useWheelSound,
   useWheelState,
 } from "../use-wheel";
-import type { SpinFailure, SpinSuccess, WheelPrize } from "../types";
+import type {
+  SpinFailure,
+  SpinMode,
+  SpinSuccess,
+  WheelPrize,
+  WheelState,
+} from "../types";
 
 /** Why a spin was refused, in the customer's words. */
 const REFUSAL: Record<string, string> = {
   COOLDOWN: "Үнэгүй эргэлт хараахан сэргээгүй байна.",
   DISABLED: "Азын хүрд түр хаалттай байна.",
   NOT_ENOUGH_POINTS: "V point хүрэлцэхгүй байна.",
+  NO_ORDER_SPINS: "Захиалгын эрх дууссан байна.",
   NO_PRIZES: "Одоогоор шагнал тохируулагдаагүй байна.",
   NO_DB: "Холболт тасарлаа. Дахин оролдоно уу.",
 };
@@ -50,11 +56,14 @@ const REFUSAL: Record<string, string> = {
 const TIER_LABEL = { common: "Энгийн", rare: "Ховор", grand: "Гранд" } as const;
 
 const KIND_ICON = {
-  points: Sparkles,
+  points: VPointIcon,
   coupon_percent: Ticket,
   coupon_fixed: Ticket,
   bundle: Crown,
+  none: Heart,
 } as const;
+
+const fmt = (n: number) => n.toLocaleString("mn-MN");
 
 /** Short haptic — a wheel you can feel stop. Silently absent on desktop. */
 function buzz(pattern: number | number[]) {
@@ -85,10 +94,27 @@ function StatChip({
   );
 }
 
+/**
+ * Each prize once, with how many wedges it holds — the wheel repeats coupons
+ * across the rim and «Баярлалаа» is not a prize, so listing segments as-is
+ * would read as 26 tiles of mostly the same thing.
+ */
+function legendItems(prizes: WheelPrize[]) {
+  const seen = new Map<string, { prize: WheelPrize; count: number }>();
+  for (const prize of prizes) {
+    if (prize.kind === "none") continue;
+    const key = `${prize.kind}:${prize.value}:${prize.minSubtotal}:${prize.label}`;
+    const hit = seen.get(key);
+    if (hit) hit.count += 1;
+    else seen.set(key, { prize, count: 1 });
+  }
+  return [...seen.values()];
+}
+
 function PrizeLegend({ prizes }: { prizes: WheelPrize[] }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      {prizes.map((prize, i) => {
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-3">
+      {legendItems(prizes).map(({ prize, count }, i) => {
         const Icon = KIND_ICON[prize.kind];
         return (
           <motion.div
@@ -120,7 +146,20 @@ function PrizeLegend({ prizes }: { prizes: WheelPrize[] }) {
                 </Badge>
               )}
             </div>
-            <p className="text-sm/snug font-medium">{prize.label}</p>
+            <p className="text-sm/snug font-medium">
+              {prize.label}
+              {count > 1 && (
+                <span className="text-muted-foreground font-normal">
+                  {" "}
+                  ×{count}
+                </span>
+              )}
+            </p>
+            {prize.minSubtotal > 0 && (
+              <p className="text-muted-foreground text-xs">
+                {fmt(prize.minSubtotal)}₮-с дээш захиалгад
+              </p>
+            )}
           </motion.div>
         );
       })}
@@ -128,23 +167,73 @@ function PrizeLegend({ prizes }: { prizes: WheelPrize[] }) {
   );
 }
 
-const STEPS = [
-  {
-    icon: Clock,
-    title: "24 цагт нэг үнэгүй",
-    body: "Сүүлийн үнэгүй эргэлтээс хойш 24 цаг өнгөрөхөд эрх сэргэнэ.",
-  },
-  {
-    icon: Coins,
-    title: "Эсвэл 2,000V-оор",
-    body: "Хуримтлуулсан V point-оороо нэмэлт эргэлт худалдаж авна.",
-  },
-  {
-    icon: Gift,
-    title: "Хоосон салбар байхгүй",
-    body: "Найман салбар бүгд шагналтай — оноо, купон эсвэл 2мл таних багц.",
-  },
-] as const;
+/** The three ways to earn a spin, from the live settings. */
+function steps(state: WheelState) {
+  return [
+    {
+      icon: Clock,
+      title: `${state.freeSpinHours} цагт нэг үнэгүй`,
+      body: `Сүүлийн үнэгүй эргэлтээс хойш ${state.freeSpinHours} цаг өнгөрөхөд эрх сэргэнэ.`,
+    },
+    ...(state.orderSpinStep > 0
+      ? [
+          {
+            icon: ShoppingBag,
+            title: `${fmt(state.orderSpinStep)}₮ тутамд нэг`,
+            body: `Төлөгдсөн захиалгын ${fmt(state.orderSpinStep)}₮ тутамд нэг эрх нэмэгдэнэ.`,
+          },
+        ]
+      : []),
+    ...(state.spinCost > 0
+      ? [
+          {
+            icon: VPointIcon,
+            title: `${fmt(state.spinCost)}V-оор нэг`,
+            body: "Хуримтлуулсан V point-оороо нэмэлт эргэлт авах боломжтой.",
+          },
+        ]
+      : []),
+  ];
+}
+
+/** Free first (it expires into the cooldown), then order credits, then points. */
+function nextMode(
+  freeReady: boolean,
+  orderSpins: number,
+  canPay: boolean,
+): SpinMode | null {
+  if (freeReady) return "free";
+  if (orderSpins > 0) return "order";
+  if (canPay) return "points";
+  return null;
+}
+
+const MODE_LABEL: Record<SpinMode, (state: WheelState) => string> = {
+  free: () => "Үнэгүй эргүүлэх",
+  order: (state) => `Захиалгын эрхээр эргүүлэх (${state.orderSpins})`,
+  points: (state) => `${fmt(state.spinCost)}V-оор эргүүлэх`,
+};
+
+function SecondaryAction({
+  onClick,
+  disabled,
+  children,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-4 disabled:opacity-50"
+    >
+      {children}
+    </button>
+  );
+}
 
 export function LuckyWheel() {
   const { data: state, isLoading, refetch } = useWheelState();
@@ -171,9 +260,11 @@ export function LuckyWheel() {
   const canPay =
     !!state && state.points >= state.spinCost && state.spinCost > 0;
   const busy = spinning || spin.isPending;
+  const orderSpins = state?.orderSpins ?? 0;
+  const mode = nextMode(freeReady, orderSpins, canPay);
 
   const run = React.useCallback(
-    async (mode: "free" | "points") => {
+    async (mode: SpinMode) => {
       if (busy || !state) return;
       setSpinning(true);
       try {
@@ -181,11 +272,14 @@ export function LuckyWheel() {
         // The wheel turns *after* the server has decided, and stops on the
         // segment it actually awarded — never the other way round.
         await wheelRef.current?.spinTo(outcome.slot);
-        buzz(outcome.tier === "grand" ? [30, 40, 30, 40, 80] : 35);
-        sound.fanfare(outcome.tier === "grand");
         setResult(outcome);
         setRevealOpen(true);
-        setBurst((n) => n + 1);
+        // «Баярлалаа» is a miss — no fanfare, no confetti.
+        if (outcome.kind !== "none") {
+          buzz(outcome.tier === "grand" ? [30, 40, 30, 40, 80] : 35);
+          sound.fanfare(outcome.tier === "grand");
+          setBurst((n) => n + 1);
+        }
       } catch (error) {
         const failure = error as SpinFailure;
         if (failure?.reason === "AUTH") {
@@ -204,18 +298,17 @@ export function LuckyWheel() {
   const hub = (() => {
     if (busy) return { label: "Эргэж байна", hint: undefined };
     if (!state?.signedIn) return { label: "Нэвтрэх", hint: "эргүүлэхийн тулд" };
-    if (freeReady) return { label: "ЭРГҮҮЛЭХ", hint: "Үнэгүй" };
-    if (canPay)
-      return {
-        label: "ЭРГҮҮЛЭХ",
-        hint: `${state.spinCost.toLocaleString("mn-MN")}V`,
-      };
+    if (mode === "free") return { label: "ЭРГҮҮЛЭХ", hint: "Үнэгүй" };
+    if (mode === "order")
+      return { label: "ЭРГҮҮЛЭХ", hint: `${orderSpins} эрх` };
+    if (mode === "points")
+      return { label: "ЭРГҮҮЛЭХ", hint: `${fmt(state.spinCost)}V` };
     return { label: countdown.label, hint: "хүлээнэ" };
   })();
 
   const onHub = () => {
-    if (!state?.signedIn) return;
-    void run(freeReady ? "free" : "points");
+    if (!state?.signedIn || !mode) return;
+    void run(mode);
   };
 
   // Same shape the route boundary shows, so the hand-over is invisible.
@@ -239,229 +332,206 @@ export function LuckyWheel() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 pt-4 pb-16">
+    // Collection хуудастай ижил өргөн (max-w-352). Утсан дээр нэг багана:
+    // толгой → хүрд → бусад. `lg`-ээс хүрд ба үйлдэл зүүн баганад наалдаж
+    // (sticky), толгой ба мэдээлэл баруун баганад урсана — DOM-ын дараалал
+    // утасных хэвээр, байршлыг grid-ийн мөр/баганаар л заана.
+    <div className="mx-auto max-w-352 px-4 pt-4 pb-16 md:px-8 lg:pt-10">
       <Confetti fire={burst} intense={result?.tier === "grand"} />
 
-      {/* ── Толгой ─────────────────────────────────────────────────── */}
-      <header className="mb-6 text-center">
-        <motion.h1
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="font-serif text-3xl tracking-tight sm:text-4xl"
-        >
-          Азын хүрд
-        </motion.h1>
-        <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm">
-          Найман салбар, бүгд шагналтай. Өдөрт нэг удаа үнэгүй эргүүлж, оноо
-          эсвэл хөнгөлөлтөө шууд аваарай.
-        </p>
-
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-          <StatChip
-            icon={Clock}
-            label="Үнэгүй эргэлт"
-            value={freeReady ? "Бэлэн" : countdown.label}
-          />
-          {state.signedIn && (
-            <StatChip
-              icon={Coins}
-              label="V point"
-              value={state.points.toLocaleString("mn-MN")}
-            />
-          )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={sound.toggle}
-            aria-pressed={sound.on}
-            aria-label={sound.on ? "Дууг унтраах" : "Дууг асаах"}
-            className="rounded-full"
+      <div className="lg:grid lg:grid-cols-2 lg:gap-x-12 xl:gap-x-20">
+        {/* ── Толгой ─────────────────────────────────────────────────── */}
+        <header className="mb-6 text-center lg:col-start-2 lg:row-start-1 lg:mb-10 lg:text-left">
+          <motion.h1
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="font-serif text-3xl tracking-tight sm:text-4xl lg:text-5xl"
           >
-            {sound.on ? (
-              <Volume2 className="size-4" />
-            ) : (
-              <VolumeX className="size-4" />
+            Азын хүрд
+          </motion.h1>
+
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 lg:mt-6 lg:justify-start">
+            <StatChip
+              icon={Clock}
+              label="Үнэгүй эргэлт"
+              value={freeReady ? "Бэлэн" : countdown.label}
+            />
+            {state.signedIn && state.orderSpinStep > 0 && (
+              <StatChip
+                icon={ShoppingBag}
+                label="Захиалгын эрх"
+                value={fmt(orderSpins)}
+              />
             )}
-          </Button>
-        </div>
-      </header>
-
-      {/* ── Хүрд ───────────────────────────────────────────────────── */}
-      <Wheel3D
-        ref={wheelRef}
-        prizes={state.prizes}
-        onSpin={onHub}
-        hubLabel={hub.label}
-        hubHint={hub.hint}
-        busy={busy}
-        disabled={!state.signedIn || (!freeReady && !canPay)}
-        onTick={() => {
-          sound.tick();
-          buzz(4);
-        }}
-      />
-
-      {/* ── Үйлдэл ─────────────────────────────────────────────────── */}
-      <div className="mx-auto mt-8 flex max-w-sm flex-col items-center gap-3">
-        {!state.signedIn ? (
-          <>
-            <Button asChild size="lg" className="w-full">
-              <Link href="/login?next=/lucky-wheel">Нэвтэрч эргүүлэх</Link>
-            </Button>
-            <p className="text-muted-foreground text-center text-xs">
-              Хүрд зөвхөн бүртгэлтэй хэрэглэгчид нээлттэй — шагнал таны данс руу
-              шууд орно.
-            </p>
-          </>
-        ) : freeReady ? (
-          <>
-            <Button
-              size="lg"
-              className="w-full"
-              onClick={() => run("free")}
-              disabled={busy}
-            >
-              Үнэгүй эргүүлэх
-            </Button>
-            {canPay && (
-              <button
-                type="button"
-                onClick={() => run("points")}
-                disabled={busy}
-                className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-4 disabled:opacity-50"
-              >
-                Эсвэл {state.spinCost.toLocaleString("mn-MN")}V-оор дахин
-                эргүүлэх
-              </button>
+            {state.signedIn && (
+              <StatChip
+                icon={VPointIcon}
+                label="V point"
+                value={fmt(state.points)}
+              />
             )}
-          </>
-        ) : (
-          <>
             <Button
-              size="lg"
-              className="w-full"
-              onClick={() => run("points")}
-              disabled={busy || !canPay}
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={sound.toggle}
+              aria-pressed={sound.on}
+              aria-label={sound.on ? "Дууг унтраах" : "Дууг асаах"}
+              className="rounded-full"
             >
-              {state.spinCost.toLocaleString("mn-MN")}V-оор эргүүлэх
+              {sound.on ? (
+                <Volume2 className="size-4" />
+              ) : (
+                <VolumeX className="size-4" />
+              )}
             </Button>
-            <AnimatePresence mode="wait">
-              <motion.p
-                key={countdown.label}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-muted-foreground text-center text-xs tabular-nums"
-              >
-                {canPay
-                  ? `Дараагийн үнэгүй эргэлт ${countdown.label}-ийн дараа`
-                  : `V point хүрэлцэхгүй — үнэгүй эргэлт ${countdown.label}-ийн дараа`}
-              </motion.p>
-            </AnimatePresence>
-          </>
-        )}
-      </div>
-
-      {/* ── Шагналууд ──────────────────────────────────────────────── */}
-      <section className="mt-12">
-        <h2 className="mb-3 text-sm font-semibold tracking-wide uppercase">
-          Хүрдэн дэх шагналууд
-        </h2>
-        <PrizeLegend prizes={state.prizes} />
-      </section>
-
-      {/* ── Хэрхэн ажилладаг ───────────────────────────────────────── */}
-      <section className="mt-10 grid gap-3 sm:grid-cols-3">
-        {STEPS.map((step) => (
-          <div key={step.title} className="bg-card rounded-xl p-4">
-            <step.icon className="text-muted-foreground mb-2 size-5" />
-            <p className="text-sm font-medium">{step.title}</p>
-            <p className="text-muted-foreground mt-1 text-xs/relaxed">
-              {step.body}
-            </p>
           </div>
-        ))}
-      </section>
+        </header>
 
-      {/* ── Дүрэм ──────────────────────────────────────────────────── */}
-      <section className="mt-10">
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="rules">
-            <AccordionTrigger>Дэлгэрэнгүй дүрэм</AccordionTrigger>
-            <AccordionContent>
-              <ul className="text-muted-foreground list-disc space-y-2 pl-4 text-sm">
-                <li>
-                  Үнэгүй эргэлт сүүлийн үнэгүй эргэлтээс {state.freeSpinHours}{" "}
-                  цагийн дараа сэргэнэ.
-                </li>
-                <li>
-                  Нэмэлт эргэлт зөвхөн {state.spinCost.toLocaleString("mn-MN")}
-                  V-оор — өөр аргаар эргэлт нэмэгдэхгүй.
-                </li>
-                <li>
-                  Хүрднээс авсан ашиглагдаагүй купон нэг дор нэг л байна: шинийг
-                  хожвол өмнөх нь солигдоно.
-                </li>
-                <li>
-                  Бүх купон 1 сар хүчинтэй, нэг захиалгад нэг удаа ашиглагдана.
-                </li>
-                <li>
-                  Хувиар хөнгөлөх купонд дээд хязгаар тавигдсан (жишээ нь 10% →
-                  15,000₮).
-                </li>
-                <li>
-                  Хүрднээс сард авах V point-д дээд хязгаар бий; хязгаарт хүрвэл
-                  салбар купон болж хувирна.
-                </li>
-                <li>
-                  2мл таних багц сарын хязгаартай — дууссан үед салбар купон руу
-                  шилжинэ.
-                </li>
-                <li>
-                  Сугалаа сервер тал дээр, нийт эргэлтийн сангаас бодогдоно.
-                </li>
-              </ul>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </section>
+        {/* ── Хүрд + үйлдэл ─────────────────────────────────────────── */}
+        <div className="lg:sticky lg:top-24 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:self-start">
+          <Wheel3D
+            className="lg:max-w-136"
+            ref={wheelRef}
+            prizes={state.prizes}
+            onSpin={onHub}
+            hubLabel={hub.label}
+            hubHint={hub.hint}
+            busy={busy}
+            disabled={!state.signedIn || !mode}
+            onTick={() => {
+              sound.tick();
+              buzz(4);
+            }}
+          />
 
-      {/* ── Түүх ───────────────────────────────────────────────────── */}
-      {state.history.length > 0 && (
-        <section className="mt-10">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold tracking-wide uppercase">
-            <History className="size-4" /> Миний эргэлтүүд
-          </h2>
-          <ul className="divide-muted/60 divide-y">
-            {state.history.map((item) => (
-              <li
-                key={item.id}
-                className="flex items-center justify-between gap-3 py-3"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{item.label}</p>
-                  <p className="text-muted-foreground text-xs">
-                    {formatDateTime(item.createdAt)}
-                    {item.spinType === "paid" && " · пойнтоор"}
-                  </p>
-                </div>
-                {item.couponCode && (
-                  <code
-                    className={cn(
-                      "shrink-0 rounded-md px-2 py-1 text-xs tracking-wider",
-                      item.couponActive
-                        ? "bg-secondary text-foreground"
-                        : "text-muted-foreground/60 line-through",
-                    )}
-                  >
-                    {item.couponCode}
-                  </code>
+          {/* ── Үйлдэл ─────────────────────────────────────────────────── */}
+          <div className="mx-auto mt-8 flex max-w-sm flex-col items-center gap-3">
+            {!state.signedIn ? (
+              <>
+                <Button asChild size="lg" className="w-full">
+                  <Link href="/login?next=/lucky-wheel">Нэвтэрч эргүүлэх</Link>
+                </Button>
+                <p className="text-muted-foreground text-center text-xs">
+                  Хүрд зөвхөн бүртгэлтэй хэрэглэгчид нээлттэй — шагнал таны данс
+                  руу шууд орно.
+                </p>
+              </>
+            ) : mode ? (
+              <>
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onClick={() => run(mode)}
+                  disabled={busy}
+                >
+                  {MODE_LABEL[mode](state)}
+                </Button>
+                {/* The other entitlements stay one tap away — someone holding
+                order credits may still prefer to keep them for later. */}
+                {mode !== "order" && orderSpins > 0 && (
+                  <SecondaryAction onClick={() => run("order")} disabled={busy}>
+                    Эсвэл захиалгын эрхээр ({orderSpins})
+                  </SecondaryAction>
                 )}
-              </li>
+                {mode !== "points" && canPay && (
+                  <SecondaryAction
+                    onClick={() => run("points")}
+                    disabled={busy}
+                  >
+                    Эсвэл {fmt(state.spinCost)}V-оор
+                  </SecondaryAction>
+                )}
+                {!freeReady && (
+                  <p className="text-muted-foreground text-center text-xs tabular-nums">
+                    Дараагийн үнэгүй эргэлт {countdown.label}-ийн дараа
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <Button size="lg" className="w-full" disabled>
+                  {fmt(state.spinCost)}V-оор эргүүлэх
+                </Button>
+                <p className="text-muted-foreground text-center text-xs tabular-nums">
+                  V point хүрэлцэхгүй — үнэгүй эргэлт {countdown.label}-ийн
+                  дараа
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="lg:col-start-2 lg:row-start-2">
+          {/* ── Шагналууд ──────────────────────────────────────────────── */}
+          <section className="mt-12 lg:mt-0">
+            <h2 className="mb-3 text-sm font-semibold tracking-wide uppercase">
+              Хүрдэн дэх шагналууд
+            </h2>
+            <PrizeLegend prizes={state.prizes} />
+          </section>
+
+          {/* ── Хэрхэн ажилладаг ───────────────────────────────────────── */}
+          <section className="mt-10 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+            {steps(state).map((step) => (
+              <div key={step.title} className="bg-card rounded-xl p-4">
+                <step.icon className="text-muted-foreground mb-2 size-5" />
+                <p className="text-sm font-medium">{step.title}</p>
+                <p className="text-muted-foreground mt-1 text-xs/relaxed">
+                  {step.body}
+                </p>
+              </div>
             ))}
-          </ul>
-        </section>
-      )}
+          </section>
+
+          {/* ── Дүрэм ──────────────────────────────────────────────────── */}
+          <section className="mt-10">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="rules">
+                <AccordionTrigger>Дэлгэрэнгүй дүрэм</AccordionTrigger>
+                <AccordionContent>
+                  <ul className="text-muted-foreground list-disc space-y-2 pl-4 text-sm">
+                    <li>
+                      Үнэгүй эргэлт сүүлийн үнэгүй эргэлтээс{" "}
+                      {state.freeSpinHours} цагийн дараа сэргэнэ —
+                      хуримтлагдахгүй.
+                    </li>
+                    {state.orderSpinStep > 0 && (
+                      <li>
+                        Төлөгдсөн захиалгын {fmt(state.orderSpinStep)}₮ тутамд
+                        нэг эрх (хүргэлт ороогүй, купоны хөнгөлөлтийг хассан
+                        дүнгээр). Захиалга цуцлагдвал ашиглаагүй эрх нь хүчингүй
+                        болно.
+                      </li>
+                    )}
+                    {state.spinCost > 0 && (
+                      <li>
+                        {fmt(state.spinCost)}V-оор нэмэлт эргэлт авч болно.
+                      </li>
+                    )}
+                    <li>
+                      Бүх купон 1 сар хүчинтэй, нэг захиалгад нэг удаа
+                      ашиглагдана. Хожсон купонууд хуримтлагдана.
+                    </li>
+                    <li>
+                      Мөнгөн дүнтэй купон (5,000₮, 10,000₮) 100,000₮-с дээш
+                      захиалгад хэрэглэгдэнэ.
+                    </li>
+                    <li>V point шууд таны дансанд орж, зарцуулах боломжтой.</li>
+                  </ul>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </section>
+
+          {/* ── Түүх ───────────────────────────────────────────────────── */}
+          <SpinHistory
+            items={state.history}
+            hasMore={state.hasMoreHistory}
+            className="mt-10"
+          />
+        </div>
+      </div>
 
       <PrizeReveal
         result={result}

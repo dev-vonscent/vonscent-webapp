@@ -6,6 +6,8 @@ import { callRpc } from "@/lib/supabase/rpc";
 import type { CouponRow, SpinWheelSpinRow } from "@/db/types";
 import type {
   SpinHistoryItem,
+  SpinHistoryPage,
+  SpinMode,
   SpinOutcome,
   WheelPrize,
   WheelState,
@@ -17,14 +19,20 @@ const OFFLINE_STATE: WheelState = {
   prizes: [],
   spinCost: 0,
   freeSpinHours: 24,
+  orderSpinStep: 0,
+  orderSpins: 0,
   points: 0,
   nextFreeAt: null,
   freeReady: false,
   signedIn: false,
   history: [],
+  hasMoreHistory: false,
 };
 
-const HISTORY_LIMIT = 12;
+/** Spins shown on the page itself; the rest open in the history dialog. */
+const HISTORY_PREVIEW = 5;
+/** Page size of the full history. */
+export const HISTORY_PAGE = 30;
 
 /** The signed-in customer, or null. Never trust an id sent by the client. */
 async function currentUserId(): Promise<string | null> {
@@ -36,20 +44,24 @@ async function currentUserId(): Promise<string | null> {
   return user?.id ?? null;
 }
 
+/** `limit` rows from `offset`, newest first (id breaks same-instant ties). */
 async function readHistory(
   supabase: NonNullable<ReturnType<typeof createAdminClient>>,
   userId: string,
+  offset: number,
+  limit: number,
 ): Promise<SpinHistoryItem[]> {
   const { data } = await supabase
     .from("spin_wheel_spins")
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(HISTORY_LIMIT);
+    .order("id", { ascending: false })
+    .range(offset, offset + limit - 1);
   const rows = (data as SpinWheelSpinRow[] | null) ?? [];
 
-  // Coupon codes come from a second read rather than an embedded join: the
-  // history is capped at a dozen rows, and this stays independent of how
+  // Coupon codes come from a second read rather than an embedded join: a
+  // page is at most HISTORY_PAGE rows, and this stays independent of how
   // PostgREST happens to name the coupons relationship.
   const couponIds = rows
     .map((r) => r.coupon_id)
@@ -104,19 +116,46 @@ export async function getWheelState(): Promise<WheelState> {
   );
   if (error || !data) return OFFLINE_STATE;
 
+  // One row past the preview tells whether the "see all" button has anything
+  // to show, without a separate count query.
+  const recent = userId
+    ? await readHistory(supabase, userId, 0, HISTORY_PREVIEW + 1)
+    : [];
   return {
     ...data,
     prizes: (data.prizes ?? []) as WheelPrize[],
-    history: userId ? await readHistory(supabase, userId) : [],
+    history: recent.slice(0, HISTORY_PREVIEW),
+    hasMoreHistory: recent.length > HISTORY_PREVIEW,
   };
 }
 
 /**
- * One spin. Entitlement, the weighted draw, the monthly caps and the award all
- * happen inside `spin_wheel()` under a row lock — this function only decides
- * *who* is spinning (docs/lucky-wheel.md §6: the odds never reach the client).
+ * One page of the signed-in customer's full spin history, or null for a
+ * guest. Fetches a row past the page to know whether another one follows.
  */
-export async function spinWheel(paid: boolean): Promise<SpinOutcome> {
+export async function getSpinHistory(
+  offset: number,
+): Promise<SpinHistoryPage | null> {
+  if (!isSupabaseConfigured) return { items: [], nextOffset: null };
+  const supabase = createAdminClient();
+  if (!supabase) return { items: [], nextOffset: null };
+
+  const userId = await currentUserId();
+  if (!userId) return null;
+
+  const rows = await readHistory(supabase, userId, offset, HISTORY_PAGE + 1);
+  return {
+    items: rows.slice(0, HISTORY_PAGE),
+    nextOffset: rows.length > HISTORY_PAGE ? offset + HISTORY_PAGE : null,
+  };
+}
+
+/**
+ * One spin. Entitlement (free / order credit / points), the weighted draw and
+ * the award all happen inside `spin_wheel()` under a row lock — this function
+ * only decides *who* is spinning (docs/lucky-wheel.md §6: the odds never reach the client).
+ */
+export async function spinWheel(mode: SpinMode): Promise<SpinOutcome> {
   if (!isSupabaseConfigured) return { ok: false, reason: "NO_DB" };
   const supabase = createAdminClient();
   if (!supabase) return { ok: false, reason: "NO_DB" };
@@ -126,7 +165,7 @@ export async function spinWheel(paid: boolean): Promise<SpinOutcome> {
 
   const { data, error } = await callRpc<SpinOutcome>(supabase, "spin_wheel", {
     p_user: userId,
-    p_paid: paid,
+    p_mode: mode,
   });
   if (error || !data) return { ok: false, reason: "NO_DB" };
   return data;
