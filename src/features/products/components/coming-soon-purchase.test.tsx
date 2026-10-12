@@ -59,7 +59,10 @@ describe("ComingSoonPurchase", () => {
     expect(screen.queryByText("20ml")).toBeNull();
   });
 
-  const ALWAYS = "Ирмэгц энэ хуудаснаас шууд захиалах боломжтой болно.";
+  const WITH_NOTE =
+    "Худалдаанд гармагц та энэ хуудаснаас шууд захиалах боломжтой.";
+  const NO_NOTE =
+    "Энэхүү үнэртэн тун удахгүй худалдаанд гарна. Бэлэн болмогц та энэ хуудаснаас шууд захиалах боломжтой.";
 
   it("note-ийг тусдаа мөрөнд бүтнээр нь, юу ч залгахгүй", () => {
     render(
@@ -70,10 +73,9 @@ describe("ComingSoonPurchase", () => {
     // Тусдаа элемент — текст нь яг note-оор дуусна.
     const note = screen.getByText("10-р сарын сүүлээр");
     expect(note.textContent).toBe("10-р сарын сүүлээр");
-    expect(screen.queryByText(/худалдаанд гарна/)).toBeNull();
-    expect(screen.queryByText(/удахгүй авчирна/)).toBeNull();
+    expect(screen.queryByText(/тун удахгүй худалдаанд гарна/)).toBeNull();
     // Захиалах боломжийн өгүүлбэр note-той үед ч гарна, өөр мөрөнд.
-    const always = screen.getByText(ALWAYS);
+    const always = screen.getByText(WITH_NOTE);
     expect(always).not.toBe(note);
   });
 
@@ -84,20 +86,16 @@ describe("ComingSoonPurchase", () => {
       />,
     );
     expect(screen.getByText("25-нд ирнэ.").textContent).toBe("25-нд ирнэ.");
-    expect(screen.getByText(ALWAYS)).toBeTruthy();
+    expect(screen.getByText(WITH_NOTE)).toBeTruthy();
   });
 
   it("хугацаагүй бол ерөнхий мэдээ", () => {
     render(<ComingSoonPurchase product={product()} />);
-    expect(
-      screen.getByText(`Бид энэ усыг удахгүй авчирна. ${ALWAYS}`),
-    ).toBeTruthy();
+    expect(screen.getByText(NO_NOTE)).toBeTruthy();
   });
 
   it("хоосон note-ийг ерөнхий мэдээгээр орлоно", () => {
     render(<ComingSoonPurchase product={product({ comingSoonNote: "" })} />);
-    expect(
-      screen.getByText(`Бид энэ усыг удахгүй авчирна. ${ALWAYS}`),
-    ).toBeTruthy();
+    expect(screen.getByText(NO_NOTE)).toBeTruthy();
   });
 });
