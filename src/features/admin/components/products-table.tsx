@@ -105,6 +105,7 @@ const columns: ColumnDef<AdminProduct, unknown>[] = [
           availableMl={row.original.availableMl}
           lowStockMl={row.original.lowStockMl}
           isActive={row.original.isActive}
+          status={row.original.status}
         />
         <BottleLockNote product={row.original} />
       </div>
@@ -190,6 +191,7 @@ export function ProductsTable({ data }: { data: AdminProduct[] }) {
                 availableMl={p.availableMl}
                 lowStockMl={p.lowStockMl}
                 isActive={p.isActive}
+                status={p.status}
               />
               <BottleLockNote product={p} />
             </div>

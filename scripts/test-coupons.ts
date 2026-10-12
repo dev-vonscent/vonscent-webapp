@@ -52,6 +52,9 @@ async function loadFixture(c: Client): Promise<Fixture> {
       join products p on p.id = i.product_id
       join product_variants pv on pv.product_id = p.id
      where i.on_hand_ml - i.reserved_ml >= 100
+       -- place_order нь худалдаанд байгаа бараа, идэвхтэй хэмжээг л авна (0125).
+       and p.is_active
+       and pv.is_active
        and variant_price(pv.*) > 0
        and (p.gender is null or bottle_active(p.gender, pv.ml))
      order by i.product_id, pv.ml

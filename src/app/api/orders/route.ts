@@ -276,6 +276,19 @@ export async function POST(req: Request) {
       // Савны түгжээ (0095) — сүүлийн шатны хамгаалалт. Энэ хүртэл ирнэ гэдэг
       // нь сагс хуучирсан, эсвэл захиалга явж байх зуур админ хаасан гэсэн үг.
       const bottle = error.message?.includes("BOTTLE_UNAVAILABLE");
+      // Мөрийн шалгалт (0125): бараа/хэмжээ худалдаанаас хасагдсан, эсвэл
+      // «Тун удахгүй» болсон — computeSummary шалгасны дараа админ сольсон.
+      // Хариу нь дээрх ItemsUnavailableError-тай ижил, клиент мөрийг хасна.
+      const unavailable = /ITEMS_UNAVAILABLE:(\S*)/.exec(error.message ?? "");
+      if (unavailable) {
+        return NextResponse.json(
+          {
+            error: "ITEMS_UNAVAILABLE",
+            variantIds: unavailable[1] ? [unavailable[1]] : [],
+          },
+          { status: 409 },
+        );
+      }
       if (bottle) {
         return NextResponse.json(
           { error: "BOTTLE_UNAVAILABLE" },

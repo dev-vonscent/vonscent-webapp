@@ -4,7 +4,7 @@ import * as React from "react";
 import { InfoTip } from "@/components/shared/info-tip";
 import { fieldErrorClass } from "@/components/ui/form-field";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Minus, PackageCheck, Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Field } from "@/components/ui/field";
@@ -30,7 +30,7 @@ import {
   SILLAGE_LABEL,
   SILLAGE_HINT,
 } from "@/lib/constants";
-import type { Sillage } from "@/lib/constants";
+import type { ProductStatus, Sillage } from "@/lib/constants";
 import { useConfirm } from "@/components/shared/confirm-dialog";
 import { toast } from "@/lib/toast";
 import {
@@ -51,6 +51,9 @@ import { NoteTranslationPanel } from "./note-translation-panel";
 import { BrandSelect } from "./brand-select";
 import { ConcentrationSelect } from "./concentration-select";
 import { StockAdjustDialog, type StockMode } from "./stock-adjust-dialog";
+import { ProductStatusPicker } from "./product-status-picker";
+import { useLaunchProduct } from "./use-launch-product";
+import { isReadyToLaunch } from "@/features/admin/lib/product-status";
 import type { AdminProduct } from "@/features/admin/api";
 import type { CustomTagOption } from "@/features/taxonomy/api";
 import type {
@@ -136,8 +139,12 @@ export function ProductEditForm({
     }),
   );
   const [customTags, rawToggleCustomTag] = useToggleList(product.customTags);
-  const [isActive, setIsActive] = React.useState(product.isActive);
+  const [status, setStatus] = React.useState<ProductStatus>(product.status);
+  const [comingSoonNote, setComingSoonNote] = React.useState(
+    product.comingSoonNote ?? "",
+  );
   const [isFeatured, setIsFeatured] = React.useState(product.isFeatured);
+  const { launch, launching } = useLaunchProduct();
   const [stockMode, setStockMode] = React.useState<StockMode | null>(null);
 
   useUnsavedGuard(dirty);
@@ -233,7 +240,10 @@ export function ProductEditForm({
           bottlePrice: Number(form.bottlePrice),
           lowStockMl: Number(form.lowStockMl),
           variants,
-          isActive,
+          // Зөвхөн сольсон үед: хадгалах бүрт илгээвэл энэ хооронд өөр
+          // дэлгэцээс гаргасан барааг хуучин төлөвөөр нь буцааж дарна.
+          ...(status !== product.status && { status }),
+          ...(status === "coming_soon" && { comingSoonNote }),
           isFeatured,
           customTags,
         }),
@@ -243,9 +253,11 @@ export function ProductEditForm({
         // Repricing is the highest-stakes thing this form does and it used to
         // complete in silence, on a list whose filters had been reset.
         toast.success(
-          isActive
+          status === "active"
             ? `«${form.name}» хадгалагдлаа. Шинэ үнэ сайтад шууд харагдана.`
-            : `«${form.name}» хадгалагдлаа. Бараа сайтад харагдахгүй байна.`,
+            : status === "coming_soon"
+              ? `«${form.name}» хадгалагдлаа. Сайтад «Тун удахгүй» гэж харагдана, захиалах боломжгүй.`
+              : `«${form.name}» хадгалагдлаа. Бараа сайтад харагдахгүй байна.`,
         );
         // `refresh()` нь `push()`-ээс ӨМНӨ: `staleTimes.dynamic` (next.config.ts)
         // client router cache-ийг 30 секунд санадаг тул үүнгүйгээр оператор
@@ -293,9 +305,42 @@ export function ProductEditForm({
     }
   }
 
+  /**
+   * Ус ирээд үлдэгдэл нэмсэн ч «Тун удахгүй» хэвээр — гаргахад бэлэн. Хуудасны
+   * хамгийн дээр: нөөц нэмэх үеийн асуултад «Дараа» дарсныг энд л сануулна.
+   */
+  const ready = isReadyToLaunch({
+    status: product.status,
+    availableMl: product.availableMl,
+  });
+
+  async function launchNow() {
+    if (await launch(product.id, product.name)) {
+      // Дэлгэцийн сонголт ч дагана — үгүй бол дараагийн «Хадгалах» нь
+      // хуучин «Тун удахгүй»-г илгээж, сервер ALREADY_LAUNCHED гэж татгалзана.
+      setStatus("active");
+    }
+  }
+
   return (
     <form onSubmit={save} noValidate className="space-y-6">
       {confirmDialog}
+      {ready && status === "coming_soon" && (
+        <div className="bg-success/10 flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3">
+          <p className="flex items-center gap-2 text-sm">
+            <PackageCheck className="text-success size-4 shrink-0" />
+            {product.availableMl}ml үлдэгдэлтэй — худалдаанд гаргахад бэлэн.
+          </p>
+          <LoadingButton
+            type="button"
+            size="sm"
+            loading={launching}
+            onClick={() => void launchNow()}
+          >
+            Худалдаанд гаргах
+          </LoadingButton>
+        </div>
+      )}
       {/* The picture leads: it is the one part of a product an operator comes
           back to edit on its own, and the AI controls belong beside the gallery
           they feed rather than in a dialog on another screen. */}
@@ -534,6 +579,11 @@ export function ProductEditForm({
               productLabel={`${product.brand} — ${product.name}`}
               onHandMl={product.onHandMl}
               reservedMl={product.reservedMl}
+              productName={product.name}
+              comingSoon={
+                status === "coming_soon" && product.status === "coming_soon"
+              }
+              onLaunched={() => setStatus("active")}
             />
           )}
         </CardContent>
@@ -544,11 +594,25 @@ export function ProductEditForm({
           <div className="flex items-center gap-1.5">
             <h2 className="font-serif text-lg font-semibold">Таг ба төлөв</h2>
             <InfoTip label="Тагийн тайлбар">
-              Тагийг гараар тавихгүй, өөрөө шинэчлэгдэнэ: хамгийн сүүлд нэмсэн
-              12 ус «Шинэ», хамгийн их зарагдсан 12 ус «Эрэлттэй», аль нэг
-              хэмжээндээ хямдралын үнэтэй ус «Хямдрал» болно.
+              Тагийг гараар тавихгүй, өөрөө шинэчлэгдэнэ: хамгийн сүүлд
+              худалдаанд гарсан 12 ус «Шинэ», хамгийн их зарагдсан 12 ус
+              «Эрэлттэй», аль нэг хэмжээндээ хямдралын үнэтэй ус «Хямдрал»
+              болно.
             </InfoTip>
           </div>
+          <ProductStatusPicker
+            value={status}
+            onChange={(v) => {
+              setDirty(true);
+              setStatus(v);
+            }}
+            launchedAt={product.launchedAt}
+            note={comingSoonNote}
+            onNoteChange={(v) => {
+              setDirty(true);
+              setComingSoonNote(v);
+            }}
+          />
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox
               checked={isFeatured}
@@ -558,16 +622,6 @@ export function ProductEditForm({
               }}
             />
             <span>Онцлох бараа</span>
-          </label>
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <Checkbox
-              checked={isActive}
-              onCheckedChange={(v) => {
-                setDirty(true);
-                setIsActive(Boolean(v));
-              }}
-            />
-            Идэвхтэй (нийтлэх)
           </label>
           <CustomTagField
             pool={customTagPool}

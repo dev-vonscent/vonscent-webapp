@@ -4,7 +4,7 @@ import { getStaffUser } from "@/lib/auth/guard";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminProducts } from "@/features/admin/api";
 import { ubDateKey, ubIso, ubIsoEnd } from "@/features/admin/lib/date-range";
-import { QPAY_FEE_PCT } from "@/lib/constants";
+import { PRODUCT_STATUS_LABEL, QPAY_FEE_PCT } from "@/lib/constants";
 
 /** `admin_report_events`-ийн мөр (0111) — борлуулалт (+) ба буцаалт (−). */
 interface EventRow {
@@ -81,13 +81,14 @@ export async function GET(req: Request) {
   } else if (type === "inventory") {
     const products = await getAdminProducts();
     rows = [
-      ["Брэнд", "Нэр", "Үлдэгдэл (ml)", "Доод хязгаар", "Идэвхтэй"],
+      ["Брэнд", "Нэр", "Үлдэгдэл (ml)", "Доод хязгаар", "Төлөв"],
       ...products.map((p) => [
         p.brand,
         p.name,
         p.availableMl,
         p.lowStockMl,
-        p.isActive ? "Тийм" : "Үгүй",
+        // Нуусан / Тун удахгүй / Идэвхтэй (0125) — «Тийм/Үгүй» гурвыг ялгахгүй.
+        PRODUCT_STATUS_LABEL[p.status],
       ]),
     ];
   } else {

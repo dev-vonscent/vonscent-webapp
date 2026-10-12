@@ -34,6 +34,7 @@ import { ProductImageStudio } from "./product-image-studio";
 import { BottleStylePicker } from "./bottle-style-picker";
 import { BrandSelect } from "./brand-select";
 import { ConcentrationSelect } from "./concentration-select";
+import { ProductStatusPicker } from "./product-status-picker";
 import {
   GENDERS,
   GENDER_LABEL,
@@ -44,8 +45,9 @@ import {
   SILLAGE_LABEL,
   SILLAGE_HINT,
   DEFAULT_LOW_STOCK_ML,
+  PRODUCT_STATUS_LABEL,
 } from "@/lib/constants";
-import type { BottleStyle, Sillage } from "@/lib/constants";
+import type { BottleStyle, ProductStatus, Sillage } from "@/lib/constants";
 import type {
   BrandOption,
   ConcentrationOption,
@@ -109,7 +111,8 @@ export function ProductForm({
   const [variants, setVariants] = React.useState<VariantDraft[]>(emptyVariants);
   const [showVariantErrors, setShowVariantErrors] = React.useState(false);
   const [customTags, toggleCustomTag] = useToggleList([]);
-  const [isActive, setIsActive] = React.useState(true);
+  const [status, setStatus] = React.useState<ProductStatus>("active");
+  const [comingSoonNote, setComingSoonNote] = React.useState("");
   const [isFeatured, setIsFeatured] = React.useState(false);
   const [scentFamilies, toggleFamily] = useToggleList([]);
   const [seasons, toggleSeason] = useToggleList(["all"], { exclusive: "all" });
@@ -180,7 +183,8 @@ export function ProductForm({
         seasons,
         variants,
         customTags,
-        isActive,
+        status,
+        comingSoonNote: status === "coming_soon" ? comingSoonNote : null,
         isFeatured,
         referenceUrl,
         generateImage: Boolean(referenceUrl),
@@ -207,16 +211,26 @@ export function ProductForm({
           .map((s) => s.trim())
           .filter(Boolean),
       };
-      const res = await adminFetch("/api/admin/products", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await adminFetch<{ status?: ProductStatus }>(
+        "/api/admin/products",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
       if (res.ok) {
+        // Сервер бодит төлөвийг буцаана — AI зураг хүлээж буй бараа сонголтоос
+        // үл хамааран нуугдана, тэр тохиолдолд админд хэлэх ёстой.
+        const saved = res.data?.status ?? status;
         toast.success(
-          referenceUrl && images.length === 0
-            ? `«${form.name}» нэмэгдлээ. Зураг бэлэн болтол бараа нуугдсан хэвээр байна.`
-            : `«${form.name}» нэмэгдлээ.`,
+          saved === "hidden" && status !== "hidden"
+            ? referenceUrl && images.length === 0
+              ? `«${form.name}» нэмэгдлээ. Зураг бэлэн болоогүй тул «Нуусан» төлөвөөр хадгаллаа — зураг гарсны дараа засах хуудаснаас «${PRODUCT_STATUS_LABEL[status]}» болгоно уу.`
+              : `«${form.name}» нэмэгдсэн ч «Нуусан» төлөвтэй үлдлээ — засах хуудаснаас төлөвийг нь дахин сонгоно уу.`
+            : saved === "coming_soon"
+              ? `«${form.name}» нэмэгдлээ. Сайтад «Тун удахгүй» гэж харагдана, захиалах боломжгүй.`
+              : `«${form.name}» нэмэгдлээ.`,
         );
         // `refresh()` нь `push()`-ээс ӨМНӨ байх ёстой. `staleTimes.dynamic`
         // (next.config.ts) нь client router cache-ийг 30 секунд санадаг тул
@@ -428,7 +442,14 @@ export function ProductForm({
                 onChange={(e) => set("bottlePrice", e.target.value)}
               />
             </Field>
-            <Field label="Эх савны үлдэгдэл (ml)">
+            <Field
+              label="Эх савны үлдэгдэл (ml)"
+              hint={
+                status === "coming_soon"
+                  ? "Ус хараахан ирээгүй бол 0. Ирэхэд нь «Нөөц нэмэх»-ээр бүртгэвэл худалдаанд гаргах эсэхийг асууна."
+                  : undefined
+              }
+            >
               <Input
                 type="number"
                 value={form.onHandMl}
@@ -451,11 +472,18 @@ export function ProductForm({
           <div className="flex items-center gap-1.5">
             <h2 className="font-serif text-lg font-semibold">Таг ба төлөв</h2>
             <InfoTip label="Тагийн тайлбар">
-              Тагийг гараар тавихгүй, өөрөө шинэчлэгдэнэ: хамгийн сүүлд нэмсэн
-              12 ус «Шинэ», хамгийн их зарагдсан 12 ус «Эрэлттэй», аль нэг
-              хэмжээндээ хямдралын үнэтэй ус «Хямдрал» болно.
+              Тагийг гараар тавихгүй, өөрөө шинэчлэгдэнэ: хамгийн сүүлд
+              худалдаанд гарсан 12 ус «Шинэ», хамгийн их зарагдсан 12 ус
+              «Эрэлттэй», аль нэг хэмжээндээ хямдралын үнэтэй ус «Хямдрал»
+              болно.
             </InfoTip>
           </div>
+          <ProductStatusPicker
+            value={status}
+            onChange={setStatus}
+            note={comingSoonNote}
+            onNoteChange={setComingSoonNote}
+          />
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox
               checked={isFeatured}
@@ -464,13 +492,6 @@ export function ProductForm({
               }}
             />
             <span>Онцлох бараа</span>
-          </label>
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <Checkbox
-              checked={isActive}
-              onCheckedChange={(v) => setIsActive(Boolean(v))}
-            />
-            Идэвхтэй (нийтлэх)
           </label>
           <CustomTagField
             pool={customTagPool}

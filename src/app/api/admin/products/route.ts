@@ -13,6 +13,7 @@ import {
 } from "@/features/taxonomy/api";
 import { runNewProductImages } from "@/lib/ai/new-product-pipeline";
 import { addBottleImage } from "@/features/admin/bottle-image";
+import type { ProductStatus } from "@/lib/constants";
 
 function slugify(name: string, brand: string) {
   return `${brand}-${name}`
@@ -103,18 +104,24 @@ export async function POST(req: Request) {
     input.generateImage && isImageGenConfigured && Boolean(referenceImageUrl);
 
   // A product whose only picture is still being generated has nothing to show,
-  // so it starts hidden however the form's checkbox was left. One that already
-  // carries uploaded gallery images publishes on the admin's word.
-  const startsActive =
-    aiMode && hostedImages.length === 0 ? false : input.isActive;
+  // so it ends up hidden however the form's status was set — «Тун удахгүй» is
+  // just as public as «Идэвхтэй». One that already carries uploaded gallery
+  // images publishes on the admin's word.
+  const finalStatus: ProductStatus =
+    aiMode && hostedImages.length === 0 ? "hidden" : input.status;
 
+  // Always born hidden: a coming-soon or active row is public the moment it
+  // lands (RLS, 0125), and until its sizes, gallery and stock rows exist the
+  // shop would show a card with no price and no picture. The requested status
+  // is applied at the very end, once everything below has succeeded.
   const { data: product, error: pErr } = await supabase
     .from("products")
     .insert({
       ...base,
       scent_families: families,
       seasons: input.seasons,
-      is_active: startsActive,
+      status: "hidden",
+      coming_soon_note: input.comingSoonNote,
       is_featured: input.isFeatured,
       reference_image_url: referenceImageUrl,
     })
@@ -126,6 +133,21 @@ export async function POST(req: Request) {
   }
   const productId = (product as { id: string }).id;
 
+  /**
+   * A half-built product is worse than none: the admin would retry and end up
+   * with two. The row is still hidden here, so removing it (variants, images
+   * and stock cascade) leaves the catalogue exactly as it was.
+   */
+  const abort = async (what: string) => {
+    await supabase.from("products").delete().eq("id", productId);
+    return NextResponse.json(
+      {
+        error: `${what} хадгалагдсангүй тул бараа үүссэнгүй. Дахин оролдоно уу.`,
+      },
+      { status: 500 },
+    );
+  };
+
   // Variants: the admin priced each size by hand, so store the figure as-is.
   // `sale_price` нь тухайн хэмжээний бодит хямдрал (0054) — хоосон бол null.
   const variants = input.variants.map((v) => ({
@@ -136,12 +158,15 @@ export async function POST(req: Request) {
     is_active: v.active,
   }));
 
-  await supabase.from("product_variants").insert(variants);
+  const { error: vErr } = await supabase
+    .from("product_variants")
+    .insert(variants);
+  if (vErr) return abort("Хэмжээ, үнэ");
 
   // Gallery images are the gallery, always — the AI reference is a separate
   // field now, so the two no longer compete for the same uploads.
   if (hostedImages.length) {
-    await supabase.from("product_images").insert(
+    const { error: iErr } = await supabase.from("product_images").insert(
       hostedImages.map((img, i) => ({
         product_id: productId,
         url: img.url,
@@ -150,7 +175,15 @@ export async function POST(req: Request) {
         is_visible: img.visible,
       })),
     );
+    if (iErr) return abort("Зураг");
   }
+
+  const { error: invErr } = await supabase.from("inventory").insert({
+    product_id: productId,
+    on_hand_ml: input.onHandMl,
+    low_stock_ml: input.lowStockMl,
+  });
+  if (invErr) return abort("Үлдэгдэл");
 
   if (aiMode) {
     // Two pictures from the one uploaded bottle: the catalogue packshot, then
@@ -161,19 +194,19 @@ export async function POST(req: Request) {
     after(async () => {
       await runNewProductImages(productId, referenceImageUrl!);
       if (input.bottleStyle) {
-        await addBottleImage(supabase, productId, slug, input.bottleStyle, "third");
+        await addBottleImage(
+          supabase,
+          productId,
+          slug,
+          input.bottleStyle,
+          "third",
+        );
       }
     });
   } else if (input.bottleStyle) {
     // Гараар оруулсан зургууд эхэлж, савны зураг хамгийн ард.
     await addBottleImage(supabase, productId, slug, input.bottleStyle, "end");
   }
-
-  await supabase.from("inventory").insert({
-    product_id: productId,
-    on_hand_ml: input.onHandMl,
-    low_stock_ml: input.lowStockMl,
-  });
 
   // Шинэ / Эрэлттэй / Хямдрал тагийг DB өөрөө тавина (0100, 0101, 0103).
 
@@ -191,6 +224,20 @@ export async function POST(req: Request) {
     if (links.length) await supabase.from("product_custom_tags").insert(links);
   }
 
+  // Everything the shop shows is in place — now publish as asked. A failure
+  // here leaves a complete product that is merely still hidden, so it is
+  // reported as such rather than rolled back.
+  let status: ProductStatus = "hidden";
+  if (finalStatus !== "hidden") {
+    const { error: sErr } = await supabase
+      .from("products")
+      .update({ status: finalStatus })
+      .eq("id", productId);
+    if (!sErr) status = finalStatus;
+  }
+
   revalidatePublic();
-  return NextResponse.json({ ok: true, id: productId, slug });
+  // `status` is what the product actually is now — the form tells the admin
+  // when that differs from what they picked (AI images pending, publish failed).
+  return NextResponse.json({ ok: true, id: productId, slug, status });
 }

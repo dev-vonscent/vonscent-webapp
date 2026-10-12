@@ -78,6 +78,8 @@ interface DbProduct {
   rating_count: number;
   is_featured: boolean | null;
   created_at: string;
+  /** Анх худалдаанд гарсан мөч (0125); «Тун удахгүй» бараанд null. */
+  launched_at: string | null;
   product_images: DbImage[];
   product_variants: DbVariant[];
   inventory: DbInventory | DbInventory[] | null;
@@ -95,7 +97,7 @@ const SELECT = `
   notes_top, notes_heart, notes_base,
   gender, concentration, sillage, longevity, scent_families, seasons,
   origin_country, release_year, bottle_ml,
-  rating_avg, rating_count, is_featured, created_at,
+  rating_avg, rating_count, is_featured, created_at, launched_at,
   product_images ( url, alt, sort_order, is_visible ),
   product_variants ( id, ml, price, sale_price, is_active ),
   inventory ( on_hand_ml, reserved_ml, is_sold_out ),
@@ -188,7 +190,10 @@ function mapProduct(
     soldOut: sellable.length === 0,
     ratingAvg: row.rating_avg,
     ratingCount: row.rating_count,
-    createdAt: row.created_at,
+    // «Шинэ» эрэмбийн огноо = худалдаанд гарсан мөч (0125) — `catalog_items`-
+    // ийн `created_at`-тай ижил дүрэм. Урьдчилан оруулсан ус гарахдаа
+    // жагсаалтын эхэнд орно.
+    createdAt: row.launched_at ?? row.created_at,
     description: row.description,
     notesDescription: row.notes_description ?? "",
     usageDescription: row.usage_description ?? "",

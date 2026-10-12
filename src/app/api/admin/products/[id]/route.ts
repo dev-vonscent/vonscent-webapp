@@ -10,6 +10,7 @@ import {
   sanitizeCustomTags,
   sanitizeFamilies,
 } from "@/features/taxonomy/api";
+import { statusConflict } from "@/features/admin/lib/product-status";
 
 async function guard() {
   if (!isSupabaseConfigured) return { demo: true as const };
@@ -81,7 +82,11 @@ export async function PATCH(
     productUpdate.origin_country = input.originCountry;
   if (input.releaseYear !== undefined)
     productUpdate.release_year = input.releaseYear;
-  if (input.isActive !== undefined) productUpdate.is_active = input.isActive;
+  // Зөвхөн `status`-ийг бичнэ — `is_active`-ийг DB-ийн trigger дагуулна
+  // (0125). Хоёуланг нь илгээвэл зөрөх эрсдэлтэй.
+  if (input.status !== undefined) productUpdate.status = input.status;
+  if (input.comingSoonNote !== undefined)
+    productUpdate.coming_soon_note = input.comingSoonNote;
   if (input.isFeatured !== undefined)
     productUpdate.is_featured = input.isFeatured;
   if (input.bottlePrice !== undefined)
@@ -94,6 +99,10 @@ export async function PATCH(
       .eq("id", id);
 
     if (error) {
+      // Нэг удаа гарсан барааг «Тун удахгүй» болгох гэх мэт дүрмийн зөрчил
+      // (0125) — сервер биш, хүсэлт буруу: админд шалтгааныг нь хэлнэ.
+      const conflict = statusConflict(error.message);
+      if (conflict) return NextResponse.json(conflict, { status: 409 });
       return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
     }
   }
