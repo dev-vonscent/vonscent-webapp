@@ -12,6 +12,11 @@ let productError: { message: string } | null = null;
 let variantError: { message: string } | null = null;
 /** Мөр огт байхгүй (буруу id). */
 let missing = false;
+/** Харагдах зургийн тоо (`hasVisibleImage`). */
+let imageCount = 1;
+/** `inventory.update().select()`-ийн үр дүн. */
+let inventoryRows: unknown[] = [{ product_id: "p1" }];
+let inventoryError: { message: string } | null = null;
 const productUpdates: Record<string, unknown>[] = [];
 const variantUpserts: unknown[] = [];
 
@@ -33,7 +38,7 @@ function productsTable() {
     select: () => ({
       eq: () => ({
         maybeSingle: async () => ({
-          data: missing ? null : { id: "p1" },
+          data: missing ? null : { id: "p1", status: currentStatus },
           error: null,
         }),
       }),
@@ -73,7 +78,28 @@ vi.mock("@/lib/supabase/admin", () => ({
           },
         };
       }
-      // inventory
+      if (table === "product_images") {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: async () => ({ count: imageCount, error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === "inventory") {
+        return {
+          update: () => ({
+            eq: () => ({
+              select: async () => ({
+                data: inventoryError ? null : inventoryRows,
+                error: inventoryError,
+              }),
+            }),
+          }),
+        };
+      }
+      // custom tags
       return { update: () => ({ eq: async () => ({ error: null }) }) };
     },
   }),
@@ -102,6 +128,9 @@ beforeEach(() => {
   productError = null;
   variantError = null;
   missing = false;
+  imageCount = 1;
+  inventoryRows = [{ product_id: "p1" }];
+  inventoryError = null;
   productUpdates.length = 0;
   variantUpserts.length = 0;
 });
@@ -179,5 +208,58 @@ describe("PATCH /api/admin/products/[id] — хэмжээний үнэ", () => {
     const res = await patch({ variants: VARIANTS });
     expect(res.status).toBe(200);
     expect(variantUpserts).toHaveLength(2);
+  });
+});
+
+describe("PATCH /api/admin/products/[id] — зураггүй нийтлэх", () => {
+  it("нуусан, зураггүй барааг «Идэвхтэй» болгохгүй — 409 NO_IMAGE", async () => {
+    currentStatus = "hidden";
+    imageCount = 0;
+    const res = await patch({ status: "active" });
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe("NO_IMAGE");
+    expect(productUpdates).toHaveLength(0);
+  });
+
+  it("зураггүй барааг «Тун удахгүй» болгохгүй", async () => {
+    currentStatus = "hidden";
+    imageCount = 0;
+    const res = await patch({ status: "coming_soon" });
+    expect(res.status).toBe(409);
+  });
+
+  it("аль хэдийн идэвхтэй, зураггүй барааны засварыг түгжихгүй", async () => {
+    currentStatus = "active";
+    imageCount = 0;
+    const res = await patch({ status: "active", name: "Шинэ нэр" });
+    expect(res.status).toBe(200);
+  });
+
+  it("зураггүй барааг нуух нь хэвийн", async () => {
+    currentStatus = "active";
+    imageCount = 0;
+    const res = await patch({ status: "hidden" });
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("PATCH /api/admin/products/[id] — бага үлдэгдлийн босго", () => {
+  it("алдааг залгихгүй — 500, үнэ хадгалагдсан хэвээр", async () => {
+    inventoryError = { message: "boom" };
+    const res = await patch({ variants: VARIANTS, lowStockMl: 30 });
+    expect(res.status).toBe(500);
+    expect((await res.json()).code).toBe("LOW_STOCK_UPDATE_FAILED");
+    expect(variantUpserts).toHaveLength(2);
+  });
+
+  it("inventory мөр байхгүй (0 мөр) бол 500", async () => {
+    inventoryRows = [];
+    const res = await patch({ lowStockMl: 30 });
+    expect(res.status).toBe(500);
+  });
+
+  it("амжилттай бол ok", async () => {
+    const res = await patch({ lowStockMl: 30 });
+    expect(res.status).toBe(200);
   });
 });

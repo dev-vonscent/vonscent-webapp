@@ -13,6 +13,7 @@ import {
 } from "@/features/taxonomy/api";
 import { runNewProductImages } from "@/lib/ai/new-product-pipeline";
 import { addBottleImage } from "@/features/admin/bottle-image";
+import { hasVisibleImage } from "@/features/admin/lib/product-status";
 import type { ProductStatus } from "@/lib/constants";
 
 function slugify(name: string, brand: string) {
@@ -257,7 +258,13 @@ export async function POST(req: Request) {
   // here leaves a complete product that is merely still hidden, so it is
   // reported as such rather than rolled back.
   let status: ProductStatus = "hidden";
-  if (finalStatus !== "hidden") {
+  // Зураггүй (эсвэл бүх зураг нь нуугдсан, савны зураг хуулагдаагүй) бараа
+  // нийтлэгдэхгүй — нуусан хэвээр үлдэж, форм админд хэлнэ. DB алдаа ч
+  // мөн адил: «магадгүй» гэж нийтлэхгүй.
+  const publishable =
+    finalStatus === "hidden" ||
+    (await hasVisibleImage(supabase, productId)) === true;
+  if (finalStatus !== "hidden" && publishable) {
     const { error: sErr } = await supabase
       .from("products")
       .update({ status: finalStatus })

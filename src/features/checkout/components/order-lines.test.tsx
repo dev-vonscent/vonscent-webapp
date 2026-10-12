@@ -182,13 +182,40 @@ const QUOTE = {
   stock: { p2: 100 },
 };
 
+/** Багцын гишүүн p2 (`QUOTE`-ийн m1/m10). */
+const BUNDLE_MEMBER = {
+  id: "p2",
+  soldOut: false,
+  availableMl: 100,
+  variants: [
+    {
+      id: "m1",
+      ml: 5,
+      price: 30000,
+      isActive: true,
+      sellable: true,
+      unavailableReason: null,
+    },
+    {
+      id: "m10",
+      ml: 10,
+      price: 50000,
+      isActive: true,
+      sellable: true,
+      unavailableReason: null,
+    },
+  ],
+};
+
 function stubApi(availableMl = 100) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string) =>
       String(url).startsWith("/api/collections/quote")
         ? Response.json(QUOTE)
-        : Response.json({ items: [productDetail(availableMl)] }),
+        : // Багцын гишүүн p2 ч хариунд байх ёстой — ирээгүй мөрийг сагс
+          // «хаагдсан» гэж үздэг.
+          Response.json({ items: [productDetail(availableMl), BUNDLE_MEMBER] }),
     ),
   );
 }

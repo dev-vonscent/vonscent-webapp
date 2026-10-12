@@ -12,6 +12,9 @@ import {
 } from "@/features/taxonomy/api";
 import {
   LAUNCH_REQUIRED,
+  NO_IMAGE,
+  PUBLISHED_STATUSES,
+  hasVisibleImage,
   statusConflict,
 } from "@/features/admin/lib/product-status";
 
@@ -50,7 +53,7 @@ export async function PATCH(
   // `variants` нь FK алдаагаар 500 болж төөрөгдүүлнэ.
   const { data: existing, error: findErr } = await supabase
     .from("products")
-    .select("id")
+    .select("id, status")
     .eq("id", id)
     .maybeSingle();
   if (findErr) {
@@ -58,6 +61,21 @@ export async function PATCH(
   }
   if (!existing) {
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  }
+
+  // Зураггүй барааг нийтлэхгүй. Зөвхөн төлөв ӨӨРЧЛӨГДӨЖ байхад — форм
+  // төлөвийг үргэлж илгээдэг тул аль хэдийн нийтлэгдсэн (хуучин, зураггүй)
+  // барааны бусад засварыг түгжихгүй.
+  if (
+    input.status !== undefined &&
+    input.status !== existing.status &&
+    PUBLISHED_STATUSES.includes(input.status)
+  ) {
+    const hasImage = await hasVisibleImage(supabase, id);
+    if (hasImage === null) {
+      return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
+    }
+    if (!hasImage) return NextResponse.json(NO_IMAGE, { status: 409 });
   }
 
   const productUpdate: Record<string, unknown> = {};
@@ -163,12 +181,17 @@ export async function PATCH(
     }
   }
 
-  // Low-stock threshold.
+  // Low-stock threshold. Өмнө нь алдааг залгиад `ok` буцаадаг байв —
+  // оператор «хадгалагдлаа» гэж хараад анхааруулга хэзээ ч ирэхгүй үлддэг.
+  // Дараагийн хадгалалтыг (tag) тасалдуулахгүй — төгсгөлд нь мэдэгдэнэ.
+  let lowStockFailed = false;
   if (input.lowStockMl !== undefined) {
-    await supabase
+    const { data: inv, error: invErr } = await supabase
       .from("inventory")
       .update({ low_stock_ml: input.lowStockMl })
-      .eq("product_id", id);
+      .eq("product_id", id)
+      .select("product_id");
+    lowStockFailed = Boolean(invErr) || !inv?.length;
   }
 
   // Free-form internal tags (A2 «Нэмэлт Tag»): replace the whole set.
@@ -187,6 +210,17 @@ export async function PATCH(
   }
 
   revalidatePublic();
+  if (lowStockFailed) {
+    // Dialog/форм `error`-г шууд харуулдаг тул операторын үгээр.
+    return NextResponse.json(
+      {
+        error:
+          "«Бага үлдэгдлийн босго» хадгалагдсангүй, бусад өөрчлөлт хадгалагдлаа. Дахин оролдоно уу.",
+        code: "LOW_STOCK_UPDATE_FAILED",
+      },
+      { status: 500 },
+    );
+  }
   return NextResponse.json({ ok: true });
 }
 

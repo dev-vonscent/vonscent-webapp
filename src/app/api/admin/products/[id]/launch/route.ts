@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
+import { NO_IMAGE, hasVisibleImage } from "@/features/admin/lib/product-status";
 
 type LaunchResult =
   | "launched"
@@ -24,7 +25,10 @@ export async function POST(
   _req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const parsed = z.string().uuid().safeParse((await ctx.params).id);
+  const parsed = z
+    .string()
+    .uuid()
+    .safeParse((await ctx.params).id);
   // UUID биш id нь Postgres-ийн cast алдаа болж 500 буцаадаг байсан.
   if (!parsed.success) {
     return NextResponse.json({ error: "VALIDATION" }, { status: 400 });
@@ -36,6 +40,16 @@ export async function POST(
   if (!staff) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   const supabase = createAdminClient();
   if (!supabase) return NextResponse.json({ error: "NO_DB" }, { status: 500 });
+
+  // Зураггүй барааг дэлгүүрт гаргахгүй (PATCH-ийн дүрэмтэй ижил).
+  const hasImage = await hasVisibleImage(supabase, id);
+  if (hasImage === null) {
+    return NextResponse.json(
+      { error: "Худалдаанд гаргаж чадсангүй. Дахин оролдоно уу." },
+      { status: 500 },
+    );
+  }
+  if (!hasImage) return NextResponse.json(NO_IMAGE, { status: 409 });
 
   const { data, error } = await callRpc<LaunchResult>(
     supabase,

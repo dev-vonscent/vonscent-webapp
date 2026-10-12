@@ -14,7 +14,20 @@ vi.mock("@/lib/cache", () => ({ revalidatePublic }));
 vi.mock("@/lib/auth/guard", () => ({
   getStaffUser: async () => ({ id: "staff", role: "operator" }),
 }));
-vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({}) }));
+/** Харагдах зургийн тоо (`hasVisibleImage`). */
+let imageCount = 1;
+let imageError: { message: string } | null = null;
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          eq: async () => ({ count: imageCount, error: imageError }),
+        }),
+      }),
+    }),
+  }),
+}));
 vi.mock("@/lib/supabase/rpc", () => ({ callRpc }));
 
 const { POST } = await import("./route");
@@ -26,6 +39,8 @@ function launch(id = ID) {
 }
 
 beforeEach(() => {
+  imageCount = 1;
+  imageError = null;
   callRpc.mockReset();
   revalidatePublic.mockReset();
 });
@@ -70,6 +85,21 @@ describe("POST /api/admin/products/[id]/launch", () => {
   it("UUID биш id нь 400, RPC дуудагдахгүй", async () => {
     const res = await launch("not-a-uuid");
     expect(res.status).toBe(400);
+    expect(callRpc).not.toHaveBeenCalled();
+  });
+
+  it("зураггүй барааг гаргахгүй — 409 NO_IMAGE, RPC дуудагдахгүй", async () => {
+    imageCount = 0;
+    const res = await launch();
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe("NO_IMAGE");
+    expect(callRpc).not.toHaveBeenCalled();
+  });
+
+  it("зураг шалгах үед DB алдаа бол 500", async () => {
+    imageError = { message: "boom" };
+    const res = await launch();
+    expect(res.status).toBe(500);
     expect(callRpc).not.toHaveBeenCalled();
   });
 });
