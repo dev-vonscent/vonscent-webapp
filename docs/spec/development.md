@@ -207,6 +207,8 @@ Route-level middleware-ээр `(admin)` бүлгийг хамгаална. Route
 - Олон бичилттэй үйлдэл (захиалга, inventory) **transaction** дотор — нарийн логикийг Postgres **RPC (function)** болгож `supabase.rpc()`-ээр дууд.
 - Index-ийг хайлт/шүүлтийн талбарт (brand, gender, tags, price).
 - Client-ээс хандах table-д **RLS policy** тавь.
+- **Шинэ table бүрт `enable row level security`** — RLS-гүй table нь anon key-ээр уншигдаж, бичигдэнэ (0128-ын `restock_log`).
+- **`products` нь баганын түвшний SELECT-тэй** (0128): өртөг (`bottle_price`), `reference_image_url` anon/authenticated-д хаалттай. Шинэ багана нэмбэл автоматаар нийтэд **харагдахгүй** — дэлгүүрт хэрэгтэй бол migration-д `grant select (col) on products to anon, authenticated`. Нууц багана бол админ `admin_product_private()`-ээр уншина.
 
 **7.5 Аюулгүй байдал**
 - Бүх input zod-оор. Server талд дахин шалга (client validation найдварлахгүй).

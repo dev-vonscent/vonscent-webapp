@@ -510,8 +510,8 @@ const ADMIN_PRODUCT_SELECT = `
   scent_families, seasons,
   description, notes_description, usage_description,
   notes_top, notes_heart, notes_base, origin_country, release_year,
-  bottle_price, bottle_ml, is_active, status, launched_at, coming_soon_note,
-  is_featured, reference_image_url,
+  bottle_ml, is_active, status, launched_at, coming_soon_note,
+  is_featured,
   product_images ( id, url, alt, sort_order, is_visible ),
   product_variants ( id, ml, price, sale_price, is_active ),
   inventory ( on_hand_ml, reserved_ml, low_stock_ml ),
@@ -547,14 +547,16 @@ interface AdminProductRow {
   notes_base: string[];
   origin_country: string | null;
   release_year: number | null;
-  bottle_price: number;
+  /** `select`-д ороогүй — `attachPrivate()` нөхнө (0128). */
+  bottle_price?: number;
   bottle_ml: number;
   is_active: boolean;
   status: ProductStatus;
   launched_at: string | null;
   coming_soon_note: string | null;
   is_featured?: boolean | null;
-  reference_image_url: string | null;
+  /** `select`-д ороогүй — `attachPrivate()` нөхнө (0128). */
+  reference_image_url?: string | null;
   product_images: AdminProductImage[];
   product_variants: {
     id: string;
@@ -622,7 +624,7 @@ function mapAdminProduct(
     notesBase: r.notes_base,
     originCountry: r.origin_country,
     releaseYear: r.release_year,
-    bottlePrice: r.bottle_price,
+    bottlePrice: r.bottle_price ?? 0,
     bottleMl: r.bottle_ml,
     isActive: r.is_active,
     status: r.status,
@@ -671,6 +673,57 @@ function mapAdminProduct(
  */
 export const ADMIN_PRODUCTS_CAP = 2000;
 
+type ServerClient = NonNullable<Awaited<ReturnType<typeof createClient>>>;
+
+/**
+ * `bottle_price` ба `reference_image_url`-ийг мөрүүдэд нөхнө. 0128-аас хойш
+ * эдгээр нь anon/authenticated-д SELECT эрхгүй тул staff-only
+ * `admin_product_private()`-ээр уншина.
+ *
+ * Буцаах утга нь амжилттай эсэх. Засах хуудас (`getAdminProduct`) бүтэлгүйтвэл
+ * шидэх ёстой — эс тэгвэл форм `bottlePrice: 0`-ийг хадгалж жинхэнэ өртгийг
+ * дарна.
+ */
+async function attachPrivate(
+  supabase: ServerClient,
+  rows: AdminProductRow[],
+): Promise<boolean> {
+  if (!rows.length) return true;
+  const { data, error } = await callRpc<
+    { id: string; bottle_price: number; reference_image_url: string | null }[]
+  >(supabase, "admin_product_private", { p_ids: rows.map((r) => r.id) });
+  let found = data;
+  if (error || !found) {
+    // 0128 хараахан хэрэгжээгүй сан (код migration-оос түрүүлж deploy
+    // хийгдсэн): тэнд баганууд шууд уншигдана. 0128-ын дараа энэ нь
+    // permission denied өгч `false` болно.
+    const direct = await supabase
+      .from("products")
+      .select("id, bottle_price, reference_image_url")
+      .in(
+        "id",
+        rows.map((r) => r.id),
+      );
+    found = direct.data as typeof data;
+    if (direct.error || !found) {
+      Sentry.captureException(
+        new Error(
+          `admin_product_private failed: ${error?.message ?? "no rows"}`,
+        ),
+      );
+      return false;
+    }
+  }
+  const byId = new Map(found.map((d) => [d.id, d]));
+  for (const r of rows) {
+    const p = byId.get(r.id);
+    if (!p) return false;
+    r.bottle_price = p.bottle_price;
+    r.reference_image_url = p.reference_image_url;
+  }
+  return true;
+}
+
 export async function getAdminProducts(): Promise<AdminProduct[]> {
   const supabase = await createClient();
   if (!supabase) return [];
@@ -679,10 +732,11 @@ export async function getAdminProducts(): Promise<AdminProduct[]> {
     .select(ADMIN_PRODUCT_SELECT)
     .order("created_at", { ascending: false })
     .limit(ADMIN_PRODUCTS_CAP);
+  const list = (data as unknown as AdminProductRow[] | null) ?? [];
+  // Эдгээр дуудагч өртөг харуулдаггүй — бүтэлгүйтвэл 0 үлдэнэ (Sentry-д бий).
+  await attachPrivate(supabase, list);
   const locks = await getBottleLocks();
-  return ((data as unknown as AdminProductRow[] | null) ?? []).map((r) =>
-    mapAdminProduct(r, locks),
-  );
+  return list.map((r) => mapAdminProduct(r, locks));
 }
 
 /**
@@ -941,13 +995,11 @@ export async function getAdminProductPage(
     .from("products")
     .select(ADMIN_PRODUCT_SELECT)
     .in("id", ids);
+  const list = (rows as unknown as AdminProductRow[] | null) ?? [];
+  // Жагсаалт өртөг харуулдаггүй — бүтэлгүйтвэл 0 үлдэнэ (Sentry-д бий).
+  await attachPrivate(supabase, list);
   const locks = await getBottleLocks();
-  const byId = new Map(
-    ((rows as unknown as AdminProductRow[] | null) ?? []).map((r) => [
-      r.id,
-      mapAdminProduct(r, locks),
-    ]),
-  );
+  const byId = new Map(list.map((r) => [r.id, mapAdminProduct(r, locks)]));
   return {
     // Эрэмбийг SQL шийдсэн — `in()` нь дарааллыг хадгалдаггүй тул сэргээнэ.
     rows: ids
@@ -1017,10 +1069,10 @@ export async function getAdminProduct(
     .eq("id", id)
     .maybeSingle();
   if (!data) return null;
-  const product = mapAdminProduct(
-    data as unknown as AdminProductRow,
-    await getBottleLocks(),
-  );
+  const row = data as unknown as AdminProductRow;
+  if (!(await attachPrivate(supabase, [row])))
+    throw new Error("Барааны өртгийн мэдээллийг уншиж чадсангүй.");
+  const product = mapAdminProduct(row, await getBottleLocks());
 
   // Separate tolerant query (audit R2): a DB without 0035 still edits fine,
   // just without the custom-tag picker preselection.
