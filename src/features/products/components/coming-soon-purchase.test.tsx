@@ -59,15 +59,22 @@ describe("ComingSoonPurchase", () => {
     expect(screen.queryByText("20ml")).toBeNull();
   });
 
-  it("админы бичсэн ойролцоо хугацааг бүтнээр нь, юу ч залгахгүй", () => {
+  const ALWAYS = "Ирмэгц энэ хуудаснаас шууд захиалах боломжтой болно.";
+
+  it("note-ийг тусдаа мөрөнд бүтнээр нь, юу ч залгахгүй", () => {
     render(
       <ComingSoonPurchase
         product={product({ comingSoonNote: "10-р сарын сүүлээр" })}
       />,
     );
-    expect(screen.getByText("10-р сарын сүүлээр")).toBeTruthy();
+    // Тусдаа элемент — текст нь яг note-оор дуусна.
+    const note = screen.getByText("10-р сарын сүүлээр");
+    expect(note.textContent).toBe("10-р сарын сүүлээр");
     expect(screen.queryByText(/худалдаанд гарна/)).toBeNull();
     expect(screen.queryByText(/удахгүй авчирна/)).toBeNull();
+    // Захиалах боломжийн өгүүлбэр note-той үед ч гарна, өөр мөрөнд.
+    const always = screen.getByText(ALWAYS);
+    expect(always).not.toBe(note);
   });
 
   it("бүтэн өгүүлбэр бичсэн note давхар цэг, залгалтгүй", () => {
@@ -76,20 +83,21 @@ describe("ComingSoonPurchase", () => {
         product={product({ comingSoonNote: "25-нд ирнэ." })}
       />,
     );
-    expect(screen.getByText("25-нд ирнэ.")).toBeTruthy();
+    expect(screen.getByText("25-нд ирнэ.").textContent).toBe("25-нд ирнэ.");
+    expect(screen.getByText(ALWAYS)).toBeTruthy();
   });
 
   it("хугацаагүй бол ерөнхий мэдээ", () => {
     render(<ComingSoonPurchase product={product()} />);
     expect(
-      screen.getByText(
-        "Бид энэ усыг удахгүй авчирна. Ирмэгц энэ хуудаснаас шууд захиалах боломжтой болно.",
-      ),
+      screen.getByText(`Бид энэ усыг удахгүй авчирна. ${ALWAYS}`),
     ).toBeTruthy();
   });
 
   it("хоосон note-ийг ерөнхий мэдээгээр орлоно", () => {
     render(<ComingSoonPurchase product={product({ comingSoonNote: "" })} />);
-    expect(screen.getByText(/удахгүй авчирна/)).toBeTruthy();
+    expect(
+      screen.getByText(`Бид энэ усыг удахгүй авчирна. ${ALWAYS}`),
+    ).toBeTruthy();
   });
 });
