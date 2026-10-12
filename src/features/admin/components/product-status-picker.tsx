@@ -1,6 +1,8 @@
 "use client";
 
+import { PackageCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import {
@@ -25,6 +27,10 @@ const HINT: Record<ProductStatus, string> = {
  * хоёр утгатай контрол багтахаа больсон. Нэг удаа худалдаанд гарсан бараанд
  * «Тун удахгүй» идэвхгүй бөгөөд яагаад гэдгийг доор нь хэлнэ — DB ч мөн
  * хориглодог (ALREADY_LAUNCHED), энд зөвхөн админыг урьдчилан сэрэмжлүүлнэ.
+ *
+ * `launch` өгвөл (сан дээр «Тун удахгүй» байгаа бараа) «Идэвхтэй» хаагдаж,
+ * оронд нь «Худалдаанд гаргах» товч гарна — гаргах цорын ганц зам нь launch
+ * endpoint, PATCH нь `coming_soon → active`-ийг 409 болгодог.
  */
 export function ProductStatusPicker({
   value,
@@ -32,6 +38,7 @@ export function ProductStatusPicker({
   launchedAt = null,
   note,
   onNoteChange,
+  launch,
 }: {
   value: ProductStatus;
   onChange: (v: ProductStatus) => void;
@@ -40,8 +47,11 @@ export function ProductStatusPicker({
   /** «Тун удахгүй» үеийн ойролцоо хугацаа. */
   note: string;
   onNoteChange: (v: string) => void;
+  /** Сан дээр «Тун удахгүй» бол — «Идэвхтэй»-н оронд гаргах товч. */
+  launch?: { onLaunch: () => void; launching: boolean };
 }) {
   const comingSoonLocked = !canBeComingSoon(launchedAt);
+  const activeLocked = Boolean(launch);
 
   return (
     <div className="space-y-3">
@@ -52,7 +62,9 @@ export function ProductStatusPicker({
       >
         {PRODUCT_STATUSES.map((s) => {
           const selected = s === value;
-          const disabled = s === "coming_soon" && comingSoonLocked;
+          const disabled =
+            (s === "coming_soon" && comingSoonLocked) ||
+            (s === "active" && activeLocked);
           return (
             <button
               key={s}
@@ -91,6 +103,23 @@ export function ProductStatusPicker({
           Худалдаанд гарсан бараа «Тун удахгүй» болох боломжгүй. Дахин ирэхэд
           үлдэгдэл нэмэхэд л хангалттай.
         </p>
+      )}
+
+      {launch && (
+        <div className="bg-secondary flex flex-wrap items-center justify-between gap-3 rounded-md px-3 py-2">
+          <p className="text-muted-foreground text-xs">
+            «Тун удахгүй» барааг «Идэвхтэй» болгохдоо худалдаанд гаргана.
+          </p>
+          <LoadingButton
+            type="button"
+            size="sm"
+            loading={launch.launching}
+            onClick={launch.onLaunch}
+          >
+            <PackageCheck />
+            Худалдаанд гаргах
+          </LoadingButton>
+        </div>
       )}
 
       {value === "coming_soon" && (

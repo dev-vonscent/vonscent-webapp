@@ -612,6 +612,14 @@ export function ProductEditForm({
               setDirty(true);
               setComingSoonNote(v);
             }}
+            // Сан дээр «Тун удахгүй» бөгөөд энд гаргаагүй бол: PATCH нь
+            // `coming_soon → active`-ийг 409 болгодог тул сонголтыг хааж
+            // launch endpoint-ийн товчийг харуулна.
+            launch={
+              product.status === "coming_soon" && status !== "active"
+                ? { onLaunch: () => void launchNow(), launching }
+                : undefined
+            }
           />
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox
