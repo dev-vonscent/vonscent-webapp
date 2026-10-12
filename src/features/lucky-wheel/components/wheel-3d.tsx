@@ -57,16 +57,38 @@ interface WheelProps {
   className?: string;
 }
 
-/** Segment fill, as a step of the theme's own foreground over its background. */
-function fillFor(prize: WheelPrize, index: number): string {
+/**
+ * Segment fill, as a step of the theme's own foreground over its background.
+ * «Баярлалаа» wedges sit closest to the background so the prizes between them
+ * carry the colour; without them (the old eight-prize wheel) neighbours
+ * alternate instead.
+ */
+function fillFor(prize: WheelPrize, index: number, hasBlanks: boolean): string {
   if (prize.tier === "grand") return "var(--gold)";
-  const pct = prize.tier === "rare" ? 22 : index % 2 === 0 ? 6 : 13;
+  const pct =
+    prize.kind === "none"
+      ? 4
+      : prize.tier === "rare"
+        ? 24
+        : hasBlanks || index % 2 === 1
+          ? 14
+          : 6;
   return `color-mix(in oklab, var(--foreground) ${pct}%, var(--background))`;
 }
 
 function textFor(prize: WheelPrize): string {
-  return prize.tier === "grand" ? "var(--background)" : "var(--foreground)";
+  if (prize.tier === "grand") return "var(--background)";
+  if (prize.kind === "none")
+    return "color-mix(in oklab, var(--foreground) 55%, var(--background))";
+  return "var(--foreground)";
 }
+
+/**
+ * Past this many segments a wedge is too narrow for a horizontal label (26
+ * wedges are under 14° — about 15 units wide at radius 64), so labels turn to
+ * run along the radius instead.
+ */
+const RADIAL_FROM = 13;
 
 /**
  * Split a short label so it stays inside its wedge. The cut-off is 6
@@ -92,6 +114,8 @@ export const Wheel3D = React.forwardRef<WheelHandle, WheelProps>(
     /** Wheel *position* (1..count) last seen under the pointer. */
     const lastPosition = React.useRef(1);
     const count = prizes.length;
+    const radial = count >= RADIAL_FROM;
+    const hasBlanks = prizes.some((p) => p.kind === "none");
 
     // Pointer parallax: the stage leans a few degrees towards the cursor, which
     // is what makes the depth read as depth before anything moves.
@@ -160,9 +184,15 @@ export const Wheel3D = React.forwardRef<WheelHandle, WheelProps>(
     }));
 
     return (
+      // `overflow-x-clip`: the spinning SVG is a square, and at 45° its box is
+      // √2 wider than the disc — on a phone that pushed the page past the
+      // screen edge mid-spin, the browser grew the layout viewport to fit, and
+      // the fixed bottom nav slid off and back on every quarter turn. The disc
+      // itself always fits the unrotated square, so nothing visible is cut;
+      // `clip` (not `hidden`) adds no scroll container.
       <div
         className={cn(
-          "relative mx-auto w-full max-w-[min(88vw,30rem)]",
+          "relative mx-auto w-full max-w-[min(88vw,30rem)] overflow-x-clip",
           className,
         )}
         onPointerMove={handlePointerMove}
@@ -221,14 +251,41 @@ export const Wheel3D = React.forwardRef<WheelHandle, WheelProps>(
                 <path
                   key={prize.slot}
                   d={segmentPath(i + 1, count, 100)}
-                  fill={fillFor(prize, i)}
+                  fill={fillFor(prize, i, hasBlanks)}
                   stroke="color-mix(in oklab, var(--background) 70%, transparent)"
                   strokeWidth={0.8}
                 />
               ))}
               {prizes.map((prize, i) => {
-                const lines = labelLines(prize.shortLabel || prize.label);
                 const center = (i + 0.5) * (360 / count);
+                if (radial) {
+                  // Reads rim → hub on the left half; on the right half that
+                  // runs right-to-left (upside down), so there it is turned to
+                  // read hub → rim — same span of the radius either way.
+                  const flipped = center < 180;
+                  return (
+                    <g key={`t-${prize.slot}`} transform={`rotate(${center})`}>
+                      <text
+                        transform={`translate(0 -91) rotate(${flipped ? -90 : 90})`}
+                        textAnchor={flipped ? "end" : "start"}
+                        dominantBaseline="central"
+                        fill={textFor(prize)}
+                        fontSize={prize.kind === "none" ? 6.6 : 7.6}
+                        fontWeight={
+                          prize.kind === "none"
+                            ? 400
+                            : prize.tier === "common"
+                              ? 600
+                              : 700
+                        }
+                        letterSpacing={0.2}
+                      >
+                        {prize.shortLabel || prize.label}
+                      </text>
+                    </g>
+                  );
+                }
+                const lines = labelLines(prize.shortLabel || prize.label);
                 const y = lines.length > 1 ? -68 : -64;
                 // Past a quarter turn the radial label ends up upside down.
                 // Flipping it about its own anchor keeps every wedge readable

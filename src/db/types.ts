@@ -37,14 +37,15 @@ export type Season = "spring" | "summer" | "autumn" | "winter" | "all";
  */
 export type Sillage = "light" | "medium" | "strong";
 export type CouponType = "percent" | "fixed";
-/** Lucky wheel (0053). */
+/** Lucky wheel (0053; `none` and `order` — 0128). */
 export type SpinPrizeKind =
   | "points"
   | "coupon_percent"
   | "coupon_fixed"
-  | "bundle";
+  | "bundle"
+  | "none";
 export type SpinTier = "common" | "rare" | "grand";
-export type SpinType = "free" | "paid";
+export type SpinType = "free" | "paid" | "order";
 export type UserRole =
   | "guest"
   | "customer"
@@ -478,6 +479,8 @@ export interface SpinWheelSpinRow {
   spin_type: SpinType;
   points_spent: number;
   coupon_id: string | null;
+  /** `order` spins only — whose credit it consumed (0129). */
+  credit_order_id: string | null;
   /** Physical prizes only — set when the admin has handed it over. */
   fulfilled_at: string | null;
   created_at: string;

@@ -3,13 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { Check, Copy, Crown, Gift, Sparkles, Ticket } from "lucide-react";
+import { Check, Copy, Crown, Heart, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { formatDate, formatPrice } from "@/lib/format";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { VPointIcon } from "@/components/shared/v-point-icon";
 import type { SpinSuccess } from "../types";
 
 /** Headline per tier — the wheel's only moment of raised voice. */
@@ -21,14 +22,19 @@ const TIER_TITLE = {
 
 function PrizeIcon({ kind }: { kind: SpinSuccess["kind"] }) {
   const className = "size-7";
-  if (kind === "points") return <Sparkles className={className} />;
+  if (kind === "points") return <VPointIcon className={className} />;
   if (kind === "bundle") return <Crown className={className} />;
+  if (kind === "none") return <Heart className={className} />;
   return <Ticket className={className} />;
 }
 
 /** The one line that says what the customer actually holds now. */
 function prizeTerms(result: SpinSuccess): string[] {
   const terms: string[] = [];
+  if (result.kind === "none") {
+    terms.push("Энэ удаад шагнал таарсангүй — дараагийн эргэлтэд амжилт!");
+    return terms;
+  }
   if (result.kind === "points") {
     terms.push("Оноо шууд зарцуулагдах боломжтой.");
     terms.push(`Одоогийн үлдэгдэл: ${result.points.toLocaleString("mn-MN")}V`);
@@ -87,7 +93,9 @@ export function PrizeReveal({
     <ResponsiveDialog
       open={open}
       onOpenChange={(next) => !next && onClose()}
-      title={TIER_TITLE[result.tier]}
+      title={
+        result.kind === "none" ? "Оролцсонд баярлалаа" : TIER_TITLE[result.tier]
+      }
       className="sm:max-w-md"
     >
       <div className="flex flex-col items-center gap-5 py-4 text-center">
@@ -143,14 +151,6 @@ export function PrizeReveal({
             <li key={line}>{line}</li>
           ))}
         </ul>
-
-        {result.couponCode && (
-          <p className="text-muted-foreground/80 flex items-start gap-2 text-left text-xs">
-            <Gift className="mt-0.5 size-3.5 shrink-0" />
-            Хүрднээс авсан купон нэг дор нэг л байна — шинийг хожвол өмнөх
-            ашиглагдаагүй купон солигдоно.
-          </p>
-        )}
 
         <div className="flex w-full flex-col gap-2 sm:flex-row">
           <Button asChild className="flex-1">

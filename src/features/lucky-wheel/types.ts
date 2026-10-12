@@ -35,15 +35,29 @@ export interface SpinHistoryItem {
 export interface WheelState {
   enabled: boolean;
   prizes: WheelPrize[];
-  /** V point charged for an extra spin (§4). */
+  /** V point charged for an extra spin (§9). */
   spinCost: number;
   freeSpinHours: number;
+  /** One spin is earned per this many ₮ of an order; 0 = off. */
+  orderSpinStep: number;
+  /** Unused spins earned from paid orders. */
+  orderSpins: number;
   /** The signed-in customer's spendable balance; 0 for guests. */
   points: number;
   nextFreeAt: string | null;
   freeReady: boolean;
   signedIn: boolean;
+  /** The latest few spins — the page's preview list. */
   history: SpinHistoryItem[];
+  /** Older spins exist beyond `history` (see `/api/lucky-wheel/history`). */
+  hasMoreHistory: boolean;
+}
+
+/** One page of the full history. */
+export interface SpinHistoryPage {
+  items: SpinHistoryItem[];
+  /** Offset of the next page, or null when this was the last one. */
+  nextOffset: number | null;
 }
 
 export interface SpinSuccess {
@@ -61,6 +75,7 @@ export interface SpinSuccess {
   pointsSpent: number;
   /** Balance after the spin (cost deducted, points prize added). */
   points: number;
+  orderSpins: number;
   nextFreeAt: string | null;
   freeReady: boolean;
 }
@@ -70,6 +85,8 @@ export type SpinFailureReason =
   | "COOLDOWN"
   | "DISABLED"
   | "NOT_ENOUGH_POINTS"
+  | "NO_ORDER_SPINS"
+  | "INVALID"
   | "NO_PRIZES"
   | "NO_DB";
 
@@ -82,3 +99,6 @@ export interface SpinFailure {
 }
 
 export type SpinOutcome = SpinSuccess | SpinFailure;
+
+/** Which entitlement a spin draws on — `spin_wheel(p_mode)`. */
+export type SpinMode = "free" | "order" | "points";

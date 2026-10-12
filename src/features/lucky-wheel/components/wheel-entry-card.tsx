@@ -24,14 +24,18 @@ export function WheelEntryCard({ className }: { className?: string }) {
 
   if (!state?.enabled || state.prizes.length === 0) return null;
 
-  const ready = state.freeReady || countdown.ready;
+  const freeReady = state.freeReady || countdown.ready;
+  const orderSpins = state.orderSpins;
+  const ready = freeReady || orderSpins > 0;
   const canPay = state.points >= state.spinCost && state.spinCost > 0;
 
-  const status = ready
+  const status = freeReady
     ? "Үнэгүй эргэлт бэлэн боллоо"
-    : canPay
-      ? `${state.spinCost.toLocaleString("mn-MN")}V-оор эргүүлэх боломжтой`
-      : `Дараагийн үнэгүй эргэлт ${countdown.label}-ийн дараа`;
+    : orderSpins > 0
+      ? `Захиалгын ${orderSpins} эрх бэлэн байна`
+      : canPay
+        ? `${state.spinCost.toLocaleString("mn-MN")}V-оор эргүүлэх боломжтой`
+        : `Дараагийн үнэгүй эргэлт ${countdown.label}-ийн дараа`;
 
   return (
     <Link

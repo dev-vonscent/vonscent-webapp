@@ -655,15 +655,16 @@ export type RateLimitName = keyof typeof RATE_LIMITS;
 export const CONTENT_PAGES_HIDDEN: boolean = true;
 
 /**
- * Азын хүрд (`/lucky-wheel`) түр нуугдсан эсэх (2026-09-27).
+ * Азын хүрд (`/lucky-wheel`) нуугдсан эсэх. 2026-09-27-нд нуугдаж, v2
+ * шаардлагаар (0129, docs/lucky-wheel.md §9) 2026-10-12-нд дахин нээгдэв.
  *
- * Цэс, профайлын dropdown, акаунтын карт, купоны жагсаалтын холбоосууд энэ
- * тугаар нуугдаж, хуудас нь шууд URL-ээр 404 өгнө. API болон админы тохиргоо
- * хэвээр — эргүүлж нээхэд `false` болгоход л хангалттай.
+ * `true` бол цэс, профайлын dropdown, акаунтын карт, купоны жагсаалтын
+ * холбоосууд нуугдаж, хуудас нь шууд URL-ээр 404 өгнө. API болон админы
+ * тохиргоо хэвээр.
  *
  * `boolean` гэж зориуд бичив (`CONTENT_PAGES_HIDDEN`-ийн тайлбарыг үз).
  */
-export const LUCKY_WHEEL_HIDDEN: boolean = true;
+export const LUCKY_WHEEL_HIDDEN: boolean = false;
 
 /**
  * «Миний купон» цэсний «Шинэ» тэмдэг (0104) энэ өдрөөс хойш хэнд ч гарахгүй.

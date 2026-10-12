@@ -32,13 +32,16 @@ function wheel(over: Partial<WheelState> = {}): WheelState {
   return {
     enabled: true,
     prizes: PRIZES,
-    spinCost: 2000,
+    spinCost: 1000,
     freeSpinHours: 24,
+    orderSpinStep: 100_000,
+    orderSpins: 0,
     points: 3400,
     nextFreeAt: null,
     freeReady: true,
     signedIn: true,
     history: [],
+    hasMoreHistory: false,
     ...over,
   };
 }
@@ -60,7 +63,19 @@ describe("WheelEntryCard", () => {
       }),
     );
     render(<WheelEntryCard />);
-    expect(screen.getByText(/2,000V-оор эргүүлэх/)).toBeInTheDocument();
+    expect(screen.getByText(/1,000V-оор эргүүлэх/)).toBeInTheDocument();
+  });
+
+  it("puts earned order spins ahead of paying with points", () => {
+    state.mockReturnValue(
+      wheel({
+        freeReady: false,
+        orderSpins: 2,
+        nextFreeAt: new Date(Date.now() + 5 * 3600_000).toISOString(),
+      }),
+    );
+    render(<WheelEntryCard />);
+    expect(screen.getByText(/Захиалгын 2 эрх бэлэн/)).toBeInTheDocument();
   });
 
   it("counts down when there are neither a free spin nor enough points", () => {

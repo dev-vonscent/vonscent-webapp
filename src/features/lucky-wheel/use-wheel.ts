@@ -1,9 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import type {
   SpinFailure,
+  SpinHistoryPage,
+  SpinMode,
   SpinOutcome,
   SpinSuccess,
   WheelState,
@@ -27,13 +34,33 @@ export function useWheelState() {
 }
 
 /**
+ * The full spin history, paged. Only fetched while the dialog is open; the
+ * key sits under WHEEL_QUERY_KEY so a spin's invalidation refreshes it too.
+ */
+export function useSpinHistory(enabled: boolean) {
+  return useInfiniteQuery({
+    queryKey: [...WHEEL_QUERY_KEY, "history"],
+    queryFn: async ({ pageParam }): Promise<SpinHistoryPage> => {
+      const res = await fetch(`/api/lucky-wheel/history?offset=${pageParam}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("wheel_history_failed");
+      return res.json();
+    },
+    initialPageParam: 0,
+    getNextPageParam: (last) => last.nextOffset,
+    enabled,
+  });
+}
+
+/**
  * One spin. The result is *not* written into the cache here — the wheel has to
  * finish turning first, or the page would announce the prize while the pointer
  * is still moving. The caller refreshes once the animation lands.
  */
 export function useSpin() {
   const queryClient = useQueryClient();
-  return useMutation<SpinSuccess, SpinFailure, "free" | "points">({
+  return useMutation<SpinSuccess, SpinFailure, SpinMode>({
     mutationFn: async (mode) => {
       const res = await fetch("/api/lucky-wheel", {
         method: "POST",
