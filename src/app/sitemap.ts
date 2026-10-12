@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { env } from "@/lib/env";
 import { createPublicClient } from "@/lib/supabase/public";
-import { SEED_PRODUCTS } from "@/features/products/seed";
+import { SEED_COMING_SOON, SEED_PRODUCTS } from "@/features/products/seed";
 
 interface SlugRow {
   slug: string;
@@ -14,11 +14,16 @@ async function productEntries(): Promise<SlugRow[]> {
     const { data } = await supabase
       .from("products")
       .select("slug, updated_at")
-      .eq("is_active", true);
+      // «Тун удахгүй» (0125) хуудас ч нээгддэг — ирэхээс нь өмнө индекслэгдэх
+      // нь давуу тал.
+      .in("status", ["active", "coming_soon"]);
     const rows = (data as SlugRow[] | null) ?? [];
     if (rows.length) return rows;
   }
-  return SEED_PRODUCTS.map((p) => ({ slug: p.slug, updated_at: null }));
+  return [...SEED_PRODUCTS, ...SEED_COMING_SOON].map((p) => ({
+    slug: p.slug,
+    updated_at: null,
+  }));
 }
 
 async function collectionEntries(): Promise<SlugRow[]> {

@@ -13,6 +13,7 @@ import { BrandMarquee } from "@/features/products/components/brand-marquee";
 import {
   getNewArrivals,
   getBestSellers,
+  getComingSoonProducts,
   getOnSale,
   getBrands,
 } from "@/features/products/api";
@@ -171,6 +172,12 @@ export default function HomePage() {
           <NewArrivalsSection />
         </Suspense>
 
+        {/* Ирээгүй ус (0125) — «Шинээр ирсэн»-ий араас. Байхгүй үед хэсэг
+            огт гарахгүй тул skeleton-оор зай эзлэхгүй. */}
+        <Suspense fallback={null}>
+          <ComingSoonSection />
+        </Suspense>
+
         {/* Shop by gender */}
         <section>
           <SectionHeading title="Хүйсээр" />
@@ -314,6 +321,25 @@ async function NewArrivalsSection() {
     <section>
       <SectionHeading title="Шинээр ирсэн" href="/catalog?tags=new&sort=new" />
       <ProductCarousel items={items} prefer={["new"]} />
+    </section>
+  );
+}
+
+/**
+ * «Тун удахгүй» — урьдчилан оруулсан, хараахан ирээгүй ус (0125). Захиалж
+ * болохгүй ч үнэ, тайлбар нь харагдана. Ганц ус ч байвал гарна: энэ бол
+ * «удахгүй юу ирэх вэ» гэсэн мэдээ, дүүргэх ёстой мөр биш.
+ */
+async function ComingSoonSection() {
+  const products = await getComingSoonProducts(RAIL_SIZE);
+  if (products.length === 0) return null;
+  return (
+    <section>
+      <SectionHeading
+        title="Тун удахгүй"
+        subtitle="Ирэхээс нь өмнө танилцаарай"
+      />
+      <ProductCarousel products={products} />
     </section>
   );
 }

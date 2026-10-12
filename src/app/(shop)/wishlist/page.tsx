@@ -13,12 +13,17 @@ import type { Collection } from "@/features/collections/types";
 import { useWishlist } from "@/features/wishlist/store";
 import { useCart } from "@/features/cart/store";
 import { formatPrice } from "@/lib/format";
-import type { ProductDetail, Variant } from "@/lib/types";
+import type { ProductDetail } from "@/lib/types";
+import { isAddable, wishlistCartLines } from "@/features/wishlist/cart-lines";
 import { EmptyState } from "@/components/shared/empty-state";
 
 async function fetchDetails(ids: string[]): Promise<ProductDetail[]> {
   if (!ids.length) return [];
-  const res = await fetch(`/api/products?ids=${ids.join(",")}&details=1`);
+  // `upcoming=1`: «Тун удахгүй» ус (0125) ч хадгалагдсан хэвээр харагдана —
+  // үгүй бол зүрх дарсан ус жагсаалтаас алга болно.
+  const res = await fetch(
+    `/api/products?ids=${ids.join(",")}&details=1&upcoming=1`,
+  );
   if (!res.ok) return [];
   const data = (await res.json()) as { items: ProductDetail[] };
   return data.items;
@@ -31,13 +36,6 @@ async function fetchCollections(ids: string[]): Promise<Collection[]> {
   if (!res.ok) return [];
   const data = (await res.json()) as { items: Collection[] };
   return data.items;
-}
-
-/** Cheapest active decant for a product (matches the "from …" display price). */
-function cheapestVariant(p: ProductDetail): Variant | null {
-  const active = p.variants.filter((v) => v.isActive);
-  if (!active.length) return null;
-  return active.reduce((a, b) => (b.price < a.price ? b : a));
 }
 
 const EMPTY_IDS: string[] = [];
@@ -75,7 +73,10 @@ export default function WishlistPage() {
     return ids.map((id) => map.get(id)).filter(Boolean) as ProductDetail[];
   }, [data, ids]);
 
-  const inStock = items.filter((p) => !p.soldOut);
+  // «Тун удахгүй» ус (0125) нь `soldOut` боловч дууссан биш — ирэхийг
+  // хүлээж байна. Тоонд тусад нь, сагслахаас хасна.
+  const inStock = items.filter(isAddable);
+  const comingSoonCount = items.filter((p) => p.comingSoon).length;
   const liveBundles = bundles.filter((c) => !c.soldOut);
   // Багцын «эхлэх үнэ» ч нийтэд орно — эс бөгөөс «3 хадгалсан» гээд хоёрынх
   // нь л дүнг хэлнэ.
@@ -84,7 +85,10 @@ export default function WishlistPage() {
     liveBundles.reduce((sum, c) => sum + c.startingPrice, 0);
   const savedCount = items.length + bundles.length;
   const soldOutCount =
-    items.length - inStock.length + (bundles.length - liveBundles.length);
+    items.length -
+    inStock.length -
+    comingSoonCount +
+    (bundles.length - liveBundles.length);
 
   const [confirmClear, setConfirmClear] = React.useState(false);
   const [addedAll, setAddedAll] = React.useState(false);
@@ -95,23 +99,9 @@ export default function WishlistPage() {
   }, [addedAll]);
 
   function addAllToCart() {
-    let added = 0;
-    for (const p of inStock) {
-      const v = cheapestVariant(p);
-      if (!v) continue;
-      addToCart({
-        productId: p.id,
-        slug: p.slug,
-        name: p.name,
-        brand: p.brand,
-        variantId: v.id,
-        ml: v.ml,
-        unitPrice: v.price,
-        image: p.image?.url ?? null,
-      });
-      added += 1;
-    }
-    if (added > 0) setAddedAll(true);
+    const lines = wishlistCartLines(items);
+    for (const line of lines) addToCart(line);
+    if (lines.length > 0) setAddedAll(true);
   }
 
   return (
@@ -169,6 +159,7 @@ export default function WishlistPage() {
                     {formatPrice(totalValue)}
                   </span>
                   {soldOutCount > 0 && ` · ${soldOutCount} дууссан`}
+                  {comingSoonCount > 0 && ` · ${comingSoonCount} тун удахгүй`}
                 </p>
               </div>
             </div>

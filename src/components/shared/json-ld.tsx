@@ -138,16 +138,22 @@ export function productJsonLd(product: ProductDetail): Json {
     description: product.description,
     image: product.images.map((img) => img.url),
     url: `${SITE.url}/products/${product.slug}`,
-    offers: {
-      "@type": "AggregateOffer",
-      priceCurrency: "MNT",
-      lowPrice: low,
-      highPrice: high,
-      offerCount: prices.length || 1,
-      availability: product.soldOut
-        ? "https://schema.org/OutOfStock"
-        : "https://schema.org/InStock",
-    },
+    // «Тун удахгүй» (0125): санал байхгүй. `PreSale`/`PreOrder` нь «одоо
+    // захиалж болно» гэсэн утгатай — энд худлаа болно.
+    ...(product.comingSoon
+      ? {}
+      : {
+          offers: {
+            "@type": "AggregateOffer",
+            priceCurrency: "MNT",
+            lowPrice: low,
+            highPrice: high,
+            offerCount: prices.length || 1,
+            availability: product.soldOut
+              ? "https://schema.org/OutOfStock"
+              : "https://schema.org/InStock",
+          },
+        }),
     ...(product.ratingCount > 0
       ? {
           aggregateRating: {

@@ -13,6 +13,9 @@ import {
  *   /api/products?slug=<slug>            → one product (detail shape, with variants)
  *   /api/products?ids=<uuid>,<uuid>      → those products (list shape)
  *   /api/products?ids=<uuid>&details=1   → those products (detail shape, variants)
+ *     &upcoming=1                        → «Тун удахгүй» (0125) бараа ч орно —
+ *                                          зөвхөн хүслийн жагсаалт; сагс,
+ *                                          захиалгын засвар үүнгүй дуудна.
  *   /api/products                        → full catalogue (list shape)
  */
 export async function GET(req: Request) {
@@ -31,7 +34,9 @@ export async function GET(req: Request) {
   if (ids) {
     const idList = ids.split(",").filter(Boolean);
     if (params.get("details")) {
-      const items = await getProductDetailsByIds(idList);
+      const items = await getProductDetailsByIds(idList, {
+        includeComingSoon: params.get("upcoming") === "1",
+      });
       return NextResponse.json({ items });
     }
     const items = await getProductsByIds(idList);
