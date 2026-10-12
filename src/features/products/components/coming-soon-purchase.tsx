@@ -53,8 +53,9 @@ export function ComingSoonPurchase({ product }: { product: ProductDetail }) {
             <p className="text-sm">{product.comingSoonNote}</p>
           )}
           <p className="text-muted-foreground text-sm">
-            {!product.comingSoonNote && "Бид энэ усыг удахгүй авчирна. "}
-            Ирмэгц энэ хуудаснаас шууд захиалах боломжтой болно.
+            {product.comingSoonNote
+              ? "Худалдаанд гармагц та энэ хуудаснаас шууд захиалах боломжтой."
+              : "Энэхүү үнэртэн тун удахгүй худалдаанд гарна. Бэлэн болмогц та энэ хуудаснаас шууд захиалах боломжтой."}
           </p>
         </div>
 
