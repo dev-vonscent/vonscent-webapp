@@ -24,6 +24,7 @@ import {
   projectedDeliveryDay,
 } from "@/lib/time";
 import { clearPendingOrder } from "@/features/checkout/pending-order";
+import { requestAbandon } from "../abandon";
 import type { PaymentView } from "../types";
 import { BankApps } from "./bank-apps";
 import { CopyRow } from "./copy-row";
@@ -291,28 +292,10 @@ export function PaymentPanel({
    */
   async function abandon(saveForLater: boolean) {
     setError(null);
-    const res = await fetch("/api/payments/abandon", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, saveForLater }),
-    }).catch(() => null);
-    const data = (await res?.json().catch(() => null)) as {
-      ok?: boolean;
-      paid?: boolean;
-      error?: string;
-    } | null;
-    if (data?.paid) {
-      setPaid(true);
-      return;
-    }
-    if (!res?.ok || !data?.ok) {
-      setError(
-        data?.error === "UNAUTHORIZED" || data?.error === "FORBIDDEN"
-          ? "Энэ захиалгыг өөрчлөхийн тулд захиалсан бүртгэлээрээ нэвтэрнэ үү."
-          : data?.error === "CHECK_FAILED"
-            ? "Төлбөрийн төлөвийг шалгаж чадсангүй. Хэдэн секундын дараа дахин оролдоно уу."
-            : "Үйлдэл амжилтгүй боллоо. Дахин оролдоно уу.",
-      );
+    const result = await requestAbandon(token, saveForLater);
+    if (!result.ok) {
+      if (result.paid) setPaid(true);
+      else setError(result.message);
       return;
     }
     clearPendingOrder(token);

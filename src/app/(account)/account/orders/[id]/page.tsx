@@ -15,6 +15,7 @@ import {
   type OrderSummaryRow,
 } from "@/lib/orders/summary";
 import {
+  DELIVERY_END_HOUR,
   DISPATCH_HOUR,
   deliveryDayOf,
   formatEditCutoff,
@@ -98,7 +99,9 @@ export default async function OrderDetailPage({
   const items = (itemData as OrderItemRow[] | null) ?? [];
   const history = (historyData as OrderStatusHistoryRow[] | null) ?? [];
 
-  // Resolve slugs/images for the reorder action.
+  // Resolve slugs/images for the reorder action. Дахин захиалах нь зөвхөн
+  // амжилттай хүргэгдсэн захиалгад, бэлгийн мөргүйгээр — бэлэг сар бүр
+  // өөрчлөгддөг тул дахин захиалахад тэр сарынх нь бэлэг ирэхгүй.
   const productIds = [
     ...new Set(items.map((i) => i.product_id).filter(Boolean)),
   ] as string[];
@@ -106,7 +109,14 @@ export default async function OrderDetailPage({
   const byId = new Map(products.map((p) => [p.id, p]));
 
   const reorderItems: ReorderItem[] = items
-    .filter((i) => i.product_id && i.variant_id)
+    .filter(
+      (i) =>
+        order.status === "delivered" &&
+        i.product_id &&
+        i.variant_id &&
+        !i.is_gift &&
+        !i.is_sample,
+    )
     .map((i) => {
       const p = byId.get(i.product_id as string);
       return {
@@ -278,13 +288,15 @@ export default async function OrderDetailPage({
             </p>
           )}
 
-          {reorderItems.length > 0 && (
+          {(reorderItems.length > 0 || awaitingPayment || cancellable) && (
             <OrderActions
               orderId={order.id}
               items={reorderItems}
               cancellable={cancellable}
               paid={order.payment_status === "paid"}
               total={order.total}
+              payToken={awaitingPayment ? order.pay_token : null}
+              canSaveForLater={order.checkout_snapshot !== null}
             />
           )}
         </div>
@@ -345,7 +357,7 @@ export default async function OrderDetailPage({
                 </span>
                 <span className="text-muted-foreground">
                   {" "}
-                  · {DISPATCH_HOUR}:00 цагт гарна
+                  · {DISPATCH_HOUR}:00–{DELIVERY_END_HOUR}:00 цагийн хооронд
                 </span>
               </p>
               <p>{order.contact_name}</p>
