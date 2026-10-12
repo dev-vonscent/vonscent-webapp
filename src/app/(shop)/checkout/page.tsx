@@ -1046,7 +1046,7 @@ export default function CheckoutPage() {
       "«Миний захиалга» хэсгээс хүссэн үедээ захиалаарай.",
       "Захиалгаа хадгаллаа",
     );
-    router.push("/account/orders");
+    router.push("/account/orders?tab=saved");
   }
 
   async function onSubmit(values: FormValues) {
