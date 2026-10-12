@@ -55,6 +55,10 @@ export default async function AdminOrdersPage({
         pageIndex * ORDERS_PER_PAGE,
         pageIndex * ORDERS_PER_PAGE + ORDERS_PER_PAGE - 1,
       );
+    // Төлөгдөөгүй цуцлалт (30 минутын хугацаа, «Дараа захиалах», «Устгах»)
+    // админд захиалга биш — мөнгө ороогүй, хийх ажил алга (0124, клиент
+    // 2026-10). «Цуцлагдсан» нь зөвхөн төлсний дараа цуцалсан захиалга.
+    query = query.or("status.neq.cancelled,payment_status.neq.unpaid");
     if (status === UNPREPARED_FILTER) {
       query = query.eq("status", "confirmed").is("prepared_at", null);
     } else if (status && ORDER_STATUSES.includes(status as OrderStatus)) {

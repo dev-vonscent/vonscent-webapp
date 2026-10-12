@@ -1,9 +1,11 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Bookmark, Package, Trash2 } from "lucide-react";
+import { Package, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/shared/confirm-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatDateTime, formatPrice } from "@/lib/format";
@@ -16,41 +18,49 @@ import {
 } from "../saved-checkouts";
 
 /**
- * «Миний захиалга» дээрх «Дараа авахаар хадгалсан» жагсаалт (0116).
- * Хоосон эсвэл ачаалж байх үед юу ч зурахгүй — захиалгын жагсаалт өөрөө
- * хуудасны гол агуулга.
+ * «Миний захиалга» → «Дараа захиалах» табын жагсаалт (0116). Таб өөрөө
+ * гарчиг тул энд гарчиггүй. Ачаалж байх үед юу ч зурахгүй; хоосон бол
+ * `emptyState` (сүүлчийнхийг устгахад таб хоосон цагаан үлдэхгүй).
  */
-export function SavedCheckouts() {
-  const { data: list = [] } = useSavedCheckouts();
+export function SavedCheckouts({ emptyState }: { emptyState?: ReactNode }) {
+  const { data: list = [], isPending } = useSavedCheckouts();
   const { mutate: remove } = useDeleteSavedCheckout();
   const router = useRouter();
+  const [confirm, confirmDialog] = useConfirm();
 
-  if (list.length === 0) return null;
+  if (isPending) return null;
+  if (list.length === 0) return <>{emptyState}</>;
 
+  // Серверээс ЭНД устгахгүй (клиент, 2026-10): checkout-оос буцаж гарсан
+  // хүний хадгалсан захиалга алга болдог байв. Захиалга үүсэх, эсвэл
+  // checkout дотор «Устгах» дарах үед л устна (saved-checkouts.ts).
   function resume(entry: SavedCheckout) {
     resumeSavedCheckout(entry);
-    // Мөрүүд нь одоо сагсанд — серверийн хуулбар хэрэггүй болсон.
-    remove(entry.id);
     router.push("/checkout");
   }
 
+  function confirmRemove(entry: SavedCheckout) {
+    void confirm({
+      title: "Хадгалсан захиалгыг устгах уу?",
+      description: "Энэ захиалга «Дараа захиалах» жагсаалтаас устана.",
+      confirmLabel: "Устгах",
+      cancelLabel: "Буцах",
+      destructive: true,
+      action: async () => remove(entry.id),
+    });
+  }
+
   return (
-    <section className="space-y-3">
-      <div className="flex items-center gap-2">
-        <Bookmark className="text-muted-foreground size-4" />
-        <h2 className="text-sm font-semibold">Дараа авахаар хадгалсан</h2>
-        <span className="text-muted-foreground text-sm">{list.length}</span>
-      </div>
-      <div className="space-y-4">
-        {list.map((entry) => (
-          <SavedCard
-            key={entry.id}
-            entry={entry}
-            onResume={() => resume(entry)}
-            onRemove={() => remove(entry.id)}
-          />
-        ))}
-      </div>
+    <section className="space-y-4">
+      {confirmDialog}
+      {list.map((entry) => (
+        <SavedCard
+          key={entry.id}
+          entry={entry}
+          onResume={() => resume(entry)}
+          onRemove={() => confirmRemove(entry)}
+        />
+      ))}
     </section>
   );
 }
@@ -95,16 +105,6 @@ function SavedCard({
               {formatDateTime(entry.savedAt)} · {count} ширхэг
             </p>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Устгах"
-            onClick={onRemove}
-            className="text-muted-foreground hover:text-foreground shrink-0"
-          >
-            <Trash2 className="size-4" />
-          </Button>
         </div>
 
         <div className="mt-4 flex items-center gap-2">
@@ -147,7 +147,9 @@ function SavedCard({
 
       <div className="px-5 pb-5">
         <Separator className="my-3" />
-        <div className="flex items-center justify-between gap-3">
+        {/* Утсан дээр (≈300px) дүн ба хоёр том товч нэг мөрөнд багтахгүй —
+            товчнууд доор нь хоёр тэнцүү баганаар; `sm`-ээс дээш нэг мөр. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             {/* Хадгалах үеийн үнэ — захиалахад checkout одоогийн үнээр бодно. */}
             <p className="text-muted-foreground text-xs">Барааны дүн</p>
@@ -155,13 +157,25 @@ function SavedCard({
               {formatPrice(savedSubtotal(entry))}
             </p>
           </div>
-          <Button
-            size="lg"
-            onClick={onResume}
-            className="bg-cta text-cta-foreground hover:bg-cta/90 shrink-0"
-          >
-            Захиалах
-          </Button>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:items-center">
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              onClick={onRemove}
+              className="hover:text-destructive gap-1.5"
+            >
+              <Trash2 className="size-4" />
+              Устгах
+            </Button>
+            <Button
+              size="lg"
+              onClick={onResume}
+              className="bg-cta text-cta-foreground hover:bg-cta/90"
+            >
+              Захиалах
+            </Button>
+          </div>
         </div>
       </div>
     </Card>

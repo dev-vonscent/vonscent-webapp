@@ -151,6 +151,13 @@ export const DEFAULT_BUNDLE_ML = 2;
  */
 export const RESERVE_TIMEOUT_MINUTES = 35;
 
+/**
+ * Төлбөрийн хуудсан дээр хэрэглэгчид хэлэх хугацаа (клиент, 2026-10). Бодит
+ * цуцлалт нь `RESERVE_TIMEOUT_MINUTES` — дээрх 5 минутын зөрүү нь тулгалтын
+ * дотоод нөөц тул хэрэглэгчид дугуй 30 гэж хэлнэ.
+ */
+export const PAYMENT_WINDOW_MINUTES = 30;
+
 /** «Дараа авахаар хадгалах» — хэрэглэгч бүрийн дээд тоо (0116). Хуучнаас нь хасна. */
 export const SAVED_CHECKOUTS_MAX = 10;
 

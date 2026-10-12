@@ -111,7 +111,10 @@ export function CouponWallet() {
       </div>
 
       {isPending ? (
-        <ul className="grid gap-4 sm:grid-cols-2 sm:gap-x-6" aria-hidden>
+        <ul
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-6"
+          aria-hidden
+        >
           {[0, 1, 2, 3].map((i) => (
             <li key={i} className={cn(i > 2 && "hidden sm:block")}>
               <CouponTicketSkeleton />
@@ -142,7 +145,11 @@ export function CouponWallet() {
           }
         />
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 sm:gap-x-6">
+        // `grid-cols-1` = minmax(0,1fr): тасалбарын `truncate` мөр (хугацаа,
+        // нөхцөл) нь `nowrap` тул загваргүй багана утсан дээр тэдгээрийн
+        // бүтэн урт хүртэл сунаж тасалбарыг дэлгэцээс гаргадаг (checkout-ийн
+        // хүлээн авагчийн хэсэгт гарсантай ижил алдаа).
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-6">
           {rows.map((c) => (
             <li key={c.id}>
               <CouponRow coupon={c} />

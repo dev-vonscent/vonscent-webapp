@@ -4,6 +4,8 @@ import { useCart, selectCheckoutItems } from "@/features/cart/store";
 import { savedCheckoutInputSchema } from "@/lib/validators/saved-checkout";
 import {
   CHECKOUT_DRAFT_KEY,
+  clearResumedSaved,
+  readResumedSaved,
   resumeSavedCheckout,
   savedSubtotal,
   type SavedCheckout,
@@ -68,6 +70,37 @@ describe("resumeSavedCheckout", () => {
     expect(state.buyNow?.kind).toBe("item");
     expect(selectCheckoutItems(state).map((i) => i.variantId)).toEqual(["a"]);
     expect(state.items.map((i) => i.variantId)).toEqual(["other"]);
+  });
+});
+
+/**
+ * «Захиалах» дараад checkout-оос буцаж гарвал хадгалсан захиалга алга
+ * болдог байв (клиент, 2026-10). Одоо checkout аль хадгалснаас ирснийг санаж,
+ * захиалга үүсэх үед л устгана.
+ */
+describe("resumed saved checkout", () => {
+  it("remembers which saved order the checkout lines came from", () => {
+    const entry = saved({ items: [{ ...line("a", 2000), key: "a", qty: 1 }] });
+    resumeSavedCheckout(entry);
+    const { items, collections } = useCart.getState();
+    expect(readResumedSaved(items, collections)).toBe(entry.id);
+    clearResumedSaved();
+    expect(readResumedSaved(items, collections)).toBeNull();
+  });
+
+  it("forgets it once the checkout holds different lines", () => {
+    resumeSavedCheckout(
+      saved({ items: [{ ...line("a", 2000), key: "a", qty: 1 }] }),
+    );
+    expect(readResumedSaved([{ variantId: "b" }], [])).toBeNull();
+  });
+
+  it("does not double quantities when resumed twice", () => {
+    const entry = saved({ items: [{ ...line("a", 2000), key: "a", qty: 2 }] });
+    resumeSavedCheckout(entry);
+    resumeSavedCheckout(entry);
+    const checkout = selectCheckoutItems(useCart.getState());
+    expect(checkout.map((i) => [i.variantId, i.qty])).toEqual([["a", 2]]);
   });
 });
 

@@ -41,6 +41,8 @@ interface OrderRow {
   payment_method: PaymentMethod;
   payment_status: string;
   deliver_on: string | null;
+  /** «Дараа захиалах»-ын хуулбар (0124) — байгаа эсэх нь л хэрэгтэй. */
+  checkout_snapshot: unknown;
 }
 
 interface ItemRow {
@@ -57,7 +59,7 @@ interface ItemRow {
 }
 
 const SELECT =
-  "id, order_no, user_id, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, status, payment_method, payment_status, deliver_on";
+  "id, order_no, user_id, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, status, payment_method, payment_status, deliver_on, checkout_snapshot";
 
 const ITEM_SELECT =
   "product_id, product_name, brand, ml, qty, unit_price, list_price, line_total, is_sample, collection_name";
@@ -182,6 +184,9 @@ export async function getPaymentByToken(
     paymentMethod: order.payment_method,
     paid,
     cancelled,
+    // Хуулбаргүй бол хадгалах юм байхгүй — товч гарвал захиалга цуцлагдаад
+    // юу ч үлдэхгүй (VS-1086/1087, 2026-10-12).
+    canSaveForLater: order.user_id !== null && order.checkout_snapshot !== null,
     deliverOn: order.deliver_on,
     invoice,
     mock: isQpayMockMode(),
