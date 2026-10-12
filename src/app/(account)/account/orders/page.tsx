@@ -29,6 +29,7 @@ import type { OrderRow } from "@/db/types";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SavedCheckouts } from "@/features/checkout/components/saved-checkouts";
 import { reviewPointsOf } from "@/lib/loyalty";
+import { settleExpiredOrders } from "@/features/account/settle-expired";
 
 const STATUS_ICON: Record<
   OrderStatus,
@@ -125,17 +126,30 @@ export default async function OrdersPage({
     // RLS нь staff-д бүх захиалгыг харуулдаг (`is_staff()`) — «Миний
     // захиалга» зөвхөн өөрийнхөө тул user_id-аар заавал шүүнэ.
     if (user) {
+      // Хугацаа нь дууссан захиалгыг cron-ыг хүлээлгүй «Дараа захиалах» руу —
+      // эс бөгөөс 5 хүртэл минут «Хүлээгдэж буй» гэж харагдсаар байна.
+      await settleExpiredOrders(user.id);
       const { data } = await supabase
         .from("orders")
         .select("*, order_items(product_id, product_name, brand, ml, qty)")
         .eq("user_id", user.id)
+        // Төлөгдөөгүй цуцлалт захиалга биш (0124) — устгасан нь хаана ч
+        // үлдэхгүй, «Дараа захиалах» руу шилжсэн нь тэндээ харагдана.
+        .or("status.neq.cancelled,payment_status.neq.unpaid")
         .order("created_at", { ascending: false });
       orders = (data as OrderWithItems[] | null) ?? [];
-      const { data: loyalty } = await supabase
-        .from("settings")
-        .select("value")
-        .eq("key", "loyalty")
-        .maybeSingle();
+      const [{ data: loyalty }, { count }] = await Promise.all([
+        supabase
+          .from("settings")
+          .select("value")
+          .eq("key", "loyalty")
+          .maybeSingle(),
+        supabase
+          .from("saved_checkouts")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id),
+      ]);
+      savedCount = count ?? 0;
       reviewPoints = reviewPointsOf(
         (loyalty as { value?: unknown } | null)?.value,
       );

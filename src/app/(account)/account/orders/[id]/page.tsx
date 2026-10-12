@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Bookmark } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,12 +26,15 @@ import {
   ORDER_STATUS_LABEL,
   ORDER_STATUS_STYLE,
   PAYMENT_STATUS_LABEL,
+  PAYMENT_WINDOW_MINUTES,
 } from "@/lib/constants";
 import {
   OrderActions,
   type ReorderItem,
 } from "@/features/account/components/order-actions";
 import { maskAccount, refundBreakdown } from "@/lib/refund";
+import { settleExpiredOrders } from "@/features/account/settle-expired";
+import { EmptyState } from "@/components/shared/empty-state";
 import { reviewPointsOf } from "@/lib/loyalty";
 import {
   OrderReviewPrompt,
@@ -58,6 +61,10 @@ export default async function OrderDetailPage({
   } = await supabase.auth.getUser();
   if (!user) notFound();
 
+  // Хугацаа нь дууссан бол cron-ыг хүлээлгүй одоо шилжүүлнэ — жагсаалттай
+  // ижил төлөв харагдана (settle-expired.ts).
+  await settleExpiredOrders(user.id);
+
   // RLS staff-д бусдын захиалгыг ч нээдэг — энэ хуудас зөвхөн эзэндээ
   // (staff бол админ самбараас харна).
   const { data: orderData } = await supabase
@@ -68,6 +75,17 @@ export default async function OrderDetailPage({
     .maybeSingle();
   const order = orderData as OrderRow | null;
   if (!order) notFound();
+  // Төлөгдөөгүй цуцлалт захиалга болж үлдэхгүй (0124, клиент 2026-10).
+  // «Дараа захиалах» руу шилжсэн бол хуучин линкээр ирсэн хүнд «Цуцлагдсан»
+  // биш, хаана очсоныг нь хэлнэ; устгасан бол юу ч үлдээгүй — 404.
+  if (order.status === "cancelled" && order.payment_status === "unpaid") {
+    const { count } = await supabase
+      .from("saved_checkouts")
+      .select("id", { count: "exact", head: true })
+      .eq("source_order_id", order.id);
+    if (!count) notFound();
+    return <MovedToSaved orderNo={order.order_no} />;
+  }
 
   // Мөнгө хүлээж буй захиалга — энэ хуудасны үндсэн үйлдэл нь төлөх болно.
   const awaitingPayment =
@@ -389,6 +407,36 @@ function Row({ label, value, credit, strong }: OrderSummaryRow) {
       <span className={cn("tabular-nums", credit && "text-success")}>
         {value}
       </span>
+    </div>
+  );
+}
+
+/**
+ * Төлөгдөөгүй тул «Дараа захиалах» руу шилжсэн захиалга (0124). Жагсаалтад
+ * харагдахгүй ч имэйл, хуучин линкээр ирж болно.
+ */
+function MovedToSaved({ orderNo }: { orderNo: string }) {
+  return (
+    <div className="space-y-6">
+      <Link
+        href="/account/orders"
+        className="text-muted-foreground hover:text-foreground hidden items-center gap-1 text-sm md:inline-flex"
+      >
+        <ArrowLeft className="size-4" /> Захиалгууд руу буцах
+      </Link>
+      <EmptyState
+        size="lg"
+        icon={Bookmark}
+        title={`${orderNo} — «Дараа захиалах» руу шилжсэн`}
+        description={`Төлбөр ${PAYMENT_WINDOW_MINUTES} минутын дотор төлөгдөөгүй тул захиалгыг «Дараа захиалах» хэсэгт хадгаллаа. Тэндээс хүссэн үедээ дахин захиалаарай.`}
+        action={
+          <Button asChild>
+            <Link href="/account/orders?tab=saved">
+              Дараа захиалах руу очих
+            </Link>
+          </Button>
+        }
+      />
     </div>
   );
 }
