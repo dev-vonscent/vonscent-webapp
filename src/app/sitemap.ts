@@ -3,6 +3,13 @@ import { env } from "@/lib/env";
 import { createPublicClient } from "@/lib/supabase/public";
 import { SEED_COMING_SOON, SEED_PRODUCTS } from "@/features/products/seed";
 
+/**
+ * Цагт нэг удаа дахин үүсгэнэ. Үгүй бол build-ийн үед нэг л удаа үүсч,
+ * дараагийн deploy хүртэл шинэ бараа ордоггүй байв. Cookie-гүй public
+ * client тул ISR боломжтой; цагт нэг бичилт тул ISR зардал үл ялиг.
+ */
+export const revalidate = 3600;
+
 interface SlugRow {
   slug: string;
   updated_at: string | null;

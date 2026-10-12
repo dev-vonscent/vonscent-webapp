@@ -85,6 +85,10 @@ const nextConfig: NextConfig = {
       "/api/admin/products/[id]/images",
       "/api/admin/products/[id]/generate-image",
       "/api/admin/products/[id]/regenerate-image",
+      // OG cards re-encode WebP photos to JPEG (lib/og.tsx). Keys are matched
+      // with picomatch `contains`, where `[slug]` would be a character class —
+      // the bare segment name matches all three routes reliably.
+      "opengraph-image",
     ].map((route) => [
       route,
       [

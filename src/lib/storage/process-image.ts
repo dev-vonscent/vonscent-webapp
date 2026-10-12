@@ -158,3 +158,30 @@ export async function isOpaqueImage(
     return false;
   }
 }
+
+/**
+ * Cover-crop to exactly `width`×`height` and encode as JPEG. For the OG cards:
+ * next/og (satori) cannot decode WebP, which is what every upload is stored
+ * as. Null when the bytes aren't a decodable image; throws
+ * `ImageToolUnavailableError` when sharp itself can't load.
+ */
+export async function toJpegCover(
+  input: ArrayBuffer | Uint8Array | Buffer,
+  width: number,
+  height: number,
+  quality = 80,
+): Promise<Buffer | null> {
+  const buffer = Buffer.isBuffer(input)
+    ? input
+    : Buffer.from(input as ArrayBuffer);
+  const sharp = await loadSharp();
+  try {
+    return await sharp(buffer, { failOn: "error" })
+      .rotate()
+      .resize({ width, height, fit: "cover" })
+      .jpeg({ quality })
+      .toBuffer();
+  } catch {
+    return null;
+  }
+}

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ImageResponse } from "next/og";
 import { SITE } from "@/lib/constants";
+import { toJpegCover } from "@/lib/storage/process-image";
 
 /**
  * Shared scaffolding for the per-page dynamic `opengraph-image.tsx` routes
@@ -15,10 +16,39 @@ import { SITE } from "@/lib/constants";
 
 export const OG_SIZE = { width: 1200, height: 630 };
 
+/** Photo column of the card. */
+const PHOTO = { width: 460, height: 630 };
+/** Larger sources aren't worth decoding for a 460px column. */
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Fetch the photo and re-encode it as a JPEG data URL. satori cannot decode
+ * WebP — the format of every uploaded image — so passing the URL straight
+ * through rendered an empty column. Any failure (timeout, non-image, sharp
+ * missing from the bundle) returns null: the card falls back to the
+ * text-only layout rather than failing the share preview.
+ */
+export async function toOgImageSrc(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    const bytes = await res.arrayBuffer();
+    if (bytes.byteLength === 0 || bytes.byteLength > MAX_PHOTO_BYTES)
+      return null;
+    const jpeg = await toJpegCover(bytes, PHOTO.width, PHOTO.height);
+    return jpeg ? `data:image/jpeg;base64,${jpeg.toString("base64")}` : null;
+  } catch {
+    return null;
+  }
+}
+
 const GOLD = "#c9a227";
 const BG = "#0d0b08";
 
-async function loadGoogleFont(family: string, text: string): Promise<ArrayBuffer | null> {
+async function loadGoogleFont(
+  family: string,
+  text: string,
+): Promise<ArrayBuffer | null> {
   try {
     const url = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}&text=${encodeURIComponent(text)}`;
     const css = await (
@@ -27,7 +57,9 @@ async function loadGoogleFont(family: string, text: string): Promise<ArrayBuffer
         headers: { "User-Agent": "Mozilla/5.0 (Windows NT 6.1; rv:11.0)" },
       })
     ).text();
-    const match = css.match(/src: url\((.+?)\) format\('(?:opentype|truetype)'\)/u);
+    const match = css.match(
+      /src: url\((.+?)\) format\('(?:opentype|truetype)'\)/u,
+    );
     if (!match) return null;
     const res = await fetch(match[1]);
     if (!res.ok) return null;
@@ -58,9 +90,10 @@ export async function ogCard({
   badge,
 }: OgCardProps): Promise<ImageResponse> {
   const text = `${SITE.name}${SITE.tagline}${kicker ?? ""}${title}${subtitle ?? ""}${badge ?? ""}${SITE.domain}`;
-  const [serif, sans] = await Promise.all([
+  const [serif, sans, photo] = await Promise.all([
     loadGoogleFont("Playfair Display:wght@600", text),
     loadGoogleFont("Noto Sans:wght@400", text),
+    imageUrl ? toOgImageSrc(imageUrl) : null,
   ]);
 
   const fonts = [
@@ -152,7 +185,7 @@ export async function ogCard({
       </div>
 
       {/* Photo column */}
-      {imageUrl ? (
+      {photo ? (
         <div
           style={{
             display: "flex",
@@ -163,7 +196,7 @@ export async function ogCard({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={imageUrl}
+            src={photo}
             alt=""
             width={460}
             height={630}
