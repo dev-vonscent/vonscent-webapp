@@ -308,6 +308,7 @@ export function ProductEditForm({
   /**
    * Ус ирээд үлдэгдэл нэмсэн ч «Тун удахгүй» хэвээр — гаргахад бэлэн. Хуудасны
    * хамгийн дээр: нөөц нэмэх үеийн асуултад «Дараа» дарсныг энд л сануулна.
+   * Товч нь зөвхөн «Таг ба төлөв» хэсэгт — хоёр газар байвал давхардана.
    */
   const ready = isReadyToLaunch({
     status: product.status,
@@ -326,20 +327,13 @@ export function ProductEditForm({
     <form onSubmit={save} noValidate className="space-y-6">
       {confirmDialog}
       {ready && status === "coming_soon" && (
-        <div className="bg-success/10 flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3">
-          <p className="flex items-center gap-2 text-sm">
-            <PackageCheck className="text-success size-4 shrink-0" />
+        <p className="bg-success/10 flex items-start gap-2 rounded-lg px-4 py-3 text-sm">
+          <PackageCheck className="text-success mt-0.5 size-4 shrink-0" />
+          <span>
             {product.availableMl}ml үлдэгдэлтэй — худалдаанд гаргахад бэлэн.
-          </p>
-          <LoadingButton
-            type="button"
-            size="sm"
-            loading={launching}
-            onClick={() => void launchNow()}
-          >
-            Худалдаанд гаргах
-          </LoadingButton>
-        </div>
+            Доорх «Таг ба төлөв» хэсгээс гаргана.
+          </span>
+        </p>
       )}
       {/* The picture leads: it is the one part of a product an operator comes
           back to edit on its own, and the AI controls belong beside the gallery

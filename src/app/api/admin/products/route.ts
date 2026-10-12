@@ -139,7 +139,27 @@ export async function POST(req: Request) {
    * and stock cascade) leaves the catalogue exactly as it was.
    */
   const abort = async (what: string) => {
-    await supabase.from("products").delete().eq("id", productId);
+    const { error: dErr } = await supabase
+      .from("products")
+      .delete()
+      .eq("id", productId);
+    if (dErr) {
+      // Устгаж чадсангүй — нуусан, дутуу бараа үлдлээ. «Үүссэнгүй» гэвэл
+      // админ дахин оролдож давхар бараа үүсгэнэ, тиймээс id-г нь хэлнэ.
+      console.error("product create cleanup failed", {
+        productId,
+        step: what,
+        error: dErr,
+      });
+      return NextResponse.json(
+        {
+          error: `${what} хадгалагдсангүй. Дутуу бараа нуусан төлөвтэй үлдсэн тул дахин үүсгэхээсээ өмнө засах эсвэл устгана уу.`,
+          code: "CLEANUP_FAILED",
+          id: productId,
+        },
+        { status: 500 },
+      );
+    }
     return NextResponse.json(
       {
         error: `${what} хадгалагдсангүй тул бараа үүссэнгүй. Дахин оролдоно уу.`,
@@ -185,6 +205,31 @@ export async function POST(req: Request) {
   });
   if (invErr) return abort("Үлдэгдэл");
 
+  // Шинэ / Эрэлттэй / Хямдрал тагийг DB өөрөө тавина (0100, 0101, 0103).
+
+  // Free-form internal tags (search / quiz pool, A2 «Нэмэлт Tag»).
+  const customTags = await sanitizeCustomTags(input.customTags);
+  if (customTags.length) {
+    const { data: ctRows, error: ctErr } = await supabase
+      .from("custom_tags")
+      .select("id, slug")
+      .in("slug", customTags);
+    if (ctErr) return abort("Нэмэлт таг");
+    const links = ((ctRows as { id: string }[] | null) ?? []).map((t) => ({
+      product_id: productId,
+      tag_id: t.id,
+    }));
+    if (links.length) {
+      const { error: tErr } = await supabase
+        .from("product_custom_tags")
+        .insert(links);
+      if (tErr) return abort("Нэмэлт таг");
+    }
+  }
+
+  // Гаж нөлөөтэй алхмууд (AI дуудлага, Storage руу хуулах) хамгийн сүүлд:
+  // дээрх DB бичилт аль нэг нь бүтэлгүйтвэл бараа устах бөгөөд устсан
+  // id дээр төлбөртэй AI ажиллах, өнчин файл үлдэх ёсгүй.
   if (aiMode) {
     // Two pictures from the one uploaded bottle: the catalogue packshot, then
     // the note image shot from that packshot (lib/ai/new-product-pipeline.ts).
@@ -206,28 +251,6 @@ export async function POST(req: Request) {
   } else if (input.bottleStyle) {
     // Гараар оруулсан зургууд эхэлж, савны зураг хамгийн ард.
     await addBottleImage(supabase, productId, slug, input.bottleStyle, "end");
-  }
-
-  // Шинэ / Эрэлттэй / Хямдрал тагийг DB өөрөө тавина (0100, 0101, 0103).
-
-  // Free-form internal tags (search / quiz pool, A2 «Нэмэлт Tag»).
-  const customTags = await sanitizeCustomTags(input.customTags);
-  if (customTags.length) {
-    const { data: ctRows, error: ctErr } = await supabase
-      .from("custom_tags")
-      .select("id, slug")
-      .in("slug", customTags);
-    if (ctErr) return abort("Нэмэлт таг");
-    const links = ((ctRows as { id: string }[] | null) ?? []).map((t) => ({
-      product_id: productId,
-      tag_id: t.id,
-    }));
-    if (links.length) {
-      const { error: tErr } = await supabase
-        .from("product_custom_tags")
-        .insert(links);
-      if (tErr) return abort("Нэмэлт таг");
-    }
   }
 
   // Everything the shop shows is in place — now publish as asked. A failure

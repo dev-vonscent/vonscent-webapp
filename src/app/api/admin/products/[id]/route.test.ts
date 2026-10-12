@@ -30,6 +30,14 @@ vi.mock("@/features/taxonomy/api", () => ({
 /** `products.update().eq().neq?().select()` — `neq`-ийг сан шиг шүүнэ. */
 function productsTable() {
   return {
+    select: () => ({
+      eq: () => ({
+        maybeSingle: async () => ({
+          data: missing ? null : { id: "p1" },
+          error: null,
+        }),
+      }),
+    }),
     update(row: Record<string, unknown>) {
       productUpdates.push(row);
       let excluded: string | null = null;
@@ -135,6 +143,22 @@ describe("PATCH /api/admin/products/[id] — төлөв", () => {
     missing = true;
     const res = await patch({ status: "hidden" });
     expect(res.status).toBe(404);
+  });
+
+  it("байхгүй бараанд «Идэвхтэй» илгээвэл 409 биш 404", async () => {
+    missing = true;
+    const res = await patch({ status: "active" });
+    expect(res.status).toBe(404);
+    expect((await res.json()).error).toBe("NOT_FOUND");
+    expect(productUpdates).toHaveLength(0);
+  });
+
+  it("байхгүй бараанд зөвхөн хэмжээ илгээвэл 500 биш 404", async () => {
+    missing = true;
+    const res = await patch({ variants: VARIANTS });
+    expect(res.status).toBe(404);
+    expect((await res.json()).error).toBe("NOT_FOUND");
+    expect(variantUpserts).toHaveLength(0);
   });
 });
 

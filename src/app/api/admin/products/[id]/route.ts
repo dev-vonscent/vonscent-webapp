@@ -45,6 +45,21 @@ export async function PATCH(
   const { supabase } = g;
   const input = parsed.data;
 
+  // Байхгүй бараа нь ямар ч хүсэлтэд 404. Үгүй бол `status:"active"` нь
+  // нөхцөлтэй UPDATE-ийн хоосон үр дүнгээс болж 409 LAUNCH_REQUIRED, зөвхөн
+  // `variants` нь FK алдаагаар 500 болж төөрөгдүүлнэ.
+  const { data: existing, error: findErr } = await supabase
+    .from("products")
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
+  if (findErr) {
+    return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
+  }
+  if (!existing) {
+    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  }
+
   const productUpdate: Record<string, unknown> = {};
   if (input.name !== undefined) productUpdate.name = input.name;
   if (input.brand !== undefined) {
@@ -110,6 +125,8 @@ export async function PATCH(
       if (conflict) return NextResponse.json(conflict, { status: 409 });
       return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
     }
+    // Бараа дээр байгааг шалгасан тул хоосон үр дүн нь `neq`-д таарсан
+    // «Тун удахгүй» бараа, эсвэл яг энэ хооронд устсан бараа.
     if (!updated?.length) {
       return input.status === "active"
         ? NextResponse.json(LAUNCH_REQUIRED, { status: 409 })
