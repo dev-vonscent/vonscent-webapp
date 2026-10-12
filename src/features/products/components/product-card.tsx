@@ -21,6 +21,9 @@ export function ProductCard({
   prefer?: CardStatus[];
 }) {
   const status = cardStatus(product, prefer);
+  // «Тун удахгүй» (0125): «Дууссан» биш — ирэхийг хүлээж буй ус. Нүүрний
+  // хэсэг, хүслийн жагсаалтад л гарна (каталог эдгээрийг алгасдаг).
+  const comingSoon = product.comingSoon === true;
   return (
     <div className="group relative flex flex-col">
       {/* touch-callout: iOS дээр удаан дарахад зургийг preview болгож
@@ -40,13 +43,22 @@ export function ProductCard({
         )}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
           {/* Нэг төлөв + хямдрал — хамгийн ихдээ хоёр badge. */}
-          {status && (
+          {comingSoon ? (
             <Badge
               variant="outline"
               className="bg-background/85! w-fit border-transparent backdrop-blur-sm"
             >
-              {CARD_STATUS_LABEL[status]}
+              Тун удахгүй
             </Badge>
+          ) : (
+            status && (
+              <Badge
+                variant="outline"
+                className="bg-background/85! w-fit border-transparent backdrop-blur-sm"
+              >
+                {CARD_STATUS_LABEL[status]}
+              </Badge>
+            )
           )}
           {product.tags.includes("sale") && (
             <Badge
@@ -62,7 +74,7 @@ export function ProductCard({
             {matchPct}% тохирол
           </span>
         )}
-        {product.soldOut && (
+        {product.soldOut && !comingSoon && (
           <div className="bg-background/70 absolute inset-0 flex items-center justify-center">
             <span className="bg-card rounded-full px-3 py-1 text-xs font-medium tracking-wide uppercase">
               Дууссан
@@ -73,7 +85,7 @@ export function ProductCard({
 
       <div className="absolute top-2.5 right-2.5 flex flex-col gap-1.5">
         <WishlistButton productId={product.id} />
-        {!product.soldOut && <QuickAdd product={product} />}
+        {!product.soldOut && !comingSoon && <QuickAdd product={product} />}
       </div>
 
       <div className="mt-3 flex flex-col gap-0.5">

@@ -90,6 +90,13 @@ export interface ProductListItem {
    * гараагүй бол үүссэн мөч. Зөвхөн эрэмбэлэхэд — огноо болгон харуулдаггүй.
    */
   createdAt: string;
+  /**
+   * «Тун удахгүй» (0125): харагдана, үнэ нь мэдэгдэнэ, захиалж болохгүй.
+   * Ийм бараанд `soldOut` нь мөн true (нэг ч хэмжээ зарагдахгүй) — энэ
+   * талбарыг мэдэхгүй уншигч зарагдахгүй бараа гэж зөв ойлгоно. Харуулах
+   * газрууд «Дууссан»-ы оронд «Тун удахгүй» гэж бичнэ.
+   */
+  comingSoon?: boolean;
 }
 
 /** Full product detail page payload. */
@@ -123,6 +130,8 @@ export interface ProductDetail extends ProductListItem {
   customTags: string[];
   /** Matching slugs (stable ids) — quiz weights and similarity match on these. */
   customTagSlugs: string[];
+  /** «Тун удахгүй» үеийн ойролцоо хугацаа, ж: «10-р сарын сүүлээр» (0125). */
+  comingSoonNote?: string | null;
 }
 
 /** One row of the admin-managed scent family taxonomy. */

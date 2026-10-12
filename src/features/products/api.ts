@@ -80,6 +80,9 @@ interface DbProduct {
   created_at: string;
   /** Анх худалдаанд гарсан мөч (0125); «Тун удахгүй» бараанд null. */
   launched_at: string | null;
+  /** 0125 — `getProductPageBySlug` зэрэг нь «Тун удахгүй»-г ч уншина. */
+  status: "hidden" | "coming_soon" | "active";
+  coming_soon_note: string | null;
   product_images: DbImage[];
   product_variants: DbVariant[];
   inventory: DbInventory | DbInventory[] | null;
@@ -98,6 +101,7 @@ const SELECT = `
   gender, concentration, sillage, longevity, scent_families, seasons,
   origin_country, release_year, bottle_ml,
   rating_avg, rating_count, is_featured, created_at, launched_at,
+  status, coming_soon_note,
   product_images ( url, alt, sort_order, is_visible ),
   product_variants ( id, ml, price, sale_price, is_active ),
   inventory ( on_hand_ml, reserved_ml, is_sold_out ),
@@ -121,6 +125,11 @@ function mapProduct(
 
   const inv = Array.isArray(row.inventory) ? row.inventory[0] : row.inventory;
   const availableMl = inv ? inv.on_hand_ml - inv.reserved_ml : 0;
+  // «Тун удахгүй» (0125): үнэ, хэмжээ харагдах ч НЭГ Ч хэмжээ зарагдахгүй.
+  // Ус агуулахад ирсэн ч админ гаргаагүй байж болно — үлдэгдлээс үл хамааран
+  // хаана. Ингэснээр энэ төлөвийг мэдэхгүй уншигч (сагс, хурдан нэмэх) ч
+  // зарагдахгүй бараа гэж үзнэ; харуулах газрууд нь `comingSoon`-оор ялгана.
+  const comingSoon = row.status === "coming_soon";
 
   // A size is buyable only when the admin left it active, the colour of bottle
   // it needs is in stock (0095) AND the remaining source ml can still fill it
@@ -134,7 +143,7 @@ function mapProduct(
       // өөр өнгийн саванд цутгахыг зөвшөөрсөн гэсэн үг.
       const bottleLocked = isBottleLocked(locks, row.gender, v.ml, v.id);
       const isActive = v.is_active;
-      const inStock = !inv?.is_sold_out && availableMl >= v.ml;
+      const inStock = !comingSoon && !inv?.is_sold_out && availableMl >= v.ml;
       return {
         id: v.id,
         ml: v.ml,
@@ -208,6 +217,8 @@ function mapProduct(
     // Filled in by fetchProducts' separate custom-tags query (audit R2).
     customTags: [],
     customTagSlugs: [],
+    comingSoon,
+    comingSoonNote: comingSoon ? row.coming_soon_note : null,
   };
 }
 
@@ -299,6 +310,11 @@ const fetchProductBy = cache(
   async (
     column: "slug" | "id",
     value: string,
+    /**
+     * «Тун удахгүй» барааг ч буцаах уу (0125). Зөвхөн ХАРУУЛАХ газар
+     * (барааны хуудас, OG зураг) — захиалга, сагс энэ сонголтгүй дуудна.
+     */
+    includeComingSoon = false,
   ): Promise<ProductDetail | null> => {
     if (!isSupabaseConfigured) {
       return SEED_PRODUCTS.find((p) => p[column] === value) ?? null;
@@ -306,12 +322,12 @@ const fetchProductBy = cache(
     const supabase = createPublicClient();
     if (!supabase) return null;
 
-    const { data, error } = await supabase
-      .from("products")
-      .select(SELECT)
-      .eq(column, value)
-      .eq("is_active", true)
-      .maybeSingle();
+    const base = supabase.from("products").select(SELECT).eq(column, value);
+    const { data, error } = await (
+      includeComingSoon
+        ? base.in("status", ["active", "coming_soon"])
+        : base.eq("is_active", true)
+    ).maybeSingle();
     if (error || !data) return null;
 
     const product = mapProduct(
@@ -342,6 +358,7 @@ function toListItem(p: ProductDetail): ProductListItem {
     ratingAvg: p.ratingAvg,
     ratingCount: p.ratingCount,
     createdAt: p.createdAt,
+    ...(p.comingSoon && { comingSoon: true }),
   };
 }
 
@@ -628,10 +645,21 @@ async function memoryCatalog(filters: CatalogFilters): Promise<CatalogResult> {
   return { items: pageItems, total, page, perPage };
 }
 
+/** Зарагдаж буй бараа — сагс, хурдан нэмэх зэрэг худалдан авах урсгалд. */
 export async function getProductBySlug(
   slug: string,
 ): Promise<ProductDetail | null> {
   return fetchProductBy("slug", slug);
+}
+
+/**
+ * Барааны хуудас: зарагдаж буй эсвэл «Тун удахгүй» (0125) бараа. Сүүлийнх нь
+ * `comingSoon: true` бөгөөд нэг ч хэмжээ нь `sellable` биш.
+ */
+export async function getProductPageBySlug(
+  slug: string,
+): Promise<ProductDetail | null> {
+  return fetchProductBy("slug", slug, true);
 }
 
 export async function getProductById(
@@ -654,6 +682,12 @@ export async function getProductsByIds(
  */
 export async function getProductDetailsByIds(
   ids: string[],
+  {
+    includeComingSoon = false,
+  }: {
+    /** Хүслийн жагсаалт л (0125) — сагс, багц, захиалга энэ сонголтгүй. */
+    includeComingSoon?: boolean;
+  } = {},
 ): Promise<ProductDetail[]> {
   if (!ids.length) return [];
   if (!isSupabaseConfigured) {
@@ -670,13 +704,12 @@ export async function getProductDetailsByIds(
     chunks.push(ids.slice(i, i + ID_CHUNK));
   }
   const results = await Promise.all(
-    chunks.map((chunk) =>
-      supabase
-        .from("products")
-        .select(SELECT)
-        .in("id", chunk)
-        .eq("is_active", true),
-    ),
+    chunks.map((chunk) => {
+      const base = supabase.from("products").select(SELECT).in("id", chunk);
+      return includeComingSoon
+        ? base.in("status", ["active", "coming_soon"])
+        : base.eq("is_active", true);
+    }),
   );
   const rows = results.flatMap((r) =>
     r.error ? [] : ((r.data ?? []) as unknown as DbProduct[]),
@@ -759,6 +792,44 @@ async function memoryRelated(
     .sort((a, b) => b.s - a.s || a.p.name.localeCompare(b.p.name))
     .slice(0, limit)
     .map((x) => toListItem(x.p));
+}
+
+/**
+ * «Тун удахгүй» ус (0125) — нүүрний ижил нэртэй хэсэг. Хамгийн сүүлд
+ * оруулсан нь түрүүлнэ. Каталогийн RPC-үүд эдгээрийг санаатай алгасдаг
+ * (`catalog_items` нь `is_active`-аар шүүнэ) тул тусдаа уншина.
+ */
+const fetchComingSoon = unstable_cache(
+  async (limit: number): Promise<ProductListItem[]> => {
+    const supabase = createPublicClient();
+    if (!supabase) return [];
+    const { data, error } = await supabase
+      .from("products")
+      .select(SELECT)
+      .eq("status", "coming_soon")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    // Шидэх нь санаатай: алдааг кэшлэхгүй (catalogSearch-тэй ижил).
+    if (error) throw new Error(`coming soon failed: ${error.message}`);
+    return ((data ?? []) as unknown as DbProduct[]).map((r) =>
+      toListItem(mapProduct(r)),
+    );
+  },
+  ["coming-soon"],
+  { revalidate: 60, tags: [CACHE_TAG_CATALOG] },
+);
+
+export async function getComingSoonProducts(
+  limit = 12,
+): Promise<ProductListItem[]> {
+  if (!isSupabaseConfigured) return [];
+  try {
+    return await fetchComingSoon(limit);
+  } catch (err) {
+    // Нүүрний нэмэлт хэсэг — унавал хэсэг л алга болно, хуудас биш.
+    Sentry.captureException(err);
+    return [];
+  }
 }
 
 /**

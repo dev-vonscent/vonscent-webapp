@@ -14,7 +14,9 @@ async function productEntries(): Promise<SlugRow[]> {
     const { data } = await supabase
       .from("products")
       .select("slug, updated_at")
-      .eq("is_active", true);
+      // «Тун удахгүй» (0125) хуудас ч нээгддэг — ирэхээс нь өмнө индекслэгдэх
+      // нь давуу тал.
+      .in("status", ["active", "coming_soon"]);
     const rows = (data as SlugRow[] | null) ?? [];
     if (rows.length) return rows;
   }
