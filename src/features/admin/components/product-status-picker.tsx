@@ -1,6 +1,6 @@
 "use client";
 
-import { PackageCheck } from "lucide-react";
+import { Check, Lock, PackageCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { Input } from "@/components/ui/input";
@@ -73,24 +73,31 @@ export function ProductStatusPicker({
               aria-checked={selected}
               disabled={disabled}
               onClick={() => onChange(s)}
+              // Гурван төлөв өнгөөр биш хэлбэрээр ялгарна: dark theme-д
+              // `primary` ба `secondary` бараг ижил тул дэвсгэр дангаараа
+              // сонгосныг хэлж чаддаггүй. Сонгосон — тод хүрээ + ✓,
+              // хаалттай — тасархай хүрээ + цоож, сонгож болох — энгийн.
               className={cn(
-                "flex min-h-11 flex-col items-center justify-center rounded-md p-2 text-center text-sm/tight font-medium transition-colors",
+                "relative flex min-h-11 flex-col items-center justify-center rounded-md border p-2 text-center text-sm/tight font-medium transition-colors",
                 selected
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-muted-foreground hover:text-foreground",
-                disabled &&
-                  "hover:text-muted-foreground cursor-not-allowed opacity-50",
+                  ? "border-foreground bg-secondary text-foreground"
+                  : disabled
+                    ? "border-muted-foreground/30 text-muted-foreground/60 cursor-not-allowed border-dashed bg-transparent"
+                    : "bg-secondary text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground border-transparent",
               )}
             >
-              {PRODUCT_STATUS_LABEL[s]}
-              <span
-                className={cn(
-                  "mt-0.5 hidden text-[11px] font-normal sm:block",
-                  selected
-                    ? "text-primary-foreground/80"
-                    : "text-muted-foreground",
-                )}
-              >
+              {selected && (
+                <Check
+                  aria-hidden
+                  className="absolute top-1.5 right-1.5 size-3.5"
+                />
+              )}
+              <span className="flex items-center gap-1">
+                {disabled && <Lock aria-hidden className="size-3.5" />}
+                {PRODUCT_STATUS_LABEL[s]}
+                {disabled && <span className="sr-only">(хаалттай)</span>}
+              </span>
+              <span className="mt-0.5 hidden text-[11px] font-normal sm:block">
                 {HINT[s]}
               </span>
             </button>
