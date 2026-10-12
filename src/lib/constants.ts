@@ -664,6 +664,9 @@ export const CONTENT_PAGES_HIDDEN: boolean = true;
 /**
  * Азын хүрд (`/lucky-wheel`) нуугдсан эсэх. 2026-09-27-нд нуугдаж, v2
  * шаардлагаар (0129, docs/lucky-wheel.md §9) 2026-10-12-нд дахин нээгдэв.
+ * Prod release-д дахин нуув (клиент dev дээр туршиж батлах хүртэл) — dev → main
+ * release бүрийн өмнө энэ утгыг шалга. Хүрд эргүүлэх, захиалгын эрх нь
+ * `settings.spin`-ээр (0130) тусдаа унтардаг.
  *
  * `true` бол цэс, профайлын dropdown, акаунтын карт, купоны жагсаалтын
  * холбоосууд нуугдаж, хуудас нь шууд URL-ээр 404 өгнө. API болон админы
@@ -671,7 +674,7 @@ export const CONTENT_PAGES_HIDDEN: boolean = true;
  *
  * `boolean` гэж зориуд бичив (`CONTENT_PAGES_HIDDEN`-ийн тайлбарыг үз).
  */
-export const LUCKY_WHEEL_HIDDEN: boolean = false;
+export const LUCKY_WHEEL_HIDDEN: boolean = true;
 
 /**
  * «Миний купон» цэсний «Шинэ» тэмдэг (0104) энэ өдрөөс хойш хэнд ч гарахгүй.
