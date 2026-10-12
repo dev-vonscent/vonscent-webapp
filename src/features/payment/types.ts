@@ -52,6 +52,11 @@ export interface PaymentView {
   paid: boolean;
   /** Захиалга цуцлагдсан (нөөцийн хугацаа дууссан эсвэл гараар). */
   cancelled: boolean;
+  /**
+   * Бүртгэлтэй хэрэглэгчийн захиалга — «Дараа захиалах» товч гарна. Зочинд
+   * хадгалах бүртгэл байхгүй тул зөвхөн «Устгах» (0124).
+   */
+  canSaveForLater: boolean;
   /** "yyyy-MM-dd" (UB) — chosen at checkout. */
   deliverOn: string | null;
   invoice: {

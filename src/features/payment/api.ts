@@ -182,6 +182,7 @@ export async function getPaymentByToken(
     paymentMethod: order.payment_method,
     paid,
     cancelled,
+    canSaveForLater: order.user_id !== null,
     deliverOn: order.deliver_on,
     invoice,
     mock: isQpayMockMode(),

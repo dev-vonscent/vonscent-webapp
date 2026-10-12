@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getPaymentByToken } from "@/features/payment/api";
 import { PaymentPanel } from "@/features/payment/components/payment-panel";
+import { getStoreSettings } from "@/features/content/api";
 
 /**
  * `/pay/<token>` — the payment page.
@@ -28,7 +29,12 @@ export default async function PayPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const view = await getPaymentByToken(token);
+  const [view, store] = await Promise.all([
+    getPaymentByToken(token),
+    getStoreSettings(),
+  ]);
   if (!view) notFound();
-  return <PaymentPanel view={view} token={token} />;
+  return (
+    <PaymentPanel view={view} token={token} storePhone={store.phone || null} />
+  );
 }

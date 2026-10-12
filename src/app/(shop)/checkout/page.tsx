@@ -1107,7 +1107,29 @@ export default function CheckoutPage() {
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, requestId: requestIdRef.current }),
+        body: JSON.stringify({
+          ...payload,
+          requestId: requestIdRef.current,
+          // Хээнд (`signature`) ороогүй: захиалгын агуулга биш, төлөгдөөгүй
+          // үлдвэл «Дараа захиалах» руу шилжүүлэх хуулбар (0124).
+          snapshot: authed
+            ? {
+                buyNow,
+                items,
+                collections,
+                draft: {
+                  values: getValues(),
+                  khoroo,
+                  address: draft,
+                  noteTags,
+                  giftIds,
+                  saveAddr,
+                  addressChoice,
+                  loyaltyWanted,
+                } satisfies CheckoutDraft,
+              }
+            : undefined,
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

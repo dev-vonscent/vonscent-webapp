@@ -30,6 +30,10 @@ import {
   completeOrderRequest,
   releaseOrderRequest,
 } from "@/lib/orders/idempotency";
+import {
+  SAVED_CHECKOUT_MAX_BYTES,
+  savedCheckoutInputSchema,
+} from "@/lib/validators/saved-checkout";
 
 /**
  * Давтагдсан идемпотентын түлхүүрийн хариу — анхны захиалгын хариуг сэргээнэ.
@@ -64,6 +68,20 @@ async function describeExistingOrder(
     /** Клиентэд мэдээлэл болгож л явна — урсгал нь ижил. */
     deduplicated: true,
   };
+}
+
+/**
+ * Checkout-ийн сагсны хуулбар (0124) — төлөгдөөгүй захиалга «Дараа захиалах»
+ * руу шилжихэд хэрэглэгдэнэ. Захиалгын нэг хэсэг биш: буруу, хэт том бол
+ * зүгээр л хаягдана, захиалга зогсохгүй.
+ */
+function parseSnapshot(body: unknown) {
+  const raw = (body as { snapshot?: unknown } | null)?.snapshot;
+  if (raw === undefined) return null;
+  const parsed = savedCheckoutInputSchema.safeParse(raw);
+  if (!parsed.success) return null;
+  if (JSON.stringify(parsed.data).length > SAVED_CHECKOUT_MAX_BYTES) return null;
+  return parsed.data;
 }
 
 /** Клиентээс ирсэн өдрийг [маргааш, маргааш+30] мужид оруулна. */
@@ -325,6 +343,15 @@ export async function POST(req: Request) {
     // тул удаан, харин хүлээгч талыг тэр болтол саатуулах шалтгаан байхгүй.
     if (input.requestId && order) {
       await completeOrderRequest(supabase, input.requestId, order.id);
+    }
+
+    // «Дараа захиалах» нь бүртгэлд хадгалагддаг тул зочинд хуулбар хэрэггүй.
+    const snapshot = userId && order ? parseSnapshot(body) : null;
+    if (snapshot && order) {
+      await supabase
+        .from("orders")
+        .update({ checkout_snapshot: snapshot })
+        .eq("id", order.id);
     }
 
     // Invoice creation goes through ensureInvoice so one order can never end

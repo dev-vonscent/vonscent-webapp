@@ -220,6 +220,11 @@ export interface OrderRow {
    * never be the payment page's key.
    */
   pay_token: string;
+  /**
+   * Checkout-ийн сагсны хуулбар (0124) — төлөгдөөгүй бол «Дараа захиалах»
+   * руу шилжүүлэхэд. Төлөгдсөн / цуцлагдсан мөчид trigger арилгана.
+   */
+  checkout_snapshot: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
