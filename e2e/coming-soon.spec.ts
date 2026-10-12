@@ -55,6 +55,11 @@ test.describe("«Тун удахгүй» бараа", () => {
     ).toBeAttached();
   });
 
+  // Хязгаар: доорх хоёр тест зөвхөн demo seed-ийн тусгаарлалтыг шалгана —
+  // `SEED_COMING_SOON` нь `SEED_PRODUCTS`-аас бүтцээрээ тусдаа тул каталог,
+  // хайлтын pool-д угаасаа ордоггүй. Бодит хамгаалалт (`catalog_items`
+  // view-ийн `is_active` шүүлт, хайлтын RPC, RLS өргөссөний дараах query)
+  // эндээс шалгагддаггүй — тэдгээр нь dev сангийн SQL checklist-д.
   test("каталогт гарахгүй", async ({ page }) => {
     await page.goto("/catalog");
     await expect(page.locator('a[href^="/products/"]').first()).toBeVisible();
