@@ -56,6 +56,13 @@ describe("ProductStatusPicker", () => {
     expect(cs.getAttribute("aria-checked")).toBe("false");
     expect(screen.getByText(/Худалдаанд гарсан бараа/)).toBeTruthy();
   });
+
+  it("хаалттай сонголтыг дэлгэц уншигч ч ялгана", () => {
+    render(<Harness initial="active" launchedAt="2026-09-01T00:00:00Z" />);
+    expect(radio(/Тун удахгүй/).textContent).toMatch(/хаалттай/);
+    expect(radio(/Идэвхтэй/).textContent).not.toMatch(/хаалттай/);
+    expect(radio(/Нуусан/).textContent).not.toMatch(/хаалттай/);
+  });
 });
 
 describe("ProductStatusPicker — сан дээр «Тун удахгүй» бараа", () => {
