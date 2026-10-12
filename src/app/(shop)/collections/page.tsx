@@ -85,12 +85,18 @@ export default async function CollectionsPage() {
       ) : (
         // Шүүлт нь URL-д байдаг тул browser нь `useSearchParams` уншина —
         // энэ хуудас ISR-ээр урьдчилан зурагддаг учир Suspense хэрэгтэй.
-        <Suspense>
-          <CollectionBrowser
-            collections={collections}
-            customEnabled={settings.customEnabled}
-          />
-        </Suspense>
+        // Гарчиг нь дээрх «өөрөө үүсгэх» banner-аас доорх сүлжээг салгана.
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold tracking-tight sm:text-xl">
+            Бэлэн багцууд
+          </h2>
+          <Suspense>
+            <CollectionBrowser
+              collections={collections}
+              customEnabled={settings.customEnabled}
+            />
+          </Suspense>
+        </section>
       )}
     </div>
   );

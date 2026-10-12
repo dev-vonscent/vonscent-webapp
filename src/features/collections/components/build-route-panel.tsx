@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowRight, Plus } from "lucide-react";
-import { BUNDLE_ML_SIZES } from "@/lib/constants";
 
 /**
  * «Өөрөө үүсгэх» нь хуудасны толгойн доор, бэлэн багцуудын сүлжээнээс
@@ -18,9 +17,6 @@ import { BUNDLE_ML_SIZES } from "@/lib/constants";
  * `bg-secondary` дээр уусаж анзаарагдахгүй байна гэж клиент хэлсэн (2026-10).
  */
 export function BuildRoutePanel({ minItems }: { minItems: number }) {
-  const minMl = Math.min(...BUNDLE_ML_SIZES);
-  const maxMl = Math.max(...BUNDLE_ML_SIZES);
-
   return (
     <Link
       href="/collections/build"
@@ -54,11 +50,11 @@ export function BuildRoutePanel({ minItems }: { minItems: number }) {
       </span>
       <span className="min-w-0 flex-1 space-y-0.5">
         <span className="block text-sm font-semibold sm:text-base">
-          Өөрийн багцаа бүрдүүл
+          Багцаа хүссэнээрээ үүсгэх
         </span>
         <span className="text-muted-foreground block text-xs text-pretty sm:text-sm">
-          Дуртай {minItems}+ үнэртнээ сонгоод {minMl}–{maxMl}&nbsp;ml хэмжээг
-          өөрөө тохируул
+          Хүссэн {minItems} ба түүнээс дээш төрлийн үнэртнээ сонгоод өөрийн
+          багцыг үүсгэх боломжтой
         </span>
       </span>
       <span className="bg-cta text-cta-foreground group-hover:bg-cta/90 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-4 text-sm font-medium transition-colors">
