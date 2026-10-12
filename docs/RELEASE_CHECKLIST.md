@@ -6,6 +6,16 @@ pepper солилт) git түүхэд (`git log -- docs/RELEASE_CHECKLIST.md`).
 
 ---
 
+## 0. dev → main release бүрийн өмнө ⚠
+
+- [ ] **Азын хүрд:** `LUCKY_WHEEL_HIDDEN` (`src/lib/constants.ts`) dev дээр
+      `false` (клиентийн туршилт). Клиент батлаагүй бол release-ийн өмнө
+      `true` болго — эс тэгвэл prod-д хүрд нээгдэнэ. Prod-ын `settings.spin`
+      (`enabled`, `orderSpinStep`) нь 0130-аар унтраалттай — нээх өдөр
+      админаас асаана.
+
+---
+
 ## 1. Зардлын хяналт — release-ээс 2 долоо хоногийн дараа
 
 - [ ] **ISR — өгөгдлөөр шийдэх (заавал биш).** Vercel → Usage → ISR Writes-ийг
