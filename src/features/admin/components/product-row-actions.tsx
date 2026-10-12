@@ -164,7 +164,7 @@ export function ProductRowActions({
             className={ITEM}
           >
             <Coins />
-            Үнэ ба төлөв
+            Үнэ засах
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={(e) => {

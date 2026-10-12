@@ -47,3 +47,14 @@ export function statusConflict(
   );
   return code ? { error: STATUS_ERROR_MESSAGE[code], code } : null;
 }
+
+/**
+ * «Тун удахгүй» барааг PATCH-аар «Идэвхтэй» болгох оролдлогын 409. Гаргах
+ * цорын ганц зам нь `POST /api/admin/products/[id]/launch` — ирээдүйд тэнд
+ * нэмэгдэх шалгалтыг ерөнхий засвар тойрохгүйн тулд.
+ */
+export const LAUNCH_REQUIRED = {
+  error:
+    "«Тун удахгүй» барааг «Худалдаанд гаргах» товчоор гаргана уу. Засварын маягтаар шууд «Идэвхтэй» болгох боломжгүй.",
+  code: "LAUNCH_REQUIRED",
+} as const;

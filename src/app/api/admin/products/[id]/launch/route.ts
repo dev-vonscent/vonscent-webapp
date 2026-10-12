@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { revalidatePublic } from "@/lib/cache";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
@@ -23,7 +24,12 @@ export async function POST(
   _req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await ctx.params;
+  const parsed = z.string().uuid().safeParse((await ctx.params).id);
+  // UUID биш id нь Postgres-ийн cast алдаа болж 500 буцаадаг байсан.
+  if (!parsed.success) {
+    return NextResponse.json({ error: "VALIDATION" }, { status: 400 });
+  }
+  const id = parsed.data;
   if (!isSupabaseConfigured) return NextResponse.json({ demo: true });
 
   const staff = await getStaffUser();

@@ -1328,6 +1328,8 @@ export interface ReservedProduct {
   name: string;
   brand: string;
   isActive: boolean;
+  /** 0125 — `isActive=false` нь «Нуусан» ба «Тун удахгүй» хоёуланг хамардаг. */
+  status: ProductStatus;
   /** `inventory.reserved_ml` — тоолуур өөрөө. */
   reservedMl: number;
   /** Нээлттэй захиалгуудаас тоолсон дүн. `reservedMl`-тэй тэнцүү байх ёстой. */
@@ -1387,11 +1389,25 @@ export async function getReservedMl(
     return [];
   }
 
+  // RPC (0075) нь зөвхөн `is_active` буцаадаг — төлөвийг тусад нь авна.
+  // Олдохгүй бол `is_active`-аас таана: хуудас бүтэн унахаас дээр.
+  const ids = (data ?? []).map((r) => r.product_id);
+  const { data: statusRows } = ids.length
+    ? await supabase.from("products").select("id, status").in("id", ids)
+    : { data: [] };
+  const statusById = new Map(
+    ((statusRows as { id: string; status: ProductStatus }[] | null) ?? []).map(
+      (p) => [p.id, p.status],
+    ),
+  );
+
   return (data ?? []).map((r) => ({
     productId: r.product_id,
     name: r.product_name,
     brand: r.brand,
     isActive: r.is_active,
+    status:
+      statusById.get(r.product_id) ?? (r.is_active ? "active" : "hidden"),
     reservedMl: Number(r.reserved_ml),
     accountedMl: Number(r.accounted_ml),
     onHandMl: Number(r.on_hand_ml),

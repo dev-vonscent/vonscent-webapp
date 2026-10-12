@@ -9,13 +9,12 @@ import { Field } from "@/components/ui/field";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { toast } from "@/lib/toast";
 import { adminFetch } from "@/features/admin/lib/mutate";
-import { ML_SIZES, type ProductStatus } from "@/lib/constants";
+import { ML_SIZES, PRODUCT_STATUS_LABEL } from "@/lib/constants";
 import {
   VariantPriceTable,
   unpricedActiveSizes,
   type VariantDraft,
 } from "./variant-price-table";
-import { ProductStatusPicker } from "./product-status-picker";
 import type { AdminProduct } from "@/features/admin/api";
 
 /**
@@ -26,6 +25,10 @@ import type { AdminProduct } from "@/features/admin/api";
  * with no confirmation. Price, the low-stock threshold and the published toggle
  * are the three things that actually change every day, so they get a dialog on
  * the row and the list keeps its filters.
+ *
+ * Төлөвийг энд зөвхөн харуулна, өөрчлөхгүй (PLAN 1.5): «Тун удахгүй» барааг
+ * гаргах цорын ганц зам нь launch endpoint, бусад төлөвийн солилт засах
+ * хуудсанд.
  *
  * Everything else about the product still lives on the edit page; this is a
  * shortcut, not a second editor.
@@ -43,10 +46,6 @@ export function QuickPriceDialog({
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
   const [showErrors, setShowErrors] = React.useState(false);
-  const [status, setStatus] = React.useState<ProductStatus>(product.status);
-  const [comingSoonNote, setComingSoonNote] = React.useState(
-    product.comingSoonNote ?? "",
-  );
   const [lowStockMl, setLowStockMl] = React.useState(
     String(product.lowStockMl),
   );
@@ -59,8 +58,6 @@ export function QuickPriceDialog({
   React.useEffect(() => {
     if (open) {
       setVariants(draftFrom(product));
-      setStatus(product.status);
-      setComingSoonNote(product.comingSoonNote ?? "");
       setLowStockMl(String(product.lowStockMl));
       setShowErrors(false);
       setMsg(null);
@@ -85,9 +82,6 @@ export function QuickPriceDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           variants,
-          // Зөвхөн сольсон үед — засах хуудастай ижил шалтгаан.
-          ...(status !== product.status && { status }),
-          ...(status === "coming_soon" && { comingSoonNote }),
           lowStockMl: Math.max(0, Number(lowStockMl) || 0),
         }),
       });
@@ -99,9 +93,9 @@ export function QuickPriceDialog({
       // The change is live for customers the moment it lands, so say so —
       // this write used to complete in silence.
       toast.success(
-        status === "active"
+        product.status === "active"
           ? `«${product.name}» хадгалагдлаа. Шинэ үнэ сайтад шууд харагдана.`
-          : status === "coming_soon"
+          : product.status === "coming_soon"
             ? `«${product.name}» хадгалагдлаа. Сайтад «Тун удахгүй» гэж харагдана, захиалах боломжгүй.`
             : `«${product.name}» хадгалагдлаа. Бараа сайтад харагдахгүй байна.`,
       );
@@ -116,7 +110,7 @@ export function QuickPriceDialog({
     <ResponsiveDialog
       open={open}
       onOpenChange={busy ? () => {} : onOpenChange}
-      title="Үнэ ба төлөв"
+      title="Үнэ засах"
       description={`${product.brand} — ${product.name}`}
       className="sm:max-w-lg"
     >
@@ -141,13 +135,13 @@ export function QuickPriceDialog({
           />
         </Field>
 
-        <ProductStatusPicker
-          value={status}
-          onChange={setStatus}
-          launchedAt={product.launchedAt}
-          note={comingSoonNote}
-          onNoteChange={setComingSoonNote}
-        />
+        <p className="text-muted-foreground text-sm">
+          Төлөв:{" "}
+          <span className="text-foreground font-medium">
+            {PRODUCT_STATUS_LABEL[product.status]}
+          </span>
+          . Төлөвийг барааны засах хуудаснаас солино.
+        </p>
 
         {msg && (
           // role="alert" so a save failure is announced, not just painted.

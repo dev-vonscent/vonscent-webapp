@@ -10,7 +10,10 @@ import {
   sanitizeCustomTags,
   sanitizeFamilies,
 } from "@/features/taxonomy/api";
-import { statusConflict } from "@/features/admin/lib/product-status";
+import {
+  LAUNCH_REQUIRED,
+  statusConflict,
+} from "@/features/admin/lib/product-status";
 
 async function guard() {
   if (!isSupabaseConfigured) return { demo: true as const };
@@ -93,10 +96,12 @@ export async function PATCH(
     productUpdate.bottle_price = input.bottlePrice;
 
   if (Object.keys(productUpdate).length > 0) {
-    const { error } = await supabase
-      .from("products")
-      .update(productUpdate)
-      .eq("id", id);
+    let query = supabase.from("products").update(productUpdate).eq("id", id);
+    // «Тун удахгүй» → «Идэвхтэй» нь зөвхөн launch endpoint-оор. Урьдчилан
+    // уншаад шалгах биш нөхцөлтэй UPDATE: уншсан, бичсэн хоёрын хооронд төлөв
+    // солигдсон ч тойрох завсар үлдэхгүй.
+    if (input.status === "active") query = query.neq("status", "coming_soon");
+    const { data: updated, error } = await query.select("id");
 
     if (error) {
       // Нэг удаа гарсан барааг «Тун удахгүй» болгох гэх мэт дүрмийн зөрчил
@@ -105,6 +110,11 @@ export async function PATCH(
       if (conflict) return NextResponse.json(conflict, { status: 409 });
       return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
     }
+    if (!updated?.length) {
+      return input.status === "active"
+        ? NextResponse.json(LAUNCH_REQUIRED, { status: 409 })
+        : NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+    }
   }
 
   // Per-size price + on-sale flag. Prices are typed by hand, so the bottle
@@ -112,7 +122,7 @@ export async function PATCH(
   // yet (e.g. the 2ml sample tier on an older product) can be added here.
   if (input.variants !== undefined) {
     for (const v of input.variants) {
-      await supabase.from("product_variants").upsert(
+      const { error } = await supabase.from("product_variants").upsert(
         {
           product_id: id,
           ml: v.ml,
@@ -124,6 +134,15 @@ export async function PATCH(
         },
         { onConflict: "product_id,ml" },
       );
+      // Чимээгүй алгасвал админ «хадгалагдлаа» гэж хараад хуучин үнээр
+      // зарагдсаар байна. Өмнөх хэмжээнүүд бичигдсэн байж болно — бүхэлд нь
+      // transaction-д оруулах нь тусдаа ажил (PLAN «Шийдвэрүүд»).
+      if (error) {
+        return NextResponse.json(
+          { error: "VARIANT_UPDATE_FAILED", ml: v.ml },
+          { status: 500 },
+        );
+      }
     }
   }
 

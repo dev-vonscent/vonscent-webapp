@@ -213,15 +213,21 @@ export async function POST(req: Request) {
   // Free-form internal tags (search / quiz pool, A2 «Нэмэлт Tag»).
   const customTags = await sanitizeCustomTags(input.customTags);
   if (customTags.length) {
-    const { data: ctRows } = await supabase
+    const { data: ctRows, error: ctErr } = await supabase
       .from("custom_tags")
       .select("id, slug")
       .in("slug", customTags);
+    if (ctErr) return abort("Нэмэлт таг");
     const links = ((ctRows as { id: string }[] | null) ?? []).map((t) => ({
       product_id: productId,
       tag_id: t.id,
     }));
-    if (links.length) await supabase.from("product_custom_tags").insert(links);
+    if (links.length) {
+      const { error: tErr } = await supabase
+        .from("product_custom_tags")
+        .insert(links);
+      if (tErr) return abort("Нэмэлт таг");
+    }
   }
 
   // Everything the shop shows is in place — now publish as asked. A failure
