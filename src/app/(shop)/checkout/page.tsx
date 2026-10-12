@@ -1610,7 +1610,11 @@ export default function CheckoutPage() {
             step={2}
             title="Хүлээн авагчийн мэдээлэл"
           >
-            <div className="grid gap-4 sm:grid-cols-2">
+            {/* `grid-cols-1` = minmax(0,1fr): загваргүй `grid`-ийн багана хамгийн
+                өргөн мөрийн min-content-оос нарийсдаггүй. Нэр · утас ·
+                «Өөр хүн хүлээн авах» мөр нь `nowrap` тул утсан дээр баганыг
+                картаас гадагш сунгаж, имэйлийн талбарыг ч дагуулж гаргадаг байв. */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {recipientCollapsed ? (
                 <div className="bg-secondary flex items-center gap-3 rounded-xl py-1.5 pr-1.5 pl-3 text-sm sm:col-span-2">
                   <UserRound className="text-muted-foreground size-4 shrink-0" />
