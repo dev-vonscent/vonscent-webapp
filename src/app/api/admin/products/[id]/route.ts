@@ -10,6 +10,10 @@ import {
   sanitizeCustomTags,
   sanitizeFamilies,
 } from "@/features/taxonomy/api";
+import {
+  LAUNCH_REQUIRED,
+  statusConflict,
+} from "@/features/admin/lib/product-status";
 
 async function guard() {
   if (!isSupabaseConfigured) return { demo: true as const };
@@ -40,6 +44,21 @@ export async function PATCH(
   }
   const { supabase } = g;
   const input = parsed.data;
+
+  // Байхгүй бараа нь ямар ч хүсэлтэд 404. Үгүй бол `status:"active"` нь
+  // нөхцөлтэй UPDATE-ийн хоосон үр дүнгээс болж 409 LAUNCH_REQUIRED, зөвхөн
+  // `variants` нь FK алдаагаар 500 болж төөрөгдүүлнэ.
+  const { data: existing, error: findErr } = await supabase
+    .from("products")
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
+  if (findErr) {
+    return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
+  }
+  if (!existing) {
+    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  }
 
   const productUpdate: Record<string, unknown> = {};
   if (input.name !== undefined) productUpdate.name = input.name;
@@ -81,20 +100,37 @@ export async function PATCH(
     productUpdate.origin_country = input.originCountry;
   if (input.releaseYear !== undefined)
     productUpdate.release_year = input.releaseYear;
-  if (input.isActive !== undefined) productUpdate.is_active = input.isActive;
+  // Зөвхөн `status`-ийг бичнэ — `is_active`-ийг DB-ийн trigger дагуулна
+  // (0125). Хоёуланг нь илгээвэл зөрөх эрсдэлтэй.
+  if (input.status !== undefined) productUpdate.status = input.status;
+  if (input.comingSoonNote !== undefined)
+    productUpdate.coming_soon_note = input.comingSoonNote;
   if (input.isFeatured !== undefined)
     productUpdate.is_featured = input.isFeatured;
   if (input.bottlePrice !== undefined)
     productUpdate.bottle_price = input.bottlePrice;
 
   if (Object.keys(productUpdate).length > 0) {
-    const { error } = await supabase
-      .from("products")
-      .update(productUpdate)
-      .eq("id", id);
+    let query = supabase.from("products").update(productUpdate).eq("id", id);
+    // «Тун удахгүй» → «Идэвхтэй» нь зөвхөн launch endpoint-оор. Урьдчилан
+    // уншаад шалгах биш нөхцөлтэй UPDATE: уншсан, бичсэн хоёрын хооронд төлөв
+    // солигдсон ч тойрох завсар үлдэхгүй.
+    if (input.status === "active") query = query.neq("status", "coming_soon");
+    const { data: updated, error } = await query.select("id");
 
     if (error) {
+      // Нэг удаа гарсан барааг «Тун удахгүй» болгох гэх мэт дүрмийн зөрчил
+      // (0125) — сервер биш, хүсэлт буруу: админд шалтгааныг нь хэлнэ.
+      const conflict = statusConflict(error.message);
+      if (conflict) return NextResponse.json(conflict, { status: 409 });
       return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
+    }
+    // Бараа дээр байгааг шалгасан тул хоосон үр дүн нь `neq`-д таарсан
+    // «Тун удахгүй» бараа, эсвэл яг энэ хооронд устсан бараа.
+    if (!updated?.length) {
+      return input.status === "active"
+        ? NextResponse.json(LAUNCH_REQUIRED, { status: 409 })
+        : NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
     }
   }
 
@@ -103,7 +139,7 @@ export async function PATCH(
   // yet (e.g. the 2ml sample tier on an older product) can be added here.
   if (input.variants !== undefined) {
     for (const v of input.variants) {
-      await supabase.from("product_variants").upsert(
+      const { error } = await supabase.from("product_variants").upsert(
         {
           product_id: id,
           ml: v.ml,
@@ -115,6 +151,15 @@ export async function PATCH(
         },
         { onConflict: "product_id,ml" },
       );
+      // Чимээгүй алгасвал админ «хадгалагдлаа» гэж хараад хуучин үнээр
+      // зарагдсаар байна. Өмнөх хэмжээнүүд бичигдсэн байж болно — бүхэлд нь
+      // transaction-д оруулах нь тусдаа ажил (PLAN «Шийдвэрүүд»).
+      if (error) {
+        return NextResponse.json(
+          { error: "VARIANT_UPDATE_FAILED", ml: v.ml },
+          { status: 500 },
+        );
+      }
     }
   }
 

@@ -12,6 +12,7 @@ import {
   Star,
   StarOff,
   FlaskConical,
+  PackageCheck,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { mutateJson } from "@/features/admin/lib/mutate";
@@ -27,6 +28,7 @@ import {
 import { editHref } from "@/features/admin/lib/return-to";
 import { QuickPriceDialog } from "./quick-price-dialog";
 import { StockAdjustDialog, type StockMode } from "./stock-adjust-dialog";
+import { useLaunchProduct } from "./use-launch-product";
 import type { AdminProduct } from "@/features/admin/api";
 import { cn } from "@/lib/utils";
 
@@ -58,6 +60,8 @@ export function ProductRowActions({
   const [featuring, setFeaturing] = React.useState(false);
   const [stockMode, setStockMode] = React.useState<StockMode | null>(null);
   const [bottleBusy, setBottleBusy] = React.useState(false);
+  const { launch, launching } = useLaunchProduct();
+  const comingSoon = product.status === "coming_soon";
   const label = `${product.brand} — ${product.name}`;
   // The full editor returns to this exact filtered list, not a bare one.
   const fullEditHref = editHref(product.id, params.toString());
@@ -135,6 +139,21 @@ export function ProductRowActions({
           )}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {/* «Тун удахгүй» бараанд л (0125). Үлдэгдэлгүй ч гаргаж болно —
+              тэр үед дэлгүүрт «Дууссан» гэж харагдана, админ мэдэж байгаа. */}
+          {comingSoon && (
+            <>
+              <DropdownMenuItem
+                onSelect={() => void launch(product.id, product.name)}
+                disabled={launching}
+                className={ITEM}
+              >
+                <PackageCheck />
+                Худалдаанд гаргах
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           <DropdownMenuItem
             // Radix restores focus to the trigger on close, and opening a
             // dialog in the same tick fights that. Defer to the next frame.
@@ -145,7 +164,7 @@ export function ProductRowActions({
             className={ITEM}
           >
             <Coins />
-            Үнэ ба төлөв
+            Үнэ засах
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={(e) => {
@@ -226,6 +245,8 @@ export function ProductRowActions({
           productLabel={label}
           onHandMl={product.onHandMl}
           reservedMl={product.reservedMl}
+          productName={product.name}
+          comingSoon={comingSoon}
         />
       )}
     </>

@@ -84,7 +84,14 @@ export interface ProductRow {
   bottle_ml: number;
   rating_avg: number;
   rating_count: number;
+  /** `status === 'active'`-тай үргэлж тэнцүү (0125 trigger + check). */
   is_active: boolean;
+  /** Барааны амьдралын мөчлөг (0125) — `PRODUCT_STATUSES`. */
+  status: "hidden" | "coming_soon" | "active";
+  /** Анх худалдаанд гарсан мөч (0125); хэзээ ч гараагүй бол null. */
+  launched_at: string | null;
+  /** «Тун удахгүй» үеийн ойролцоо хугацаа, ж: «10-р сарын сүүлээр» (0125). */
+  coming_soon_note: string | null;
   /** «Онцлох бараа» (0055) — нүүрийн 'featured' хэсэг эндээс автоматаар уншина. */
   is_featured: boolean;
   created_at: string;
@@ -495,7 +502,18 @@ type Table<Row, Optional extends keyof Row> = {
 export interface Database {
   public: {
     Tables: {
-      products: Table<ProductRow, "id" | "created_at" | "updated_at">;
+      // status ба is_active-ийн аль нэгийг өгөхөд хангалттай — нөгөөг нь
+      // trigger бөглөнө (0125); launched_at-ийг ч trigger тавина.
+      products: Table<
+        ProductRow,
+        | "id"
+        | "created_at"
+        | "updated_at"
+        | "status"
+        | "is_active"
+        | "launched_at"
+        | "coming_soon_note"
+      >;
       product_images: Table<ProductImageRow, "id">;
       product_variants: Table<ProductVariantRow, "id" | "sale_price">;
       inventory: Table<InventoryRow, "updated_at">;
@@ -547,6 +565,10 @@ export interface Database {
       grant_reward_coupon: { Args: Record<string, unknown>; Returns: string };
       spin_wheel: { Args: Record<string, unknown>; Returns: unknown };
       spin_wheel_state: { Args: Record<string, unknown>; Returns: unknown };
+      launch_product: {
+        Args: { p_id: string };
+        Returns: "launched" | "already_active" | "not_coming_soon" | "not_found";
+      };
     };
     Enums: {
       user_role: UserRole;
@@ -555,6 +577,7 @@ export interface Database {
       payment_method_t: PaymentMethod;
       payment_status_t: PaymentStatus;
       tag_kind_t: TagKind;
+      product_status_t: ProductRow["status"];
       coupon_type_t: CouponType;
       spin_prize_kind_t: SpinPrizeKind;
       spin_prize_tier_t: SpinTier;

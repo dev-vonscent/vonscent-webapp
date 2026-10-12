@@ -5,11 +5,14 @@ import {
   PackageX,
   TrendingUp,
   ArrowRight,
+  PackageCheck,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   getDashboardData,
+  getLaunchReadyCount,
   getStockOverview,
   getUnreadNotificationCount,
 } from "@/features/admin/api";
@@ -28,7 +31,7 @@ const DASHBOARD_STOCK_LIMIT = 20;
 export default async function AdminDashboard() {
   // Тоолох, эрэмбэлэх ажил SQL-д (0062). Өмнө нь энэ хуудас бүх каталогийг
   // татаж аваад JS дотор шүүдэг байв.
-  const [stock, dash, unreadCount] = await Promise.all([
+  const [stock, dash, unreadCount, launchReady] = await Promise.all([
     // Alert against each product's own configured threshold (A1) — not a
     // hardcoded figure. Шүүлт нь SQL-д (0065): `items` нь `available_ml`-ээр
     // эрэмбэлэгддэг тул дууссан бараа «бага» бүгдээс ӨМНӨ орно. Хязгаарлаж
@@ -38,6 +41,7 @@ export default async function AdminDashboard() {
     getStockOverview({ limit: DASHBOARD_STOCK_LIMIT, state: "low" }),
     getDashboardData(),
     getUnreadNotificationCount(),
+    getLaunchReadyCount(),
   ]);
   const lowStock = stock.items;
   const topSellerIds = dash?.topSellerIds ?? [];
@@ -70,6 +74,25 @@ export default async function AdminDashboard() {
 
       {/* Хамгийн дээр: юу болсныг эхлээд хэлнэ, тоо баримт нь доор. */}
       <NotificationCard unread={unreadCount} />
+
+      {/* Ус ирсэн мөртлөө «Тун удахгүй» хэвээр (0125) — нөөц нэмэхэд «Дараа»
+          дарсныг мартвал агуулахад байгаа ус зарагдахгүй өдөр өнгөрнө. Байхгүй
+          үед карт огт харагдахгүй: самбарт хоосон сануулга хэрэггүй. */}
+      {launchReady > 0 && (
+        <Card className="bg-success/10">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">
+            <h2 className="flex items-center gap-2 font-medium">
+              <PackageCheck className="text-success size-4" />
+              Худалдаанд гаргахад бэлэн {launchReady} ус
+            </h2>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/admin/products?vis=coming_soon">
+                Харах <ArrowRight className="size-3.5" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Sales */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

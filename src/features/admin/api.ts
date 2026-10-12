@@ -20,6 +20,7 @@ import {
   DEFAULT_LOW_STOCK_ML,
   QPAY_FEE_PCT,
   type OrderStatus,
+  type ProductStatus,
 } from "@/lib/constants";
 import * as Sentry from "@sentry/nextjs";
 import { matchesSearch, searchTerms } from "@/lib/search";
@@ -179,6 +180,31 @@ export async function getSidebarBadges(): Promise<SidebarBadges> {
       .lte("available_ml", 0),
   ]);
   return { newOrders: count ?? 0, outOfStock: outOfStock ?? 0 };
+}
+
+/**
+ * Ус нь ирсэн мөртлөө «Тун удахгүй» хэвээр байгаа бараа (0125) — самбарын
+ * сануулга. Нөөц нэмэхэд «Дараа» дарсныг мартвал ус агуулахад байж байхад
+ * худалдаанд гарахгүй өдөр өнгөрнө.
+ */
+export async function getLaunchReadyCount(): Promise<number> {
+  const supabase = await createClient();
+  if (!supabase) return 0;
+  const { count, error } = await supabase
+    .from("inventory")
+    .select("product_id, products!inner(status)", {
+      count: "exact",
+      head: true,
+    })
+    .eq("products.status", "coming_soon")
+    .gt("available_ml", 0);
+  if (error) {
+    Sentry.captureException(
+      new Error(`getLaunchReadyCount failed: ${error.message}`),
+    );
+    return 0;
+  }
+  return count ?? 0;
 }
 
 export interface AdminNotification {
@@ -435,7 +461,17 @@ export interface AdminProduct {
   releaseYear: number | null;
   bottlePrice: number;
   bottleMl: number;
+  /** `status === "active"` — хуучин уншигчдад (0125 trigger тэнцүүлнэ). */
   isActive: boolean;
+  /** Барааны амьдралын мөчлөг (0125). */
+  status: ProductStatus;
+  /**
+   * Анх худалдаанд гарсан мөч. Байвал бараа дахин «Тун удахгүй» болж
+   * чадахгүй (`canBeComingSoon`).
+   */
+  launchedAt: string | null;
+  /** «Тун удахгүй» үеийн ойролцоо хугацаа, ж: «10-р сарын сүүлээр». */
+  comingSoonNote: string | null;
   /** «Онцлох» тэмдэг (0055). */
   isFeatured: boolean;
   startingPrice: number;
@@ -474,7 +510,8 @@ const ADMIN_PRODUCT_SELECT = `
   scent_families, seasons,
   description, notes_description, usage_description,
   notes_top, notes_heart, notes_base, origin_country, release_year,
-  bottle_price, bottle_ml, is_active, is_featured, reference_image_url,
+  bottle_price, bottle_ml, is_active, status, launched_at, coming_soon_note,
+  is_featured, reference_image_url,
   product_images ( id, url, alt, sort_order, is_visible ),
   product_variants ( id, ml, price, sale_price, is_active ),
   inventory ( on_hand_ml, reserved_ml, low_stock_ml ),
@@ -513,6 +550,9 @@ interface AdminProductRow {
   bottle_price: number;
   bottle_ml: number;
   is_active: boolean;
+  status: ProductStatus;
+  launched_at: string | null;
+  coming_soon_note: string | null;
   is_featured?: boolean | null;
   reference_image_url: string | null;
   product_images: AdminProductImage[];
@@ -585,6 +625,9 @@ function mapAdminProduct(
     bottlePrice: r.bottle_price,
     bottleMl: r.bottle_ml,
     isActive: r.is_active,
+    status: r.status,
+    launchedAt: r.launched_at,
+    comingSoonNote: r.coming_soon_note,
     isFeatured: r.is_featured === true,
     startingPrice: prices.length ? Math.min(...prices) : 0,
     // Чөлөөлсөн хэмжээ ч ЭНД ОРНО: мөрөн дээр «чөлөөлсөн» гэж харуулж,
@@ -838,7 +881,7 @@ export const ADMIN_PRODUCTS_PER_PAGE = 50;
 export interface AdminProductQuery {
   /** Нэр / брэнд / нэмэлт таг (дэлгүүрийнхтэй ижил хэвийн болголт). */
   q?: string;
-  /** '' | 'active' | 'hidden' */
+  /** '' | 'active' | 'coming_soon' | 'hidden' (0125) */
   visibility?: string;
   /** '' | 'ok' | 'low' | 'soldout' */
   stock?: string;
@@ -928,9 +971,9 @@ async function memoryProductPage(
     const haystack = (p: AdminProduct) => `${p.name} ${p.brand}`;
     items = items.filter((p) => matchesSearch(haystack(p), query.q!));
   }
-  if (query.visibility === "active") items = items.filter((p) => p.isActive);
-  else if (query.visibility === "hidden")
-    items = items.filter((p) => !p.isActive);
+  // `admin_product_page()`-тэй ижил: шүүлтүүр бүр яг нэг төлөв (0125).
+  if (query.visibility && query.visibility !== "")
+    items = items.filter((p) => p.status === query.visibility);
   if (query.stock)
     items = items.filter(
       (p) => stockState(p.availableMl, p.lowStockMl) === query.stock,
@@ -1285,6 +1328,8 @@ export interface ReservedProduct {
   name: string;
   brand: string;
   isActive: boolean;
+  /** 0125 — `isActive=false` нь «Нуусан» ба «Тун удахгүй» хоёуланг хамардаг. */
+  status: ProductStatus;
   /** `inventory.reserved_ml` — тоолуур өөрөө. */
   reservedMl: number;
   /** Нээлттэй захиалгуудаас тоолсон дүн. `reservedMl`-тэй тэнцүү байх ёстой. */
@@ -1344,11 +1389,25 @@ export async function getReservedMl(
     return [];
   }
 
+  // RPC (0075) нь зөвхөн `is_active` буцаадаг — төлөвийг тусад нь авна.
+  // Олдохгүй бол `is_active`-аас таана: хуудас бүтэн унахаас дээр.
+  const ids = (data ?? []).map((r) => r.product_id);
+  const { data: statusRows } = ids.length
+    ? await supabase.from("products").select("id, status").in("id", ids)
+    : { data: [] };
+  const statusById = new Map(
+    ((statusRows as { id: string; status: ProductStatus }[] | null) ?? []).map(
+      (p) => [p.id, p.status],
+    ),
+  );
+
   return (data ?? []).map((r) => ({
     productId: r.product_id,
     name: r.product_name,
     brand: r.brand,
     isActive: r.is_active,
+    status:
+      statusById.get(r.product_id) ?? (r.is_active ? "active" : "hidden"),
     reservedMl: Number(r.reserved_ml),
     accountedMl: Number(r.accounted_ml),
     onHandMl: Number(r.on_hand_ml),

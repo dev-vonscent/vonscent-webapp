@@ -78,11 +78,34 @@ export type FaqCategory = (typeof FAQ_CATEGORIES)[number];
 export const TRIAL_SIZE_ML: MlSize = 2;
 
 /**
- * «Шинэ» таг автомат: хамгийн сүүлд нэмэгдсэн ийм тооны идэвхтэй ус. Шинэ ус
- * нэмэгдэхэд хамгийн хуучин нь гарна. DB дээр `refresh_new_tag()`
- * (0100_auto_new_tag.sql) ижил тоогоор ажилладаг тул хоёуланг нь зэрэг сольно.
+ * «Шинэ» таг автомат: хамгийн сүүлд ХУДАЛДААНД ГАРСАН (`launched_at`, 0125)
+ * ийм тооны идэвхтэй ус. Шинэ ус гарахад хамгийн хуучин нь гарна. DB дээр
+ * `refresh_new_tag()` (0100, 0125) ижил тоогоор ажилладаг тул хоёуланг нь
+ * зэрэг сольно.
  */
 export const NEW_PRODUCTS_COUNT = 12;
+
+/**
+ * Барааны амьдралын мөчлөг (`products.status`, 0125). `is_active` нь
+ * `status === "active"`-тай DB-ийн trigger-ээр үргэлж тэнцүү.
+ *
+ *   hidden      — сайтад огт харагдахгүй;
+ *   coming_soon — барааны хуудас, нүүрний «Тун удахгүй» хэсэгт харагдана,
+ *                 захиалж болохгүй. Зөвхөн хэзээ ч худалдаанд гарч байгаагүй
+ *                 бараа (`launched_at` хоосон) энэ төлөвт орж чадна;
+ *   active      — зарагдана.
+ */
+export const PRODUCT_STATUSES = ["hidden", "coming_soon", "active"] as const;
+export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
+
+export const PRODUCT_STATUS_LABEL: Record<ProductStatus, string> = {
+  hidden: "Нуусан",
+  coming_soon: "Тун удахгүй",
+  active: "Идэвхтэй",
+};
+
+/** «Тун удахгүй» үеийн ойролцоо хугацааны текстийн дээд урт (DB check-тэй ижил). */
+export const COMING_SOON_NOTE_MAX = 120;
 
 /**
  * Каталогийн анхны эрэмбэ: `sort` параметргүй URL. Энэ утгыг сонгоход URL-аас

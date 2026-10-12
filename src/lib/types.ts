@@ -85,6 +85,10 @@ export interface ProductListItem {
   soldOut: boolean;
   ratingAvg: number;
   ratingCount: number;
+  /**
+   * «Шинэ» эрэмбийн огноо: худалдаанд гарсан мөч (0125 `launched_at`), хэзээ ч
+   * гараагүй бол үүссэн мөч. Зөвхөн эрэмбэлэхэд — огноо болгон харуулдаггүй.
+   */
   createdAt: string;
 }
 

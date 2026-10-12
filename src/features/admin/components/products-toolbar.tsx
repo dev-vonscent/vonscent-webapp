@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { PRODUCT_STATUS_LABEL } from "@/lib/constants";
 
 /**
  * Search / filter / sort for the admin product list (A2). State lives in the
@@ -24,14 +25,16 @@ import { cn } from "@/lib/utils";
  * did not do the same thing.
  *
  * Now each control answers one question and they combine: chips for visibility
- * (three states, visible without opening anything), and two icon menus — stock
- * and order — sitting to the left of the search field, where they cost a
- * gesture to read but no width to display.
+ * (four states since 0125, visible without opening anything), and two icon
+ * menus — stock and order — plus the «Онцлох» toggle, sitting to the left of
+ * the search field, where they cost a gesture to read but no width to display.
  */
 const VISIBILITY = [
   { value: "", label: "Бүгд" },
-  { value: "active", label: "Идэвхтэй" },
-  { value: "hidden", label: "Нуусан" },
+  { value: "active", label: PRODUCT_STATUS_LABEL.active },
+  // 0125 — ирэхийг хүлээж буй ус; үлдэгдэлтэй нь «гаргахад бэлэн».
+  { value: "coming_soon", label: PRODUCT_STATUS_LABEL.coming_soon },
+  { value: "hidden", label: PRODUCT_STATUS_LABEL.hidden },
 ];
 
 /** The first entry of each list is the default — picking it clears the param. */
@@ -192,6 +195,24 @@ export function ProductsToolbar() {
           value={params.get("sort") ?? ""}
           onSelect={(v) => patch("sort", v)}
         />
+        {/* «Онцлох» нь харагдацын сонголт биш, тусдаа унтраалга — үлдэгдэл,
+            эрэмбийн дүрстэй адил энд. Харагдац дөрөв болсон (0125) тул тэр
+            эгнээнд дахиж багтахаа больсон. */}
+        <button
+          type="button"
+          aria-pressed={featured}
+          aria-label="Зөвхөн «Онцлох» тэмдэгтэй бараа"
+          title="Зөвхөн «Онцлох» тэмдэгтэй бараа"
+          onClick={() => patch("featured", featured ? "" : "1")}
+          className={cn(
+            "grid size-11 shrink-0 place-items-center rounded-md transition-colors md:size-9",
+            featured
+              ? "bg-primary text-primary-foreground"
+              : "bg-secondary text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Star className={cn("size-4", featured && "fill-current")} />
+        </button>
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -205,8 +226,8 @@ export function ProductsToolbar() {
       <div
         role="group"
         aria-label="Харагдацаар шүүх"
-        // Дөрвөн тэнцүү хэсэг: эхний гурав нь нэг сонголт, сүүлчийнх нь
-        // тусдаа унтраалга — гэхдээ нэг эгнээнд, ижил хэлбэрээр уншигдана.
+        // Дөрвөн тэнцүү хэсэг, нэг сонголт. «Тун удахгүй» утсан дээр хоёр
+        // мөр болж болно — товч өндрөө хадгалж, текст нь төвлөрнө.
         className="grid grid-cols-4 gap-1.5 md:flex md:items-center"
       >
         {VISIBILITY.map((v) => (
@@ -218,7 +239,7 @@ export function ProductsToolbar() {
             className={cn(
               // Every chip carries a surface: the borderless system leaves an
               // unfilled chip as a bare floating word.
-              "min-h-11 rounded-md px-3.5 text-xs font-medium transition-colors md:min-h-9",
+              "min-h-11 rounded-md px-2 text-xs/tight font-medium transition-colors md:min-h-9 md:px-3.5",
               vis === v.value
                 ? "bg-primary text-primary-foreground"
                 : "bg-secondary text-muted-foreground hover:text-foreground",
@@ -227,21 +248,6 @@ export function ProductsToolbar() {
             {v.label}
           </button>
         ))}
-        <button
-          type="button"
-          aria-pressed={featured}
-          title="Зөвхөн «Онцлох» тэмдэгтэй бараа"
-          onClick={() => patch("featured", featured ? "" : "1")}
-          className={cn(
-            "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md px-3.5 text-xs font-medium transition-colors md:min-h-9",
-            featured
-              ? "bg-primary text-primary-foreground"
-              : "bg-secondary text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <Star className={cn("size-3.5", featured && "fill-current")} />
-          Онцлох
-        </button>
       </div>
     </div>
   );
