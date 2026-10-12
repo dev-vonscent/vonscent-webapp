@@ -547,7 +547,7 @@ interface AdminProductRow {
   notes_base: string[];
   origin_country: string | null;
   release_year: number | null;
-  /** `select`-д ороогүй — `attachPrivate()` нөхнө (0130). */
+  /** `select`-д ороогүй — `attachPrivate()` нөхнө (0131). */
   bottle_price?: number;
   bottle_ml: number;
   is_active: boolean;
@@ -555,7 +555,7 @@ interface AdminProductRow {
   launched_at: string | null;
   coming_soon_note: string | null;
   is_featured?: boolean | null;
-  /** `select`-д ороогүй — `attachPrivate()` нөхнө (0130). */
+  /** `select`-д ороогүй — `attachPrivate()` нөхнө (0131). */
   reference_image_url?: string | null;
   product_images: AdminProductImage[];
   product_variants: {
@@ -676,7 +676,7 @@ export const ADMIN_PRODUCTS_CAP = 2000;
 type ServerClient = NonNullable<Awaited<ReturnType<typeof createClient>>>;
 
 /**
- * `bottle_price` ба `reference_image_url`-ийг мөрүүдэд нөхнө. 0130-аас хойш
+ * `bottle_price` ба `reference_image_url`-ийг мөрүүдэд нөхнө. 0131-аас хойш
  * эдгээр нь anon/authenticated-д SELECT эрхгүй тул staff-only
  * `admin_product_private()`-ээр уншина.
  *
@@ -694,8 +694,8 @@ async function attachPrivate(
   >(supabase, "admin_product_private", { p_ids: rows.map((r) => r.id) });
   let found = data;
   if (error || !found) {
-    // 0130 хараахан хэрэгжээгүй сан (код migration-оос түрүүлж deploy
-    // хийгдсэн): тэнд баганууд шууд уншигдана. 0130-ын дараа энэ нь
+    // 0131 хараахан хэрэгжээгүй сан (код migration-оос түрүүлж deploy
+    // хийгдсэн): тэнд баганууд шууд уншигдана. 0131-ын дараа энэ нь
     // permission denied өгч `false` болно.
     const direct = await supabase
       .from("products")
