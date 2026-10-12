@@ -3,10 +3,11 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, Boxes, Heart, Home, Search } from "lucide-react";
+import { ArrowLeft, Boxes, Heart, Home, LayoutGrid } from "lucide-react";
 import { Logo } from "./logo";
 import { MobileMenu } from "./mobile-menu";
 import { CartSheet } from "@/features/cart/components/cart-sheet";
+import { HeaderChatButton } from "@/features/chat/components/header-chat-button";
 import { ProfileMenu } from "@/features/account/components/profile-menu";
 import { GlobalSearch } from "./global-search";
 import { cn } from "@/lib/utils";
@@ -14,7 +15,7 @@ import { cn } from "@/lib/utils";
 /** Desktop pill nav — left side links; the cart sits last (see render). */
 const PILL_NAV = [
   { href: "/", label: "Нүүр", icon: Home },
-  { href: "/catalog", label: "Каталог", icon: Search },
+  { href: "/catalog", label: "Каталог", icon: LayoutGrid },
   { href: "/collections", label: "Багц", icon: Boxes },
   { href: "/wishlist", label: "Хүсэл", icon: Heart },
 ] as const;
@@ -60,6 +61,11 @@ export function SiteHeader({
   const router = useRouter();
   const isHome = pathname === "/";
   const hideCart = pathname === "/cart" || pathname === "/checkout";
+  // Утсан дээр чат доод цэсний хажууд (`BottomNav`). Төлбөрийн хуудсанд
+  // «Төлөх» зурвас доод цэсийг (чатын хамт) нуудаг ч асуудал гарах магадлал
+  // хамгийн өндөр газар тул тэнд чат толгойд гарна.
+  const headerChat =
+    pathname.startsWith("/checkout") || pathname.startsWith("/pay");
 
   // Hide on scroll down, reveal on scroll up.
   const [hidden, setHidden] = React.useState(false);
@@ -149,15 +155,21 @@ export function SiteHeader({
           )}
           {/* Сагс, төлбөрийн хуудсанд сагсны товч хэрэггүй: сагсан дээр
               өөрийгөө давхардуулна, төлбөр дээр хэрэглэгчийг төлбөрөөс гаргах
-              зам болно. Гарчиг төвдөө үлдэхийн тулд ижил хэмжээний зай. */}
-          {hideCart ? (
-            <span aria-hidden className="size-10 shrink-0" />
-          ) : (
-            <CartSheet
-              triggerVariant="secondary"
-              triggerClassName="shrink-0 rounded-full bg-secondary/85 backdrop-blur hover:bg-secondary"
-            />
-          )}
+              зам болно. */}
+          <div className="flex shrink-0 items-center gap-2">
+            {headerChat && (
+              <HeaderChatButton
+                variant="secondary"
+                className="bg-secondary/85 hover:bg-secondary rounded-full backdrop-blur"
+              />
+            )}
+            {!hideCart && (
+              <CartSheet
+                triggerVariant="secondary"
+                triggerClassName="shrink-0 rounded-full bg-secondary/85 backdrop-blur hover:bg-secondary"
+              />
+            )}
+          </div>
         </div>
       )}
 

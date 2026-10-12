@@ -5,6 +5,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 import { checkoutSchema } from "@/lib/validators/order";
 import type { AddressRow } from "@/db/types";
+import { isRemoteAddress } from "@/lib/geo/zone";
+import { useShippingZones } from "@/features/checkout/use-shipping-zones";
 
 /**
  * Хадгалсан хаягийн утас захиалгын шалгалтыг давах эсэх. Хаягийн дэвтэр нь
@@ -61,6 +63,7 @@ export function SavedAddresses({
   /** Popup-ыг оруулсан хаягаар дүүргэж нээх — түүнийгээ засах. */
   onEditDraft: () => void;
 }) {
+  const zones = useShippingZones();
   return (
     <RadioGroup value={value} onValueChange={onChange} className="gap-2.5">
       {addresses.map((a) => (
@@ -91,7 +94,20 @@ export function SavedAddresses({
               </span>
             )}
             <span className="text-muted-foreground mt-1 block text-xs">
-              {[a.city, a.district, a.detail].filter(Boolean).join(", ")}
+              {/* Унаагаар явах хаягийн хуучин гэрийн хаягийг харуулахгүй —
+                  захиалгад ч орохгүй. */}
+              {[
+                a.city,
+                a.district,
+                isRemoteAddress(zones, {
+                  city: a.city,
+                  district: a.district ?? "",
+                })
+                  ? null
+                  : a.detail,
+              ]
+                .filter(Boolean)
+                .join(", ")}
             </span>
           </span>
           <Check className="text-foreground mt-0.5 hidden size-4 shrink-0 in-[label:has(:checked)]:block" />

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BOTTLE_STYLES } from "@/lib/constants";
 
 /** The store's whole size list — see ML_SIZES / 0026_sample_tier.sql. */
 const mlSize = z.union([
@@ -50,6 +51,8 @@ export const collectionCreateSchema = z.object({
       "Хэмжээ давхардсан",
     ),
   imageUrl: z.string().url().nullable().optional(),
+  /** Cover-ийн дараах савны зураг (0123); null = нэмэхгүй. */
+  bottleStyle: z.enum(BOTTLE_STYLES).nullable().optional(),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   /** Customer-facing badges, the same trio products use (0003). */

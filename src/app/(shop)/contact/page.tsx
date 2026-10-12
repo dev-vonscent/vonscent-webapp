@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
-import { Phone, Mail, MapPin, Instagram, Facebook, Clock } from "lucide-react";
+import { Phone, Mail, MapPin, Clock } from "lucide-react";
+import { FacebookIcon, InstagramIcon } from "@/components/icons/brand-icons";
 import { ContactForm } from "@/features/contact/components/contact-form";
 import { getSocialSettings, getStoreSettings } from "@/features/content/api";
 import { SITE } from "@/lib/constants";
@@ -45,14 +46,20 @@ export default async function ContactPage() {
           <div className="border-border bg-secondary/40 space-y-6 rounded-xl border p-6">
             {store.phone && (
               <Item icon={Phone} label="Утас">
-                <a href={`tel:${store.phone}`} className="hover:text-gold-strong font-medium transition-colors">
+                <a
+                  href={`tel:${store.phone}`}
+                  className="hover:text-gold-strong font-medium transition-colors"
+                >
                   {store.phone}
                 </a>
               </Item>
             )}
             {store.email && (
               <Item icon={Mail} label="Имэйл">
-                <a href={`mailto:${store.email}`} className="hover:text-gold-strong font-medium transition-colors">
+                <a
+                  href={`mailto:${store.email}`}
+                  className="hover:text-gold-strong font-medium transition-colors"
+                >
                   {store.email}
                 </a>
               </Item>
@@ -63,9 +70,7 @@ export default async function ContactPage() {
               </Item>
             )}
             <Item icon={Clock} label="Хүргэлт">
-              <p className="font-medium">
-                Хүргэлт 12–48 цагийн дотор
-              </p>
+              <p className="font-medium">Хүргэлт 12–48 цагийн дотор</p>
             </Item>
           </div>
 
@@ -76,7 +81,7 @@ export default async function ContactPage() {
               </p>
               {social.instagram && (
                 <Social
-                  icon={Instagram}
+                  icon={InstagramIcon}
                   href={social.instagram}
                   name="Instagram"
                   handle={`@${handleFromUrl(social.instagram)}`}
@@ -84,7 +89,7 @@ export default async function ContactPage() {
               )}
               {social.facebook && (
                 <Social
-                  icon={Facebook}
+                  icon={FacebookIcon}
                   href={social.facebook}
                   name="Facebook"
                   handle={SITE.brandName}

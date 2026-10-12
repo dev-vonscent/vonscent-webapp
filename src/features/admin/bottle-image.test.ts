@@ -114,11 +114,18 @@ describe("addBottleImage", () => {
     expect(sb.inserts[0].url).toMatch(BOTTLE_IMAGE_URL_RE);
   });
 
+  it("амжилттай нэмэгдвэл true буцаана", async () => {
+    const sb = fakeSupabase(rows("a"));
+    await expect(
+      addBottleImage(sb.client, "p1", "x", "black", "end"),
+    ).resolves.toBe(true);
+  });
+
   it("эх хувь хуулагдахгүй бол галерейд юу ч нэмэхгүй, шидэхгүй", async () => {
     const sb = fakeSupabase(rows("a", "b"), { copyError: true });
     await expect(
       addBottleImage(sb.client, "p1", "x", "black", "third"),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe(false);
     expect(sb.inserts).toHaveLength(0);
     expect(sb.order()).toEqual(["a", "b"]);
   });

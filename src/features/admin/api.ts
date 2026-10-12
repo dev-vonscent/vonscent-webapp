@@ -20,12 +20,20 @@ import {
   DEFAULT_LOW_STOCK_ML,
   QPAY_FEE_PCT,
   type OrderStatus,
+  type ProductStatus,
 } from "@/lib/constants";
 import * as Sentry from "@sentry/nextjs";
 import { matchesSearch, searchTerms } from "@/lib/search";
 import { stockState } from "./lib/stock-state";
 import { PRODUCT_OPTION_LIMIT, type ProductOption } from "./lib/product-option";
 import { customerSearchFilter } from "./lib/customer-search";
+import {
+  COUPON_TABS,
+  filterCoupons,
+  type CouponFilterQuery,
+  type CouponStatusFilter,
+  type CouponTab,
+} from "./lib/coupon-tabs";
 import {
   CUSTOMER_OPTION_LIMIT,
   type CustomerOption,
@@ -172,6 +180,31 @@ export async function getSidebarBadges(): Promise<SidebarBadges> {
       .lte("available_ml", 0),
   ]);
   return { newOrders: count ?? 0, outOfStock: outOfStock ?? 0 };
+}
+
+/**
+ * Ус нь ирсэн мөртлөө «Тун удахгүй» хэвээр байгаа бараа (0125) — самбарын
+ * сануулга. Нөөц нэмэхэд «Дараа» дарсныг мартвал ус агуулахад байж байхад
+ * худалдаанд гарахгүй өдөр өнгөрнө.
+ */
+export async function getLaunchReadyCount(): Promise<number> {
+  const supabase = await createClient();
+  if (!supabase) return 0;
+  const { count, error } = await supabase
+    .from("inventory")
+    .select("product_id, products!inner(status)", {
+      count: "exact",
+      head: true,
+    })
+    .eq("products.status", "coming_soon")
+    .gt("available_ml", 0);
+  if (error) {
+    Sentry.captureException(
+      new Error(`getLaunchReadyCount failed: ${error.message}`),
+    );
+    return 0;
+  }
+  return count ?? 0;
 }
 
 export interface AdminNotification {
@@ -428,7 +461,17 @@ export interface AdminProduct {
   releaseYear: number | null;
   bottlePrice: number;
   bottleMl: number;
+  /** `status === "active"` — хуучин уншигчдад (0125 trigger тэнцүүлнэ). */
   isActive: boolean;
+  /** Барааны амьдралын мөчлөг (0125). */
+  status: ProductStatus;
+  /**
+   * Анх худалдаанд гарсан мөч. Байвал бараа дахин «Тун удахгүй» болж
+   * чадахгүй (`canBeComingSoon`).
+   */
+  launchedAt: string | null;
+  /** «Тун удахгүй» үеийн ойролцоо хугацаа, ж: «10-р сарын сүүлээр». */
+  comingSoonNote: string | null;
   /** «Онцлох» тэмдэг (0055). */
   isFeatured: boolean;
   startingPrice: number;
@@ -467,7 +510,8 @@ const ADMIN_PRODUCT_SELECT = `
   scent_families, seasons,
   description, notes_description, usage_description,
   notes_top, notes_heart, notes_base, origin_country, release_year,
-  bottle_price, bottle_ml, is_active, is_featured, reference_image_url,
+  bottle_price, bottle_ml, is_active, status, launched_at, coming_soon_note,
+  is_featured, reference_image_url,
   product_images ( id, url, alt, sort_order, is_visible ),
   product_variants ( id, ml, price, sale_price, is_active ),
   inventory ( on_hand_ml, reserved_ml, low_stock_ml ),
@@ -506,6 +550,9 @@ interface AdminProductRow {
   bottle_price: number;
   bottle_ml: number;
   is_active: boolean;
+  status: ProductStatus;
+  launched_at: string | null;
+  coming_soon_note: string | null;
   is_featured?: boolean | null;
   reference_image_url: string | null;
   product_images: AdminProductImage[];
@@ -578,6 +625,9 @@ function mapAdminProduct(
     bottlePrice: r.bottle_price,
     bottleMl: r.bottle_ml,
     isActive: r.is_active,
+    status: r.status,
+    launchedAt: r.launched_at,
+    comingSoonNote: r.coming_soon_note,
     isFeatured: r.is_featured === true,
     startingPrice: prices.length ? Math.min(...prices) : 0,
     // Чөлөөлсөн хэмжээ ч ЭНД ОРНО: мөрөн дээр «чөлөөлсөн» гэж харуулж,
@@ -831,7 +881,7 @@ export const ADMIN_PRODUCTS_PER_PAGE = 50;
 export interface AdminProductQuery {
   /** Нэр / брэнд / нэмэлт таг (дэлгүүрийнхтэй ижил хэвийн болголт). */
   q?: string;
-  /** '' | 'active' | 'hidden' */
+  /** '' | 'active' | 'coming_soon' | 'hidden' (0125) */
   visibility?: string;
   /** '' | 'ok' | 'low' | 'soldout' */
   stock?: string;
@@ -921,9 +971,9 @@ async function memoryProductPage(
     const haystack = (p: AdminProduct) => `${p.name} ${p.brand}`;
     items = items.filter((p) => matchesSearch(haystack(p), query.q!));
   }
-  if (query.visibility === "active") items = items.filter((p) => p.isActive);
-  else if (query.visibility === "hidden")
-    items = items.filter((p) => !p.isActive);
+  // `admin_product_page()`-тэй ижил: шүүлтүүр бүр яг нэг төлөв (0125).
+  if (query.visibility && query.visibility !== "")
+    items = items.filter((p) => p.status === query.visibility);
   if (query.stock)
     items = items.filter(
       (p) => stockState(p.availableMl, p.lowStockMl) === query.stock,
@@ -1033,14 +1083,102 @@ export async function getCustomerDetail(id: string): Promise<{
   };
 }
 
-export async function getCoupons(): Promise<CouponRow[]> {
+/** Rows per page on the promotions list. */
+export const COUPONS_PER_PAGE = 50;
+/** Most customers one name/phone search may match into the coupon filter. */
+const COUPON_OWNER_SEARCH_LIMIT = 200;
+
+export interface CouponPage {
+  rows: CouponRow[];
+  /** Matching rows across all pages; null in demo mode. */
+  total: number | null;
+  /** Per-tab count under the current status filter (search ignored). */
+  counts: Record<CouponTab, number> | null;
+  /** Owners of the personal coupons on this page, for their names. */
+  owners: CustomerOption[];
+}
+
+/**
+ * One tab of the promotions list: filtered by origin (`tab`), status and a
+ * search that matches the code or the owner's name/phone.
+ */
+export async function getCouponPage({
+  tab,
+  status,
+  q,
+  page = 0,
+}: {
+  tab: CouponTab;
+  status: CouponStatusFilter;
+  q?: string;
+  page?: number;
+}): Promise<CouponPage> {
   const supabase = await createClient();
-  if (!supabase) return [];
+  if (!supabase) return { rows: [], total: null, counts: null, owners: [] };
+  const now = new Date().toISOString();
+
+  const base = supabase.from("coupons").select("*", { count: "exact" });
+  let query = (
+    filterCoupons(
+      base as unknown as CouponFilterQuery,
+      tab,
+      status,
+      now,
+    ) as unknown as typeof base
+  )
+    .order("created_at", { ascending: false })
+    .range(page * COUPONS_PER_PAGE, (page + 1) * COUPONS_PER_PAGE - 1);
+
+  const term = q?.trim().replace(/["\\%,()]/gu, "") ?? "";
+  if (term) {
+    const clauses = [`code.ilike."%${term}%"`];
+    // A public code has no owner, so only its code can match.
+    if (tab !== "code") {
+      const owners = await getCustomerOptions({
+        q: term,
+        limit: COUPON_OWNER_SEARCH_LIMIT,
+      });
+      if (owners.length) {
+        clauses.push(`user_id.in.(${owners.map((o) => o.id).join(",")})`);
+      }
+    }
+    query = query.or(clauses.join(","));
+  }
+
+  const [{ data, count }, ...tabCounts] = await Promise.all([
+    query,
+    ...COUPON_TABS.map((t) => {
+      const head = supabase
+        .from("coupons")
+        .select("id", { count: "exact", head: true });
+      return filterCoupons(
+        head as unknown as CouponFilterQuery,
+        t,
+        status,
+        now,
+      ) as unknown as typeof head;
+    }),
+  ]);
+  const rows = (data as CouponRow[] | null) ?? [];
+  const counts = Object.fromEntries(
+    COUPON_TABS.map((t, i) => [t, tabCounts[i].count ?? 0]),
+  ) as Record<CouponTab, number>;
+  const owners = await getCustomerOptions({
+    ids: rows.flatMap((c) => (c.user_id ? [c.user_id] : [])),
+  });
+  return { rows, total: count ?? 0, counts, owners };
+}
+
+/** The stored `settings.coupons` value — the automatic reward tiers. */
+export async function getCouponSettings(): Promise<unknown> {
+  const supabase = await createClient();
+  if (!supabase) return null;
   const { data } = await supabase
-    .from("coupons")
-    .select("*")
-    .order("created_at", { ascending: false });
-  return (data as CouponRow[] | null) ?? [];
+    .from("settings")
+    .select("value")
+    .eq("key", "coupons")
+    .maybeSingle();
+  return (data as { value: unknown } | null)?.value ?? null;
 }
 
 /**
@@ -1190,6 +1328,8 @@ export interface ReservedProduct {
   name: string;
   brand: string;
   isActive: boolean;
+  /** 0125 — `isActive=false` нь «Нуусан» ба «Тун удахгүй» хоёуланг хамардаг. */
+  status: ProductStatus;
   /** `inventory.reserved_ml` — тоолуур өөрөө. */
   reservedMl: number;
   /** Нээлттэй захиалгуудаас тоолсон дүн. `reservedMl`-тэй тэнцүү байх ёстой. */
@@ -1249,11 +1389,25 @@ export async function getReservedMl(
     return [];
   }
 
+  // RPC (0075) нь зөвхөн `is_active` буцаадаг — төлөвийг тусад нь авна.
+  // Олдохгүй бол `is_active`-аас таана: хуудас бүтэн унахаас дээр.
+  const ids = (data ?? []).map((r) => r.product_id);
+  const { data: statusRows } = ids.length
+    ? await supabase.from("products").select("id, status").in("id", ids)
+    : { data: [] };
+  const statusById = new Map(
+    ((statusRows as { id: string; status: ProductStatus }[] | null) ?? []).map(
+      (p) => [p.id, p.status],
+    ),
+  );
+
   return (data ?? []).map((r) => ({
     productId: r.product_id,
     name: r.product_name,
     brand: r.brand,
     isActive: r.is_active,
+    status:
+      statusById.get(r.product_id) ?? (r.is_active ? "active" : "hidden"),
     reservedMl: Number(r.reserved_ml),
     accountedMl: Number(r.accounted_ml),
     onHandMl: Number(r.on_hand_ml),
@@ -1327,6 +1481,8 @@ export interface WheelSettings {
   enabled: boolean;
   freeSpinHours: number;
   spinCost: number;
+  /** One spin per this many ₮ of an order's goods total; 0 = off (0129). */
+  orderSpinStep: number;
   monthlyPointCap: number;
   rareCouponPerMonth: number;
   couponValidDays: number;
@@ -1336,7 +1492,8 @@ export interface WheelSettings {
 export const WHEEL_SETTINGS_DEFAULTS: WheelSettings = {
   enabled: true,
   freeSpinHours: 24,
-  spinCost: 2000,
+  spinCost: 1000,
+  orderSpinStep: 100_000,
   // 0 = хязгааргүй. Клиент 2026-09-07-д хоёр тагийг цуцаллаа: «магадлал нь
   // таарсан бол хэдэн ч удаа хожиж болно» (0067, docs §5).
   monthlyPointCap: 0,
@@ -1351,6 +1508,11 @@ export interface WheelReport {
   spins: number;
   freeSpins: number;
   paidSpins: number;
+  orderSpins: number;
+  /** Order credits issued in the window, cancelled orders excluded. */
+  orderSpinsGranted: number;
+  /** Spins that landed on «Баярлалаа». */
+  thanks: number;
   pointsAwarded: number;
   pointsSpent: number;
   couponsIssued: number;
@@ -1371,6 +1533,9 @@ const EMPTY_REPORT: WheelReport = {
   spins: 0,
   freeSpins: 0,
   paidSpins: 0,
+  orderSpins: 0,
+  orderSpinsGranted: 0,
+  thanks: 0,
   pointsAwarded: 0,
   pointsSpent: 0,
   couponsIssued: 0,

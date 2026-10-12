@@ -180,3 +180,92 @@ describe("OrderActions — unpaid order", () => {
     expect(screen.queryByText(FEE)).toBeNull();
   });
 });
+
+/**
+ * Төлбөр хүлээж буй захиалга (клиент, 2026-10): «Цуцлах», «Дахин захиалах»
+ * биш — «Дараа захиалах» ба «Устгах» (0124).
+ */
+describe("OrderActions — awaiting payment", () => {
+  it("offers save-for-later and delete instead of cancel and reorder", () => {
+    render(
+      <OrderActions
+        orderId="o1"
+        items={[]}
+        cancellable
+        paid={false}
+        total={100_000}
+        payToken="tok"
+      />,
+    );
+    expect(screen.getByRole("button", { name: /Дараа захиалах/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Устгах/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Цуцлах/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Дахин захиалах/ })).toBeNull();
+  });
+
+  it("drops save-for-later when the order carries no cart copy", () => {
+    render(
+      <OrderActions
+        orderId="o1"
+        items={[]}
+        cancellable
+        paid={false}
+        total={100_000}
+        payToken="tok"
+        canSaveForLater={false}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /Дараа захиалах/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /Устгах/ })).toBeTruthy();
+  });
+
+  it("deletes through the payment abandon endpoint once confirmed", async () => {
+    const fetch = stubFetch();
+    render(
+      <OrderActions
+        orderId="o1"
+        items={[]}
+        cancellable
+        paid={false}
+        total={100_000}
+        payToken="tok"
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Устгах/ }));
+    const { action } = confirm.mock.calls[0][0] as {
+      action: () => Promise<void>;
+    };
+    await action();
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/payments/abandon",
+      expect.objectContaining({
+        body: JSON.stringify({ token: "tok", saveForLater: false }),
+      }),
+    );
+  });
+
+  it("shows reorder only when there are lines to reorder", () => {
+    render(
+      <OrderActions
+        orderId="o1"
+        items={[
+          {
+            productId: "p1",
+            slug: "p1",
+            name: "P",
+            brand: "B",
+            variantId: "v1",
+            ml: 5,
+            unitPrice: 10_000,
+            image: null,
+            qty: 1,
+          },
+        ]}
+        cancellable={false}
+        paid
+        total={100_000}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /Дахин захиалах/ })).toBeTruthy();
+  });
+});

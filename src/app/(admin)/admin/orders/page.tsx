@@ -16,7 +16,7 @@ import {
   UNPREPARED_FILTER,
   type OrderStatus,
 } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+import { FilterChip } from "@/features/admin/components/filter-chip";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ubIso } from "@/features/admin/lib/date-range";
@@ -55,6 +55,10 @@ export default async function AdminOrdersPage({
         pageIndex * ORDERS_PER_PAGE,
         pageIndex * ORDERS_PER_PAGE + ORDERS_PER_PAGE - 1,
       );
+    // Төлөгдөөгүй цуцлалт (30 минутын хугацаа, «Дараа захиалах», «Устгах»)
+    // админд захиалга биш — мөнгө ороогүй, хийх ажил алга (0124, клиент
+    // 2026-10). «Цуцлагдсан» нь зөвхөн төлсний дараа цуцалсан захиалга.
+    query = query.or("status.neq.cancelled,payment_status.neq.unpaid");
     if (status === UNPREPARED_FILTER) {
       query = query.eq("status", "confirmed").is("prepared_at", null);
     } else if (status && ORDER_STATUSES.includes(status as OrderStatus)) {
@@ -203,31 +207,5 @@ export default async function AdminOrdersPage({
         </>
       )}
     </div>
-  );
-}
-
-function FilterChip({
-  label,
-  href,
-  active,
-}: {
-  label: string;
-  href: string;
-  active: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        // Inactive chips had only a (transparent) border, so five of the six
-        // read as bare floating words. Every chip now carries a surface.
-        "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-        active
-          ? "bg-primary text-primary-foreground"
-          : "bg-secondary text-muted-foreground hover:text-foreground",
-      )}
-    >
-      {label}
-    </Link>
   );
 }

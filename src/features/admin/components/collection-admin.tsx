@@ -10,7 +10,7 @@ import { toast } from "@/lib/toast";
 import { ImageIcon, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GENDER_LABEL } from "@/lib/constants";
+import { GENDER_LABEL, type BottleStyle } from "@/lib/constants";
 
 export interface AdminCollection {
   id: string;
@@ -23,6 +23,8 @@ export interface AdminCollection {
   /** Default %, used for any size without its own row (0051). */
   discount_pct: number | string;
   image_url: string | null;
+  /** Зөвхөн засах хуудас уншина (0123). */
+  bottle_style?: BottleStyle | null;
   is_active: boolean;
   is_featured: boolean;
   collection_items: { product_id: string; sort_order: number }[];

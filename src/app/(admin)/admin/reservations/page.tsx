@@ -8,7 +8,11 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { getReservedMl, type ReservedProduct } from "@/features/admin/api";
 import { formatDateTime } from "@/lib/format";
 import { formatDeliveryDay } from "@/lib/time";
-import { ORDER_STATUS_LABEL, RESERVE_TIMEOUT_MINUTES } from "@/lib/constants";
+import {
+  ORDER_STATUS_LABEL,
+  PRODUCT_STATUS_LABEL,
+  RESERVE_TIMEOUT_MINUTES,
+} from "@/lib/constants";
 
 export const metadata = { title: "Түгжигдсэн мл" };
 
@@ -151,7 +155,13 @@ function ProductReservations({ row }: { row: ReservedProduct }) {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {!row.isActive && <Badge variant="secondary">Нуусан</Badge>}
+            {row.status === "coming_soon" ? (
+              <Badge variant="gold">{PRODUCT_STATUS_LABEL.coming_soon}</Badge>
+            ) : (
+              row.status === "hidden" && (
+                <Badge variant="secondary">{PRODUCT_STATUS_LABEL.hidden}</Badge>
+              )
+            )}
             {mismatch && (
               <Badge variant="sale">
                 Зөрүү: тоолуур {row.reservedMl}ml, захиалга {row.accountedMl}ml

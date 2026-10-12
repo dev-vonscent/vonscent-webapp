@@ -1,9 +1,9 @@
-import { Facebook, Instagram } from "lucide-react";
+import { FacebookIcon, InstagramIcon } from "@/components/icons/brand-icons";
 import { getSocialSettings } from "@/features/content/api";
 import {
-  ContactFabMenu,
+  ChatWidget,
   type ContactLink,
-} from "@/components/shared/contact-fab-menu";
+} from "@/features/chat/components/chat-widget";
 
 /**
  * Гар утасны цэсэн дэх Facebook / Instagram холбоос ба desktop-ийн
@@ -21,12 +21,12 @@ async function links() {
     social.instagram && {
       href: social.instagram,
       label: "Instagram",
-      icon: Instagram,
+      icon: InstagramIcon,
     },
     social.facebook && {
       href: social.facebook,
       label: "Facebook",
-      icon: Facebook,
+      icon: FacebookIcon,
     },
   ].filter((l): l is Exclude<typeof l, "" | undefined> => Boolean(l));
 }
@@ -55,13 +55,13 @@ function instagramDmHref(instagram: string) {
   }
 }
 
-/** Desktop-ийн баруун доод булангийн «Холбогдох» товч (contact-fab-menu.tsx). */
+/** Баруун доод булангийн чатын товч — Crisp + сошиал сувгууд (chat-widget.tsx). */
 export async function ContactFab() {
   const social = await getSocialSettings();
   const items: ContactLink[] = [
     social.facebook && {
       href: messengerHref(social.facebook),
-      label: "Messenger-ээр асуух",
+      label: "Messenger",
       icon: "messenger" as const,
     },
     social.instagram && {
@@ -74,34 +74,43 @@ export async function ContactFab() {
       label: social.phone,
       icon: "phone" as const,
     },
-    social.email && {
-      href: `mailto:${social.email}`,
-      label: "Имэйл бичих",
-      icon: "email" as const,
-    },
   ].filter((l): l is ContactLink => Boolean(l));
-  if (items.length === 0) return null;
-  return <ContactFabMenu links={items} />;
+  return <ChatWidget links={items} />;
 }
 
-/** Гар утасны цэсний капсул эгнээ — «Холбоо барих» г.м-тэй нэг хэлбэр. */
+/**
+ * Гар утасны цэсний сошиал хэсэг — гарчигтай, тусдаа. Хаяг тохируулаагүй бол
+ * гарчигтайгаа хамт бүтэн алга болно.
+ */
 export async function MenuSocialLinks() {
   const items = await links();
   if (items.length === 0) return null;
   return (
-    <>
-      {items.map(({ href, label, icon: Icon }) => (
-        <a
-          key={label}
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bg-secondary hover:bg-accent flex h-11 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors"
-        >
-          <Icon className="text-muted-foreground size-4 shrink-0" />
-          {label}
-        </a>
-      ))}
-    </>
+    <section
+      aria-labelledby="menu-social-heading"
+      style={{ animationDelay: "300ms" }}
+      className="animate-fade-up animation-duration-[380ms] mt-7 motion-reduce:animate-none"
+    >
+      <h2
+        id="menu-social-heading"
+        className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase"
+      >
+        Биднийг дагаарай
+      </h2>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {items.map(({ href, label, icon: Icon }) => (
+          <a
+            key={label}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="border-border hover:bg-secondary flex h-12 items-center gap-2.5 rounded-2xl border px-4 text-sm font-medium transition-colors"
+          >
+            <Icon className="size-5 shrink-0" />
+            {label}
+          </a>
+        ))}
+      </div>
+    </section>
   );
 }

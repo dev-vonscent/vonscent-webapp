@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  productEditSchema,
   productInputSchema,
   variantDraftSchema,
   unpricedActiveSizes,
@@ -165,5 +166,59 @@ describe("productInputSchema.bottleStyle", () => {
     // Хүйсээс авто сонгодог байсныг буцаасан — сонголт зөвхөн админых.
     const res = productInputSchema.safeParse({ ...base, gender: "female" });
     expect(res.success && res.data.bottleStyle).toBeNull();
+  });
+});
+
+describe("барааны төлөв (0125)", () => {
+  const base = {
+    name: "Aventus",
+    brand: "Creed",
+    gender: "male",
+    concentration: "edp",
+    onHandMl: 0,
+    lowStockMl: 20,
+    bottlePrice: 900000,
+    variants: [{ ml: 5, price: 45000, active: true }],
+  };
+
+  it("өгөөгүй бол «Идэвхтэй» — өмнөх «нийтлэх» өгөгдмөлтэй ижил", () => {
+    const res = productInputSchema.safeParse(base);
+    expect(res.success && res.data.status).toBe("active");
+  });
+
+  it.each(["hidden", "coming_soon", "active"])("%s-г хүлээн авна", (status) => {
+    const res = productInputSchema.safeParse({ ...base, status });
+    expect(res.success && res.data.status).toBe(status);
+  });
+
+  it("мэдэгдэхгүй төлөвийг татгалзана", () => {
+    expect(
+      productInputSchema.safeParse({ ...base, status: "draft" }).success,
+    ).toBe(false);
+  });
+
+  it("ойролцоо хугацааг тайрч, хоосныг null болгоно", () => {
+    const filled = productInputSchema.safeParse({
+      ...base,
+      status: "coming_soon",
+      comingSoonNote: "  10-р сарын сүүлээр ",
+    });
+    expect(filled.success && filled.data.comingSoonNote).toBe(
+      "10-р сарын сүүлээр",
+    );
+    const blank = productEditSchema.safeParse({ comingSoonNote: "   " });
+    expect(blank.success && blank.data.comingSoonNote).toBeNull();
+  });
+
+  it("хэт урт хугацааны текстийг татгалзана (DB check 120)", () => {
+    expect(
+      productEditSchema.safeParse({ comingSoonNote: "а".repeat(121) }).success,
+    ).toBe(false);
+  });
+
+  it("засварт төлөв өгөхгүй бол хөндөхгүй", () => {
+    const res = productEditSchema.safeParse({ name: "X" });
+    expect(res.success && res.data.status).toBeUndefined();
+    expect(res.success && res.data.comingSoonNote).toBeUndefined();
   });
 });

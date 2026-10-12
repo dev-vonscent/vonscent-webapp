@@ -23,7 +23,7 @@ const prizeSchema = z.object({
   maxDiscount: z.number().int().positive().nullable(),
   weight: z.number().min(0).max(1000),
   monthlyCap: z.number().int().min(0).nullable(),
-  fallbackSlot: z.number().int().min(1).max(12).nullable(),
+  fallbackSlot: z.number().int().min(1).max(40).nullable(),
   isActive: z.boolean(),
 });
 
@@ -35,6 +35,7 @@ const settingsSchema = z.object({
     .min(1)
     .max(24 * 30),
   spinCost: z.number().int().min(0),
+  orderSpinStep: z.number().int().min(0),
   monthlyPointCap: z.number().int().min(0),
   rareCouponPerMonth: z.number().int().min(0),
   couponValidDays: z.number().int().min(1).max(365),
@@ -43,7 +44,7 @@ const settingsSchema = z.object({
 
 const putSchema = z
   .object({
-    prizes: z.array(prizeSchema).max(12).optional(),
+    prizes: z.array(prizeSchema).max(40).optional(),
     settings: settingsSchema.optional(),
   })
   .refine((v) => v.prizes || v.settings, { message: "EMPTY" });
@@ -82,7 +83,7 @@ export async function PUT(req: Request) {
 
   // Updated one by one rather than upserted as a batch: `slot` is unique and
   // an upsert keyed on `id` would happily write a duplicate slot on a bad
-  // payload. Twelve rows at most, so the round trips are cheap.
+  // payload. 26 rows today (40 at most), so the round trips are cheap.
   for (const prize of parsed.data.prizes ?? []) {
     const { error } = await supabase
       .from("spin_wheel_prizes")

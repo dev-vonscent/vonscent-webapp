@@ -32,7 +32,8 @@ export async function ReviewSection({
   ]);
 
   return (
-    <section>
+    // `#reviews` — «Миний захиалга»-ын «Сэтгэгдэл бичих» товч энд үсэрнэ.
+    <section id="reviews" className="scroll-mt-24">
       <div className="mb-6 flex flex-wrap items-center gap-4">
         <h2 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
           Үнэлгээ ба сэтгэгдэл

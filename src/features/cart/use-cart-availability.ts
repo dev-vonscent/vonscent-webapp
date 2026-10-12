@@ -25,6 +25,8 @@ export interface LineStatus {
 }
 
 const OK: LineStatus = { sellable: true, reason: null };
+/** Хариунд огт ирээгүй мөр — бараа нуугдсан/устсан, эсвэл хэмжээ устсан. */
+const GONE: LineStatus = { sellable: false, reason: "inactive" };
 
 export function useCartAvailability({
   /**
@@ -81,11 +83,14 @@ export function useCartAvailability({
    * авах гэж байгааг сагс өөрөө хэлэх ёстой, checkout хүлээх ёсгүй.
    */
   const [stock, setStock] = React.useState<Map<string, number> | null>(null);
+  /** `byVariant` аль `idKey`-ийн хариу вэ — хуучин хариугаар шинэ мөрийг шүүхгүй. */
+  const [checkedKey, setCheckedKey] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!idKey || !enabled) {
       setByVariant(null);
       setStock(null);
+      setCheckedKey(null);
       return;
     }
     let cancelled = false;
@@ -106,6 +111,7 @@ export function useCartAvailability({
         }
         setByVariant(map);
         setStock(ml);
+        setCheckedKey(idKey);
       })
       // Сүлжээ унасан бол сагсыг хаахгүй — сервер тал нь checkout дээр
       // хамгаална.
@@ -116,12 +122,20 @@ export function useCartAvailability({
   }, [idKey, enabled]);
 
   /**
-   * Мэдээлэл ирээгүй, эсвэл мөр танигдаагүй бол «зүгээр» гэж үзнэ: сагсыг
-   * буруу шалтгаанаар түгжихээс сервер талын шалгалт руу оруулах нь дээр.
+   * Мэдээлэл ирээгүй (сүлжээ/сервер унасан, эсвэл одоогийн id-уудын хариу
+   * хараахан ирээгүй) бол «зүгээр» гэж үзнэ: сагсыг буруу шалтгаанаар
+   * түгжихээс сервер талын шалгалт руу оруулах нь дээр. Харин ЭНЭ id-уудын
+   * төлөө амжилттай ирсэн хариунд мөр огт байхгүй бол бараа нуугдсан/устсан
+   * — checkout-д `ITEMS_UNAVAILABLE` болох тул энд тэмдэглэнэ. Сервер нь
+   * хэсэгчилсэн алдааг 500 болгодог (`strict`) тул «алга» нь үнэхээр алга.
    */
   const statusOf = React.useCallback(
-    (variantId: string): LineStatus => byVariant?.get(variantId) ?? OK,
-    [byVariant],
+    (variantId: string): LineStatus => {
+      const s = byVariant?.get(variantId);
+      if (s) return s;
+      return byVariant && checkedKey === idKey ? GONE : OK;
+    },
+    [byVariant, checkedKey, idKey],
   );
 
   /** Багц нь гишүүдийнхээ хамгийн муу төлөвөөр тодорхойлогдоно. */

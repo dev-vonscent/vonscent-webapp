@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import type { ProductStatus } from "@/lib/constants";
 import {
   stockState,
   STOCK_STATE_LABEL,
@@ -17,18 +18,39 @@ export function StockBadge({
   availableMl,
   lowStockMl,
   isActive = true,
+  status,
   soldOut = false,
 }: {
   availableMl: number;
   lowStockMl: number;
   /** Products can be hidden from the shop independently of stock. */
   isActive?: boolean;
+  /** Барааны төлөв (0125) — өгвөл `isActive`-аас давуу. */
+  status?: ProductStatus;
   soldOut?: boolean;
 }) {
+  // «Тун удахгүй» нь үлдэгдлийн түүх биш, хүлээлтийн төлөв: ус ирээгүй бол
+  // «Дууссан» гэж харуулбал оператор захиалах гэж яарна. Ус ирсэн бол
+  // «Бэлэн» — гаргахыг л хүлээж байна.
+  if (status === "coming_soon") {
+    // Fragment: хоёр дуудагч (хүснэгтийн нүд, утасны карт) хоёулаа
+    // flex-col-оор байрлуулдаг — тэдний зэрэгцүүлэлтийг дагана.
+    return (
+      <>
+        <Badge variant="gold">Тун удахгүй</Badge>
+        {availableMl > 0 && (
+          <span className="text-success text-[11px] whitespace-nowrap">
+            Ирсэн · гаргахад бэлэн
+          </span>
+        )}
+      </>
+    );
+  }
+  const hidden = status ? status === "hidden" : !isActive;
   // Hidden outranks stock: a product nobody can see has no stock story to
   // tell, and «Дууссан» on an unlisted product sends the operator restocking
   // something the shop is not selling.
-  if (!isActive) return <Badge variant="secondary">Нуусан</Badge>;
+  if (hidden) return <Badge variant="secondary">Нуусан</Badge>;
   const state = stockState(availableMl, lowStockMl, soldOut);
   const label = STOCK_STATE_LABEL[state];
   if (state === "soldout") return <Badge variant="sale">{label}</Badge>;

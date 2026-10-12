@@ -108,6 +108,18 @@ export async function POST(req: Request) {
       .maybeSingle();
     if (!coll)
       return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  } else {
+    // Зөвхөн худалдаанд байгаа ус: «Тун удахгүй» (0125) ус хэнд ч хүрээгүй
+    // тул түүний сэтгэгдэл үнэлгээг нь хуурамчаар хөөргөнө; нуусан ус
+    // дэлгүүрт байхгүй.
+    const { data: product } = await supabase
+      .from("products")
+      .select("id")
+      .eq("id", target.id)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (!product)
+      return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
 
   // Owner-scoped RLS lets the user upsert their own review.

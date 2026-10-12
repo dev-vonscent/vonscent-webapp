@@ -9,6 +9,7 @@
  * expiring a week apart looked like one.
  */
 
+import { WALLET_HISTORY_DAYS } from "@/lib/constants";
 import { formatPrice } from "@/lib/format";
 
 export type CouponStatus = "active" | "used" | "expired";
@@ -26,6 +27,8 @@ export interface CouponRecord {
   used_count: number;
   is_active: boolean;
   source: string;
+  /** When it was switched off (0120); null while active. */
+  deactivated_at?: string | null;
 }
 
 /** One redemption as the OWNER may see it — the redeemer is masked. */
@@ -66,6 +69,42 @@ export function couponStatus(
   if (!c.is_active) return "expired";
   if (c.ends_at && Date.parse(c.ends_at) <= now) return "expired";
   return "active";
+}
+
+/**
+ * Whether a spent or ended coupon has been history long enough to leave the
+ * wallet (`WALLET_HISTORY_DAYS`). The row stays in the database — the admin's
+ * redemption log and the reports still read it; only the customer's list
+ * forgets it, the way large shops keep «Миний купон» short.
+ *
+ * The clock starts when the coupon left the «active» tab:
+ * - used    → its latest (uncancelled) redemption;
+ * - expired → `ends_at` if that has passed, or when it was switched off,
+ *             whichever came first.
+ * With no such moment on record it stays visible — hiding needs a reason.
+ */
+export function hiddenFromWallet(
+  c: Pick<
+    CouponRecord,
+    "max_uses" | "used_count" | "ends_at" | "is_active" | "deactivated_at"
+  >,
+  lastUsedAt: string | null,
+  now = Date.now(),
+): boolean {
+  const status = couponStatus(c, now);
+  if (status === "active") return false;
+  let since: number | null = null;
+  if (status === "used") {
+    since = lastUsedAt ? Date.parse(lastUsedAt) : null;
+  } else {
+    const ended = c.ends_at ? Date.parse(c.ends_at) : NaN;
+    const off =
+      !c.is_active && c.deactivated_at ? Date.parse(c.deactivated_at) : NaN;
+    const moments = [ended <= now ? ended : NaN, off].filter(Number.isFinite);
+    since = moments.length ? Math.min(...moments) : null;
+  }
+  if (since === null || !Number.isFinite(since)) return false;
+  return now - since > WALLET_HISTORY_DAYS * 86_400_000;
 }
 
 export function toWalletCoupon(

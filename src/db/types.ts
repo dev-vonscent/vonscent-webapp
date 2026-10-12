@@ -37,14 +37,15 @@ export type Season = "spring" | "summer" | "autumn" | "winter" | "all";
  */
 export type Sillage = "light" | "medium" | "strong";
 export type CouponType = "percent" | "fixed";
-/** Lucky wheel (0053). */
+/** Lucky wheel (0053; `none` and `order` — 0128). */
 export type SpinPrizeKind =
   | "points"
   | "coupon_percent"
   | "coupon_fixed"
-  | "bundle";
+  | "bundle"
+  | "none";
 export type SpinTier = "common" | "rare" | "grand";
-export type SpinType = "free" | "paid";
+export type SpinType = "free" | "paid" | "order";
 export type UserRole =
   | "guest"
   | "customer"
@@ -84,7 +85,14 @@ export interface ProductRow {
   bottle_ml: number;
   rating_avg: number;
   rating_count: number;
+  /** `status === 'active'`-тай үргэлж тэнцүү (0125 trigger + check). */
   is_active: boolean;
+  /** Барааны амьдралын мөчлөг (0125) — `PRODUCT_STATUSES`. */
+  status: "hidden" | "coming_soon" | "active";
+  /** Анх худалдаанд гарсан мөч (0125); хэзээ ч гараагүй бол null. */
+  launched_at: string | null;
+  /** «Тун удахгүй» үеийн ойролцоо хугацаа, ж: «10-р сарын сүүлээр» (0125). */
+  coming_soon_note: string | null;
   /** «Онцлох бараа» (0055) — нүүрийн 'featured' хэсэг эндээс автоматаар уншина. */
   is_featured: boolean;
   created_at: string;
@@ -220,6 +228,11 @@ export interface OrderRow {
    * never be the payment page's key.
    */
   pay_token: string;
+  /**
+   * Checkout-ийн сагсны хуулбар (0124) — төлөгдөөгүй бол «Дараа захиалах»
+   * руу шилжүүлэхэд. Төлөгдсөн / цуцлагдсан мөчид trigger арилгана.
+   */
+  checkout_snapshot: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -323,6 +336,8 @@ export interface CouponRow {
   /** Per-account cap, counted from coupon_redemptions (0025). */
   max_uses_per_user: number | null;
   used_count: number;
+  /** Generated: shop-wide cap reached (0119). Read-only. */
+  used_up: boolean;
   /** Cap on a percent coupon's ₮ discount (0053). null = uncapped. */
   max_discount: number | null;
   /** Who issued it: 'manual' | 'spin' (0053). */
@@ -469,6 +484,8 @@ export interface SpinWheelSpinRow {
   spin_type: SpinType;
   points_spent: number;
   coupon_id: string | null;
+  /** `order` spins only — whose credit it consumed (0129). */
+  credit_order_id: string | null;
   /** Physical prizes only — set when the admin has handed it over. */
   fulfilled_at: string | null;
   created_at: string;
@@ -493,7 +510,18 @@ type Table<Row, Optional extends keyof Row> = {
 export interface Database {
   public: {
     Tables: {
-      products: Table<ProductRow, "id" | "created_at" | "updated_at">;
+      // status ба is_active-ийн аль нэгийг өгөхөд хангалттай — нөгөөг нь
+      // trigger бөглөнө (0125); launched_at-ийг ч trigger тавина.
+      products: Table<
+        ProductRow,
+        | "id"
+        | "created_at"
+        | "updated_at"
+        | "status"
+        | "is_active"
+        | "launched_at"
+        | "coming_soon_note"
+      >;
       product_images: Table<ProductImageRow, "id">;
       product_variants: Table<ProductVariantRow, "id" | "sale_price">;
       inventory: Table<InventoryRow, "updated_at">;
@@ -508,7 +536,7 @@ export interface Database {
       orders: Table<OrderRow, "id" | "order_no" | "created_at" | "updated_at">;
       order_items: Table<OrderItemRow, "id">;
       order_refund_accounts: Table<OrderRefundAccountRow, "created_at">;
-      coupons: Table<CouponRow, "id" | "created_at">;
+      coupons: Table<CouponRow, "id" | "created_at" | "used_up">;
       coupon_redemptions: Table<CouponRedemptionRow, "id" | "created_at">;
       home_sections: Table<HomeSectionRow, "id" | "created_at">;
       home_section_products: Table<HomeSectionProductRow, "sort_order">;
@@ -545,6 +573,10 @@ export interface Database {
       grant_reward_coupon: { Args: Record<string, unknown>; Returns: string };
       spin_wheel: { Args: Record<string, unknown>; Returns: unknown };
       spin_wheel_state: { Args: Record<string, unknown>; Returns: unknown };
+      launch_product: {
+        Args: { p_id: string };
+        Returns: "launched" | "already_active" | "not_coming_soon" | "not_found";
+      };
     };
     Enums: {
       user_role: UserRole;
@@ -553,6 +585,7 @@ export interface Database {
       payment_method_t: PaymentMethod;
       payment_status_t: PaymentStatus;
       tag_kind_t: TagKind;
+      product_status_t: ProductRow["status"];
       coupon_type_t: CouponType;
       spin_prize_kind_t: SpinPrizeKind;
       spin_prize_tier_t: SpinTier;

@@ -10,16 +10,21 @@ import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { formatPrice } from "@/lib/format";
 import { trackPurchase } from "@/lib/analytics";
-import { BANK_TRANSFER } from "@/lib/constants";
+import { BANK_TRANSFER, PAYMENT_WINDOW_MINUTES } from "@/lib/constants";
+import { toast } from "@/lib/toast";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { orderSummaryRows, type OrderSummaryRow } from "@/lib/orders/summary";
 import {
+  DELIVERY_END_HOUR,
   DISPATCH_HOUR,
   formatEditCutoff,
   earliestDeliveryDay,
   formatDeliveryDay,
   projectedDeliveryDay,
 } from "@/lib/time";
+import { clearPendingOrder } from "@/features/checkout/pending-order";
+import { requestAbandon } from "../abandon";
 import type { PaymentView } from "../types";
 import { BankApps } from "./bank-apps";
 import { CopyRow } from "./copy-row";
@@ -89,9 +94,12 @@ const POLL_TIMEOUT_MS = 20 * 60_000;
 export function PaymentPanel({
   view,
   token,
+  storePhone = null,
 }: {
   view: PaymentView;
   token: string;
+  /** Админы тохиргооны дэлгүүрийн утас — тусламжийн мөрөнд. */
+  storePhone?: string | null;
 }) {
   const [paid, setPaid] = React.useState(view.paid);
   /**
@@ -208,6 +216,12 @@ export function PaymentPanel({
     };
   }, [isQpay, waiting, view.mock, check]);
 
+  // Төлөгдсөн / цуцлагдсан захиалгыг checkout дээр дахин сэргээхгүй
+  // (pending-order.ts) — буцсан хүн хоосон, цэвэр checkout олно.
+  React.useEffect(() => {
+    if (paid || cancelled) clearPendingOrder(token);
+  }, [paid, cancelled, token]);
+
   // Purchase analytics fire on confirmed payment only. An unpaid invoice on
   // this page is an abandoned checkout, not a purchase.
   React.useEffect(() => {
@@ -267,6 +281,30 @@ export function PaymentPanel({
       setPaid(true);
     } finally {
       setChecking(false);
+    }
+  }
+
+  /**
+   * «Дараа захиалах» / «Устгах» — төлөгдөөгүй захиалгыг цуцалж нөөцийг
+   * суллана (`/api/payments/abandon`, 0124). Сервер цуцлахаасаа өмнө QPay-ээс
+   * асуудаг тул энэ хооронд төлөгдсөн бол `paid` буцаж, хуудас төлөгдсөн
+   * төлөвт орно.
+   */
+  async function abandon(saveForLater: boolean) {
+    setError(null);
+    const result = await requestAbandon(token, saveForLater);
+    if (!result.ok) {
+      if (result.paid) setPaid(true);
+      else setError(result.message);
+      return;
+    }
+    clearPendingOrder(token);
+    if (saveForLater) {
+      toast("«Миний захиалга» хэсгээс үргэлжлүүлээрэй.", "Дараа захиалах руу шилжлээ");
+      router.push("/account/orders?tab=saved");
+    } else {
+      toast("Захиалга устгагдлаа.");
+      router.push("/catalog");
     }
   }
 
@@ -331,9 +369,14 @@ export function PaymentPanel({
           </p>
         )}
 
-        {/* «Барааг тань N минут нөөцөлж байна» мөрийг клиентийн хүсэлтээр
-            нуув (2026-09 UG) — нөөцийн логик өөрчлөгдөөгүй, хугацаа дуусвал
-            захиалга цуцлагдсаныг хэлэх мессеж хэвээр. */}
+        {/* «Барааг тань N минут нөөцөлж байна» мөрийн оронд (2026-09 UG-д
+            нуусан) хугацаа дуусахад юу болохыг хэлнэ (клиент, 2026-10).
+            Зочинд «Дараа захиалах» байхгүй — захиалга нь зүгээр цуцлагдана. */}
+        <p className="text-muted-foreground mt-3 text-center text-xs text-balance md:text-left">
+          {view.canSaveForLater
+            ? `${PAYMENT_WINDOW_MINUTES} минутын дотор төлбөр төлөгдөөгүй тохиолдолд автоматаар «Дараа захиалах» руу шилжинэ.`
+            : `${PAYMENT_WINDOW_MINUTES} минутын дотор төлбөр төлөгдөөгүй тохиолдолд захиалга автоматаар цуцлагдана.`}
+        </p>
       </div>
 
       {/*
@@ -356,10 +399,15 @@ export function PaymentPanel({
         ) : (
           <BankTransfer orderNo={view.orderNo} />
         )}
+        <AbandonActions
+          canSaveForLater={view.canSaveForLater}
+          onAbandon={abandon}
+        />
       </div>
 
       <div className="md:col-start-1 md:row-start-2">
         <OrderRecap view={view} />
+        <HelpLine phone={storePhone} />
       </div>
     </div>
   );
@@ -527,8 +575,21 @@ function OrderRecap({ view }: { view: PaymentView }) {
           <strong className="text-foreground font-medium">
             {formatDeliveryDay(projectedDeliveryDay(view.deliverOn))}
           </strong>{" "}
-          {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.
+          {DISPATCH_HOUR}:00–{DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.
         </p>
+        {/* Цуцлах зам нь «Миний захиалга» — зочинд тэр хэсэг байхгүй. */}
+        {view.canSaveForLater && (
+          <p className="text-muted-foreground mt-1.5 text-xs">
+            Захиалга баталгаажсан өдрийн 23:59:59 цагаас өмнө бол{" "}
+            <Link
+              href="/account/orders"
+              className="text-foreground underline underline-offset-2"
+            >
+              «Миний захиалга»
+            </Link>{" "}
+            хэсгээс захиалгаа цуцлах боломжтой.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -597,6 +658,101 @@ function ContactLine() {
       </Link>
       .
     </p>
+  );
+}
+
+/**
+ * Тодорхойгүй зүйл гарвал хэнээс асуух вэ (клиент, 2026-10). «Түгээмэл
+ * асуулт» нь шинэ табд нээгдэнэ — уншаад энэ хуудас руугаа буцаж төлбөрөө
+ * үргэлжлүүлэх ёстой, QR, invoice нь эндээ үлдэнэ.
+ */
+function HelpLine({ phone }: { phone: string | null }) {
+  return (
+    <p className="text-muted-foreground mt-4 px-1 text-xs text-pretty">
+      Захиалгатай холбоотой тодорхойгүй зүйл байвал
+      {phone ? (
+        <>
+          {" "}
+          ажлын цагаар{" "}
+          <a
+            href={`tel:${phone.replace(/\s+/g, "")}`}
+            className="text-foreground font-medium underline underline-offset-2"
+          >
+            {phone}
+          </a>{" "}
+          дугаараас лавлана уу. Эсвэл
+        </>
+      ) : null}{" "}
+      <a
+        href="/faq"
+        target="_blank"
+        rel="noopener"
+        className="text-foreground underline underline-offset-2"
+      >
+        «Түгээмэл асуулт»
+      </a>
+      -ыг харна уу.
+    </p>
+  );
+}
+
+/**
+ * Төлөхгүй бол гарах хоёр зам (клиент, 2026-10). Өмнө нь энэ хуудас
+ * зориуд гарцгүй байсан (дээрх тайлбар) — гэвч гарцгүй үед хэрэглэгч
+ * зүгээр л хаядаг бөгөөд захиалга 30 минут нөөцөө барьсаар үлддэг байв.
+ * Тиймээс гол үйлдлийн ДООР, жижиг, хоёрдогч товч хэлбэрээр.
+ */
+function AbandonActions({
+  canSaveForLater,
+  onAbandon,
+}: {
+  canSaveForLater: boolean;
+  onAbandon: (saveForLater: boolean) => Promise<void>;
+}) {
+  const [saving, setSaving] = React.useState(false);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  return (
+    <div className="flex gap-2 pb-5 md:px-5">
+      {canSaveForLater && (
+        <LoadingButton
+          variant="outline"
+          className="flex-1"
+          loading={saving}
+          onClick={async () => {
+            setSaving(true);
+            try {
+              await onAbandon(true);
+            } finally {
+              setSaving(false);
+            }
+          }}
+        >
+          Дараа захиалах
+        </LoadingButton>
+      )}
+      {/* Удирдлагатай нээлт — `ConfirmDialog`-ийн `trigger` нь `DialogTrigger`
+          биш тул түүгээр өгсөн товч дарахад юу ч болдоггүй байв. */}
+      <Button
+        variant="ghost"
+        className={cn(
+          "text-muted-foreground hover:text-destructive",
+          canSaveForLater ? "flex-1" : "w-full",
+        )}
+        disabled={saving}
+        onClick={() => setConfirmOpen(true)}
+      >
+        Устгах
+      </Button>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Захиалгыг устгах уу?"
+        description="Төлөгдөөгүй энэ захиалга устаж, нөөцөлсөн бараа чөлөөлөгдөнө."
+        confirmLabel="Устгах"
+        destructive
+        onConfirm={() => onAbandon(false)}
+      />
+    </div>
   );
 }
 
@@ -846,7 +1002,7 @@ function PaidState({
           <strong>
             {formatDeliveryDay(deliverOn ?? earliestDeliveryDay())}
           </strong>{" "}
-          {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.
+          {DISPATCH_HOUR}:00–{DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.
         </p>
         <p className="text-muted-foreground mt-2 text-xs">
           {formatEditCutoff(deliverOn ?? earliestDeliveryDay())} хүртэл цуцлах
@@ -864,6 +1020,28 @@ function PaidState({
                 +{view.pointsEarned.toLocaleString("mn-MN")} V point
               </strong>{" "}
               хуримтлагдлаа — хүргэгдсэний дараа зарцуулах боломжтой болно.
+            </p>
+          </>
+        )}
+
+        {/* Сэтгэгдлийн урамшуулал (0117) — зөвхөн бүртгэлтэй хэрэглэгчид:
+            зочин сэтгэгдэл бичиж чадахгүй тул `reviewPoints` нь 0 ирнэ. */}
+        {view.reviewPoints > 0 && (
+          <>
+            <div className="gold-rule mt-3" />
+            <p className="text-muted-foreground mt-3 text-xs">
+              Бараагаа хэрэглэж үзээд сэтгэгдлээ бичээд{" "}
+              <strong className="text-foreground font-medium tabular-nums">
+                +{view.reviewPoints.toLocaleString("mn-MN")} V point
+              </strong>{" "}
+              цуглуулаарай. Сэтгэгдлээ{" "}
+              <Link
+                href="/account/orders"
+                className="text-foreground underline underline-offset-2"
+              >
+                «Миний захиалга»
+              </Link>{" "}
+              хэсгээс бичнэ.
             </p>
           </>
         )}

@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { adm2CodeFor, areaKey, resolveZone } from "@/lib/geo/zone";
+import {
+  adm2CodeFor,
+  areaKey,
+  isRemoteAddress,
+  resolveZone,
+} from "@/lib/geo/zone";
+import { SHIPPING_ZONES } from "@/lib/constants";
 
 const ZONES = [
   { name: "А бүс", areas: ["MN1107:1", "MN1107:2"] },
@@ -61,5 +67,37 @@ describe("delivery zone resolution", () => {
   it("writes area keys the admin UI stores", () => {
     expect(areaKey("MN1107")).toBe("MN1107");
     expect(areaKey("MN1107", 12)).toBe("MN1107:12");
+  });
+});
+
+describe("isRemoteAddress", () => {
+  it("treats every address outside Ulaanbaatar as ride-delivered", () => {
+    expect(
+      isRemoteAddress(SHIPPING_ZONES, {
+        city: "Дархан-Уул",
+        district: "Дархан",
+      }),
+    ).toBe(true);
+  });
+
+  it("follows the zone for the capital's outlying districts", () => {
+    expect(
+      isRemoteAddress(SHIPPING_ZONES, {
+        city: "Улаанбаатар",
+        district: "Налайх",
+      }),
+    ).toBe(true);
+    expect(
+      isRemoteAddress(SHIPPING_ZONES, {
+        city: "Улаанбаатар",
+        district: "Баянгол",
+      }),
+    ).toBe(false);
+  });
+
+  it("says nothing before a city is picked", () => {
+    expect(isRemoteAddress(SHIPPING_ZONES, { city: "", district: "" })).toBe(
+      false,
+    );
   });
 });

@@ -24,6 +24,8 @@ const BOTTLE_POSITION = 2;
  * объект бол нэг устгалт бүх бүтээгдэхүүний зургийг эвдэнэ.
  *
  * Хэзээ ч шидэхгүй — савны зураггүй бүтээгдэхүүн бүтээгдэхүүн хэвээрээ.
+ * Зураг нэмэгдсэн эсэхийг буцаана (нийтлэх эсэхийг дуудагч өөрөө
+ * `hasVisibleImage`-ээр шийднэ).
  */
 export async function addBottleImage(
   supabase: SupabaseClient,
@@ -31,7 +33,7 @@ export async function addBottleImage(
   slug: string,
   style: BottleStyle,
   placement: "third" | "end",
-): Promise<void> {
+): Promise<boolean> {
   try {
     const path = `products/${slug}/bottle-${randomUUID()}.webp`;
     const { error: copyErr } = await supabase.storage
@@ -39,7 +41,7 @@ export async function addBottleImage(
       .copy(BOTTLE_MASTER_PATH(style), path);
     if (copyErr) {
       console.error("[bottle-image] copy failed", copyErr.message);
-      return;
+      return false;
     }
 
     const { data } = await supabase
@@ -56,11 +58,12 @@ export async function addBottleImage(
     };
 
     if (placement === "end") {
-      await supabase.from("product_images").insert({
+      const { error } = await supabase.from("product_images").insert({
         ...row,
         sort_order: rows.length ? rows[rows.length - 1].sort_order + 1 : 0,
       });
-      return;
+      if (error) console.error("[bottle-image] insert failed", error.message);
+      return !error;
     }
 
     // Ард нь орох зургуудыг арын талаас нь эхлэн ухраана.
@@ -81,11 +84,14 @@ export async function addBottleImage(
       }
     }
 
-    await supabase.from("product_images").insert({
+    const { error } = await supabase.from("product_images").insert({
       ...row,
       sort_order: Math.min(rows.length, BOTTLE_POSITION),
     });
+    if (error) console.error("[bottle-image] insert failed", error.message);
+    return !error;
   } catch (e) {
     console.error("[bottle-image]", e);
+    return false;
   }
 }

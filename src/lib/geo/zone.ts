@@ -14,7 +14,9 @@
  * A khoroo-specific rule wins over a district-wide one, so the admin can put a
  * district in зone Б and lift three of its khoroos into А.
  */
-import { AIMAGS } from "./locations";
+import { AIMAGS, ULAANBAATAR_CODE, getAimag } from "./locations";
+
+const UB_NAME = getAimag(ULAANBAATAR_CODE)?.name ?? "Улаанбаатар";
 
 export interface ZoneAreaRule {
   /** Stable id (A/B/C/R/X); absent on legacy rows saved before codes existed. */
@@ -74,4 +76,22 @@ export function resolveZone(
     }
   }
   return districtMatch;
+}
+
+/**
+ * Ачаа нь унаагаар явах хаяг эсэх — үүдэнд хүргэдэггүй тул дэлгэрэнгүй хаяг
+ * (байр, орц, тоот) асуухгүй, оронд нь «унаа явах газар» бичүүлнэ.
+ *
+ * Хотоор биш БҮСЭЭР шийднэ: Налайх, Багануур, Багахангай нь УБ-ын дүүрэг ч
+ * орон нутгийн (remote) бүсэд байдаг. Улаанбаатараас гадуурх хаяг үргэлж
+ * унаагаар явна — `resolveShipping`-ийн ruralFallback-тай ижил дүрэм.
+ */
+export function isRemoteAddress(
+  zones: readonly (ZoneAreaRule & { remote?: boolean })[],
+  address: { city: string; district: string; khoroo?: number | null },
+): boolean {
+  if (!address.city) return false;
+  if (address.city !== UB_NAME) return true;
+  const key = resolveZone(zones, address);
+  return key != null && zones.find((z) => zoneKey(z) === key)?.remote === true;
 }

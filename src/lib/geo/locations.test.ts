@@ -35,6 +35,7 @@ describe("mn locations", () => {
   it("labels the second select per region type", () => {
     expect(childLabel(ULAANBAATAR_CODE)).toBe("Дүүрэг");
     expect(childLabel("MN45")).toBe("Сум");
+    expect(childLabel(null)).toBe("Дүүрэг / Сум");
   });
 
   it("resolves an adm2 code back to its pair", () => {

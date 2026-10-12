@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Instagram, Facebook, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
+import { FacebookIcon, InstagramIcon } from "@/components/icons/brand-icons";
 import { Logo } from "./logo";
 import { SITE } from "@/lib/constants";
 import { getSocialSettings } from "@/features/content/api";
@@ -52,7 +53,7 @@ export async function SiteFooter() {
                   aria-label="Instagram"
                   className="border-border text-muted-foreground hover:border-gold-strong/50 hover:text-gold rounded-full border p-2.5 transition-colors"
                 >
-                  <Instagram className="size-5" />
+                  <InstagramIcon className="size-5" />
                 </a>
               )}
               {social.facebook && (
@@ -63,7 +64,7 @@ export async function SiteFooter() {
                   aria-label="Facebook"
                   className="border-border text-muted-foreground hover:border-gold-strong/50 hover:text-gold rounded-full border p-2.5 transition-colors"
                 >
-                  <Facebook className="size-5" />
+                  <FacebookIcon className="size-5" />
                 </a>
               )}
               <Link

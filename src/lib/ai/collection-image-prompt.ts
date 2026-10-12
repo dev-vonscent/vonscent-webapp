@@ -15,7 +15,11 @@
  *
  *   style   — зураг авалтын төрөл, чанар;
  *   bottles — дөрвөн савны үнэн зөв байдал;
- *   layout  — савнуудын байрлал (бүх poster-т ТОГТМОЛ);
+ *   frame   — 4:5 хүрээ, цуврал (card-ын харьцаа, grid-д зэрэгцэнэ);
+ *   layout  — савнуудын байрлал хувь/px-ээр (бүх poster-т ТОГТМОЛ —
+ *             «ойролцоо» дүрмийг загвар сул дагаж, сав зарим нь голдоо,
+ *             зарим нь доор гарч байв);
+ *   surface — бүдэг гадаргуу: толь шиг тод тусгал зургийг дарж байв;
  *   set     — багц бүрд өөрчлөгдөх орчин;
  *   avoid   — дээрх хэсгүүдэд хамаарахгүй үлдсэн хоригууд.
  */
@@ -35,33 +39,52 @@ const SECTIONS = {
     "photo's camera angle, perspective, tilt, lighting and background — every",
     "bottle is re-photographed from this shoot's own camera position.",
   ],
+  frame: [
+    "Vertical 4:5 portrait frame (width : height = 4 : 5), e.g. 1024 x 1280 px.",
+    "This poster is one of a SERIES shown side by side in a grid, so every",
+    "poster must use exactly the same framing: same camera distance, same",
+    "bottle scale, same baseline. Nothing important may sit near the edges.",
+  ],
   layout: [
-    "This layout is identical for every poster in the series:",
+    "Positions are given as % of the frame (and in px for 1024 x 1280):",
+    "- BASELINE: the bottom edge of all four bottles rests on ONE perfectly",
+    "  horizontal line at 68% of the frame height from the top (y = 870 px).",
+    "  Every bottle — tall, short or round — stands on this same line, never",
+    "  lifted, sunk, set back or placed in front.",
+    "- ROW WIDTH: the row, from the left edge of bottle 1 to the right edge of",
+    "  bottle 4, spans 84% of the frame width (about 860 px), centred: 8%",
+    "  (about 80 px) of empty space on the left and on the right. Choose the",
+    "  bottle scale so the row fills exactly this width.",
+    "- HEIGHT LIMIT: no bottle top (including its cap) is higher than 22% of",
+    "  the frame height from the top (y = 280 px). If the tallest bottle would",
+    "  break this limit, scale all four down together.",
     "- One straight horizontal row, left to right in the order listed below,",
-    "  all at the same distance from the camera — none in front of, behind, on",
-    "  top of or raised above another.",
-    "- BASELINE: the bottom edge of every bottle rests on one perfectly",
-    "  horizontal line at 70% of the frame height from the top, so all four",
-    "  bases are exactly the same distance from the bottom of the frame. Round",
-    "  or short bottles sit on that same line — never lifted or set back.",
-    "- About 1 cm (a finger's width) between neighbouring bottles, the same gap",
-    "  everywhere, never touching.",
+    "  all at the same distance from the camera — none in front of, behind or",
+    "  on top of another. Equal gaps of about 1 cm between neighbouring",
+    "  bottles, never touching.",
     "- Every bottle stands perfectly upright, its vertical axis parallel to the",
-    "  frame's side edges — not leaning toward or away from the camera, not",
-    "  seen from above or below. Labels face the camera.",
-    "- Camera straight on at label height, level, no tilt, so all four bottles",
-    "  share the same eye-level view; all four in sharp focus.",
-    "- The row is centred: equal space left and right; the tallest bottle's top",
-    "  at 30% of the frame height from the top.",
+    "  frame's side edges, labels facing the camera.",
+    "- Camera straight on at label height, level, no tilt, no perspective",
+    "  distortion; all four bottles in sharp focus.",
+    "- Below the baseline (bottom 32%): only the surface, calm and uncluttered,",
+    "  no props. Above the row: backdrop, props and light.",
+  ],
+  surface: [
+    "The bottles stand on a matte or satin surface (honed stone, linen, paper,",
+    "suede, brushed wood or similar). Under each bottle there is only a soft,",
+    "short contact shadow and at most a faint, blurred hint of reflection that",
+    "fades out within a few centimetres. NOT a mirror: no glossy black, polished",
+    "marble, glass or water surface, and never a sharp, full-height mirrored",
+    "copy of a bottle or its label.",
   ],
   set: [
     "Read the set's name, gender and description below and design a studio set",
-    "that tells its story: the surface the bottles stand on, a styled backdrop",
+    "that tells its story: the surface material and colour, a styled backdrop",
     "(wall, fabric or set pieces), a few props behind or beside the row — never",
     "in front of or between the bottles — the lighting mood, a 3-4 tone colour",
     "palette and one atmospheric element (haze with light beams, a coloured gel",
-    "glow, surface reflections, moving fabric or soft bokeh). Each set should",
-    "feel like a different campaign.",
+    "glow, moving fabric or soft bokeh). Each set should feel like a different",
+    "campaign.",
   ],
   avoid: [
     "No added text, graphics or watermarks (the only text is the bottles' own",
@@ -73,7 +96,9 @@ const SECTIONS = {
 const HEADINGS: Record<keyof typeof SECTIONS, string> = {
   style: "STYLE",
   bottles: "THE FOUR BOTTLES (non-negotiable)",
-  layout: "LAYOUT",
+  frame: "FRAME",
+  layout: "LAYOUT (exact positions — follow precisely)",
+  surface: "SURFACE",
   set: "SET DESIGN",
   avoid: "AVOID",
 };

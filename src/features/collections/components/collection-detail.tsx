@@ -6,7 +6,6 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Check, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
 import {
@@ -14,9 +13,9 @@ import {
   useScrolledPast,
 } from "@/components/shared/mobile-buy-bar";
 import { trackBeginCheckout } from "@/lib/analytics";
-import { TRIAL_SIZE_ML } from "@/lib/constants";
-import { bestValueOf } from "@/features/products/best-value";
 import type { Collection } from "../types";
+import { toCartCollection } from "../to-cart";
+import { CollectionSizePicker } from "./collection-size-picker";
 
 export function CollectionDetail({ collection }: { collection: Collection }) {
   const firstMl = collection.availableMls[0];
@@ -24,21 +23,12 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
     firstMl ?? collection.prices[0]?.ml,
   );
   const [added, setAdded] = React.useState(false);
-  const sizeRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
 
   const addCollection = useCart((s) => s.addCollection);
   const startBuyNowCollection = useCart((s) => s.startBuyNowCollection);
   const router = useRouter();
 
   const priceRow = collection.prices.find((p) => p.ml === ml) ?? null;
-  /** Нэг хэмжээний багцад нийт хэдэн ml орох вэ: «2ml ×4» = 8ml. */
-  const memberCount = collection.members.length;
-  const totalMl = (size: number) => size * Math.max(memberCount, 1);
-  // Дан усных шиг: хамгийн бага ₮/ml, нөөцөөс үл хамааран (best-value.ts).
-  const bestValueMl =
-    bestValueOf(
-      collection.prices.map((p) => ({ ml: totalMl(p.ml), price: p.price })),
-    )?.ml ?? null;
   const available = priceRow?.available ?? false;
   /**
    * Puts the bundle in the cart. Returns false when nothing was added.
@@ -50,64 +40,8 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
   function addToCart(mode: "add" | "buy-now" = "add"): boolean {
     if (!priceRow || !available) return false;
     const put = mode === "buy-now" ? startBuyNowCollection : addCollection;
-    put({
-      collectionId: collection.id,
-      type: collection.type,
-      slug: collection.slug,
-      name: collection.name,
-      image: collection.image,
-      // The rate for the size being bought, not the bundle default: with
-      // per-size discounts (0051) those differ, and the cart would otherwise
-      // show a percentage the customer is not getting.
-      discountPct: priceRow.discountPct,
-      ml,
-      members: collection.members.map((m) => {
-        const v = m.variantByMl[ml];
-        return {
-          productId: m.productId,
-          variantId: v.variantId,
-          slug: m.slug,
-          name: m.name,
-          brand: m.brand,
-          image: m.image?.url ?? null,
-          price: v.price,
-        };
-      }),
-      unitPrice: priceRow.price,
-    });
+    put(toCartCollection(collection, priceRow));
     return true;
-  }
-
-  /**
-   * Хэмжээний сонголт нь radiogroup — хоёрын нэгийг асаах toggle биш,
-   * нэгийг нь сонгох жагсаалт. Тиймээс сум товчоор нүүж, фокус нь бүлэг дээр
-   * ганцхан зогсоолтой байна (roving tabindex).
-   */
-  function onSizeKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    const keys = [
-      "ArrowRight",
-      "ArrowDown",
-      "ArrowLeft",
-      "ArrowUp",
-      "Home",
-      "End",
-    ];
-    if (!keys.includes(e.key)) return;
-    e.preventDefault();
-    const list = collection.prices;
-    const from = list.findIndex((p) => p.ml === ml);
-    const step = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1;
-    let next: number;
-    if (e.key === "Home") next = 0;
-    else if (e.key === "End") next = list.length - 1;
-    else next = (from + step + list.length) % list.length;
-    // Байхгүй хэмжээг алгасна — сонгох боломжгүй зүйл дээр фокус зогсоохгүй.
-    for (let i = 0; i < list.length && !list[next].available; i += 1) {
-      next = (next + (step || 1) + list.length) % list.length;
-    }
-    if (!list[next].available) return;
-    setMl(list[next].ml);
-    sizeRefs.current[next]?.focus();
   }
 
   /**
@@ -194,86 +128,12 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
           үнэтэй нь) доод хөвдөг цэсний доогуур орж, эхний дэлгэцэнд огт
           харагдахгүй байсан.
         */}
-        <div
-          role="radiogroup"
-          aria-labelledby="bundle-size-label"
-          onKeyDown={onSizeKeyDown}
-          className="grid grid-cols-4 gap-2"
-        >
-          {collection.prices.map((p, i) => {
-            const active = p.ml === ml;
-            const isBestValue = bestValueMl === totalMl(p.ml);
-            // 2ml нь sample биш — энгийн хэмжээ; шошго нь зөвхөн UI санал.
-            const isTrial = p.ml === TRIAL_SIZE_ML;
-            return (
-              <button
-                key={p.ml}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                aria-disabled={p.available ? undefined : true}
-                tabIndex={active ? 0 : -1}
-                ref={(el) => {
-                  sizeRefs.current[i] = el;
-                }}
-                onClick={() => p.available && setMl(p.ml)}
-                aria-label={`${p.ml}ml ×${memberCount}${p.available ? "" : " — байхгүй"}`}
-                className={cn(
-                  "relative flex flex-col items-center rounded-lg px-1 pt-2.5 pb-2 transition-colors",
-                  !p.available
-                    ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
-                    : active
-                      ? // Цул гадаргуу — «сонгогдсон» нь бүдэг өнгө биш,
-                        // эргэсэн өнгө байх ёстой (/collections/build-тэй ижил).
-                        "bg-foreground text-background"
-                      : "bg-secondary hover:bg-accent",
-                )}
-              >
-                {isBestValue ? (
-                  <span className="bg-foreground text-background absolute -top-2 rounded-full px-1.5 py-px text-[9px] font-semibold whitespace-nowrap">
-                    Хамгийн ашигтай
-                  </span>
-                ) : (
-                  isTrial && (
-                    <span className="bg-card text-foreground absolute -top-2 rounded-full px-1.5 py-px text-[9px] font-semibold whitespace-nowrap shadow-sm">
-                      Туршиж үзэх
-                    </span>
-                  )
-                )}
-                {/* Зураас нь ЗӨВХӨН хэмжээн дээр — «Байхгүй» гэдэг үг өөрөө
-                    төлвийг хэлж байгаа тул түүнийг дээрээс нь зурвал зүгээр
-                    л уншихад хэцүү болно. «2ml ×4» — нэг үнэртний хэмжээ ×
-                    үнэртний тоо, багцад нийт хэдэн ml орохыг хэлнэ. */}
-                <span
-                  className={cn(
-                    "text-sm font-semibold whitespace-nowrap",
-                    !p.available && "line-through",
-                  )}
-                >
-                  {p.ml}ml ×{memberCount}
-                </span>
-                <span
-                  className={cn(
-                    "text-xs",
-                    active ? "text-background/75" : "text-muted-foreground",
-                  )}
-                >
-                  {p.available ? formatPrice(p.price) : "Байхгүй"}
-                </span>
-                {p.available && (
-                  <span
-                    className={cn(
-                      "text-[10px]",
-                      active ? "text-background/75" : "text-muted-foreground",
-                    )}
-                  >
-                    {formatPrice(Math.round(p.price / totalMl(p.ml)))}/ml
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        <CollectionSizePicker
+          collection={collection}
+          ml={ml}
+          onChange={setMl}
+          labelId="bundle-size-label"
+        />
       </div>
 
       {/* Members */}

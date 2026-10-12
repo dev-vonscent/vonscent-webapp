@@ -19,11 +19,12 @@ import {
 } from "@/components/ui/accordion";
 import { ProductGallery } from "@/features/products/components/product-gallery";
 import { ProductPurchase } from "@/features/products/components/product-purchase";
+import { ComingSoonPurchase } from "@/features/products/components/coming-soon-purchase";
 import { TrackViewItem } from "@/features/products/components/track-view-item";
 import { WishlistButton } from "@/features/wishlist/components/wishlist-button";
 import { ProductCarousel } from "@/features/products/components/product-carousel";
 import { SectionHeading } from "@/components/shared/section-heading";
-import { getProductBySlug, getRelated } from "@/features/products/api";
+import { getProductPageBySlug, getRelated } from "@/features/products/api";
 import {
   JsonLd,
   breadcrumbJsonLd,
@@ -58,7 +59,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const product = await getProductPageBySlug(slug);
   if (!product) return { title: "Бараа олдсонгүй" };
   return {
     title: `${product.name} — ${product.brand}`,
@@ -92,7 +93,7 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const product = await getProductPageBySlug(slug);
   if (!product) notFound();
 
   const [related, familyLabelMap] = await Promise.all([
@@ -152,6 +153,10 @@ export default async function ProductPage({
                 <span className="text-muted-foreground text-sm tracking-wide uppercase">
                   {product.brand}
                 </span>
+                {/* «Тун удахгүй» (0125) — захиалж болохгүй шалтгаан эхэнд. */}
+                {product.comingSoon && (
+                  <Badge variant="gold">Тун удахгүй</Badge>
+                )}
                 {product.tags.map((t) => (
                   <Badge key={t} variant={t}>
                     {TAG_LABEL[t]}
@@ -171,7 +176,11 @@ export default async function ProductPage({
               </div>
             </div>
 
-            <ProductPurchase product={product} />
+            {product.comingSoon ? (
+              <ComingSoonPurchase product={product} />
+            ) : (
+              <ProductPurchase product={product} />
+            )}
             <TrackViewItem
               id={product.id}
               name={product.name}
@@ -271,13 +280,17 @@ export default async function ProductPage({
       {/* Үнэлгээ — бүтэн өргөнөөр. Барааны хоёр баганат grid-ийн ДОТОР байхад
           карт бүр ~100px өргөнтэй болж, багана нь төгсгөлгүй сунаж «Төстэй
           бараа»-г дэлгэцээс шахаж гаргадаг байсан. */}
-      <section className="mt-16">
-        <ReviewSection
-          target={{ kind: "product", id: product.id }}
-          path={`/products/${product.slug}`}
-          ratingAvg={product.ratingAvg}
-        />
-      </section>
+      {/* «Тун удахгүй» ус хэнд ч хүрээгүй — үнэлэх зүйлгүй, сервер ч
+          сэтгэгдэл хүлээж авахгүй (api/reviews). */}
+      {!product.comingSoon && (
+        <section className="mt-16">
+          <ReviewSection
+            target={{ kind: "product", id: product.id }}
+            path={`/products/${product.slug}`}
+            ratingAvg={product.ratingAvg}
+          />
+        </section>
+      )}
 
       {related.length > 0 && (
         <section id={RELATED_SECTION_ID} className="mt-16">

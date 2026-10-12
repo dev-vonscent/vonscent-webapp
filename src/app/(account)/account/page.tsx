@@ -11,6 +11,7 @@ import {
   LogOut,
   Pencil,
   Ticket,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -88,7 +89,9 @@ export default function ProfilePage() {
           supabase
             .from("orders")
             .select("id", { count: "exact", head: true })
-            .eq("user_id", data.user.id),
+            .eq("user_id", data.user.id)
+            // Төлөгдөөгүй цуцлалтыг тоолохгүй — жагсаалттай ижил (0124).
+            .or("status.neq.cancelled,payment_status.neq.unpaid"),
           supabase
             .from("orders")
             .select("id", { count: "exact", head: true })
@@ -304,7 +307,7 @@ export default function ProfilePage() {
   );
 }
 
-function IconCircle({ icon: Icon }: { icon: React.ElementType }) {
+function IconCircle({ icon: Icon }: { icon: LucideIcon }) {
   return (
     <span className="bg-secondary flex size-10 shrink-0 items-center justify-center rounded-full">
       <Icon className="size-4" />

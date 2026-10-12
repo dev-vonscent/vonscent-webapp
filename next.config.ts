@@ -48,6 +48,26 @@ const nextConfig: NextConfig = {
    * runtime — otherwise the whole upload route crashes on import.
    */
   serverExternalPackages: ["sharp"],
+  allowedDevOrigins: ["192.168.*.*"],
+  devIndicators: false,
+  /**
+   * Hero-гийн poster (`public/hero`) ба 3D загвар/HDR (`public/models`) —
+   * буцаж ирсэн хэрэглэгч дахин татахгүй. Кодын URL бүр агуулгын hash-тай
+   * (`heroAsset()` → `?v=`), тиймээс immutable аюулгүй. Файл солибол
+   * `pnpm hero:assets` (тест барина).
+   */
+  async headers() {
+    const immutable = [
+      {
+        key: "Cache-Control",
+        value: "public, max-age=31536000, immutable",
+      },
+    ];
+    return [
+      { source: "/hero/:path*", headers: immutable },
+      { source: "/models/:path*", headers: immutable },
+    ];
+  },
   /**
    * Vercel ships only the files its tracer can follow, and the tracer misses
    * libvips' `.so` behind pnpm's symlinks — the linux binary reached the
@@ -65,6 +85,10 @@ const nextConfig: NextConfig = {
       "/api/admin/products/[id]/images",
       "/api/admin/products/[id]/generate-image",
       "/api/admin/products/[id]/regenerate-image",
+      // OG cards re-encode WebP photos to JPEG (lib/og.tsx). Keys are matched
+      // with picomatch `contains`, where `[slug]` would be a character class —
+      // the bare segment name matches all three routes reliably.
+      "opengraph-image",
     ].map((route) => [
       route,
       [

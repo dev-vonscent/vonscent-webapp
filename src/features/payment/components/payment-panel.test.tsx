@@ -21,8 +21,9 @@ vi.mock("@/lib/analytics", () => ({ trackPurchase: vi.fn() }));
  * тестэд ердөө mock хангалттай.
  */
 const routerRefresh = vi.fn();
+const routerPush = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: routerRefresh }),
+  useRouter: () => ({ refresh: routerRefresh, push: routerPush }),
 }));
 
 /**
@@ -80,9 +81,11 @@ function view(over: Partial<PaymentView> = {}): PaymentView {
     discount: 0,
     loyaltyUsed: 0,
     pointsEarned: 0,
+    reviewPoints: 0,
     paymentMethod: "qpay",
     paid: false,
     cancelled: false,
+    canSaveForLater: true,
     deliverOn: "2026-09-09",
     invoice: {
       invoiceId: "inv_42",
@@ -391,7 +394,7 @@ describe("resolved states", () => {
     expect(screen.getByText("Төлбөр амжилттай")).toBeTruthy();
     // Asserted through the formatter, not a literal: it says "Маргааш (…)"
     // for the next day, so a hard-coded string would break with the calendar.
-    const card = screen.getByText(/цагт хүргэлтэд гарна/);
+    const card = screen.getByText(/цагийн хооронд хүргэгдэнэ/);
     expect(
       within(card).getByText(formatDeliveryDay("2026-09-09")),
     ).toBeTruthy();
@@ -404,5 +407,88 @@ describe("resolved states", () => {
     expect(screen.getByText("Захиалга цуцлагдсан")).toBeTruthy();
     expect(screen.queryByAltText("QPay QR код")).toBeNull();
     expect(screen.queryByRole("link", { name: /аппаар төлөх/ })).toBeNull();
+  });
+});
+
+describe("PaymentPanel — leaving an unpaid order (0124)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    routerPush.mockReset();
+  });
+
+  it("offers «Дараа захиалах» only to a signed-in customer's order", () => {
+    const { unmount } = render(<PaymentPanel view={view()} token="tok" />);
+    expect(screen.getByRole("button", { name: "Дараа захиалах" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Устгах" })).toBeTruthy();
+    expect(screen.getByText(/автоматаар «Дараа захиалах» руу шилжинэ/)).toBeTruthy();
+    unmount();
+
+    render(
+      <PaymentPanel view={view({ canSaveForLater: false })} token="tok" />,
+    );
+    expect(screen.queryByRole("button", { name: "Дараа захиалах" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Устгах" })).toBeTruthy();
+    expect(screen.getByText(/автоматаар цуцлагдана/)).toBeTruthy();
+  });
+
+  it("moves the order to saved checkouts and leaves for the order list", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<PaymentPanel view={view()} token="tok" />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Дараа захиалах" }),
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/payments/abandon",
+      expect.objectContaining({
+        body: JSON.stringify({ token: "tok", saveForLater: true }),
+      }),
+    );
+    expect(routerPush).toHaveBeenCalledWith("/account/orders?tab=saved");
+  });
+
+  it("deletes after the confirmation dialog", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<PaymentPanel view={view()} token="tok" />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Устгах" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Устгах" }),
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/payments/abandon",
+      expect.objectContaining({
+        body: JSON.stringify({ token: "tok", saveForLater: false }),
+      }),
+    );
+    expect(routerPush).toHaveBeenCalledWith("/catalog");
+  });
+
+  it("switches to the paid state when the server finds the money first", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ paid: true }), { status: 200 }),
+        ),
+    );
+    render(<PaymentPanel view={view()} token="tok" />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Дараа захиалах" }),
+    );
+
+    expect(await screen.findByText("Төлбөр амжилттай")).toBeTruthy();
+    expect(routerPush).not.toHaveBeenCalled();
   });
 });

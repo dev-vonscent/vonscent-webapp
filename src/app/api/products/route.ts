@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import {
   getProductsByIds,
   getProductDetailsByIds,
@@ -13,6 +14,9 @@ import {
  *   /api/products?slug=<slug>            → one product (detail shape, with variants)
  *   /api/products?ids=<uuid>,<uuid>      → those products (list shape)
  *   /api/products?ids=<uuid>&details=1   → those products (detail shape, variants)
+ *     &upcoming=1                        → «Тун удахгүй» (0125) бараа ч орно —
+ *                                          зөвхөн хүслийн жагсаалт; сагс,
+ *                                          захиалгын засвар үүнгүй дуудна.
  *   /api/products                        → full catalogue (list shape)
  */
 export async function GET(req: Request) {
@@ -31,8 +35,20 @@ export async function GET(req: Request) {
   if (ids) {
     const idList = ids.split(",").filter(Boolean);
     if (params.get("details")) {
-      const items = await getProductDetailsByIds(idList);
-      return NextResponse.json({ items });
+      const upcoming = params.get("upcoming") === "1";
+      try {
+        const items = await getProductDetailsByIds(idList, {
+          includeComingSoon: upcoming,
+          // Сагс, захиалгын засвар ирээгүй мөрийг «хаагдсан» гэж үздэг тул
+          // DB-ийн хэсэгчилсэн алдаа хоосон хариу болж болохгүй — 503 өгвөл
+          // тэд «мэдэхгүй» гэж үзээд хаалгүй үлдэнэ.
+          strict: !upcoming,
+        });
+        return NextResponse.json({ items });
+      } catch (e) {
+        Sentry.captureException(e);
+        return NextResponse.json({ error: "unavailable" }, { status: 503 });
+      }
     }
     const items = await getProductsByIds(idList);
     return NextResponse.json({ items });

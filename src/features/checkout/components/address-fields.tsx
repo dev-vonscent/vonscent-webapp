@@ -65,7 +65,9 @@ export function AddressFields({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    // `grid-cols-1` (minmax(0,1fr)) — урт хаяг, сонголт баганыг утсан дээр
+    // картаас гадагш сунгахгүй (checkout-ийн хүлээн авагчийн хэсэгтэй ижил).
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <Field label="Хот / Аймаг" error={errors?.city}>
         <Select value={aimag?.code ?? ""} onValueChange={pickAimag}>
           <SelectTrigger>

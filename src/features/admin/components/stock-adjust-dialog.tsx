@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Minus } from "lucide-react";
+import { Plus, Minus, PackageCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
@@ -19,6 +19,7 @@ import { toast } from "@/lib/toast";
 import { mutateJson } from "@/features/admin/lib/mutate";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useLaunchProduct } from "./use-launch-product";
 
 export type StockMode = "restock" | "correction";
 
@@ -53,6 +54,9 @@ export function StockAdjustDialog({
   productLabel,
   onHandMl,
   reservedMl,
+  productName,
+  comingSoon = false,
+  onLaunched,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -61,8 +65,20 @@ export function StockAdjustDialog({
   productLabel: string;
   onHandMl: number;
   reservedMl: number;
+  /** Худалдаанд гаргасны мэдэгдэлд — `productLabel` нь брэндтэй урт. */
+  productName?: string;
+  /**
+   * «Тун удахгүй» бараа (0125): нөөц нэмсний дараа шууд хаагдахгүй,
+   * «Худалдаанд гаргах уу?» гэж асууна — ус ирсэн мөч нь яг энэ.
+   */
+  comingSoon?: boolean;
+  /** Энэ цонхоос худалдаанд гаргасны дараа (засах хуудас сонголтоо дагуулна). */
+  onLaunched?: () => void;
 }) {
   const router = useRouter();
+  const { launch, launching } = useLaunchProduct();
+  // Нөөц нэмэгдсэний дараах асуулт. `null` = маягт.
+  const [addedMl, setAddedMl] = React.useState<number | null>(null);
   const [amount, setAmount] = React.useState("");
   const [cost, setCost] = React.useState("");
   const [reason, setReason] = React.useState(CORRECTION_REASONS[0].value);
@@ -85,6 +101,7 @@ export function StockAdjustDialog({
       setCost("");
       setReason(CORRECTION_REASONS[0].value);
       setNote("");
+      setAddedMl(null);
     }
   }, [open]);
 
@@ -120,11 +137,66 @@ export function StockAdjustDialog({
           ? `${qty}ml нэмэгдэж, нөөц ${nextOnHand}ml боллоо.`
           : `${qty}ml хасагдаж, нөөц ${nextOnHand}ml боллоо.`,
       );
-      onOpenChange(false);
       router.refresh();
+      if (isRestock && comingSoon) {
+        setAddedMl(nextOnHand);
+        return;
+      }
+      onOpenChange(false);
     } finally {
       setBusy(false);
     }
+  }
+
+  async function launchNow() {
+    if (await launch(productId, productName ?? productLabel)) {
+      onLaunched?.();
+      onOpenChange(false);
+    }
+  }
+
+  if (addedMl !== null) {
+    return (
+      <ResponsiveDialog
+        open={open}
+        onOpenChange={launching ? () => {} : onOpenChange}
+        title="Худалдаанд гаргах уу?"
+        description={productLabel}
+      >
+        <div className="space-y-4">
+          <p className="bg-success/10 flex items-start gap-2 rounded-md px-3 py-2 text-sm">
+            <PackageCheck className="text-success mt-0.5 size-4 shrink-0" />
+            <span>
+              Нөөц <span className="tabular-nums">{addedMl}ml</span> боллоо. Энэ
+              бараа одоо «Тун удахгүй» төлөвтэй — сайтад харагдаж байгаа ч
+              захиалах боломжгүй.
+            </span>
+          </p>
+          <p className="text-muted-foreground text-sm">
+            Гаргавал шууд зарагдаж эхэлж, «Шинэ» хэсэгт автоматаар орно. Сав,
+            шошго бэлэн болоогүй бол «Дараа» дараарай — засах хуудас, барааны
+            жагсаалтад сануулга харагдсаар байна.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={launching}
+              onClick={() => onOpenChange(false)}
+            >
+              Дараа
+            </Button>
+            <LoadingButton
+              type="button"
+              loading={launching}
+              onClick={() => void launchNow()}
+            >
+              Худалдаанд гаргах
+            </LoadingButton>
+          </div>
+        </div>
+      </ResponsiveDialog>
+    );
   }
 
   return (

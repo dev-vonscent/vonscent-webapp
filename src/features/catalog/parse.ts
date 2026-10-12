@@ -47,6 +47,9 @@ export function parseFilters(params: Params): CatalogFilters {
     ? params.featured[0]
     : params.featured;
   const featured = featuredRaw === "1" || featuredRaw === "true";
+  const kindRaw = Array.isArray(params.kind) ? params.kind[0] : params.kind;
+  const kind =
+    kindRaw === "perfume" || kindRaw === "bundle" ? kindRaw : undefined;
   const ml = list(params.ml)
     .map(Number)
     .filter((n) => (ML_SIZES as readonly number[]).includes(n));
@@ -69,6 +72,7 @@ export function parseFilters(params: Params): CatalogFilters {
     season,
     tags,
     featured: featured || undefined,
+    kind,
     ml,
     minPrice: num(params.minPrice),
     maxPrice: num(params.maxPrice),

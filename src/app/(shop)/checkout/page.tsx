@@ -10,6 +10,8 @@ import {
   Clock,
   Loader2,
   UserRound,
+  Bookmark,
+  Trash2,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,7 +50,7 @@ import {
   formatDeliveryDay,
   ubDayFromNow,
 } from "@/lib/time";
-import { resolveZone, zoneKey } from "@/lib/geo/zone";
+import { isRemoteAddress, resolveZone, zoneKey } from "@/lib/geo/zone";
 import { khorooRequired } from "@/lib/geo/locations";
 import {
   composeDetail,
@@ -68,7 +70,28 @@ import { OrderLines } from "@/features/checkout/components/order-lines";
 import { GuestPerksPrompt } from "@/features/checkout/components/guest-perks-prompt";
 import { LoyaltyField } from "@/features/checkout/components/loyalty-field";
 import { useCoupon } from "@/features/checkout/use-coupon";
+import {
+  CHECKOUT_DRAFT_KEY,
+  SAVED_CHECKOUTS_QUERY_KEY,
+  clearResumedSaved,
+  deleteSavedCheckout,
+  postSavedCheckout,
+  readResumedSaved,
+} from "@/features/checkout/saved-checkouts";
+import { useConfirm } from "@/components/shared/confirm-dialog";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  clearPendingOrder,
+  fetchPendingStatus,
+  markReturnPoint,
+  readPendingOrder,
+  readReturnPoint,
+  savePendingOrder,
+  toLineInput,
+  type PendingOrder,
+} from "@/features/checkout/pending-order";
 import { formatPrice } from "@/lib/format";
+import { toast } from "@/lib/toast";
 import {
   DEFAULT_LOYALTY_RULES,
   parseLoyaltyRules,
@@ -116,7 +139,7 @@ type FormValues = z.infer<typeof formSchema>;
  * утас, хаягийн ноорог, хүргэх өдөр, тэмдэглэл, бэлгийн сонголт бүгд устдаг
  * байв. `?next=/checkout`-оор буцаж ирэхэд тэднийг эргүүлж тавина.
  */
-const DRAFT_KEY = "vonscent-checkout-draft";
+const DRAFT_KEY = CHECKOUT_DRAFT_KEY;
 
 interface CheckoutDraft {
   values: Partial<FormValues>;
@@ -126,6 +149,13 @@ interface CheckoutDraft {
   giftIds: string[];
   /** «Энэ хаягийг хадгалах» — хуучин ноорогт байхгүй байж болно. */
   saveAddr?: boolean;
+  /**
+   * Сонгосон хадгалсан хаягийн id (эсвэл NEW_ADDRESS). Үгүй бол нэвтрэлт
+   * ачаалагдахад үндсэн хаяг сонгогдож, сэргээсэн хаягийг дарж бичнэ.
+   */
+  addressChoice?: string;
+  /** Оноогоор төлөх дүн — хуучин ноорогт байхгүй байж болно. */
+  loyaltyWanted?: number;
 }
 
 /** Бөглөсөн хэсгийг хадгална — `?next=`-ээр буцаж ирэхэд л уншигдана. */
@@ -188,6 +218,7 @@ const ERROR_SECTION: Record<string, string> = {
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   // Захиалга сагснаас *сонгосон* мөрүүдийг л авна — сонгоогүй бараа сагсандаа
   // үлдэж, дараа нь тусад нь захиалагдана.
   const { items, collections, buyNow } = useCheckoutLines();
@@ -203,14 +234,31 @@ export default function CheckoutPage() {
   const coupon = useCart((s) => s.coupon);
   const setCartCoupon = useCart((s) => s.setCoupon);
   const removeOrdered = useCart((s) => s.clearOrdered);
+  const [confirm, confirmDialog] = useConfirm();
   const removeLine = useCart((s) => s.remove);
   const setQty = useCart((s) => s.setQty);
   const [mounted, setMounted] = React.useState(false);
+  /**
+   * Төлбөрийн хуудаснаас буцаж ирсэн бол хүлээгдэж буй захиалгын хуулбар
+   * (`pending-order.ts`). Төлөвийг нь асууж байх зуур хоосон сагсны төлөв
+   * анивчихгүйн тулд `restoring`.
+   */
+  const pendingRef = React.useRef<PendingOrder<CheckoutDraft> | null>(null);
+  const [pendingOrderNo, setPendingOrderNo] = React.useState<string | null>(
+    null,
+  );
+  const [restoring, setRestoring] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   // Захиалга үүсээд төлбөрийн хуудас руу шилжих хооронд сагс хоосорсон тул
   // «Сагс хоосон байна» гэсэн хоосон төлөв анивчдаг байсан — router.push нь
   // тэр хооронд хийгддэг. Шилжиж байгаа гэдгээ тусад нь тэмдэглэнэ.
   const [leaving, setLeaving] = React.useState(false);
+  /** «Дараа авахаар хадгалах» хүсэлт явж байгаа эсэх. */
+  const [savingForLater, setSavingForLater] = React.useState(false);
+  /** Шилжих үеийн мессеж — төлбөр рүү эсвэл хадгалаад «Миний захиалга» руу. */
+  const [leavingLabel, setLeavingLabel] = React.useState(
+    "Төлбөрийн хуудас руу шилжиж байна…",
+  );
   const [serverError, setServerError] = React.useState<string | null>(null);
   /**
    * Серверийн алдааны блок руу заасан ref.
@@ -400,8 +448,19 @@ export default function CheckoutPage() {
       noteTags,
       giftIds,
       saveAddr,
+      addressChoice,
+      loyaltyWanted,
     });
-  }, [getValues, khoroo, draft, noteTags, giftIds, saveAddr]);
+  }, [
+    getValues,
+    khoroo,
+    draft,
+    noteTags,
+    giftIds,
+    saveAddr,
+    addressChoice,
+    loyaltyWanted,
+  ]);
 
   /**
    * Хаягаас автоматаар бөглөсөн сүүлийн нэр, утас. Талбарын одоогийн утга
@@ -465,24 +524,83 @@ export default function CheckoutPage() {
    */
   const restoredNewAddress = React.useRef(false);
 
+  const restoreDraft = React.useCallback(
+    (saved: CheckoutDraft) => {
+      for (const [key, value] of Object.entries(saved.values)) {
+        if (value != null && value !== "") {
+          setValue(key as keyof FormValues, value as never);
+        }
+      }
+      setKhoroo(saved.khoroo);
+      setNoteTags(saved.noteTags);
+      setGiftIds(saved.giftIds);
+      if (saved.address) {
+        setDraft(saved.address);
+        setAddressChoice(NEW_ADDRESS);
+        restoredNewAddress.current = true;
+      } else if (saved.addressChoice && saved.addressChoice !== NEW_ADDRESS) {
+        // Хадгалсан хаяг — талбарууд нь дээр сэргэсэн, сонголтыг л тавина.
+        setAddressChoice(saved.addressChoice);
+        restoredNewAddress.current = true;
+      }
+      setSaveAddr(saved.saveAddr ?? false);
+      if (saved.loyaltyWanted) setLoyaltyWanted(saved.loyaltyWanted);
+    },
+    [setValue],
+  );
+
   React.useEffect(() => {
     const saved = takeDraft();
-    if (!saved) return;
-    for (const [key, value] of Object.entries(saved.values)) {
-      if (value != null && value !== "") {
-        setValue(key as keyof FormValues, value as never);
+    if (saved) {
+      restoreDraft(saved);
+      return;
+    }
+    // Төлбөрийн хуудаснаас буцаж ирсэн (эсвэл төлөөгүй орхисон) захиалга.
+    // Зөвхөн «Буцах»-аар ирсэн бол — шинээр ирсэн хүний сонголтыг дарахгүй.
+    const pending = readPendingOrder<CheckoutDraft>();
+    if (!pending || pending.payToken !== readReturnPoint()) return;
+    let alive = true;
+    setRestoring(true);
+    fetchPendingStatus(pending.payToken).then((status) => {
+      if (!alive) return;
+      setRestoring(false);
+      // Төлөгдсөн захиалгын мөрийг сагсанд буцааж хийхгүй.
+      if (status === "paid") {
+        clearPendingOrder();
+        return;
       }
-    }
-    setKhoroo(saved.khoroo);
-    setNoteTags(saved.noteTags);
-    setGiftIds(saved.giftIds);
-    if (saved.address) {
-      setDraft(saved.address);
-      setAddressChoice(NEW_ADDRESS);
-      restoredNewAddress.current = true;
-    }
-    setSaveAddr(saved.saveAddr ?? false);
-  }, [setValue]);
+      const cart = useCart.getState();
+      if (pending.buyNow) {
+        // «Захиалах» мөр сагсанд ороогүй — сагсны агуулгаас үл хамааран
+        // тэр мөрийг л сэргээнэ.
+        const [item] = pending.items;
+        const [bundle] = pending.collections;
+        if (!cart.buyNow && item) cart.startBuyNow(...toLineInput(item));
+        else if (!cart.buyNow && bundle)
+          cart.startBuyNowCollection(...toLineInput(bundle));
+      } else {
+        const lines = getCheckoutLines();
+        if (lines.items.length === 0 && lines.collections.length === 0) {
+          for (const item of pending.items) cart.add(...toLineInput(item));
+          for (const bundle of pending.collections)
+            cart.addCollection(...toLineInput(bundle));
+        }
+      }
+      if (pending.coupon) cart.setCoupon(pending.coupon);
+      restoreDraft(pending.draft);
+      if (status === "cancelled") {
+        // Захиалга нь хүчингүй — мэдээлэл нь сэргэсэн, дахин дарахад
+        // шинэ захиалга үүснэ.
+        clearPendingOrder();
+        return;
+      }
+      pendingRef.current = pending;
+      setPendingOrderNo(pending.orderNo);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [restoreDraft]);
 
   // Сонгож болох хүргэлтийн өдрүүд. Mount-ийн дараа бодогдоно: сервер ба
   // браузарын өдөр зөрвөл (шөнө дунд, өөр цагийн бүс) hydration зөрчилдөнө.
@@ -647,8 +765,14 @@ export default function CheckoutPage() {
   }, [autoZone, zones, setValue]);
   const selectedZone = zones.find((z) => zoneKey(z) === zone) ?? zones[0];
   const zoneBlocked = selectedZone ? !selectedZone.deliverable : false;
+  /**
+   * Унаагаар явах хаяг (орон нутаг, R бүсийн дүүрэг) — үүдэнд хүргэдэггүй тул
+   * дэлгэрэнгүй хаяг асуухгүй, хадгалсан хуучин хаягийн гэрийн хаяг ч
+   * захиалгад орохгүй (сервер ч мөн адил хасна).
+   */
+  const remoteAddress = isRemoteAddress(zones, { city, district, khoroo });
   /** Хаяг бүрэн эсэх — бүс, хүргэлтийн үнэ зөвхөн үүний дараа гарна. */
-  const hasAddress = Boolean(city && district && detail);
+  const hasAddress = Boolean(city && district && (detail || remoteAddress));
   /**
    * Хадгалсан хуучин хаяг хороогүй байх тохиолдол.
    *
@@ -662,10 +786,11 @@ export default function CheckoutPage() {
     Boolean(city && district && khoroo == null) &&
     khorooRequired(city, district);
 
-  /** Алслагдсан бүс — хаяг тодорсны дараа л мэдэгдэнэ. */
-  const remoteZone = Boolean(
-    hasAddress && selectedZone?.remote && !zoneBlocked,
-  );
+  /**
+   * Унаа явах газар бичүүлэх эсэх — хаяг тодорсны дараа л. Гэрийн хаяг
+   * асуухаа больсон тул тэр нь цорын ганц хүргэх мэдээлэл болно.
+   */
+  const remoteZone = hasAddress && !zoneBlocked && remoteAddress;
   /** Хаягийн блокийн доор гарах цорын нэг мессеж (талбарууд popup дотор). */
   const addressError =
     errors.shipCity?.message ??
@@ -785,14 +910,24 @@ export default function CheckoutPage() {
   }
 
   // Төлбөрийн хуудас руу шилжиж байхад сагс аль хэдийн хоосорсон байдаг тул
-  // хоосон төлөвийн оронд шилжиж байгааг харуулна.
-  if (leaving) {
+  // хоосон төлөвийн оронд шилжиж байгааг харуулна. Буцаж ирээд захиалгаа
+  // сэргээж байх зуур ч мөн адил — эс тэгвээс «Сагс хоосон» анивчина.
+  if (restoring) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-28 text-center md:px-8">
         <Loader2 className="text-muted-foreground size-7 animate-spin" />
         <p className="text-muted-foreground text-sm">
-          Төлбөрийн хуудас руу шилжиж байна…
+          Захиалгын мэдээллийг сэргээж байна…
         </p>
+      </div>
+    );
+  }
+
+  if (leaving) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-28 text-center md:px-8">
+        <Loader2 className="text-muted-foreground size-7 animate-spin" />
+        <p className="text-muted-foreground text-sm">{leavingLabel}</p>
       </div>
     );
   }
@@ -823,6 +958,95 @@ export default function CheckoutPage() {
         </Button>
       </div>
     );
+  }
+
+  /**
+   * «Дараа авахаар хадгалах» — захиалгыг бүтнээр нь (мөр + маягт) бүртгэлд
+   * хадгална (`saved_checkouts`, 0116) — «Миний захиалга»-аас үргэлжлүүлнэ.
+   * Мөрүүд сагснаас хасагдана: «Захиалах» дарахад сагсанд буцаж орно.
+   *
+   * Бүртгэлд хадгалдаг тул нэвтрэх шаардлагатай. Зочин нэвтрэх рүү очиж,
+   * бөглөсөн нь ноорогоор (`keepDraft`) буцаж ирээд дахин дарна.
+   */
+  /**
+   * «Миний захиалга» → «Захиалах»-аар ирсэн бол тэр хадгалсан захиалгын id
+   * (saved-checkouts.ts). Хадгалсан нь захиалга үүсэх, дахин хадгалах,
+   * эсвэл «Устгах» дарах хүртэл серверт үлдэнэ — буцаж гарвал алга болохгүй.
+   */
+  const resumedSavedId = mounted ? readResumedSaved(items, collections) : null;
+
+  /** Хадгалсан хуулбарыг серверээс авч хаяна — алдаа нь урсгал таслахгүй. */
+  async function dropResumedSaved() {
+    if (!resumedSavedId) return;
+    clearResumedSaved();
+    await deleteSavedCheckout(resumedSavedId).catch(() => {});
+    void queryClient.invalidateQueries({ queryKey: SAVED_CHECKOUTS_QUERY_KEY });
+  }
+
+  /**
+   * Хадгалсан захиалгыг checkout дотроос устгах (клиент, 2026-10): серверийн
+   * хуулбар ба сагсанд буцаж орсон мөрүүд хоёулаа арилна.
+   */
+  async function deleteResumedSaved() {
+    await confirm({
+      title: "Хадгалсан захиалгыг устгах уу?",
+      description: "Энэ захиалга «Дараа захиалах» жагсаалтаас устана.",
+      confirmLabel: "Устгах",
+      cancelLabel: "Буцах",
+      destructive: true,
+      action: async () => {
+        await dropResumedSaved();
+        setLeaving(true);
+        removeOrdered();
+        toast("Хадгалсан захиалга устгагдлаа.");
+        router.push("/account/orders?tab=saved");
+      },
+    });
+  }
+
+  async function saveForLater() {
+    if (!authed) {
+      keepDraft();
+      toast("Захиалгаа хадгалахын тулд нэвтэрнэ үү.");
+      router.push(LOGIN_HREF);
+      return;
+    }
+    setSavingForLater(true);
+    setServerError(null);
+    try {
+      await postSavedCheckout({
+        buyNow,
+        items,
+        collections,
+        draft: {
+          values: getValues(),
+          khoroo,
+          address: draft,
+          noteTags,
+          giftIds,
+          saveAddr,
+          addressChoice,
+          loyaltyWanted,
+        } satisfies CheckoutDraft,
+      });
+    } catch {
+      setServerError("Захиалгыг хадгалж чадсангүй. Дахин оролдоно уу.");
+      setSavingForLater(false);
+      return;
+    }
+    // Хадгалсан захиалгаас ирсэн бол хуучин хуулбар нь шинээр солигдоно.
+    await dropResumedSaved();
+    void queryClient.invalidateQueries({
+      queryKey: SAVED_CHECKOUTS_QUERY_KEY,
+    });
+    setLeavingLabel("Хадгалж байна…");
+    setLeaving(true);
+    removeOrdered();
+    toast.success(
+      "«Миний захиалга» хэсгээс хүссэн үедээ захиалаарай.",
+      "Захиалгаа хадгаллаа",
+    );
+    router.push("/account/orders?tab=saved");
   }
 
   async function onSubmit(values: FormValues) {
@@ -869,43 +1093,87 @@ export default function CheckoutPage() {
 
     setSubmitting(true);
     setServerError(null);
+    // Fold the quick-pick delivery options into the free-text note.
+    const note = [noteTags.join(" · "), values.note?.trim()]
+      .filter(Boolean)
+      .join(" — ");
+    const payload = {
+      ...values,
+      shipKhoroo: khoroo,
+      shipDetail: composeDetail(khoroo, remoteAddress ? "" : values.shipDetail),
+      note: note || undefined,
+      couponCode: authed ? coupon?.code : undefined,
+      deliverOn: values.deliverOn,
+      loyaltyUsed: loyaltyApplied,
+      saveAddress: saveAddr,
+      giftProductIds: giftIds,
+      items: items.map((i) => ({
+        productId: i.productId,
+        variantId: i.variantId,
+        ml: i.ml,
+        qty: i.qty,
+      })),
+      collections: collections.map((c) => ({
+        collectionId: c.collectionId,
+        type: c.type,
+        ml: c.ml,
+        qty: c.qty,
+        memberVariantIds: c.members.map((m) => m.variantId),
+      })),
+    };
+    const signature = JSON.stringify(payload);
+
+    // Төлбөрийн хуудаснаас буцаж ирээд юу ч өөрчлөөгүй бол ШИНЭ захиалга
+    // үүсгэхгүй: өмнөх захиалга нөөцөө барьсаар байгаа тул давхар захиалга
+    // нь эх савны мл-ийг хоёр дахин түгжинэ. Өөрчилсөн бол шинэ захиалга —
+    // хуучин нь reserve timeout-оор (pg_cron) өөрөө цуцлагдана.
+    const pending = pendingRef.current;
+    if (pending && pending.signature === signature) {
+      const status = await fetchPendingStatus(pending.payToken);
+      if (status === "pending" || status === "unknown") {
+        setLeaving(true);
+        removeOrdered();
+        markReturnPoint(pending.payToken);
+        router.push(`/pay/${pending.payToken}`);
+        return;
+      }
+      clearPendingOrder();
+      pendingRef.current = null;
+      setPendingOrderNo(null);
+    }
+
     // Идемпотентын түлхүүр — энэ CHECKOUT ОРОЛДЛОГОД нэг удаа. Хариу нь
     // замдаа алдагдаад хэрэглэгч дахин дарахад сервер ижил түлхүүрийг хараад
     // шинэ захиалга үүсгэхгүй. Захиалга амжилттай болмогц шинэчилнэ — дараа
     // нь өгөх захиалга нь тусдаа байх ёстой.
     requestIdRef.current ??= crypto.randomUUID();
-    // Fold the quick-pick delivery options into the free-text note.
-    const note = [noteTags.join(" · "), values.note?.trim()]
-      .filter(Boolean)
-      .join(" — ");
     try {
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...values,
-          shipKhoroo: khoroo,
-          shipDetail: composeDetail(khoroo, values.shipDetail),
-          note: note || undefined,
-          couponCode: authed ? coupon?.code : undefined,
-          deliverOn: values.deliverOn,
-          loyaltyUsed: loyaltyApplied,
-          saveAddress: saveAddr,
-          giftProductIds: giftIds,
+          ...payload,
           requestId: requestIdRef.current,
-          items: items.map((i) => ({
-            productId: i.productId,
-            variantId: i.variantId,
-            ml: i.ml,
-            qty: i.qty,
-          })),
-          collections: collections.map((c) => ({
-            collectionId: c.collectionId,
-            type: c.type,
-            ml: c.ml,
-            qty: c.qty,
-            memberVariantIds: c.members.map((m) => m.variantId),
-          })),
+          // Хээнд (`signature`) ороогүй: захиалгын агуулга биш, төлөгдөөгүй
+          // үлдвэл «Дараа захиалах» руу шилжүүлэх хуулбар (0124). Үргэлж
+          // илгээнэ — `authed` нь нэвтрэлт шалгагдаж дуустал false байдаг тул
+          // түүгээр шүүвэл хурдан дарсан хэрэглэгчийн хуулбар алга болдог байв.
+          // Зочных бол сервер хаяна.
+          snapshot: {
+            buyNow,
+            items,
+            collections,
+            draft: {
+              values: getValues(),
+              khoroo,
+              address: draft,
+              noteTags,
+              giftIds,
+              saveAddr,
+              addressChoice,
+              loyaltyWanted,
+            } satisfies CheckoutDraft,
+          },
         }),
       });
       if (!res.ok) {
@@ -998,15 +1266,17 @@ export default function CheckoutPage() {
                   : "Уучлаарай, зарим бараа дууссан байна."
                 : data.error === "BUNDLE_UNAVAILABLE"
                   ? "Сагсан дахь багц худалдаанд байхгүй болсон байна. Багцаа шинэчилнэ үү."
-                  : data.error === "ZONE_UNAVAILABLE"
-                    ? "Сонгосон бүсэд хүргэлт хийх боломжгүй байна."
-                    : data.error === "LOGIN_REQUIRED"
-                      ? "Купон, V point ашиглахын тулд нэвтэрнэ үү."
-                      : // Ижил захиалга аль хэдийн боловсруулагдаж байна —
-                        // дахин дарвал давхар захиалга болох тул зогсооно.
-                        data.error === "ORDER_PENDING"
-                        ? "Таны захиалга боловсруулагдаж байна. Хэдэн секунд хүлээгээд «Захиалга хайх» хэсгээс шалгана уу."
-                        : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
+                  : data.error === "DETAIL_REQUIRED"
+                    ? "Хаягийн байр, орц, тоотоо оруулна уу."
+                    : data.error === "ZONE_UNAVAILABLE"
+                      ? "Сонгосон бүсэд хүргэлт хийх боломжгүй байна."
+                      : data.error === "LOGIN_REQUIRED"
+                        ? "Купон, V point ашиглахын тулд нэвтэрнэ үү."
+                        : // Ижил захиалга аль хэдийн боловсруулагдаж байна —
+                          // дахин дарвал давхар захиалга болох тул зогсооно.
+                          data.error === "ORDER_PENDING"
+                          ? "Таны захиалга боловсруулагдаж байна. Хэдэн секунд хүлээгээд «Захиалга хайх» хэсгээс шалгана уу."
+                          : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
         );
         return;
       }
@@ -1017,13 +1287,46 @@ export default function CheckoutPage() {
       // ижил сесс дотор хийсэн хоёр дахь захиалга нэгдүгээрийнх нь хариуг
       // авна.
       requestIdRef.current = null;
+      // Хадгалсан захиалгаас ирсэн бол одоо л жинхэнэ захиалга болсон —
+      // хуулбар нь хэрэггүй. Төлөгдөөгүй үлдвэл 30 минутын дараа «Дараа
+      // захиалах» руу өөрөө буцна (0124).
+      void dropResumedSaved();
+      // Хасахаас ӨМНӨ хуулна: төлбөрийн хуудаснаас буцвал мөр, маягт хоёул
+      // сэргэж, өөрчлөөгүй бол энэ захиалга руу шууд буцна (pending-order.ts).
+      if (order.payToken) {
+        const cart = useCart.getState();
+        savePendingOrder<CheckoutDraft>({
+          payToken: order.payToken,
+          orderNo: order.orderNo,
+          signature,
+          savedAt: Date.now(),
+          draft: {
+            values: getValues(),
+            khoroo,
+            address: draft,
+            noteTags,
+            giftIds,
+            saveAddr,
+            addressChoice,
+            loyaltyWanted,
+          },
+          buyNow,
+          items,
+          collections,
+          coupon: cart.coupon,
+        });
+      }
       // Зөвхөн захиалагдсан (сонгосон) мөрүүд сагснаас хасагдана.
       removeOrdered();
       // The payment page is server-rendered from `pay_token`, so nothing about
       // the order rides in sessionStorage any more: the link survives a reload,
       // a new tab, and being opened on the customer's phone.
+      //
+      // `push`, `replace` биш: «Буцах» нь бараан хуудас руу биш, хаягаа
+      // оруулсан энэ хуудас руу ирэх ёстой (клиент, 2026-10).
       if (order.payToken) {
-        router.replace(`/pay/${order.payToken}`);
+        markReturnPoint(order.payToken);
+        router.push(`/pay/${order.payToken}`);
         return;
       }
       // Demo mode (no database) issues no token — there is nothing to pay.
@@ -1055,6 +1358,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-352 px-4 pt-8 md:px-8 md:pb-24 lg:pb-8">
+      {confirmDialog}
       <form
         onSubmit={handleSubmit(onSubmit, onInvalid)}
         // Шалгалтыг Zod + талбарын доорх мессеж хийнэ; browser-ийн англи
@@ -1078,6 +1382,19 @@ export default function CheckoutPage() {
           <h1 className="mb-8 text-3xl font-semibold tracking-tight">
             Захиалга өгөх
           </h1>
+
+          {/* Төлбөрийн хуудаснаас буцаж ирсэн — юу болохыг нь хэлнэ, эс
+              тэгвээс дахин дарахад хоёр дахь захиалга үүсэх гэж айна. */}
+          {pendingOrderNo && (
+            <div className="bg-secondary flex items-start gap-3 rounded-2xl px-4 py-3.5 text-sm">
+              <Clock className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+              <p>
+                <strong className="font-semibold">{pendingOrderNo}</strong>{" "}
+                захиалгын төлбөр хүлээгдэж байна. Мэдээллээ өөрчлөхгүй бол
+                «Төлбөр төлөх» дарахад тэр захиалгаа шууд үргэлжлүүлнэ.
+              </p>
+            </div>
+          )}
 
           {/* Guest prompt: register to earn loyalty points */}
           {mounted && !authed && (
@@ -1270,7 +1587,7 @@ export default function CheckoutPage() {
               error={errors.note?.message}
               hint={
                 remoteZone
-                  ? "Улаанбаатар дахь тухайн орон нутаг руу явах унаа хаанаас хөдлөх, такси автобус алинд дайх, хэдэн цагаас хөдлөх болон хэд хүртэл унаа байх гэх мэт…"
+                  ? "Бид ачааг таны заасан унаанд тавьж өгнө. Унаа хаанаас хөдөлдөг, такси эсвэл автобусны аль нь, хэдэн цаг хүртэл явдгийг бичнэ үү."
                   : "Хүргэлт хийгдэхтэй холбоотой мэдээллээ бичнэ үү"
               }
             >
@@ -1293,7 +1610,11 @@ export default function CheckoutPage() {
             step={2}
             title="Хүлээн авагчийн мэдээлэл"
           >
-            <div className="grid gap-4 sm:grid-cols-2">
+            {/* `grid-cols-1` = minmax(0,1fr): загваргүй `grid`-ийн багана хамгийн
+                өргөн мөрийн min-content-оос нарийсдаггүй. Нэр · утас ·
+                «Өөр хүн хүлээн авах» мөр нь `nowrap` тул утсан дээр баганыг
+                картаас гадагш сунгаж, имэйлийн талбарыг ч дагуулж гаргадаг байв. */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {recipientCollapsed ? (
                 <div className="bg-secondary flex items-center gap-3 rounded-xl py-1.5 pr-1.5 pl-3 text-sm sm:col-span-2">
                   <UserRound className="text-muted-foreground size-4 shrink-0" />
@@ -1613,6 +1934,31 @@ export default function CheckoutPage() {
                     ? `Төлбөр төлөх · ${formatPrice(total)}`
                     : "Төлбөр төлөх"}
               </LoadingButton>
+              <LoadingButton
+                type="button"
+                variant="secondary"
+                size="lg"
+                className="w-full gap-2"
+                loading={savingForLater}
+                disabled={submitting}
+                onClick={saveForLater}
+              >
+                <Bookmark className="size-4" />
+                Дараа захиалах
+              </LoadingButton>
+              {resumedSavedId && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="lg"
+                  className="text-muted-foreground hover:text-destructive w-full gap-2"
+                  disabled={submitting || savingForLater}
+                  onClick={deleteResumedSaved}
+                >
+                  <Trash2 className="size-4" />
+                  Устгах
+                </Button>
+              )}
               <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-center text-xs">
                 <ShieldCheck className="size-3.5" />
                 Аюулгүй төлбөр · QPay

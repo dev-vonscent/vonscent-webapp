@@ -63,10 +63,13 @@ export function isCapital(aimagCode: string | null | undefined): boolean {
 }
 
 /**
- * Label for the second select — дүүрэг in the capital, сум elsewhere. Keeping
- * this in one place stops the two spellings drifting apart across forms.
+ * Label for the second select — дүүрэг in the capital, сум elsewhere, and
+ * both while nothing is picked yet (defaulting to «Сум» read as if the
+ * countryside were preselected). Keeping this in one place stops the
+ * spellings drifting apart across forms.
  */
 export function childLabel(aimagCode: string | null | undefined): string {
+  if (!getAimag(aimagCode)) return "Дүүрэг / Сум";
   return isCapital(aimagCode) ? "Дүүрэг" : "Сум";
 }
 

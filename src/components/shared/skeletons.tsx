@@ -284,7 +284,7 @@ export function PanelSkeleton({
 }
 
 /** Bundle cards — heading, then the `aspect-3/2` posters `CollectionCard` uses. */
-export function CollectionGridSkeleton({ cards = 3 }: { cards?: number }) {
+export function CollectionGridSkeleton({ cards = 4 }: { cards?: number }) {
   return (
     <div role="status" aria-label="Ачаалж байна">
       <div className="mb-6 flex items-end justify-between gap-4">
@@ -294,10 +294,10 @@ export function CollectionGridSkeleton({ cards = 3 }: { cards?: number }) {
         </div>
         <SkeletonBlock className="h-4 w-28" />
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 md:gap-6 lg:grid-cols-4">
         {Array.from({ length: cards }).map((_, i) => (
           <div key={i} className="flex flex-col">
-            <SkeletonBlock className="aspect-3/2 w-full rounded-2xl" />
+            <SkeletonBlock className="aspect-4/5 w-full rounded-2xl" />
             <div className="mt-3 flex flex-col gap-1.5">
               <SkeletonBlock className="h-4 w-3/4" />
               <SkeletonBlock className="h-4 w-24" />
@@ -444,13 +444,15 @@ export function TileGridSkeleton({ tiles = 6 }: { tiles?: number }) {
 export function WheelSkeleton() {
   return (
     <div
-      className="mx-auto max-w-3xl space-y-6 px-4 py-10"
+      className="mx-auto max-w-352 space-y-6 px-4 py-10 md:px-8 lg:grid lg:grid-cols-2 lg:space-y-0 lg:gap-x-12 xl:gap-x-20"
       role="status"
       aria-label="Азын хүрд ачаалж байна"
     >
-      <SkeletonBlock className="mx-auto h-8 w-56" />
-      <SkeletonBlock className="mx-auto aspect-square w-full max-w-[min(88vw,30rem)] rounded-full" />
-      <SkeletonBlock className="mx-auto h-11 w-64 rounded-md" />
+      <SkeletonBlock className="mx-auto h-8 w-56 lg:col-start-2 lg:row-start-1 lg:mx-0 lg:h-12 lg:w-72" />
+      <div className="space-y-6 lg:col-start-1 lg:row-span-2 lg:row-start-1">
+        <SkeletonBlock className="mx-auto aspect-square w-full max-w-[min(88vw,30rem)] rounded-full lg:max-w-136" />
+        <SkeletonBlock className="mx-auto h-11 w-64 rounded-md" />
+      </div>
     </div>
   );
 }

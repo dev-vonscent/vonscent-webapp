@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Bookmark } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import {
   type OrderSummaryRow,
 } from "@/lib/orders/summary";
 import {
+  DELIVERY_END_HOUR,
   DISPATCH_HOUR,
   deliveryDayOf,
   formatEditCutoff,
@@ -25,12 +26,20 @@ import {
   ORDER_STATUS_LABEL,
   ORDER_STATUS_STYLE,
   PAYMENT_STATUS_LABEL,
+  PAYMENT_WINDOW_MINUTES,
 } from "@/lib/constants";
 import {
   OrderActions,
   type ReorderItem,
 } from "@/features/account/components/order-actions";
 import { maskAccount, refundBreakdown } from "@/lib/refund";
+import { settleExpiredOrders } from "@/features/account/settle-expired";
+import { EmptyState } from "@/components/shared/empty-state";
+import { reviewPointsOf } from "@/lib/loyalty";
+import {
+  OrderReviewPrompt,
+  type ReviewableItem,
+} from "@/features/reviews/components/order-review-prompt";
 import type {
   OrderRow,
   OrderItemRow,
@@ -52,6 +61,10 @@ export default async function OrderDetailPage({
   } = await supabase.auth.getUser();
   if (!user) notFound();
 
+  // Хугацаа нь дууссан бол cron-ыг хүлээлгүй одоо шилжүүлнэ — жагсаалттай
+  // ижил төлөв харагдана (settle-expired.ts).
+  await settleExpiredOrders(user.id);
+
   // RLS staff-д бусдын захиалгыг ч нээдэг — энэ хуудас зөвхөн эзэндээ
   // (staff бол админ самбараас харна).
   const { data: orderData } = await supabase
@@ -62,6 +75,17 @@ export default async function OrderDetailPage({
     .maybeSingle();
   const order = orderData as OrderRow | null;
   if (!order) notFound();
+  // Төлөгдөөгүй цуцлалт захиалга болж үлдэхгүй (0124, клиент 2026-10).
+  // «Дараа захиалах» руу шилжсэн бол хуучин линкээр ирсэн хүнд «Цуцлагдсан»
+  // биш, хаана очсоныг нь хэлнэ; устгасан бол юу ч үлдээгүй — 404.
+  if (order.status === "cancelled" && order.payment_status === "unpaid") {
+    const { count } = await supabase
+      .from("saved_checkouts")
+      .select("id", { count: "exact", head: true })
+      .eq("source_order_id", order.id);
+    if (!count) notFound();
+    return <MovedToSaved orderNo={order.order_no} />;
+  }
 
   // Мөнгө хүлээж буй захиалга — энэ хуудасны үндсэн үйлдэл нь төлөх болно.
   const awaitingPayment =
@@ -93,7 +117,9 @@ export default async function OrderDetailPage({
   const items = (itemData as OrderItemRow[] | null) ?? [];
   const history = (historyData as OrderStatusHistoryRow[] | null) ?? [];
 
-  // Resolve slugs/images for the reorder action.
+  // Resolve slugs/images for the reorder action. Дахин захиалах нь зөвхөн
+  // амжилттай хүргэгдсэн захиалгад, бэлгийн мөргүйгээр — бэлэг сар бүр
+  // өөрчлөгддөг тул дахин захиалахад тэр сарынх нь бэлэг ирэхгүй.
   const productIds = [
     ...new Set(items.map((i) => i.product_id).filter(Boolean)),
   ] as string[];
@@ -101,7 +127,14 @@ export default async function OrderDetailPage({
   const byId = new Map(products.map((p) => [p.id, p]));
 
   const reorderItems: ReorderItem[] = items
-    .filter((i) => i.product_id && i.variant_id)
+    .filter(
+      (i) =>
+        order.status === "delivered" &&
+        i.product_id &&
+        i.variant_id &&
+        !i.is_gift &&
+        !i.is_sample,
+    )
     .map((i) => {
       const p = byId.get(i.product_id as string);
       return {
@@ -117,6 +150,59 @@ export default async function OrderDetailPage({
       };
     })
     .filter((i) => i.slug);
+
+  // Сэтгэгдлийн урилга (0117): төлөгдсөн, цуцлагдаагүй захиалгад. Бэлгийн
+  // мөр худалдаж авсан бараа биш тул урамшуулалд ч, жагсаалтад ч орохгүй.
+  const reviewPromptOpen =
+    order.payment_status === "paid" &&
+    (order.status === "confirmed" ||
+      order.status === "shipping" ||
+      order.status === "delivered");
+  let reviewItems: ReviewableItem[] = [];
+  let reviewPoints = 0;
+  if (reviewPromptOpen) {
+    const purchased = [
+      ...new Set(
+        items
+          .filter((i) => i.product_id && !i.is_gift && !i.is_sample)
+          .map((i) => i.product_id as string),
+      ),
+    ].filter((pid) => byId.get(pid)?.slug);
+    if (purchased.length > 0) {
+      const [{ data: reviewData }, { data: loyaltyData }] = await Promise.all([
+        supabase
+          .from("reviews")
+          .select("product_id")
+          .eq("user_id", user.id)
+          .in("product_id", purchased),
+        supabase
+          .from("settings")
+          .select("value")
+          .eq("key", "loyalty")
+          .maybeSingle(),
+      ]);
+      const reviewed = new Set(
+        ((reviewData as { product_id: string }[] | null) ?? []).map(
+          (r) => r.product_id,
+        ),
+      );
+      reviewPoints = reviewPointsOf(
+        (loyaltyData as { value?: unknown } | null)?.value,
+      );
+      reviewItems = purchased.map((pid) => {
+        const p = byId.get(pid)!;
+        const line = items.find((i) => i.product_id === pid)!;
+        return {
+          productId: pid,
+          slug: p.slug,
+          name: line.product_name,
+          brand: line.brand,
+          image: p.image?.url ?? null,
+          reviewed: reviewed.has(pid),
+        };
+      });
+    }
+  }
 
   // Cancellable only while the status allows it AND the delivery day has not
   // started yet (cut-off 00:00 UB, client 2026-09-21) — which for a pre-order
@@ -177,6 +263,14 @@ export default async function OrderDetailPage({
             </CardContent>
           </Card>
 
+          {reviewPromptOpen && (
+            <OrderReviewPrompt
+              delivered={order.status === "delivered"}
+              reviewPoints={reviewPoints}
+              items={reviewItems}
+            />
+          )}
+
           {/* Status history */}
           {history.length > 0 && (
             <Card>
@@ -212,13 +306,15 @@ export default async function OrderDetailPage({
             </p>
           )}
 
-          {reorderItems.length > 0 && (
+          {(reorderItems.length > 0 || awaitingPayment || cancellable) && (
             <OrderActions
               orderId={order.id}
               items={reorderItems}
               cancellable={cancellable}
               paid={order.payment_status === "paid"}
               total={order.total}
+              payToken={awaitingPayment ? order.pay_token : null}
+              canSaveForLater={order.checkout_snapshot !== null}
             />
           )}
         </div>
@@ -279,7 +375,7 @@ export default async function OrderDetailPage({
                 </span>
                 <span className="text-muted-foreground">
                   {" "}
-                  · {DISPATCH_HOUR}:00 цагт гарна
+                  · {DISPATCH_HOUR}:00–{DELIVERY_END_HOUR}:00 цагийн хооронд
                 </span>
               </p>
               <p>{order.contact_name}</p>
@@ -311,6 +407,36 @@ function Row({ label, value, credit, strong }: OrderSummaryRow) {
       <span className={cn("tabular-nums", credit && "text-success")}>
         {value}
       </span>
+    </div>
+  );
+}
+
+/**
+ * Төлөгдөөгүй тул «Дараа захиалах» руу шилжсэн захиалга (0124). Жагсаалтад
+ * харагдахгүй ч имэйл, хуучин линкээр ирж болно.
+ */
+function MovedToSaved({ orderNo }: { orderNo: string }) {
+  return (
+    <div className="space-y-6">
+      <Link
+        href="/account/orders"
+        className="text-muted-foreground hover:text-foreground hidden items-center gap-1 text-sm md:inline-flex"
+      >
+        <ArrowLeft className="size-4" /> Захиалгууд руу буцах
+      </Link>
+      <EmptyState
+        size="lg"
+        icon={Bookmark}
+        title={`${orderNo} — «Дараа захиалах» руу шилжсэн`}
+        description={`Төлбөр ${PAYMENT_WINDOW_MINUTES} минутын дотор төлөгдөөгүй тул захиалгыг «Дараа захиалах» хэсэгт хадгаллаа. Тэндээс хүссэн үедээ дахин захиалаарай.`}
+        action={
+          <Button asChild>
+            <Link href="/account/orders?tab=saved">
+              Дараа захиалах руу очих
+            </Link>
+          </Button>
+        }
+      />
     </div>
   );
 }

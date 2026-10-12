@@ -9,7 +9,16 @@ import { env } from "@/lib/env";
  * a readable message the job stores in `error`.
  */
 
-export type ImageSize = "1024x1024" | "1024x1536" | "1536x1024" | "auto";
+/**
+ * gpt-image-2 нь өөрийн WxH-ийг ч хүлээн авна (тал бүр 16-д хуваагдах).
+ * 1024x1280 = 4:5 — багцын poster, card-ын харьцаа.
+ */
+export type ImageSize =
+  | "1024x1024"
+  | "1024x1280"
+  | "1024x1536"
+  | "1536x1024"
+  | "auto";
 export type ImageQuality = "low" | "medium" | "high" | "auto";
 
 export interface GenerateOptions {

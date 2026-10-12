@@ -102,3 +102,8 @@ export function trackPurchase(
     currency: PIXEL_CURRENCY,
   });
 }
+
+/** Чатын товч дарагдсан тоо — хэдэн хүн админтай холбогдохыг оролдсоныг хэмжинэ. */
+export function trackChatOpen() {
+  ga("chat_open", {});
+}

@@ -22,9 +22,16 @@ import { GALLERY_AUTOPLAY } from "./gallery-autoplay";
 export function ProductGallery({
   images,
   name,
+  bleed = true,
 }: {
   images: ProductImage[];
   name: string;
+  /**
+   * Утсан дээр толгойн доогуур бүтэн өргөнөөр (барааны хуудас). `false` нь
+   * бүх дэлгэцэнд хүрээтэй — багцын хуудас шиг доороос нь самбар гулсдаггүй
+   * хуудсанд.
+   */
+  bleed?: boolean;
 }) {
   const many = images.length > 1;
   const reducedMotion = usePrefersReducedMotion();
@@ -79,10 +86,13 @@ export function ProductGallery({
     <div className="flex flex-col gap-3">
       {/* Mobile: full-bleed under the transparent header (-mx-4 cancels the
           page's px-4; -mt-20 = h-16 header + py-4 wrapper). Desktop: framed. */}
-      <div className="relative -mx-4 -mt-20 sm:mx-0 sm:mt-0">
+      <div className={cn("relative", bleed && "-mx-4 -mt-20 sm:mx-0 sm:mt-0")}>
         <div
           ref={emblaRef}
-          className="overflow-hidden sm:rounded-2xl sm:bg-none"
+          className={cn(
+            "overflow-hidden sm:rounded-2xl sm:bg-none",
+            !bleed && "rounded-2xl",
+          )}
           role="group"
           aria-roledescription="carousel"
           aria-label={`${name} — зургууд`}
@@ -119,7 +129,13 @@ export function ProductGallery({
         </div>
 
         {many && (
-          <div className="bg-secondary/70 absolute bottom-14 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-2.5 py-1.5 backdrop-blur sm:hidden">
+          <div
+            className={cn(
+              "bg-secondary/70 absolute left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-2.5 py-1.5 backdrop-blur sm:hidden",
+              // Доороос гулсдаг самбарын ирмэгээс дээш — хүрээтэй үед хэрэггүй.
+              bleed ? "bottom-14" : "bottom-3",
+            )}
+          >
             {images.map((_, i) => (
               <button
                 key={i}

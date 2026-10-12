@@ -9,6 +9,9 @@ import {
 } from "@/features/products/api";
 import type { HomeSectionRow } from "@/db/types";
 import type { ProductListItem } from "@/lib/types";
+import type { Collection } from "@/features/collections/types";
+import { getFeaturedCollections } from "@/features/collections/api";
+import type { CardStatus } from "@/features/products/card-status";
 
 /**
  * Content / settings data access (admin A8 + A10). Settings live in the
@@ -215,6 +218,10 @@ export interface HomeSection {
   subtitle: string;
   href: string;
   products: ProductListItem[];
+  /** Зөвхөн 'featured' хэсэгт — «Онцлох» тэмдэгтэй багцууд, усуудтай холилдоно. */
+  collections: Collection[];
+  /** Хэсгийн төлөв — card бүр үүнийг харуулна («Онцлох» дотор «Онцлох»). */
+  status: CardStatus | null;
 }
 
 /**
@@ -248,10 +255,17 @@ export async function getHomeSections(): Promise<HomeSection[]> {
   const sections: HomeSection[] = [];
   for (const row of rows) {
     let products: ProductListItem[];
+    let collections: Collection[] = [];
+    let status: CardStatus | null = null;
     if (row.kind === "tag" && row.tag) {
       products = await getProductsByTag(row.tag, row.max_items);
+      if (row.tag !== "sale") status = row.tag;
     } else if (row.kind === "featured") {
-      products = await getFeaturedProducts(row.max_items);
+      status = "featured";
+      [products, collections] = await Promise.all([
+        getFeaturedProducts(row.max_items),
+        getFeaturedCollections(),
+      ]);
     } else {
       const ordered = [...row.home_section_products].sort(
         (a, b) => a.sort_order - b.sort_order,
@@ -265,13 +279,15 @@ export async function getHomeSections(): Promise<HomeSection[]> {
         .filter((p): p is ProductListItem => Boolean(p))
         .slice(0, row.max_items);
     }
-    if (products.length === 0) continue;
+    if (products.length === 0 && collections.length === 0) continue;
     sections.push({
       id: row.id,
       title: row.title,
       subtitle: row.subtitle,
       href: row.href,
       products,
+      collections,
+      status,
     });
   }
   return sections;

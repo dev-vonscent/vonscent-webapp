@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { revalidatePublic } from "@/lib/cache";
-import { checkoutOrderSchema } from "@/lib/validators/order";
+import {
+  checkoutOrderSchema,
+  detailMissing,
+  stripDetail,
+} from "@/lib/validators/order";
+import { isRemoteAddress } from "@/lib/geo/zone";
+import { getShippingSettings } from "@/features/content/api";
 import {
   BundleUnavailableError,
   computeSummary,
@@ -13,7 +19,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { callRpc } from "@/lib/supabase/rpc";
-import { RESERVE_TIMEOUT_MINUTES } from "@/lib/constants";
+import { RESERVE_TIMEOUT_MINUTES, SHIPPING_ZONES } from "@/lib/constants";
 import { isQpayMockMode } from "@/lib/payments/qpay";
 import { ensureInvoice } from "@/lib/payments/invoice";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
@@ -24,6 +30,10 @@ import {
   completeOrderRequest,
   releaseOrderRequest,
 } from "@/lib/orders/idempotency";
+import {
+  SAVED_CHECKOUT_MAX_BYTES,
+  savedCheckoutInputSchema,
+} from "@/lib/validators/saved-checkout";
 
 /**
  * Давтагдсан идемпотентын түлхүүрийн хариу — анхны захиалгын хариуг сэргээнэ.
@@ -60,6 +70,20 @@ async function describeExistingOrder(
   };
 }
 
+/**
+ * Checkout-ийн сагсны хуулбар (0124) — төлөгдөөгүй захиалга «Дараа захиалах»
+ * руу шилжихэд хэрэглэгдэнэ. Захиалгын нэг хэсэг биш: буруу, хэт том бол
+ * зүгээр л хаягдана, захиалга зогсохгүй.
+ */
+function parseSnapshot(body: unknown) {
+  const raw = (body as { snapshot?: unknown } | null)?.snapshot;
+  if (raw === undefined) return null;
+  const parsed = savedCheckoutInputSchema.safeParse(raw);
+  if (!parsed.success) return null;
+  if (JSON.stringify(parsed.data).length > SAVED_CHECKOUT_MAX_BYTES) return null;
+  return parsed.data;
+}
+
 /** Клиентээс ирсэн өдрийг [маргааш, маргааш+30] мужид оруулна. */
 function clampDeliveryDay(value: string | undefined): string {
   const min = earliestDeliveryDay();
@@ -83,6 +107,22 @@ export async function POST(req: Request) {
   // тул түлхүүр нь IP — checkout-д нэвтэрсэн байх шаардлага байхгүй.
   const limited = await enforceRateLimit("order", req);
   if (limited) return limited;
+
+  // Дэлгэрэнгүй хаяг: үүдэнд хүргэх хаягт заавал, унаагаар явах хаягт
+  // (орон нутаг, Налайх гэх мэт R бүс) хадгалахгүй — хуучин хадгалсан хаяг
+  // гэрийн хаягаа авч ирсэн ч захиалга дээр «гэрт хүргэнэ» мэт үлдэхгүй.
+  const shipping = await getShippingSettings();
+  const zones = shipping.zones?.length ? shipping.zones : [...SHIPPING_ZONES];
+  const remote = isRemoteAddress(zones, {
+    city: input.shipCity,
+    district: input.shipDistrict,
+    khoroo: input.shipKhoroo,
+  });
+  if (remote) {
+    input.shipDetail = stripDetail(input.shipDetail);
+  } else if (detailMissing(input.shipDetail)) {
+    return NextResponse.json({ error: "DETAIL_REQUIRED" }, { status: 400 });
+  }
 
   // Authoritative server-side pricing.
   let summary;
@@ -250,14 +290,28 @@ export async function POST(req: Request) {
       // хүртэл ирнэ гэдэг нь захиалга явж байх зуур өөр хэрэглэгч нөөцийг
       // авсан гэсэн үг (computeSummary аль хэдийн шалгасан) — тэр барааг
       // нэрлэж чадвал хэрэглэгч юуг засахаа мэднэ.
-      const insufficient = /INSUFFICIENT_STOCK:(\S+)/.exec(
-        error.message ?? "",
-      );
+      const insufficient = /INSUFFICIENT_STOCK:(\S+)/.exec(error.message ?? "");
       // Савны түгжээ (0095) — сүүлийн шатны хамгаалалт. Энэ хүртэл ирнэ гэдэг
       // нь сагс хуучирсан, эсвэл захиалга явж байх зуур админ хаасан гэсэн үг.
       const bottle = error.message?.includes("BOTTLE_UNAVAILABLE");
+      // Мөрийн шалгалт (0125): бараа/хэмжээ худалдаанаас хасагдсан, эсвэл
+      // «Тун удахгүй» болсон — computeSummary шалгасны дараа админ сольсон.
+      // Хариу нь дээрх ItemsUnavailableError-тай ижил, клиент мөрийг хасна.
+      const unavailable = /ITEMS_UNAVAILABLE:(\S*)/.exec(error.message ?? "");
+      if (unavailable) {
+        return NextResponse.json(
+          {
+            error: "ITEMS_UNAVAILABLE",
+            variantIds: unavailable[1] ? [unavailable[1]] : [],
+          },
+          { status: 409 },
+        );
+      }
       if (bottle) {
-        return NextResponse.json({ error: "BOTTLE_UNAVAILABLE" }, { status: 409 });
+        return NextResponse.json(
+          { error: "BOTTLE_UNAVAILABLE" },
+          { status: 409 },
+        );
       }
       return NextResponse.json(
         insufficient
@@ -302,6 +356,15 @@ export async function POST(req: Request) {
     // тул удаан, харин хүлээгч талыг тэр болтол саатуулах шалтгаан байхгүй.
     if (input.requestId && order) {
       await completeOrderRequest(supabase, input.requestId, order.id);
+    }
+
+    // «Дараа захиалах» нь бүртгэлд хадгалагддаг тул зочинд хуулбар хэрэггүй.
+    const snapshot = userId && order ? parseSnapshot(body) : null;
+    if (snapshot && order) {
+      await supabase
+        .from("orders")
+        .update({ checkout_snapshot: snapshot })
+        .eq("id", order.id);
     }
 
     // Invoice creation goes through ensureInvoice so one order can never end

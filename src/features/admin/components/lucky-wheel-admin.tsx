@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import {
   Check,
   Crown,
+  Heart,
   Loader2,
   Package,
   Save,
-  Sparkles,
   Ticket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import { mutateJson } from "@/features/admin/lib/mutate";
 import { toast } from "@/lib/toast";
 import { formatDate, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { VPointIcon } from "@/components/shared/v-point-icon";
 import { ASSUMED_AOV } from "@/lib/constants";
 import type { SpinWheelPrizeRow } from "@/db/types";
 import type { WheelReport, WheelSettings } from "@/features/admin/api";
@@ -38,6 +39,7 @@ const KIND_LABEL: Record<string, string> = {
   coupon_percent: "Хувийн купон",
   coupon_fixed: "Дүнгийн купон",
   bundle: "Бодит бэлэг",
+  none: "Баярлалаа (шагналгүй)",
 };
 
 const TIER_LABEL: Record<string, string> = {
@@ -47,10 +49,11 @@ const TIER_LABEL: Record<string, string> = {
 };
 
 const KIND_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
-  points: Sparkles,
+  points: VPointIcon,
   coupon_percent: Ticket,
   coupon_fixed: Ticket,
   bundle: Crown,
+  none: Heart,
 };
 
 /** Editable copy of a prize row — every numeric field is a string while typing. */
@@ -229,11 +232,16 @@ export function LuckyWheelAdmin({
       </header>
 
       {/* ── Сүүлийн 30 хоног ─────────────────────────────────────────── */}
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat
           label="Нийт эргэлт (30 хоног)"
           value={report.spins.toLocaleString("mn-MN")}
-          hint={`${report.freeSpins} үнэгүй · ${report.paidSpins} пойнтоор`}
+          hint={`${report.freeSpins} үнэгүй · ${report.orderSpins} захиалгаар · ${report.paidSpins} пойнтоор`}
+        />
+        <Stat
+          label="Захиалгаас олгосон эрх"
+          value={report.orderSpinsGranted.toLocaleString("mn-MN")}
+          hint={`${report.thanks.toLocaleString("mn-MN")} эргэлт «Баярлалаа» дээр буусан`}
         />
         <Stat
           label="Олгосон V point"
@@ -308,7 +316,7 @@ export function LuckyWheelAdmin({
 
         <div className="space-y-3">
           {drafts.map((draft) => {
-            const Icon = KIND_ICON[draft.kind] ?? Sparkles;
+            const Icon = KIND_ICON[draft.kind] ?? VPointIcon;
             const chance =
               totalWeight > 0 && draft.isActive
                 ? (num(draft.weight) / totalWeight) * 100
@@ -362,25 +370,27 @@ export function LuckyWheelAdmin({
                         }
                       />
                     </Field>
-                    <Field
-                      label={
-                        draft.kind === "coupon_percent"
-                          ? "Хувь (%)"
-                          : draft.kind === "points"
-                            ? "V point"
-                            : draft.kind === "bundle"
-                              ? "Ширхэг"
-                              : "Дүн (₮)"
-                      }
-                    >
-                      <Input
-                        inputMode="numeric"
-                        value={draft.value}
-                        onChange={(e) =>
-                          edit(draft.id, "value", e.target.value)
+                    {draft.kind !== "none" && (
+                      <Field
+                        label={
+                          draft.kind === "coupon_percent"
+                            ? "Хувь (%)"
+                            : draft.kind === "points"
+                              ? "V point"
+                              : draft.kind === "bundle"
+                                ? "Ширхэг"
+                                : "Дүн (₮)"
                         }
-                      />
-                    </Field>
+                      >
+                        <Input
+                          inputMode="numeric"
+                          value={draft.value}
+                          onChange={(e) =>
+                            edit(draft.id, "value", e.target.value)
+                          }
+                        />
+                      </Field>
+                    )}
                     <Field label="Жин">
                       <Input
                         inputMode="decimal"
@@ -392,57 +402,59 @@ export function LuckyWheelAdmin({
                     </Field>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <Field
-                      label="Доод дүн (₮)"
-                      hint={
-                        draft.kind.startsWith("coupon")
-                          ? "0 = хязгааргүй"
-                          : "Купонд л хамаарна"
-                      }
-                    >
-                      <Input
-                        inputMode="numeric"
-                        value={draft.minSubtotal}
-                        onChange={(e) =>
-                          edit(draft.id, "minSubtotal", e.target.value)
+                  {draft.kind !== "none" && (
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                      <Field
+                        label="Доод дүн (₮)"
+                        hint={
+                          draft.kind.startsWith("coupon")
+                            ? "0 = хязгааргүй"
+                            : "Купонд л хамаарна"
                         }
-                      />
-                    </Field>
-                    <Field
-                      label="Дээд хөнгөлөлт (₮)"
-                      hint="Хоосон = хязгааргүй"
-                    >
-                      <Input
-                        inputMode="numeric"
-                        value={draft.maxDiscount}
-                        onChange={(e) =>
-                          edit(draft.id, "maxDiscount", e.target.value)
-                        }
-                      />
-                    </Field>
-                    <Field label="Сарын хязгаар" hint="Хоосон = хязгааргүй">
-                      <Input
-                        inputMode="numeric"
-                        value={draft.monthlyCap}
-                        onChange={(e) =>
-                          edit(draft.id, "monthlyCap", e.target.value)
-                        }
-                      />
-                    </Field>
-                    <Field
-                      label="Хаалттай үед шилжих салбар"
-                      hint="Салбарын дугаар"
-                    >
-                      <Input
-                        inputMode="numeric"
-                        value={draft.fallbackSlot}
-                        onChange={(e) =>
-                          edit(draft.id, "fallbackSlot", e.target.value)
-                        }
-                      />
-                    </Field>
-                  </div>
+                      >
+                        <Input
+                          inputMode="numeric"
+                          value={draft.minSubtotal}
+                          onChange={(e) =>
+                            edit(draft.id, "minSubtotal", e.target.value)
+                          }
+                        />
+                      </Field>
+                      <Field
+                        label="Дээд хөнгөлөлт (₮)"
+                        hint="Хоосон = хязгааргүй"
+                      >
+                        <Input
+                          inputMode="numeric"
+                          value={draft.maxDiscount}
+                          onChange={(e) =>
+                            edit(draft.id, "maxDiscount", e.target.value)
+                          }
+                        />
+                      </Field>
+                      <Field label="Сарын хязгаар" hint="Хоосон = хязгааргүй">
+                        <Input
+                          inputMode="numeric"
+                          value={draft.monthlyCap}
+                          onChange={(e) =>
+                            edit(draft.id, "monthlyCap", e.target.value)
+                          }
+                        />
+                      </Field>
+                      <Field
+                        label="Хаалттай үед шилжих салбар"
+                        hint="Салбарын дугаар"
+                      >
+                        <Input
+                          inputMode="numeric"
+                          value={draft.fallbackSlot}
+                          onChange={(e) =>
+                            edit(draft.id, "fallbackSlot", e.target.value)
+                          }
+                        />
+                      </Field>
+                    </div>
+                  )}
 
                   <label className="flex w-fit items-center gap-2 text-sm">
                     <Checkbox
@@ -474,6 +486,18 @@ export function LuckyWheelAdmin({
                     setConfig({
                       ...config,
                       freeSpinHours: Number(e.target.value) || 0,
+                    })
+                  }
+                />
+              </Field>
+              <Field label="Захиалгын хэдэн ₮ тутамд нэг эрх (0 = унтраах)">
+                <Input
+                  inputMode="numeric"
+                  value={config.orderSpinStep}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      orderSpinStep: Number(e.target.value) || 0,
                     })
                   }
                 />
@@ -550,16 +574,12 @@ export function LuckyWheelAdmin({
             </div>
 
             <p className="text-muted-foreground text-xs">
-              Сарын тагууд авагдсан тул (2026-09-07) хүрдэнд **автомат
-              хамгаалалт үлдээгүй** — зардлыг барих хөшүүрэг зөвхөн энд байна.
-              Идэвхтэй эргүүлэгчийн одоогийн сарын өртөг{" "}
-              {formatPrice(ASSUMED_AOV)} захиалгын ~21%, зорилт 8%
-              (docs/lucky-wheel.md §5.2). Дарааллаар: үнэгүй эргэлтийг 48–72 цаг
-              болгох → пойнтын утгыг буулгах → 2мл багцын жинг буулгах. Купон
-              хуримтлагддаг тул жингээр засах нь үр дүн багатай — 30 эргэлтэд 5%
-              купон бараг тодорхой таарч, захиалга бүрийн шалыг тогтоодог
-              (§5.1). Одоогийн дундаж шагналын нэрлэсэн үнэ (бодит бэлгийг
-              оруулаагүй):{" "}
+              Эрх гурван замаар: {config.freeSpinHours} цагт нэг үнэгүй,
+              захиалгын {formatPrice(config.orderSpinStep)} тутамд нэг,{" "}
+              {config.spinCost.toLocaleString("mn-MN")}V-оор нэг. Сарын таг
+              унтраалттай (0) — зардлыг жин ба эдгээр тохиргоогоор барина
+              (docs/lucky-wheel.md §9). Одоогийн дундаж шагналын нэрлэсэн үнэ
+              (бодит бэлгийг оруулаагүй):{" "}
               <span className="text-foreground font-medium">
                 {formatPrice(
                   Math.round(

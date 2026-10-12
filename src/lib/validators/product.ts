@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { BOTTLE_STYLES, CONCENTRATION_CODE_MAX } from "@/lib/constants";
+import {
+  BOTTLE_STYLES,
+  COMING_SOON_NOTE_MAX,
+  CONCENTRATION_CODE_MAX,
+  PRODUCT_STATUSES,
+} from "@/lib/constants";
 
 /**
  * "all" (бүх улирал) already covers every season, so it cannot sit next to an
@@ -21,6 +26,17 @@ export const productImageSchema = z.object({
   /** Whether the storefront shows it (0049). Uploads default to shown. */
   visible: z.boolean().default(true),
 });
+
+/**
+ * «Тун удахгүй» үеийн ойролцоо хугацаа (0125) — чөлөөт текст, хоосон бол
+ * дэлгүүрт мөр гарахгүй. Хоосон мөрийг null болгож нэгтгэнэ.
+ */
+const comingSoonNote = z
+  .string()
+  .trim()
+  .max(COMING_SOON_NOTE_MAX)
+  .nullable()
+  .transform((s) => (s ? s : null));
 
 /** The store's whole size list — see ML_SIZES / 0026_sample_tier.sql. */
 const mlSize = z.union([
@@ -123,7 +139,12 @@ export const productInputSchema = z.object({
   lowStockMl: z.number().int().nonnegative(),
   bottlePrice: z.number().int().nonnegative(),
   variants: z.array(variantDraftSchema).min(1),
-  isActive: z.boolean().default(true),
+  /**
+   * Барааны төлөв (0125). AI зураг хүлээж буй, галерейгүй бараа хүссэн
+   * төлөвөөс үл хамааран `hidden` болно — route-ын тайлбарыг үзнэ үү.
+   */
+  status: z.enum(PRODUCT_STATUSES).default("active"),
+  comingSoonNote: comingSoonNote.default(null),
   /** «Онцлох бараа» — нүүрийн онцлох хэсэгт автоматаар орно (0055). */
   isFeatured: z.boolean().default(false),
   /** Free-form internal tags (slugs from the admin pool, 0035_custom_tags). */
@@ -155,7 +176,12 @@ export const productEditSchema = z.object({
   usageDescription: z.string().optional(),
   originCountry: z.string().nullable().optional(),
   releaseYear: z.number().int().nullable().optional(),
-  isActive: z.boolean().optional(),
+  /**
+   * Өөрчлөгдсөн үед л илгээнэ. Нэг удаа гарсан барааг `coming_soon` болгохыг
+   * DB хориглоно (0125) — route нь 409 ALREADY_LAUNCHED буцаана.
+   */
+  status: z.enum(PRODUCT_STATUSES).optional(),
+  comingSoonNote: comingSoonNote.optional(),
   isFeatured: z.boolean().optional(),
   bottlePrice: z.number().int().nonnegative().optional(),
   lowStockMl: z.number().int().nonnegative().optional(),

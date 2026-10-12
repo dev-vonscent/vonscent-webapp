@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { afterAll, beforeAll, describe, it, expect, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -28,6 +28,20 @@ const TABLES: Record<string, unknown[]> = {
       source: "manual",
     },
     {
+      // Used long ago — the list forgets it, the detail page does not.
+      id: "c3",
+      code: "VS-OLD",
+      type: "fixed",
+      value: 5000,
+      min_subtotal: 0,
+      max_discount: null,
+      ends_at: null,
+      max_uses: 1,
+      used_count: 1,
+      is_active: true,
+      source: "manual",
+    },
+    {
       id: "c2",
       code: "VS-MINE",
       type: "fixed",
@@ -44,6 +58,7 @@ const TABLES: Record<string, unknown[]> = {
   coupon_redemptions: [
     { coupon_id: "c1", user_id: FRIEND, created_at: "2026-09-28T04:00:00Z" },
     { coupon_id: "c2", user_id: OWNER, created_at: "2026-09-20T04:00:00Z" },
+    { coupon_id: "c3", user_id: OWNER, created_at: "2026-08-01T04:00:00Z" },
   ],
   profiles: [{ id: FRIEND, full_name: "Болормаа", phone: "99112233" }],
 };
@@ -67,6 +82,23 @@ function fakeAdmin() {
 }
 
 describe("loadWallet", () => {
+  // Fixed clock: the 30-day history window would otherwise make these rows
+  // drop out of the list as real time passes.
+  beforeAll(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-01T00:00:00Z"));
+  });
+  afterAll(() => vi.useRealTimers());
+
+  it("hides coupons used more than 30 days ago from the list only", async () => {
+    const list = await loadWallet(fakeAdmin(), OWNER);
+    expect(list.map((c) => c.code)).not.toContain("VS-OLD");
+    expect(list.map((c) => c.code)).toContain("VS-MINE");
+    // The detail page (by code) still opens it.
+    const byCode = await loadWallet(fakeAdmin(), OWNER, "vs-old");
+    expect(byCode.map((c) => c.code)).toContain("VS-OLD");
+  });
+
   it("masks a friend who used a shared coupon", async () => {
     const wallet = await loadWallet(fakeAdmin(), OWNER);
     const shared = wallet.find((c) => c.code === "VS-SHARED")!;

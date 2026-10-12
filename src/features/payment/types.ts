@@ -43,10 +43,20 @@ export interface PaymentView {
    * бүртгэлтэй хэрэглэгчид олгогдоно (`mark_order_paid`).
    */
   pointsEarned: number;
+  /**
+   * Хүргэгдсэний дараа худалдаж авсан усандаа сэтгэгдэл бичвэл ус бүрт олгох
+   * оноо (0117). Зочны захиалга болон урамшуулал унтарсан үед 0.
+   */
+  reviewPoints: number;
   paymentMethod: PaymentMethod;
   paid: boolean;
   /** Захиалга цуцлагдсан (нөөцийн хугацаа дууссан эсвэл гараар). */
   cancelled: boolean;
+  /**
+   * Бүртгэлтэй хэрэглэгчийн, сагсны хуулбартай захиалга — «Дараа захиалах»
+   * товч гарна. Бусад үед (зочин, хуучин захиалга) зөвхөн «Устгах» (0124).
+   */
+  canSaveForLater: boolean;
   /** "yyyy-MM-dd" (UB) — chosen at checkout. */
   deliverOn: string | null;
   invoice: {

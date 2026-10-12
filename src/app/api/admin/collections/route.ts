@@ -59,6 +59,7 @@ export async function POST(req: Request) {
       usage_description: input.usageDescription,
       discount_pct: input.discountPct,
       image_url: input.imageUrl ?? null,
+      bottle_style: input.bottleStyle ?? null,
       is_active: input.isActive,
       is_featured: input.isFeatured,
     })

@@ -50,6 +50,13 @@ export type MlSize = (typeof ML_SIZES)[number];
 export const BUNDLE_ML_SIZES = ML_SIZES;
 
 /**
+ * Нүүрний decant visualizer-т «≈ N шүршилт» гэж харуулах ойролцоо тоо.
+ * 1мл ≈ 15 шүршилт (клиентийн тоо: 2/5/10/20мл → 30/75/150/300) —
+ * маркетингийн тооцоо, захиалга/үнэд оролцохгүй.
+ */
+export const SPRAYS_PER_ML = 15;
+
+/**
  * FAQ-ийн тогтмол ангилал (клиент, 2026-09 UG) — нийтийн FAQ хуудас ийм
  * дарааллаар бүлэглэнэ. Админы «Ангилал» нь чөлөөт текст биш select, API нь
  * Zod enum-оор шалгана (`lib/validators/faq.ts`).
@@ -71,11 +78,34 @@ export type FaqCategory = (typeof FAQ_CATEGORIES)[number];
 export const TRIAL_SIZE_ML: MlSize = 2;
 
 /**
- * «Шинэ» таг автомат: хамгийн сүүлд нэмэгдсэн ийм тооны идэвхтэй ус. Шинэ ус
- * нэмэгдэхэд хамгийн хуучин нь гарна. DB дээр `refresh_new_tag()`
- * (0100_auto_new_tag.sql) ижил тоогоор ажилладаг тул хоёуланг нь зэрэг сольно.
+ * «Шинэ» таг автомат: хамгийн сүүлд ХУДАЛДААНД ГАРСАН (`launched_at`, 0125)
+ * ийм тооны идэвхтэй ус. Шинэ ус гарахад хамгийн хуучин нь гарна. DB дээр
+ * `refresh_new_tag()` (0100, 0125) ижил тоогоор ажилладаг тул хоёуланг нь
+ * зэрэг сольно.
  */
 export const NEW_PRODUCTS_COUNT = 12;
+
+/**
+ * Барааны амьдралын мөчлөг (`products.status`, 0125). `is_active` нь
+ * `status === "active"`-тай DB-ийн trigger-ээр үргэлж тэнцүү.
+ *
+ *   hidden      — сайтад огт харагдахгүй;
+ *   coming_soon — барааны хуудас, нүүрний «Тун удахгүй» хэсэгт харагдана,
+ *                 захиалж болохгүй. Зөвхөн хэзээ ч худалдаанд гарч байгаагүй
+ *                 бараа (`launched_at` хоосон) энэ төлөвт орж чадна;
+ *   active      — зарагдана.
+ */
+export const PRODUCT_STATUSES = ["hidden", "coming_soon", "active"] as const;
+export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
+
+export const PRODUCT_STATUS_LABEL: Record<ProductStatus, string> = {
+  hidden: "Нуусан",
+  coming_soon: "Тун удахгүй",
+  active: "Идэвхтэй",
+};
+
+/** «Тун удахгүй» үеийн ойролцоо хугацааны текстийн дээд урт (DB check-тэй ижил). */
+export const COMING_SOON_NOTE_MAX = 120;
 
 /**
  * Каталогийн анхны эрэмбэ: `sort` параметргүй URL. Энэ утгыг сонгоход URL-аас
@@ -97,6 +127,14 @@ export const CATALOG_PAGE_SIZE = 24;
  */
 export const HOT_PRODUCTS_COUNT = 12;
 
+/**
+ * Багцын «Шинэ» / «Эрэлттэй» таг автомат (админ тавихаа больсон): хамгийн
+ * сүүлд нэмэгдсэн / төлөгдсөн захиалгаар хамгийн их зарагдсан ийм тооны
+ * идэвхтэй багц (0122). Нүүрний rail дахь багцын дээд тоотой ижил.
+ */
+export const NEW_COLLECTIONS_COUNT = 6;
+export const HOT_COLLECTIONS_COUNT = 6;
+
 /** Size a fresh bundle starts on — the smallest (2ml) tier. */
 export const DEFAULT_BUNDLE_ML = 2;
 
@@ -112,6 +150,16 @@ export const DEFAULT_BUNDLE_ML = 2;
  * Хэрэглэгчид энэ тоог төлбөрийн хуудас, захиалгын имэйл хоёр хэлнэ.
  */
 export const RESERVE_TIMEOUT_MINUTES = 35;
+
+/**
+ * Төлбөрийн хуудсан дээр хэрэглэгчид хэлэх хугацаа (клиент, 2026-10). Бодит
+ * цуцлалт нь `RESERVE_TIMEOUT_MINUTES` — дээрх 5 минутын зөрүү нь тулгалтын
+ * дотоод нөөц тул хэрэглэгчид дугуй 30 гэж хэлнэ.
+ */
+export const PAYMENT_WINDOW_MINUTES = 30;
+
+/** «Дараа авахаар хадгалах» — хэрэглэгч бүрийн дээд тоо (0116). Хуучнаас нь хасна. */
+export const SAVED_CHECKOUTS_MAX = 10;
 
 /**
  * Хэрэглэгчийн хүсэлтээр цуцалсан, төлсөн захиалгын буцаалтаас хасагдах
@@ -614,11 +662,15 @@ export type RateLimitName = keyof typeof RATE_LIMITS;
 export const CONTENT_PAGES_HIDDEN: boolean = true;
 
 /**
- * Азын хүрд (`/lucky-wheel`) түр нуугдсан эсэх (2026-09-27).
+ * Азын хүрд (`/lucky-wheel`) нуугдсан эсэх. 2026-09-27-нд нуугдаж, v2
+ * шаардлагаар (0129, docs/lucky-wheel.md §9) 2026-10-12-нд дахин нээгдэв.
+ * Prod release-д дахин нуув (клиент dev дээр туршиж батлах хүртэл) — dev → main
+ * release бүрийн өмнө энэ утгыг шалга. Хүрд эргүүлэх, захиалгын эрх нь
+ * `settings.spin`-ээр (0130) тусдаа унтардаг.
  *
- * Цэс, профайлын dropdown, акаунтын карт, купоны жагсаалтын холбоосууд энэ
- * тугаар нуугдаж, хуудас нь шууд URL-ээр 404 өгнө. API болон админы тохиргоо
- * хэвээр — эргүүлж нээхэд `false` болгоход л хангалттай.
+ * `true` бол цэс, профайлын dropdown, акаунтын карт, купоны жагсаалтын
+ * холбоосууд нуугдаж, хуудас нь шууд URL-ээр 404 өгнө. API болон админы
+ * тохиргоо хэвээр.
  *
  * `boolean` гэж зориуд бичив (`CONTENT_PAGES_HIDDEN`-ийн тайлбарыг үз).
  */
@@ -629,4 +681,12 @@ export const LUCKY_WHEEL_HIDDEN: boolean = true;
  * Өмнө нь ч хэрэглэгч хуудсыг нэг нээмэгц алга болно (`useNewBadge`).
  * Мэдээ бол түр зуурынх — мөнхөд гялалзах тэмдэг анхаарал татахаа больдог.
  */
+/**
+ * «Миний купон»-д ашигласан / дууссан купон хэдэн хоног харагдах вэ. Дараа нь
+ * жагсаалтаас нуугдана (сангаас устахгүй — админы log, тайланд үлдэнэ).
+ * Тоолох эхлэл: ашигласан бол сүүлчийн ашиглалт, дууссан бол `ends_at` эсвэл
+ * `deactivated_at` (0120).
+ */
+export const WALLET_HISTORY_DAYS = 30;
+
 export const COUPONS_NEW_BADGE_UNTIL = "2026-11-01T00:00:00+08:00";

@@ -31,7 +31,7 @@ export function useSignOutConfirm(): [() => void, React.ReactNode] {
         open={open}
         onOpenChange={setOpen}
         title="Гарах уу?"
-        description="Та бүртгэлээсээ гарна. Дахин нэвтрэх шаардлагатай болно."
+        description="Та бүртгэлээсээ гарч, дахин нэвтрэх шаардлагатай болно."
         confirmLabel="Гарах"
         cancelLabel="Болих"
         destructive
