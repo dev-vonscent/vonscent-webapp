@@ -59,19 +59,37 @@ describe("ComingSoonPurchase", () => {
     expect(screen.queryByText("20ml")).toBeNull();
   });
 
-  it("админы бичсэн ойролцоо хугацааг хэлнэ", () => {
+  it("админы бичсэн ойролцоо хугацааг бүтнээр нь, юу ч залгахгүй", () => {
     render(
       <ComingSoonPurchase
         product={product({ comingSoonNote: "10-р сарын сүүлээр" })}
       />,
     );
-    expect(
-      screen.getByText(/10-р сарын сүүлээр худалдаанд гарна/),
-    ).toBeTruthy();
+    expect(screen.getByText("10-р сарын сүүлээр")).toBeTruthy();
+    expect(screen.queryByText(/худалдаанд гарна/)).toBeNull();
+    expect(screen.queryByText(/удахгүй авчирна/)).toBeNull();
+  });
+
+  it("бүтэн өгүүлбэр бичсэн note давхар цэг, залгалтгүй", () => {
+    render(
+      <ComingSoonPurchase
+        product={product({ comingSoonNote: "25-нд ирнэ." })}
+      />,
+    );
+    expect(screen.getByText("25-нд ирнэ.")).toBeTruthy();
   });
 
   it("хугацаагүй бол ерөнхий мэдээ", () => {
     render(<ComingSoonPurchase product={product()} />);
+    expect(
+      screen.getByText(
+        "Бид энэ усыг удахгүй авчирна. Ирмэгц энэ хуудаснаас шууд захиалах боломжтой болно.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("хоосон note-ийг ерөнхий мэдээгээр орлоно", () => {
+    render(<ComingSoonPurchase product={product({ comingSoonNote: "" })} />);
     expect(screen.getByText(/удахгүй авчирна/)).toBeTruthy();
   });
 });

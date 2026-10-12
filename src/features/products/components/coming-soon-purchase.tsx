@@ -46,11 +46,12 @@ export function ComingSoonPurchase({ product }: { product: ProductDetail }) {
             <CalendarClock className="text-gold-strong size-4 shrink-0" />
             Тун удахгүй ирнэ
           </p>
+          {/* Админы бичсэнийг бүтнээр нь — юу ч залгахгүй: «25-нд ирнэ.» гэх
+              мэт бүтэн өгүүлбэр ч, «10-р сарын сүүлээр» гэх хэсэг ч гарчгийн
+              доор зөв уншигдана. */}
           <p className="text-muted-foreground text-sm">
-            {product.comingSoonNote
-              ? `${product.comingSoonNote} худалдаанд гарна. `
-              : "Бид энэ усыг удахгүй авчирна. "}
-            Ирмэгц энэ хуудаснаас шууд захиалах боломжтой болно.
+            {product.comingSoonNote ||
+              "Бид энэ усыг удахгүй авчирна. Ирмэгц энэ хуудаснаас шууд захиалах боломжтой болно."}
           </p>
         </div>
 

@@ -342,8 +342,12 @@ function seedTags(input: SeedInput): TagKind[] {
   return isNew ? ["new", ...rest] : rest;
 }
 
-export const SEED_PRODUCTS: ProductDetail[] = RAW.map((input) => {
-  const variants = buildVariants(input);
+function buildProduct(
+  input: SeedInput,
+  variants: ReturnType<typeof buildVariants>,
+  createdAt: string,
+  tags: TagKind[],
+): ProductDetail {
   const cheapest = variants.reduce((a, b) => (a.price <= b.price ? a : b));
   const startingPrice = cheapest.price;
   const images = productImageUrls(input.slug).map((url) => ({
@@ -367,12 +371,12 @@ export const SEED_PRODUCTS: ProductDetail[] = RAW.map((input) => {
     images,
     startingPrice,
     startingBasePrice: cheapest.basePrice,
-    tags: seedTags(input),
+    tags,
     isFeatured: false,
     soldOut: !variants.some((v) => v.sellable),
     ratingAvg: input.ratingAvg,
     ratingCount: input.ratingCount,
-    createdAt: new Date(2024, 0, 1 + RAW.indexOf(input)).toISOString(),
+    createdAt,
     description: input.description,
     notesDescription: input.notesDescription ?? "",
     usageDescription: input.usageDescription ?? "",
@@ -387,6 +391,69 @@ export const SEED_PRODUCTS: ProductDetail[] = RAW.map((input) => {
     customTags: [],
     customTagSlugs: [],
   };
-});
+}
+
+export const SEED_PRODUCTS: ProductDetail[] = RAW.map((input) =>
+  buildProduct(
+    input,
+    buildVariants(input),
+    new Date(2024, 0, 1 + RAW.indexOf(input)).toISOString(),
+    seedTags(input),
+  ),
+);
+
+/**
+ * «Тун удахгүй» демо ус (0125) — RAW-аас тусдаа: `scripts/seed.ts` RAW-ийг
+ * идэвхтэй бараа болгон сан руу бичдэг. Демо уншигчид үүнийг зөвхөн
+ * дэлгэцийн замаар (барааны хуудас, нүүрний хэсэг, хүслийн жагсаалт) өгнө —
+ * каталог, хайлт, сагс SEED_PRODUCTS-ийг л уншина, сантай ижил.
+ */
+const COMING_SOON_RAW: SeedInput[] = [
+  {
+    slug: "mfk-baccarat-rouge-540",
+    name: "Baccarat Rouge 540",
+    brand: "Maison Francis Kurkdjian",
+    gender: "unisex",
+    concentration: "EDP",
+    scentFamilies: ["woody", "spicy"],
+    originCountry: "Франц",
+    releaseYear: 2015,
+    bottlePrice: 980000,
+    bottleMl: 70,
+    prices: { 5: 78000, 10: 142000 },
+    notesTop: ["Гүргэм", "Жасмин"],
+    notesHeart: ["Амбра", "Кедр"],
+    notesBase: ["Хуш модны давирхай", "Хуурай мод"],
+    description:
+      "Шатсан чихэр, хуурай мод, гүргэмийн гялбаа — арьсан дээр удаан үлдэж, өрөөнд ул мөрөө орхидог.",
+    tags: [],
+    // Ус агуулахад ирсэн ч гараагүй — үлдэгдэл байсан ч зарагдахгүй.
+    onHandMl: 70,
+    ratingAvg: 0,
+    ratingCount: 0,
+  },
+];
+
+export const SEED_COMING_SOON: ProductDetail[] = COMING_SOON_RAW.map(
+  (input) => ({
+    ...buildProduct(
+      input,
+      // `mapProduct`-ийн дүрэм: үлдэгдлээс үл хамааран нэг ч хэмжээ зарагдахгүй.
+      buildVariants(input).map((v) => ({
+        ...v,
+        inStock: false,
+        ...variantAvailability({
+          isActive: v.isActive,
+          inStock: false,
+          bottleLocked: v.bottleLocked,
+        }),
+      })),
+      new Date(2024, 1, 1).toISOString(),
+      input.tags,
+    ),
+    comingSoon: true,
+    comingSoonNote: "10-р сарын сүүлээр",
+  }),
+);
 
 export const SEED_RAW = RAW;

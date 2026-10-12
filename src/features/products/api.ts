@@ -11,7 +11,7 @@ import type {
   ProductListItem,
 } from "@/lib/types";
 import type { ScentFamily, Season, TagKind } from "@/db/types";
-import { SEED_PRODUCTS } from "./seed";
+import { SEED_COMING_SOON, SEED_PRODUCTS } from "./seed";
 import { isSupabaseConfigured } from "@/lib/env";
 import { matchesSearch, searchTerms } from "@/lib/search";
 import { callRpc } from "@/lib/supabase/rpc";
@@ -54,7 +54,7 @@ interface DbInventory {
   reserved_ml: number;
   is_sold_out: boolean;
 }
-interface DbProduct {
+export interface DbProduct {
   id: string;
   slug: string;
   name: string;
@@ -108,7 +108,8 @@ const SELECT = `
   product_tags ( tags ( slug, kind ) )
 `;
 
-function mapProduct(
+/** DB мөр → дэлгүүрийн хэлбэр. Тестэд export хийсэн (map-product.test.ts). */
+export function mapProduct(
   row: DbProduct,
   locks: BottleLockState = NO_BOTTLE_LOCKS,
 ): ProductDetail {
@@ -317,7 +318,10 @@ const fetchProductBy = cache(
     includeComingSoon = false,
   ): Promise<ProductDetail | null> => {
     if (!isSupabaseConfigured) {
-      return SEED_PRODUCTS.find((p) => p[column] === value) ?? null;
+      const pool = includeComingSoon
+        ? [...SEED_PRODUCTS, ...SEED_COMING_SOON]
+        : SEED_PRODUCTS;
+      return pool.find((p) => p[column] === value) ?? null;
     }
     const supabase = createPublicClient();
     if (!supabase) return null;
@@ -692,7 +696,10 @@ export async function getProductDetailsByIds(
   if (!ids.length) return [];
   if (!isSupabaseConfigured) {
     const set = new Set(ids);
-    return SEED_PRODUCTS.filter((p) => set.has(p.id));
+    const pool = includeComingSoon
+      ? [...SEED_PRODUCTS, ...SEED_COMING_SOON]
+      : SEED_PRODUCTS;
+    return pool.filter((p) => set.has(p.id));
   }
   const supabase = createPublicClient();
   if (!supabase) return [];
@@ -822,7 +829,9 @@ const fetchComingSoon = unstable_cache(
 export async function getComingSoonProducts(
   limit = 12,
 ): Promise<ProductListItem[]> {
-  if (!isSupabaseConfigured) return [];
+  if (!isSupabaseConfigured) {
+    return SEED_COMING_SOON.slice(0, limit).map(toListItem);
+  }
   try {
     return await fetchComingSoon(limit);
   } catch (err) {

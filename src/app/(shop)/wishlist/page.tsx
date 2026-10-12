@@ -13,7 +13,8 @@ import type { Collection } from "@/features/collections/types";
 import { useWishlist } from "@/features/wishlist/store";
 import { useCart } from "@/features/cart/store";
 import { formatPrice } from "@/lib/format";
-import type { ProductDetail, Variant } from "@/lib/types";
+import type { ProductDetail } from "@/lib/types";
+import { isAddable, wishlistCartLines } from "@/features/wishlist/cart-lines";
 import { EmptyState } from "@/components/shared/empty-state";
 
 async function fetchDetails(ids: string[]): Promise<ProductDetail[]> {
@@ -35,16 +36,6 @@ async function fetchCollections(ids: string[]): Promise<Collection[]> {
   if (!res.ok) return [];
   const data = (await res.json()) as { items: Collection[] };
   return data.items;
-}
-
-/**
- * Хамгийн хямд ЗАРАГДАХ хэмжээ («-аас» үнэтэй ижил). Идэвхтэй ч дууссан,
- * савгүй хэмжээг сагсанд хийвэл checkout дээр л унана.
- */
-function cheapestVariant(p: ProductDetail): Variant | null {
-  const sellable = p.variants.filter((v) => v.sellable);
-  if (!sellable.length) return null;
-  return sellable.reduce((a, b) => (b.price < a.price ? b : a));
 }
 
 const EMPTY_IDS: string[] = [];
@@ -84,7 +75,7 @@ export default function WishlistPage() {
 
   // «Тун удахгүй» ус (0125) нь `soldOut` боловч дууссан биш — ирэхийг
   // хүлээж байна. Тоонд тусад нь, сагслахаас хасна.
-  const inStock = items.filter((p) => !p.soldOut && !p.comingSoon);
+  const inStock = items.filter(isAddable);
   const comingSoonCount = items.filter((p) => p.comingSoon).length;
   const liveBundles = bundles.filter((c) => !c.soldOut);
   // Багцын «эхлэх үнэ» ч нийтэд орно — эс бөгөөс «3 хадгалсан» гээд хоёрынх
@@ -108,23 +99,9 @@ export default function WishlistPage() {
   }, [addedAll]);
 
   function addAllToCart() {
-    let added = 0;
-    for (const p of inStock) {
-      const v = cheapestVariant(p);
-      if (!v) continue;
-      addToCart({
-        productId: p.id,
-        slug: p.slug,
-        name: p.name,
-        brand: p.brand,
-        variantId: v.id,
-        ml: v.ml,
-        unitPrice: v.price,
-        image: p.image?.url ?? null,
-      });
-      added += 1;
-    }
-    if (added > 0) setAddedAll(true);
+    const lines = wishlistCartLines(items);
+    for (const line of lines) addToCart(line);
+    if (lines.length > 0) setAddedAll(true);
   }
 
   return (
