@@ -46,10 +46,19 @@ export async function POST(req: Request) {
 
   const { data } = await admin
     .from("orders")
-    .select("user_id")
+    .select("user_id, checkout_snapshot")
     .eq("id", ref.id)
     .maybeSingle();
-  const ownerId = (data as { user_id: string | null } | null)?.user_id ?? null;
+  const row = data as {
+    user_id: string | null;
+    checkout_snapshot: unknown;
+  } | null;
+  const ownerId = row?.user_id ?? null;
+  // Хадгалах хуулбаргүй бол цуцлахгүй — эс бөгөөс «Дараа захиалах» дарсан
+  // хүний захиалга ор мөргүй алга болно.
+  if (saveForLater && row?.checkout_snapshot == null) {
+    return NextResponse.json({ error: "NO_SNAPSHOT" }, { status: 409 });
+  }
 
   if (ownerId || saveForLater) {
     const session = await createClient();
@@ -79,7 +88,9 @@ export async function POST(req: Request) {
     {
       p_order: ref.id,
       p_save: saveForLater,
-      p_note: saveForLater ? "Дараа захиалах руу шилжүүлсэн" : "Хэрэглэгч устгасан",
+      p_note: saveForLater
+        ? "Дараа захиалах руу шилжүүлсэн"
+        : "Хэрэглэгч устгасан",
       p_by: ownerId,
     },
   );

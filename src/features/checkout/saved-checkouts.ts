@@ -119,6 +119,11 @@ const fromRow = (r: SavedCheckoutRow): SavedCheckout => ({
 export function useSavedCheckouts() {
   return useQuery<SavedCheckout[]>({
     queryKey: SAVED_CHECKOUTS_QUERY_KEY,
+    // Жагсаалт нь өөр хуудсан дээр (төлбөрийн хуудас, cron) өөрчлөгддөг —
+    // 60 секундын кэш нь «Дараа захиалах» дарж ирсэн хүнд хуучин жагсаалт
+    // харуулж байв. «Миний захиалга» нээгдэх бүрд шинээр уншина.
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
       const res = await fetch("/api/account/saved-checkouts", {
         cache: "no-store",

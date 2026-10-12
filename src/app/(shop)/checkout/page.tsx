@@ -1155,24 +1155,25 @@ export default function CheckoutPage() {
           ...payload,
           requestId: requestIdRef.current,
           // Хээнд (`signature`) ороогүй: захиалгын агуулга биш, төлөгдөөгүй
-          // үлдвэл «Дараа захиалах» руу шилжүүлэх хуулбар (0124).
-          snapshot: authed
-            ? {
-                buyNow,
-                items,
-                collections,
-                draft: {
-                  values: getValues(),
-                  khoroo,
-                  address: draft,
-                  noteTags,
-                  giftIds,
-                  saveAddr,
-                  addressChoice,
-                  loyaltyWanted,
-                } satisfies CheckoutDraft,
-              }
-            : undefined,
+          // үлдвэл «Дараа захиалах» руу шилжүүлэх хуулбар (0124). Үргэлж
+          // илгээнэ — `authed` нь нэвтрэлт шалгагдаж дуустал false байдаг тул
+          // түүгээр шүүвэл хурдан дарсан хэрэглэгчийн хуулбар алга болдог байв.
+          // Зочных бол сервер хаяна.
+          snapshot: {
+            buyNow,
+            items,
+            collections,
+            draft: {
+              values: getValues(),
+              khoroo,
+              address: draft,
+              noteTags,
+              giftIds,
+              saveAddr,
+              addressChoice,
+              loyaltyWanted,
+            } satisfies CheckoutDraft,
+          },
         }),
       });
       if (!res.ok) {
