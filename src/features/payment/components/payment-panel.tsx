@@ -301,7 +301,7 @@ export function PaymentPanel({
     clearPendingOrder(token);
     if (saveForLater) {
       toast("«Миний захиалга» хэсгээс үргэлжлүүлээрэй.", "Дараа захиалах руу шилжлээ");
-      router.push("/account/orders");
+      router.push("/account/orders?tab=saved");
     } else {
       toast("Захиалга устгагдлаа.");
       router.push("/catalog");
@@ -710,6 +710,7 @@ function AbandonActions({
   onAbandon: (saveForLater: boolean) => Promise<void>;
 }) {
   const [saving, setSaving] = React.useState(false);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
   return (
     <div className="flex gap-2 pb-5 md:px-5">
       {canSaveForLater && (
@@ -729,24 +730,27 @@ function AbandonActions({
           Дараа захиалах
         </LoadingButton>
       )}
+      {/* Удирдлагатай нээлт — `ConfirmDialog`-ийн `trigger` нь `DialogTrigger`
+          биш тул түүгээр өгсөн товч дарахад юу ч болдоггүй байв. */}
+      <Button
+        variant="ghost"
+        className={cn(
+          "text-muted-foreground hover:text-destructive",
+          canSaveForLater ? "flex-1" : "w-full",
+        )}
+        disabled={saving}
+        onClick={() => setConfirmOpen(true)}
+      >
+        Устгах
+      </Button>
       <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
         title="Захиалгыг устгах уу?"
         description="Төлөгдөөгүй энэ захиалга устаж, нөөцөлсөн бараа чөлөөлөгдөнө."
         confirmLabel="Устгах"
         destructive
         onConfirm={() => onAbandon(false)}
-        trigger={
-          <Button
-            variant="ghost"
-            className={cn(
-              "text-muted-foreground hover:text-destructive",
-              canSaveForLater ? "flex-1" : "w-full",
-            )}
-            disabled={saving}
-          >
-            Устгах
-          </Button>
-        }
       />
     </div>
   );

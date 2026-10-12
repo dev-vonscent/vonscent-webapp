@@ -448,7 +448,29 @@ describe("PaymentPanel — leaving an unpaid order (0124)", () => {
         body: JSON.stringify({ token: "tok", saveForLater: true }),
       }),
     );
-    expect(routerPush).toHaveBeenCalledWith("/account/orders");
+    expect(routerPush).toHaveBeenCalledWith("/account/orders?tab=saved");
+  });
+
+  it("deletes after the confirmation dialog", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<PaymentPanel view={view()} token="tok" />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Устгах" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Устгах" }),
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/payments/abandon",
+      expect.objectContaining({
+        body: JSON.stringify({ token: "tok", saveForLater: false }),
+      }),
+    );
+    expect(routerPush).toHaveBeenCalledWith("/catalog");
   });
 
   it("switches to the paid state when the server finds the money first", async () => {
