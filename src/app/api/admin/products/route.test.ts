@@ -14,6 +14,9 @@ const afterCallbacks: (() => unknown)[] = [];
 let tagLinkError: { message: string } | null = null;
 let deleteError: { message: string } | null = null;
 const deletedIds: string[] = [];
+/** Харагдах зургийн тоо (`hasVisibleImage`) — нийтлэх эсэхийг шийднэ. */
+let imageCount = 1;
+const statusUpdates: unknown[] = [];
 
 vi.mock("next/server", async (orig) => ({
   ...(await orig<typeof import("next/server")>()),
@@ -49,7 +52,10 @@ vi.mock("@/lib/supabase/admin", () => ({
               single: async () => ({ data: { id: "p1" }, error: null }),
             }),
           }),
-          update: () => ({ eq: async () => ok }),
+          update: (row: unknown) => {
+            statusUpdates.push(row);
+            return { eq: async () => ok };
+          },
           delete: () => ({
             eq: async (_col: string, id: string) => {
               deletedIds.push(id);
@@ -68,7 +74,17 @@ vi.mock("@/lib/supabase/admin", () => ({
       if (table === "product_custom_tags") {
         return { insert: async () => ({ error: tagLinkError }) };
       }
-      // product_variants, product_images, inventory
+      if (table === "product_images") {
+        return {
+          insert: async () => ok,
+          select: () => ({
+            eq: () => ({
+              eq: async () => ({ count: imageCount, error: null }),
+            }),
+          }),
+        };
+      }
+      // product_variants, inventory
       return { insert: async () => ok };
     },
   }),
@@ -111,6 +127,8 @@ beforeEach(() => {
   tagLinkError = null;
   deleteError = null;
   deletedIds.length = 0;
+  imageCount = 1;
+  statusUpdates.length = 0;
 });
 
 describe("POST /api/admin/products — tags бүтэлгүйтвэл", () => {
@@ -168,5 +186,21 @@ describe("POST /api/admin/products — амжилттай", () => {
       "black",
       "end",
     );
+  });
+});
+
+describe("POST /api/admin/products — зураггүй бол нийтлэхгүй", () => {
+  it("харагдах зураггүй бол нуусан хэвээр үлдэнэ", async () => {
+    imageCount = 0;
+    const res = await create({ status: "active" });
+    expect(res.status).toBe(200);
+    expect((await res.json()).status).toBe("hidden");
+    expect(statusUpdates).toHaveLength(0);
+  });
+
+  it("зурагтай бол хүссэн төлөвөөр нийтлэгдэнэ", async () => {
+    const res = await create({ status: "active" });
+    expect((await res.json()).status).toBe("active");
+    expect(statusUpdates).toEqual([{ status: "active" }]);
   });
 });

@@ -688,9 +688,16 @@ export async function getProductDetailsByIds(
   ids: string[],
   {
     includeComingSoon = false,
+    strict = false,
   }: {
     /** Хүслийн жагсаалт л (0125) — сагс, багц, захиалга энэ сонголтгүй. */
     includeComingSoon?: boolean;
+    /**
+     * Хэсэг (chunk) бүтэлгүйтвэл ШИДНЭ. Сагс хариунд ирээгүй мөрийг
+     * «хаагдсан» гэж үздэг тул DB-ийн алдаа «бүх бараа алга» болж харагдах
+     * ёсгүй (`/api/products`).
+     */
+    strict?: boolean;
   } = {},
 ): Promise<ProductDetail[]> {
   if (!ids.length) return [];
@@ -718,6 +725,10 @@ export async function getProductDetailsByIds(
         : base.eq("is_active", true);
     }),
   );
+  if (strict) {
+    const failed = results.find((r) => r.error);
+    if (failed) throw new Error(`product details: ${failed.error!.message}`);
+  }
   const rows = results.flatMap((r) =>
     r.error ? [] : ((r.data ?? []) as unknown as DbProduct[]),
   );

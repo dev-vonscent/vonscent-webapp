@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ProductStatus } from "@/lib/constants";
 
 /**
@@ -58,3 +59,32 @@ export const LAUNCH_REQUIRED = {
     "«Тун удахгүй» барааг «Худалдаанд гаргах» товчоор гаргана уу. Засварын маягтаар шууд «Идэвхтэй» болгох боломжгүй.",
   code: "LAUNCH_REQUIRED",
 } as const;
+
+/** Дэлгүүрт харагдах (нийтлэгдсэн) төлөвүүд — зураггүй байж болохгүй. */
+export const PUBLISHED_STATUSES: readonly ProductStatus[] = [
+  "active",
+  "coming_soon",
+];
+
+/** Зураггүй барааг нийтлэх оролдлогын 409. */
+export const NO_IMAGE = {
+  error: "Зураггүй барааг нийтлэх боломжгүй. Эхлээд харагдах зураг нэмнэ үү.",
+  code: "NO_IMAGE",
+} as const;
+
+/**
+ * Бараанд дэлгүүрт харагдах зураг байгаа эсэх. DB-ийн алдаа бол `null` —
+ * дуудагч 500 буцаана (нийтлэхийг «магадгүй» гэж зөвшөөрөхгүй).
+ */
+export async function hasVisibleImage(
+  supabase: SupabaseClient,
+  productId: string,
+): Promise<boolean | null> {
+  const { count, error } = await supabase
+    .from("product_images")
+    .select("id", { count: "exact", head: true })
+    .eq("product_id", productId)
+    .eq("is_visible", true);
+  if (error) return null;
+  return (count ?? 0) > 0;
+}
