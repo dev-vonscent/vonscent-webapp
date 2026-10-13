@@ -37,6 +37,7 @@ export function CouponTicket({
   code,
   muted = false,
   size = "row",
+  onCard = false,
   className,
   children,
 }: {
@@ -48,6 +49,11 @@ export function CouponTicket({
   muted?: boolean;
   /** `hero` is the detail page's larger ticket. */
   size?: "row" | "hero";
+  /**
+   * Drawn on a `bg-card` surface (dialog, drawer): the face steps up to
+   * `secondary`, or a card-coloured ticket vanishes into it in dark theme.
+   */
+  onCard?: boolean;
   className?: string;
   /** The small lines under the value: expiry, terms, last use. */
   children?: React.ReactNode;
@@ -59,7 +65,10 @@ export function CouponTicket({
     <div className={cn("drop-shadow-md", muted && "opacity-70", className)}>
       <div
         style={MASK_STYLE}
-        className="bg-card flex aspect-11/4 items-stretch rounded-xl"
+        className={cn(
+          "flex aspect-11/4 items-stretch rounded-xl",
+          onCard ? "bg-secondary" : "bg-card",
+        )}
       >
         <div className="flex w-[37%] shrink-0 items-center justify-center">
           <Image

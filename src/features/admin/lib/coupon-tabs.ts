@@ -30,6 +30,26 @@ export const COUPON_STATUS_LABEL: Record<CouponStatusFilter, string> = {
   all: "Бүгд",
 };
 
+/**
+ * «Хувийн» таб доторх эх сурвалж: админ гараар өгсөн, эсвэл кампанит ажлаас
+ * (0135, `source = 'campaign'`) автоматаар очсон. Тусдаа таб биш — хоёулаа
+ * тодорхой хэрэглэгчийн хувийн купон тул нэг жагсаалтад, шүүлтүүрээр ялгана.
+ */
+export const PERSONAL_ORIGINS = ["all", "manual", "campaign"] as const;
+export type PersonalOrigin = (typeof PERSONAL_ORIGINS)[number];
+
+export const PERSONAL_ORIGIN_LABEL: Record<PersonalOrigin, string> = {
+  all: "Бүгд",
+  manual: "Админы өгсөн",
+  campaign: "Кампанит ажил",
+};
+
+export function parsePersonalOrigin(v: string | undefined): PersonalOrigin {
+  return PERSONAL_ORIGINS.includes(v as PersonalOrigin)
+    ? (v as PersonalOrigin)
+    : "all";
+}
+
 export function parseCouponTab(v: string | undefined): CouponTab {
   return COUPON_TABS.includes(v as CouponTab) ? (v as CouponTab) : "code";
 }
@@ -69,6 +89,8 @@ export function filterCoupons(
   tab: CouponTab,
   status: CouponStatusFilter,
   nowIso: string,
+  /** Зөвхөн «Хувийн» табд; бусад табд үл тооно. */
+  origin: PersonalOrigin = "all",
 ): CouponFilterQuery {
   switch (tab) {
     case "code":
@@ -79,6 +101,8 @@ export function filterCoupons(
         .not("user_id", "is", null)
         .is("source_order_id", null)
         .neq("source", "spin");
+      if (origin === "manual") q = q.neq("source", "campaign");
+      if (origin === "campaign") q = q.eq("source", "campaign");
       break;
     case "auto":
       q = q.not("source_order_id", "is", null);

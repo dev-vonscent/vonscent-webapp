@@ -45,11 +45,17 @@ export function CouponTable({
   rows,
   tab,
   owners = [],
+  campaignNames,
 }: {
   rows: CouponRow[];
   tab: CouponTab;
   /** Энэ хуудсан дээрх хувийн купонуудын эзэд — нэр, утсыг харуулахад. */
   owners?: CustomerOption[];
+  /**
+   * Өгсөн бол эх сурвалжийг (админ / кампанит ажлын нэр) харуулна — «Хувийн»
+   * таб, кампанит ажил (0135) нээлттэй үед.
+   */
+  campaignNames?: Record<string, string>;
 }) {
   const router = useRouter();
   const [confirm, confirmDialog] = useConfirm();
@@ -65,6 +71,7 @@ export function CouponTable({
     return o ? customerLabel(o) : "Хэрэглэгч";
   };
   const hasOwner = tab !== "code";
+  const showOrigin = campaignNames !== undefined;
 
   async function toggle(c: CouponRow) {
     const ok = await mutateJson(
@@ -126,12 +133,15 @@ export function CouponTable({
                   <CodeButton coupon={c} onView={setViewing} />
                   <StatusToggle coupon={c} state={state} onToggle={toggle} />
                 </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                   <span className="font-medium">{discountLabel(c)}</span>
                   {c.min_subtotal > 0 && (
                     <span className="text-muted-foreground">
                       {formatPrice(c.min_subtotal)}-аас
                     </span>
+                  )}
+                  {showOrigin && (
+                    <OriginBadge coupon={c} campaignNames={campaignNames} />
                   )}
                 </div>
                 {hasOwner && c.user_id && (
@@ -177,6 +187,9 @@ export function CouponTable({
               <th className="px-4 py-3 font-medium">Код</th>
               <th className="px-4 py-3 font-medium">Хямдрал</th>
               {hasOwner && <th className="px-4 py-3 font-medium">Эзэмшигч</th>}
+              {showOrigin && (
+                <th className="px-4 py-3 font-medium">Эх сурвалж</th>
+              )}
               {tab === "auto" && (
                 <th className="px-4 py-3 font-medium">Захиалга</th>
               )}
@@ -223,6 +236,11 @@ export function CouponTable({
                       )}
                     </td>
                   )}
+                  {showOrigin && (
+                    <td className="px-4 py-3">
+                      <OriginBadge coupon={c} campaignNames={campaignNames} />
+                    </td>
+                  )}
                   {tab === "auto" && (
                     <td className="px-4 py-3">
                       {c.source_order_id ? (
@@ -259,6 +277,23 @@ export function CouponTable({
         </table>
       </Card>
     </>
+  );
+}
+
+/** Хувийн купон хаанаас ирсэн бэ: админ гараар, эсвэл кампанит ажлаас. */
+function OriginBadge({
+  coupon: c,
+  campaignNames,
+}: {
+  coupon: CouponRow;
+  campaignNames: Record<string, string>;
+}) {
+  if (c.source !== "campaign") return <Badge variant="outline">Админ</Badge>;
+  const name = c.campaign_id ? campaignNames[c.campaign_id] : undefined;
+  return (
+    <Badge variant="secondary" className="max-w-48 truncate" title={name}>
+      {name ?? "Кампанит ажил"}
+    </Badge>
   );
 }
 

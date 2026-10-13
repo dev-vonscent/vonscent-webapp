@@ -20,6 +20,7 @@ import {
   LayoutList,
   Megaphone,
   Menu,
+  PartyPopper,
   Package,
   PanelLeftClose,
   PanelLeftOpen,
@@ -54,12 +55,16 @@ import { ThemeSwitcher } from "@/components/shared/theme-switcher";
 import { useQuery } from "@tanstack/react-query";
 import { adminFetch } from "@/features/admin/lib/mutate";
 import type { SidebarBadges } from "@/features/admin/api";
+import { useFeatureFlagSet } from "@/components/feature-flags";
+import type { FeatureFlag } from "@/lib/constants";
 
 interface NavLink {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: keyof SidebarBadges;
+  /** Feature flag хаалттай үед холбоос харагдахгүй (хуудас өөрөө 404). */
+  flag?: FeatureFlag;
 }
 
 /**
@@ -131,6 +136,12 @@ const GROUPS: NavGroup[] = [
       { href: "/admin/loyalty", label: "V point", icon: Award },
       { href: "/admin/gifts", label: "Бэлгийн үнэрүүд", icon: Gift },
       { href: "/admin/lucky-wheel", label: "Азын хүрд", icon: Disc3 },
+      {
+        href: "/admin/campaigns",
+        label: "Кампанит ажил",
+        icon: PartyPopper,
+        flag: "campaigns",
+      },
     ],
   },
   {
@@ -348,13 +359,22 @@ const NO_BADGES: SidebarBadges = { newOrders: 0, outOfStock: 0 };
 export function AdminSidebar() {
   const pathname = usePathname();
   const badges = useSidebarBadges();
+  const flags = useFeatureFlagSet();
+  const groups = React.useMemo(
+    () =>
+      GROUPS.map((g) => ({
+        ...g,
+        links: g.links.filter((l) => !l.flag || flags.has(l.flag)),
+      })),
+    [flags],
+  );
 
   // Нэг удаад ганц бүлэг нээлттэй (accordion): нэгийг нээхэд бусад нь
   // хаагдана. Нээлттэй бүлэг нь одоогийн хуудасных — тиймээс хадгалах
   // шаардлагагүй, сервер ба клиент ижил утгаар эхэлнэ.
   const [open, setOpen] = React.useState<string | null>(
     () =>
-      GROUPS.find(
+      groups.find(
         (g) => g.title && g.links.some((l) => isActive(pathname, l.href)),
       )?.title ?? DEFAULT_OPEN,
   );
@@ -432,7 +452,7 @@ export function AdminSidebar() {
   };
 
   const renderGroups = (close = false) =>
-    GROUPS.map((g, i) =>
+    groups.map((g, i) =>
       g.title === null ? (
         <div key={i} className="flex flex-col gap-1">
           {g.links.map((l) => renderLink(l, close))}
@@ -477,7 +497,7 @@ export function AdminSidebar() {
   // байсан тул бүлэг бүр ганц icon — дээр нь очих/дарахад холбоосууд нь
   // хажууд гарна (Linear, VS Code-ийн адил). Гарчиггүй бүлэг (самбар) шууд.
   const renderRail = () =>
-    GROUPS.map((g, i) =>
+    groups.map((g, i) =>
       g.title === null || !g.icon ? (
         <div key={g.title ?? i} className="flex flex-col gap-1">
           {g.links.map((l) => renderLink(l, false, true))}
@@ -495,7 +515,7 @@ export function AdminSidebar() {
     );
 
   const currentLabel =
-    GROUPS.flatMap((g) => g.links).find((l) => isActive(pathname, l.href))
+    groups.flatMap((g) => g.links).find((l) => isActive(pathname, l.href))
       ?.label ?? "Админ";
 
   // Ширээний компьютерт багана нь дэлгэцэнд наалдана (`sticky`, бүтэн өндөр):
