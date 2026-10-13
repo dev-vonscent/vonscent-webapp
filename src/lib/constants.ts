@@ -688,6 +688,11 @@ export const FEATURE_FLAGS = {
     description:
       "/lucky-wheel хуудас, цэс ба купоны холбоосууд, /api/lucky-wheel, төлөгдсөн захиалгаас эрх олгох trigger (0134). Эргүүлэх ажиллагаа нь Азын хүрдний «Идэвхтэй» тохиргоогоор тусдаа.",
   },
+  campaigns: {
+    label: "Кампанит ажил",
+    description:
+      "Админ → Маркетинг → Кампанит ажил (/admin/campaigns, /api/admin/campaigns), бүртгүүлэхэд купон олгох RPC (0135), шинэ хэрэглэгчийн мэндчилгээний цонх (/api/campaigns/welcome). Купон олголт нь кампанит ажил бүрийн «Идэвхтэй» тохиргоогоор тусдаа.",
+  },
 } as const satisfies Record<string, FeatureFlagMeta>;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;

@@ -52,6 +52,44 @@ describe("filterCoupons — табууд", () => {
   });
 });
 
+describe("filterCoupons — хувийн купоны эх сурвалж", () => {
+  const origin = (
+    t: Parameters<typeof filterCoupons>[1],
+    o: Parameters<typeof filterCoupons>[4],
+  ) => {
+    const r = recorder();
+    filterCoupons(r.q, t, "all", NOW, o);
+    return r.calls;
+  };
+  const PERSONAL = [
+    ["not", "user_id", "is", null],
+    ["is", "source_order_id", null],
+    ["neq", "source", "spin"],
+  ];
+
+  it("Бүгд = табын нөхцөл л", () => {
+    expect(origin("personal", "all")).toEqual(PERSONAL);
+  });
+
+  it("Админы өгсөн = кампанит купоныг хасна", () => {
+    expect(origin("personal", "manual")).toEqual([
+      ...PERSONAL,
+      ["neq", "source", "campaign"],
+    ]);
+  });
+
+  it("Кампанит ажил = source campaign", () => {
+    expect(origin("personal", "campaign")).toEqual([
+      ...PERSONAL,
+      ["eq", "source", "campaign"],
+    ]);
+  });
+
+  it("бусад табд нөлөөлөхгүй", () => {
+    expect(origin("code", "campaign")).toEqual([["is", "user_id", null]]);
+  });
+});
+
 describe("filterCoupons — төлөв", () => {
   const status = (s: Parameters<typeof filterCoupons>[2]) => {
     const r = recorder();

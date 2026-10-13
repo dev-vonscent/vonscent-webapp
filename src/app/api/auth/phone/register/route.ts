@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import * as Sentry from "@sentry/nextjs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -61,6 +62,19 @@ export async function POST(req: Request) {
     .from("profiles")
     .update({ phone: session.phone, phone_verified: true })
     .eq("id", created.user.id);
+
+  // Бүртгэлийн купон (0135). Туг/кампанит ажлыг RPC өөрөө шалгана — хаалттай
+  // үед юу ч үүсгэхгүй. Алдаа нь бүртгэлийг унагахгүй: хэрэглэгч купонгүй
+  // ч нэвтэрч чадах нь илүү чухал.
+  const { error: grantError } = await admin.rpc("grant_signup_coupons", {
+    p_user: created.user.id,
+    p_phone: session.phone,
+  });
+  if (grantError) {
+    Sentry.captureException(
+      new Error(`grant_signup_coupons: ${grantError.message}`),
+    );
+  }
 
   const { error: signInError } = await supabase.auth.signInWithPassword({
     email: phoneEmail(session.phone),

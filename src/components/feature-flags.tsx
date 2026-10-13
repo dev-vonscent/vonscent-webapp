@@ -30,3 +30,8 @@ export function FeatureFlagsProvider({
 export function useFeatureFlag(key: FeatureFlag): boolean {
   return React.useContext(FeatureFlagsContext).has(key);
 }
+
+/** Асаалттай бүх туг — жагсаалтаас (ж: цэс) олон түлхүүрийг шүүхэд. */
+export function useFeatureFlagSet(): ReadonlySet<string> {
+  return React.useContext(FeatureFlagsContext);
+}

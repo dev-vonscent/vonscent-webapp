@@ -328,6 +328,8 @@ export interface CouponRow {
   user_id: string | null;
   /** Set when the coupon was granted automatically for an order (0025). */
   source_order_id: string | null;
+  /** Set when a campaign issued it, e.g. the sign-up coupon (0135). */
+  campaign_id?: string | null;
   type: CouponType;
   value: number;
   min_subtotal: number;
@@ -340,7 +342,7 @@ export interface CouponRow {
   used_up: boolean;
   /** Cap on a percent coupon's ₮ discount (0053). null = uncapped. */
   max_discount: number | null;
-  /** Who issued it: 'manual' | 'spin' (0053). */
+  /** Who issued it: 'manual' | 'spin' (0053) | 'campaign' (0135). */
   source: string;
   starts_at: string | null;
   ends_at: string | null;
@@ -500,6 +502,38 @@ export interface OrderStatusHistoryRow {
   created_at: string;
 }
 
+/** A marketing campaign (0135). Dates are UB calendar days, inclusive. */
+export interface CampaignRow {
+  id: string;
+  type: "signup_coupon";
+  name: string;
+  description: string;
+  is_active: boolean;
+  /** `YYYY-MM-DD`: starts at 00:00:00 UB. */
+  starts_on: string;
+  /** `YYYY-MM-DD`: ends at 23:59:59 UB. */
+  ends_on: string;
+  /** ₮, fixed-amount coupon. */
+  coupon_value: number;
+  min_subtotal: number;
+  coupon_valid_days: number;
+  coupons_per_user: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** One customer's grant from a campaign — once per account and per phone. */
+export interface CampaignGrantRow {
+  id: string;
+  campaign_id: string;
+  user_id: string | null;
+  phone: string | null;
+  /** When the customer saw the welcome popup; null = not yet. */
+  notified_at: string | null;
+  created_at: string;
+}
+
 type Table<Row, Optional extends keyof Row> = {
   Row: Row;
   Insert: WithDefaults<Row, Optional>;
@@ -553,6 +587,21 @@ export interface Database {
       order_status_history: Table<OrderStatusHistoryRow, "id" | "created_at">;
       spin_wheel_prizes: Table<SpinWheelPrizeRow, "id" | "created_at">;
       spin_wheel_spins: Table<SpinWheelSpinRow, "id" | "created_at">;
+      campaigns: Table<
+        CampaignRow,
+        | "id"
+        | "description"
+        | "is_active"
+        | "min_subtotal"
+        | "coupons_per_user"
+        | "created_by"
+        | "created_at"
+        | "updated_at"
+      >;
+      campaign_grants: Table<
+        CampaignGrantRow,
+        "id" | "phone" | "notified_at" | "created_at"
+      >;
     };
     Views: Record<string, never>;
     Functions: {
@@ -573,6 +622,11 @@ export interface Database {
       grant_reward_coupon: { Args: Record<string, unknown>; Returns: string };
       spin_wheel: { Args: Record<string, unknown>; Returns: unknown };
       spin_wheel_state: { Args: Record<string, unknown>; Returns: unknown };
+      // { campaignId, count, value } | null — 0135.
+      grant_signup_coupons: {
+        Args: { p_user: string; p_phone?: string | null };
+        Returns: unknown;
+      };
       launch_product: {
         Args: { p_id: string };
         Returns: "launched" | "already_active" | "not_coming_soon" | "not_found";
