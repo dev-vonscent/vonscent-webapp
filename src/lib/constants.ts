@@ -677,6 +677,38 @@ export const CONTENT_PAGES_HIDDEN: boolean = true;
  */
 export const LUCKY_WHEEL_HIDDEN: boolean = false;
 
+export interface FeatureFlagMeta {
+  /** Админы «Feature flag» хуудсанд харагдах нэр. */
+  label: string;
+  /** Асаахад юу нээгдэх вэ — UI, API, trigger/cron. */
+  description: string;
+}
+
+/**
+ * Feature flag-ийн жагсаалт (0133, CLAUDE.md «Шинэ feature → prod»).
+ *
+ * Шинэ feature бүр энд түлхүүрээ нэмж, өөрийн migration-д
+ * `insert into feature_flags (key) values ('<key>') on conflict do nothing;`
+ * хийнэ. Утга нь САНД (dev/prod тус тусдаа) — энд зөвхөн нэр. Feature нээгдэж
+ * тогтворжсоны дараа тугийг кодоос ба сангаас хамт устгана.
+ *
+ * Жишээ:
+ *   tier_list: {
+ *     label: "Tier list",
+ *     description: "Хэрэглэгчийн зэрэглэл: /account цэс, API, оноо олгох trigger.",
+ *   },
+ */
+export const FEATURE_FLAGS = {} as const satisfies Record<
+  string,
+  FeatureFlagMeta
+>;
+
+export type FeatureFlag = keyof typeof FEATURE_FLAGS;
+
+/** `FEATURE_FLAGS`-ийг түлхүүрээр унших — жагсаалт хоосон үед ч төрөлтэй. */
+export const FEATURE_FLAG_META: Readonly<Record<FeatureFlag, FeatureFlagMeta>> =
+  FEATURE_FLAGS;
+
 /**
  * «Миний купон» цэсний «Шинэ» тэмдэг (0104) энэ өдрөөс хойш хэнд ч гарахгүй.
  * Өмнө нь ч хэрэглэгч хуудсыг нэг нээмэгц алга болно (`useNewBadge`).
