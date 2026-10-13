@@ -55,6 +55,11 @@ export interface SeriesPoint {
  * Every chart ships the same numbers as a real table for screen readers
  * (WCAG 1.1.1). It is visually hidden but fully in the accessibility tree —
  * `hidden` or `display:none` would defeat the purpose.
+ *
+ * `sr-only` нь хүснэгт дээр БИШ, гаднах div дээр: `<table>` нь `width:1px` ба
+ * `overflow:hidden`-ийг үл тоож агуулгынхаа өргөнөөр тэлдэг, `clip-path`
+ * нь зөвхөн нүднээс нуудаг тул үл үзэгдэх хүснэгт утсан дээр хуудсыг
+ * дэлгэцээс өргөн болгож, тайланг бүхэлд нь жижигрүүлж харуулдаг байв.
  */
 function ChartTable({
   caption,
@@ -66,33 +71,35 @@ function ChartTable({
   rows: (string | number)[][];
 }) {
   return (
-    <table className="sr-only">
-      <caption>{caption}</caption>
-      <thead>
-        <tr>
-          {columns.map((c) => (
-            <th key={c} scope="col">
-              {c}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r, i) => (
-          <tr key={i}>
-            {r.map((cell, j) =>
-              j === 0 ? (
-                <th key={j} scope="row">
-                  {cell}
-                </th>
-              ) : (
-                <td key={j}>{cell}</td>
-              ),
-            )}
+    <div className="sr-only">
+      <table>
+        <caption>{caption}</caption>
+        <thead>
+          <tr>
+            {columns.map((c) => (
+              <th key={c} scope="col">
+                {c}
+              </th>
+            ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              {r.map((cell, j) =>
+                j === 0 ? (
+                  <th key={j} scope="row">
+                    {cell}
+                  </th>
+                ) : (
+                  <td key={j}>{cell}</td>
+                ),
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

@@ -120,8 +120,11 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
       },
     ],
   },
+  // Гарчиггүй байхад «Сайт» хаагдсан үед эдгээр нь түүний доор үлдэж,
+  // «Сайт = Тохиргоо + Feature flag» гэж ойлгогдож байсан — Контент ба
+  // Нүүрийн хэсэг харагдахаа больдог байв. Тиймээс өөрийн гарчигтай.
   {
-    title: null,
+    title: "Систем",
     links: [
       { href: "/admin/settings", label: "Тохиргоо", icon: Settings },
       { href: "/admin/feature-flags", label: "Feature flag", icon: Flag },
@@ -150,7 +153,9 @@ const QUICK: NavLink[] = [
   },
 ];
 
-const OPEN_KEY = "admin-nav-open";
+// v2: «Систем» бүлэг нэмэгдэхэд хуучин хадгалсан төлөвийг (Маркетинг/Сайт
+// нээлттэй г.м.) хаяж, бүгд өгөгдмөл төлөвөөсөө дахин эхэлнэ.
+const OPEN_KEY = "admin-nav-open-v2";
 // Default keeps Захиалга / Бараа / Үлдэгдэл visible on first paint.
 const DEFAULT_OPEN = ["Борлуулалт", "Каталог"];
 
