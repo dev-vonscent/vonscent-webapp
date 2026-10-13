@@ -185,7 +185,7 @@ export default async function AdminReportsPage({
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardContent className="p-5">
             <h2 className="mb-4 font-medium">Захиалгын төлөв</h2>
@@ -209,7 +209,10 @@ export default async function AdminReportsPage({
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* `grid-cols-1` (= minmax(0,1fr)) заавал: багана заагаагүй бол мөр нь
+          агуулгынхаа (урт нэр, график) өргөнөөр сунаж утсан дээр хуудсыг
+          дэлгэцээс гаргана — самбарын «Үлдэгдэл багассан»-тай ижил алдаа. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardContent className="p-5">
             <h2 className="mb-4 font-medium">
@@ -225,13 +228,13 @@ export default async function AdminReportsPage({
                 {report.topProducts.map((p) => (
                   <li
                     key={`${p.brand}-${p.name}`}
-                    className="flex justify-between"
+                    className="flex justify-between gap-3"
                   >
-                    <span>
+                    <span className="min-w-0">
                       {p.brand} — {p.name}{" "}
                       <span className="text-muted-foreground">×{p.qty}</span>
                     </span>
-                    <span className="font-medium">
+                    <span className="shrink-0 font-medium tabular-nums">
                       {formatPrice(p.revenue)}
                     </span>
                   </li>
@@ -254,9 +257,9 @@ export default async function AdminReportsPage({
             ) : (
               <ul className="space-y-2 text-sm">
                 {report.topBrands.map((b) => (
-                  <li key={b.brand} className="flex justify-between">
-                    <span>{b.brand}</span>
-                    <span className="font-medium">
+                  <li key={b.brand} className="flex justify-between gap-3">
+                    <span className="min-w-0">{b.brand}</span>
+                    <span className="shrink-0 font-medium tabular-nums">
                       {formatPrice(b.revenue)}
                     </span>
                   </li>

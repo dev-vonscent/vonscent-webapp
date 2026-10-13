@@ -106,10 +106,71 @@ export function CouponTable({
         ownerName={viewing?.user_id ? ownerName(viewing.user_id) : null}
         onOpenChange={(open) => !open && setViewing(null)}
       />
+      {/* Утсан дээр 7 баганат хүснэгт хажуу тийш гүйдэг байсан — бусад
+          админ жагсаалтын (Хэрэглэгч, Захиалга) адил карт болгоно. Мөр бүрт
+          хоёр товч л байгаа тул CSS-ээр нууж болно (DataTable-ийн
+          RestockControl шиг хүнд зүйл давхар mount болохгүй). */}
+      <ul
+        role="list"
+        aria-label="Купоны жагсаалт"
+        className="space-y-2 md:hidden"
+      >
+        {rows.map((c) => {
+          const owner = c.user_id ? ownerById.get(c.user_id) : undefined;
+          const state = couponStatus(c);
+          const usage = couponUsageLabel(c);
+          return (
+            <li key={c.id}>
+              <Card className="space-y-2 p-4 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <CodeButton coupon={c} onView={setViewing} />
+                  <StatusToggle coupon={c} state={state} onToggle={toggle} />
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span className="font-medium">{discountLabel(c)}</span>
+                  {c.min_subtotal > 0 && (
+                    <span className="text-muted-foreground">
+                      {formatPrice(c.min_subtotal)}-аас
+                    </span>
+                  )}
+                </div>
+                {hasOwner && c.user_id && (
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    <span>{owner?.full_name || "Нэргүй"}</span>
+                    {owner?.phone && (
+                      <span className="text-muted-foreground tabular-nums">
+                        {owner.phone}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-muted-foreground flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-xs">
+                    <span className="tabular-nums">
+                      {usage.used} · {usage.limit}
+                    </span>
+                    {c.ends_at && <span>{formatDate(c.ends_at)} хүртэл</span>}
+                    {tab === "auto" && c.source_order_id && (
+                      <Link
+                        href={`/admin/orders/${c.source_order_id}`}
+                        className="text-primary underline-offset-2 hover:underline"
+                      >
+                        Захиалга харах
+                      </Link>
+                    )}
+                  </div>
+                  <DeleteButton coupon={c} onRemove={remove} />
+                </div>
+              </Card>
+            </li>
+          );
+        })}
+      </ul>
+
       {/* `relative`: the header's `sr-only` label is absolutely positioned.
           Without a positioned ancestor it escaped this scroller to x≈624 and
           widened the whole page, so a phone could pinch-zoom out to 0.7. */}
-      <Card className="relative overflow-x-auto">
+      <Card className="relative hidden overflow-x-auto md:block">
         <table className="w-full min-w-160 text-sm">
           <thead className="bg-muted/50 text-muted-foreground text-left text-xs">
             <tr>
@@ -132,23 +193,13 @@ export function CouponTable({
               const owner = c.user_id ? ownerById.get(c.user_id) : undefined;
               const state = couponStatus(c);
               const usage = couponUsageLabel(c);
-              const status = STATUS_BADGE[state];
               return (
                 <tr key={c.id} className="even:bg-muted/40">
-                  <td className="px-4 py-3 font-mono font-semibold">
-                    <button
-                      type="button"
-                      onClick={() => setViewing(c)}
-                      className="underline-offset-2 hover:underline"
-                      aria-label={`${c.code} — хэн ашигласныг харах`}
-                    >
-                      {c.code}
-                    </button>
+                  <td className="px-4 py-3">
+                    <CodeButton coupon={c} onView={setViewing} />
                   </td>
                   <td className="px-4 py-3">
-                    {c.type === "percent"
-                      ? `${c.value}%`
-                      : formatPrice(c.value)}
+                    {discountLabel(c)}
                     {c.min_subtotal > 0 && (
                       <span className="text-muted-foreground">
                         {" "}
@@ -196,31 +247,10 @@ export function CouponTable({
                     {c.ends_at ? formatDate(c.ends_at) : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={() => toggle(c)}
-                      title={
-                        c.is_active ? "Идэвхгүй болгох" : "Дахин идэвхжүүлэх"
-                      }
-                    >
-                      <Badge variant={status.variant}>
-                        {/* Admin-switched-off reads as its own word here:
-                            it is the one "expired" this button can undo. */}
-                        {state === "expired" && !c.is_active
-                          ? "Идэвхгүй"
-                          : status.label}
-                      </Badge>
-                    </button>
+                    <StatusToggle coupon={c} state={state} onToggle={toggle} />
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => remove(c.id)}
-                      className="text-muted-foreground hover:text-destructive"
-                      aria-label={`${c.code} купоныг устгах`}
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
+                    <DeleteButton coupon={c} onRemove={remove} />
                   </td>
                 </tr>
               );
@@ -229,6 +259,75 @@ export function CouponTable({
         </table>
       </Card>
     </>
+  );
+}
+
+function discountLabel(c: CouponRow): string {
+  return c.type === "percent" ? `${c.value}%` : formatPrice(c.value);
+}
+
+/** Код — дарахад хэн ашигласны түүх хажуугийн sheet-д нээгдэнэ. */
+function CodeButton({
+  coupon: c,
+  onView,
+}: {
+  coupon: CouponRow;
+  onView: (c: CouponRow) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onView(c)}
+      className="min-w-0 truncate font-mono font-semibold underline-offset-2 hover:underline"
+      aria-label={`${c.code} — хэн ашигласныг харах`}
+    >
+      {c.code}
+    </button>
+  );
+}
+
+function StatusToggle({
+  coupon: c,
+  state,
+  onToggle,
+}: {
+  coupon: CouponRow;
+  state: keyof typeof STATUS_BADGE;
+  onToggle: (c: CouponRow) => void;
+}) {
+  const status = STATUS_BADGE[state];
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(c)}
+      title={c.is_active ? "Идэвхгүй болгох" : "Дахин идэвхжүүлэх"}
+      className="shrink-0"
+    >
+      <Badge variant={status.variant}>
+        {/* Admin-switched-off reads as its own word here:
+            it is the one "expired" this button can undo. */}
+        {state === "expired" && !c.is_active ? "Идэвхгүй" : status.label}
+      </Badge>
+    </button>
+  );
+}
+
+function DeleteButton({
+  coupon: c,
+  onRemove,
+}: {
+  coupon: CouponRow;
+  onRemove: (id: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onRemove(c.id)}
+      className="text-muted-foreground hover:text-destructive shrink-0"
+      aria-label={`${c.code} купоныг устгах`}
+    >
+      <Trash2 className="size-4" />
+    </button>
   );
 }
 
