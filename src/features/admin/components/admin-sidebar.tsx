@@ -156,13 +156,10 @@ const QUICK: NavLink[] = [
   },
 ];
 
-// v2: «Систем» бүлэг нэмэгдэхэд хуучин хадгалсан төлөвийг (Маркетинг/Сайт
-// нээлттэй г.м.) хаяж, бүгд өгөгдмөл төлөвөөсөө дахин эхэлнэ.
-const OPEN_KEY = "admin-nav-open-v2";
 /** Ширээний багана icon-only болж хураагдсан эсэх (хэрэглэгч бүрийн тохиргоо). */
 const COLLAPSED_KEY = "admin-nav-collapsed";
-// Default keeps Захиалга / Бараа / Үлдэгдэл visible on first paint.
-const DEFAULT_OPEN = ["Борлуулалт", "Каталог"];
+// Идэвхтэй хуудас ямар ч бүлэгт хамаарахгүй үед (самбар) нээгдэх бүлэг.
+const DEFAULT_OPEN = "Борлуулалт";
 
 /**
  * The counts, fetched by the sidebar itself rather than handed down by the
@@ -218,33 +215,15 @@ export function AdminSidebar() {
   const pathname = usePathname();
   const badges = useSidebarBadges();
 
-  // Which titled groups are expanded (5b). localStorage is read after mount so
-  // the SSR markup always matches the first client render.
-  const [open, setOpen] = React.useState<string[]>(DEFAULT_OPEN);
-  React.useEffect(() => {
-    let stored: string[] = DEFAULT_OPEN;
-    try {
-      const raw = localStorage.getItem(OPEN_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as unknown;
-        if (Array.isArray(parsed))
-          stored = parsed.filter((v): v is string => typeof v === "string");
-      }
-    } catch {
-      // ignore — fall back to the defaults
-    }
-    // The group of the current page always starts expanded.
-    const activeGroup = GROUPS.find(
-      (g) => g.title && g.links.some((l) => isActive(pathname, l.href)),
-    )?.title;
-    setOpen(
-      activeGroup && !stored.includes(activeGroup)
-        ? [...stored, activeGroup]
-        : stored,
-    );
-    // Only on mount — later navigation shouldn't fight the user's toggles.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Нэг удаад ганц бүлэг нээлттэй (accordion): нэгийг нээхэд бусад нь
+  // хаагдана. Нээлттэй бүлэг нь одоогийн хуудасных — тиймээс хадгалах
+  // шаардлагагүй, сервер ба клиент ижил утгаар эхэлнэ.
+  const [open, setOpen] = React.useState<string | null>(
+    () =>
+      GROUPS.find(
+        (g) => g.title && g.links.some((l) => isActive(pathname, l.href)),
+      )?.title ?? DEFAULT_OPEN,
+  );
 
   // Ширээний багана хураах — хүснэгт ихтэй хуудсанд 240px буцааж өгнө.
   // Accordion-ий адил mount-ын дараа уншина (SSR зөрөхгүй).
@@ -268,17 +247,7 @@ export function AdminSidebar() {
   }
 
   function toggle(title: string) {
-    setOpen((prev) => {
-      const next = prev.includes(title)
-        ? prev.filter((t) => t !== title)
-        : [...prev, title];
-      try {
-        localStorage.setItem(OPEN_KEY, JSON.stringify(next));
-      } catch {
-        // storage unavailable — state still works for the session
-      }
-      return next;
-    });
+    setOpen((prev) => (prev === title ? null : title));
   }
 
   const renderLink = (l: NavLink, close = false, iconOnly = false) => {
@@ -339,18 +308,33 @@ export function AdminSidebar() {
           <button
             type="button"
             onClick={() => toggle(g.title!)}
-            aria-expanded={open.includes(g.title)}
+            aria-expanded={open === g.title}
             className="text-muted-foreground hover:text-foreground flex w-full items-center justify-between px-3 pt-4 pb-1 text-[11px] font-semibold tracking-[0.15em] uppercase transition-colors"
           >
             {g.title}
             <ChevronDown
               className={cn(
                 "size-3.5 transition-transform",
-                open.includes(g.title) && "rotate-180",
+                open === g.title && "rotate-180",
               )}
             />
           </button>
-          {open.includes(g.title) && g.links.map((l) => renderLink(l, close))}
+          {/* Өндрийг 0fr ↔ 1fr grid мөрөөр анимэйшн хийнэ (`height: auto`
+              руу transition ажилладаггүй). Хаалттай үед `inert` — нуусан
+              холбоосууд Tab-д болон дэлгэц уншигчид хүрэхгүй. */}
+          <div
+            inert={open !== g.title}
+            className={cn(
+              "grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none",
+              open === g.title
+                ? "grid-rows-[1fr] opacity-100"
+                : "grid-rows-[0fr] opacity-0",
+            )}
+          >
+            <div className="flex min-h-0 flex-col gap-1 overflow-hidden">
+              {g.links.map((l) => renderLink(l, close))}
+            </div>
+          </div>
         </div>
       ),
     );
@@ -378,9 +362,12 @@ export function AdminSidebar() {
   // 25 холбоос бүхий цэс хуудас гүйлгэсний дараа алга болдог байв. Цэсний
   // жагсаалт өөрөө тусдаа гүйнэ — лого ба доод холбоос хөдөлгөөнгүй үлдэнэ.
   return (
+    // Утсан дээр aside нь зөвхөн 56px-ийн дээд мөр — `sticky top-0` тул доош
+    // гүйлгэсэн ч цэсний товч гарт байна (өмнө нь дээш буцаж байж нээгддэг
+    // байв). `z-40` — хуудасны агуулгаас дээр, Sheet (z-50)-ээс доор.
     <aside
       className={cn(
-        "bg-card lg:sticky lg:top-0 lg:flex lg:h-svh lg:shrink-0 lg:flex-col print:hidden",
+        "bg-card sticky top-0 z-40 lg:flex lg:h-svh lg:shrink-0 lg:flex-col print:hidden",
         collapsed ? "lg:w-16" : "lg:w-60",
       )}
     >
@@ -396,7 +383,7 @@ export function AdminSidebar() {
               <Menu className="size-5" />
             </button>
           </SheetTrigger>
-          <SheetContent side="left" className="gap-0 overflow-y-auto p-4">
+          <SheetContent side="left" className="gap-0 p-4">
             <SheetHeader className="mb-3">
               <SheetTitle className="flex items-center gap-2">
                 <Logo />
@@ -406,60 +393,64 @@ export function AdminSidebar() {
               </SheetTitle>
             </SheetHeader>
 
-            {/* Quick tiles — the three screens an admin opens all day */}
-            <div className="mb-2 grid grid-cols-3 gap-2">
-              {QUICK.map((q) => {
-                const badgeCount = q.badge ? badges[q.badge] : 0;
-                return (
-                  <SheetClose asChild key={q.href}>
-                    <Link
-                      href={q.href}
-                      aria-current={
-                        isActive(pathname, q.href) ? "page" : undefined
-                      }
-                      className={cn(
-                        "relative flex flex-col items-center gap-1.5 rounded-lg py-3 text-xs font-medium transition-colors",
-                        isActive(pathname, q.href)
-                          ? "bg-secondary"
-                          : "bg-secondary/50 hover:bg-accent",
-                      )}
-                    >
-                      <q.icon className="size-5" />
-                      {q.label}
-                      {badgeCount > 0 && (
-                        <span className="bg-foreground text-background absolute top-1.5 right-1.5 rounded-full px-1.5 text-[11px]/4 font-semibold">
-                          {badgeCount}
-                          {q.badge && (
-                            <span className="sr-only">
-                              {" "}
-                              {BADGE_LABEL[q.badge]}
-                            </span>
-                          )}
-                        </span>
-                      )}
-                    </Link>
-                  </SheetClose>
-                );
-              })}
+            {/* Зөвхөн энэ хэсэг гүйнэ — «Загвар» ба «Дэлгүүр рүү буцах» нь
+                ширээний баганын адил доор үргэлж харагдана. */}
+            <div className="-mx-4 min-h-0 flex-1 overflow-y-auto overscroll-contain px-4">
+              {/* Quick tiles — the three screens an admin opens all day */}
+              <div className="mb-2 grid grid-cols-3 gap-2">
+                {QUICK.map((q) => {
+                  const badgeCount = q.badge ? badges[q.badge] : 0;
+                  return (
+                    <SheetClose asChild key={q.href}>
+                      <Link
+                        href={q.href}
+                        aria-current={
+                          isActive(pathname, q.href) ? "page" : undefined
+                        }
+                        className={cn(
+                          "relative flex flex-col items-center justify-center gap-1.5 rounded-lg px-1 py-3 text-center text-xs/tight font-medium transition-colors",
+                          isActive(pathname, q.href)
+                            ? "bg-secondary"
+                            : "bg-secondary/50 hover:bg-accent",
+                        )}
+                      >
+                        <q.icon className="size-5" />
+                        {q.label}
+                        {badgeCount > 0 && (
+                          <span className="bg-foreground text-background absolute top-1.5 right-1.5 rounded-full px-1.5 text-[11px]/4 font-semibold">
+                            {badgeCount}
+                            {q.badge && (
+                              <span className="sr-only">
+                                {" "}
+                                {BADGE_LABEL[q.badge]}
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </Link>
+                    </SheetClose>
+                  );
+                })}
+              </div>
+
+              <nav aria-label="Админ цэс" className="flex flex-col gap-1">
+                {renderGroups(true)}
+              </nav>
             </div>
 
-            <nav aria-label="Админ цэс" className="flex flex-col gap-1">
-              {renderGroups(true)}
-            </nav>
-
-            <div className="mt-4">
+            <div className="border-border mt-2 shrink-0 border-t pt-2">
               <ThemeRow />
-            </div>
 
-            <SheetClose asChild>
-              <Link
-                href="/"
-                className="text-muted-foreground hover:bg-accent hover:text-foreground mt-1 flex items-center gap-3 rounded-md px-3 py-2.5 text-sm"
-              >
-                <Store className="size-4" />
-                Дэлгүүр рүү буцах
-              </Link>
-            </SheetClose>
+              <SheetClose asChild>
+                <Link
+                  href="/"
+                  className="text-muted-foreground hover:bg-accent hover:text-foreground flex items-center gap-3 rounded-md px-3 py-2.5 text-sm"
+                >
+                  <Store className="size-4" />
+                  Дэлгүүр рүү буцах
+                </Link>
+              </SheetClose>
+            </div>
           </SheetContent>
         </Sheet>
         {/* No "admin" tag here: on a phone the whole chrome is the admin panel
@@ -517,7 +508,7 @@ export function AdminSidebar() {
       </nav>
       <div
         className={cn(
-          "mt-auto hidden space-y-1 lg:block",
+          "border-border mt-auto hidden shrink-0 space-y-1 border-t lg:block",
           collapsed ? "p-2" : "p-3",
         )}
       >
