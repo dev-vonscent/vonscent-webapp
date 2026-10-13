@@ -84,7 +84,9 @@ export default async function AdminPromotionsPage({
 
       <nav
         aria-label="Купоны төрөл"
-        className="bg-muted flex w-full gap-1 overflow-x-auto rounded-lg p-1 sm:w-fit"
+        // Утсан дээр 4 таб гүйлгээгүйгээр багтана: тэнцүү 4 багана, тоо нь
+        // шошгын доор. `sm`-ээс дээш өмнөх шигээ нэг мөрөнд.
+        className="bg-muted grid w-full grid-cols-4 gap-1 rounded-lg p-1 sm:flex sm:w-fit"
       >
         {COUPON_TABS.map((t) => {
           const active = t === tab;
@@ -94,7 +96,7 @@ export default async function AdminPromotionsPage({
               href={tabHref(t)}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
+                "flex min-w-0 flex-col items-center gap-0.5 rounded-md px-1 py-1.5 text-sm font-medium whitespace-nowrap transition-colors sm:shrink-0 sm:flex-row sm:gap-2 sm:px-3 sm:py-2",
                 active
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
