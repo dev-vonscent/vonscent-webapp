@@ -8,11 +8,11 @@ pepper солилт) git түүхэд (`git log -- docs/RELEASE_CHECKLIST.md`).
 
 ## 0. dev → main release бүрийн өмнө ⚠
 
-- [ ] **Азын хүрд:** `LUCKY_WHEEL_HIDDEN` (`src/lib/constants.ts`) dev дээр
-      `false` (клиентийн туршилт). Клиент батлаагүй бол release-ийн өмнө
-      `true` болго — эс тэгвэл prod-д хүрд нээгдэнэ. Prod-ын `settings.spin`
-      (`enabled`, `orderSpinStep`) нь 0130-аар унтраалттай — нээх өдөр
-      админаас асаана.
+- [ ] **Азын хүрд нээх өдөр (prod админ):** Feature flag → «Азын хүрд» нээх,
+      Азын хүрд → «Идэвхтэй» асааж, захиалгын алхмыг (100,000) буцааж тавих
+      (0130-аар prod-д `enabled=false`, `orderSpinStep=0`). Туг хаалттай
+      үед захиалга эрх үүсгэхгүй (0134) — release-ийн өмнө код солих зүйл
+      байхгүй.
 - [ ] **Migration эхэлж:** main руу merge хийхээс өмнө шинэ migration-уудыг
       `pnpm db:migrate-prod`-оор ажиллуул (expand only — хуучин кодтой
       ажилладаг). Шинэ feature-ийн туг prod-д анхдагчаар хаалттай; нээх өдөр
