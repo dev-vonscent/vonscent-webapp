@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, Boxes, Heart, Home, LayoutGrid } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import { Logo } from "./logo";
 import { MobileMenu } from "./mobile-menu";
 import { CartSheet } from "@/features/cart/components/cart-sheet";
@@ -66,6 +67,19 @@ export function SiteHeader({
   // хамгийн өндөр газар тул тэнд чат толгойд гарна.
   const headerChat =
     pathname.startsWith("/checkout") || pathname.startsWith("/pay");
+
+  // Хуудас удаан ачаалагдахад chip pathname-ийг хүлээвэл дарсны дараа юу ч
+  // болохгүй мэт санагдана. Тиймээс дармагц шинэ цэс рүү гулсаж, «очиж
+  // байна»-г заана. `from` нь pathname солигдмогц (эсвэл өөр хуудаснаас)
+  // хүчингүй болох тул тусад нь цэвэрлэх шаардлагагүй.
+  const [pendingNav, setPendingNav] = React.useState<{
+    href: string;
+    from: string;
+  } | null>(null);
+  const navPath =
+    pendingNav && pendingNav.from === pathname ? pendingNav.href : pathname;
+  // Header нь (shop)/template-ийн MotionConfig-оос гадна — өөрөө шалгана.
+  const reduceMotion = useReducedMotion();
 
   // Hide on scroll down, reveal on scroll up.
   const [hidden, setHidden] = React.useState(false);
@@ -184,22 +198,48 @@ export function SiteHeader({
           {/* Center: nav with text + cart (mirrors the bottom nav) */}
           <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex">
             {PILL_NAV.map((item) => {
-              const active =
-                item.href === "/"
-                  ? pathname === "/"
-                  : pathname.startsWith(item.href);
+              const matches = (path: string) =>
+                item.href === "/" ? path === "/" : path.startsWith(item.href);
+              const active = matches(navPath);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  aria-current={active ? "page" : undefined}
+                  aria-current={matches(pathname) ? "page" : undefined}
+                  onClick={(e) => {
+                    // Шинэ таб/цонх (⌘/Ctrl/Shift/дунд товч) — энэ хуудас хэвээр.
+                    if (
+                      e.metaKey ||
+                      e.ctrlKey ||
+                      e.shiftKey ||
+                      e.altKey ||
+                      e.button !== 0
+                    )
+                      return;
+                    setPendingNav({ href: item.href, from: pathname });
+                  }}
                   className={cn(
-                    "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                    "relative isolate flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
                     active
-                      ? "bg-secondary text-foreground"
-                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+                      ? "text-foreground font-semibold"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
+                  {/* Капсул өөрөө bg-secondary тул идэвхтэйг нэг давхарга
+                      дээш (bg-background + сүүдэр) гаргаж бүх загварт
+                      ялгаруулна; layoutId-гаар цэс хооронд гулсана. */}
+                  {active && (
+                    <motion.span
+                      layoutId="header-nav-active"
+                      aria-hidden
+                      className="bg-background absolute inset-0 -z-10 rounded-full shadow-xs"
+                      transition={
+                        reduceMotion
+                          ? { duration: 0 }
+                          : { type: "spring", stiffness: 500, damping: 40 }
+                      }
+                    />
+                  )}
                   <item.icon className="size-4" />
                   {item.label}
                 </Link>
@@ -207,7 +247,7 @@ export function SiteHeader({
             })}
             <CartSheet
               label="Сагс"
-              triggerClassName="h-auto rounded-full px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+              triggerClassName="h-auto rounded-full px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
             />
           </nav>
 
