@@ -14,14 +14,19 @@ import {
   Flag,
   FlaskConical,
   Gift,
+  Globe,
   Layers,
   LayoutDashboard,
   LayoutList,
+  Megaphone,
   Menu,
+  Package,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  Receipt,
   ShoppingCart,
+  SlidersHorizontal,
   Store,
   Tag,
   Tags,
@@ -37,6 +42,12 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/shared/logo";
 import { ThemeSwitcher } from "@/components/shared/theme-switcher";
@@ -60,7 +71,14 @@ const BADGE_LABEL: Record<keyof SidebarBadges, string> = {
   outOfStock: "дууссан бараа",
 };
 
-const GROUPS: { title: string | null; links: NavLink[] }[] = [
+interface NavGroup {
+  title: string | null;
+  /** Хураасан баганад бүлгийг төлөөлөх icon (гарчигтай бүлэгт). */
+  icon?: React.ComponentType<{ className?: string }>;
+  links: NavLink[];
+}
+
+const GROUPS: NavGroup[] = [
   {
     title: null,
     links: [
@@ -69,6 +87,7 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
   },
   {
     title: "Борлуулалт",
+    icon: Receipt,
     links: [
       {
         href: "/admin/orders",
@@ -82,6 +101,7 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
   },
   {
     title: "Каталог",
+    icon: Package,
     links: [
       // Үлдэгдэл нь тусдаа хуудас байхаа больсон (0047 / products-table) —
       // мл-ийн үйлдэл барааны мөр дээр хийгддэг тул «дууссан» тоо ч энд гарна.
@@ -105,6 +125,7 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
   },
   {
     title: "Маркетинг",
+    icon: Megaphone,
     links: [
       { href: "/admin/promotions", label: "Урамшуулал", icon: TicketPercent },
       { href: "/admin/loyalty", label: "V point", icon: Award },
@@ -114,6 +135,7 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
   },
   {
     title: "Сайт",
+    icon: Globe,
     links: [
       { href: "/admin/content", label: "Контент", icon: FileText },
       {
@@ -128,6 +150,7 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
   // Нүүрийн хэсэг харагдахаа больдог байв. Тиймээс өөрийн гарчигтай.
   {
     title: "Систем",
+    icon: SlidersHorizontal,
     links: [
       { href: "/admin/settings", label: "Тохиргоо", icon: Settings },
       { href: "/admin/feature-flags", label: "Feature flag", icon: Flag },
@@ -202,6 +225,117 @@ function ThemeRow() {
       </span>
       <ThemeSwitcher />
     </div>
+  );
+}
+
+/** Хулгана гарсны дараа flyout хаагдах хүртэлх хугацаа — icon-оос цонх руу
+ *  шилжих зуур хаагдчихгүйн тулд. */
+const RAIL_CLOSE_DELAY = 150;
+
+function RailGroup({
+  title,
+  icon: Icon,
+  links,
+  pathname,
+  badges,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  links: NavLink[];
+  pathname: string;
+  badges: SidebarBadges;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelClose = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimer.current = setTimeout(() => setOpen(false), RAIL_CLOSE_DELAY);
+  };
+  React.useEffect(() => cancelClose, []);
+
+  const active = links.some((l) => isActive(pathname, l.href));
+  const badgeTotal = links.reduce(
+    (sum, l) => sum + (l.badge ? badges[l.badge] : 0),
+    0,
+  );
+  // Хулганаар л hover-оор нээнэ; мэдрэгч дэлгэц, гар — дарахад.
+  const isMouse = (e: React.PointerEvent) => e.pointerType === "mouse";
+
+  return (
+    // `modal={false}` — hover-оор нээгдсэн цонх хуудасны бусад хэсгийг
+    // түгжихгүй, хулгана гармагц хаагдана.
+    <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
+      <DropdownMenuTrigger
+        aria-label={title}
+        title={title}
+        onPointerEnter={(e) => {
+          if (!isMouse(e)) return;
+          cancelClose();
+          setOpen(true);
+        }}
+        onPointerLeave={(e) => isMouse(e) && scheduleClose()}
+        onPointerDown={(e) => {
+          // Hover-оор аль хэдийн нээгдсэн бол дарах нь хаах ёсгүй (Radix
+          // trigger toggle хийдэг) — `preventDefault` түүний handler-ийг алгасна.
+          if (isMouse(e) && open) e.preventDefault();
+        }}
+        className={cn(
+          "relative flex min-h-10 items-center justify-center rounded-md transition-colors outline-none",
+          "focus-visible:ring-ring focus-visible:ring-2",
+          active || open
+            ? "bg-secondary text-foreground"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground",
+        )}
+      >
+        <Icon className="size-4" />
+        {badgeTotal > 0 && (
+          <span className="bg-foreground text-background absolute top-0.5 right-1 min-w-4 rounded-full px-1 text-center text-[10px]/4 font-semibold">
+            {badgeTotal}
+          </span>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        side="right"
+        align="start"
+        sideOffset={8}
+        className="min-w-52"
+        onPointerEnter={cancelClose}
+        onPointerLeave={(e) => isMouse(e) && scheduleClose()}
+        // Hover-оор нээхэд фокус цонх руу үсрэхгүй (хуудсан дээрх фокус
+        // хэвээр); гарнаас нээхэд Radix өөрөө эхний мөрт фокуслана.
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
+        <p className="text-muted-foreground px-3 pt-1.5 pb-1 text-[11px] font-semibold tracking-[0.15em] uppercase">
+          {title}
+        </p>
+        {links.map((l) => {
+          const linkActive = isActive(pathname, l.href);
+          const count = l.badge ? badges[l.badge] : 0;
+          return (
+            <DropdownMenuItem key={l.href} asChild>
+              <Link
+                href={l.href}
+                aria-current={linkActive ? "page" : undefined}
+                className={cn(linkActive && "bg-secondary font-medium")}
+              >
+                <l.icon className="size-4" />
+                {l.label}
+                {count > 0 && l.badge && (
+                  <span className="bg-foreground text-background ml-auto rounded-full px-1.5 text-[11px]/4 font-semibold">
+                    {count}
+                    <span className="sr-only"> {BADGE_LABEL[l.badge]}</span>
+                  </span>
+                )}
+              </Link>
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -339,20 +473,26 @@ export function AdminSidebar() {
       ),
     );
 
-  // Хураасан багана: accordion-гүй, бүх холбоос icon-оор; бүлгүүдийг зураасаар
-  // тусгаарлана (гарчиг 64px-д багтахгүй).
+  // Хураасан багана: 21 icon намхан дэлгэцэнд багтахгүй гүйлгэх зурвас үүсгэж
+  // байсан тул бүлэг бүр ганц icon — дээр нь очих/дарахад холбоосууд нь
+  // хажууд гарна (Linear, VS Code-ийн адил). Гарчиггүй бүлэг (самбар) шууд.
   const renderRail = () =>
-    GROUPS.map((g, i) => (
-      <div
-        key={g.title ?? i}
-        className={cn(
-          "flex flex-col gap-1",
-          i > 0 && "border-border mt-1 border-t pt-2",
-        )}
-      >
-        {g.links.map((l) => renderLink(l, false, true))}
-      </div>
-    ));
+    GROUPS.map((g, i) =>
+      g.title === null || !g.icon ? (
+        <div key={g.title ?? i} className="flex flex-col gap-1">
+          {g.links.map((l) => renderLink(l, false, true))}
+        </div>
+      ) : (
+        <RailGroup
+          key={g.title}
+          title={g.title}
+          icon={g.icon}
+          links={g.links}
+          pathname={pathname}
+          badges={badges}
+        />
+      ),
+    );
 
   const currentLabel =
     GROUPS.flatMap((g) => g.links).find((l) => isActive(pathname, l.href))
@@ -501,7 +641,9 @@ export function AdminSidebar() {
         // үсэрч шилжихгүй.
         className={cn(
           "hidden flex-col gap-1 overflow-y-auto overscroll-contain lg:flex lg:min-h-0 lg:flex-1",
-          collapsed ? "px-2" : "px-3",
+          // Бүлгийн icon-оор ердөө 6 мөр тул бараг гүйхгүй; гүйсэн ч 64px-ийн
+          // баганаас зурвас өргөн авч icon-уудыг төвөөс нь зөрүүлэхгүй.
+          collapsed ? "no-scrollbar px-2" : "px-3",
         )}
       >
         {collapsed ? renderRail() : renderGroups()}
