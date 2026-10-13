@@ -18,6 +18,8 @@ import {
   LayoutDashboard,
   LayoutList,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings,
   ShoppingCart,
   Store,
@@ -37,6 +39,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/shared/logo";
+import { ThemeSwitcher } from "@/components/shared/theme-switcher";
 import { useQuery } from "@tanstack/react-query";
 import { adminFetch } from "@/features/admin/lib/mutate";
 import type { SidebarBadges } from "@/features/admin/api";
@@ -156,6 +159,8 @@ const QUICK: NavLink[] = [
 // v2: «Систем» бүлэг нэмэгдэхэд хуучин хадгалсан төлөвийг (Маркетинг/Сайт
 // нээлттэй г.м.) хаяж, бүгд өгөгдмөл төлөвөөсөө дахин эхэлнэ.
 const OPEN_KEY = "admin-nav-open-v2";
+/** Ширээний багана icon-only болж хураагдсан эсэх (хэрэглэгч бүрийн тохиргоо). */
+const COLLAPSED_KEY = "admin-nav-collapsed";
 // Default keeps Захиалга / Бараа / Үлдэгдэл visible on first paint.
 const DEFAULT_OPEN = ["Борлуулалт", "Каталог"];
 
@@ -186,6 +191,21 @@ function useSidebarBadges(): SidebarBadges {
     refetchOnWindowFocus: true,
   });
   return data ?? NO_BADGES;
+}
+
+/**
+ * Загвар сонгогч — дэлгүүрийн цэстэй ижил `ThemeSwitcher`. next-themes нэг
+ * түлхүүрт хадгалдаг тул админд сонгосон загвар дэлгүүрт ч хэрэгжинэ.
+ */
+function ThemeRow() {
+  return (
+    <div className="flex h-11 items-center justify-between gap-2 pr-1 pl-3">
+      <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.15em] uppercase">
+        Загвар
+      </span>
+      <ThemeSwitcher />
+    </div>
+  );
 }
 
 function isActive(pathname: string, href: string): boolean {
@@ -226,6 +246,27 @@ export function AdminSidebar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Ширээний багана хураах — хүснэгт ихтэй хуудсанд 240px буцааж өгнө.
+  // Accordion-ий адил mount-ын дараа уншина (SSR зөрөхгүй).
+  const [collapsed, setCollapsed] = React.useState(false);
+  React.useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem(COLLAPSED_KEY) === "1");
+    } catch {
+      // ignore — expanded by default
+    }
+  }, []);
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      try {
+        localStorage.setItem(COLLAPSED_KEY, prev ? "0" : "1");
+      } catch {
+        // storage unavailable — state still works for the session
+      }
+      return !prev;
+    });
+  }
+
   function toggle(title: string) {
     setOpen((prev) => {
       const next = prev.includes(title)
@@ -240,7 +281,7 @@ export function AdminSidebar() {
     });
   }
 
-  const renderLink = (l: NavLink, close = false) => {
+  const renderLink = (l: NavLink, close = false, iconOnly = false) => {
     const active = isActive(pathname, l.href);
     const badgeCount = l.badge ? badges[l.badge] : 0;
     const link = (
@@ -250,20 +291,31 @@ export function AdminSidebar() {
         // Идэвхтэй хуудсыг зөвхөн ӨНГӨӨР хэлж байсан — дэлгэц уншигчид
         // огт мэдэгддэггүй байв (WCAG 1.4.1).
         aria-current={active ? "page" : undefined}
+        // Хураасан үед шошго харагдахгүй — hover-т гарах tooltip.
+        title={iconOnly ? l.label : undefined}
         className={cn(
           "flex min-h-11 shrink-0 items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors lg:min-h-0",
+          iconOnly && "relative justify-center px-0",
           active
             ? "bg-secondary text-foreground font-medium"
             : "text-muted-foreground hover:bg-accent hover:text-foreground",
         )}
       >
         <l.icon className="size-4" />
-        {l.label}
-        {badgeCount > 0 && l.badge && (
-          <span className="bg-foreground text-background ml-auto rounded-full px-1.5 text-[11px]/4 font-semibold">
+        {iconOnly ? <span className="sr-only">{l.label}</span> : l.label}
+        {iconOnly && badgeCount > 0 && l.badge ? (
+          <span className="bg-foreground text-background absolute top-0.5 right-1 min-w-4 rounded-full px-1 text-center text-[10px]/4 font-semibold">
             {badgeCount}
             <span className="sr-only"> {BADGE_LABEL[l.badge]}</span>
           </span>
+        ) : (
+          badgeCount > 0 &&
+          l.badge && (
+            <span className="bg-foreground text-background ml-auto rounded-full px-1.5 text-[11px]/4 font-semibold">
+              {badgeCount}
+              <span className="sr-only"> {BADGE_LABEL[l.badge]}</span>
+            </span>
+          )
         )}
       </Link>
     );
@@ -303,6 +355,21 @@ export function AdminSidebar() {
       ),
     );
 
+  // Хураасан багана: accordion-гүй, бүх холбоос icon-оор; бүлгүүдийг зураасаар
+  // тусгаарлана (гарчиг 64px-д багтахгүй).
+  const renderRail = () =>
+    GROUPS.map((g, i) => (
+      <div
+        key={g.title ?? i}
+        className={cn(
+          "flex flex-col gap-1",
+          i > 0 && "border-border mt-1 border-t pt-2",
+        )}
+      >
+        {g.links.map((l) => renderLink(l, false, true))}
+      </div>
+    ));
+
   const currentLabel =
     GROUPS.flatMap((g) => g.links).find((l) => isActive(pathname, l.href))
       ?.label ?? "Админ";
@@ -311,7 +378,12 @@ export function AdminSidebar() {
   // 25 холбоос бүхий цэс хуудас гүйлгэсний дараа алга болдог байв. Цэсний
   // жагсаалт өөрөө тусдаа гүйнэ — лого ба доод холбоос хөдөлгөөнгүй үлдэнэ.
   return (
-    <aside className="bg-card print:hidden lg:sticky lg:top-0 lg:flex lg:h-svh lg:w-60 lg:shrink-0 lg:flex-col">
+    <aside
+      className={cn(
+        "bg-card lg:sticky lg:top-0 lg:flex lg:h-svh lg:shrink-0 lg:flex-col print:hidden",
+        collapsed ? "lg:w-16" : "lg:w-60",
+      )}
+    >
       {/* ── Mobile: top bar + slide-in sheet (5a) ── */}
       <div className="flex h-14 items-center gap-2 px-3 lg:hidden">
         <Sheet>
@@ -342,7 +414,9 @@ export function AdminSidebar() {
                   <SheetClose asChild key={q.href}>
                     <Link
                       href={q.href}
-                      aria-current={isActive(pathname, q.href) ? "page" : undefined}
+                      aria-current={
+                        isActive(pathname, q.href) ? "page" : undefined
+                      }
                       className={cn(
                         "relative flex flex-col items-center gap-1.5 rounded-lg py-3 text-xs font-medium transition-colors",
                         isActive(pathname, q.href)
@@ -356,7 +430,10 @@ export function AdminSidebar() {
                         <span className="bg-foreground text-background absolute top-1.5 right-1.5 rounded-full px-1.5 text-[11px]/4 font-semibold">
                           {badgeCount}
                           {q.badge && (
-                            <span className="sr-only"> {BADGE_LABEL[q.badge]}</span>
+                            <span className="sr-only">
+                              {" "}
+                              {BADGE_LABEL[q.badge]}
+                            </span>
                           )}
                         </span>
                       )}
@@ -370,10 +447,14 @@ export function AdminSidebar() {
               {renderGroups(true)}
             </nav>
 
+            <div className="mt-4">
+              <ThemeRow />
+            </div>
+
             <SheetClose asChild>
               <Link
                 href="/"
-                className="text-muted-foreground hover:bg-accent hover:text-foreground mt-4 flex items-center gap-3 rounded-md px-3 py-2.5 text-sm"
+                className="text-muted-foreground hover:bg-accent hover:text-foreground mt-1 flex items-center gap-3 rounded-md px-3 py-2.5 text-sm"
               >
                 <Store className="size-4" />
                 Дэлгүүр рүү буцах
@@ -388,11 +469,36 @@ export function AdminSidebar() {
       </div>
 
       {/* ── Desktop: grouped accordion column (5b) ── */}
-      <div className="hidden h-16 items-center px-6 lg:flex">
-        <Logo />
-        <span className="text-muted-foreground ml-2 text-xs font-medium">
-          admin
-        </span>
+      <div
+        className={cn(
+          "hidden h-16 items-center lg:flex",
+          collapsed ? "justify-center" : "pr-3 pl-6",
+        )}
+      >
+        {!collapsed && (
+          <>
+            <Logo />
+            <span className="text-muted-foreground ml-2 text-xs font-medium">
+              admin
+            </span>
+          </>
+        )}
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? "Цэсийг дэлгэх" : "Цэсийг хураах"}
+          title={collapsed ? "Цэсийг дэлгэх" : "Цэсийг хураах"}
+          className={cn(
+            "text-muted-foreground hover:bg-accent hover:text-foreground flex size-9 items-center justify-center rounded-md transition-colors",
+            !collapsed && "ml-auto",
+          )}
+        >
+          {collapsed ? (
+            <PanelLeftOpen className="size-4" />
+          ) : (
+            <PanelLeftClose className="size-4" />
+          )}
+        </button>
       </div>
       {/* Хоёр nav landmark (мобайл sheet + ширээний багана) нэг хуудсанд
           зэрэг байж болох тул тус бүр нэртэй. */}
@@ -402,17 +508,35 @@ export function AdminSidebar() {
         // хэзээ ч идэвхжихгүй (flex item-ийн өгөгдмөл `min-height: auto`).
         // `overscroll-contain` — цэсний төгсгөлд хүрэхэд гүйлт хуудас руу
         // үсэрч шилжихгүй.
-        className="hidden flex-col gap-1 overflow-y-auto overscroll-contain px-3 lg:flex lg:min-h-0 lg:flex-1"
+        className={cn(
+          "hidden flex-col gap-1 overflow-y-auto overscroll-contain lg:flex lg:min-h-0 lg:flex-1",
+          collapsed ? "px-2" : "px-3",
+        )}
       >
-        {renderGroups()}
+        {collapsed ? renderRail() : renderGroups()}
       </nav>
-      <div className="mt-auto hidden p-3 lg:block">
+      <div
+        className={cn(
+          "mt-auto hidden space-y-1 lg:block",
+          collapsed ? "p-2" : "p-3",
+        )}
+      >
+        {/* 4 өнгийн товч 64px-д багтахгүй — хураасан үед нуугдана. */}
+        {!collapsed && <ThemeRow />}
         <Link
           href="/"
-          className="text-muted-foreground hover:bg-accent hover:text-foreground flex items-center gap-3 rounded-md px-3 py-2.5 text-sm"
+          title={collapsed ? "Дэлгүүр рүү буцах" : undefined}
+          className={cn(
+            "text-muted-foreground hover:bg-accent hover:text-foreground flex items-center gap-3 rounded-md py-2.5 text-sm",
+            collapsed ? "justify-center" : "px-3",
+          )}
         >
           <Store className="size-4" />
-          Дэлгүүр рүү буцах
+          {collapsed ? (
+            <span className="sr-only">Дэлгүүр рүү буцах</span>
+          ) : (
+            "Дэлгүүр рүү буцах"
+          )}
         </Link>
       </div>
     </aside>
