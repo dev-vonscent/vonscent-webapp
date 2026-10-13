@@ -341,7 +341,8 @@
 
 Migration: **`0128_spin_wheel_v2_enums.sql`** (`none`, `order` enum утга —
 шинэ enum утгыг нэмсэн транзакц дотор ашиглаж болдоггүй тул тусдаа) ба
-**`0129_spin_wheel_v2.sql`**. `LUCKY_WHEEL_HIDDEN` → `false`.
+**`0129_spin_wheel_v2.sql`**. Харагдах эсэх нь feature flag `lucky_wheel`
+(0134, Админ → Feature flag) — өмнөх `LUCKY_WHEEL_HIDDEN` const-ийг орлосон.
 
 ### 9.1 Эрх
 

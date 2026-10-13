@@ -661,22 +661,6 @@ export type RateLimitName = keyof typeof RATE_LIMITS;
  */
 export const CONTENT_PAGES_HIDDEN: boolean = true;
 
-/**
- * Азын хүрд (`/lucky-wheel`) нуугдсан эсэх. 2026-09-27-нд нуугдаж, v2
- * шаардлагаар (0129, docs/lucky-wheel.md §9) 2026-10-12-нд дахин нээгдэв.
- * Prod release-д дахин нуугаад (2026-10-12), клиент dev дээр туршихаар dev-д
- * нээв (2026-10-13). ⚠ Клиент батлахаас өмнө dev → main release хийх бол
- * энэ утгыг `true` болго — prod-д хүрд нээгдэнэ. Хүрд эргүүлэх, захиалгын эрх
- * нь `settings.spin`-ээр (0130) сан тус бүрт тусдаа асна/унтарна.
- *
- * `true` бол цэс, профайлын dropdown, акаунтын карт, купоны жагсаалтын
- * холбоосууд нуугдаж, хуудас нь шууд URL-ээр 404 өгнө. API болон админы
- * тохиргоо хэвээр.
- *
- * `boolean` гэж зориуд бичив (`CONTENT_PAGES_HIDDEN`-ийн тайлбарыг үз).
- */
-export const LUCKY_WHEEL_HIDDEN: boolean = false;
-
 export interface FeatureFlagMeta {
   /** Админы «Feature flag» хуудсанд харагдах нэр. */
   label: string;
@@ -698,10 +682,13 @@ export interface FeatureFlagMeta {
  *     description: "Хэрэглэгчийн зэрэглэл: /account цэс, API, оноо олгох trigger.",
  *   },
  */
-export const FEATURE_FLAGS = {} as const satisfies Record<
-  string,
-  FeatureFlagMeta
->;
+export const FEATURE_FLAGS = {
+  lucky_wheel: {
+    label: "Азын хүрд",
+    description:
+      "/lucky-wheel хуудас, цэс ба купоны холбоосууд, /api/lucky-wheel, төлөгдсөн захиалгаас эрх олгох trigger (0134). Эргүүлэх ажиллагаа нь Азын хүрдний «Идэвхтэй» тохиргоогоор тусдаа.",
+  },
+} as const satisfies Record<string, FeatureFlagMeta>;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
 

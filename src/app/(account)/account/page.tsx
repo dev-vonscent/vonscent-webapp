@@ -25,9 +25,10 @@ import { useSignOutConfirm } from "@/features/account/components/use-sign-out-co
 import { isPhoneEmail } from "@/lib/auth/phone-email";
 import { WheelEntryCard } from "@/features/lucky-wheel/components/wheel-entry-card";
 import type { ProductListItem } from "@/lib/types";
-import { LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
+import { useFeatureFlag } from "@/components/feature-flags";
 
 export default function ProfilePage() {
+  const wheelOn = useFeatureFlag("lucky_wheel");
   const [askSignOut, signOutDialog] = useSignOutConfirm();
   /** Supabase auth-ийн хаяг — утсаар бүртгүүлсэн хүнд синтетик тул харуулахгүй. */
   const [authEmail, setAuthEmail] = React.useState("");
@@ -236,7 +237,7 @@ export default function ProfilePage() {
       <div className="space-y-2">
         {/* Above the settings, not among them: the wheel is something to do,
             and it hides itself when there is nothing to collect. */}
-        {configured && !LUCKY_WHEEL_HIDDEN && <WheelEntryCard />}
+        {configured && wheelOn && <WheelEntryCard />}
 
         {/* Купонууд өөрийн хуудсанд шилжсэн (0104) — энд зөвхөн орох зам. */}
         {configured && (
