@@ -11,6 +11,7 @@ import {
   Crown,
   Disc3,
   FileText,
+  Flag,
   FlaskConical,
   Gift,
   Layers,
@@ -121,7 +122,10 @@ const GROUPS: { title: string | null; links: NavLink[] }[] = [
   },
   {
     title: null,
-    links: [{ href: "/admin/settings", label: "Тохиргоо", icon: Settings }],
+    links: [
+      { href: "/admin/settings", label: "Тохиргоо", icon: Settings },
+      { href: "/admin/feature-flags", label: "Feature flag", icon: Flag },
+    ],
   },
 ];
 

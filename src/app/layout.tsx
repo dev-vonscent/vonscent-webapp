@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { SITE } from "@/lib/constants";
 import { Providers } from "@/components/providers";
+import { getEnabledFeatureFlags } from "@/lib/feature-flags";
 import { Toaster } from "@/components/ui/toaster";
 import { Analytics } from "@/components/shared/analytics";
 import { KeyboardDismissRepair } from "@/components/shared/keyboard-dismiss-repair";
@@ -53,9 +54,11 @@ d.dataset.focus='pointer';
 addEventListener('pointerdown',function(){d.dataset.focus='pointer'},true);
 addEventListener('keydown',function(e){var k=e.key;if(!k)return;if(k==='Tab'||k.indexOf('Arrow')===0||k==='Home'||k==='End'||k==='PageUp'||k==='PageDown'){d.dataset.focus='keyboard'}},true);})()`;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // Кэштэй (unstable_cache) — cookie уншдаггүй тул хуудас ISR хэвээр.
+  const enabledFlags = await getEnabledFeatureFlags();
   return (
     <html
       lang="mn"
@@ -66,7 +69,7 @@ export default function RootLayout({
         <Script id="focus-method" strategy="beforeInteractive">
           {FOCUS_METHOD_SCRIPT}
         </Script>
-        <Providers>{children}</Providers>
+        <Providers enabledFlags={enabledFlags}>{children}</Providers>
         <Toaster />
         <KeyboardDismissRepair />
         <Analytics />

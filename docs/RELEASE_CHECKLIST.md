@@ -13,6 +13,10 @@ pepper солилт) git түүхэд (`git log -- docs/RELEASE_CHECKLIST.md`).
       `true` болго — эс тэгвэл prod-д хүрд нээгдэнэ. Prod-ын `settings.spin`
       (`enabled`, `orderSpinStep`) нь 0130-аар унтраалттай — нээх өдөр
       админаас асаана.
+- [ ] **Migration эхэлж:** main руу merge хийхээс өмнө шинэ migration-уудыг
+      `pnpm db:migrate-prod`-оор ажиллуул (expand only — хуучин кодтой
+      ажилладаг). Шинэ feature-ийн туг prod-д анхдагчаар хаалттай; нээх өдөр
+      Админ → Feature flag (CLAUDE.md «Шинэ feature → prod»).
 
 ---
 

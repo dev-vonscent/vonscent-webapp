@@ -19,6 +19,9 @@ import {
   ORDER_STATUSES,
   DEFAULT_LOW_STOCK_ML,
   QPAY_FEE_PCT,
+  FEATURE_FLAG_META,
+  type FeatureFlag,
+  type FeatureFlagMeta,
   type OrderStatus,
   type ProductStatus,
 } from "@/lib/constants";
@@ -1793,4 +1796,58 @@ export async function getBottleStock(): Promise<BottleStockData> {
   });
 
   return { cells, overrides, migrated: true, countsReady };
+}
+
+export interface FeatureFlagRow {
+  key: FeatureFlag;
+  label: string;
+  description: string;
+  enabled: boolean;
+  updatedAt: string | null;
+  updatedByName: string | null;
+}
+
+/**
+ * Feature flag (0133) — кодонд бүртгэлтэй (`FEATURE_FLAGS`) туг бүр нэг мөр.
+ * Сангийн мөр байхгүй бол унтраалттай гэж харуулна (`feature_enabled()`-тэй
+ * адил fail closed). `migrated = false` бол 0133 ажиллаагүй.
+ */
+export async function getFeatureFlagRows(): Promise<{
+  rows: FeatureFlagRow[];
+  migrated: boolean;
+}> {
+  const keys = Object.keys(FEATURE_FLAG_META) as FeatureFlag[];
+  const supabase = await createClient();
+  const { data, error } = supabase
+    ? await supabase
+        .from("feature_flags")
+        .select("key, enabled, updated_at, profiles(full_name)")
+    : { data: null, error: null };
+
+  type Db = {
+    key: string;
+    enabled: boolean;
+    updated_at: string;
+    profiles:
+      | { full_name: string | null }
+      | { full_name: string | null }[]
+      | null;
+  };
+  const byKey = new Map(((data as Db[] | null) ?? []).map((r) => [r.key, r]));
+
+  return {
+    migrated: !!supabase && !error,
+    rows: keys.map((key) => {
+      const r = byKey.get(key);
+      const meta: FeatureFlagMeta = FEATURE_FLAG_META[key];
+      return {
+        key,
+        label: meta.label,
+        description: meta.description,
+        enabled: r?.enabled ?? false,
+        updatedAt: r?.updated_at ?? null,
+        updatedByName: (r && one(r.profiles)?.full_name) ?? null,
+      };
+    }),
+  };
 }
