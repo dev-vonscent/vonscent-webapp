@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, Boxes, Heart, Home, LayoutGrid } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { Logo } from "./logo";
 import { MobileMenu } from "./mobile-menu";
 import { CartSheet } from "@/features/cart/components/cart-sheet";
@@ -78,6 +78,8 @@ export function SiteHeader({
   } | null>(null);
   const navPath =
     pendingNav && pendingNav.from === pathname ? pendingNav.href : pathname;
+  // Header нь (shop)/template-ийн MotionConfig-оос гадна — өөрөө шалгана.
+  const reduceMotion = useReducedMotion();
 
   // Hide on scroll down, reveal on scroll up.
   const [hidden, setHidden] = React.useState(false);
@@ -231,11 +233,11 @@ export function SiteHeader({
                       layoutId="header-nav-active"
                       aria-hidden
                       className="bg-background absolute inset-0 -z-10 rounded-full shadow-xs"
-                      transition={{
-                        type: "spring",
-                        stiffness: 500,
-                        damping: 40,
-                      }}
+                      transition={
+                        reduceMotion
+                          ? { duration: 0 }
+                          : { type: "spring", stiffness: 500, damping: 40 }
+                      }
                     />
                   )}
                   <item.icon className="size-4" />
