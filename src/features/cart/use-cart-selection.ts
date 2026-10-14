@@ -7,32 +7,57 @@ import {
   selectCheckoutCollections,
 } from "@/features/cart/store";
 
+const NONE: ReadonlySet<string> = new Set();
+
 /**
  * Сагсны сонголтын нэгдсэн төлөв — сагсны хуудас, sheet хоёр адилхан
  * checkbox-той толгой мөр, «Бүгдийг сонгох» ба сонгосныг устгах логик
  * хуваалцдаг тул нэг hook дотор.
+ *
+ * `blocked*` — захиалж болохгүй болсон мөрүүд (`useCartAvailability`).
+ * Тэдгээр нь сонголтод ОРОХГҮЙ тул «Бүгдийг сонгох» ч, «n/m» тоолуур ч
+ * зөвхөн сонгож болох мөрөөр тоолно: эс бөгөөс хаагдсан мөртэй сагсанд
+ * толгойн чагт хэзээ ч тэмдэглэгдэхгүй, дарахад нь хаагдсан мөр сонгогдоно.
  */
-export function useCartSelection() {
+export function useCartSelection({
+  blockedItemKeys = NONE,
+  blockedCollectionKeys = NONE,
+}: {
+  blockedItemKeys?: ReadonlySet<string>;
+  blockedCollectionKeys?: ReadonlySet<string>;
+} = {}) {
   const items = useCart((s) => s.items);
   const collections = useCart((s) => s.collections);
   const excludedItems = useCart((s) => s.excludedItems);
   const excludedCollections = useCart((s) => s.excludedCollections);
-  const setAllSelected = useCart((s) => s.setAllSelected);
+  const setAll = useCart((s) => s.setAllSelected);
   const removeSelected = useCart((s) => s.removeSelected);
 
   const isItemSelected = React.useCallback(
-    (key: string) => !excludedItems.includes(key),
-    [excludedItems],
+    (key: string) => !excludedItems.includes(key) && !blockedItemKeys.has(key),
+    [excludedItems, blockedItemKeys],
   );
   const isCollectionSelected = React.useCallback(
-    (key: string) => !excludedCollections.includes(key),
-    [excludedCollections],
+    (key: string) =>
+      !excludedCollections.includes(key) && !blockedCollectionKeys.has(key),
+    [excludedCollections, blockedCollectionKeys],
   );
 
-  const lineCount = items.length + collections.length;
+  const setAllSelected = React.useCallback(
+    (selected: boolean) =>
+      setAll(selected, {
+        items: [...blockedItemKeys],
+        collections: [...blockedCollectionKeys],
+      }),
+    [setAll, blockedItemKeys, blockedCollectionKeys],
+  );
+
+  const lineCount =
+    items.filter((i) => !blockedItemKeys.has(i.key)).length +
+    collections.filter((c) => !blockedCollectionKeys.has(c.key)).length;
   const selectedLineCount =
-    items.filter((i) => !excludedItems.includes(i.key)).length +
-    collections.filter((c) => !excludedCollections.includes(c.key)).length;
+    items.filter((i) => isItemSelected(i.key)).length +
+    collections.filter((c) => isCollectionSelected(c.key)).length;
 
   return {
     isItemSelected,

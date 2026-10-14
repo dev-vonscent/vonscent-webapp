@@ -34,16 +34,6 @@ export default function CartPage() {
   const removeCollection = useCart((s) => s.removeCollection);
   const setItemSelected = useCart((s) => s.setItemSelected);
   const setCollectionSelected = useCart((s) => s.setCollectionSelected);
-  const {
-    isItemSelected,
-    isCollectionSelected,
-    setAllSelected,
-    removeSelected,
-    lineCount,
-    selectedLineCount,
-    allSelected,
-    noneSelected,
-  } = useCartSelection();
   // Сагс долоо хоногоор суудаг тул хаагдсан хэмжээ (үлдэгдэл, эсвэл савны
   // түгжээ) энд хүртэл амьд үлдэж болно — нээгдэхэд нэг удаа шалгана.
   const {
@@ -54,6 +44,19 @@ export default function CartPage() {
     blockedItemKeys,
     blockedCollectionKeys,
   } = useCartAvailability();
+  const {
+    isItemSelected,
+    isCollectionSelected,
+    setAllSelected,
+    removeSelected,
+    lineCount,
+    selectedLineCount,
+    allSelected,
+    noneSelected,
+  } = useCartSelection({
+    blockedItemKeys,
+    blockedCollectionKeys,
+  });
   // Устгах нь буцаагдахгүй тул нэг дарааж баталгаажуулна.
   const [confirmRemove, setConfirmRemove] = React.useState(false);
   const subtotal = useCart(selectSubtotal);
@@ -131,10 +134,7 @@ export default function CartPage() {
               <CardContent className="p-4">
                 <div className="flex gap-4">
                   <CartCheckbox
-                    checked={
-                      isCollectionSelected(c.key) &&
-                      !blockedCollectionKeys.has(c.key)
-                    }
+                    checked={isCollectionSelected(c.key)}
                     disabled={blockedCollectionKeys.has(c.key)}
                     onCheckedChange={(v) =>
                       setCollectionSelected(c.key, Boolean(v))
@@ -235,9 +235,7 @@ export default function CartPage() {
             <Card key={item.key}>
               <CardContent className="flex gap-4 p-4">
                 <CartCheckbox
-                  checked={
-                    isItemSelected(item.key) && !blockedItemKeys.has(item.key)
-                  }
+                  checked={isItemSelected(item.key)}
                   disabled={blockedItemKeys.has(item.key)}
                   onCheckedChange={(v) => setItemSelected(item.key, Boolean(v))}
                   aria-label={`${item.name} сонгох`}

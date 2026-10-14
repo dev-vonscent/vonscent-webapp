@@ -37,12 +37,15 @@ export function OrderLines({
   collections,
   editable = false,
   buyNow = false,
+  onUnavailable,
 }: {
   items: CartItem[];
   collections: CartCollection[];
   editable?: boolean;
   /** Мөрүүд нь «Захиалах» замаас ирсэн эсэх (`useCheckoutLines`). */
   buyNow?: boolean;
+  /** Захиалж болохгүй болсон мөр тоймоос хасагдсан үед (нэрсээр). */
+  onUnavailable?: (labels: string[]) => void;
 }) {
   const [open, setOpen] = React.useState(false);
   const listId = React.useId();
@@ -54,7 +57,11 @@ export function OrderLines({
   const [editorOpen, setEditorOpen] = React.useState(false);
   // Хуучирсан сагсны тоог үлдэгдэлд буулгаж мэдэгдэнэ («Захиалах» мөр ч мөн
   // адил) — dialog-ийг нээгээгүй байсан ч.
-  useCartAvailability({ enabled: editable, buyNow });
+  useCartAvailability({
+    enabled: editable,
+    buyNow,
+    onDeselect: onUnavailable,
+  });
 
   function edit(target: EditTarget) {
     setEditing(target);
