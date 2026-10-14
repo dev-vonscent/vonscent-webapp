@@ -8,6 +8,7 @@ import {
   getUnread,
   isChatOpen,
   openAdminChat,
+  preloadChat,
   subscribeChat,
 } from "@/features/chat/crisp";
 
@@ -16,9 +17,6 @@ export interface ContactLink {
   label: string;
   icon: "messenger" | "instagram" | "phone";
 }
-
-/** Энэнээс удвал «ачаалж байна» гэж мэдэгдэнэ — spinner дангаараа гацсан мэт. */
-const SLOW_MS = 4_000;
 
 /**
  * Crisp ачаалагдахгүй үеийн гарцууд. Сувгууд серверээс (`ContactFab`)
@@ -57,6 +55,7 @@ function fallbackActions(): ToastAction[] {
  * Чат нээх нэг логик — desktop-ийн дугуй цэс ба утасны толгойн товч
  * хоёулаа ашиглана.
  *
+ * Товч руу чиглэх мөчид (`intentProps`) Crisp урьдчилан ачаалагдаж эхэлнэ.
  * Crisp ачаалагдахгүй бол (adblocker, сүлжээ) Messenger-ийг автоматаар
  * нээхгүй: хүлээлтийн дараа хэрэглэгчийн даралт хүчингүй болсон тул
  * `window.open`-ийг popup blocker чимээгүй хаадаг. Оронд нь toast-ын
@@ -75,14 +74,10 @@ export function useChatLauncher() {
     if (connecting) return false;
     trackChatOpen();
     if (isCrispConfigured) {
+      // Хүлээх хооронд зөвхөн товчны spinner — toast нь «ачаалж байна» гээд
+      // дараа нь алдаа гэж хоёр удаа анхаарал сарниулдаг байв.
       setConnecting(true);
-      let slowToast: string | number | undefined;
-      const slow = setTimeout(() => {
-        slowToast = toast.loading("Чат ачаалж байна…");
-      }, SLOW_MS);
       const ok = await openAdminChat();
-      clearTimeout(slow);
-      if (slowToast !== undefined) toast.dismiss(slowToast);
       setConnecting(false);
       if (ok) return true;
     }
@@ -102,5 +97,13 @@ export function useChatLauncher() {
     return false;
   }
 
-  return { connecting, unread, chatOpen, launch };
+  /** Чатын товч дээр `onPointerEnter` / `onFocus` / `onPointerDown`-д. */
+  const preload = isCrispConfigured ? preloadChat : undefined;
+  const intentProps = {
+    onPointerEnter: preload,
+    onFocus: preload,
+    onPointerDown: preload,
+  };
+
+  return { connecting, unread, chatOpen, launch, intentProps };
 }
