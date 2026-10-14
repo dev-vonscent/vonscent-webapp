@@ -28,10 +28,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 
+  // `scope: "local"` — зөвхөн энэ хөтчийн сессийг цуцална. Анхдагч
+  // `"global"` нь хэрэглэгчийн БҮХ төхөөрөмжийн сессийг цуцалдаг тул утсан
+  // дээрээ гарахад компьютер дээрх нь ч (API бүр 403) гарчихдаг байв.
   const supabase = await createClient();
   if (supabase) {
     await Promise.race([
-      supabase.auth.signOut().catch(() => undefined),
+      supabase.auth.signOut({ scope: "local" }).catch(() => undefined),
       new Promise((resolve) => setTimeout(resolve, SIGN_OUT_TIMEOUT_MS)),
     ]);
   }
