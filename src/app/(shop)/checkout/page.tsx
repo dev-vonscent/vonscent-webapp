@@ -239,6 +239,18 @@ export default function CheckoutPage() {
   const setQty = useCart((s) => s.setQty);
   const [mounted, setMounted] = React.useState(false);
   /**
+   * Энэ хуудсанд байхад захиалж болохгүй болж, тоймоос хасагдсан мөрүүд.
+   * Сагсны мөр бүр дор шалтгаанаа бичдэг ч тойм мөрийг шууд алга болгодог —
+   * ганц мөр байсан бол «Бараа сонгогдоогүй» гэсэн шалтгаангүй хоосон дэлгэц
+   * гарч, хэрэглэгч юу болсныг ойлгодоггүй байв.
+   */
+  const [unavailable, setUnavailable] = React.useState<string[]>([]);
+  const addUnavailable = React.useCallback(
+    (labels: string[]) =>
+      setUnavailable((prev) => [...new Set([...prev, ...labels])]),
+    [],
+  );
+  /**
    * Төлбөрийн хуудаснаас буцаж ирсэн бол хүлээгдэж буй захиалгын хуулбар
    * (`pending-order.ts`). Төлөвийг нь асууж байх зуур хоосон сагсны төлөв
    * анивчихгүйн тулд `restoring`.
@@ -936,6 +948,7 @@ export default function CheckoutPage() {
     // Сагс дүүрэн байж болно — зүгээр л нэг ч мөр сонгоогүй байх. «Захиалах»
     // замаар ирсэн бол сагсны агуулга хамаагүй тул энэ зөвлөмж буруу болно.
     const nothingSelected = !buyNow && cartLineCount > 0;
+    const droppedUnavailable = nothingSelected && unavailable.length > 0;
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-5 px-4 py-28 text-center md:px-8">
         <span className="bg-secondary flex size-16 items-center justify-center rounded-full">
@@ -943,12 +956,18 @@ export default function CheckoutPage() {
         </span>
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">
-            {nothingSelected ? "Бараа сонгогдоогүй" : "Сагс хоосон байна"}
+            {droppedUnavailable
+              ? "Сонгосон бараа захиалагдахгүй байна"
+              : nothingSelected
+                ? "Бараа сонгогдоогүй"
+                : "Сагс хоосон байна"}
           </h1>
-          <p className="text-muted-foreground text-sm">
-            {nothingSelected
-              ? "Сагснаасаа захиалах барааг чагтлаад дахин үргэлжлүүлнэ үү."
-              : "Захиалга өгөхийн тулд эхлээд бараа нэмнэ үү."}
+          <p className="text-muted-foreground text-sm text-balance">
+            {droppedUnavailable
+              ? `${quoteList(unavailable)} түр дууссан эсвэл зарагдахаа больсон тул захиалгаас хасагдлаа. Сагсандаа өөр хэмжээ эсвэл өөр бараа сонгоод дахин үргэлжлүүлнэ үү.`
+              : nothingSelected
+                ? "Сагснаасаа захиалах барааг чагтлаад дахин үргэлжлүүлнэ үү."
+                : "Захиалга өгөхийн тулд эхлээд бараа нэмнэ үү."}
           </p>
         </div>
         <Button asChild size="lg">
@@ -1712,12 +1731,23 @@ export default function CheckoutPage() {
             <CardContent className="space-y-4 p-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
               <h2 className="text-lg font-semibold">Захиалгын тойм</h2>
 
+              {unavailable.length > 0 && (
+                <p
+                  role="status"
+                  className="bg-destructive/10 text-destructive rounded-xl px-3 py-2.5 text-sm text-balance"
+                >
+                  {quoteList(unavailable)} түр дууссан эсвэл зарагдахаа больсон
+                  тул захиалгаас хасагдлаа.
+                </p>
+              )}
+
               {mounted && (
                 <OrderLines
                   items={items}
                   collections={collections}
                   editable
                   buyNow={buyNow}
+                  onUnavailable={addUnavailable}
                 />
               )}
 
@@ -2109,4 +2139,9 @@ function SummaryRow({
       </span>
     </div>
   );
+}
+
+/** `«A 10ml», «B 5ml»` — хасагдсан мөрүүдийн нэрс. */
+function quoteList(labels: string[]): string {
+  return labels.map((l) => `«${l}»`).join(", ");
 }

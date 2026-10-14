@@ -54,6 +54,19 @@ export function CartSheet({
   const subtotal = useCart(selectSubtotal);
   const setItemSelected = useCart((s) => s.setItemSelected);
   const setCollectionSelected = useCart((s) => s.setCollectionSelected);
+  const add = useCart((s) => s.add);
+
+  // Сагс `localStorage`-д долоо хоногоор суудаг: хаагдсан хэмжээ, буурсан
+  // үлдэгдэл энд хүртэл амьд үлдэнэ. Drawer НЭЭГДЭХЭД нэг удаа асууна.
+  const [open, setOpen] = React.useState(false);
+  const {
+    statusOf,
+    collectionStatus,
+    maxQtyOf,
+    maxCollectionQtyOf,
+    blockedItemKeys,
+    blockedCollectionKeys,
+  } = useCartAvailability({ enabled: open });
   const {
     isItemSelected,
     isCollectionSelected,
@@ -62,15 +75,7 @@ export function CartSheet({
     selectedLineCount,
     allSelected,
     noneSelected,
-  } = useCartSelection();
-
-  const add = useCart((s) => s.add);
-
-  // Сагс `localStorage`-д долоо хоногоор суудаг: хаагдсан хэмжээ, буурсан
-  // үлдэгдэл энд хүртэл амьд үлдэнэ. Drawer НЭЭГДЭХЭД нэг удаа асууна.
-  const [open, setOpen] = React.useState(false);
-  const { statusOf, collectionStatus, maxQtyOf, maxCollectionQtyOf } =
-    useCartAvailability({ enabled: open });
+  } = useCartSelection({ blockedItemKeys, blockedCollectionKeys });
 
   // Avoid hydration mismatch from persisted store.
   const [mounted, setMounted] = React.useState(false);
@@ -189,6 +194,7 @@ export function CartSheet({
                       <div className="flex gap-3">
                         <CartCheckbox
                           checked={isCollectionSelected(c.key)}
+                          disabled={blockedCollectionKeys.has(c.key)}
                           onCheckedChange={(v) =>
                             setCollectionSelected(c.key, Boolean(v))
                           }
@@ -246,8 +252,8 @@ export function CartSheet({
                         ))}
                       </ul>
 
-                      {!collectionStatus(c.key).sellable && (
-                        <p className="text-muted-foreground mt-1 text-xs">
+                      {blockedCollectionKeys.has(c.key) && (
+                        <p className="text-destructive mt-1 text-xs">
                           {unavailableLabel(collectionStatus(c.key))}
                         </p>
                       )}
@@ -296,6 +302,7 @@ export function CartSheet({
                     >
                       <CartCheckbox
                         checked={isItemSelected(item.key)}
+                        disabled={blockedItemKeys.has(item.key)}
                         onCheckedChange={(v) =>
                           setItemSelected(item.key, Boolean(v))
                         }
@@ -342,8 +349,8 @@ export function CartSheet({
                         </div>
                         {/* Мөрийг сонголтоос гаргасан шалтгаан — тайлбаргүй
                             бол чагт нь өөрөө тайлагдсан мэт харагдана. */}
-                        {!statusOf(item.variantId).sellable && (
-                          <p className="text-muted-foreground mt-1 text-xs">
+                        {blockedItemKeys.has(item.key) && (
+                          <p className="text-destructive mt-1 text-xs">
                             {unavailableLabel(statusOf(item.variantId))}
                           </p>
                         )}

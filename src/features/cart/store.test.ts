@@ -116,6 +116,21 @@ describe("cart selection", () => {
     expect(selectSubtotal(useCart.getState())).toBe(50000);
   });
 
+  it("select-all leaves the excepted lines unchecked", () => {
+    useCart.getState().add(line("v1", 10000));
+    useCart.getState().add(line("v2", 5000));
+    useCart.getState().addCollection(bundle("c1", 40000));
+    useCart.getState().setAllSelected(false);
+    const c1 = useCart.getState().collections[0].key;
+
+    useCart
+      .getState()
+      .setAllSelected(true, { items: ["v2"], collections: [c1] });
+    expect(useCart.getState().excludedItems).toEqual(["v2"]);
+    expect(useCart.getState().excludedCollections).toEqual([c1]);
+    expect(selectSubtotal(useCart.getState())).toBe(10000);
+  });
+
   it("removes only the ordered lines and leaves the rest in the cart", () => {
     useCart.getState().add(line("v1", 10000));
     useCart.getState().add(line("v2", 5000));
