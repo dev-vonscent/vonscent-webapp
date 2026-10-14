@@ -63,13 +63,27 @@ export async function POST(req: Request) {
 
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "NO_DB" }, { status: 500 });
+  const password = derivePassword(next);
   const { error } = await admin.auth.admin.updateUserById(user.id, {
-    password: derivePassword(next),
+    password,
   });
   if (error) {
     return NextResponse.json({ error: "UPDATE_FAILED" }, { status: 500 });
   }
 
   await clearLoginAttempts(phone);
+
+  // Admin password update revokes EVERY session of the user, this one
+  // included — other devices signing out is intended, but the device that
+  // just changed the passcode must stay in. Sign in again with the new
+  // passcode so it gets a fresh session.
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: phoneEmail(phone),
+    password,
+  });
+  if (signInError) {
+    return NextResponse.json({ error: "SIGNIN_FAILED" }, { status: 500 });
+  }
+
   return NextResponse.json({ ok: true });
 }
