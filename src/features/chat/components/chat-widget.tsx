@@ -3,12 +3,7 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import {
-  AnimatePresence,
-  MotionConfig,
-  motion,
-  useReducedMotion,
-} from "motion/react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import {
   Loader2,
   MessageCircle,
@@ -78,6 +73,28 @@ type Item = { kind: "chat" } | { kind: "link"; link: ContactLink };
  * навигацыг дардаг тул чат доод цэсний хажууд (`BottomNav`), сошиал
  * сувгууд цэс дотор (`MenuSocialLinks`).
  */
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+
+function subscribeReducedMotion(onChange: () => void) {
+  const mq = window.matchMedia(REDUCED_MOTION_QUERY);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
+/**
+ * `useReducedMotion` (motion) нь сервер дээр `null`, клиентийн анхны render
+ * дээр `true` буцааж hydration-ийг эвддэг байв (#418) — долгионы span сервер
+ * дээр зурагдаад клиент дээр алга болдог. `useSyncExternalStore`-ийн сервер
+ * snapshot (`false`)-оор hydrate хийгээд, дараа нь жинхэнэ утгаар солино.
+ */
+function usePrefersReducedMotion() {
+  return React.useSyncExternalStore(
+    subscribeReducedMotion,
+    () => window.matchMedia(REDUCED_MOTION_QUERY).matches,
+    () => false,
+  );
+}
+
 export function ChatWidget({ links }: { links: ContactLink[] }) {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
@@ -126,7 +143,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
   // товчийг олсон — анхаарал татах шаардлагагүй, бүрмөсөн зогсоно.
   const [engaged, setEngaged] = React.useState(false);
   const [hovered, setHovered] = React.useState(false);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
   if (prevAdminOpen !== adminOpen) {
     setPrevAdminOpen(adminOpen);
     if (adminOpen) setOpen(false);
