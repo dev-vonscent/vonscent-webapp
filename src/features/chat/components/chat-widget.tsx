@@ -101,7 +101,13 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
   const rootRef = React.useRef<HTMLDivElement>(null);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const menuId = React.useId();
-  const { connecting, unread, chatOpen: adminOpen, launch } = useChatLauncher();
+  const {
+    connecting,
+    unread,
+    chatOpen: adminOpen,
+    launch,
+    intentProps,
+  } = useChatLauncher();
   // Утасны толгойн товч ч эдгээр гарцыг ашиглана (энэ компонент утсан дээр
   // CSS-ээр нуугдсан ч mount хэвээр).
   React.useEffect(() => setChatFallbackLinks(links), [links]);
@@ -222,6 +228,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
                       <button
                         type="button"
                         onClick={openChat}
+                        {...intentProps}
                         aria-busy={connecting}
                         aria-label="Сайтаар чатлах"
                         className="bg-primary text-primary-foreground group in-[.black]:bg-secondary in-[.black]:text-foreground in-[.black]:ring-foreground/20 relative flex size-full items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105 in-[.black]:ring-1"
@@ -250,7 +257,14 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
           ref={buttonRef}
           type="button"
           onClick={toggle}
-          onPointerEnter={() => setHovered(true)}
+          // Гол товч руу хулгана очиход л Crisp-г ачаалж эхэлнэ — цэс нээгээд
+          // «Чатлах» дарах хооронд ихэвчлэн бэлэн болно.
+          onFocus={intentProps.onFocus}
+          onPointerDown={intentProps.onPointerDown}
+          onPointerEnter={() => {
+            setHovered(true);
+            intentProps.onPointerEnter?.();
+          }}
           onPointerLeave={() => {
             setHovered(false);
             setHoverMuted(false);
