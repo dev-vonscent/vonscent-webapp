@@ -3,6 +3,7 @@ import { Mail } from "lucide-react";
 import { FacebookIcon, InstagramIcon } from "@/components/icons/brand-icons";
 import { Logo } from "./logo";
 import { SITE } from "@/lib/constants";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 import { getSocialSettings } from "@/features/content/api";
 import { NewsletterForm } from "./newsletter-form";
 import { OrderTrackLink } from "./order-track-link";
@@ -29,8 +30,19 @@ const COLUMNS = [
   },
 ];
 
+/** Манайд байхгүй үнэртнийг санал болгох (0137, feature flag). */
+const REQUEST_LINK = { href: "/request", label: "Үнэртэн санал болгох" };
+
 export async function SiteFooter() {
-  const social = await getSocialSettings();
+  const [social, requestsOn] = await Promise.all([
+    getSocialSettings(),
+    isFeatureEnabled("perfume_requests"),
+  ]);
+  const columns = COLUMNS.map((col) =>
+    col.trackOrder && requestsOn
+      ? { ...col, links: [...col.links, REQUEST_LINK] }
+      : col,
+  );
   return (
     // Дээд margin байхгүй — нүүрний сүүлийн хэсэг өөрийн доод padding-тай тул
     // нэмэлт `mt` нь (dark-д footer хуудастай ижил хар) ~200px хоосон зай
@@ -77,7 +89,7 @@ export async function SiteFooter() {
             </div>
           </div>
 
-          {COLUMNS.map((col) => (
+          {columns.map((col) => (
             <div key={col.title}>
               <h2 className="text-gold mb-4 text-xs font-semibold tracking-[0.18em] uppercase">
                 {col.title}

@@ -534,6 +534,29 @@ export interface CampaignGrantRow {
   created_at: string;
 }
 
+/** A suggested perfume the shop doesn't carry yet (0137) — one row per perfume. */
+export interface PerfumeRequestRow {
+  id: string;
+  brand_id: string | null;
+  brand_name: string;
+  perfume_name: string;
+  /** `concentrations.code`; null = the customer didn't know. */
+  concentration: string | null;
+  /** `perfume_request_key(brand, name)` — dedupe key. */
+  match_key: string;
+  vote_count: number;
+  last_voted_at: string;
+  created_at: string;
+}
+
+/** One customer's vote for a suggested perfume. */
+export interface PerfumeRequestVoteRow {
+  request_id: string;
+  user_id: string;
+  note: string | null;
+  created_at: string;
+}
+
 type Table<Row, Optional extends keyof Row> = {
   Row: Row;
   Insert: WithDefaults<Row, Optional>;
@@ -602,6 +625,16 @@ export interface Database {
         CampaignGrantRow,
         "id" | "phone" | "notified_at" | "created_at"
       >;
+      perfume_requests: Table<
+        PerfumeRequestRow,
+        | "id"
+        | "brand_id"
+        | "concentration"
+        | "vote_count"
+        | "last_voted_at"
+        | "created_at"
+      >;
+      perfume_request_votes: Table<PerfumeRequestVoteRow, "note" | "created_at">;
     };
     Views: Record<string, never>;
     Functions: {
@@ -626,6 +659,22 @@ export interface Database {
       grant_signup_coupons: {
         Args: { p_user: string; p_phone?: string | null };
         Returns: unknown;
+      };
+      // { requestId, isNew, isNewVote, voteCount } | null — 0137.
+      submit_perfume_request: {
+        Args: {
+          p_user: string;
+          p_brand: string;
+          p_name: string;
+          p_concentration?: string | null;
+          p_note?: string | null;
+          p_brand_id?: string | null;
+        };
+        Returns: unknown;
+      };
+      merge_perfume_requests: {
+        Args: { p_source: string; p_target: string };
+        Returns: number;
       };
       launch_product: {
         Args: { p_id: string };

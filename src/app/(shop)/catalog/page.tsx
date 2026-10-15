@@ -20,6 +20,7 @@ import { FilterQueryProvider } from "@/features/catalog/components/use-filter-qu
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CATALOG_PAGE_SIZE } from "@/lib/constants";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 
 /**
  * The route itself is dynamic — it reads `searchParams`, so a filtered view is
@@ -60,6 +61,7 @@ export default async function CatalogPage({
     brandRows,
     bundles,
     bundleBounds,
+    requestsOn,
   ] = await Promise.all([
     getCatalog({ ...filters, perPage: CATALOG_PAGE_SIZE }),
     getBrands(),
@@ -68,6 +70,7 @@ export default async function CatalogPage({
     getActiveBrands(),
     getCatalogCollections(filters),
     getCollectionPriceBounds(),
+    isFeatureEnabled("perfume_requests"),
   ]);
   // Үнийн slider ус, багц хоёуланг хамарна — эс бөгөөс багцууд (усны дээд
   // үнээс үнэтэй) slider-ийн мужаас гадна үлдэж, сонгох боломжгүй байв.
@@ -146,11 +149,27 @@ export default async function CatalogPage({
                   size="lg"
                   icon={SearchX}
                   title="Илэрц олдсонгүй"
-                  description="Шүүлтүүрээ өөрчилж дахин оролдоно уу."
+                  description={
+                    requestsOn && filters.search
+                      ? "Хайж буй үнэртэн тань манайд байхгүй бол бидэнд мэдэгдээрэй. Олон хүний хүссэн үнэртнийг бид түрүүлж оруулж ирнэ."
+                      : "Шүүлтүүрээ өөрчилж дахин оролдоно уу."
+                  }
                   action={
-                    <Button asChild variant="outline">
-                      <Link href="/catalog">Бүх барааг үзэх</Link>
-                    </Button>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {/* Хайлтаар олдоогүй үнэртнийг санал болгох (0137). */}
+                      {requestsOn && filters.search && (
+                        <Button asChild>
+                          <Link
+                            href={`/request?q=${encodeURIComponent(filters.search)}`}
+                          >
+                            Үнэртэн санал болгох
+                          </Link>
+                        </Button>
+                      )}
+                      <Button asChild variant="outline">
+                        <Link href="/catalog">Бүх барааг үзэх</Link>
+                      </Button>
+                    </div>
                   }
                 />
               ) : (

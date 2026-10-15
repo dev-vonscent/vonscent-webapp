@@ -12,6 +12,7 @@ import {
   LogOut,
   Mail,
   Menu,
+  MessageSquarePlus,
   Package,
   PackageSearch,
   Ticket,
@@ -68,6 +69,13 @@ const SECONDARY = [
   { href: "/order/find", label: "Захиалга хайх", icon: PackageSearch },
 ] as const;
 
+/** `SECONDARY`-ийн сүүлд — feature flag `perfume_requests` (0137). */
+const REQUEST_LINK = {
+  href: "/request",
+  label: "Үнэртэн санал болгох",
+  icon: MessageSquarePlus,
+} as const;
+
 /** Нэвтэрсэн хэрэглэгчийн богино замууд — таних хэсгийн доор. */
 const ACCOUNT_SHORTCUTS = [
   { href: "/account/orders", label: "Захиалга", icon: Package },
@@ -91,6 +99,9 @@ export function MobileMenu({
   const primary = useFeatureFlag("lucky_wheel")
     ? [...PRIMARY, WHEEL_LINK]
     : PRIMARY;
+  const secondary = useFeatureFlag("perfume_requests")
+    ? [...SECONDARY, REQUEST_LINK]
+    : SECONDARY;
 
   const isActive = (href: string) => pathname.startsWith(href);
 
@@ -247,7 +258,7 @@ export function MobileMenu({
               style={{ animationDelay: "240ms" }}
               className="animate-fade-up animation-duration-[380ms] mt-6 flex flex-wrap gap-2 motion-reduce:animate-none"
             >
-              {SECONDARY.map((item) => (
+              {secondary.map((item) => (
                 <SheetClose asChild key={item.href}>
                   <Link
                     href={item.href}
