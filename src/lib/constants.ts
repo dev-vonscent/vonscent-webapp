@@ -644,6 +644,11 @@ export const RATE_LIMITS = {
    * илгээдэг тул хязгааргүй байх ёсгүй.
    */
   qpayWebhook: { limit: 60, windowSec: 5 * 60 },
+  /**
+   * Шинэ үнэртний санал (0137) — нэвтэрсэн хэрэглэгч, давхар санал тоологдохгүй
+   * тул зөвхөн спамын хамгаалалт: жинхэнэ хэрэглэгч өдөрт хэдхэнийг л бичнэ.
+   */
+  perfumeRequest: { limit: 10, windowSec: 24 * 60 * 60 },
 } as const;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;
@@ -692,6 +697,11 @@ export const FEATURE_FLAGS = {
     label: "Кампанит ажил",
     description:
       "Админ → Маркетинг → Кампанит ажил (/admin/campaigns, /api/admin/campaigns), бүртгүүлэхэд купон олгох RPC (0135), шинэ хэрэглэгчийн мэндчилгээний цонх (/api/campaigns/welcome). Купон олголт нь кампанит ажил бүрийн «Идэвхтэй» тохиргоогоор тусдаа.",
+  },
+  perfume_requests: {
+    label: "Үнэртний санал",
+    description:
+      "Хэрэглэгч шинэ үнэртэн санал болгох: /request, хайлт хоосон үеийн ба footer/цэсний холбоосууд, /api/perfume-requests, админ /admin/requests (/api/admin/perfume-requests), submit/merge RPC (0137).",
   },
 } as const satisfies Record<string, FeatureFlagMeta>;
 

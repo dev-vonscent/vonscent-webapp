@@ -11,6 +11,7 @@ import { formatPrice } from "@/lib/format";
 import { MIN_SEARCH_LENGTH } from "@/lib/constants";
 import { isSearchable } from "@/lib/search";
 import { cn } from "@/lib/utils";
+import { useFeatureFlag } from "@/components/feature-flags";
 import {
   EMPTY_SEARCH_RESULTS,
   SEARCH_KINDS,
@@ -111,6 +112,7 @@ function HitThumb({ hit }: { hit: SearchHit }) {
 
 export function GlobalSearch() {
   const router = useRouter();
+  const requestsOn = useFeatureFlag("perfume_requests");
   const [open, setOpen] = React.useState(false);
   const [value, setValue] = React.useState("");
   const [results, setResults] =
@@ -229,9 +231,27 @@ export function GlobalSearch() {
             {ready && (
               <Command.List className="border-border max-h-[60vh] overflow-y-auto border-t">
                 <Command.Empty className="text-muted-foreground px-4 py-6 text-center text-sm">
-                  {loading
-                    ? "Хайж байна…"
-                    : `«${value.trim()}» гэсэн юу ч олдсонгүй. Брэнд эсвэл үнэрийн нэрээр оролдож үзээрэй.`}
+                  {loading ? (
+                    "Хайж байна…"
+                  ) : (
+                    <>
+                      {`«${value.trim()}» гэсэн юу ч олдсонгүй. Брэнд эсвэл үнэрийн нэрээр оролдож үзээрэй.`}
+                      {/* Манайд байхгүй үнэртнийг санал болгох (0137). */}
+                      {requestsOn && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            goTo(
+                              `/request?q=${encodeURIComponent(value.trim())}`,
+                            )
+                          }
+                          className="text-foreground hover:text-gold-strong mx-auto mt-3 block font-medium underline underline-offset-4 transition-colors"
+                        >
+                          Манайд алга бол санал болгоорой
+                        </button>
+                      )}
+                    </>
+                  )}
                 </Command.Empty>
 
                 {SEARCH_KINDS.map((kind) =>

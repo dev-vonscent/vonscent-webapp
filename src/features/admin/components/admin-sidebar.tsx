@@ -19,6 +19,7 @@ import {
   LayoutDashboard,
   LayoutList,
   Megaphone,
+  MessageSquarePlus,
   Menu,
   PartyPopper,
   Package,
@@ -124,6 +125,13 @@ const GROUPS: NavGroup[] = [
       { href: "/admin/bottles", label: "Савны нөөц", icon: FlaskConical },
       { href: "/admin/collections", label: "Багц", icon: Layers },
       { href: "/admin/brands", label: "Брэнд", icon: Crown },
+      // Хэрэглэгчийн санал болгосон, манайд байхгүй үнэртэн (0137).
+      {
+        href: "/admin/requests",
+        label: "Үнэртний санал",
+        icon: MessageSquarePlus,
+        flag: "perfume_requests",
+      },
       { href: "/admin/scent-families", label: "Үнэрийн төрөл", icon: Tags },
       { href: "/admin/tags", label: "Нэмэлт таг", icon: Tag },
     ],
