@@ -247,7 +247,8 @@ export function GlobalSearch() {
                           }
                           className="text-foreground hover:text-gold-strong mx-auto mt-3 block font-medium underline underline-offset-4 transition-colors"
                         >
-                          Манайд алга бол санал болгоорой
+                          Хүссэн үнэртэн тань байхгүй бол бидэнд санал болгох
+                          боломжтой шүү.
                         </button>
                       )}
                     </>
