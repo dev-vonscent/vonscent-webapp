@@ -32,6 +32,7 @@ describe("normalizePopup (backlog G1/G2)", () => {
           href: "/catalog?tags=sale",
           startsAt: "2026-06-01T00:00:00.000Z",
           endsAt: null,
+          audience: "all",
         },
       ],
     });
@@ -57,7 +58,26 @@ describe("normalizePopup (backlog G1/G2)", () => {
         href: "/collections",
         startsAt: null,
         endsAt: null,
+        audience: "all",
       },
+    ]);
+  });
+
+  it("хэнд харуулахыг хадгална, мэдэгдэхгүй утга → Бүгд", () => {
+    const out = normalizePopup({
+      enabled: true,
+      slides: [
+        { imageUrl: "https://cdn/a.webp", audience: "guests" },
+        { imageUrl: "https://cdn/b.webp", audience: "members" },
+        { imageUrl: "https://cdn/c.webp", audience: "vip" },
+        { imageUrl: "https://cdn/d.webp", audience: "toString" },
+      ],
+    });
+    expect(out.slides.map((s) => s.audience)).toEqual([
+      "guests",
+      "members",
+      "all",
+      "all",
     ]);
   });
 });

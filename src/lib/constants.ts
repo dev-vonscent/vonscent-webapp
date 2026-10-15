@@ -72,6 +72,18 @@ export const FAQ_CATEGORIES = [
 export type FaqCategory = (typeof FAQ_CATEGORIES)[number];
 
 /**
+ * Сурталчилгааны popup-ийн зар хэнд харагдах вэ. «Бүртгүүлээд купон аваарай»
+ * мэтийг нэвтэрсэн хэрэглэгчид харуулбал дарахад middleware нүүр рүү буцаадаг
+ * тул зарыг зочин / гишүүнээр ялгана. Хадгалагдсан хуучин зар = `all`.
+ */
+export const POPUP_AUDIENCES = {
+  all: "Бүгд",
+  guests: "Зөвхөн зочин",
+  members: "Зөвхөн нэвтэрсэн",
+} as const;
+export type PopupAudience = keyof typeof POPUP_AUDIENCES;
+
+/**
  * «Туршиж үзэх» шошготой хэмжээ (ус ба багцын хэмжээний товч дээр). Зөвхөн
  * UI санал — 2ml нь sample биш, бусадтай адил энгийн хэмжээ.
  */

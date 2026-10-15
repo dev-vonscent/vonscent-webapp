@@ -22,7 +22,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FAQ_CATEGORIES } from "@/lib/constants";
+import {
+  FAQ_CATEGORIES,
+  POPUP_AUDIENCES,
+  type PopupAudience,
+} from "@/lib/constants";
 import { ImageUpload } from "@/features/admin/components/image-upload";
 import type {
   PopupSettings,
@@ -91,7 +95,13 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
   function addSlide() {
     setSlides((ss) => [
       ...ss,
-      { imageUrl: null, href: "", startsAt: null, endsAt: null },
+      {
+        imageUrl: null,
+        href: "",
+        startsAt: null,
+        endsAt: null,
+        audience: "all",
+      },
     ]);
   }
   async function removeSlide(i: number) {
@@ -175,6 +185,29 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
                   onChange={(e) => setSlide(i, { href: e.target.value })}
                 />
               </Field>
+              <Field label="Хэнд харуулах">
+                <Select
+                  value={s.audience}
+                  onValueChange={(v) =>
+                    setSlide(i, { audience: v as PopupAudience })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(POPUP_AUDIENCES).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <div className="text-muted-foreground self-end pb-2 text-xs">
+                «Бүртгүүлээд купон аваарай» гэх мэт зарыг «Зөвхөн зочин»
+                болговол нэвтэрсэн хэрэглэгчид харагдахгүй.
+              </div>
               <Field label="Эхлэх огноо">
                 <DatePicker
                   value={s.startsAt ? s.startsAt.slice(0, 10) : ""}

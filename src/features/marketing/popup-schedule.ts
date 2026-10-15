@@ -7,15 +7,35 @@ export function isLive(slide: PopupSlide, now: number): boolean {
   return true;
 }
 
-/** Одоо харагдах слайдууд — зурагтай, хуваарьдаа багтсан. */
-export function liveSlides(slides: PopupSlide[], now: number): PopupSlide[] {
-  return slides.filter((s) => Boolean(s.imageUrl) && isLive(s, now));
+/** Үзэгч — `null` бол нэвтэрсэн эсэх нь хараахан тодорхойгүй. */
+export type PopupViewer = "guest" | "member" | null;
+
+/**
+ * Зар энэ үзэгчид зориулагдсан уу. Үзэгч тодорхойгүй үед зөвхөн «Бүгд» —
+ * зочинд гишүүний зар (эсвэл эсрэгээр) хэзээ ч гарахгүй.
+ */
+export function isForViewer(slide: PopupSlide, viewer: PopupViewer): boolean {
+  if (slide.audience === "all") return true;
+  if (viewer === null) return false;
+  return slide.audience === (viewer === "guest" ? "guests" : "members");
+}
+
+/** Одоо харагдах слайдууд — зурагтай, хуваарьдаа багтсан, үзэгчид тохирсон. */
+export function liveSlides(
+  slides: PopupSlide[],
+  now: number,
+  viewer: PopupViewer = null,
+): PopupSlide[] {
+  return slides.filter(
+    (s) => Boolean(s.imageUrl) && isLive(s, now) && isForViewer(s, viewer),
+  );
 }
 
 /**
  * Popup нээгдэхэд эхэлж харагдах зураг (серверийн preload-д). ISR кэшийн
  * хугацаанд хуваарь өөрчлөгдвөл дэмий нэг preload болно — харагдах
- * слайдыг client өөрийн цагаар дахин шийднэ.
+ * слайдыг client өөрийн цагаар дахин шийднэ. Сервер үзэгчийг мэдэхгүй
+ * (ISR) тул зөвхөн «Бүгд» зар preload хийгдэнэ.
  */
 export function firstPopupImage(settings: PopupSettings): string | null {
   if (!settings.enabled) return null;
