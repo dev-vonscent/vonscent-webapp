@@ -19,6 +19,9 @@ import {
   ORDER_STATUSES,
   DEFAULT_LOW_STOCK_ML,
   QPAY_FEE_PCT,
+  FEATURE_FLAG_META,
+  type FeatureFlag,
+  type FeatureFlagMeta,
   type OrderStatus,
   type ProductStatus,
 } from "@/lib/constants";
@@ -33,6 +36,7 @@ import {
   type CouponFilterQuery,
   type CouponStatusFilter,
   type CouponTab,
+  type PersonalOrigin,
 } from "./lib/coupon-tabs";
 import {
   CUSTOMER_OPTION_LIMIT,
@@ -1148,6 +1152,8 @@ export interface CouponPage {
   counts: Record<CouponTab, number> | null;
   /** Owners of the personal coupons on this page, for their names. */
   owners: CustomerOption[];
+  /** `campaign_id` → campaign name, for the coupons on this page (0135). */
+  campaignNames: Record<string, string>;
 }
 
 /**
@@ -1159,14 +1165,25 @@ export async function getCouponPage({
   status,
   q,
   page = 0,
+  origin = "all",
 }: {
   tab: CouponTab;
   status: CouponStatusFilter;
   q?: string;
   page?: number;
+  /** «Хувийн» табын эх сурвалжийн шүүлт. */
+  origin?: PersonalOrigin;
 }): Promise<CouponPage> {
   const supabase = await createClient();
-  if (!supabase) return { rows: [], total: null, counts: null, owners: [] };
+  if (!supabase) {
+    return {
+      rows: [],
+      total: null,
+      counts: null,
+      owners: [],
+      campaignNames: {},
+    };
+  }
   const now = new Date().toISOString();
 
   const base = supabase.from("coupons").select("*", { count: "exact" });
@@ -1176,6 +1193,7 @@ export async function getCouponPage({
       tab,
       status,
       now,
+      origin,
     ) as unknown as typeof base
   )
     .order("created_at", { ascending: false })
@@ -1215,10 +1233,23 @@ export async function getCouponPage({
   const counts = Object.fromEntries(
     COUPON_TABS.map((t, i) => [t, tabCounts[i].count ?? 0]),
   ) as Record<CouponTab, number>;
-  const owners = await getCustomerOptions({
-    ids: rows.flatMap((c) => (c.user_id ? [c.user_id] : [])),
-  });
-  return { rows, total: count ?? 0, counts, owners };
+  const campaignIds = [
+    ...new Set(rows.flatMap((c) => (c.campaign_id ? [c.campaign_id] : []))),
+  ];
+  const [owners, campaignsRes] = await Promise.all([
+    getCustomerOptions({
+      ids: rows.flatMap((c) => (c.user_id ? [c.user_id] : [])),
+    }),
+    campaignIds.length
+      ? supabase.from("campaigns").select("id, name").in("id", campaignIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const campaignNames = Object.fromEntries(
+    ((campaignsRes.data as { id: string; name: string }[] | null) ?? []).map(
+      (c) => [c.id, c.name],
+    ),
+  );
+  return { rows, total: count ?? 0, counts, owners, campaignNames };
 }
 
 /** The stored `settings.coupons` value — the automatic reward tiers. */
@@ -1458,8 +1489,7 @@ export async function getReservedMl(
     name: r.product_name,
     brand: r.brand,
     isActive: r.is_active,
-    status:
-      statusById.get(r.product_id) ?? (r.is_active ? "active" : "hidden"),
+    status: statusById.get(r.product_id) ?? (r.is_active ? "active" : "hidden"),
     reservedMl: Number(r.reserved_ml),
     accountedMl: Number(r.accounted_ml),
     onHandMl: Number(r.on_hand_ml),
@@ -1793,4 +1823,58 @@ export async function getBottleStock(): Promise<BottleStockData> {
   });
 
   return { cells, overrides, migrated: true, countsReady };
+}
+
+export interface FeatureFlagRow {
+  key: FeatureFlag;
+  label: string;
+  description: string;
+  enabled: boolean;
+  updatedAt: string | null;
+  updatedByName: string | null;
+}
+
+/**
+ * Feature flag (0133) — кодонд бүртгэлтэй (`FEATURE_FLAGS`) туг бүр нэг мөр.
+ * Сангийн мөр байхгүй бол унтраалттай гэж харуулна (`feature_enabled()`-тэй
+ * адил fail closed). `migrated = false` бол 0133 ажиллаагүй.
+ */
+export async function getFeatureFlagRows(): Promise<{
+  rows: FeatureFlagRow[];
+  migrated: boolean;
+}> {
+  const keys = Object.keys(FEATURE_FLAG_META) as FeatureFlag[];
+  const supabase = await createClient();
+  const { data, error } = supabase
+    ? await supabase
+        .from("feature_flags")
+        .select("key, enabled, updated_at, profiles(full_name)")
+    : { data: null, error: null };
+
+  type Db = {
+    key: string;
+    enabled: boolean;
+    updated_at: string;
+    profiles:
+      | { full_name: string | null }
+      | { full_name: string | null }[]
+      | null;
+  };
+  const byKey = new Map(((data as Db[] | null) ?? []).map((r) => [r.key, r]));
+
+  return {
+    migrated: !!supabase && !error,
+    rows: keys.map((key) => {
+      const r = byKey.get(key);
+      const meta: FeatureFlagMeta = FEATURE_FLAG_META[key];
+      return {
+        key,
+        label: meta.label,
+        description: meta.description,
+        enabled: r?.enabled ?? false,
+        updatedAt: r?.updated_at ?? null,
+        updatedByName: (r && one(r.profiles)?.full_name) ?? null,
+      };
+    }),
+  };
 }

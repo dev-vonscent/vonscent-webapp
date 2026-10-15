@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSpinHistory } from "@/features/lucky-wheel/api";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 
 /**
  * The signed-in customer's full spin history, a page at a time — the wheel
@@ -15,6 +16,9 @@ const querySchema = z.object({
 });
 
 export async function GET(req: Request) {
+  if (!(await isFeatureEnabled("lucky_wheel"))) {
+    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  }
   const parsed = querySchema.safeParse(
     Object.fromEntries(new URL(req.url).searchParams),
   );

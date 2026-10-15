@@ -169,7 +169,10 @@ export default async function AdminDashboard() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* `grid-cols-1` (= minmax(0,1fr)) заавал: багана заагаагүй grid-ийн
+          мөр нь агуулгынхаа min-content-оор сунадаг тул `truncate` нэрс
+          утсан дээр картыг дэлгэцээс гаргаж байв. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Recent activity */}
         <Card>
           <CardContent className="p-5">
@@ -181,18 +184,20 @@ export default async function AdminDashboard() {
                 {dash.recentOrders.map((o) => (
                   <li
                     key={o.id}
-                    className="flex items-center justify-between text-sm"
+                    className="flex items-center justify-between gap-3 text-sm"
                   >
                     <Link
                       href={`/admin/orders/${o.id}`}
-                      className="hover:text-gold-strong font-mono"
+                      className="hover:text-gold-strong shrink-0 font-mono"
                     >
                       {o.order_no}
                     </Link>
-                    <span className="text-muted-foreground">
+                    <span className="text-muted-foreground min-w-0 truncate">
                       {formatDateTime(o.created_at)}
                     </span>
-                    <span className="font-medium">{formatPrice(o.total)}</span>
+                    <span className="shrink-0 font-medium tabular-nums">
+                      {formatPrice(o.total)}
+                    </span>
                   </li>
                 ))}
               </ul>

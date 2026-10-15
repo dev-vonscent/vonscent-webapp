@@ -38,6 +38,25 @@ async function gotoHome(page: Page) {
   );
 }
 
+/** Нэмэлт хүсэлт (давхар poster, 3D) гарах эсэхийг ажиглах хугацаа. */
+const SETTLE_MS = 1500;
+
+/**
+ * Poster ирэхийг хүлээгээд, хэсэг хугацааны дараа ч зөвхөн тэр нэг нь
+ * татагдсан хэвээр байгааг батална. `networkidle` хэрэглэхгүй: нүүрний
+ * бусад хүсэлт (зураг, prefetch) дуусахгүй удвал тест хамааралгүйгээр
+ * гацдаг байв (CI run 38280375109).
+ */
+async function expectOnlyPoster(
+  page: Page,
+  assets: ReturnType<typeof trackHeroAssets>,
+  poster: string,
+) {
+  await expect.poll(() => assets.posters()).toContain(poster);
+  await page.waitForTimeout(SETTLE_MS);
+  expect(assets.posters()).toEqual([poster]);
+}
+
 /** Апп-ын `hasHardwareWebGL2`-тэй ижил: программ renderer (SwiftShader) дээр 3D ачаалагдахгүй. */
 async function hasWebGL2(page: Page) {
   return page.evaluate(() => {
@@ -59,11 +78,11 @@ test.describe("reduced-motion", () => {
     await gotoHome(page);
     const hero = page.locator("[data-hero-3d]");
     await expect(hero).toHaveAttribute("data-hero-3d", "off");
-    await page.waitForLoadState("networkidle");
-
-    expect(assets.posters()).toEqual([
+    await expectOnlyPoster(
+      page,
+      assets,
       `/hero/vials-black-md-${HERO_DEFAULT_ML}.avif`,
-    ]);
+    );
     expect(assets.models()).toEqual([]);
     await expect(hero.locator("canvas")).toHaveCount(0);
   });
@@ -72,20 +91,24 @@ test.describe("reduced-motion", () => {
     await page.addInitScript(() => localStorage.setItem("theme", "pink"));
     const assets = trackHeroAssets(page);
     await gotoHome(page);
-    await page.waitForLoadState("networkidle");
-    expect(assets.posters()).toEqual([
+    await expectOnlyPoster(
+      page,
+      assets,
       `/hero/vials-pink-md-${HERO_DEFAULT_ML}.avif`,
-    ]);
+    );
   });
 
   test("хэмжээ солиход poster солигдоно", async ({ page }) => {
     const assets = trackHeroAssets(page);
     await gotoHome(page);
-    await page.waitForLoadState("networkidle");
-    await page.getByText("20мл", { exact: true }).click();
     await expect
       .poll(() => assets.posters())
-      .toContain("/hero/vials-black-md-20.avif");
+      .toContain(`/hero/vials-black-md-${HERO_DEFAULT_ML}.avif`);
+    // Анхдагчаас (HERO_DEFAULT_ML) өөр хэмжээ — эс бөгөөс юу ч солигдохгүй.
+    await page.getByText("5мл", { exact: true }).click();
+    await expect
+      .poll(() => assets.posters())
+      .toContain("/hero/vials-black-md-5.avif");
     await expect(page.locator("[data-hero-3d]")).toHaveAttribute(
       "data-hero-3d",
       "off",
@@ -103,7 +126,9 @@ test.describe("хүрэлтийн дэлгэц", () => {
   test("hero-г хүртэл 3D ачаалагдахгүй, хүрэхэд ачаална", async ({ page }) => {
     const assets = trackHeroAssets(page);
     await gotoHome(page);
-    await page.waitForLoadState("networkidle");
+    await expect
+      .poll(() => assets.posters())
+      .toContain(`/hero/vials-black-sm-${HERO_DEFAULT_ML}.avif`);
     // idle callback-ийн хугацаа (2.5с) өнгөрсөн ч хүрээгүй тул унтраатай.
     await page.waitForTimeout(3000);
     await expect(page.locator("[data-hero-3d]")).toHaveAttribute(
@@ -134,8 +159,10 @@ test.describe("хулгана (desktop)", () => {
   }) => {
     const assets = trackHeroAssets(page);
     await gotoHome(page);
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(1500);
+    await expect
+      .poll(() => assets.posters())
+      .toContain(`/hero/vials-black-md-${HERO_DEFAULT_ML}.avif`);
+    await page.waitForTimeout(SETTLE_MS);
     await expect(page.locator("[data-hero-3d]")).toHaveAttribute(
       "data-hero-3d",
       "off",

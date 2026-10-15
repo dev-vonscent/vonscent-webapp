@@ -41,7 +41,18 @@ export function useCartAvailability({
    * зөвхөн түүнийг reserve хийнэ). Төлбөрийн хуудасны тойм (`OrderLines`).
    */
   buyNow = false,
-}: { enabled?: boolean; buyNow?: boolean } = {}) {
+  /**
+   * Сонгогдсон мөрийг захиалж болохгүй гэж сонголтоос гаргасан үед
+   * (`Нэр 10ml` хэлбэрийн нэрсээр). Сагс/drawer мөр бүр дор шалтгаанаа
+   * бичдэг тул хэрэггүй; харин төлбөрийн хуудас мөрийг тоймоос шууд
+   * алга болгодог тул хэрэглэгчид юу, яагаад хасагдсаныг хэлэх ёстой.
+   */
+  onDeselect,
+}: {
+  enabled?: boolean;
+  buyNow?: boolean;
+  onDeselect?: (labels: string[]) => void;
+} = {}) {
   const cartItems = useCart((s) => s.items);
   const cartCollections = useCart((s) => s.collections);
   const buyNowLine = useCart((s) => s.buyNow);
@@ -227,18 +238,48 @@ export function useCartAvailability({
   // Захиалж болохгүй мөрийг сонголтоос ГАРГАНА. Зөвхөн нүдийг нь салгаад
   // орхивол дүн, «сонгосон мөр» тоолуур, checkout гурав нь хоорондоо зөрнө —
   // хэрэглэгч захиалах боломжгүй барааны мөнгийг нийлбэрт хараад эргэлзэнэ.
+  //
+  // Сонголтын төлөвөөс ч хамаарна: «хаагдсан мөр сонгогдохгүй» нь нэг удаагийн
+  // цэвэрлэгээ биш, байнгын нөхцөл. Өмнө нь зөвхөн `blocked*` өөрчлөгдөхөд
+  // ажилладаг байсан тул «Бүгдийг сонгох» эсвэл чагтаар дахин сонгосон
+  // хаагдсан мөр сонголтод үлдэж, «Захиалах»-ыг идэвхжүүлдэг байв.
+  const excludedItems = useCart((s) => s.excludedItems);
+  const excludedCollections = useCart((s) => s.excludedCollections);
   const setItemSelected = useCart((s) => s.setItemSelected);
   const setCollectionSelected = useCart((s) => s.setCollectionSelected);
+  const onDeselectRef = React.useRef(onDeselect);
+  React.useEffect(() => {
+    onDeselectRef.current = onDeselect;
+  });
   React.useEffect(() => {
     // «Захиалах» мөр сагсны сонголтод хамаарахгүй — ижил variant-ийн сагсны
     // мөрийг андуурч чагтаас гаргана.
     if (buyNow) return;
-    for (const key of blockedItemKeys) setItemSelected(key, false);
-    for (const key of blockedCollectionKeys) setCollectionSelected(key, false);
+    const dropped: string[] = [];
+    for (const i of items) {
+      if (!blockedItemKeys.has(i.key) || excludedItems.includes(i.key))
+        continue;
+      setItemSelected(i.key, false);
+      dropped.push(`${i.name} ${i.ml}ml`);
+    }
+    for (const c of collections) {
+      if (
+        !blockedCollectionKeys.has(c.key) ||
+        excludedCollections.includes(c.key)
+      )
+        continue;
+      setCollectionSelected(c.key, false);
+      dropped.push(`${c.name} ${c.ml}ml багц`);
+    }
+    if (dropped.length > 0) onDeselectRef.current?.(dropped);
   }, [
     buyNow,
+    items,
+    collections,
     blockedItemKeys,
     blockedCollectionKeys,
+    excludedItems,
+    excludedCollections,
     setItemSelected,
     setCollectionSelected,
   ]);

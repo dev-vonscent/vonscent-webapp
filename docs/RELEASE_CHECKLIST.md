@@ -6,6 +6,20 @@ pepper солилт) git түүхэд (`git log -- docs/RELEASE_CHECKLIST.md`).
 
 ---
 
+## 0. dev → main release бүрийн өмнө ⚠
+
+- [ ] **Азын хүрд нээх өдөр (prod админ):** Feature flag → «Азын хүрд» нээх,
+      Азын хүрд → «Идэвхтэй» асааж, захиалгын алхмыг (100,000) буцааж тавих
+      (0130-аар prod-д `enabled=false`, `orderSpinStep=0`). Туг хаалттай
+      үед захиалга эрх үүсгэхгүй (0134) — release-ийн өмнө код солих зүйл
+      байхгүй.
+- [ ] **Migration эхэлж:** main руу merge хийхээс өмнө шинэ migration-уудыг
+      `pnpm db:migrate-prod`-оор ажиллуул (expand only — хуучин кодтой
+      ажилладаг). Шинэ feature-ийн туг prod-д анхдагчаар хаалттай; нээх өдөр
+      Админ → Feature flag (CLAUDE.md «Шинэ feature → prod»).
+
+---
+
 ## 1. Зардлын хяналт — release-ээс 2 долоо хоногийн дараа
 
 - [ ] **ISR — өгөгдлөөр шийдэх (заавал биш).** Vercel → Usage → ISR Writes-ийг

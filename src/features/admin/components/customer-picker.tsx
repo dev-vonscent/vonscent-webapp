@@ -142,7 +142,7 @@ export function CustomerPicker({
  * панел руу portal хийнэ (`DrawerPortalContext`). `<body>`-д гарвал Radix
  * modal-ын фокусын түгжээ хайлтын талбарыг ашиглах боломжгүй болгодог.
  */
-function PickerPopup({
+export function PickerPopup({
   children,
   ...props
 }: React.ComponentProps<typeof ComboboxPrimitive.Popup>) {

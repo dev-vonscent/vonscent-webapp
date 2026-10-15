@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getWheelState, spinWheel } from "@/features/lucky-wheel/api";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 
 /**
  * Азын хүрд (docs/lucky-wheel.md).
@@ -17,11 +18,17 @@ const spinSchema = z.object({
   mode: z.enum(["free", "order", "points"]),
 });
 
+// Туг хаалттай үед хүрд байхгүй мэт — UI нуусан ч API шууд дуудагдана.
+const notFound = () =>
+  NextResponse.json({ ok: false, reason: "NOT_FOUND" }, { status: 404 });
+
 export async function GET() {
+  if (!(await isFeatureEnabled("lucky_wheel"))) return notFound();
   return NextResponse.json(await getWheelState());
 }
 
 export async function POST(req: Request) {
+  if (!(await isFeatureEnabled("lucky_wheel"))) return notFound();
   const body = await req.json().catch(() => null);
   const parsed = spinSchema.safeParse(body);
   if (!parsed.success) {

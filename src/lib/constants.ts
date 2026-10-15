@@ -644,6 +644,11 @@ export const RATE_LIMITS = {
    * илгээдэг тул хязгааргүй байх ёсгүй.
    */
   qpayWebhook: { limit: 60, windowSec: 5 * 60 },
+  /**
+   * Шинэ үнэртний санал (0137) — нэвтэрсэн хэрэглэгч, давхар санал тоологдохгүй
+   * тул зөвхөн спамын хамгаалалт: жинхэнэ хэрэглэгч өдөрт хэдхэнийг л бичнэ.
+   */
+  perfumeRequest: { limit: 10, windowSec: 24 * 60 * 60 },
 } as const;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;
@@ -661,20 +666,50 @@ export type RateLimitName = keyof typeof RATE_LIMITS;
  */
 export const CONTENT_PAGES_HIDDEN: boolean = true;
 
+export interface FeatureFlagMeta {
+  /** Админы «Feature flag» хуудсанд харагдах нэр. */
+  label: string;
+  /** Асаахад юу нээгдэх вэ — UI, API, trigger/cron. */
+  description: string;
+}
+
 /**
- * Азын хүрд (`/lucky-wheel`) нуугдсан эсэх. 2026-09-27-нд нуугдаж, v2
- * шаардлагаар (0129, docs/lucky-wheel.md §9) 2026-10-12-нд дахин нээгдэв.
- * Prod release-д дахин нуув (клиент dev дээр туршиж батлах хүртэл) — dev → main
- * release бүрийн өмнө энэ утгыг шалга. Хүрд эргүүлэх, захиалгын эрх нь
- * `settings.spin`-ээр (0130) тусдаа унтардаг.
+ * Feature flag-ийн жагсаалт (0133, CLAUDE.md «Шинэ feature → prod»).
  *
- * `true` бол цэс, профайлын dropdown, акаунтын карт, купоны жагсаалтын
- * холбоосууд нуугдаж, хуудас нь шууд URL-ээр 404 өгнө. API болон админы
- * тохиргоо хэвээр.
+ * Шинэ feature бүр энд түлхүүрээ нэмж, өөрийн migration-д
+ * `insert into feature_flags (key) values ('<key>') on conflict do nothing;`
+ * хийнэ. Утга нь САНД (dev/prod тус тусдаа) — энд зөвхөн нэр. Feature нээгдэж
+ * тогтворжсоны дараа тугийг кодоос ба сангаас хамт устгана.
  *
- * `boolean` гэж зориуд бичив (`CONTENT_PAGES_HIDDEN`-ийн тайлбарыг үз).
+ * Жишээ:
+ *   tier_list: {
+ *     label: "Tier list",
+ *     description: "Хэрэглэгчийн зэрэглэл: /account цэс, API, оноо олгох trigger.",
+ *   },
  */
-export const LUCKY_WHEEL_HIDDEN: boolean = true;
+export const FEATURE_FLAGS = {
+  lucky_wheel: {
+    label: "Азын хүрд",
+    description:
+      "/lucky-wheel хуудас, цэс ба купоны холбоосууд, /api/lucky-wheel, төлөгдсөн захиалгаас эрх олгох trigger (0134). Эргүүлэх ажиллагаа нь Азын хүрдний «Идэвхтэй» тохиргоогоор тусдаа.",
+  },
+  campaigns: {
+    label: "Кампанит ажил",
+    description:
+      "Админ → Маркетинг → Кампанит ажил (/admin/campaigns, /api/admin/campaigns), бүртгүүлэхэд купон олгох RPC (0135), шинэ хэрэглэгчийн мэндчилгээний цонх (/api/campaigns/welcome). Купон олголт нь кампанит ажил бүрийн «Идэвхтэй» тохиргоогоор тусдаа.",
+  },
+  perfume_requests: {
+    label: "Үнэртний санал",
+    description:
+      "Хэрэглэгч шинэ үнэртэн санал болгох: /request, хайлт хоосон үеийн ба footer/цэсний холбоосууд, /api/perfume-requests, админ /admin/requests (/api/admin/perfume-requests), submit/merge RPC (0137).",
+  },
+} as const satisfies Record<string, FeatureFlagMeta>;
+
+export type FeatureFlag = keyof typeof FEATURE_FLAGS;
+
+/** `FEATURE_FLAGS`-ийг түлхүүрээр унших — жагсаалт хоосон үед ч төрөлтэй. */
+export const FEATURE_FLAG_META: Readonly<Record<FeatureFlag, FeatureFlagMeta>> =
+  FEATURE_FLAGS;
 
 /**
  * «Миний купон» цэсний «Шинэ» тэмдэг (0104) энэ өдрөөс хойш хэнд ч гарахгүй.

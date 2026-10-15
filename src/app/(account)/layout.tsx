@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { SiteHeader } from "@/components/shared/site-header";
 import { ContactFab, MenuSocialLinks } from "@/components/shared/social-links";
 import { BottomNav } from "@/components/shared/bottom-nav";
+import { WelcomeGiftDialog } from "@/features/campaigns/components/welcome-gift-dialog";
 import { SkipLink } from "@/components/shared/skip-link";
 
 export default function AccountLayout({
@@ -23,6 +24,7 @@ export default function AccountLayout({
         <div className="mx-auto max-w-3xl px-4 py-10 md:px-8">{children}</div>
       </main>
       <BottomNav />
+      <WelcomeGiftDialog />
       <Suspense fallback={null}>
         <ContactFab />
       </Suspense>

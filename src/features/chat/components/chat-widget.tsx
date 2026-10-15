@@ -3,12 +3,7 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import {
-  AnimatePresence,
-  MotionConfig,
-  motion,
-  useReducedMotion,
-} from "motion/react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import {
   Loader2,
   MessageCircle,
@@ -78,13 +73,41 @@ type Item = { kind: "chat" } | { kind: "link"; link: ContactLink };
  * навигацыг дардаг тул чат доод цэсний хажууд (`BottomNav`), сошиал
  * сувгууд цэс дотор (`MenuSocialLinks`).
  */
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+
+function subscribeReducedMotion(onChange: () => void) {
+  const mq = window.matchMedia(REDUCED_MOTION_QUERY);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
+/**
+ * `useReducedMotion` (motion) нь сервер дээр `null`, клиентийн анхны render
+ * дээр `true` буцааж hydration-ийг эвддэг байв (#418) — долгионы span сервер
+ * дээр зурагдаад клиент дээр алга болдог. `useSyncExternalStore`-ийн сервер
+ * snapshot (`false`)-оор hydrate хийгээд, дараа нь жинхэнэ утгаар солино.
+ */
+function usePrefersReducedMotion() {
+  return React.useSyncExternalStore(
+    subscribeReducedMotion,
+    () => window.matchMedia(REDUCED_MOTION_QUERY).matches,
+    () => false,
+  );
+}
+
 export function ChatWidget({ links }: { links: ContactLink[] }) {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const menuId = React.useId();
-  const { connecting, unread, chatOpen: adminOpen, launch } = useChatLauncher();
+  const {
+    connecting,
+    unread,
+    chatOpen: adminOpen,
+    launch,
+    intentProps,
+  } = useChatLauncher();
   // Утасны толгойн товч ч эдгээр гарцыг ашиглана (энэ компонент утсан дээр
   // CSS-ээр нуугдсан ч mount хэвээр).
   React.useEffect(() => setChatFallbackLinks(links), [links]);
@@ -126,7 +149,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
   // товчийг олсон — анхаарал татах шаардлагагүй, бүрмөсөн зогсоно.
   const [engaged, setEngaged] = React.useState(false);
   const [hovered, setHovered] = React.useState(false);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
   if (prevAdminOpen !== adminOpen) {
     setPrevAdminOpen(adminOpen);
     if (adminOpen) setOpen(false);
@@ -205,6 +228,7 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
                       <button
                         type="button"
                         onClick={openChat}
+                        {...intentProps}
                         aria-busy={connecting}
                         aria-label="Сайтаар чатлах"
                         className="bg-primary text-primary-foreground group in-[.black]:bg-secondary in-[.black]:text-foreground in-[.black]:ring-foreground/20 relative flex size-full items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105 in-[.black]:ring-1"
@@ -233,7 +257,14 @@ export function ChatWidget({ links }: { links: ContactLink[] }) {
           ref={buttonRef}
           type="button"
           onClick={toggle}
-          onPointerEnter={() => setHovered(true)}
+          // Гол товч руу хулгана очиход л Crisp-г ачаалж эхэлнэ — цэс нээгээд
+          // «Чатлах» дарах хооронд ихэвчлэн бэлэн болно.
+          onFocus={intentProps.onFocus}
+          onPointerDown={intentProps.onPointerDown}
+          onPointerEnter={() => {
+            setHovered(true);
+            intentProps.onPointerEnter?.();
+          }}
           onPointerLeave={() => {
             setHovered(false);
             setHoverMuted(false);

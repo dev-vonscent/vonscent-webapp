@@ -113,11 +113,12 @@ export function BottomNav() {
  * байсан тул цэсний хажууд, цэстэй ижил өндөр дугуй товч болгосон.
  */
 function ChatTab({ hidden }: { hidden: boolean }) {
-  const { connecting, unread, launch } = useChatLauncher();
+  const { connecting, unread, launch, intentProps } = useChatLauncher();
   return (
     <button
       type="button"
       onClick={() => void launch()}
+      {...intentProps}
       inert={hidden}
       data-chat-entry
       aria-busy={connecting}

@@ -29,7 +29,8 @@ import { useIsStaff } from "@/features/account/use-staff";
 import { useSignOutConfirm } from "@/features/account/components/use-sign-out-confirm";
 import { Badge } from "@/components/ui/badge";
 import { useNewBadge } from "@/features/account/use-new-badge";
-import { COUPONS_NEW_BADGE_UNTIL, LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
+import { COUPONS_NEW_BADGE_UNTIL } from "@/lib/constants";
+import { useFeatureFlag } from "@/components/feature-flags";
 
 export function ProfileMenu() {
   const [askSignOut, signOutDialog] = useSignOutConfirm();
@@ -38,6 +39,7 @@ export function ProfileMenu() {
   // болсон ч зураг, нэр шууд зурагдана (use-profile-summary.ts).
   const { profile, loading, configured } = useProfileSummary();
   const isStaff = useIsStaff();
+  const wheelOn = useFeatureFlag("lucky_wheel");
 
   const name = profile?.name ?? "Зочин";
   const initial = (profile?.name || profile?.handle || "?")
@@ -146,7 +148,7 @@ export function ProfileMenu() {
               </Link>
             </DropdownMenuItem>
           )}
-          {profile && !LUCKY_WHEEL_HIDDEN && (
+          {profile && wheelOn && (
             <DropdownMenuItem asChild>
               <Link href="/lucky-wheel">
                 <Disc3 /> Азын хүрд

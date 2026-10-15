@@ -10,3 +10,5 @@
 export const CACHE_TAG_CATALOG = "catalog";
 /** Admin-owned taxonomy: scent families, brands. */
 export const CACHE_TAG_TAXONOMY = "taxonomy";
+/** Feature flag (0133) — админ туг солиход `revalidateFeatureFlags()`. */
+export const CACHE_TAG_FEATURE_FLAGS = "feature-flags";

@@ -12,6 +12,7 @@ import {
   LogOut,
   Mail,
   Menu,
+  MessageSquarePlus,
   Package,
   PackageSearch,
   Ticket,
@@ -31,7 +32,8 @@ import { useProfileSummary } from "@/features/account/use-profile-summary";
 import { useSignOutConfirm } from "@/features/account/components/use-sign-out-confirm";
 import { cn } from "@/lib/utils";
 import { useNewBadge } from "@/features/account/use-new-badge";
-import { COUPONS_NEW_BADGE_UNTIL, LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
+import { COUPONS_NEW_BADGE_UNTIL } from "@/lib/constants";
+import { useFeatureFlag } from "@/components/feature-flags";
 
 /**
  * Гол зорилгууд — том, бичвэрээр. Доод цэс (`BottomNav`) Нүүр/Каталог/Багц/
@@ -45,16 +47,14 @@ const PRIMARY = [
     label: "Багц",
     hint: "Хамтад нь аваад хэмнээрэй",
   },
-  ...(LUCKY_WHEEL_HIDDEN
-    ? []
-    : [
-        {
-          href: "/lucky-wheel",
-          label: "Азын хүрд",
-          hint: "Эргүүлээд бэлгээ аваарай",
-        } as const,
-      ]),
 ];
+
+/** `PRIMARY`-ийн сүүлд — feature flag `lucky_wheel` нээлттэй үед л. */
+const WHEEL_LINK = {
+  href: "/lucky-wheel",
+  label: "Азын хүрд",
+  hint: "Эргүүлээд бэлгээ аваарай",
+};
 
 /**
  * Уншиж танилцах хуудсууд — капсулаар, жижгээр.
@@ -68,6 +68,13 @@ const SECONDARY = [
   { href: "/faq", label: "Түгээмэл асуулт", icon: HelpCircle },
   { href: "/order/find", label: "Захиалга хайх", icon: PackageSearch },
 ] as const;
+
+/** `SECONDARY`-ийн сүүлд — feature flag `perfume_requests` (0137). */
+const REQUEST_LINK = {
+  href: "/request",
+  label: "Үнэртэн санал болгох",
+  icon: MessageSquarePlus,
+} as const;
 
 /** Нэвтэрсэн хэрэглэгчийн богино замууд — таних хэсгийн доор. */
 const ACCOUNT_SHORTCUTS = [
@@ -89,6 +96,12 @@ export function MobileMenu({
   const isStaff = useIsStaff();
   const { profile, loading, configured } = useProfileSummary();
   const couponsNew = useNewBadge("coupons", COUPONS_NEW_BADGE_UNTIL);
+  const primary = useFeatureFlag("lucky_wheel")
+    ? [...PRIMARY, WHEEL_LINK]
+    : PRIMARY;
+  const secondary = useFeatureFlag("perfume_requests")
+    ? [...SECONDARY, REQUEST_LINK]
+    : SECONDARY;
 
   const isActive = (href: string) => pathname.startsWith(href);
 
@@ -200,7 +213,7 @@ export function MobileMenu({
             {/* 2. Гол зорилгууд — мөр бүр гарчиг + тайлбар + сум; хуваагч
               зураасаар жагсаалт гэдэг нь танигдана */}
             <nav className="divide-border mt-5 flex flex-col divide-y">
-              {PRIMARY.map((item, i) => {
+              {primary.map((item, i) => {
                 const active = isActive(item.href);
                 return (
                   <SheetClose asChild key={item.label}>
@@ -245,7 +258,7 @@ export function MobileMenu({
               style={{ animationDelay: "240ms" }}
               className="animate-fade-up animation-duration-[380ms] mt-6 flex flex-wrap gap-2 motion-reduce:animate-none"
             >
-              {SECONDARY.map((item) => (
+              {secondary.map((item) => (
                 <SheetClose asChild key={item.href}>
                   <Link
                     href={item.href}

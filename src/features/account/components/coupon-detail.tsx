@@ -182,6 +182,14 @@ export function CouponDetail({ code }: { code: string }) {
             </span>
           </Detail>
         )}
+        {coupon.source === "campaign" && (
+          <Detail label="Хаанаас">
+            <span className="inline-flex items-center gap-1.5">
+              <Gift className="text-muted-foreground size-3.5" /> Бүртгэлийн
+              бэлэг
+            </span>
+          </Detail>
+        )}
       </dl>
 
       {coupon.redemptions.length > 0 && (

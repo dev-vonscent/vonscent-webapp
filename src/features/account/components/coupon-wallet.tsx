@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
+import { useFeatureFlag } from "@/components/feature-flags";
 import { useWallet } from "../use-coupons";
 import { markSeen } from "../use-new-badge";
 import {
@@ -62,6 +62,7 @@ const EMPTY: Record<CouponStatus, { title: string; description: string }> = {
 export function CouponWallet() {
   const { data, isPending, isError, refetch } = useWallet();
   const [tab, setTab] = React.useState<CouponStatus>("active");
+  const wheelOn = useFeatureFlag("lucky_wheel");
 
   // Visiting the page is what retires the «Шинэ» badge in the menus.
   React.useEffect(() => markSeen("coupons"), []);
@@ -137,7 +138,7 @@ export function CouponWallet() {
           title={EMPTY[tab].title}
           description={EMPTY[tab].description}
           action={
-            tab === "active" && !LUCKY_WHEEL_HIDDEN ? (
+            tab === "active" && wheelOn ? (
               <Button asChild>
                 <Link href="/lucky-wheel">Азын хүрд эргүүлэх</Link>
               </Button>

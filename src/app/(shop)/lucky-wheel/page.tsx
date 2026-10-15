@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LuckyWheel } from "@/features/lucky-wheel/components/lucky-wheel";
 import { notFound } from "next/navigation";
-import { LUCKY_WHEEL_HIDDEN } from "@/lib/constants";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 
 /**
  * Азын хүрд (docs/lucky-wheel.md).
@@ -17,8 +17,8 @@ export const metadata: Metadata = {
     "Өдөрт нэг удаа үнэгүй эргүүлээд V point, хөнгөлөлтийн купон эсвэл 2мл таних багц хожоорой.",
 };
 
-export default function LuckyWheelPage() {
-  // Хүрд түр нуугдсан — шууд URL-ээр ч орохгүй (LUCKY_WHEEL_HIDDEN).
-  if (LUCKY_WHEEL_HIDDEN) notFound();
+export default async function LuckyWheelPage() {
+  // Туг хаалттай — шууд URL-ээр ч орохгүй (feature flag `lucky_wheel`).
+  if (!(await isFeatureEnabled("lucky_wheel"))) notFound();
   return <LuckyWheel />;
 }

@@ -162,8 +162,14 @@ interface CartState {
   setItemSelected: (key: string, selected: boolean) => void;
   /** Check/uncheck one bundle line for ordering. */
   setCollectionSelected: (key: string, selected: boolean) => void;
-  /** Check/uncheck every line at once (сагсны «Бүгдийг сонгох»). */
-  setAllSelected: (selected: boolean) => void;
+  /**
+   * Check/uncheck every line at once (сагсны «Бүгдийг сонгох»). `except` —
+   * сонгох үед ч чагтгүй үлдэх мөрүүд (захиалж болохгүй болсон мөр).
+   */
+  setAllSelected: (
+    selected: boolean,
+    except?: { items?: string[]; collections?: string[] },
+  ) => void;
   /** Drop only the checked lines — what an order takes out of the cart. */
   removeSelected: () => void;
   /** Захиалга амжилттай болсны дараах цэвэрлэгээ (аль ч зам байсан). */
@@ -467,10 +473,17 @@ export const useCart = create<CartState>()(
               ? state.excludedCollections
               : [...state.excludedCollections, key],
         })),
-      setAllSelected: (selected) =>
+      setAllSelected: (selected, except) =>
         set((state) =>
           selected
-            ? { excludedItems: [], excludedCollections: [] }
+            ? {
+                excludedItems: state.items
+                  .filter((i) => except?.items?.includes(i.key))
+                  .map((i) => i.key),
+                excludedCollections: state.collections
+                  .filter((c) => except?.collections?.includes(c.key))
+                  .map((c) => c.key),
+              }
             : {
                 excludedItems: state.items.map((i) => i.key),
                 excludedCollections: state.collections.map((c) => c.key),

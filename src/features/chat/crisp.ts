@@ -41,9 +41,16 @@ declare global {
 
 /**
  * Энэнээс удвал бүтэлгүйд тооцож дуудагч fallback (Messenger / утас) санал
- * болгоно. Хэрэглэгч товч дараад хүлээж байгаа тул урт хүлээлгэхгүй.
+ * болгоно. Crisp дараалсан ~6 round-trip-ээр ачаалагддаг (l.js → client →
+ * prelude → settings → хэл → features) — Европын сервер рүү удаан сүлжээнд
+ * 8с-ээс амархан давдаг байсан тул эрт fallback гарч хэрэглэгч чатад
+ * хүрдэггүй байв. Crisp-ийн loader өөрөө 30с хүлээдэг тул түүнээс бага
+ * зэрэг илүү — жинхэнэ гацсан үед л бууж өгнө.
  */
-const LOAD_TIMEOUT_MS = 8_000;
+const LOAD_TIMEOUT_MS = 35_000;
+
+/** Сүлжээний түр тасалдалд (`onerror`) дахин оролдох тоо — adblocker бол тэр даруй дахин унана. */
+const SCRIPT_RETRIES = 1;
 
 /**
  * Энэ хөтөч дээр Crisp-д нэвтэрсэн хүн байсан эсэх. Гарах үед Crisp
@@ -187,9 +194,9 @@ async function configure() {
 }
 
 /**
- * Скриптийг нэг л удаа нэмнэ. Timeout болсон ч скрипт ачаалагдсаар байж
- * болох тул дараагийн даралт шинээр нэмэлгүй тэр л ачаалалтыг хүлээнэ;
- * зөвхөн сүлжээ/adblocker хаасан (`onerror`) үед дахин нэмнэ.
+ * Скриптийг нэг л удаа нэмнэ. Удаан ачаалагдаж байсан ч дараагийн даралт
+ * шинээр нэмэлгүй тэр л ачаалалтыг хүлээнэ; зөвхөн сүлжээ/adblocker хаасан
+ * (`onerror`) үед дахин нэмнэ.
  */
 function injectScript(): Promise<void> {
   if (scriptReady) return scriptReady;
@@ -213,24 +220,37 @@ function injectScript(): Promise<void> {
   return scriptReady;
 }
 
+async function injectWithRetry() {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await injectScript();
+    } catch (error) {
+      if (attempt >= SCRIPT_RETRIES) throw error;
+    }
+  }
+}
+
+/** Timeout-гүй, хуваалцсан ачаалалт — бүтэлгүйтвэл дараагийн дуудлага шинээр эхэлнэ. */
 function loadCrisp(): Promise<void> {
   if (ready) return Promise.resolve();
-  if (loading) return loading;
-  const attempt = (async () => {
+  loading ??= (async () => {
     await configure();
-    await injectScript();
-  })();
-  // Timeout түрүүлсэн бол хожуу ирэх алдаа unhandled rejection болохгүй.
-  attempt.catch(() => undefined);
-  // Identity-ийн fetch ч хугацаанд багтана — сервер гацсан ч хэрэглэгч
-  // хязгааргүй хүлээхгүй.
-  const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("CRISP_TIMEOUT")), LOAD_TIMEOUT_MS),
-  );
-  loading = Promise.race([attempt, timeout]).finally(() => {
+    await injectWithRetry();
+  })().catch((error: unknown) => {
     loading = null;
+    throw error;
   });
   return loading;
+}
+
+/**
+ * Хэрэглэгч чатын товч руу чиглэх мөчид (hover, focus, хуруу хүрэх) Crisp-г
+ * урьдчилан ачаалж эхэлнэ — дарах үед ихэнхдээ бэлэн болсон байна. Crisp
+ * нуугдмал ачаалагдана, юу ч харагдахгүй.
+ */
+export function preloadChat() {
+  if (!env.crispWebsiteId) return;
+  loadCrisp().catch(() => undefined);
 }
 
 /** Crisp аль хэдийн ачаалагдсан эсэх — «Яриагаа үргэлжлүүлэх» шошгонд. */
@@ -244,7 +264,19 @@ export function isChatReady() {
  */
 export async function openAdminChat(): Promise<boolean> {
   try {
-    await loadCrisp();
+    // Identity-ийн fetch ч хугацаанд багтана — сервер гацсан ч хэрэглэгч
+    // хязгааргүй хүлээхгүй. Timeout түрүүлсэн ч ачаалалт үргэлжилнэ —
+    // дараагийн даралт тэр л ачаалалтыг хүлээнэ.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    await Promise.race([
+      loadCrisp(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("CRISP_TIMEOUT")),
+          LOAD_TIMEOUT_MS,
+        );
+      }),
+    ]).finally(() => clearTimeout(timer));
     push("do", "chat:show");
     push("do", "chat:open");
     // Crisp өмнөх session-оос (refresh) нээлттэй төлвөө сэргээсэн бол

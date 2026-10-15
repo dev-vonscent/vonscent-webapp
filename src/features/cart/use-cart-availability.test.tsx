@@ -127,4 +127,32 @@ describe("useCartAvailability", () => {
       expect(result.current.statusOf("v2").sellable).toBe(true),
     );
   });
+
+  it("хаагдсан мөрийг дахин сонговол тэр дор нь сонголтоос гаргана", async () => {
+    stubFetch(async () => Response.json({ items: [] }));
+    const onDeselect = vi.fn();
+    const { result } = renderHook(() => useCartAvailability({ onDeselect }));
+    await waitFor(() =>
+      expect(result.current.blockedItemKeys.has("v1")).toBe(true),
+    );
+    await waitFor(() =>
+      expect(useCart.getState().excludedItems).toEqual(["v1"]),
+    );
+    expect(onDeselect).toHaveBeenLastCalledWith(["p1 10ml"]);
+
+    // «Бүгдийг сонгох» (except-гүй) эсвэл чагт — аль ч замаар.
+    act(() => useCart.getState().setAllSelected(true));
+    await waitFor(() =>
+      expect(useCart.getState().excludedItems).toEqual(["v1"]),
+    );
+    expect(onDeselect).toHaveBeenCalledTimes(2);
+  });
+
+  it("«Захиалах» мөрийн үед сагсны сонголтод хүрэхгүй", async () => {
+    stubFetch(async () => Response.json({ items: [] }));
+    useCart.getState().startBuyNow(line("p1", "v1"));
+    const { result } = renderHook(() => useCartAvailability({ buyNow: true }));
+    await waitFor(() => expect(result.current.blockedItemKeys.size).toBe(1));
+    expect(useCart.getState().excludedItems).toEqual([]);
+  });
 });

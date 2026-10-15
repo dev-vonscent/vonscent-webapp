@@ -48,6 +48,30 @@ PR-аас өмнө: `pnpm typecheck` + `pnpm lint` + `pnpm test` цэвэр ба
 - Утасны баталгаажуулалт verify.mn MO-SMS (Supabase phone auth биш).
 - Cron: Supabase pg_cron (оноо нээх, reserve timeout, төлөв авто шилжилт).
 
+## Шинэ feature → prod (feature flag)
+
+Шинэ feature prod руу **унтраалттай** орж, release өдөр админаас нээгдэнэ.
+Бүх ажлыг dev дээр хуримтлуулж нэг дор merge хийхгүй. Туг нь **санд**
+(`feature_flags`, 0133) байдаг тул dev/prod тус тусдаа утгатай: dev дээр
+клиент туршина, prod хаалттай хэвээр. Кодонд `*_HIDDEN` const шинээр нэмэхгүй.
+
+- **Бүртгэл:** `FEATURE_FLAGS` (constants)-д түлхүүр + label/description,
+  feature-ийн migration-д `insert into feature_flags (key) values ('x') on conflict do nothing;`.
+- **Гурван давхаргад шалгана** — UI-г нуух нь хангалтгүй:
+  - Хуудас/route: `isFeatureEnabled("x")` (`src/lib/feature-flags.ts`) → `notFound()` / 404
+  - Client component: `useFeatureFlag("x")` (`src/components/feature-flags.tsx`)
+  - Trigger / RPC / pg_cron: `if not feature_enabled('x') then ... end if;`
+  Хаалттай үед prod дээр өгөгдөл (оноо, эрх, бүртгэл) хуримтлагдах ёсгүй
+  (0130_spin_wheel_default_off-ийн сургамж).
+- **Migration = expand only:** шинэ table, nullable багана, шинэ RPC — хуучин
+  кодтой ажиллах ёстой. Дараалал: `db:migrate-prod` → дараа нь main руу merge.
+  Багана устгах / нэр солих / NOT NULL болгохыг feature нээгдсний дараа тусдаа PR-аар хийнэ.
+- Өгөгдлийн импорт (олон бүртгэл г.м.) migration биш, `scripts/` доорх script.
+- Нээх/хаах: Админ → Feature flag (зөвхөн super_admin). Нээгдэж тогтворжсоны
+  дараа тугийг кодоос + сангаас хамт устга.
+- PR тайлбарт: тугийн нэр, migration жагсаалт, хаалттай үед юу ч
+  хуримтлагдахгүйг хэрхэн шалгасан.
+
 ## Styling
 
 - Tailwind utility, theme token — өнгө/зай hardcode хийхгүй. **Gradient хэрэглэхгүй** (design.md).

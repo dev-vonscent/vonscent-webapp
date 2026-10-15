@@ -16,12 +16,13 @@ export function HeaderChatButton({
   variant?: ButtonProps["variant"];
   className?: string;
 }) {
-  const { connecting, unread, launch } = useChatLauncher();
+  const { connecting, unread, launch, intentProps } = useChatLauncher();
   return (
     <Button
       variant={variant}
       size="icon"
       onClick={() => void launch()}
+      {...intentProps}
       data-chat-entry
       aria-busy={connecting}
       aria-label={

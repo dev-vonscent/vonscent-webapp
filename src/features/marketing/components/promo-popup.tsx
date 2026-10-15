@@ -49,6 +49,14 @@ const OPEN_DELAY_MS = 400;
  */
 let shownForThisDocument = false;
 
+/**
+ * Энэ document-д сурталчилгаа гаргахгүй — өөр чухал цонх (шинэ хэрэглэгчийн
+ * мэндчилгээ, 0135) нээгдсэн үед хоёр dialog давхарлахгүйн тулд.
+ */
+export function suppressPromoPopup() {
+  shownForThisDocument = true;
+}
+
 interface Size {
   w: number;
   h: number;
@@ -185,6 +193,8 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
         return;
       }
       timer = setTimeout(() => {
+        // Хүлээх хооронд өөр цонх (`suppressPromoPopup`) нээгдсэн байж болно.
+        if (shownForThisDocument) return;
         shownForThisDocument = true;
         setOpen(true);
       }, OPEN_DELAY_MS);

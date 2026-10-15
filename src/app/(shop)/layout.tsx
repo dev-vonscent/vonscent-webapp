@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { SiteHeader } from "@/components/shared/site-header";
 import { ContactFab, MenuSocialLinks } from "@/components/shared/social-links";
 import { BottomNav } from "@/components/shared/bottom-nav";
+import { WelcomeGiftDialog } from "@/features/campaigns/components/welcome-gift-dialog";
 import { WishlistSync } from "@/features/wishlist/sync";
 import { ScrollReset } from "@/components/shared/scroll-reset";
 import { SkipLink } from "@/components/shared/skip-link";
@@ -56,6 +57,7 @@ export default function ShopLayout({
         <ContactFab />
       </Suspense>
       <WishlistSync />
+      <WelcomeGiftDialog />
     </>
   );
 }
