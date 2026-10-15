@@ -13,23 +13,50 @@ import type { PopupSettings } from "@/features/content/api";
 const settings: PopupSettings = {
   enabled: true,
   slides: [
-    { imageUrl: "https://x/a.webp", href: "", startsAt: null, endsAt: null },
+    {
+      imageUrl: "https://x/a.webp",
+      href: "",
+      startsAt: null,
+      endsAt: null,
+      audience: "all",
+    },
   ],
 };
+
+const guestOnly: PopupSettings = {
+  enabled: true,
+  slides: [{ ...settings.slides[0], audience: "guests" }],
+};
+
+type Auth = "guest" | "member" | "loading";
 
 /** `shownForThisDocument` модулийн түвшинд — тест бүрд шинэ модуль. */
 /**
  * jsdom-д dispatchEvent нь үргэлж `isTrusted=false` тул `trusted` үед
  * `isUserInput`-ийг хэрэглэгчийн үйлдэл гэж үзүүлнэ.
  */
-async function renderPopup({ trusted = true } = {}) {
+async function renderPopup({
+  trusted = true,
+  auth = "guest" as Auth,
+  popup = settings,
+} = {}) {
   vi.resetModules();
+  vi.doMock("@/features/account/use-profile-summary", () => ({
+    useProfileSummary: () => ({
+      profile:
+        auth === "member"
+          ? { name: "Бат", handle: "99112233", avatar: null, isStaff: false }
+          : null,
+      loading: auth === "loading",
+      configured: true,
+    }),
+  }));
   vi.doMock("../popup-schedule", async (orig) => ({
     ...(await orig<typeof import("../popup-schedule")>()),
     isUserInput: (e: Event) => trusted || e.isTrusted,
   }));
   const { PromoPopup } = await import("./promo-popup");
-  render(<PromoPopup settings={settings} />);
+  render(<PromoPopup settings={popup} />);
 }
 
 // Embla хэмжээ ажиглахад ResizeObserver хэрэглэдэг — jsdom-д байхгүй.
@@ -87,5 +114,32 @@ describe("PromoPopup", () => {
       vi.advanceTimersByTime(500);
     });
     expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("«Зөвхөн зочин» зар зочинд гарна", async () => {
+    await renderPopup({ popup: guestOnly });
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("«Зөвхөн зочин» зар нэвтэрсэн хэрэглэгчид гарахгүй", async () => {
+    await renderPopup({ popup: guestOnly, auth: "member" });
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("нэвтэрсэн эсэх тодорхойгүй үед зочны зар гарахгүй", async () => {
+    await renderPopup({ popup: guestOnly, auth: "loading" });
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

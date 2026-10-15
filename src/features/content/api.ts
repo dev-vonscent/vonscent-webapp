@@ -1,7 +1,11 @@
 import "server-only";
 import { cache } from "react";
 import { createPublicClient } from "@/lib/supabase/public";
-import { SHIPPING_ZONES } from "@/lib/constants";
+import {
+  POPUP_AUDIENCES,
+  SHIPPING_ZONES,
+  type PopupAudience,
+} from "@/lib/constants";
 import {
   getFeaturedProducts,
   getProductsByIds,
@@ -31,6 +35,8 @@ export interface PopupSlide {
   /** ISO date strings; null = no bound. Slide shows only inside this window. */
   startsAt: string | null;
   endsAt: string | null;
+  /** Хэнд харагдах — зочин, нэвтэрсэн эсвэл бүгд. */
+  audience: PopupAudience;
 }
 
 /**
@@ -181,6 +187,10 @@ export function normalizePopup(raw: unknown): PopupSettings {
         href: (s.href ?? s.ctaHref ?? "").trim(),
         startsAt: s.startsAt ?? null,
         endsAt: s.endsAt ?? null,
+        audience:
+          s.audience && Object.hasOwn(POPUP_AUDIENCES, s.audience)
+            ? s.audience
+            : "all",
       })),
   };
 }
