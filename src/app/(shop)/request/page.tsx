@@ -44,7 +44,7 @@ export default async function PerfumeRequestPage({
         Хүссэн үнэртэн тань алга уу?
       </h1>
       <p className="text-muted-foreground mt-3">
-        Бидэнд хэлээрэй. Олон хүний хүссэн үнэртнийг бид түрүүлж оруулж ирнэ.
+        Манайд ямар үнэртэн нэмэгдээсэй гэж хүсэж байна вэ?
       </p>
 
       <div className="mt-8">

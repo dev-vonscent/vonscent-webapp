@@ -147,7 +147,7 @@ export function PerfumeRequestForm({
           «{done.title}» —{" "}
           {done.already
             ? "та үүнийг өмнө нь санал болгосон байна."
-            : "санал болгосонд баярлалаа. Олон хүний хүссэн үнэртнийг бид түрүүлж оруулж ирнэ."}
+            : "санал болгосонд баярлалаа."}
         </p>
         <div className="flex flex-wrap justify-center gap-2">
           <Button onClick={startOver}>Өөр үнэртэн санал болгох</Button>
