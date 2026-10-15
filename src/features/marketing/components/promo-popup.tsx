@@ -9,8 +9,9 @@ import Autoplay from "embla-carousel-autoplay";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
+import { useProfileSummary } from "@/features/account/use-profile-summary";
 import type { PopupSettings, PopupSlide } from "@/features/content/api";
-import { isUserInput, liveSlides } from "../popup-schedule";
+import { isUserInput, liveSlides, type PopupViewer } from "../popup-schedule";
 
 const AUTOPLAY_MS = 5000;
 /** Дэлгэцэд багтаах хязгаар: хажуу тал тус бүр 1rem, өндрийн 85%. */
@@ -140,6 +141,14 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
   // Хуваарь нь браузарын цагаар шийдэгдэнэ — серверийн ISR кэш хуучин
   // байсан ч дууссан зар үзэгдэхгүй.
   const [slides, setSlides] = React.useState<PopupSlide[]>([]);
+  // Нүүр хуудас ISR тул зочин / гишүүнийг client дээр ялгана (query нь
+  // header-тэй хуваалцагдана). Бүх зар «Бүгд» бол үзэгч хамаагүй — `null`
+  // хэвээр үлдэх тул auth ачаалагдахад effect дахин ажиллаж хүлээгдэж буй
+  // нээлтийг таслахгүй.
+  const { profile, loading } = useProfileSummary();
+  const targeted = (settings.slides ?? []).some((s) => s.audience !== "all");
+  const viewer: PopupViewer =
+    !targeted || loading ? null : profile ? "member" : "guest";
   const many = slides.length > 1;
   const sizes = useNaturalSizes(
     React.useMemo(() => slides.map((s) => s.imageUrl!), [slides]),
@@ -179,8 +188,11 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
   }, [emblaApi]);
 
   React.useEffect(() => {
+    // Зочин/гишүүнд зориулсан зар байвал үзэгч тодорхой болтол хүлээнэ —
+    // эс бөгөөс нээгдсэн popup-д слайд дараа нь нэмэгдэж үсрэнэ.
+    if (targeted && viewer === null) return;
     const now = Date.now();
-    const live = liveSlides(settings.slides ?? [], now);
+    const live = liveSlides(settings.slides ?? [], now, viewer);
     setSlides(live);
     if (!settings.enabled || live.length === 0) return;
     if (shownForThisDocument) return;
@@ -205,7 +217,7 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
       for (const t of POPUP_TRIGGERS) window.removeEventListener(t, onFirst);
       if (timer) clearTimeout(timer);
     };
-  }, [settings.enabled, settings.slides]);
+  }, [settings.enabled, settings.slides, targeted, viewer]);
 
   function stopAutoplay() {
     emblaApi?.plugins().autoplay?.stop();

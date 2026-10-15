@@ -1,12 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PopupSlide } from "@/features/content/api";
-import { firstPopupImage, isLive, liveSlides } from "./popup-schedule";
+import {
+  firstPopupImage,
+  isLive,
+  liveSlides,
+  type PopupViewer,
+} from "./popup-schedule";
 
 const slide = (p: Partial<PopupSlide>): PopupSlide => ({
   imageUrl: "https://x/a.webp",
   href: "",
   startsAt: null,
   endsAt: null,
+  audience: "all",
   ...p,
 });
 const NOW = new Date("2026-10-11T12:00:00Z").getTime();
@@ -20,6 +26,26 @@ describe("popup-schedule", () => {
       false,
     );
     expect(isLive(slide({ endsAt: "2026-10-10T00:00:00Z" }), NOW)).toBe(false);
+  });
+
+  it("зочин / гишүүнд зориулсан зарыг үзэгчээр шүүнэ", () => {
+    const slides = [
+      slide({ imageUrl: "https://x/all.webp" }),
+      slide({ imageUrl: "https://x/guest.webp", audience: "guests" }),
+      slide({ imageUrl: "https://x/member.webp", audience: "members" }),
+    ];
+    const urls = (v: PopupViewer) =>
+      liveSlides(slides, NOW, v).map((s) => s.imageUrl);
+    expect(urls("guest")).toEqual([
+      "https://x/all.webp",
+      "https://x/guest.webp",
+    ]);
+    expect(urls("member")).toEqual([
+      "https://x/all.webp",
+      "https://x/member.webp",
+    ]);
+    // Тодорхойгүй үед (auth ачаалж байна / серверийн preload) зөвхөн «Бүгд».
+    expect(urls(null)).toEqual(["https://x/all.webp"]);
   });
 
   it("зураггүй слайдыг хасна", () => {
