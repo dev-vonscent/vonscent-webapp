@@ -661,6 +661,13 @@ export const RATE_LIMITS = {
    * тул зөвхөн спамын хамгаалалт: жинхэнэ хэрэглэгч өдөрт хэдхэнийг л бичнэ.
    */
   perfumeRequest: { limit: 10, windowSec: 24 * 60 * 60 },
+  /**
+   * Мэдэгдэл илгээх / хуваарьлах (0138) — staff, гэхдээ нэг товч бүх
+   * хэрэглэгч рүү очдог тул андуурч олон дарахаас хамгаална.
+   */
+  broadcastSend: { limit: 10, windowSec: 60 * 60 },
+  /** «Надад туршиж илгээх» — зөвхөн өөртөө, засах явцад хэд хэдэн удаа. */
+  broadcastTest: { limit: 30, windowSec: 10 * 60 },
 } as const;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;
@@ -714,6 +721,11 @@ export const FEATURE_FLAGS = {
     label: "Үнэртний санал",
     description:
       "Хэрэглэгч шинэ үнэртэн санал болгох: /request, хайлт хоосон үеийн ба footer/цэсний холбоосууд, /api/perfume-requests, админ /admin/requests (/api/admin/perfume-requests), submit/merge RPC (0137).",
+  },
+  notifications: {
+    label: "Мэдэгдэл",
+    description:
+      "Header-ийн хонх, toast, /account/notifications, /api/notifications, админ /admin/broadcasts (/api/admin/broadcasts), notify_user/send_broadcast RPC ба хуваарьт илгээлтийн cron (0138), оноо/үнэгүй эрх/захиалгын мэдэгдэл (0139–0141).",
   },
 } as const satisfies Record<string, FeatureFlagMeta>;
 
