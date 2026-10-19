@@ -13,7 +13,7 @@ export function CatalogTabs({ active }: { active: "perfume" | "extras" }) {
   return (
     <nav
       aria-label="Каталогийн төрөл"
-      className="bg-background/90 sticky top-(--header-offset) z-30 -mx-4 mb-6 px-4 py-2 backdrop-blur transition-[top] duration-300 md:static md:mx-0 md:bg-transparent md:p-0  md:backdrop-blur-none"
+      className="bg-background/90 sticky top-(--header-offset) z-30 -mx-4 mb-6 px-4 py-2 backdrop-blur transition-[top] duration-300 md:static md:mx-0 md:bg-transparent md:p-0 md:backdrop-blur-none"
     >
       <div className="bg-secondary grid grid-cols-2 gap-1 rounded-full p-1 md:inline-grid md:w-auto">
         {tabs.map((t) => (

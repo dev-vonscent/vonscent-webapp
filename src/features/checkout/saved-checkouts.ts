@@ -2,7 +2,11 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCart } from "@/features/cart/store";
-import type { CartCollection, CartItem } from "@/features/cart/store";
+import type {
+  CartCollection,
+  CartExtra,
+  CartItem,
+} from "@/features/cart/store";
 import { toLineInput } from "./pending-order";
 
 /**
@@ -41,10 +45,12 @@ interface ResumedSaved {
 function variantFingerprint(
   items: Pick<CartItem, "variantId">[],
   collections: Pick<CartCollection, "members">[],
+  extras: Pick<CartExtra, "extraVariantId">[] = [],
 ): string {
   return [
     ...items.map((i) => i.variantId),
     ...collections.flatMap((c) => c.members.map((m) => m.variantId)),
+    ...extras.map((e) => e.extraVariantId),
   ]
     .sort()
     .join(",");
@@ -54,12 +60,13 @@ function variantFingerprint(
 export function readResumedSaved(
   items: Pick<CartItem, "variantId">[],
   collections: Pick<CartCollection, "members">[],
+  extras: Pick<CartExtra, "extraVariantId">[] = [],
 ): string | null {
   try {
     const raw = sessionStorage.getItem(RESUMED_KEY);
     if (!raw) return null;
     const resumed = JSON.parse(raw) as ResumedSaved;
-    return resumed.variantIds === variantFingerprint(items, collections)
+    return resumed.variantIds === variantFingerprint(items, collections, extras)
       ? resumed.id
       : null;
   } catch {
@@ -91,6 +98,8 @@ export interface SavedCheckout {
   buyNow: boolean;
   items: CartItem[];
   collections: CartCollection[];
+  /** Нэмэлт бараа (0150). */
+  extras: CartExtra[];
   /** Checkout-ийн маягтын ноорог (`CheckoutDraft`). */
   draft: Record<string, unknown>;
 }
@@ -102,6 +111,7 @@ interface SavedCheckoutRow {
   buy_now: boolean;
   items: CartItem[];
   collections: CartCollection[];
+  extras?: CartExtra[] | null;
   draft: Record<string, unknown>;
   created_at: string;
 }
@@ -112,6 +122,7 @@ const fromRow = (r: SavedCheckoutRow): SavedCheckout => ({
   buyNow: r.buy_now,
   items: r.items,
   collections: r.collections,
+  extras: r.extras ?? [],
   draft: r.draft,
 });
 
@@ -184,7 +195,8 @@ export function useDeleteSavedCheckout() {
 export function savedSubtotal(entry: SavedCheckout): number {
   return (
     entry.items.reduce((n, i) => n + i.unitPrice * i.qty, 0) +
-    entry.collections.reduce((n, c) => n + c.unitPrice * c.qty, 0)
+    entry.collections.reduce((n, c) => n + c.unitPrice * c.qty, 0) +
+    entry.extras.reduce((n, e) => n + e.unitPrice * e.qty, 0)
   );
 }
 
@@ -199,8 +211,10 @@ export function resumeSavedCheckout(entry: SavedCheckout) {
   if (entry.buyNow) {
     const [item] = entry.items;
     const [bundle] = entry.collections;
+    const [extra] = entry.extras;
     if (item) cart.startBuyNow(...toLineInput(item));
     else if (bundle) cart.startBuyNowCollection(...toLineInput(bundle));
+    else if (extra) cart.startBuyNowExtra(...toLineInput(extra));
   } else {
     cart.clearBuyNow();
     // Сагсанд ижил мөр аль хэдийн байвал (жишээ нь өмнө нь «Захиалах» дараад
@@ -222,9 +236,14 @@ export function resumeSavedCheckout(entry: SavedCheckout) {
       )
         cart.removeCollection(c.key);
     }
+    for (const extra of entry.extras) {
+      if (before.extras.some((e) => e.key === extra.extraVariantId))
+        cart.removeExtra(extra.extraVariantId);
+    }
     for (const item of entry.items) cart.add(...toLineInput(item));
     for (const bundle of entry.collections)
       cart.addCollection(...toLineInput(bundle));
+    for (const extra of entry.extras) cart.addExtra(...toLineInput(extra));
     // Нэмсний ДАРАА түлхүүрүүдийг уншина — сагс нь ижил мөрийг нэгтгэдэг.
     const state = useCart.getState();
     const itemKeys = new Set(
@@ -254,6 +273,9 @@ export function resumeSavedCheckout(entry: SavedCheckout) {
       excludedCollections: state.collections
         .filter((c) => !bundleKeys.has(c.key))
         .map((c) => c.key),
+      excludedExtras: state.extras
+        .filter((e) => !entry.extras.some((x) => x.extraVariantId === e.key))
+        .map((e) => e.key),
     });
   }
   try {
@@ -261,7 +283,11 @@ export function resumeSavedCheckout(entry: SavedCheckout) {
       RESUMED_KEY,
       JSON.stringify({
         id: entry.id,
-        variantIds: variantFingerprint(entry.items, entry.collections),
+        variantIds: variantFingerprint(
+          entry.items,
+          entry.collections,
+          entry.extras,
+        ),
       } satisfies ResumedSaved),
     );
     sessionStorage.setItem(CHECKOUT_DRAFT_KEY, JSON.stringify(entry.draft));

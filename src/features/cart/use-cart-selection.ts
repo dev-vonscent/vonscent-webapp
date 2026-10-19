@@ -5,6 +5,7 @@ import {
   useCart,
   selectCheckoutItems,
   selectCheckoutCollections,
+  selectCheckoutExtras,
 } from "@/features/cart/store";
 
 const NONE: ReadonlySet<string> = new Set();
@@ -22,14 +23,19 @@ const NONE: ReadonlySet<string> = new Set();
 export function useCartSelection({
   blockedItemKeys = NONE,
   blockedCollectionKeys = NONE,
+  blockedExtraKeys = NONE,
 }: {
   blockedItemKeys?: ReadonlySet<string>;
   blockedCollectionKeys?: ReadonlySet<string>;
+  /** Нэмэлт бараа: зарагдсан шил, худалдаанаас хасагдсан (useExtrasAvailability). */
+  blockedExtraKeys?: ReadonlySet<string>;
 } = {}) {
   const items = useCart((s) => s.items);
   const collections = useCart((s) => s.collections);
+  const extras = useCart((s) => s.extras);
   const excludedItems = useCart((s) => s.excludedItems);
   const excludedCollections = useCart((s) => s.excludedCollections);
+  const excludedExtras = useCart((s) => s.excludedExtras);
   const setAll = useCart((s) => s.setAllSelected);
   const removeSelected = useCart((s) => s.removeSelected);
 
@@ -43,25 +49,34 @@ export function useCartSelection({
     [excludedCollections, blockedCollectionKeys],
   );
 
+  const isExtraSelected = React.useCallback(
+    (key: string) => !excludedExtras.includes(key) && !blockedExtraKeys.has(key),
+    [excludedExtras, blockedExtraKeys],
+  );
+
   const setAllSelected = React.useCallback(
     (selected: boolean) =>
       setAll(selected, {
         items: [...blockedItemKeys],
         collections: [...blockedCollectionKeys],
+        extras: [...blockedExtraKeys],
       }),
-    [setAll, blockedItemKeys, blockedCollectionKeys],
+    [setAll, blockedItemKeys, blockedCollectionKeys, blockedExtraKeys],
   );
 
   const lineCount =
     items.filter((i) => !blockedItemKeys.has(i.key)).length +
-    collections.filter((c) => !blockedCollectionKeys.has(c.key)).length;
+    collections.filter((c) => !blockedCollectionKeys.has(c.key)).length +
+    extras.filter((e) => !blockedExtraKeys.has(e.key)).length;
   const selectedLineCount =
     items.filter((i) => isItemSelected(i.key)).length +
-    collections.filter((c) => isCollectionSelected(c.key)).length;
+    collections.filter((c) => isCollectionSelected(c.key)).length +
+    extras.filter((e) => isExtraSelected(e.key)).length;
 
   return {
     isItemSelected,
     isCollectionSelected,
+    isExtraSelected,
     setAllSelected,
     removeSelected,
     lineCount,
@@ -81,8 +96,10 @@ export function useCheckoutLines() {
   const buyNow = useCart((s) => s.buyNow);
   const items = useCart((s) => s.items);
   const collections = useCart((s) => s.collections);
+  const extras = useCart((s) => s.extras);
   const excludedItems = useCart((s) => s.excludedItems);
   const excludedCollections = useCart((s) => s.excludedCollections);
+  const excludedExtras = useCart((s) => s.excludedExtras);
   return {
     buyNow: buyNow != null,
     items: React.useMemo(
@@ -103,6 +120,15 @@ export function useCheckoutLines() {
           : collections.filter((c) => !excludedCollections.includes(c.key)),
       [buyNow, collections, excludedCollections],
     ),
+    extras: React.useMemo(
+      () =>
+        buyNow
+          ? buyNow.kind === "extra"
+            ? [buyNow.extra]
+            : []
+          : extras.filter((e) => !excludedExtras.includes(e.key)),
+      [buyNow, extras, excludedExtras],
+    ),
   };
 }
 
@@ -112,5 +138,6 @@ export function getCheckoutLines() {
   return {
     items: selectCheckoutItems(state),
     collections: selectCheckoutCollections(state),
+    extras: selectCheckoutExtras(state),
   };
 }

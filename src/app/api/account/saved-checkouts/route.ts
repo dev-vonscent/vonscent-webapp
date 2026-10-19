@@ -13,7 +13,7 @@ import {
  * барина, service role хэрэггүй.
  */
 
-const SELECT = "id, buy_now, items, collections, draft, created_at";
+const SELECT = "id, buy_now, items, collections, extras, draft, created_at";
 const NO_STORE = { "Cache-Control": "private, no-store" };
 
 async function sessionUser() {
@@ -73,6 +73,7 @@ export async function POST(req: Request) {
       buy_now: input.buyNow,
       items: input.items,
       collections: input.collections,
+      extras: input.extras,
       draft: input.draft,
     })
     .select(SELECT)

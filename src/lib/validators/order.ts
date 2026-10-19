@@ -18,6 +18,30 @@ export const collectionOrderSchema = z.object({
   memberVariantIds: z.array(z.string().min(1)).min(1),
 });
 
+/**
+ * Нэмэлт барааны мөр (extras-shop-plan §10). Үнийг сервер сангаас авна;
+ * `expectedUnitPrice` нь хэрэглэгчийн харсан үнэ — зөрвөл сервер чимээгүй
+ * солихгүй, EXTRA_PRICE_CHANGED буцаана.
+ */
+export const extraOrderSchema = z.object({
+  extraVariantId: z.string().uuid(),
+  qty: z.number().int().positive().max(99),
+  expectedUnitPrice: z.number().int().min(0).max(10_000_000),
+});
+
+/**
+ * Хэрэглэгчийн баталсан дүнгүүд (§6.2 №5) — checkout-ийн тоймд харуулсан
+ * яг тэр тоо. Сервер дахин бодсон дүн аль нэгээрээ зөрвөл захиалга
+ * үүсэхгүй (COUPON_/LOYALTY_/SHIPPING_/TOTAL_CHANGED).
+ */
+export const expectedTotalsSchema = z.object({
+  subtotal: z.number().int().min(0),
+  discount: z.number().int().min(0),
+  loyaltyUsed: z.number().int().min(0),
+  shippingFee: z.number().int().min(0),
+  total: z.number().int().min(0),
+});
+
 export const checkoutSchema = z.object({
   contactName: z.string().min(2, "Нэрээ оруулна уу"),
   contactPhone: z
@@ -65,6 +89,10 @@ export const checkoutSchema = z.object({
   // empty cart after pricing (EMPTY_CART).
   items: z.array(orderItemSchema).default([]),
   collections: z.array(collectionOrderSchema).default([]),
+  /** Нэмэлт бараа (0149). Гурвын ядаж нэг нь хоосон биш — сервер EMPTY_CART. */
+  extras: z.array(extraOrderSchema).max(50).default([]),
+  /** Байхгүй бол (хуучин клиент) сервер дүнг тулгахгүй. */
+  expected: expectedTotalsSchema.optional(),
   /**
    * Бэлгийн 1мл дээжийн сонголтууд. Сервер бүгдийг дахин шалгана: эрх нь
    * купоны дараах барааны дүнгийн 200,000₮ тутамд 1 (`GIFT_MAX_SAMPLES`
@@ -137,3 +165,5 @@ export function stripDetail(shipDetail: string): string {
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 export type OrderItemInput = z.infer<typeof orderItemSchema>;
 export type CollectionOrderInput = z.infer<typeof collectionOrderSchema>;
+export type ExtraOrderInput = z.infer<typeof extraOrderSchema>;
+export type ExpectedTotals = z.infer<typeof expectedTotalsSchema>;

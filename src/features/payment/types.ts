@@ -34,6 +34,11 @@ export interface PaymentView {
    * хэдэн төгрөг гэдгийг төлөгч хүн харах ёстой.
    */
   lines: PaymentLine[];
+  /**
+   * Захиалах мөчид ороогүй бэлгийн дээж (0149) — сангаас тул reload хийсэн ч
+   * ижил. Нэр нь «Брэнд Нэр».
+   */
+  omittedGifts: { name: string; reason: "threshold" | "vial" | "stock" }[];
   subtotal: number;
   /** Багцын хямдралын өмнөх барааны дүн. Хуучин захиалгад null (0097). */
   grossSubtotal: number | null;

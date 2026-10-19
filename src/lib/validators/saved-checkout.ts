@@ -55,16 +55,32 @@ const collectionSchema = z.object({
   qty,
 });
 
+/** Нэмэлт барааны мөр (0150) — харуулах, сагсанд буцааж хийхэд л. */
+const extraSchema = z.object({
+  key: id,
+  extraVariantId: id,
+  extraId: id,
+  slug: text,
+  name: text,
+  label: text,
+  categoryName: text,
+  mode: z.enum(["local_quantity", "shared_vial", "leftover_liquid"]),
+  unitPrice: price,
+  qty,
+  image,
+});
+
 export const savedCheckoutInputSchema = z
   .object({
     buyNow: z.boolean(),
     items: z.array(itemSchema).max(50),
     collections: z.array(collectionSchema).max(20),
+    extras: z.array(extraSchema).max(50).default([]),
     // Checkout-ийн маягтын ноорог — checkout өөрөө талбар бүрийг шалгана
     // (захиалга илгээхэд `checkoutSchema`), энд зөвхөн хэмжээг хязгаарлана.
     draft: z.record(z.string(), z.unknown()),
   })
-  .refine((v) => v.items.length + v.collections.length > 0, {
+  .refine((v) => v.items.length + v.collections.length + v.extras.length > 0, {
     message: "Хадгалах бараа алга",
   });
 

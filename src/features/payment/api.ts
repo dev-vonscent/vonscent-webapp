@@ -46,6 +46,9 @@ interface OrderRow {
   deliver_on: string | null;
   /** «Дараа захиалах»-ын хуулбар (0124) — байгаа эсэх нь л хэрэгтэй. */
   checkout_snapshot: unknown;
+  omitted_gifts:
+    | { product_id: string; reason: "threshold" | "vial" | "stock" }[]
+    | null;
 }
 
 interface ItemRow {
@@ -65,7 +68,7 @@ interface ItemRow {
 }
 
 const SELECT =
-  "id, order_no, user_id, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, status, payment_method, payment_status, deliver_on, checkout_snapshot";
+  "id, order_no, user_id, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, status, payment_method, payment_status, deliver_on, checkout_snapshot, omitted_gifts";
 
 const ITEM_SELECT =
   "product_id, product_name, brand, ml, qty, unit_price, list_price, line_total, is_sample, collection_name, line_kind, variant_label, image_url";
@@ -174,6 +177,15 @@ export async function getPaymentByToken(
   const paid = order.payment_status === "paid";
   const cancelled = order.status === "cancelled";
   const lines = await paymentLines(supabase, order.id);
+  const omitted = order.omitted_gifts ?? [];
+  const giftNames = omitted.length
+    ? new Map(
+        (await getProductsByIds(omitted.map((g) => g.product_id))).map((p) => [
+          p.id,
+          `${p.brand} ${p.name}`,
+        ]),
+      )
+    : new Map<string, string>();
   const { pointsEarned, reviewPoints } = await loyaltyFor(supabase, order);
 
   // An invoice is only worth having while the order can still be paid. Asking
@@ -198,6 +210,10 @@ export async function getPaymentByToken(
     orderNo: order.order_no,
     total: order.total,
     lines,
+    omittedGifts: omitted.map((g) => ({
+      name: giftNames.get(g.product_id) ?? "Бэлгийн дээж",
+      reason: g.reason,
+    })),
     subtotal: order.subtotal,
     grossSubtotal: order.gross_subtotal,
     couponCode: order.coupon_code,

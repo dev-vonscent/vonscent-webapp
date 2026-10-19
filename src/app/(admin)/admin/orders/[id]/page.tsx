@@ -19,6 +19,7 @@ import {
   PAYMENT_STATUS_LABEL,
 } from "@/lib/constants";
 import { OrderStatusControl } from "@/features/admin/components/order-status-control";
+import { ExtraRestockPanel } from "@/features/admin/components/extra-restock-panel";
 import { CopyRow } from "@/features/payment/components/copy-row";
 import {
   deliveredRefund as deliveredRefundAmount,
@@ -58,6 +59,25 @@ export default async function AdminOrderDetail({
     order.status === "delivered" &&
     order.payment_status === "paid" &&
     staff?.role === "super_admin";
+  // Хүргэгдсэн энгийн нэмэлт бараа — мөр бүрээр нөөцөд буцаана (§7.4).
+  const restockLines =
+    order.status === "delivered" &&
+    order.payment_status !== "unpaid" &&
+    staff?.role === "super_admin"
+      ? items
+          .filter(
+            (i) =>
+              i.line_kind === "extra" &&
+              i.extra_inventory_mode === "local_quantity" &&
+              i.extra_state === "committed",
+          )
+          .map((i) => ({
+            id: i.id,
+            title: orderLineTitle(i),
+            qty: i.qty,
+            restocked: i.restocked_qty,
+          }))
+      : [];
   const refund = deliveredRefund
     ? deliveredRefundAmount(order.total, order.shipping_fee)
     : { ...refundBreakdown(order.total), shipping: 0 };
@@ -151,7 +171,9 @@ export default async function AdminOrderDetail({
                   <span className="text-right">
                     {g.reason === "vial"
                       ? "1ml сав дууссан"
-                      : "Захиалгын дүн босгод хүрээгүй"}
+                      : g.reason === "stock"
+                        ? "Үнэртний үлдэгдэл дууссан"
+                        : "Захиалгын дүн босгод хүрээгүй"}
                   </span>
                 </div>
               ))}
@@ -320,6 +342,9 @@ export default async function AdminOrderDetail({
                 hasQpayInvoice={Boolean(order.qpay_invoice_id)}
                 canRecover={staff?.role === "super_admin"}
               />
+              {restockLines.length > 0 && (
+                <ExtraRestockPanel orderId={order.id} lines={restockLines} />
+              )}
             </CardContent>
           </Card>
         </div>

@@ -61,6 +61,7 @@ function view(over: Partial<PaymentView> = {}): PaymentView {
   return {
     orderNo: "VS-1042",
     total: 45000,
+    omittedGifts: [],
     lines: [
       {
         name: "Floral",

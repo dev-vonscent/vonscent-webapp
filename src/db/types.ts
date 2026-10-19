@@ -251,7 +251,7 @@ export interface OrderRow {
 /** Захиалах мөчид ороогүй бэлгийн дээж — босго эсвэл 1ml сав дууссан. */
 export interface OmittedGift {
   product_id: string;
-  reason: "threshold" | "vial";
+  reason: "threshold" | "vial" | "stock";
 }
 
 /**

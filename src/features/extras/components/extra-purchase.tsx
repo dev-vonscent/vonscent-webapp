@@ -130,7 +130,7 @@ export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
                   aria-pressed={ok ? active : undefined}
                   aria-label={ok ? v.label : `${v.label} — дууссан`}
                   className={cn(
-                    "flex min-h-11 flex-col items-center justify-center rounded-lg p-2  text-center transition-colors",
+                    "flex min-h-11 flex-col items-center justify-center rounded-lg p-2 text-center transition-colors",
                     !ok
                       ? "bg-secondary/50 text-muted-foreground cursor-not-allowed opacity-50"
                       : active

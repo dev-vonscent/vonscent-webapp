@@ -23,6 +23,19 @@ const schema = z.object({
   restock: z.boolean().optional(),
   /** QPay-ээс дахин асууж баталгаажуулах (гараар тэмдэглэхээс өөр). */
   recheck: z.boolean().optional(),
+  /**
+   * Хүргэгдсэн захиалгын энгийн нэмэлт барааг нөөцөд буцаах (0149, §6.5) —
+   * мөр бүрийн ЭЦСИЙН нийт тоо. Мөнгөний буцаалтаас тусдаа шийдвэр.
+   */
+  extraRestocks: z
+    .array(
+      z.object({
+        orderItemId: z.string().uuid(),
+        restockedQty: z.number().int().min(0).max(99),
+      }),
+    )
+    .max(50)
+    .optional(),
 });
 
 /**
@@ -147,7 +160,20 @@ export async function POST(
         RECOVERY_STATUSES[current].includes(next));
     if (!allowed) {
       return NextResponse.json(
-        { error: "ILLEGAL_TRANSITION" },
+        { error: "Энэ төлөв рүү шилжүүлэх боломжгүй." },
+        { status: 409 },
+      );
+    }
+    // Төлөөгүй захиалга хүргэлтэд гарахгүй (§6.4) — SQL ч давхар шалгана.
+    if (
+      next !== current &&
+      (next === "shipping" || next === "delivered") &&
+      order?.payment_status !== "paid"
+    ) {
+      return NextResponse.json(
+        {
+          error: "Төлбөр төлөгдөөгүй захиалгыг хүргэлтэд гаргах боломжгүй.",
+        },
         { status: 409 },
       );
     }
@@ -160,6 +186,21 @@ export async function POST(
     });
     if (error) {
       // Сэргээлт ml-ийг дахин барина (0112) — үлдэгдэл хүрэхгүй бол татгалзана.
+      // 0149: шилжилт, төлбөр, нэмэлт барааны нөөц SQL-д шалгагдана.
+      const statusMessage = error.message.includes("PAYMENT_REQUIRED")
+        ? "Төлбөр төлөгдөөгүй захиалгыг хүргэлтэд гаргах боломжгүй."
+        : error.message.includes("ILLEGAL_TRANSITION")
+          ? "Энэ төлөв рүү шилжүүлэх боломжгүй."
+          : error.message.includes("LEFTOVER_RESTORE_CONFLICT")
+            ? "Энэ шилийг өөр захиалгад авсан тул захиалгыг сэргээх боломжгүй."
+            : error.message.includes("EXTRA_QTY_UNAVAILABLE")
+              ? "Нэмэлт барааны нөөц хүрэлцэхгүй тул захиалгыг сэргээх боломжгүй. Эхлээд нөөцөө нэмнэ үү."
+              : error.message.includes("VIAL_UNAVAILABLE")
+                ? "Сав хүрэлцэхгүй тул захиалгыг сэргээх боломжгүй. Эхлээд савны нөөцөө нэмнэ үү."
+                : null;
+      if (statusMessage) {
+        return NextResponse.json({ error: statusMessage }, { status: 409 });
+      }
       if (error.message.includes("INSUFFICIENT_STOCK")) {
         return NextResponse.json(
           {
@@ -176,6 +217,34 @@ export async function POST(
       // захиалгад төлбөр оруулж, гараар буцаах ажил үүсгэдэг.
       await cancelOrderInvoice(id);
       await sendOrderCustomerEmail(id, "cancelled");
+    }
+  }
+
+  if (parsed.data.extraRestocks?.length && !parsed.data.refund) {
+    // Хүргэгдсэний дараах ажил — буцаалттай адил super_admin.
+    if (staff.role !== "super_admin") {
+      return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+    }
+    const { error } = await callRpc(supabase, "order_restock_extras", {
+      p_order: id,
+      p_by: staff.id,
+      p_restocks: parsed.data.extraRestocks.map((r) => ({
+        order_item_id: r.orderItemId,
+        restocked_qty: r.restockedQty,
+      })),
+    });
+    if (error) {
+      const invalid =
+        error.message.includes("RESTOCK_INVALID") ||
+        error.message.includes("RESTOCK_NOT_DELIVERED");
+      return NextResponse.json(
+        {
+          error: invalid
+            ? "Нөөцөд буцаах тоо буруу байна. Хуудсаа сэргээгээд дахин оролдоно уу."
+            : "Нөөцөд буцааж чадсангүй.",
+        },
+        { status: invalid ? 409 : 500 },
+      );
     }
   }
 

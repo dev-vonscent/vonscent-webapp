@@ -1169,9 +1169,65 @@ end $$;
 -- Signature өөрчлөгдөж буй тул хуучныг DROP (0111/0129-ийн жишээ).
 ------------------------------------------------------------------------------
 
+-- Хүргэгдсэн захиалгын энгийн нэмэлт барааг нөөцөд буцаах (§6.5) —
+-- мөнгөний буцаалтаас тусдаа шийдвэр, админы тусдаа товч ч мөн дуудна.
+-- Дуудагч захиалгын мөрийг `for update` түгжсэн байна.
+create or replace function order_restock_extras(
+  p_order uuid,
+  p_by uuid,
+  p_restocks jsonb
+) returns int language plpgsql as $$
+declare
+  v_status order_status_t;
+  v_pay payment_status_t;
+  v_req jsonb;
+  v_line order_items;
+  v_new int;
+  v_restocked int := 0;
+begin
+  select status, payment_status into v_status, v_pay
+    from orders where id = p_order for update;
+  if v_status is distinct from 'delivered' or v_pay not in ('paid', 'refunded') then
+    raise exception 'RESTOCK_NOT_DELIVERED' using errcode = 'check_violation';
+  end if;
+  perform 1 from extra_variants
+   where id in (select i.extra_variant_id from order_items i
+                 where i.order_id = p_order and i.extra_variant_id is not null)
+   order by id for update;
+  for v_req in
+    select r from jsonb_array_elements(coalesce(p_restocks, '[]'::jsonb)) r
+     order by r->>'order_item_id'
+  loop
+    select * into v_line from order_items
+     where id = nullif(v_req->>'order_item_id', '')::uuid and order_id = p_order
+     for update;
+    v_new := (v_req->>'restocked_qty')::int;
+    if v_line.id is null or v_line.line_kind <> 'extra'
+       or v_line.extra_inventory_mode <> 'local_quantity'
+       or v_line.extra_state <> 'committed'
+       or v_new is null or v_new < v_line.restocked_qty or v_new > v_line.qty then
+      raise exception 'RESTOCK_INVALID:%', coalesce(v_req->>'order_item_id', '')
+        using errcode = 'check_violation';
+    end if;
+    if v_new > v_line.restocked_qty then
+      perform extra_stock_move(v_line.extra_variant_id, 'restock',
+        v_new - v_line.restocked_qty, 0,
+        v_line.id || ':extra:restock:' || v_new, v_line.id, 'Буцаалт', p_by);
+      update order_items set restocked_qty = v_new where id = v_line.id;
+      v_restocked := v_restocked + (v_new - v_line.restocked_qty);
+    end if;
+  end loop;
+  if v_restocked > 0 then
+    insert into order_status_history (order_id, status, note, changed_by)
+      values (p_order, v_status,
+        'Нэмэлт бараа нөөцөд буцсан (' || v_restocked || ' ширхэг)', p_by);
+  end if;
+  return v_restocked;
+end $$;
+
 drop function if exists mark_order_refunded(uuid, uuid, int, boolean);
 
-create function mark_order_refunded(
+create or replace function mark_order_refunded(
   p_order uuid,
   p_by uuid,
   p_fee int default 0,
@@ -1188,9 +1244,6 @@ declare
   v_item record;
   v_ml int := 0;
   v_note text := 'Төлбөр буцаагдсан';
-  v_req jsonb;
-  v_line order_items;
-  v_new int;
   v_restocked int := 0;
 begin
   select status, payment_status, total, coalesce(shipping_fee, 0)
@@ -1202,41 +1255,7 @@ begin
 
   -- ── Нөөцөд буцаах бараа ──────────────────────────────────────────
   if p_extra_restocks is not null and jsonb_array_length(p_extra_restocks) > 0 then
-    if v_status <> 'delivered' or v_pay not in ('paid', 'refunded') then
-      return jsonb_build_object('ok', false, 'reason', 'RESTOCK_NOT_DELIVERED');
-    end if;
-    perform 1 from extra_variants
-     where id in (select i.extra_variant_id from order_items i
-                   where i.order_id = p_order and i.extra_variant_id is not null)
-     order by id for update;
-    for v_req in
-      select r from jsonb_array_elements(p_extra_restocks) r
-       order by r->>'order_item_id'
-    loop
-      select * into v_line from order_items
-       where id = nullif(v_req->>'order_item_id', '')::uuid and order_id = p_order
-       for update;
-      v_new := (v_req->>'restocked_qty')::int;
-      if v_line.id is null or v_line.line_kind <> 'extra'
-         or v_line.extra_inventory_mode <> 'local_quantity'
-         or v_line.extra_state <> 'committed'
-         or v_new is null or v_new < v_line.restocked_qty or v_new > v_line.qty then
-        raise exception 'RESTOCK_INVALID:%', coalesce(v_req->>'order_item_id', '')
-          using errcode = 'check_violation';
-      end if;
-      if v_new > v_line.restocked_qty then
-        perform extra_stock_move(v_line.extra_variant_id, 'restock',
-          v_new - v_line.restocked_qty, 0,
-          v_line.id || ':extra:restock:' || v_new, v_line.id, 'Буцаалт', p_by);
-        update order_items set restocked_qty = v_new where id = v_line.id;
-        v_restocked := v_restocked + (v_new - v_line.restocked_qty);
-      end if;
-    end loop;
-    if v_restocked > 0 then
-      insert into order_status_history (order_id, status, note, changed_by)
-        values (p_order, v_status,
-          'Нэмэлт бараа нөөцөд буцсан (' || v_restocked || ' ширхэг)', p_by);
-    end if;
+    v_restocked := order_restock_extras(p_order, p_by, p_extra_restocks);
   end if;
 
   -- Хоёр дахь даралт нь түүхэнд давхар мөр үлдээхгүй.
@@ -1350,7 +1369,8 @@ begin
     'update_order_status(uuid, order_status_t, text, uuid)',
     'auto_deliver_orders()',
     'mark_order_paid(uuid, uuid, text)',
-    'mark_order_refunded(uuid, uuid, int, boolean, jsonb)'
+    'mark_order_refunded(uuid, uuid, int, boolean, jsonb)',
+    'order_restock_extras(uuid, uuid, jsonb)'
   ] loop
     execute format('revoke all on function %s from public, anon, authenticated', f);
     execute format('grant execute on function %s to service_role', f);

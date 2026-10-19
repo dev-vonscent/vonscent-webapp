@@ -33,6 +33,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { checkoutSchema } from "@/lib/validators/order";
+import type { ServerTotals } from "@/features/checkout/place-order-result";
+import { numAblative } from "@/lib/mn-grammar";
 import {
   REFUND_FEE_PCT,
   SHIPPING_ZONES,
@@ -130,7 +132,12 @@ interface ShippingSettingsShape {
  */
 const NOTE_OPTIONS = ["Бэлгийн боолт хийлгэх", "Хүргэхээс өмнө залгах"];
 
-const formSchema = checkoutSchema.omit({ items: true, collections: true });
+const formSchema = checkoutSchema.omit({
+  items: true,
+  collections: true,
+  extras: true,
+  expected: true,
+});
 type FormValues = z.infer<typeof formSchema>;
 
 /**
@@ -223,8 +230,10 @@ export default function CheckoutPage() {
   const queryClient = useQueryClient();
   // Захиалга сагснаас *сонгосон* мөрүүдийг л авна — сонгоогүй бараа сагсандаа
   // үлдэж, дараа нь тусад нь захиалагдана.
-  const { items, collections, buyNow } = useCheckoutLines();
-  const cartLineCount = useCart((s) => s.items.length + s.collections.length);
+  const { items, collections, extras, buyNow } = useCheckoutLines();
+  const cartLineCount = useCart(
+    (s) => s.items.length + s.collections.length + s.extras.length,
+  );
   const subtotal = useCart(selectCheckoutSubtotal);
   /**
    * Хямдралын өмнөх барааны дүн. Багцын мөр нь хямдруулсан үнээрээ бичигдэж
@@ -284,6 +293,27 @@ export default function CheckoutPage() {
    * аль хэдийн гүйлгэдэг шигээ үүнийг ч гүйлгэнэ.
    */
   const serverErrorRef = React.useRef<HTMLParagraphElement>(null);
+  /**
+   * Серверийн дахин бодсон дүн (0149, §6.2 №5). Захиалгын дүн хэрэглэгчийн
+   * харснаас өөр гарвал сервер захиалга үүсгэлгүй шинэ дүнг буцаана — тэр
+   * дүнг тоймд харуулаад, ИЖИЛ захиалгыг дахин дарахад (`key` = хүсэлтийн
+   * хээ) яг тэр дүнг «баталсан дүн» болгож илгээнэ. Сагс, хаяг, купон,
+   * оноо өөрчлөгдвөл хүчингүй.
+   */
+  const [serverQuote, setServerQuote] = React.useState<{
+    key: string;
+    totals: ServerTotals;
+  } | null>(null);
+  /**
+   * Нэмэлт барааны тоо хүрэлцэхгүй / шил зарагдсан — мөр бүрийн сонголттой
+   * (plan §10): тоог автоматаар багасгахгүй, хэрэглэгч шийднэ.
+   */
+  const [extraIssue, setExtraIssue] = React.useState<{
+    key: string;
+    name: string;
+    available: number;
+    sold: boolean;
+  } | null>(null);
 
   const [authed, setAuthed] = React.useState(false);
   /**
@@ -450,7 +480,9 @@ export default function CheckoutPage() {
 
   /** Наалдсан төлбөрийн зурвас гарах эсэх — хоосон / шилжих төлөвт гарахгүй. */
   const showPayBar =
-    mounted && !leaving && (items.length > 0 || collections.length > 0);
+    mounted &&
+    !leaving &&
+    (items.length > 0 || collections.length > 0 || extras.length > 0);
   // Зурвас доод цэсний ОРОНД суудаг — хоёулаа зэрэг хөвж, дэлгэцийн 17%-ийг
   // эзлэхээс сэргийлнэ. Зурвас байхгүй үед цэс эргэж гарна.
   useClaimBottomBar(showPayBar);
@@ -591,15 +623,24 @@ export default function CheckoutPage() {
         // тэр мөрийг л сэргээнэ.
         const [item] = pending.items;
         const [bundle] = pending.collections;
+        const [extra] = pending.extras ?? [];
         if (!cart.buyNow && item) cart.startBuyNow(...toLineInput(item));
         else if (!cart.buyNow && bundle)
           cart.startBuyNowCollection(...toLineInput(bundle));
+        else if (!cart.buyNow && extra)
+          cart.startBuyNowExtra(...toLineInput(extra));
       } else {
         const lines = getCheckoutLines();
-        if (lines.items.length === 0 && lines.collections.length === 0) {
+        if (
+          lines.items.length === 0 &&
+          lines.collections.length === 0 &&
+          lines.extras.length === 0
+        ) {
           for (const item of pending.items) cart.add(...toLineInput(item));
           for (const bundle of pending.collections)
             cart.addCollection(...toLineInput(bundle));
+          for (const extra of pending.extras ?? [])
+            cart.addExtra(...toLineInput(extra));
         }
       }
       if (pending.coupon) cart.setCoupon(pending.coupon);
@@ -776,9 +817,17 @@ export default function CheckoutPage() {
     // Дүрэм таарахгүй хаяг (админ бүсээ бүрэн зураагүй) бол хүргэдэг бүсийн
     // эхнийхээр үнэлнэ — сервер ч ийм тохиолдолд ингэж бодно.
     const fallback = zones.find((z) => z.deliverable !== false) ?? zones[0];
-    const next = autoZone ?? (fallback ? zoneKey(fallback) : null);
+    // Орон нутгийн дүрэмгүй хаяг — сервер (`resolveShipping`) хөдөөгийн
+    // бүсээр үнэлдэг; ижил дүрмээр бодохгүй бол илгээх үед SHIPPING_CHANGED.
+    const rural =
+      city && city !== "Улаанбаатар"
+        ? zones.find((z) => z.remote && z.deliverable !== false)
+        : undefined;
+    const next =
+      autoZone ??
+      (rural ? zoneKey(rural) : fallback ? zoneKey(fallback) : null);
     if (next) setValue("shipZone", next);
-  }, [autoZone, zones, setValue]);
+  }, [autoZone, zones, city, setValue]);
   const selectedZone = zones.find((z) => zoneKey(z) === zone) ?? zones[0];
   const zoneBlocked = selectedZone ? !selectedZone.deliverable : false;
   /**
@@ -859,6 +908,12 @@ export default function CheckoutPage() {
   /** Хямдралын дараах барааны дүн: хүргэлт, оноо хоёрын өмнөх суурь. */
   const goodsAfterDiscount = Math.max(subtotal - discount, 0);
   const total = Math.max(goodsAfterDiscount + shippingFee - loyaltyApplied, 0);
+  // Сагс, хаяг, купон, оноо өөрчлөгдвөл серверийн өмнөх дүн хамааралгүй.
+  React.useEffect(() => {
+    setServerQuote(null);
+  }, [items, collections, extras, coupon, loyaltyApplied, shippingFee]);
+  /** Тоймын эцсийн дүн — сервер шинэ дүн хэлсэн бол түүгээр. */
+  const shownTotal = serverQuote?.totals.total ?? total;
   /**
    * Энэ захиалгаас хуримтлагдах оноо. Сан нь купоны дараах барааны дүнгээс
    * бодох тул оноогоор төлсөн хэсэг үүнийг бууруулахгүй (lib/loyalty.ts).
@@ -950,7 +1005,12 @@ export default function CheckoutPage() {
     );
   }
 
-  if (mounted && items.length === 0 && collections.length === 0) {
+  if (
+    mounted &&
+    items.length === 0 &&
+    collections.length === 0 &&
+    extras.length === 0
+  ) {
     // Сагс дүүрэн байж болно — зүгээр л нэг ч мөр сонгоогүй байх. «Захиалах»
     // замаар ирсэн бол сагсны агуулга хамаагүй тул энэ зөвлөмж буруу болно.
     const nothingSelected = !buyNow && cartLineCount > 0;
@@ -998,7 +1058,9 @@ export default function CheckoutPage() {
    * (saved-checkouts.ts). Хадгалсан нь захиалга үүсэх, дахин хадгалах,
    * эсвэл «Устгах» дарах хүртэл серверт үлдэнэ — буцаж гарвал алга болохгүй.
    */
-  const resumedSavedId = mounted ? readResumedSaved(items, collections) : null;
+  const resumedSavedId = mounted
+    ? readResumedSaved(items, collections, extras)
+    : null;
 
   /** Хадгалсан хуулбарыг серверээс авч хаяна — алдаа нь урсгал таслахгүй. */
   async function dropResumedSaved() {
@@ -1043,6 +1105,7 @@ export default function CheckoutPage() {
         buyNow,
         items,
         collections,
+        extras,
         draft: {
           values: getValues(),
           khoroo,
@@ -1145,8 +1208,26 @@ export default function CheckoutPage() {
         qty: c.qty,
         memberVariantIds: c.members.map((m) => m.variantId),
       })),
+      extras: extras.map((e) => ({
+        extraVariantId: e.extraVariantId,
+        qty: e.qty,
+        expectedUnitPrice: e.unitPrice,
+      })),
     };
     const signature = JSON.stringify(payload);
+    // Хэрэглэгчийн баталсан дүн (§6.2 №5): тоймд харуулсан тоо — сервер
+    // шинэ дүн хэлсэн бөгөөд захиалга өөрчлөгдөөгүй бол тэр дүн.
+    const expected =
+      serverQuote && serverQuote.key === signature
+        ? serverQuote.totals
+        : {
+            subtotal,
+            discount,
+            loyaltyUsed: loyaltyApplied,
+            shippingFee,
+            total,
+          };
+    setExtraIssue(null);
 
     // Төлбөрийн хуудаснаас буцаж ирээд юу ч өөрчлөөгүй бол ШИНЭ захиалга
     // үүсгэхгүй: өмнөх захиалга нөөцөө барьсаар байгаа тул давхар захиалга
@@ -1178,6 +1259,7 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...payload,
+          expected,
           requestId: requestIdRef.current,
           // Хээнд (`signature`) ороогүй: захиалгын агуулга биш, төлөгдөөгүй
           // үлдвэл «Дараа захиалах» руу шилжүүлэх хуулбар (0124). Үргэлж
@@ -1188,6 +1270,7 @@ export default function CheckoutPage() {
             buyNow,
             items,
             collections,
+            extras,
             draft: {
               values: getValues(),
               khoroo,
@@ -1268,6 +1351,77 @@ export default function CheckoutPage() {
           );
           return;
         }
+        // Дүн өөрчлөгдсөн (0149): купон, хүргэлт, үнэ. Сервер захиалгыг
+        // үүсгээгүй — шинэ дүнг тоймд харуулаад «Шинэ дүнгээр захиалах».
+        if (
+          data.error === "COUPON_CHANGED" ||
+          data.error === "SHIPPING_CHANGED" ||
+          data.error === "TOTAL_CHANGED"
+        ) {
+          const totals = data.totals as ServerTotals;
+          if (data.error === "COUPON_CHANGED" && coupon) {
+            // Купоны дүнг эх сурвалж дээр нь засна — талбар ч шинэ дүнг хэлнэ.
+            setCartCoupon(
+              totals.discount > 0
+                ? { code: coupon.code, discount: totals.discount }
+                : null,
+            );
+          }
+          setServerQuote({ key: signature, totals });
+          setServerError(
+            data.error === "COUPON_CHANGED"
+              ? "Купоны хөнгөлөлт өөрчлөгдсөн байна. Шинэ дүнг шалгаад дахин батална уу."
+              : data.error === "SHIPPING_CHANGED"
+                ? "Хүргэлтийн үнэ өөрчлөгдсөн байна. Шинэ дүнг шалгаад дахин батална уу."
+                : "Захиалгын дүн өөрчлөгдсөн байна. Шинэ дүнг шалгаад дахин батална уу.",
+          );
+          return;
+        }
+        // Нэмэлт барааны үнэ шинэчлэгдсэн — сагсны үнийг шинэчилж дахин
+        // батлуулна (сервер чимээгүй солихгүй).
+        if (data.error === "EXTRA_PRICE_CHANGED") {
+          useCart.getState().setExtraPrices(data.prices ?? {});
+          setServerError(
+            "Үнэ шинэчлэгдсэн байна. Шинэ үнийг шалгаад дахин батална уу.",
+          );
+          return;
+        }
+        if (
+          data.error === "EXTRA_QTY_UNAVAILABLE" ||
+          data.error === "LEFTOVER_ALREADY_SOLD"
+        ) {
+          const line = extras.find((e) => e.key === data.extraVariantId);
+          const sold = data.error === "LEFTOVER_ALREADY_SOLD";
+          const available = sold ? 0 : Number(data.available ?? 0);
+          setExtraIssue({
+            key: data.extraVariantId,
+            name: line?.name ?? "Нэмэлт бараа",
+            available,
+            sold,
+          });
+          setServerError(
+            sold
+              ? "Энэ үлдэгдэлтэй шил саяхан зарагдсан байна."
+              : `Таны сонгосон ${numAblative(Number(data.requested ?? line?.qty ?? 0))} ${available} ширхэг үлдсэн байна.`,
+          );
+          return;
+        }
+        if (data.error === "EXTRA_UNAVAILABLE") {
+          useCart.getState().removeExtra(data.extraVariantId);
+          setServerError(
+            "Сагсан дахь нэмэлт бараа худалдаанаас хасагдсан тул сагснаас чинь хаслаа. Үлдсэн барааг шалгаад дахин үргэлжлүүлнэ үү.",
+          );
+          return;
+        }
+        if (data.error === "VIAL_UNAVAILABLE") {
+          const perfume = items.find((i) => i.productId === data.productId);
+          setServerError(
+            perfume && data.ml
+              ? `${perfume.name}-ийн ${data.ml}ml-ийн сав дууссан тул одоогоор захиалах боломжгүй. Өөр хэмжээ сонгоно уу.`
+              : "Сонгосон хэмжээний сав дууссан тул одоогоор захиалах боломжгүй. Өөр хэмжээ сонгоно уу.",
+          );
+          return;
+        }
         // V point энэ хооронд өөр захиалгад зарцуулагдсан (0144). Сервер
         // дүнг чимээгүй өөрчлөхгүй — шинэ үлдэгдлийг тоймд харуулж, хэрэглэгч
         // ашиглах оноогоо дахин сонгоод «Захиалах»-ыг дахин дарна.
@@ -1318,7 +1472,11 @@ export default function CheckoutPage() {
                           // дахин дарвал давхар захиалга болох тул зогсооно.
                           data.error === "ORDER_PENDING"
                           ? "Таны захиалга боловсруулагдаж байна. Хэдэн секунд хүлээгээд «Захиалга хайх» хэсгээс шалгана уу."
-                          : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
+                          : data.error === "ORDER_TOO_LARGE"
+                            ? "Захиалгын дүн хэт их байна. Тоогоо багасгана уу."
+                            : data.error === "EXTRAS_DISABLED"
+                              ? "Нэмэлт бараа одоогоор захиалах боломжгүй байна. Сагснаасаа хасаад дахин оролдоно уу."
+                              : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
         );
         return;
       }
@@ -1355,6 +1513,7 @@ export default function CheckoutPage() {
           buyNow,
           items,
           collections,
+          extras,
           coupon: cart.coupon,
         });
       }
@@ -1768,6 +1927,7 @@ export default function CheckoutPage() {
                 <OrderLines
                   items={items}
                   collections={collections}
+                  extras={extras}
                   editable
                   buyNow={buyNow}
                   onUnavailable={addUnavailable}
@@ -1945,7 +2105,7 @@ export default function CheckoutPage() {
                   {hasAddress ? "Нийт төлөх төлбөр" : "Хүргэлтгүй дүн"}
                 </span>
                 <span className="text-2xl font-semibold tabular-nums">
-                  {formatPrice(total)}
+                  {formatPrice(shownTotal)}
                 </span>
               </div>
               {!hasAddress && (
@@ -1966,6 +2126,72 @@ export default function CheckoutPage() {
                   {serverError}
                 </p>
               )}
+              {serverQuote && (
+                <dl
+                  aria-label="Шинэ дүн"
+                  className="bg-secondary space-y-1.5 rounded-xl px-3 py-2.5 text-sm"
+                >
+                  <QuoteRow
+                    label="Барааны дүн"
+                    value={serverQuote.totals.subtotal}
+                  />
+                  {serverQuote.totals.discount > 0 && (
+                    <QuoteRow
+                      label="Купон"
+                      value={-serverQuote.totals.discount}
+                    />
+                  )}
+                  {serverQuote.totals.loyaltyUsed > 0 && (
+                    <QuoteRow
+                      label="V point"
+                      value={-serverQuote.totals.loyaltyUsed}
+                    />
+                  )}
+                  <QuoteRow
+                    label="Хүргэлт"
+                    value={serverQuote.totals.shippingFee}
+                  />
+                  <QuoteRow
+                    label="Нийт"
+                    value={serverQuote.totals.total}
+                    strong
+                  />
+                </dl>
+              )}
+              {extraIssue && (
+                <div className="flex flex-wrap gap-2">
+                  {!extraIssue.sold && extraIssue.available > 0 && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        useCart
+                          .getState()
+                          .setExtraQty(
+                            extraIssue.key,
+                            extraIssue.available,
+                            extraIssue.available,
+                          );
+                        setExtraIssue(null);
+                        setServerError(null);
+                      }}
+                    >
+                      {extraIssue.available} болгох
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      useCart.getState().removeExtra(extraIssue.key);
+                      setExtraIssue(null);
+                      setServerError(null);
+                    }}
+                  >
+                    {extraIssue.name} — хасах
+                  </Button>
+                </div>
+              )}
 
               {/* Товч нь захиалгыг БАТАЛГААЖУУЛДАГГҮЙ — төлөгдөөгүй захиалга
                     үүсгээд QPay рүү дамжуулна. «Захиалга баталгаажуулах» гэдэг нь
@@ -1983,9 +2209,11 @@ export default function CheckoutPage() {
                   ? "Энэ хаяг руу хүргэлт хийхгүй"
                   : // Дүн нь хаяг тодорсны дараа л эцсийнх — түүнээс
                     // өмнө товч дээр тоо амлахгүй.
-                    hasAddress
-                    ? `Төлбөр төлөх · ${formatPrice(total)}`
-                    : "Төлбөр төлөх"}
+                    serverQuote
+                    ? `Шинэ дүнгээр захиалах · ${formatPrice(shownTotal)}`
+                    : hasAddress
+                      ? `Төлбөр төлөх · ${formatPrice(shownTotal)}`
+                      : "Төлбөр төлөх"}
               </LoadingButton>
               <LoadingButton
                 type="button"
@@ -2034,7 +2262,7 @@ export default function CheckoutPage() {
                   {hasAddress ? "Нийт төлөх" : "Хүргэлтгүй дүн"}
                 </p>
                 <p className="text-base/tight font-semibold tabular-nums">
-                  {formatPrice(total)}
+                  {formatPrice(shownTotal)}
                 </p>
               </div>
               <LoadingButton
@@ -2043,7 +2271,11 @@ export default function CheckoutPage() {
                 disabled={zoneBlocked}
                 className="bg-cta text-cta-foreground hover:bg-cta/90 shrink-0 rounded-full"
               >
-                {zoneBlocked ? "Хүргэлтгүй" : "Төлбөр төлөх"}
+                {zoneBlocked
+                  ? "Хүргэлтгүй"
+                  : serverQuote
+                    ? "Шинэ дүнгээр захиалах"
+                    : "Төлбөр төлөх"}
               </LoadingButton>
             </div>
           </div>
@@ -2135,6 +2367,28 @@ export default function CheckoutPage() {
  * Захиалгын тоймын нэг мөр. Мөнгөн баганыг `tabular-nums`-аар түгжсэн нь
  * дараалсан дүнгүүдийн орон нь босоогоор эгнэх цорын ганц арга.
  */
+/** Серверийн шинэ дүнгийн мөр — хасагдах нь «−». */
+function QuoteRow({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: number;
+  strong?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className={strong ? "font-medium" : "text-muted-foreground"}>
+        {label}
+      </dt>
+      <dd className={`tabular-nums ${strong ? "font-semibold" : ""}`}>
+        {value < 0 ? `−${formatPrice(-value)}` : formatPrice(value)}
+      </dd>
+    </div>
+  );
+}
+
 function SummaryRow({
   label,
   value,

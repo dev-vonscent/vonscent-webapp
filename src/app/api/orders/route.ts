@@ -12,10 +12,14 @@ import {
   computeSummary,
   InsufficientStockError,
   ItemsUnavailableError,
-  mlByProduct,
-  priceGiftLines,
   UndeliverableZoneError,
 } from "@/features/checkout/api";
+import {
+  placeOrderError,
+  toPlacedSummary,
+  type OrderSummaryRow,
+} from "@/features/checkout/place-order-result";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { callRpc } from "@/lib/supabase/rpc";
@@ -39,19 +43,22 @@ import {
  * Давтагдсан идемпотентын түлхүүрийн хариу — анхны захиалгын хариуг сэргээнэ.
  *
  * Клиент энэ хоёрыг ялгаж мэдэхгүй байх ёстой: «дахин илгээх» нь анхны
- * илгээлттэй яг ижил үр дүн өгнө. `summary` нь тэр хүсэлтийн серверийн
- * тооцоо — дүн нь захиалгын мөрөөс уншигдана.
+ * илгээлттэй яг ижил үр дүн өгнө. `summary` нь САНГААС уншсан хураангуй
+ * (`order_summary`, 0149) — мөрийн дараалал, хасагдсан бэлэг, дүн нь анхны
+ * хариутай ижил (§6.2 №8).
  */
 async function describeExistingOrder(
   supabase: NonNullable<ReturnType<typeof createAdminClient>>,
   orderId: string,
-  summary: Awaited<ReturnType<typeof computeSummary>>,
 ) {
-  const { data } = await supabase
-    .from("orders")
-    .select("order_no, total, payment_method, pay_token")
-    .eq("id", orderId)
-    .maybeSingle();
+  const [{ data }, { data: summaryRow }] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("order_no, total, payment_method, pay_token")
+      .eq("id", orderId)
+      .maybeSingle(),
+    callRpc<OrderSummaryRow>(supabase, "order_summary", { p_order: orderId }),
+  ]);
   const order = data as {
     order_no: string;
     total: number;
@@ -60,10 +67,10 @@ async function describeExistingOrder(
   } | null;
   return {
     orderNo: order?.order_no ?? "",
-    total: order?.total ?? summary.total,
+    total: order?.total ?? 0,
     paymentMethod: order?.payment_method ?? "qpay",
     payToken: order?.pay_token ?? null,
-    summary,
+    summary: summaryRow ? toPlacedSummary(summaryRow) : null,
     qpayMock: isQpayMockMode(),
     /** Клиентэд мэдээлэл болгож л явна — урсгал нь ижил. */
     deduplicated: true,
@@ -157,8 +164,14 @@ export async function POST(req: Request) {
     }
     throw e;
   }
-  if (summary.lines.length === 0) {
+  // Зөвхөн нэмэлт бараатай захиалга ч болно (§2.1 №10).
+  if (summary.lines.length === 0 && input.extras.length === 0) {
     return NextResponse.json({ error: "EMPTY_CART" }, { status: 400 });
+  }
+  // Туг хаалттай үед нэмэлт бараа захиалагдахгүй — SQL ч татгалзана
+  // (EXTRAS_DISABLED), энэ нь route-ийн давхар шалгалт.
+  if (input.extras.length > 0 && !(await isFeatureEnabled("extras_shop"))) {
+    return NextResponse.json({ error: "EXTRAS_DISABLED" }, { status: 409 });
   }
 
   const supabase = createAdminClient();
@@ -193,38 +206,15 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: "ORDER_PENDING" }, { status: 409 });
         }
         return NextResponse.json(
-          await describeExistingOrder(supabase, claim.existingOrderId, summary),
+          await describeExistingOrder(supabase, claim.existingOrderId),
         );
       }
     }
 
-    // Бэлгийн 1мл дээж: эрх нь купоны дараах барааны дүнгийн 200,000₮ тутамд
-    // 1 (src/lib/gift.ts); багц тусдаа эрх өгөхгүй. Тиймээс купоныг энд place_order-той ижил аргаар шалгаад
-    // хямдарсан дүнгээр эрхийг бодно. Сонголт бүр серверт дахин шалгагдана —
-    // сан дотор байгаа эсэх, үлдэгдэл, эрхийн тоо.
-    let giftLines: Awaited<ReturnType<typeof priceGiftLines>> = [];
-    if (input.giftProductIds.length > 0) {
-      let discount = 0;
-      if (input.couponCode) {
-        const { data: couponCheck } = await callRpc<{
-          valid: boolean;
-          discount?: number;
-        }>(supabase, "validate_coupon", {
-          p_code: input.couponCode,
-          p_subtotal: summary.subtotal,
-          p_user: userId,
-        });
-        if (couponCheck?.valid) discount = couponCheck.discount ?? 0;
-      }
-      giftLines = await priceGiftLines(
-        input.giftProductIds,
-        Math.max(summary.subtotal - discount, 0),
-        // Төлбөртэй мөрүүд эх савнаас аль хэдийн авсан ml — бэлэг нь зөвхөн
-        // ҮЛДСЭН хэсгээс гарна.
-        mlByProduct(summary.lines),
-      );
-    }
-    const allLines = [...summary.lines, ...giftLines];
+    // Бэлгийн 1мл дээж (0149): эрх (купоны дараах барааны дүнгийн 200,000₮
+    // тутамд 1), сан, үлдэгдэл, 1ml сав — бүгд `place_order` дотор, нэг
+    // transaction-д. Эрхээс илүү эсвэл дууссан сонголт захиалгыг зогсоохгүй,
+    // `omitted_gifts`-д хадгалагдаж хэрэглэгчид мэдэгдэнэ.
 
     // Reserve inventory + create order atomically via RPC (development.md §6).
     const rpcArgs: Record<string, unknown> = {
@@ -254,85 +244,71 @@ export async function POST(req: Request) {
         // «3 сарын дараа» гэсэн захиалга нөөцөө тэр хугацаанд түгжих болно.
         deliver_on: clampDeliveryDay(input.deliverOn),
         reserve_minutes: RESERVE_TIMEOUT_MINUTES,
+        gift_product_ids: input.giftProductIds,
+        // Хэрэглэгчийн баталсан дүн (§6.2 №5) — SQL дахин бодсон дүн
+        // зөрвөл захиалга үүсэхгүй, шинэ дүнг буцаана.
+        ...(input.expected
+          ? {
+              expected: {
+                subtotal: input.expected.subtotal,
+                discount: input.expected.discount,
+                loyalty_used: input.expected.loyaltyUsed,
+                shipping_fee: input.expected.shippingFee,
+                total: input.expected.total,
+              },
+            }
+          : {}),
       },
-      p_items: allLines.map((l) => {
-        const base = {
-          product_id: l.productId,
-          variant_id: l.variantId,
-          ml: l.ml,
-          qty: l.qty,
-        };
-        // Bundle lines carry a server-computed unit price + grouping, and a
-        // бэлгийн 1мл дээж нь 0₮ мөр; loose items send none so
-        // place_order charges the variant's list price.
-        if (l.collectionName !== undefined || l.isGift) {
-          return {
-            ...base,
-            unit_price: l.unitPrice,
-            is_gift: l.isGift ?? false,
-            collection_id: l.collectionId ?? null,
-            collection_name: l.collectionName ?? null,
+      p_items: [
+        ...summary.lines.map((l) => {
+          const base = {
+            product_id: l.productId,
+            variant_id: l.variantId,
+            ml: l.ml,
+            qty: l.qty,
           };
-        }
-        return base;
-      }),
+          // Багцын мөр серверийн бодсон хямдарсан үнэтэй, бүлэглэлтэй;
+          // сул мөрийн үнийг place_order сангаас авна.
+          if (l.collectionName !== undefined) {
+            return {
+              ...base,
+              kind: "bundle",
+              unit_price: l.unitPrice,
+              collection_id: l.collectionId ?? null,
+              collection_name: l.collectionName ?? null,
+            };
+          }
+          return { ...base, kind: "perfume" };
+        }),
+        ...input.extras.map((e) => ({
+          kind: "extra",
+          extra_variant_id: e.extraVariantId,
+          qty: e.qty,
+          expected_unit_price: e.expectedUnitPrice,
+        })),
+      ],
     };
-    const { data, error } = await callRpc<{
-      order_no: string;
-      total: number;
-    }>(supabase, "place_order", rpcArgs);
+    const { data, error } = await callRpc<OrderSummaryRow>(
+      supabase,
+      "place_order",
+      rpcArgs,
+    );
 
-    if (error) {
+    if (error || !data) {
       // Захиалга үүсээгүй тул эзэмшлийг суллана — хэрэглэгч сагсаа засаад
       // ижил түлхүүрээр дахин оролдох ёстой.
       if (input.requestId) await releaseOrderRequest(supabase, input.requestId);
-      // `place_order` нь `INSUFFICIENT_STOCK:<product_id>` гэж шиддэг. Энэ
-      // хүртэл ирнэ гэдэг нь захиалга явж байх зуур өөр хэрэглэгч нөөцийг
-      // авсан гэсэн үг (computeSummary аль хэдийн шалгасан) — тэр барааг
-      // нэрлэж чадвал хэрэглэгч юуг засахаа мэднэ.
-      const insufficient = /INSUFFICIENT_STOCK:(\S+)/.exec(error.message ?? "");
-      // Савны түгжээ (0095) — сүүлийн шатны хамгаалалт. Энэ хүртэл ирнэ гэдэг
-      // нь сагс хуучирсан, эсвэл захиалга явж байх зуур админ хаасан гэсэн үг.
-      const bottle = error.message?.includes("BOTTLE_UNAVAILABLE");
-      // Мөрийн шалгалт (0125): бараа/хэмжээ худалдаанаас хасагдсан, эсвэл
-      // «Тун удахгүй» болсон — computeSummary шалгасны дараа админ сольсон.
-      // Хариу нь дээрх ItemsUnavailableError-тай ижил, клиент мөрийг хасна.
-      const unavailable = /ITEMS_UNAVAILABLE:(\S*)/.exec(error.message ?? "");
-      // V point (0144): checkout харуулснаас хойш оноо өөр захиалгад
-      // зарцуулагдсан. Сервер чимээгүй багасгахгүй — боломжтой дүнг (₮)
-      // буцааж, хэрэглэгч шинэ дүнгээр дахин батална.
-      const loyalty = /LOYALTY_CHANGED:(\d+)/.exec(error.message ?? "");
-      if (loyalty) {
-        return NextResponse.json(
-          { error: "LOYALTY_CHANGED", available: Number(loyalty[1]) },
-          { status: 409 },
-        );
-      }
-      if (unavailable) {
-        return NextResponse.json(
-          {
-            error: "ITEMS_UNAVAILABLE",
-            variantIds: unavailable[1] ? [unavailable[1]] : [],
-          },
-          { status: 409 },
-        );
-      }
-      if (bottle) {
-        return NextResponse.json(
-          { error: "BOTTLE_UNAVAILABLE" },
-          { status: 409 },
-        );
-      }
-      return NextResponse.json(
-        insufficient
-          ? { error: "OUT_OF_STOCK", productId: insufficient[1] }
-          : { error: "ORDER_FAILED" },
-        { status: insufficient ? 409 : 500 },
-      );
+      // Үлдэгдэл, сав, үнэ, баталсан дүн (0149) — бүгд нэг хөрвүүлэгчээр.
+      // Энд хүртэл ирсэн нөөцийн алдаа нь захиалга явж байх зуур өөр хүн
+      // авсан, эсвэл админ өөрчилсөн гэсэн үг (computeSummary цэвэр өнгөрсөн).
+      const known = placeOrderError(error?.message);
+      if (known) return NextResponse.json(known.body, { status: known.status });
+      return NextResponse.json({ error: "ORDER_FAILED" }, { status: 500 });
     }
 
-    const orderNo = data?.order_no ?? "";
-    const total = data?.total ?? summary.total;
+    const placed = toPlacedSummary(data);
+    const orderNo = placed.orderNo;
+    const total = placed.total;
 
     // Save the shipping address to the user's address book when requested.
     if (userId && input.saveAddress) {
@@ -353,7 +329,7 @@ export async function POST(req: Request) {
     const { data: created } = await supabase
       .from("orders")
       .select("id, pay_token, user_id")
-      .eq("order_no", orderNo)
+      .eq("id", placed.orderId)
       .maybeSingle();
     const order = created as {
       id: string;
@@ -409,7 +385,8 @@ export async function POST(req: Request) {
       total,
       paymentMethod: input.paymentMethod,
       payToken: order?.pay_token ?? null,
-      summary,
+      // Сангаас — хадгалсан мөр, хасагдсан бэлэг, дүн (§6.2 №6).
+      summary: placed,
       qpayMock: isQpayMockMode(),
     });
   }

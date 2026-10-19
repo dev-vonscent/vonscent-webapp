@@ -27,6 +27,8 @@ import {
 } from "@/features/cart/store";
 import { CartSizeSelect } from "@/features/cart/components/cart-size-select";
 import { useCartSelection } from "@/features/cart/use-cart-selection";
+import { useExtrasAvailability } from "@/features/extras/use-extras-availability";
+import { CartExtraLine } from "@/features/extras/components/cart-extra-line";
 import {
   unavailableLabel,
   useCartAvailability,
@@ -55,6 +57,8 @@ export function CartSheet({
   const setItemSelected = useCart((s) => s.setItemSelected);
   const setCollectionSelected = useCart((s) => s.setCollectionSelected);
   const add = useCart((s) => s.add);
+  const extras = useCart((s) => s.extras);
+  const removeExtra = useCart((s) => s.removeExtra);
 
   // Сагс `localStorage`-д долоо хоногоор суудаг: хаагдсан хэмжээ, буурсан
   // үлдэгдэл энд хүртэл амьд үлдэнэ. Drawer НЭЭГДЭХЭД нэг удаа асууна.
@@ -67,15 +71,23 @@ export function CartSheet({
     blockedItemKeys,
     blockedCollectionKeys,
   } = useCartAvailability({ enabled: open });
+  const { statusOf: extraStatusOf, blockedExtraKeys } = useExtrasAvailability({
+    enabled: open,
+  });
   const {
     isItemSelected,
     isCollectionSelected,
+    isExtraSelected,
     setAllSelected,
     lineCount,
     selectedLineCount,
     allSelected,
     noneSelected,
-  } = useCartSelection({ blockedItemKeys, blockedCollectionKeys });
+  } = useCartSelection({
+    blockedItemKeys,
+    blockedCollectionKeys,
+    blockedExtraKeys,
+  });
 
   // Avoid hydration mismatch from persisted store.
   const [mounted, setMounted] = React.useState(false);
@@ -152,7 +164,10 @@ export function CartSheet({
           </SheetTitle>
         </SheetHeader>
 
-        {!mounted || (items.length === 0 && collections.length === 0) ? (
+        {!mounted ||
+        (items.length === 0 &&
+          collections.length === 0 &&
+          extras.length === 0) ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <ShoppingCart className="text-muted-foreground size-10" />
             <p className="text-muted-foreground text-sm text-balance">
@@ -393,6 +408,23 @@ export function CartSheet({
                           </span>
                         </div>
                       </div>
+                    </motion.div>
+                  ))}
+
+                  {extras.map((e) => (
+                    <motion.div
+                      key={e.key}
+                      layout
+                      exit={{ opacity: 0, x: 48 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <CartExtraLine
+                        line={e}
+                        size="sheet"
+                        status={extraStatusOf(e.key)}
+                        selected={isExtraSelected(e.key)}
+                        onRemove={() => removeExtra(e.key)}
+                      />
                     </motion.div>
                   ))}
                 </AnimatePresence>
