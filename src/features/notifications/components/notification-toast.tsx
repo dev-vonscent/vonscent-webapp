@@ -53,11 +53,11 @@ export function NotificationToast({
     <ToastShell onOpen={onOpen} onClose={onClose}>
       <NotificationThumb notification={n} className="size-10" />
       <span className="min-w-0 flex-1 space-y-0.5">
-        <span className="line-clamp-2 block text-sm font-semibold wrap-break-word">
+        <span className="line-clamp-2 text-sm font-semibold wrap-break-word">
           {n.title}
         </span>
         {n.body && (
-          <span className="text-muted-foreground line-clamp-2 block text-sm wrap-break-word">
+          <span className="text-muted-foreground line-clamp-2 text-sm wrap-break-word">
             {n.body}
           </span>
         )}

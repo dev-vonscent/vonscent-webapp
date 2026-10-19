@@ -78,7 +78,7 @@ export function NotificationItem({
           )}
         </span>
         {n.body && (
-          <span className="text-muted-foreground line-clamp-3 block text-sm wrap-break-word">
+          <span className="text-muted-foreground line-clamp-3 text-sm wrap-break-word">
             {n.body}
           </span>
         )}
