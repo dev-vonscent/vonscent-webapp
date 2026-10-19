@@ -292,6 +292,12 @@ export async function POST(
         p_by: staff.id,
         p_fee: fee,
         p_restock: delivered ? parsed.data.restock : null,
+        p_extra_restocks: parsed.data.extraRestocks?.length
+          ? parsed.data.extraRestocks.map((r) => ({
+              order_item_id: r.orderItemId,
+              restocked_qty: r.restockedQty,
+            }))
+          : null,
       },
     );
     if (error) {

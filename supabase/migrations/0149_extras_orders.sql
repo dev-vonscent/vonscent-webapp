@@ -591,6 +591,13 @@ begin
             from jsonb_array_elements(v_lines) l
             join extra_variants ev on ev.id = (l->>'extra_variant_id')::uuid
            where l->>'kind' = 'extra' and ev.vial_id is not null
+          union all
+          -- Хуучин route-ийн бэлгийн мөр (1ml сав) — шинэ замд бэлгийг 7-р
+          -- хэсэг тусад нь шалгаж, дууссан бол хасна.
+          select vial_for(null, 1), (l->>'qty')::int,
+                 (l->>'product_id')::uuid, null
+            from jsonb_array_elements(v_lines) l
+           where l->>'kind' = 'gift'
         ) need
        group by v_id
     loop
@@ -674,7 +681,9 @@ begin
         using errcode = 'check_violation';
     end if;
     if (v_expected->>'loyalty_used')::int is distinct from v_loyalty then
-      raise exception 'LOYALTY_CHANGED:%', v_loyalty
+      -- Хоёр замд нэг утга: ашиглаж болох дээд дүн (₮).
+      raise exception 'LOYALTY_CHANGED:%',
+        least(coalesce(v_points_max, 0), greatest(v_subtotal - v_discount, 0))
         using errcode = 'check_violation';
     end if;
     if (v_expected->>'shipping_fee')::int is distinct from v_shipping then
@@ -950,9 +959,16 @@ begin
     raise exception 'PAYMENT_REQUIRED' using errcode = 'check_violation';
   end if;
 
-  -- Түгжих дараалал: profiles → (купон нь trigger дотор) → нөөц.
-  if p_status = 'cancelled' and v_user is not null then
+  -- Түгжих дараалал place_order-той ижил: profiles → coupons → нөөц.
+  -- Цуцлалт (оноо урвуулах, trigger-ээр купон суллах) ба хүргэлт (оноо
+  -- нээх) хоёулаа profiles, coupons-ийг хөндөнө — нөөцөөс ӨМНӨ түгжинэ.
+  if p_status in ('cancelled', 'delivered') and v_user is not null then
     perform 1 from profiles where id = v_user for update;
+  end if;
+  if p_status = 'cancelled' then
+    perform 1 from coupons
+     where id in (select coupon_id from coupon_redemptions where order_id = p_order)
+     order by id for update;
   end if;
   perform order_lock_stock(p_order);
 
@@ -1017,8 +1033,9 @@ begin
     values (p_order, p_status, coalesce(p_note, ''), p_by);
 end $$;
 
--- Cron: төлөгдөөгүй захиалга хүргэлтээс гарахгүй — нэг буруу мөр бүх
--- давталтыг (PAYMENT_REQUIRED) унагахаас сэргийлж шүүлтээр.
+-- Cron (0149): шилжилтийн хүснэгтэд нийцүүлж, мөр бүрийг тусгаарлана — нэг
+-- буруу мөр (ILLEGAL_TRANSITION, PAYMENT_REQUIRED, deadlock) тэр өдрийн бүх
+-- захиалгыг rollback хийхгүй; тэр мөр дараагийн удаа дахин оролдогдоно.
 create or replace function auto_deliver_orders()
 returns void language plpgsql as $$
 declare
@@ -1026,10 +1043,47 @@ declare
 begin
   for v_row in
     select id from orders where status = 'shipping' and payment_status = 'paid'
+     order by id
   loop
-    perform update_order_status(
-      v_row.id, 'delivered', 'Автоматаар хүргэгдсэн (23:00)', null
-    );
+    begin
+      perform update_order_status(
+        v_row.id, 'delivered', 'Автоматаар хүргэгдсэн (23:00)', null
+      );
+    exception when others then
+      raise warning 'auto_deliver_orders %: %', v_row.id, sqlerrm;
+    end;
+  end loop;
+end $$;
+
+-- 0052-ын бие: төлсөн `pending` (сэргээсэн захиалга) нь `pending → shipping`
+-- шилжилтгүй тул эхлээд `confirmed` болно.
+create or replace function auto_dispatch_orders()
+returns void language plpgsql as $$
+declare
+  v_row record;
+begin
+  for v_row in
+    select id, status from orders
+    where status in ('pending', 'confirmed')
+      and payment_status = 'paid'
+      and coalesce(
+            deliver_on,
+            ((created_at at time zone 'Asia/Ulaanbaatar')::date + 1)
+          ) <= (now() at time zone 'Asia/Ulaanbaatar')::date
+    order by id
+  loop
+    begin
+      if v_row.status = 'pending' then
+        perform update_order_status(
+          v_row.id, 'confirmed', 'Төлөгдсөн тул баталгаажлаа', null
+        );
+      end if;
+      perform update_order_status(
+        v_row.id, 'shipping', 'Автоматаар хүргэлтэд гарлаа (11:00)', null
+      );
+    exception when others then
+      raise warning 'auto_dispatch_orders %: %', v_row.id, sqlerrm;
+    end;
   end loop;
 end $$;
 
@@ -1368,6 +1422,7 @@ begin
     'place_order(jsonb, jsonb)',
     'update_order_status(uuid, order_status_t, text, uuid)',
     'auto_deliver_orders()',
+    'auto_dispatch_orders()',
     'mark_order_paid(uuid, uuid, text)',
     'mark_order_refunded(uuid, uuid, int, boolean, jsonb)',
     'order_restock_extras(uuid, uuid, jsonb)'

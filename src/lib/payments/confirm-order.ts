@@ -114,6 +114,26 @@ async function commit(
       );
       return { ok: false, error: "ORDER_CANCELLED" };
     }
+    // 0149: төлбөрийг зөвхөн хүлээгдэж буй / баталгаажсан захиалгад. Хуучин
+    // (хамгаалалтаас өмнө гараар хүргэлтэд гаргасан) эсвэл буцаасан захиалгад
+    // орсон мөнгө чимээгүй алга болохгүй — цуцлагдсантай адил хүний ажил.
+    if (error.message.includes("ILLEGAL_TRANSITION")) {
+      await supabase.from("admin_notifications").insert({
+        kind: "payment_after_cancel",
+        order_id: order.id,
+        message:
+          `${order.order_no}-д ${formatPrice(order.total)} төлбөр орж ирсэн ч ` +
+          `захиалгын төлөвөөс шалтгаалан автоматаар бүртгэгдсэнгүй. ` +
+          `Шалгаад гараар шийдвэрлэнэ үү.`,
+      });
+      await notifyAdmin(
+        `⚠️ <b>Төлбөр бүртгэгдсэнгүй</b> — ${tgEscape(order.order_no)}\n` +
+          `💰 ${formatPrice(order.total)}\n` +
+          `Захиалгын төлөвөөс шалтгаалан автоматаар бүртгэгдсэнгүй.\n` +
+          `🔗 ${env.siteUrl}/admin/orders/${order.id}`,
+      );
+      return { ok: false, error: "ORDER_CANCELLED" };
+    }
     return { ok: false, error: "COMMIT_FAILED" };
   }
 

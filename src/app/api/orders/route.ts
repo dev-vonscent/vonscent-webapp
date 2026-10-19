@@ -87,7 +87,8 @@ function parseSnapshot(body: unknown) {
   if (raw === undefined) return null;
   const parsed = savedCheckoutInputSchema.safeParse(raw);
   if (!parsed.success) return null;
-  if (JSON.stringify(parsed.data).length > SAVED_CHECKOUT_MAX_BYTES) return null;
+  if (JSON.stringify(parsed.data).length > SAVED_CHECKOUT_MAX_BYTES)
+    return null;
   return parsed.data;
 }
 
@@ -288,11 +289,21 @@ export async function POST(req: Request) {
         })),
       ],
     };
-    const { data, error } = await callRpc<OrderSummaryRow>(
+    let { data, error } = await callRpc<OrderSummaryRow>(
       supabase,
       "place_order",
       rpcArgs,
     );
+    // Deadlock (40P01) — бүх нөөцийг нэг дарааллаар түгжих ч өдрийн cron
+    // batch зэрэг ажиллахад ховор тохиолдоно. Transaction бүхэлдээ буцсан тул
+    // нэг удаа дахин оролдоход аюулгүй.
+    if (error && /deadlock detected/i.test(error.message)) {
+      ({ data, error } = await callRpc<OrderSummaryRow>(
+        supabase,
+        "place_order",
+        rpcArgs,
+      ));
+    }
 
     if (error || !data) {
       // Захиалга үүсээгүй тул эзэмшлийг суллана — хэрэглэгч сагсаа засаад

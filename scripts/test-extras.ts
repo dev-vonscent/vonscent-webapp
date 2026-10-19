@@ -1455,6 +1455,30 @@ async function main() {
     },
   );
 
+  await scenario(
+    a,
+    "Cron: сэргээсэн төлсөн pending → хүргэлтэд (review 🔴1)",
+    async () => {
+      const e = await localExtra(a, "t-cron", 15000, 5);
+      const s = await order(a, [extraLine(e)]);
+      await a.query("select mark_order_paid($1, null, 'mock')", [s.order_id]);
+      await status(a, s.order_id, "cancelled");
+      await status(a, s.order_id, "pending");
+      await a.query(
+        "update orders set deliver_on = (now() at time zone 'Asia/Ulaanbaatar')::date where id = $1",
+        [s.order_id],
+      );
+      await a.query("select auto_dispatch_orders()");
+      const o = await one<{ status: string }>(
+        a,
+        "select status from orders where id = $1",
+        [s.order_id],
+      );
+      check("pending+paid → shipping (унахгүй)", o.status === "shipping", o);
+      await reconcile(a);
+    },
+  );
+
   // ── Холимог хоёр захиалга урвуу дарааллаар — deadlock-гүй (№10) ──────
   console.log("\nУрвуу дараалалтай хоёр захиалга (№10)");
   current = "№10";
