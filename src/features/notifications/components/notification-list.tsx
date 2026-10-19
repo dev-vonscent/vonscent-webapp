@@ -5,12 +5,16 @@ import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
-import { useNotificationFeed } from "../use-notifications";
+import {
+  FEED_PAGE_SIZE,
+  PANEL_LIMIT,
+  useNotificationFeed,
+} from "../use-notifications";
 import { useOpenNotification } from "../use-open-notification";
 import { NotificationItem } from "./notification-item";
 
 /**
- * Мэдэгдлийн жагсаалт — panel (эхний 20) ба `/account/notifications`
+ * Мэдэгдлийн жагсаалт — panel (эхний 10) ба `/account/notifications`
  * («Цааш үзэх»-тэй) хоёул.
  */
 export function NotificationList({
@@ -24,7 +28,12 @@ export function NotificationList({
   onNavigate?: () => void;
   emptySurface?: "dashed" | "muted";
 }) {
-  const feed = useNotificationFeed({ enabled });
+  // Хонхны panel (desktop popover, утасны sheet) — хөнгөн эхний 10; бусдыг нь
+  // «Бүгдийг харах» хуудас 20-оор.
+  const feed = useNotificationFeed({
+    enabled,
+    limit: firstPageOnly ? PANEL_LIMIT : FEED_PAGE_SIZE,
+  });
   const open = useOpenNotification(onNavigate);
 
   if (feed.isPending) {
