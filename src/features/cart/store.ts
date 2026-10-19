@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { ExtraInventoryMode } from "@/db/types";
 
 export interface CartItem {
   /** Stable line key: the variant id. */
@@ -12,6 +13,29 @@ export interface CartItem {
   brand: string;
   variantId: string;
   ml: number;
+  unitPrice: number;
+  qty: number;
+  image: string | null;
+}
+
+/**
+ * Нэмэлт бараа (extras-shop-plan §10) — хайрцаг, сав, шил. Үнэртний мөрөөс
+ * тусдаа: ml-гүй, багцад ордоггүй. Түлхүүр нь хувилбарын id.
+ *
+ * `unitPrice` нь сагсанд нэмсэн мөчийн үнэ — захиалахад «харсан үнэ»
+ * (`expectedUnitPrice`) болж явна; сангийнх өөр бол сервер чимээгүй
+ * солихгүй, шинэ үнийг буцаана (EXTRA_PRICE_CHANGED).
+ */
+export interface CartExtra {
+  key: string;
+  extraVariantId: string;
+  extraId: string;
+  slug: string;
+  name: string;
+  /** «Хар», «Ягаан 10ml», «18 / 100ml»; ганц хувилбартай бол хоосон. */
+  label: string;
+  categoryName: string;
+  mode: ExtraInventoryMode;
   unitPrice: number;
   qty: number;
   image: string | null;
@@ -93,11 +117,13 @@ export interface CartCollection {
  */
 export type BuyNowLine =
   | { kind: "item"; item: CartItem }
-  | { kind: "collection"; collection: CartCollection };
+  | { kind: "collection"; collection: CartCollection }
+  | { kind: "extra"; extra: CartExtra };
 
 interface CartState {
   items: CartItem[];
   collections: CartCollection[];
+  extras: CartExtra[];
   /** Идэвхтэй «Захиалах» мөр, байвал төлбөрийн хуудас зөвхөн үүнийг авна. */
   buyNow: BuyNowLine | null;
   /**
@@ -108,6 +134,7 @@ interface CartState {
    */
   excludedItems: string[];
   excludedCollections: string[];
+  excludedExtras: string[];
   coupon: AppliedCoupon | null;
   add: (item: Omit<CartItem, "key" | "qty">, qty?: number) => void;
   /**
@@ -168,7 +195,7 @@ interface CartState {
    */
   setAllSelected: (
     selected: boolean,
-    except?: { items?: string[]; collections?: string[] },
+    except?: { items?: string[]; collections?: string[]; extras?: string[] },
   ) => void;
   /** Drop only the checked lines — what an order takes out of the cart. */
   removeSelected: () => void;
@@ -176,6 +203,30 @@ interface CartState {
   clearOrdered: () => void;
   setCoupon: (coupon: AppliedCoupon | null) => void;
   clear: () => void;
+  /**
+   * Нэмэлт бараа нэмэх. `max` — зарах боломжтой тоо (байвал). Үлдэгдэлтэй
+   * шил ганц ширхэг тул 1-ээс хэтрэхгүй.
+   */
+  addExtra: (
+    extra: Omit<CartExtra, "key" | "qty">,
+    qty?: number,
+    max?: number,
+  ) => void;
+  /** Нэмэлт барааны «Захиалах» — сагсыг тойрно (`startBuyNow`-тэй ижил дүрэм). */
+  startBuyNowExtra: (
+    extra: Omit<CartExtra, "key" | "qty">,
+    qty?: number,
+  ) => void;
+  removeExtra: (key: string) => void;
+  setExtraQty: (key: string, qty: number, max?: number) => void;
+  setExtraSelected: (key: string, selected: boolean) => void;
+  /** Сервер шинэ үнэ хэлсэн (EXTRA_PRICE_CHANGED) — сагс, «Захиалах» мөр хоёулаа. */
+  setExtraPrices: (prices: Record<string, number>) => void;
+}
+
+/** Үлдэгдэлтэй шил (эх шил) — ганц ширхэг. */
+function extraCap(mode: ExtraInventoryMode, max?: number): number | undefined {
+  return mode === "leftover_liquid" ? 1 : max;
 }
 
 /**
@@ -209,10 +260,104 @@ export const useCart = create<CartState>()(
     (set) => ({
       items: [],
       collections: [],
+      extras: [],
       buyNow: null,
       excludedItems: [],
       excludedCollections: [],
+      excludedExtras: [],
       coupon: null,
+      addExtra: (extra, qty = 1, max) =>
+        set((state) => {
+          const key = extra.extraVariantId;
+          const cap = extraCap(extra.mode, max);
+          const existing = state.extras.find((e) => e.key === key);
+          const excludedExtras = state.excludedExtras.filter((k) => k !== key);
+          if (existing) {
+            return {
+              excludedExtras,
+              extras: state.extras.map((e) =>
+                e.key === key
+                  ? {
+                      ...e,
+                      ...extra,
+                      key,
+                      qty: clampQty(e.qty + qty, cap),
+                    }
+                  : e,
+              ),
+            };
+          }
+          return {
+            excludedExtras,
+            extras: [
+              ...state.extras,
+              { ...extra, key, qty: clampQty(qty, cap) },
+            ],
+          };
+        }),
+      startBuyNowExtra: (extra, qty = 1) =>
+        set({
+          buyNow: {
+            kind: "extra",
+            extra: {
+              ...extra,
+              key: extra.extraVariantId,
+              qty: clampQty(qty, extraCap(extra.mode)),
+            },
+          },
+        }),
+      removeExtra: (key) =>
+        set((state) => ({
+          extras: state.extras.filter((e) => e.key !== key),
+          excludedExtras: state.excludedExtras.filter((k) => k !== key),
+          buyNow:
+            state.buyNow?.kind === "extra" && state.buyNow.extra.key === key
+              ? null
+              : state.buyNow,
+        })),
+      setExtraQty: (key, qty, max) =>
+        set((state) => ({
+          extras: state.extras.map((e) =>
+            e.key === key
+              ? { ...e, qty: clampQty(qty, extraCap(e.mode, max)) }
+              : e,
+          ),
+          buyNow:
+            state.buyNow?.kind === "extra" && state.buyNow.extra.key === key
+              ? {
+                  kind: "extra",
+                  extra: {
+                    ...state.buyNow.extra,
+                    qty: clampQty(qty, extraCap(state.buyNow.extra.mode, max)),
+                  },
+                }
+              : state.buyNow,
+        })),
+      setExtraSelected: (key, selected) =>
+        set((state) => ({
+          excludedExtras: selected
+            ? state.excludedExtras.filter((k) => k !== key)
+            : state.excludedExtras.includes(key)
+              ? state.excludedExtras
+              : [...state.excludedExtras, key],
+        })),
+      setExtraPrices: (prices) =>
+        set((state) => ({
+          extras: state.extras.map((e) =>
+            prices[e.key] != null ? { ...e, unitPrice: prices[e.key] } : e,
+          ),
+          buyNow:
+            state.buyNow?.kind === "extra" &&
+            prices[state.buyNow.extra.key] != null
+              ? {
+                  kind: "extra",
+                  extra: {
+                    ...state.buyNow.extra,
+                    unitPrice: prices[state.buyNow.extra.key],
+                  },
+                }
+              : state.buyNow,
+        })),
       add: (item, qty = 1) =>
         set((state) => {
           const key = item.variantId;
@@ -328,10 +473,18 @@ export const useCart = create<CartState>()(
             buyNow:
               b.kind === "item"
                 ? { ...b, item: { ...b.item, qty: clampQty(qty, max) } }
-                : {
-                    ...b,
-                    collection: { ...b.collection, qty: clampQty(qty, max) },
-                  },
+                : b.kind === "extra"
+                  ? {
+                      ...b,
+                      extra: {
+                        ...b.extra,
+                        qty: clampQty(qty, extraCap(b.extra.mode, max)),
+                      },
+                    }
+                  : {
+                      ...b,
+                      collection: { ...b.collection, qty: clampQty(qty, max) },
+                    },
           };
         }),
       setBuyNowVariant: (variant) =>
@@ -483,10 +636,14 @@ export const useCart = create<CartState>()(
                 excludedCollections: state.collections
                   .filter((c) => except?.collections?.includes(c.key))
                   .map((c) => c.key),
+                excludedExtras: state.extras
+                  .filter((e) => except?.extras?.includes(e.key))
+                  .map((e) => e.key),
               }
             : {
                 excludedItems: state.items.map((i) => i.key),
                 excludedCollections: state.collections.map((c) => c.key),
+                excludedExtras: state.extras.map((e) => e.key),
               },
         ),
       removeSelected: () =>
@@ -503,6 +660,12 @@ export const useCart = create<CartState>()(
           excludedCollections: state.collections
             .filter((c) => state.excludedCollections.includes(c.key))
             .map((c) => c.key),
+          extras: state.extras.filter((e) =>
+            state.excludedExtras.includes(e.key),
+          ),
+          excludedExtras: state.extras
+            .filter((e) => state.excludedExtras.includes(e.key))
+            .map((e) => e.key),
           // A coupon was validated against the ordered subtotal; what is left
           // in the cart is a different basket.
           coupon: null,
@@ -525,6 +688,12 @@ export const useCart = create<CartState>()(
             excludedCollections: state.collections
               .filter((c) => state.excludedCollections.includes(c.key))
               .map((c) => c.key),
+            extras: state.extras.filter((e) =>
+              state.excludedExtras.includes(e.key),
+            ),
+            excludedExtras: state.extras
+              .filter((e) => state.excludedExtras.includes(e.key))
+              .map((e) => e.key),
             coupon: null,
           };
         }),
@@ -533,13 +702,30 @@ export const useCart = create<CartState>()(
         set({
           items: [],
           collections: [],
+          extras: [],
           buyNow: null,
           excludedItems: [],
           excludedCollections: [],
+          excludedExtras: [],
           coupon: null,
         }),
     }),
-    { name: "vonscent-cart" },
+    {
+      name: "vonscent-cart",
+      // v1 (0145): нэмэлт бараа. Хуучин сагсанд `extras` байхгүй — хоосноор
+      // эхэлнэ, бусад мөр хэвээр.
+      version: 1,
+      migrate: (persisted) => {
+        const s = (persisted ?? {}) as Partial<CartState>;
+        return {
+          ...s,
+          extras: Array.isArray(s.extras) ? s.extras : [],
+          excludedExtras: Array.isArray(s.excludedExtras)
+            ? s.excludedExtras
+            : [],
+        } as CartState;
+      },
+    },
   ),
 );
 
@@ -551,6 +737,7 @@ export const useCart = create<CartState>()(
  */
 const EMPTY_ITEMS: CartItem[] = [];
 const EMPTY_COLLECTIONS: CartCollection[] = [];
+const EMPTY_EXTRAS: CartExtra[] = [];
 
 /**
  * Сагсны МӨРИЙН тоо (чагттай эсэхээс үл хамааран) — толгойн badge ба
@@ -558,7 +745,7 @@ const EMPTY_COLLECTIONS: CartCollection[] = [];
  * харагдаад, сагсаа нээхэд ганц бараа, «1/1» тоолууртай зөрдөг байв.
  */
 export const selectCount = (s: CartState) =>
-  s.items.length + s.collections.length;
+  s.items.length + s.collections.length + s.extras.length;
 
 export const isItemSelected = (s: CartState, key: string) =>
   !s.excludedItems.includes(key);
@@ -571,11 +758,17 @@ export const selectedItems = (s: CartState) =>
 /** Checked bundle lines. */
 export const selectedCollections = (s: CartState) =>
   s.collections.filter((c) => !s.excludedCollections.includes(c.key));
+/** Checked extra lines. */
+export const selectedExtras = (s: CartState) =>
+  s.extras.filter((e) => !s.excludedExtras.includes(e.key));
+export const isExtraSelected = (s: CartState, key: string) =>
+  !s.excludedExtras.includes(key);
 
 /** Units the customer is about to order (checked lines only). */
 export const selectSelectedCount = (s: CartState) =>
   selectedItems(s).reduce((n, i) => n + i.qty, 0) +
-  selectedCollections(s).reduce((n, c) => n + c.qty, 0);
+  selectedCollections(s).reduce((n, c) => n + c.qty, 0) +
+  selectedExtras(s).reduce((n, e) => n + e.qty, 0);
 
 /**
  * Payable subtotal: **checked lines only**. Everything downstream — coupon
@@ -584,7 +777,8 @@ export const selectSelectedCount = (s: CartState) =>
  */
 export const selectSubtotal = (s: CartState) =>
   selectedItems(s).reduce((sum, i) => sum + i.unitPrice * i.qty, 0) +
-  selectedCollections(s).reduce((sum, c) => sum + c.unitPrice * c.qty, 0);
+  selectedCollections(s).reduce((sum, c) => sum + c.unitPrice * c.qty, 0) +
+  selectedExtras(s).reduce((sum, e) => sum + e.unitPrice * e.qty, 0);
 
 /**
  * Төлбөрийн хуудсанд орох мөрүүд.
@@ -604,11 +798,21 @@ export const selectCheckoutCollections = (s: CartState) =>
       ? [s.buyNow.collection]
       : EMPTY_COLLECTIONS
     : selectedCollections(s);
+export const selectCheckoutExtras = (s: CartState) =>
+  s.buyNow
+    ? s.buyNow.kind === "extra"
+      ? [s.buyNow.extra]
+      : EMPTY_EXTRAS
+    : selectedExtras(s);
 
 /** Төлбөрийн хуудасны дүн — купон, хүргэлт, бэлэг бүгд эндээс тооцогдоно. */
 export const selectCheckoutSubtotal = (s: CartState) =>
   selectCheckoutItems(s).reduce((sum, i) => sum + i.unitPrice * i.qty, 0) +
-  selectCheckoutCollections(s).reduce((sum, c) => sum + c.unitPrice * c.qty, 0);
+  selectCheckoutCollections(s).reduce(
+    (sum, c) => sum + c.unitPrice * c.qty,
+    0,
+  ) +
+  selectCheckoutExtras(s).reduce((sum, e) => sum + e.unitPrice * e.qty, 0);
 
 /**
  * Багцын **хямдралын өмнөх** үнэ — гишүүдийн ганцаарчилсан үнийн нийлбэр.
@@ -625,8 +829,11 @@ export const selectCheckoutGross = (s: CartState) =>
   selectCheckoutCollections(s).reduce(
     (sum, c) => sum + collectionBasePrice(c) * c.qty,
     0,
-  );
+  ) +
+  selectCheckoutExtras(s).reduce((sum, e) => sum + e.unitPrice * e.qty, 0);
 
 /** True when at least one line is unchecked (for the «select all» box). */
 export const selectHasExcluded = (s: CartState) =>
-  s.excludedItems.length > 0 || s.excludedCollections.length > 0;
+  s.excludedItems.length > 0 ||
+  s.excludedCollections.length > 0 ||
+  s.excludedExtras.length > 0;

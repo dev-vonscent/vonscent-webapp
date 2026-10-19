@@ -48,6 +48,8 @@ function hrefFor(row: SearchRow): string {
       return `/products/${row.slug}`;
     case "collection":
       return `/collections/${row.slug}`;
+    case "extra":
+      return `/extras/${row.slug}`;
     case "post":
       return `/blog/${row.slug}`;
     // Брэнд нь өөрийн хуудасгүй — каталогийн шүүлт рүү аваачна. Каталог нь
@@ -95,6 +97,7 @@ export async function globalSearch(
   const results: SearchResults = {
     product: [],
     collection: [],
+    extra: [],
     post: [],
     brand: [],
   };
@@ -130,6 +133,7 @@ function seedSearch(query: string, limitPerKind: number): SearchResults {
       memberImages: null,
     })),
     collection: [],
+    extra: [],
     post: [],
     brand: [],
   };

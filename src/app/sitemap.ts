@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { env } from "@/lib/env";
 import { createPublicClient } from "@/lib/supabase/public";
 import { SEED_COMING_SOON, SEED_PRODUCTS } from "@/features/products/seed";
+import { getShopExtras } from "@/features/extras/api";
 
 /**
  * Цагт нэг удаа дахин үүсгэнэ. Үгүй бол build-ийн үед нэг л удаа үүсч,
@@ -66,9 +67,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/faq",
   ];
   // Блог/Танилцуулга нуугдсан тул sitemap-д ч байхгүй.
-  const [products, collections] = await Promise.all([
+  // Нэмэлт бараа (0148) — туг хаалттай үед `extras_catalog()` хоосон.
+  const [products, collections, extras] = await Promise.all([
     productEntries(),
     collectionEntries(),
+    getShopExtras(),
   ]);
 
   return [
@@ -77,5 +80,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...collections.map((r) =>
       entry(base, `/collections/${r.slug}`, r.updated_at),
     ),
+    ...extras.map((e) => entry(base, `/extras/${e.slug}`, e.updatedAt)),
   ];
 }

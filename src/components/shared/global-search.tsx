@@ -6,7 +6,15 @@ import { useRouter } from "next/navigation";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import * as Sentry from "@sentry/nextjs";
 import { Command } from "cmdk";
-import { BookOpen, Layers, Search, Sparkles, Tag, X } from "lucide-react";
+import {
+  BookOpen,
+  Layers,
+  Search,
+  ShoppingBag,
+  Sparkles,
+  Tag,
+  X,
+} from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { MIN_SEARCH_LENGTH } from "@/lib/constants";
 import { isSearchable } from "@/lib/search";
@@ -43,13 +51,14 @@ const KIND_ICON: Record<
 > = {
   product: Sparkles,
   collection: Layers,
+  extra: ShoppingBag,
   post: BookOpen,
   brand: Tag,
 };
 
 /** Right-hand meta line: the one number that matters for this kind. */
 function hitMeta(hit: SearchHit): string | null {
-  if (hit.kind === "product") {
+  if (hit.kind === "product" || hit.kind === "extra") {
     return hit.soldOut ? "Дууссан" : formatPrice(hit.price ?? 0);
   }
   if (hit.itemCount != null && hit.itemCount > 0) {

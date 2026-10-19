@@ -121,3 +121,24 @@ export interface ShopExtraCard {
   /** Бэлгийн хайрцагт «N шил багтана». */
   capacity: number | null;
 }
+
+/** Барааны хуудасны нэг хувилбар (сонгох товч). */
+export interface ShopExtraVariant {
+  id: string;
+  /** «Хар», «Ягаан 10ml»; ганц хувилбартай бол хоосон байж болно. */
+  label: string;
+  price: number;
+  /** null = хязгааргүй; 0 = дууссан. */
+  available: number | null;
+}
+
+export interface ShopExtraDetail {
+  card: ShopExtraCard;
+  description: string;
+  images: string[];
+  variants: ShopExtraVariant[];
+  /** Үлдэгдэлтэй шилний эх үнэртний хуудас. */
+  productSlug: string | null;
+  productId: string | null;
+  updatedAt: string;
+}

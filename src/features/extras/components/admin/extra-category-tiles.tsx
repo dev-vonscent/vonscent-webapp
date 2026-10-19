@@ -1,24 +1,7 @@
 import Link from "next/link";
-import {
-  Droplet,
-  FlaskConical,
-  Gift,
-  type LucideIcon,
-  Package,
-  ShoppingBag,
-  Syringe,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ExtraCategory } from "../../types";
-
-const ICON: Record<string, LucideIcon> = {
-  "gift-box": Gift,
-  vial: FlaskConical,
-  leftover: Droplet,
-  "empty-bottle": Package,
-  syringe: Syringe,
-  "brand-pouch": ShoppingBag,
-};
+import { categoryIcon } from "../category-icon";
 
 const HINT: Record<ExtraCategory["mode"], string> = {
   local_quantity: "Хувилбар бүрт үнэ, тоо",
@@ -37,7 +20,7 @@ export function ExtraCategoryTiles({
   return (
     <ul className="grid grid-cols-2 gap-3 md:grid-cols-3">
       {categories.map((c) => {
-        const Icon = ICON[c.slug] ?? Package;
+        const Icon = categoryIcon(c.slug);
         const disabled = c.mode === "shared_vial" && !vialsOn;
         const body = (
           <>
