@@ -182,16 +182,12 @@ function Ladder({ current }: { current: UserTierKey }) {
               className={cn(
                 "bg-card relative flex items-center gap-4 rounded-2xl p-4 sm:flex-col sm:gap-3 sm:text-center",
                 isCurrent && "ring-foreground ring-2",
-                !reached && "opacity-60",
               )}
             >
               {/* Чимэглэлийн хэмжээ түвшнээс хамаарна — тогтмол талбайд
                   төвлөрүүлж, картууд жигд харагдана. */}
               <span className="flex h-[calc(var(--avatar)*1.8)] w-[calc(var(--avatar)*1.5)] shrink-0 items-center justify-center [--avatar:40px] sm:[--avatar:44px]">
-                <TierFrame
-                  tier={t.key}
-                  className={cn(!reached && "grayscale-[0.7]")}
-                >
+                <TierFrame tier={t.key}>
                   <span className="flex h-full items-center justify-center font-serif text-sm font-semibold">
                     {t.rate}%
                   </span>

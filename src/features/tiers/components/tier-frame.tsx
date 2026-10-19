@@ -5,6 +5,9 @@ import Image from "next/image";
 import type { UserTierKey } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { tierByKey } from "../lib";
+import { TierGem } from "./tier-gem";
+
+export { TierGem };
 
 /*
  * Түвшний хүрээ (клиент, 2026-10-19: клиентийн өгсөн зураг, 5 түвшин).
@@ -57,15 +60,16 @@ const FRAME_IMAGES: Record<UserTierKey, FrameImage> = {
     sparks: [[0.5, 0.06]],
   },
   platinum: {
-    src: "/tiers/platinum.v2.webp",
-    cx: 0.4973,
-    cy: 0.5486,
-    r: 0.3664,
-    aspect: 1.2145,
+    // v3 (2026-10-19): клиентийн хар дэвсгэртэй зургаас дэвсгэрийг арилгав.
+    src: "/tiers/platinum.v3.webp",
+    cx: 0.4991,
+    cy: 0.5481,
+    r: 0.3408,
+    aspect: 1.0902,
     glow: "rgb(230 236 245 / 0.32)",
     sparks: [
-      [0.5, 0.05],
-      [0.5, 0.92],
+      [0.5, 0.07],
+      [0.5, 0.88],
     ],
   },
   sapphire: {
@@ -202,31 +206,6 @@ export function TierFrame({
         </span>
       )}
     </span>
-  );
-}
-
-/**
- * Түвшний жижиг тэмдэг — тухайн түвшний хүрээ зураг өөрөө (badge, жагсаалт).
- * Материалын өнгө ганцаараа Standard/Platinum хоёрыг ялгадаггүй байсан —
- * хүрээний хэлбэр (навч, орой, титэм) нь ялгана.
- */
-export function TierGem({
-  tier,
-  className,
-}: {
-  tier: UserTierKey;
-  className?: string;
-}) {
-  const frame = FRAME_IMAGES[tier];
-  return (
-    <Image
-      src={frame.src}
-      alt=""
-      aria-hidden
-      width={40}
-      height={Math.round(40 * frame.aspect)}
-      className={cn("h-4.5 w-auto shrink-0 select-none", className)}
-    />
   );
 }
 

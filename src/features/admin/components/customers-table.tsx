@@ -4,8 +4,9 @@ import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/features/admin/components/data-table";
-import { ROLE_LABEL } from "@/lib/constants";
+import { ROLE_LABEL, type UserTierKey } from "@/lib/constants";
 import type { UserRole } from "@/db/types";
+import { TierBadge } from "@/features/tiers/components/tier-frame";
 
 export interface CustomerListRow {
   id: string;
@@ -14,6 +15,8 @@ export interface CustomerListRow {
   role: string;
   loyalty_points: number;
   is_blocked: boolean;
+  /** Хэрэглэгчийн түвшин (feature flag `user_tiers`); хаалттай бол null. */
+  tier?: UserTierKey | null;
 }
 
 const columns: ColumnDef<CustomerListRow, unknown>[] = [
@@ -21,12 +24,15 @@ const columns: ColumnDef<CustomerListRow, unknown>[] = [
     accessorKey: "full_name",
     header: "Нэр",
     cell: ({ row }) => (
-      <Link
-        href={`/admin/customers/${row.original.id}`}
-        className="hover:text-gold-strong font-medium"
-      >
-        {row.original.full_name || "—"}
-      </Link>
+      <span className="inline-flex items-center gap-2">
+        <Link
+          href={`/admin/customers/${row.original.id}`}
+          className="hover:text-gold-strong font-medium"
+        >
+          {row.original.full_name || "—"}
+        </Link>
+        {row.original.tier && <TierBadge tier={row.original.tier} />}
+      </span>
     ),
   },
   {
@@ -85,7 +91,10 @@ export function CustomersTable({ data }: { data: CustomerListRow[] }) {
       renderCard={(c) => (
         <Link href={`/admin/customers/${c.id}`} className="block space-y-2">
           <div className="flex items-center justify-between gap-3">
-            <span className="font-medium">{c.full_name || "—"}</span>
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="truncate font-medium">{c.full_name || "—"}</span>
+              {c.tier && <TierBadge tier={c.tier} className="shrink-0" />}
+            </span>
             {c.is_blocked ? (
               <Badge variant="sale">Хориглосон</Badge>
             ) : (

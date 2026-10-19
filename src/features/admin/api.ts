@@ -30,6 +30,8 @@ import { matchesSearch, searchTerms } from "@/lib/search";
 import { stockState } from "./lib/stock-state";
 import { PRODUCT_OPTION_LIMIT, type ProductOption } from "./lib/product-option";
 import { customerSearchFilter } from "./lib/customer-search";
+import { getTiersForUsers } from "@/features/tiers/server";
+import type { UserTierKey } from "@/lib/constants";
 import {
   COUPON_TABS,
   filterCoupons,
@@ -398,7 +400,10 @@ export const CUSTOMERS_PER_PAGE = 50;
 export async function getCustomers(
   search?: string,
   page = 0,
-): Promise<{ rows: ProfileRow[]; total: number | null }> {
+): Promise<{
+  rows: (ProfileRow & { tier: UserTierKey | null })[];
+  total: number | null;
+}> {
   const supabase = await createClient();
   if (!supabase) return { rows: [], total: null };
   let query = supabase
@@ -412,7 +417,13 @@ export async function getCustomers(
     page * CUSTOMERS_PER_PAGE,
     page * CUSTOMERS_PER_PAGE + CUSTOMERS_PER_PAGE - 1,
   );
-  return { rows: (data as ProfileRow[] | null) ?? [], total: count ?? 0 };
+  const rows = (data as ProfileRow[] | null) ?? [];
+  // Түвшин (feature flag `user_tiers`) — хаалттай бол бүгд null.
+  const tiers = await getTiersForUsers(rows.map((r) => r.id));
+  return {
+    rows: rows.map((r) => ({ ...r, tier: tiers[r.id] ?? null })),
+    total: count ?? 0,
+  };
 }
 
 /** One ml size as the admin edits it (product_variants). */
