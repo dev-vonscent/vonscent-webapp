@@ -546,7 +546,8 @@ async function main() {
       const id = await placeOrder(a, {
         user: ctx.customer,
         lines: [{ p, ml: 10 }],
-        loyalty: 999_999,
+        // Боломжтой оноогоо бүгдийг (0144: үлдэгдлээс их бол LOYALTY_CHANGED).
+        loyalty: 200_000,
         createdAt: "2031-01-12T12:00:00",
       });
       await pay(a, id);
