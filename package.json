@@ -21,6 +21,8 @@
     "db:types": "supabase gen types typescript --local > src/db/types.ts",
     "check:quiz-tags": "node --env-file=.env.prod --import tsx scripts/check-quiz-tags.ts",
     "check:search-parity": "node --env-file=.env.prod --import tsx scripts/check-search-parity.ts",
+    "check:extras-reconcile-dev": "node --env-file=.env.dev --import tsx scripts/check-extras-reconcile.ts",
+    "check:extras-reconcile-prod": "node --env-file=.env.prod --import tsx scripts/check-extras-reconcile.ts",
     "db:migrate-prod": "node --env-file=.env.prod --import tsx scripts/migrate.ts",
     "db:migrate-dev": "node --env-file=.env.dev --import tsx scripts/migrate.ts",
     "db:test-coupons-dev": "node --env-file=.env.dev --import tsx scripts/test-coupons.ts",
