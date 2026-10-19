@@ -1,3 +1,4 @@
+import type { UserTierKey } from "@/lib/constants";
 /**
  * Review shapes shared by the server data layer (`api.ts`, which is
  * `server-only`) and the client list/form components. Kept in their own module
@@ -36,6 +37,8 @@ export interface Review {
   updatedAt: string;
   authorName: string;
   authorAvatar: string | null;
+  /** Зохиогчийн түвшин — хүрээнд (feature flag `user_tiers`); хаалттай бол null. */
+  authorTier?: UserTierKey | null;
 }
 
 export interface RecentReview extends Review {

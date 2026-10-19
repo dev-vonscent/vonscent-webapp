@@ -727,6 +727,11 @@ export const FEATURE_FLAGS = {
     description:
       "Header-ийн хонх, toast, /account/notifications, /api/notifications, админ /admin/broadcasts (/api/admin/broadcasts), notify_user/send_broadcast RPC ба хуваарьт илгээлтийн cron (0138), оноо/үнэгүй эрх/захиалгын мэдэгдэл (0139–0141).",
   },
+  user_tiers: {
+    label: "Хэрэглэгчийн түвшин",
+    description:
+      "Standard/Gold/Platinum/Sapphire/Ruby: /account/tier хуудас, профайл ба цэсний түвшний хүрээ, сэтгэгдлийн зургийн хүрээ, нүүр хуудасны «Top 3 хэрэглэгч», «Миний захиалга»-ын нийт дүн, /api/account/tier, mark_order_paid-ийн түвшний V point хувь (0143). Унтраалттай үед оноо хуучин settings.loyalty дүрмээр бодогдоно.",
+  },
 } as const satisfies Record<string, FeatureFlagMeta>;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
@@ -747,6 +752,28 @@ export const FEATURE_FLAG_META: Readonly<Record<FeatureFlag, FeatureFlagMeta>> =
  * `deactivated_at` (0120).
  */
 export const WALLET_HISTORY_DAYS = 30;
+
+/**
+ * Хэрэглэгчийн түвшин (0143, feature flag `user_tiers`). Түвшин нь хадгалагдсан
+ * утга биш — нийт худалдан авалтаас (төлөгдсөн, цуцлагдаагүй захиалгын
+ * купоны дараах барааны дүн, хүргэлтгүй) тухай бүр бодогдоно.
+ *
+ * ⚠ `minSpend` ба `rate` нь SQL-ийн `tier_rate_for_spend()`-тэй (0143) үсэг
+ * үсгээрээ таарах ёстой — оноог сан бодно, энд зөвхөн харуулах.
+ * Өсөх дарааллаар.
+ */
+export const USER_TIERS = [
+  { key: "standard", label: "Standard", minSpend: 0, rate: 1 },
+  { key: "gold", label: "Gold", minSpend: 1_000_000, rate: 2 },
+  { key: "platinum", label: "Platinum", minSpend: 3_000_000, rate: 3 },
+  { key: "sapphire", label: "Sapphire", minSpend: 5_000_000, rate: 4 },
+  { key: "ruby", label: "Ruby", minSpend: 10_000_000, rate: 5 },
+] as const;
+
+export type UserTierKey = (typeof USER_TIERS)[number]["key"];
+
+/** Түвшний хуудасны топ жагсаалтын урт (7 хоног / сар). */
+export const TIER_LEADERBOARD_SIZE = 3;
 
 export const COUPONS_NEW_BADGE_UNTIL = "2026-11-01T00:00:00+08:00";
 

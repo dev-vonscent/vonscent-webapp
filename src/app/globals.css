@@ -819,3 +819,89 @@
 #crisp-chatbox [data-animate-maximize="true"] {
   display: none !important;
 }
+
+/*
+ * ── Хэрэглэгчийн түвшин (0143, feature flag `user_tiers`) ────────────────
+ *
+ * Хүрээ нь зураг (`public/tiers/*.webp`, `TierFrame`); энд түүн дээрх
+ * хөдөлгөөн (`tier-aura/shimmer/spark`).
+ *
+ * design.md-ийн «gradient хэрэглэхгүй» дүрмийн зориуд үл хамаарал: металл,
+ * чулуу бодитоор харагдах ганц арга (клиентийн шаардлага — «бодит мэт»).
+ * Өнгө нь материалынх тул theme-ээс хамаарахгүй.
+ */
+
+/* Хүрээний ард өнгөт гэрэл лугшина. */
+.tier-aura {
+  filter: blur(14px);
+  animation: tier-pulse 3.2s ease-in-out infinite;
+}
+/*
+ * Ойлт: хүрээний дүрсээр маскласан цайвар туузан гэрэл хөндлөн гүйнэ —
+ * металл, чулуу гэрэл ойлгож буй мэт. Гүйлт хооронд завсарлагатай.
+ */
+.tier-shimmer {
+  pointer-events: none;
+  background: linear-gradient(
+      105deg,
+      transparent 42%,
+      rgb(255 255 255 / 0.65) 50%,
+      transparent 58%
+    )
+    no-repeat;
+  background-size: 300% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mix-blend-mode: overlay;
+  animation: tier-sweep 4.8s ease-in-out infinite;
+}
+/* Чулуун дээрх 4 цацрагт гялбаа. */
+.tier-spark {
+  pointer-events: none;
+  translate: -50% -50%;
+  filter: drop-shadow(0 0 3px rgb(255 255 255 / 0.9));
+  scale: 0;
+  animation: tier-twinkle 3.6s ease-in-out infinite;
+}
+@keyframes tier-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    scale: 0.96;
+  }
+  50% {
+    opacity: 1;
+    scale: 1.04;
+  }
+}
+@keyframes tier-sweep {
+  0% {
+    background-position: 100% 0;
+  }
+  55%,
+  100% {
+    background-position: 0% 0;
+  }
+}
+@keyframes tier-twinkle {
+  0%,
+  60%,
+  100% {
+    scale: 0;
+    rotate: 0deg;
+  }
+  72% {
+    scale: 1;
+    rotate: 45deg;
+  }
+  84% {
+    scale: 0;
+    rotate: 90deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.tier-aura, .tier-shimmer, .tier-spark) {
+    animation: none;
+  }
+}

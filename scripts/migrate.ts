@@ -52,6 +52,9 @@ const RENAMED: Record<string, string> = {
   "0053b_spin_wheel.sql": "0053_spin_wheel.sql",
   "0054a_real_discounts.sql": "0054_real_discounts.sql",
   "0054b_role_in_jwt.sql": "0054_role_in_jwt.sql",
+  // 0138 нь notifications-тай зэрэг авагдсан — dev сан дээр хуучин нэрээр
+  // ажилласан. Prod дээр 0143 нэрээрээ хэвийн ажиллана.
+  "0143_user_tiers.sql": "0138_user_tiers.sql",
 };
 
 // Давхардал дахин үүсэхээс сэргийлнэ: файлууд нэрээрээ эрэмбэлэгддэг тул

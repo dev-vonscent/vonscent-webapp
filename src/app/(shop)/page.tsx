@@ -36,6 +36,8 @@ import {
   getNewestCollections,
 } from "@/features/collections/api";
 import { fillRail, interleave, mixRandom } from "@/features/products/rail";
+import { TierAvatar } from "@/features/tiers/components/tier-avatar";
+import { TopCustomersSection } from "@/features/tiers/components/top-customers-section";
 import { ScentQuiz } from "@/features/quiz/components/scent-quiz";
 import { DecantPlayground } from "@/features/marketing/components/decant-playground";
 import { HeroPosterPreload } from "@/features/marketing/components/hero-poster-preload";
@@ -268,6 +270,11 @@ export default function HomePage() {
 
         <Suspense fallback={<ReviewsSkeleton />}>
           <ReviewsSection />
+        </Suspense>
+
+        {/* Top 3 хэрэглэгч (feature flag `user_tiers`). */}
+        <Suspense fallback={null}>
+          <TopCustomersSection />
         </Suspense>
       </div>
     </>
@@ -515,19 +522,28 @@ async function ReviewsSection() {
               “{r.body || "Сайхан үнэр!"}”
             </blockquote>
             <figcaption className="border-border/60 mt-auto flex items-center gap-3 border-t pt-4">
-              <span className="bg-secondary relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-semibold">
-                {r.authorAvatar ? (
-                  <Image
-                    src={r.authorAvatar}
-                    alt=""
-                    fill
-                    sizes="40px"
-                    className="object-cover"
-                  />
-                ) : (
-                  r.authorName.charAt(0).toUpperCase()
-                )}
-              </span>
+              {r.authorTier ? (
+                <TierAvatar
+                  tier={r.authorTier}
+                  src={r.authorAvatar}
+                  name={r.authorName}
+                  size={36}
+                />
+              ) : (
+                <span className="bg-secondary relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-semibold">
+                  {r.authorAvatar ? (
+                    <Image
+                      src={r.authorAvatar}
+                      alt=""
+                      fill
+                      sizes="40px"
+                      className="object-cover"
+                    />
+                  ) : (
+                    r.authorName.charAt(0).toUpperCase()
+                  )}
+                </span>
+              )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1">
                   <span className="text-foreground truncate text-sm font-medium">

@@ -109,6 +109,8 @@ import {
 import { trackBeginCheckout } from "@/lib/analytics";
 import { createClient } from "@/lib/supabase/browser";
 import type { AddressRow } from "@/db/types";
+import { useMyTier } from "@/features/tiers/use-tier";
+import { pointsAtTierRate, tierByKey } from "@/features/tiers/lib";
 
 interface ShippingSettingsShape {
   zones: {
@@ -305,6 +307,8 @@ export default function CheckoutPage() {
 
   const [loyaltyPoints, setLoyaltyPoints] = React.useState(0);
   const [loyaltyRules, setLoyaltyRules] = React.useState(DEFAULT_LOYALTY_RULES);
+  // Туг асаалттай бол оноо түвшний хувиар (0143); зочинд `undefined`.
+  const { data: myTier } = useMyTier();
   /**
    * Оноогоор төлөхөөр хэрэглэгчийн ӨӨРӨӨ бичсэн дүн (₮). Өмнө нь энэ нь
    * чагт байсан тул «бүгд эсвэл юу ч үгүй» гэсэн хоёрхон сонголттой байв.
@@ -859,10 +863,12 @@ export default function CheckoutPage() {
    * Энэ захиалгаас хуримтлагдах оноо. Сан нь купоны дараах барааны дүнгээс
    * бодох тул оноогоор төлсөн хэсэг үүнийг бууруулахгүй (lib/loyalty.ts).
    */
-  const pointsEarned = pointsEarnedFor(
-    Math.max(subtotal - discount, 0),
-    loyaltyRules,
-  );
+  const pointsEarned = myTier
+    ? pointsAtTierRate(
+        Math.max(subtotal - discount, 0),
+        tierByKey(myTier.tier).rate,
+      )
+    : pointsEarnedFor(Math.max(subtotal - discount, 0), loyaltyRules);
 
   const contactName = watch("contactName") ?? "";
   const contactPhone = watch("contactPhone") ?? "";
