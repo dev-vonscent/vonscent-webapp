@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultVialStyle, vialStyleFor } from "./vials";
+import { defaultVialStyle, vialName, vialStyleFor } from "./vials";
 
 describe("vialStyleFor", () => {
   it("хүйсээр өгөгдмөл өнгө", () => {
@@ -24,5 +24,12 @@ describe("vialStyleFor", () => {
     expect(
       vialStyleFor({ ml: 1, gender: "female", vialStyle: null }),
     ).toBeNull();
+  });
+});
+
+describe("vialName", () => {
+  it("өнгөтэй ба өнгөгүй", () => {
+    expect(vialName({ style: "pink", ml: 10 })).toBe("Ягаан 10ml");
+    expect(vialName({ style: null, ml: 2 })).toBe("2ml сав");
   });
 });

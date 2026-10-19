@@ -11,13 +11,15 @@ export const brandName = z.string().trim().min(1).max(80);
 
 /** Latin slug from a brand name — the table's unique key. */
 export function brandSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize("NFKD")
-    // Strip combining marks so «Hermès» and «Hermes» cannot both exist.
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+  return (
+    name
+      .toLowerCase()
+      .normalize("NFKD")
+      // Strip combining marks so «Hermès» and «Hermes» cannot both exist.
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+  );
 }
 
 export const brandCreateSchema = z.object({

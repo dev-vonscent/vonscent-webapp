@@ -1,4 +1,7 @@
-import { isAuthRetryableFetchError, type AuthError } from "@supabase/supabase-js";
+import {
+  isAuthRetryableFetchError,
+  type AuthError,
+} from "@supabase/supabase-js";
 
 /**
  * `auth.getUser()`-ийн алдаа түр зуурынх уу (сүлжээ, timeout, auth 5xx)?

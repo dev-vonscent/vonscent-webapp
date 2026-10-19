@@ -1,0 +1,185 @@
+import { z } from "zod";
+
+/**
+ * Нэмэлт бараа — админы маягт (extras-shop-plan §7). Client ба server хоёулаа
+ * энэ схемээр шалгана; SQL (`extras_save`) нь горимын дүрмийг давхар барина.
+ *
+ * Горим бүр өөрийн хэлбэртэй (discriminated union) — энгийн бараанд тооны
+ * талбар, грамын савд савны сонголт, үлдэгдэлтэй шилэнд эх үнэртэн.
+ */
+
+/** Үнийн дээд хязгаар — DB check-тэй ижил (0145). qty ≤ 99 → мөр int-д багтана. */
+export const EXTRA_PRICE_MAX = 10_000_000;
+/** Нэг бараанд хэдэн зураг — DB check (0145). */
+export const EXTRA_IMAGES_MAX = 12;
+export const EXTRA_NAME_MAX = 120;
+export const EXTRA_LABEL_MAX = 60;
+export const EXTRA_DESCRIPTION_MAX = 4000;
+/** Анхны тоо, «Одоо байгаа тоо» — гараар бичихэд санамсаргүй 0 нэмэхээс. */
+export const EXTRA_STOCK_MAX = 100_000;
+
+const price = z
+  .number({ invalid_type_error: "Үнэ оруулна уу" })
+  .int("Бүхэл тоо оруулна уу")
+  .min(0, "Үнэ сөрөг байж болохгүй")
+  .max(EXTRA_PRICE_MAX, "Үнэ хэт өндөр байна");
+
+const base = {
+  name: z
+    .string()
+    .trim()
+    .min(1, "Нэр оруулна уу")
+    .max(EXTRA_NAME_MAX, `Нэр ${EXTRA_NAME_MAX} тэмдэгтээс хэтрэхгүй`),
+  description: z.string().max(EXTRA_DESCRIPTION_MAX).default(""),
+  images: z
+    .array(z.string().url())
+    .max(EXTRA_IMAGES_MAX, `Хамгийн ихдээ ${EXTRA_IMAGES_MAX} зураг`)
+    .default([]),
+  sort: z.number().int().min(-10000).max(10000).default(0),
+};
+
+export const localVariantSchema = z.object({
+  id: z.string().uuid().optional(),
+  label: z.string().trim().max(EXTRA_LABEL_MAX).default(""),
+  price,
+  isActive: z.boolean().default(true),
+  sort: z.number().int().default(0),
+  /** Зөвхөн шинэ хувилбарт — дараа нь «Нөөц засах»-аар. */
+  initialQty: z.number().int().min(0).max(EXTRA_STOCK_MAX).optional(),
+});
+
+export const vialVariantSchema = z.object({
+  id: z.string().uuid().optional(),
+  vialId: z.string().uuid(),
+  price,
+  isActive: z.boolean().default(true),
+  sort: z.number().int().default(0),
+});
+
+const localSchema = z.object({
+  mode: z.literal("local_quantity"),
+  ...base,
+  /** Бэлгийн хайрцагт «Хэдэн шил багтах вэ?» — зөвхөн дэлгэцийн утга. */
+  capacity: z.number().int().min(1).max(50).nullable().optional(),
+  variants: z
+    .array(localVariantSchema)
+    .min(1, "Ядаж нэг хувилбар нэмнэ үү")
+    .max(30)
+    .superRefine((vs, ctx) => {
+      const seen = new Set<string>();
+      vs.forEach((v, i) => {
+        const key = v.label.trim().toLowerCase();
+        if (seen.has(key)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [i, "label"],
+            message: "Ижил нэртэй хувилбар байна",
+          });
+        }
+        seen.add(key);
+      });
+      // Олон хувилбартай бол нэр заавал — «Хар», «Цагаан»-ыг ялгах цорын
+      // ганц зүйл.
+      if (vs.length > 1) {
+        vs.forEach((v, i) => {
+          if (!v.label.trim()) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: [i, "label"],
+              message: "Хувилбарын нэр оруулна уу",
+            });
+          }
+        });
+      }
+    }),
+});
+
+const vialSchema = z.object({
+  mode: z.literal("shared_vial"),
+  ...base,
+  variants: z
+    .array(vialVariantSchema)
+    .min(1, "Ядаж нэг сав сонгоно уу")
+    .max(12)
+    .superRefine((vs, ctx) => {
+      const seen = new Set<string>();
+      vs.forEach((v, i) => {
+        if (seen.has(v.vialId)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [i, "vialId"],
+            message: "Нэг савыг хоёр удаа сонгосон байна",
+          });
+        }
+        seen.add(v.vialId);
+      });
+    }),
+});
+
+const leftoverSchema = z.object({
+  mode: z.literal("leftover_liquid"),
+  ...base,
+  productId: z
+    .string()
+    .uuid({ message: "Аль үнэртний шил болохыг сонгоно уу" }),
+  remainingMl: z
+    .number({ invalid_type_error: "Үлдсэн хэмжээг оруулна уу" })
+    .int("Бүхэл тоо оруулна уу")
+    .min(1, "Үлдсэн хэмжээ 1ml-ээс их байна")
+    .max(1000),
+  fullMl: z
+    .number({ invalid_type_error: "Бүтэн савны хэмжээг оруулна уу" })
+    .int("Бүхэл тоо оруулна уу")
+    .min(1)
+    .max(1000),
+  variantId: z.string().uuid().optional(),
+  price,
+});
+
+// `discriminatedUnion` нь refine-тэй (ZodEffects) гишүүн хүлээж авдаггүй тул
+// хоорондын шалгалт union-ий дээр.
+export const extraSaveSchema = z
+  .discriminatedUnion("mode", [localSchema, vialSchema, leftoverSchema])
+  .superRefine((v, ctx) => {
+    if (v.mode === "leftover_liquid" && v.remainingMl > v.fullMl) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["remainingMl"],
+        message: "Үлдсэн хэмжээ бүтэн савнаас их байж болохгүй",
+      });
+    }
+  });
+
+export type ExtraSaveInput = z.infer<typeof extraSaveSchema>;
+
+/** Шинэ бараа — ангилал заавал. */
+export const extraCreateSchema = z.object({
+  categoryId: z.string().uuid(),
+  extra: extraSaveSchema,
+});
+
+export const extraStatusSchema = z.object({
+  status: z.enum(["draft", "published", "archived"]),
+});
+
+export const extraStockSchema = z.object({
+  variantId: z.string().uuid(),
+  onHand: z
+    .number({ invalid_type_error: "Тоо оруулна уу" })
+    .int("Бүхэл тоо оруулна уу")
+    .min(0, "Тоо сөрөг байж болохгүй")
+    .max(EXTRA_STOCK_MAX),
+  /** Цонх нээгдэх үеийн `updated_at` — энэ хооронд өөрчлөгдсөн эсэхийг шалгана. */
+  expectedUpdatedAt: z.string().min(1),
+  note: z.string().trim().max(200).default(""),
+});
+
+/** URL-ийн slug — кирилл галиглаад латин үсэг, тоо, зураас. */
+export function extraSlug(name: string, normalize: (s: string) => string) {
+  return (
+    normalize(name)
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "extra"
+  );
+}

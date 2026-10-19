@@ -36,6 +36,7 @@ import {
   TicketPercent,
   Users,
   Warehouse,
+  ShoppingBag,
 } from "lucide-react";
 import {
   Sheet,
@@ -124,6 +125,13 @@ const GROUPS: NavGroup[] = [
       // Хоосон савны нөөц (0095) — «Түгжигдсэн мл»-ээс ТУСДАА ойлголт:
       // тэр нь захиалгын барьсан шингэн, энэ нь өнгө/хэмжээний хоосон сав.
       { href: "/admin/bottles", label: "Савны нөөц", icon: FlaskConical },
+      // Бэлгийн хайрцаг, грамын сав, үлдэгдэлтэй шил г.м. (0145).
+      {
+        href: "/admin/extras",
+        label: "Нэмэлт бараа",
+        icon: ShoppingBag,
+        flag: "extras_shop",
+      },
       { href: "/admin/collections", label: "Багц", icon: Layers },
       { href: "/admin/brands", label: "Брэнд", icon: Crown },
       // Хэрэглэгчийн санал болгосон, манайд байхгүй үнэртэн (0137).

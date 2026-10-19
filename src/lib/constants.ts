@@ -785,6 +785,12 @@ export type UserTierKey = (typeof USER_TIERS)[number]["key"];
 /** Түвшний хуудасны топ жагсаалтын урт (7 хоног / сар). */
 export const TIER_LEADERBOARD_SIZE = 3;
 
+/**
+ * Нэмэлт бараа (0145): энгийн барааны зарах боломжтой тоо үүнээс бага
+ * буюу тэнцүү бол админд «Цөөхөн» гэж анхааруулна.
+ */
+export const EXTRAS_LOW_STOCK_QTY = 3;
+
 export const COUPONS_NEW_BADGE_UNTIL = "2026-11-01T00:00:00+08:00";
 
 /** Мэдэгдлийн хонхны panel — эхний хэдэн мөр (хөнгөн). */

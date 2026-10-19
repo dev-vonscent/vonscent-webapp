@@ -36,7 +36,9 @@ beforeEach(() => {
       _key: string,
       opts: {
         cookies: {
-          setAll: (c: { name: string; value: string; options?: object }[]) => void;
+          setAll: (
+            c: { name: string; value: string; options?: object }[],
+          ) => void;
         };
       },
     ) => ({
@@ -44,7 +46,11 @@ beforeEach(() => {
         getClaims: async () => {
           if (auth.refreshed) {
             opts.cookies.setAll([
-              { name: "sb-x-auth-token", value: "fresh", options: { path: "/" } },
+              {
+                name: "sb-x-auth-token",
+                value: "fresh",
+                options: { path: "/" },
+              },
             ]);
           }
           return { data: auth.claims ? { claims: auth.claims } : null };
@@ -60,7 +66,8 @@ beforeEach(() => {
   );
 });
 
-const req = (path: string) => new NextRequest(new URL(path, "https://shop.test"));
+const req = (path: string) =>
+  new NextRequest(new URL(path, "https://shop.test"));
 const signedIn = (id = "u1") => {
   auth.claims = { sub: id };
   auth.serverUser = { id };

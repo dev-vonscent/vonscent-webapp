@@ -1,6 +1,18 @@
 import type { Gender } from "@/db/types";
 import type { BottleStyle } from "@/lib/constants";
 
+/** Савны өнгөний богино нэр — «Ягаан 10ml». */
+export const VIAL_STYLE_SHORT: Record<BottleStyle, string> = {
+  black: "Хар",
+  pink: "Ягаан",
+  silver: "Мөнгөлөг",
+};
+
+/** «Ягаан 10ml», «2ml сав», «1ml сав». */
+export function vialName(v: { style: BottleStyle | null; ml: number }): string {
+  return v.style ? `${VIAL_STYLE_SHORT[v.style]} ${v.ml}ml` : `${v.ml}ml сав`;
+}
+
 /**
  * Хүйсээр өгөгдмөл савны өнгө (extras-shop-plan §2.1 №1).
  *
