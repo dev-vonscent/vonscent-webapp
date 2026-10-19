@@ -3,9 +3,12 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/browser";
+import { isTransientAuthError } from "@/lib/supabase/auth-errors";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export interface ProfileSummary {
+  /** auth user id — хэрэглэгчээр ялгах query key-д (ж: мэдэгдэл). */
+  id: string;
   /** Дэлгэцэнд харуулах нэр — овоггүй, хоосон бол дугаар/имэйл рүү уначихна. */
   name: string;
   /** Хоёр дахь мөр: утасны дугаар эсвэл имэйл. */
@@ -24,7 +27,10 @@ const STAFF_ROLES = ["operator", "super_admin"];
 async function fetchProfileSummary(): Promise<ProfileSummary | null> {
   const supabase = createClient();
   if (!supabase) return null;
-  const { data } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getUser();
+  // Сүлжээ/auth түр унасан бол throw — TanStack өмнөх profile-ийг хадгална.
+  // null буцаавал хэрэглэгч гарсан мэт болж мэдэгдлийн кэш хүртэл устна.
+  if (isTransientAuthError(error)) throw error;
   if (!data.user) return null;
   const { data: row } = await supabase
     .from("profiles")
@@ -42,6 +48,7 @@ async function fetchProfileSummary(): Promise<ProfileSummary | null> {
     ? email.split("@")[0]
     : email;
   return {
+    id: data.user.id,
     name: p?.full_name || handle || "vonscent гишүүн",
     handle,
     avatar: p?.avatar_url ?? null,

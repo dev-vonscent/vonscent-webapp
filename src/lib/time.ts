@@ -193,3 +193,34 @@ export function formatDeliveryDay(day: string, now: Date = new Date()): string {
   if (day === ubToday(now)) return `Өнөөдөр (${label})`;
   return label;
 }
+
+/**
+ * Мэдэгдлийн хугацаа (0138): «Дөнгөж сая», «5 мин өмнө», «3 цагийн өмнө»,
+ * «Өчигдөр», «3 хоногийн өмнө», долоо хоногоос хойш «10/05» (өөр жил бол
+ * «2025/10/05»). «Өчигдөр» нь УБ-ын хуанлийн өдрөөр — 24 цагаар биш, тиймээс
+ * өчигдөр 22:00-ийнх өнөө 00:30-д «Өчигдөр» (цагаас бага бол «N мин өмнө» давуу).
+ */
+export function formatRelative(
+  at: Date | string,
+  now: Date = new Date(),
+): string {
+  const date = typeof at === "string" ? new Date(at) : at;
+  const diffMin = Math.floor((now.getTime() - date.getTime()) / 60_000);
+  if (diffMin < 1) return "Дөнгөж сая";
+  if (diffMin < 60) return `${diffMin} мин өмнө`;
+
+  const day = ubToday(date);
+  const today = ubToday(now);
+  if (day === today) return `${Math.floor(diffMin / 60)} цагийн өмнө`;
+  if (day === ubDayFromNow(-1, now)) return "Өчигдөр";
+
+  const days = Math.round(
+    (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) /
+      86_400_000,
+  );
+  if (days < 7) return `${days} хоногийн өмнө`;
+  const ub = new TZDate(date.getTime(), UB_TIMEZONE);
+  return day.slice(0, 4) === today.slice(0, 4)
+    ? format(ub, "MM/dd")
+    : format(ub, "yyyy/MM/dd");
+}

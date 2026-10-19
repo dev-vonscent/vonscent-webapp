@@ -119,7 +119,14 @@ export function CartSheet({
         <Button
           variant={triggerVariant}
           size={label ? "default" : "icon"}
-          className={cn("relative", triggerClassName)}
+          // Icon-only товчинд 20px (хайлт, хонхтой ижил) — `Button` svg-г
+          // 16px болгодог тул тодорхой зааж өгнө. Тексттэй (desktop nav)
+          // хувилбар nav-ын бусад 16px дүрстэй ижил үлдэнэ.
+          className={cn(
+            "relative",
+            !label && "[&_svg]:size-5",
+            triggerClassName,
+          )}
           aria-label="Сагс"
         >
           <ShoppingCart className="size-5" />
