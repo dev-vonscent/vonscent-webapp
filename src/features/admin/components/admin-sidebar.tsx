@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Award,
+  BellRing,
   BarChart3,
   Boxes,
   ChevronDown,
@@ -149,6 +150,12 @@ const GROUPS: NavGroup[] = [
         label: "Кампанит ажил",
         icon: PartyPopper,
         flag: "campaigns",
+      },
+      {
+        href: "/admin/broadcasts",
+        label: "Мэдэгдэл илгээх",
+        icon: BellRing,
+        flag: "notifications",
       },
     ],
   },

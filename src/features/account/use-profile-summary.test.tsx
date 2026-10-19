@@ -56,6 +56,7 @@ describe("useProfileSummary", () => {
     expect(first.result.current.loading).toBe(true);
     await waitFor(() => expect(first.result.current.profile).not.toBeNull());
     expect(first.result.current.profile).toEqual({
+      id: "u1",
       name: "Болд",
       handle: "99112233",
       avatar: "https://img/a.png",

@@ -10,6 +10,8 @@ import { MobileMenu } from "./mobile-menu";
 import { CartSheet } from "@/features/cart/components/cart-sheet";
 import { HeaderChatButton } from "@/features/chat/components/header-chat-button";
 import { ProfileMenu } from "@/features/account/components/profile-menu";
+import { NotificationBell } from "@/features/notifications/components/notification-bell";
+import { NotificationCenter } from "@/features/notifications/components/notification-center";
 import { GlobalSearch } from "./global-search";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +40,7 @@ const TITLES: Record<string, string> = {
   "/account/loyalty": "Урамшуулал",
   "/account/addresses": "Хаягууд",
   "/account/coupons": "Миний купон",
+  "/account/notifications": "Мэдэгдэл",
   "/request": "Санал болгох",
   "/products": "", // full-bleed image hero — no title, just back + cart
   "/order/success": "Захиалга",
@@ -121,16 +124,17 @@ export function SiteHeader({
   }, [hidden]);
 
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-40 transition-transform duration-300 ease-out",
-        hidden && "-translate-y-full",
-      )}
-    >
-      {/* Mobile compact header — inner pages only */}
-      {!isHome && (
-        <div className="relative flex h-16 items-center justify-between gap-3 px-4 md:hidden">
-          {/*
+    <>
+      <header
+        className={cn(
+          "sticky top-0 z-40 transition-transform duration-300 ease-out",
+          hidden && "-translate-y-full",
+        )}
+      >
+        {/* Mobile compact header — inner pages only */}
+        {!isHome && (
+          <div className="relative flex h-16 items-center justify-between gap-3 px-4 md:hidden">
+            {/*
             A scrim, because this bar has no background of its own: the back
             button and the cart carry their own pills, but the title sat
             directly on whatever scrolled beneath it — product photography,
@@ -149,119 +153,133 @@ export function SiteHeader({
             (full-bleed photo hero), and there the scrim only laid a
             background-coloured haze over the top of the image.
           */}
-          {getTitle(pathname) && (
-            <span
-              aria-hidden
-              className="from-background pointer-events-none absolute inset-x-0 top-0 -z-10 h-24 bg-linear-to-b to-transparent"
-            />
-          )}
-          <button
-            type="button"
-            onClick={() => router.back()}
-            aria-label="Буцах"
-            className="bg-secondary/85 text-foreground hover:bg-secondary flex size-10 shrink-0 items-center justify-center rounded-full backdrop-blur transition-colors"
-          >
-            <ArrowLeft className="size-5" />
-          </button>
-          {getTitle(pathname) && (
-            <span className="truncate font-serif text-base font-medium">
-              {getTitle(pathname)}
-            </span>
-          )}
-          {/* Сагс, төлбөрийн хуудсанд сагсны товч хэрэггүй: сагсан дээр
+            {getTitle(pathname) && (
+              <span
+                aria-hidden
+                className="from-background pointer-events-none absolute inset-x-0 top-0 -z-10 h-24 bg-linear-to-b to-transparent"
+              />
+            )}
+            <button
+              type="button"
+              onClick={() => router.back()}
+              aria-label="Буцах"
+              className="bg-secondary/85 text-foreground hover:bg-secondary flex size-10 shrink-0 items-center justify-center rounded-full backdrop-blur transition-colors"
+            >
+              <ArrowLeft className="size-5" />
+            </button>
+            {getTitle(pathname) && (
+              <span className="truncate font-serif text-base font-medium">
+                {getTitle(pathname)}
+              </span>
+            )}
+            {/* Сагс, төлбөрийн хуудсанд сагсны товч хэрэггүй: сагсан дээр
               өөрийгөө давхардуулна, төлбөр дээр хэрэглэгчийг төлбөрөөс гаргах
               зам болно. */}
-          <div className="flex shrink-0 items-center gap-2">
-            {headerChat && (
-              <HeaderChatButton
-                variant="secondary"
-                className="bg-secondary/85 hover:bg-secondary rounded-full backdrop-blur"
-              />
-            )}
-            {!hideCart && (
-              <CartSheet
-                triggerVariant="secondary"
-                triggerClassName="shrink-0 rounded-full bg-secondary/85 backdrop-blur hover:bg-secondary"
-              />
-            )}
+            <div className="flex shrink-0 items-center gap-2">
+              {/* Төлбөрийн урсгалд хонх саад болно — сагстай ижил дүрэм. */}
+              {!hideCart && (
+                <NotificationBell
+                  triggerVariant="secondary"
+                  triggerClassName="shrink-0 rounded-full bg-secondary/85 backdrop-blur hover:bg-secondary"
+                />
+              )}
+              {headerChat && (
+                <HeaderChatButton
+                  variant="secondary"
+                  className="bg-secondary/85 hover:bg-secondary rounded-full backdrop-blur"
+                />
+              )}
+              {!hideCart && (
+                <CartSheet
+                  triggerVariant="secondary"
+                  triggerClassName="shrink-0 rounded-full bg-secondary/85 backdrop-blur hover:bg-secondary"
+                />
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Full header — floating glass pill. Home (all sizes) + inner (desktop). */}
-      <div className={cn("px-4 pt-4", isHome ? "block" : "hidden md:block")}>
-        <div className="bg-secondary/85 shadow-lift relative mx-auto flex h-14 max-w-352 items-center gap-2 rounded-full px-3 backdrop-blur">
-          {/* Left: mobile menu + logo */}
-          <MobileMenu className="md:hidden" social={menuSocial} />
+        {/* Full header — floating glass pill. Home (all sizes) + inner (desktop). */}
+        <div className={cn("px-4 pt-4", isHome ? "block" : "hidden md:block")}>
+          <div className="bg-secondary/85 shadow-lift relative mx-auto flex h-14 max-w-352 items-center gap-2 rounded-full px-3 backdrop-blur">
+            {/* Left: mobile menu + logo */}
+            <MobileMenu className="md:hidden" social={menuSocial} />
 
-          <Logo className="px-1 text-lg md:text-xl" />
+            <Logo className="px-1 text-lg md:text-xl" />
 
-          {/* Center: nav with text + cart (mirrors the bottom nav) */}
-          <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex">
-            {PILL_NAV.map((item) => {
-              const matches = (path: string) =>
-                item.href === "/" ? path === "/" : path.startsWith(item.href);
-              const active = matches(navPath);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={matches(pathname) ? "page" : undefined}
-                  onClick={(e) => {
-                    // Шинэ таб/цонх (⌘/Ctrl/Shift/дунд товч) — энэ хуудас хэвээр.
-                    if (
-                      e.metaKey ||
-                      e.ctrlKey ||
-                      e.shiftKey ||
-                      e.altKey ||
-                      e.button !== 0
-                    )
-                      return;
-                    setPendingNav({ href: item.href, from: pathname });
-                  }}
-                  className={cn(
-                    "relative isolate flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
-                    active
-                      ? "text-foreground font-semibold"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {/* Капсул өөрөө bg-secondary тул идэвхтэйг нэг давхарга
+            {/* Center: nav with text + cart (mirrors the bottom nav) */}
+            <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex">
+              {PILL_NAV.map((item) => {
+                const matches = (path: string) =>
+                  item.href === "/" ? path === "/" : path.startsWith(item.href);
+                const active = matches(navPath);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={matches(pathname) ? "page" : undefined}
+                    onClick={(e) => {
+                      // Шинэ таб/цонх (⌘/Ctrl/Shift/дунд товч) — энэ хуудас хэвээр.
+                      if (
+                        e.metaKey ||
+                        e.ctrlKey ||
+                        e.shiftKey ||
+                        e.altKey ||
+                        e.button !== 0
+                      )
+                        return;
+                      setPendingNav({ href: item.href, from: pathname });
+                    }}
+                    className={cn(
+                      "relative isolate flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                      active
+                        ? "text-foreground font-semibold"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {/* Капсул өөрөө bg-secondary тул идэвхтэйг нэг давхарга
                       дээш (bg-background + сүүдэр) гаргаж бүх загварт
                       ялгаруулна; layoutId-гаар цэс хооронд гулсана. */}
-                  {active && (
-                    <motion.span
-                      layoutId="header-nav-active"
-                      aria-hidden
-                      className="bg-background absolute inset-0 -z-10 rounded-full shadow-xs"
-                      transition={
-                        reduceMotion
-                          ? { duration: 0 }
-                          : { type: "spring", stiffness: 500, damping: 40 }
-                      }
-                    />
-                  )}
-                  <item.icon className="size-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-            <CartSheet
-              label="Сагс"
-              triggerClassName="h-auto rounded-full px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
-            />
-          </nav>
+                    {active && (
+                      <motion.span
+                        layoutId="header-nav-active"
+                        aria-hidden
+                        className="bg-background absolute inset-0 -z-10 rounded-full shadow-xs"
+                        transition={
+                          reduceMotion
+                            ? { duration: 0 }
+                            : { type: "spring", stiffness: 500, damping: 40 }
+                        }
+                      />
+                    )}
+                    <item.icon className="size-4" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+              <CartSheet
+                label="Сагс"
+                triggerClassName="h-auto rounded-full px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
+              />
+            </nav>
 
-          {/* Right: search + cart (mobile only) + profile menu (desktop only) */}
-          <div className="ml-auto flex items-center gap-1">
-            <GlobalSearch />
-            <CartSheet triggerClassName="md:hidden" />
-            <div className="hidden md:block">
-              <ProfileMenu />
+            {/* Right: search + bell + cart (mobile only) + profile menu (desktop only).
+              Хонх нь утсан дээр сагсны зүүн талд, desktop-д хайлт ба профайлын
+              хооронд — нэг элемент хоёр байрлалыг хамарна. */}
+            <div className="ml-auto flex items-center gap-1">
+              <GlobalSearch />
+              <NotificationBell />
+              <CartSheet triggerClassName="md:hidden" />
+              <div className="hidden md:block">
+                <ProfileMenu />
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+      {/* Header-ээс ГАДНА: header нь `-translate-y-full` transform авдаг тул
+        дотор нь байвал toast-ын `fixed` байрлал header-тэй хамт гулсана. */}
+      <NotificationCenter />
+    </>
   );
 }

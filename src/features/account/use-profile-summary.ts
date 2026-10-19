@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/browser";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export interface ProfileSummary {
+  /** auth user id — хэрэглэгчээр ялгах query key-д (ж: мэдэгдэл). */
+  id: string;
   /** Дэлгэцэнд харуулах нэр — овоггүй, хоосон бол дугаар/имэйл рүү уначихна. */
   name: string;
   /** Хоёр дахь мөр: утасны дугаар эсвэл имэйл. */
@@ -42,6 +44,7 @@ async function fetchProfileSummary(): Promise<ProfileSummary | null> {
     ? email.split("@")[0]
     : email;
   return {
+    id: data.user.id,
     name: p?.full_name || handle || "vonscent гишүүн",
     handle,
     avatar: p?.avatar_url ?? null,

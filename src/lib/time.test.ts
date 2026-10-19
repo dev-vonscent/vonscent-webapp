@@ -10,6 +10,7 @@ import {
   deliveryDayOf,
   earliestDeliveryDay,
   formatDeliveryDay,
+  formatRelative,
   ubToday,
 } from "./time";
 
@@ -205,5 +206,42 @@ describe("delivery day of a payment that arrives late", () => {
         "2026-09-12",
       );
     });
+  });
+});
+
+describe("formatRelative", () => {
+  // 2026-10-18 12:00 UB = 04:00Z
+  const now = new Date("2026-10-18T04:00:00Z");
+  const ago = (ms: number) => new Date(now.getTime() - ms);
+  const MIN = 60_000;
+
+  it("минут, цаг", () => {
+    expect(formatRelative(ago(20_000), now)).toBe("Дөнгөж сая");
+    expect(formatRelative(ago(5 * MIN), now)).toBe("5 мин өмнө");
+    expect(formatRelative(ago(59 * MIN), now)).toBe("59 мин өмнө");
+    expect(formatRelative(ago(3 * 60 * MIN), now)).toBe("3 цагийн өмнө");
+  });
+
+  it("«Өчигдөр» нь УБ-ын хуанлийн өдрөөр", () => {
+    // 2026-10-17 22:00 UB → 2026-10-18 00:30 UB: 2.5 цаг ч өчигдрийнх
+    expect(
+      formatRelative(
+        new Date("2026-10-17T14:00:00Z"),
+        new Date("2026-10-17T16:30:00Z"),
+      ),
+    ).toBe("Өчигдөр");
+    expect(formatRelative("2026-10-17T01:00:00Z", now)).toBe("Өчигдөр");
+  });
+
+  it("хоног, дараа нь огноо", () => {
+    expect(formatRelative("2026-10-15T04:00:00Z", now)).toBe("3 хоногийн өмнө");
+    expect(formatRelative("2026-10-05T04:00:00Z", now)).toBe("10/05");
+    expect(formatRelative("2025-12-30T04:00:00Z", now)).toBe("2025/12/30");
+  });
+
+  it("ирээдүйн цаг (цагийн зөрүү) → «Дөнгөж сая»", () => {
+    expect(formatRelative(new Date(now.getTime() + 30_000), now)).toBe(
+      "Дөнгөж сая",
+    );
   });
 });
