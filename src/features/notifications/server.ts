@@ -1,14 +1,20 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  NOTIFICATION_POLL_FRESH_MAX,
+  NOTIFICATION_POLL_LOOKBACK_MS,
+} from "@/lib/constants";
 import { isSupabaseConfigured } from "@/lib/env";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isTransientAuthError } from "@/lib/supabase/auth-errors";
 import { createClient } from "@/lib/supabase/server";
 import { publicUrl } from "@/lib/storage/storage";
 import {
   decodeCursor,
   encodeCursor,
+  laterOf,
   ZERO_UUID,
   type NotificationCursor,
 } from "./cursor";
@@ -35,7 +41,19 @@ export async function notificationsUserGate() {
     return { response: NextResponse.json({ demo: true }) } as const;
   }
   const supabase = await createClient();
-  const user = supabase ? (await supabase.auth.getUser()).data.user : null;
+  const { data, error } = supabase
+    ? await supabase.auth.getUser()
+    : { data: { user: null }, error: null };
+  // Auth түр унасан — 401 бол клиент poll-ыг бүрмөсөн зогсооно; 503 нь retry.
+  if (isTransientAuthError(error)) {
+    return {
+      response: NextResponse.json(
+        { error: "AUTH_UNAVAILABLE" },
+        { status: 503 },
+      ),
+    } as const;
+  }
+  const user = data.user;
   if (!user) {
     return {
       response: NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 }),
@@ -131,8 +149,6 @@ function visibleRows(
 // PostgREST-ийн or()-д утгыг давхар хашилтанд — timestamptz-ийн `:`/`+`.
 const before = (c: NotificationCursor) =>
   `visible_at.lt."${c.visibleAt}",and(visible_at.eq."${c.visibleAt}",id.lt.${c.id})`;
-const after = (c: NotificationCursor) =>
-  `visible_at.gt."${c.visibleAt}",and(visible_at.eq."${c.visibleAt}",id.gt.${c.id})`;
 
 /** Feed — `visible_at desc, id desc`, cursor-аас өмнөх `limit` мөр. */
 export async function getNotificationFeed(
@@ -161,16 +177,20 @@ export async function getNotificationFeed(
   };
 }
 
-/** Feed-д харагдах хамгийн дээд хэмжээ — poll-ын шинэ мөр. */
-const POLL_FRESH_MAX = 5;
-
 /**
- * Poll — уншаагүйн тоо + cursor-оос хойш шинээр ХАРАГДСАН мөрүүд.
+ * Poll — уншаагүйн тоо + cursor-оос `NOTIFICATION_POLL_LOOKBACK_MS` ухарсан
+ * цонхонд харагдах уншаагүй мөрүүд. Цонх давхцдаг тул ижил мөр хэд хэдэн
+ * poll-д давтагдана — toast hook үзүүлсэн id-аа (`shown`) алгасна.
  *
- * Cursor-гүй (анхны) poll нь `fresh`-ийг хоосон буцааж зөвхөн одоогийн
- * хамгийн шинэ мөр рүү cursor тавина — хуучин уншаагүй toast болохгүй.
- * Маргааш харагдах мөр (үнэгүй эрх) `visible_at` нь cursor-оос хойш тул
- * харагдах үедээ «шинэ» болж ирнэ. 5-аас олон бол cursor бүгдийг давуулна.
+ * Яагаад ухрах вэ: `visible_at` нь transaction эхэлсэн цаг (`now()`) — урт
+ * transaction (оноо нээх cron, том fan-out) cursor-оос ХОЙШ commit хийж болох
+ * ба тэр мөрийн `visible_at` cursor-оос бага байна. Мөн хоосон feed-ийн cursor
+ * нь app серверийн цаг тул сангийн цагтай зөрж болно.
+ *
+ * Анхны (cursor-гүй) poll ч цонхны мөрүүдийг буцаана: toast болохгүй
+ * (`initial`) ч клиент тэдгээрийг «үзүүлсэн» гэж тэмдэглэж, дараагийн
+ * poll-д хуучин уншаагүй toast болохоос сэргийлнэ. Маргааш харагдах мөр
+ * (үнэгүй эрх) харагдах үедээ цонхонд орж «шинэ» болно.
  */
 export async function pollNotifications(
   admin: SupabaseClient,
@@ -179,17 +199,20 @@ export async function pollNotifications(
 ): Promise<NotificationPoll> {
   const now = new Date().toISOString();
   const hideSpin = await hideFreeSpin(admin);
+  const anchor = cursor ? Date.parse(cursor.visibleAt) : Date.parse(now);
+  const windowStart = new Date(anchor - NOTIFICATION_POLL_LOOKBACK_MS).toISOString();
 
   const unreadQ = visibleRows(admin, userId, now, hideSpin, {
     count: true,
     head: true,
   }).is("read_at", null);
 
-  let freshQ = visibleRows(admin, userId, now, hideSpin, { count: !!cursor })
+  const freshQ = visibleRows(admin, userId, now, hideSpin, { count: true })
+    .is("read_at", null)
+    .gt("visible_at", windowStart)
     .order("visible_at", { ascending: false })
     .order("id", { ascending: false })
-    .limit(cursor ? POLL_FRESH_MAX : 1);
-  if (cursor) freshQ = freshQ.or(after(cursor));
+    .limit(NOTIFICATION_POLL_FRESH_MAX);
 
   const [unreadRes, freshRes] = await Promise.all([unreadQ, freshQ]);
   if (unreadRes.error)
@@ -198,17 +221,16 @@ export async function pollNotifications(
     throw new Error(`notification poll: ${freshRes.error.message}`);
 
   const rows = (freshRes.data as unknown as Row[] | null) ?? [];
-  const newest = rows[0];
-  const nextCursor = newest
-    ? cursorOf(newest)
-    : cursor
-      ? encodeCursor(cursor)
-      : encodeCursor({ visibleAt: now, id: ZERO_UUID });
+  const newest = rows[0]
+    ? { visibleAt: rows[0].visible_at, id: rows[0].id }
+    : null;
+  const base = cursor ?? { visibleAt: now, id: ZERO_UUID };
 
   return {
     unread: unreadRes.count ?? 0,
-    freshCount: cursor ? (freshRes.count ?? rows.length) : 0,
-    fresh: cursor ? rows.map(toNotification) : [],
-    nextCursor,
+    freshCount: freshRes.count ?? rows.length,
+    fresh: rows.map(toNotification),
+    // Cursor зөвхөн урагшилна — хоцорсон мөр цонхны ухралтаар л баригдана.
+    nextCursor: encodeCursor(newest ? laterOf(base, newest) : base),
   };
 }

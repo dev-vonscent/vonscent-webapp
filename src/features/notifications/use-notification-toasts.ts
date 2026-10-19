@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { planToasts, type ToastPlan } from "./lib";
+import { planToasts, trackPoll, type PollMark, type ToastPlan } from "./lib";
 import {
   useNotificationPoll,
   useNotificationUserId,
@@ -10,12 +10,12 @@ import {
 const CHANNEL = "vonscent-notifications";
 
 /**
- * Tab-д нэг удаа үзүүлсэн id ба боловсруулсан poll `seq` — module түвшинд:
+ * Tab-д нэг удаа үзүүлсэн id ба боловсруулсан poll `epoch`/`seq` — module түвшинд:
  * header нь layout бүрт (shop / account) тусдаа mount болдог тул ref-д
  * хадгалвал layout солигдоход кэштэй сүүлийн хариу дахин toast болно.
  */
 const shown = new Set<string>();
-let handled: { userId: string | null; seq: number } = { userId: null, seq: 0 };
+let handled: PollMark = { epoch: 0, seq: 0 };
 
 /**
  * Poll-ын шинэ хариу бүрээс toast-ын төлөвлөгөө гаргаж `show`-д өгнө.
@@ -47,12 +47,11 @@ export function useNotificationToasts(show: (plan: ToastPlan) => void) {
 
   React.useEffect(() => {
     if (!data || !userId) return;
-    if (handled.userId !== userId) {
-      handled = { userId, seq: 0 };
-      shown.clear();
-    }
-    if (data.seq <= handled.seq) return;
-    handled.seq = data.seq;
+    // Poll кэш шинээр эхэлсэн (гарч орсон / хэрэглэгч солигдсон) — шинэ session.
+    const step = trackPoll(handled, data);
+    if (step.reset) shown.clear();
+    handled = step.mark;
+    if (!step.process) return;
 
     const plan = planToasts({
       fresh: data.fresh,

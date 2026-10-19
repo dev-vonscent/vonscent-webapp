@@ -2,7 +2,9 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast as sonner, Toaster } from "sonner";
+import { NOTIFICATION_TOAST_DURATION_MS as DURATION } from "@/lib/constants";
 import type { ToastPlan } from "../lib";
 import { useNotificationToasts } from "../use-notification-toasts";
 import { useNotificationUserId } from "../use-notifications";
@@ -13,7 +15,6 @@ import {
 } from "./notification-toast";
 
 const TOASTER_ID = "notifications";
-const DURATION = 6_000;
 
 /**
  * Шинэ мэдэгдлийн toast — баруун дээд (утсан дээр sonner өөрөө дээд төвд
@@ -22,6 +23,17 @@ const DURATION = 6_000;
  */
 export function NotificationCenter() {
   const userId = useNotificationUserId();
+  const qc = useQueryClient();
+  // Гарахад (эсвэл session дуусахад) poll-ын cursor/кэшийг хаяна — reload-гүй
+  // дахин нэвтэрвэл гарсан хугацааны мэдэгдэл toast болохгүй, анхны poll шиг.
+  // Хэрэглэгч шууд солигдвол (A→B→A) бусдынхыг ч хаяна — A-ийн хуучин кэш
+  // буцаж ирээд хуучин мөрийг toast болгохгүй.
+  React.useEffect(() => {
+    qc.removeQueries({
+      queryKey: ["notifications"],
+      predicate: (q) => !userId || q.queryKey[1] !== userId,
+    });
+  }, [userId, qc]);
   if (!userId) return null;
   return <NotificationToaster />;
 }

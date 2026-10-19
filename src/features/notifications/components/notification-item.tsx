@@ -31,7 +31,7 @@ export function NotificationThumb({
     <span
       aria-hidden
       className={cn(
-        "bg-secondary text-foreground flex size-12 shrink-0 items-center justify-center rounded-lg",
+        "bg-primary text-primary-foreground flex size-12 shrink-0 items-center justify-center rounded-lg",
         className,
       )}
     >

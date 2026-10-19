@@ -10,8 +10,10 @@ import {
 export const dynamic = "force-dynamic";
 
 /**
- * Хонхны poll (60с + window focus) — уншаагүйн тоо ба cursor-оос хойшхи шинэ
- * мөрүүд (toast). Cursor-гүй анхны дуудлага `fresh`-ийг хоосон буцаана.
+ * Хонхны poll (60с + window focus) — уншаагүйн тоо ба cursor-оос 10 мин
+ * ухарсан цонхны уншаагүй мөрүүд (toast; давхардлыг клиент id-аар шүүнэ).
+ * Cursor-гүй анхны дуудлага ч цонхыг буцаана — клиент toast болгохгүй,
+ * зөвхөн «үзүүлсэн» гэж тэмдэглэнэ.
  */
 export async function GET(req: Request) {
   const gate = await notificationsUserGate();

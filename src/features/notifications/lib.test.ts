@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bellLabel, formatBadge, planToasts } from "./lib";
+import { bellLabel, formatBadge, planToasts, trackPoll } from "./lib";
 import type { AppNotification } from "./types";
 
 const n = (id: string, read = false): AppNotification => ({
@@ -52,7 +52,7 @@ describe("planToasts", () => {
     expect(plan).toEqual({ type: "single", items: [n("a"), n("b")] });
   });
 
-  it("2-оос олон → нэг нэгтгэсэн, freshCount-аар (сервер ≤5 буцаана)", () => {
+  it("2-оос олон → нэг нэгтгэсэн, freshCount-аар (сервер ≤20 буцаана)", () => {
     const fresh = ["a", "b", "c", "d", "e"].map((id) => n(id));
     expect(planToasts({ ...base, fresh, freshCount: 12 })).toEqual({
       type: "summary",
@@ -63,6 +63,16 @@ describe("planToasts", () => {
     ).toEqual({
       type: "summary",
       count: 3,
+    });
+  });
+
+  it("давхацсан цонх: өмнө үзүүлсэн мөр илүүдлийн тоонд орохгүй", () => {
+    const old = Array.from({ length: 19 }, (_, i) => `o${i}`);
+    const shown = new Set(old);
+    const fresh = [n("new"), ...old.map((id) => n(id))];
+    expect(planToasts({ ...base, shown, fresh, freshCount: 22 })).toEqual({
+      type: "single",
+      items: [n("new")],
     });
   });
 
@@ -79,5 +89,29 @@ describe("planToasts", () => {
     expect(
       planToasts({ ...base, shown, fresh: [n("a"), n("c")], freshCount: 2 }),
     ).toEqual({ type: "single", items: [n("c")] });
+  });
+});
+
+describe("trackPoll", () => {
+  it("ижил epoch: зөвхөн шинэ seq-ийг боловсруулна", () => {
+    const mark = { epoch: 1, seq: 2 };
+    expect(trackPoll(mark, { epoch: 1, seq: 2 })).toEqual({
+      mark,
+      reset: false,
+      process: false,
+    });
+    expect(trackPoll(mark, { epoch: 1, seq: 3 })).toEqual({
+      mark: { epoch: 1, seq: 3 },
+      reset: false,
+      process: true,
+    });
+  });
+
+  it("гарч орсон (шинэ epoch, seq 1) — reset хийж анхны хариуг боловсруулна", () => {
+    expect(trackPoll({ epoch: 1, seq: 1 }, { epoch: 2, seq: 1 })).toEqual({
+      mark: { epoch: 2, seq: 1 },
+      reset: true,
+      process: true,
+    });
   });
 });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NOTIFICATION_PAGE_SIZE } from "@/lib/constants";
 import { safeNext } from "@/lib/safe-next";
 
 /**
@@ -50,7 +51,12 @@ export type NotificationReadInput = z.infer<typeof notificationReadSchema>;
 /** `GET /api/notifications` query. */
 export const notificationFeedQuerySchema = z.object({
   cursor: z.string().max(200).optional(),
-  limit: z.coerce.number().int().min(1).max(50).default(20),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .default(NOTIFICATION_PAGE_SIZE),
 });
 
 // ── Админы broadcast (0138) ─────────────────────────────────────────────

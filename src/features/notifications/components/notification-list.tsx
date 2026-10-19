@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import {
-  FEED_PAGE_SIZE,
-  PANEL_LIMIT,
-  useNotificationFeed,
-} from "../use-notifications";
+  NOTIFICATION_PAGE_SIZE,
+  NOTIFICATION_PANEL_LIMIT,
+} from "@/lib/constants";
+import { useNotificationFeed } from "../use-notifications";
 import { useOpenNotification } from "../use-open-notification";
 import { NotificationItem } from "./notification-item";
 
@@ -32,7 +32,7 @@ export function NotificationList({
   // «Бүгдийг харах» хуудас 20-оор.
   const feed = useNotificationFeed({
     enabled,
-    limit: firstPageOnly ? PANEL_LIMIT : FEED_PAGE_SIZE,
+    limit: firstPageOnly ? NOTIFICATION_PANEL_LIMIT : NOTIFICATION_PAGE_SIZE,
   });
   const open = useOpenNotification(onNavigate);
 

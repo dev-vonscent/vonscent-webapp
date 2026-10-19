@@ -2,7 +2,10 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { isInternalNotificationUrl } from "@/lib/validators/notification";
+import {
+  isInternalNotificationUrl,
+  isSafeNotificationUrl,
+} from "@/lib/validators/notification";
 import type { AppNotification } from "./types";
 import { useMarkNotificationsRead } from "./use-notifications";
 
@@ -18,7 +21,8 @@ export function useOpenNotification(onNavigate?: () => void) {
   return React.useCallback(
     (n: Pick<AppNotification, "id" | "read" | "url">) => {
       if (!n.read) mutate({ ids: [n.id] });
-      if (!n.url) return;
+      // Сан дээр URL-ийн формат check байхгүй — defense-in-depth.
+      if (!n.url || !isSafeNotificationUrl(n.url)) return;
       onNavigate?.();
       if (isInternalNotificationUrl(n.url)) {
         router.push(n.url);

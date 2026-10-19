@@ -42,9 +42,12 @@ export interface NotificationFeedPage {
 /** `GET /api/notifications/poll` */
 export interface NotificationPoll {
   unread: number;
-  /** Өмнөх cursor-оос хойш шинээр харагдсан нийт тоо. */
+  /**
+   * Poll-ын цонхонд (cursor-оос 10 мин ухарсан) харагдах уншаагүй нийт тоо.
+   * Цонх давхцдаг тул өмнө үзүүлсэн мөрийг ч агуулна.
+   */
   freshCount: number;
-  /** Хамгийн шинэ ≤5 (шинэ нь эхэнд). Анхны poll-д үргэлж хоосон. */
+  /** Цонхны хамгийн шинэ ≤20 уншаагүй (шинэ нь эхэнд); клиент id-аар шүүнэ. */
   fresh: AppNotification[];
   nextCursor: string;
 }

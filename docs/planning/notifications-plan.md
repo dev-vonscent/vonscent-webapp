@@ -1,7 +1,7 @@
 # Хэрэглэгчийн мэдэгдэл (notifications)
 
 > Төлөв: **хэрэгжсэн (dev)** — салбар `feat/notifications`; 0138–0142 dev-д орсон, dev дээр туг нээлттэй (2026-10-19). Prod: хараахан үгүй.
-> Огноо: 2026-10-15 · клиентийн хариу 2026-10-18 · review засвар 2026-10-18 (§11)
+> Огноо: 2026-10-15 · клиентийн хариу 2026-10-18 · review засвар 2026-10-18 (§11) · хэрэгжүүлэлтийн review 2026-10-19 (§12)
 > Feature flag: `notifications`
 > Холбоотой: `docs/spec/development.md`, `docs/spec/design.md`, `0024_loyalty_pending`, `0091_points_unlock_on_delivery_day`, `0112`–`0114` (буцаалт), `0124_unpaid_order_to_saved`, `0129_spin_wheel_v2`, `0133_feature_flags`
 
@@ -267,9 +267,12 @@ POST  /api/admin/broadcasts/:id/cancel
   `(visible_at, id)`. Feed эрэмбэ `visible_at desc, id desc`, нөхцөл
   `visible_at <= server now()`. Ингэснээр өнөөдөр үүсээд маргааш харагдах мөр
   (үнэгүй эрх) харагдах үедээ «шинэ» болж ирнэ.
-- **Poll хариу:** `{ unread, freshCount, fresh: Notification[] /* ≤5 */, nextCursor }`.
-  5-аас олон бол toast «N шинэ мэдэгдэл» (`freshCount`-аар), cursor бүгдийг
-  давуулна.
+- **Poll хариу:** `{ unread, freshCount, fresh: Notification[] /* ≤20 */, nextCursor }`.
+  `fresh` = cursor-оос **10 мин ухарсан** цонхны уншаагүй мөрүүд; клиент
+  үзүүлсэн id-аар шүүнэ. Олон бол toast «N шинэ мэдэгдэл» (`freshCount`-аар).
+  Cursor зөвхөн урагшилна. Ухралт нь `visible_at = now()` (transaction эхлэл)
+  тул cursor-оос хойш commit хийсэн урт transaction-ы мөр, app/DB цагийн
+  зөрүүг барина (§12).
 - **URL validation** (`src/lib/validators/notification.ts`): `/`-ээр эхэлсэн
   дотоод path (`safeNext`-ийн дүрэм; `//` protocol-relative хориотой) эсвэл
   `https://`. Credentials (`user:pass@`), control char хориотой. Бичдэг нь
@@ -302,19 +305,21 @@ enabled: flagOn && !!userId`. Query key-д `userId` — logout / хэрэглэ�
 3. Desktop header — сагс төв nav-д байдаг тул хайлт ба профайлын хооронд.
 
 Badge 1–99, «99+»; 0 бол алга. `aria-label="Мэдэгдэл, уншаагүй 3"`. Туг хаалттай
-эсвэл зочин бол render хийхгүй.
+эсвэл зочин бол render хийхгүй. `/cart`, `/checkout` дээр mobile compact
+header-т сагстай хамт нуугдана (төлбөрийн урсгалд анхаарал сарниулахгүй).
 
-**Panel:** сүүлийн 20, «Бүгдийг уншсан болгох», «Бүгдийг харах» →
+**Panel:** сүүлийн 10 (бүтэн хуудас 20-оор хуудаслана), «Бүгдийг уншсан болгох», «Бүгдийг харах» →
 `/account/notifications`. Уншаагүй — dot + bg token. Дарахад уншсан (optimistic)
 → дотоод URL `router.push`, гадаад шинэ tab. Хоосон үед `EmptyState`.
 
 **Item:** `image_path` байвал 48×48 thumbnail, үгүй бол `kind`-аас icon
-(`PackagePlus`, `Percent`, `Megaphone`, `Rocket`, `VPointIcon`, `Gift`,
+(`PackagePlus`, `Percent`, `Megaphone`, `Rocket`, `BellRing` (зарлал), `VPointIcon`, `Gift`,
 захиалгынх §4.3). Хугацаа «5 мин өмнө», «Өчигдөр» (`lib/time`-д
 `formatRelative`, test-тэй).
 
 **Toast:** баруун дээд (mobile дээд төв), 6с, дарахад шилжинэ, хаах товчтой.
 - Анх ачаалахад хуучин уншаагүйг toast болгохгүй — зөвхөн session эхэлснээс хойш.
+  Гарахад poll кэш устгагдана — reload-гүй дахин нэвтэрвэл анхны poll шиг.
 - 2-оос олон бол нэг toast «N шинэ мэдэгдэл».
 - Олон tab: **зөвхөн харагдаж буй tab** (`document.visibilityState === 'visible'`)
   toast гаргана + `BroadcastChannel`-аар үзүүлсэн id хуваалцана. Энэ нь
@@ -354,13 +359,13 @@ Badge 1–99, «99+»; 0 бол алга. `aria-label="Мэдэгдэл, унш�
 
 ## 8. Release
 
-1. `0138`–`0141` → `pnpm db:migrate-dev` → dev дээр туг нээж клиент туршина.
+1. `0138`–`0142` → `pnpm db:migrate-dev` → dev дээр туг нээж клиент туршина.
 2. `pnpm db:migrate-prod` (туг хаалттай) → main руу merge.
 3. Release өдөр Админ → Feature flag → `notifications` нээх. Эхний broadcast
    «Шинэ боломж: мэдэгдэл».
 4. Тогтворжсоны дараа тугийг код + сангаас устгах тусдаа PR.
 
-PR тайлбарт: туг `notifications`, migration 0138–0141, хаалттай үед мөр
+PR тайлбарт: туг `notifications`, migration 0138–0142, хаалттай үед мөр
 хуримтлагдаагүйг шалгасан query.
 
 ## 9. Үе шат
@@ -370,7 +375,7 @@ PR тайлбарт: туг `notifications`, migration 0138–0141, хаалтт
 | **1. Schema + security** | 0138: хүснэгт, constraint, unique index, RLS/revoke, RPC, cron, `FEATURE_FLAGS` |
 | **2. Хэрэглэгчийн feed/UI** | API (feed/poll/read, cursor), хонх 3 байрлалд, panel, `/account/notifications`, toast |
 | **3. Админ broadcast** | upload folder, форм, preview, тест, хуваарь, буцаах, статистик, rate limit |
-| **4. Producer-ууд** | 0139 оноо → 0140 үнэгүй эрх → 0141 захиалга |
+| **4. Producer-ууд** | 0139 оноо → 0140 үнэгүй эрх → 0141 захиалга; 0142 хүрдний grant засвар (§12) |
 | **Phase 2** | Realtime, нэмэлт producer, сегментлэлт, orphan зураг цэвэрлэх |
 
 ## 10. Клиентээс тодруулах
@@ -430,11 +435,16 @@ broadcast-ын хэтэрсэн хугацаа; migration-ыг producer тус �
 - **Захиалгын trigger-ийн нэр `orders_user_notify`:** Postgres trigger-үүдийг
   нэрээр эрэмбэлдэг — `orders_reward_coupon`-оос хойш ажиллаж «купон
   нэмэгдлээ»-г шалгана.
-- **Panel:** popover биш баруун талын sheet (сагстай ижил; төсөлд popover байхгүй).
+- **Panel:** утсан дээр баруун талын sheet (сагстай ижил); desktop дээр хонхны
+  доорх hover popover (Base UI, дарахад ч нээгдэнэ). Эхний 10 мөр.
 - **Засах route:** `POST` биш `PUT /api/admin/broadcasts/:id`.
 - **Холбоос сонгогч:** бараа + багц. Кампанит ажилд нийтийн хуудас байхгүй.
 - **Туршилтын route** нь `notify_user`-ийг тойрдог тул `feature_enabled()`-ийг
   сангаас шууд шалгана (кэштэй тугаас гадна).
+- **Poll cursor:** keyset `(visible_at, id) > cursor` биш, cursor-оос 10 мин
+  ухарсан цонх + клиентийн id dedupe (§5). Шалтгаан доор.
+- **Хуваарьт мэдэгдлийг засах:** товч «Хадгалах»; цаг/«Одоо» өөрчилсөн бол
+  баталгаажуулалттай илгээх/хуваарьлах урсгалаар явна (PUT хуваарийг хөндөхгүй).
 
 Замдаа олдсон хуучин алдаа:
 
@@ -451,3 +461,22 @@ SQL шалгалт (dev, rollback transaction, §7): туг хаалттай —
 бүр яг 1, давхар нээлт/cron давталт 0, эзний цуцлалт 0, `shipping` →
 `confirmed` → `shipping` 1, шинэ эргэлт хуучин уншаагүйг устгана,
 `freeSpinHours` 24 → 48 үед `visible_at` шинэчлэгдэнэ.
+
+Хэрэгжүүлэлтийн review (2026-10-19) — засварласан:
+
+- **Toast алдагдах:** poll cursor нь сүүлийн мөрийн `visible_at` руу үсэрдэг
+  байсан. `visible_at` = transaction эхэлсэн цаг тул урт transaction (оноо
+  нээх cron, том fan-out) cursor-оос хойш commit хийвэл мөр нь cursor-оос
+  өмнө орж toast гардаггүй байв (badge зөв). Хоосон feed-ийн cursor JS
+  цагаар тавигддаг тул app/DB цагийн зөрүү мөн нөлөөлнө → ухарсан цонх.
+- **Дахин нэвтрэх:** poll кэш `gcTime: Infinity` тул reload-гүй гараад орвол
+  хуучин cursor үлдэж болзошгүй. Энгийн гаралт (`/api/auth/sign-out`) бүтэн
+  reload хийдэг ч session дуусах замд зориулж userId null болоход кэш устгана.
+- **Хуваарьт мэдэгдэл:** «Ноорог хадгалах» цагийн өөрчлөлтийг чимээгүй
+  орхидог байсныг засав (дээрх).
+- **Туршилтын ноорог:** шинэ мэдэгдлийг туршаад drawer хаахад жагсаалт
+  шинэчлэгддэггүй байв → хаахад `router.refresh()`.
+
+Үлдээсэн (жижиг): poll cursor-ыг Zod биш гараар шалгадаг (урт + decode,
+аюулгүй); админы жагсаалтын уншсан тоо мөр бүрт тусдаа query (≤100);
+«Бүгдийг уншсан болгох» нуугдсан free spin мөрийг ч уншсан болгоно.

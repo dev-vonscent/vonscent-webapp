@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/browser";
+import { isTransientAuthError } from "@/lib/supabase/auth-errors";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export interface ProfileSummary {
@@ -26,7 +27,10 @@ const STAFF_ROLES = ["operator", "super_admin"];
 async function fetchProfileSummary(): Promise<ProfileSummary | null> {
   const supabase = createClient();
   if (!supabase) return null;
-  const { data } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getUser();
+  // Сүлжээ/auth түр унасан бол throw — TanStack өмнөх profile-ийг хадгална.
+  // null буцаавал хэрэглэгч гарсан мэт болж мэдэгдлийн кэш хүртэл устна.
+  if (isTransientAuthError(error)) throw error;
   if (!data.user) return null;
   const { data: row } = await supabase
     .from("profiles")

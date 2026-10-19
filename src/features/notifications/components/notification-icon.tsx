@@ -1,6 +1,7 @@
 import * as React from "react";
 import {
   Bell,
+  BellRing,
   Bookmark,
   CreditCard,
   Gift,
@@ -24,7 +25,7 @@ const ICONS: Record<NotificationKind, IconComponent> = {
   promotion: Percent,
   campaign: Megaphone,
   feature: Rocket,
-  announcement: Megaphone,
+  announcement: BellRing,
   points_released: VPointIcon,
   free_spin_ready: Gift,
   order_paid: CreditCard,

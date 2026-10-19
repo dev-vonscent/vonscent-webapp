@@ -749,3 +749,20 @@ export const FEATURE_FLAG_META: Readonly<Record<FeatureFlag, FeatureFlagMeta>> =
 export const WALLET_HISTORY_DAYS = 30;
 
 export const COUPONS_NEW_BADGE_UNTIL = "2026-11-01T00:00:00+08:00";
+
+/** Мэдэгдлийн хонхны panel — эхний хэдэн мөр (хөнгөн). */
+export const NOTIFICATION_PANEL_LIMIT = 10;
+/** /account/notifications-ийн хуудасны хэмжээ (API-ийн default ч мөн). */
+export const NOTIFICATION_PAGE_SIZE = 20;
+/** Хонхны poll-ын давтамж ба кэш шинэ байх хугацаа. */
+export const NOTIFICATION_POLL_INTERVAL_MS = 60_000;
+export const NOTIFICATION_STALE_MS = 30_000;
+/** Poll-ын нэг хариунд буцаах уншаагүй мөрийн дээд хэмжээ. */
+export const NOTIFICATION_POLL_FRESH_MAX = 20;
+/**
+ * Poll-ын цонхыг cursor-оос хэр ухрааж эхлүүлэх вэ — урт transaction-ий
+ * хоцорсон мөр, app/сангийн цагийн зөрүүг барина (server.ts).
+ */
+export const NOTIFICATION_POLL_LOOKBACK_MS = 10 * 60_000;
+/** Шинэ мэдэгдлийн toast хэр удаан харагдах вэ. */
+export const NOTIFICATION_TOAST_DURATION_MS = 6_000;

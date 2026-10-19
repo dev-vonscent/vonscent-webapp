@@ -8,11 +8,20 @@ import {
   type InfiniteData,
 } from "@tanstack/react-query";
 import { useFeatureFlag } from "@/components/feature-flags";
-import { useProfileSummary } from "@/features/account/use-profile-summary";
+import {
+  PROFILE_SUMMARY_KEY,
+  useProfileSummary,
+} from "@/features/account/use-profile-summary";
+import {
+  NOTIFICATION_PAGE_SIZE,
+  NOTIFICATION_POLL_INTERVAL_MS,
+  NOTIFICATION_STALE_MS,
+} from "@/lib/constants";
 import type { NotificationReadInput } from "@/lib/validators/notification";
 import {
   fetchNotificationFeed,
   fetchNotificationPoll,
+  NotificationPollError,
   postNotificationsRead,
 } from "./api";
 import type { NotificationFeedPage, NotificationPoll } from "./types";
@@ -31,14 +40,16 @@ export const notificationKeys = {
     ["notifications", userId, "feed", limit] as const,
 };
 
-/** Хонхны panel — хөнгөн, эхний 10. Бүтэн хуудас `FEED_PAGE_SIZE`-аар. */
-export const PANEL_LIMIT = 10;
-export const FEED_PAGE_SIZE = 20;
-
-/** Poll-ын кэш — `seq` нь toast hook шинэ хариуг таних тоолуур. */
+/**
+ * Poll-ын кэш — `seq` нь toast hook шинэ хариуг таних тоолуур; `epoch` нь
+ * кэш шинээр эхлэх бүрт (гарч орох, хэрэглэгч солих) өөрчлөгдөнө.
+ */
 export interface PollState extends NotificationPoll {
+  epoch: number;
   seq: number;
 }
+
+let pollEpoch = 0;
 
 /**
  * Хонх харагдах хэрэглэгч: туг нээлттэй + нэвтэрсэн. Зочинд null (plan #3).
@@ -61,16 +72,46 @@ export function useNotificationPoll() {
     queryKey: notificationKeys.poll(userId),
     queryFn: async () => {
       const prev = qc.getQueryData<PollState>(notificationKeys.poll(userId));
-      const res = await fetchNotificationPoll(prev?.nextCursor || undefined);
-      if (res.freshCount > 0) {
-        void qc.invalidateQueries({ queryKey: notificationKeys.feeds(userId) });
+      let res: Awaited<ReturnType<typeof fetchNotificationPoll>>;
+      try {
+        res = await fetchNotificationPoll(prev?.nextCursor || undefined);
+      } catch (err) {
+        // Session server талд дууссан — profile-ийг шинэчилбэл null болж
+        // хонх алга болно (кэш нь NotificationCenter-т устна).
+        if (err instanceof NotificationPollError && err.status === 401) {
+          void qc.invalidateQueries({ queryKey: PROFILE_SUMMARY_KEY });
+        }
+        throw err;
       }
-      return { ...res, seq: (prev?.seq ?? 0) + 1 };
+      // Poll-ын цонх давхцдаг — өмнөх хариунд байгаагүй мөр ирсэн үед л feed-ийг
+      // шинэчилнэ (анхны poll-д feed өөрөө татагдана). `fresh` шинэ нь эхэнд тул
+      // 20-оос олон зэрэг ирсэн ч шинэ id `fresh`-д орно.
+      if (prev) {
+        const seen = new Set(prev.fresh.map((n) => n.id));
+        if (res.fresh.some((n) => !seen.has(n.id))) {
+          void qc.invalidateQueries({
+            queryKey: notificationKeys.feeds(userId),
+          });
+        }
+      }
+      return {
+        ...res,
+        epoch: prev ? prev.epoch : ++pollEpoch,
+        seq: (prev?.seq ?? 0) + 1,
+      };
     },
     enabled: !!userId,
-    refetchInterval: 60_000,
+    // 401/404 (session дууссан / туг хаагдсан) — дахин оролдохгүй, poll зогсоно.
+    retry: (count, err) =>
+      !(err instanceof NotificationPollError && err.final) && count < 3,
+    refetchInterval: (query) => {
+      const err = query.state.error;
+      return err instanceof NotificationPollError && err.final
+        ? false
+        : NOTIFICATION_POLL_INTERVAL_MS;
+    },
     refetchOnWindowFocus: true,
-    staleTime: 30_000,
+    staleTime: NOTIFICATION_STALE_MS,
     gcTime: Infinity,
     // Toast hook `seq`-ээр хариу бүрийг ялгана — ижил агуулгатай ч шинэ объект.
     structuralSharing: false,
@@ -79,7 +120,7 @@ export function useNotificationPoll() {
 
 export function useNotificationFeed({
   enabled = true,
-  limit = FEED_PAGE_SIZE,
+  limit = NOTIFICATION_PAGE_SIZE,
 }: { enabled?: boolean; limit?: number } = {}) {
   const userId = useNotificationUserId();
   return useInfiniteQuery<
@@ -94,7 +135,7 @@ export function useNotificationFeed({
     initialPageParam: undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     enabled: enabled && !!userId,
-    staleTime: 30_000,
+    staleTime: NOTIFICATION_STALE_MS,
   });
 }
 
@@ -108,7 +149,12 @@ export function useMarkNotificationsRead() {
   return useMutation({
     mutationFn: postNotificationsRead,
     onMutate: async (input: NotificationReadInput) => {
-      await qc.cancelQueries({ queryKey: feedsKey });
+      // Poll-ыг ч цуцална — mutation-аас өмнө эхэлсэн poll хуучин `unread`-тэй
+      // буцаж ирээд optimistic badge-ийг дарахгүйн тулд.
+      await Promise.all([
+        qc.cancelQueries({ queryKey: feedsKey }),
+        qc.cancelQueries({ queryKey: pollKey }),
+      ]);
       const prevFeeds = qc.getQueriesData<InfiniteData<NotificationFeedPage>>({
         queryKey: feedsKey,
       });
@@ -119,6 +165,7 @@ export function useMarkNotificationsRead() {
       // Нэг мэдэгдэл panel ба бүтэн хуудасны кэшид хоёуланд байж болно —
       // badge-ийг давхар хасахгүйн тулд id-аар тоолно.
       const marked = new Set<string>();
+      const inFeed = new Set<string>();
       for (const [key, data] of prevFeeds) {
         if (!data) continue;
         qc.setQueryData<InfiniteData<NotificationFeedPage>>(key, {
@@ -126,19 +173,27 @@ export function useMarkNotificationsRead() {
           pages: data.pages.map((p) => ({
             ...p,
             items: p.items.map((n) => {
-              if (n.read || !hits(n.id)) return n;
+              if (!hits(n.id)) return n;
+              inFeed.add(n.id);
+              if (n.read) return n;
               marked.add(n.id);
               return { ...n, read: true };
             }),
           })),
         });
       }
-      // Feed-д олдоогүй (toast-оос дарсан) мөрүүд уншаагүй байсан.
-      if (ids) for (const id of ids) marked.add(id);
 
       if (prevPoll) {
+        // Feed-д олдоогүй (toast-оос дарсан) мөрийг poll-ын `fresh`-ээс шалгана —
+        // аль хэдийн уншсан мөрийн хуучин toast badge-ийг дахин хасахгүй.
+        for (const n of prevPoll.fresh) {
+          if (hits(n.id) && !n.read && !inFeed.has(n.id)) marked.add(n.id);
+        }
         qc.setQueryData<PollState>(pollKey, {
           ...prevPoll,
+          fresh: prevPoll.fresh.map((n) =>
+            hits(n.id) ? { ...n, read: true } : n,
+          ),
           unread: ids === null ? 0 : Math.max(0, prevPoll.unread - marked.size),
         });
       }
@@ -149,5 +204,7 @@ export function useMarkNotificationsRead() {
         qc.setQueryData(key, data);
       if (ctx?.prevPoll) qc.setQueryData(pollKey, ctx.prevPoll);
     },
+    // Цуцалсан poll-ыг нөхөж, серверийн жинхэнэ тоог авна.
+    onSettled: () => qc.invalidateQueries({ queryKey: pollKey }),
   });
 }

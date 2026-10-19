@@ -24,7 +24,9 @@ export type ToastPlan =
  * - `initial` — анхны poll: хуучин уншаагүйг toast болгохгүй.
  * - `visible` — зөвхөн харагдаж буй tab toast гаргана.
  * - `shown` — өөр tab аль хэдийн үзүүлсэн id (BroadcastChannel, best-effort).
- * - `freshCount` нь `fresh`-ээс их байж болно (сервер ≤5-ыг л буцаадаг).
+ * - `freshCount` нь `fresh`-ээс их байж болно (сервер ≤20-ыг л буцаадаг).
+ *   Цонх давхцдаг тул тэр илүүдэл нь өмнө үзүүлсэн мөр байж болно — буцсан
+ *   бүх мөр шинэ байвал л (илүүдэл нь тэднээс хуучин) шинэд тооцно.
  */
 export function planToasts(input: {
   fresh: AppNotification[];
@@ -36,8 +38,32 @@ export function planToasts(input: {
   if (input.initial || !input.visible) return { type: "none" };
   const items = input.fresh.filter((n) => !n.read && !input.shown.has(n.id));
   if (items.length === 0) return { type: "none" };
-  const hidden = Math.max(0, input.freshCount - input.fresh.length);
+  const hidden =
+    items.length === input.fresh.length
+      ? Math.max(0, input.freshCount - input.fresh.length)
+      : 0;
   const count = items.length + hidden;
   if (count > TOAST_GROUP_OVER) return { type: "summary", count };
   return { type: "single", items };
+}
+
+/** Toast hook-ийн боловсруулсан poll: кэшийн `epoch` + сүүлийн `seq`. */
+export interface PollMark {
+  epoch: number;
+  seq: number;
+}
+
+/**
+ * Poll-ын хариуг боловсруулах эсэх. `epoch` өөр бол poll кэш шинээр эхэлсэн
+ * (гарч орсон / хэрэглэгч солигдсон) — `reset` (үзүүлсэн id-ыг хаяна).
+ * Ижил `seq`-ийг (optimistic badge засвар г.м.) дахин боловсруулахгүй.
+ */
+export function trackPoll(
+  mark: PollMark,
+  data: PollMark,
+): { mark: PollMark; reset: boolean; process: boolean } {
+  const reset = mark.epoch !== data.epoch;
+  const last = reset ? 0 : mark.seq;
+  if (data.seq <= last) return { mark, reset, process: false };
+  return { mark: { epoch: data.epoch, seq: data.seq }, reset, process: true };
 }

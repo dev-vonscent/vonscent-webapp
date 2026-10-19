@@ -427,9 +427,21 @@ function BroadcastForm({
   const open = broadcast !== null;
   const existingId =
     broadcast && broadcast !== "new" && "id" in broadcast ? broadcast.id : null;
+  // Хуваарьт мөрийн анхны цаг — «Хадгалах» нь PUT-аар хуваарийг хөндөхгүй
+  // тул цаг өөрчлөгдсөн бол send()-ээр (баталгаажуулалттай) явуулна.
+  const scheduledAt =
+    broadcast &&
+    broadcast !== "new" &&
+    "status" in broadcast &&
+    broadcast.status === "scheduled"
+      ? isoToUbParts(broadcast.publishAt)
+      : null;
   // Туршиж илгээхэд ноорог хадгалагдана — дараагийн хадгалалт PUT болно.
   const [savedId, setSavedId] = React.useState<string | null>(null);
   const id = existingId ?? savedId;
+  // Сервер дээр хадгалагдсан ч жагсаалт шинэчлэгдээгүй (туршилт г.м.) —
+  // хаахад `onDone`-оор жагсаалтыг дахин татна.
+  const [persisted, setPersisted] = React.useState(false);
 
   const [draft, setDraft] = React.useState<Draft | null>(null);
   const [initial, setInitial] = React.useState<Draft | null>(null);
@@ -445,6 +457,7 @@ function BroadcastForm({
     setInitial(next);
     setErrors({});
     setSavedId(null);
+    setPersisted(false);
   }, [broadcast]);
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
@@ -486,15 +499,32 @@ function BroadcastForm({
     }
     const saved = id ?? res.data.id ?? null;
     if (saved && !id) setSavedId(saved);
+    if (saved) setPersisted(true);
     return saved;
   }
 
+  // Хуваарьт мөрийн цаг/«Одоо» өөрчлөгдсөн — «Хадгалах» нь send()-ээр явна.
+  const rescheduled =
+    !!scheduledAt &&
+    !!draft &&
+    (draft.when !== "scheduled" ||
+      draft.day !== scheduledAt.day ||
+      draft.time !== scheduledAt.time);
+
   async function saveDraft(e: React.FormEvent) {
     e.preventDefault();
+    if (rescheduled) {
+      await send();
+      return;
+    }
     setBusy("save");
     try {
       if (await save()) {
-        toast.success("Ноорог хадгалагдлаа.");
+        toast.success(
+          scheduledAt
+            ? "Хадгалагдлаа. Хуваарь хэвээр."
+            : "Ноорог хадгалагдлаа.",
+        );
         onDone();
       }
     } finally {
@@ -508,7 +538,13 @@ function BroadcastForm({
       const saved = await save();
       if (saved) {
         await onTest({ id: saved });
-        setInitial(draft);
+        // save() зөвхөн агуулгыг хадгална — хуваарийн өөрчлөлт хадгалагдаагүй
+        // тул dirty хэвээр үлдэж, хаахад анхааруулга гарна.
+        setInitial((prev) =>
+          draft && prev
+            ? { ...draft, when: prev.when, day: prev.day, time: prev.time }
+            : draft,
+        );
       }
     } finally {
       setBusy(null);
@@ -586,28 +622,39 @@ function BroadcastForm({
     <FormDrawer
       open={open}
       dirty={dirty}
-      onClose={onClose}
+      // Туршилт ноорог үүсгэсэн / агуулгыг хадгалсан бол хаахад жагсаалтыг шинэчилнэ.
+      onClose={persisted ? onDone : onClose}
       title={isNew ? "Шинэ мэдэгдэл" : "Мэдэгдэл засах"}
       description="Бүртгэлтэй бүх хэрэглэгчийн хонх руу очно. Илгээхээс өмнө өөртөө туршиж үзээрэй."
       discardDescription="Бичсэн мэдэгдэл тань хадгалагдахгүй."
       footer={
         <>
-          <LoadingButton
-            type="submit"
-            form={FORM_ID}
-            variant="secondary"
-            loading={busy === "save"}
-            disabled={busy !== null}
-          >
-            Ноорог хадгалах
-          </LoadingButton>
+          {/* Хуваарьт мөрийн цагийг өөрчилсөн бол хадгалах нь send()-ээр явдаг —
+              ижил үйлдэлтэй хоёр товч гаргахгүй. */}
+          {!rescheduled && (
+            <LoadingButton
+              type="submit"
+              form={FORM_ID}
+              variant="secondary"
+              loading={busy === "save"}
+              disabled={busy !== null}
+            >
+              {scheduledAt ? "Хадгалах" : "Ноорог хадгалах"}
+            </LoadingButton>
+          )}
           <LoadingButton
             type="button"
             loading={busy === "send"}
             disabled={busy !== null}
             onClick={() => void send()}
           >
-            {draft?.when === "scheduled" ? "Хуваарьлах" : "Илгээх"}
+            {rescheduled
+              ? draft?.when === "scheduled"
+                ? "Хуваарь шинэчлэх"
+                : "Одоо илгээх"
+              : draft?.when === "scheduled"
+                ? "Хуваарьлах"
+                : "Илгээх"}
           </LoadingButton>
         </>
       }
