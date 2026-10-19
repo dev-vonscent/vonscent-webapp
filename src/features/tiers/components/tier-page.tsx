@@ -4,7 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { ArrowLeft, Check, Lock } from "lucide-react";
+import { ArrowLeft, Check, Crown, Lock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { USER_TIERS, type UserTierKey } from "@/lib/constants";
@@ -22,6 +22,17 @@ function formatMillion(amount: number): string {
   return `${amount / 1_000_000} сая₮`;
 }
 
+/**
+ * Шатны идэвхтэй картын хүрээний өнгө — хүрээ зургийн гол материалынх.
+ * Standard-д байхгүй: энгийн саарал хүрээ (тасц, гялбаагүй).
+ */
+const TIER_RING_COLORS: Partial<Record<UserTierKey, string>> = {
+  gold: "rgb(232 176 64)",
+  platinum: "rgb(226 232 242)",
+  sapphire: "rgb(61 110 255)",
+  ruby: "rgb(230 20 50)",
+};
+
 function initialOf(name: string | null | undefined) {
   return (name?.trim() || "V").charAt(0).toUpperCase();
 }
@@ -31,7 +42,8 @@ export function TierPage() {
 
   return (
     <div className="space-y-10">
-      <header className="space-y-1">
+      {/* Mobile: the site header shows back + "Түвшин" instead. */}
+      <header className="hidden space-y-1 md:block">
         <Link
           href="/account"
           className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
@@ -105,20 +117,33 @@ function Hero({ summary }: { summary: TierSummary }) {
           <p className="font-serif text-3xl font-semibold sm:text-4xl">
             {tier.label}
           </p>
-          <p className="text-gold-strong text-sm font-medium">
-            Захиалга бүрээс {tier.rate}% V point
-          </p>
-          <p className="text-muted-foreground text-sm">
-            Нийт худалдан авалт{" "}
-            <span className="text-foreground font-semibold tabular-nums">
-              {formatPrice(summary.lifetimeSpend)}
-            </span>
-          </p>
         </div>
       </div>
 
+      {/* Гол хоёр тоо — мөр бүрт тараахгүй, хос tile-д. */}
+      <dl className="grid grid-cols-2 gap-3">
+        <div className="bg-secondary/60 space-y-1 rounded-2xl p-4">
+          <dt className="text-muted-foreground text-xs">V point</dt>
+          <dd className="space-y-0.5">
+            <p className="text-gold-strong font-serif text-lg font-semibold tabular-nums sm:text-2xl">
+              {tier.rate}%
+            </p>
+            <p className="text-muted-foreground text-xs">захиалга бүрээс</p>
+          </dd>
+        </div>
+        <div className="bg-secondary/60 space-y-1 rounded-2xl p-4">
+          <dt className="text-muted-foreground text-xs">Нийт худалдан авалт</dt>
+          <dd className="space-y-0.5">
+            <p className="font-serif text-lg font-semibold tabular-nums sm:text-2xl">
+              {formatPrice(summary.lifetimeSpend)}
+            </p>
+            <p className="text-muted-foreground text-xs">бүх цаг үед</p>
+          </dd>
+        </div>
+      </dl>
+
       {/* Дараагийн түвшин хүртэлх явц — хэвтээ bar. */}
-      <div className="space-y-2">
+      <div className="border-border space-y-3 border-t pt-5">
         {next ? (
           <>
             <div className="flex items-center justify-between gap-3 text-xs">
@@ -153,7 +178,12 @@ function Hero({ summary }: { summary: TierSummary }) {
             </p>
           </>
         ) : (
-          <p className="text-sm font-medium">Та хамгийн дээд түвшинд хүрсэн</p>
+          <div className="flex items-center justify-center gap-2 text-center sm:justify-start sm:text-left">
+            <Crown className="text-gold-strong size-4 shrink-0" />
+            <p className="text-sm font-medium">
+              Та хамгийн дээд түвшинд хүрсэн
+            </p>
+          </div>
         )}
       </div>
     </motion.section>
@@ -171,6 +201,7 @@ function Ladder({ current }: { current: UserTierKey }) {
         {USER_TIERS.map((t, i) => {
           const reached = i <= currentIndex;
           const isCurrent = i === currentIndex;
+          const ringColor = TIER_RING_COLORS[t.key];
           const upper = USER_TIERS[i + 1]?.minSpend;
           return (
             <motion.li
@@ -181,8 +212,16 @@ function Ladder({ current }: { current: UserTierKey }) {
               transition={{ duration: 0.4, delay: i * 0.06 }}
               className={cn(
                 "bg-card relative flex items-center gap-4 rounded-2xl p-4 sm:flex-col sm:gap-3 sm:text-center",
-                isCurrent && "ring-foreground ring-2",
+                isCurrent &&
+                  (ringColor ? "tier-ring" : "ring-muted-foreground/50 ring-3"),
               )}
+              style={
+                isCurrent && ringColor
+                  ? ({
+                      "--tier-ring": ringColor,
+                    } as React.CSSProperties)
+                  : undefined
+              }
             >
               {/* Чимэглэлийн хэмжээ түвшнээс хамаарна — тогтмол талбайд
                   төвлөрүүлж, картууд жигд харагдана. */}

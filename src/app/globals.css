@@ -824,7 +824,7 @@
  * ── Хэрэглэгчийн түвшин (0143, feature flag `user_tiers`) ────────────────
  *
  * Хүрээ нь зураг (`public/tiers/*.webp`, `TierFrame`); энд түүн дээрх
- * хөдөлгөөн (`tier-aura/shimmer/spark`).
+ * хөдөлгөөн (`tier-aura/shimmer/spark/ring`).
  *
  * design.md-ийн «gradient хэрэглэхгүй» дүрмийн зориуд үл хамаарал: металл,
  * чулуу бодитоор харагдах ганц арга (клиентийн шаардлага — «бодит мэт»).
@@ -900,8 +900,70 @@
   }
 }
 
+/*
+ * Түвшний шатны идэвхтэй карт: түвшний өнгөтэй, эрдэнийн чулуу шиг
+ * тасттай хүрээ (`--tier-ring`; цайвар/гол/бараан ирмэг ээлжилнэ) +
+ * ижил өнгийн гэрэл. Түвшний өнгөөр зөөлрүүлсэн гялбаа зүүн дээд
+ * булангаас баруун доод булан руу нэг гүйж, завсарлаад давтана.
+ */
+.tier-ring {
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--tier-ring) 40%, transparent),
+    inset 0 0 14px color-mix(in srgb, var(--tier-ring) 18%, transparent);
+}
+.tier-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 3px;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      135deg,
+      transparent 40%,
+      color-mix(in srgb, var(--tier-ring), white 55%) 50%,
+      transparent 60%
+    ),
+    repeating-conic-gradient(
+      from 0deg,
+      color-mix(in srgb, var(--tier-ring), white 45%) 0deg 5deg,
+      var(--tier-ring) 5deg 11deg,
+      color-mix(in srgb, var(--tier-ring), black 45%) 11deg 15deg,
+      var(--tier-ring) 15deg 20deg
+    );
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  background-size:
+    300% 300%,
+    auto;
+  background-repeat: no-repeat;
+  background-position:
+    100% 100%,
+    center;
+  animation: tier-ring-glint 5s ease-in-out infinite;
+}
+@keyframes tier-ring-glint {
+  0% {
+    background-position:
+      100% 100%,
+      center;
+  }
+  /* Үлдсэн хугацаанд гялбаа хүрээнээс гадна хүлээнэ. */
+  30%,
+  100% {
+    background-position:
+      0% 0%,
+      center;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  :is(.tier-aura, .tier-shimmer, .tier-spark) {
+  :is(.tier-aura, .tier-shimmer, .tier-spark),
+  .tier-ring::before {
     animation: none;
   }
 }

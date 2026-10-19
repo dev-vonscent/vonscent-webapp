@@ -44,6 +44,7 @@ const TITLES: Record<string, string> = {
   "/account/addresses": "Хаягууд",
   "/account/coupons": "Миний купон",
   "/account/notifications": "Мэдэгдэл",
+  "/account/tier": "Түвшин",
   "/request": "Санал болгох",
   "/products": "", // full-bleed image hero — no title, just back + cart
   "/order/success": "Захиалга",
