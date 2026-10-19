@@ -57,6 +57,13 @@ export function FinanceBreakdown({
           Хүргэлтийн төлбөр {formatPrice(finance.shipping)} — хүргэлтийн
           компанид тэр чигээр нь төлөгддөг тул тооцоонд ороогүй.
         </li>
+        {finance.extrasGoods > 0 && (
+          <li>
+            Барааны нийт дүнгийн {formatPrice(finance.extrasGoods)} нь нэмэлт
+            бараа (хайрцаг, сав, шил г.м.), үлдсэн{" "}
+            {formatPrice(finance.goods - finance.extrasGoods)} нь үнэртэн.
+          </li>
+        )}
         <li>
           Буцаалтыг буцаасан өдрөөр нь хасна, өнгөрсөн сарын тоо өөрчлөгдөхгүй.
         </li>

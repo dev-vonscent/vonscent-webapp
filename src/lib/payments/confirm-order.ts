@@ -8,7 +8,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
 import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
-import { formatPrice, formatMl } from "@/lib/format";
+import { formatPrice } from "@/lib/format";
+import { isExtraLine, orderLineMeta, orderLineTitle } from "@/lib/order-lines";
 import { deliveryDayOf, formatDeliveryDay } from "@/lib/time";
 import { env } from "@/lib/env";
 import { orderSummaryRows, summarySource } from "@/lib/orders/summary";
@@ -176,18 +177,20 @@ async function notifyPaid(
   const { data: itemData } = await supabase
     .from("order_items")
     .select(
-      "product_name, brand, ml, qty, unit_price, list_price, is_gift, collection_name",
+      "product_name, brand, ml, qty, unit_price, list_price, is_gift, collection_name, line_kind, variant_label",
     )
     .eq("order_id", order.id);
   const items = (itemData ?? []) as {
     product_name: string;
     brand: string | null;
-    ml: number;
+    ml: number | null;
     qty: number;
     unit_price: number;
     list_price: number | null;
     is_gift: boolean;
     collection_name: string | null;
+    line_kind: "perfume" | "extra";
+    variant_label: string | null;
   }[];
 
   // Мөр бүр ҮНДСЭН үнээрээ — pay хуудастай адил (`features/payment/api.ts`).
@@ -195,13 +198,18 @@ async function notifyPaid(
   // мэт дүн гардаг байв; хямдрал нь доорх задаргаанд ганц мөр болж гарна. 0097-оос өмнөх мөрөнд `list_price` алга.
   const itemList = items
     .map((i) => {
+      const base = (i.list_price ?? i.unit_price) * i.qty;
+      // Нэмэлт бараа (0146): `brand` нь ангиллын нэр — «Нэмэлт» шошго нь
+      // савлагчид энэ мөрийг декант биш гэж шууд хэлнэ.
+      if (isExtraLine(i)) {
+        return `• Нэмэлт: ${tgEscape(orderLineTitle(i))} × ${i.qty} — ${formatPrice(base)}`;
+      }
       const name = i.brand ? `${i.brand} — ${i.product_name}` : i.product_name;
       const bundle = i.collection_name
         ? ` · ${tgEscape(i.collection_name)}`
         : "";
-      const base = (i.list_price ?? i.unit_price) * i.qty;
       return (
-        `• ${tgEscape(name)} ${formatMl(i.ml)} × ${i.qty}${bundle}` +
+        `• ${tgEscape(name)} ${orderLineMeta(i)}${bundle}` +
         (i.is_gift ? " 🎁" : ` — ${formatPrice(base)}`)
       );
     })

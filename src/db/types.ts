@@ -237,8 +237,21 @@ export interface OrderRow {
    * руу шилжүүлэхэд. Төлөгдсөн / цуцлагдсан мөчид trigger арилгана.
    */
   checkout_snapshot: Record<string, unknown> | null;
+  /**
+   * `cancelled → pending` сэргээлт бүрт нэмэгдэнэ (0146) — нөөцийн
+   * хөдөлгөөний event_key-д орно.
+   */
+  lifecycle_cycle: number;
+  /** Захиалах мөчид хасагдсан бэлэг (0146). */
+  omitted_gifts: OmittedGift[] | null;
   created_at: string;
   updated_at: string;
+}
+
+/** Захиалах мөчид ороогүй бэлгийн дээж — босго эсвэл 1ml сав дууссан. */
+export interface OmittedGift {
+  product_id: string;
+  reason: "threshold" | "vial";
 }
 
 /**
@@ -303,14 +316,12 @@ export interface OrderRefundAccountRow {
   created_at: string;
 }
 
-export interface OrderItemRow {
+interface OrderItemBase {
   id: string;
   order_id: string;
-  product_id: string | null;
-  variant_id: string | null;
   product_name: string;
+  /** Үнэртэнд брэнд, нэмэлт бараанд ангиллын нэр (0146). */
   brand: string;
-  ml: number;
   unit_price: number;
   /** Хямдраагүй нэгж үнэ (0097). Багцын гишүүнд л unit_price-аас их. */
   list_price: number | null;
@@ -320,7 +331,47 @@ export interface OrderItemRow {
   collection_id: string | null;
   collection_name: string | null;
   is_gift: boolean;
+  /** Зарсан мөчийн хувилбарын нэр: «Хар», «18 / 100ml» (0146). */
+  variant_label: string | null;
+  /** Зарсан мөчийн зураг (0146) — нэмэлт бараанд. */
+  image_url: string | null;
+  /** Энэ мөрөнд түгжсэн хоосон сав ба түүний төлөв (0146). */
+  vial_id: string | null;
+  vial_state: OrderItemStockState | null;
 }
+
+/** Нөөцийн төлөв: reserved → committed (хүргэгдэх) | released (0146). */
+export type OrderItemStockState = "reserved" | "committed" | "released";
+
+/** Декантын мөр — ml-тэй. */
+export interface PerfumeOrderItemRow extends OrderItemBase {
+  line_kind: "perfume";
+  product_id: string | null;
+  variant_id: string | null;
+  ml: number;
+  extra_variant_id: null;
+  extra_product_id: null;
+  extra_inventory_mode: null;
+  extra_state: null;
+  restocked_qty: 0;
+}
+
+/** Нэмэлт барааны мөр (0146) — ml-гүй, үнэртэнтэй холбоогүй. */
+export interface ExtraOrderItemRow extends OrderItemBase {
+  line_kind: "extra";
+  product_id: null;
+  variant_id: null;
+  ml: null;
+  extra_variant_id: string;
+  extra_product_id: string;
+  extra_inventory_mode: ExtraInventoryMode;
+  extra_state: OrderItemStockState;
+  /** Хүргэгдсэний дараах буцаалтад нөөцөд буцаасан ширхэг (эцсийн нийт). */
+  restocked_qty: number;
+}
+
+/** `line_kind`-аар салбарладаг — `ml`-ийг шалгахгүйгээр бүү уншаарай. */
+export type OrderItemRow = PerfumeOrderItemRow | ExtraOrderItemRow;
 
 export interface CouponRow {
   id: string;
@@ -713,7 +764,15 @@ export interface Database {
       >;
       profiles: Table<ProfileRow, "created_at" | "updated_at">;
       addresses: Table<AddressRow, "id" | "created_at">;
-      orders: Table<OrderRow, "id" | "order_no" | "created_at" | "updated_at">;
+      orders: Table<
+        OrderRow,
+        | "id"
+        | "order_no"
+        | "created_at"
+        | "updated_at"
+        | "lifecycle_cycle"
+        | "omitted_gifts"
+      >;
       order_items: Table<OrderItemRow, "id">;
       order_refund_accounts: Table<OrderRefundAccountRow, "created_at">;
       coupons: Table<CouponRow, "id" | "created_at" | "used_up">;

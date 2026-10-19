@@ -33,6 +33,8 @@ export interface ReportFinance {
   /** Цуцлагдсан боловч мөнгө нь хараахан буцаагдаагүй. */
   pendingRefundOrders: number;
   pendingRefundAmount: number;
+  /** `goods`-ийн нэмэлт барааны хэсэг (0146) — үлдсэн нь үнэртэн. */
+  extrasGoods: number;
 }
 
 export const EMPTY_FINANCE: ReportFinance = {
@@ -50,6 +52,7 @@ export const EMPTY_FINANCE: ReportFinance = {
   refundOrders: 0,
   pendingRefundOrders: 0,
   pendingRefundAmount: 0,
+  extrasGoods: 0,
 };
 
 /** `admin_report_finance`-ийн мөр. PostgREST bigint-ийг number-оор өгнө. */
@@ -68,6 +71,8 @@ export interface FinanceRow {
   refund_orders: number;
   pending_refund_orders: number;
   pending_refund_amount: number;
+  /** 0146-аас өмнөх сан дээр байхгүй. */
+  extras_goods?: number | null;
 }
 
 export function financeFromRow(r: FinanceRow): ReportFinance {
@@ -86,6 +91,7 @@ export function financeFromRow(r: FinanceRow): ReportFinance {
     refundOrders: Number(r.refund_orders),
     pendingRefundOrders: Number(r.pending_refund_orders),
     pendingRefundAmount: Number(r.pending_refund_amount),
+    extrasGoods: Number(r.extras_goods ?? 0),
   };
 }
 

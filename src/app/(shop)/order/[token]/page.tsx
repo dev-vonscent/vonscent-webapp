@@ -18,6 +18,7 @@ import {
 import { deliveryDayOf, formatDeliveryDay, DISPATCH_HOUR } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { orderSummaryRows, type OrderSummaryRow } from "@/lib/orders/summary";
+import { orderLineMeta } from "@/lib/order-lines";
 
 /**
  * `/order/<token>` — захиалгын төлөв, нэвтрэхгүйгээр.
@@ -147,10 +148,15 @@ export default async function OrderStatusPage({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate">
-                  {l.brand} {l.name}
+                  {l.isExtra ? l.name : `${l.brand} ${l.name}`}
                 </p>
                 <p className="text-muted-foreground text-xs">
-                  {l.ml}ml × {l.qty}
+                  {orderLineMeta({
+                    line_kind: l.isExtra ? "extra" : "perfume",
+                    ml: l.ml,
+                    qty: l.qty,
+                    variant_label: l.variantLabel,
+                  })}
                   {l.collectionName ? ` · ${l.collectionName}` : ""}
                 </p>
               </div>

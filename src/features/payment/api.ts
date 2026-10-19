@@ -52,20 +52,23 @@ interface ItemRow {
   product_id: string | null;
   product_name: string;
   brand: string;
-  ml: number;
+  ml: number | null;
   qty: number;
   unit_price: number;
   list_price: number | null;
   line_total: number;
   is_sample: boolean;
   collection_name: string | null;
+  line_kind: "perfume" | "extra";
+  variant_label: string | null;
+  image_url: string | null;
 }
 
 const SELECT =
   "id, order_no, user_id, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, status, payment_method, payment_status, deliver_on, checkout_snapshot";
 
 const ITEM_SELECT =
-  "product_id, product_name, brand, ml, qty, unit_price, list_price, line_total, is_sample, collection_name";
+  "product_id, product_name, brand, ml, qty, unit_price, list_price, line_total, is_sample, collection_name, line_kind, variant_label, image_url";
 
 /**
  * The order's lines, with a product image where the product still exists.
@@ -94,6 +97,8 @@ export async function paymentLines(
     name: r.product_name,
     brand: r.brand,
     ml: r.ml,
+    variantLabel: r.line_kind === "extra" ? (r.variant_label ?? "") : null,
+    isExtra: r.line_kind === "extra",
     qty: r.qty,
     lineTotal: r.line_total,
     // Мөр нь үндсэн үнээрээ бичигдэнэ — багцын хямдрал доор тусдаа мөр
@@ -102,7 +107,10 @@ export async function paymentLines(
     baseTotal: (r.list_price ?? r.unit_price) * r.qty,
     isSample: r.is_sample,
     collectionName: r.collection_name,
-    image: r.product_id ? (imageById.get(r.product_id) ?? null) : null,
+    // Нэмэлт бараа зарсан мөчийн зурагтай (0146); үнэртэн барааныхаа зургийг.
+    image:
+      r.image_url ??
+      (r.product_id ? (imageById.get(r.product_id) ?? null) : null),
   }));
 }
 

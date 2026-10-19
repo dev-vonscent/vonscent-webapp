@@ -300,7 +300,10 @@ export function PaymentPanel({
     }
     clearPendingOrder(token);
     if (saveForLater) {
-      toast("«Миний захиалга» хэсгээс үргэлжлүүлээрэй.", "Дараа захиалах руу шилжлээ");
+      toast(
+        "«Миний захиалга» хэсгээс үргэлжлүүлээрэй.",
+        "Дараа захиалах руу шилжлээ",
+      );
       router.push("/account/orders?tab=saved");
     } else {
       toast("Захиалга устгагдлаа.");
@@ -480,7 +483,7 @@ function OrderRecap({ view }: { view: PaymentView }) {
         <ul className="mt-3">
           {view.lines.map((line, i) => (
             <li
-              key={`${line.name}-${line.ml}-${i}`}
+              key={`${line.name}-${line.ml ?? line.variantLabel}-${i}`}
               className="flex items-center gap-3 py-2.5"
             >
               <div className="relative size-11 shrink-0">
@@ -507,8 +510,13 @@ function OrderRecap({ view }: { view: PaymentView }) {
                 </p>
                 <p className="text-muted-foreground truncate text-xs">
                   {[
+                    // Нэмэлт барааны `brand` нь ангиллын нэр (0146).
                     line.brand,
-                    `${line.ml}ml`,
+                    line.isExtra
+                      ? line.variantLabel || null
+                      : line.ml != null
+                        ? `${line.ml}ml`
+                        : null,
                     line.collectionName ?? null,
                     line.isSample ? "бэлэг" : null,
                   ]

@@ -25,6 +25,7 @@ import {
   refundBreakdown,
 } from "@/lib/refund";
 import { cn } from "@/lib/utils";
+import { orderLineTitle, vialLabel } from "@/lib/order-lines";
 
 export default async function AdminOrderDetail({
   params,
@@ -37,7 +38,16 @@ export default async function AdminOrderDetail({
     getStaffUser(),
   ]);
   if (!detail) notFound();
-  const { order, items, history, customer, payments, refundAccount } = detail;
+  const {
+    order,
+    items,
+    history,
+    customer,
+    payments,
+    refundAccount,
+    vials,
+    omittedGiftNames,
+  } = detail;
   // Цуцлагдсан, төлсөн (хараахан буцаагаагүй) захиалга — админ мөнгө
   // шилжүүлэх ёстой. Дүн нь нийт дүнгээс 1% шимтгэл хассан (src/lib/refund.ts).
   const awaitingRefund =
@@ -95,7 +105,25 @@ export default async function AdminOrderDetail({
                   className="flex justify-between gap-3 p-4 text-sm"
                 >
                   <span>
-                    {i.brand} {i.product_name} · {i.ml}ml × {i.qty}
+                    {i.line_kind === "extra" ? (
+                      <>
+                        {/* Савлагч декант биш, бэлэн бараа гэдгийг шууд
+                            харна (0146). */}
+                        <Badge variant="outline" className="mr-2">
+                          Нэмэлт
+                        </Badge>
+                        {orderLineTitle(i)} × {i.qty}
+                      </>
+                    ) : (
+                      <>
+                        {i.brand} {orderLineTitle(i)}
+                        {/* Аль саванд цутгах вэ — савны тоон нөөц (0146). */}
+                        {i.vial_id && vials.get(i.vial_id)
+                          ? ` · ${vialLabel(vials.get(i.vial_id)!)}`
+                          : ""}{" "}
+                        × {i.qty}
+                      </>
+                    )}
                     {i.is_sample && (
                       /* Not "Sample": 2ml is an ordinary paid size in this shop.
                          This flag marks the free 1ml gift line. */
@@ -106,6 +134,24 @@ export default async function AdminOrderDetail({
                   </span>
                   <span className="font-medium">
                     {formatPrice((i.list_price ?? i.unit_price) * i.qty)}
+                  </span>
+                </div>
+              ))}
+              {(order.omitted_gifts ?? []).map((g) => (
+                <div
+                  key={`omitted-${g.product_id}`}
+                  className="text-muted-foreground flex justify-between gap-3 p-4 text-sm"
+                >
+                  <span>
+                    <Badge variant="secondary" className="mr-2">
+                      Ороогүй бэлэг
+                    </Badge>
+                    {omittedGiftNames.get(g.product_id) ?? "Бэлгийн дээж"}
+                  </span>
+                  <span className="text-right">
+                    {g.reason === "vial"
+                      ? "1ml сав дууссан"
+                      : "Захиалгын дүн босгод хүрээгүй"}
                   </span>
                 </div>
               ))}

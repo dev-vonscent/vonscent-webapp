@@ -4,6 +4,7 @@ import { callRpc } from "@/lib/supabase/rpc";
 import type {
   OrderRow,
   OrderItemRow,
+  VialRow,
   OrderRefundAccountRow,
   OrderStatusHistoryRow,
   ProfileRow,
@@ -278,6 +279,10 @@ export async function getOrderDetail(id: string): Promise<{
   payments: QpayPaymentRecord[];
   /** Хэрэглэгчийн бичсэн буцаалтын данс (0108) — буцаагдмагц устгагдана. */
   refundAccount: OrderRefundAccountRow | null;
+  /** Мөрүүдэд түгжсэн хоосон сав (0146): vial_id → өнгө, хэмжээ. */
+  vials: Map<string, Pick<VialRow, "style" | "ml">>;
+  /** Хасагдсан бэлгийн барааны нэр: product_id → «Брэнд Нэр». */
+  omittedGiftNames: Map<string, string>;
 } | null> {
   const supabase = await createClient();
   if (!supabase) return null;
@@ -321,13 +326,37 @@ export async function getOrderDetail(id: string): Promise<{
       .maybeSingle(),
   ]);
 
+  const rows = (items as OrderItemRow[] | null) ?? [];
+  const vialIds = [
+    ...new Set(rows.map((i) => i.vial_id).filter((v): v is string => !!v)),
+  ];
+  const giftIds = (order.omitted_gifts ?? []).map((g) => g.product_id);
+  const [{ data: vialRows }, { data: giftRows }] = await Promise.all([
+    vialIds.length
+      ? supabase.from("vials").select("id, style, ml").in("id", vialIds)
+      : Promise.resolve({ data: [] }),
+    giftIds.length
+      ? supabase.from("products").select("id, brand, name").in("id", giftIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
   return {
     order,
-    items: (items as OrderItemRow[] | null) ?? [],
+    items: rows,
     history: (history as OrderStatusHistoryRow[] | null) ?? [],
     customer: (customer.data as ProfileRow | null) ?? null,
     payments: (payments as QpayPaymentRecord[] | null) ?? [],
     refundAccount: (refundAccount as OrderRefundAccountRow | null) ?? null,
+    vials: new Map(
+      ((vialRows as Pick<VialRow, "id" | "style" | "ml">[] | null) ?? []).map(
+        (v) => [v.id, { style: v.style, ml: v.ml }],
+      ),
+    ),
+    omittedGiftNames: new Map(
+      (
+        (giftRows as { id: string; brand: string; name: string }[] | null) ?? []
+      ).map((p) => [p.id, `${p.brand} ${p.name}`]),
+    ),
   };
 }
 

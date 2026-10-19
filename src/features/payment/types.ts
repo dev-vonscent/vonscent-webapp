@@ -7,7 +7,11 @@ export type { QpayDeeplink };
 export interface PaymentLine {
   name: string;
   brand: string;
-  ml: number;
+  /** Декантын хэмжээ; нэмэлт барааны мөрөнд null (0146). */
+  ml: number | null;
+  /** Нэмэлт бараа бол хувилбарын нэр («Хар»); үнэртэнд null. */
+  variantLabel: string | null;
+  isExtra: boolean;
   qty: number;
   /** Төлсөн дүн — багцын гишүүнд хямдарсан. */
   lineTotal: number;

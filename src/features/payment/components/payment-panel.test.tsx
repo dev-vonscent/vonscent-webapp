@@ -66,6 +66,8 @@ function view(over: Partial<PaymentView> = {}): PaymentView {
         name: "Floral",
         brand: "Coach",
         ml: 5,
+        variantLabel: null,
+        isExtra: false,
         qty: 2,
         lineTotal: 36000,
         baseTotal: 36000,
@@ -420,7 +422,9 @@ describe("PaymentPanel — leaving an unpaid order (0124)", () => {
     const { unmount } = render(<PaymentPanel view={view()} token="tok" />);
     expect(screen.getByRole("button", { name: "Дараа захиалах" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Устгах" })).toBeTruthy();
-    expect(screen.getByText(/автоматаар «Дараа захиалах» руу шилжинэ/)).toBeTruthy();
+    expect(
+      screen.getByText(/автоматаар «Дараа захиалах» руу шилжинэ/),
+    ).toBeTruthy();
     unmount();
 
     render(
@@ -432,9 +436,11 @@ describe("PaymentPanel — leaving an unpaid order (0124)", () => {
   });
 
   it("moves the order to saved checkouts and leaves for the order list", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true }), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
     vi.stubGlobal("fetch", fetchMock);
     render(<PaymentPanel view={view()} token="tok" />);
 
@@ -452,9 +458,11 @@ describe("PaymentPanel — leaving an unpaid order (0124)", () => {
   });
 
   it("deletes after the confirmation dialog", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true }), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
     vi.stubGlobal("fetch", fetchMock);
     render(<PaymentPanel view={view()} token="tok" />);
 

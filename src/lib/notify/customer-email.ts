@@ -7,7 +7,8 @@ import {
   type EmailItem,
 } from "@/lib/email";
 import { env } from "@/lib/env";
-import { formatPrice, formatMl } from "@/lib/format";
+import { formatPrice } from "@/lib/format";
+import { isExtraLine, orderLineMeta } from "@/lib/order-lines";
 import { orderSummaryRows, summarySource } from "@/lib/orders/summary";
 import { RESERVE_TIMEOUT_MINUTES } from "@/lib/constants";
 import { DISPATCH_HOUR, deliveryDayOf, formatDeliveryDay } from "@/lib/time";
@@ -246,24 +247,33 @@ async function loadItems(
 ): Promise<EmailItem[] | undefined> {
   const { data } = await supabase
     .from("order_items")
-    .select("product_name, brand, ml, qty, unit_price, list_price, line_total")
+    .select(
+      "product_name, brand, ml, qty, unit_price, list_price, line_total, line_kind, variant_label",
+    )
     .eq("order_id", orderId);
   const rows = data as
     | {
         product_name: string;
         brand: string;
-        ml: number;
+        ml: number | null;
         qty: number;
         unit_price: number;
         list_price: number | null;
         line_total: number;
+        line_kind: "perfume" | "extra";
+        variant_label: string | null;
       }[]
     | null;
   if (!rows?.length) return undefined;
 
   return rows.map((r) => ({
-    name: r.brand ? `${r.brand} — ${r.product_name}` : r.product_name,
-    meta: `${formatMl(r.ml)} × ${r.qty}`,
+    // Нэмэлт барааны `brand` нь ангиллын нэр — нэрийн өмнө давхардуулахгүй.
+    name: isExtraLine(r)
+      ? r.product_name
+      : r.brand
+        ? `${r.brand} — ${r.product_name}`
+        : r.product_name,
+    meta: orderLineMeta(r),
     // Үндсэн үнээр — багцын хямдрал тоймд тусдаа мөр болно (0097).
     amount: formatPrice((r.list_price ?? r.unit_price) * r.qty),
   }));

@@ -43,9 +43,11 @@ import {
 import type {
   OrderRow,
   OrderItemRow,
+  PerfumeOrderItemRow,
   OrderRefundAccountRow,
   OrderStatusHistoryRow,
 } from "@/db/types";
+import { orderLineMeta } from "@/lib/order-lines";
 
 export default async function OrderDetailPage({
   params,
@@ -126,12 +128,15 @@ export default async function OrderDetailPage({
   const products = await getProductsByIds(productIds);
   const byId = new Map(products.map((p) => [p.id, p]));
 
+  // Нэмэлт барааны мөр (0146) дахин захиалахад орохгүй — хувилбар, үнэ нь
+  // сагсанд тусдаа урсгалтай.
   const reorderItems: ReorderItem[] = items
     .filter(
-      (i) =>
+      (i): i is PerfumeOrderItemRow =>
         order.status === "delivered" &&
-        i.product_id &&
-        i.variant_id &&
+        i.line_kind === "perfume" &&
+        Boolean(i.product_id) &&
+        Boolean(i.variant_id) &&
         !i.is_gift &&
         !i.is_sample,
     )
@@ -164,7 +169,13 @@ export default async function OrderDetailPage({
     const purchased = [
       ...new Set(
         items
-          .filter((i) => i.product_id && !i.is_gift && !i.is_sample)
+          .filter(
+            (i) =>
+              i.line_kind === "perfume" &&
+              i.product_id &&
+              !i.is_gift &&
+              !i.is_sample,
+          )
           .map((i) => i.product_id as string),
       ),
     ].filter((pid) => byId.get(pid)?.slug);
@@ -245,7 +256,9 @@ export default async function OrderDetailPage({
                   className="flex justify-between gap-3 p-4 text-sm"
                 >
                   <span>
-                    {i.brand} {i.product_name} · {i.ml}ml × {i.qty}
+                    {i.line_kind === "extra"
+                      ? `${i.product_name} · ${orderLineMeta(i)}`
+                      : `${i.brand} ${i.product_name} · ${orderLineMeta(i)}`}
                     {/* «Sample» БИШ: 2ml бол энэ дэлгүүрт энгийн төлбөртэй
                         хэмжээ. `is_sample` нь сар бүрийн 1мл бэлгийн дээжийг
                         л тэмдэглэдэг. Админы хуудсанд аль хэдийн «Бэлэг». */}
