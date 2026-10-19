@@ -1479,6 +1479,71 @@ async function main() {
     },
   );
 
+  await scenario(
+    a,
+    "Тоон горим: variant_sellable, set_vial_count (PR9/10)",
+    async () => {
+      const p = await perfume10(a);
+      const style = (
+        await one<{ s: string }>(a, "select perfume_vial_style($1, 10) s", [
+          p.product_id,
+        ])
+      ).s;
+      const vial = await one<{ id: string; updated_at: string }>(
+        a,
+        "select id, updated_at::text from vials where id = vial_for($1, 10)",
+        [style],
+      );
+      const sellable = async () =>
+        (
+          await one<{ ok: boolean }>(
+            a,
+            `select variant_sellable(pv.*, pr.gender, inv.is_sold_out, inv.available_ml) ok
+           from product_variants pv join products pr on pr.id = pv.product_id
+           left join inventory inv on inv.product_id = pr.id where pv.id = $1`,
+            [p.variant_id],
+          )
+        ).ok;
+      await flag(a, "vial_inventory", false);
+      const legacy = await sellable();
+      await flag(a, "vial_inventory", true);
+      await a.query("select set_vial_count($1, 0, null, '', null)", [vial.id]);
+      check("тоо 0 → зарагдахгүй", (await sellable()) === false);
+      const blocked = await one<{ n: number }>(
+        a,
+        "select count(*)::int n from vial_blocked_variants() v where v = $1",
+        [p.variant_id],
+      );
+      check(
+        "vial_blocked_variants-д орсон (TS толь)",
+        blocked.n === 1,
+        blocked,
+      );
+      await a.query("select set_vial_count($1, 5, null, '', null)", [vial.id]);
+      check("тоо 5 → зарагдана", (await sellable()) === true);
+      await order(a, [perfumeLine(p, 2)]);
+      const below = await one<{ r: { ok: boolean; reason: string } }>(
+        a,
+        "select set_vial_count($1, 1, null, '', null) r",
+        [vial.id],
+      );
+      check(
+        "захиалгад 2 → 1 оруулах → BELOW_RESERVED",
+        below.r.reason === "BELOW_RESERVED",
+        below.r,
+      );
+      const stale = await one<{ r: { ok: boolean; reason: string } }>(
+        a,
+        "select set_vial_count($1, 9, '2000-01-01', '', null) r",
+        [vial.id],
+      );
+      check("хуучин updated_at → STALE", stale.r.reason === "STALE", stale.r);
+      await flag(a, "vial_inventory", false);
+      check("туг OFF → хуучин дүрэм", (await sellable()) === legacy);
+      await reconcile(a);
+    },
+  );
+
   // ── Холимог хоёр захиалга урвуу дарааллаар — deadlock-гүй (№10) ──────
   console.log("\nУрвуу дараалалтай хоёр захиалга (№10)");
   current = "№10";

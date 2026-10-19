@@ -31,6 +31,13 @@ import { StockAdjustDialog, type StockMode } from "./stock-adjust-dialog";
 import { useLaunchProduct } from "./use-launch-product";
 import type { AdminProduct } from "@/features/admin/api";
 import { cn } from "@/lib/utils";
+import { useFeatureFlag } from "@/components/feature-flags";
+import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
+import {
+  BOTTLE_STYLES,
+  BOTTLE_STYLE_LABEL,
+  type BottleStyle,
+} from "@/lib/constants";
 
 /**
  * Everything an operator does to a product on an ordinary day, on the row.
@@ -60,6 +67,9 @@ export function ProductRowActions({
   const [featuring, setFeaturing] = React.useState(false);
   const [stockMode, setStockMode] = React.useState<StockMode | null>(null);
   const [bottleBusy, setBottleBusy] = React.useState(false);
+  const vialsOn = useFeatureFlag("vial_inventory");
+  /** «Аль саванд цутгах вэ?» асууж буй хэмжээ. */
+  const [stylePick, setStylePick] = React.useState<number | null>(null);
   const { launch, launching } = useLaunchProduct();
   const comingSoon = product.status === "coming_soon";
   const label = `${product.brand} — ${product.name}`;
@@ -72,13 +82,22 @@ export function ProductRowActions({
    * Түгжээ нь тухайн ӨНГӨНИЙ бүх бараанд үйлчилдэг тул нээх нь боломжгүй —
    * энэ нь ганц бараа/хэмжээний онцгой зөвшөөрөл: «өөр өнгийн саванд цутгана».
    */
-  async function toggleBottleOverride(ml: number, next: boolean) {
+  async function toggleBottleOverride(
+    ml: number,
+    next: boolean,
+    style?: BottleStyle,
+  ) {
+    // Тоон горимд (0152) эхлээд «Аль саванд цутгах вэ?» гэж асууна.
+    if (vialsOn && next && !style) {
+      setStylePick(ml);
+      return;
+    }
     setBottleBusy(true);
     try {
       const ok = await mutateJson(
         `/api/admin/products/${product.id}/bottle-override`,
         "PATCH",
-        { ml, override: next },
+        { ml, override: next, ...(style ? { style } : {}) },
         "Чөлөөлөлт хадгалагдсангүй",
       );
       if (ok) {
@@ -222,12 +241,42 @@ export function ProductRowActions({
                 <FlaskConical />
                 {on
                   ? `${ml}ml чөлөөлөлтийг цуцлах`
-                  : `${ml}ml-ийг түгжээнээс чөлөөлөх`}
+                  : vialsOn
+                    ? `${ml}ml-ийг өөр саванд цутгах`
+                    : `${ml}ml-ийг түгжээнээс чөлөөлөх`}
               </DropdownMenuItem>
             );
           })}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {stylePick != null && (
+        <ResponsiveDialog
+          open
+          onOpenChange={(o) => !o && setStylePick(null)}
+          title="Аль саванд цутгах вэ?"
+          description={`${label} · ${stylePick}ml`}
+        >
+          <div className="grid gap-2 sm:grid-cols-3">
+            {BOTTLE_STYLES.map((s) => (
+              <Button
+                key={s}
+                type="button"
+                variant="secondary"
+                className="min-h-11"
+                disabled={bottleBusy}
+                onClick={() => {
+                  const ml = stylePick;
+                  setStylePick(null);
+                  void toggleBottleOverride(ml, true, s);
+                }}
+              >
+                {BOTTLE_STYLE_LABEL[s]}
+              </Button>
+            ))}
+          </div>
+        </ResponsiveDialog>
+      )}
 
       {/* Mounted only while open. A 20-row page carries 20 of these menus, and
           keeping both dialogs alive per row would put 40 `matchMedia`

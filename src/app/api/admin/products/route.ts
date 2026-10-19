@@ -80,6 +80,9 @@ export async function POST(req: Request) {
     notes_heart: input.notesHeart,
     notes_base: input.notesBase,
     gender: input.gender,
+    // «Савны зураг» сонгосон бол цутгах сав ч тэр өнгө (0145); үгүй бол
+    // хүйсээр (null).
+    vial_style: input.bottleStyle ?? null,
     concentration,
     sillage: input.sillage,
     // Хоосон текст = «бичээгүй». Хоосон мөр хадгалвал дэлгүүр хоосон мөр

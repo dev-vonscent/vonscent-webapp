@@ -2,6 +2,28 @@ import { NextResponse } from "next/server";
 import { fetchProducts } from "@/features/products/api";
 import { getGiftSettings } from "@/features/content/api";
 import { GIFT_SAMPLE_ML, GIFT_THRESHOLD } from "@/lib/constants";
+import { isFeatureEnabled } from "@/lib/feature-flags";
+import { createPublicClient } from "@/lib/supabase/public";
+import { callRpc } from "@/lib/supabase/rpc";
+
+/**
+ * Савны тоон нөөц (0152) нээлттэй бөгөөд 1ml сав дууссан бол бэлэг
+ * цутгах сав алга — сонгох хэсэг урьдчилан идэвхгүй (plan §10).
+ */
+async function giftVialOut(): Promise<boolean> {
+  if (!(await isFeatureEnabled("vial_inventory"))) return false;
+  const supabase = createPublicClient();
+  if (!supabase) return false;
+  const { data: id } = await callRpc<string | null>(supabase, "vial_for", {
+    p_style: null,
+    p_ml: GIFT_SAMPLE_ML,
+  });
+  if (!id) return true;
+  const { data } = await callRpc<boolean>(supabase, "vial_available", {
+    p_vial: id,
+  });
+  return data === false;
+}
 
 /**
  * Бэлгийн санд буй уснууд — сагс, checkout хоёулаа эндээс уншина (backlog A2).
@@ -10,7 +32,21 @@ import { GIFT_SAMPLE_ML, GIFT_THRESHOLD } from "@/lib/constants";
 export async function GET() {
   const settings = await getGiftSettings();
   if (!settings.enabled || settings.productIds.length === 0) {
-    return NextResponse.json({ enabled: false, threshold: GIFT_THRESHOLD, products: [] });
+    return NextResponse.json({
+      enabled: false,
+      threshold: GIFT_THRESHOLD,
+      products: [],
+    });
+  }
+
+  if (await giftVialOut()) {
+    return NextResponse.json({
+      enabled: true,
+      threshold: GIFT_THRESHOLD,
+      sampleMl: GIFT_SAMPLE_ML,
+      products: [],
+      vialOut: true,
+    });
   }
 
   const all = await fetchProducts();

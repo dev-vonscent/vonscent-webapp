@@ -677,9 +677,17 @@ function mapAdminProduct(
     isFeatured: r.is_featured === true,
     startingPrice: prices.length ? Math.min(...prices) : 0,
     // Чөлөөлсөн хэмжээ ч ЭНД ОРНО: мөрөн дээр «чөлөөлсөн» гэж харуулж,
-    // цуцлах үйлдлийг санал болгох ёстой (variantId дамжуулахгүй).
+    // цуцлах үйлдлийг санал болгох ёстой (variantId дамжуулахгүй). Савны
+    // тоон горимд (0152) хувилбар бүр өөрийн савтай — id-аар шийднэ.
     bottleLockedMls: r.product_variants
-      .filter((v) => isBottleLocked(locks, r.gender as Gender, v.ml))
+      .filter((v) =>
+        isBottleLocked(
+          locks,
+          r.gender as Gender,
+          v.ml,
+          locks.vialMode ? v.id : undefined,
+        ),
+      )
       .map((v) => v.ml)
       .sort((a, b) => a - b),
     availableMl: inv ? inv.on_hand_ml - inv.reserved_ml : 0,

@@ -80,7 +80,14 @@ export function GiftSamplePicker({
 
   // Сан унтраалттай / хоосон үед л бүрэн нуугдана — энэ тохиолдолд «бэлэг»
   // гэдэг ойлголт тэр захиалгад огт байхгүй.
-  if (options.length === 0) return null;
+  if (options.length === 0) {
+    // 1ml сав дууссан (0152) — эрхтэй хүнд шалтгааныг хэлнэ, нуухгүй.
+    return pool?.vialOut && giftAllowanceFor(goodsAfterDiscount) > 0 ? (
+      <p className="bg-secondary rounded-xl px-4 py-3 text-sm">
+        Бэлгийн дээж түр дууссан
+      </p>
+    ) : null;
+  }
 
   /** Дүнгээс олсон эрх — сангийн багтаамжид хумигдахаас өмнөх тоо. */
   const earned = giftAllowanceFor(goodsAfterDiscount);

@@ -99,6 +99,7 @@ export async function PATCH(
     productUpdate.concentration = concentration;
   }
   if (input.sillage !== undefined) productUpdate.sillage = input.sillage;
+  if (input.vialStyle !== undefined) productUpdate.vial_style = input.vialStyle;
   if (input.longevity !== undefined)
     productUpdate.longevity = input.longevity || null;
   if (input.scentFamilies !== undefined)

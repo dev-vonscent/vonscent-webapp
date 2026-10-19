@@ -188,6 +188,11 @@ export const productEditSchema = z.object({
   /** Per-size edits — `ml` identifies the existing variant to reprice. */
   variants: z.array(variantDraftSchema).optional(),
   customTags: z.array(z.string().min(1)).optional(),
+  /**
+   * Декант цутгах савны өнгө (0145). null = хүйсээр. Савны тоон нөөц
+   * (vial_inventory) нээлттэй үед хэмжээ зарагдах эсэхийг шийднэ.
+   */
+  vialStyle: z.enum(BOTTLE_STYLES).nullable().optional(),
 });
 
 export type ProductEditInput = z.infer<typeof productEditSchema>;

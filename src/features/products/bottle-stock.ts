@@ -4,6 +4,16 @@ import { CACHE_TAG_CATALOG } from "@/lib/cache-tags";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createPublicClient } from "@/lib/supabase/public";
 import type { Gender } from "@/db/types";
+import { isFeatureEnabled } from "@/lib/feature-flags";
+
+/** Туг уншиж чадахгүй бол хаалттай (fail closed) — хуучин түгжээ. */
+async function vialModeOn(): Promise<boolean> {
+  try {
+    return await isFeatureEnabled("vial_inventory");
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Хоосон савны түгжээ (0095_bottle_stock.sql).
@@ -28,6 +38,14 @@ export interface BottleLockState {
    * цутгахыг админ зөвшөөрсөн ганц бараа/хэмжээ.
    */
   exempt: ReadonlySet<string>;
+  /**
+   * Савны тоон горим (0152, туг `vial_inventory`). Асаалттай бол дээрх
+   * хүйсний түгжээ үйлчлэхгүй — хувилбар бүр өөрийн өнгө × ml-ийн савны
+   * тоогоор шийдэгдэнэ (`vialBlocked`).
+   */
+  vialMode?: boolean;
+  /** Сав дууссан тул зарагдахгүй `product_variants.id`-ууд. */
+  vialBlocked?: ReadonlySet<string>;
 }
 
 export function bottleKey(gender: Gender, ml: number): BottleKey {
@@ -47,6 +65,11 @@ export function isBottleLocked(
   /** Мэдэгдэж байвал чөлөөлөлтийг ч шалгана. */
   variantId?: string,
 ): boolean {
+  if (state.vialMode) {
+    // Тоон горимд хувилбарын id-гүйгээр шийдэх боломжгүй — өнгө нь барааны
+    // тохиргоо, override-оос хамаарна (SQL `perfume_vial_style`).
+    return variantId ? (state.vialBlocked?.has(variantId) ?? false) : false;
+  }
   if (variantId && state.exempt.has(variantId)) return false;
   return state.locked.has(bottleKey(gender, ml));
 }
@@ -64,19 +87,28 @@ export function isBottleLocked(
  * шинэчлэгдэнэ.
  */
 const fetchLockState = unstable_cache(
-  async (): Promise<{ locked: BottleKey[]; exempt: string[] }> => {
-    const none = { locked: [], exempt: [] };
+  async (): Promise<{
+    locked: BottleKey[];
+    exempt: string[];
+    vialMode: boolean;
+    vialBlocked: string[];
+  }> => {
+    const none = { locked: [], exempt: [], vialMode: false, vialBlocked: [] };
     if (!isSupabaseConfigured) return none;
     const supabase = createPublicClient();
     if (!supabase) return none;
 
-    const [lockedRes, exemptRes] = await Promise.all([
+    const [lockedRes, exemptRes, vialRes] = await Promise.all([
       supabase.from("bottle_stock").select("gender, ml").eq("is_active", false),
       supabase
         .from("product_variants")
         .select("id")
         .eq("bottle_override", true),
+      // Туг хаалттай (эсвэл 0152-оос өмнөх сан) бол хоосон/алдаа — хуучин
+      // түгжээ хэвээр.
+      supabase.rpc("vial_blocked_variants"),
     ]);
+    const vialMode = await vialModeOn();
 
     return {
       // 0095-аас өмнөх сан дээр хүснэгт/багана байхгүй — тэр үед юу ч
@@ -86,6 +118,10 @@ const fetchLockState = unstable_cache(
       exempt: ((exemptRes.data as { id: string }[] | null) ?? []).map(
         (r) => r.id,
       ),
+      vialMode,
+      vialBlocked: vialMode
+        ? ((vialRes.data as string[] | null) ?? []).map(String)
+        : [],
     };
   },
   ["bottle-stock-locked"],
@@ -93,6 +129,11 @@ const fetchLockState = unstable_cache(
 );
 
 export async function getBottleLocks(): Promise<BottleLockState> {
-  const { locked, exempt } = await fetchLockState();
-  return { locked: new Set(locked), exempt: new Set(exempt) };
+  const { locked, exempt, vialMode, vialBlocked } = await fetchLockState();
+  return {
+    locked: new Set(locked),
+    exempt: new Set(exempt),
+    vialMode,
+    vialBlocked: new Set(vialBlocked),
+  };
 }

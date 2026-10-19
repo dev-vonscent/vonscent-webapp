@@ -13,6 +13,8 @@ import {
   fetchConcentrations,
 } from "@/features/taxonomy/api";
 import { isImageGenConfigured } from "@/lib/env";
+import { createClient } from "@/lib/supabase/server";
+import type { BottleStyle } from "@/lib/constants";
 
 export default async function EditProductPage({
   params,
@@ -33,6 +35,18 @@ export default async function EditProductPage({
       isFeatureEnabled("notifications"),
     ]);
   if (!product) notFound();
+  // Цутгах сав (0145) — үндсэн SELECT-д нэмэхгүй (0145-аас өмнөх сан дээр
+  // жагсаалт бүхэлдээ унах эрсдэл, audit R2); энд тусад нь.
+  const supabase = await createClient();
+  const { data: vialRow } = supabase
+    ? await supabase
+        .from("products")
+        .select("vial_style")
+        .eq("id", id)
+        .maybeSingle()
+    : { data: null };
+  const vialStyle =
+    (vialRow as { vial_style: BottleStyle | null } | null)?.vial_style ?? null;
   const untranslatedNotes = await getUntranslatedNotes({
     top: product.notesTop,
     heart: product.notesHeart,
@@ -69,6 +83,7 @@ export default async function EditProductPage({
         customTagPool={customTagPool}
         aiEnabled={isImageGenConfigured}
         untranslatedNotes={untranslatedNotes}
+        vialStyle={vialStyle}
       />
     </div>
   );
