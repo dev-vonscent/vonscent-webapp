@@ -280,13 +280,17 @@ function BroadcastCard({
             <NotificationThumb notification={b} />
             <div className="min-w-0 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="font-medium">{b.title}</h2>
+                <h2 className="min-w-0 font-medium wrap-break-word">
+                  {b.title}
+                </h2>
                 <Badge variant={PHASE_BADGE[phase]}>
                   {BROADCAST_PHASE_LABEL[phase]}
                 </Badge>
               </div>
               {b.body && (
-                <p className="text-muted-foreground text-sm">{b.body}</p>
+                <p className="text-muted-foreground line-clamp-2 text-sm wrap-break-word">
+                  {b.body}
+                </p>
               )}
               <p className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                 <span>{BROADCAST_KIND_LABEL[b.kind]}</span>

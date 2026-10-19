@@ -65,7 +65,7 @@ export function NotificationItem({
         <span className="flex items-start gap-2">
           <span
             className={cn(
-              "line-clamp-2 flex-1 text-sm",
+              "line-clamp-2 flex-1 text-sm wrap-break-word",
               n.read ? "font-normal" : "font-semibold",
             )}
           >
@@ -78,7 +78,7 @@ export function NotificationItem({
           )}
         </span>
         {n.body && (
-          <span className="text-muted-foreground line-clamp-3 block text-sm">
+          <span className="text-muted-foreground line-clamp-3 text-sm wrap-break-word">
             {n.body}
           </span>
         )}
