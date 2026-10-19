@@ -126,7 +126,7 @@ async function loyaltyFor(
     .maybeSingle();
   const value = (data as { value?: unknown } | null)?.value;
   const base = Math.max(order.subtotal - order.discount, 0);
-  // Туг асаалттай бол сан түвшний хувиар бодно (0138) — «энэ захиалгын
+  // Туг асаалттай бол сан түвшний хувиар бодно (0143) — «энэ захиалгын
   // ӨМНӨХ» нийт дүнгээр: төлөгдсөн бол өөрийг нь хасна.
   if (await isFeatureEnabled("user_tiers")) {
     const lifetime = await getLifetimeSpend(supabase, order.user_id).catch(

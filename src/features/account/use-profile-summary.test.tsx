@@ -2,6 +2,7 @@ import * as React from "react";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AuthRetryableFetchError } from "@supabase/supabase-js";
 
 const getUser = vi.fn();
 const maybeSingle = vi.fn();
@@ -21,7 +22,9 @@ vi.mock("@/lib/supabase/browser", () => ({
   }),
 }));
 
-const { useProfileSummary } = await import("./use-profile-summary");
+const { PROFILE_SUMMARY_KEY, useProfileSummary } = await import(
+  "./use-profile-summary"
+);
 
 function wrapperFor(client: QueryClient) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
@@ -56,6 +59,7 @@ describe("useProfileSummary", () => {
     expect(first.result.current.loading).toBe(true);
     await waitFor(() => expect(first.result.current.profile).not.toBeNull());
     expect(first.result.current.profile).toEqual({
+      id: "u1",
       name: "Болд",
       handle: "99112233",
       avatar: "https://img/a.png",
@@ -79,6 +83,27 @@ describe("useProfileSummary", () => {
     });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.profile).toBeNull();
+  });
+
+  it("keeps the signed-in profile when auth is briefly unreachable", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const { result } = renderHook(() => useProfileSummary(), {
+      wrapper: wrapperFor(client),
+    });
+    await waitFor(() => expect(result.current.profile).not.toBeNull());
+
+    // Сүлжээ тасарсан — null буцаавал хонх алга болж мэдэгдлийн кэш устна.
+    getUser.mockResolvedValue({
+      data: { user: null },
+      error: new AuthRetryableFetchError("fetch failed", 0),
+    });
+    await act(() =>
+      client.refetchQueries({ queryKey: PROFILE_SUMMARY_KEY }),
+    );
+    expect(getUser).toHaveBeenCalledTimes(2);
+    expect(result.current.profile?.id).toBe("u1");
   });
 
   it("re-reads on sign-out but ignores a tab refocus SIGNED_IN", async () => {

@@ -307,7 +307,7 @@ export default function CheckoutPage() {
 
   const [loyaltyPoints, setLoyaltyPoints] = React.useState(0);
   const [loyaltyRules, setLoyaltyRules] = React.useState(DEFAULT_LOYALTY_RULES);
-  // Туг асаалттай бол оноо түвшний хувиар (0138); зочинд `undefined`.
+  // Туг асаалттай бол оноо түвшний хувиар (0143); зочинд `undefined`.
   const { data: myTier } = useMyTier();
   /**
    * Оноогоор төлөхөөр хэрэглэгчийн ӨӨРӨӨ бичсэн дүн (₮). Өмнө нь энэ нь

@@ -55,6 +55,8 @@ const PRESET_BY_FOLDER: Record<string, PresetName> = {
   // wide logo keeps its aspect ratio rather than being squared off.
   brands: "icon",
   marketing: "photo",
+  // Мэдэгдлийн thumbnail 48px-д буудаг — avatar-ын 512px хангалттай.
+  notifications: "avatar",
 };
 
 export function presetForFolder(folder: string): ImagePreset {

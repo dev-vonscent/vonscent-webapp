@@ -204,7 +204,7 @@ begin
     -- Points are earned on the post-coupon product subtotal, never shipping.
     v_base := greatest(coalesce(v_subtotal,0) - coalesce(v_discount,0), 0);
     if feature_enabled('user_tiers') then
-      -- Түвшний хувь (0138). Захиалга дээр аль хэдийн 'paid' болсон тул
+      -- Түвшний хувь (0143). Захиалга дээр аль хэдийн 'paid' болсон тул
       -- нийт дүнгээс өөрийг нь хасаж «энэ захиалгын ӨМНӨХ» түвшнээр бодно:
       -- түвшин ахиулсан захиалга шинэ хувиа дараагийн захиалгаас авна.
       v_rate := tier_rate_for_spend(

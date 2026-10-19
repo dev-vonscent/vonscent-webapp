@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * `GET /api/account/tier` ба түүний сервер давхарга (0138, feature flag
+ * `GET /api/account/tier` ба түүний сервер давхарга (0143, feature flag
  * `user_tiers`):
  * - туг хаалттай бол 404 — нэвтэрсэн ч юу ч уншихгүй;
  * - зочинд 401;

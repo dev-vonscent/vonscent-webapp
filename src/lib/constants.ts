@@ -661,6 +661,13 @@ export const RATE_LIMITS = {
    * тул зөвхөн спамын хамгаалалт: жинхэнэ хэрэглэгч өдөрт хэдхэнийг л бичнэ.
    */
   perfumeRequest: { limit: 10, windowSec: 24 * 60 * 60 },
+  /**
+   * Мэдэгдэл илгээх / хуваарьлах (0138) — staff, гэхдээ нэг товч бүх
+   * хэрэглэгч рүү очдог тул андуурч олон дарахаас хамгаална.
+   */
+  broadcastSend: { limit: 10, windowSec: 60 * 60 },
+  /** «Надад туршиж илгээх» — зөвхөн өөртөө, засах явцад хэд хэдэн удаа. */
+  broadcastTest: { limit: 30, windowSec: 10 * 60 },
 } as const;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;
@@ -715,10 +722,15 @@ export const FEATURE_FLAGS = {
     description:
       "Хэрэглэгч шинэ үнэртэн санал болгох: /request, хайлт хоосон үеийн ба footer/цэсний холбоосууд, /api/perfume-requests, админ /admin/requests (/api/admin/perfume-requests), submit/merge RPC (0137).",
   },
+  notifications: {
+    label: "Мэдэгдэл",
+    description:
+      "Header-ийн хонх, toast, /account/notifications, /api/notifications, админ /admin/broadcasts (/api/admin/broadcasts), notify_user/send_broadcast RPC ба хуваарьт илгээлтийн cron (0138), оноо/үнэгүй эрх/захиалгын мэдэгдэл (0139–0141).",
+  },
   user_tiers: {
     label: "Хэрэглэгчийн түвшин",
     description:
-      "Standard/Gold/Platinum/Sapphire/Ruby: /account/tier хуудас, профайл ба цэсний түвшний хүрээ, сэтгэгдлийн зургийн хүрээ, нүүр хуудасны «Top 3 хэрэглэгч», «Миний захиалга»-ын нийт дүн, /api/account/tier, mark_order_paid-ийн түвшний V point хувь (0138). Унтраалттай үед оноо хуучин settings.loyalty дүрмээр бодогдоно.",
+      "Standard/Gold/Platinum/Sapphire/Ruby: /account/tier хуудас, профайл ба цэсний түвшний хүрээ, сэтгэгдлийн зургийн хүрээ, нүүр хуудасны «Top 3 хэрэглэгч», «Миний захиалга»-ын нийт дүн, /api/account/tier, mark_order_paid-ийн түвшний V point хувь (0143). Унтраалттай үед оноо хуучин settings.loyalty дүрмээр бодогдоно.",
   },
 } as const satisfies Record<string, FeatureFlagMeta>;
 
@@ -742,11 +754,11 @@ export const FEATURE_FLAG_META: Readonly<Record<FeatureFlag, FeatureFlagMeta>> =
 export const WALLET_HISTORY_DAYS = 30;
 
 /**
- * Хэрэглэгчийн түвшин (0138, feature flag `user_tiers`). Түвшин нь хадгалагдсан
+ * Хэрэглэгчийн түвшин (0143, feature flag `user_tiers`). Түвшин нь хадгалагдсан
  * утга биш — нийт худалдан авалтаас (төлөгдсөн, цуцлагдаагүй захиалгын
  * купоны дараах барааны дүн, хүргэлтгүй) тухай бүр бодогдоно.
  *
- * ⚠ `minSpend` ба `rate` нь SQL-ийн `tier_rate_for_spend()`-тэй (0138) үсэг
+ * ⚠ `minSpend` ба `rate` нь SQL-ийн `tier_rate_for_spend()`-тэй (0143) үсэг
  * үсгээрээ таарах ёстой — оноог сан бодно, энд зөвхөн харуулах.
  * Өсөх дарааллаар.
  */
@@ -764,3 +776,20 @@ export type UserTierKey = (typeof USER_TIERS)[number]["key"];
 export const TIER_LEADERBOARD_SIZE = 3;
 
 export const COUPONS_NEW_BADGE_UNTIL = "2026-11-01T00:00:00+08:00";
+
+/** Мэдэгдлийн хонхны panel — эхний хэдэн мөр (хөнгөн). */
+export const NOTIFICATION_PANEL_LIMIT = 10;
+/** /account/notifications-ийн хуудасны хэмжээ (API-ийн default ч мөн). */
+export const NOTIFICATION_PAGE_SIZE = 20;
+/** Хонхны poll-ын давтамж ба кэш шинэ байх хугацаа. */
+export const NOTIFICATION_POLL_INTERVAL_MS = 60_000;
+export const NOTIFICATION_STALE_MS = 30_000;
+/** Poll-ын нэг хариунд буцаах уншаагүй мөрийн дээд хэмжээ. */
+export const NOTIFICATION_POLL_FRESH_MAX = 20;
+/**
+ * Poll-ын цонхыг cursor-оос хэр ухрааж эхлүүлэх вэ — урт transaction-ий
+ * хоцорсон мөр, app/сангийн цагийн зөрүүг барина (server.ts).
+ */
+export const NOTIFICATION_POLL_LOOKBACK_MS = 10 * 60_000;
+/** Шинэ мэдэгдлийн toast хэр удаан харагдах вэ. */
+export const NOTIFICATION_TOAST_DURATION_MS = 6_000;

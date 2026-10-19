@@ -27,7 +27,7 @@ type AdminClient = NonNullable<ReturnType<typeof createAdminClient>>;
 
 /**
  * Хэрэглэгчийн route-ын хаалга: туг (404) → нэвтэрсэн (401) → service-role.
- * Түвшний RPC-ууд (0138) зөвхөн service_role-д нээлттэй.
+ * Түвшний RPC-ууд (0143) зөвхөн service_role-д нээлттэй.
  */
 export async function tierUserGate() {
   if (!(await isFeatureEnabled("user_tiers"))) {
@@ -56,7 +56,7 @@ export async function tierUserGate() {
   return { admin, user } as const;
 }
 
-/** Нийт худалдан авалт, ₮ (`user_lifetime_spend`, 0138). */
+/** Нийт худалдан авалт, ₮ (`user_lifetime_spend`, 0143). */
 export async function getLifetimeSpend(
   admin: AdminClient,
   userId: string,

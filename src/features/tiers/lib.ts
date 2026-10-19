@@ -2,7 +2,7 @@ import { subDays, subMonths } from "date-fns";
 import { USER_TIERS, type UserTierKey } from "@/lib/constants";
 
 /**
- * Хэрэглэгчийн түвшний цэвэр тооцоо (0138, feature flag `user_tiers`).
+ * Хэрэглэгчийн түвшний цэвэр тооцоо (0143, feature flag `user_tiers`).
  *
  * Оноог сан бодно (`mark_order_paid` → `tier_rate_for_spend`); энд байгаа нь
  * ЗӨВХӨН харуулах — тиймээс босго, хувь нь SQL-тэй таарах ёстой.
@@ -89,7 +89,7 @@ export function periodRange(
 }
 
 /**
- * Захиалгын жагсаалтаас нийт худалдан авалт — `user_lifetime_spend` (0138)-ийн
+ * Захиалгын жагсаалтаас нийт худалдан авалт — `user_lifetime_spend` (0143)-ийн
  * хуулбар: төлөгдсөн, цуцлагдаагүй захиалгын купоны дараах барааны дүн.
  */
 export function lifetimeSpendOf(

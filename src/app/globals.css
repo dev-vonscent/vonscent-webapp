@@ -821,7 +821,7 @@
 }
 
 /*
- * ── Хэрэглэгчийн түвшин (0138, feature flag `user_tiers`) ────────────────
+ * ── Хэрэглэгчийн түвшин (0143, feature flag `user_tiers`) ────────────────
  *
  * Хүрээ нь зураг (`public/tiers/*.webp`, `TierFrame`); энд түүн дээрх
  * хөдөлгөөн (`tier-aura/shimmer/spark`).

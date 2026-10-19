@@ -222,7 +222,7 @@ export default async function OrdersPage({
       (a, b) => Number(isAwaitingPayment(b)) - Number(isAwaitingPayment(a)),
     );
 
-  // Нийт захиалгын дүн ба түвшин (feature flag `user_tiers`, 0138).
+  // Нийт захиалгын дүн ба түвшин (feature flag `user_tiers`, 0143).
   const tiersOn = await isFeatureEnabled("user_tiers");
 
   return (

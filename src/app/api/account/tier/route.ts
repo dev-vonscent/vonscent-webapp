@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Нэвтэрсэн хэрэглэгчийн түвшин, нийт худалдан авалт, 7 хоног/сарын топ
- * (0138, feature flag `user_tiers`). Бусдын бүтэн нэр хариунд орохгүй.
+ * (0143, feature flag `user_tiers`). Бусдын бүтэн нэр хариунд орохгүй.
  */
 export async function GET() {
   const gate = await tierUserGate();
