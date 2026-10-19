@@ -162,3 +162,42 @@ export async function getShopExtra(
     updatedAt: data.card.updated_at,
   };
 }
+
+/** Үнэртний хуудасны «Бэлгийн хайрцаг нэмэх» — зарагдаж буй эхний хайрцаг. */
+export async function getGiftBoxOffer(): Promise<ShopExtraDetail | null> {
+  const box = (await getShopExtras()).find(
+    (e) => e.categorySlug === "gift-box" && !e.soldOut,
+  );
+  return box ? getShopExtra(box.slug) : null;
+}
+
+/** «Энэ үнэрийн үлдэгдэлтэй шил байна» — тухайн үнэртний зарагдаж буй шил. */
+export async function getLeftoverFor(productId: string): Promise<{
+  slug: string;
+  name: string;
+  remainingMl: number;
+  fullMl: number;
+  price: number;
+} | null> {
+  const supabase = createPublicClient();
+  if (!supabase) return null;
+  const { data } = await callRpc<
+    {
+      slug: string;
+      name: string;
+      remaining_ml: number;
+      full_ml: number;
+      price: number;
+    }[]
+  >(supabase, "extras_leftover_for", { p_product: productId });
+  const row = data?.[0];
+  return row
+    ? {
+        slug: row.slug,
+        name: row.name,
+        remainingMl: row.remaining_ml,
+        fullMl: row.full_ml,
+        price: row.price,
+      }
+    : null;
+}

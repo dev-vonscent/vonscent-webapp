@@ -122,6 +122,8 @@ function HitThumb({ hit }: { hit: SearchHit }) {
 export function GlobalSearch() {
   const router = useRouter();
   const requestsOn = useFeatureFlag("perfume_requests");
+  // Нэмэлт бараа ч хайлтад орно (0148) — үнэртнээр хязгаарлагдахгүй гэж хэлнэ.
+  const extrasOn = useFeatureFlag("extras_shop");
   const [open, setOpen] = React.useState(false);
   const [value, setValue] = React.useState("");
   const [results, setResults] =
@@ -220,7 +222,11 @@ export function GlobalSearch() {
                 autoFocus
                 value={value}
                 onValueChange={setValue}
-                placeholder="Үнэртэн, багц, брэнд, нийтлэл хайх…"
+                placeholder={
+                  extrasOn
+                    ? "Бүх бараанаас хайх…"
+                    : "Үнэртэн, багц, брэнд, нийтлэл хайх…"
+                }
                 className="placeholder:text-muted-foreground h-14 w-full border-0 bg-transparent px-11 text-base"
               />
               <DialogPrimitive.Close

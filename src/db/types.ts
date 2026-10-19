@@ -491,7 +491,7 @@ export interface HomeSectionRow {
    * 'manual' = hand-picked list, 'tag' = everything carrying `tag`,
    * 'featured' = every product the admin marked «Онцлох» (0055).
    */
-  kind: "manual" | "tag" | "featured";
+  kind: "manual" | "tag" | "featured" | "extras";
   tag: TagKind | null;
   max_items: number;
   sort_order: number;

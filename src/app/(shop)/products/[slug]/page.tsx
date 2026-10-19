@@ -1,3 +1,6 @@
+import { isFeatureEnabled } from "@/lib/feature-flags";
+import { getGiftBoxOffer, getLeftoverFor } from "@/features/extras/api";
+import { ProductExtras } from "@/features/extras/components/product-extras";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
@@ -96,9 +99,13 @@ export default async function ProductPage({
   const product = await getProductPageBySlug(slug);
   if (!product) notFound();
 
-  const [related, familyLabelMap] = await Promise.all([
+  const extrasOn = await isFeatureEnabled("extras_shop");
+  const [related, familyLabelMap, giftBox, leftover] = await Promise.all([
     getRelated(slug),
     getScentFamilyLabels(),
+    // Нэмэлт бараа (0151) — туг хаалттай бол огт асуухгүй.
+    extrasOn ? getGiftBoxOffer() : Promise.resolve(null),
+    extrasOn ? getLeftoverFor(product.id) : Promise.resolve(null),
   ]);
   // A family the admin deleted still shows as its slug rather than vanishing.
   const familyLabels = product.scentFamilies.map((f) => familyLabelMap[f] ?? f);
@@ -180,6 +187,9 @@ export default async function ProductPage({
               <ComingSoonPurchase product={product} />
             ) : (
               <ProductPurchase product={product} />
+            )}
+            {!product.comingSoon && (
+              <ProductExtras box={giftBox} leftover={leftover} />
             )}
             <TrackViewItem
               id={product.id}

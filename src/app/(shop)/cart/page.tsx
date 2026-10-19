@@ -22,6 +22,7 @@ import {
 } from "@/features/cart/use-cart-availability";
 import { useExtrasAvailability } from "@/features/extras/use-extras-availability";
 import { CartExtraLine } from "@/features/extras/components/cart-extra-line";
+import { CartCompleteOrder } from "@/features/extras/components/cart-complete-order";
 
 export default function CartPage() {
   const items = useCart((s) => s.items);
@@ -339,6 +340,7 @@ export default function CartPage() {
               </CardContent>
             </Card>
           ))}
+          <CartCompleteOrder />
         </div>
 
         <div className="lg:sticky lg:top-20 lg:h-fit">
