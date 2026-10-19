@@ -298,6 +298,16 @@ export async function POST(req: Request) {
       // «Тун удахгүй» болсон — computeSummary шалгасны дараа админ сольсон.
       // Хариу нь дээрх ItemsUnavailableError-тай ижил, клиент мөрийг хасна.
       const unavailable = /ITEMS_UNAVAILABLE:(\S*)/.exec(error.message ?? "");
+      // V point (0144): checkout харуулснаас хойш оноо өөр захиалгад
+      // зарцуулагдсан. Сервер чимээгүй багасгахгүй — боломжтой дүнг (₮)
+      // буцааж, хэрэглэгч шинэ дүнгээр дахин батална.
+      const loyalty = /LOYALTY_CHANGED:(\d+)/.exec(error.message ?? "");
+      if (loyalty) {
+        return NextResponse.json(
+          { error: "LOYALTY_CHANGED", available: Number(loyalty[1]) },
+          { status: 409 },
+        );
+      }
       if (unavailable) {
         return NextResponse.json(
           {

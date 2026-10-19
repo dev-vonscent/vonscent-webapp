@@ -1268,6 +1268,23 @@ export default function CheckoutPage() {
           );
           return;
         }
+        // V point энэ хооронд өөр захиалгад зарцуулагдсан (0144). Сервер
+        // дүнг чимээгүй өөрчлөхгүй — шинэ үлдэгдлийг тоймд харуулж, хэрэглэгч
+        // ашиглах оноогоо дахин сонгоод «Захиалах»-ыг дахин дарна.
+        if (data.error === "LOYALTY_CHANGED") {
+          const available =
+            typeof data.available === "number" ? data.available : 0;
+          setLoyaltyPoints(
+            loyaltyRules.redeemRate > 0
+              ? Math.floor(available / loyaltyRules.redeemRate)
+              : 0,
+          );
+          setLoyaltyWanted((w) => Math.min(w, available));
+          setServerError(
+            "Таны V point өөрчлөгдсөн байна. Ашиглах оноогоо дахин сонгоно уу.",
+          );
+          return;
+        }
         // Захиалга үүсэх ЗУУР өөр хүн нөөцийг авсан (computeSummary цэвэр
         // өнгөрсөн). Сагснаас барааг нь нэрлэж чадвал хэлнэ.
         const racedName =
