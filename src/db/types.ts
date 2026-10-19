@@ -93,6 +93,10 @@ export interface ProductRow {
   launched_at: string | null;
   /** «Тун удахгүй» үеийн ойролцоо хугацаа, ж: «10-р сарын сүүлээр» (0125). */
   coming_soon_note: string | null;
+  /**
+   * Декант цутгах савны өнгө (0145). null = хүйсээр (`defaultVialStyle`).
+   */
+  vial_style: VialStyle | null;
   /** «Онцлох бараа» (0055) — нүүрийн 'featured' хэсэг эндээс автоматаар уншина. */
   is_featured: boolean;
   created_at: string;
@@ -557,6 +561,124 @@ export interface PerfumeRequestVoteRow {
   created_at: string;
 }
 
+// ── Нэмэлт бараа ба савны тоон нөөц (0145, extras-shop-plan §5) ─────────
+
+/** Савны өнгө — `BOTTLE_STYLES` (constants) ба SQL check-тэй ижил. */
+export type VialStyle = "black" | "pink" | "silver";
+
+/** Нөөцийн горим: ангиллаас бараа, хувилбар руу composite FK-аар буудаг. */
+export type ExtraInventoryMode =
+  | "local_quantity"
+  | "shared_vial"
+  | "leftover_liquid";
+
+export type ExtraProductStatus = "draft" | "published" | "archived";
+
+export interface ExtraCategoryRow {
+  id: string;
+  slug: string;
+  name: string;
+  inventory_mode: ExtraInventoryMode;
+  image_url: string | null;
+  sort: number;
+  is_active: boolean;
+}
+
+export interface ExtraProductRow {
+  id: string;
+  category_id: string;
+  /** Ангиллаас trigger хуулна — insert-д өгөх шаардлагагүй. */
+  inventory_mode: ExtraInventoryMode;
+  slug: string;
+  name: string;
+  description: string;
+  images: string[];
+  status: ExtraProductStatus;
+  /** leftover_liquid: эх үнэртэн, үлдсэн ба бүтэн савны ml. */
+  product_id: string | null;
+  remaining_ml: number | null;
+  full_ml: number | null;
+  /** Зөвхөн дэлгэцийн утга (`capacity` г.м.) — тооцоонд оролцохгүй. */
+  attrs: { capacity?: number };
+  sort: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExtraVariantRow {
+  id: string;
+  extra_id: string;
+  inventory_mode: ExtraInventoryMode;
+  label: string;
+  price: number;
+  /** Зөвхөн `extra_stock_move`-оор өөрчлөгдөнө (guard trigger). */
+  on_hand_qty: number;
+  reserved_qty: number;
+  /** shared_vial-д л. */
+  vial_id: string | null;
+  is_active: boolean;
+  sort: number;
+  updated_at: string;
+}
+
+export type StockMovementKind =
+  | "set"
+  | "reserve"
+  | "release"
+  | "commit"
+  | "restock";
+
+export interface ExtraMovementRow {
+  id: number;
+  extra_variant_id: string;
+  kind: StockMovementKind;
+  delta_on_hand: number;
+  delta_reserved: number;
+  order_item_id: string | null;
+  event_key: string | null;
+  note: string;
+  actor: string | null;
+  created_at: string;
+}
+
+export interface VialRow {
+  id: string;
+  /** 1ml, 2ml сав өнгөгүй (null). */
+  style: VialStyle | null;
+  ml: 1 | 2 | 5 | 10 | 20;
+  /** null = тоолж эхлээгүй (зарах боломж хязгааргүй). */
+  on_hand: number | null;
+  reserved: number;
+  low_threshold: number;
+  is_active: boolean;
+  note: string;
+  updated_by: string | null;
+  updated_at: string;
+}
+
+export interface VialMovementRow {
+  id: number;
+  vial_id: string;
+  kind: StockMovementKind;
+  delta_on_hand: number;
+  delta_reserved: number;
+  order_item_id: string | null;
+  event_key: string | null;
+  note: string;
+  actor: string | null;
+  created_at: string;
+}
+
+export type LeftoverLockState = "listed" | "reserved" | "committed" | "released";
+
+export interface LeftoverLiquidLockRow {
+  extra_product_id: string;
+  locked_ml: number;
+  state: LeftoverLockState;
+  order_item_id: string | null;
+  updated_at: string;
+}
+
 type Table<Row, Optional extends keyof Row> = {
   Row: Row;
   Insert: WithDefaults<Row, Optional>;
@@ -578,6 +700,7 @@ export interface Database {
         | "is_active"
         | "launched_at"
         | "coming_soon_note"
+        | "vial_style"
       >;
       product_images: Table<ProductImageRow, "id">;
       product_variants: Table<ProductVariantRow, "id" | "sale_price">;
@@ -635,6 +758,41 @@ export interface Database {
         | "created_at"
       >;
       perfume_request_votes: Table<PerfumeRequestVoteRow, "note" | "created_at">;
+      extra_categories: Table<
+        ExtraCategoryRow,
+        "id" | "image_url" | "sort" | "is_active"
+      >;
+      extra_products: Table<
+        ExtraProductRow,
+        | "id"
+        | "inventory_mode"
+        | "description"
+        | "images"
+        | "status"
+        | "product_id"
+        | "remaining_ml"
+        | "full_ml"
+        | "attrs"
+        | "sort"
+        | "created_at"
+        | "updated_at"
+      >;
+      extra_variants: Table<
+        ExtraVariantRow,
+        | "id"
+        | "inventory_mode"
+        | "label"
+        | "on_hand_qty"
+        | "reserved_qty"
+        | "vial_id"
+        | "is_active"
+        | "sort"
+        | "updated_at"
+      >;
+      extra_movements: Table<ExtraMovementRow, "id" | "created_at">;
+      vials: Table<VialRow, "id" | "updated_at">;
+      vial_movements: Table<VialMovementRow, "id" | "created_at">;
+      leftover_liquid_locks: Table<LeftoverLiquidLockRow, "updated_at">;
     };
     Views: Record<string, never>;
     Functions: {

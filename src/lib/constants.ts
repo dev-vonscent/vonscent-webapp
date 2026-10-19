@@ -732,6 +732,16 @@ export const FEATURE_FLAGS = {
     description:
       "Standard/Gold/Platinum/Sapphire/Ruby: /account/tier хуудас, профайл ба цэсний түвшний хүрээ, сэтгэгдлийн зургийн хүрээ, нүүр хуудасны «Top 3 хэрэглэгч», «Миний захиалга»-ын нийт дүн, /api/account/tier, mark_order_paid-ийн түвшний V point хувь (0143). Унтраалттай үед оноо хуучин settings.loyalty дүрмээр бодогдоно.",
   },
+  extras_shop: {
+    label: "Нэмэлт бараа",
+    description:
+      "Бэлгийн хайрцаг, грамын сав, үлдэгдэлтэй шил, шприц г.м.: каталогийн «Нэмэлт бараа» таб, /extras/*, хайлт, сагс ба checkout, place_order-ийн нэмэлт барааны салаа, үлдэгдэлтэй шилний түгжээ (0145–). Админ → Каталог → Нэмэлт бараа (/admin/extras, /api/admin/extras) мөн тугаар хаагдана (plan §14).",
+  },
+  vial_inventory: {
+    label: "Савны тоон нөөц",
+    description:
+      "Хоосон декант савыг ширхэгээр тоолох: /admin/bottles-ийн тоон горим, «Грамын сав» ангилал, хэмжээ зарагдах эсэх (variant_sellable) савны тоогоор, захиалгад савны reserve (0145–). Унтраалттай үед хуучин асаах/унтраах түгжээ (0095) хэвээр.",
+  },
 } as const satisfies Record<string, FeatureFlagMeta>;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
