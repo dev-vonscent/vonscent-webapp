@@ -70,7 +70,12 @@ export function NotificationBell({
           variant={triggerVariant}
           size="icon"
           aria-label={bellLabel(unread)}
-          className={cn("relative rounded-full", triggerClassName)}
+          // `Button` svg-г 16px болгодог (`[&_svg]:size-4`, icon-ий `size-5`-ийг
+          // дардаг) — Bell-ийн дүрс нарийн тул хайлтын товчтой (20px) ижил.
+          className={cn(
+            "relative rounded-full [&_svg]:size-5",
+            triggerClassName,
+          )}
         >
           <BellIcon unread={unread} />
         </Button>
