@@ -30,6 +30,9 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { SavedCheckouts } from "@/features/checkout/components/saved-checkouts";
 import { reviewPointsOf } from "@/lib/loyalty";
 import { settleExpiredOrders } from "@/features/account/settle-expired";
+import { isFeatureEnabled } from "@/lib/feature-flags";
+import { lifetimeSpendOf, tierProgress } from "@/features/tiers/lib";
+import { TierBadge } from "@/features/tiers/components/tier-frame";
 
 const STATUS_ICON: Record<
   OrderStatus,
@@ -219,9 +222,13 @@ export default async function OrdersPage({
       (a, b) => Number(isAwaitingPayment(b)) - Number(isAwaitingPayment(a)),
     );
 
+  // Нийт захиалгын дүн ба түвшин (feature flag `user_tiers`, 0138).
+  const tiersOn = await isFeatureEnabled("user_tiers");
+
   return (
     <div className="space-y-6">
       <PageHeader count={orders.length + savedCount} />
+      {tiersOn && <SpendSummary spend={lifetimeSpendOf(orders)} />}
       <OrderTabs tabs={tabs} current={tab} counts={counts} />
 
       {tab === "saved" ? (
@@ -496,6 +503,41 @@ function OrderCard({
  * the "Миний захиалга" title and a back button, so we hide this to avoid a
  * duplicate title.
  */
+/** Нийт захиалгын дүн + түвшин рүү орох зам (feature flag `user_tiers`). */
+function SpendSummary({ spend }: { spend: number }) {
+  const { tier, next, remaining, ratio } = tierProgress(spend);
+  return (
+    <Link
+      href="/account/tier"
+      className="bg-card hover:bg-accent group block space-y-3 rounded-2xl p-4 transition-colors"
+    >
+      <div className="flex items-center gap-3">
+        <div className="min-w-0">
+          <p className="text-muted-foreground text-sm">Нийт захиалгын дүн</p>
+          <p className="font-serif text-2xl font-semibold tabular-nums">
+            {formatPrice(spend)}
+          </p>
+        </div>
+        <TierBadge tier={tier.key} className="ml-auto" />
+        <ChevronRight className="text-muted-foreground group-hover:text-foreground size-4 shrink-0 transition-colors" />
+      </div>
+      {next && (
+        <div className="space-y-1.5">
+          <div className="bg-secondary h-1.5 overflow-hidden rounded-full">
+            <div
+              className="bg-foreground h-full rounded-full"
+              style={{ width: `${Math.round(ratio * 100)}%` }}
+            />
+          </div>
+          <p className="text-muted-foreground text-xs">
+            {next.label} түвшин хүртэл {formatPrice(remaining)} дутуу
+          </p>
+        </div>
+      )}
+    </Link>
+  );
+}
+
 function PageHeader({ count }: { count?: number }) {
   return (
     <div className="hidden items-center gap-3 md:flex">

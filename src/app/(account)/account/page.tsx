@@ -7,6 +7,7 @@ import { motion, useReducedMotion } from "motion/react";
 import {
   BadgeCheck,
   ChevronRight,
+  Gem,
   KeyRound,
   LogOut,
   Pencil,
@@ -26,9 +27,19 @@ import { isPhoneEmail } from "@/lib/auth/phone-email";
 import { WheelEntryCard } from "@/features/lucky-wheel/components/wheel-entry-card";
 import type { ProductListItem } from "@/lib/types";
 import { useFeatureFlag } from "@/components/feature-flags";
+import { useMyTier } from "@/features/tiers/use-tier";
+import { tierByKey } from "@/features/tiers/lib";
+import {
+  TierBadge,
+  TierFrame,
+  TierGem,
+} from "@/features/tiers/components/tier-frame";
 
 export default function ProfilePage() {
   const wheelOn = useFeatureFlag("lucky_wheel");
+  const tiersOn = useFeatureFlag("user_tiers");
+  const { data: tierSummary } = useMyTier();
+  const tier = tierSummary ? tierByKey(tierSummary.tier) : null;
   const [askSignOut, signOutDialog] = useSignOutConfirm();
   /** Supabase auth-ийн хаяг — утсаар бүртгүүлсэн хүнд синтетик тул харуулахгүй. */
   const [authEmail, setAuthEmail] = React.useState("");
@@ -141,6 +152,19 @@ export default function ProfilePage() {
   const realEmail = isPhoneEmail(authEmail) ? "" : authEmail;
   const displayEmail = contactEmail ?? realEmail;
   const initial = (fullName || displayEmail || "?").charAt(0).toUpperCase();
+  const avatarContent = avatar ? (
+    <Image
+      src={avatar}
+      alt="avatar"
+      fill
+      sizes="128px"
+      className="object-cover"
+    />
+  ) : (
+    <span className="text-muted-foreground flex h-full items-center justify-center font-serif text-4xl">
+      {initial}
+    </span>
+  );
   const handle = (
     displayEmail.split("@")[0] ||
     phone ||
@@ -156,45 +180,54 @@ export default function ProfilePage() {
         </p>
       )}
 
-      {/* Instagram-style profile header */}
-      <header className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
+      {/* Профайлын толгой: зураг зүүн талд, нэр · @handle · түвшин · засах
+          баруун талд нь нэг багана болж зэрэгцэнэ (утсан дээр ч). */}
+      <header className="flex items-center gap-5 sm:gap-8">
         <div className="relative shrink-0">
-          <div className="bg-secondary rounded-full p-0.75">
-            <div className="border-background bg-secondary relative size-28 overflow-hidden rounded-full border-2 sm:size-32">
-              {avatar ? (
-                <Image
-                  src={avatar}
-                  alt="avatar"
-                  fill
-                  sizes="128px"
-                  className="object-cover"
-                />
-              ) : (
-                <div className="text-muted-foreground flex h-full items-center justify-center font-serif text-4xl">
-                  {initial}
-                </div>
-              )}
+          {tier ? (
+            <Link href="/account/tier" aria-label="Хэрэглэгчийн түвшин">
+              <TierFrame
+                tier={tier.key}
+                className="[--avatar:76px] sm:[--avatar:104px]"
+              >
+                {avatarContent}
+              </TierFrame>
+            </Link>
+          ) : (
+            <div className="bg-secondary rounded-full p-0.75">
+              <div className="border-background bg-secondary relative size-24 overflow-hidden rounded-full border-2 sm:size-32">
+                {avatarContent}
+              </div>
             </div>
-          </div>
-          {phoneVerified && (
-            <span className="bg-foreground text-background absolute right-1 bottom-1 flex items-center justify-center rounded-full p-1">
-              <BadgeCheck className="size-4" />
-            </span>
           )}
         </div>
 
-        <div className="flex-1 space-y-4 text-center sm:text-left">
-          <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center">
-            <div>
-              <h1 className="font-serif text-2xl font-semibold sm:text-3xl">
-                {fullName || "vonscent гишүүн"}
-              </h1>
-              <p className="text-muted-foreground text-sm">@{handle}</p>
-            </div>
+        <div className="min-w-0 flex-1 space-y-3">
+          <div className="min-w-0">
+            {/* Баталгаажсан тэмдэг нэрийн ард — урт нэр тасарсан ч харагдана. */}
+            <h1 className="flex min-w-0 items-center gap-1.5 font-serif text-2xl font-semibold sm:text-3xl">
+              <span className="truncate">{fullName || "vonscent гишүүн"}</span>
+              {phoneVerified && (
+                <BadgeCheck
+                  aria-label="Утас баталгаажсан"
+                  className="fill-foreground text-background size-5 shrink-0 sm:size-6"
+                />
+              )}
+            </h1>
+            <p className="text-muted-foreground truncate text-sm">@{handle}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {tier && (
+              <Link
+                href="/account/tier"
+                className="transition-opacity hover:opacity-80"
+              >
+                <TierBadge tier={tier.key} />
+              </Link>
+            )}
             <Button
               variant="outline"
               size="sm"
-              className="sm:ml-auto"
               onClick={() => setProfileOpen(true)}
             >
               <Pencil className="size-4" /> Засах
@@ -238,6 +271,25 @@ export default function ProfilePage() {
         {/* Above the settings, not among them: the wheel is something to do,
             and it hides itself when there is nothing to collect. */}
         {configured && wheelOn && <WheelEntryCard />}
+
+        {configured && tiersOn && (
+          <Link
+            href="/account/tier"
+            className="bg-card hover:bg-accent flex w-full items-center gap-4 rounded-xl p-4 text-left transition-colors"
+          >
+            <IconCircle icon={Gem} />
+            <span className="font-medium">Түвшин</span>
+            {tier && (
+              <span className="text-muted-foreground ml-auto flex items-center gap-1.5 text-sm">
+                <TierGem tier={tier.key} />
+                {tier.label} · {tier.rate}%
+              </span>
+            )}
+            <ChevronRight
+              className={cn("text-muted-foreground size-4", !tier && "ml-auto")}
+            />
+          </Link>
+        )}
 
         {/* Купонууд өөрийн хуудсанд шилжсэн (0104) — энд зөвхөн орох зам. */}
         {configured && (

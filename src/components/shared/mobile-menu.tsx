@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   ArrowRight,
@@ -34,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { useNewBadge } from "@/features/account/use-new-badge";
 import { COUPONS_NEW_BADGE_UNTIL } from "@/lib/constants";
 import { useFeatureFlag } from "@/components/feature-flags";
+import { MenuAvatar } from "@/features/account/components/profile-menu";
 
 /**
  * Гол зорилгууд — том, бичвэрээр. Доод цэс (`BottomNav`) Нүүр/Каталог/Багц/
@@ -324,22 +324,6 @@ function Avatar({
 }: {
   profile: { name: string; avatar: string | null };
 }) {
-  const initial = profile.name.charAt(0).toUpperCase();
-  return (
-    <span className="bg-background relative size-11 shrink-0 overflow-hidden rounded-full">
-      {profile.avatar ? (
-        <Image
-          src={profile.avatar}
-          alt=""
-          fill
-          sizes="44px"
-          className="object-cover"
-        />
-      ) : (
-        <span className="flex h-full items-center justify-center text-base font-semibold">
-          {initial}
-        </span>
-      )}
-    </span>
-  );
+  // Түвшний хүрээтэй (feature flag `user_tiers`) — цэс нээгдэх үед л.
+  return <MenuAvatar src={profile.avatar} name={profile.name} size={44} />;
 }

@@ -1,6 +1,7 @@
 import "server-only";
 import { createPublicClient } from "@/lib/supabase/public";
 import { REVIEWS_PAGE_SIZE } from "@/lib/constants";
+import { getTiersForUsers } from "@/features/tiers/server";
 import {
   targetColumn,
   type RecentReview,
@@ -58,6 +59,12 @@ function mapReview(r: PublicReviewRow): Review {
   };
 }
 
+/** Зохиогч бүрийн түвшинг нэг хүсэлтээр нэмнэ (туг хаалттай бол өөрчлөхгүй). */
+async function withTiers<T extends Review>(reviews: T[]): Promise<T[]> {
+  const tiers = await getTiersForUsers(reviews.map((r) => r.userId));
+  return reviews.map((r) => ({ ...r, authorTier: tiers[r.userId] ?? null }));
+}
+
 /**
  * One page of a product's (or bundle's, 0107) reviews, newest first. `total`
  * comes back from the same query as the rows, so the header count can never
@@ -80,7 +87,7 @@ export async function getReviewPage(
     .order("id", { ascending: false })
     .range(offset, offset + limit - 1);
   const rows = (data as unknown as PublicReviewRow[] | null) ?? [];
-  return { reviews: rows.map(mapReview), total: count ?? 0 };
+  return { reviews: await withTiers(rows.map(mapReview)), total: count ?? 0 };
 }
 
 /**
@@ -95,7 +102,11 @@ export async function getReviewById(id: string): Promise<Review | null> {
     .select(REVIEW_COLUMNS)
     .eq("id", id)
     .maybeSingle();
-  return data ? mapReview(data as unknown as PublicReviewRow) : null;
+  if (!data) return null;
+  const [review] = await withTiers([
+    mapReview(data as unknown as PublicReviewRow),
+  ]);
+  return review;
 }
 
 /**
@@ -127,11 +138,13 @@ export async function getRecentReviews(limit = 6): Promise<RecentReview[]> {
     .order("created_at", { ascending: false })
     .limit(limit);
   const rows = (data as unknown as PublicReviewRow[] | null) ?? [];
-  return rows.map((r) => ({
-    ...mapReview(r),
-    productName: r.product_name ?? "",
-    productSlug: r.product_slug ?? "",
-    brand: r.product_brand ?? "",
-    productImage: r.product_image ?? null,
-  }));
+  return withTiers(
+    rows.map((r) => ({
+      ...mapReview(r),
+      productName: r.product_name ?? "",
+      productSlug: r.product_slug ?? "",
+      brand: r.product_brand ?? "",
+      productImage: r.product_image ?? null,
+    })),
+  );
 }

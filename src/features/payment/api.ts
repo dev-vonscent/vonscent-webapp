@@ -4,6 +4,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getProductsByIds } from "@/features/products/api";
 import { ensureInvoice } from "@/lib/payments/invoice";
 import { isQpayMockMode } from "@/lib/payments/qpay";
+import { isFeatureEnabled } from "@/lib/feature-flags";
+import { getLifetimeSpend } from "@/features/tiers/server";
+import { pointsAtTierRate, tierForSpend } from "@/features/tiers/lib";
 import {
   parseLoyaltyRules,
   pointsEarnedFor,
@@ -122,11 +125,25 @@ async function loyaltyFor(
     .eq("key", "loyalty")
     .maybeSingle();
   const value = (data as { value?: unknown } | null)?.value;
+  const base = Math.max(order.subtotal - order.discount, 0);
+  // Туг асаалттай бол сан түвшний хувиар бодно (0138) — «энэ захиалгын
+  // ӨМНӨХ» нийт дүнгээр: төлөгдсөн бол өөрийг нь хасна.
+  if (await isFeatureEnabled("user_tiers")) {
+    const lifetime = await getLifetimeSpend(supabase, order.user_id).catch(
+      () => null,
+    );
+    if (lifetime != null) {
+      const counted =
+        order.payment_status === "paid" && order.status !== "cancelled";
+      const before = Math.max(lifetime - (counted ? base : 0), 0);
+      return {
+        pointsEarned: pointsAtTierRate(base, tierForSpend(before).rate),
+        reviewPoints: reviewPointsOf(value),
+      };
+    }
+  }
   return {
-    pointsEarned: pointsEarnedFor(
-      Math.max(order.subtotal - order.discount, 0),
-      parseLoyaltyRules(value),
-    ),
+    pointsEarned: pointsEarnedFor(base, parseLoyaltyRules(value)),
     reviewPoints: reviewPointsOf(value),
   };
 }
