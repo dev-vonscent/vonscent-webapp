@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { callRpc } from "@/lib/supabase/rpc";
 import {
   badRequest,
   broadcastAdminGate,
@@ -27,6 +28,17 @@ export async function POST(req: Request, { params }: Ctx) {
     subject: gate.staff.id,
   });
   if (limited) return limited;
+
+  // Энэ route нь `notify_user`-ийг тойрч шууд бичдэг тул SQL давхаргын
+  // шалгалтыг энд давтана — gate-ийн туг кэштэй, сангийн утга нь эх сурвалж.
+  const { data: enabled } = await callRpc<boolean>(
+    gate.supabase,
+    "feature_enabled",
+    { p_key: "notifications" },
+  );
+  if (enabled !== true) {
+    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  }
 
   const { data: b, error: readError } = await gate.supabase
     .from("notification_broadcasts")

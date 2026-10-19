@@ -1,6 +1,6 @@
 # Хэрэглэгчийн мэдэгдэл (notifications)
 
-> Төлөв: **хэрэгжүүлж байна** — салбар `feat/notifications` (1-р үе: 0138 dev-д орсон; 2-р үе: feed/poll/read API, хонх, panel, toast, /account/notifications; 3-р үе: /admin/broadcasts).
+> Төлөв: **хэрэгжсэн (dev)** — салбар `feat/notifications`; 0138–0142 dev-д орсон, dev дээр туг нээлттэй (2026-10-19). Prod: хараахан үгүй.
 > Огноо: 2026-10-15 · клиентийн хариу 2026-10-18 · review засвар 2026-10-18 (§11)
 > Feature flag: `notifications`
 > Холбоотой: `docs/spec/development.md`, `docs/spec/design.md`, `0024_loyalty_pending`, `0091_points_unlock_on_delivery_day`, `0112`–`0114` (буцаалт), `0124_unpaid_order_to_saved`, `0129_spin_wheel_v2`, `0133_feature_flags`
@@ -416,3 +416,38 @@ broadcast-ын хэтэрсэн хугацаа; migration-ыг producer тус �
   protocol/credentials шалгалт хангалттай.
 - Broadcast-ын `read_count` snapshot — 90 хоногоос хойшхи уншилтын статистик
   бизнест хэрэггүй.
+
+## 12. Хэрэгжүүлэлтийн тэмдэглэл (2026-10-19)
+
+Төлөвлөгөөнөөс зөрсөн:
+
+- **Үнэгүй эрх (0140):** `spin_wheel` (~220 мөр)-ийг хуулж засахын оронд
+  `spin_wheel_spins` дээр AFTER INSERT trigger (`spin_type = 'free'`).
+  Үр дүн ижил, том функцыг хуучруулах эрсдэлгүй.
+- **`freeSpinHours` солигдох:** «ирээдүйн» биш БҮХ уншаагүй
+  `free_spin_ready`-ийг дахин тооцно — цагийг уртасгахад аль хэдийн
+  харагдсан мөр ч худал болдог.
+- **Захиалгын trigger-ийн нэр `orders_user_notify`:** Postgres trigger-үүдийг
+  нэрээр эрэмбэлдэг — `orders_reward_coupon`-оос хойш ажиллаж «купон
+  нэмэгдлээ»-г шалгана.
+- **Panel:** popover биш баруун талын sheet (сагстай ижил; төсөлд popover байхгүй).
+- **Засах route:** `POST` биш `PUT /api/admin/broadcasts/:id`.
+- **Холбоос сонгогч:** бараа + багц. Кампанит ажилд нийтийн хуудас байхгүй.
+- **Туршилтын route** нь `notify_user`-ийг тойрдог тул `feature_enabled()`-ийг
+  сангаас шууд шалгана (кэштэй тугаас гадна).
+
+Замдаа олдсон хуучин алдаа:
+
+- **0140 / 0142:** `spin_wheel(uuid, text)` ба `spin_wheel_state(uuid)` нь
+  security definer + `p_user` параметртэй атлаа PUBLIC-д execute эрхтэй байв
+  (0129 гарын үсгийг сольсны дараа 0053b-ийн revoke хамаарахаа больсон).
+  anon түлхүүрээр бусдын нэрийн өмнөөс эргүүлэх / төлөв унших боломжтой.
+  Prod-д ч мөн адил байх магадлалтай — feature-ээс үл хамааран тусад нь
+  оруулж болно (idempotent).
+
+SQL шалгалт (dev, rollback transaction, §7): туг хаалттай — бүх producer
+(оноо 3 зам, хүрд, төлөх → хүргэлтэд → хүргэгдсэн → цуцлах/буцаах,
+«Дараа захиалах») ажиллуулахад `user_notifications` 0 мөр. Нээлттэй — тус
+бүр яг 1, давхар нээлт/cron давталт 0, эзний цуцлалт 0, `shipping` →
+`confirmed` → `shipping` 1, шинэ эргэлт хуучин уншаагүйг устгана,
+`freeSpinHours` 24 → 48 үед `visible_at` шинэчлэгдэнэ.
