@@ -10,7 +10,10 @@ import { MobileMenu } from "./mobile-menu";
 import { CartSheet } from "@/features/cart/components/cart-sheet";
 import { HeaderChatButton } from "@/features/chat/components/header-chat-button";
 import { ProfileMenu } from "@/features/account/components/profile-menu";
-import { NotificationBell } from "@/features/notifications/components/notification-bell";
+import {
+  NotificationBell,
+  NotificationBellPopover,
+} from "@/features/notifications/components/notification-bell";
 import { NotificationCenter } from "@/features/notifications/components/notification-center";
 import { GlobalSearch } from "./global-search";
 import { cn } from "@/lib/utils";
@@ -265,10 +268,13 @@ export function SiteHeader({
 
             {/* Right: search + bell + cart (mobile only) + profile menu (desktop only).
               Хонх нь утсан дээр сагсны зүүн талд, desktop-д хайлт ба профайлын
-              хооронд — нэг элемент хоёр байрлалыг хамарна. */}
+              хооронд. */}
             <div className="ml-auto flex items-center gap-1">
               <GlobalSearch />
-              <NotificationBell />
+              {/* Утсан дээр sheet (сагсны зүүн талд), desktop-д hover panel —
+                  хайлттай ижил size-9 дугуй товч, профайлаас зайтай. */}
+              <NotificationBell triggerClassName="size-9 text-muted-foreground hover:bg-secondary hover:text-foreground md:hidden" />
+              <NotificationBellPopover className="mr-1.5 hidden md:flex" />
               <CartSheet triggerClassName="md:hidden" />
               <div className="hidden md:block">
                 <ProfileMenu />
