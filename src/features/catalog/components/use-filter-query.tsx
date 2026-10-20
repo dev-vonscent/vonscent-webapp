@@ -22,6 +22,9 @@ const FILTER_KEYS = [
   "minPrice",
   "maxPrice",
   "q",
+  // Нэмэлт барааны таб (`?tab=extras`).
+  "cat",
+  "stock",
 ];
 
 /** Helpers to read/update multi-value catalog filter params in the URL. */
@@ -126,7 +129,11 @@ function useFilterQueryState() {
     [searchParams, navigate],
   );
 
-  const clearAll = useCallback(() => navigate(""), [navigate]);
+  // `tab` нь шүүлтүүр биш — «Нэмэлт бараа» табаас гарахгүй.
+  const clearAll = useCallback(() => {
+    const tab = searchParams.get("tab");
+    navigate(tab ? new URLSearchParams({ tab }).toString() : "");
+  }, [navigate, searchParams]);
 
   const activeCount = FILTER_KEYS.reduce(
     (n, k) => n + (searchParams.get(k) ? 1 : 0),

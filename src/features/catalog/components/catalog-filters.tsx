@@ -38,7 +38,7 @@ const TAGS: { value: string; label: string }[] = [
 /** «Бүх улирал» тусдаа явна — доорх дөрөв нь дан улирлын сонголт. */
 const SINGLE_SEASONS = SEASONS.filter((s) => s !== "all");
 
-function Group({
+export function Group({
   title,
   children,
 }: {
@@ -54,7 +54,7 @@ function Group({
 }
 
 /** Selectable filter chip — dark gray when off, light gray when selected. */
-function Chip({
+export function Chip({
   active,
   onClick,
   className,

@@ -15,6 +15,12 @@ export const EXTRA_SORT_LABEL: Record<ExtraSort, string> = {
   new: "Шинэ эхэндээ",
 };
 
+/** `CatalogSort`-ийн сонголт. */
+export const EXTRA_SORT_OPTIONS = EXTRA_SORTS.map((value) => ({
+  value,
+  label: EXTRA_SORT_LABEL[value],
+}));
+
 export function parseExtraSort(v: unknown): ExtraSort {
   return (EXTRA_SORTS as readonly unknown[]).includes(v)
     ? (v as ExtraSort)

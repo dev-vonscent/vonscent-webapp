@@ -24,7 +24,6 @@ import { isFeatureEnabled } from "@/lib/feature-flags";
 import { getShopExtras } from "@/features/extras/api";
 import { CatalogTabs } from "@/features/extras/components/catalog-tabs";
 import { ExtrasCatalog } from "@/features/extras/components/extras-catalog";
-import { parseExtraSort } from "@/features/extras/lib/sort";
 
 /**
  * The route itself is dynamic — it reads `searchParams`, so a filtered view is
@@ -52,24 +51,21 @@ export default async function CatalogPage({
   const extrasOn = await isFeatureEnabled("extras_shop");
   if (extrasOn && params.tab === "extras") {
     const items = await getShopExtras();
-    const cat = typeof params.cat === "string" ? params.cat : null;
     return (
-      <div className="mx-auto max-w-352 px-4 py-8 md:px-8">
-        <div className="mb-6">
-          <h1 className="font-serif text-3xl font-semibold tracking-tight">
-            Каталог
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {items.length} нэмэлт бараа
-          </p>
+      <FilterQueryProvider>
+        <div className="mx-auto max-w-352 px-4 py-8 md:px-8">
+          <div className="mb-6">
+            <h1 className="font-serif text-3xl font-semibold tracking-tight">
+              Каталог
+            </h1>
+            <p className="text-muted-foreground mt-1 text-sm">
+              {items.length} нэмэлт бараа
+            </p>
+          </div>
+          <CatalogTabs active="extras" />
+          <ExtrasCatalog items={items} />
         </div>
-        <CatalogTabs active="extras" />
-        <ExtrasCatalog
-          items={items}
-          activeCategory={cat}
-          sort={parseExtraSort(params.sort)}
-        />
-      </div>
+      </FilterQueryProvider>
     );
   }
   const filters = parseFilters(params);
