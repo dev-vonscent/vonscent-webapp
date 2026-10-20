@@ -93,6 +93,23 @@ async function save(c: Client, payload: object, by: string | null = null) {
   ).r;
 }
 
+/** Нөөц нөхөх (0153) — нөөц зөвхөн purchase-аар орно. */
+async function purchase(
+  c: Client,
+  variantId: string,
+  qty: number,
+  unitCost = 1000,
+  by: string | null = null,
+) {
+  return (
+    await one<{ r: { ok: boolean; on_hand: number; updated_at: string } }>(
+      c,
+      "select extras_purchase($1, $2, $3, null, null, '', $4) as r",
+      [variantId, qty, unitCost, by],
+    )
+  ).r;
+}
+
 async function staffId(c: Client) {
   return (
     (
@@ -157,7 +174,7 @@ async function localExtra(c: Client, slug: string, price: number, qty: number) {
     category_id: await categoryId(c, "gift-box"),
     slug,
     name: `Test ${slug}`,
-    variants: [{ label: "Хар", price, initial_qty: qty }],
+    variants: [{ label: "Хар", price }],
   });
   await c.query("select extras_set_status($1, 'published', null)", [r.id]);
   const v = await one<{ id: string }>(
@@ -165,6 +182,7 @@ async function localExtra(c: Client, slug: string, price: number, qty: number) {
     "select id from extra_variants where extra_id = $1",
     [r.id],
   );
+  if (qty > 0) await purchase(c, v.id, qty);
   return { extraId: r.id, variantId: v.id, price };
 }
 
@@ -177,7 +195,8 @@ async function leftoverExtra(
 ) {
   await flag(c, "extras_shop", true);
   const r = await save(c, {
-    category_id: await categoryId(c, "leftover"),
+    category_id: await categoryId(c, "bottled"),
+    inventory_mode: "leftover_liquid",
     slug,
     name: `Шил ${slug}`,
     leftover: { product_id: productId, remaining_ml: ml, full_ml: 100 },
@@ -330,13 +349,25 @@ async function main() {
     const box = await categoryId(a, "gift-box");
     const err1 = await errorOf(
       a,
-      `insert into extra_products (category_id, inventory_mode, slug, name)
-       values ($1, 'leftover_liquid', 't-x', 'x')`,
+      `insert into extra_products (category_id, inventory_mode, slug, name,
+         product_id, remaining_ml, full_ml)
+       values ($1, 'leftover_liquid', 't-x0', 'x',
+         (select id from products limit 1), 5, 10)`,
       [box],
     );
-    // Trigger горимыг ангиллаас хуулдаг тул leftover-ийн шаардлага (product_id)
-    // биш — ангиллын горим ялна. Хувилбарын талд шууд зөрүүлж шалгана.
-    check("бараа ангиллын горимыг авна (зөрөх боломжгүй)", err1 === null, err1);
+    // Ангилалд зөвшөөрөгдөөгүй горим → ангилал+горимын FK (0153).
+    check(
+      "ангилалд байхгүй горим → FK",
+      err1?.includes("extra_products_category_mode_fk") ?? false,
+      err1,
+    );
+    const err0 = await errorOf(
+      a,
+      `insert into extra_products (category_id, slug, name)
+       values ($1, 't-x', 'x')`,
+      [box],
+    );
+    check("ганц горимтой ангилал → горимыг өөрөө авна", err0 === null, err0);
     const p = await one<{ id: string; inventory_mode: string }>(
       a,
       "select id, inventory_mode from extra_products where slug = 't-x'",
@@ -376,7 +407,7 @@ async function main() {
   // ── Энгийн бараа (§7.2, §7.3) ──────────────────────────────────────
   await scenario(
     a,
-    "Энгийн бараа: анхны тоо, хөдөлгөөн, нөөц засах",
+    "Энгийн бараа: 0 тоотой үүснэ, нөөц нөхөх, нөөц засах",
     async () => {
       await flag(a, "extras_shop", true);
       const r = await save(
@@ -387,28 +418,49 @@ async function main() {
           name: "Test box",
           attrs: { capacity: 3 },
           variants: [
-            { label: "Хар", price: 15000, initial_qty: 12 },
-            { label: "Цагаан", price: 15000, initial_qty: 0 },
+            { label: "Хар", price: 15000 },
+            { label: "Цагаан", price: 15000 },
           ],
         },
         by,
       );
+      const v0 = await one<{ id: string; on_hand_qty: number }>(
+        a,
+        "select id, on_hand_qty from extra_variants where extra_id = $1 and label = 'Хар'",
+        [r.id],
+      );
+      check("шинэ хувилбар 0 тоотой", v0.on_hand_qty === 0, v0);
+      await purchase(a, v0.id, 12, 4000, by);
       const v = await one<{
         id: string;
         on_hand_qty: number;
         updated_at: string;
       }>(
         a,
-        "select id, on_hand_qty, updated_at::text from extra_variants where extra_id = $1 and label = 'Хар'",
-        [r.id],
+        "select id, on_hand_qty, updated_at::text from extra_variants where id = $1",
+        [v0.id],
       );
-      check("анхны тоо 12", v.on_hand_qty === 12, v);
-      const mv = await one<{ n: number; s: number }>(
+      check("нөөц нөхсөний дараа 12", v.on_hand_qty === 12, v);
+      const mv = await one<{
+        n: number;
+        s: number;
+        cost: number;
+        kind: string;
+      }>(
         a,
-        "select count(*)::int n, coalesce(sum(delta_on_hand),0)::int s from extra_movements where extra_variant_id = $1",
+        `select count(*)::int n, coalesce(sum(delta_on_hand),0)::int s,
+                sum(cost)::int cost, min(kind) kind
+           from extra_movements where extra_variant_id = $1`,
         [v.id],
       );
-      check("нэг 'set' хөдөлгөөн, Σ = 12", mv.n === 1 && mv.s === 12, mv);
+      check(
+        "нэг 'purchase' хөдөлгөөн, Σ = 12, өртөг 48,000",
+        mv.n === 1 &&
+          mv.s === 12 &&
+          mv.cost === 48000 &&
+          mv.kind === "purchase",
+        mv,
+      );
 
       const stale = await one<{ r: { ok: boolean; reason: string } }>(
         a,
@@ -447,6 +499,16 @@ async function main() {
         [v.id, fresh.updated_at, by],
       );
       check("40 болгоно", ok.r.ok && ok.r.on_hand === 40, ok.r);
+      const adj = await one<{ kind: string; cost: number | null }>(
+        a,
+        "select kind, cost from extra_movements where extra_variant_id = $1 order by id desc limit 1",
+        [v.id],
+      );
+      check(
+        "тоо засах → 'adjust', өртөггүй",
+        adj.kind === "adjust" && adj.cost === null,
+        adj,
+      );
       const sum = await one<{ s: number; on_hand_qty: number }>(
         a,
         `select (select sum(delta_on_hand) from extra_movements where extra_variant_id = $1)::int s,
@@ -531,7 +593,7 @@ async function main() {
         category_id: await categoryId(a, "syringe"),
         slug: "t-syr2",
         name: "Шприц",
-        variants: [{ label: "", price: 3500, initial_qty: 5 }],
+        variants: [{ label: "", price: 3500 }],
       });
       await a.query("select extras_set_status($1, 'published', null)", [r.id]);
       await a.query("set local role anon");
@@ -562,6 +624,422 @@ async function main() {
       );
     },
   );
+
+  // ── v5: ангилал ↔ горим, худалдан авалт (§18.8) ─────────────────────
+  await scenario(a, "v5: 5 ангилал, ангилал+горим (§18.8 №1–3)", async () => {
+    await flag(a, "extras_shop", true);
+    const cats = await a.query<{ slug: string }>(
+      "select slug from extra_categories where is_active order by slug",
+    );
+    check(
+      "идэвхтэй ангилал яг 5",
+      cats.rows.map((r) => r.slug).join(",") ===
+        "bottled,empty-bottle,gift-box,syringe,vial",
+      cats.rows,
+    );
+    const pouch = await one<{ active: boolean; n: number }>(
+      a,
+      `select c.is_active active,
+              (select count(*)::int from extra_products p where p.category_id = c.id) n
+         from extra_categories c where c.slug = 'brand-pouch'`,
+    );
+    check(
+      "brand-pouch идэвхгүй, бараагүй",
+      !pouch.active && pouch.n === 0,
+      pouch,
+    );
+    const col = await one<{ n: number }>(
+      a,
+      `select count(*)::int n from information_schema.columns
+        where table_name = 'extra_categories' and column_name = 'inventory_mode'`,
+    );
+    check("ангиллын хуучин inventory_mode устсан", col.n === 0, col);
+
+    const modes = await a.query<{
+      inventory_mode: string;
+      requires_consent: boolean;
+      notice: string;
+    }>(
+      `select m.inventory_mode, m.requires_consent, m.notice
+         from extra_category_modes m join extra_categories c on c.id = m.category_id
+        where c.slug = 'bottled' order by m.inventory_mode`,
+    );
+    const [full, left] = modes.rows;
+    check(
+      "Шилтэй ус: бүтэн шил — зөвшөөрөл, анхааруулгагүй",
+      full?.inventory_mode === "local_quantity" &&
+        !full.requires_consent &&
+        full.notice === "",
+      full,
+    );
+    check(
+      "Шилтэй ус: үлдэгдэлтэй — зөвшөөрөл, ±1–2ml",
+      left?.inventory_mode === "leftover_liquid" &&
+        left.requires_consent &&
+        left.notice.includes("±1–2ml"),
+      left,
+    );
+    const empty = await one<{ requires_consent: boolean }>(
+      a,
+      `select m.requires_consent from extra_category_modes m
+         join extra_categories c on c.id = m.category_id where c.slug = 'empty-bottle'`,
+    );
+    check("Хоосон шил — зөвшөөрөл", empty.requires_consent, empty);
+
+    const bottled = await categoryId(a, "bottled");
+    const noMode = await errorOf(a, "select extras_save($1::jsonb, null)", [
+      JSON.stringify({
+        category_id: bottled,
+        slug: "t-v5-a",
+        name: "x",
+        variants: [{ label: "", price: 1 }],
+      }),
+    ]);
+    check(
+      "олон горимтой ангилал, горимгүй → EXTRA_MODE_REQUIRED",
+      noMode?.includes("EXTRA_MODE_REQUIRED") ?? false,
+      noMode,
+    );
+    const wrong = await errorOf(a, "select extras_save($1::jsonb, null)", [
+      JSON.stringify({
+        category_id: await categoryId(a, "gift-box"),
+        inventory_mode: "leftover_liquid",
+        slug: "t-v5-b",
+        name: "x",
+        variants: [{ price: 1 }],
+      }),
+    ]);
+    check(
+      "ангилалд байхгүй горим → EXTRA_MODE_INVALID",
+      wrong?.includes("EXTRA_MODE_INVALID") ?? false,
+      wrong,
+    );
+    const r = await save(a, {
+      category_id: bottled,
+      inventory_mode: "local_quantity",
+      slug: "t-v5-full",
+      name: "Creed Aventus 100ml",
+      variants: [{ label: "A1234", price: 450000, batch_code: "A1234" }],
+    });
+    const fv = await one<{ inventory_mode: string; batch_code: string }>(
+      a,
+      `select p.inventory_mode, v.batch_code from extra_products p
+         join extra_variants v on v.extra_id = p.id where p.id = $1`,
+      [r.id],
+    );
+    check(
+      "бүтэн шил = local_quantity, batch code хадгалагдана",
+      fv.inventory_mode === "local_quantity" && fv.batch_code === "A1234",
+      fv,
+    );
+    // Batch code-гүй хадгалалт (хуучин маягт) түүнийг арчихгүй.
+    const vid = (
+      await one<{ id: string }>(
+        a,
+        "select id from extra_variants where extra_id = $1",
+        [r.id],
+      )
+    ).id;
+    await save(a, {
+      id: r.id,
+      slug: "t-v5-full",
+      name: "Creed Aventus 100ml",
+      variants: [{ id: vid, label: "A1234", price: 460000 }],
+    });
+    const kept = await one<{ batch_code: string | null; price: number }>(
+      a,
+      "select batch_code, price from extra_variants where id = $1",
+      [vid],
+    );
+    check(
+      "түлхүүргүй хадгалалт batch code-ийг арчихгүй",
+      kept.batch_code === "A1234" && kept.price === 460000,
+      kept,
+    );
+    const recat = await errorOf(
+      a,
+      "update extra_products set category_id = $2 where id = $1",
+      [r.id, await categoryId(a, "gift-box")],
+    );
+    check(
+      "ангилал солих → EXTRA_MODE_IMMUTABLE",
+      recat?.includes("EXTRA_MODE_IMMUTABLE") ?? false,
+      recat,
+    );
+  });
+
+  await scenario(
+    a,
+    "v5: анхны нөөц 0, худалдан авалтын ledger, огноо (§18.8 №5–7)",
+    async () => {
+      await flag(a, "extras_shop", true);
+      const syringe = await categoryId(a, "syringe");
+      const init = await errorOf(a, "select extras_save($1::jsonb, null)", [
+        JSON.stringify({
+          category_id: syringe,
+          slug: "t-v5-i",
+          name: "x",
+          variants: [{ label: "5ml", price: 3000, initial_qty: 5 }],
+        }),
+      ]);
+      check(
+        "анхны тоо > 0 → INITIAL_STOCK_REQUIRES_PURCHASE",
+        init?.includes("INITIAL_STOCK_REQUIRES_PURCHASE") ?? false,
+        init,
+      );
+      const r = await save(a, {
+        category_id: syringe,
+        slug: "t-v5-syr",
+        name: "Шприц",
+        variants: [
+          { label: "5ml", price: 3000 },
+          { label: "10ml", price: 4000 },
+        ],
+      });
+      const v = await one<{ id: string; updated_at: string }>(
+        a,
+        "select id, updated_at::text from extra_variants where extra_id = $1 and label = '5ml'",
+        [r.id],
+      );
+      const call = (args: string) =>
+        errorOf(a, `select extras_purchase($1, ${args}, null, '', null)`, [
+          v.id,
+        ]);
+      const future = await call(
+        "10, 500, ((now() at time zone 'Asia/Ulaanbaatar')::date + 1)",
+      );
+      check(
+        "ирээдүйн өдөр → PURCHASE_DATE_FUTURE",
+        future?.includes("PURCHASE_DATE_FUTURE") ?? false,
+        future,
+      );
+      const closed = await call(
+        "10, 500, date_trunc('month', (now() at time zone 'Asia/Ulaanbaatar')::date)::date - 1",
+      );
+      check(
+        "өмнөх сар → PURCHASE_DATE_CLOSED",
+        closed?.includes("PURCHASE_DATE_CLOSED") ?? false,
+        closed,
+      );
+      const zero = await call("0, 500, null");
+      check(
+        "0 ширхэг → PURCHASE_QTY_INVALID",
+        zero?.includes("PURCHASE_QTY_INVALID") ?? false,
+        zero,
+      );
+      const neg = await call("10, -1, null");
+      check(
+        "сөрөг үнэ → PURCHASE_COST_INVALID",
+        neg?.includes("PURCHASE_COST_INVALID") ?? false,
+        neg,
+      );
+      const stale = await one<{ r: { ok: boolean; reason: string } }>(
+        a,
+        "select extras_purchase($1, 10, 500, null, $2::timestamptz - interval '1 second', '', null) r",
+        [v.id, v.updated_at],
+      );
+      check(
+        "хуучин цонх → STALE, тоо өөрчлөгдөхгүй",
+        !stale.r.ok && stale.r.reason === "STALE",
+        stale.r,
+      );
+      const ok = await one<{ r: { ok: boolean; on_hand: number } }>(
+        a,
+        "select extras_purchase($1, 100, 450, null, $2, 'Ачаа', null) r",
+        [v.id, v.updated_at],
+      );
+      check("100 ширхэг нэмэгдэнэ", ok.r.ok && ok.r.on_hand === 100, ok.r);
+      const mv = await one<{
+        unit_cost: number;
+        cost: number;
+        today: boolean;
+      }>(
+        a,
+        `select unit_cost, cost::int,
+                purchased_on = (now() at time zone 'Asia/Ulaanbaatar')::date today
+           from extra_movements where extra_variant_id = $1 and kind = 'purchase'`,
+        [v.id],
+      );
+      check(
+        "нэгж 450 × 100 = 45,000, өдөр = УБ өнөөдөр",
+        mv.unit_cost === 450 && mv.cost === 45000 && mv.today,
+        mv,
+      );
+      const bad = await errorOf(
+        a,
+        `insert into extra_movements (extra_variant_id, kind, delta_on_hand,
+           unit_cost, cost, purchased_on)
+         values ($1, 'purchase', 2, 100, 999, current_date)`,
+        [v.id],
+      );
+      check(
+        "cost ≠ ширхэг × нэгж → purchase_chk",
+        bad?.includes("extra_movements_purchase_chk") ?? false,
+        bad,
+      );
+      const left = await leftoverExtra(
+        a,
+        "t-v5-left",
+        (await perfumeWithStock(a)).product_id,
+      );
+      const notLocal = await errorOf(
+        a,
+        "select extras_purchase($1, 1, 1, null, null, '', null)",
+        [left.variantId],
+      );
+      check(
+        "үлдэгдэлтэй шилэнд purchase → STOCK_NOT_LOCAL",
+        notLocal?.includes("STOCK_NOT_LOCAL") ?? false,
+        notLocal,
+      );
+    },
+  );
+
+  await scenario(
+    a,
+    "v5: 1/2ml сав дангаар зарахгүй, савны purchase (§18.8 №4–8)",
+    async () => {
+      await flag(a, "extras_shop", true);
+      await flag(a, "vial_inventory", true);
+      const ml2 = (await one<{ id: string }>(a, "select vial_for(null, 2) id"))
+        .id;
+      const pink5 = (
+        await one<{ id: string }>(a, "select vial_for('pink', 5) id")
+      ).id;
+      for (const id of [ml2, pink5]) {
+        const cur = await one<{ on_hand: number | null; reserved: number }>(
+          a,
+          "select on_hand, reserved from vials where id = $1",
+          [id],
+        );
+        if (cur.on_hand == null)
+          await a.query("select set_vial_count($1, $2, null, '', null)", [
+            id,
+            cur.reserved + 10,
+          ]);
+      }
+      const cat = await categoryId(a, "vial");
+      const sell2 = await errorOf(a, "select extras_save($1::jsonb, null)", [
+        JSON.stringify({
+          category_id: cat,
+          slug: "t-v5-v2",
+          name: "2ml сав",
+          variants: [{ vial_id: ml2, price: 500 }],
+        }),
+      ]);
+      check(
+        "2ml савыг дангаар → VIAL_INVALID",
+        sell2?.includes("VIAL_INVALID") ?? false,
+        sell2,
+      );
+      const r = await save(a, {
+        category_id: cat,
+        slug: "t-v5-v5",
+        name: "Ягаан 5ml",
+        variants: [{ vial_id: pink5, price: 1500 }],
+      });
+      check("5ml савыг дангаар зарна", Boolean(r.id), r);
+      const direct = await errorOf(
+        a,
+        `insert into extra_variants (extra_id, price, vial_id) values ($1, 500, $2)`,
+        [r.id, ml2],
+      );
+      check(
+        "шууд insert 2ml → VIAL_NOT_SELLABLE",
+        direct?.includes("VIAL_NOT_SELLABLE") ?? false,
+        direct,
+      );
+
+      const before = await one<{ on_hand: number; updated_at: string }>(
+        a,
+        "select on_hand, updated_at::text from vials where id = $1",
+        [ml2],
+      );
+      const p = await one<{ r: { ok: boolean; on_hand: number } }>(
+        a,
+        "select vial_purchase($1, 100, 120, null, $2, '', null) r",
+        [ml2, before.updated_at],
+      );
+      check(
+        "2ml: нөөц нөхөх +100 (зарахгүй ч тоолно)",
+        p.r.ok && p.r.on_hand === before.on_hand + 100,
+        p.r,
+      );
+      const vm = await one<{ cost: number; kind: string }>(
+        a,
+        "select cost::int, kind from vial_movements where vial_id = $1 order by id desc limit 1",
+        [ml2],
+      );
+      check(
+        "савны purchase өртөг 12,000",
+        vm.kind === "purchase" && vm.cost === 12000,
+        vm,
+      );
+      await a.query("select set_vial_count($1, $2, null, '', null)", [
+        ml2,
+        before.on_hand + 90,
+      ]);
+      const adj = await one<{ kind: string; d: number }>(
+        a,
+        "select kind, delta_on_hand d from vial_movements where vial_id = $1 order by id desc limit 1",
+        [ml2],
+      );
+      check(
+        "тоолсон савны тоо засах → 'adjust'",
+        adj.kind === "adjust" && adj.d === -10,
+        adj,
+      );
+      const sum = await one<{ s: number; on_hand: number }>(
+        a,
+        `select (select coalesce(sum(delta_on_hand), 0) from vial_movements
+                  where vial_id = $1)::int s, on_hand from vials where id = $1`,
+        [ml2],
+      );
+      check("Σ delta_on_hand = on_hand", sum.s === sum.on_hand, sum);
+
+      // Тоолж эхлээгүй сав (null) — purchase хориотой.
+      await a.query("select set_config('vonscent.stock_move', '1', true)");
+      await a.query("update vials set on_hand = null where id = $1", [pink5]);
+      await a.query("select set_config('vonscent.stock_move', '', true)");
+      const nc = await errorOf(
+        a,
+        "select vial_purchase($1, 10, 100, null, null, '', null)",
+        [pink5],
+      );
+      check(
+        "тоолоогүй савд purchase → STOCK_NOT_COUNTED",
+        nc?.includes("STOCK_NOT_COUNTED") ?? false,
+        nc,
+      );
+    },
+  );
+
+  await scenario(a, "v5: restock_log.purchased_on (УБ өдөр)", async () => {
+    const nulls = await one<{ n: number }>(
+      a,
+      "select count(*)::int n from restock_log where purchased_on is null",
+    );
+    check("хоосон purchased_on байхгүй", nulls.n === 0, nulls);
+    const shifted = await one<{ n: number }>(
+      a,
+      `select count(*)::int n from restock_log
+        where purchased_on is distinct from (created_at at time zone 'Asia/Ulaanbaatar')::date`,
+    );
+    check("backfill = УБ календарийн өдөр", shifted.n === 0, shifted);
+    const inv = await perfumeWithStock(a);
+    // Prod-ийн хуучин код 5 нэртэй аргументаар дууддаг — default-аар ажиллана.
+    await a.query(
+      "select restock_inventory(p_product => $1, p_delta => 10, p_reason => 'test', p_by => null, p_cost => 5000)",
+      [inv.product_id],
+    );
+    const row = await one<{ today: boolean }>(
+      a,
+      `select purchased_on = (now() at time zone 'Asia/Ulaanbaatar')::date today
+         from restock_log where product_id = $1 order by created_at desc limit 1`,
+      [inv.product_id],
+    );
+    check("шинэ restock мөр УБ өнөөдрөөр", row.today, row);
+  });
 
   // ── Грамын сав ─────────────────────────────────────────────────────
   await scenario(a, "Грамын сав: туг, тоо оруулаагүй сав", async () => {
@@ -638,7 +1116,8 @@ async function main() {
       const reservedBefore = inv.reserved_ml;
       const avail = inv.on_hand_ml - inv.reserved_ml;
       const r = await save(a, {
-        category_id: await categoryId(a, "leftover"),
+        category_id: await categoryId(a, "bottled"),
+        inventory_mode: "leftover_liquid",
         slug: "t-left",
         name: "Үлдэгдэлтэй шил",
         leftover: {
@@ -768,7 +1247,8 @@ async function main() {
       await flag(a, "extras_shop", false);
       const inv = await perfumeWithStock(a);
       const r = await save(a, {
-        category_id: await categoryId(a, "leftover"),
+        category_id: await categoryId(a, "bottled"),
+        inventory_mode: "leftover_liquid",
         slug: "t-left2",
         name: "Шил",
         leftover: { product_id: inv.product_id, remaining_ml: 5, full_ml: 50 },
@@ -892,7 +1372,7 @@ async function main() {
         category_id: await categoryId(a, "gift-box"),
         slug: "t-o3",
         name: "Үнэтэй",
-        variants: [{ label: "", price: 10000000, initial_qty: 1000 }],
+        variants: [{ label: "", price: 10000000 }],
       });
       await a.query("select extras_set_status($1, 'published', null)", [r.id]);
       const v = await one<{ id: string }>(
@@ -900,6 +1380,7 @@ async function main() {
         "select id from extra_variants where extra_id = $1",
         [r.id],
       );
+      await purchase(a, v.id, 1000);
       const e = { variantId: v.id, price: 10000000 };
       const s = await order(a, [extraLine(e, 99)]);
       check("990,000,000₮", s.subtotal === 990000000, s.subtotal);

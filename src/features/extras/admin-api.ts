@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { callRpc } from "@/lib/supabase/rpc";
 import type {
+  ExtraCategoryModeRow,
   ExtraCategoryRow,
   ExtraProductRow,
   ExtraVariantRow,
@@ -12,6 +13,7 @@ import type {
   AdminExtra,
   AdminExtraVariant,
   ExtraCategory,
+  ExtraMode,
   ExtraReadinessCode,
   VialOption,
 } from "./types";
@@ -24,12 +26,29 @@ import type {
 
 type ServerClient = NonNullable<Awaited<ReturnType<typeof createClient>>>;
 
-export function toCategory(r: ExtraCategoryRow): ExtraCategory {
+/** Горимын дараалал — tile, сонголтод ижил. */
+const MODE_ORDER: ExtraMode[] = [
+  "local_quantity",
+  "shared_vial",
+  "leftover_liquid",
+];
+
+export function toCategory(
+  r: ExtraCategoryRow & {
+    extra_category_modes?: ExtraCategoryModeRow[] | null;
+  },
+): ExtraCategory {
   return {
     id: r.id,
     slug: r.slug,
     name: r.name,
-    mode: r.inventory_mode,
+    modes: (r.extra_category_modes ?? [])
+      .map((m) => ({
+        mode: m.inventory_mode,
+        notice: m.notice,
+        requiresConsent: m.requires_consent,
+      }))
+      .sort((a, b) => MODE_ORDER.indexOf(a.mode) - MODE_ORDER.indexOf(b.mode)),
     imageUrl: r.image_url,
     sort: r.sort,
   };
@@ -59,10 +78,14 @@ export async function getExtraCategories(): Promise<ExtraCategory[]> {
   if (!supabase) return [];
   const { data } = await supabase
     .from("extra_categories")
-    .select("*")
+    .select("*, extra_category_modes(*)")
     .eq("is_active", true)
     .order("sort");
-  return ((data as ExtraCategoryRow[] | null) ?? []).map(toCategory);
+  return (
+    (data as
+      | (ExtraCategoryRow & { extra_category_modes: ExtraCategoryModeRow[] })[]
+      | null) ?? []
+  ).map(toCategory);
 }
 
 export async function getVialOptions(): Promise<VialOption[]> {

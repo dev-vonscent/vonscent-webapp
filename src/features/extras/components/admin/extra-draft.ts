@@ -13,8 +13,6 @@ export interface DraftVariant {
   price: string;
   isActive: boolean;
   sort: number;
-  /** Зөвхөн шинэ энгийн хувилбарт. */
-  initialQty: string | number;
   /** Грамын сав. */
   vialId?: string;
 }
@@ -66,7 +64,6 @@ export function emptyDraft(mode: ExtraMode): ExtraDraft {
               price: "",
               isActive: true,
               sort: 0,
-              initialQty: "",
             },
           ]
         : [],
@@ -95,7 +92,6 @@ export function draftOf(extra: AdminExtra): ExtraDraft {
             price: String(v.price),
             isActive: v.isActive,
             sort: v.sort,
-            initialQty: "",
             vialId: v.vialId ?? undefined,
           })),
     leftover: extra.leftover
@@ -141,11 +137,6 @@ export function toSavePayload(d: ExtraDraft): ExtraSaveInput {
           price: num(v.price),
           isActive: v.isActive,
           sort: i,
-          initialQty: v.id
-            ? undefined
-            : String(v.initialQty).trim() === ""
-              ? 0
-              : num(v.initialQty),
         })),
       };
     case "shared_vial":

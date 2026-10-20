@@ -45,6 +45,22 @@ export function extrasErrorMessage(raw: string | undefined): string | null {
   if (raw.includes("extra_variants_vial_uq") || raw.includes("VIAL_DUPLICATE"))
     return "Нэг савыг хоёр удаа сонгосон байна.";
   if (raw.includes("CATEGORY_NOT_FOUND")) return "Ангилал олдсонгүй.";
+  if (raw.includes("EXTRA_MODE_REQUIRED") || raw.includes("EXTRA_MODE_INVALID"))
+    return "Барааны төрлөө (үлдэгдэлтэй эсвэл бүтэн шил) сонгоно уу.";
+  if (raw.includes("VIAL_NOT_SELLABLE"))
+    return "1ml, 2ml савыг дангаар зарахгүй — зөвхөн 5, 10, 20ml.";
+  if (raw.includes("INITIAL_STOCK_REQUIRES_PURCHASE"))
+    return "Тоог хадгалсны дараа «Нөөц нөхөх»-өөр авсан үнийн хамт оруулна уу.";
+  if (raw.includes("PURCHASE_DATE_FUTURE"))
+    return "Авсан өдөр ирээдүйд байж болохгүй.";
+  if (raw.includes("PURCHASE_DATE_CLOSED"))
+    return "Өнгөрсөн сарын тайлан хаагдсан тул энэ сарын өдөр оруулна уу.";
+  if (raw.includes("PURCHASE_QTY_INVALID"))
+    return "Ширхгийг 1-ээс 100,000 хооронд оруулна уу.";
+  if (raw.includes("PURCHASE_COST_INVALID"))
+    return "Нэгж авсан үнийг 0-ээс 10,000,000₮ хооронд оруулна уу.";
+  if (raw.includes("STOCK_NOT_COUNTED"))
+    return "Эхлээд савны эхний тооллогыг оруулна уу.";
   if (raw.includes("NOT_FOUND")) return "Бараа олдсонгүй. Хуудсаа сэргээнэ үү.";
   return null;
 }

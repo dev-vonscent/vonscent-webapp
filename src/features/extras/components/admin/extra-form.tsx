@@ -14,7 +14,12 @@ import {
   extraSaveSchema,
   EXTRA_DESCRIPTION_MAX,
 } from "@/lib/validators/extras";
-import type { AdminExtra, ExtraCategory, VialOption } from "../../types";
+import type {
+  AdminExtra,
+  ExtraCategory,
+  ExtraMode,
+  VialOption,
+} from "../../types";
 import { draftMissing } from "../../lib/readiness";
 import { ExtraCard } from "../extra-card";
 import {
@@ -84,18 +89,22 @@ function previewOf(d: ExtraDraft, category: ExtraCategory) {
  */
 export function ExtraForm({
   category,
+  mode,
   extra,
   vials,
 }: {
   category: ExtraCategory;
+  /** Шинэ барааны горим — «Шилтэй ус»-д ангиллаас биш сонголтоос. */
+  mode?: ExtraMode;
   /** null = шинэ бараа. */
   extra: AdminExtra | null;
   vials: VialOption[];
 }) {
   const router = useRouter();
   const initial = React.useMemo(
-    () => (extra ? draftOf(extra) : emptyDraft(category.mode)),
-    [extra, category.mode],
+    () =>
+      extra ? draftOf(extra) : emptyDraft(mode ?? category.modes[0]!.mode),
+    [extra, mode, category.modes],
   );
   const [draft, setDraft] = React.useState<ExtraDraft>(initial);
   const [errors, setErrors] = React.useState<Record<string, string>>({});

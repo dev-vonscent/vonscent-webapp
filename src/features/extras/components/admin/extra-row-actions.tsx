@@ -67,15 +67,11 @@ export function ExtraRowActions({
   async function duplicate() {
     setBusy(true);
     const draft = draftOf(extra);
-    // Хуулбар нь ноорог, тоогүй — нөөцийг шинэ хувилбарт тусад нь оруулна.
+    // Хуулбар нь ноорог, тоогүй — нөөцийг «Нөөц нөхөх»-өөр тусад нь оруулна.
     const payload = toSavePayload({
       ...draft,
       name: `${draft.name} (хуулбар)`,
-      variants: draft.variants.map((v) => ({
-        ...v,
-        id: undefined,
-        initialQty: 0,
-      })),
+      variants: draft.variants.map((v) => ({ ...v, id: undefined })),
     });
     const res = await adminFetch<{ id: string }>("/api/admin/extras", {
       method: "POST",

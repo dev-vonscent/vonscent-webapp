@@ -10,15 +10,18 @@ describe("toSavePayload + extraSaveSchema", () => {
     expect(parsed.success).toBe(false);
   });
 
-  it("энгийн бараа: анхны тоо хоосон бол 0", () => {
+  it("энгийн бараа: тоо маягтаар орохгүй (нөөц нөхөх — 0153)", () => {
     const d = emptyDraft("local_quantity");
     d.name = "Шприц";
     d.variants[0].price = "3,500";
     const out = toSavePayload(d);
     expect(out).toMatchObject({
       mode: "local_quantity",
-      variants: [{ price: 3500, initialQty: 0 }],
+      variants: [{ price: 3500 }],
     });
+    expect(out.mode === "local_quantity" && out.variants[0]).not.toHaveProperty(
+      "initialQty",
+    );
     expect(extraSaveSchema.safeParse(out).success).toBe(true);
   });
 
@@ -45,7 +48,6 @@ describe("toSavePayload + extraSaveSchema", () => {
         price: "2000",
         isActive: true,
         sort: 0,
-        initialQty: "",
       },
       {
         key: "b",
@@ -54,7 +56,6 @@ describe("toSavePayload + extraSaveSchema", () => {
         price: "2000",
         isActive: true,
         sort: 1,
-        initialQty: "",
       },
     ];
     expect(extraSaveSchema.safeParse(toSavePayload(d)).success).toBe(false);

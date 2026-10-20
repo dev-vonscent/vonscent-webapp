@@ -7,7 +7,10 @@ import {
   getExtraCategories,
   getVialOptions,
 } from "@/features/extras/admin-api";
-import { ExtraCategoryTiles } from "@/features/extras/components/admin/extra-category-tiles";
+import {
+  ExtraCategoryTiles,
+  MODE_TITLE,
+} from "@/features/extras/components/admin/extra-category-tiles";
 import { ExtraForm } from "@/features/extras/components/admin/extra-form";
 
 export const dynamic = "force-dynamic";
@@ -15,23 +18,28 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Нэмэлт бараа нэмэх" };
 
 /**
- * Шинэ нэмэлт бараа: эхлээд 6 ангиллын tile (`?cat=` сонгогдоогүй үед),
- * дараа нь тухайн ангиллын горимын маягт (plan §7.2).
+ * Шинэ нэмэлт бараа: эхлээд ангиллын tile (`?cat=` сонгогдоогүй үед),
+ * дараа нь тухайн ангилал+горимын маягт (plan §7.2). Олон горимтой
+ * ангилалд («Шилтэй ус») горим `?mode=`-оор заавал.
  */
 export default async function NewExtraPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cat?: string }>;
+  searchParams: Promise<{ cat?: string; mode?: string }>;
 }) {
   if (!(await isFeatureEnabled("extras_shop"))) notFound();
-  const { cat } = await searchParams;
+  const { cat, mode: modeParam } = await searchParams;
   const [categories, vialsOn] = await Promise.all([
     getExtraCategories(),
     isFeatureEnabled("vial_inventory"),
   ]);
   const category = categories.find((c) => c.slug === cat);
+  const mode =
+    category?.modes.length === 1
+      ? category.modes[0]!.mode
+      : category?.modes.find((m) => m.mode === modeParam)?.mode;
   // Грамын сав нь савны тоон нөөцтэй л утгатай (plan §7.2).
-  const blocked = category?.mode === "shared_vial" && !vialsOn;
+  const blocked = mode === "shared_vial" && !vialsOn;
 
   return (
     <div className="space-y-6">
@@ -41,7 +49,7 @@ export default async function NewExtraPage({
       >
         <ArrowLeft className="size-4" /> Нэмэлт бараа
       </Link>
-      {!category || blocked ? (
+      {!category || !mode || blocked ? (
         <>
           <PageHeader
             title="Ямар бараа нэмэх вэ?"
@@ -51,13 +59,14 @@ export default async function NewExtraPage({
         </>
       ) : (
         <>
-          <PageHeader title={`${category.name} нэмэх`} />
+          <PageHeader
+            title={`${category.modes.length > 1 ? MODE_TITLE[mode] : category.name} нэмэх`}
+          />
           <ExtraForm
             category={category}
+            mode={mode}
             extra={null}
-            vials={
-              category.mode === "shared_vial" ? await getVialOptions() : []
-            }
+            vials={mode === "shared_vial" ? await getVialOptions() : []}
           />
         </>
       )}

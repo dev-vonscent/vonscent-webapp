@@ -59,6 +59,8 @@ export function savePayload(
     description: input.description,
     images: input.images,
     sort: input.sort,
+    // «Шилтэй ус» хоёр горимтой — SQL ангиллын зөвшөөрсөн горимтой тулгана.
+    inventory_mode: input.mode,
   };
   switch (input.mode) {
     case "local_quantity":
@@ -71,7 +73,10 @@ export function savePayload(
           price: v.price,
           is_active: v.isActive,
           sort: v.sort,
-          initial_qty: v.id ? null : (v.initialQty ?? 0),
+          // Ирээгүй (undefined) талбарыг SQL хөндөхгүй — JSON-д орохгүй.
+          batch_code: v.batchCode,
+          image_url: v.imageUrl,
+          size_note: v.sizeNote,
         })),
       };
     case "shared_vial":

@@ -3,7 +3,7 @@ import { getShopExtras } from "@/features/extras/api";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 
 /**
- * Сагсны «Захиалгаа гүйцээх» — бэлгийн хайрцаг, брэндийн уут (зарагдаж
+ * Сагсны «Захиалгаа гүйцээх» — гоёмсог бэлгийн сав (хайрцаг, уут; зарагдаж
  * буй). Туг хаалттай бол 404.
  */
 export async function GET() {
@@ -13,8 +13,8 @@ export async function GET() {
   const items = (await getShopExtras())
     .filter(
       (e) =>
-        !e.soldOut &&
-        (e.categorySlug === "gift-box" || e.categorySlug === "brand-pouch"),
+        // «Брэндийн уут» нь «Гоёмсог бэлгийн сав»-д нэгдсэн (0153).
+        !e.soldOut && e.categorySlug === "gift-box",
     )
     .slice(0, 8);
   return NextResponse.json(

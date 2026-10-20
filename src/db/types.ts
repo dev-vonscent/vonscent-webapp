@@ -244,6 +244,8 @@ export interface OrderRow {
   lifecycle_cycle: number;
   /** Захиалах мөчид хасагдсан бэлэг (0146). */
   omitted_gifts: OmittedGift[] | null;
+  /** Хэрэглэсэн барааны нөхцөлийг зөвшөөрсөн цаг (0153). */
+  used_goods_consent_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -617,7 +619,7 @@ export interface PerfumeRequestVoteRow {
 /** Савны өнгө — `BOTTLE_STYLES` (constants) ба SQL check-тэй ижил. */
 export type VialStyle = "black" | "pink" | "silver";
 
-/** Нөөцийн горим: ангиллаас бараа, хувилбар руу composite FK-аар буудаг. */
+/** Нөөцийн горим: ангилал+горим (0153) → бараа → хувилбар composite FK-аар. */
 export type ExtraInventoryMode =
   | "local_quantity"
   | "shared_vial"
@@ -629,16 +631,23 @@ export interface ExtraCategoryRow {
   id: string;
   slug: string;
   name: string;
-  inventory_mode: ExtraInventoryMode;
   image_url: string | null;
   sort: number;
   is_active: boolean;
 }
 
+/** Ангилалд зөвшөөрөгдсөн горим (0153) — анхааруулга, зөвшөөрөл горим тус бүрт. */
+export interface ExtraCategoryModeRow {
+  category_id: string;
+  inventory_mode: ExtraInventoryMode;
+  notice: string;
+  requires_consent: boolean;
+}
+
 export interface ExtraProductRow {
   id: string;
   category_id: string;
-  /** Ангиллаас trigger хуулна — insert-д өгөх шаардлагагүй. */
+  /** Ганц горимтой ангилалд trigger сонгоно; «Шилтэй ус»-д заавал (0153). */
   inventory_mode: ExtraInventoryMode;
   slug: string;
   name: string;
@@ -670,10 +679,17 @@ export interface ExtraVariantRow {
   is_active: boolean;
   sort: number;
   updated_at: string;
+  /** Хоосон/бүтэн шилний batch code (0153). */
+  batch_code: string | null;
+  image_url: string | null;
+  /** Чөлөөт хэмжээ/тохирох тайлбар (0153). */
+  size_note: string | null;
 }
 
 export type StockMovementKind =
   | "set"
+  | "purchase"
+  | "adjust"
   | "reserve"
   | "release"
   | "commit"
@@ -690,6 +706,10 @@ export interface ExtraMovementRow {
   note: string;
   actor: string | null;
   created_at: string;
+  /** `purchase`-д л (0153): нэгж үнэ, нийт = delta × нэгж, авсан өдөр (УБ). */
+  unit_cost: number | null;
+  cost: number | null;
+  purchased_on: string | null;
 }
 
 export interface VialRow {
@@ -718,6 +738,10 @@ export interface VialMovementRow {
   note: string;
   actor: string | null;
   created_at: string;
+  /** `purchase`-д л (0153): нэгж үнэ, нийт = delta × нэгж, авсан өдөр (УБ). */
+  unit_cost: number | null;
+  cost: number | null;
+  purchased_on: string | null;
 }
 
 export type LeftoverLockState = "listed" | "reserved" | "committed" | "released";
@@ -772,6 +796,7 @@ export interface Database {
         | "updated_at"
         | "lifecycle_cycle"
         | "omitted_gifts"
+        | "used_goods_consent_at"
       >;
       order_items: Table<OrderItemRow, "id">;
       order_refund_accounts: Table<OrderRefundAccountRow, "created_at">;
@@ -821,6 +846,10 @@ export interface Database {
         ExtraCategoryRow,
         "id" | "image_url" | "sort" | "is_active"
       >;
+      extra_category_modes: Table<
+        ExtraCategoryModeRow,
+        "notice" | "requires_consent"
+      >;
       extra_products: Table<
         ExtraProductRow,
         | "id"
@@ -847,10 +876,19 @@ export interface Database {
         | "is_active"
         | "sort"
         | "updated_at"
+        | "batch_code"
+        | "image_url"
+        | "size_note"
       >;
-      extra_movements: Table<ExtraMovementRow, "id" | "created_at">;
+      extra_movements: Table<
+        ExtraMovementRow,
+        "id" | "created_at" | "unit_cost" | "cost" | "purchased_on"
+      >;
       vials: Table<VialRow, "id" | "updated_at">;
-      vial_movements: Table<VialMovementRow, "id" | "created_at">;
+      vial_movements: Table<
+        VialMovementRow,
+        "id" | "created_at" | "unit_cost" | "cost" | "purchased_on"
+      >;
       leftover_liquid_locks: Table<LeftoverLiquidLockRow, "updated_at">;
     };
     Views: Record<string, never>;

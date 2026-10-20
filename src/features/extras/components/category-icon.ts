@@ -3,19 +3,17 @@ import {
   FlaskConical,
   Gift,
   Package,
-  ShoppingBag,
   Syringe,
   type LucideIcon,
 } from "lucide-react";
 
-/** Ангиллын дүрс — seed-ийн slug-аар (0145); шинэ ангилалд Package. */
+/** Ангиллын дүрс — seed-ийн slug-аар (0145, 0153); шинэ ангилалд Package. */
 const ICON: Record<string, LucideIcon> = {
   "gift-box": Gift,
   vial: FlaskConical,
-  leftover: Droplet,
+  bottled: Droplet,
   "empty-bottle": Package,
   syringe: Syringe,
-  "brand-pouch": ShoppingBag,
 };
 
 export function categoryIcon(slug: string): LucideIcon {

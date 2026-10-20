@@ -15,8 +15,10 @@ export const EXTRA_IMAGES_MAX = 12;
 export const EXTRA_NAME_MAX = 120;
 export const EXTRA_LABEL_MAX = 60;
 export const EXTRA_DESCRIPTION_MAX = 4000;
-/** Анхны тоо, «Одоо байгаа тоо» — гараар бичихэд санамсаргүй 0 нэмэхээс. */
+/** «Одоо байгаа тоо», нөөц нөхөх ширхэг — санамсаргүй 0 нэмэхээс (0153-тай ижил). */
 export const EXTRA_STOCK_MAX = 100_000;
+export const EXTRA_BATCH_CODE_MAX = 60;
+export const EXTRA_SIZE_NOTE_MAX = 300;
 
 const price = z
   .number({ invalid_type_error: "Үнэ оруулна уу" })
@@ -44,8 +46,12 @@ export const localVariantSchema = z.object({
   price,
   isActive: z.boolean().default(true),
   sort: z.number().int().default(0),
-  /** Зөвхөн шинэ хувилбарт — дараа нь «Нөөц засах»-аар. */
-  initialQty: z.number().int().min(0).max(EXTRA_STOCK_MAX).optional(),
+  // Нөөц маягтаар орохгүй — хадгалсны дараа «Нөөц нөхөх»-өөр (purchase, 0153).
+  /** Хоосон/бүтэн шилний batch code. */
+  batchCode: z.string().trim().max(EXTRA_BATCH_CODE_MAX).optional(),
+  imageUrl: z.string().url().or(z.literal("")).optional(),
+  /** Чөлөөт хэмжээ/тохирох тайлбар — бэлгийн сав г.м. */
+  sizeNote: z.string().trim().max(EXTRA_SIZE_NOTE_MAX).optional(),
 });
 
 export const vialVariantSchema = z.object({

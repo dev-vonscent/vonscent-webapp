@@ -6,16 +6,27 @@ import type {
 } from "@/db/types";
 
 /**
- * Нэмэлт бараа (extras-shop-plan §4). Нөөцийн горим нь ангиллаас ирж, UI,
- * checkout, нөөцийн код бүгд үүгээр салбарлана — ангиллын slug-аар биш.
+ * Нэмэлт бараа (extras-shop-plan §4, §18). Нөөцийн горим нь барааны
+ * ангилал+горимоос ирж, UI, checkout, нөөцийн код бүгд үүгээр салбарлана —
+ * ангиллын slug-аар биш.
  */
 export type ExtraMode = ExtraInventoryMode;
+
+/** Ангилалд зөвшөөрөгдсөн горим (0153). */
+export interface ExtraCategoryMode {
+  mode: ExtraMode;
+  /** Барааны хуудсанд «Сагсанд нэмэх»-ийн дээр гарах анхааруулга. */
+  notice: string;
+  /** Checkout дээр хэрэглэсэн барааны зөвшөөрөл заавал. */
+  requiresConsent: boolean;
+}
 
 export interface ExtraCategory {
   id: string;
   slug: string;
   name: string;
-  mode: ExtraMode;
+  /** Ихэнх ангилал нэг горимтой; «Шилтэй ус» хоёр (үлдэгдэлтэй, бүтэн шил). */
+  modes: ExtraCategoryMode[];
   imageUrl: string | null;
   sort: number;
 }

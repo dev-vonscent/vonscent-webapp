@@ -36,7 +36,6 @@ describe("draftMissing", () => {
         price: "2000",
         isActive: true,
         sort: 0,
-        initialQty: "",
       },
     ];
     expect(draftMissing(d, [vial])).toEqual([]);

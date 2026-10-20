@@ -14,9 +14,9 @@ import { ExtraStockDialog } from "./extra-stock-dialog";
 /**
  * Энгийн барааны хувилбар: «Нэр · Үнэ (₮) · Одоо байгаа тоо» (plan §7.2).
  *
- * Шинэ мөрөнд анхны тоо бичнэ. Хадгалсан мөрийн тоог зөвхөн «Нөөц засах»
- * цонхоор (зөрчил шалгалттай) — маягтын хадгалалт тоог хэзээ ч дарж
- * бичихгүй. Хадгалсан хувилбар устахгүй, идэвхгүй болно (захиалгын түүх
+ * Шинэ мөр 0 тоотой үүснэ — нөөц зөвхөн худалдан авалтаар (үнэ, огноотой)
+ * орж тайланд зарлага болно (0153). Хадгалсан мөрийн тоог зөвхөн цонхоор
+ * (зөрчил шалгалттай) — маягтын хадгалалт тоог хэзээ ч дарж бичихгүй. Хадгалсан хувилбар устахгүй, идэвхгүй болно (захиалгын түүх
  * түүнийг заадаг).
  */
 export function ExtraLocalVariants({
@@ -107,18 +107,9 @@ export function ExtraLocalVariants({
                   </div>
                 </div>
               ) : (
-                <div className="space-y-1.5">
-                  <Label htmlFor={`${v.key}-qty`}>Одоо байгаа тоо</Label>
-                  <Input
-                    id={`${v.key}-qty`}
-                    inputMode="numeric"
-                    autoComplete="off"
-                    value={String(v.initialQty)}
-                    placeholder="0"
-                    className="tabular-nums"
-                    onChange={(e) => update(i, { initialQty: e.target.value })}
-                  />
-                </div>
+                <p className="text-muted-foreground text-xs sm:pb-2.5">
+                  Хадгалсны дараа «Нөөц нөхөх»-өөр тоо, авсан үнээ оруулна.
+                </p>
               )}
               <div className="flex items-center justify-between gap-2 sm:justify-end">
                 {v.id ? (
@@ -160,7 +151,6 @@ export function ExtraLocalVariants({
               price: "",
               isActive: true,
               sort: variants.length,
-              initialQty: "",
             },
           ])
         }
