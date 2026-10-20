@@ -21,7 +21,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, ImagePlus, X } from "lucide-react";
+import { GripVertical, ImagePlus, Trash2 } from "lucide-react";
 import { IMAGE_ACCEPT } from "@/lib/storage/limits";
 import { prepareUpload } from "@/lib/storage/prepare-upload";
 import { uploadErrorMessage, xhrUpload } from "@/lib/storage/upload-progress";
@@ -240,7 +240,9 @@ function SortableImage({
           type="button"
           {...attributes}
           aria-label={`${index + 1}-р зураг — чирж байрлал солих (Space дараад сумаар зөөнө)`}
-          className="bg-background/85 text-muted-foreground hover:text-foreground absolute top-1 left-1 flex size-8 items-center justify-center rounded-md"
+          // Үнэртний галерейтай ижил (product-images.tsx): hover-т гарна,
+          // утсан дээр (hover байхгүй) үргэлж.
+          className="on-image text-muted-foreground absolute top-1.5 left-1.5 rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100"
         >
           <GripVertical className="size-4" />
         </button>
@@ -253,10 +255,10 @@ function SortableImage({
         onMouseDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
-        className="bg-background/85 text-muted-foreground hover:text-destructive absolute top-1 right-1 flex size-8 items-center justify-center rounded-md"
-        aria-label={`${index + 1}-р зургийг хасах`}
+        className="on-image text-muted-foreground hover:text-destructive absolute top-1.5 right-1.5 rounded-md p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100"
+        aria-label={`${index + 1}-р зургийг устгах`}
       >
-        <X className="size-4" />
+        <Trash2 className="size-4" />
       </button>
     </li>
   );
