@@ -13,7 +13,10 @@ import {
 } from "@/components/ui/breadcrumb";
 import { DeliveryReturnsText } from "@/components/shared/delivery-returns-text";
 import { JsonLd, breadcrumbJsonLd } from "@/components/shared/json-ld";
-import { ProductGallery } from "@/features/products/components/product-gallery";
+import {
+  ExtraGallery,
+  VariantImageProvider,
+} from "@/features/extras/components/variant-image";
 import { getShopExtra, getShopExtras } from "@/features/extras/api";
 import { ExtraCard } from "@/features/extras/components/extra-card";
 import { ExtraPurchase } from "@/features/extras/components/extra-purchase";
@@ -126,110 +129,116 @@ export default async function ExtraPage({
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="grid grid-cols-1 gap-0 sm:gap-10 lg:grid-cols-2 lg:items-start">
-        <div className="lg:sticky lg:top-(--header-offset) lg:self-start lg:transition-[top] lg:duration-300 lg:ease-out">
-          {extra.images.length > 0 ? (
-            <ProductGallery
-              images={extra.images.map((url) => ({ url, alt: card.name }))}
-              name={card.name}
-            />
-          ) : (
-            // Зураггүй бараа — desktop-д хоосон хар баганын оронд дүрс. Утсан
-            // дээр нуугдана: агуулгыг дэлгэцээс доош түлхэхгүй.
-            <div className="bg-secondary hidden aspect-square items-center justify-center rounded-2xl lg:flex">
-              <Package className="text-muted-foreground size-10" aria-hidden />
-            </div>
-          )}
-        </div>
+      {/* Хувилбар сонгоход галерей тэр хувилбарын зураг руу (бэлгийн сав). */}
+      <VariantImageProvider>
+        <div className="grid grid-cols-1 gap-0 sm:gap-10 lg:grid-cols-2 lg:items-start">
+          <div className="lg:sticky lg:top-(--header-offset) lg:self-start lg:transition-[top] lg:duration-300 lg:ease-out">
+            {extra.images.length > 0 ? (
+              <ExtraGallery
+                images={extra.images.map((url) => ({ url, alt: card.name }))}
+                name={card.name}
+              />
+            ) : (
+              // Зураггүй бараа — desktop-д хоосон хар баганын оронд дүрс. Утсан
+              // дээр нуугдана: агуулгыг дэлгэцээс доош түлхэхгүй.
+              <div className="bg-secondary hidden aspect-square items-center justify-center rounded-2xl lg:flex">
+                <Package
+                  className="text-muted-foreground size-10"
+                  aria-hidden
+                />
+              </div>
+            )}
+          </div>
 
-        <div className="bg-background relative z-10 -mx-4 -mt-8 space-y-10 rounded-t-4xl px-4 pt-8 sm:mx-0 sm:mt-0 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-muted-foreground text-sm tracking-wide uppercase">
-                  {leftover ? leftover.brand : card.categoryName}
-                </span>
-                {leftover && !card.soldOut && (
-                  <Badge variant="gold">Ганц ширхэг</Badge>
+          <div className="bg-background relative z-10 -mx-4 -mt-8 space-y-10 rounded-t-4xl px-4 pt-8 sm:mx-0 sm:mt-0 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-muted-foreground text-sm tracking-wide uppercase">
+                    {leftover ? leftover.brand : card.categoryName}
+                  </span>
+                  {leftover && !card.soldOut && (
+                    <Badge variant="gold">Ганц ширхэг</Badge>
+                  )}
+                </div>
+                <h1 className="font-serif text-3xl font-semibold tracking-tight">
+                  {card.name}
+                </h1>
+                {leftover && (
+                  <p className="text-muted-foreground text-sm tabular-nums">
+                    ≈{leftover.remainingMl} / {leftover.fullMl}ml
+                    {perMl != null && ` · 1ml ≈ ${formatPrice(perMl)}`}
+                  </p>
+                )}
+                {size && (
+                  <p className="text-muted-foreground text-sm tabular-nums">
+                    Хэмжээ: {size}
+                  </p>
                 )}
               </div>
-              <h1 className="font-serif text-3xl font-semibold tracking-tight">
-                {card.name}
-              </h1>
-              {leftover && (
-                <p className="text-muted-foreground text-sm tabular-nums">
-                  ≈{leftover.remainingMl} / {leftover.fullMl}ml
-                  {perMl != null && ` · 1ml ≈ ${formatPrice(perMl)}`}
+
+              <ExtraPurchase extra={extra} />
+
+              {leftover && !card.soldOut && (
+                <p className="bg-secondary rounded-lg px-4 py-3 text-sm">
+                  Энэ бол декант цутгадаг эх шил өөрөө. Ганц ширхэг тул
+                  захиалсан даруй хаагдана.
                 </p>
               )}
-              {size && (
-                <p className="text-muted-foreground text-sm tabular-nums">
-                  Хэмжээ: {size}
-                </p>
+              {perfume?.slug && (
+                <Link
+                  href={`/products/${perfume.slug}`}
+                  className="text-sm underline-offset-4 hover:underline"
+                >
+                  {perfume.brand} {perfume.name} — декантаар авах
+                </Link>
               )}
             </div>
 
-            <ExtraPurchase extra={extra} />
-
-            {leftover && !card.soldOut && (
-              <p className="bg-secondary rounded-lg px-4 py-3 text-sm">
-                Энэ бол декант цутгадаг эх шил өөрөө. Ганц ширхэг тул захиалсан
-                даруй хаагдана.
-              </p>
-            )}
-            {perfume?.slug && (
-              <Link
-                href={`/products/${perfume.slug}`}
-                className="text-sm underline-offset-4 hover:underline"
-              >
-                {perfume.brand} {perfume.name} — декантаар авах
-              </Link>
-            )}
-          </div>
-
-          {scent?.hasNotes && perfume && (
-            <div>
-              <h2 className="mb-4 font-serif text-xl font-semibold">
-                Үнэрийн нот
-              </h2>
-              <div className="bg-secondary grid grid-cols-1 gap-3 rounded-lg p-5 sm:grid-cols-3 sm:gap-4">
-                <NoteColumn title="Дээд" notes={perfume.notesTop} />
-                <NoteColumn title="Зүрх" notes={perfume.notesHeart} />
-                <NoteColumn title="Суурь" notes={perfume.notesBase} />
+            {scent?.hasNotes && perfume && (
+              <div>
+                <h2 className="mb-4 font-serif text-xl font-semibold">
+                  Үнэрийн нот
+                </h2>
+                <div className="bg-secondary grid grid-cols-1 gap-3 rounded-lg p-5 sm:grid-cols-3 sm:gap-4">
+                  <NoteColumn title="Дээд" notes={perfume.notesTop} />
+                  <NoteColumn title="Зүрх" notes={perfume.notesHeart} />
+                  <NoteColumn title="Суурь" notes={perfume.notesBase} />
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {scent?.description && (
+            {scent?.description && (
+              <div>
+                <h2 className="mb-3 font-serif text-xl font-semibold">
+                  Үнэртний тухай
+                </h2>
+                <p className="text-muted-foreground text-sm/relaxed whitespace-pre-line">
+                  {scent.description}
+                </p>
+              </div>
+            )}
+
+            {extra.description && (
+              <div>
+                <h2 className="mb-3 font-serif text-xl font-semibold">
+                  {kind ? "Шилний тухай" : "Тайлбар"}
+                </h2>
+                <p className="text-muted-foreground text-sm/relaxed whitespace-pre-line">
+                  {extra.description}
+                </p>
+              </div>
+            )}
+
             <div>
-              <h2 className="mb-3 font-serif text-xl font-semibold">
-                Үнэртний тухай
-              </h2>
-              <p className="text-muted-foreground text-sm/relaxed whitespace-pre-line">
-                {scent.description}
+              <h2 className="mb-3 font-serif text-xl font-semibold">Хүргэлт</h2>
+              <p className="text-muted-foreground text-sm/relaxed">
+                <DeliveryReturnsText />
               </p>
             </div>
-          )}
-
-          {extra.description && (
-            <div>
-              <h2 className="mb-3 font-serif text-xl font-semibold">
-                {kind ? "Шилний тухай" : "Тайлбар"}
-              </h2>
-              <p className="text-muted-foreground text-sm/relaxed whitespace-pre-line">
-                {extra.description}
-              </p>
-            </div>
-          )}
-
-          <div>
-            <h2 className="mb-3 font-serif text-xl font-semibold">Хүргэлт</h2>
-            <p className="text-muted-foreground text-sm/relaxed">
-              <DeliveryReturnsText />
-            </p>
           </div>
         </div>
-      </div>
+      </VariantImageProvider>
 
       {together.length > 0 && (
         <section aria-labelledby="extras-together" className="mt-16 space-y-4">

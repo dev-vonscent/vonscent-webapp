@@ -62,10 +62,21 @@ export function ExtraLocalVariants({
   const nameLabel = kind === "batch" ? "Batch code" : "Нэр";
   // Десктопд нэг толгой мөр, мөр бүрт шошгогүй; утсан дээр мөр бүр карт,
   // шошго талбар бүрийн дээр (sm:sr-only).
-  const cols = "sm:grid-cols-[minmax(0,1fr)_8rem_14.5rem_4rem]";
+  // Бэлгийн сав: хувилбар бүр өөрийн зурагтай — мөрийн эхэнд, хоёр мөр
+  // (нэр + хэмжээ) эзэлсэн жижиг tile.
+  const gift = kind === "gift";
+  const cols = gift
+    ? "sm:grid-cols-[5rem_minmax(0,1fr)_8rem_14.5rem_4rem]"
+    : "sm:grid-cols-[minmax(0,1fr)_8rem_14.5rem_4rem]";
 
   return (
     <div className="space-y-3">
+      {gift && (
+        <p className="text-muted-foreground text-xs">
+          Хувилбарын зураг — тухайн хэмжээний савны зураг. Хэрэглэгч сонгоход
+          галерей энэ зураг руу шилжинэ. Заавал биш.
+        </p>
+      )}
       <div className="border-border overflow-hidden rounded-lg sm:border">
         <div
           aria-hidden
@@ -74,6 +85,7 @@ export function ExtraLocalVariants({
             cols,
           )}
         >
+          {gift && <span>Зураг</span>}
           <span>{nameLabel}</span>
           <span>Зарах үнэ (₮)</span>
           <span>Үлдэгдэл</span>
@@ -88,11 +100,29 @@ export function ExtraLocalVariants({
               <li
                 key={v.key}
                 className={cn(
-                  "border-border grid grid-cols-[minmax(0,1fr)_7rem] gap-3 rounded-lg border p-3 sm:items-start sm:rounded-none sm:border-0",
+                  "border-border grid gap-3 rounded-lg border p-3 sm:items-start sm:rounded-none sm:border-0",
+                  // Бэлгийн сав утсан дээр: зураг зүүн талд, нэр/үнэ/хэмжээ
+                  // баруун талд. `dense` — хэмжээ зургийн хажуугийн хоосон
+                  // 2-р мөрийг дүүргэнэ.
+                  gift
+                    ? "grid-flow-dense grid-cols-[4.5rem_minmax(0,1fr)_6rem]"
+                    : "grid-cols-[minmax(0,1fr)_7rem]",
                   cols,
                   !v.isActive && "opacity-60",
                 )}
               >
+                {gift && (
+                  <div className="row-span-2">
+                    <span className="sr-only">Хувилбарын зураг</span>
+                    <ExtraImagesField
+                      max={1}
+                      value={v.imageUrl ? [v.imageUrl] : []}
+                      onChange={(urls) =>
+                        update(i, { imageUrl: urls[0] ?? "" })
+                      }
+                    />
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   <Label htmlFor={`${v.key}-label`} className="sm:sr-only">
                     {nameLabel}
@@ -142,7 +172,12 @@ export function ExtraLocalVariants({
                     <p className="text-destructive text-xs">{priceErr}</p>
                   )}
                 </div>
-                <div className="col-span-2 space-y-1.5 sm:col-span-1">
+                <div
+                  className={cn(
+                    "space-y-1.5 sm:col-span-1",
+                    gift ? "col-span-3" : "col-span-2",
+                  )}
+                >
                   <span className="text-sm font-medium sm:sr-only">
                     Үлдэгдэл
                   </span>
@@ -173,7 +208,12 @@ export function ExtraLocalVariants({
                     </p>
                   )}
                 </div>
-                <div className="col-span-2 flex min-h-10 items-center sm:col-span-1 sm:justify-center">
+                <div
+                  className={cn(
+                    "flex min-h-10 items-center sm:col-span-1 sm:justify-center",
+                    gift ? "col-span-3" : "col-span-2",
+                  )}
+                >
                   {v.id ? (
                     <label className="flex min-h-11 items-center gap-2 text-sm">
                       <Checkbox
@@ -200,6 +240,21 @@ export function ExtraLocalVariants({
                     </Button>
                   )}
                 </div>
+                {gift && (
+                  // Нэр, үнийн доор — зургийн хажууд.
+                  <div className="col-span-2 col-start-2 space-y-1.5 sm:col-span-3">
+                    <Label htmlFor={`${v.key}-size`} className="text-xs">
+                      Хэмжээ, тохирох сав
+                    </Label>
+                    <Input
+                      id={`${v.key}-size`}
+                      value={v.sizeNote}
+                      maxLength={300}
+                      placeholder="Ж: 8×5×4см · 10ml-ийн 2 сав багтана"
+                      onChange={(e) => update(i, { sizeNote: e.target.value })}
+                    />
+                  </div>
+                )}
                 {!v.id && (
                   <InitialStock
                     v={v}
@@ -208,34 +263,6 @@ export function ExtraLocalVariants({
                     prefix={`variants.${i}.initialPurchase`}
                     onChange={(p) => update(i, p)}
                   />
-                )}
-                {kind === "gift" && (
-                  <div className="col-span-full grid grid-cols-[minmax(0,1fr)_5rem] gap-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor={`${v.key}-size`}>
-                        Хэмжээ, тохирох сав
-                      </Label>
-                      <Input
-                        id={`${v.key}-size`}
-                        value={v.sizeNote}
-                        maxLength={300}
-                        placeholder="Ж: 8×5×4см · 10ml-ийн 2 сав багтана"
-                        onChange={(e) =>
-                          update(i, { sizeNote: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <span className="text-sm font-medium">Зураг</span>
-                      <ExtraImagesField
-                        max={1}
-                        value={v.imageUrl ? [v.imageUrl] : []}
-                        onChange={(urls) =>
-                          update(i, { imageUrl: urls[0] ?? "" })
-                        }
-                      />
-                    </div>
-                  </div>
                 )}
               </li>
             );

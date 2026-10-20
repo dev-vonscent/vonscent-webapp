@@ -14,6 +14,7 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { VIAL_STYLE_SHORT } from "@/lib/vials";
 import type { ShopExtraDetail, ShopExtraVariant } from "../types";
+import { useShowVariantImage } from "./variant-image";
 
 /** Нэг мөрийн дээд тоо — захиалгын validator-тэй ижил (qty ≤ 99). */
 const QTY_MAX = 99;
@@ -45,9 +46,12 @@ export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
   const ctaAway = useScrolledPast(ctaRef);
 
   const selected = variants.find((v) => v.id === variantId) ?? null;
+  const showImage = useShowVariantImage();
   const select = (id: string) => {
     setVariantId(id);
     setQty(1);
+    // Өөрийн зурагтай хувилбар (бэлгийн сав) — галерей тэр зураг руу.
+    showImage(variants.find((v) => v.id === id)?.imageUrl ?? null);
   };
   const available = selected?.available ?? null;
   // Сагсанд аль хэдийн байгааг хасаад нэмж авч болох тоо.

@@ -23,9 +23,15 @@ export function ProductGallery({
   images,
   name,
   bleed = true,
+  focus = null,
 }: {
   images: ProductImage[];
   name: string;
+  /**
+   * Энэ зураг руу гүйлгэнэ (нэмэлт барааны хувилбар сонгоход). `n` өөрчлөгдөх
+   * бүрд — ижил зургийг дахин хүссэн ч.
+   */
+  focus?: { url: string; n: number } | null;
   /**
    * Утсан дээр толгойн доогуур бүтэн өргөнөөр (барааны хуудас). `false` нь
    * бүх дэлгэцэнд хүрээтэй — багцын хуудас шиг доороос нь самбар гулсдаггүй
@@ -73,6 +79,19 @@ export function ProductGallery({
     else stopOnSettle.current = true;
     emblaApi.scrollTo(i);
   }
+
+  // Хувилбар сонгосон нь санаатай сонголт — autoplay зогсоно.
+  const focusIndex = focus
+    ? images.findIndex((img) => img.url === focus.url)
+    : -1;
+  const focusN = focus?.n;
+  React.useEffect(() => {
+    if (!emblaApi || focusIndex < 0) return;
+    emblaApi.plugins().autoplay?.stop();
+    if (focusIndex === emblaApi.selectedScrollSnap()) setUserStopped(true);
+    else stopOnSettle.current = true;
+    emblaApi.scrollTo(focusIndex);
+  }, [emblaApi, focusIndex, focusN]);
 
   function openLightbox(i: number) {
     emblaApi?.plugins().autoplay?.stop();
