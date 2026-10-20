@@ -54,7 +54,7 @@ export function ProductExtras({
         </Link>
       )}
       {box && variant && (
-        <div className="flex items-center gap-3 rounded-xl p-1 ">
+        <div className="flex items-center gap-3 rounded-xl p-1">
           <Link
             href={`/extras/${box.card.slug}`}
             className="bg-secondary relative size-14 shrink-0 overflow-hidden rounded-lg"
@@ -96,6 +96,7 @@ export function ProductExtras({
                   mode: box.card.mode,
                   unitPrice: variant.price,
                   image: box.card.image,
+                  requiresConsent: box.card.requiresConsent,
                 },
                 1,
                 variant.available ?? undefined,

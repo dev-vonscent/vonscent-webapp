@@ -261,6 +261,8 @@ async function order(
     coupon?: string;
     loyalty?: number;
     shipping?: number;
+    /** Хэрэглэсэн барааны зөвшөөрөл (0155) — анхдагч true. */
+    consent?: boolean;
   } = {},
 ): Promise<Summary> {
   const { rows } = await c.query<{ r: Summary }>(
@@ -276,6 +278,7 @@ async function order(
         loyalty_used: opts.loyalty ?? 0,
         ...(opts.expected ? { expected: opts.expected } : {}),
         ...(opts.gifts ? { gift_product_ids: opts.gifts } : {}),
+        used_goods_consent: opts.consent ?? true,
       }),
       JSON.stringify(lines),
     ],
@@ -1092,6 +1095,73 @@ async function main() {
       );
     },
   );
+
+  await scenario(a, "v5: хэрэглэсэн барааны зөвшөөрөл (0155)", async () => {
+    await flag(a, "extras_shop", true);
+    const publishWithStock = async (
+      slug: string,
+      category: string,
+      mode?: string,
+    ) => {
+      const r = await save(a, {
+        category_id: await categoryId(a, category),
+        ...(mode ? { inventory_mode: mode } : {}),
+        slug,
+        name: slug,
+        variants: [{ label: "A1", price: 15000, batch_code: "A1" }],
+      });
+      await a.query("select extras_set_status($1, 'published', null)", [r.id]);
+      const v = await one<{ id: string }>(
+        a,
+        "select id from extra_variants where extra_id = $1",
+        [r.id],
+      );
+      await purchase(a, v.id, 5);
+      return { extraId: r.id, variantId: v.id, price: 15000 };
+    };
+    const empty = await publishWithStock("t-v5-c-empty", "empty-bottle");
+    const full = await publishWithStock(
+      "t-v5-c-full",
+      "bottled",
+      "local_quantity",
+    );
+
+    const no = await orderError(a, [extraLine(empty, 1)], { consent: false });
+    check(
+      "хоосон шил, зөвшөөрөлгүй → USED_GOODS_CONSENT_REQUIRED",
+      no?.includes("USED_GOODS_CONSENT_REQUIRED") ?? false,
+      no,
+    );
+    const yes = await order(a, [extraLine(empty, 1)], { consent: true });
+    const at = await one<{ at: string | null }>(
+      a,
+      "select used_goods_consent_at::text at from orders where id = $1",
+      [yes.order_id],
+    );
+    check("зөвшөөрсөн → захиалга, цаг хадгалагдана", at.at !== null, at);
+
+    const sealed = await order(a, [extraLine(full, 1)], { consent: false });
+    const sat = await one<{ at: string | null }>(
+      a,
+      "select used_goods_consent_at::text at from orders where id = $1",
+      [sealed.order_id],
+    );
+    check(
+      "бүтэн, лацтай шил — зөвшөөрөлгүй захиалагдана",
+      Boolean(sealed.order_id) && sat.at === null,
+      sat,
+    );
+
+    // Wrapper-ийг `create or replace function place_order` дарвал шалгалт
+    // чимээгүй алдагдана — бие нь шалгалтаа агуулсаар байх ёстой.
+    const src = await one<{ ok: boolean }>(
+      a,
+      `select prosrc like '%USED_GOODS_CONSENT_REQUIRED%'
+              and prosrc like '%place_order_core%' ok
+         from pg_proc where proname = 'place_order'`,
+    );
+    check("place_order нь 0155-ийн wrapper хэвээр", src.ok, src);
+  });
 
   await scenario(a, "v5: restock_log.purchased_on (УБ өдөр)", async () => {
     const nulls = await one<{ n: number }>(

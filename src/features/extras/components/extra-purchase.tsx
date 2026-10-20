@@ -73,6 +73,7 @@ export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
       mode: card.mode,
       unitPrice: selected.price,
       image: card.image,
+      requiresConsent: card.requiresConsent,
     };
   }
 

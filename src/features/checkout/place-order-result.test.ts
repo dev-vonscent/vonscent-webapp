@@ -125,3 +125,12 @@ describe("toPlacedSummary", () => {
     });
   });
 });
+
+describe("placeOrderError — хэрэглэсэн барааны зөвшөөрөл (0155)", () => {
+  it("USED_GOODS_CONSENT_REQUIRED → 409", () => {
+    expect(placeOrderError("USED_GOODS_CONSENT_REQUIRED")).toEqual({
+      status: 409,
+      body: { error: "USED_GOODS_CONSENT_REQUIRED" },
+    });
+  });
+});

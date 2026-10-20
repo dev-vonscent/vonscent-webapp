@@ -105,6 +105,12 @@ export const checkoutSchema = z.object({
    */
   giftProductIds: z.array(z.string().min(1)).max(GIFT_MAX_SAMPLES).default([]),
   /**
+   * Хэрэглэсэн барааны нөхцөлийг зөвшөөрсөн (§18.5, 0155). Хоосон шил,
+   * үлдэгдэлтэй шилтэй захиалгад заавал — шаардлагыг SQL ангилал+горимоос
+   * шийднэ (`USED_GOODS_CONSENT_REQUIRED`).
+   */
+  usedGoodsConsent: z.boolean().default(false),
+  /**
    * Идемпотентын түлхүүр — нэг checkout оролдлогод нэг UUID. Хариу нь замдаа
    * алдагдаад хэрэглэгч дахин илгээхэд сервер шинэ захиалга үүсгэхгүй,
    * байгаагийнх нь дугаарыг буцаана (`order_requests`, 0087).

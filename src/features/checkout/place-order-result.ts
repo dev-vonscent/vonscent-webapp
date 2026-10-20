@@ -116,7 +116,8 @@ export type PlaceOrderError =
       error: "EXTRA_UNAVAILABLE" | "LEFTOVER_ALREADY_SOLD";
       extraVariantId: string;
     }
-  | { error: "EXTRAS_DISABLED" | "ORDER_TOO_LARGE" };
+  | { error: "EXTRAS_DISABLED" | "ORDER_TOO_LARGE" }
+  | { error: "USED_GOODS_CONSENT_REQUIRED" };
 
 /** `CODE:{json}` хэлбэрийн мессежийн json хэсэг. */
 function jsonAfter(
@@ -221,6 +222,8 @@ export function placeOrderError(
     return conflict({ error: "BOTTLE_UNAVAILABLE" });
   if (m.includes("EXTRAS_DISABLED"))
     return conflict({ error: "EXTRAS_DISABLED" });
+  if (m.includes("USED_GOODS_CONSENT_REQUIRED"))
+    return conflict({ error: "USED_GOODS_CONSENT_REQUIRED" });
   if (m.includes("ORDER_TOO_LARGE")) {
     return { status: 400, body: { error: "ORDER_TOO_LARGE" } };
   }

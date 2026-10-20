@@ -39,6 +39,11 @@ export interface CartExtra {
   unitPrice: number;
   qty: number;
   image: string | null;
+  /**
+   * Хэрэглэсэн барааны зөвшөөрөл шаардах уу (хоосон шил, үлдэгдэлтэй шил;
+   * 0153). Хуучин сагсанд байхгүй — тэр үед сервер хэлж, checkout асууна.
+   */
+  requiresConsent?: boolean;
 }
 
 /** The size a line can be switched to, as offered by the product page/API. */

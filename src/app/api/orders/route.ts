@@ -246,6 +246,7 @@ export async function POST(req: Request) {
         deliver_on: clampDeliveryDay(input.deliverOn),
         reserve_minutes: RESERVE_TIMEOUT_MINUTES,
         gift_product_ids: input.giftProductIds,
+        used_goods_consent: input.usedGoodsConsent,
         // Хэрэглэгчийн баталсан дүн (§6.2 №5) — SQL дахин бодсон дүн
         // зөрвөл захиалга үүсэхгүй, шинэ дүнг буцаана.
         ...(input.expected

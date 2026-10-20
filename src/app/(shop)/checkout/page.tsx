@@ -35,9 +35,12 @@ import {
 import { checkoutSchema } from "@/lib/validators/order";
 import type { ServerTotals } from "@/features/checkout/place-order-result";
 import { numAblative } from "@/lib/mn-grammar";
+import { cn } from "@/lib/utils";
 import {
   REFUND_FEE_PCT,
   SHIPPING_ZONES,
+  USED_GOODS_CONSENT_LABEL,
+  USED_GOODS_CONSENT_TEXT,
   type ShippingZoneConfig,
 } from "@/lib/constants";
 import { giftSlotsFor } from "@/lib/gift";
@@ -283,6 +286,11 @@ export default function CheckoutPage() {
     "Төлбөрийн хуудас руу шилжиж байна…",
   );
   const [serverError, setServerError] = React.useState<string | null>(null);
+  // Хэрэглэсэн барааны зөвшөөрөл (§18.5): сагсны мөр хэлнэ; хуучин сагсанд
+  // тэмдэггүй бол сервер `USED_GOODS_CONSENT_REQUIRED`-ээр хэлнэ.
+  const [usedConsent, setUsedConsent] = React.useState(false);
+  const [consentAsked, setConsentAsked] = React.useState(false);
+  const [consentError, setConsentError] = React.useState(false);
   /**
    * Серверийн алдааны блок руу заасан ref.
    *
@@ -1137,6 +1145,9 @@ export default function CheckoutPage() {
     router.push("/account/orders?tab=saved");
   }
 
+  const needsConsent =
+    consentAsked || extras.some((e) => e.requiresConsent === true);
+
   async function onSubmit(values: FormValues) {
     // Zones we don't serve must never turn into an order.
     if (zoneBlocked) {
@@ -1178,6 +1189,13 @@ export default function CheckoutPage() {
       setShowGiftWarning(true);
       return;
     }
+    if (needsConsent && !usedConsent) {
+      setConsentError(true);
+      document
+        .getElementById("used-goods-consent")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
 
     setSubmitting(true);
     setServerError(null);
@@ -1195,6 +1213,7 @@ export default function CheckoutPage() {
       loyaltyUsed: loyaltyApplied,
       saveAddress: saveAddr,
       giftProductIds: giftIds,
+      usedGoodsConsent: needsConsent && usedConsent,
       items: items.map((i) => ({
         productId: i.productId,
         variantId: i.variantId,
@@ -1404,6 +1423,14 @@ export default function CheckoutPage() {
               ? "Энэ үлдэгдэлтэй шил саяхан зарагдсан байна."
               : `Таны сонгосон ${numAblative(Number(data.requested ?? line?.qty ?? 0))} ${available} ширхэг үлдсэн байна.`,
           );
+          return;
+        }
+        // Хуучин сагсны мөр зөвшөөрлийн тэмдэггүй байж болно — сервер хэлсэн
+        // үед checkbox-ыг гаргаж асууна.
+        if (data.error === "USED_GOODS_CONSENT_REQUIRED") {
+          setConsentAsked(true);
+          setConsentError(true);
+          setServerError("Хэрэглэсэн барааны нөхцөлийг зөвшөөрнө үү.");
           return;
         }
         if (data.error === "EXTRA_UNAVAILABLE") {
@@ -2114,6 +2141,17 @@ export default function CheckoutPage() {
                 </p>
               )}
 
+              {needsConsent && (
+                <UsedGoodsConsent
+                  checked={usedConsent}
+                  error={consentError}
+                  onChange={(v) => {
+                    setUsedConsent(v);
+                    if (v) setConsentError(false);
+                  }}
+                />
+              )}
+
               {/* `role="alert"` — эс тэгвээс захиалга татгалзсаныг дэлгэц
                     уншигч хэрэглэгч огт мэдэхгүй өнгөрнө (WCAG 4.1.3). */}
               {serverError && (
@@ -2421,4 +2459,42 @@ function SummaryRow({
 /** `«A 10ml», «B 5ml»` — хасагдсан мөрүүдийн нэрс. */
 function quoteList(labels: string[]): string {
   return labels.map((l) => `«${l}»`).join(", ");
+}
+
+/** Хоосон шил, үлдэгдэлтэй шилний зөвшөөрөл (§18.5) — товчны дээр. */
+function UsedGoodsConsent({
+  checked,
+  error,
+  onChange,
+}: {
+  checked: boolean;
+  error: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div
+      id="used-goods-consent"
+      className={cn(
+        "bg-secondary scroll-mt-24 space-y-2.5 rounded-xl px-3 py-2.5 text-sm",
+        error && "ring-destructive ring-2",
+      )}
+    >
+      <p className="text-muted-foreground text-xs/relaxed">
+        {USED_GOODS_CONSENT_TEXT}
+      </p>
+      <label className="flex min-h-11 cursor-pointer items-center gap-2 font-medium">
+        <Checkbox
+          checked={checked}
+          onCheckedChange={(v) => onChange(v === true)}
+          aria-invalid={error || undefined}
+        />
+        {USED_GOODS_CONSENT_LABEL}
+      </label>
+      {error && (
+        <p role="alert" className="text-destructive text-xs">
+          Захиалахын өмнө нөхцөлийг зөвшөөрнө үү.
+        </p>
+      )}
+    </div>
+  );
 }
