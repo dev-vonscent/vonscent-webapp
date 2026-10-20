@@ -340,9 +340,7 @@ function VialDialog({
                   <dd className="tabular-nums">{current.reserved}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground text-xs">
-                    Ашиглах боломжтой
-                  </dt>
+                  <dt className="text-muted-foreground text-xs">Боломжтой</dt>
                   <dd className="font-medium tabular-nums">
                     {Math.max((current.onHand ?? 0) - current.reserved, 0)}
                   </dd>
