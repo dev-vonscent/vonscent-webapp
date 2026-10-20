@@ -1271,6 +1271,130 @@ async function main() {
     },
   );
 
+  await scenario(
+    a,
+    "Нэмэлт бараатай захиалгын оноо, user_tiers ON/OFF (№12)",
+    async () => {
+      const user = await customerId(a);
+      const e = await localExtra(a, "t-o12", 50000, 10);
+      const earned = async (tiers: boolean) => {
+        await flag(a, "user_tiers", tiers);
+        const s = await order(a, [extraLine(e, 2)], { user });
+        // Хүлээгдэж буй дүрэм: зөвхөн нэмэлт бараатай захиалга ч оноо цуглуулна
+        // (§2.2 H) — суурь = subtotal − discount.
+        const exp = await one<{ n: number }>(
+          a,
+          tiers
+            ? `select floor($1::bigint * tier_rate_for_spend(
+                 greatest(user_lifetime_spend($2) - $1, 0)) / 100)::int n`
+            : `select (floor($1 / coalesce((value->>'earnPer')::int, 100))
+                 * coalesce((value->>'earnPoints')::int, 1))::int n
+                 from settings where key = 'loyalty'`,
+          tiers ? [s.subtotal, user] : [s.subtotal],
+        );
+        await a.query("select mark_order_paid($1, null, 'manual')", [
+          s.order_id,
+        ]);
+        const got = await one<{ n: number }>(
+          a,
+          `select coalesce(sum(delta), 0)::int n from loyalty_ledger
+            where order_id = $1 and reason = 'earn'`,
+          [s.order_id],
+        );
+        return { subtotal: s.subtotal, expected: exp?.n ?? 0, got: got.n };
+      };
+      const off = await earned(false);
+      check(
+        "user_tiers OFF: earnPer дүрмээр",
+        off.got === off.expected && off.subtotal === 100000,
+        off,
+      );
+      const on = await earned(true);
+      check("user_tiers ON: түвшний хувиар", on.got === on.expected, on);
+    },
+  );
+
+  await scenario(
+    a,
+    "Өөр барааны хувилбартай захиалгын мөр → FK (№22)",
+    async () => {
+      const e1 = await localExtra(a, "t-o22a", 10000, 5);
+      const e2 = await localExtra(a, "t-o22b", 10000, 5);
+      const s = await order(a, [extraLine(e1, 1)]);
+      const line = await one<{ id: string }>(
+        a,
+        "select id from order_items where order_id = $1 and line_kind = 'extra'",
+        [s.order_id],
+      );
+      const err = await errorOf(
+        a,
+        "update order_items set extra_product_id = $2 where id = $1",
+        [line.id, e2.extraId],
+      );
+      check(
+        "мөрийн хувилбар өөр бараанд харьяалагдвал → order_items_extra_fk",
+        err?.includes("order_items_extra_fk") ?? false,
+        err,
+      );
+    },
+  );
+
+  await scenario(
+    a,
+    "Reserve / commit / release давтахад хөдөлгөөн нэг л удаа (№24)",
+    async () => {
+      const e = await localExtra(a, "t-o24", 10000, 5);
+      const left = await leftoverExtra(
+        a,
+        "t-o24-left",
+        (await perfumeWithStock(a)).product_id,
+      );
+      const s = await order(a, [extraLine(e, 2), extraLine(left, 1)]);
+      const cyc = (
+        await one<{ c: number }>(
+          a,
+          "select lifecycle_cycle c from orders where id = $1",
+          [s.order_id],
+        )
+      ).c;
+      const moves = () =>
+        a.query<{ kind: string; n: number }>(
+          `select m.kind, count(*)::int n from extra_movements m
+             join order_items oi on oi.id = m.order_item_id
+            where oi.order_id = $1 group by m.kind order by m.kind`,
+          [s.order_id],
+        );
+      // Ижил үйл явдлыг дахин дуудах — event_key давхардал, юу ч өөрчлөхгүй.
+      await a.query("select order_stock_reserve($1, $2)", [s.order_id, cyc]);
+      const stockMid = await variantStock(a, e.variantId);
+      await a.query("select order_stock_release($1, $2)", [s.order_id, cyc]);
+      await a.query("select order_stock_release($1, $2)", [s.order_id, cyc]);
+      const after = await variantStock(a, e.variantId);
+      const rows = (await moves()).rows;
+      const n = (k: string) => rows.find((r) => r.kind === k)?.n ?? 0;
+      check(
+        "reserve 2 мөр, давтсан reserve нэмэгдээгүй",
+        n("reserve") === 2 && stockMid.reserved_qty === 2,
+        { rows, stockMid },
+      );
+      check(
+        "release давтахад нэг л удаа, reserved 0",
+        n("release") === 2 && after.reserved_qty === 0,
+        { rows, after },
+      );
+      const dup = await one<{ n: number }>(
+        a,
+        `select count(*)::int n from (
+           select event_key from extra_movements where event_key is not null
+           group by event_key having count(*) > 1
+           union all
+           select event_key from vial_movements where event_key is not null
+           group by event_key having count(*) > 1) d`,
+      );
+      check("event_key давхардалгүй", dup.n === 0, dup);
+    },
+  );
+
   await scenario(a, "v5: restock_log.purchased_on (УБ өдөр)", async () => {
     const nulls = await one<{ n: number }>(
       a,
