@@ -1,3 +1,4 @@
+import { ubToday } from "@/lib/time";
 import type { ExtraSaveInput } from "@/lib/validators/extras";
 import type { AdminExtra, ExtraMode } from "../../types";
 
@@ -18,6 +19,13 @@ export interface DraftVariant {
   /** Гоёмсог бэлгийн сав — чөлөөт хэмжээ/тохирох тайлбар. */
   sizeNote: string;
   imageUrl: string;
+  /**
+   * Шинэ мөрийн «Эхний нөөц» (0158) — хадгалахад хамт худалдан авалт болно.
+   * Ширхэг хоосон бол нөөцгүй үүснэ.
+   */
+  initialQty?: string;
+  initialUnitCost?: string;
+  initialPurchasedOn?: string;
   /** Грамын сав. */
   vialId?: string;
 }
@@ -167,6 +175,14 @@ export function toSavePayload(d: ExtraDraft): ExtraSaveInput {
           batchCode: v.batchCode.trim(),
           sizeNote: v.sizeNote.trim(),
           imageUrl: v.imageUrl,
+          initialPurchase:
+            !v.id && v.initialQty?.trim()
+              ? {
+                  qty: num(v.initialQty),
+                  unitCost: num(v.initialUnitCost ?? ""),
+                  purchasedOn: v.initialPurchasedOn || ubToday(),
+                }
+              : undefined,
         })),
       };
     case "shared_vial":

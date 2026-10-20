@@ -47,7 +47,11 @@ export const localVariantSchema = z.object({
   price,
   isActive: z.boolean().default(true),
   sort: z.number().int().default(0),
-  // Нөөц маягтаар орохгүй — хадгалсны дараа «Нөөц нөхөх»-өөр (purchase, 0153).
+  /**
+   * Шинэ мөрийн эхний нөөц — худалдан авалт (0158). Хадгалсан мөрийн нөөц
+   * зөвхөн «Нөөц нөхөх»-өөр (зөрчил шалгалттай).
+   */
+  initialPurchase: z.lazy(() => initialPurchaseSchema).optional(),
   /** Хоосон/бүтэн шилний batch code. */
   batchCode: z.string().trim().max(EXTRA_BATCH_CODE_MAX).optional(),
   imageUrl: z.string().url().or(z.literal("")).optional(),
@@ -84,6 +88,15 @@ const localSchema = z.object({
           });
         }
         seen.add(key);
+      });
+      vs.forEach((v, i) => {
+        if (v.id && v.initialPurchase) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [i, "initialPurchase"],
+            message: "Хадгалсан хувилбарын нөөцийг «Нөөц нөхөх»-өөр оруулна",
+          });
+        }
       });
       // Олон хувилбартай бол нэр заавал — «Хар», «Цагаан»-ыг ялгах цорын
       // ганц зүйл.
@@ -187,8 +200,8 @@ export const PURCHASE_UNIT_COST_MAX = 10_000_000;
 /**
  * Авсан өдөр: УБ-ын одоогийн сарын 1-нээс өнөөдөр хүртэл (0153
  * `purchase_date_check`). Өмнөх сар хаагдсан — тайлан хожим өөрчлөгдөхгүй.
+ * Календарь энэ хүрээнээс гадуурх өдрийг сонгуулахгүй.
  */
-/** «Авсан өдөр»-ийн сонгож болох хүрээ: энэ сарын 1-нээс өнөөдөр хүртэл. */
 export function purchaseDateBounds(today = ubToday()) {
   return { min: `${today.slice(0, 7)}-01`, max: today };
 }
@@ -229,6 +242,18 @@ function refineDate(v: { purchasedOn: string }, ctx: z.RefinementCtx) {
       message: err,
     });
 }
+
+/**
+ * Шинэ хувилбарын «Эхний нөөц» — хадгалахтай нэг transaction-д (0158).
+ * `localVariantSchema` нь энэ файлын дээд хэсэгт тул `z.lazy`-аар заана.
+ */
+export const initialPurchaseSchema = z
+  .object({
+    qty: purchaseBase.qty,
+    unitCost: purchaseBase.unitCost,
+    purchasedOn: purchaseBase.purchasedOn,
+  })
+  .superRefine(refineDate);
 
 /** Нэмэлт барааны «Нөөц нөхөх» — худалдан авалт (0153 `extras_purchase`). */
 export const extraPurchaseSchema = z

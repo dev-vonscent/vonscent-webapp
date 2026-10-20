@@ -37,7 +37,7 @@ export default async function EditExtraPage({
       >
         <ArrowLeft className="size-4" /> Нэмэлт бараа
       </Link>
-      <PageHeader title={extra.name} description={category.name} />
+      <PageHeader title={extra.name} />
       {/* Хадгалсны дараа серверийн шинэ өгөгдлөөр маягтыг дахин эхлүүлнэ;
           нөөцийн цонх (`updatedAt` нь хувилбарынх) маягтыг цэвэрлэхгүй. */}
       <ExtraForm

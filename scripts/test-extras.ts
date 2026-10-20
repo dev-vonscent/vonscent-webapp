@@ -773,6 +773,115 @@ async function main() {
 
   await scenario(
     a,
+    "v5: шинэ хувилбарын эхний нөөц хадгалахтай хамт (0158)",
+    async () => {
+      await flag(a, "extras_shop", true);
+      const syringe = await categoryId(a, "syringe");
+      const today = (
+        await one<{ d: string }>(
+          a,
+          "select ((now() at time zone 'Asia/Ulaanbaatar')::date)::text as d",
+        )
+      ).d;
+      const r = await save(a, {
+        category_id: syringe,
+        slug: "t-v5-ip",
+        name: "Шприц",
+        variants: [
+          {
+            label: "5ml",
+            price: 3000,
+            initial_purchase: { qty: 40, unit_cost: 450, purchased_on: today },
+          },
+          { label: "10ml", price: 4000 },
+        ],
+      });
+      const rows = (
+        await a.query(
+          `select v.label, v.on_hand_qty, m.kind, m.unit_cost, m.cost, m.purchased_on::text
+           from extra_variants v
+           left join extra_movements m on m.extra_variant_id = v.id
+          where v.extra_id = $1 order by v.label`,
+          [r.id],
+        )
+      ).rows;
+      const five = rows.find((x) => x.label === "5ml");
+      const ten = rows.filter((x) => x.label === "10ml");
+      check(
+        "5ml: 40 ширхэг, purchase 450₮, нийт 18,000₮, огноотой",
+        five?.on_hand_qty === 40 &&
+          five?.kind === "purchase" &&
+          five?.unit_cost === 450 &&
+          Number(five?.cost) === 18000 &&
+          five?.purchased_on === today,
+        five,
+      );
+      check(
+        "10ml: нөөцгүй, хөдөлгөөнгүй",
+        ten.length === 1 && ten[0].on_hand_qty === 0 && ten[0].kind == null,
+        ten,
+      );
+
+      const v5 = await one<{ id: string }>(
+        a,
+        "select id from extra_variants where extra_id = $1 and label = '5ml'",
+        [r.id],
+      );
+      const again = await errorOf(a, "select extras_save($1::jsonb, null)", [
+        JSON.stringify({
+          id: r.id,
+          slug: "t-v5-ip",
+          name: "Шприц",
+          variants: [
+            {
+              id: v5.id,
+              label: "5ml",
+              price: 3000,
+              initial_purchase: { qty: 5, unit_cost: 1, purchased_on: today },
+            },
+          ],
+        }),
+      ]);
+      check(
+        "хадгалсан мөрөнд → INITIAL_PURCHASE_NEW_ONLY",
+        again?.includes("INITIAL_PURCHASE_NEW_ONLY") ?? false,
+        again,
+      );
+
+      const closed = await errorOf(a, "select extras_save($1::jsonb, null)", [
+        JSON.stringify({
+          category_id: syringe,
+          slug: "t-v5-ip2",
+          name: "x",
+          variants: [
+            {
+              label: "a",
+              price: 1,
+              initial_purchase: {
+                qty: 1,
+                unit_cost: 1,
+                purchased_on: "2000-01-01",
+              },
+            },
+          ],
+        }),
+      ]);
+      check(
+        "өмнөх сар → PURCHASE_DATE_CLOSED, бараа ч үүсэхгүй",
+        (closed?.includes("PURCHASE_DATE_CLOSED") ?? false) &&
+          (
+            await one<{ n: number }>(
+              a,
+              "select count(*)::int n from extra_products where slug = 't-v5-ip2'",
+            )
+          ).n === 0,
+        closed,
+      );
+    },
+  );
+
+  await scenario(
+    a,
     "v5: анхны нөөц 0, худалдан авалтын ledger, огноо (§18.8 №5–7)",
     async () => {
       await flag(a, "extras_shop", true);

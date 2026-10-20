@@ -26,6 +26,45 @@ describe("toSavePayload + extraSaveSchema", () => {
     expect(extraSaveSchema.safeParse(out).success).toBe(true);
   });
 
+  it("шинэ мөрийн «Эхний нөөц» → initialPurchase (0158)", () => {
+    const d = emptyDraft("local_quantity");
+    d.name = "Шприц";
+    d.variants[0].price = "3000";
+    d.variants[0].initialQty = "100";
+    d.variants[0].initialUnitCost = "450";
+    const out = toSavePayload(d);
+    expect(out.mode === "local_quantity" && out.variants[0]).toMatchObject({
+      initialPurchase: { qty: 100, unitCost: 450 },
+    });
+    expect(extraSaveSchema.safeParse(out).success).toBe(true);
+
+    // Ширхэгтэй ч үнэгүй — «Нэгж авсан үнэ оруулна уу».
+    d.variants[0].initialUnitCost = "";
+    const r = extraSaveSchema.safeParse(toSavePayload(d));
+    expect(r.success).toBe(false);
+    expect(
+      r.error?.issues.some(
+        (i) => i.path.join(".") === "variants.0.initialPurchase.unitCost",
+      ),
+    ).toBe(true);
+  });
+
+  it("хадгалсан мөрөнд «Эхний нөөц» илгээгдэхгүй", () => {
+    const d = emptyDraft("local_quantity");
+    d.name = "Шприц";
+    d.variants[0] = {
+      ...d.variants[0],
+      id: "7f1d1c64-2b5b-4b5e-9f50-6d0b0c7a5a11",
+      price: "3000",
+      initialQty: "5",
+      initialUnitCost: "100",
+    };
+    const out = toSavePayload(d);
+    expect(
+      out.mode === "local_quantity" && out.variants[0].initialPurchase,
+    ).toBeUndefined();
+  });
+
   it("олон хувилбарт нэр заавал, давхардахгүй", () => {
     const d = emptyDraft("local_quantity");
     d.name = "Хайрцаг";

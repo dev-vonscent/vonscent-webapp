@@ -77,6 +77,13 @@ export function savePayload(
           batch_code: v.batchCode,
           image_url: v.imageUrl,
           size_note: v.sizeNote,
+          initial_purchase: v.initialPurchase
+            ? {
+                qty: v.initialPurchase.qty,
+                unit_cost: v.initialPurchase.unitCost,
+                purchased_on: v.initialPurchase.purchasedOn,
+              }
+            : undefined,
         })),
       };
     case "shared_vial":

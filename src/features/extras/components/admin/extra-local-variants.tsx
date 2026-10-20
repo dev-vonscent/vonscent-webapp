@@ -9,6 +9,10 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { AdminExtraVariant } from "../../types";
 import { newKey, type DraftVariant } from "./extra-draft";
+import { DatePicker } from "@/features/admin/components/date-picker";
+import { formatPrice } from "@/lib/format";
+import { ubToday } from "@/lib/time";
+import { purchaseDateBounds } from "@/lib/validators/extras";
 import { ExtraImagesField } from "./extra-images-field";
 import { ExtraStockDialog } from "./extra-stock-dialog";
 
@@ -23,9 +27,10 @@ export type LocalVariantKind = "batch" | "gift" | "plain";
 /**
  * Энгийн барааны хувилбар: «Нэр · Үнэ (₮) · Үлдэгдэл · Зарна» хүснэгт (plan §7.2).
  *
- * Шинэ мөр 0 тоотой үүснэ — нөөц зөвхөн худалдан авалтаар (үнэ, огноотой)
- * орж тайланд зарлага болно (0153). Хадгалсан мөрийн тоог зөвхөн цонхоор
- * (зөрчил шалгалттай) — маягтын хадгалалт тоог хэзээ ч дарж бичихгүй.
+ * Нөөц зөвхөн худалдан авалтаар (үнэ, огноотой) орж тайланд зарлага болно
+ * (0153). Шинэ мөрөнд «Эхний нөөц»-ийг шууд бичнэ — хадгалахад хувилбартай
+ * НЭГ transaction-д худалдан авалт болно (0158). Хадгалсан мөрийн тоог
+ * зөвхөн цонхоор (зөрчил шалгалттай) — маягт тоог хэзээ ч дарж бичихгүй.
  * Хадгалсан хувилбар устахгүй, идэвхгүй болно (захиалгын түүх түүнийг заадаг).
  */
 export function ExtraLocalVariants({
@@ -160,8 +165,8 @@ export function ExtraLocalVariants({
                       </Button>
                     </div>
                   ) : (
-                    <p className="text-muted-foreground flex min-h-10 items-center text-xs">
-                      Хадгалсны дараа нөөцөө оруулна
+                    <p className="text-muted-foreground flex min-h-10 items-center text-sm tabular-nums">
+                      {initialText(v)}
                     </p>
                   )}
                 </div>
@@ -192,6 +197,14 @@ export function ExtraLocalVariants({
                     </Button>
                   )}
                 </div>
+                {!v.id && (
+                  <InitialStock
+                    v={v}
+                    errors={errors}
+                    prefix={`variants.${i}.initialPurchase`}
+                    onChange={(p) => update(i, p)}
+                  />
+                )}
                 {kind === "gift" && (
                   <div className="col-span-full grid grid-cols-[minmax(0,1fr)_5rem] gap-3">
                     <div className="space-y-1.5">
@@ -257,6 +270,99 @@ export function ExtraLocalVariants({
           variant={stockFor}
         />
       )}
+    </div>
+  );
+}
+
+function initialText(v: DraftVariant) {
+  const q = Number(v.initialQty?.replace(/[\s,]/g, ""));
+  return v.initialQty?.trim() && Number.isInteger(q) && q > 0
+    ? `${q} ширхэг`
+    : "0 ширхэг";
+}
+
+/**
+ * Шинэ мөрийн «Эхний нөөц»: ширхэг, нэгж авсан үнэ, авсан өдөр. Хоосон
+ * орхивол нөөцгүй үүснэ — дараа нь «Нөөц нөхөх»-өөр нэмнэ.
+ */
+function InitialStock({
+  v,
+  errors,
+  prefix,
+  onChange,
+}: {
+  v: DraftVariant;
+  errors: Record<string, string>;
+  prefix: string;
+  onChange: (patch: Partial<DraftVariant>) => void;
+}) {
+  const q = Number((v.initialQty ?? "").replace(/[\s,]/g, ""));
+  const c = Number((v.initialUnitCost ?? "").replace(/[\s,]/g, ""));
+  const total =
+    v.initialQty?.trim() && v.initialUnitCost?.trim() && q > 0 && c >= 0
+      ? q * c
+      : null;
+  const qtyErr = errors[`${prefix}.qty`];
+  const costErr = errors[`${prefix}.unitCost`];
+  const dayErr = errors[`${prefix}.purchasedOn`];
+
+  return (
+    <div className="bg-muted/40 col-span-full space-y-2 rounded-md p-3">
+      <p className="text-xs">
+        <span className="font-medium">Эхний нөөц</span>
+        <span className="text-muted-foreground">
+          {" "}
+          — хадгалахад худалдан авалт болж тайланд орно. Хоосон орхивол дараа
+          «Нөөц нөхөх»-өөр нэмнэ.
+        </span>
+      </p>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[7rem_9rem_minmax(0,12rem)_1fr] sm:items-start">
+        <div className="space-y-1.5">
+          <Label htmlFor={`${v.key}-iq`} className="text-xs">
+            Ширхэг
+          </Label>
+          <Input
+            id={`${v.key}-iq`}
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="0"
+            value={v.initialQty ?? ""}
+            aria-invalid={Boolean(qtyErr)}
+            className="tabular-nums"
+            onChange={(e) => onChange({ initialQty: e.target.value })}
+          />
+          {qtyErr && <p className="text-destructive text-xs">{qtyErr}</p>}
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor={`${v.key}-ic`} className="text-xs">
+            Нэгж авсан үнэ (₮)
+          </Label>
+          <Input
+            id={`${v.key}-ic`}
+            inputMode="numeric"
+            autoComplete="off"
+            value={v.initialUnitCost ?? ""}
+            aria-invalid={Boolean(costErr)}
+            className="tabular-nums"
+            onChange={(e) => onChange({ initialUnitCost: e.target.value })}
+          />
+          {costErr && <p className="text-destructive text-xs">{costErr}</p>}
+        </div>
+        <div className="col-span-2 space-y-1.5 sm:col-span-1">
+          <span className="text-xs font-medium">Авсан өдөр</span>
+          <DatePicker
+            value={v.initialPurchasedOn || ubToday()}
+            onChange={(d) => onChange({ initialPurchasedOn: d })}
+            clearable={false}
+            aria-label="Авсан өдөр"
+            {...purchaseDateBounds()}
+          />
+          {dayErr && <p className="text-destructive text-xs">{dayErr}</p>}
+        </div>
+        <p className="text-muted-foreground col-span-2 self-center text-xs tabular-nums sm:col-span-1 sm:pt-6">
+          Нийт: {total == null ? "—" : formatPrice(total)}
+        </p>
+      </div>
     </div>
   );
 }

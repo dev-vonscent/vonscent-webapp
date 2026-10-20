@@ -214,63 +214,62 @@ export function ExtraForm({
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-6">
           <Card>
-            {/* Том дэлгэцэд зураг баруун баганад — ганц хоосон tile-ийн
-                хажууд өргөн хоосон зай үлдэхгүй. */}
-            <CardContent className="grid gap-x-6 gap-y-4 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
-              <div className="min-w-0 space-y-4">
-                <Field label="Нэр" error={errors["name"]}>
-                  <Input
-                    value={draft.name}
-                    maxLength={120}
-                    onChange={(e) => patch({ name: e.target.value })}
-                  />
-                </Field>
-                <Field label="Тайлбар" error={errors["description"]}>
-                  <textarea
-                    value={draft.description}
-                    maxLength={EXTRA_DESCRIPTION_MAX}
-                    rows={6}
-                    onChange={(e) => patch({ description: e.target.value })}
-                    className="bg-secondary field-edge w-full rounded-md px-3 py-2 text-base md:text-sm"
-                  />
-                </Field>
-                {variantKind === "batch" && draft.mode === "local_quantity" && (
-                  <Field
-                    label="Бүтэн савны хэмжээ (ml)"
-                    hint={
-                      category.slug === "empty-bottle"
-                        ? "Дэлгүүрт «0/125ml» гэж харагдана."
-                        : "Дэлгүүрт «100/100ml» гэж харагдана."
-                    }
-                    error={errors["bottleMl"]}
-                  >
-                    <Input
-                      inputMode="numeric"
-                      autoComplete="off"
-                      value={draft.bottleMl}
-                      placeholder="125"
-                      className="max-w-32 tabular-nums"
-                      onChange={(e) => patch({ bottleMl: e.target.value })}
-                    />
-                  </Field>
-                )}
-              </div>
-              <div className="lg:col-start-2 lg:row-start-1">
+            <CardContent className="space-y-4 p-4 sm:p-6">
+              <Field label="Нэр" error={errors["name"]}>
+                <Input
+                  value={draft.name}
+                  maxLength={120}
+                  onChange={(e) => patch({ name: e.target.value })}
+                />
+              </Field>
+              <Field label="Тайлбар" error={errors["description"]}>
+                <textarea
+                  value={draft.description}
+                  maxLength={EXTRA_DESCRIPTION_MAX}
+                  rows={4}
+                  onChange={(e) => patch({ description: e.target.value })}
+                  className="bg-secondary field-edge w-full rounded-md px-3 py-2 text-base md:text-sm"
+                />
+              </Field>
+              {variantKind === "batch" && draft.mode === "local_quantity" && (
                 <Field
-                  label="Зураг"
+                  label="Бүтэн савны хэмжээ (ml)"
                   hint={
-                    draft.mode === "leftover_liquid"
-                      ? "Оруулаагүй бол эх үнэртний зураг харагдана."
-                      : "Эхний зураг нь каталогийн картад гарна."
+                    category.slug === "empty-bottle"
+                      ? "Дэлгүүрт «0/125ml» гэж харагдана."
+                      : "Дэлгүүрт «100/100ml» гэж харагдана."
                   }
+                  error={errors["bottleMl"]}
                 >
-                  <ExtraImagesField
-                    value={draft.images}
-                    onChange={(images) => patch({ images })}
-                    gridClassName="grid-cols-3 sm:grid-cols-4 lg:grid-cols-2"
+                  <Input
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={draft.bottleMl}
+                    placeholder="125"
+                    className="max-w-32 tabular-nums"
+                    onChange={(e) => patch({ bottleMl: e.target.value })}
                   />
                 </Field>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Зураг тусдаа карт — нэр/тайлбар ба хувилбарын дунд. */}
+          <Card>
+            <CardContent className="space-y-3 p-4 sm:p-6">
+              <div className="space-y-1">
+                <h2 className="font-medium">Зураг</h2>
+                <p className="text-muted-foreground text-xs">
+                  {draft.mode === "leftover_liquid"
+                    ? "Оруулаагүй бол эх үнэртний зураг харагдана."
+                    : "Эхний зураг нь каталогийн картад гарна. Чирж байрлалыг солино."}
+                </p>
               </div>
+              <ExtraImagesField
+                value={draft.images}
+                onChange={(images) => patch({ images })}
+                gridClassName="grid-cols-3 sm:grid-cols-5 xl:grid-cols-6"
+              />
             </CardContent>
           </Card>
 

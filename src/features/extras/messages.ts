@@ -51,6 +51,8 @@ export function extrasErrorMessage(raw: string | undefined): string | null {
     return "1ml, 2ml савыг дангаар зарахгүй — зөвхөн 5, 10, 20ml.";
   if (raw.includes("INITIAL_STOCK_REQUIRES_PURCHASE"))
     return "Тоог хадгалсны дараа «Нөөц нөхөх»-өөр авсан үнийн хамт оруулна уу.";
+  if (raw.includes("INITIAL_PURCHASE_NEW_ONLY"))
+    return "Хадгалсан хувилбарын нөөцийг «Нөөц нөхөх»-өөр оруулна уу.";
   if (raw.includes("PURCHASE_DATE_FUTURE"))
     return "Авсан өдөр ирээдүйд байж болохгүй.";
   if (raw.includes("PURCHASE_DATE_CLOSED"))
