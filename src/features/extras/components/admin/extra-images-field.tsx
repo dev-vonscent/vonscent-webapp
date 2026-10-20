@@ -19,11 +19,14 @@ export function ExtraImagesField({
   value,
   onChange,
   max = EXTRA_IMAGES_MAX,
+  gridClassName,
 }: {
   value: string[];
   onChange: (next: string[]) => void;
   /** Хувилбарын ганц зураг г.м. */
   max?: number;
+  /** Баганын тоо — байрлах газрын өргөнд тааруулна. */
+  gridClassName?: string;
 }) {
   const [busy, setBusy] = React.useState(false);
   const [progress, setProgress] = React.useState<number | null>(null);
@@ -79,7 +82,8 @@ export function ExtraImagesField({
       <ul
         className={cn(
           "grid gap-2",
-          max === 1 ? "grid-cols-1" : "grid-cols-3 sm:grid-cols-4",
+          gridClassName ??
+            (max === 1 ? "grid-cols-1" : "grid-cols-3 sm:grid-cols-4"),
         )}
       >
         {value.map((url, i) => (
