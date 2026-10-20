@@ -14,13 +14,13 @@ export function bottleSizeText(
 
 /**
  * Хэрэглэгчид харагдах үлдэгдэл (§18.5): «Үлдэгдэл: 6 ширхэг», дууссан бол
- * «Үлдэгдэлгүй». Үлдэгдэлтэй шил («Ганц ширхэг») ба тоолоогүй сав — null.
+ * «Дууссан». Үлдэгдэлтэй шил («Ганц ширхэг») ба тоолоогүй сав — null.
  */
 export function stockText(
   card: Pick<ShopExtraCard, "mode" | "stock" | "soldOut">,
 ): string | null {
   if (card.mode === "leftover_liquid") return null;
-  if (card.soldOut || card.stock === 0) return "Үлдэгдэлгүй";
+  if (card.soldOut || card.stock === 0) return "Дууссан";
   if (card.stock == null) return null;
   return `Үлдэгдэл: ${card.stock} ширхэг`;
 }

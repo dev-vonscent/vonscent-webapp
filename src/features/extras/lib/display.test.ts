@@ -42,7 +42,7 @@ describe("stockText", () => {
       stockText({ mode: "local_quantity", stock: 6, soldOut: false }),
     ).toBe("Үлдэгдэл: 6 ширхэг");
     expect(stockText({ mode: "local_quantity", stock: 0, soldOut: true })).toBe(
-      "Үлдэгдэлгүй",
+      "Дууссан",
     );
     expect(
       stockText({ mode: "shared_vial", stock: null, soldOut: false }),

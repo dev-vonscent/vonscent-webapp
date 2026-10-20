@@ -65,7 +65,7 @@ export function ExtraCard({
         {extra.soldOut && (
           <div className="bg-background/70 absolute inset-0 flex items-center justify-center">
             <span className="bg-card rounded-full px-3 py-1 text-xs font-medium tracking-wide uppercase">
-              {leftover ? "Зарагдсан" : "Үлдэгдэлгүй"}
+              {leftover ? "Зарагдсан" : "Дууссан"}
             </span>
           </div>
         )}

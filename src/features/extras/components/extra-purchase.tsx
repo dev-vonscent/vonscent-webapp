@@ -21,7 +21,7 @@ const QTY_MAX = 99;
 
 /**
  * Нэмэлт барааны «Захиалах / Сагсанд нэмэх» (extras-shop-plan §9, §18.5).
- * Хувилбар бүр өөрийн үлдэгдэлтэй; дууссан нь идэвхгүй, «Үлдэгдэлгүй».
+ * Хувилбар бүр өөрийн үлдэгдэлтэй; дууссан нь идэвхгүй, «Дууссан».
  * Грамын сав: хэмжээ → өнгө → тоо. Үлдэгдэлтэй шил ганц ширхэг — тоо
  * сонгох хэсэггүй. Анхааруулга (шприц, үлдэгдэлтэй шил) товчны дээр.
  */
@@ -168,7 +168,7 @@ export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
                     {v.label || "Үндсэн"}
                   </span>
                   <span className="text-muted-foreground text-xs whitespace-nowrap">
-                    {ok ? formatPrice(v.price) : "Үлдэгдэлгүй"}
+                    {ok ? formatPrice(v.price) : "Дууссан"}
                   </span>
                 </button>
               );
@@ -239,7 +239,7 @@ export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
             disabled={disabled}
             onClick={onBuyNow}
           >
-            {soldOut ? (single ? "Зарагдсан" : "Үлдэгдэлгүй") : "Захиалах"}
+            {soldOut ? (single ? "Зарагдсан" : "Дууссан") : "Захиалах"}
           </Button>
         </div>
         <Button
@@ -274,7 +274,7 @@ export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
         {/* Үлдэгдэл хэрэглэгчид үргэлж харагдана (§18.5); тоолоогүй сав — үгүй. */}
         {!single && available != null && (
           <p className="text-muted-foreground text-sm tabular-nums">
-            {available > 0 ? `Үлдэгдэл: ${available} ширхэг` : "Үлдэгдэлгүй"}
+            {available > 0 ? `Үлдэгдэл: ${available} ширхэг` : "Дууссан"}
             {inCart > 0 && ` · сагсанд ${inCart}`}
           </p>
         )}
@@ -375,7 +375,7 @@ function VialPicker({
                   {name}
                 </span>
                 <span className="text-muted-foreground text-xs whitespace-nowrap">
-                  {ok ? formatPrice(v.price) : "Үлдэгдэлгүй"}
+                  {ok ? formatPrice(v.price) : "Дууссан"}
                 </span>
               </button>
             );
