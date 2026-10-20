@@ -72,6 +72,8 @@ const localSchema = z.object({
   ...base,
   /** Хоосон/бүтэн шилний бүтэн хэмжээ («0/125ml») — зөвхөн дэлгэцийн утга. */
   bottleMl: z.number().int().min(1).max(1000).nullable().optional(),
+  /** Хоосон/бүтэн шилний эх үнэртэн (0159); null = холбоосыг арилгана. */
+  productId: z.string().uuid().nullable().optional(),
   variants: z
     .array(localVariantSchema)
     .min(1, "Ядаж нэг хувилбар нэмнэ үү")

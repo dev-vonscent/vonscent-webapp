@@ -17,7 +17,9 @@ import { ProductGallery } from "@/features/products/components/product-gallery";
 import { getShopExtra, getShopExtras } from "@/features/extras/api";
 import { ExtraCard } from "@/features/extras/components/extra-card";
 import { ExtraPurchase } from "@/features/extras/components/extra-purchase";
+import { bottleKind } from "@/features/extras/lib/bottle-kind";
 import { bottleSizeText } from "@/features/extras/lib/display";
+import { NoteColumn } from "@/features/products/components/note-column";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { formatPrice } from "@/lib/format";
 import { pageMetadata } from "@/lib/seo";
@@ -77,6 +79,21 @@ export default async function ExtraPage({
     .filter((e) => e.categorySlug !== card.categorySlug && !e.soldOut)
     .slice(0, 4);
   const catalogHref = `/catalog?tab=extras&cat=${card.categorySlug}`;
+  // Эх үнэртэн (0159): хоосон шилэнд холбоос л — дотор нь үнэртэн байхгүй
+  // тул ноот, тайлбар хамаагүй. Бүтэн / үлдэгдэлтэй шилэнд бүгд.
+  const kind = bottleKind(card.categorySlug, card.mode);
+  const perfume = extra.perfume;
+  const scent =
+    perfume && kind && kind !== "empty"
+      ? {
+          description: perfume.description,
+          hasNotes:
+            perfume.notesTop.length +
+              perfume.notesHeart.length +
+              perfume.notesBase.length >
+            0,
+        }
+      : null;
 
   return (
     <div className="mx-auto max-w-352 p-4 sm:py-8 md:px-8">
@@ -160,19 +177,45 @@ export default async function ExtraPage({
                 даруй хаагдана.
               </p>
             )}
-            {leftover && extra.productSlug && (
+            {perfume?.slug && (
               <Link
-                href={`/products/${extra.productSlug}`}
+                href={`/products/${perfume.slug}`}
                 className="text-sm underline-offset-4 hover:underline"
               >
-                {leftover.productName} — декантаар авах
+                {perfume.brand} {perfume.name} — декантаар авах
               </Link>
             )}
           </div>
 
+          {scent?.hasNotes && perfume && (
+            <div>
+              <h2 className="mb-4 font-serif text-xl font-semibold">
+                Үнэрийн нот
+              </h2>
+              <div className="bg-secondary grid grid-cols-1 gap-3 rounded-lg p-5 sm:grid-cols-3 sm:gap-4">
+                <NoteColumn title="Дээд" notes={perfume.notesTop} />
+                <NoteColumn title="Зүрх" notes={perfume.notesHeart} />
+                <NoteColumn title="Суурь" notes={perfume.notesBase} />
+              </div>
+            </div>
+          )}
+
+          {scent?.description && (
+            <div>
+              <h2 className="mb-3 font-serif text-xl font-semibold">
+                Үнэртний тухай
+              </h2>
+              <p className="text-muted-foreground text-sm/relaxed whitespace-pre-line">
+                {scent.description}
+              </p>
+            </div>
+          )}
+
           {extra.description && (
             <div>
-              <h2 className="mb-3 font-serif text-xl font-semibold">Тайлбар</h2>
+              <h2 className="mb-3 font-serif text-xl font-semibold">
+                {kind ? "Шилний тухай" : "Тайлбар"}
+              </h2>
               <p className="text-muted-foreground text-sm/relaxed whitespace-pre-line">
                 {extra.description}
               </p>

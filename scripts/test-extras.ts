@@ -771,6 +771,105 @@ async function main() {
     );
   });
 
+  await scenario(a, "v5: хоосон / бүтэн шилний эх үнэртэн (0159)", async () => {
+    await flag(a, "extras_shop", true);
+    const empty = await categoryId(a, "empty-bottle");
+    const perfume = await one<{ id: string; slug: string; status: string }>(
+      a,
+      "select id, slug, status from products where status = 'active' limit 1",
+    );
+    const r = await save(a, {
+      category_id: empty,
+      slug: "t-v5-pl",
+      name: "Хоосон шил",
+      product_id: perfume.id,
+      variants: [{ label: "A1", price: 5000 }],
+    });
+    await a.query(
+      "update extra_products set status = 'published' where id = $1",
+      [r.id],
+    );
+    const row = await one<{ product_id: string | null; mode: string }>(
+      a,
+      "select product_id, inventory_mode::text as mode from extra_products where id = $1",
+      [r.id],
+    );
+    check(
+      "холбоос хадгалагдсан, горим local_quantity хэвээр",
+      row.product_id === perfume.id && row.mode === "local_quantity",
+      row,
+    );
+    const d = await one<{
+      d: {
+        perfume: { slug: string | null } | null;
+        card: { leftover_brand: string | null; mode: string };
+      };
+    }>(a, "select extra_detail('t-v5-pl') as d");
+    check(
+      "extra_detail.perfume — нийтлэгдсэн үнэртний slug",
+      d.d.perfume?.slug === perfume.slug,
+      d.d.perfume,
+    );
+    const lf = await one<{ n: number }>(
+      a,
+      "select count(*)::int n from extras_leftover_for($1) where slug = 't-v5-pl'",
+      [perfume.id],
+    );
+    check("extras_leftover_for-д орохгүй (горимоор шүүнэ)", lf.n === 0, lf);
+
+    const v = await one<{ id: string }>(
+      a,
+      "select id from extra_variants where extra_id = $1",
+      [r.id],
+    );
+    // Түлхүүргүй хадгалалт (хуучин client) холбоосыг арчихгүй.
+    await save(a, {
+      id: r.id,
+      slug: "t-v5-pl",
+      name: "Хоосон шил",
+      variants: [{ id: v.id, label: "A1", price: 5000 }],
+    });
+    const kept = await one<{ product_id: string | null }>(
+      a,
+      "select product_id from extra_products where id = $1",
+      [r.id],
+    );
+    check(
+      "түлхүүргүй бол холбоос хэвээр",
+      kept.product_id === perfume.id,
+      kept,
+    );
+
+    await save(a, {
+      id: r.id,
+      slug: "t-v5-pl",
+      name: "Хоосон шил",
+      product_id: null,
+      variants: [{ id: v.id, label: "A1", price: 5000 }],
+    });
+    const cleared = await one<{ product_id: string | null }>(
+      a,
+      "select product_id from extra_products where id = $1",
+      [r.id],
+    );
+    check("null → холбоос арилна", cleared.product_id === null, cleared);
+
+    const bad = await errorOf(a, "select extras_save($1::jsonb, null)", [
+      JSON.stringify({
+        category_id: empty,
+        slug: "t-v5-pl2",
+        name: "x",
+        product_id: "00000000-0000-0000-0000-000000000000",
+        variants: [{ label: "a", price: 1 }],
+      }),
+    ]);
+    check(
+      "байхгүй үнэртэн → PRODUCT_NOT_FOUND",
+      bad?.includes("PRODUCT_NOT_FOUND") ?? false,
+      bad,
+    );
+  });
+
   await scenario(
     a,
     "v5: шинэ хувилбарын эхний нөөц хадгалахтай хамт (0158)",

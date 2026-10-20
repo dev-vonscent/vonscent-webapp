@@ -67,6 +67,8 @@ export function savePayload(
       return {
         ...common,
         attrs: input.bottleMl ? { bottle_ml: input.bottleMl } : {},
+        // Ирээгүй (undefined) бол SQL холбоосыг хөндөхгүй (0159).
+        product_id: input.productId,
         variants: input.variants.map((v) => ({
           id: v.id ?? null,
           label: v.label,

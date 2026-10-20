@@ -200,9 +200,9 @@ export function ExtraForm({
   const kind = bottleKind(category.slug, draft.mode);
 
   /**
-   * Хоосон / бүтэн шил: «Аль үнэртний шил вэ?» — сонговол хоосон талбаруудыг
-   * (нэр, савны хэмжээ, зураг) бөглөнө. Холбоос хадгалагдахгүй — зөвхөн
-   * бичих ажлыг хөнгөвчилнө; админ дараа нь чөлөөтэй засна.
+   * Хоосон / бүтэн шил: «Аль үнэртний шил вэ?» — холбоос хадгалагдана
+   * (0159): дэлгүүрт үнэртний хуудас руу холбоос, бүтэн шилэнд тайлбар,
+   * ноот. Сонгоход хоосон талбаруудыг (нэр, савны хэмжээ, зураг) бөглөнө.
    */
   async function fillFromPerfume(id: string) {
     const res = await adminFetch<{
@@ -310,7 +310,14 @@ export function ExtraForm({
           <Card>
             <CardContent className="space-y-4 p-4 sm:p-6">
               {(kind === "empty" || kind === "sealed") && (
-                <PerfumeAutofill onPick={(id) => void fillFromPerfume(id)} />
+                <PerfumeLink
+                  kind={kind}
+                  value={draft.perfume}
+                  onChange={(perfume) => {
+                    patch({ perfume });
+                    if (perfume) void fillFromPerfume(perfume.id);
+                  }}
+                />
               )}
               <Field label="Нэр" error={errors["name"]}>
                 <Input
@@ -428,24 +435,30 @@ export function ExtraForm({
   );
 }
 
-/** Хоосон / бүтэн шилний «Аль үнэртний шил вэ?» — зөвхөн бөглөх туслах. */
-function PerfumeAutofill({ onPick }: { onPick: (id: string) => void }) {
-  const [value, setValue] = React.useState<{
-    id: string;
-    name: string;
-    brand: string;
-  } | null>(null);
+/** Хоосон / бүтэн шилний «Аль үнэртний шил вэ?» (0159) — заавал биш. */
+function PerfumeLink({
+  kind,
+  value,
+  onChange,
+}: {
+  kind: "empty" | "sealed";
+  value: { id: string; name: string; brand: string } | null;
+  onChange: (next: { id: string; name: string; brand: string } | null) => void;
+}) {
   return (
     <Field
       label="Аль үнэртний шил вэ?"
-      hint="Заавал биш. Сонговол хоосон байгаа нэр, савны хэмжээ, зургийг бөглөнө."
+      hint={
+        kind === "empty"
+          ? "Заавал биш. Дэлгүүрт тухайн үнэртний хуудас руу холбоос гарна. Сонговол хоосон байгаа нэр, хэмжээ, зургийг бөглөнө."
+          : "Заавал биш. Дэлгүүрт үнэртний тайлбар, ноот, хуудасны холбоос гарна. Сонговол хоосон байгаа нэр, хэмжээ, зургийг бөглөнө."
+      }
     >
       <LeftoverPerfumePicker
         value={value}
-        onChange={(p) => {
-          setValue(p ? { id: p.id, name: p.name, brand: p.brand } : null);
-          if (p) onPick(p.id);
-        }}
+        onChange={(p) =>
+          onChange(p ? { id: p.id, name: p.name, brand: p.brand } : null)
+        }
       />
     </Field>
   );

@@ -119,6 +119,15 @@ interface DetailRow {
   description: string;
   product_slug: string | null;
   product_id: string | null;
+  perfume: {
+    slug: string | null;
+    name: string;
+    brand: string;
+    description: string;
+    notes_top: string[];
+    notes_heart: string[];
+    notes_base: string[];
+  } | null;
   variants: {
     id: string;
     label: string;
@@ -179,6 +188,17 @@ export async function getShopExtra(
     })),
     productSlug: data.product_slug,
     productId: data.product_id,
+    perfume: data.perfume
+      ? {
+          slug: data.perfume.slug,
+          name: data.perfume.name,
+          brand: data.perfume.brand,
+          description: data.perfume.description,
+          notesTop: data.perfume.notes_top,
+          notesHeart: data.perfume.notes_heart,
+          notesBase: data.perfume.notes_base,
+        }
+      : null,
     updatedAt: data.card.updated_at,
   };
 }

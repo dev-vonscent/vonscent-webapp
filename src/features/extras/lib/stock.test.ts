@@ -37,6 +37,7 @@ function extra(over: Partial<AdminExtra> = {}): AdminExtra {
     sort: 0,
     variants: [variant()],
     leftover: null,
+    perfume: null,
     fromPrice: 15000,
     readiness: [],
     updatedAt: "2026-10-19T00:00:00Z",

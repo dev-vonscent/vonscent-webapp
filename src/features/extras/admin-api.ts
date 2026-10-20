@@ -270,6 +270,14 @@ async function loadExtras(
               lockedMl: lock?.locked_ml ?? null,
             }
           : null,
+      perfume:
+        p.inventory_mode === "local_quantity" && p.product_id
+          ? {
+              id: p.product_id,
+              name: perfume?.name ?? "",
+              brand: perfume?.brand ?? "",
+            }
+          : null,
       fromPrice: active.length ? Math.min(...active.map((v) => v.price)) : null,
       readiness: readiness.get(p.id) ?? [],
       updatedAt: p.updated_at,

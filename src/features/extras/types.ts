@@ -103,6 +103,11 @@ export interface AdminExtra {
   sort: number;
   variants: AdminExtraVariant[];
   leftover: AdminLeftover | null;
+  /**
+   * Хоосон / бүтэн шилний эх үнэртэн (0159) — заавал биш. Үлдэгдэлтэй
+   * шилнийх `leftover`-т.
+   */
+  perfume: { id: string; name: string; brand: string } | null;
   /** Идэвхтэй хувилбаруудын хамгийн бага үнэ. */
   fromPrice: number | null;
   readiness: ExtraReadinessCode[];
@@ -171,5 +176,18 @@ export interface ShopExtraDetail {
   /** Үлдэгдэлтэй шилний эх үнэртний хуудас. */
   productSlug: string | null;
   productId: string | null;
+  /** Эх үнэртэн (0159) — тайлбар, ноот, хуудасны холбоос. */
+  perfume: ShopExtraPerfume | null;
   updatedAt: string;
+}
+
+export interface ShopExtraPerfume {
+  /** Нийтлэгдээгүй / архивласан үнэртэнд null — холбоос гаргахгүй. */
+  slug: string | null;
+  name: string;
+  brand: string;
+  description: string;
+  notesTop: string[];
+  notesHeart: string[];
+  notesBase: string[];
 }

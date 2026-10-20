@@ -48,6 +48,8 @@ export interface ExtraDraft {
   sort: number;
   /** Хоосон/бүтэн шилний бүтэн хэмжээ (ml). */
   bottleMl: string;
+  /** Хоосон/бүтэн шилний эх үнэртэн (0159) — заавал биш. */
+  perfume: { id: string; name: string; brand: string } | null;
   variants: DraftVariant[];
   leftover: DraftLeftover | null;
   /** Үлдэгдэлтэй шилний ганц үнэ. */
@@ -69,6 +71,7 @@ export function emptyDraft(mode: ExtraMode): ExtraDraft {
     images: [],
     sort: 0,
     bottleMl: "",
+    perfume: null,
     variants:
       mode === "local_quantity"
         ? [
@@ -99,6 +102,7 @@ export function draftOf(extra: AdminExtra): ExtraDraft {
     images: extra.images,
     sort: extra.sort,
     bottleMl: extra.bottleMl != null ? String(extra.bottleMl) : "",
+    perfume: extra.perfume,
     variants:
       extra.mode === "leftover_liquid"
         ? []
@@ -166,6 +170,7 @@ export function toSavePayload(d: ExtraDraft): ExtraSaveInput {
         mode: "local_quantity",
         ...base,
         bottleMl: d.bottleMl.trim() ? num(d.bottleMl) : null,
+        productId: d.perfume?.id ?? null,
         variants: d.variants.map((v, i) => ({
           id: v.id,
           label: v.label,

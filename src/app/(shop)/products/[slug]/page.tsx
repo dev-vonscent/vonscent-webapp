@@ -20,6 +20,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { NoteColumn } from "@/features/products/components/note-column";
 import { ProductGallery } from "@/features/products/components/product-gallery";
 import { ProductPurchase } from "@/features/products/components/product-purchase";
 import { ComingSoonPurchase } from "@/features/products/components/coming-soon-purchase";
@@ -77,18 +78,6 @@ const TAG_LABEL: Record<string, string> = {
   hot: "Эрэлттэй",
   sale: "Хямдрал",
 };
-
-function NoteColumn({ title, notes }: { title: string; notes: string[] }) {
-  if (!notes.length) return null;
-  return (
-    <div>
-      <p className="text-muted-foreground mb-1 text-xs font-semibold tracking-wide uppercase">
-        {title}
-      </p>
-      <p className="text-sm">{notes.join(", ")}</p>
-    </div>
-  );
-}
 
 export default async function ProductPage({
   params,
