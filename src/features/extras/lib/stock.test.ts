@@ -14,6 +14,9 @@ function variant(over: Partial<AdminExtraVariant> = {}): AdminExtraVariant {
     isActive: true,
     sort: 0,
     updatedAt: "2026-10-19T00:00:00Z",
+    batchCode: null,
+    sizeNote: null,
+    imageUrl: null,
     ...over,
   };
 }
@@ -31,6 +34,7 @@ function extra(over: Partial<AdminExtra> = {}): AdminExtra {
     images: [],
     status: "published",
     capacity: null,
+    bottleMl: null,
     sort: 0,
     variants: [variant()],
     leftover: null,

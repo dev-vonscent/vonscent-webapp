@@ -116,6 +116,9 @@ function toVariant(
       isActive: r.is_active,
       sort: r.sort,
       updatedAt: r.updated_at,
+      batchCode: null,
+      sizeNote: null,
+      imageUrl: r.image_url,
     };
   }
   return {
@@ -129,6 +132,9 @@ function toVariant(
     isActive: r.is_active,
     sort: r.sort,
     updatedAt: r.updated_at,
+    batchCode: r.batch_code,
+    sizeNote: r.size_note,
+    imageUrl: r.image_url,
   };
 }
 
@@ -247,6 +253,8 @@ async function loadExtras(
       images: p.images,
       status: p.status,
       capacity: typeof p.attrs?.capacity === "number" ? p.attrs.capacity : null,
+      bottleMl:
+        typeof p.attrs?.bottle_ml === "number" ? p.attrs.bottle_ml : null,
       sort: p.sort,
       variants,
       leftover:

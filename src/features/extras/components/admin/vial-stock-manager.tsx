@@ -10,17 +10,21 @@ import { Input } from "@/components/ui/input";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { adminFetch, mutateJson } from "@/features/admin/lib/mutate";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatPrice } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { VIAL_STYLE_SHORT, vialName } from "@/lib/vials";
 import type { VialOption } from "../../types";
+import { StockModeToggle, type StockMode } from "./stock-mode-toggle";
+import { StockPurchaseForm } from "./stock-purchase-form";
 
 const STYLES = ["black", "pink", "silver"] as const;
 const COLORED_ML = [5, 10, 20] as const;
 
 const MOVE_LABEL: Record<string, string> = {
-  set: "Тоо оруулсан",
+  set: "Эхний тооллого",
+  purchase: "Нөөц нөхсөн",
+  adjust: "Тоо зассан",
   reserve: "Захиалгад орсон",
   release: "Суллагдсан",
   commit: "Хүргэгдсэн",
@@ -126,6 +130,10 @@ export function VialStockManager({ vials }: { vials: VialOption[] }) {
             <div key={v.id} className="flex items-center gap-3 px-4 py-2">
               <span className="flex-1 text-sm font-medium">
                 {v.ml === 2 ? "2ml сав (өнгөгүй)" : "1ml сав (бэлгийн дээж)"}
+                {/* §18.1 №2 — зөвхөн тоолно, худалдан авалт тайланд орно. */}
+                <span className="text-muted-foreground block text-xs font-normal">
+                  Дангаар зарагдахгүй
+                </span>
               </span>
               <div className="w-32">
                 <VialCell onOpen={setOpen} v={v} />
@@ -177,6 +185,8 @@ interface Move {
   note: string;
   at: string;
   orderNo: string | null;
+  /** `purchase`-д л — нийт авсан үнэ. */
+  cost: number | null;
 }
 
 function VialDialog({
@@ -200,6 +210,8 @@ function VialDialog({
   const [error, setError] = React.useState<string>();
   const [busy, setBusy] = React.useState(false);
   const [moves, setMoves] = React.useState<Move[] | null>(null);
+  const [mode, setMode] = React.useState<StockMode>("purchase");
+  const counted = current.onHand != null;
 
   React.useEffect(() => {
     let cancelled = false;
@@ -243,7 +255,9 @@ function VialDialog({
     setCurrent(res.data.current);
     setError(undefined);
     setNote("");
-    toast.success("Савны тоо хадгалагдлаа");
+    toast.success(
+      counted ? "Савны тоо засагдлаа" : "Эхний тооллого хадгалагдлаа",
+    );
     router.refresh();
   }
 
@@ -274,54 +288,99 @@ function VialDialog({
       title={vialName(vial)}
     >
       <div className="space-y-5">
-        <form
-          noValidate
-          onSubmit={(e) => {
-            e.preventDefault();
-            void saveCount();
-          }}
-          className="space-y-3"
-        >
-          <Field
-            label="Нийт тоо"
-            hint="Грамаар савлагдаад хүргэгдээгүй захиалгын савыг оруулаад тоолно уу."
-            error={error}
-          >
-            <Input
-              inputMode="numeric"
-              autoComplete="off"
-              value={count}
-              placeholder="Тоо оруулаагүй"
-              className="tabular-nums"
-              onChange={(e) => {
-                setCount(e.target.value);
-                setError(undefined);
+        {counted && <StockModeToggle value={mode} onChange={setMode} />}
+        {counted && mode === "purchase" ? (
+          <div className="space-y-3">
+            <dl className="bg-muted/40 grid grid-cols-3 gap-2 rounded-md px-3 py-2 text-sm">
+              <div>
+                <dt className="text-muted-foreground text-xs">Нийт</dt>
+                <dd className="tabular-nums">{current.onHand}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground text-xs">
+                  Захиалгад орсон
+                </dt>
+                <dd className="tabular-nums">{current.reserved}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground text-xs">
+                  Ашиглах боломжтой
+                </dt>
+                <dd className="font-medium tabular-nums">
+                  {Math.max((current.onHand ?? 0) - current.reserved, 0)}
+                </dd>
+              </div>
+            </dl>
+            <StockPurchaseForm
+              endpoint="/api/admin/vials/purchase"
+              target={{ vialId: vial.id }}
+              current={current}
+              onConflict={setCurrent}
+              onSaved={(c) => {
+                setCurrent(c);
+                setCount(c.onHand == null ? "" : String(c.onHand));
+                router.refresh();
               }}
             />
-          </Field>
-          <dl className="bg-muted/40 grid grid-cols-2 gap-2 rounded-md px-3 py-2 text-sm">
-            <div>
-              <dt className="text-muted-foreground text-xs">Захиалгад орсон</dt>
-              <dd className="tabular-nums">{current.reserved}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground text-xs">Зарах боломжтой</dt>
-              <dd className="font-medium tabular-nums">
-                {current.onHand == null ? "Тоо оруулаагүй" : available}
-              </dd>
-            </div>
-          </dl>
-          <Field label="Тэмдэглэл" hint="Ж: Шинэ ачаа ирсэн">
-            <Input
-              value={note}
-              maxLength={200}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </Field>
-          <LoadingButton type="submit" loading={busy} className="w-full">
-            Тоо хадгалах
-          </LoadingButton>
-        </form>
+          </div>
+        ) : (
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              void saveCount();
+            }}
+            className="space-y-3"
+          >
+            <Field
+              label={counted ? "Тоолсон нийт тоо" : "Эхний тооллого"}
+              hint={
+                counted
+                  ? "Тооллогоор зөрсөн үед л. Өртөг тайланд орохгүй — шинэ ачааг «Нөөц нөхөх»-өөр оруулна."
+                  : "Одоо байгаа бүх савыг, грамаар савлагдаад хүргэгдээгүй захиалгынхыг оруулаад тоолно уу. Дараа нь шинэ ачааг «Нөөц нөхөх»-өөр нэмнэ."
+              }
+              error={error}
+            >
+              <Input
+                inputMode="numeric"
+                autoComplete="off"
+                value={count}
+                placeholder="Тоо оруулаагүй"
+                className="tabular-nums"
+                onChange={(e) => {
+                  setCount(e.target.value);
+                  setError(undefined);
+                }}
+              />
+            </Field>
+            <dl className="bg-muted/40 grid grid-cols-2 gap-2 rounded-md px-3 py-2 text-sm">
+              <div>
+                <dt className="text-muted-foreground text-xs">
+                  Захиалгад орсон
+                </dt>
+                <dd className="tabular-nums">{current.reserved}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground text-xs">
+                  Зарах боломжтой
+                </dt>
+                <dd className="font-medium tabular-nums">
+                  {current.onHand == null ? "Тоо оруулаагүй" : available}
+                </dd>
+              </div>
+            </dl>
+            <Field label="Тэмдэглэл" hint="Ж: Шинэ ачаа ирсэн">
+              <Input
+                value={note}
+                maxLength={200}
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </Field>
+            <LoadingButton type="submit" loading={busy} className="w-full">
+              {counted ? "Тоо засах" : "Тооллого хадгалах"}
+            </LoadingButton>
+          </form>
+        )}
 
         <div className="grid gap-3 sm:grid-cols-2 sm:items-end">
           <Field label="Цөөхөн гэж анхааруулах хязгаар">
@@ -372,6 +431,11 @@ function VialDialog({
                   <span className="tabular-nums">
                     {m.deltaOnHand !== 0 &&
                       `${m.deltaOnHand > 0 ? "+" : ""}${m.deltaOnHand}`}
+                    {m.cost != null && (
+                      <span className="text-muted-foreground block text-right">
+                        {formatPrice(m.cost)}
+                      </span>
+                    )}
                   </span>
                   <span className="text-muted-foreground whitespace-nowrap">
                     {formatDateTime(m.at)}

@@ -658,8 +658,12 @@ export interface ExtraProductRow {
   product_id: string | null;
   remaining_ml: number | null;
   full_ml: number | null;
-  /** Зөвхөн дэлгэцийн утга (`capacity` г.м.) — тооцоонд оролцохгүй. */
-  attrs: { capacity?: number };
+  /**
+   * Зөвхөн дэлгэцийн утга — тооцоонд оролцохгүй. `bottle_ml`: хоосон/бүтэн
+   * шилний бүтэн хэмжээ («0/125ml», 0153). `capacity` нь v4-ийн хайрцгийн
+   * «хэдэн шил багтах» (v5-д засахгүй).
+   */
+  attrs: { capacity?: number; bottle_ml?: number };
   sort: number;
   created_at: string;
   updated_at: string;

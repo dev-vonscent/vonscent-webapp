@@ -66,7 +66,7 @@ export function savePayload(
     case "local_quantity":
       return {
         ...common,
-        attrs: input.capacity ? { capacity: input.capacity } : {},
+        attrs: input.bottleMl ? { bottle_ml: input.bottleMl } : {},
         variants: input.variants.map((v) => ({
           id: v.id ?? null,
           label: v.label,

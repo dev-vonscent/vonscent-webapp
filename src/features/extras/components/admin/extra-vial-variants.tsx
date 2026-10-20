@@ -41,6 +41,9 @@ export function ExtraVialVariants({
           price: "",
           isActive: true,
           sort: variants.length,
+          batchCode: "",
+          sizeNote: "",
+          imageUrl: "",
         },
       ]);
     } else if (!on && i >= 0) {

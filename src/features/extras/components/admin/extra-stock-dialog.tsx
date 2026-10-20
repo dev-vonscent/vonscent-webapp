@@ -10,6 +10,8 @@ import { LoadingButton } from "@/components/shared/loading-button";
 import { adminFetch } from "@/features/admin/lib/mutate";
 import { toast } from "@/lib/toast";
 import type { AdminExtraVariant } from "../../types";
+import { StockModeToggle, type StockMode } from "./stock-mode-toggle";
+import { StockPurchaseForm } from "./stock-purchase-form";
 
 interface Current {
   onHand: number;
@@ -18,7 +20,8 @@ interface Current {
 }
 
 /**
- * Энгийн барааны «Одоо байгаа тоо» (plan §7.3).
+ * Энгийн барааны нөөц (plan §7.3, §18.4): «Нөөц нөхөх» (худалдан авалт —
+ * өртөг тайланд орно) ба «Тоо засах» (тооллогын залруулга, өртөггүй).
  *
  * Цонх нээгдэх үеийн `updated_at`-ийг хамт илгээнэ. Энэ хооронд захиалга
  * орж/гарч тоо өөрчлөгдсөн бол сервер хадгалахгүй, шинэ тоог буцаана —
@@ -46,10 +49,12 @@ export function ExtraStockDialog({
   const [note, setNote] = React.useState("");
   const [error, setError] = React.useState<string>();
   const [busy, setBusy] = React.useState(false);
+  const [mode, setMode] = React.useState<StockMode>("purchase");
 
   // Шинээр нээх бүрд серверийн хамгийн сүүлийн тооноос эхэлнэ.
   React.useEffect(() => {
     if (!open) return;
+    setMode("purchase");
     setCurrent({
       onHand: variant.onHand ?? 0,
       reserved: variant.reserved,
@@ -101,66 +106,99 @@ export function ExtraStockDialog({
     router.refresh();
   }
 
+  const summary = (
+    <dl className="bg-muted/40 grid grid-cols-3 gap-2 rounded-md px-3 py-2 text-sm">
+      <div>
+        <dt className="text-muted-foreground text-xs">Нийт</dt>
+        <dd className="tabular-nums">{current.onHand}</dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground text-xs">Захиалгад орсон</dt>
+        <dd className="tabular-nums">{current.reserved}</dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground text-xs">Зарах боломжтой</dt>
+        <dd className="font-medium tabular-nums">
+          {Math.max(current.onHand - current.reserved, 0)}
+        </dd>
+      </div>
+    </dl>
+  );
+
   return (
     <ResponsiveDialog
       open={open}
       onOpenChange={busy ? () => {} : onOpenChange}
       title={title}
-      description="Хүргэгдээгүй захиалгынхыг оруулаад нийт тоог бичнэ үү."
     >
-      <form
-        noValidate
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
-        className="space-y-4"
-      >
-        <Field label="Одоо байгаа тоо" error={error}>
-          <Input
-            inputMode="numeric"
-            autoComplete="off"
-            value={value}
-            onChange={(e) => {
-              setValue(e.target.value);
-              setError(undefined);
+      <div className="space-y-4">
+        <StockModeToggle value={mode} onChange={setMode} />
+        {summary}
+        {mode === "purchase" ? (
+          <StockPurchaseForm
+            endpoint="/api/admin/extras/purchase"
+            target={{ variantId: variant.id }}
+            current={current}
+            onConflict={(c) => setCurrent({ ...c, onHand: c.onHand ?? 0 })}
+            onSaved={() => {
+              onOpenChange(false);
+              router.refresh();
             }}
-            className="tabular-nums"
           />
-        </Field>
-        <dl className="bg-muted/40 grid grid-cols-2 gap-2 rounded-md px-3 py-2 text-sm">
-          <div>
-            <dt className="text-muted-foreground text-xs">
-              Захиалгад орсон (хүргэгдээгүй)
-            </dt>
-            <dd className="tabular-nums">{current.reserved}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground text-xs">Зарах боломжтой</dt>
-            <dd className="font-medium tabular-nums">{available ?? "—"}</dd>
-          </div>
-        </dl>
-        <Field label="Тэмдэглэл" hint="Ж: Шинэ ачаа ирсэн">
-          <Input
-            value={note}
-            maxLength={200}
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </Field>
-        <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={busy}
-            onClick={() => onOpenChange(false)}
+        ) : (
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submit();
+            }}
+            className="space-y-4"
           >
-            Болих
-          </Button>
-          <LoadingButton type="submit" loading={busy}>
-            Хадгалах
-          </LoadingButton>
-        </div>
-      </form>
+            <Field
+              label="Тоолсон нийт тоо"
+              hint="Тооллогоор зөрсөн үед л. Хүргэгдээгүй захиалгынхыг оруулаад бичнэ. Өртөг тайланд орохгүй."
+              error={error}
+            >
+              <Input
+                inputMode="numeric"
+                autoComplete="off"
+                value={value}
+                onChange={(e) => {
+                  setValue(e.target.value);
+                  setError(undefined);
+                }}
+                className="tabular-nums"
+              />
+            </Field>
+            <p className="text-muted-foreground text-xs">
+              Зарах боломжтой болно:{" "}
+              <span className="text-foreground font-medium tabular-nums">
+                {available ?? "—"}
+              </span>
+            </p>
+            <Field label="Тэмдэглэл" hint="Ж: Тооллогоор 2 дутсан">
+              <Input
+                value={note}
+                maxLength={200}
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </Field>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => onOpenChange(false)}
+              >
+                Болих
+              </Button>
+              <LoadingButton type="submit" loading={busy}>
+                Тоо засах
+              </LoadingButton>
+            </div>
+          </form>
+        )}
+      </div>
     </ResponsiveDialog>
   );
 }

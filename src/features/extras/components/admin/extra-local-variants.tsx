@@ -9,23 +9,34 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { AdminExtraVariant } from "../../types";
 import { newKey, type DraftVariant } from "./extra-draft";
+import { ExtraImagesField } from "./extra-images-field";
 import { ExtraStockDialog } from "./extra-stock-dialog";
+
+/**
+ * Хувилбарын хэлбэр ангиллаас (plan §18.4):
+ *   batch — хоосон/бүтэн шил: хувилбар бүр нэг batch code (нэр = code);
+ *   gift  — гоёмсог бэлгийн сав: чөлөөт нэр, хэмжээ, өөрийн зураг;
+ *   plain — шприц г.м.: нэр, үнэ.
+ */
+export type LocalVariantKind = "batch" | "gift" | "plain";
 
 /**
  * Энгийн барааны хувилбар: «Нэр · Үнэ (₮) · Одоо байгаа тоо» (plan §7.2).
  *
  * Шинэ мөр 0 тоотой үүснэ — нөөц зөвхөн худалдан авалтаар (үнэ, огноотой)
  * орж тайланд зарлага болно (0153). Хадгалсан мөрийн тоог зөвхөн цонхоор
- * (зөрчил шалгалттай) — маягтын хадгалалт тоог хэзээ ч дарж бичихгүй. Хадгалсан хувилбар устахгүй, идэвхгүй болно (захиалгын түүх
- * түүнийг заадаг).
+ * (зөрчил шалгалттай) — маягтын хадгалалт тоог хэзээ ч дарж бичихгүй.
+ * Хадгалсан хувилбар устахгүй, идэвхгүй болно (захиалгын түүх түүнийг заадаг).
  */
 export function ExtraLocalVariants({
+  kind = "plain",
   productName,
   variants,
   saved,
   errors,
   onChange,
 }: {
+  kind?: LocalVariantKind;
   productName: string;
   variants: DraftVariant[];
   /** Хадгалсан хувилбарын нөөц — id-аар. */
@@ -56,14 +67,32 @@ export function ExtraLocalVariants({
               )}
             >
               <div className="space-y-1.5">
-                <Label htmlFor={`${v.key}-label`}>Нэр</Label>
+                <Label htmlFor={`${v.key}-label`}>
+                  {kind === "batch" ? "Batch code" : "Нэр"}
+                </Label>
                 <Input
                   id={`${v.key}-label`}
                   value={v.label}
                   maxLength={60}
-                  placeholder={variants.length > 1 ? "Ж: Хар" : "Заавал биш"}
+                  placeholder={
+                    kind === "batch"
+                      ? "Ж: A1234"
+                      : kind === "gift"
+                        ? "Ж: Жижиг хайрцаг"
+                        : variants.length > 1
+                          ? "Ж: 5ml"
+                          : "Заавал биш"
+                  }
                   aria-invalid={Boolean(labelErr)}
-                  onChange={(e) => update(i, { label: e.target.value })}
+                  onChange={(e) =>
+                    update(
+                      i,
+                      // Batch code нь хувилбарын нэр ч — ижил code давхардахгүй.
+                      kind === "batch"
+                        ? { label: e.target.value, batchCode: e.target.value }
+                        : { label: e.target.value },
+                    )
+                  }
                 />
                 {labelErr && (
                   <p className="text-destructive text-xs">{labelErr}</p>
@@ -102,7 +131,7 @@ export function ExtraLocalVariants({
                       size="sm"
                       onClick={() => setStockFor(stock)}
                     >
-                      Нөөц засах
+                      Нөөц нөхөх
                     </Button>
                   </div>
                 </div>
@@ -135,6 +164,30 @@ export function ExtraLocalVariants({
                   </Button>
                 )}
               </div>
+              {kind === "gift" && (
+                <div className="grid gap-3 sm:col-span-full sm:grid-cols-[1fr_8rem]">
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`${v.key}-size`}>Хэмжээ, тохирох сав</Label>
+                    <Input
+                      id={`${v.key}-size`}
+                      value={v.sizeNote}
+                      maxLength={300}
+                      placeholder="Ж: 8×5×4см · 10ml-ийн 2 сав багтана"
+                      onChange={(e) => update(i, { sizeNote: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-sm font-medium">Зураг</span>
+                    <ExtraImagesField
+                      max={1}
+                      value={v.imageUrl ? [v.imageUrl] : []}
+                      onChange={(urls) =>
+                        update(i, { imageUrl: urls[0] ?? "" })
+                      }
+                    />
+                  </div>
+                </div>
+              )}
             </li>
           );
         })}
@@ -151,11 +204,15 @@ export function ExtraLocalVariants({
               price: "",
               isActive: true,
               sort: variants.length,
+              batchCode: "",
+              sizeNote: "",
+              imageUrl: "",
             },
           ])
         }
       >
-        <Plus className="size-4" /> Хувилбар нэмэх
+        <Plus className="size-4" />{" "}
+        {kind === "batch" ? "Batch code нэмэх" : "Хувилбар нэмэх"}
       </Button>
       {stockFor && (
         <ExtraStockDialog

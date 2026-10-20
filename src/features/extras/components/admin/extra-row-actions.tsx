@@ -10,6 +10,7 @@ import {
   EyeOff,
   MoreHorizontal,
   Pencil,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +43,7 @@ export function ExtraRowActions({
   const [confirm, confirmDialog] = useConfirm();
   const published = extra.status === "published";
   const leftover = extra.mode === "leftover_liquid";
+  const sold = extra.leftover?.lockState === "committed";
 
   async function setStatus(status: "draft" | "published" | "archived") {
     setBusy(true);
@@ -138,6 +140,16 @@ export function ExtraRowActions({
                 <Eye className="size-4" /> Нийтлэх
               </DropdownMenuItem>
             )
+          )}
+          {sold && (
+            // Ижил үнэртний дараагийн шил: мэдээллийг хуулж шинэ бараа (§18.4).
+            <DropdownMenuItem asChild>
+              <Link
+                href={`/admin/extras/new?cat=${extra.categorySlug}&mode=leftover_liquid&from=${extra.id}`}
+              >
+                <RefreshCw className="size-4" /> Дахин нийтлэх
+              </Link>
+            </DropdownMenuItem>
           )}
           {!leftover && (
             <DropdownMenuItem onSelect={duplicate}>

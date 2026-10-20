@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { extraSaveSchema } from "@/lib/validators/extras";
-import { emptyDraft, toSavePayload } from "./extra-draft";
+import type { AdminExtra } from "../../types";
+import { emptyDraft, relistDraft, toSavePayload } from "./extra-draft";
 
 describe("toSavePayload + extraSaveSchema", () => {
   it("хоосон үнийг 0 гэж чимээгүй хадгалахгүй", () => {
@@ -48,6 +49,9 @@ describe("toSavePayload + extraSaveSchema", () => {
         price: "2000",
         isActive: true,
         sort: 0,
+        batchCode: "",
+        sizeNote: "",
+        imageUrl: "",
       },
       {
         key: "b",
@@ -56,6 +60,9 @@ describe("toSavePayload + extraSaveSchema", () => {
         price: "2000",
         isActive: true,
         sort: 1,
+        batchCode: "",
+        sizeNote: "",
+        imageUrl: "",
       },
     ];
     expect(extraSaveSchema.safeParse(toSavePayload(d)).success).toBe(false);
@@ -77,5 +84,59 @@ describe("toSavePayload + extraSaveSchema", () => {
     expect(extraSaveSchema.safeParse(toSavePayload(d)).success).toBe(false);
     d.leftover.remainingMl = "18";
     expect(extraSaveSchema.safeParse(toSavePayload(d)).success).toBe(true);
+  });
+
+  it("batch code ба хэмжээ payload-д орно, бүтэн хэмжээ attrs-д", () => {
+    const d = emptyDraft("local_quantity");
+    d.name = "JPG Le Male Elixir";
+    d.bottleMl = "125";
+    d.variants[0] = {
+      ...d.variants[0]!,
+      label: "A1234",
+      batchCode: "A1234",
+      price: "15000",
+    };
+    const out = toSavePayload(d);
+    expect(out).toMatchObject({
+      bottleMl: 125,
+      variants: [{ label: "A1234", batchCode: "A1234", price: 15000 }],
+    });
+    expect(extraSaveSchema.safeParse(out).success).toBe(true);
+  });
+});
+
+describe("relistDraft — зарагдсан шилийг дахин нийтлэх", () => {
+  it("мэдээллийг хуулж, ml, үнэ, хувилбарыг хоослоно", () => {
+    const sold = {
+      id: "e1",
+      mode: "leftover_liquid",
+      name: "Creed Aventus",
+      description: "Хайрцаггүй",
+      images: ["https://x/1.jpg"],
+      sort: 0,
+      capacity: null,
+      bottleMl: null,
+      variants: [{ id: "v1", price: 25000 }],
+      leftover: {
+        productId: "p1",
+        productName: "Aventus",
+        productBrand: "Creed",
+        productImage: null,
+        productAvailableMl: 40,
+        remainingMl: 18,
+        fullMl: 100,
+        lockState: "committed",
+        lockedMl: 18,
+      },
+    } as unknown as AdminExtra;
+    const d = relistDraft(sold);
+    expect(d).toMatchObject({
+      mode: "leftover_liquid",
+      name: "Creed Aventus",
+      images: ["https://x/1.jpg"],
+      leftoverPrice: "",
+      leftover: { productId: "p1", fullMl: "100", remainingMl: "" },
+    });
+    expect(d.leftoverVariantId).toBeUndefined();
   });
 });

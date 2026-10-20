@@ -13,6 +13,11 @@ export interface DraftVariant {
   price: string;
   isActive: boolean;
   sort: number;
+  /** Хоосон/бүтэн шил (0153). */
+  batchCode: string;
+  /** Гоёмсог бэлгийн сав — чөлөөт хэмжээ/тохирох тайлбар. */
+  sizeNote: string;
+  imageUrl: string;
   /** Грамын сав. */
   vialId?: string;
 }
@@ -33,7 +38,8 @@ export interface ExtraDraft {
   description: string;
   images: string[];
   sort: number;
-  capacity: string;
+  /** Хоосон/бүтэн шилний бүтэн хэмжээ (ml). */
+  bottleMl: string;
   variants: DraftVariant[];
   leftover: DraftLeftover | null;
   /** Үлдэгдэлтэй шилний ганц үнэ. */
@@ -54,7 +60,7 @@ export function emptyDraft(mode: ExtraMode): ExtraDraft {
     description: "",
     images: [],
     sort: 0,
-    capacity: "",
+    bottleMl: "",
     variants:
       mode === "local_quantity"
         ? [
@@ -64,6 +70,9 @@ export function emptyDraft(mode: ExtraMode): ExtraDraft {
               price: "",
               isActive: true,
               sort: 0,
+              batchCode: "",
+              sizeNote: "",
+              imageUrl: "",
             },
           ]
         : [],
@@ -81,7 +90,7 @@ export function draftOf(extra: AdminExtra): ExtraDraft {
     description: extra.description,
     images: extra.images,
     sort: extra.sort,
-    capacity: extra.capacity != null ? String(extra.capacity) : "",
+    bottleMl: extra.bottleMl != null ? String(extra.bottleMl) : "",
     variants:
       extra.mode === "leftover_liquid"
         ? []
@@ -92,6 +101,9 @@ export function draftOf(extra: AdminExtra): ExtraDraft {
             price: String(v.price),
             isActive: v.isActive,
             sort: v.sort,
+            batchCode: v.batchCode ?? "",
+            sizeNote: v.sizeNote ?? "",
+            imageUrl: v.imageUrl ?? "",
             vialId: v.vialId ?? undefined,
           })),
     leftover: extra.leftover
@@ -107,6 +119,21 @@ export function draftOf(extra: AdminExtra): ExtraDraft {
       : null,
     leftoverPrice: leftoverVariant ? String(leftoverVariant.price) : "",
     leftoverVariantId: leftoverVariant?.id,
+  };
+}
+
+/**
+ * Зарагдсан үлдэгдэлтэй шилийг «Дахин нийтлэх» (plan §18.4): нэр, зураг,
+ * тайлбар, эх үнэртнийг хуулна; үлдсэн ml, үнийг админ шинээр бичнэ. Шинэ
+ * бараа болж үүснэ — хуучных нь борлуулалтын түүхтэйгээ архивлагдана.
+ */
+export function relistDraft(sold: AdminExtra): ExtraDraft {
+  const d = draftOf(sold);
+  return {
+    ...d,
+    leftover: d.leftover ? { ...d.leftover, remainingMl: "" } : null,
+    leftoverPrice: "",
+    leftoverVariantId: undefined,
   };
 }
 
@@ -130,13 +157,16 @@ export function toSavePayload(d: ExtraDraft): ExtraSaveInput {
       return {
         mode: "local_quantity",
         ...base,
-        capacity: d.capacity.trim() ? num(d.capacity) : null,
+        bottleMl: d.bottleMl.trim() ? num(d.bottleMl) : null,
         variants: d.variants.map((v, i) => ({
           id: v.id,
           label: v.label,
           price: num(v.price),
           isActive: v.isActive,
           sort: i,
+          batchCode: v.batchCode.trim(),
+          sizeNote: v.sizeNote.trim(),
+          imageUrl: v.imageUrl,
         })),
       };
     case "shared_vial":

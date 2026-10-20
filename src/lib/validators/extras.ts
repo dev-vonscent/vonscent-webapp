@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ubToday } from "@/lib/time";
 
 /**
  * Нэмэлт бараа — админы маягт (extras-shop-plan §7). Client ба server хоёулаа
@@ -65,8 +66,8 @@ export const vialVariantSchema = z.object({
 const localSchema = z.object({
   mode: z.literal("local_quantity"),
   ...base,
-  /** Бэлгийн хайрцагт «Хэдэн шил багтах вэ?» — зөвхөн дэлгэцийн утга. */
-  capacity: z.number().int().min(1).max(50).nullable().optional(),
+  /** Хоосон/бүтэн шилний бүтэн хэмжээ («0/125ml») — зөвхөн дэлгэцийн утга. */
+  bottleMl: z.number().int().min(1).max(1000).nullable().optional(),
   variants: z
     .array(localVariantSchema)
     .min(1, "Ядаж нэг хувилбар нэмнэ үү")
@@ -179,6 +180,59 @@ export const extraStockSchema = z.object({
   expectedUpdatedAt: z.string().min(1),
   note: z.string().trim().max(200).default(""),
 });
+
+/** Нэгж авсан үнийн дээд хязгаар — SQL `purchase_args_check`-тэй ижил (0153). */
+export const PURCHASE_UNIT_COST_MAX = 10_000_000;
+
+/**
+ * Авсан өдөр: УБ-ын одоогийн сарын 1-нээс өнөөдөр хүртэл (0153
+ * `purchase_date_check`). Өмнөх сар хаагдсан — тайлан хожим өөрчлөгдөхгүй.
+ */
+export function purchaseDateError(day: string, today = ubToday()) {
+  if (day > today) return "Авсан өдөр ирээдүйд байж болохгүй";
+  if (day < `${today.slice(0, 7)}-01`)
+    return "Өнгөрсөн сарын тайлан хаагдсан тул энэ сарын өдөр оруулна уу";
+  return null;
+}
+
+const purchaseBase = {
+  qty: z
+    .number({ invalid_type_error: "Ширхэг оруулна уу" })
+    .int("Бүхэл тоо оруулна уу")
+    .min(1, "Ядаж 1 ширхэг")
+    .max(EXTRA_STOCK_MAX, "Ширхэг хэт их байна"),
+  unitCost: z
+    .number({ invalid_type_error: "Нэгж авсан үнэ оруулна уу" })
+    .int("Бүхэл тоо оруулна уу")
+    .min(0, "Үнэ сөрөг байж болохгүй")
+    .max(PURCHASE_UNIT_COST_MAX, "Үнэ хэт өндөр байна"),
+  purchasedOn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Авсан өдрөө сонгоно уу"),
+  /** Цонх нээгдэх үеийн `updated_at` — null бол шалгахгүй. */
+  expectedUpdatedAt: z.string().min(1).nullable(),
+  note: z.string().trim().max(200).default(""),
+};
+
+function refineDate(v: { purchasedOn: string }, ctx: z.RefinementCtx) {
+  const err = purchaseDateError(v.purchasedOn);
+  if (err)
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["purchasedOn"],
+      message: err,
+    });
+}
+
+/** Нэмэлт барааны «Нөөц нөхөх» — худалдан авалт (0153 `extras_purchase`). */
+export const extraPurchaseSchema = z
+  .object({ variantId: z.string().uuid(), ...purchaseBase })
+  .superRefine(refineDate);
+
+/** Савны «Нөөц нөхөх» (0153 `vial_purchase`) — 1/2ml-ийг ч тоолно. */
+export const vialPurchaseSchema = z
+  .object({ vialId: z.string().uuid(), ...purchaseBase })
+  .superRefine(refineDate);
 
 /** URL-ийн slug — кирилл галиглаад латин үсэг, тоо, зураас. */
 export function extraSlug(name: string, normalize: (s: string) => string) {

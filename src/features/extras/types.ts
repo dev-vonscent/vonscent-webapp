@@ -67,6 +67,11 @@ export interface AdminExtraVariant {
   isActive: boolean;
   sort: number;
   updatedAt: string;
+  /** Хоосон/бүтэн шилний batch code (0153). */
+  batchCode: string | null;
+  /** Гоёмсог бэлгийн савны чөлөөт хэмжээ/тохирох тайлбар (0153). */
+  sizeNote: string | null;
+  imageUrl: string | null;
 }
 
 export interface AdminLeftover {
@@ -94,6 +99,8 @@ export interface AdminExtra {
   images: string[];
   status: ExtraProductStatus;
   capacity: number | null;
+  /** Хоосон/бүтэн шилний бүтэн хэмжээ (ml) — «0/125ml» (attrs.bottle_ml). */
+  bottleMl: number | null;
   sort: number;
   variants: AdminExtraVariant[];
   leftover: AdminLeftover | null;

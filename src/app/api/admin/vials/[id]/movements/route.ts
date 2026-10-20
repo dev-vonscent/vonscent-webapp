@@ -16,7 +16,7 @@ export async function GET(
   const { data } = await gate.supabase
     .from("vial_movements")
     .select(
-      "id, kind, delta_on_hand, delta_reserved, note, created_at, order_items(orders(order_no))",
+      "id, kind, delta_on_hand, delta_reserved, note, cost, created_at, order_items(orders(order_no))",
     )
     .eq("vial_id", id)
     .order("created_at", { ascending: false })
@@ -29,6 +29,7 @@ export async function GET(
           delta_on_hand: number;
           delta_reserved: number;
           note: string;
+          cost: number | null;
           created_at: string;
           order_items: { orders: { order_no: string } | null } | null;
         }[]
@@ -41,6 +42,8 @@ export async function GET(
     note: r.note,
     at: r.created_at,
     orderNo: r.order_items?.orders?.order_no ?? null,
+    // bigint — PostgREST тоо эсвэл мөр буцааж болно.
+    cost: r.cost == null ? null : Number(r.cost),
   }));
   return NextResponse.json({ items: rows });
 }

@@ -17,15 +17,18 @@ import { EXTRA_IMAGES_MAX } from "@/lib/validators/extras";
 export function ExtraImagesField({
   value,
   onChange,
+  max = EXTRA_IMAGES_MAX,
 }: {
   value: string[];
   onChange: (next: string[]) => void;
+  /** Хувилбарын ганц зураг г.м. */
+  max?: number;
 }) {
   const [busy, setBusy] = React.useState(false);
   const [progress, setProgress] = React.useState<number | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const full = value.length >= EXTRA_IMAGES_MAX;
+  const full = value.length >= max;
 
   async function upload(file: File) {
     setError(null);

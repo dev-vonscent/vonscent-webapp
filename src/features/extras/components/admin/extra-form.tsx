@@ -25,12 +25,16 @@ import { ExtraCard } from "../extra-card";
 import {
   draftOf,
   emptyDraft,
+  relistDraft,
   toSavePayload,
   type ExtraDraft,
 } from "./extra-draft";
 import { ExtraImagesField } from "./extra-images-field";
 import { ExtraLeftoverFields, leftoverMaxMl } from "./extra-leftover-fields";
-import { ExtraLocalVariants } from "./extra-local-variants";
+import {
+  ExtraLocalVariants,
+  type LocalVariantKind,
+} from "./extra-local-variants";
 import { ExtraPublishPanel } from "./extra-publish-panel";
 import { ExtraVialVariants } from "./extra-vial-variants";
 
@@ -78,7 +82,7 @@ function previewOf(d: ExtraDraft, category: ExtraCategory) {
           fullMl: Number(d.leftover.fullMl) || 0,
         }
       : null,
-    capacity: Number(d.capacity) > 0 ? Number(d.capacity) : null,
+    capacity: null,
   };
 }
 
@@ -91,9 +95,12 @@ export function ExtraForm({
   category,
   mode,
   extra,
+  relistFrom,
   vials,
 }: {
   category: ExtraCategory;
+  /** Зарагдсан үлдэгдэлтэй шилээс «Дахин нийтлэх» — хадгалсны дараа архивлана. */
+  relistFrom?: AdminExtra | null;
   /** Шинэ барааны горим — «Шилтэй ус»-д ангиллаас биш сонголтоос. */
   mode?: ExtraMode;
   /** null = шинэ бараа. */
@@ -103,8 +110,12 @@ export function ExtraForm({
   const router = useRouter();
   const initial = React.useMemo(
     () =>
-      extra ? draftOf(extra) : emptyDraft(mode ?? category.modes[0]!.mode),
-    [extra, mode, category.modes],
+      extra
+        ? draftOf(extra)
+        : relistFrom
+          ? relistDraft(relistFrom)
+          : emptyDraft(mode ?? category.modes[0]!.mode),
+    [extra, relistFrom, mode, category.modes],
   );
   const [draft, setDraft] = React.useState<ExtraDraft>(initial);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
@@ -160,6 +171,14 @@ export function ExtraForm({
       setMessage(res.error);
       return null;
     }
+    if (!extra && relistFrom && relistFrom.status !== "archived") {
+      // Хуучин (зарагдсан) шил дэлгүүрээс гарна; борлуулалтын түүх үлдэнэ.
+      await adminFetch(`/api/admin/extras/${relistFrom.id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "archived" }),
+      });
+    }
     toast.success(
       extra ? "Хадгалагдлаа" : "Бараа нэмэгдлээ — ноорог хэлбэрээр",
     );
@@ -172,6 +191,13 @@ export function ExtraForm({
   }
 
   const preview = previewOf(draft, category);
+  // Хоосон шил ба «Шилтэй ус»-ны бүтэн шил batch code-оор (plan §18.4).
+  const variantKind: LocalVariantKind =
+    category.slug === "empty-bottle" || category.slug === "bottled"
+      ? "batch"
+      : category.slug === "gift-box"
+        ? "gift"
+        : "plain";
 
   return (
     <form
@@ -215,18 +241,23 @@ export function ExtraForm({
                   className="bg-secondary field-edge w-full rounded-md px-3 py-2 text-base md:text-sm"
                 />
               </Field>
-              {category.slug === "gift-box" && (
+              {variantKind === "batch" && draft.mode === "local_quantity" && (
                 <Field
-                  label="Хэдэн шил багтах вэ?"
-                  hint="Дэлгүүрт «3 шил багтана» гэж харагдана."
-                  error={errors["capacity"]}
+                  label="Бүтэн савны хэмжээ (ml)"
+                  hint={
+                    category.slug === "empty-bottle"
+                      ? "Дэлгүүрт «0/125ml» гэж харагдана."
+                      : "Дэлгүүрт «100/100ml» гэж харагдана."
+                  }
+                  error={errors["bottleMl"]}
                 >
                   <Input
                     inputMode="numeric"
                     autoComplete="off"
-                    value={draft.capacity}
+                    value={draft.bottleMl}
+                    placeholder="125"
                     className="max-w-32 tabular-nums"
-                    onChange={(e) => patch({ capacity: e.target.value })}
+                    onChange={(e) => patch({ bottleMl: e.target.value })}
                   />
                 </Field>
               )}
@@ -238,6 +269,7 @@ export function ExtraForm({
               <h2 className="font-medium">{SECTION_TITLE[draft.mode]}</h2>
               {draft.mode === "local_quantity" && (
                 <ExtraLocalVariants
+                  kind={variantKind}
                   productName={draft.name || category.name}
                   variants={draft.variants}
                   saved={savedVariants}
