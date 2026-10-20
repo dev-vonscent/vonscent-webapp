@@ -20,6 +20,9 @@ import { mutateJson } from "@/features/admin/lib/mutate";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useLaunchProduct } from "./use-launch-product";
+import { DatePicker } from "./date-picker";
+import { ubToday } from "@/lib/time";
+import { purchaseDateError } from "@/lib/validators/extras";
 
 export type StockMode = "restock" | "correction";
 
@@ -81,6 +84,8 @@ export function StockAdjustDialog({
   const [addedMl, setAddedMl] = React.useState<number | null>(null);
   const [amount, setAmount] = React.useState("");
   const [cost, setCost] = React.useState("");
+  // Тайлан худалдан авалтыг авсан өдрөөр (УБ) тооцно (0156).
+  const [day, setDay] = React.useState(() => ubToday());
   const [reason, setReason] = React.useState(CORRECTION_REASONS[0].value);
   const [note, setNote] = React.useState("");
   const [busy, setBusy] = React.useState(false);
@@ -99,6 +104,7 @@ export function StockAdjustDialog({
     if (open) {
       setAmount("");
       setCost("");
+      setDay(ubToday());
       setReason(CORRECTION_REASONS[0].value);
       setNote("");
       setAddedMl(null);
@@ -109,7 +115,8 @@ export function StockAdjustDialog({
   const error = tooMany
     ? `Хамгийн ихдээ ${removable}ml хасах боломжтой — ${reservedMl}ml нь захиалагдсан.`
     : undefined;
-  const canSubmit = qty > 0 && !tooMany && !busy;
+  const dayError = isRestock ? purchaseDateError(day) : null;
+  const canSubmit = qty > 0 && !tooMany && !dayError && !busy;
   const nextOnHand = isRestock ? onHandMl + qty : onHandMl - qty;
 
   async function submit() {
@@ -128,6 +135,7 @@ export function StockAdjustDialog({
             ? "restock"
             : [reason, note.trim()].filter(Boolean).join(": "),
           cost: isRestock ? costValue : 0,
+          ...(isRestock ? { purchasedOn: day } : {}),
         },
         isRestock ? "Үлдэгдэл нэмэгдсэнгүй" : "Залруулга хадгалагдсангүй",
       );
@@ -248,17 +256,26 @@ export function StockAdjustDialog({
         </Field>
 
         {isRestock ? (
-          <Field label="Худалдан авсан үнэ (₮)">
-            <Input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              step={100}
-              value={cost}
-              onChange={(e) => setCost(e.target.value)}
-              placeholder="0"
-            />
-          </Field>
+          <>
+            <Field label="Худалдан авсан үнэ (₮)">
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={100}
+                value={cost}
+                onChange={(e) => setCost(e.target.value)}
+                placeholder="0"
+              />
+            </Field>
+            <Field
+              label="Авсан өдөр"
+              hint="Тайланд энэ өдрийн зардал болно. Өмнөх сар хаагдсан."
+              error={dayError ?? undefined}
+            >
+              <DatePicker value={day} onChange={setDay} clearable={false} />
+            </Field>
+          </>
         ) : (
           <>
             <Field label="Шалтгаан">

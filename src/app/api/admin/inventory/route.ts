@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
 import { getStaffUser } from "@/lib/auth/guard";
+import { purchaseDateError } from "@/lib/validators/extras";
 
 const schema = z
   .object({
@@ -14,6 +15,14 @@ const schema = z
     reason: z.string().default("restock"),
     /** What the added ml cost to buy (₮) — feeds the profit report. */
     cost: z.number().int().nonnegative().default(0),
+    /**
+     * Бодитоор авсан өдөр (УБ, YYYY-MM-DD) — тайлан худалдан авалтыг үүгээр
+     * шүүнэ (0156). Байхгүй бол өнөөдөр; зөвхөн нээлттэй сар.
+     */
+    purchasedOn: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
   })
   // A 0 delta writes a restock_log row that moves nothing but still lands in
   // the profit report; there is no operator intent it can express.
@@ -32,6 +41,11 @@ const schema = z
   .refine((v) => v.delta > 0 || v.reason.trim().length > 0, {
     message: "Хасах шалтгаанаа бичнэ үү.",
     path: ["reason"],
+  })
+  .superRefine((v, ctx) => {
+    const err = v.purchasedOn ? purchaseDateError(v.purchasedOn) : null;
+    if (err)
+      ctx.addIssue({ code: "custom", message: err, path: ["purchasedOn"] });
   });
 
 export async function POST(req: Request) {
@@ -72,10 +86,22 @@ export async function POST(req: Request) {
     p_reason: parsed.data.reason,
     p_by: staff.id,
     p_cost: parsed.data.cost,
+    p_purchased_on:
+      parsed.data.delta > 0 ? (parsed.data.purchasedOn ?? null) : null,
   });
   if (error) {
     // The one rejection the operator can act on: they tried to remove ml that
     // are already promised to a paid order. Anything else is a real fault.
+    if (error.message.includes("PURCHASE_DATE_")) {
+      return NextResponse.json(
+        {
+          error: error.message.includes("PURCHASE_DATE_FUTURE")
+            ? "Авсан өдөр ирээдүйд байж болохгүй."
+            : "Өнгөрсөн сарын тайлан хаагдсан тул энэ сарын өдөр оруулна уу.",
+        },
+        { status: 409 },
+      );
+    }
     if (error.message.includes("RESERVED_FLOOR")) {
       return NextResponse.json(
         {

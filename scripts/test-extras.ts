@@ -1163,6 +1163,114 @@ async function main() {
     check("place_order нь 0155-ийн wrapper хэвээр", src.ok, src);
   });
 
+  await scenario(
+    a,
+    "v5: тайлан — худалдан авалт авсан өдрөөр (0156)",
+    async () => {
+      await flag(a, "extras_shop", true);
+      await flag(a, "vial_inventory", true);
+      await a.query("select set_config('request.jwt.claims', $1, true)", [
+        JSON.stringify({ sub: by, role: "authenticated" }),
+      ]);
+      const today =
+        "date_trunc('day', now() at time zone 'Asia/Ulaanbaatar') at time zone 'Asia/Ulaanbaatar'";
+      const fin = () =>
+        one<{
+          purchases: number;
+          extras_purchases: number;
+          vial_purchases: number;
+          perfume_purchases: number;
+          profit: number;
+          net_sales: number;
+          qpay_fee: number;
+          refund_fee: number;
+        }>(
+          a,
+          `select * from admin_report_finance(${today}, ${today} + interval '1 day', 1)`,
+        );
+      const before = await fin();
+      const yesterday = () =>
+        one<{ purchases: number }>(
+          a,
+          `select purchases from admin_report_finance(${today} - interval '1 day', ${today}, 1)`,
+        );
+      const yBefore = Number((await yesterday()).purchases);
+      const e = await localExtra(a, "t-v5-rep", 15000, 0);
+      await purchase(a, e.variantId, 10, 4000);
+      const ml2 = (await one<{ id: string }>(a, "select vial_for(null, 2) id"))
+        .id;
+      const cur = await one<{ on_hand: number | null; reserved: number }>(
+        a,
+        "select on_hand, reserved from vials where id = $1",
+        [ml2],
+      );
+      if (cur.on_hand == null)
+        await a.query("select set_vial_count($1, $2, null, '', null)", [
+          ml2,
+          cur.reserved,
+        ]);
+      await a.query(
+        "select vial_purchase($1, 100, 120, null, null, '', null)",
+        [ml2],
+      );
+      const after = await fin();
+      check(
+        "нэмэлт барааны худалдан авалт +40,000",
+        Number(after.extras_purchases) - Number(before.extras_purchases) ===
+          40000,
+        { before, after },
+      );
+      check(
+        "савны худалдан авалт +12,000 (2ml — зарахгүй ч зарлага)",
+        Number(after.vial_purchases) - Number(before.vial_purchases) === 12000,
+        { before, after },
+      );
+      check(
+        "нийт = үнэртэн + нэмэлт + сав",
+        Number(after.purchases) ===
+          Number(after.perfume_purchases) +
+            Number(after.extras_purchases) +
+            Number(after.vial_purchases),
+        after,
+      );
+      check(
+        "ашиг = цэвэр борлуулалт − QPay − худалдан авалт + буцаалтын шимтгэл",
+        Number(after.profit) ===
+          Number(after.net_sales) -
+            Number(after.qpay_fee) -
+            Number(after.purchases) +
+            Number(after.refund_fee),
+        after,
+      );
+      const cat = await one<{ purchases: number; purchased_qty: number }>(
+        a,
+        `select * from admin_report_extras(${today}, ${today} + interval '1 day')
+        where category_slug = 'gift-box'`,
+      );
+      check(
+        "ангиллын хэсэгт бэлгийн сав: 10 ширхэг, 40,000+",
+        Number(cat.purchased_qty) >= 10 && Number(cat.purchases) >= 40000,
+        cat,
+      );
+      const vial = await one<{ purchased_qty: number; purchases: number }>(
+        a,
+        `select * from admin_report_vials(${today}, ${today} + interval '1 day')
+        where vial_id = $1`,
+        [ml2],
+      );
+      check(
+        "савны хэсэгт 2ml: 100 ширхэг, 12,000+",
+        Number(vial.purchased_qty) >= 100 && Number(vial.purchases) >= 12000,
+        vial,
+      );
+      check(
+        "өчигдрийн мужид өнөөдрийн худалдан авалт орохгүй",
+        Number((await yesterday()).purchases) === yBefore,
+        { yBefore },
+      );
+    },
+  );
+
   await scenario(a, "v5: restock_log.purchased_on (УБ өдөр)", async () => {
     const nulls = await one<{ n: number }>(
       a,
@@ -1171,10 +1279,13 @@ async function main() {
     check("хоосон purchased_on байхгүй", nulls.n === 0, nulls);
     const shifted = await one<{ n: number }>(
       a,
+      // Эх савны 'initial' мөр үргэлж бараа үүссэн өдрөөр (0153 backfill,
+      // 0156 trigger). Restock-ийн мөр админы сонгосон өдөртэй байж болно.
       `select count(*)::int n from restock_log
-        where purchased_on is distinct from (created_at at time zone 'Asia/Ulaanbaatar')::date`,
+        where reason = 'initial'
+          and purchased_on is distinct from (created_at at time zone 'Asia/Ulaanbaatar')::date`,
     );
-    check("backfill = УБ календарийн өдөр", shifted.n === 0, shifted);
+    check("эх савны мөр = УБ календарийн өдөр", shifted.n === 0, shifted);
     const inv = await perfumeWithStock(a);
     // Prod-ийн хуучин код 5 нэртэй аргументаар дууддаг — default-аар ажиллана.
     await a.query(

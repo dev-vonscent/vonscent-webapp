@@ -924,7 +924,8 @@ async function main() {
         [p.id],
       );
       await a.query(
-        "update restock_log set created_at = $2 where product_id = $1",
+        // purchased_on (0156) — тайлан худалдан авалтыг авсан өдрөөр (УБ) шүүнэ.
+        "update restock_log set created_at = $2, purchased_on = ($2::timestamptz at time zone 'Asia/Ulaanbaatar')::date where product_id = $1",
         [p.id, at("2031-01-06T10:00:00")],
       );
       const id = await placeOrder(a, {
@@ -984,7 +985,8 @@ async function main() {
       p.id,
     ]);
     await a.query(
-      "update restock_log set created_at = $2 where product_id = $1",
+      // purchased_on (0156) — тайлан худалдан авалтыг авсан өдрөөр (УБ) шүүнэ.
+      "update restock_log set created_at = $2, purchased_on = ($2::timestamptz at time zone 'Asia/Ulaanbaatar')::date where product_id = $1",
       [p.id, at("2031-01-07T10:00:00")],
     );
     let r = await report(a, Y.from, Y.to);
@@ -1000,7 +1002,8 @@ async function main() {
       [p.id],
     );
     await a.query(
-      "update restock_log set created_at = $2 where product_id = $1",
+      // purchased_on (0156) — тайлан худалдан авалтыг авсан өдрөөр (УБ) шүүнэ.
+      "update restock_log set created_at = $2, purchased_on = ($2::timestamptz at time zone 'Asia/Ulaanbaatar')::date where product_id = $1",
       [p.id, at("2031-01-07T10:00:00")],
     );
     r = await report(a, Y.from, Y.to);

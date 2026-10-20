@@ -25,7 +25,10 @@ export interface ReportFinance {
   qpayFee: number;
   /** Буцаалтаас суутгаж, дэлгүүрт үлдсэн шимтгэл. */
   refundFee: number;
-  /** Эх сав + restock-ийн худалдан авалт. */
+  /**
+   * Бүх худалдан авалт авсан өдрөөр (0156): үнэртний эх сав + restock,
+   * нэмэлт бараа, сав (1/2ml-ийг оруулаад).
+   */
   purchases: number;
   profit: number;
   saleOrders: number;
@@ -35,6 +38,10 @@ export interface ReportFinance {
   pendingRefundAmount: number;
   /** `goods`-ийн нэмэлт барааны хэсэг (0146) — үлдсэн нь үнэртэн. */
   extrasGoods: number;
+  /** `purchases`-ийн задаргаа (0156). */
+  perfumePurchases: number;
+  extrasPurchases: number;
+  vialPurchases: number;
 }
 
 export const EMPTY_FINANCE: ReportFinance = {
@@ -53,6 +60,9 @@ export const EMPTY_FINANCE: ReportFinance = {
   pendingRefundOrders: 0,
   pendingRefundAmount: 0,
   extrasGoods: 0,
+  perfumePurchases: 0,
+  extrasPurchases: 0,
+  vialPurchases: 0,
 };
 
 /** `admin_report_finance`-ийн мөр. PostgREST bigint-ийг number-оор өгнө. */
@@ -73,6 +83,10 @@ export interface FinanceRow {
   pending_refund_amount: number;
   /** 0146-аас өмнөх сан дээр байхгүй. */
   extras_goods?: number | null;
+  /** 0156-аас өмнөх сан дээр байхгүй — тэр үед бүх худалдан авалт үнэртнийх. */
+  perfume_purchases?: number | null;
+  extras_purchases?: number | null;
+  vial_purchases?: number | null;
 }
 
 export function financeFromRow(r: FinanceRow): ReportFinance {
@@ -92,6 +106,9 @@ export function financeFromRow(r: FinanceRow): ReportFinance {
     pendingRefundOrders: Number(r.pending_refund_orders),
     pendingRefundAmount: Number(r.pending_refund_amount),
     extrasGoods: Number(r.extras_goods ?? 0),
+    perfumePurchases: Number(r.perfume_purchases ?? r.purchases),
+    extrasPurchases: Number(r.extras_purchases ?? 0),
+    vialPurchases: Number(r.vial_purchases ?? 0),
   };
 }
 
@@ -116,4 +133,32 @@ export function financeLines(f: ReportFinance): FinanceLine[] {
     { label: "Бараа худалдан авалт", amount: -f.purchases },
     { label: "Ашиг", amount: f.profit, total: true },
   ];
+}
+
+/** «Нэмэлт бараа» хэсэг — ангилал бүрээр (0156 `admin_report_extras`). */
+export interface ReportExtraCategory {
+  slug: string;
+  name: string;
+  /** Мужид төлсөн захиалгын мөрийн дүн, купоноос өмнө. */
+  sales: number;
+  soldQty: number;
+  /** Авсан өдрөөр. */
+  purchases: number;
+  purchasedQty: number;
+}
+
+/** Сав — өнгө × хэмжээ (0156 `admin_report_vials`). */
+export interface ReportVial {
+  id: string;
+  style: "black" | "pink" | "silver" | null;
+  ml: number;
+  purchasedQty: number;
+  purchases: number;
+  /** Мужид хүргэгдсэн: үнэртний декант, бэлгийн дээж, дангаар зарсан. */
+  usedPerfume: number;
+  usedGift: number;
+  soldStandalone: number;
+  /** Одоогийнх; null = тоолж эхлээгүй. */
+  onHand: number | null;
+  reserved: number;
 }

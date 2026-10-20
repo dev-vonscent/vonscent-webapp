@@ -14,6 +14,8 @@ import {
 } from "@/features/admin/components/report-charts";
 import { DateRangeFilter } from "@/features/admin/components/date-range-filter";
 import { FinanceBreakdown } from "@/features/admin/components/finance-breakdown";
+import { ReportExtras } from "@/features/admin/components/report-extras";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 import { bucketLabel, rangeSummary } from "@/features/admin/lib/date-range";
 import { PageHeader } from "@/components/shared/page-header";
 import { formatPrice } from "@/lib/format";
@@ -36,8 +38,13 @@ export default async function AdminReportsPage({
   // үлдэгдэл нь үргэлж ОДООГИЙНХ. Тиймээс `getStockOverview` муж авахгүй —
   // харин хуудас дээр тэр хоёр блок нь хугацааны шүүлтэд захирагддаггүйг
   // бичиж хэлнэ.
+  // «Нэмэлт бараа» хэсэг тугаар (§14) — хаалттай үед prod дээр харагдахгүй.
+  const [extrasOn, vialsOn] = await Promise.all([
+    isFeatureEnabled("extras_shop"),
+    isFeatureEnabled("vial_inventory"),
+  ]);
   const [report, stock] = await Promise.all([
-    getReportData(range),
+    getReportData(range, { extras: extrasOn, vials: vialsOn }),
     getStockOverview({ limit: REPORT_STOCK_LIMIT, activeOnly: true }),
   ]);
   const totalMl = stock.totalAvailableMl;
@@ -124,6 +131,20 @@ export default async function AdminReportsPage({
           />
         </CardContent>
       </Card>
+
+      {extrasOn && (
+        <Card>
+          <CardContent className="p-5">
+            <h2 className="mb-4 font-medium">Нэмэлт бараа ба сав</h2>
+            <ReportExtras
+              finance={finance}
+              categories={report.extras}
+              vials={report.vials}
+              summary={summary}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="p-5">

@@ -50,7 +50,9 @@ import {
   EMPTY_FINANCE,
   financeFromRow,
   type FinanceRow,
+  type ReportExtraCategory,
   type ReportFinance,
+  type ReportVial,
 } from "./lib/report-finance";
 import {
   getBottleLocks,
@@ -1346,10 +1348,15 @@ export interface ReportData {
   }[];
   /** Графикийн бүлэглэлт — мужийн уртаас гарна. */
   bucket: "day" | "month";
+  /** «Нэмэлт бараа» (0156) — туг хаалттай бол хоосон. */
+  extras: ReportExtraCategory[];
+  vials: ReportVial[];
 }
 
 export async function getReportData(
   range: ReportRange = {},
+  /** `extras_shop` / `vial_inventory` нээлттэй үед л хэсгийг уншина. */
+  opts: { extras?: boolean; vials?: boolean } = {},
 ): Promise<ReportData> {
   const supabase = await createClient();
   const bucket = seriesBucket(range.from, range.to);
@@ -1360,6 +1367,8 @@ export async function getReportData(
     statusCounts: {},
     series: [],
     bucket,
+    extras: [],
+    vials: [],
   };
   if (!supabase) return empty;
 
@@ -1382,6 +1391,8 @@ export async function getReportData(
     { data: products },
     { data: brands },
     { data: statuses },
+    { data: extraRows },
+    { data: vialRows },
   ] = await Promise.all([
     callRpc<FinanceRow[]>(supabase, "admin_report_finance", {
       p_from,
@@ -1408,6 +1419,34 @@ export async function getReportData(
       "admin_report_status",
       { p_from, p_to },
     ),
+    opts.extras
+      ? callRpc<
+          {
+            category_slug: string;
+            category_name: string;
+            sales: number;
+            sold_qty: number;
+            purchases: number;
+            purchased_qty: number;
+          }[]
+        >(supabase, "admin_report_extras", { p_from, p_to })
+      : Promise.resolve({ data: null }),
+    opts.vials
+      ? callRpc<
+          {
+            vial_id: string;
+            style: ReportVial["style"];
+            ml: number;
+            purchased_qty: number;
+            purchases: number;
+            used_perfume: number;
+            used_gift: number;
+            sold_standalone: number;
+            on_hand: number | null;
+            reserved: number;
+          }[]
+        >(supabase, "admin_report_vials", { p_from, p_to })
+      : Promise.resolve({ data: null }),
   ]);
 
   const t = totals?.[0];
@@ -1430,6 +1469,26 @@ export async function getReportData(
     statusCounts,
     series: series ?? [],
     bucket,
+    extras: (extraRows ?? []).map((r) => ({
+      slug: r.category_slug,
+      name: r.category_name,
+      sales: Number(r.sales),
+      soldQty: Number(r.sold_qty),
+      purchases: Number(r.purchases),
+      purchasedQty: Number(r.purchased_qty),
+    })),
+    vials: (vialRows ?? []).map((r) => ({
+      id: r.vial_id,
+      style: r.style,
+      ml: r.ml,
+      purchasedQty: Number(r.purchased_qty),
+      purchases: Number(r.purchases),
+      usedPerfume: Number(r.used_perfume),
+      usedGift: Number(r.used_gift),
+      soldStandalone: Number(r.sold_standalone),
+      onHand: r.on_hand,
+      reserved: r.reserved,
+    })),
   };
 }
 
