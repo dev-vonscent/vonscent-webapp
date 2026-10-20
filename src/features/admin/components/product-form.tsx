@@ -511,7 +511,7 @@ export function ProductForm({
       {/* Sticky on a phone: the submit used to sit below ~30 fields, so saving
           meant scrolling the whole form back down. `pb-safe` keeps it clear of
           the iOS home indicator. */}
-      <div className="bg-background/85 pb-safe sticky bottom-0 -mx-4 flex gap-3 px-4 py-3 backdrop-blur md:static md:mx-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+      <div className="bg-background/85 sticky bottom-0 -mx-4 flex gap-3 px-4 py-3 backdrop-blur max-md:-mb-8 max-md:pb-[max(env(safe-area-inset-bottom),0.75rem)] md:static md:mx-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
         <LoadingButton
           loading={pending}
           type="submit"

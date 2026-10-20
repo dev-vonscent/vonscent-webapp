@@ -702,7 +702,7 @@ export function ProductEditForm({
       )}
 
       {/* Sticky on a phone — see product-form.tsx. */}
-      <div className="bg-background/85 pb-safe sticky bottom-0 -mx-4 flex items-center justify-between gap-3 px-4 py-3 backdrop-blur md:static md:mx-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+      <div className="bg-background/85 sticky bottom-0 -mx-4 flex items-center justify-between gap-3 px-4 py-3 backdrop-blur max-md:-mb-8 max-md:pb-[max(env(safe-area-inset-bottom),0.75rem)] md:static md:mx-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
         <div className="flex flex-1 gap-3 md:flex-none">
           <LoadingButton
             loading={pending}
