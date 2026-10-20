@@ -13,6 +13,7 @@ import {
   MODE_TITLE,
 } from "@/features/extras/components/admin/extra-category-tiles";
 import { ExtraForm } from "@/features/extras/components/admin/extra-form";
+import { BOTTLE_KIND, bottleKind } from "@/features/extras/lib/bottle-kind";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,7 @@ export default async function NewExtraPage({
       : category?.modes.find((m) => m.mode === modeParam)?.mode;
   // Грамын сав нь савны тоон нөөцтэй л утгатай (plan §7.2).
   const blocked = mode === "shared_vial" && !vialsOn;
+  const kind = category && mode ? bottleKind(category.slug, mode) : null;
 
   return (
     <div className="space-y-6">
@@ -72,7 +74,7 @@ export default async function NewExtraPage({
             title={
               relistFrom
                 ? `${relistFrom.name} — дахин нийтлэх`
-                : `${category.modes.length > 1 ? MODE_TITLE[mode] : category.name} нэмэх`
+                : `${kind ? BOTTLE_KIND[kind].title : category.modes.length > 1 ? MODE_TITLE[mode] : category.name} нэмэх`
             }
             description={
               relistFrom

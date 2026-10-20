@@ -32,12 +32,15 @@ export function ExtraStockDialog({
   onOpenChange,
   title,
   variant,
+  costless = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** «Бэлгийн хайрцаг — Хар» */
   title: string;
   variant: AdminExtraVariant;
+  /** Хоосон шил — нөөц нэмэхэд авсан үнэ, өдөр асуухгүй. */
+  costless?: boolean;
 }) {
   const router = useRouter();
   const [current, setCurrent] = React.useState<Current>({
@@ -138,6 +141,7 @@ export function ExtraStockDialog({
           <StockPurchaseForm
             endpoint="/api/admin/extras/purchase"
             target={{ variantId: variant.id }}
+            costless={costless}
             current={current}
             onConflict={(c) => setCurrent({ ...c, onHand: c.onHand ?? 0 })}
             onSaved={() => {

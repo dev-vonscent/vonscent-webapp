@@ -173,7 +173,7 @@ export function ExtraLeftoverFields({
         </Field>
       </div>
       <Field
-        label="Үнэ (₮)"
+        label="Зарах үнэ (₮)"
         error={errors["price"]}
         hint={
           perMl != null ? `1ml ≈ ${formatPrice(perMl)} (мэдээлэл)` : undefined

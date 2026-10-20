@@ -20,7 +20,9 @@ import type {
   ExtraMode,
   VialOption,
 } from "../../types";
+import { BOTTLE_KIND, bottleKind, isCostless } from "../../lib/bottle-kind";
 import { draftMissing } from "../../lib/readiness";
+import { BottleGlyph } from "../bottle-glyph";
 import { ExtraCard } from "../extra-card";
 import {
   draftOf,
@@ -37,6 +39,7 @@ import {
 } from "./extra-local-variants";
 import { ExtraPublishPanel } from "./extra-publish-panel";
 import { ExtraVialVariants } from "./extra-vial-variants";
+import { LeftoverPerfumePicker } from "./leftover-perfume-picker";
 
 const SECTION_TITLE: Record<ExtraDraft["mode"], string> = {
   local_quantity: "Хувилбар",
@@ -194,6 +197,30 @@ export function ExtraForm({
   }
 
   const preview = previewOf(draft, category);
+  const kind = bottleKind(category.slug, draft.mode);
+
+  /**
+   * Хоосон / бүтэн шил: «Аль үнэртний шил вэ?» — сонговол хоосон талбаруудыг
+   * (нэр, савны хэмжээ, зураг) бөглөнө. Холбоос хадгалагдахгүй — зөвхөн
+   * бичих ажлыг хөнгөвчилнө; админ дараа нь чөлөөтэй засна.
+   */
+  async function fillFromPerfume(id: string) {
+    const res = await adminFetch<{
+      name: string;
+      brand: string;
+      bottleMl: number;
+      image: string | null;
+    }>(`/api/admin/extras/perfume/${id}`);
+    if (!res.ok) return;
+    const p = res.data;
+    setDraft((d) => ({
+      ...d,
+      name: d.name.trim() ? d.name : `${p.brand} ${p.name}`,
+      bottleMl:
+        d.bottleMl.trim() || !p.bottleMl ? d.bottleMl : String(p.bottleMl),
+      images: d.images.length || !p.image ? d.images : [p.image],
+    }));
+  }
   // Хоосон шил ба «Шилтэй ус»-ны бүтэн шил batch code-оор (plan §18.4).
   const variantKind: LocalVariantKind =
     category.slug === "empty-bottle" || category.slug === "bottled"
@@ -201,6 +228,53 @@ export function ExtraForm({
       : category.slug === "gift-box"
         ? "gift"
         : "plain";
+
+  const stockCard = (
+    <Card>
+      <CardContent className="space-y-4 p-4 sm:p-6">
+        <h2 className="font-medium">{SECTION_TITLE[draft.mode]}</h2>
+        {draft.mode === "local_quantity" && (
+          <ExtraLocalVariants
+            kind={variantKind}
+            costless={isCostless(kind)}
+            productName={draft.name || category.name}
+            variants={draft.variants}
+            saved={savedVariants}
+            errors={errors}
+            onChange={(variants) => patch({ variants })}
+          />
+        )}
+        {draft.mode === "shared_vial" && (
+          <ExtraVialVariants
+            vials={vials}
+            variants={draft.variants}
+            errors={errors}
+            onChange={(variants) => patch({ variants })}
+          />
+        )}
+        {draft.mode === "leftover_liquid" && (
+          <ExtraLeftoverFields
+            value={draft.leftover}
+            price={draft.leftoverPrice}
+            saved={extra?.leftover ?? null}
+            errors={errors}
+            onChange={(leftover) =>
+              // Эх үнэртэн сонгогдоход хоосон нэрийг бөглөнө.
+              setDraft((d) => ({
+                ...d,
+                leftover,
+                name:
+                  d.name.trim() || !leftover
+                    ? d.name
+                    : `${leftover.productBrand} ${leftover.productName}`,
+              }))
+            }
+            onPriceChange={(leftoverPrice) => patch({ leftoverPrice })}
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
 
   return (
     <form
@@ -213,12 +287,36 @@ export function ExtraForm({
     >
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-6">
+          {kind && (
+            // Гурван шилийг андуурахгүй: юу болох, тайланд хэрхэн тусах.
+            <div className="bg-card border-border flex items-start gap-4 rounded-2xl border p-4">
+              <BottleGlyph
+                fill={BOTTLE_KIND[kind].fill}
+                className="text-muted-foreground h-12 w-9 shrink-0"
+              />
+              <div className="min-w-0 space-y-1 text-sm">
+                <p className="font-medium">{BOTTLE_KIND[kind].title}</p>
+                <p className="text-muted-foreground">
+                  {BOTTLE_KIND[kind].summary}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  {BOTTLE_KIND[kind].report}
+                </p>
+              </div>
+            </div>
+          )}
+          {/* Үлдэгдэлтэй шил: эхлээд аль үнэртний шил — нэр нь түүнээс бөглөгдөнө. */}
+          {draft.mode === "leftover_liquid" && stockCard}
           <Card>
             <CardContent className="space-y-4 p-4 sm:p-6">
+              {(kind === "empty" || kind === "sealed") && (
+                <PerfumeAutofill onPick={(id) => void fillFromPerfume(id)} />
+              )}
               <Field label="Нэр" error={errors["name"]}>
                 <Input
                   value={draft.name}
                   maxLength={120}
+                  placeholder={kind ? "Ж: Dior Sauvage EDP" : undefined}
                   onChange={(e) => patch({ name: e.target.value })}
                 />
               </Field>
@@ -234,11 +332,13 @@ export function ExtraForm({
               {variantKind === "batch" && draft.mode === "local_quantity" && (
                 <Field
                   label="Бүтэн савны хэмжээ (ml)"
-                  hint={
-                    category.slug === "empty-bottle"
-                      ? "Дэлгүүрт «0/125ml» гэж харагдана."
-                      : "Дэлгүүрт «100/100ml» гэж харагдана."
-                  }
+                  hint={(() => {
+                    const ml =
+                      Number(draft.bottleMl) > 0 ? draft.bottleMl : "100";
+                    return kind === "empty"
+                      ? `Дэлгүүрт «0/${ml}ml» гэж харагдана.`
+                      : `Дэлгүүрт «${ml}/${ml}ml» гэж харагдана.`;
+                  })()}
                   error={errors["bottleMl"]}
                 >
                   <Input
@@ -273,39 +373,7 @@ export function ExtraForm({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="space-y-4 p-4 sm:p-6">
-              <h2 className="font-medium">{SECTION_TITLE[draft.mode]}</h2>
-              {draft.mode === "local_quantity" && (
-                <ExtraLocalVariants
-                  kind={variantKind}
-                  productName={draft.name || category.name}
-                  variants={draft.variants}
-                  saved={savedVariants}
-                  errors={errors}
-                  onChange={(variants) => patch({ variants })}
-                />
-              )}
-              {draft.mode === "shared_vial" && (
-                <ExtraVialVariants
-                  vials={vials}
-                  variants={draft.variants}
-                  errors={errors}
-                  onChange={(variants) => patch({ variants })}
-                />
-              )}
-              {draft.mode === "leftover_liquid" && (
-                <ExtraLeftoverFields
-                  value={draft.leftover}
-                  price={draft.leftoverPrice}
-                  saved={extra?.leftover ?? null}
-                  errors={errors}
-                  onChange={(leftover) => patch({ leftover })}
-                  onPriceChange={(leftoverPrice) => patch({ leftoverPrice })}
-                />
-              )}
-            </CardContent>
-          </Card>
+          {draft.mode !== "leftover_liquid" && stockCard}
         </div>
 
         <aside className="space-y-6">
@@ -357,5 +425,28 @@ export function ExtraForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+/** Хоосон / бүтэн шилний «Аль үнэртний шил вэ?» — зөвхөн бөглөх туслах. */
+function PerfumeAutofill({ onPick }: { onPick: (id: string) => void }) {
+  const [value, setValue] = React.useState<{
+    id: string;
+    name: string;
+    brand: string;
+  } | null>(null);
+  return (
+    <Field
+      label="Аль үнэртний шил вэ?"
+      hint="Заавал биш. Сонговол хоосон байгаа нэр, савны хэмжээ, зургийг бөглөнө."
+    >
+      <LeftoverPerfumePicker
+        value={value}
+        onChange={(p) => {
+          setValue(p ? { id: p.id, name: p.name, brand: p.brand } : null);
+          if (p) onPick(p.id);
+        }}
+      />
+    </Field>
   );
 }

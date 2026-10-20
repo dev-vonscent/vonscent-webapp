@@ -35,6 +35,7 @@ export type LocalVariantKind = "batch" | "gift" | "plain";
  */
 export function ExtraLocalVariants({
   kind = "plain",
+  costless = false,
   productName,
   variants,
   saved,
@@ -42,6 +43,8 @@ export function ExtraLocalVariants({
   onChange,
 }: {
   kind?: LocalVariantKind;
+  /** Хоосон шил — нөөц нь зөвхөн тоо, авсан үнэ/өдөр асуухгүй (0₮, өнөөдөр). */
+  costless?: boolean;
   productName: string;
   variants: DraftVariant[];
   /** Хадгалсан хувилбарын нөөц — id-аар. */
@@ -72,7 +75,7 @@ export function ExtraLocalVariants({
           )}
         >
           <span>{nameLabel}</span>
-          <span>Үнэ (₮)</span>
+          <span>Зарах үнэ (₮)</span>
           <span>Үлдэгдэл</span>
           <span className="text-center">Зарна</span>
         </div>
@@ -124,7 +127,7 @@ export function ExtraLocalVariants({
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor={`${v.key}-price`} className="sm:sr-only">
-                    Үнэ (₮)
+                    Зарах үнэ (₮)
                   </Label>
                   <Input
                     id={`${v.key}-price`}
@@ -200,6 +203,7 @@ export function ExtraLocalVariants({
                 {!v.id && (
                   <InitialStock
                     v={v}
+                    costless={costless}
                     errors={errors}
                     prefix={`variants.${i}.initialPurchase`}
                     onChange={(p) => update(i, p)}
@@ -268,6 +272,7 @@ export function ExtraLocalVariants({
             stockFor.label ? `${productName} — ${stockFor.label}` : productName
           }
           variant={stockFor}
+          costless={costless}
         />
       )}
     </div>
@@ -287,11 +292,13 @@ function initialText(v: DraftVariant) {
  */
 function InitialStock({
   v,
+  costless,
   errors,
   prefix,
   onChange,
 }: {
   v: DraftVariant;
+  costless: boolean;
   errors: Record<string, string>;
   prefix: string;
   onChange: (patch: Partial<DraftVariant>) => void;
@@ -311,9 +318,9 @@ function InitialStock({
       <p className="text-xs">
         <span className="font-medium">Эхний нөөц</span>
         <span className="text-muted-foreground">
-          {" "}
-          — хадгалахад худалдан авалт болж тайланд орно. Хоосон орхивол дараа
-          «Нөөц нөхөх»-өөр нэмнэ.
+          {costless
+            ? " — хэдэн ширхэг байгааг бичнэ. Өртөггүй. Хоосон орхивол дараа «Нөөц нөхөх»-өөр нэмнэ."
+            : " — хадгалахад худалдан авалт болж тайланд орно. Хоосон орхивол дараа «Нөөц нөхөх»-өөр нэмнэ."}
         </span>
       </p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-[7rem_9rem_minmax(0,12rem)_1fr] sm:items-start">
@@ -329,39 +336,50 @@ function InitialStock({
             value={v.initialQty ?? ""}
             aria-invalid={Boolean(qtyErr)}
             className="tabular-nums"
-            onChange={(e) => onChange({ initialQty: e.target.value })}
+            onChange={(e) =>
+              onChange(
+                // Хоосон шил өртөггүй — үнэ/өдрийн талбар байхгүй, 0₮.
+                costless
+                  ? { initialQty: e.target.value, initialUnitCost: "0" }
+                  : { initialQty: e.target.value },
+              )
+            }
           />
           {qtyErr && <p className="text-destructive text-xs">{qtyErr}</p>}
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor={`${v.key}-ic`} className="text-xs">
-            Нэгж авсан үнэ (₮)
-          </Label>
-          <Input
-            id={`${v.key}-ic`}
-            inputMode="numeric"
-            autoComplete="off"
-            value={v.initialUnitCost ?? ""}
-            aria-invalid={Boolean(costErr)}
-            className="tabular-nums"
-            onChange={(e) => onChange({ initialUnitCost: e.target.value })}
-          />
-          {costErr && <p className="text-destructive text-xs">{costErr}</p>}
-        </div>
-        <div className="col-span-2 space-y-1.5 sm:col-span-1">
-          <span className="text-xs font-medium">Авсан өдөр</span>
-          <DatePicker
-            value={v.initialPurchasedOn || ubToday()}
-            onChange={(d) => onChange({ initialPurchasedOn: d })}
-            clearable={false}
-            aria-label="Авсан өдөр"
-            {...purchaseDateBounds()}
-          />
-          {dayErr && <p className="text-destructive text-xs">{dayErr}</p>}
-        </div>
-        <p className="text-muted-foreground col-span-2 self-center text-xs tabular-nums sm:col-span-1 sm:pt-6">
-          Нийт: {total == null ? "—" : formatPrice(total)}
-        </p>
+        {!costless && (
+          <>
+            <div className="space-y-1.5">
+              <Label htmlFor={`${v.key}-ic`} className="text-xs">
+                Нэгж авсан үнэ (₮)
+              </Label>
+              <Input
+                id={`${v.key}-ic`}
+                inputMode="numeric"
+                autoComplete="off"
+                value={v.initialUnitCost ?? ""}
+                aria-invalid={Boolean(costErr)}
+                className="tabular-nums"
+                onChange={(e) => onChange({ initialUnitCost: e.target.value })}
+              />
+              {costErr && <p className="text-destructive text-xs">{costErr}</p>}
+            </div>
+            <div className="col-span-2 space-y-1.5 sm:col-span-1">
+              <span className="text-xs font-medium">Авсан өдөр</span>
+              <DatePicker
+                value={v.initialPurchasedOn || ubToday()}
+                onChange={(d) => onChange({ initialPurchasedOn: d })}
+                clearable={false}
+                aria-label="Авсан өдөр"
+                {...purchaseDateBounds()}
+              />
+              {dayErr && <p className="text-destructive text-xs">{dayErr}</p>}
+            </div>
+            <p className="text-muted-foreground col-span-2 self-center text-xs tabular-nums sm:col-span-1 sm:pt-6">
+              Нийт: {total == null ? "—" : formatPrice(total)}
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
