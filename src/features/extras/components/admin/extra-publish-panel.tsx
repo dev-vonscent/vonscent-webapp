@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, EyeOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -102,11 +102,12 @@ export function ExtraPublishPanel({
         ) : published ? (
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             className="w-full"
             disabled={busy || saving}
             onClick={() => void setStatus("draft")}
           >
+            <EyeOff className="size-4" aria-hidden />
             Дэлгүүрээс нуух
           </Button>
         ) : (

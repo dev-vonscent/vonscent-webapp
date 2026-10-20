@@ -2,7 +2,26 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { ArrowLeft, ArrowRight, ImagePlus, X } from "lucide-react";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical, ImagePlus, X } from "lucide-react";
 import { IMAGE_ACCEPT } from "@/lib/storage/limits";
 import { prepareUpload } from "@/lib/storage/prepare-upload";
 import { uploadErrorMessage, xhrUpload } from "@/lib/storage/upload-progress";
@@ -12,7 +31,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * Нэмэлт барааны зургууд (4:5 — дэлгүүрийн карттай ижил харьцаа).
- * Эхний зураг нь картын зураг; сумаар дараалал солино. Хоосон байж болно
+ * Эхний зураг нь картын зураг; зургийг чирж дараалал солино (dnd-kit —
+ * хулгана, утсан дээр удаан дарж, гараар бариулаас Space + сум). Хоосон байж болно
  * (үлдэгдэлтэй шил эх үнэртнийхээ зургийг авна).
  */
 export function ExtraImagesField({
@@ -68,12 +88,28 @@ export function ExtraImagesField({
     }
   }
 
-  function move(i: number, dir: -1 | 1) {
-    const j = i + dir;
-    if (j < 0 || j >= value.length) return;
-    const next = [...value];
-    [next[i], next[j]] = [next[j], next[i]];
-    onChange(next);
+  const dndId = React.useId();
+  const [dragging, setDragging] = React.useState<string | null>(null);
+  const sensors = useSensors(
+    // Бага зай — хасах товч дээрх энгийн дарилт чирэлт эхлүүлэхгүй.
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    // Утсан дээр удаан дарж чирнэ — хуудас гүйлгэх хөдөлгөөн хэвээр.
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  function onDragEnd(e: DragEndEvent) {
+    setDragging(null);
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const from = value.indexOf(String(active.id));
+    const to = value.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    onChange(arrayMove(value, from, to));
   }
 
   return (
@@ -86,53 +122,37 @@ export function ExtraImagesField({
             (max === 1 ? "grid-cols-1" : "grid-cols-3 sm:grid-cols-4"),
         )}
       >
-        {value.map((url, i) => (
-          <li
-            key={url}
-            className="bg-secondary relative aspect-4/5 overflow-hidden rounded-lg"
-          >
-            <Image
-              src={url}
-              alt=""
-              fill
-              sizes="120px"
-              className="object-cover"
-            />
-            {i === 0 && (
-              <span className="bg-background/85 absolute bottom-1 left-1 rounded px-1.5 py-0.5 text-[10px] font-medium">
-                Нүүр зураг
-              </span>
-            )}
-            <div className="absolute top-1 right-1 flex gap-1">
-              <button
-                type="button"
-                onClick={() => move(i, -1)}
-                disabled={i === 0}
-                className="bg-background/85 text-muted-foreground hover:text-foreground flex size-8 items-center justify-center rounded-md disabled:hidden"
-                aria-label={`${i + 1}-р зургийг өмнө нь`}
-              >
-                <ArrowLeft className="size-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => move(i, 1)}
-                disabled={i === value.length - 1}
-                className="bg-background/85 text-muted-foreground hover:text-foreground flex size-8 items-center justify-center rounded-md disabled:hidden"
-                aria-label={`${i + 1}-р зургийг дараа нь`}
-              >
-                <ArrowRight className="size-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onChange(value.filter((u) => u !== url))}
-                className="bg-background/85 text-muted-foreground hover:text-destructive flex size-8 items-center justify-center rounded-md"
-                aria-label={`${i + 1}-р зургийг хасах`}
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-          </li>
-        ))}
+        <DndContext
+          id={dndId}
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={(e) => setDragging(String(e.active.id))}
+          onDragEnd={onDragEnd}
+          onDragCancel={() => setDragging(null)}
+        >
+          <SortableContext items={value} strategy={rectSortingStrategy}>
+            {value.map((url, i) => (
+              <SortableImage
+                key={url}
+                url={url}
+                index={i}
+                sortable={value.length > 1}
+                onRemove={() => onChange(value.filter((u) => u !== url))}
+              />
+            ))}
+          </SortableContext>
+          <DragOverlay>
+            {dragging ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={dragging}
+                alt=""
+                className="aspect-4/5 size-full -rotate-2 rounded-lg object-cover shadow-2xl"
+                draggable={false}
+              />
+            ) : null}
+          </DragOverlay>
+        </DndContext>
         {!full && (
           <li>
             <button
@@ -165,5 +185,79 @@ export function ExtraImagesField({
       />
       {error && <p className="text-destructive text-xs">{error}</p>}
     </div>
+  );
+}
+
+function SortableImage({
+  url,
+  index,
+  sortable,
+  onRemove,
+}: {
+  url: string;
+  index: number;
+  /** Ганц зурагтай үед чирэх юм алга — бариул нуугдана. */
+  sortable: boolean;
+  onRemove: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: url, disabled: !sortable });
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      // Зураг бүхэлдээ чирэгдэнэ; гарын дарааллыг бариул (attributes) авна.
+      {...listeners}
+      className={cn(
+        "group bg-secondary relative aspect-4/5 overflow-hidden rounded-lg",
+        sortable && "cursor-grab active:cursor-grabbing",
+        // Overlay доор унах хоосон байр.
+        isDragging && "opacity-30",
+      )}
+    >
+      <Image
+        src={url}
+        alt=""
+        fill
+        sizes="120px"
+        className="object-cover"
+        draggable={false}
+      />
+      {index === 0 && (
+        <span className="bg-background/85 absolute bottom-1 left-1 rounded px-1.5 py-0.5 text-[10px] font-medium">
+          Нүүр зураг
+        </span>
+      )}
+      {sortable && (
+        <button
+          type="button"
+          {...attributes}
+          aria-label={`${index + 1}-р зураг — чирж байрлал солих (Space дараад сумаар зөөнө)`}
+          className="bg-background/85 text-muted-foreground hover:text-foreground absolute top-1 left-1 flex size-8 items-center justify-center rounded-md"
+        >
+          <GripVertical className="size-4" />
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onRemove}
+        // Хасах дарилт (хулгана, хуруу, Enter/Space) чирэлт эхлүүлэхгүй —
+        // мэдрэгчүүд li дээр сонсдог.
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        className="bg-background/85 text-muted-foreground hover:text-destructive absolute top-1 right-1 flex size-8 items-center justify-center rounded-md"
+        aria-label={`${index + 1}-р зургийг хасах`}
+      >
+        <X className="size-4" />
+      </button>
+    </li>
   );
 }
