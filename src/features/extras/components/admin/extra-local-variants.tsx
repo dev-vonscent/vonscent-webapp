@@ -101,20 +101,22 @@ export function ExtraLocalVariants({
                 key={v.key}
                 className={cn(
                   "border-border grid gap-3 rounded-lg border p-3 sm:items-start sm:rounded-none sm:border-0",
-                  // Бэлгийн сав утсан дээр: зураг зүүн талд, нэр/үнэ/хэмжээ
-                  // баруун талд. `dense` — хэмжээ зургийн хажуугийн хоосон
-                  // 2-р мөрийг дүүргэнэ.
+                  // Бэлгийн сав утсан дээр: зураг зүүн талд, нэр ба үнэ
+                  // хажууд нь доошоо; хэмжээ доор бүтэн өргөнөөр.
                   gift
-                    ? "grid-flow-dense grid-cols-[4.5rem_minmax(0,1fr)_6rem]"
+                    ? "grid-cols-[5rem_minmax(0,1fr)]"
                     : "grid-cols-[minmax(0,1fr)_7rem]",
                   cols,
                   !v.isActive && "opacity-60",
                 )}
               >
                 {gift && (
-                  <div className="row-span-2">
+                  // Хоёр мөр (нэр + хэмжээ) — tile нь хоёр input-ийн өндрийг
+                  // дүүргэнэ (4:5 биш).
+                  <div className="row-span-2 self-stretch sm:col-start-1 sm:row-span-2 sm:row-start-1">
                     <span className="sr-only">Хувилбарын зураг</span>
                     <ExtraImagesField
+                      fill
                       max={1}
                       value={v.imageUrl ? [v.imageUrl] : []}
                       onChange={(urls) =>
@@ -123,7 +125,12 @@ export function ExtraLocalVariants({
                     />
                   </div>
                 )}
-                <div className="space-y-1.5">
+                <div
+                  className={cn(
+                    "space-y-1.5",
+                    gift && "sm:col-start-2 sm:row-start-1",
+                  )}
+                >
                   <Label htmlFor={`${v.key}-label`} className="sm:sr-only">
                     {nameLabel}
                   </Label>
@@ -155,7 +162,12 @@ export function ExtraLocalVariants({
                     <p className="text-destructive text-xs">{labelErr}</p>
                   )}
                 </div>
-                <div className="space-y-1.5">
+                <div
+                  className={cn(
+                    "space-y-1.5",
+                    gift && "sm:col-start-3 sm:row-start-1",
+                  )}
+                >
                   <Label htmlFor={`${v.key}-price`} className="sm:sr-only">
                     Зарах үнэ (₮)
                   </Label>
@@ -172,10 +184,25 @@ export function ExtraLocalVariants({
                     <p className="text-destructive text-xs">{priceErr}</p>
                   )}
                 </div>
+                {gift && (
+                  // Утсан дээр зураг/нэр/үнийн доор; десктопд нэр, үнийн доор.
+                  <div className="col-span-2 space-y-1.5 sm:col-span-3 sm:col-start-2 sm:row-start-2">
+                    <Label htmlFor={`${v.key}-size`} className="text-xs">
+                      Хэмжээ, тохирох сав
+                    </Label>
+                    <Input
+                      id={`${v.key}-size`}
+                      value={v.sizeNote}
+                      maxLength={300}
+                      placeholder="Ж: 8×5×4см · 10ml-ийн 2 сав багтана"
+                      onChange={(e) => update(i, { sizeNote: e.target.value })}
+                    />
+                  </div>
+                )}
                 <div
                   className={cn(
-                    "space-y-1.5 sm:col-span-1",
-                    gift ? "col-span-3" : "col-span-2",
+                    "col-span-2 space-y-1.5 sm:col-span-1",
+                    gift && "sm:col-start-4 sm:row-start-1",
                   )}
                 >
                   <span className="text-sm font-medium sm:sr-only">
@@ -210,8 +237,8 @@ export function ExtraLocalVariants({
                 </div>
                 <div
                   className={cn(
-                    "flex min-h-10 items-center sm:col-span-1 sm:justify-center",
-                    gift ? "col-span-3" : "col-span-2",
+                    "col-span-2 flex min-h-10 items-center sm:col-span-1 sm:justify-center",
+                    gift && "sm:col-start-5 sm:row-start-1",
                   )}
                 >
                   {v.id ? (
@@ -226,35 +253,24 @@ export function ExtraLocalVariants({
                       <span className="sm:sr-only">Дэлгүүрт зарна</span>
                     </label>
                   ) : (
+                    // Утсан дээр ганц ✕ мөр эзэлж утгагүй харагддаг байв —
+                    // «Хасах» гэж бичсэн товч, баруун талд.
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon"
+                      size="sm"
                       disabled={variants.length === 1}
                       onClick={() =>
                         onChange(variants.filter((_, j) => j !== i))
                       }
                       aria-label="Хувилбар хасах"
+                      className="text-muted-foreground max-sm:ml-auto sm:size-9 sm:p-0"
                     >
                       <X className="size-4" />
+                      <span className="sm:sr-only">Хасах</span>
                     </Button>
                   )}
                 </div>
-                {gift && (
-                  // Нэр, үнийн доор — зургийн хажууд.
-                  <div className="col-span-2 col-start-2 space-y-1.5 sm:col-span-3">
-                    <Label htmlFor={`${v.key}-size`} className="text-xs">
-                      Хэмжээ, тохирох сав
-                    </Label>
-                    <Input
-                      id={`${v.key}-size`}
-                      value={v.sizeNote}
-                      maxLength={300}
-                      placeholder="Ж: 8×5×4см · 10ml-ийн 2 сав багтана"
-                      onChange={(e) => update(i, { sizeNote: e.target.value })}
-                    />
-                  </div>
-                )}
                 {!v.id && (
                   <InitialStock
                     v={v}

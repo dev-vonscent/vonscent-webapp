@@ -40,6 +40,7 @@ export function ExtraImagesField({
   onChange,
   max = EXTRA_IMAGES_MAX,
   gridClassName,
+  fill = false,
 }: {
   value: string[];
   onChange: (next: string[]) => void;
@@ -47,6 +48,11 @@ export function ExtraImagesField({
   max?: number;
   /** Баганын тоо — байрлах газрын өргөнд тааруулна. */
   gridClassName?: string;
+  /**
+   * Ганц tile эцгийнхээ өндрийг дүүргэнэ (4:5 биш) — хувилбарын мөрөнд хоёр
+   * input-ийн өндөртэй тэнцүү. `max={1}`-тэй хамт.
+   */
+  fill?: boolean;
 }) {
   const [busy, setBusy] = React.useState(false);
   const [progress, setProgress] = React.useState<number | null>(null);
@@ -113,11 +119,12 @@ export function ExtraImagesField({
   }
 
   return (
-    <div className="space-y-1.5">
+    <div className={fill ? "flex h-full flex-col gap-1.5" : "space-y-1.5"}>
       {/* Ганц зураг (хувилбарын) — нарийн баганад ч бүтэн өргөнөөр. */}
       <ul
         className={cn(
           "grid gap-2",
+          fill && "min-h-0 flex-1",
           gridClassName ??
             (max === 1 ? "grid-cols-1" : "grid-cols-3 sm:grid-cols-4"),
         )}
@@ -137,6 +144,7 @@ export function ExtraImagesField({
                 url={url}
                 index={i}
                 sortable={value.length > 1}
+                fill={fill}
                 onRemove={() => onChange(value.filter((u) => u !== url))}
               />
             ))}
@@ -154,12 +162,15 @@ export function ExtraImagesField({
           </DragOverlay>
         </DndContext>
         {!full && (
-          <li>
+          <li className={cn(fill && "h-full")}>
             <button
               type="button"
               disabled={busy}
               onClick={() => inputRef.current?.click()}
-              className="border-muted-foreground/40 bg-secondary text-muted-foreground hover:border-muted-foreground/70 hover:bg-accent flex aspect-4/5 w-full flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-xs transition-colors disabled:opacity-60"
+              className={cn(
+                "border-muted-foreground/40 bg-secondary text-muted-foreground hover:border-muted-foreground/70 hover:bg-accent flex w-full flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-xs transition-colors disabled:opacity-60",
+                fill ? "h-full" : "aspect-4/5",
+              )}
             >
               {busy ? (
                 <UploadProgress pct={progress} />
@@ -193,9 +204,11 @@ function SortableImage({
   index,
   sortable,
   onRemove,
+  fill,
 }: {
   url: string;
   index: number;
+  fill: boolean;
   /** Ганц зурагтай үед чирэх юм алга — бариул нуугдана. */
   sortable: boolean;
   onRemove: () => void;
@@ -216,7 +229,8 @@ function SortableImage({
       // Зураг бүхэлдээ чирэгдэнэ; гарын дарааллыг бариул (attributes) авна.
       {...listeners}
       className={cn(
-        "group bg-secondary relative aspect-4/5 overflow-hidden rounded-lg",
+        "group bg-secondary relative overflow-hidden rounded-lg",
+        fill ? "h-full" : "aspect-4/5",
         sortable && "cursor-grab active:cursor-grabbing",
         // Overlay доор унах хоосон байр.
         isDragging && "opacity-30",
