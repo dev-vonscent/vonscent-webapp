@@ -37,7 +37,7 @@ export default async function AdminExtrasPage({
       <PageHeader
         title="Нэмэлт бараа"
         count={extras.length}
-        description="Үнэртнээс гадуурх бараа: бэлгийн хайрцаг, грамын сав, үлдэгдэлтэй шил, шприц."
+        description="Үнэртнээс гадуурх бараа: гоёмсог бэлгийн сав, грамын сав, шилтэй ус, хоосон шил, шприц."
         actions={
           <Button asChild>
             <Link href="/admin/extras/new">

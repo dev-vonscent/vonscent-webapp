@@ -53,7 +53,7 @@ export function ExtraCategoryTiles({
           </>
         );
         const cls =
-          "bg-card border-border flex min-h-32 flex-col items-start justify-between gap-2 rounded-2xl border p-4 text-left transition-colors";
+          "bg-card border-border flex h-full min-h-32 flex-col items-start justify-between gap-2 rounded-2xl border p-4 text-left transition-colors";
         return (
           <li key={`${c.id}:${mode}`}>
             {disabled ? (

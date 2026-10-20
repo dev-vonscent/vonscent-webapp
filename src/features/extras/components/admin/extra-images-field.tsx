@@ -8,6 +8,7 @@ import { prepareUpload } from "@/lib/storage/prepare-upload";
 import { uploadErrorMessage, xhrUpload } from "@/lib/storage/upload-progress";
 import { UploadProgress } from "@/features/admin/components/upload-progress";
 import { EXTRA_IMAGES_MAX } from "@/lib/validators/extras";
+import { cn } from "@/lib/utils";
 
 /**
  * Нэмэлт барааны зургууд (4:5 — дэлгүүрийн карттай ижил харьцаа).
@@ -74,7 +75,13 @@ export function ExtraImagesField({
 
   return (
     <div className="space-y-1.5">
-      <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+      {/* Ганц зураг (хувилбарын) — нарийн баганад ч бүтэн өргөнөөр. */}
+      <ul
+        className={cn(
+          "grid gap-2",
+          max === 1 ? "grid-cols-1" : "grid-cols-3 sm:grid-cols-4",
+        )}
+      >
         {value.map((url, i) => (
           <li
             key={url}
