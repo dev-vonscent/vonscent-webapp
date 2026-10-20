@@ -660,10 +660,9 @@ export interface ExtraProductRow {
   full_ml: number | null;
   /**
    * Зөвхөн дэлгэцийн утга — тооцоонд оролцохгүй. `bottle_ml`: хоосон/бүтэн
-   * шилний бүтэн хэмжээ («0/125ml», 0153). `capacity` нь v4-ийн хайрцгийн
-   * «хэдэн шил багтах» (v5-д засахгүй).
+   * шилний бүтэн хэмжээ («0/125ml», 0153).
    */
-  attrs: { capacity?: number; bottle_ml?: number };
+  attrs: { bottle_ml?: number };
   sort: number;
   created_at: string;
   updated_at: string;

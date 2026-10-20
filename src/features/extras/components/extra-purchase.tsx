@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Check, Minus, Plus, ShoppingCart } from "lucide-react";
+import { Check, Info, Minus, Plus, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   MobileBuyBar,
@@ -12,21 +12,24 @@ import { useCart } from "@/features/cart/store";
 import { formatPrice } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import type { ShopExtraDetail } from "../types";
+import { VIAL_STYLE_SHORT } from "@/lib/vials";
+import type { ShopExtraDetail, ShopExtraVariant } from "../types";
 
 /** Нэг мөрийн дээд тоо — захиалгын validator-тэй ижил (qty ≤ 99). */
 const QTY_MAX = 99;
 
 /**
- * Нэмэлт барааны «Захиалах / Сагсанд нэмэх» (extras-shop-plan §9).
- * Хувилбар бүр өөрийн үлдэгдэлтэй; дууссан нь идэвхгүй, «Дууссан».
- * Үлдэгдэлтэй шил ганц ширхэг — тоо сонгох хэсэггүй.
+ * Нэмэлт барааны «Захиалах / Сагсанд нэмэх» (extras-shop-plan §9, §18.5).
+ * Хувилбар бүр өөрийн үлдэгдэлтэй; дууссан нь идэвхгүй, «Үлдэгдэлгүй».
+ * Грамын сав: хэмжээ → өнгө → тоо. Үлдэгдэлтэй шил ганц ширхэг — тоо
+ * сонгох хэсэггүй. Анхааруулга (шприц, үлдэгдэлтэй шил) товчны дээр.
  */
 export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
   const router = useRouter();
   const { card, variants } = extra;
   const single = card.mode === "leftover_liquid";
-  const sellable = (v: (typeof variants)[number]) =>
+  const vialPicker = card.mode === "shared_vial" && variants.length > 1;
+  const sellable = (v: ShopExtraVariant) =>
     v.available == null || v.available > 0;
   const [variantId, setVariantId] = React.useState(
     (variants.find(sellable) ?? variants[0])?.id ?? "",
@@ -42,6 +45,10 @@ export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
   const ctaAway = useScrolledPast(ctaRef);
 
   const selected = variants.find((v) => v.id === variantId) ?? null;
+  const select = (id: string) => {
+    setVariantId(id);
+    setQty(1);
+  };
   const available = selected?.available ?? null;
   // Сагсанд аль хэдийн байгааг хасаад нэмж авч болох тоо.
   const maxQty = single
@@ -111,7 +118,11 @@ export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
         )}
       </div>
 
-      {variants.length > 1 && (
+      {vialPicker && (
+        <VialPicker variants={variants} selected={selected} onSelect={select} />
+      )}
+
+      {variants.length > 1 && !vialPicker && (
         <div className="space-y-3">
           <p className="text-sm font-medium">Сонголт</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -123,12 +134,9 @@ export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
                   key={v.id}
                   type="button"
                   disabled={!ok}
-                  onClick={() => {
-                    setVariantId(v.id);
-                    setQty(1);
-                  }}
+                  onClick={() => select(v.id)}
                   aria-pressed={ok ? active : undefined}
-                  aria-label={ok ? v.label : `${v.label} — дууссан`}
+                  aria-label={ok ? v.label : `${v.label} — үлдэгдэлгүй`}
                   className={cn(
                     "flex min-h-11 flex-col items-center justify-center rounded-lg p-2 text-center transition-colors",
                     !ok
@@ -147,13 +155,40 @@ export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
                     {v.label || "Үндсэн"}
                   </span>
                   <span className="text-muted-foreground text-xs whitespace-nowrap">
-                    {ok ? formatPrice(v.price) : "Дууссан"}
+                    {ok ? formatPrice(v.price) : "Үлдэгдэлгүй"}
                   </span>
                 </button>
               );
             })}
           </div>
         </div>
+      )}
+
+      {selected && (selected.sizeNote || selected.batchCode) && (
+        <dl className="text-muted-foreground space-y-1 text-sm">
+          {selected.sizeNote && (
+            <div className="flex gap-2">
+              <dt className="text-foreground font-medium">Хэмжээ</dt>
+              <dd>{selected.sizeNote}</dd>
+            </div>
+          )}
+          {selected.batchCode && (
+            <div className="flex gap-2">
+              <dt className="text-foreground font-medium">Batch code</dt>
+              <dd className="tabular-nums">{selected.batchCode}</dd>
+            </div>
+          )}
+        </dl>
+      )}
+
+      {card.notice && (
+        <p className="bg-secondary flex gap-2.5 rounded-lg px-4 py-3 text-sm/relaxed">
+          <Info
+            className="text-muted-foreground mt-0.5 size-4 shrink-0"
+            aria-hidden
+          />
+          <span>{card.notice}</span>
+        </p>
       )}
 
       <div ref={ctaRef} className="space-y-3">
@@ -191,7 +226,7 @@ export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
             disabled={disabled}
             onClick={onBuyNow}
           >
-            {soldOut ? (single ? "Зарагдсан" : "Дууссан") : "Захиалах"}
+            {soldOut ? (single ? "Зарагдсан" : "Үлдэгдэлгүй") : "Захиалах"}
           </Button>
         </div>
         <Button
@@ -223,9 +258,11 @@ export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
             </span>
           </p>
         )}
-        {!disabled && available != null && available <= 5 && !single && (
-          <p className="text-muted-foreground text-xs">
-            {available} ширхэг үлдсэн
+        {/* Үлдэгдэл хэрэглэгчид үргэлж харагдана (§18.5); тоолоогүй сав — үгүй. */}
+        {!single && available != null && (
+          <p className="text-muted-foreground text-sm tabular-nums">
+            {available > 0 ? `Үлдэгдэл: ${available} ширхэг` : "Үлдэгдэлгүй"}
+            {inCart > 0 && ` · сагсанд ${inCart}`}
           </p>
         )}
       </div>
@@ -240,6 +277,98 @@ export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
           onBuyNow={onBuyNow}
         />
       )}
+    </div>
+  );
+}
+
+/** Грамын сав: эхлээд хэмжээ, дараа нь тэр хэмжээний өнгө (§18.2). */
+function VialPicker({
+  variants,
+  selected,
+  onSelect,
+}: {
+  variants: ShopExtraVariant[];
+  selected: ShopExtraVariant | null;
+  onSelect: (id: string) => void;
+}) {
+  const sellable = (v: ShopExtraVariant) =>
+    v.available == null || v.available > 0;
+  const sizes = [...new Set(variants.map((v) => v.vialMl ?? 0))].sort(
+    (a, b) => a - b,
+  );
+  const ml = selected?.vialMl ?? sizes[0];
+  const colors = variants.filter((v) => v.vialMl === ml);
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-3">
+        <p className="text-sm font-medium">Хэмжээ</p>
+        <div className="grid grid-cols-3 gap-2">
+          {sizes.map((size) => {
+            const inSize = variants.filter((v) => v.vialMl === size);
+            const ok = inSize.some(sellable);
+            const active = size === ml;
+            return (
+              <button
+                key={size}
+                type="button"
+                disabled={!ok}
+                onClick={() =>
+                  onSelect((inSize.find(sellable) ?? inSize[0])!.id)
+                }
+                aria-pressed={ok ? active : undefined}
+                className={cn(
+                  "min-h-11 rounded-lg text-sm font-semibold tabular-nums transition-colors",
+                  !ok
+                    ? "bg-secondary/50 text-muted-foreground cursor-not-allowed line-through opacity-50"
+                    : active
+                      ? "bg-secondary ring-foreground ring-2"
+                      : "bg-secondary hover:bg-accent",
+                )}
+              >
+                {size}ml
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="space-y-3">
+        <p className="text-sm font-medium">Өнгө</p>
+        <div className="grid grid-cols-3 gap-2">
+          {colors.map((v) => {
+            const ok = sellable(v);
+            const active = v.id === selected?.id;
+            const name = v.vialStyle ? VIAL_STYLE_SHORT[v.vialStyle] : v.label;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                disabled={!ok}
+                onClick={() => onSelect(v.id)}
+                aria-pressed={ok ? active : undefined}
+                aria-label={ok ? name : `${name} — үлдэгдэлгүй`}
+                className={cn(
+                  "flex min-h-11 flex-col items-center justify-center rounded-lg p-2 text-center transition-colors",
+                  !ok
+                    ? "bg-secondary/50 text-muted-foreground cursor-not-allowed opacity-50"
+                    : active
+                      ? "bg-secondary ring-foreground ring-2"
+                      : "bg-secondary hover:bg-accent",
+                )}
+              >
+                <span
+                  className={cn("text-sm font-semibold", !ok && "line-through")}
+                >
+                  {name}
+                </span>
+                <span className="text-muted-foreground text-xs whitespace-nowrap">
+                  {ok ? formatPrice(v.price) : "Үлдэгдэлгүй"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

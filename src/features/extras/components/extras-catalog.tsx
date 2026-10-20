@@ -7,7 +7,14 @@ import type { ShopExtraListItem } from "../api";
 import { sortExtras, type ExtraSort } from "../lib/sort";
 import { categoryIcon } from "./category-icon";
 import { ExtraCard } from "./extra-card";
+import { ExtrasListView } from "./extras-list-view";
 import { ExtrasSort } from "./extras-sort";
+
+/**
+ * Нэг загвар дээр олон өөр үнэртний шил — grid биш жагсаалт, хайлттай
+ * (plan §18.5).
+ */
+const LIST_CATEGORIES = new Set(["empty-bottle", "bottled"]);
 
 /** Хэвтээ мөрөнд хэдэн карт — илүү нь «Бүгд N»-ээр. */
 const ROW_LIMIT = 10;
@@ -59,8 +66,9 @@ function ExtrasRow({ items }: { items: ShopExtraListItem[] }) {
 
 /**
  * Каталогийн «Нэмэлт бараа» таб (extras-shop-plan §9):
- *   · ангилал сонгоогүй — 6 ангиллын tile + ангилал бүрийн мөр, «Бүгд N»
- *   · `cat` сонгосон — наалддаг chip, 2 баганатай grid, «Хамт авдаг»
+ *   · ангилал сонгоогүй — ангиллын tile + ангилал бүрийн мөр, «Бүгд N»
+ *   · `cat` сонгосон — наалддаг chip, 2 баганатай grid, «Хамт авдаг»;
+ *     хоосон шил, «Шилтэй ус» — хайлттай жагсаалт (§18.5)
  * Шүүлтүүргүй — нэмэлт бараа цөөн тул эрэмбэ л хангалттай.
  */
 export function ExtrasCatalog({
@@ -81,7 +89,7 @@ export function ExtrasCatalog({
         size="lg"
         icon={PackageSearch}
         title="Нэмэлт бараа удахгүй нэмэгдэнэ"
-        description="Бэлгийн хайрцаг, грамын сав, үлдэгдэлтэй шил энд гарна. Тэр хооронд үнэртнүүдээ сонирхоорой."
+        description="Бэлгийн сав, грамын сав, шприц, шилтэй ус энд гарна. Тэр хооронд үнэртнүүдээ сонирхоорой."
         action={
           <Button asChild variant="outline">
             <Link href="/catalog">Үнэртэн үзэх</Link>
@@ -121,19 +129,25 @@ export function ExtrasCatalog({
             />
           ))}
         </nav>
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-muted-foreground text-sm">
-            {current.name} · {inCategory.length} бараа
-          </p>
-          <ExtrasSort />
-        </div>
-        <ul className="grid grid-cols-2 gap-x-3 gap-y-8 md:grid-cols-3 md:gap-x-5 lg:grid-cols-4">
-          {inCategory.map((e) => (
-            <li key={e.id}>
-              <ExtraCard extra={e} href={`/extras/${e.slug}`} />
-            </li>
-          ))}
-        </ul>
+        {LIST_CATEGORIES.has(current.slug) ? (
+          <ExtrasListView items={inCategory} />
+        ) : (
+          <>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-muted-foreground text-sm">
+                {current.name} · {inCategory.length} бараа
+              </p>
+              <ExtrasSort />
+            </div>
+            <ul className="grid grid-cols-2 gap-x-3 gap-y-8 md:grid-cols-3 md:gap-x-5 lg:grid-cols-4">
+              {inCategory.map((e) => (
+                <li key={e.id}>
+                  <ExtraCard extra={e} href={`/extras/${e.slug}`} />
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
         {together.length > 0 && (
           <section aria-labelledby="extras-together" className="space-y-4">
             <h2
@@ -152,7 +166,7 @@ export function ExtrasCatalog({
   const sorted = sortExtras(items, sort);
   return (
     <div className="space-y-10">
-      <ul className="grid grid-cols-3 gap-2 md:grid-cols-6 md:gap-3">
+      <ul className="grid grid-cols-3 gap-2 md:grid-cols-5 md:gap-3">
         {categories.map((c) => {
           const Icon = categoryIcon(c.slug);
           return (

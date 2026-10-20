@@ -33,7 +33,6 @@ function extra(over: Partial<AdminExtra> = {}): AdminExtra {
     description: "",
     images: [],
     status: "published",
-    capacity: null,
     bottleMl: null,
     sort: 0,
     variants: [variant()],

@@ -16,6 +16,7 @@ import { ProductGallery } from "@/features/products/components/product-gallery";
 import { getShopExtra, getShopExtras } from "@/features/extras/api";
 import { ExtraCard } from "@/features/extras/components/extra-card";
 import { ExtraPurchase } from "@/features/extras/components/extra-purchase";
+import { bottleSizeText } from "@/features/extras/lib/display";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { formatPrice } from "@/lib/format";
 import { pageMetadata } from "@/lib/seo";
@@ -65,6 +66,7 @@ export default async function ExtraPage({
   if (!extra) notFound();
   const { card } = extra;
   const leftover = card.leftover;
+  const size = bottleSizeText(card);
   const perMl =
     leftover && leftover.remainingMl > 0
       ? Math.round(card.fromPrice / leftover.remainingMl)
@@ -134,9 +136,9 @@ export default async function ExtraPage({
                   {perMl != null && ` · 1ml ≈ ${formatPrice(perMl)}`}
                 </p>
               )}
-              {card.capacity != null && (
-                <p className="text-muted-foreground text-sm">
-                  {card.capacity} шил багтана
+              {size && (
+                <p className="text-muted-foreground text-sm tabular-nums">
+                  Хэмжээ: {size}
                 </p>
               )}
             </div>

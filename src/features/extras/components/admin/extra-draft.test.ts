@@ -114,7 +114,6 @@ describe("relistDraft — зарагдсан шилийг дахин нийтл�
       description: "Хайрцаггүй",
       images: ["https://x/1.jpg"],
       sort: 0,
-      capacity: null,
       bottleMl: null,
       variants: [{ id: "v1", price: 25000 }],
       leftover: {

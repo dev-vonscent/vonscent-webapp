@@ -82,7 +82,10 @@ function previewOf(d: ExtraDraft, category: ExtraCategory) {
           fullMl: Number(d.leftover.fullMl) || 0,
         }
       : null,
-    capacity: null,
+    bottleMl: Number(d.bottleMl) > 0 ? Number(d.bottleMl) : null,
+    stock: null,
+    notice: "",
+    requiresConsent: false,
   };
 }
 

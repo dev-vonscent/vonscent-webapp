@@ -71,6 +71,12 @@ export function adminToShopCard(extra: AdminExtra): ShopExtraCard {
           fullMl: leftover.fullMl,
         }
       : null,
-    capacity: extra.capacity,
+    bottleMl: extra.bottleMl,
+    stock: active.some((v) => v.isActive && v.available == null)
+      ? null
+      : sellable.reduce((n, v) => n + (v.available ?? 0), 0),
+    // Урьдчилан харахад анхааруулга, зөвшөөрөл хамаагүй.
+    notice: "",
+    requiresConsent: false,
   };
 }

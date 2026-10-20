@@ -27,7 +27,7 @@ interface CatalogRow {
   mode: ExtraInventoryMode;
   image_url: string | null;
   images: string[];
-  capacity: number | null;
+  bottle_ml: number | null;
   sort: number;
   from_price: number;
   sold_out: boolean;
@@ -37,6 +37,9 @@ interface CatalogRow {
   full_ml: number | null;
   created_at: string;
   updated_at: string;
+  stock: number | null;
+  notice: string;
+  requires_consent: boolean;
 }
 
 export interface ShopExtraListItem extends ShopExtraCard {
@@ -66,7 +69,10 @@ function toCard(r: CatalogRow): ShopExtraListItem {
             fullMl: r.full_ml ?? 0,
           }
         : null,
-    capacity: r.capacity,
+    bottleMl: r.bottle_ml,
+    stock: r.stock,
+    notice: r.notice,
+    requiresConsent: r.requires_consent,
     sort: r.sort,
     categorySort: r.category_sort,
     createdAt: r.created_at,
@@ -120,6 +126,9 @@ interface DetailRow {
     available: number | null;
     vial_style: VialStyle | null;
     vial_ml: number | null;
+    batch_code: string | null;
+    size_note: string | null;
+    image_url: string | null;
   }[];
 }
 
@@ -142,11 +151,17 @@ export async function getShopExtra(
   return {
     card,
     description: data.description,
-    images: data.card.images.length
-      ? data.card.images
-      : card.image
-        ? [card.image]
-        : [],
+    // Бэлгийн савны хувилбар бүр өөрийн зурагтай (0153) — галерейд нэмнэ.
+    images: [
+      ...new Set([
+        ...(data.card.images.length
+          ? data.card.images
+          : card.image
+            ? [card.image]
+            : []),
+        ...data.variants.flatMap((v) => (v.image_url ? [v.image_url] : [])),
+      ]),
+    ],
     variants: data.variants.map((v) => ({
       id: v.id,
       // Грамын савны хувилбар нэргүй — савны нэрээр («Ягаан 10ml»).
@@ -156,6 +171,11 @@ export async function getShopExtra(
           : v.label,
       price: v.price,
       available: v.available,
+      batchCode: v.batch_code,
+      sizeNote: v.size_note,
+      imageUrl: v.image_url,
+      vialStyle: v.vial_style,
+      vialMl: v.vial_ml,
     })),
     productSlug: data.product_slug,
     productId: data.product_id,

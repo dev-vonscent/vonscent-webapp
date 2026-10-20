@@ -98,7 +98,6 @@ export interface AdminExtra {
   description: string;
   images: string[];
   status: ExtraProductStatus;
-  capacity: number | null;
   /** Хоосон/бүтэн шилний бүтэн хэмжээ (ml) — «0/125ml» (attrs.bottle_ml). */
   bottleMl: number | null;
   sort: number;
@@ -136,8 +135,14 @@ export interface ShopExtraCard {
     remainingMl: number;
     fullMl: number;
   } | null;
-  /** Бэлгийн хайрцагт «N шил багтана». */
-  capacity: number | null;
+  /** Хоосон/бүтэн шилний бүтэн хэмжээ (ml) — «0/125ml», «100/100ml». */
+  bottleMl: number | null;
+  /** Хэрэглэгчид харагдах нийт үлдэгдэл; null = хязгааргүй (тоолоогүй сав). */
+  stock: number | null;
+  /** Ангилал+горимын анхааруулга (0153) — «Сагсанд нэмэх»-ийн дээр. */
+  notice: string;
+  /** Checkout дээр хэрэглэсэн барааны зөвшөөрөл заавал (PR14). */
+  requiresConsent: boolean;
 }
 
 /** Барааны хуудасны нэг хувилбар (сонгох товч). */
@@ -148,6 +153,14 @@ export interface ShopExtraVariant {
   price: number;
   /** null = хязгааргүй; 0 = дууссан. */
   available: number | null;
+  /** Хоосон/бүтэн шил. */
+  batchCode: string | null;
+  /** Гоёмсог бэлгийн савны чөлөөт хэмжээ/тохирох тайлбар. */
+  sizeNote: string | null;
+  imageUrl: string | null;
+  /** Грамын сав: хэмжээ → өнгө сонголтод. */
+  vialStyle: VialStyle | null;
+  vialMl: number | null;
 }
 
 export interface ShopExtraDetail {

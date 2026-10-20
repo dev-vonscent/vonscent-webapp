@@ -1014,6 +1014,85 @@ async function main() {
     },
   );
 
+  await scenario(
+    a,
+    "v5: дэлгүүр — үлдэгдэл, хэмжээ, анхааруулга (0154)",
+    async () => {
+      const e = await localExtra(a, "t-v5-shop", 3000, 0);
+      const syr = await save(a, {
+        category_id: await categoryId(a, "syringe"),
+        slug: "t-v5-syr-shop",
+        name: "Шприц",
+        variants: [
+          { label: "5ml", price: 3000 },
+          { label: "10ml", price: 4000 },
+        ],
+      });
+      await a.query("select extras_set_status($1, 'published', null)", [
+        syr.id,
+      ]);
+      const vs = await a.query<{ id: string; label: string }>(
+        "select id, label from extra_variants where extra_id = $1 order by label",
+        [syr.id],
+      );
+      await purchase(a, vs.rows.find((v) => v.label === "5ml")!.id, 6);
+      await a.query("set local role anon");
+      const card = await one<{
+        stock: number;
+        sold_out: boolean;
+        notice: string;
+        requires_consent: boolean;
+      }>(
+        a,
+        "select stock, sold_out, notice, requires_consent from extras_catalog() where id = $1",
+        [syr.id],
+      );
+      const empty = await one<{ stock: number; sold_out: boolean }>(
+        a,
+        "select stock, sold_out from extras_catalog() where id = $1",
+        [e.extraId],
+      );
+      await a.query("reset role");
+      check(
+        "шприц: үлдэгдэл 6, анхааруулгатай, зөвшөөрөлгүй",
+        card.stock === 6 &&
+          !card.sold_out &&
+          card.notice.includes("Baccarat") &&
+          !card.requires_consent,
+        card,
+      );
+      check(
+        "үлдэгдэлгүй бараа нуугдахгүй, stock 0",
+        empty.stock === 0 && empty.sold_out,
+        empty,
+      );
+
+      const bottle = await save(a, {
+        category_id: await categoryId(a, "empty-bottle"),
+        slug: "t-v5-empty",
+        name: "JPG Le Male Elixir",
+        attrs: { bottle_ml: 125 },
+        variants: [{ label: "A1", price: 15000, batch_code: "A1" }],
+      });
+      await a.query("select extras_set_status($1, 'published', null)", [
+        bottle.id,
+      ]);
+      const d = await one<{
+        r: {
+          card: { bottle_ml: number; requires_consent: boolean };
+          variants: { batch_code: string }[];
+        };
+      }>(a, "select extra_detail('t-v5-empty') r");
+      check(
+        "хоосон шил: 125ml, batch code, зөвшөөрөлтэй",
+        d.r.card.bottle_ml === 125 &&
+          d.r.card.requires_consent &&
+          d.r.variants[0]?.batch_code === "A1",
+        d.r,
+      );
+    },
+  );
+
   await scenario(a, "v5: restock_log.purchased_on (УБ өдөр)", async () => {
     const nulls = await one<{ n: number }>(
       a,

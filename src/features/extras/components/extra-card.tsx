@@ -4,6 +4,7 @@ import { Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { bottleSizeText, stockText } from "../lib/display";
 import type { ShopExtraCard } from "../types";
 
 /**
@@ -27,6 +28,8 @@ export function ExtraCard({
   sizes?: string;
 }) {
   const leftover = extra.leftover;
+  const size = bottleSizeText(extra);
+  const stock = stockText(extra);
   const perMl =
     leftover && leftover.remainingMl > 0
       ? Math.round(extra.fromPrice / leftover.remainingMl)
@@ -62,7 +65,7 @@ export function ExtraCard({
         {extra.soldOut && (
           <div className="bg-background/70 absolute inset-0 flex items-center justify-center">
             <span className="bg-card rounded-full px-3 py-1 text-xs font-medium tracking-wide uppercase">
-              {leftover ? "Зарагдсан" : "Дууссан"}
+              {leftover ? "Зарагдсан" : "Үлдэгдэлгүй"}
             </span>
           </div>
         )}
@@ -84,9 +87,9 @@ export function ExtraCard({
             {perMl != null && ` · 1ml ≈ ${formatPrice(perMl)}`}
           </span>
         )}
-        {extra.capacity != null && (
-          <span className="text-muted-foreground text-xs">
-            {extra.capacity} шил багтана
+        {(size || (stock && !extra.soldOut)) && (
+          <span className="text-muted-foreground text-xs tabular-nums">
+            {[size, extra.soldOut ? null : stock].filter(Boolean).join(" · ")}
           </span>
         )}
         <span className="text-foreground/70 mt-1.5 text-sm font-semibold tracking-tight whitespace-nowrap">

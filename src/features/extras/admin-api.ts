@@ -252,7 +252,6 @@ async function loadExtras(
       description: p.description,
       images: p.images,
       status: p.status,
-      capacity: typeof p.attrs?.capacity === "number" ? p.attrs.capacity : null,
       bottleMl:
         typeof p.attrs?.bottle_ml === "number" ? p.attrs.bottle_ml : null,
       sort: p.sort,
