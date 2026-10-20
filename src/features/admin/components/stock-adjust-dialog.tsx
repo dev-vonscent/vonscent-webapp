@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { useLaunchProduct } from "./use-launch-product";
 import { DatePicker } from "./date-picker";
 import { ubToday } from "@/lib/time";
-import { purchaseDateError } from "@/lib/validators/extras";
+import { purchaseDateBounds, purchaseDateError } from "@/lib/validators/extras";
 
 export type StockMode = "restock" | "correction";
 
@@ -270,10 +270,15 @@ export function StockAdjustDialog({
             </Field>
             <Field
               label="Авсан өдөр"
-              hint="Тайланд энэ өдрийн зардал болно. Өмнөх сар хаагдсан."
+              hint="Тайланд энэ өдрийн зардал болно. Өмнөх сарын тайлан хаагдсан тул сонгох боломжгүй."
               error={dayError ?? undefined}
             >
-              <DatePicker value={day} onChange={setDay} clearable={false} />
+              <DatePicker
+                value={day}
+                onChange={setDay}
+                clearable={false}
+                {...purchaseDateBounds()}
+              />
             </Field>
           </>
         ) : (

@@ -30,11 +30,17 @@ export function Calendar({
   onPick,
   /** Highlighted as "today"; pass the shop's date, not the browser's. */
   today,
+  /** Earliest pickable day (inclusive). Days before it are disabled. */
+  min,
+  /** Latest pickable day (inclusive). */
+  max,
 }: {
   start: string;
   end?: string;
   onPick: (dateKey: string) => void;
   today?: string | null;
+  min?: string;
+  max?: string;
 }) {
   const anchor = start || today || todayFallback();
   const [view, setView] = React.useState(() => ({
@@ -51,6 +57,11 @@ export function Calendar({
 
   const cells = monthGrid(view.year, view.month);
   const rangeEnd = end || start;
+  // `YYYY-MM` compares as a string, so whole months outside the bounds are
+  // not even reachable — no paging into a month of disabled days.
+  const viewMonth = `${view.year}-${String(view.month + 1).padStart(2, "0")}`;
+  const canPrev = !min || viewMonth > min.slice(0, 7);
+  const canNext = !max || viewMonth < max.slice(0, 7);
 
   return (
     <div className="space-y-3">
@@ -60,6 +71,7 @@ export function Calendar({
           variant="ghost"
           size="icon"
           aria-label="Өмнөх сар"
+          disabled={!canPrev}
           onClick={() => shiftMonth(-1)}
         >
           <ChevronLeft className="size-4" />
@@ -72,6 +84,7 @@ export function Calendar({
           variant="ghost"
           size="icon"
           aria-label="Дараах сар"
+          disabled={!canNext}
           onClick={() => shiftMonth(1)}
         >
           <ChevronRight className="size-4" />
@@ -94,10 +107,12 @@ export function Calendar({
           const isEnd = key === rangeEnd;
           const inRange = start && rangeEnd && key > start && key < rangeEnd;
           const isToday = key === today;
+          const outOfBounds = (min && key < min) || (max && key > max);
           return (
             <button
               key={key}
               type="button"
+              disabled={Boolean(outOfBounds)}
               onClick={() => onPick(key)}
               aria-pressed={isStart || isEnd}
               aria-label={key}
@@ -112,6 +127,8 @@ export function Calendar({
                 // Today is marked but never painted like a selection, or the
                 // operator reads it as already chosen.
                 isToday && !isStart && !isEnd && "text-gold-strong font-medium",
+                outOfBounds &&
+                  "text-muted-foreground/50 cursor-not-allowed hover:bg-transparent",
               )}
             >
               {Number(key.slice(8))}

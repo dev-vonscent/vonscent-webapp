@@ -9,7 +9,7 @@ import { adminFetch } from "@/features/admin/lib/mutate";
 import { formatPrice } from "@/lib/format";
 import { ubToday } from "@/lib/time";
 import { toast } from "@/lib/toast";
-import { purchaseDateError } from "@/lib/validators/extras";
+import { purchaseDateBounds, purchaseDateError } from "@/lib/validators/extras";
 
 export interface StockCurrent {
   /** Сав тоолж эхлээгүй бол null. */
@@ -120,10 +120,15 @@ export function StockPurchaseForm({
       </div>
       <Field
         label="Авсан өдөр"
-        hint="Энэ сарын өдөр. Өмнөх сарын тайлан хаагдсан."
+        hint="Өмнөх сарын тайлан хаагдсан тул сонгох боломжгүй."
         error={errors.day}
       >
-        <DatePicker value={day} onChange={setDay} clearable={false} />
+        <DatePicker
+          value={day}
+          onChange={setDay}
+          clearable={false}
+          {...purchaseDateBounds()}
+        />
       </Field>
       <Field label="Тэмдэглэл" hint="Ж: Нийлүүлэгч, ачааны дугаар">
         <Input

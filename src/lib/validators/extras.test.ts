@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extraPurchaseSchema,
+  purchaseDateBounds,
   purchaseDateError,
   vialPurchaseSchema,
 } from "./extras";
@@ -17,6 +18,12 @@ describe("purchaseDateError — 0153 purchase_date_check-тэй ижил", () =>
   it("ирээдүй, өмнөх сар хориотой", () => {
     expect(purchaseDateError("2026-10-21", today)).toMatch(/ирээдүй/);
     expect(purchaseDateError("2026-09-30", today)).toMatch(/хаагдсан/);
+  });
+  it("календарийн хүрээ = энэ сарын 1 — өнөөдөр", () => {
+    expect(purchaseDateBounds(today)).toEqual({
+      min: "2026-10-01",
+      max: "2026-10-20",
+    });
   });
 });
 

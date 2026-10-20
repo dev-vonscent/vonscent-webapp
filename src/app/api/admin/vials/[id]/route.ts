@@ -9,7 +9,7 @@ const schema = z.object({
   note: z.string().trim().max(200).optional(),
 });
 
-/** «Цөөхөн гэж анхааруулах хязгаар», «Түр хаах», тэмдэглэл. Тоо биш. */
+/** «Цөөхөн гэж анхааруулах тоо», «Түр хаах», тэмдэглэл. Тоо биш. */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },

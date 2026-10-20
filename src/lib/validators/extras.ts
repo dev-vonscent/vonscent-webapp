@@ -188,9 +188,15 @@ export const PURCHASE_UNIT_COST_MAX = 10_000_000;
  * Авсан өдөр: УБ-ын одоогийн сарын 1-нээс өнөөдөр хүртэл (0153
  * `purchase_date_check`). Өмнөх сар хаагдсан — тайлан хожим өөрчлөгдөхгүй.
  */
+/** «Авсан өдөр»-ийн сонгож болох хүрээ: энэ сарын 1-нээс өнөөдөр хүртэл. */
+export function purchaseDateBounds(today = ubToday()) {
+  return { min: `${today.slice(0, 7)}-01`, max: today };
+}
+
 export function purchaseDateError(day: string, today = ubToday()) {
-  if (day > today) return "Авсан өдөр ирээдүйд байж болохгүй";
-  if (day < `${today.slice(0, 7)}-01`)
+  const { min, max } = purchaseDateBounds(today);
+  if (day > max) return "Авсан өдөр ирээдүйд байж болохгүй";
+  if (day < min)
     return "Өнгөрсөн сарын тайлан хаагдсан тул энэ сарын өдөр оруулна уу";
   return null;
 }

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -54,8 +55,8 @@ const TONE: Record<ReturnType<typeof vialStatus>["tone"], string> = {
 /**
  * Савны тоон нөөц (extras-shop-plan §8, туг `vial_inventory`): өнгө ×
  * хэмжээний хүснэгт, нүдэнд зарах боломжтой тоо. Нүдийг дарахад «Нийт тоо»,
- * «Захиалгад орсон», «Зарах боломжтой», хязгаар, түр хаах, сүүлийн 20
- * хөдөлгөөн. Утсан дээр өнгө бүр нэг карт.
+ * «Захиалгад орсон», «Зарах боломжтой», анхааруулах тоо, түр хаах; сүүлийн
+ * 20 хөдөлгөөн нь цонх доторх тусдаа хуудсанд. Утсан дээр өнгө бүр нэг карт.
  */
 export function VialStockManager({ vials }: { vials: VialOption[] }) {
   const [open, setOpen] = React.useState<VialOption | null>(null);
@@ -211,7 +212,17 @@ function VialDialog({
   const [busy, setBusy] = React.useState(false);
   const [moves, setMoves] = React.useState<Move[] | null>(null);
   const [mode, setMode] = React.useState<StockMode>("purchase");
+  // Хөдөлгөөний түүх үндсэн хэсгийн зайг эзлэхгүй — дарахад цонх дотор
+  // баруунаас гулсаж орох тусдаа хуудас.
+  const [view, setView] = React.useState<"main" | "history" | "back">("main");
   const counted = current.onHand != null;
+  const viewRef = React.useRef<HTMLDivElement>(null);
+  // Хуудас солигдоход гүйлгээ дээрээс эхэлнэ — эс бөгөөс түүх рүү ороход
+  // «Буцах» дээд талд нуугдаж үлдэнэ. Эцэг нь ResponsiveDialog-ийн гүйдэг хэсэг.
+  React.useLayoutEffect(() => {
+    const scroller = viewRef.current?.parentElement;
+    if (scroller) scroller.scrollTop = 0;
+  }, [view]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -286,165 +297,7 @@ function VialDialog({
       open
       onOpenChange={(o) => !o && !busy && onClose()}
       title={vialName(vial)}
-    >
-      <div className="space-y-5">
-        {counted && <StockModeToggle value={mode} onChange={setMode} />}
-        {counted && mode === "purchase" ? (
-          <div className="space-y-3">
-            <dl className="bg-muted/40 grid grid-cols-3 gap-2 rounded-md px-3 py-2 text-sm">
-              <div>
-                <dt className="text-muted-foreground text-xs">Нийт</dt>
-                <dd className="tabular-nums">{current.onHand}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground text-xs">
-                  Захиалгад орсон
-                </dt>
-                <dd className="tabular-nums">{current.reserved}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground text-xs">
-                  Ашиглах боломжтой
-                </dt>
-                <dd className="font-medium tabular-nums">
-                  {Math.max((current.onHand ?? 0) - current.reserved, 0)}
-                </dd>
-              </div>
-            </dl>
-            <StockPurchaseForm
-              endpoint="/api/admin/vials/purchase"
-              target={{ vialId: vial.id }}
-              current={current}
-              onConflict={setCurrent}
-              onSaved={(c) => {
-                setCurrent(c);
-                setCount(c.onHand == null ? "" : String(c.onHand));
-                router.refresh();
-              }}
-            />
-          </div>
-        ) : (
-          <form
-            noValidate
-            onSubmit={(e) => {
-              e.preventDefault();
-              void saveCount();
-            }}
-            className="space-y-3"
-          >
-            <Field
-              label={counted ? "Тоолсон нийт тоо" : "Эхний тооллого"}
-              hint={
-                counted
-                  ? "Тооллогоор зөрсөн үед л. Өртөг тайланд орохгүй — шинэ ачааг «Нөөц нөхөх»-өөр оруулна."
-                  : "Одоо байгаа бүх савыг, грамаар савлагдаад хүргэгдээгүй захиалгынхыг оруулаад тоолно уу. Дараа нь шинэ ачааг «Нөөц нөхөх»-өөр нэмнэ."
-              }
-              error={error}
-            >
-              <Input
-                inputMode="numeric"
-                autoComplete="off"
-                value={count}
-                placeholder="Тоо оруулаагүй"
-                className="tabular-nums"
-                onChange={(e) => {
-                  setCount(e.target.value);
-                  setError(undefined);
-                }}
-              />
-            </Field>
-            <dl className="bg-muted/40 grid grid-cols-2 gap-2 rounded-md px-3 py-2 text-sm">
-              <div>
-                <dt className="text-muted-foreground text-xs">
-                  Захиалгад орсон
-                </dt>
-                <dd className="tabular-nums">{current.reserved}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground text-xs">
-                  Зарах боломжтой
-                </dt>
-                <dd className="font-medium tabular-nums">
-                  {current.onHand == null ? "Тоо оруулаагүй" : available}
-                </dd>
-              </div>
-            </dl>
-            <Field label="Тэмдэглэл" hint="Ж: Шинэ ачаа ирсэн">
-              <Input
-                value={note}
-                maxLength={200}
-                onChange={(e) => setNote(e.target.value)}
-              />
-            </Field>
-            <LoadingButton type="submit" loading={busy} className="w-full">
-              {counted ? "Тоо засах" : "Тооллого хадгалах"}
-            </LoadingButton>
-          </form>
-        )}
-
-        <div className="grid gap-3 sm:grid-cols-2 sm:items-end">
-          <Field label="Цөөхөн гэж анхааруулах хязгаар">
-            <Input
-              inputMode="numeric"
-              autoComplete="off"
-              value={low}
-              className="tabular-nums"
-              onChange={(e) => setLow(e.target.value)}
-              onBlur={() => {
-                const v = Number(low);
-                if (Number.isInteger(v) && v >= 0 && v !== vial.lowThreshold) {
-                  void patch({ lowThreshold: v }, "Хязгаар хадгалагдлаа");
-                }
-              }}
-            />
-          </Field>
-          <label className="flex min-h-11 items-center gap-2 text-sm">
-            <Checkbox
-              checked={!vial.isActive}
-              disabled={busy}
-              onCheckedChange={(c) =>
-                void patch(
-                  { isActive: c !== true },
-                  c === true ? "Түр хаалаа" : "Нээлээ",
-                )
-              }
-            />
-            Түр хаах
-          </label>
-        </div>
-
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium">Сүүлийн хөдөлгөөн</h3>
-          {moves == null ? (
-            <p className="text-muted-foreground text-xs">Уншиж байна…</p>
-          ) : moves.length === 0 ? (
-            <p className="text-muted-foreground text-xs">Хөдөлгөөн алга.</p>
-          ) : (
-            <ul className="divide-border divide-y text-xs">
-              {moves.map((m) => (
-                <li key={m.id} className="flex items-baseline gap-2 py-1.5">
-                  <span className="min-w-0 flex-1">
-                    {MOVE_LABEL[m.kind] ?? m.kind}
-                    {m.orderNo && ` · ${m.orderNo}`}
-                    {m.note && !m.orderNo && ` · ${m.note}`}
-                  </span>
-                  <span className="tabular-nums">
-                    {m.deltaOnHand !== 0 &&
-                      `${m.deltaOnHand > 0 ? "+" : ""}${m.deltaOnHand}`}
-                    {m.cost != null && (
-                      <span className="text-muted-foreground block text-right">
-                        {formatPrice(m.cost)}
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-muted-foreground whitespace-nowrap">
-                    {formatDateTime(m.at)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      footer={
         <Button
           type="button"
           variant="secondary"
@@ -454,7 +307,231 @@ function VialDialog({
         >
           Хаах
         </Button>
-      </div>
+      }
+    >
+      {view === "history" ? (
+        <MoveHistory
+          ref={viewRef}
+          moves={moves}
+          onBack={() => setView("back")}
+        />
+      ) : (
+        <div
+          ref={viewRef}
+          className={cn(
+            "space-y-5",
+            // Түүхээс буцахад л зүүнээс гулсана; анх нээгдэхэд хөдөлгөөнгүй.
+            view === "back" &&
+              "animate-in fade-in-0 slide-in-from-left-8 duration-200",
+          )}
+        >
+          {counted && <StockModeToggle value={mode} onChange={setMode} />}
+          {counted && mode === "purchase" ? (
+            <div className="space-y-3">
+              <dl className="bg-muted/40 grid grid-cols-3 gap-2 rounded-md px-3 py-2 text-sm">
+                <div>
+                  <dt className="text-muted-foreground text-xs">Нийт</dt>
+                  <dd className="tabular-nums">{current.onHand}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs">
+                    Захиалгад орсон
+                  </dt>
+                  <dd className="tabular-nums">{current.reserved}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs">
+                    Ашиглах боломжтой
+                  </dt>
+                  <dd className="font-medium tabular-nums">
+                    {Math.max((current.onHand ?? 0) - current.reserved, 0)}
+                  </dd>
+                </div>
+              </dl>
+              <StockPurchaseForm
+                endpoint="/api/admin/vials/purchase"
+                target={{ vialId: vial.id }}
+                current={current}
+                onConflict={setCurrent}
+                onSaved={(c) => {
+                  setCurrent(c);
+                  setCount(c.onHand == null ? "" : String(c.onHand));
+                  router.refresh();
+                }}
+              />
+            </div>
+          ) : (
+            <form
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                void saveCount();
+              }}
+              className="space-y-3"
+            >
+              <Field
+                label={counted ? "Тоолсон нийт тоо" : "Эхний тооллого"}
+                hint={
+                  counted
+                    ? "Тооллогоор зөрсөн үед л. Өртөг тайланд орохгүй — шинэ ачааг «Нөөц нөхөх»-өөр оруулна."
+                    : "Одоо байгаа бүх савыг, грамаар савлагдаад хүргэгдээгүй захиалгынхыг оруулаад тоолно уу. Дараа нь шинэ ачааг «Нөөц нөхөх»-өөр нэмнэ."
+                }
+                error={error}
+              >
+                <Input
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={count}
+                  placeholder="Тоо оруулаагүй"
+                  className="tabular-nums"
+                  onChange={(e) => {
+                    setCount(e.target.value);
+                    setError(undefined);
+                  }}
+                />
+              </Field>
+              <dl className="bg-muted/40 grid grid-cols-2 gap-2 rounded-md px-3 py-2 text-sm">
+                <div>
+                  <dt className="text-muted-foreground text-xs">
+                    Захиалгад орсон
+                  </dt>
+                  <dd className="tabular-nums">{current.reserved}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs">
+                    Зарах боломжтой
+                  </dt>
+                  <dd className="font-medium tabular-nums">
+                    {current.onHand == null ? "Тоо оруулаагүй" : available}
+                  </dd>
+                </div>
+              </dl>
+              <Field label="Тэмдэглэл" hint="Ж: Шинэ ачаа ирсэн">
+                <Input
+                  value={note}
+                  maxLength={200}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+              </Field>
+              <LoadingButton type="submit" loading={busy} className="w-full">
+                {counted ? "Тоо засах" : "Тооллого хадгалах"}
+              </LoadingButton>
+            </form>
+          )}
+
+          <div className="grid grid-cols-[1fr_auto] items-end gap-3">
+            <Field label="Цөөхөн гэж анхааруулах тоо">
+              <Input
+                inputMode="numeric"
+                autoComplete="off"
+                value={low}
+                className="tabular-nums"
+                onChange={(e) => setLow(e.target.value)}
+                onBlur={() => {
+                  const v = Number(low);
+                  if (
+                    Number.isInteger(v) &&
+                    v >= 0 &&
+                    v !== vial.lowThreshold
+                  ) {
+                    void patch(
+                      { lowThreshold: v },
+                      "Анхааруулах тоо хадгалагдлаа",
+                    );
+                  }
+                }}
+              />
+            </Field>
+            <label className="flex min-h-11 items-center gap-2 text-sm">
+              <Checkbox
+                checked={!vial.isActive}
+                disabled={busy}
+                onCheckedChange={(c) =>
+                  void patch(
+                    { isActive: c !== true },
+                    c === true ? "Түр хаалаа" : "Нээлээ",
+                  )
+                }
+              />
+              Түр хаах
+            </label>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setView("history")}
+            className="bg-secondary hover:bg-accent flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors"
+          >
+            <History className="text-muted-foreground size-4" aria-hidden />
+            <span className="flex-1 text-left">Хөдөлгөөний түүх</span>
+            <ChevronRight
+              className="text-muted-foreground size-4"
+              aria-hidden
+            />
+          </button>
+        </div>
+      )}
     </ResponsiveDialog>
+  );
+}
+
+function MoveHistory({
+  ref,
+  moves,
+  onBack,
+}: {
+  ref: React.Ref<HTMLDivElement>;
+  moves: Move[] | null;
+  onBack: () => void;
+}) {
+  return (
+    <div
+      ref={ref}
+      className="animate-in fade-in-0 slide-in-from-right-8 space-y-3 duration-200"
+    >
+      <button
+        type="button"
+        onClick={onBack}
+        className="text-muted-foreground hover:text-foreground -ml-1 flex min-h-11 items-center gap-1 text-sm font-medium transition-colors"
+      >
+        <ChevronLeft className="size-4" aria-hidden />
+        Буцах
+      </button>
+      <h3 className="text-sm font-medium">Сүүлийн 20 хөдөлгөөн</h3>
+      {moves == null ? (
+        <p className="text-muted-foreground text-xs">Уншиж байна…</p>
+      ) : moves.length === 0 ? (
+        <p className="text-muted-foreground text-xs">Хөдөлгөөн алга.</p>
+      ) : (
+        <ul className="divide-border divide-y text-xs">
+          {moves.map((m) => (
+            <li key={m.id} className="flex items-start gap-3 py-2">
+              <span className="min-w-0 flex-1">
+                <span className="block">
+                  {MOVE_LABEL[m.kind] ?? m.kind}
+                  {m.orderNo && ` · ${m.orderNo}`}
+                  {m.note &&
+                    !m.orderNo &&
+                    m.note !== MOVE_LABEL[m.kind] &&
+                    ` · ${m.note}`}
+                </span>
+                <span className="text-muted-foreground block tabular-nums">
+                  {formatDateTime(m.at)}
+                </span>
+              </span>
+              <span className="shrink-0 text-right tabular-nums">
+                {m.deltaOnHand !== 0 &&
+                  `${m.deltaOnHand > 0 ? "+" : ""}${m.deltaOnHand}`}
+                {m.cost != null && (
+                  <span className="text-muted-foreground block">
+                    {formatPrice(m.cost)}
+                  </span>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
