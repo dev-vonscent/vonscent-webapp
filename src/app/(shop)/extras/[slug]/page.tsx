@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
@@ -110,10 +111,18 @@ export default async function ExtraPage({
 
       <div className="grid grid-cols-1 gap-0 sm:gap-10 lg:grid-cols-2 lg:items-start">
         <div className="lg:sticky lg:top-(--header-offset) lg:self-start lg:transition-[top] lg:duration-300 lg:ease-out">
-          <ProductGallery
-            images={extra.images.map((url) => ({ url, alt: card.name }))}
-            name={card.name}
-          />
+          {extra.images.length > 0 ? (
+            <ProductGallery
+              images={extra.images.map((url) => ({ url, alt: card.name }))}
+              name={card.name}
+            />
+          ) : (
+            // Зураггүй бараа — desktop-д хоосон хар баганын оронд дүрс. Утсан
+            // дээр нуугдана: агуулгыг дэлгэцээс доош түлхэхгүй.
+            <div className="bg-secondary hidden aspect-square items-center justify-center rounded-2xl lg:flex">
+              <Package className="text-muted-foreground size-10" aria-hidden />
+            </div>
+          )}
         </div>
 
         <div className="bg-background relative z-10 -mx-4 -mt-8 space-y-10 rounded-t-4xl px-4 pt-8 sm:mx-0 sm:mt-0 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">

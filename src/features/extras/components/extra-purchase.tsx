@@ -126,7 +126,15 @@ export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
       {variants.length > 1 && !vialPicker && (
         <div className="space-y-3">
           <p className="text-sm font-medium">Сонголт</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {/* 3 сонголт (шприц 5/10/20ml) утсан дээр ч нэг мөрөнд. */}
+          <div
+            className={cn(
+              "grid gap-2",
+              variants.length === 3
+                ? "grid-cols-3"
+                : "grid-cols-2 sm:grid-cols-3",
+            )}
+          >
             {variants.map((v) => {
               const ok = sellable(v);
               const active = v.id === variantId;
