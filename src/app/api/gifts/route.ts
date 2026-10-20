@@ -7,21 +7,15 @@ import { createPublicClient } from "@/lib/supabase/public";
 import { callRpc } from "@/lib/supabase/rpc";
 
 /**
- * Савны тоон нөөц (0152) нээлттэй бөгөөд 1ml сав дууссан бол бэлэг
- * цутгах сав алга — сонгох хэсэг урьдчилан идэвхгүй (plan §10).
+ * Савны тоон нөөц (0152) нээлттэй бөгөөд 1ml сав дууссан / хаалттай бол
+ * бэлэг цутгах сав алга — сонгох хэсэг урьдчилан идэвхгүй (plan §10).
+ * `vials` RLS-тэй тул anon-оор шууд уншихгүй — definer RPC (0157).
  */
 async function giftVialOut(): Promise<boolean> {
   if (!(await isFeatureEnabled("vial_inventory"))) return false;
   const supabase = createPublicClient();
   if (!supabase) return false;
-  const { data: id } = await callRpc<string | null>(supabase, "vial_for", {
-    p_style: null,
-    p_ml: GIFT_SAMPLE_ML,
-  });
-  if (!id) return true;
-  const { data } = await callRpc<boolean>(supabase, "vial_available", {
-    p_vial: id,
-  });
+  const { data } = await callRpc<boolean>(supabase, "gift_vial_available", {});
   return data === false;
 }
 

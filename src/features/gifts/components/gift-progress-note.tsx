@@ -14,6 +14,8 @@ import { useGiftPool } from "../use-gift-pool";
  * Сагсанд купон ордоггүй тул энд купоны өмнөх дүнгээр бодно — эцсийн эрхийг
  * checkout-ийн `GiftSamplePicker` купоны дараах дүнгээр харуулна. Сан
  * унтраалттай / хоосон, эсвэл сонгосон бараа байхгүй үед юу ч харуулахгүй.
+ * 1ml сав дууссан / хаалттай (`vialOut`, 0152) үед checkout-тэй ижил
+ * «түр дууссан» — «дараагийн хуудсанд сонгоорой» гэж амлахгүй.
  */
 export function GiftProgressNote({
   subtotal,
@@ -24,7 +26,23 @@ export function GiftProgressNote({
   className?: string;
 }) {
   const pool = useGiftPool();
-  if (!pool?.enabled || subtotal <= 0) return null;
+  if (!pool || subtotal <= 0) return null;
+
+  // `enabled` нь хоосон санд false (useGiftPool) — vialOut-ыг түрүүлж шалгана.
+  if (pool.vialOut) {
+    return (
+      <div
+        className={cn(
+          "bg-secondary/60 flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm",
+          className,
+        )}
+      >
+        <Gift className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+        <p>Бэлгийн дээж түр дууссан</p>
+      </div>
+    );
+  }
+  if (!pool.enabled) return null;
 
   const { toNext, atMax } = giftProgress(subtotal);
   // Сангийн багтаамжаар хумигдсан ТОО — checkout дээр сонгож чадах тоотой нь

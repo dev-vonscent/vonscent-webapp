@@ -454,6 +454,19 @@ function VialDialog({
               Түр хаах
             </label>
           </div>
+          {vial.ml === 1 && (
+            // Бэлгийн дээж 1ml савгүйгээр цутгагдахгүй (/api/gifts, 0149 §7).
+            <p
+              className={cn(
+                "-mt-3 text-xs",
+                vial.isActive ? "text-muted-foreground" : "text-destructive",
+              )}
+            >
+              {vial.isActive
+                ? "Хаах эсвэл тоо нь дуусвал хэрэглэгч бэлгийн дээж сонгох боломжгүй болно."
+                : "Хаалттай байна: хэрэглэгч бэлгийн дээж сонгох боломжгүй."}
+            </p>
+          )}
 
           <button
             type="button"
