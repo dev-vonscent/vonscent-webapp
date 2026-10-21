@@ -31,6 +31,7 @@ import { StockAdjustDialog, type StockMode } from "./stock-adjust-dialog";
 import { useLaunchProduct } from "./use-launch-product";
 import type { AdminProduct } from "@/features/admin/api";
 import { cn } from "@/lib/utils";
+import { FEATURED_LIMIT } from "@/lib/constants";
 
 /**
  * Everything an operator does to a product on an ordinary day, on the row.
@@ -108,7 +109,7 @@ export function ProductRowActions({
       if (ok) {
         toast.success(
           next
-            ? `«${product.name}» онцлох боллоо. Нүүрийн онцлох хэсэгт харагдана.`
+            ? `«${product.name}» онцлох боллоо. Нүүрийн онцлох хэсгийн эхэнд харагдана — ${FEATURED_LIMIT}-аас хэтэрвэл хамгийн эрт онцлох болсон нь хасагдана.`
             : `«${product.name}» онцлохоос хасагдлаа.`,
         );
         router.refresh();

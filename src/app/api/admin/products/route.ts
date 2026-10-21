@@ -14,6 +14,7 @@ import {
 import { runNewProductImages } from "@/lib/ai/new-product-pipeline";
 import { addBottleImage } from "@/features/admin/bottle-image";
 import { hasVisibleImage } from "@/features/admin/lib/product-status";
+import { getUntranslatedNotes } from "@/features/admin/note-translations";
 import type { ProductStatus } from "@/lib/constants";
 
 function slugify(name: string, brand: string) {
@@ -103,6 +104,23 @@ export async function POST(req: Request) {
       : null;
   const aiMode =
     input.generateImage && isImageGenConfigured && Boolean(referenceImageUrl);
+
+  // Нотын зураг хадгалмагц үүснэ — англи нэргүй нот чимээгүй орхигдож, админ
+  // дараа нь орчуулаад дахин үүсгэх (давхар зардал) ёсгүй. Форм «Нот шалгах»
+  // самбараа нээж, эдгээрийг бөглүүлнэ.
+  if (aiMode) {
+    const missing = await getUntranslatedNotes({
+      top: input.notesTop,
+      heart: input.notesHeart,
+      base: input.notesBase,
+    });
+    if (missing.length) {
+      return NextResponse.json(
+        { error: "NOTES_UNTRANSLATED", missing },
+        { status: 400 },
+      );
+    }
+  }
 
   // A product whose only picture is still being generated has nothing to show,
   // so it ends up hidden however the form's status was set — «Тун удахгүй» is

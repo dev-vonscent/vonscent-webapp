@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { OrderTrackLink } from "@/components/shared/order-track-link";
 import { formatPrice } from "@/lib/format";
 import {
+  DELIVERY_END_HOUR,
   DISPATCH_HOUR,
   earliestDeliveryDay,
   formatDeliveryDay,
@@ -78,7 +79,7 @@ export default function OrderSuccessPage() {
           <strong className="text-foreground">
             {formatDeliveryDay(order.deliverOn ?? earliestDeliveryDay())}
           </strong>{" "}
-          {DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.
+          {DISPATCH_HOUR}:00–{DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.
         </p>
       </div>
 
