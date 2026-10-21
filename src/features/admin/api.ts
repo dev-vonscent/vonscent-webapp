@@ -57,6 +57,7 @@ import {
   NO_BOTTLE_LOCKS,
   type BottleLockState,
 } from "@/features/products/bottle-stock";
+import { collectionIdsOf } from "@/lib/orders/bundle-lines";
 
 /**
  * Admin read access. Uses the cookie-bound client so staff RLS applies (admins
@@ -278,6 +279,8 @@ export async function getOrderDetail(id: string): Promise<{
   payments: QpayPaymentRecord[];
   /** Хэрэглэгчийн бичсэн буцаалтын данс (0108) — буцаагдмагц устгагдана. */
   refundAccount: OrderRefundAccountRow | null;
+  /** Мөрүүдийн бэлэн (`base`) багцын id — нэг мөр болж харагдана. */
+  baseCollectionIds: string[];
 } | null> {
   const supabase = await createClient();
   if (!supabase) return null;
@@ -321,9 +324,22 @@ export async function getOrderDetail(id: string): Promise<{
       .maybeSingle(),
   ]);
 
+  const itemRows = (items as OrderItemRow[] | null) ?? [];
+  const collectionIds = collectionIdsOf(itemRows);
+  const { data: baseRows } = collectionIds.length
+    ? await supabase
+        .from("collections")
+        .select("id")
+        .in("id", collectionIds)
+        .eq("type", "base")
+    : { data: [] };
+
   return {
     order,
-    items: (items as OrderItemRow[] | null) ?? [],
+    items: itemRows,
+    baseCollectionIds: ((baseRows as { id: string }[] | null) ?? []).map(
+      (r) => r.id,
+    ),
     history: (history as OrderStatusHistoryRow[] | null) ?? [],
     customer: (customer.data as ProfileRow | null) ?? null,
     payments: (payments as QpayPaymentRecord[] | null) ?? [],

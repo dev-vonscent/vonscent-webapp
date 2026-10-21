@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getOrderDetail } from "@/features/admin/api";
 import { getStaffUser } from "@/lib/auth/guard";
+import { groupBundleLines } from "@/lib/orders/bundle-lines";
 import { formatPrice, formatDateTime } from "@/lib/format";
 import {
   orderSummaryRows,
@@ -37,7 +38,15 @@ export default async function AdminOrderDetail({
     getStaffUser(),
   ]);
   if (!detail) notFound();
-  const { order, items, history, customer, payments, refundAccount } = detail;
+  const {
+    order,
+    items,
+    history,
+    customer,
+    payments,
+    refundAccount,
+    baseCollectionIds,
+  } = detail;
   // Цуцлагдсан, төлсөн (хараахан буцаагаагүй) захиалга — админ мөнгө
   // шилжүүлэх ёстой. Дүн нь нийт дүнгээс 1% шимтгэл хассан (src/lib/refund.ts).
   const awaitingRefund =
@@ -89,26 +98,57 @@ export default async function AdminOrderDetail({
         <div className="space-y-6">
           <Card>
             <CardContent className="[&>div:nth-child(even)]:bg-muted/40 p-0">
-              {items.map((i) => (
-                <div
-                  key={i.id}
-                  className="flex justify-between gap-3 p-4 text-sm"
-                >
-                  <span>
-                    {i.brand} {i.product_name} · {i.ml}ml × {i.qty}
-                    {i.is_sample && (
-                      /* Not "Sample": 2ml is an ordinary paid size in this shop.
-                         This flag marks the free 1ml gift line. */
-                      <Badge variant="secondary" className="ml-2">
-                        Бэлэг
-                      </Badge>
-                    )}
-                  </span>
-                  <span className="font-medium">
-                    {formatPrice((i.list_price ?? i.unit_price) * i.qty)}
-                  </span>
-                </div>
-              ))}
+              {/* Бэлэн багц нэг мөр («GENTLEMAN багц · 5ml × 1»), гишүүд нь
+                  дарж нээхэд; хэрэглэгчийн угсарсан багц задгай. */}
+              {groupBundleLines(items, new Set(baseCollectionIds)).map((l) =>
+                l.kind === "bundle" ? (
+                  <div
+                    key={l.members[0].id}
+                    className="space-y-1.5 p-4 text-sm"
+                  >
+                    <div className="flex justify-between gap-3">
+                      <span>
+                        {l.name} багц · {l.ml}ml × {l.qty}
+                      </span>
+                      <span className="font-medium">{formatPrice(l.base)}</span>
+                    </div>
+                    <details className="text-muted-foreground text-xs">
+                      <summary className="cursor-pointer">
+                        Бүрэлдэхүүн ({l.members.length})
+                      </summary>
+                      <ul className="mt-1 space-y-0.5 pl-4">
+                        {l.members.map((m) => (
+                          <li key={m.id}>
+                            {m.brand} {m.product_name} · {m.ml}ml × {m.qty}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  </div>
+                ) : (
+                  <div
+                    key={l.item.id}
+                    className="flex justify-between gap-3 p-4 text-sm"
+                  >
+                    <span>
+                      {l.item.brand} {l.item.product_name} · {l.item.ml}ml ×{" "}
+                      {l.item.qty}
+                      {l.item.is_sample && (
+                        /* Not "Sample": 2ml is an ordinary paid size in this
+                           shop. This flag marks the free 1ml gift line. */
+                        <Badge variant="secondary" className="ml-2">
+                          Бэлэг
+                        </Badge>
+                      )}
+                    </span>
+                    <span className="font-medium">
+                      {formatPrice(
+                        (l.item.list_price ?? l.item.unit_price) * l.item.qty,
+                      )}
+                    </span>
+                  </div>
+                ),
+              )}
             </CardContent>
           </Card>
 
