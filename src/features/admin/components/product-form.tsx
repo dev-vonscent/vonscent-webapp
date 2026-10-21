@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { adminFetch } from "@/features/admin/lib/mutate";
+import { preventEnterSubmit } from "@/features/admin/lib/form-keys";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
@@ -222,14 +223,11 @@ export function ProductForm({
       const res = await adminFetch<{
         status?: ProductStatus;
         missing?: string[];
-      }>(
-        "/api/admin/products",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        },
-      );
+      }>("/api/admin/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       if (res.ok) {
         // Сервер бодит төлөвийг буцаана — AI зураг хүлээж буй бараа сонголтоос
         // үл хамааран нуугдана, тэр тохиолдолд админд хэлэх ёстой.
@@ -274,7 +272,12 @@ export function ProductForm({
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-6">
+    <form
+      onSubmit={onSubmit}
+      onKeyDown={preventEnterSubmit}
+      noValidate
+      className="space-y-6"
+    >
       {/* First: the picture is what the operator has in hand when they start,
           and on the AI path it is what decides whether the product can even
           publish — so it leads the form rather than sitting between the notes

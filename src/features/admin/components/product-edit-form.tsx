@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Field } from "@/components/ui/field";
 import { adminFetch } from "@/features/admin/lib/mutate";
+import { preventEnterSubmit } from "@/features/admin/lib/form-keys";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -324,7 +325,12 @@ export function ProductEditForm({
   }
 
   return (
-    <form onSubmit={save} noValidate className="space-y-6">
+    <form
+      onSubmit={save}
+      onKeyDown={preventEnterSubmit}
+      noValidate
+      className="space-y-6"
+    >
       {confirmDialog}
       {ready && status === "coming_soon" && (
         <p className="bg-success/10 flex items-start gap-2 rounded-lg px-4 py-3 text-sm">

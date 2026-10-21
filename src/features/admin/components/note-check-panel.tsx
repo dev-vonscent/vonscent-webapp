@@ -86,9 +86,7 @@ export function NoteCheckPanel({
   // зөв байгаа нотыг `note_translations`-д хуулахгүй.
   const dirty = (lookup ?? []).filter((n) => {
     const r = rowOf(n);
-    return (
-      valid(r) && (r.en.trim() !== n.en || r.isAbstract !== n.isAbstract)
-    );
+    return valid(r) && (r.en.trim() !== n.en || r.isAbstract !== n.isAbstract);
   });
   const missing = (lookup ?? []).filter((n) => n.source === null);
   const stale = lookup !== null && checkedKey !== keyOf(notes);

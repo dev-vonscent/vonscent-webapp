@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Check, ImagePlus, Search, Trash2, X } from "lucide-react";
 import { adminFetch, mutateJson } from "@/features/admin/lib/mutate";
+import { preventEnterSubmit } from "@/features/admin/lib/form-keys";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
@@ -407,7 +408,12 @@ export function CollectionForm({
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-6">
+    <form
+      onSubmit={onSubmit}
+      onKeyDown={preventEnterSubmit}
+      noValidate
+      className="space-y-6"
+    >
       {/* Зураг — first, matching the product form: the picture is what the
           operator has in hand when they start. */}
       <Card>
