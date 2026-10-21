@@ -20,6 +20,10 @@ import {
   PAYMENT_STATUS_LABEL,
 } from "@/lib/constants";
 import { OrderStatusControl } from "@/features/admin/components/order-status-control";
+import {
+  OrderAdminNote,
+  OrderPreparedButton,
+} from "@/features/admin/components/order-detail-actions";
 import { CopyRow } from "@/features/payment/components/copy-row";
 import {
   deliveredRefund as deliveredRefundAmount,
@@ -46,7 +50,10 @@ export default async function AdminOrderDetail({
     payments,
     refundAccount,
     baseCollectionIds,
+    adminNote,
   } = detail;
+  // Нийт хэдэн бараа — бэлгийн мөр дугаар авахгүй (клиент, 2026-10).
+  let lineNo = 0;
   // Цуцлагдсан, төлсөн (хараахан буцаагаагүй) захиалга — админ мөнгө
   // шилжүүлэх ёстой. Дүн нь нийт дүнгээс 1% шимтгэл хассан (src/lib/refund.ts).
   const awaitingRefund =
@@ -97,7 +104,7 @@ export default async function AdminOrderDetail({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
           <Card>
-            <CardContent className="[&>div:nth-child(even)]:bg-muted/40 p-0">
+            <CardContent className="[&>div:nth-child(even)]:bg-secondary/60 p-0">
               {/* Бэлэн багц нэг мөр («GENTLEMAN багц · 5ml × 1»), гишүүд нь
                   дарж нээхэд; хэрэглэгчийн угсарсан багц задгай. */}
               {groupBundleLines(items, new Set(baseCollectionIds)).map((l) =>
@@ -108,6 +115,7 @@ export default async function AdminOrderDetail({
                   >
                     <div className="flex justify-between gap-3">
                       <span>
+                        <LineNo n={++lineNo} />
                         {l.name} багц · {l.ml}ml × {l.qty}
                       </span>
                       <span className="font-medium">{formatPrice(l.base)}</span>
@@ -131,6 +139,9 @@ export default async function AdminOrderDetail({
                     className="flex justify-between gap-3 p-4 text-sm"
                   >
                     <span>
+                      {!(l.item.is_gift || l.item.is_sample) && (
+                        <LineNo n={++lineNo} />
+                      )}
                       {l.item.brand} {l.item.product_name} · {l.item.ml}ml ×{" "}
                       {l.item.qty}
                       {l.item.is_sample && (
@@ -307,12 +318,29 @@ export default async function AdminOrderDetail({
           <Card>
             <CardContent className="space-y-3 p-5">
               <h2 className="font-medium">Үйлдэл</h2>
+              <OrderPreparedButton
+                orderId={order.id}
+                orderNo={order.order_no}
+                status={order.status}
+                preparedAt={order.prepared_at}
+              />
               <OrderStatusControl
                 orderId={order.id}
                 current={order.status}
                 paymentStatus={order.payment_status}
                 hasQpayInvoice={Boolean(order.qpay_invoice_id)}
                 canRecover={staff?.role === "super_admin"}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="space-y-3 p-5">
+              <h2 className="font-medium">Админы тэмдэглэл</h2>
+              <OrderAdminNote
+                orderId={order.id}
+                initial={adminNote?.note ?? ""}
+                updatedAt={adminNote?.updated_at ?? null}
               />
             </CardContent>
           </Card>
@@ -332,5 +360,12 @@ function Row({ label, value, credit, strong }: OrderSummaryRow) {
         {value}
       </span>
     </div>
+  );
+}
+
+/** Мөрийн дугаар — «1. Creed Aventus · 5ml × 1». */
+function LineNo({ n }: { n: number }) {
+  return (
+    <span className="text-muted-foreground mr-1.5 tabular-nums">{n}.</span>
   );
 }

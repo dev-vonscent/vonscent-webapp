@@ -281,6 +281,8 @@ export async function getOrderDetail(id: string): Promise<{
   refundAccount: OrderRefundAccountRow | null;
   /** Мөрүүдийн бэлэн (`base`) багцын id — нэг мөр болж харагдана. */
   baseCollectionIds: string[];
+  /** Админы дотоод тэмдэглэл (0145) — хэрэглэгчид харагдахгүй. */
+  adminNote: { note: string; updated_at: string } | null;
 } | null> {
   const supabase = await createClient();
   if (!supabase) return null;
@@ -326,13 +328,21 @@ export async function getOrderDetail(id: string): Promise<{
 
   const itemRows = (items as OrderItemRow[] | null) ?? [];
   const collectionIds = collectionIdsOf(itemRows);
-  const { data: baseRows } = collectionIds.length
-    ? await supabase
-        .from("collections")
-        .select("id")
-        .in("id", collectionIds)
-        .eq("type", "base")
-    : { data: [] };
+  const [{ data: baseRows }, { data: noteRow }] = await Promise.all([
+    collectionIds.length
+      ? supabase
+          .from("collections")
+          .select("id")
+          .in("id", collectionIds)
+          .eq("type", "base")
+      : Promise.resolve({ data: [] }),
+    // 0145 хэрэгжээгүй бол алдаа → null (тэмдэглэлгүй мэт).
+    supabase
+      .from("order_admin_notes")
+      .select("note, updated_at")
+      .eq("order_id", id)
+      .maybeSingle(),
+  ]);
 
   return {
     order,
@@ -340,6 +350,7 @@ export async function getOrderDetail(id: string): Promise<{
     baseCollectionIds: ((baseRows as { id: string }[] | null) ?? []).map(
       (r) => r.id,
     ),
+    adminNote: (noteRow as { note: string; updated_at: string } | null) ?? null,
     history: (history as OrderStatusHistoryRow[] | null) ?? [],
     customer: (customer.data as ProfileRow | null) ?? null,
     payments: (payments as QpayPaymentRecord[] | null) ?? [],
