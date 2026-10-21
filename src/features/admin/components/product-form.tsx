@@ -38,6 +38,7 @@ import { BrandSelect } from "./brand-select";
 import { ConcentrationSelect } from "./concentration-select";
 import { ProductStatusPicker } from "./product-status-picker";
 import {
+  FEATURED_LIMIT,
   GENDERS,
   GENDER_LABEL,
   DEFAULT_CONCENTRATION,
@@ -515,6 +516,11 @@ export function ProductForm({
             />
             <span>Онцлох бараа</span>
           </label>
+          <p className="text-muted-foreground -mt-2 text-xs">
+            Нүүрний «Онцлох»-д ус, багц нийлээд сүүлд онцлох болгосон{" "}
+            {FEATURED_LIMIT} гарна. Хэтэрвэл хамгийн эрт онцлох болсон нь
+            автоматаар хасагдана.
+          </p>
           <CustomTagField
             pool={customTagPool}
             selected={customTags}

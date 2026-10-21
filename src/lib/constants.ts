@@ -153,6 +153,13 @@ export const HOT_COLLECTIONS_COUNT = 6;
  */
 export const HOT_RAIL_COLLECTIONS = 3;
 
+/**
+ * «Онцлох» — ус, багц нийлээд хамгийн ихдээ ийм тоо (0144_featured_rolling).
+ * Хэтэрвэл хамгийн эрт онцлох болсон нь DB-д автоматаар хасагдана — SQL-ийн
+ * `offset 12`-тэй ижил байх ёстой.
+ */
+export const FEATURED_LIMIT = 12;
+
 /** Size a fresh bundle starts on — the smallest (2ml) tier. */
 export const DEFAULT_BUNDLE_ML = 2;
 

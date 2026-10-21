@@ -406,9 +406,11 @@ async function CuratedSections() {
         return (
           <section key={s.id}>
             <SectionHeading title={s.title} href={s.href || undefined} />
-            {/* «Онцлох» (featured) хэсэгт онцлох багцууд усуудтай
-              санамсаргүй холилдоно; бусад хэсэг админы дарааллаараа. */}
-            {s.collections.length > 0 ? (
+            {/* «Онцлох» (featured) хэсэг ус, багцыг онцлох болгосон
+              дарааллаар (`items`); бусад хэсэг админы дарааллаараа. */}
+            {s.items ? (
+              <ProductCarousel items={s.items} prefer={prefer} />
+            ) : s.collections.length > 0 ? (
               <ProductCarousel
                 items={mixRandom(s.products, s.collections)}
                 prefer={prefer}

@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  FEATURED_LIMIT,
   GENDERS,
   GENDER_LABEL,
   ML_SIZES,
@@ -631,6 +632,11 @@ export function ProductEditForm({
             />
             <span>Онцлох бараа</span>
           </label>
+          <p className="text-muted-foreground -mt-2 text-xs">
+            Нүүрний «Онцлох»-д ус, багц нийлээд сүүлд онцлох болгосон{" "}
+            {FEATURED_LIMIT} гарна. Хэтэрвэл хамгийн эрт онцлох болсон нь
+            автоматаар хасагдана.
+          </p>
           <CustomTagField
             pool={customTagPool}
             selected={customTags}
