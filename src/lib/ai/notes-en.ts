@@ -378,3 +378,41 @@ export function pickNotes(
   }
   return out;
 }
+
+/** One note as the admin's «Нот шалгах» panel shows it. */
+export interface NoteLookup {
+  mn: string;
+  /** English name the image model gets; "" when none is known. */
+  en: string;
+  isAbstract: boolean;
+  /** Where `en` came from — null when the note has no translation anywhere. */
+  source: "override" | "table" | null;
+}
+
+/**
+ * Every note, in order and without repeats, with the English name the note
+ * image would use — so the admin can check (and correct) the translations
+ * before the product is saved and its images are generated.
+ */
+export function describeNotes(
+  notes: string[],
+  overrides?: NoteOverrides,
+): NoteLookup[] {
+  const out: NoteLookup[] = [];
+  for (const raw of notes) {
+    const mn = raw.trim();
+    if (!mn || out.some((n) => n.mn === mn)) continue;
+    const o = overrides?.get(mn);
+    if (o) {
+      out.push({ mn, en: o.en, isAbstract: o.isAbstract, source: "override" });
+      continue;
+    }
+    const en = toEnglish(mn);
+    out.push(
+      en
+        ? { mn, en, isAbstract: !isPhotographable(en), source: "table" }
+        : { mn, en: "", isAbstract: false, source: null },
+    );
+  }
+  return out;
+}

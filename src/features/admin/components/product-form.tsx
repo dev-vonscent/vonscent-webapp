@@ -32,6 +32,7 @@ import { DescriptionFields } from "./description-fields";
 import { type GalleryImage } from "./product-images";
 import { ProductImageStudio } from "./product-image-studio";
 import { BottleStylePicker } from "./bottle-style-picker";
+import { NoteCheckPanel } from "./note-check-panel";
 import { BrandSelect } from "./brand-select";
 import { ConcentrationSelect } from "./concentration-select";
 import { ProductStatusPicker } from "./product-status-picker";
@@ -129,6 +130,22 @@ export function ProductForm({
     null,
   );
 
+  // Сервер англи нэргүй нотоор хадгалахаас татгалзахад нэмэгдэнэ — «Нот
+  // шалгах» самбар өөрөө нээгдэнэ.
+  const [noteCheckSignal, setNoteCheckSignal] = React.useState(0);
+  const notes = React.useMemo(
+    () => ({
+      top: splitNotes(form.notesTop),
+      heart: splitNotes(form.notesHeart),
+      base: splitNotes(form.notesBase),
+    }),
+    [form.notesTop, form.notesHeart, form.notesBase],
+  );
+  const allNotes = React.useMemo(
+    () => [...notes.top, ...notes.heart, ...notes.base],
+    [notes],
+  );
+
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
   }
@@ -198,20 +215,14 @@ export function ProductForm({
         bottlePrice: Number(form.bottlePrice) || 0,
         onHandMl: Number(form.onHandMl),
         lowStockMl: Number(form.lowStockMl),
-        notesTop: form.notesTop
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-        notesHeart: form.notesHeart
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-        notesBase: form.notesBase
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
+        notesTop: notes.top,
+        notesHeart: notes.heart,
+        notesBase: notes.base,
       };
-      const res = await adminFetch<{ status?: ProductStatus }>(
+      const res = await adminFetch<{
+        status?: ProductStatus;
+        missing?: string[];
+      }>(
         "/api/admin/products",
         {
           method: "POST",
@@ -245,6 +256,13 @@ export function ProductForm({
         setResult(
           "Demo горим: Supabase холбогдсоны дараа бараа бодитоор хадгалагдана.",
         );
+      } else if (res.error === "NOTES_UNTRANSLATED") {
+        // AI зураг хадгалмагц үүснэ — англи нэргүй нот түүнд орохгүй тул
+        // эхлээд бөглүүлнэ.
+        setResult(
+          `Англи нэргүй нот байна: ${(res.data?.missing ?? []).join(", ")}. «Үнэрийн нот» хэсэгт англи нэрийг нь бөглөж хадгалаад, дахин «Хадгалах» дарна уу.`,
+        );
+        setNoteCheckSignal((n) => n + 1);
       } else {
         // "Алдаа гарлаа." after thirty filled fields tells the operator
         // nothing — pass the server's own reason through.
@@ -418,6 +436,7 @@ export function ProductForm({
               onChange={(e) => set("notesBase", e.target.value)}
             />
           </Field>
+          <NoteCheckPanel notes={allNotes} openSignal={noteCheckSignal} />
         </CardContent>
       </Card>
 
@@ -531,4 +550,12 @@ export function ProductForm({
       </div>
     </form>
   );
+}
+
+/** «Бергамот, Чинжүү» → ["Бергамот", "Чинжүү"]. */
+function splitNotes(value: string): string[] {
+  return value
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }

@@ -17,6 +17,8 @@ const deletedIds: string[] = [];
 /** Харагдах зургийн тоо (`hasVisibleImage`) — нийтлэх эсэхийг шийднэ. */
 let imageCount = 1;
 const statusUpdates: unknown[] = [];
+/** `getUntranslatedNotes`-ийн хариу — англи нэргүй нот. */
+let untranslated: string[] = [];
 
 vi.mock("next/server", async (orig) => ({
   ...(await orig<typeof import("next/server")>()),
@@ -39,6 +41,9 @@ vi.mock("@/features/taxonomy/api", () => ({
 }));
 vi.mock("@/lib/ai/new-product-pipeline", () => ({ runNewProductImages }));
 vi.mock("@/features/admin/bottle-image", () => ({ addBottleImage }));
+vi.mock("@/features/admin/note-translations", () => ({
+  getUntranslatedNotes: async () => untranslated,
+}));
 
 const ok = { error: null };
 
@@ -129,6 +134,7 @@ beforeEach(() => {
   deletedIds.length = 0;
   imageCount = 1;
   statusUpdates.length = 0;
+  untranslated = [];
 });
 
 describe("POST /api/admin/products — tags бүтэлгүйтвэл", () => {
@@ -202,5 +208,25 @@ describe("POST /api/admin/products — зураггүй бол нийтлэхг�
     const res = await create({ status: "active" });
     expect((await res.json()).status).toBe("active");
     expect(statusUpdates).toEqual([{ status: "active" }]);
+  });
+});
+
+describe("POST /api/admin/products — англи нэргүй нот", () => {
+  it("AI горимд бараа үүсгэхгүй, дутуу нотуудыг буцаана", async () => {
+    untranslated = ["Юзу"];
+    const res = await create({ ...AI, notesTop: ["Юзу"] });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: "NOTES_UNTRANSLATED",
+      missing: ["Юзу"],
+    });
+    expect(afterCallbacks).toHaveLength(0);
+    expect(deletedIds).toHaveLength(0);
+  });
+
+  it("гар горимд (AI-гүй) хадгалагдана", async () => {
+    untranslated = ["Юзу"];
+    const res = await create({ notesTop: ["Юзу"] });
+    expect(res.status).toBe(200);
   });
 });
