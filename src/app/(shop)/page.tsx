@@ -312,8 +312,10 @@ async function PromoSlot() {
 const RAIL_SIZE = 12;
 
 /**
- * Шинээр ирсэн = хамгийн сүүлийн ус ба багц (6 + 6, багц дутвал ус нөхнө),
- * санамсаргүй холилдоно. Нэг мөр дүүрэхгүй бол нуугдана (5d).
+ * Шинээр ирсэн = 9 ус + 3 багц (клиент, 2026-10). Ус үүссэн дарааллаараа
+ * (шинэ нь) эхнээсээ; хамгийн сүүлийн 3 багц усны дунд санамсаргүй байранд —
+ * «Эрэлттэй»-тэй ижил дүрмээр (`scatterCollections`). Багц дутвал ус нөхнө.
+ * Нэг мөр дүүрэхгүй бол нуугдана (5d).
  */
 async function NewArrivalsSection() {
   const [products, collections] = await Promise.all([
@@ -326,7 +328,7 @@ async function NewArrivalsSection() {
     RAIL_SIZE,
     NEW_COLLECTIONS_COUNT,
   );
-  const items = mixRandom(rail.products, rail.collections);
+  const items = scatterCollections(rail.products, rail.collections);
   if (items.length < 4) return null;
   return (
     <section>
