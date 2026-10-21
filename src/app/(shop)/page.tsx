@@ -32,10 +32,14 @@ import {
 import { pageMetadata } from "@/lib/seo";
 import { getActiveBrands, getScentFamilies } from "@/features/taxonomy/api";
 import {
-  getBestSellerCollections,
+  getHotRailCollections,
   getNewestCollections,
 } from "@/features/collections/api";
-import { fillRail, interleave, mixRandom } from "@/features/products/rail";
+import {
+  fillRail,
+  mixRandom,
+  scatterCollections,
+} from "@/features/products/rail";
 import { TierAvatar } from "@/features/tiers/components/tier-avatar";
 import { TopCustomersSection } from "@/features/tiers/components/top-customers-section";
 import { ScentQuiz } from "@/features/quiz/components/scent-quiz";
@@ -47,7 +51,7 @@ import { firstPopupImage } from "@/features/marketing/popup-schedule";
 import {
   GENDERS,
   GENDER_LABEL,
-  HOT_COLLECTIONS_COUNT,
+  HOT_RAIL_COLLECTIONS,
   NEW_COLLECTIONS_COUNT,
 } from "@/lib/constants";
 import { GRAIN } from "@/lib/textures";
@@ -302,8 +306,8 @@ async function PromoSlot() {
 }
 
 /**
- * Нүүрний rail бүрийн нүдний тоо. Багцын дээд тоо нь багцын автомат
- * «Шинэ»/«Эрэлттэй» тагийн тоо — rail дахь багц бүр тэр тагаа харуулна.
+ * Нүүрний rail бүрийн нүдний тоо. «Шинээр ирсэн»-ий багцын дээд тоо нь
+ * багцын автомат «Шинэ» тагийн тоо — rail дахь багц бүр тэр тагаа харуулна.
  */
 const RAIL_SIZE = 12;
 
@@ -365,25 +369,22 @@ function QuizSection() {
 }
 
 /**
- * Эрэлттэй = ус, багц тус тусдаа борлуулалтаар эрэмбэлэгдэж (6 + 6, багц
- * дутвал ус нөхнө — 3 багц бол 9 ус), эрэмбээрээ ээлжилнэ.
+ * Эрэлттэй = 12 нүд: 9 ус + 3 багц (клиент, 2026-10). Ус зарагдсан ширхэгээрээ
+ * (мл биш) эрэмбээрээ эхнээсээ; 3 багц устай өрсөлдөхгүй — нэг нь 2–4 дэх
+ * нүдэнд, бусад нь түүнээс хойш санамсаргүй байранд (`scatterCollections`). Зарагдсан багц 3 хүрэхгүй бол бусдаас санамсаргүй нөхнө;
+ * багц огт байхгүй бол ус нөхнө.
  */
 async function BestSellersSection() {
   const [products, collections] = await Promise.all([
     getBestSellers(RAIL_SIZE),
-    getBestSellerCollections(HOT_COLLECTIONS_COUNT),
+    getHotRailCollections(HOT_RAIL_COLLECTIONS),
   ]);
-  const rail = fillRail(
-    products,
-    collections,
-    RAIL_SIZE,
-    HOT_COLLECTIONS_COUNT,
-  );
+  const rail = fillRail(products, collections, RAIL_SIZE, HOT_RAIL_COLLECTIONS);
   return (
     <section>
       <SectionHeading title="Эрэлттэй" href="/catalog?tags=hot" />
       <ProductCarousel
-        items={interleave(rail.products, rail.collections)}
+        items={scatterCollections(rail.products, rail.collections)}
         prefer={["hot"]}
       />
     </section>

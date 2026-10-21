@@ -142,10 +142,16 @@ export const HOT_PRODUCTS_COUNT = 12;
 /**
  * Багцын «Шинэ» / «Эрэлттэй» таг автомат (админ тавихаа больсон): хамгийн
  * сүүлд нэмэгдсэн / төлөгдсөн захиалгаар хамгийн их зарагдсан ийм тооны
- * идэвхтэй багц (0122). Нүүрний rail дахь багцын дээд тоотой ижил.
+ * идэвхтэй багц (0122). «Шинээр ирсэн» rail-ийн багцын дээд тоо ч мөн.
  */
 export const NEW_COLLECTIONS_COUNT = 6;
 export const HOT_COLLECTIONS_COUNT = 6;
+
+/**
+ * Нүүрний «Эрэлттэй» rail-ийн багцын тоо — 12 нүднээс 9 ус + 3 багц
+ * (клиент, 2026-10). Зарагдсан багц дутвал бусдаас санамсаргүй нөхнө.
+ */
+export const HOT_RAIL_COLLECTIONS = 3;
 
 /** Size a fresh bundle starts on — the smallest (2ml) tier. */
 export const DEFAULT_BUNDLE_ML = 2;
