@@ -28,6 +28,7 @@
     "db:test-coupons-dev": "node --env-file=.env.dev --import tsx scripts/test-coupons.ts",
     "db:test-orders-dev": "node --env-file=.env.dev --import tsx scripts/test-orders.ts",
     "db:test-extras-dev": "node --env-file=.env.dev --import tsx scripts/test-extras.ts",
+    "db:seed-extras-dev": "node --env-file=.env.dev --import tsx scripts/seed-dev-extras.ts",
     "db:dev-signup-dev": "node --env-file=.env.dev --import tsx scripts/dev-signup.ts",
     "db:test-campaigns-dev": "node --env-file=.env.dev --import tsx scripts/test-campaigns.ts",
     "db:test-perfume-requests-dev": "node --env-file=.env.dev --import tsx scripts/test-perfume-requests.ts",
