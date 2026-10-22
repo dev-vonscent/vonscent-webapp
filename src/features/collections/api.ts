@@ -1,5 +1,8 @@
 import "server-only";
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
+import * as Sentry from "@sentry/nextjs";
+import { CACHE_TAG_CATALOG, CACHE_TAG_FEATURE_FLAGS } from "@/lib/cache-tags";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
   HOT_COLLECTIONS_COUNT,
@@ -224,37 +227,60 @@ async function membersById(
 
 export const getBaseCollections = cache(async (): Promise<Collection[]> => {
   if (!isSupabaseConfigured) return [];
-  const supabase = createPublicClient();
-  if (!supabase) return [];
-
-  const [{ data, error }, settings, newIds, hotIds] = await Promise.all([
-    supabase
-      .from("collections")
-      .select(SELECT)
-      .eq("type", "base")
-      .eq("is_active", true)
-      .order("is_featured", { ascending: false })
-      .order("name"),
-    getCollectionSettings(),
-    newestCollectionIds(),
-    bestSellerCollectionIds(),
-  ]);
-  if (error || !data) return [];
-
-  const rows = data as unknown as DbCollection[];
-  const productById = await membersById(rows);
-  const newSet = new Set(newIds.slice(0, NEW_COLLECTIONS_COUNT));
-  const hotSet = new Set(hotIds.slice(0, HOT_COLLECTIONS_COUNT));
-  return rows.map((row) => {
-    const c = build(row, productById, settings);
-    // «Шинэ»/«Эрэлттэй» нь устай адил автомат — админы хуучин сонголтыг
-    // (collection_tags) үл тооно; «Хямдрал»-ыг хөнгөлөлтийн badge хэлнэ.
-    const tags: TagKind[] = [];
-    if (hotSet.has(c.id)) tags.push("hot");
-    if (newSet.has(c.id)) tags.push("new");
-    return { ...c, tags };
-  });
+  try {
+    return await fetchBaseCollections();
+  } catch (err) {
+    Sentry.captureException(err);
+    return [];
+  }
 });
+
+/**
+ * Хуудас бүр (каталог, нүүр) энийг уншдаг бөгөөд 3–4 дараалсан round-trip
+ * (багц → гишүүд → савны түгжээ → таг) — React `cache()` ганцаараа нэг
+ * хүсэлтийн дотор л хадгалдаг тул каталог нээх бүрт ~0.6с зарцуулдаг байв.
+ * `catalogSearch`-тэй ижил цонх, tag: захиалга, админы засвар
+ * `revalidatePublic()`-оор цэвэрлэнэ. Алдаа ШИДНЭ — хоосон жагсаалт cache-д
+ * үлдэж 60с «багц алга» болохгүйн тулд.
+ */
+const fetchBaseCollections = unstable_cache(
+  async (): Promise<Collection[]> => {
+    const supabase = createPublicClient();
+    if (!supabase) throw new Error("base collections: no supabase client");
+
+    const [{ data, error }, settings, newIds, hotIds] = await Promise.all([
+      supabase
+        .from("collections")
+        .select(SELECT)
+        .eq("type", "base")
+        .eq("is_active", true)
+        .order("is_featured", { ascending: false })
+        .order("name"),
+      getCollectionSettings(),
+      newestCollectionIds(),
+      bestSellerCollectionIds(),
+    ]);
+    if (error || !data) {
+      throw new Error(`base collections: ${error?.message ?? "no rows"}`);
+    }
+
+    const rows = data as unknown as DbCollection[];
+    const productById = await membersById(rows);
+    const newSet = new Set(newIds.slice(0, NEW_COLLECTIONS_COUNT));
+    const hotSet = new Set(hotIds.slice(0, HOT_COLLECTIONS_COUNT));
+    return rows.map((row) => {
+      const c = build(row, productById, settings);
+      // «Шинэ»/«Эрэлттэй» нь устай адил автомат — админы хуучин сонголтыг
+      // (collection_tags) үл тооно; «Хямдрал»-ыг хөнгөлөлтийн badge хэлнэ.
+      const tags: TagKind[] = [];
+      if (hotSet.has(c.id)) tags.push("hot");
+      if (newSet.has(c.id)) tags.push("new");
+      return { ...c, tags };
+    });
+  },
+  ["base-collections"],
+  { revalidate: 60, tags: [CACHE_TAG_CATALOG, CACHE_TAG_FEATURE_FLAGS] },
+);
 
 /** Идэвхтэй багцын id-ууд, шинэ нь эхэндээ. */
 const newestCollectionIds = cache(async (): Promise<string[]> => {
