@@ -98,6 +98,7 @@ export function savePayload(
           price: v.price,
           is_active: v.isActive,
           sort: v.sort,
+          image_url: v.imageUrl,
         })),
       };
     case "leftover_liquid":

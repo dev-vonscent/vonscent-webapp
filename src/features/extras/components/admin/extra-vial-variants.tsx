@@ -8,11 +8,13 @@ import { vialName } from "@/lib/vials";
 import { cn } from "@/lib/utils";
 import type { VialOption } from "../../types";
 import { newKey, type DraftVariant } from "./extra-draft";
+import { ExtraImagesField } from "./extra-images-field";
 
 /**
  * Грамын сав: тоо оруулсан савнаас сонгоод ЗӨВХӨН үнэ бичнэ (plan §7.2).
  * Тоо нь `/admin/bottles`-д — үнэртэн ч энэ савыг хэрэглэдэг тул нэг нөөц.
- * 1ml сав (бэлгийн дээж) гарахгүй.
+ * 1ml сав (бэлгийн дээж) гарахгүй. Сонгосон сав бүр өөрийн зурагтай байж
+ * болно — дэлгүүрт тэр өнгө × ml-ийг сонгоход галерей шилжинэ.
  */
 export function ExtraVialVariants({
   vials,
@@ -53,8 +55,9 @@ export function ExtraVialVariants({
 
   return (
     <div className="space-y-2">
-      <div className="text-muted-foreground hidden grid-cols-[1.5rem_1fr_8rem_4rem_5rem_6rem] gap-3 px-3 text-xs sm:grid">
+      <div className="text-muted-foreground hidden grid-cols-[1.5rem_3.5rem_1fr_8rem_4rem_5rem_6rem] gap-3 px-3 text-xs sm:grid">
         <span />
+        <span>Зураг</span>
         <span>Сав</span>
         <span>Үнэ (₮)</span>
         <span className="text-right">Нийт</span>
@@ -74,7 +77,7 @@ export function ExtraVialVariants({
             <li
               key={v.id}
               className={cn(
-                "border-border grid grid-cols-[1.5rem_1fr] items-center gap-x-3 gap-y-2 rounded-lg border p-3 sm:grid-cols-[1.5rem_1fr_8rem_4rem_5rem_6rem]",
+                "border-border grid grid-cols-[1.5rem_3.5rem_1fr] items-center gap-x-3 gap-y-2 rounded-lg border p-3 sm:grid-cols-[1.5rem_3.5rem_1fr_8rem_4rem_5rem_6rem]",
                 !counted && "bg-muted/30",
               )}
             >
@@ -84,6 +87,23 @@ export function ExtraVialVariants({
                 onCheckedChange={(c) => toggle(v, c === true)}
                 aria-label={`${vialName(v)} сонгох`}
               />
+              {/* Сонгоогүй савны зураг утгагүй — хоосон нүд. */}
+              <div className="size-14">
+                {on && (
+                  <ExtraImagesField
+                    fill
+                    max={1}
+                    value={variants[i].imageUrl ? [variants[i].imageUrl] : []}
+                    onChange={(urls) =>
+                      onChange(
+                        variants.map((d, j) =>
+                          j === i ? { ...d, imageUrl: urls[0] ?? "" } : d,
+                        ),
+                      )
+                    }
+                  />
+                )}
+              </div>
               <span className="text-sm font-medium">
                 {vialName(v)}
                 {!counted && (
@@ -100,7 +120,7 @@ export function ExtraVialVariants({
                   </span>
                 )}
               </span>
-              <div className="col-start-2 sm:col-start-auto">
+              <div className="col-start-3 sm:col-start-auto">
                 <Input
                   inputMode="numeric"
                   autoComplete="off"
@@ -122,7 +142,7 @@ export function ExtraVialVariants({
                   <p className="text-destructive mt-1 text-xs">{priceErr}</p>
                 )}
               </div>
-              <dl className="col-start-2 grid grid-cols-3 gap-2 text-sm tabular-nums sm:col-span-3 sm:col-start-auto sm:grid-cols-subgrid sm:text-right">
+              <dl className="col-start-3 grid grid-cols-3 gap-2 text-sm tabular-nums sm:col-span-3 sm:col-start-auto sm:grid-cols-subgrid sm:text-right">
                 <div>
                   <dt className="text-muted-foreground text-xs sm:sr-only">
                     Нийт

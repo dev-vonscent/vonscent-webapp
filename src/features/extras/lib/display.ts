@@ -1,4 +1,6 @@
+import { EXTRAS_LOW_STOCK_QTY } from "@/lib/constants";
 import type { ShopExtraCard } from "../types";
+import { bottleKind } from "./bottle-kind";
 
 /**
  * Хоосон/бүтэн шилний хэмжээ (plan §18.5): хоосон шил «0/125ml», «Шилтэй
@@ -13,14 +15,40 @@ export function bottleSizeText(
 }
 
 /**
- * Хэрэглэгчид харагдах үлдэгдэл (§18.5): «Үлдэгдэл: 6 ширхэг», дууссан бол
- * «Дууссан». Үлдэгдэлтэй шил («Ганц ширхэг») ба тоолоогүй сав — null.
+ * Картын/хуудасны дээрх жижиг бичиг: үлдэгдэлтэй шилэнд брэнд, лацтай
+ * бүтэн шилэнд «Бүтэн ус» («Шилтэй ус» ангилал нь хоёр горимтой — нэр нь
+ * бүтэн эсэхийг хэлдэггүй), бусадд ангиллын нэр.
+ */
+export function eyebrowText(
+  card: Pick<
+    ShopExtraCard,
+    "leftover" | "categorySlug" | "categoryName" | "mode"
+  >,
+): string {
+  if (card.leftover) return card.leftover.brand;
+  if (bottleKind(card.categorySlug, card.mode) === "sealed") return "Бүтэн ус";
+  return card.categoryName;
+}
+
+/**
+ * Ангилал/брэнд нь барааны нэртэйгээ ижил үү («Шприц» ангиллын «Шприц») —
+ * eyebrow, breadcrumb-д давтахгүй.
+ */
+export function repeatsName(label: string, name: string): boolean {
+  return label.trim().toLowerCase() === name.trim().toLowerCase();
+}
+
+/**
+ * Картын үлдэгдэл: зөвхөн цөөн үлдсэн үед «Сүүлийн 2 ширхэг», дууссан бол
+ * «Дууссан». «Үлдэгдэл: 210 ширхэг» хэрэглэгчид юу ч хэлэхгүй, үнэртний
+ * карттай хэмнэлийг эвддэг байв — бүтэн тоо барааны хуудсанд (§18.5).
+ * Үлдэгдэлтэй шил («Ганц ширхэг») ба тоолоогүй сав — null.
  */
 export function stockText(
   card: Pick<ShopExtraCard, "mode" | "stock" | "soldOut">,
 ): string | null {
   if (card.mode === "leftover_liquid") return null;
   if (card.soldOut || card.stock === 0) return "Дууссан";
-  if (card.stock == null) return null;
-  return `Үлдэгдэл: ${card.stock} ширхэг`;
+  if (card.stock == null || card.stock > EXTRAS_LOW_STOCK_QTY) return null;
+  return `Сүүлийн ${card.stock} ширхэг`;
 }

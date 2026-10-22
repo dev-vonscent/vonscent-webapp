@@ -65,6 +65,8 @@ export const vialVariantSchema = z.object({
   price,
   isActive: z.boolean().default(true),
   sort: z.number().int().default(0),
+  /** Өнгө × ml-ийн зураг — сонгоход галерей шилжинэ; "" = арилгана. */
+  imageUrl: z.string().url().or(z.literal("")).optional(),
 });
 
 const localSchema = z.object({

@@ -49,7 +49,12 @@ export function CartCompleteOrder() {
       <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0">
         {items.map((e) => (
           <li key={e.id} className="w-[40%] shrink-0 snap-start md:w-auto">
-            <ExtraCard extra={e} href={`/extras/${e.slug}`} sizes="200px" />
+            <ExtraCard
+              extra={e}
+              href={`/extras/${e.slug}`}
+              sizes="200px"
+              quickAdd
+            />
           </li>
         ))}
       </ul>

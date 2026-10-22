@@ -22,8 +22,12 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { CATALOG_PAGE_SIZE } from "@/lib/constants";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { getShopExtras } from "@/features/extras/api";
-import { CatalogTabs } from "@/features/extras/components/catalog-tabs";
+import {
+  CatalogTabShell,
+  CatalogTabs,
+} from "@/features/extras/components/catalog-tabs";
 import { ExtrasCatalog } from "@/features/extras/components/extras-catalog";
+import { EXTRA_SORT_OPTIONS } from "@/features/extras/lib/sort";
 
 /**
  * The route itself is dynamic — it reads `searchParams`, so a filtered view is
@@ -49,6 +53,7 @@ export default async function CatalogPage({
   // «Нэмэлт бараа» таб (extras-shop-plan §9, туг `extras_shop`). Хаалттай үед
   // `?tab=extras` нь энгийн каталог руу унана — таб ч харагдахгүй.
   const extrasOn = await isFeatureEnabled("extras_shop");
+  const q = typeof params.q === "string" ? params.q : undefined;
   if (extrasOn && params.tab === "extras") {
     const items = await getShopExtras();
     return (
@@ -62,8 +67,15 @@ export default async function CatalogPage({
               {items.length} нэмэлт бараа
             </p>
           </div>
-          <CatalogTabs active="extras" />
-          <ExtrasCatalog items={items} />
+          <CatalogTabShell
+            tabs={
+              <CatalogTabs active="extras" q={q}>
+                <CatalogSort options={EXTRA_SORT_OPTIONS} />
+              </CatalogTabs>
+            }
+          >
+            <ExtrasCatalog items={items} />
+          </CatalogTabShell>
         </div>
       </FilterQueryProvider>
     );
@@ -128,90 +140,91 @@ export default async function CatalogPage({
             {filters.search ? `«${filters.search}» хайлтын үр дүн` : "Каталог"}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {counts || "0 бараа"} олдлоо
+            {counts || "0 бараа"}
           </p>
         </div>
 
-        {extrasOn && !filters.search && <CatalogTabs active="perfume" />}
-
-        {/* Controls — mobile only (on desktop the search sits above the sidebar) */}
-        <div className="border-border flex items-center gap-2 border-y py-3 lg:hidden">
-          <CatalogFilterSheet
-            brands={brands}
-            brandLogos={brandLogos}
-            priceBounds={priceBounds}
-            families={families}
-          />
-          <CatalogSort iconOnly />
-          <CatalogSearch className="flex-1" />
-        </div>
-
-        <div className="mt-6 flex gap-10 lg:mt-8">
-          {/* Desktop sidebar: search above the filter, sharing its width */}
-          <aside className="hidden w-72 shrink-0 lg:block">
-            <CatalogSearch className="mb-6" />
-            <CatalogFilters
+        <CatalogTabShell
+          tabs={
+            <CatalogTabs active={extrasOn ? "perfume" : null} q={q}>
+              <CatalogSort />
+            </CatalogTabs>
+          }
+        >
+          {/* Controls — mobile only (on desktop the search sits above the sidebar) */}
+          <div className="border-border flex items-center gap-2 border-y py-3 lg:hidden">
+            <CatalogFilterSheet
               brands={brands}
               brandLogos={brandLogos}
               priceBounds={priceBounds}
               families={families}
             />
-          </aside>
+            <CatalogSort iconOnly />
+            <CatalogSearch className="flex-1" />
+          </div>
 
-          {/*
+          <div className="mt-6 flex gap-10">
+            {/* Desktop sidebar: search above the filter, sharing its width */}
+            <aside className="hidden w-72 shrink-0 lg:block">
+              <CatalogSearch className="mb-6" />
+              <CatalogFilters
+                brands={brands}
+                brandLogos={brandLogos}
+                priceBounds={priceBounds}
+                families={families}
+              />
+            </aside>
+
+            {/*
           `min-w-0` is load-bearing, not tidiness. A flex child defaults to
           `min-width: auto`, so the product grid pushed this column out to its
           own content width and the whole page scrolled sideways on a phone —
           93px of it, measured at 390px.
         */}
-          <div className="min-w-0 flex-1">
-            {/* Sort — top-right above the products (desktop) */}
-            <div className="mb-4 hidden items-center justify-end lg:flex">
-              <CatalogSort />
-            </div>
-
-            <CatalogResults>
-              {result.items.length === 0 && collections.length === 0 ? (
-                <EmptyState
-                  size="lg"
-                  icon={SearchX}
-                  title="Илэрц олдсонгүй"
-                  description={
-                    requestsOn && filters.search
-                      ? "Хайж буй үнэртэн тань манайд байхгүй бол бидэнд мэдэгдээрэй. Олон хүний хүссэн үнэртнийг бид түрүүлж оруулж ирнэ."
-                      : "Шүүлтүүрээ өөрчилж дахин оролдоно уу."
-                  }
-                  action={
-                    <div className="flex flex-wrap justify-center gap-2">
-                      {/* Хайлтаар олдоогүй үнэртнийг санал болгох (0137). */}
-                      {requestsOn && filters.search && (
-                        <Button asChild>
-                          <Link
-                            href={`/request?q=${encodeURIComponent(filters.search)}`}
-                          >
-                            Үнэртэн санал болгох
-                          </Link>
+            <div className="min-w-0 flex-1">
+              <CatalogResults>
+                {result.items.length === 0 && collections.length === 0 ? (
+                  <EmptyState
+                    size="lg"
+                    icon={SearchX}
+                    title="Илэрц олдсонгүй"
+                    description={
+                      requestsOn && filters.search
+                        ? "Хайж буй үнэртэн тань манайд байхгүй бол бидэнд мэдэгдээрэй. Олон хүний хүссэн үнэртнийг бид түрүүлж оруулж ирнэ."
+                        : "Шүүлтүүрээ өөрчилж дахин оролдоно уу."
+                    }
+                    action={
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {/* Хайлтаар олдоогүй үнэртнийг санал болгох (0137). */}
+                        {requestsOn && filters.search && (
+                          <Button asChild>
+                            <Link
+                              href={`/request?q=${encodeURIComponent(filters.search)}`}
+                            >
+                              Үнэртэн санал болгох
+                            </Link>
+                          </Button>
+                        )}
+                        <Button asChild variant="outline">
+                          <Link href="/catalog">Бүх барааг үзэх</Link>
                         </Button>
-                      )}
-                      <Button asChild variant="outline">
-                        <Link href="/catalog">Бүх барааг үзэх</Link>
-                      </Button>
-                    </div>
-                  }
-                />
-              ) : (
-                <CatalogInfiniteGrid
-                  key={query.toString()}
-                  initial={result}
-                  query={query.toString()}
-                  collections={collections}
-                  sort={filters.sort}
-                  prefer={preferredStatuses(filters)}
-                />
-              )}
-            </CatalogResults>
+                      </div>
+                    }
+                  />
+                ) : (
+                  <CatalogInfiniteGrid
+                    key={query.toString()}
+                    initial={result}
+                    query={query.toString()}
+                    collections={collections}
+                    sort={filters.sort}
+                    prefer={preferredStatuses(filters)}
+                  />
+                )}
+              </CatalogResults>
+            </div>
           </div>
-        </div>
+        </CatalogTabShell>
       </div>
     </FilterQueryProvider>
   );

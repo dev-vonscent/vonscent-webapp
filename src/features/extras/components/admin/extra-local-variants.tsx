@@ -20,7 +20,7 @@ import { ExtraStockDialog } from "./extra-stock-dialog";
  * Хувилбарын хэлбэр ангиллаас (plan §18.4):
  *   batch — хоосон/бүтэн шил: хувилбар бүр нэг batch code (нэр = code);
  *   gift  — гоёмсог бэлгийн сав: чөлөөт нэр, хэмжээ, өөрийн зураг;
- *   plain — шприц г.м.: нэр, үнэ.
+ *   plain — шприц г.м.: нэр, үнэ, өөрийн зураг (5ml / 10ml / 20ml).
  */
 export type LocalVariantKind = "batch" | "gift" | "plain";
 
@@ -62,19 +62,22 @@ export function ExtraLocalVariants({
   const nameLabel = kind === "batch" ? "Batch code" : "Нэр";
   // Десктопд нэг толгой мөр, мөр бүрт шошгогүй; утсан дээр мөр бүр карт,
   // шошго талбар бүрийн дээр (sm:sr-only).
-  // Бэлгийн сав: хувилбар бүр өөрийн зурагтай — мөрийн эхэнд, хоёр мөр
-  // (нэр + хэмжээ) эзэлсэн жижиг tile.
+  // Хувилбар бүр өөрийн зурагтай (batch-аас бусад) — мөрийн эхэнд жижиг
+  // tile. Бэлгийн саванд хоёр мөр (нэр + хэмжээ) эзэлнэ.
   const gift = kind === "gift";
-  const cols = gift
+  const imaged = kind !== "batch";
+  const cols = imaged
     ? "sm:grid-cols-[5rem_minmax(0,1fr)_8rem_14.5rem_4rem]"
     : "sm:grid-cols-[minmax(0,1fr)_8rem_14.5rem_4rem]";
 
   return (
     <div className="space-y-3">
-      {gift && (
+      {imaged && (
         <p className="text-muted-foreground text-xs">
-          Хувилбарын зураг — тухайн хэмжээний савны зураг. Хэрэглэгч сонгоход
-          галерей энэ зураг руу шилжинэ. Заавал биш.
+          Хувилбарын зураг — тухайн хувилбар дангаараа (Ж: 5ml шприц, жижиг
+          хайрцаг). Хэрэглэгч сонгоход галерей энэ зураг руу шилжинэ. Бүгд хамт
+          орсон зургийг дээрх «Зураг»-ийн эхэнд тавибал картад гарна. Заавал
+          биш.
         </p>
       )}
       <div className="border-border overflow-hidden rounded-lg sm:border">
@@ -85,7 +88,7 @@ export function ExtraLocalVariants({
             cols,
           )}
         >
-          {gift && <span>Зураг</span>}
+          {imaged && <span>Зураг</span>}
           <span>{nameLabel}</span>
           <span>Зарах үнэ (₮)</span>
           <span>Үлдэгдэл</span>
@@ -103,17 +106,22 @@ export function ExtraLocalVariants({
                   "border-border grid gap-3 rounded-lg border p-3 sm:items-start sm:rounded-none sm:border-0",
                   // Бэлгийн сав утсан дээр: зураг зүүн талд, нэр ба үнэ
                   // хажууд нь доошоо; хэмжээ доор бүтэн өргөнөөр.
-                  gift
+                  imaged
                     ? "grid-cols-[5rem_minmax(0,1fr)]"
                     : "grid-cols-[minmax(0,1fr)_7rem]",
                   cols,
                   !v.isActive && "opacity-60",
                 )}
               >
-                {gift && (
-                  // Хоёр мөр (нэр + хэмжээ) — tile нь хоёр input-ийн өндрийг
-                  // дүүргэнэ (4:5 биш).
-                  <div className="row-span-2 self-stretch sm:col-start-1 sm:row-span-2 sm:row-start-1">
+                {imaged && (
+                  // Утсан дээр нэр + үнийн хоёр мөр; десктопд бэлгийн саванд
+                  // нэр + хэмжээ, бусдад ганц мөр — tile нь өндрийг дүүргэнэ.
+                  <div
+                    className={cn(
+                      "row-span-2 self-stretch sm:col-start-1 sm:row-start-1",
+                      gift ? "sm:row-span-2" : "sm:row-span-1 sm:min-h-20",
+                    )}
+                  >
                     <span className="sr-only">Хувилбарын зураг</span>
                     <ExtraImagesField
                       fill
@@ -128,7 +136,7 @@ export function ExtraLocalVariants({
                 <div
                   className={cn(
                     "space-y-1.5",
-                    gift && "sm:col-start-2 sm:row-start-1",
+                    imaged && "sm:col-start-2 sm:row-start-1",
                   )}
                 >
                   <Label htmlFor={`${v.key}-label`} className="sm:sr-only">
@@ -165,7 +173,7 @@ export function ExtraLocalVariants({
                 <div
                   className={cn(
                     "space-y-1.5",
-                    gift && "sm:col-start-3 sm:row-start-1",
+                    imaged && "sm:col-start-3 sm:row-start-1",
                   )}
                 >
                   <Label htmlFor={`${v.key}-price`} className="sm:sr-only">
@@ -202,7 +210,7 @@ export function ExtraLocalVariants({
                 <div
                   className={cn(
                     "col-span-2 space-y-1.5 sm:col-span-1",
-                    gift && "sm:col-start-4 sm:row-start-1",
+                    imaged && "sm:col-start-4 sm:row-start-1",
                   )}
                 >
                   <span className="text-sm font-medium sm:sr-only">
@@ -238,7 +246,7 @@ export function ExtraLocalVariants({
                 <div
                   className={cn(
                     "col-span-2 flex min-h-10 items-center sm:col-span-1 sm:justify-center",
-                    gift && "sm:col-start-5 sm:row-start-1",
+                    imaged && "sm:col-start-5 sm:row-start-1",
                   )}
                 >
                   {v.id ? (

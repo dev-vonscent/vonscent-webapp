@@ -1,11 +1,20 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Package } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { bottleSizeText, stockText } from "../lib/display";
+import { BOTTLE_KIND, bottleKind } from "../lib/bottle-kind";
+import {
+  bottleSizeText,
+  eyebrowText,
+  repeatsName,
+  stockText,
+} from "../lib/display";
 import type { ShopExtraCard } from "../types";
+import { BottleGlyph } from "./bottle-glyph";
+import { categoryIcon } from "./category-icon";
+import { ExtraQuickAdd } from "./extra-quick-add";
 
 /**
  * Нэмэлт барааны карт — дэлгүүрийн жагсаалт ба админы «Дэлгүүрт ингэж
@@ -20,12 +29,15 @@ export function ExtraCard({
   href,
   className,
   sizes = "(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw",
+  quickAdd = false,
 }: {
   extra: ShopExtraCard;
   /** Байхгүй бол (урьдчилан харах) холбоосгүй. */
   href?: string;
   className?: string;
   sizes?: string;
+  /** Зураг дээрх «Сагсанд нэмэх» товч — үнэртний карттай ижил. */
+  quickAdd?: boolean;
 }) {
   const leftover = extra.leftover;
   const size = bottleSizeText(extra);
@@ -34,6 +46,10 @@ export function ExtraCard({
     leftover && leftover.remainingMl > 0
       ? Math.round(extra.fromPrice / leftover.remainingMl)
       : null;
+  const eyebrow = eyebrowText(extra);
+  // «ШПРИЦ / Шприц» — нэртэйгээ ижил ангиллыг давтахгүй. Мөр нь үлдэнэ:
+  // эс бөгөөс grid-ийн мөрөнд нэр, үнэ хөрш картаасаа доогуур буудаг.
+  const eyebrowRepeats = repeatsName(eyebrow, extra.name);
 
   return (
     <div className={cn("group relative flex flex-col", className)}>
@@ -50,9 +66,7 @@ export function ExtraCard({
             className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           />
         ) : (
-          <span className="flex size-full items-center justify-center">
-            <Package className="text-muted-foreground size-8" aria-hidden />
-          </span>
+          <Placeholder extra={extra} icon={categoryIcon(extra.categorySlug)} />
         )}
         {leftover && !extra.soldOut && (
           <Badge
@@ -71,9 +85,21 @@ export function ExtraCard({
         )}
       </MaybeLink>
 
+      {quickAdd && href && !extra.soldOut && (
+        <div className="absolute top-2.5 right-2.5">
+          <ExtraQuickAdd extra={extra} />
+        </div>
+      )}
+
       <div className="mt-3 flex flex-col gap-0.5">
-        <span className="text-muted-foreground truncate text-[11px] tracking-[0.15em] uppercase">
-          {leftover ? leftover.brand : extra.categoryName}
+        <span
+          aria-hidden={eyebrowRepeats || undefined}
+          className={cn(
+            "text-muted-foreground truncate text-[11px] tracking-[0.15em] uppercase",
+            eyebrowRepeats && "invisible",
+          )}
+        >
+          {eyebrow}
         </span>
         <MaybeLink
           href={href}
@@ -99,6 +125,29 @@ export function ExtraCard({
         </span>
       </div>
     </div>
+  );
+}
+
+/**
+ * Зураггүй бараа: ангиллын дүрс том, нимгэн зураастай — жижиг `Package`
+ * дүрс «зураг ачаалагдсангүй» мэт харагддаг байв. Шилэнд дүүргэлттэй дүрс.
+ */
+function Placeholder({
+  extra,
+  icon: Icon,
+}: {
+  extra: ShopExtraCard;
+  icon: LucideIcon;
+}) {
+  const kind = bottleKind(extra.categorySlug, extra.mode);
+  return (
+    <span className="text-foreground/25 flex size-full items-center justify-center">
+      {kind ? (
+        <BottleGlyph fill={BOTTLE_KIND[kind].fill} className="h-20 w-15" />
+      ) : (
+        <Icon className="size-16" strokeWidth={1} aria-hidden />
+      )}
+    </span>
   );
 }
 

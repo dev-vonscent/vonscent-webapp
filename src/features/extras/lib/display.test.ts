@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bottleSizeText, stockText } from "./display";
+import { bottleSizeText, eyebrowText, stockText } from "./display";
 
 describe("bottleSizeText", () => {
   it("хоосон шил 0/N, бүтэн шил N/N", () => {
@@ -37,10 +37,13 @@ describe("bottleSizeText", () => {
 });
 
 describe("stockText", () => {
-  it("тоо, үлдэгдэлгүй, хязгааргүй", () => {
+  it("цөөн үлдсэн, олон, үлдэгдэлгүй, хязгааргүй", () => {
     expect(
-      stockText({ mode: "local_quantity", stock: 6, soldOut: false }),
-    ).toBe("Үлдэгдэл: 6 ширхэг");
+      stockText({ mode: "local_quantity", stock: 2, soldOut: false }),
+    ).toBe("Сүүлийн 2 ширхэг");
+    expect(
+      stockText({ mode: "local_quantity", stock: 210, soldOut: false }),
+    ).toBeNull();
     expect(stockText({ mode: "local_quantity", stock: 0, soldOut: true })).toBe(
       "Дууссан",
     );
@@ -50,5 +53,35 @@ describe("stockText", () => {
     expect(
       stockText({ mode: "leftover_liquid", stock: 1, soldOut: false }),
     ).toBeNull();
+  });
+});
+
+describe("eyebrowText", () => {
+  const base = { leftover: null, categoryName: "Шилтэй ус" } as const;
+  it("лацтай шил «Бүтэн ус», үлдэгдэлтэй шил брэнд, бусад ангилал", () => {
+    expect(
+      eyebrowText({ ...base, categorySlug: "bottled", mode: "local_quantity" }),
+    ).toBe("Бүтэн ус");
+    expect(
+      eyebrowText({
+        ...base,
+        categorySlug: "bottled",
+        mode: "leftover_liquid",
+        leftover: {
+          brand: "Versace",
+          productName: "",
+          remainingMl: 10,
+          fullMl: 100,
+        },
+      }),
+    ).toBe("Versace");
+    expect(
+      eyebrowText({
+        leftover: null,
+        categoryName: "Хоосон шил",
+        categorySlug: "empty-bottle",
+        mode: "local_quantity",
+      }),
+    ).toBe("Хоосон шил");
   });
 });

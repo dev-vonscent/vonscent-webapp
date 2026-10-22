@@ -8,6 +8,16 @@ export const VIAL_STYLE_SHORT: Record<BottleStyle, string> = {
   silver: "Мөнгөлөг",
 };
 
+/**
+ * Өнгө сонгох дугуйн өнгө — theme token биш, савны өөрийн (Blender рендер,
+ * public/hero/vials-*) өнгө тул энд тогтмол. Dark mode-д ч ижил.
+ */
+export const VIAL_STYLE_SWATCH: Record<BottleStyle, string> = {
+  black: "#1d1d1f",
+  pink: "#c9909f",
+  silver: "#c9cacd",
+};
+
 /** «Ягаан 10ml», «2ml сав», «1ml сав». */
 export function vialName(v: { style: BottleStyle | null; ml: number }): string {
   return v.style ? `${VIAL_STYLE_SHORT[v.style]} ${v.ml}ml` : `${v.ml}ml сав`;

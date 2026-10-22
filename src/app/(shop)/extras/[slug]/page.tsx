@@ -21,7 +21,11 @@ import { getShopExtra, getShopExtras } from "@/features/extras/api";
 import { ExtraCard } from "@/features/extras/components/extra-card";
 import { ExtraPurchase } from "@/features/extras/components/extra-purchase";
 import { bottleKind } from "@/features/extras/lib/bottle-kind";
-import { bottleSizeText } from "@/features/extras/lib/display";
+import {
+  bottleSizeText,
+  eyebrowText,
+  repeatsName,
+} from "@/features/extras/lib/display";
 import { NoteColumn } from "@/features/products/components/note-column";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { formatPrice } from "@/lib/format";
@@ -82,6 +86,17 @@ export default async function ExtraPage({
     .filter((e) => e.categorySlug !== card.categorySlug && !e.soldOut)
     .slice(0, 4);
   const catalogHref = `/catalog?tab=extras&cat=${card.categorySlug}`;
+  // Хувилбарын зураг (5ml шприц, жижиг хайрцаг) галерейд байх ёстой —
+  // эс бөгөөс хувилбар сонгоход галерей шилжих зураггүй.
+  const gallery = [
+    ...new Set([
+      ...extra.images,
+      ...extra.variants.flatMap((v) => (v.imageUrl ? [v.imageUrl] : [])),
+    ]),
+  ];
+  const eyebrow = eyebrowText(card);
+  // «Шприц» ангиллын «Шприц» — breadcrumb-д ангиллыг давтахгүй.
+  const categoryCrumb = !repeatsName(card.categoryName, card.name);
   // Эх үнэртэн (0159): хоосон шилэнд холбоос л — дотор нь үнэртэн байхгүй
   // тул ноот, тайлбар хамаагүй. Бүтэн / үлдэгдэлтэй шилэнд бүгд.
   const kind = bottleKind(card.categorySlug, card.mode);
@@ -119,10 +134,20 @@ export default async function ExtraPage({
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link href={catalogHref}>{card.categoryName}</Link>
+              <Link href="/catalog?tab=extras">Нэмэлт бараа</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
+          {categoryCrumb && (
+            <>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link href={catalogHref}>{card.categoryName}</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+            </>
+          )}
           <BreadcrumbItem>
             <BreadcrumbPage>{card.name}</BreadcrumbPage>
           </BreadcrumbItem>
@@ -133,9 +158,9 @@ export default async function ExtraPage({
       <VariantImageProvider>
         <div className="grid grid-cols-1 gap-0 sm:gap-10 lg:grid-cols-2 lg:items-start">
           <div className="lg:sticky lg:top-(--header-offset) lg:self-start lg:transition-[top] lg:duration-300 lg:ease-out">
-            {extra.images.length > 0 ? (
+            {gallery.length > 0 ? (
               <ExtraGallery
-                images={extra.images.map((url) => ({ url, alt: card.name }))}
+                images={gallery.map((url) => ({ url, alt: card.name }))}
                 name={card.name}
               />
             ) : (
@@ -153,10 +178,12 @@ export default async function ExtraPage({
           <div className="bg-background relative z-10 -mx-4 -mt-8 space-y-10 rounded-t-4xl px-4 pt-8 sm:mx-0 sm:mt-0 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">
             <div className="space-y-6">
               <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-muted-foreground text-sm tracking-wide uppercase">
-                    {leftover ? leftover.brand : card.categoryName}
-                  </span>
+                <div className="flex flex-wrap items-center gap-2 empty:hidden">
+                  {!repeatsName(eyebrow, card.name) && (
+                    <span className="text-muted-foreground text-sm tracking-wide uppercase">
+                      {eyebrow}
+                    </span>
+                  )}
                   {leftover && !card.soldOut && (
                     <Badge variant="gold">Ганц ширхэг</Badge>
                   )}

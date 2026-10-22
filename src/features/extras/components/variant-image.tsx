@@ -30,6 +30,11 @@ export function VariantImageProvider({
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
+/** Сонгосон хувилбарын зураг (сагслах цонхны жижиг зураг) — эс бөгөөс null. */
+export function useFocusedVariantImage() {
+  return React.useContext(Ctx)?.focus?.url ?? null;
+}
+
 /** Provider-гүй (жишээ нь тест) үед юу ч хийхгүй. */
 export function useShowVariantImage() {
   return React.useContext(Ctx)?.show ?? (() => {});

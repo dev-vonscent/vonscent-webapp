@@ -12,7 +12,7 @@ import { useCart } from "@/features/cart/store";
 import { formatPrice } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { VIAL_STYLE_SHORT } from "@/lib/vials";
+import { VIAL_STYLE_SHORT, VIAL_STYLE_SWATCH } from "@/lib/vials";
 import type { ShopExtraDetail, ShopExtraVariant } from "../types";
 import { useShowVariantImage } from "./variant-image";
 
@@ -25,15 +25,31 @@ const QTY_MAX = 99;
  * Грамын сав: хэмжээ → өнгө → тоо. Үлдэгдэлтэй шил ганц ширхэг — тоо
  * сонгох хэсэггүй. Анхааруулга (шприц, үлдэгдэлтэй шил) товчны дээр.
  */
-export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
+export function ExtraPurchase({
+  extra,
+  buyBar = true,
+}: {
+  extra: ShopExtraDetail;
+  /** Картын «Сагсанд нэмэх» цонхонд наалдсан зурвасгүй. */
+  buyBar?: boolean;
+}) {
   const router = useRouter();
   const { card, variants } = extra;
   const single = card.mode === "leftover_liquid";
   const vialPicker = card.mode === "shared_vial" && variants.length > 1;
   const sellable = (v: ShopExtraVariant) =>
     v.available == null || v.available > 0;
+  // Галерей эхний зургаараа нээгддэг — тэр зураг аль нэг хувилбарынх бол
+  // (грамын сав: мөнгөлөг 10ml) түүнийг сонгосон байдлаар эхэлнэ, эс
+  // бөгөөс «Хар 5ml» сонгогдсон хажууд мөнгөлөг сав харагдана.
   const [variantId, setVariantId] = React.useState(
-    (variants.find(sellable) ?? variants[0])?.id ?? "",
+    (
+      variants.find(
+        (v) => sellable(v) && v.imageUrl && v.imageUrl === extra.images[0],
+      ) ??
+      variants.find(sellable) ??
+      variants[0]
+    )?.id ?? "",
   );
   const [qty, setQty] = React.useState(1);
   const [added, setAdded] = React.useState(false);
@@ -76,7 +92,8 @@ export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
       categoryName: card.categoryName,
       mode: card.mode,
       unitPrice: selected.price,
-      image: card.image,
+      // Хувилбарын зурагтай бол (5ml шприц, жижиг хайрцаг) сагсанд тэр.
+      image: selected.imageUrl ?? card.image,
       requiresConsent: card.requiresConsent,
     };
   }
@@ -280,7 +297,7 @@ export function ExtraPurchase({ extra }: { extra: ShopExtraDetail }) {
         )}
       </div>
 
-      {selected && (
+      {buyBar && selected && (
         <MobileBuyBar
           show={ctaAway && !disabled}
           label={`${card.name}${selected.label ? ` · ${selected.label}` : ""}${qty > 1 ? ` · ${qty} ш` : ""}`}
@@ -346,8 +363,18 @@ function VialPicker({
         </div>
       </div>
       <div className="space-y-3">
-        <p className="text-sm font-medium">Өнгө</p>
-        <div className="grid grid-cols-3 gap-2">
+        <p className="text-sm font-medium">
+          Өнгө
+          {selected?.vialStyle && (
+            <span className="text-muted-foreground font-normal">
+              {" "}
+              · {VIAL_STYLE_SHORT[selected.vialStyle]}
+            </span>
+          )}
+        </p>
+        {/* Өнгө нь үгээр биш өнгөөрөө — савны дугуй; нэр нь доор жижгээр.
+            Үнэ өнгөөр ялгаагүй тул энд биш, дээрх том үнэд. */}
+        <div className="flex flex-wrap gap-4">
           {colors.map((v) => {
             const ok = sellable(v);
             const active = v.id === selected?.id;
@@ -359,23 +386,33 @@ function VialPicker({
                 disabled={!ok}
                 onClick={() => onSelect(v.id)}
                 aria-pressed={ok ? active : undefined}
-                aria-label={ok ? name : `${name} — үлдэгдэлгүй`}
-                className={cn(
-                  "flex min-h-11 flex-col items-center justify-center rounded-lg p-2 text-center transition-colors",
-                  !ok
-                    ? "bg-secondary/50 text-muted-foreground cursor-not-allowed opacity-50"
-                    : active
-                      ? "bg-secondary ring-foreground ring-2"
-                      : "bg-secondary hover:bg-accent",
-                )}
+                aria-label={ok ? name : `${name} — дууссан`}
+                className="group flex min-w-14 flex-col items-center gap-1.5 disabled:cursor-not-allowed"
               >
                 <span
-                  className={cn("text-sm font-semibold", !ok && "line-through")}
+                  aria-hidden
+                  style={
+                    v.vialStyle
+                      ? { backgroundColor: VIAL_STYLE_SWATCH[v.vialStyle] }
+                      : undefined
+                  }
+                  className={cn(
+                    "ring-offset-background relative size-10 rounded-full shadow-inner ring-offset-2 transition-shadow",
+                    active
+                      ? "ring-foreground ring-2"
+                      : "ring-foreground/15 group-enabled:group-hover:ring-foreground/40 ring-1",
+                    !ok &&
+                      "opacity-40 after:absolute after:inset-x-0 after:top-1/2 after:h-px after:-rotate-45 after:bg-current",
+                  )}
+                />
+                <span
+                  className={cn(
+                    "text-xs",
+                    active ? "font-semibold" : "text-muted-foreground",
+                    !ok && "line-through",
+                  )}
                 >
                   {name}
-                </span>
-                <span className="text-muted-foreground text-xs whitespace-nowrap">
-                  {ok ? formatPrice(v.price) : "Дууссан"}
                 </span>
               </button>
             );

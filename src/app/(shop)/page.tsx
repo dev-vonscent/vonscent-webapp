@@ -415,7 +415,7 @@ async function CuratedSections() {
                     key={e.id}
                     className="w-[40%] shrink-0 snap-start md:w-auto"
                   >
-                    <ExtraCard extra={e} href={`/extras/${e.slug}`} />
+                    <ExtraCard extra={e} href={`/extras/${e.slug}`} quickAdd />
                   </li>
                 ))}
               </ul>

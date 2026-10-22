@@ -200,6 +200,7 @@ export function toSavePayload(d: ExtraDraft): ExtraSaveInput {
           price: num(v.price),
           isActive: v.isActive,
           sort: i,
+          imageUrl: v.imageUrl,
         })),
       };
     case "leftover_liquid":
