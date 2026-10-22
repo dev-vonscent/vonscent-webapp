@@ -1698,6 +1698,86 @@ async function main() {
     );
   });
 
+  // ── Каталог anon-оор савны дүрэм уншина (0161) ─────────────────────
+  // 0161-ээс өмнө perfume_vial_style нь anon-д эрхгүй (catalog_search
+  // «permission denied»), vial_for нь RLS-ээр null буцааж бүх хэмжээ
+  // «Дууссан» болдог байв. Тест бүр superuser-ээр явдаг тул үүнийг барьсангүй.
+  await scenario(a, "Каталог anon: савны дүрэм (0161)", async () => {
+    await flag(a, "vial_inventory", true);
+    const p = await perfume10(a);
+    const style = (
+      await one<{ s: string | null }>(
+        a,
+        "select perfume_vial_style($1, 10) s",
+        [p.product_id],
+      )
+    ).s;
+    const vial = (
+      await one<{ id: string | null }>(a, "select vial_for($1, 10) id", [style])
+    ).id;
+    check("10ml сав олдоно (superuser)", style !== null && vial !== null, {
+      style,
+      vial,
+    });
+    // Савны тоог гараар тогтооно: available = on_hand − reserved.
+    const setAvailable = async (n: number) => {
+      await a.query("select set_config('vonscent.stock_move', '1', true)");
+      await a.query("update vials set on_hand = reserved + $2 where id = $1", [
+        vial,
+        n,
+      ]);
+      await a.query("select set_config('vonscent.stock_move', '', true)");
+    };
+    const anonSearch10 = async () => {
+      await a.query("set local role anon");
+      try {
+        return await one<{ n: number }>(
+          a,
+          `select count(*)::int n from catalog_search(
+             p_ids => array[$1]::uuid[], p_mls => array[10])`,
+          [p.product_id],
+        );
+      } finally {
+        await a.query("reset role");
+      }
+    };
+
+    await setAvailable(40);
+    await a.query("set local role anon");
+    const styleErr = await errorOf(a, "select perfume_vial_style($1, 10)", [
+      p.product_id,
+    ]);
+    const anonVial = await errorOf(a, "select vial_for($1, 10)", [style]);
+    const anon = await one<{ s: string | null; id: string | null }>(
+      a,
+      "select perfume_vial_style($1, 10) s, vial_for($2, 10) id",
+      [p.product_id, style],
+    );
+    await a.query("reset role");
+    check("anon → perfume_vial_style эрхтэй", styleErr === null, styleErr);
+    check("anon → vial_for эрхтэй", anonVial === null, anonVial);
+    check(
+      "anon-ийн утга superuser-тэй ижил (RLS null биш)",
+      anon.s === style && anon.id === vial,
+      { anon, style, vial },
+    );
+
+    const searchErr = await errorOf(
+      a,
+      `set local role anon;
+       select * from catalog_search(p_ids => array['${p.product_id}']::uuid[]);
+       reset role;`,
+    );
+    await a.query("reset role");
+    check("anon → catalog_search алдаагүй", searchErr === null, searchErr);
+    const on = await anonSearch10();
+    check("сав 40 → 10ml каталогт зарагдана", on.n === 1, on);
+
+    await setAvailable(0);
+    const off = await anonSearch10();
+    check("сав 0 → 10ml шүүлтэд гарахгүй", off.n === 0, off);
+  });
+
   // ── Үлдэгдэлтэй шил (§5.5) ────────────────────────────────────────
   await scenario(
     a,
