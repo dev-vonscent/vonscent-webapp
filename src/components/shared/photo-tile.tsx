@@ -52,6 +52,10 @@ export function PhotoTile({
       onPointerCancel={() => setPressed(false)}
       // touch-callout: iOS дээр удаан дарахад картыг preview болгож ардаа
       // цагаан/саарал тавцан зурдаг — product card-тай ижил дүрэм.
+      // draggable: iOS Safari холбоос/зургийг чирэх (drag lift) эхлүүлэхдээ
+      // картыг саарал тавцан дээр томруулж харанхуйлдаг — touch-callout
+      // үүнийг хаадаггүй.
+      draggable={false}
       className={cn(
         // will-change-transform: карт бүр өөрийн давхаргатай — нэгнийх нь
         // hover шилжилт нөгөөг нь дахин зуруулж анивчуулахгүй.
@@ -63,6 +67,7 @@ export function PhotoTile({
         src={src}
         alt=""
         fill
+        draggable={false}
         sizes={sizes}
         className={cn(
           "object-cover transition-[filter] duration-700 ease-out motion-reduce:transition-none",

@@ -129,7 +129,14 @@ export function MobileMenu({
           side="left"
           // Theme солих дугуй шилжилтийн зуур бүтэн өнгөтэй (theme-switcher.tsx).
           data-vt-solid=""
-          className="bg-popover/95 shadow-lift flex w-[86vw] max-w-sm flex-col gap-0 p-0 backdrop-blur-xl"
+          // Radix эхний товч (theme switch)-ийг focus хийдэг — iOS Safari
+          // түүнийг :focus-visible гэж ring зурдаг байв. Самбар өөрөө focus
+          // авна; Tab-аар товчнууд руу хэвээр шилжинэ.
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            (e.currentTarget as HTMLElement).focus();
+          }}
+          className="bg-popover/95 shadow-lift flex w-[86vw] max-w-sm flex-col gap-0 p-0 outline-none backdrop-blur-xl"
         >
           {/* Толгой: лого БАЙХГҮЙ (дэлгүүрийн header-т аль хэдийн бий) —
             зөвхөн Sheet-ийн өөрийн хаах товч баруун дээд буланд. «Цэс» гэдэг
