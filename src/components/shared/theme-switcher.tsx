@@ -39,8 +39,13 @@ export function ThemeSwitcher({ className }: { className?: string }) {
 
     // transition-colors-тай элементүүд дугуй тэлэх зуур хагас өнгөтэй
     // анивчихгүйн тулд шилжилт дуустал бүх CSS transition-ийг унтраана.
+    // Тунгалаг + backdrop-blur самбарыг (`data-vt-solid`, утасны цэс)
+    // шилжилтийн зуур бүтэн өнгөтэй болгоно: iOS Safari хуучин snapshot-д
+    // backdrop-blur-ийг алдагдуулж ард байгаа хуудас ил гардаг байв.
     const freeze = document.createElement("style");
-    freeze.textContent = "*,*::before,*::after{transition:none!important}";
+    freeze.textContent =
+      "*,*::before,*::after{transition:none!important}" +
+      "[data-vt-solid]{background-color:var(--popover)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}";
     document.head.appendChild(freeze);
 
     const transition = document.startViewTransition(() => {

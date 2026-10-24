@@ -127,6 +127,8 @@ export function MobileMenu({
 
         <SheetContent
           side="left"
+          // Theme солих дугуй шилжилтийн зуур бүтэн өнгөтэй (theme-switcher.tsx).
+          data-vt-solid=""
           className="bg-popover/95 shadow-lift flex w-[86vw] max-w-sm flex-col gap-0 p-0 backdrop-blur-xl"
         >
           {/* Толгой: лого БАЙХГҮЙ (дэлгүүрийн header-т аль хэдийн бий) —
