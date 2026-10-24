@@ -10,15 +10,19 @@ import {
 } from "@/lib/constants";
 
 /**
- * Шинэ бараанд галерейд нэмэх савны зургийг сонгоно. «Нэмэхгүй» нь анхдагч —
+ * Галерейд нэмэх савны зургийг сонгоно (шинэ бараа, багц; засах хуудсанд
+ * солих). «Нэмэхгүй» нь анхдагч —
  * сав бүтээгдэхүүн бүрт тохирохгүй тул админ өөрөө шийднэ.
  */
 export function BottleStylePicker({
   value,
   onChange,
+  disabled = false,
 }: {
-  value: BottleStyle | null;
+  /** `undefined` — аль нь ч сонгогдоогүй (галерейн савны зураг танигдаагүй). */
+  value: BottleStyle | null | undefined;
   onChange: (v: BottleStyle | null) => void;
+  disabled?: boolean;
 }) {
   const options: { value: BottleStyle | null; label: string }[] = [
     { value: null, label: "Нэмэхгүй" },
@@ -39,12 +43,14 @@ export function BottleStylePicker({
             type="button"
             role="radio"
             aria-checked={active}
+            disabled={disabled}
             onClick={() => onChange(o.value)}
             className={cn(
               "flex flex-col items-center gap-2 rounded-lg border p-2 text-sm transition-colors",
               active
                 ? "border-foreground bg-secondary font-medium"
                 : "border-border hover:bg-accent",
+              disabled && "cursor-wait opacity-60",
             )}
           >
             <span className="bg-muted relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md">

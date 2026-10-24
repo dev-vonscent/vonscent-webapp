@@ -174,7 +174,7 @@ function RailCollectionCard({
           </span>
           <GenderBadge
             gender={collection.gender}
-            className="ring-foreground/10 shrink-0 px-2 py-0.5 text-[10px] font-medium ring-1"
+            className="shrink-0 px-2 py-0.5 text-[10px] font-medium"
           />
         </div>
         <Link

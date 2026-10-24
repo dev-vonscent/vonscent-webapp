@@ -33,8 +33,11 @@ export default async function ContactPage() {
   ]);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-16 md:px-8">
-      <h1 className="font-serif text-4xl font-semibold tracking-tight">
+    <div className="mx-auto max-w-5xl px-4 pt-4 pb-10 md:px-8 md:py-16">
+      <h1
+        data-page-title
+        className="font-serif text-4xl font-semibold tracking-tight"
+      >
         Холбоо барих
       </h1>
       <p className="text-muted-foreground mt-3">

@@ -336,9 +336,9 @@ function Chip({
       aria-pressed={Boolean(selected)}
       onClick={onClick}
       className={cn(
-        "inline-flex min-h-10 min-w-10 items-center justify-center rounded-md px-2.5 text-sm font-medium transition-colors",
+        "inline-flex min-h-10 min-w-10 items-center justify-center rounded-md px-2.5 text-sm font-medium",
         selected
-          ? "bg-muted-foreground text-background"
+          ? "bg-foreground text-background"
           : "bg-secondary text-foreground hover:bg-accent",
       )}
     >

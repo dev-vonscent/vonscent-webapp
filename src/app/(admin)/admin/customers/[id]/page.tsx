@@ -156,7 +156,7 @@ export default async function AdminCustomerDetail({
             <Card>
               <CardContent className="p-5">
                 <h2 className="mb-3 font-medium">V point гүйлгээ</h2>
-                <ul className="[&>li:nth-child(even)]:bg-muted/40 text-sm [&>li]:rounded-md [&>li]:px-2">
+                <ul className="[&>li:nth-child(even)]:bg-secondary/60 text-sm [&>li]:rounded-md [&>li]:px-2">
                   {ledger.map((l) => (
                     <li
                       key={l.id}

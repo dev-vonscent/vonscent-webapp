@@ -25,7 +25,7 @@ export default async function FaqPage() {
     isRichText(f.answer) ? { ...f, answer: sanitizeHtml(f.answer) } : f,
   );
   return (
-    <div className="mx-auto max-w-3xl px-4 py-16 md:px-8">
+    <div className="mx-auto max-w-3xl px-4 pt-4 pb-10 md:px-8 md:py-16">
       <JsonLd data={faqJsonLd(faqs)} />
       <h1 className="text-center font-serif text-4xl font-semibold tracking-tight">
         Түгээмэл асуулт

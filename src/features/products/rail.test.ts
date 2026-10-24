@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { fillRail, interleave, mixCatalog, mixRandom, shuffle } from "./rail";
+import {
+  fillRail,
+  interleave,
+  mixCatalog,
+  mixRandom,
+  scatterCollections,
+  shuffle,
+  topUpRandom,
+} from "./rail";
 import type { ProductListItem } from "@/lib/types";
 import type { Collection } from "@/features/collections/types";
 
@@ -86,5 +94,81 @@ describe("mixCatalog", () => {
       false,
     );
     expect(out.map(key)).toEqual(["p1", "c1", "p2"]);
+  });
+});
+
+describe("topUpRandom", () => {
+  it("keeps the ranked ones first and fills the rest from the pool", () => {
+    const out = topUpRandom([c("a")], [c("a"), c("b"), c("c"), c("d")], 3);
+    expect(out).toHaveLength(3);
+    expect(out[0].id).toBe("a");
+    expect(new Set(out.map((x) => x.id)).size).toBe(3);
+  });
+
+  it("never exceeds count, nor invents items", () => {
+    expect(topUpRandom([c("a"), c("b")], [], 1)).toEqual([c("a")]);
+    expect(topUpRandom([], [c("x")], 3)).toEqual([c("x")]);
+  });
+});
+
+describe("scatterCollections", () => {
+  const perfumes = ps(9);
+  const bundles = cs(3);
+
+  it("keeps the perfumes in rank order and the top seller first", () => {
+    for (let k = 0; k < 20; k++) {
+      const out = scatterCollections(perfumes, bundles);
+      expect(out).toHaveLength(12);
+      expect(out[0]).toEqual({ kind: "product", product: perfumes[0] });
+      const order = out.flatMap((it) =>
+        it.kind === "product" ? [it.product.id] : [],
+      );
+      expect(order).toEqual(perfumes.map((x) => x.id));
+      expect(out.filter((it) => it.kind === "collection")).toHaveLength(3);
+    }
+  });
+
+  it("always has a bundle in the 2nd, 3rd or 4th cell", () => {
+    const leads = new Set<number>();
+    for (let k = 0; k < 60; k++) {
+      const out = scatterCollections(perfumes, bundles);
+      const lead = out.findIndex((it) => it.kind === "collection");
+      expect([1, 2, 3]).toContain(lead);
+      leads.add(lead);
+    }
+    expect(leads.size).toBeGreaterThan(1);
+  });
+
+  it("fits every bundle behind the lead when perfumes are few", () => {
+    for (let k = 0; k < 20; k++) {
+      const out = scatterCollections(ps(1), bundles);
+      expect(out.map((it) => it.kind)).toEqual([
+        "product",
+        "collection",
+        "collection",
+        "collection",
+      ]);
+    }
+  });
+
+  it("puts the bundles at random positions", () => {
+    const positions = new Set<string>();
+    for (let k = 0; k < 30; k++) {
+      positions.add(
+        scatterCollections(perfumes, bundles)
+          .map((it, i) => (it.kind === "collection" ? i : -1))
+          .filter((i) => i >= 0)
+          .join(","),
+      );
+    }
+    expect(positions.size).toBeGreaterThan(1);
+  });
+
+  it("works with bundles only", () => {
+    expect(scatterCollections([], bundles).map((it) => it.kind)).toEqual([
+      "collection",
+      "collection",
+      "collection",
+    ]);
   });
 });

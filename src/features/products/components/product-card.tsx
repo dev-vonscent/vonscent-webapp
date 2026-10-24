@@ -40,7 +40,7 @@ export function ProductCard({
             src={product.image.url}
             alt={product.image.alt || product.name}
             fill
-            sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1408px) 25vw, 324px"
+            sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 280px"
             className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           />
         )}
@@ -91,7 +91,7 @@ export function ProductCard({
               background-аас ялгарч, зүгээр текст мэт харагдахаа больно. */}
           <GenderBadge
             gender={product.gender}
-            className="ring-foreground/10 shrink-0 px-2 py-0.5 text-[10px] font-medium ring-1"
+            className="shrink-0 px-2 py-0.5 text-[10px] font-medium"
           />
         </div>
         <Link
@@ -113,3 +113,4 @@ export function ProductCard({
     </div>
   );
 }
+

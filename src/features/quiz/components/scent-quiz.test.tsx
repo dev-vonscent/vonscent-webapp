@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ScentQuiz } from "./scent-quiz";
-import { QUIZ_QUESTIONS } from "../questions";
+import { GENDER_QUESTION, QUIZ_QUESTIONS } from "../questions";
 
 // The rail itself is covered by the carousel's own tests; here it only has to
 // render without pulling in images and a router.
@@ -56,7 +56,7 @@ describe("ScentQuiz answer persistence", () => {
 
   it("returns to the results when the tab already holds a finished quiz", async () => {
     // The visitor opened a recommendation and pressed back: the widget
-    // remounts, and must not drop them at the intro.
+    // remounts, and must not drop them back at the first question.
     sessionStorage.setItem(
       ANSWERS_KEY,
       JSON.stringify({ gender: "male", picks: completePicks }),
@@ -86,8 +86,16 @@ describe("ScentQuiz answer persistence", () => {
 
     render(<ScentQuiz />);
 
-    expect(await screen.findByText("Үнэрээ ол")).toBeInTheDocument();
+    expect(await screen.findByText(GENDER_QUESTION.title)).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("opens straight on the first question with no way back", async () => {
+    mockQuizApi();
+    render(<ScentQuiz />);
+    expect(await screen.findByText(GENDER_QUESTION.title)).toBeInTheDocument();
+    expect(screen.queryByText("Эхлэх")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Өмнөх/ })).toBeNull();
   });
 });
 

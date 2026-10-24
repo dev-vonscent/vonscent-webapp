@@ -99,6 +99,8 @@ export interface ProductRow {
   vial_style: VialStyle | null;
   /** «Онцлох бараа» (0055) — нүүрийн 'featured' хэсэг эндээс автоматаар уншина. */
   is_featured: boolean;
+  /** Онцлох болсон мөч (0144) — нүүрийн «Онцлох» энэ дарааллаар; үгүй бол null. */
+  featured_at?: string | null;
   created_at: string;
   updated_at: string;
 }

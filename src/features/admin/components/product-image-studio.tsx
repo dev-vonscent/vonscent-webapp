@@ -12,6 +12,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { adminFetch, mutateJson } from "@/features/admin/lib/mutate";
+import { currentBottleStyle } from "@/features/admin/lib/bottle";
+import { BottleStylePicker } from "./bottle-style-picker";
+import { BOTTLE_STYLE_LABEL, type BottleStyle } from "@/lib/constants";
+import { toast } from "@/lib/toast";
 import { IMAGE_ACCEPT } from "@/lib/storage/limits";
 import { prepareUpload } from "@/lib/storage/prepare-upload";
 import { cn } from "@/lib/utils";
@@ -124,6 +128,7 @@ export function ProductImageStudio({
   );
 
   const fileRef = React.useRef<HTMLInputElement>(null);
+  const [bottleBusy, setBottleBusy] = React.useState(false);
 
   const { replaceImages, setPendingCounts } = gallery;
   /** Re-read the gallery: a finished job files its result as a row server-side. */
@@ -269,6 +274,33 @@ export function ProductImageStudio({
    * ажилладаг яг тэр хоёр шат. Чөлөөт заавраар засах нь галерейн зураг дээр
    * дарахад гардаг цонхонд байна.
    */
+  const bottle = currentBottleStyle(gallery.images);
+
+  async function changeBottle(style: BottleStyle | null) {
+    if (!productId || bottleBusy || style === bottle) return;
+    setBottleBusy(true);
+    setNote(null);
+    const res = await adminFetch(
+      `/api/admin/products/${productId}/bottle-image`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ style }),
+      },
+    );
+    if (res.ok) {
+      await refreshGallery();
+      toast.success(
+        style
+          ? `Савны зураг «${BOTTLE_STYLE_LABEL[style]}» боллоо.`
+          : "Савны зураг хасагдлаа.",
+      );
+    } else {
+      setNote(`Савны зураг солигдсонгүй: ${res.error}`);
+    }
+    setBottleBusy(false);
+  }
+
   async function generate(kind: "packshot" | "notes") {
     if (!productId || running.includes(kind)) return;
     setRunning((r) => [...r, kind]);
@@ -331,6 +363,25 @@ export function ProductImageStudio({
           </div>
           <GalleryGrid g={gallery} />
         </section>
+
+        {/* Савны зураг — үүсгэх үед сонгосныг засах хуудсанд солино. */}
+        {persisted && (
+          <section className="space-y-3">
+            <div className="space-y-1">
+              <h3 className="text-sm font-medium">Савны зураг</h3>
+              <p className="text-muted-foreground text-xs">
+                {bottle === "unknown"
+                  ? "Галерейд савны зураг байгаа ч өнгө нь танигдсангүй. Сонгоход хуучныг нь сольж тавина."
+                  : "Сонгоход галерейн савны зураг солигдоно (байхгүй бол хамгийн ард нэмэгдэнэ). «Нэмэхгүй» нь хасна."}
+              </p>
+            </div>
+            <BottleStylePicker
+              value={bottle === "unknown" ? undefined : bottle}
+              onChange={changeBottle}
+              disabled={bottleBusy}
+            />
+          </section>
+        )}
 
         {/* Зураг нэмэх */}
         <section className="bg-secondary/40 space-y-4 rounded-xl p-4">

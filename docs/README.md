@@ -11,6 +11,7 @@
 | [design.md](./spec/design.md) | Дизайн систем, токен, хүртээмжийн дүрэм |
 | [collection-requirement.md](./spec/collection-requirement.md) | Багц (Collection) функцийн бүрэн шаардлага + UI/UX |
 | [note-images.md](./spec/note-images.md) | Үнэрийн нотын зураг — prompt, багц скрипт, шинэ бараа нэмэх үеийн авто урсгал |
+| [../prompts/hero.md](../prompts/hero.md) | Нүүрний hero зураг (desktop/утас) солих заавар — харьцаа, аюулгүй бүс, generate, файл бэлтгэх |
 
 ### `planning/` — Төлөвлөгөө
 | Файл | Тайлбар |

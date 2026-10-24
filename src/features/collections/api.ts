@@ -26,6 +26,7 @@ import {
   sortCatalogCollections,
 } from "./catalog-filter";
 import { memberPrices, discountRange } from "./pricing";
+import { topUpRandom } from "@/features/products/rail";
 import { DEFAULT_COLLECTION_SETTINGS } from "./types";
 import type {
   BuilderProduct,
@@ -332,12 +333,17 @@ export async function getNewestCollections(
   return pickInOrder(await newestCollectionIds(), limit);
 }
 
-/** Төлөгдсөн борлуулалтаар хамгийн их зарагдсан багцууд (0122). */
-export async function getBestSellerCollections(
-  limit: number,
+/**
+ * Нүүрний «Эрэлттэй» rail-ийн багцууд: хамгийн их зарагдсан нь эхэлж,
+ * `count`-д хүрэхгүй бол зарагдаж байгаа бусад багцаас санамсаргүй нөхнө.
+ */
+export async function getHotRailCollections(
+  count: number,
 ): Promise<Collection[]> {
   if (!isSupabaseConfigured) return [];
-  return pickInOrder(await bestSellerCollectionIds(), limit);
+  const ranked = await pickInOrder(await bestSellerCollectionIds(), count);
+  const pool = (await getBaseCollections()).filter((c) => !c.soldOut);
+  return topUpRandom(ranked, pool, count);
 }
 
 /**
@@ -497,6 +503,9 @@ export async function getBuilderProducts(
 }> {
   const { items, total, page, perPage } = await getCatalog({
     ...filters,
+    // Багц дотор багц орохгүй — builder «Төрөл»-гүй тул хуучин `?kind=bundle`
+    // холбоос жагсаалтыг арилгах аргагүй хоосон болгох ёсгүй.
+    kind: undefined,
     perPage: filters.perPage ?? BUILDER_PER_PAGE,
   });
   if (!items.length) return { items: [], total, page, perPage };

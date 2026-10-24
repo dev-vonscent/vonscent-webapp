@@ -4,7 +4,9 @@ import * as React from "react";
 import Link from "next/link";
 import { Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SegmentedTabs } from "@/components/shared/segmented-tabs";
 import { EmptyState } from "@/components/shared/empty-state";
+import { AccountPageHeader } from "./account-page-header";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useFeatureFlag } from "@/components/feature-flags";
@@ -74,42 +76,14 @@ export function CouponWallet() {
 
   return (
     <div className="space-y-5">
-      <h1 className="hidden font-serif text-2xl font-semibold md:block">
-        Миний купон
-      </h1>
+      <AccountPageHeader title="Миний купон" />
 
-      <div
-        role="tablist"
-        aria-label="Купоны төлөв"
-        className="bg-secondary flex gap-1 rounded-xl p-1 text-xs sm:text-sm"
-      >
-        {TABS.map((t) => {
-          const n = count(t.value);
-          return (
-            <button
-              key={t.value}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.value}
-              onClick={() => setTab(t.value)}
-              className={cn(
-                "flex-1 rounded-lg px-1 py-1.5 font-medium whitespace-nowrap transition-colors",
-                tab === t.value
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <span className="sm:hidden">{t.short}</span>
-              <span className="hidden sm:inline">{t.label}</span>
-              {n > 0 && (
-                <span className="text-muted-foreground ml-1 tabular-nums">
-                  {n}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <SegmentedTabs
+        label="Купоны төлөв"
+        tabs={TABS.map((t) => ({ ...t, count: count(t.value) }))}
+        value={tab}
+        onChange={setTab}
+      />
 
       {isPending ? (
         <ul

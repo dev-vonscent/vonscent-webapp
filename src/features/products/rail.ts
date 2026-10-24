@@ -62,6 +62,63 @@ export function interleave(
   return out;
 }
 
+/**
+ * Эхлээд `ranked`-ээс (эрэмбээрээ) `count` хүртэл, дутуугаа `pool`-ийн
+ * үлдсэнээс санамсаргүй нөхнө — «Эрэлттэй» rail-д 3 багц заавал байх ёстой,
+ * нэг л багц зарагдсан байсан ч (клиент, 2026-10).
+ */
+export function topUpRandom<T extends { id: string }>(
+  ranked: readonly T[],
+  pool: readonly T[],
+  count: number,
+  random = Math.random,
+): T[] {
+  const picked = ranked.slice(0, count);
+  const taken = new Set(picked.map((x) => x.id));
+  const rest = shuffle(
+    pool.filter((x) => !taken.has(x.id)),
+    random,
+  );
+  return [...picked, ...rest.slice(0, Math.max(count - picked.length, 0))];
+}
+
+/** «Эрэлттэй» rail-ийн эхний багц орох хамгийн хойд байр (0-ээс) — 4 дэх нүд. */
+const LEAD_COLLECTION_MAX = 3;
+
+/**
+ * Ус эрэмбээрээ (эрэлтээр) үлдэж, багц устай эрэлтээр өрсөлдөхгүй (клиент,
+ * 2026-10):
+ *  - эхний нүд үргэлж хамгийн эрэлттэй ус;
+ *  - нэг багц заавал 2, 3, 4 дэх нүдний аль нэгэнд (санамсаргүй);
+ *  - үлдсэн багцууд түүнээс хойш санамсаргүй байранд.
+ */
+export function scatterCollections(
+  products: readonly ProductListItem[],
+  collections: readonly Collection[],
+  random = Math.random,
+): RailItem[] {
+  if (!products.length || !collections.length) {
+    return [...products.map(productItem), ...collections.map(collectionItem)];
+  }
+  const n = products.length + collections.length;
+  // Үлдсэн багцуудад хойно нь байр үлдэх ёстой — ус цөөн үед хязгаарлана.
+  const leadMax = Math.min(LEAD_COLLECTION_MAX, n - collections.length);
+  const lead = 1 + Math.floor(random() * leadMax);
+  const after = Array.from({ length: n - lead - 1 }, (_, i) => lead + 1 + i);
+  const slots = new Set([
+    lead,
+    ...shuffle(after, random).slice(0, collections.length - 1),
+  ]);
+  const out: RailItem[] = [];
+  let p = 0;
+  let c = 0;
+  for (let i = 0; i < n; i++) {
+    if (slots.has(i)) out.push(collectionItem(collections[c++]));
+    else out.push(productItem(products[p++]));
+  }
+  return out;
+}
+
 /** Ус, багцыг санамсаргүй дарааллаар холино. */
 export function mixRandom(
   products: readonly ProductListItem[],

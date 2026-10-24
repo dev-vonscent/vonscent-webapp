@@ -151,7 +151,7 @@ export function GiftPoolManager({
           }`}
           aria-busy={loading}
         >
-          <ul className="[&>li:nth-child(even)]:bg-muted/40">
+          <ul className="[&>li:nth-child(even)]:bg-secondary/60">
             {items.map((p) => {
               const checked = ids.includes(p.id);
               // Идэвхгүй / үлдэгдэлгүй усыг шинээр нэмүүлэхгүй — сонгосон ч

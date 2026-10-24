@@ -142,10 +142,26 @@ export const HOT_PRODUCTS_COUNT = 12;
 /**
  * Багцын «Шинэ» / «Эрэлттэй» таг автомат (админ тавихаа больсон): хамгийн
  * сүүлд нэмэгдсэн / төлөгдсөн захиалгаар хамгийн их зарагдсан ийм тооны
- * идэвхтэй багц (0122). Нүүрний rail дахь багцын дээд тоотой ижил.
+ * идэвхтэй багц (0122).
+ *
+ * «Шинэ» нь хамгийн сүүлийн 3 багц (клиент, 2026-10): «Шинээр ирсэн» rail
+ * 9 ус + 3 багц, 4 дэх шинэ багц нь «Шинэ»-ээс хасагдана.
  */
-export const NEW_COLLECTIONS_COUNT = 6;
+export const NEW_COLLECTIONS_COUNT = 3;
 export const HOT_COLLECTIONS_COUNT = 6;
+
+/**
+ * Нүүрний «Эрэлттэй» rail-ийн багцын тоо — 12 нүднээс 9 ус + 3 багц
+ * (клиент, 2026-10). Зарагдсан багц дутвал бусдаас санамсаргүй нөхнө.
+ */
+export const HOT_RAIL_COLLECTIONS = 3;
+
+/**
+ * «Онцлох» — ус, багц нийлээд хамгийн ихдээ ийм тоо (0144_featured_rolling).
+ * Хэтэрвэл хамгийн эрт онцлох болсон нь DB-д автоматаар хасагдана — SQL-ийн
+ * `offset 12`-тэй ижил байх ёстой.
+ */
+export const FEATURED_LIMIT = 12;
 
 /** Size a fresh bundle starts on — the smallest (2ml) tier. */
 export const DEFAULT_BUNDLE_ML = 2;
@@ -536,6 +552,12 @@ export const SIGN_OUT_TIMEOUT_MS = 2_500;
  * утгатай.
  */
 export const MIN_SEARCH_LENGTH = 2;
+
+/** Хайлтын талбаруудын (header, глобал панель, каталог) нэгдсэн placeholder. */
+export const SEARCH_PLACEHOLDER = "Үнэртэн, багц, брэнд хайх";
+
+/** Багц үүсгэгчид зөвхөн ус сонгогдоно — багц дотор багц орохгүй. */
+export const BUILDER_SEARCH_PLACEHOLDER = "Үнэртэн, брэнд хайх";
 
 /** Глобал хайлтын нэг төрөлд ногдох илэрцийн тоо. */
 export const SEARCH_LIMIT_PER_KIND = 5;

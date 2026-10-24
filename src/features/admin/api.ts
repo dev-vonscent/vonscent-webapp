@@ -60,6 +60,7 @@ import {
   NO_BOTTLE_LOCKS,
   type BottleLockState,
 } from "@/features/products/bottle-stock";
+import { collectionIdsOf } from "@/lib/orders/bundle-lines";
 
 /**
  * Admin read access. Uses the cookie-bound client so staff RLS applies (admins
@@ -285,6 +286,10 @@ export async function getOrderDetail(id: string): Promise<{
   vials: Map<string, Pick<VialRow, "style" | "ml">>;
   /** Хасагдсан бэлгийн барааны нэр: product_id → «Брэнд Нэр». */
   omittedGiftNames: Map<string, string>;
+  /** Мөрүүдийн бэлэн (`base`) багцын id — нэг мөр болж харагдана. */
+  baseCollectionIds: string[];
+  /** Админы дотоод тэмдэглэл (0145) — хэрэглэгчид харагдахгүй. */
+  adminNote: { note: string; updated_at: string } | null;
 } | null> {
   const supabase = await createClient();
   if (!supabase) return null;
@@ -333,18 +338,41 @@ export async function getOrderDetail(id: string): Promise<{
     ...new Set(rows.map((i) => i.vial_id).filter((v): v is string => !!v)),
   ];
   const giftIds = (order.omitted_gifts ?? []).map((g) => g.product_id);
-  const [{ data: vialRows }, { data: giftRows }] = await Promise.all([
+  const collectionIds = collectionIdsOf(rows);
+  const [
+    { data: vialRows },
+    { data: giftRows },
+    { data: baseRows },
+    { data: noteRow },
+  ] = await Promise.all([
     vialIds.length
       ? supabase.from("vials").select("id, style, ml").in("id", vialIds)
       : Promise.resolve({ data: [] }),
     giftIds.length
       ? supabase.from("products").select("id, brand, name").in("id", giftIds)
       : Promise.resolve({ data: [] }),
+    collectionIds.length
+      ? supabase
+          .from("collections")
+          .select("id")
+          .in("id", collectionIds)
+          .eq("type", "base")
+      : Promise.resolve({ data: [] }),
+    // 0145 хэрэгжээгүй бол алдаа → null (тэмдэглэлгүй мэт).
+    supabase
+      .from("order_admin_notes")
+      .select("note, updated_at")
+      .eq("order_id", id)
+      .maybeSingle(),
   ]);
 
   return {
     order,
     items: rows,
+    baseCollectionIds: ((baseRows as { id: string }[] | null) ?? []).map(
+      (r) => r.id,
+    ),
+    adminNote: (noteRow as { note: string; updated_at: string } | null) ?? null,
     history: (history as OrderStatusHistoryRow[] | null) ?? [],
     customer: (customer.data as ProfileRow | null) ?? null,
     payments: (payments as QpayPaymentRecord[] | null) ?? [],

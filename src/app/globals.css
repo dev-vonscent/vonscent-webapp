@@ -368,6 +368,7 @@
   --animate-shimmer: shimmer 2.2s linear infinite;
   --animate-sheen: sheen-rotate 80s linear infinite;
   --animate-nudge-up: nudge-up 2s ease-in-out infinite;
+  --animate-search-open: search-open 0.2s ease-out;
 }
 
 @keyframes accordion-down {
@@ -394,6 +395,14 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+/* Хайлтын панель header-ийн pill-ийн байранд нээгдэхэд pill «идэвхжиж»
+   буй мэт: дэвсгэр нь secondary-аас card руу, сүүдэр нь тодорно. */
+@keyframes search-open {
+  from {
+    background-color: var(--secondary);
+    box-shadow: none;
   }
 }
 /* A small upward bob — the arrow on «Дээш буцах» pointing where it goes. */
@@ -480,6 +489,14 @@
   background: color-mix(in oklab, var(--foreground) 12%, transparent);
 }
 
+/* Theme-adaptive logo mark: the PNG is only an alpha mask, the ink is
+   `currentColor`, so it reads on every theme without a second asset. */
+.brand-mark {
+  background-color: currentColor;
+  -webkit-mask: url("/brand/von-mark.png") center / contain no-repeat;
+  mask: url("/brand/von-mark.png") center / contain no-repeat;
+}
+
 /* Typography plugin colors follow the active theme (.navy/.black/…),
    not prefers-color-scheme — map every prose token to our theme vars. */
 .prose {
@@ -534,7 +551,7 @@
 
    Each value is the header's own height plus the gap that should show under
    it. Header heights come from site-header: a 4rem compact bar below md
-   (`h-16`), and above it the floating pill at 4.5rem (`pt-4` + `h-14`).
+   (`h-16`), and above it the solid two-row header (`h-18` + `h-11`).
 
    The gap is a hairline 4px at every width, so the header and the sticky
    content under it read as one stacked block rather than two things that
@@ -548,7 +565,7 @@
 }
 @media (min-width: 48rem) {
   :root {
-    --header-offset: 4.75rem; /* 4.5rem pill + 4px */
+    --header-offset: 7.5rem; /* 4.5rem bar + 2.75rem nav row + 4px */
   }
 }
 /* Must stay after the media query — same specificity, so source order wins. */
@@ -558,9 +575,15 @@
 
 /* The single hairline in a borderless system: separates form controls from
    their surface without reintroducing `border`, which the global rule
-   collapses to transparent. Kept deliberately dim — see `--field-edge`. */
+   collapses to transparent. Kept deliberately dim — see `--field-edge`.
+   Зөвхөн админд зурагдана: дэлгүүрийн талын талбар, dropdown хүрээгүй,
+   дэвсгэр өнгөөрөө л ялгарна. `:root:has()` — админы dialog/sheet `body`
+   руу portal хийгддэг тул `.admin-shell` дотор биш ч хүрээгээ авна. */
 @utility field-edge {
-  box-shadow: inset 0 0 0 1px var(--field-edge);
+  box-shadow: inset 0 0 0 1px var(--input-edge, transparent);
+}
+:root:has(.admin-shell) {
+  --input-edge: var(--field-edge);
 }
 
 /* The same hairline in the error voice. */
@@ -596,6 +619,15 @@
   *::before,
   *::after {
     border-color: transparent !important;
+  }
+  /* The one exception: a full-bleed rule between the storefront header's
+     two rows (DESIGN.md «The Chrome Divider Rule»). It has to live in this
+     layer — an `!important` utility loses to the base layer above — and a
+     class outranks `*`, so it wins here. Tinted from the foreground, so it
+     reads on every theme. */
+  .chrome-rule-t {
+    border-top: 1px solid
+      color-mix(in oklab, var(--foreground) 10%, transparent) !important;
   }
   /* Focus, the vonscent way.
      Pointer interaction stays completely clean — no ring on click or tap.
@@ -966,4 +998,14 @@
   .tier-ring::before {
     animation: none;
   }
+}
+
+/* Theme switch-ийн дугуй reveal (theme-switcher.tsx) — browser-ийн өгөгдмөл
+   cross-fade-ийг унтрааж, clip-path animation-ийг JS-ээс өгнө. (CSS
+   keyframes-ээр хийвэл Lightning CSS `html.x::view-transition-new()`
+   selector-ийг хасдаг.) */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }

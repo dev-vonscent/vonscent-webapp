@@ -1731,7 +1731,7 @@ export default function CheckoutPage() {
               <Field
                 label="Хүргүүлэх өдөр"
                 error={errors.deliverOn?.message}
-                hint={`Сонгосон өдрийн ${DISPATCH_HOUR}:00–${DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ. Цаг заах боломжгүйг анхаарна уу.`}
+                hint={`Сонгосон өдрийн ${DISPATCH_HOUR}:00–${DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ. Хүргүүлэхийг хүсэж буй цагийн хязгаараа нэмэлт тэмдэглэл хэсэгт бичиж үлдээнэ үү. Заасан цагийн дагуу хүргэхийг хичээх ба энэ нь амлалт биш юм.`}
               >
                 <Select
                   value={watch("deliverOn") ?? deliveryDays[0]}
@@ -1791,7 +1791,7 @@ export default function CheckoutPage() {
                           on ? t.filter((x) => x !== opt) : [...t, opt],
                         )
                       }
-                      className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
+                      className={`rounded-full px-3 py-1.5 text-sm ${
                         on
                           ? "bg-foreground text-background"
                           : "bg-secondary hover:bg-accent"
@@ -2109,7 +2109,7 @@ export default function CheckoutPage() {
                   <Clock className="mr-1 inline size-3.5 align-[-2px]" />
                   {`Захиалга ${formatDeliveryDay(
                     watch("deliverOn") ?? deliveryDays[0] ?? "",
-                  )} ${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.`}{" "}
+                  )} ${DISPATCH_HOUR}:00–${DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.`}{" "}
                   <strong>
                     {formatEditCutoff(
                       watch("deliverOn") ?? deliveryDays[0] ?? "",

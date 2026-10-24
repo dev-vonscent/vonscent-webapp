@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   Palette,
   Ticket,
+  User,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -56,20 +57,25 @@ export function ProfileMenu() {
           <button
             type="button"
             aria-label="Профайл цэс"
-            className="bg-secondary text-foreground relative size-9 shrink-0 overflow-hidden rounded-full transition-transform hover:scale-105"
+            className="bg-secondary text-foreground relative size-10 shrink-0 overflow-hidden rounded-full transition-transform hover:scale-105"
           >
             {profile?.avatar ? (
               <Image
                 src={profile.avatar}
                 alt={name}
                 fill
-                sizes="36px"
+                sizes="40px"
                 className="object-cover"
               />
             ) : (
               // Анх ачаалж байхад хоосон дугуй — «?» гараад нэр рүү үсрэхгүй.
               <span className="flex h-full items-center justify-center text-sm font-semibold">
-                {loading ? null : initial}
+                {loading ? null : profile ? (
+                  initial
+                ) : (
+                  // Зочин: «?» биш хүний дүрс — нэвтрэх цэс гэдэг нь ойлгомжтой.
+                  <User className="size-5" aria-hidden />
+                )}
               </span>
             )}
           </button>

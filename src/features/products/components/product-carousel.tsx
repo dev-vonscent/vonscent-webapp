@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { ProductListItem } from "@/lib/types";
 import type { RailItem } from "../rail";
 import type { CardStatus } from "../card-status";
+import { RAIL_TRACK, SLIDE_WIDTH } from "../slide-width";
 
 /** `items` өгвөл ус, багц холилдсон rail; эс бөгөөс зөвхөн `products`. */
 export function ProductCarousel({
@@ -67,12 +68,12 @@ export function ProductCarousel({
       data-ready={ready ? "true" : "false"}
     >
       <div ref={emblaRef} className="-mx-4 overflow-hidden sm:mx-0">
-        <div className="flex gap-4 px-4 sm:px-0">
+        <div className={cn(RAIL_TRACK, "px-4 sm:px-0")}>
           {items
             ? items.map((it) => (
                 <div
                   key={`${it.kind}-${it.kind === "product" ? it.product.id : it.collection.id}`}
-                  className="w-[44%] min-w-0 shrink-0 sm:w-[31%] lg:w-[23.5%]"
+                  className={SLIDE_WIDTH}
                 >
                   {it.kind === "product" ? (
                     <ProductCard product={it.product} prefer={prefer} />
@@ -86,10 +87,7 @@ export function ProductCarousel({
                 </div>
               ))
             : products.map((p) => (
-                <div
-                  key={p.id}
-                  className="w-[44%] min-w-0 shrink-0 sm:w-[31%] lg:w-[23.5%]"
-                >
+                <div key={p.id} className={SLIDE_WIDTH}>
                   <ProductCard
                     product={p}
                     matchPct={p.matchPct}
@@ -135,8 +133,8 @@ function CarouselArrow({
         // (--border: transparent) тул ring-ээр ирмэг өгч, дэвсгэрийг
         // background-аас салгаж тодруулав.
         // Голлох цэг нь rail биш, картын ЗУРАГ: зурагны өндөр = картын өргөн
-        // (31cqw / lg дээр 23.5cqw) × 5/4, тэгэхээр төв нь түүний хагас.
-        "bg-background/85 text-foreground shadow-lift ring-foreground/15 absolute top-[calc(31cqw*5/8)] z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full ring-1 backdrop-blur transition-all md:flex lg:top-[calc(23.5cqw*5/8)]",
+        // (`SLIDE_WIDTH`) × 5/4, тэгэхээр төв нь түүний хагас (× 5/8).
+        "bg-background/85 text-foreground shadow-lift ring-foreground/15 absolute top-[calc(31cqw*5/8)] z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full ring-1 backdrop-blur transition-all md:flex lg:top-[calc((100cqw-3rem)*5/32)] xl:top-[calc((100cqw-4rem)/8)] 2xl:top-[calc((100cqw-5rem)*5/48)]",
         "hover:bg-foreground hover:text-background hover:ring-foreground/40 opacity-0 group-focus-within/carousel:opacity-100 group-hover/carousel:opacity-100 focus-visible:opacity-100",
         "disabled:pointer-events-none disabled:opacity-0",
         side === "left" ? "-left-5" : "-right-5",

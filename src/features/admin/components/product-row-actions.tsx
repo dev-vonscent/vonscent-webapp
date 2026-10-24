@@ -36,6 +36,7 @@ import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import {
   BOTTLE_STYLES,
   BOTTLE_STYLE_LABEL,
+  FEATURED_LIMIT,
   type BottleStyle,
 } from "@/lib/constants";
 
@@ -127,7 +128,7 @@ export function ProductRowActions({
       if (ok) {
         toast.success(
           next
-            ? `«${product.name}» онцлох боллоо. Нүүрийн онцлох хэсэгт харагдана.`
+            ? `«${product.name}» онцлох боллоо. Нүүрийн онцлох хэсгийн эхэнд харагдана — ${FEATURED_LIMIT}-аас хэтэрвэл хамгийн эрт онцлох болсон нь хасагдана.`
             : `«${product.name}» онцлохоос хасагдлаа.`,
         );
         router.refresh();

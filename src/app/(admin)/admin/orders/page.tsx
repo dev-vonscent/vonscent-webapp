@@ -20,6 +20,7 @@ import { FilterChip } from "@/features/admin/components/filter-chip";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ubIso } from "@/features/admin/lib/date-range";
+import { formatDeliveryDay } from "@/lib/time";
 import type { OrderRow } from "@/db/types";
 
 /** Server-side page size; the table no longer paginates on the client. */
@@ -34,9 +35,14 @@ export default async function AdminOrdersPage({
     from?: string;
     to?: string;
     page?: string;
+    /** Хүргэх өдөр (yyyy-MM-dd, UB) — «Бэлдэх захиалга»-ын өдрийн шүүлт. */
+    deliver?: string;
   }>;
 }) {
-  const { status, q, from, to, page } = await searchParams;
+  const { status, q, from, to, page, deliver: rawDeliver } = await searchParams;
+  const deliver = /^\d{4}-\d{2}-\d{2}$/.test(rawDeliver ?? "")
+    ? rawDeliver
+    : undefined;
   const pageIndex = Math.max(0, (Number(page) || 1) - 1);
   const supabase = await createClient();
   let orders: OrderRow[] = [];
@@ -46,20 +52,27 @@ export default async function AdminOrdersPage({
   let total: number | null = null;
   // Shown on the chip so a backlog is visible without opening the filter.
   let unpreparedCount: number | null = null;
+  // «Бэлдэх захиалга»-ын хүргэх өдөр бүрийн тоо — хэдэн өдрийн дараа
+  // хүргүүлэх захиалга жагсаалтын доор живж мартагдахгүй (клиент, 2026-10).
+  let prepDays: { day: string; count: number }[] = [];
+  const preparing = status === UNPREPARED_FILTER;
   if (supabase) {
-    let query = supabase
-      .from("orders")
-      .select("*", { count: "exact" })
-      .order("created_at", { ascending: false })
-      .range(
-        pageIndex * ORDERS_PER_PAGE,
-        pageIndex * ORDERS_PER_PAGE + ORDERS_PER_PAGE - 1,
-      );
+    let query = supabase.from("orders").select("*", { count: "exact" });
+    // Бэлдэх жагсаалт хүргэх өдрөөр: ойрын нь эхэндээ.
+    query = preparing
+      ? query
+          .order("deliver_on", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: true })
+      : query.order("created_at", { ascending: false });
+    query = query.range(
+      pageIndex * ORDERS_PER_PAGE,
+      pageIndex * ORDERS_PER_PAGE + ORDERS_PER_PAGE - 1,
+    );
     // Төлөгдөөгүй цуцлалт (30 минутын хугацаа, «Дараа захиалах», «Устгах»)
     // админд захиалга биш — мөнгө ороогүй, хийх ажил алга (0124, клиент
     // 2026-10). «Цуцлагдсан» нь зөвхөн төлсний дараа цуцалсан захиалга.
     query = query.or("status.neq.cancelled,payment_status.neq.unpaid");
-    if (status === UNPREPARED_FILTER) {
+    if (preparing) {
       query = query.eq("status", "confirmed").is("prepared_at", null);
     } else if (status && ORDER_STATUSES.includes(status as OrderStatus)) {
       query = query.eq("status", status);
@@ -76,25 +89,45 @@ export default async function AdminOrdersPage({
     const toIso = ubIso(to);
     if (fromIso) query = query.gte("created_at", fromIso);
     if (toIso) query = query.lte("created_at", toIso);
+    if (deliver) query = query.eq("deliver_on", deliver);
     const [{ data, count }, unprepared] = await Promise.all([
       query,
       supabase
         .from("orders")
-        .select("id", { count: "exact", head: true })
+        .select("deliver_on", { count: "exact" })
         .eq("status", "confirmed")
-        .is("prepared_at", null),
+        .is("prepared_at", null)
+        .limit(1000),
     ]);
     orders = (data as OrderRow[] | null) ?? [];
     total = count ?? 0;
     unpreparedCount = unprepared.count ?? 0;
+    const byDay = new Map<string, number>();
+    for (const r of (unprepared.data as
+      | { deliver_on: string | null }[]
+      | null) ?? []) {
+      if (r.deliver_on)
+        byDay.set(r.deliver_on, (byDay.get(r.deliver_on) ?? 0) + 1);
+    }
+    prepDays = [...byDay]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([day, count]) => ({ day, count }));
   }
 
   // Paging keeps every filter; changing a filter resets to page 1.
-  const hrefWith = makeHrefBuilder("/admin/orders", { status, q, from, to });
+  const hrefWith = makeHrefBuilder("/admin/orders", {
+    status,
+    q,
+    from,
+    to,
+    deliver,
+  });
   const pageHref = (i: number) =>
     hrefWith({ page: i > 0 ? String(i + 1) : undefined });
   const statusHref = (s?: OrderStatus | typeof UNPREPARED_FILTER) =>
-    hrefWith({ status: s, page: undefined });
+    hrefWith({ status: s, page: undefined, deliver: undefined });
+  const deliverHref = (day?: string) =>
+    hrefWith({ deliver: day, page: undefined });
 
   return (
     <div className="space-y-6">
@@ -122,8 +155,8 @@ export default async function AdminOrdersPage({
               <FilterChip
                 label={
                   unpreparedCount
-                    ? `Бэлдэгдээгүй (${unpreparedCount})`
-                    : "Бэлдэгдээгүй"
+                    ? `Бэлдэх захиалга (${unpreparedCount})`
+                    : "Бэлдэх захиалга"
                 }
                 href={statusHref(UNPREPARED_FILTER)}
                 active={status === UNPREPARED_FILTER}
@@ -133,16 +166,37 @@ export default async function AdminOrdersPage({
         ))}
       </div>
 
+      {/* «Бэлдэх захиалга»: хэдний хүргэлтийнхийг бэлдэх вэ — өдрөөр. */}
+      {preparing && prepDays.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-muted-foreground text-xs">Хүргэх өдөр:</span>
+          <FilterChip
+            label="Бүх өдөр"
+            href={deliverHref(undefined)}
+            active={!deliver}
+          />
+          {prepDays.map((d) => (
+            <FilterChip
+              key={d.day}
+              label={`${formatDeliveryDay(d.day)} (${d.count})`}
+              href={deliverHref(d.day)}
+              active={deliver === d.day}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Search + date range (A1: "өдөр цагаар, дугаараар, утсаар") */}
       {/* The surface is a card, not a border: globals.css collapses every
           border to transparent, so this filter bar used to float unframed. */}
       <div className="bg-card space-y-3 rounded-lg p-3">
         {/* Presets first: "today's orders" is the question this page is opened
             to answer, and it used to cost two typed datetimes. */}
-        <DateRangeFilter from={from} to={to} params={{ status, q }} />
+        <DateRangeFilter from={from} to={to} params={{ status, q, deliver }} />
 
         <form action="/admin/orders" className="flex flex-wrap items-end gap-3">
           {status && <input type="hidden" name="status" value={status} />}
+          {deliver && <input type="hidden" name="deliver" value={deliver} />}
           {/* The range lives in the URL, so the search form has to carry it
               across a submit or filtering by phone would clear the dates. */}
           {from && <input type="hidden" name="from" value={from} />}

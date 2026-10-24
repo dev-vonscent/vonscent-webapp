@@ -7,8 +7,9 @@ import { readInvoice } from "@/lib/payments/invoice";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
 import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
+import { collectionIdsOf, groupBundleLines } from "@/lib/orders/bundle-lines";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
-import { formatPrice } from "@/lib/format";
+import { formatMl, formatPrice } from "@/lib/format";
 import { isExtraLine, orderLineMeta, orderLineTitle } from "@/lib/order-lines";
 import { deliveryDayOf, formatDeliveryDay } from "@/lib/time";
 import { env } from "@/lib/env";
@@ -197,7 +198,7 @@ async function notifyPaid(
   const { data: itemData } = await supabase
     .from("order_items")
     .select(
-      "product_name, brand, ml, qty, unit_price, list_price, is_gift, collection_name, line_kind, variant_label",
+      "product_name, brand, ml, qty, unit_price, list_price, is_gift, collection_id, collection_name, line_kind, variant_label",
     )
     .eq("order_id", order.id);
   const items = (itemData ?? []) as {
@@ -208,16 +209,35 @@ async function notifyPaid(
     unit_price: number;
     list_price: number | null;
     is_gift: boolean;
+    collection_id: string | null;
     collection_name: string | null;
     line_kind: "perfume" | "extra";
     variant_label: string | null;
   }[];
 
+  // Бэлэн багц нэг мөр болно («Gentleman багц · 5ml × 1»); хэрэглэгчийн
+  // угсарсан багц задгай хэвээр (`groupBundleLines`).
+  const collectionIds = collectionIdsOf(items);
+  const { data: baseRows } = collectionIds.length
+    ? await supabase
+        .from("collections")
+        .select("id")
+        .in("id", collectionIds)
+        .eq("type", "base")
+    : { data: [] };
+  const baseIds = new Set(
+    ((baseRows as { id: string }[] | null) ?? []).map((r) => r.id),
+  );
+
   // Мөр бүр ҮНДСЭН үнээрээ — pay хуудастай адил (`features/payment/api.ts`).
   // `line_total` нь багцын хямдралыг мөр бүрт хувааж тараасан тул бутархай
   // мэт дүн гардаг байв; хямдрал нь доорх задаргаанд ганц мөр болж гарна. 0097-оос өмнөх мөрөнд `list_price` алга.
-  const itemList = items
-    .map((i) => {
+  const itemList = groupBundleLines(items, baseIds)
+    .map((l) => {
+      if (l.kind === "bundle") {
+        return `• ${tgEscape(l.name)} багц ${formatMl(l.ml)} × ${l.qty} — ${formatPrice(l.base)}`;
+      }
+      const i = l.item;
       const base = (i.list_price ?? i.unit_price) * i.qty;
       // Нэмэлт бараа (0146): `brand` нь ангиллын нэр — «Нэмэлт» шошго нь
       // савлагчид энэ мөрийг декант биш гэж шууд хэлнэ.

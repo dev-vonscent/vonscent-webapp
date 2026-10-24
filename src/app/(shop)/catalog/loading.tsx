@@ -9,7 +9,7 @@ import { CatalogBodySkeleton } from "@/features/catalog/components/catalog-body-
  */
 export default function Loading() {
   return (
-    <div className="mx-auto max-w-352 px-4 py-8 md:px-8">
+    <div className="mx-auto max-w-420 px-4 py-8 md:px-8">
       <HeadingSkeleton className="mb-6" />
 
       {/* Tabs + sort bar */}

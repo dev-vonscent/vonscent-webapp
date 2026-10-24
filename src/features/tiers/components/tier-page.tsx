@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { motion } from "motion/react";
-import { ArrowLeft, Check, Crown, Lock } from "lucide-react";
+import { Check, Crown, Lock } from "lucide-react";
+import { AccountPageHeader } from "@/features/account/components/account-page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { USER_TIERS, type UserTierKey } from "@/lib/constants";
@@ -41,41 +41,33 @@ export function TierPage() {
   const { data, isPending, isError } = useMyTier();
 
   return (
-    <div className="space-y-10">
-      {/* Mobile: the site header shows back + "Түвшин" instead. */}
-      <header className="hidden space-y-1 md:block">
-        <Link
-          href="/account"
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
-        >
-          <ArrowLeft className="size-4" /> Профайл
-        </Link>
-        <h1 className="font-serif text-2xl font-semibold sm:text-3xl">
-          Хэрэглэгчийн түвшин
-        </h1>
-      </header>
-
-      {isPending ? (
-        <div className="space-y-4">
-          <Skeleton className="h-64 rounded-3xl" />
-          <Skeleton className="h-40 rounded-3xl" />
-        </div>
-      ) : isError || !data ? (
-        <EmptyState
-          title="Түвшний мэдээлэл ачаалагдсангүй"
-          description="Хуудсаа сэргээгээд дахин оролдоно уу."
-        />
-      ) : (
-        <>
-          <Hero summary={data} />
-          <Ladder current={data.tier} />
-          <TopCustomers
-            boards={data.leaderboards}
-            myAvatar={data.me.avatarUrl}
-            showMe
+    <div>
+      {/* Толгойн доорх зай бусад дансны хуудастай ижил (6) — хэсгүүдийн
+          хоорондох 10 биш. */}
+      <AccountPageHeader title="Хэрэглэгчийн түвшин" className="mb-6" />
+      <div className="space-y-10">
+        {isPending ? (
+          <div className="space-y-4">
+            <Skeleton className="h-64 rounded-3xl" />
+            <Skeleton className="h-40 rounded-3xl" />
+          </div>
+        ) : isError || !data ? (
+          <EmptyState
+            title="Түвшний мэдээлэл ачаалагдсангүй"
+            description="Хуудсаа сэргээгээд дахин оролдоно уу."
           />
-        </>
-      )}
+        ) : (
+          <>
+            <Hero summary={data} />
+            <Ladder current={data.tier} />
+            <TopCustomers
+              boards={data.leaderboards}
+              myAvatar={data.me.avatarUrl}
+              showMe
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 }

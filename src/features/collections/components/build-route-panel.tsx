@@ -20,7 +20,7 @@ export function BuildRoutePanel({ minItems }: { minItems: number }) {
   return (
     <Link
       href="/collections/build"
-      className="group bg-card field-edge flex items-center gap-4 rounded-2xl p-4 sm:gap-5 sm:p-5"
+      className="group bg-card ring-field-edge flex items-center gap-4 rounded-2xl p-4 ring-1 ring-inset sm:gap-5 sm:p-5"
     >
       <span aria-hidden className="hidden shrink-0 gap-1.5 sm:flex">
         {Array.from({ length: Math.min(minItems, 4) }, (_, i) => (

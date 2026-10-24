@@ -25,3 +25,8 @@ export const noteTranslationItemSchema = z
 export const noteTranslationsSaveSchema = z.object({
   items: z.array(noteTranslationItemSchema).min(1).max(50),
 });
+
+/** «Нот шалгах» — бараа үүсгэх формын нотуудыг англи нэртэй нь буцаана. */
+export const noteLookupSchema = z.object({
+  notes: z.array(z.string().trim().min(1).max(80)).min(1).max(100),
+});

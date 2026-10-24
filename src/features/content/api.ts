@@ -4,6 +4,7 @@ import type { ShopExtraCard } from "@/features/extras/types";
 import { cache } from "react";
 import { createPublicClient } from "@/lib/supabase/public";
 import {
+  FEATURED_LIMIT,
   POPUP_AUDIENCES,
   SHIPPING_ZONES,
   type PopupAudience,
@@ -18,6 +19,12 @@ import type { ProductListItem } from "@/lib/types";
 import type { Collection } from "@/features/collections/types";
 import { getFeaturedCollections } from "@/features/collections/api";
 import type { CardStatus } from "@/features/products/card-status";
+import {
+  collectionItem,
+  mixRandom,
+  productItem,
+  type RailItem,
+} from "@/features/products/rail";
 
 /**
  * Content / settings data access (admin A8 + A10). Settings live in the
@@ -236,6 +243,71 @@ export interface HomeSection {
   status: CardStatus | null;
   /** Зөвхөн 'extras' хэсэгт (0151) — нэмэлт барааны карт. */
   extras: ShopExtraCard[];
+  /**
+   * Ус, багц холимог дараалал (зөвхөн 'featured' хэсэгт) — байвал
+   * `products` / `collections`-ийн оронд яг энэ дарааллаар харуулна.
+   */
+  items?: RailItem[];
+}
+
+/**
+ * «Онцлох» — ус, багц нийлээд хамгийн сүүлд онцлох болгосон FEATURED_LIMIT
+ * зүйл, шинэ нь эхэндээ (0144). 13 дахийг онцлох болгоход хамгийн эртнийх нь
+ * DB-д автоматаар хасагддаг; одоо илүү байвал (0144-ийн өмнөх) энд тасална.
+ *
+ * `featured_at` уншиж чадахгүй бол (0144 хэрэгжээгүй) хуучин дүрэм: онцлох
+ * ус + бүх онцлох багц санамсаргүй холилдоно.
+ */
+async function getFeaturedRail(
+  supabase: NonNullable<ReturnType<typeof createPublicClient>>,
+  fallbackLimit: number,
+): Promise<RailItem[]> {
+  const [{ data: pRows, error: pErr }, { data: cRows, error: cErr }] =
+    await Promise.all([
+      supabase
+        .from("products")
+        .select("id, featured_at")
+        .eq("is_featured", true),
+      supabase
+        .from("collections")
+        .select("id, featured_at")
+        .eq("is_featured", true)
+        .eq("type", "base"),
+    ]);
+  if (pErr || cErr) {
+    const [products, collections] = await Promise.all([
+      getFeaturedProducts(fallbackLimit),
+      getFeaturedCollections(),
+    ]);
+    return mixRandom(products, collections);
+  }
+
+  type Row = { id: string; featured_at: string | null };
+  const ranked = [
+    ...((pRows as Row[] | null) ?? []).map((r) => ({ ...r, kind: "p" })),
+    ...((cRows as Row[] | null) ?? []).map((r) => ({ ...r, kind: "c" })),
+  ].sort(
+    (a, b) =>
+      (b.featured_at ?? "").localeCompare(a.featured_at ?? "") ||
+      a.id.localeCompare(b.id),
+  );
+
+  // getProductsByIds нь нуусан/идэвхгүйг, getFeaturedCollections нь дууссан
+  // багцыг хасдаг — харагдах ёстойг л үлдээнэ.
+  const [products, collections] = await Promise.all([
+    getProductsByIds(ranked.filter((r) => r.kind === "p").map((r) => r.id)),
+    getFeaturedCollections(),
+  ]);
+  const productById = new Map(products.map((p) => [p.id, p]));
+  const collectionById = new Map(collections.map((c) => [c.id, c]));
+  return ranked.slice(0, FEATURED_LIMIT).flatMap((r): RailItem[] => {
+    if (r.kind === "p") {
+      const p = productById.get(r.id);
+      return p ? [productItem(p)] : [];
+    }
+    const c = collectionById.get(r.id);
+    return c ? [collectionItem(c)] : [];
+  });
 }
 
 /**
@@ -272,6 +344,7 @@ export async function getHomeSections(): Promise<HomeSection[]> {
     let collections: Collection[] = [];
     let status: CardStatus | null = null;
     let extras: ShopExtraCard[] = [];
+    let items: RailItem[] | undefined;
     if (row.kind === "extras") {
       // Туг хаалттай бол SQL хоосон буцаана — хэсэг алгасагдана.
       products = [];
@@ -283,10 +356,13 @@ export async function getHomeSections(): Promise<HomeSection[]> {
       if (row.tag !== "sale") status = row.tag;
     } else if (row.kind === "featured") {
       status = "featured";
-      [products, collections] = await Promise.all([
-        getFeaturedProducts(row.max_items),
-        getFeaturedCollections(),
-      ]);
+      items = await getFeaturedRail(supabase, row.max_items);
+      products = items.flatMap((it) =>
+        it.kind === "product" ? [it.product] : [],
+      );
+      collections = items.flatMap((it) =>
+        it.kind === "collection" ? [it.collection] : [],
+      );
     } else {
       const ordered = [...row.home_section_products].sort(
         (a, b) => a.sort_order - b.sort_order,
@@ -315,6 +391,7 @@ export async function getHomeSections(): Promise<HomeSection[]> {
       collections,
       status,
       extras,
+      items,
     });
   }
   return sections;

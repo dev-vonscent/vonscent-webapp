@@ -48,7 +48,7 @@ export default async function CollectionsPage() {
   })();
 
   return (
-    <div className="mx-auto max-w-352 px-4 py-6 md:px-8">
+    <div className="mx-auto max-w-420 px-4 py-6 md:px-8">
       {/*
         Толгой нь хоёр замыг зэрэг харуулна: дээр нь бэлэн багцууд (энэ
         хуудас өөрөө), доор нь бүтэн өргөнөөр өөрөө үүсгэх banner. Өмнө нь
@@ -56,7 +56,10 @@ export default async function CollectionsPage() {
       */}
       <div className="mb-6 space-y-5 md:mb-8">
         <div className="space-y-2">
-          <h1 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
+          <h1
+            data-page-title
+            className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl"
+          >
             Багц
           </h1>
           <p className="text-muted-foreground text-sm text-balance">

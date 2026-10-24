@@ -1,6 +1,6 @@
 # "Үнэрээ ол" quiz tiles + home widget side imagery
 
-**Файл:** `public/quiz/{option-id}.webp` (widgets: `public/quiz-side.webp`, `public/bundle-side.webp`). Зургууд эцсийн байдлаараа орсон — дахин гаргах бол доорх prompt-уудыг ашиглаад ижил нэрээр нь дарж бичнэ.
+**Файл:** `public/quiz/{option-id}.webp` (widgets: `public/quiz-side.webp`, `public/collection.webp`). Зургууд эцсийн байдлаараа орсон — дахин гаргах бол доорх prompt-уудыг ашиглаад ижил нэрээр нь дарж бичнэ.
 **Хэмжээ:** гаргасан файлыг өргөнөөр 1024px болгож webp q85-аар шахна (~20–400 kB). Tile нь `aspect-3/4` тул 3:4 эсвэл 2:3 хоёулаа тохирно.
 **Style:** option tiles are bright, natural-color, subject-first — the tile shows the OPTION's meaning (a beach, a candle, a rose…), never a perfume product (сэтгэгдлийн асуулт нь цорын ганц үл хамаарах зүйл: доороос үз), and must read on both the dark and light theme (the tile's own bottom gradient keeps labels legible). Widget side images keep a brightened fragrance-editorial look.
 **Гаргалт:** гадны зураг үүсгэгчээр (gpt-image-1 маягийн, босоо 1024×1536 эсвэл 3:4). Генератор script байхгүй — зураг бүр гараар шалгаж сонгогдсон.
@@ -65,4 +65,4 @@ Base prompt (хүнтэй tile): Cinematic photograph of {SUBJECT} Professional 
 Base prompt: Luxury fragrance editorial photograph, {SUBJECT}, deep charcoal background, dramatic studio lighting with a warm golden glow from one side, subtle warm accents, generous negative space, premium fragrance advertisement aesthetic, cinematic, vertical composition, warm inviting lighting, rich visible detail, not dark.
 
 - `quiz-side` (`public/quiz-side.webp`, quiz intro, image right) — raw perfume ingredients on black stone — bergamot slices, vanilla pods, sandalwood shavings, a dark rose, amber resin — arranged loosely from above
-- `bundle-side` (`public/bundle-side.webp`, bundle promo, image left) — a neat row of small glass perfume decant vials in ascending sizes with minimal black labels on a reflective black surface, shallow depth of field
+- `collection` (`public/collection.webp`, нүүрний «Багц үүсгэх» карт) — 2026-10-оос `bundle-side`-ийг сольсон, гараар өгсөн зураг (prompt-гүй): эх савнаас decant сав руу асгаж буй, ард нь савхин хайрцагтай decant багц, хар чулуу, хавирган сар хэлбэрийн гэрэл.

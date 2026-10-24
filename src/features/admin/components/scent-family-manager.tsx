@@ -267,7 +267,7 @@ export function ScentFamilyManager({
       )}
       <Card>
         <CardContent className="p-0">
-          <ul className="[&>li:nth-child(even)]:bg-muted/40">
+          <ul className="[&>li:nth-child(even)]:bg-secondary/60">
             {families.map((f) => (
               <li key={f.slug} className="flex items-center gap-1 px-4 py-3">
                 {awaitingIcons.has(f.slug) ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { AccountPageHeader } from "@/features/account/components/account-page-header";
 import {
   useMarkNotificationsRead,
   useNotificationPoll,
@@ -14,20 +15,20 @@ export function NotificationsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="hidden font-serif text-2xl font-semibold md:block">
-          Мэдэгдэл
-        </h1>
-        <Button
-          variant="link"
-          size="sm"
-          className="ml-auto h-auto px-0"
-          disabled={unread === 0 || markRead.isPending}
-          onClick={() => markRead.mutate({ all: true })}
-        >
-          Бүгдийг уншсан болгох
-        </Button>
-      </div>
+      <AccountPageHeader
+        title="Мэдэгдэл"
+        aside={
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto px-0"
+            disabled={unread === 0 || markRead.isPending}
+            onClick={() => markRead.mutate({ all: true })}
+          >
+            Бүгдийг уншсан болгох
+          </Button>
+        }
+      />
       <NotificationList emptySurface="dashed" />
     </div>
   );

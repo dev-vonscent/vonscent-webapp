@@ -6,6 +6,7 @@ import { WelcomeGiftDialog } from "@/features/campaigns/components/welcome-gift-
 import { WishlistSync } from "@/features/wishlist/sync";
 import { ScrollReset } from "@/components/shared/scroll-reset";
 import { SkipLink } from "@/components/shared/skip-link";
+import { CatalogMenu } from "@/features/catalog/components/catalog-menu";
 
 /**
  * The footer arrives through a parallel route slot rather than being rendered
@@ -40,6 +41,15 @@ export default function ShopLayout({
             <MenuSocialLinks />
           </Suspense>
         }
+        // Taxonomy нь cache-тэй (5 мин); Suspense-ийн ачаар хуудас үүнийг
+        // хүлээхгүй — цэсний агуулга хуудастай зэрэг stream-ээр ирнэ.
+        menus={{
+          catalog: (
+            <Suspense fallback={null}>
+              <CatalogMenu />
+            </Suspense>
+          ),
+        }}
       />
       {/* Утсан дээрх `pb-24` нь доод навигацад контент дарагдахгүй байх зай.
           Footer-той (нүүр) хуудсанд тэр зай footer-ийн доор очно — эс бөгөөс

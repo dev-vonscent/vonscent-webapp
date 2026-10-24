@@ -207,8 +207,8 @@ export function NewsletterForm() {
               // Засах горимд icon товч тул талбар мөрийн үлдсэн бүх өргөнийг
               // авна — утсан дээр урт имэйл багтана.
               editing
-                ? "bg-card min-w-0 flex-1"
-                : "bg-card w-full max-w-66 min-w-0 flex-1"
+                ? "bg-foreground/8 min-w-0 flex-1"
+                : "bg-foreground/8 w-full max-w-66 min-w-0 flex-1"
             }
           />
           {/* Засах горимд товчнууд icon болно: утсан дээр талбар нарийсаад
@@ -247,7 +247,7 @@ export function NewsletterForm() {
       ) : (
         <div className="flex max-w-sm flex-wrap gap-2">
           {/* Талбартай ижил хайрцаг: харах ↔ засах горим солигдоход хөл үсрэхгүй. */}
-          <span className="bg-card field-edge flex h-10 w-full max-w-66 min-w-0 flex-1 items-center rounded-md px-3 text-base md:text-sm">
+          <span className="bg-foreground/8 flex h-10 w-full max-w-66 min-w-0 flex-1 items-center rounded-md px-3 text-base md:text-sm">
             <span className="truncate">{current.email}</span>
           </span>
           <Button

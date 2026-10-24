@@ -30,7 +30,7 @@ const guestOnly: PopupSettings = {
 
 type Auth = "guest" | "member" | "loading";
 
-/** `shownForThisDocument` модулийн түвшинд — тест бүрд шинэ модуль. */
+/** `documentLoaded` модулийн түвшинд — тест бүрд шинэ модуль. */
 /**
  * jsdom-д dispatchEvent нь үргэлж `isTrusted=false` тул `trusted` үед
  * `isUserInput`-ийг хэрэглэгчийн үйлдэл гэж үзүүлнэ.
@@ -56,7 +56,8 @@ async function renderPopup({
     isUserInput: (e: Event) => trusted || e.isTrusted,
   }));
   const { PromoPopup } = await import("./promo-popup");
-  render(<PromoPopup settings={popup} />);
+  const view = render(<PromoPopup settings={popup} />);
+  return { PromoPopup, view };
 }
 
 // Embla хэмжээ ажиглахад ResizeObserver хэрэглэдэг — jsdom-д байхгүй.
@@ -72,28 +73,45 @@ describe("PromoPopup", () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it("хэрэглэгч харьцаагүй бол гарахгүй (LCP болохгүй)", async () => {
+  it("харьцаагүй ч хуудас ачаалагдсаны дараа өөрөө гарна (refresh бүрд)", async () => {
     await renderPopup();
     await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("анхны үйлдэл нь чат бол гарахгүй", async () => {
+    await renderPopup();
+    const chat = document.createElement("button");
+    chat.setAttribute("data-chat-entry", "");
+    document.body.append(chat);
+    await act(async () => {
+      chat.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true }));
       vi.advanceTimersByTime(10_000);
     });
     expect(screen.queryByRole("dialog")).toBeNull();
+    chat.remove();
   });
 
-  it("код өдөөсөн (isTrusted=false) товч дарахад гарахгүй", async () => {
+  it("код өдөөсөн (isTrusted=false) товч нь шууд нээхгүй", async () => {
     await renderPopup({ trusted: false });
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
-      vi.advanceTimersByTime(10_000);
+      vi.advanceTimersByTime(500);
     });
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("гүйлгэлтийн байрлал сэргээгдэхэд (scroll) гарахгүй", async () => {
+  it("гүйлгэлтийн байрлал сэргээгдэх (scroll) нь шууд нээхгүй", async () => {
     await renderPopup();
     await act(async () => {
       window.dispatchEvent(new Event("scroll"));
-      vi.advanceTimersByTime(10_000);
+      vi.advanceTimersByTime(500);
     });
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -102,6 +120,53 @@ describe("PromoPopup", () => {
     await renderPopup();
     await act(async () => {
       window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("сайт дотроос нүүр рүү буцаж ирэхэд үйлдэлгүйгээр дахин гарна", async () => {
+    const { PromoPopup, view } = await renderPopup();
+    await act(async () => {
+      window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.getByRole("dialog")).toBeTruthy();
+
+    // Нүүрээс гараад (unmount) буцаж ирлээ (шинэ mount, ижил document).
+    view.unmount();
+    render(<PromoPopup settings={settings} />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("мэндчилгээний цонх нээгдсэн бол дараагийн нэг нээлтийг алгасна", async () => {
+    await renderPopup();
+    const { suppressPromoPopup } = await import("./promo-popup");
+    suppressPromoPopup();
+    await act(async () => {
+      window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("цэс / сагс нээлттэй бол давхарлахгүй, хаагдсаны дараа гарна", async () => {
+    await renderPopup();
+    const sheet = document.createElement("div");
+    sheet.setAttribute("role", "dialog");
+    sheet.setAttribute("data-state", "open");
+    document.body.append(sheet);
+    await act(async () => {
+      window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
+      vi.advanceTimersByTime(3000);
+    });
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    sheet.remove();
+    await act(async () => {
       vi.advanceTimersByTime(500);
     });
     expect(screen.getByRole("dialog")).toBeTruthy();

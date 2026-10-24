@@ -3,12 +3,13 @@
 import * as React from "react";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { SEARCH_PLACEHOLDER } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useFilterQuery } from "./use-filter-query";
 
 export function CatalogSearch({
   className,
-  placeholder = "Үнэртэн, брэнд хайх…",
+  placeholder = SEARCH_PLACEHOLDER,
 }: {
   className?: string;
   placeholder?: string;

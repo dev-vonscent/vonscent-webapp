@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { pickNotes, untranslatedNotes, type NoteOverrides } from "./notes-en";
+import {
+  describeNotes,
+  pickNotes,
+  untranslatedNotes,
+  type NoteOverrides,
+} from "./notes-en";
 
 const tiers = (top: string[], heart: string[] = [], base: string[] = []) => ({
   top,
@@ -51,5 +56,21 @@ describe("untranslatedNotes", () => {
       ["Пион", { en: "", isAbstract: true }],
     ]);
     expect(untranslatedNotes(tiers(["Юзу", "Пион"]), overrides)).toEqual([]);
+  });
+});
+
+describe("describeNotes", () => {
+  it("reports each note's English name and where it came from", () => {
+    const overrides: NoteOverrides = new Map([
+      ["Юзу", { en: "Yuzu", isAbstract: false }],
+    ]);
+    expect(
+      describeNotes(["Бергамот", "Юзу", "Амбер", "Шинэ нот", "Юзу"], overrides),
+    ).toEqual([
+      { mn: "Бергамот", en: "Bergamot", isAbstract: false, source: "table" },
+      { mn: "Юзу", en: "Yuzu", isAbstract: false, source: "override" },
+      { mn: "Амбер", en: "Amber", isAbstract: true, source: "table" },
+      { mn: "Шинэ нот", en: "", isAbstract: false, source: null },
+    ]);
   });
 });

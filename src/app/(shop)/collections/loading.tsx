@@ -11,7 +11,7 @@ import { SkeletonBlock } from "@/components/shared/skeletons";
 export default function Loading() {
   return (
     <div
-      className="mx-auto max-w-352 px-4 py-6 md:px-8"
+      className="mx-auto max-w-420 px-4 py-6 md:px-8"
       role="status"
       aria-label="Багц ачаалж байна"
     >
@@ -37,7 +37,7 @@ export default function Loading() {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:mt-8 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:mt-8 lg:grid-cols-4 2xl:grid-cols-5">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="flex flex-col">
             <SkeletonBlock className="aspect-4/5 w-full rounded-2xl" />

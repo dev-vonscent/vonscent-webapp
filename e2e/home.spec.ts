@@ -1,174 +1,169 @@
-import { test, expect, type Locator, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 
 /**
- * Нүүр хуудасны сүүлийн засварууд (2026-09-13): устгасан блокууд, барааны
- * carousel-ын сум, хүйсийн chip, брэндийн гүйдэг мөр.
+ * Нүүр хуудас — storefront refresh (2026-10).
  *
- * Demo горимд ажиллана (playwright.config.ts Supabase-ыг хоослодог) тул
- * админаас удирддаг rail-ууд («Онцлох», «Багц уснууд») энд харагдахгүй —
- * эдгээр тест зөвхөн seed өгөгдлөөр буудаг хэсгүүдийг барина.
+ * Demo горимд ажиллана (playwright.config.ts Supabase-ыг хоослодог): багц,
+ * админы хэсэг байхгүй тул hero нь evergreen хувилбар руу унаж, «Багц»
+ * товчлол нуугдана — эдгээр тест seed өгөгдлөөр буудаг хэсгийг л барина.
  */
 
-test("hero-ийн доорх trust картууд ба «Бидний тухай» блок арилсан", async ({
+test("hero: ганц h1, үндсэн CTA, бүтэн дэлгэцийн биш", async ({ page }) => {
+  await page.goto("/");
+  const hero = page.locator("section[aria-labelledby='home-hero-title']");
+  await expect(hero).toBeVisible();
+  await expect(page.locator("h1")).toHaveCount(1);
+  await expect(hero.getByRole("link").first()).toHaveAttribute(
+    "href",
+    /^\/catalog/,
+  );
+  const box = (await hero.boundingBox())!;
+  const vh = page.viewportSize()!.height;
+  expect(box.height).toBeLessThan(vh * 0.6);
+});
+
+test("хүйсний товчлол: зөвхөн утсан дээр, жагсаалт руу хөтөлнө", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const nav = page.getByRole("navigation", { name: "Товч замууд" });
+  await expect(nav).toBeVisible();
+  await expect(nav.getByRole("link")).toHaveCount(3);
+  await expect(nav.getByRole("link", { name: "Эрэгтэй" })).toHaveAttribute(
+    "href",
+    "/catalog?gender=male",
+  );
+
+  // Desktop-д ижил сонголт каталог цэсэнд байгаа тул давтахгүй.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(nav).toBeHidden();
+});
+
+test("«Эрэлттэй»: 12 хүртэл нүдтэй carousel, «Бүгдийг үзэх» жагсаалт руу", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByRole("link", { name: "Каталог үзэх" })).toBeVisible();
-
-  for (const gone of ["100% жинхэнэ", "Аюулгүй төлбөр", "Туршиж сонгох багц"]) {
-    await expect(page.getByText(gone)).toHaveCount(0);
-  }
+  const section = page.locator("section[aria-labelledby='home-hot-title']");
+  await expect(section).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Үнэр бол хувийн илэрхийлэл" }),
-  ).toHaveCount(0);
+    section.getByRole("link", { name: /Бүгдийг үзэх/ }),
+  ).toHaveAttribute("href", "/catalog?tags=hot");
+  // Карт бүр зураг + нэр гэсэн хоёр холбоостой — давтагдаагүй href-ээр тоолно.
+  const hrefs = await section
+    .locator('a[href^="/products/"]')
+    .evaluateAll((els) => [...new Set(els.map((e) => e.getAttribute("href")))]);
+  expect(hrefs.length).toBeGreaterThan(0);
+  expect(hrefs.length).toBeLessThanOrEqual(12);
+  await expect(section.locator('a[href^="/products/"]').first()).toBeVisible();
 });
 
-/** Эхний барааны rail ба доторх картын зурган холбоос. */
-function firstCarousel(page: Page) {
-  const carousel = page.locator("div.group\\/carousel").first();
-  // Карт бүр хоёр холбоостой (зураг + нэр); эхнийх нь зураг.
-  return { carousel, cards: carousel.locator('a[href^="/products/"]') };
-}
-
-/**
- * Гүйлгэх зайтай эхний rail. Demo каталог жижиг тул зарим rail нь дэлгэцэнд
- * бүтнээрээ багтаж, сумнууд нь идэвхгүй байдаг — тэднийг алгасна.
- *
- * `data-ready="true"` болтол хүлээнэ: Embla үүсэхээс ӨМНӨ сумны идэвхтэй эсэх
- * нь мэдэгдэхгүй тул тэр цонхонд шалгавал буруу rail сонгогдож, дараа нь
- * унтарсан сум дээр дарж таймаут болно.
- */
-async function scrollableCarousel(page: Page) {
-  // Бүх rail бэлэн болтол — эс тэгвээс «эхний гүйлгэх боломжтой» гэдэг нь
-  // хараахан бэлэн болоогүй rail-ыг алгасаад өөр rail сонгож мэднэ.
-  const rails = page.locator("div.group\\/carousel");
-  await expect(rails.first()).toBeVisible();
-  await expect(
-    page.locator('div.group\\/carousel[data-ready="false"]'),
-  ).toHaveCount(0);
-  for (let i = 0; i < (await rails.count()); i += 1) {
-    const carousel = rails.nth(i);
-    if (await carousel.getByRole("button", { name: "Дараах" }).isEnabled())
-      return carousel;
+test("хуучин том хэсгүүд нүүрнээс хасагдсан, каталогийн шүүлтүүр хэвээр", async ({
+  page,
+}) => {
+  await page.goto("/");
+  for (const gone of ["Хүйсээр", "Үнэрийн төрлөөр", "Улирлаар"]) {
+    await expect(page.getByRole("heading", { name: gone })).toHaveCount(0);
   }
-  throw new Error("Гүйлгэх боломжтой carousel олдсонгүй.");
-}
+  // Брэндийн хана (автоматаар урсдаг) нүүрэнд үлдэнэ.
+  await expect(page.getByRole("heading", { name: "Брэндээр" })).toBeVisible();
+  // Мл нь variant — `?ml=` холбоос нүүрэнд гарахгүй.
+  await expect(page.locator('a[href*="ml="]')).toHaveCount(0);
 
-test("carousel-ын сум картын зурагны голд суусан", async ({ page }) => {
-  await page.goto("/");
-  const { carousel, cards } = firstCarousel(page);
-  await expect(cards.first()).toBeVisible();
-  await carousel.hover();
-
-  const next = carousel.getByRole("button", { name: "Дараах" });
-  await expect(next).toBeVisible();
-
-  const arrow = await next.boundingBox();
-  const image = await cards.first().boundingBox();
-  expect(arrow && image).toBeTruthy();
-  const arrowCenter = arrow!.y + arrow!.height / 2;
-  const imageCenter = image!.y + image!.height / 2;
-  // Rail нь картын зурагнаас өндөр (доор нь брэнд/нэр/үнэ) тул rail-ын дунд
-  // суусан сум зурагны голоос хэдэн арван px-ээр доогуур унана.
-  expect(Math.abs(arrowCenter - imageCenter)).toBeLessThan(24);
+  const res = await page.goto("/catalog?gender=female&season=winter");
+  expect(res?.status()).toBe(200);
 });
 
-test("carousel-ын сум нэг бараагаар гүйлгэнэ", async ({ page }) => {
+test("desktop header: лого, хайлт, үндсэн ба туслах цэс", async ({ page }) => {
   await page.goto("/");
-  const carousel = await scrollableCarousel(page);
-  const cards = carousel.locator('a[href^="/products/"]');
-  await expect(cards.first()).toBeVisible();
-  await carousel.hover();
-
-  const before = await cards.first().boundingBox();
-  const next = carousel.getByRole("button", { name: "Дараах" });
-  await expect(next).toBeEnabled();
-  await next.click();
-  // Embla-гийн шилжилт дуустал.
-  await page.waitForTimeout(800);
-  const after = await cards.first().boundingBox();
-
-  const moved = before!.x - after!.x;
-  const cardWidth = before!.width;
-  expect(moved).toBeGreaterThan(cardWidth * 0.5);
-  // Бүлгээр (3-4 бараа) үсэрвэл энэ хязгаарыг давна.
-  expect(moved).toBeLessThan(cardWidth * 1.7);
-});
-
-test("картан дээрх хүйсийн тэмдэг дэвсгэртэй chip", async ({ page }) => {
-  await page.goto("/");
-  const chip = page
-    .locator("span", { hasText: /^(Эрэгтэй|Эмэгтэй|Unisex)$/ })
-    .first();
-  await expect(chip).toBeVisible();
-
-  const background = await chip.evaluate(
-    (el) => getComputedStyle(el).backgroundColor,
+  const header = page.locator("header");
+  await expect(header.getByRole("link", { name: /нүүр хуудас/ })).toBeVisible();
+  await expect(
+    header.getByRole("button", { name: "Үнэртэн, брэнд хайх" }),
+  ).toBeVisible();
+  const menu = header.getByRole("navigation", { name: "Дэлгүүрийн цэс" });
+  // «Каталог» нь dropdown: дарахад хүйс/төрөл/улирал/брэндийн панел нээгдэнэ,
+  // Esc-ээр хаагдана.
+  const catalog = menu.getByRole("button", { name: "Каталог" });
+  await catalog.click();
+  await expect(catalog).toHaveAttribute("aria-expanded", "true");
+  await expect(
+    menu.getByRole("link", { name: "Бүх үнэртэн үзэх" }),
+  ).toHaveAttribute("href", "/catalog");
+  await expect(menu.getByRole("link", { name: "Эмэгтэй" })).toHaveAttribute(
+    "href",
+    "/catalog?gender=female",
   );
-  expect(background).not.toBe("rgba(0, 0, 0, 0)");
-  expect(background).not.toBe("transparent");
-});
-
-test("үнэрийн төрлийн дүрсүүд буудаг", async ({ page }) => {
-  await page.goto("/");
-  const section = page.locator("section", {
-    has: page.getByRole("heading", { name: "Үнэрийн төрлөөр" }),
-  });
-  const icons = section.locator("img");
-  await expect(icons.first()).toBeVisible();
-  expect(await icons.count()).toBeGreaterThanOrEqual(4);
-});
-
-test.describe("брэндийн гүйдэг мөр", () => {
-  /** Анимацийн төлөв (`running` / `paused`). */
-  const playState = (track: Locator) =>
-    track.evaluate((el) => getComputedStyle(el).animationPlayState);
-
-  test("барихад зогсоод, гар салахад дахин урсана", async ({ page }) => {
-    await page.goto("/");
-    // Гүйж буй мөр өөрөө хэзээ ч «тогтвортой» болохгүй тул scroll/hover-ийг
-    // хөдөлгөөнгүй гарчиг ба scroll контейнер дээр нь хийнэ.
-    await page
-      .getByRole("heading", { name: "Брэндээр" })
-      .scrollIntoViewIfNeeded();
-    const track = page.locator(".animate-marquee").first();
-    const row = track.locator("xpath=..");
-    await expect(row).toBeVisible();
-    expect(await playState(track)).toBe("running");
-
-    const box = (await row.boundingBox())!;
-    const x = box.x + 60;
-    const y = box.y + box.height / 2;
-
-    await page.mouse.move(x, y);
-    await expect.poll(() => playState(track)).toBe("paused");
-
-    await page.mouse.down();
-    expect(await playState(track)).toBe("paused");
-
-    // Товчийг барьсан хэвээр мөрнөөс гарна: энд тавих нь брэндийн холбоос
-    // дээрх товшилт болж каталог руу аваачна.
-    await page.mouse.move(x, box.y - 150);
-    await page.mouse.up();
-    await expect.poll(() => playState(track)).toBe("running");
-  });
-
-  test("мөрийг гараар гүйлгэж болно", async ({ page }) => {
-    await page.goto("/");
-    await page
-      .getByRole("heading", { name: "Брэндээр" })
-      .scrollIntoViewIfNeeded();
-    const track = page.locator(".animate-marquee").first();
-    const row = track.locator("xpath=..");
-    await expect(row).toBeVisible();
-    const overflowing = await row.evaluate(
-      (el) => el.scrollWidth > el.clientWidth + 10,
+  await page.keyboard.press("Escape");
+  await expect(catalog).toHaveAttribute("aria-expanded", "false");
+  await expect(catalog).toBeFocused();
+  for (const [name, href] of [
+    ["Багц", "/collections"],
+    ["Багц үүсгэх", "/collections/build"],
+    ["Үнэрээ олох", "/quiz"],
+  ]) {
+    await expect(menu.getByRole("link", { name, exact: true })).toHaveAttribute(
+      "href",
+      href,
     );
-    expect(overflowing).toBe(true);
+  }
+});
 
-    await row.evaluate((el) => {
-      el.scrollLeft = 240;
-    });
-    expect(await row.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+test("/quiz хуудас quiz-ийг эхний асуултаас нь эхлүүлнэ", async ({ page }) => {
+  await page.goto("/quiz");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Үнэрээ олох",
+  );
+  await expect(
+    page.getByRole("heading", { name: "Ямар төрлийн үнэртэн хайж байна вэ?" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Эмэгтэй" })).toBeVisible();
+});
+
+test.describe("утас 390px", () => {
+  test.use({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  });
+
+  test("нэг compact header + хайлт, «Эрэлттэй» эхний дэлгэцэд", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const header = page.locator("header");
+    await expect(header.getByRole("button", { name: "Цэс" })).toBeVisible();
+    // Утсан дээр хайлтын талбар биш ганц icon товч (`trigger="adaptive"`).
+    await expect(header.getByRole("button", { name: "Хайх" })).toHaveCount(1);
+    await expect(
+      header.getByRole("button", { name: "Үнэртэн, брэнд хайх" }),
+    ).toHaveCount(0);
+    const hot = page.locator("#home-hot-title");
+    await expect(hot).toBeVisible();
+    const top = (await hot.boundingBox())!.y;
+    expect(top).toBeLessThan(844 - 120);
+    const overflow = await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+
+  test("доод цэс ба drawer-оос үндсэн хуудсууд хүрэгдэнэ", async ({ page }) => {
+    await page.goto("/");
+    // Каталог / Багц нь доод цэсэнд — drawer тэдгээрийг давтахгүй
+    // (mobile-menu.tsx `MENU_HIDDEN`); «Үнэрээ олох» нүүрний IntentCards-д.
+    const bottom = page.getByRole("navigation", { name: "Үндсэн цэс" });
+    for (const href of ["/catalog", "/collections"]) {
+      await expect(bottom.locator(`a[href="${href}"]`)).toBeVisible();
+    }
+    await expect(page.locator('main a[href="/quiz"]').first()).toBeVisible();
+
+    await page.getByRole("button", { name: "Цэс" }).tap();
+    const drawer = page.getByRole("dialog");
+    for (const href of ["/collections/build", "/faq", "/contact"]) {
+      await expect(drawer.locator(`a[href="${href}"]`).first()).toBeVisible();
+    }
   });
 });
