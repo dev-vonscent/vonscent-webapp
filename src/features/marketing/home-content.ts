@@ -47,16 +47,16 @@ export type HomeCampaignImage =
  */
 const HERO_PHOTO: HomeCampaignImage = {
   kind: "static",
-  src: "/hero-desktop-v3-1600.webp",
+  src: "/hero-desktop-v4-1600.webp",
   width: 1600,
   height: 571,
   srcSet: [1600, 2400, 3200]
-    .map((w) => `/hero-desktop-v3-${w}.webp ${w}w`)
+    .map((w) => `/hero-desktop-v4-${w}.webp ${w}w`)
     .join(", "),
-  alt: "Maison Margiela Replica, Burberry Hero болон decant савнууд",
+  alt: "Armani Stronger With You Intensely, Parfums de Marly Layton, Azzaro The Most Wanted Parfum болон decant савнууд",
   // Зургийг солихдоо файлын НЭРИЙГ ч соль: ижил URL-д Next-ийн зургийн кэш
   // (.next/cache/images, Vercel CDN) болон Safari хуучин зургийг өгсөөр байдаг.
-  mobile: { src: "/hero-mobile-4x3.webp", width: 1365, height: 1024 },
+  mobile: { src: "/hero-mobile-v4.webp", width: 1600, height: 1200 },
 };
 
 export interface HomeCampaign {
