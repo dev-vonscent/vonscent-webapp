@@ -1,5 +1,6 @@
 import Image, { getImageProps } from "next/image";
 import Link from "next/link";
+import { preload } from "react-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getBaseCollections } from "@/features/collections/api";
@@ -36,20 +37,7 @@ export async function resolveHero(now = new Date()): Promise<ResolvedHero> {
   let collections: Awaited<ReturnType<typeof getBaseCollections>> | null = null;
   for (const campaign of candidates) {
     const img = campaign.image;
-    if (img.kind === "static") {
-      return {
-        campaign,
-        image: {
-          src: img.src,
-          alt: img.alt,
-          position: img.position ?? "50% 50%",
-          width: img.width,
-          height: img.height,
-          srcSet: img.srcSet,
-          mobile: img.mobile,
-        },
-      };
-    }
+    if (img.kind === "static") return staticHero(campaign, img);
     collections ??= await getBaseCollections();
     const found = collections.find((c) => c.slug === img.slug);
     if (found?.image) {
@@ -67,8 +55,42 @@ export async function resolveHero(now = new Date()): Promise<ResolvedHero> {
   throw new Error("unreachable: evergreen hero must be static");
 }
 
+/**
+ * The hero without any data fetch, when the first candidate is a static
+ * photo; `null` when it needs a bundle cover (then `resolveHero`).
+ *
+ * The page renders this hero outside its own `<Suspense>`: a nested boundary
+ * is revealed by React's batched `$RC` (rAF + 300ms steps), which a busy
+ * phone main thread pushes past hydration — Lighthouse mobile LCP was ~11s
+ * with the image itself downloaded in 0.3s.
+ */
+export function resolveStaticHero(now = new Date()): ResolvedHero | null {
+  const campaign = liveCampaigns(now)[0] ?? EVERGREEN_HERO;
+  const img = campaign.image;
+  return img.kind === "static" ? staticHero(campaign, img) : null;
+}
+
+function staticHero(
+  campaign: HomeCampaign,
+  img: Extract<HomeCampaign["image"], { kind: "static" }>,
+): ResolvedHero {
+  return {
+    campaign,
+    image: {
+      src: img.src,
+      alt: img.alt,
+      position: img.position ?? "50% 50%",
+      width: img.width,
+      height: img.height,
+      srcSet: img.srcSet,
+      mobile: img.mobile,
+    },
+  };
+}
+
 /** Same breakpoint as Tailwind `sm` — the photo and the layout switch together. */
 const DESKTOP_MEDIA = "(min-width: 640px)";
+const MOBILE_MEDIA = "(max-width: 639.98px)";
 
 /**
  * Seasonal hero. With an art-directed photo (`image.mobile`) the photograph
@@ -177,6 +199,24 @@ function PhotoHero({
     height: mobile.height,
     sizes: "100vw",
   });
+  // Next 16-д `priority` нь getImageProps-оор fetchpriority тавихгүй, React
+  // ч `<picture>` доторх зургийг өөрөө preload хийдэггүй — энэ hero нь LCP
+  // тул хоёр хувилбарыг `media`-тай нь preload хийнэ (браузер нэгийг л татна).
+  preload(mobileProps.src, {
+    as: "image",
+    imageSrcSet: mobileProps.srcSet,
+    imageSizes: "100vw",
+    media: MOBILE_MEDIA,
+    fetchPriority: "high",
+  });
+  if (desktopSrcSet)
+    preload(image.src, {
+      as: "image",
+      imageSrcSet: desktopSrcSet,
+      imageSizes: desktopSizes,
+      media: DESKTOP_MEDIA,
+      fetchPriority: "high",
+    });
 
   return (
     <section
@@ -196,6 +236,7 @@ function PhotoHero({
         <img
           {...mobileProps}
           alt={image.alt}
+          fetchPriority="high"
           className="absolute inset-0 -z-10 size-full object-cover object-right sm:object-[65%_50%]"
         />
       </picture>

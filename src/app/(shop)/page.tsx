@@ -40,6 +40,7 @@ import { liveCampaigns } from "@/features/marketing/home-content";
 import {
   CampaignHero,
   resolveHero,
+  resolveStaticHero,
 } from "@/features/marketing/components/home/campaign-hero";
 import { HomeShortcuts } from "@/features/marketing/components/home/home-shortcuts";
 import { IntentCards } from "@/features/marketing/components/home/intent-cards";
@@ -93,6 +94,7 @@ function sellableFirst<T extends { soldOut: boolean }>(list: T[]): T[] {
  * `<Suspense>` with a skeleton of its own shape (no layout shift).
  */
 export default function HomePage() {
+  const staticHero = resolveStaticHero();
   return (
     <>
       {/* An overlay with nothing to reserve, so it streams with no fallback. */}
@@ -104,9 +106,14 @@ export default function HomePage() {
       </Suspense>
 
       <div className="mx-auto max-w-420 space-y-8 px-4 pt-4 pb-10 sm:space-y-12 sm:pb-14 md:px-8 md:pt-8">
-        <Suspense fallback={<HeroSkeleton />}>
-          <HeroSlot />
-        </Suspense>
+        {/* LCP: статик hero өөрийн Suspense-гүй (resolveStaticHero-г үз). */}
+        {staticHero ? (
+          <CampaignHero hero={staticHero} />
+        ) : (
+          <Suspense fallback={<HeroSkeleton />}>
+            <HeroSlot />
+          </Suspense>
+        )}
         <HomeShortcuts />
 
         <Suspense fallback={<CarouselSkeleton action />}>
