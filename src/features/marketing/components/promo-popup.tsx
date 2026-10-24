@@ -46,6 +46,8 @@ const CHAT_SELECTOR = "[data-chat-entry], #crisp-chatbox, .crisp-client";
 const OPEN_DELAY_MS = 400;
 /** Үйлдэлгүй үед — хуудас бүрэн ачаалагдсанаас (`load`) хойш. */
 const AUTO_OPEN_MS = 1500;
+/** Цэс / хайлт / сагс нээлттэй үед хаагдсан эсэхийг шалгах давтамж. */
+const DIALOG_RECHECK_MS = 500;
 
 /**
  * Нүүр хуудас руу орох БҮРД гарна — refresh ч, сайт дотроос буцаж ирэх ч
@@ -214,13 +216,22 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
     const openSoon = () => {
       timer = setTimeout(() => {
         settled.current = true;
-        // Хүлээх хооронд өөр цонх (`suppressPromoPopup`) нээгдсэн байж болно.
-        if (suppressNext) {
-          suppressNext = false;
-          return;
-        }
-        setOpen(true);
+        showWhenClear();
       }, OPEN_DELAY_MS);
+    };
+    // Хэрэглэгч цэс / хайлт / сагс нээсэн бол түүний дээр давхарлахгүй —
+    // тэр цонх хаагдтал хүлээгээд гарна.
+    const showWhenClear = () => {
+      // Хүлээх хооронд өөр цонх (`suppressPromoPopup`) нээгдсэн байж болно.
+      if (suppressNext) {
+        suppressNext = false;
+        return;
+      }
+      if (document.querySelector('[role="dialog"][data-state="open"]')) {
+        timer = setTimeout(showWhenClear, DIALOG_RECHECK_MS);
+        return;
+      }
+      setOpen(true);
     };
 
     // Сайт дотроос нүүр рүү буцаж ирлээ — LCP хаагдсан, шууд гарна.

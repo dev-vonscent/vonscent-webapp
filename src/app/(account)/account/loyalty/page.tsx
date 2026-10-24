@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/browser";
 import type { LoyaltyLedgerRow } from "@/db/types";
 import { EmptyState } from "@/components/shared/empty-state";
+import { AccountPageHeader } from "@/features/account/components/account-page-header";
 import { VPointIcon } from "@/components/shared/v-point-icon";
 import { VPointMark } from "@/components/shared/v-point-mark";
 
@@ -69,7 +70,7 @@ export default function LoyaltyHistoryPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="font-serif text-2xl font-semibold">V point</h1>
+      <AccountPageHeader title="V point" />
 
       {/* Balance */}
       <Card>

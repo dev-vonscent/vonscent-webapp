@@ -53,7 +53,13 @@ function Group({
   );
 }
 
-/** Selectable filter chip — dark gray when off, light gray when selected. */
+/**
+ * Selectable filter chip — gray when off, inverted (foreground) when selected.
+ *
+ * `transition-colors` байхгүй нь санаатай: сонгох/болиход дэвсгэр ба бичиг
+ * эсрэг чиглэлд шилждэг тул шилжилтийн дунд хоёулаа ижил саарал болж бичиг
+ * анивчин алга болдог байв. Өнгө шууд солигдоно.
+ */
 function Chip({
   active,
   onClick,
@@ -71,9 +77,9 @@ function Chip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "truncate rounded-sm px-3 py-2 text-center text-sm font-medium transition-colors",
+        "truncate rounded-sm px-3 py-2 text-center text-sm font-medium",
         active
-          ? "bg-muted-foreground text-background"
+          ? "bg-foreground text-background"
           : "bg-secondary text-foreground hover:bg-accent",
         className,
       )}
@@ -89,6 +95,7 @@ export function CatalogFilters({
   priceBounds,
   families,
   showClear = true,
+  showKind = true,
 }: {
   brands: string[];
   /**
@@ -103,6 +110,11 @@ export function CatalogFilters({
   families: ScentFamilyOption[];
   /** The mobile sheet puts «Цэвэрлэх» in its title row instead. */
   showClear?: boolean;
+  /**
+   * «Төрөл» (ус / багц). The bundle builder only lists perfumes — a bundle
+   * can't go inside a bundle — so there the toggle has nothing to switch.
+   */
+  showKind?: boolean;
 }) {
   const {
     values,
@@ -179,20 +191,24 @@ export function CatalogFilters({
       )}
 
       {/* Ус, багц хоёулаа нэг жагсаалтад холилддог — нэгийг нь л харах. */}
-      <Group title="Төрөл">
-        <div className="grid grid-cols-3 gap-2">
-          {KINDS.map((k) => (
-            <Chip
-              key={k.label}
-              active={(searchParams.get("kind") ?? undefined) === k.value}
-              onClick={() => setSingle("kind", k.value)}
-            >
-              {k.label}
-            </Chip>
-          ))}
-        </div>
-      </Group>
-      <Separator />
+      {showKind && (
+        <>
+          <Group title="Төрөл">
+            <div className="grid grid-cols-3 gap-2">
+              {KINDS.map((k) => (
+                <Chip
+                  key={k.label}
+                  active={(searchParams.get("kind") ?? undefined) === k.value}
+                  onClick={() => setSingle("kind", k.value)}
+                >
+                  {k.label}
+                </Chip>
+              ))}
+            </div>
+          </Group>
+          <Separator />
+        </>
+      )}
 
       <Group title="Хүйс">
         <div className="grid grid-cols-3 gap-2">

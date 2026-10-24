@@ -8,7 +8,6 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProductCarousel } from "@/features/products/components/product-carousel";
-import { SideImage } from "@/components/shared/side-image";
 import { cn } from "@/lib/utils";
 import type { ProductListItem } from "@/lib/types";
 import { rateLimitMessage } from "@/lib/rate-limit-client";
@@ -21,7 +20,7 @@ import type { QuizOption } from "../questions";
  * last question is answered.
  */
 
-type Phase = "intro" | "quiz" | "loading" | "results" | "error";
+type Phase = "quiz" | "loading" | "results" | "error";
 type GenderPick = "male" | "female" | "any";
 
 const TOTAL_STEPS = 1 + QUIZ_QUESTIONS.length;
@@ -30,7 +29,7 @@ const TOTAL_STEPS = 1 + QUIZ_QUESTIONS.length;
  * Answers survive a trip to a product page and back.
  *
  * The widget is client state on an ISR home page, so opening a recommendation
- * and pressing back used to remount it at the intro — the visitor's six
+ * and pressing back used to remount it at the first question — the visitor's six
  * answers gone for the sake of one look at a bottle, which is the single most
  * likely thing they do next. sessionStorage (not localStorage) scopes that
  * memory to the tab: coming back tomorrow should be a fresh quiz, not last
@@ -143,7 +142,7 @@ function TilePreloader({ sources }: { sources: string[] }) {
   );
 }
 
-/** Crossfade + soft rise between the widget's phases (intro/quiz/results/…). */
+/** Crossfade + soft rise between the widget's phases (quiz/results/…). */
 const phaseVariants = {
   enter: { opacity: 0, y: 12 },
   center: { opacity: 1, y: 0 },
@@ -173,7 +172,7 @@ const itemVariants = {
 } as const;
 
 export function ScentQuiz() {
-  const [phase, setPhase] = React.useState<Phase>("intro");
+  const [phase, setPhase] = React.useState<Phase>("quiz");
   const [step, setStep] = React.useState(0);
   // +1 when moving forward, -1 when going back — drives the slide direction.
   const [dir, setDir] = React.useState(1);
@@ -269,8 +268,7 @@ export function ScentQuiz() {
   function back() {
     if (advanceTimer.current) clearTimeout(advanceTimer.current);
     setDir(-1);
-    if (step === 0) setPhase("intro");
-    else setStep(step - 1);
+    if (step > 0) setStep(step - 1);
   }
 
   function restart() {
@@ -284,12 +282,10 @@ export function ScentQuiz() {
   }
 
   /**
-   * Artwork for the step after the visible one. The intro warms the gender
-   * tiles; every question warms the next. Nothing is preloaded once the quiz
-   * is over.
+   * Artwork for the step after the visible one; every question warms the
+   * next. Nothing is preloaded once the quiz is over.
    */
   const preloadSources = React.useMemo(() => {
-    if (phase === "intro") return stepImages(0, gender);
     if (phase === "quiz") return stepImages(step + 1, gender);
     return [];
   }, [phase, step, gender]);
@@ -307,64 +303,6 @@ export function ScentQuiz() {
       >
         <TilePreloader sources={preloadSources} />
         <AnimatePresence mode="wait" initial={false}>
-          {phase === "intro" && (
-            <motion.div
-              key="intro"
-              variants={phaseVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              className="relative grid grid-cols-1 md:grid-cols-[1fr_320px]"
-            >
-              {/* Side imagery (5c) — bleeds to the card edge and fades into the
-                  bg-card surface; a warm CSS glow stands in until
-                  public/quiz-side.webp is generated (prompts/quiz-options.md). */}
-              <SideImage
-                src="/quiz-side.webp"
-                sizes="(max-width: 768px) 100vw, 320px"
-                className="relative aspect-5/2 min-h-70 w-full md:order-2 md:aspect-auto md:min-h-0"
-                fallbackClassName="bg-[radial-gradient(ellipse_65%_70%_at_65%_55%,rgba(92,62,28,.55),rgba(40,28,14,.2)_55%,transparent_80%)]"
-              >
-                {/* fade into the card surface — md+ only; on mobile the image keeps
-                    its full-bleed edge (a vertical fade washed it out in light mode) */}
-                <div className="from-card absolute inset-y-0 left-0 hidden w-1/2 bg-linear-to-r to-transparent md:block" />
-              </SideImage>
-
-              <motion.div
-                variants={listVariants}
-                initial="enter"
-                animate="center"
-                className="flex min-w-0 flex-col items-start justify-center gap-4 p-6 sm:p-10 md:order-1"
-              >
-                <motion.h2
-                  variants={itemVariants}
-                  className="font-serif text-2xl font-semibold tracking-tight text-balance wrap-break-word sm:text-3xl"
-                >
-                  Үнэрээ ол
-                </motion.h2>
-                <motion.p
-                  variants={itemVariants}
-                  className="text-muted-foreground"
-                >
-                  Ямар үнэртэй ус сонгохоо мэдэхгүй байна уу? Хэдхэн асуултад
-                  хариулаад тохирох үнэртнүүдээ олоорой
-                </motion.p>
-                <motion.p
-                  variants={itemVariants}
-                  className="text-muted-foreground text-sm font-medium"
-                >
-                  {TOTAL_STEPS} асуулт · 30 секунд
-                </motion.p>
-                <motion.div variants={itemVariants}>
-                  <Button onClick={() => setPhase("quiz")} className="mt-2">
-                    Эхлэх <ArrowRight className="size-4" />
-                  </Button>
-                </motion.div>
-              </motion.div>
-            </motion.div>
-          )}
-
           {phase === "quiz" && (
             <motion.div
               key="quiz"
@@ -379,9 +317,16 @@ export function ScentQuiz() {
                 <motion.button
                   type="button"
                   onClick={back}
+                  // The first question has nowhere to go back to — the slot
+                  // stays so the progress bar doesn't shift between steps.
+                  disabled={step === 0}
+                  aria-hidden={step === 0}
                   whileHover={{ x: -2 }}
                   whileTap={{ scale: 0.95 }}
-                  className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm transition-colors"
+                  className={cn(
+                    "text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm transition-colors",
+                    step === 0 && "invisible",
+                  )}
                 >
                   <ArrowLeft className="size-4" /> Өмнөх
                 </motion.button>
@@ -709,7 +654,7 @@ function OptionTile({
             // The transparent outline nudges the engine into cleaner edge
             // anti-aliasing while the ancestor scales.
             className={cn(
-              "object-cover transition-opacity duration-300 [outline:1px_solid_transparent]",
+              "object-cover [outline:1px_solid_transparent] transition-opacity duration-300",
               imgLoaded ? "opacity-100" : "opacity-0",
             )}
             onLoad={() => setImgLoaded(true)}
@@ -774,4 +719,3 @@ function OptionTile({
     </motion.button>
   );
 }
-

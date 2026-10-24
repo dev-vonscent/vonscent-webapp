@@ -49,7 +49,7 @@ export async function SiteFooter() {
     // болж байв. Утсан дээрх `pb-20` нь доод навигацын зай: footer-той
     // хуудсанд `<main>`-ээс энд шилждэг (layout.tsx).
     <footer className="bg-surface-deep pb-20 md:pb-0">
-      <div className="mx-auto max-w-352 px-4 pt-8 pb-6 sm:pt-10 sm:pb-8">
+      <div className="mx-auto max-w-420 px-4 pt-8 pb-6 sm:pt-10 sm:pb-8">
         <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
           <div className="space-y-4">
             <Logo className="text-2xl" />

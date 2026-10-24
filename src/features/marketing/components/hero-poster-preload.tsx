@@ -22,7 +22,7 @@ export function HeroPosterPreload({ ml }: { ml: MlSize }) {
       urls[`${t}-${l}`] = posterUrl(t, l, ml);
 
   // providers.tsx: storageKey "theme", default "black"; navy/white → light.
-  const js = `(function(){try{var u=${JSON.stringify(urls)};var t=localStorage.getItem("theme")||"black";t=t==="black"||t==="pink"?t:"light";var l=matchMedia("(min-width: 48rem)").matches?"md":"sm";var k=document.createElement("link");k.rel="preload";k.as="image";k.href=u[t+"-"+l];k.setAttribute("fetchpriority","high");document.head.appendChild(k)}catch(e){}})()`;
+  const js = `(function(){try{var u=${JSON.stringify(urls)};var t=localStorage.getItem("theme")||"black";t=t==="black"?t:"light";var l=matchMedia("(min-width: 48rem)").matches?"md":"sm";var k=document.createElement("link");k.rel="preload";k.as="image";k.href=u[t+"-"+l];k.setAttribute("fetchpriority","high");document.head.appendChild(k)}catch(e){}})()`;
 
   return <script dangerouslySetInnerHTML={{ __html: js }} />;
 }

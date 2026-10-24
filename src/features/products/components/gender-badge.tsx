@@ -91,7 +91,7 @@ export function GenderBadge({
   return (
     <span
       className={cn(
-        "border-border bg-secondary text-foreground inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+        "bg-secondary text-foreground inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold",
         className,
       )}
     >

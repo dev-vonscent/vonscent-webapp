@@ -154,6 +154,24 @@ describe("PromoPopup", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("цэс / сагс нээлттэй бол давхарлахгүй, хаагдсаны дараа гарна", async () => {
+    await renderPopup();
+    const sheet = document.createElement("div");
+    sheet.setAttribute("role", "dialog");
+    sheet.setAttribute("data-state", "open");
+    document.body.append(sheet);
+    await act(async () => {
+      window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
+      vi.advanceTimersByTime(3000);
+    });
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    sheet.remove();
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
   it("товч дарахад ч гарна", async () => {
     await renderPopup();
     await act(async () => {

@@ -3,7 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ArrowLeft, Gift, Ticket } from "lucide-react";
+import { AlertCircle, Gift, Ticket } from "lucide-react";
+import { AccountPageHeader } from "./account-page-header";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { useCart, selectSubtotal } from "@/features/cart/store";
@@ -119,12 +120,10 @@ export function CouponDetail({ code }: { code: string }) {
     <div
       className={cn("mx-auto max-w-md px-4 pt-6", active ? "pb-28" : "pb-10")}
     >
-      <Link
-        href="/account/coupons"
-        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs transition-colors"
-      >
-        <ArrowLeft className="size-3.5" /> Миний купон
-      </Link>
+      <AccountPageHeader
+        title="Купоны дэлгэрэнгүй"
+        backHref="/account/coupons"
+      />
 
       {/* The same ticket as the wallet, at hero size. */}
       <CouponTicket
@@ -223,7 +222,8 @@ export function CouponDetail({ code }: { code: string }) {
       {/* One action, pinned where a thumb lands. */}
       {active && (
         <div className="bg-background/95 border-border fixed inset-x-0 bottom-20 z-40 border-t px-4 py-3 backdrop-blur md:bottom-0">
-          <div className="mx-auto max-w-md">
+          {/* Дээрх агуулгатай ижил өргөн: тэр нь `max-w-md` дотроо `px-4`. */}
+          <div className="mx-auto max-w-md px-4">
             <LoadingButton
               size="lg"
               className="bg-cta text-cta-foreground hover:bg-cta/90 w-full"

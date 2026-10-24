@@ -92,7 +92,9 @@ export default function CartPage() {
 
   return (
     <div className="mx-auto max-w-352 px-4 py-8 md:px-8">
-      <h1 className="mb-8 font-serif text-3xl font-semibold">Таны сагс</h1>
+      <h1 data-page-title className="mb-8 font-serif text-3xl font-semibold">
+        Таны сагс
+      </h1>
 
       {/* `minmax(0,1fr)`: загваргүй grid багана агуулгынхаа min-content
           хүртэл тэлдэг — мөр багтахгүй бол дэлгэцээс хэтэрч, iOS хуудсыг

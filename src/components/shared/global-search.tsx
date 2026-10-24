@@ -8,7 +8,7 @@ import * as Sentry from "@sentry/nextjs";
 import { Command } from "cmdk";
 import { BookOpen, Layers, Search, Sparkles, Tag, X } from "lucide-react";
 import { formatPrice } from "@/lib/format";
-import { MIN_SEARCH_LENGTH } from "@/lib/constants";
+import { MIN_SEARCH_LENGTH, SEARCH_PLACEHOLDER } from "@/lib/constants";
 import { isSearchable } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { useFeatureFlag } from "@/components/feature-flags";
@@ -110,7 +110,26 @@ function HitThumb({ hit }: { hit: SearchHit }) {
   );
 }
 
-export function GlobalSearch() {
+const noopSubscribe = () => () => {};
+
+/** Mac дээр ⌘K, бусад (Windows/Linux) дээр Ctrl+K — товчлол нь хоёуланд ажиллана. */
+function getShortcutLabel() {
+  return /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘K" : "Ctrl+K";
+}
+
+export function GlobalSearch({
+  trigger = "icon",
+  className,
+}: {
+  /**
+   * `field` — an always-visible search bar that opens the same palette;
+   * `icon` — the compact round button; `adaptive` — icon on phones, bar from
+   * md (storefront header). Render ONE instance per page: each registers the
+   * ⌘K shortcut.
+   */
+  trigger?: "icon" | "field" | "adaptive";
+  className?: string;
+} = {}) {
   const router = useRouter();
   const requestsOn = useFeatureFlag("perfume_requests");
   const [open, setOpen] = React.useState(false);
@@ -118,6 +137,21 @@ export function GlobalSearch() {
   const [results, setResults] =
     React.useState<SearchResults>(EMPTY_SEARCH_RESULTS);
   const [loading, setLoading] = React.useState(false);
+  // md+ дээр панель header-ийн хайлтын pill-ийн яг байранд нээгдэнэ — input
+  // шилжихгүй, pill өөрөө идэвхжиж буй мэт харагдана. Утсан дээр (pill
+  // байхгүй, icon) `null` → дэлгэцийн дээд хэсэгт төвлөрнө.
+  const fieldRef = React.useRef<HTMLButtonElement>(null);
+  const [anchor, setAnchor] = React.useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+
+  const shortcutLabel = React.useSyncExternalStore(
+    noopSubscribe,
+    getShortcutLabel,
+    () => "⌘K",
+  );
 
   const ready = isSearchable(value);
   const count = totalHits(results);
@@ -141,6 +175,21 @@ export function GlobalSearch() {
       setValue("");
       setResults(EMPTY_SEARCH_RESULTS);
     }
+  }, [open]);
+
+  // Нээгдэх агшинд pill-ийн байрлалыг авна; цонхны хэмжээ өөрчлөгдвөл дахин.
+  // ⌘K-аар нээхэд ч мөн адил — pill харагдаж байвал түүн дээр нээгдэнэ.
+  React.useLayoutEffect(() => {
+    if (!open) return;
+    function measure() {
+      const r = fieldRef.current?.getBoundingClientRect();
+      setAnchor(
+        r && r.width > 0 ? { top: r.top, left: r.left, width: r.width } : null,
+      );
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
   }, [open]);
 
   // Debounced lookup; a stale-response guard keeps out-of-order replies from
@@ -187,32 +236,79 @@ export function GlobalSearch() {
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
-      <DialogPrimitive.Trigger
-        aria-label="Хайх"
-        className="text-muted-foreground hover:bg-secondary hover:text-foreground flex size-9 items-center justify-center rounded-full transition-colors"
-      >
-        <Search className="size-5" />
-      </DialogPrimitive.Trigger>
-
+      {trigger !== "icon" && (
+        <DialogPrimitive.Trigger
+          ref={fieldRef}
+          aria-label="Үнэртэн, брэнд хайх"
+          className={cn(
+            "bg-secondary text-muted-foreground hover:bg-accent flex h-11 w-full min-w-0 items-center gap-2.5 rounded-full px-4 text-left text-sm transition-colors md:h-10",
+            trigger === "adaptive" && "hidden md:flex",
+            className,
+          )}
+        >
+          <Search className="size-4 shrink-0" />
+          <span className="min-w-0 flex-1 truncate">{SEARCH_PLACEHOLDER}</span>
+          <kbd
+            aria-hidden
+            className="bg-background text-muted-foreground hidden rounded-md px-1.5 py-0.5 font-sans text-[11px] lg:inline"
+          >
+            {shortcutLabel}
+          </kbd>
+        </DialogPrimitive.Trigger>
+      )}
+      {trigger !== "field" && (
+        <DialogPrimitive.Trigger
+          aria-label="Хайх"
+          className={cn(
+            "text-muted-foreground hover:bg-secondary hover:text-foreground flex size-9 items-center justify-center rounded-full transition-colors",
+            trigger === "adaptive" && "text-foreground size-11 md:hidden",
+            className,
+          )}
+        >
+          <Search className="size-5" />
+        </DialogPrimitive.Trigger>
+      )}
       <DialogPrimitive.Portal>
         {/* Spotlight-style scrim: heavy blur carries the separation, with only
             a whisper of dim so the artwork behind keeps its colour. */}
         <DialogPrimitive.Overlay className="data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/20 backdrop-blur-xl duration-200" />
 
-        <DialogPrimitive.Content className="border-border/60 bg-card data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[12vh] left-1/2 z-50 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 overflow-hidden rounded-2xl border shadow-2xl duration-200">
+        {/* Radius = input мөрийн өндрийн хагас: хоосон үед pill (trigger-тэй
+            ижил хэлбэр), илэрц гарч сунахад картын булан болно. */}
+        <DialogPrimitive.Content
+          style={
+            anchor
+              ? {
+                  top: anchor.top,
+                  left: anchor.left,
+                  width: anchor.width,
+                  maxWidth: "none",
+                  translate: "none",
+                }
+              : undefined
+          }
+          className={cn(
+            "bg-card ring-border/60 fixed top-[12vh] left-1/2 z-50 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 overflow-hidden rounded-[22px] shadow-2xl ring-1 md:rounded-[20px]",
+            "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 duration-150",
+            anchor
+              ? "data-[state=open]:animate-search-open"
+              : "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:duration-200",
+          )}
+        >
           <DialogPrimitive.Title className="sr-only">
             Хайлт
           </DialogPrimitive.Title>
 
           <Command shouldFilter={false} label="Хайлт">
             <div className="relative">
+              {/* Icon, бичвэрийн байрлал trigger-тэй яг ижил (px-4, gap-2.5). */}
               <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2" />
               <Command.Input
                 autoFocus
                 value={value}
                 onValueChange={setValue}
-                placeholder="Үнэртэн, багц, брэнд, нийтлэл хайх…"
-                className="placeholder:text-muted-foreground h-14 w-full border-0 bg-transparent px-11 text-base"
+                placeholder={SEARCH_PLACEHOLDER}
+                className="placeholder:text-muted-foreground h-11 w-full border-0 bg-transparent pr-11 pl-10.5 text-base outline-none md:h-10 md:text-sm"
               />
               <DialogPrimitive.Close
                 aria-label="Хаах"
@@ -222,99 +318,112 @@ export function GlobalSearch() {
               </DialogPrimitive.Close>
             </div>
 
-            {value.trim() && !ready && (
-              <p className="text-muted-foreground border-border border-t px-4 py-6 text-center text-sm">
-                Хайлт {MIN_SEARCH_LENGTH} тэмдэгтээс эхэлнэ — цааш нь бичээрэй.
-              </p>
-            )}
+            {/* Илэрцийн хэсэг доошоо зөөлөн сунана (0fr → 1fr). */}
+            <div
+              className={cn(
+                "grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none",
+                value.trim() ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+              )}
+            >
+              <div className="min-h-0 overflow-hidden">
+                {value.trim() && !ready && (
+                  <p className="text-muted-foreground border-border border-t px-4 py-6 text-center text-sm">
+                    Хайлт {MIN_SEARCH_LENGTH} тэмдэгтээс эхэлнэ
+                  </p>
+                )}
 
-            {ready && (
-              <Command.List className="border-border max-h-[60vh] overflow-y-auto border-t">
-                <Command.Empty className="text-muted-foreground px-4 py-6 text-center text-sm">
-                  {loading ? (
-                    "Хайж байна…"
-                  ) : (
-                    <>
-                      {`«${value.trim()}» гэсэн юу ч олдсонгүй. Брэнд эсвэл үнэрийн нэрээр оролдож үзээрэй.`}
-                      {/* Манайд байхгүй үнэртнийг санал болгох (0137). */}
-                      {requestsOn && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            goTo(
-                              `/request?q=${encodeURIComponent(value.trim())}`,
-                            )
-                          }
-                          className="text-foreground hover:text-gold-strong mx-auto mt-3 block font-medium underline underline-offset-4 transition-colors"
-                        >
-                          Хүссэн үнэртэн тань байхгүй бол бидэнд санал болгох
-                          боломжтой шүү.
-                        </button>
+                {ready && (
+                  <Command.List className="border-border max-h-[60vh] overflow-y-auto border-t">
+                    <Command.Empty className="text-muted-foreground px-4 py-6 text-center text-sm">
+                      {loading ? (
+                        "Хайж байна…"
+                      ) : (
+                        <>
+                          {`«${value.trim()}» гэсэн юу ч олдсонгүй. Брэнд эсвэл үнэрийн нэрээр оролдож үзээрэй.`}
+                          {/* Манайд байхгүй үнэртнийг санал болгох (0137). */}
+                          {requestsOn && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                goTo(
+                                  `/request?q=${encodeURIComponent(value.trim())}`,
+                                )
+                              }
+                              className="text-foreground hover:text-gold-strong mx-auto mt-3 block font-medium underline underline-offset-4 transition-colors"
+                            >
+                              Хүссэн үнэртэн тань байхгүй бол бидэнд санал
+                              болгох боломжтой шүү.
+                            </button>
+                          )}
+                        </>
                       )}
-                    </>
-                  )}
-                </Command.Empty>
+                    </Command.Empty>
 
-                {SEARCH_KINDS.map((kind) =>
-                  results[kind].length === 0 ? null : (
-                    <Command.Group
-                      key={kind}
-                      heading={SEARCH_KIND_LABEL[kind]}
-                      className="**:[[cmdk-group-heading]]:text-muted-foreground **:[[cmdk-group-heading]]:px-4 **:[[cmdk-group-heading]]:pt-3 **:[[cmdk-group-heading]]:pb-1 **:[[cmdk-group-heading]]:text-xs **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:tracking-wide **:[[cmdk-group-heading]]:uppercase"
-                    >
-                      {results[kind].map((hit) => {
-                        const meta = hitMeta(hit);
-                        return (
-                          <Command.Item
-                            key={`${hit.kind}-${hit.id}`}
-                            value={`${hit.kind}-${hit.id}`}
-                            onSelect={() => goTo(hit.href)}
-                            className="data-[selected=true]:bg-accent flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors"
-                          >
-                            <HitThumb hit={hit} />
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm font-medium">
-                                {hit.title}
-                              </span>
-                              {/* Багцын мөр: дотор нь ямар савнууд байгааг
+                    {SEARCH_KINDS.map((kind) =>
+                      results[kind].length === 0 ? null : (
+                        <Command.Group
+                          key={kind}
+                          heading={SEARCH_KIND_LABEL[kind]}
+                          className="**:[[cmdk-group-heading]]:text-muted-foreground **:[[cmdk-group-heading]]:px-4 **:[[cmdk-group-heading]]:pt-3 **:[[cmdk-group-heading]]:pb-1 **:[[cmdk-group-heading]]:text-xs **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:tracking-wide **:[[cmdk-group-heading]]:uppercase"
+                        >
+                          {results[kind].map((hit) => {
+                            const meta = hitMeta(hit);
+                            return (
+                              <Command.Item
+                                key={`${hit.kind}-${hit.id}`}
+                                value={`${hit.kind}-${hit.id}`}
+                                onSelect={() => goTo(hit.href)}
+                                className="data-[selected=true]:bg-accent flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors"
+                              >
+                                <HitThumb hit={hit} />
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-sm font-medium">
+                                    {hit.title}
+                                  </span>
+                                  {/* Багцын мөр: дотор нь ямар савнууд байгааг
                                   зураг + нэрээр нь харуулна. */}
-                              {(hit.subtitle || hit.memberImages?.length) && (
-                                <span className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1.5">
-                                  {hit.memberImages &&
-                                    hit.memberImages.length > 0 && (
-                                      <MemberStrip urls={hit.memberImages} />
-                                    )}
-                                  {hit.subtitle && (
-                                    <span className="truncate text-xs tracking-wide uppercase">
-                                      {hit.subtitle}
+                                  {(hit.subtitle ||
+                                    hit.memberImages?.length) && (
+                                    <span className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1.5">
+                                      {hit.memberImages &&
+                                        hit.memberImages.length > 0 && (
+                                          <MemberStrip
+                                            urls={hit.memberImages}
+                                          />
+                                        )}
+                                      {hit.subtitle && (
+                                        <span className="truncate text-xs tracking-wide uppercase">
+                                          {hit.subtitle}
+                                        </span>
+                                      )}
                                     </span>
                                   )}
                                 </span>
-                              )}
-                            </span>
-                            {meta && (
-                              <span className="text-muted-foreground shrink-0 text-sm">
-                                {meta}
-                              </span>
-                            )}
-                          </Command.Item>
-                        );
-                      })}
-                    </Command.Group>
-                  ),
-                )}
+                                {meta && (
+                                  <span className="text-muted-foreground shrink-0 text-sm">
+                                    {meta}
+                                  </span>
+                                )}
+                              </Command.Item>
+                            );
+                          })}
+                        </Command.Group>
+                      ),
+                    )}
 
-                {count > 0 && (
-                  <Command.Item
-                    value="show-all"
-                    onSelect={goToCatalog}
-                    className="border-border text-muted-foreground data-[selected=true]:bg-accent data-[selected=true]:text-foreground mt-1 w-full cursor-pointer border-t px-4 py-3 text-center text-sm"
-                  >
-                    Каталогоос бүх илэрцийг харах →
-                  </Command.Item>
+                    {count > 0 && (
+                      <Command.Item
+                        value="show-all"
+                        onSelect={goToCatalog}
+                        className="border-border text-muted-foreground data-[selected=true]:bg-accent data-[selected=true]:text-foreground mt-1 w-full cursor-pointer border-t px-4 py-3 text-center text-sm"
+                      >
+                        Каталогоос бүх илэрцийг харах →
+                      </Command.Item>
+                    )}
+                  </Command.List>
                 )}
-              </Command.List>
-            )}
+              </div>
+            </div>
           </Command>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

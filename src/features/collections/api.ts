@@ -477,6 +477,9 @@ export async function getBuilderProducts(
 }> {
   const { items, total, page, perPage } = await getCatalog({
     ...filters,
+    // Багц дотор багц орохгүй — builder «Төрөл»-гүй тул хуучин `?kind=bundle`
+    // холбоос жагсаалтыг арилгах аргагүй хоосон болгох ёсгүй.
+    kind: undefined,
     perPage: filters.perPage ?? BUILDER_PER_PAGE,
   });
   if (!items.length) return { items: [], total, page, perPage };

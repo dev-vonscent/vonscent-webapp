@@ -62,6 +62,10 @@ function BrandLink({
             // half-way across. The wall shows every brand within one cycle, so
             // all of them are needed as soon as the section is on screen.
             loading="eager"
+            // Eager + default priority made React preload every logo in
+            // <head> ahead of the hero (LCP). "low" skips that preload; the
+            // logos still start downloading with the page, just after it.
+            fetchPriority="low"
             className="brand-logo object-contain"
           />
         </span>
