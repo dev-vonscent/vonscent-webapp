@@ -3,7 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useReducedMotion } from "motion/react";
+import { motion } from "motion/react";
 import {
   BadgeCheck,
   ChevronRight,
@@ -24,6 +24,7 @@ import { ProfileEditDialog } from "@/features/account/components/profile-edit-di
 import { EmailSettings } from "@/features/account/components/email-settings";
 import { useSignOutConfirm } from "@/features/account/components/use-sign-out-confirm";
 import { isPhoneEmail } from "@/lib/auth/phone-email";
+import { formatPhone } from "@/lib/format";
 import { WheelEntryCard } from "@/features/lucky-wheel/components/wheel-entry-card";
 import type { ProductListItem } from "@/lib/types";
 import { useFeatureFlag } from "@/components/feature-flags";
@@ -165,11 +166,10 @@ export default function ProfilePage() {
       {initial}
     </span>
   );
-  const handle = (
-    displayEmail.split("@")[0] ||
-    phone ||
-    "vonscent"
-  ).toLowerCase();
+  // Нэрийн доорх мөр: дэлгүүр хэрэглэгчийг утсаар нь таньдаг (verify.mn) тул
+  // эхлээд дугаар, байхгүй бол имэйл. Өмнө нь имэйлийн «@»-ийн өмнөх хэсгийг
+  // social маягийн «@handle» болгодог байсан нь имэйл ил гарсан мэт харагдаж байв.
+  const subline = phone ? formatPhone(phone) : displayEmail;
 
   return (
     <div className="space-y-8">
@@ -180,8 +180,9 @@ export default function ProfilePage() {
         </p>
       )}
 
-      {/* Профайлын толгой: зураг зүүн талд, нэр · @handle · түвшин · засах
-          баруун талд нь нэг багана болж зэрэгцэнэ (утсан дээр ч). */}
+      {/* Профайлын толгой: зураг зүүн талд, нэр · утас · түвшин баруун
+          талд нь нэг багана болж зэрэгцэнэ (утсан дээр ч); «Засах» баруун
+          дээд буланд — утсан дээр зөвхөн icon. */}
       <header className="flex items-center gap-5 sm:gap-8">
         <div className="relative shrink-0">
           {tier ? (
@@ -214,26 +215,32 @@ export default function ProfilePage() {
                 />
               )}
             </h1>
-            <p className="text-muted-foreground truncate text-sm">@{handle}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {tier && (
-              <Link
-                href="/account/tier"
-                className="transition-opacity hover:opacity-80"
-              >
-                <TierBadge tier={tier.key} />
-              </Link>
+            {subline && (
+              <p className="text-muted-foreground truncate text-sm tabular-nums">
+                {subline}
+              </p>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setProfileOpen(true)}
-            >
-              <Pencil className="size-4" /> Засах
-            </Button>
           </div>
+          {tier && (
+            <Link
+              href="/account/tier"
+              className="inline-flex transition-opacity hover:opacity-80"
+            >
+              <TierBadge tier={tier.key} />
+            </Link>
+          )}
         </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0 self-start"
+          aria-label="Профайл засах"
+          onClick={() => setProfileOpen(true)}
+        >
+          <Pencil className="size-4" />
+          <span className="max-sm:sr-only">Засах</span>
+        </Button>
       </header>
 
       {/* Stat tiles */}
@@ -368,7 +375,7 @@ function IconCircle({ icon: Icon }: { icon: LucideIcon }) {
   );
 }
 
-// Link needs to be a motion component so the tile can own the hover state.
+// Link needs to be a motion component for the tap-scale feedback.
 const MotionLink = motion.create(Link);
 
 function Tile({
@@ -386,27 +393,13 @@ function Tile({
 }) {
   // The chevron is the tile's "I'm tappable" signal. Touch devices have no
   // hover, so there it simply stays visible; only on a fine pointer does it
-  // hide and glide out from behind the kicker.
-  const [hoverCapable, setHoverCapable] = React.useState(false);
-  React.useEffect(() => {
-    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
-    const sync = () => setHoverCapable(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-  const reduceMotion = useReducedMotion();
-  const [active, setActive] = React.useState(false);
-  const tucked = hoverCapable && !reduceMotion && !active;
-
+  // hide and glide out from behind the kicker. Pure CSS with a pinned
+  // compositor layer: the old JS/WAAPI spring dropped the layer when the
+  // exit animation finished, which made the tile just left flicker.
   return (
     <MotionLink
       href={href}
       initial={false}
-      onHoverStart={() => setActive(true)}
-      onHoverEnd={() => setActive(false)}
-      onFocus={() => setActive(true)}
-      onBlur={() => setActive(false)}
       whileTap={{ scale: 0.985 }}
       transition={{ type: "spring", stiffness: 320, damping: 30, mass: 0.6 }}
       className={cn(
@@ -423,22 +416,14 @@ function Tile({
         >
           {kicker}
         </p>
-        {/* Animating opacity/x only — the span keeps its slot in the flow at
-            every state, so the tile never reflows. */}
-        <motion.span
+        {/* Animating opacity/translate only — the span keeps its slot in the
+            flow at every state, so the tile never reflows. */}
+        <span
           aria-hidden
-          className="text-muted-foreground group-hover:text-foreground ml-auto shrink-0 transition-colors"
-          initial={false}
-          animate={{ opacity: tucked ? 0 : 1, x: tucked ? -16 : 0 }}
-          transition={{
-            type: "spring",
-            stiffness: 420,
-            damping: 34,
-            mass: 0.6,
-          }}
+          className="text-muted-foreground group-hover:text-foreground ml-auto shrink-0 transition-[opacity,translate,color] duration-300 ease-out will-change-[opacity,translate] group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100 pointer-fine:motion-safe:-translate-x-4 pointer-fine:motion-safe:opacity-0"
         >
           <ChevronRight className="size-4" />
-        </motion.span>
+        </span>
       </div>
       <p className="font-serif text-2xl/snug font-semibold tabular-nums">
         {value}

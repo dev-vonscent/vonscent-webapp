@@ -97,9 +97,12 @@ export default async function CatalogPage({
 
   return (
     <FilterQueryProvider>
-      <div className="mx-auto max-w-352 px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-420 px-4 py-8 md:px-8">
         <div className="mb-6">
-          <h1 className="font-serif text-3xl font-semibold tracking-tight">
+          <h1
+            data-page-title
+            className="font-serif text-3xl font-semibold tracking-tight"
+          >
             {filters.search ? `«${filters.search}» хайлтын үр дүн` : "Каталог"}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">

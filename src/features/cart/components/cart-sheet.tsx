@@ -36,11 +36,14 @@ export function CartSheet({
   triggerVariant = "ghost",
   triggerClassName,
   label,
+  labelClassName,
 }: {
   triggerVariant?: ButtonProps["variant"];
   triggerClassName?: string;
   /** When set, the trigger shows this text beside the icon (nav-style). */
   label?: string;
+  /** E.g. `max-md:sr-only` — a label that only shows from a breakpoint. */
+  labelClassName?: string;
 } = {}) {
   const items = useCart((s) => s.items);
   const setQty = useCart((s) => s.setQty);
@@ -130,7 +133,7 @@ export function CartSheet({
           aria-label="Сагс"
         >
           <ShoppingCart className="size-5" />
-          {label && <span>{label}</span>}
+          {label && <span className={labelClassName}>{label}</span>}
           {mounted && count > 0 && (
             <span className="bg-foreground text-background absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full text-[10px] font-semibold">
               {count}
@@ -158,14 +161,15 @@ export function CartSheet({
             <p className="text-muted-foreground text-sm text-balance">
               Сагс хоосон байна. Дуртай үнэртнээ 2ml-ээс эхлэн туршиж үзээрэй.
             </p>
-            <div className="flex flex-col items-center gap-2">
+            {/* Ус, багц хоёр тэнцүү зам — хэмжээ, хэлбэр нь ижил. */}
+            <div className="flex w-full max-w-56 flex-col gap-2">
               <SheetClose asChild>
-                <Button asChild variant="secondary">
+                <Button asChild variant="secondary" className="w-full">
                   <Link href="/catalog">Бараа үзэх</Link>
                 </Button>
               </SheetClose>
               <SheetClose asChild>
-                <Button asChild variant="ghost" size="sm">
+                <Button asChild variant="secondary" className="w-full">
                   <Link href="/collections">Багц үзэх</Link>
                 </Button>
               </SheetClose>

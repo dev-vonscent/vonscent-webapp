@@ -11,7 +11,11 @@ import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { toast } from "@/lib/toast";
-import { BUNDLE_ML_SIZES, DEFAULT_BUNDLE_ML } from "@/lib/constants";
+import {
+  BUILDER_SEARCH_PLACEHOLDER,
+  BUNDLE_ML_SIZES,
+  DEFAULT_BUNDLE_ML,
+} from "@/lib/constants";
 import { useCart } from "@/features/cart/store";
 import { CatalogFilters } from "@/features/catalog/components/catalog-filters";
 import { CatalogFilterSheet } from "@/features/catalog/components/catalog-filter-sheet";
@@ -192,7 +196,7 @@ function BuilderInner({
                   className={cn(
                     // Утсан дээр 44px — DESIGN.md-ийн доод хязгаар. Десктоп
                     // дээр нягтруулна (`md:`), учир нь тэнд хулгана нарийн.
-                    "flex min-h-11 items-center justify-center rounded-full px-4 text-xs font-semibold transition-colors md:min-h-0 md:px-3 md:py-1",
+                    "flex min-h-11 items-center justify-center rounded-full px-4 text-xs font-semibold md:min-h-0 md:px-3 md:py-1",
                     size === ml
                       ? "bg-foreground text-background shadow-sm"
                       : "text-muted-foreground hover:text-foreground",
@@ -378,20 +382,28 @@ function BuilderInner({
           brandLogos={brandLogos}
           priceBounds={priceBounds}
           families={families}
+          showKind={false}
         />
         <CatalogSort iconOnly />
-        <CatalogSearch className="flex-1" />
+        <CatalogSearch
+          className="flex-1"
+          placeholder={BUILDER_SEARCH_PLACEHOLDER}
+        />
       </div>
 
       <div className="mt-6 flex gap-10 lg:mt-8">
         {/* Desktop sidebar */}
         <aside className="hidden w-96 shrink-0 lg:block">
-          <CatalogSearch className="mb-6" />
+          <CatalogSearch
+            className="mb-6"
+            placeholder={BUILDER_SEARCH_PLACEHOLDER}
+          />
           <CatalogFilters
             brands={brands}
             brandLogos={brandLogos}
             priceBounds={priceBounds}
             families={families}
+            showKind={false}
           />
         </aside>
 

@@ -79,38 +79,26 @@ export async function ContactFab() {
 }
 
 /**
- * Гар утасны цэсний сошиал хэсэг — гарчигтай, тусдаа. Хаяг тохируулаагүй бол
- * гарчигтайгаа хамт бүтэн алга болно.
+ * Гар утасны цэсний доод мөрийн сошиал icon-ууд (загвар сонгогчийн хажууд).
+ * Нэр нь aria-label-д. Хаяг тохируулаагүй бол бүтэн алга болно.
  */
 export async function MenuSocialLinks() {
   const items = await links();
   if (items.length === 0) return null;
   return (
-    <section
-      aria-labelledby="menu-social-heading"
-      style={{ animationDelay: "300ms" }}
-      className="animate-fade-up animation-duration-[380ms] mt-7 motion-reduce:animate-none"
-    >
-      <h2
-        id="menu-social-heading"
-        className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase"
-      >
-        Биднийг дагаарай
-      </h2>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        {items.map(({ href, label, icon: Icon }) => (
-          <a
-            key={label}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="border-border hover:bg-secondary flex h-12 items-center gap-2.5 rounded-2xl border px-4 text-sm font-medium transition-colors"
-          >
-            <Icon className="size-5 shrink-0" />
-            {label}
-          </a>
-        ))}
-      </div>
-    </section>
+    <div className="-ml-2.5 flex items-center">
+      {items.map(({ href, label, icon: Icon }) => (
+        <a
+          key={label}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={label}
+          className="text-muted-foreground hover:text-foreground hover:bg-secondary flex size-11 items-center justify-center rounded-full transition-colors"
+        >
+          <Icon className="size-5" />
+        </a>
+      ))}
+    </div>
   );
 }

@@ -26,7 +26,10 @@ export function Providers({
     <ThemeProvider
       attribute="class"
       defaultTheme="black"
-      themes={["navy", "black", "white", "pink"]}
+      themes={["black", "white"]}
+      // navy/pink загваруудыг нуусан — өмнө нь сонгосон хэрэглэгчийн
+      // localStorage-д үлдсэн утгыг light (white) руу буулгана.
+      value={{ black: "black", white: "white", navy: "white", pink: "white" }}
       enableSystem={false}
       disableTransitionOnChange
     >

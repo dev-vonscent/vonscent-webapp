@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Bookmark } from "lucide-react";
+import { Bookmark } from "lucide-react";
+import { AccountBackButton } from "@/features/account/components/account-page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -213,21 +214,22 @@ export default async function OrderDetailPage({
 
   return (
     <div className="space-y-6">
-      <Link
-        href="/account/orders"
-        className="text-muted-foreground hover:text-foreground hidden items-center gap-1 text-sm md:inline-flex"
-      >
-        <ArrowLeft className="size-4" /> Захиалгууд руу буцах
-      </Link>
-
+      {/* Утсан дээр сайтын толгой «← Миний захиалга»-г харуулдаг тул ← товч
+          md-ээс дээш л; дугаар, огноо нь хоёуланд нь хэрэгтэй. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-serif text-2xl font-semibold">
-            {order.order_no}
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            {formatDateTime(order.created_at)}
-          </p>
+        <div className="flex items-center gap-3">
+          <AccountBackButton
+            href="/account/orders"
+            className="hidden md:flex"
+          />
+          <div>
+            <h1 className="font-serif text-2xl font-semibold">
+              {order.order_no}
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              {formatDateTime(order.created_at)}
+            </p>
+          </div>
         </div>
         <Badge className={ORDER_STATUS_STYLE[order.status]}>
           {ORDER_STATUS_LABEL[order.status]}
@@ -418,12 +420,7 @@ function Row({ label, value, credit, strong }: OrderSummaryRow) {
 function MovedToSaved({ orderNo }: { orderNo: string }) {
   return (
     <div className="space-y-6">
-      <Link
-        href="/account/orders"
-        className="text-muted-foreground hover:text-foreground hidden items-center gap-1 text-sm md:inline-flex"
-      >
-        <ArrowLeft className="size-4" /> Захиалгууд руу буцах
-      </Link>
+      <AccountBackButton href="/account/orders" className="hidden md:flex" />
       <EmptyState
         size="lg"
         icon={Bookmark}

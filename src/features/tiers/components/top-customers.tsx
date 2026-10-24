@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion } from "motion/react";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { SegmentedTabs } from "@/components/shared/segmented-tabs";
 import { LEADERBOARD_PERIODS, type LeaderboardPeriod } from "../lib";
 import type { Leaderboard, LeaderboardEntry, Leaderboards } from "../types";
 import { TierFrame } from "./tier-frame";
@@ -51,29 +52,16 @@ export function TopCustomers({
             Хамгийн их худалдан авалт хийсэн хэрэглэгчид
           </p>
         </div>
-        <div
-          role="tablist"
-          aria-label="Хугацаа"
-          className="bg-secondary flex gap-1 rounded-lg p-1 sm:inline-flex"
-        >
-          {LEADERBOARD_PERIODS.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              role="tab"
-              aria-selected={period === p.key}
-              onClick={() => setPeriod(p.key)}
-              className={cn(
-                "flex-auto rounded-md px-2 py-1.5 text-xs font-medium whitespace-nowrap transition-colors sm:flex-none sm:px-3 sm:text-sm",
-                period === p.key
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedTabs
+          label="Хугацаа"
+          tabs={LEADERBOARD_PERIODS.map((p) => ({
+            value: p.key,
+            label: p.label,
+          }))}
+          value={period}
+          onChange={setPeriod}
+          className="sm:inline-flex"
+        />
       </div>
 
       <Podium key={period} board={board} myAvatar={myAvatar} />

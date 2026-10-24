@@ -4,6 +4,7 @@ import { getMyCollections } from "@/features/collections/api";
 import { MyCollections } from "@/features/collections/components/my-collections";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
+import { AccountPageHeader } from "@/features/account/components/account-page-header";
 
 export const metadata: Metadata = { title: "Миний багцууд" };
 
@@ -31,21 +32,28 @@ export default async function MyCollectionsPage() {
   return (
     <div className="space-y-6">
       {/*
-        The build link lives here as well as in the empty state: once a
-        customer has saved a bundle the empty state is gone, and with it the
-        only way from this page to making another one.
+        The empty state carries its own build link, so the header one only
+        shows once a bundle exists — otherwise two identical buttons stack.
       */}
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-muted-foreground text-sm">
-          Өөрийн үүсгэсэн багцууд — сагсанд нэмэх, нэр солих, устгах.
-        </p>
-        <Button asChild className="shrink-0">
-          <Link href="/collections/build">
-            Багц үүсгэх
-          </Link>
-        </Button>
-      </div>
-      <MyCollections collections={collections} />
+      <AccountPageHeader
+        title="Миний багцууд"
+        aside={
+          collections.length > 0 && (
+            <Button asChild size="sm">
+              <Link href="/collections/build">Багц үүсгэх</Link>
+            </Button>
+          )
+        }
+      />
+      {collections.length === 0 ? (
+        // Утсан дээр хоосон төлөв дэлгэцийн дунд — толгой, доод цэсийн
+        // хоорондох зайд босоогоор голлоно.
+        <div className="flex flex-col justify-center max-md:min-h-[calc(100svh-14rem)]">
+          <MyCollections collections={collections} />
+        </div>
+      ) : (
+        <MyCollections collections={collections} />
+      )}
     </div>
   );
 }

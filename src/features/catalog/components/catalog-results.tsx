@@ -9,6 +9,9 @@ import { useFilterQuery } from "./use-filter-query";
  * still in flight. The chips flip instantly (optimistic query string), which
  * without this would leave the list looking authoritative and wrong for as long
  * as the server render takes.
+ *
+ * The dim waits 300ms (`delay-300`, only on the way in): a fast render would
+ * otherwise blink the whole grid to half opacity and back — read as flicker.
  */
 export function CatalogResults({ children }: { children: React.ReactNode }) {
   const { isPending } = useFilterQuery();
@@ -17,7 +20,7 @@ export function CatalogResults({ children }: { children: React.ReactNode }) {
       aria-busy={isPending}
       className={cn(
         "transition-opacity duration-200",
-        isPending && "pointer-events-none opacity-50",
+        isPending && "pointer-events-none opacity-50 delay-300",
       )}
     >
       {children}

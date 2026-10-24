@@ -537,6 +537,12 @@ export const SIGN_OUT_TIMEOUT_MS = 2_500;
  */
 export const MIN_SEARCH_LENGTH = 2;
 
+/** Хайлтын талбаруудын (header, глобал панель, каталог) нэгдсэн placeholder. */
+export const SEARCH_PLACEHOLDER = "Үнэртэн, багц, брэнд хайх";
+
+/** Багц үүсгэгчид зөвхөн ус сонгогдоно — багц дотор багц орохгүй. */
+export const BUILDER_SEARCH_PLACEHOLDER = "Үнэртэн, брэнд хайх";
+
 /** Глобал хайлтын нэг төрөлд ногдох илэрцийн тоо. */
 export const SEARCH_LIMIT_PER_KIND = 5;
 

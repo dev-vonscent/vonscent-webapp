@@ -197,6 +197,10 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
     if (!settings.enabled || live.length === 0) return;
     if (shownForThisDocument) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const arm = () => {
+      for (const t of POPUP_TRIGGERS)
+        window.addEventListener(t, onFirst, { passive: true });
+    };
     const onFirst = (e: Event) => {
       if (!isUserInput(e)) return;
       for (const t of POPUP_TRIGGERS) window.removeEventListener(t, onFirst);
@@ -207,12 +211,17 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
       timer = setTimeout(() => {
         // Хүлээх хооронд өөр цонх (`suppressPromoPopup`) нээгдсэн байж болно.
         if (shownForThisDocument) return;
+        // Хэрэглэгч цэс / хайлт / сагс нээсэн бол түүний дээр давхарлахгүй —
+        // тэр цонх хаагдсаны дараах үйлдлийг хүлээнэ.
+        if (document.querySelector('[role="dialog"][data-state="open"]')) {
+          arm();
+          return;
+        }
         shownForThisDocument = true;
         setOpen(true);
       }, OPEN_DELAY_MS);
     };
-    for (const t of POPUP_TRIGGERS)
-      window.addEventListener(t, onFirst, { passive: true });
+    arm();
     return () => {
       for (const t of POPUP_TRIGGERS) window.removeEventListener(t, onFirst);
       if (timer) clearTimeout(timer);

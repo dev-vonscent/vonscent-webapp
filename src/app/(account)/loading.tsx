@@ -1,8 +1,4 @@
-import {
-  HeadingSkeleton,
-  SkeletonBlock,
-} from "@/components/shared/skeletons";
-
+import { HeadingSkeleton, SkeletonBlock } from "@/components/shared/skeletons";
 
 /**
  * Account section. It had no loading boundary at all, so every hop between
@@ -14,11 +10,7 @@ import {
  */
 export default function Loading() {
   return (
-    <div
-      className="space-y-8"
-      role="status"
-      aria-label="Ачаалж байна"
-    >
+    <div className="space-y-8" role="status" aria-label="Ачаалж байна">
       <HeadingSkeleton />
       <div className="space-y-4">
         {Array.from({ length: 4 }).map((_, i) => (

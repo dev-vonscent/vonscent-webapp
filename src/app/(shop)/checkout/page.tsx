@@ -1588,7 +1588,7 @@ export default function CheckoutPage() {
                           on ? t.filter((x) => x !== opt) : [...t, opt],
                         )
                       }
-                      className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
+                      className={`rounded-full px-3 py-1.5 text-sm ${
                         on
                           ? "bg-foreground text-background"
                           : "bg-secondary hover:bg-accent"
