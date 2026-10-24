@@ -40,7 +40,7 @@ test("хүйсний товчлол: зөвхөн утсан дээр, жагс�
   await expect(nav).toBeHidden();
 });
 
-test("«Эрэлттэй»: 4 хүртэл карт, «Бүгдийг үзэх» жагсаалт руу", async ({
+test("«Эрэлттэй»: 12 хүртэл нүдтэй carousel, «Бүгдийг үзэх» жагсаалт руу", async ({
   page,
 }) => {
   await page.goto("/");
@@ -49,11 +49,13 @@ test("«Эрэлттэй»: 4 хүртэл карт, «Бүгдийг үзэх»
   await expect(
     section.getByRole("link", { name: /Бүгдийг үзэх/ }),
   ).toHaveAttribute("href", "/catalog?tags=hot");
-  const cards = section.locator("li");
-  expect(await cards.count()).toBeLessThanOrEqual(4);
-  await expect(
-    cards.first().locator('a[href^="/products/"]').first(),
-  ).toBeVisible();
+  // Карт бүр зураг + нэр гэсэн хоёр холбоостой — давтагдаагүй href-ээр тоолно.
+  const hrefs = await section
+    .locator('a[href^="/products/"]')
+    .evaluateAll((els) => [...new Set(els.map((e) => e.getAttribute("href")))]);
+  expect(hrefs.length).toBeGreaterThan(0);
+  expect(hrefs.length).toBeLessThanOrEqual(12);
+  await expect(section.locator('a[href^="/products/"]').first()).toBeVisible();
 });
 
 test("хуучин том хэсгүүд нүүрнээс хасагдсан, каталогийн шүүлтүүр хэвээр", async ({
@@ -107,9 +109,15 @@ test("desktop header: лого, хайлт, үндсэн ба туслах цэ�
   }
 });
 
-test("/quiz хуудас одоо байгаа quiz-ийг харуулна", async ({ page }) => {
+test("/quiz хуудас quiz-ийг эхний асуултаас нь эхлүүлнэ", async ({ page }) => {
   await page.goto("/quiz");
-  await expect(page.getByRole("button", { name: /Эхлэх/ })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Үнэрээ олох",
+  );
+  await expect(
+    page.getByRole("heading", { name: "Ямар төрлийн үнэртэн хайж байна вэ?" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Эмэгтэй" })).toBeVisible();
 });
 
 test.describe("утас 390px", () => {
@@ -125,9 +133,11 @@ test.describe("утас 390px", () => {
     await page.goto("/");
     const header = page.locator("header");
     await expect(header.getByRole("button", { name: "Цэс" })).toBeVisible();
+    // Утсан дээр хайлтын талбар биш ганц icon товч (`trigger="adaptive"`).
+    await expect(header.getByRole("button", { name: "Хайх" })).toHaveCount(1);
     await expect(
       header.getByRole("button", { name: "Үнэртэн, брэнд хайх" }),
-    ).toHaveCount(1);
+    ).toHaveCount(0);
     const hot = page.locator("#home-hot-title");
     await expect(hot).toBeVisible();
     const top = (await hot.boundingBox())!.y;
@@ -140,18 +150,19 @@ test.describe("утас 390px", () => {
     expect(overflow).toBeLessThanOrEqual(0);
   });
 
-  test("цэснээс үндсэн хуудсууд хүрэгдэнэ", async ({ page }) => {
+  test("доод цэс ба drawer-оос үндсэн хуудсууд хүрэгдэнэ", async ({ page }) => {
     await page.goto("/");
+    // Каталог / Багц нь доод цэсэнд — drawer тэдгээрийг давтахгүй
+    // (mobile-menu.tsx `MENU_HIDDEN`); «Үнэрээ олох» нүүрний IntentCards-д.
+    const bottom = page.getByRole("navigation", { name: "Үндсэн цэс" });
+    for (const href of ["/catalog", "/collections"]) {
+      await expect(bottom.locator(`a[href="${href}"]`)).toBeVisible();
+    }
+    await expect(page.locator('main a[href="/quiz"]').first()).toBeVisible();
+
     await page.getByRole("button", { name: "Цэс" }).tap();
     const drawer = page.getByRole("dialog");
-    for (const href of [
-      "/catalog",
-      "/collections",
-      "/collections/build",
-      "/quiz",
-      "/faq",
-      "/contact",
-    ]) {
+    for (const href of ["/collections/build", "/faq", "/contact"]) {
       await expect(drawer.locator(`a[href="${href}"]`).first()).toBeVisible();
     }
   });
