@@ -365,7 +365,7 @@ function SectionCard({
                     {loading ? "Хайж байна…" : "Илэрц алга."}
                   </p>
                 ) : (
-                  <ul className="[&>li:nth-child(even)]:bg-muted/40">
+                  <ul className="[&>li:nth-child(even)]:bg-secondary/60">
                     {available.map((p) => (
                       <li key={p.id}>
                         <button

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Check, ImagePlus, Search, Trash2, X } from "lucide-react";
 import { adminFetch, mutateJson } from "@/features/admin/lib/mutate";
+import { preventEnterSubmit } from "@/features/admin/lib/form-keys";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
@@ -33,6 +34,7 @@ import { useProductOptions } from "@/features/admin/hooks/use-product-options";
 import { PRODUCT_OPTION_MAX } from "@/features/admin/lib/product-option";
 import type { ProductOption } from "@/features/admin/lib/product-option";
 import {
+  FEATURED_LIMIT,
   GENDERS,
   GENDER_LABEL,
   BUNDLE_ML_SIZES,
@@ -407,7 +409,12 @@ export function CollectionForm({
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-6">
+    <form
+      onSubmit={onSubmit}
+      onKeyDown={preventEnterSubmit}
+      noValidate
+      className="space-y-6"
+    >
       {/* Зураг — first, matching the product form: the picture is what the
           operator has in hand when they start. */}
       <Card>
@@ -726,6 +733,11 @@ export function CollectionForm({
             />
             <span>Онцлох багц</span>
           </label>
+          <p className="text-muted-foreground -mt-2 text-xs">
+            Нүүрний «Онцлох»-д ус, багц нийлээд сүүлд онцлох болгосон{" "}
+            {FEATURED_LIMIT} гарна. Хэтэрвэл хамгийн эрт онцлох болсон нь
+            автоматаар хасагдана.
+          </p>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox
               checked={form.isActive}

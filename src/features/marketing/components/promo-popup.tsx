@@ -13,18 +13,21 @@ import { useProfileSummary } from "@/features/account/use-profile-summary";
 import type { PopupSettings, PopupSlide } from "@/features/content/api";
 import { isUserInput, liveSlides, type PopupViewer } from "../popup-schedule";
 
-const AUTOPLAY_MS = 5000;
+/** Слайд хоорондын хугацаа (клиент, 2026-10). Зогсоох товч бий (WCAG 2.2.2). */
+const AUTOPLAY_MS = 3000;
 /** Дэлгэцэд багтаах хязгаар: хажуу тал тус бүр 1rem, өндрийн 85%. */
 const VIEWPORT_PAD = 32;
 const MAX_HEIGHT_RATIO = 0.85;
 /**
- * Хэрэглэгч хуудастай анх харьцсаны (гүйлгэх / хүрэх / товч) дараа гарна.
+ * Хэрэглэгч хуудастай анх харьцсаны (гүйлгэх / хүрэх / товч) дараа шууд
+ * гарна; харьцаагүй ч refresh бүрд гарах ёстой (клиент, 2026-10) тул хуудас
+ * бүрэн ачаалагдсанаас AUTO_OPEN_MS-ийн дараа өөрөө гарна.
  *
  * Хуудас ачаалагдмагц (өмнө нь 800мс) гарахад popup-ийн зураг нүүрний LCP
  * болдог байв — Sentry, prod 30 хоног: popup LCP үед p75 4.8с. Браузер
- * хэрэглэгчийн анхны үйлдлээр LCP-ийг хаадаг тул түүний дараа гарсан popup
- * LCP-д огт нөлөөлөхгүй. Цагаар (N секундын дараа) гаргах нөөц хувилбар
- * САНААТАЙГААР байхгүй: үйлдэлгүй үед гарвал тэр мөч өөрөө LCP болно.
+ * хэрэглэгчийн анхны үйлдлээр LCP-ийг хаадаг тул үйлдлийн дараа гарсан popup
+ * LCP-д нөлөөлөхгүй. Үйлдэлгүй үеийн автомат нээлт нь LCP-д тооцогдож болох
+ * ч `load`-ын дараа хүлээдэг тул нүүрний үндсэн зурагтай өрсөлдөхгүй.
  */
 //
 // `scroll` САНААТАЙГААР биш: reload дээр браузер гүйлгэлтийн байрлалыг
@@ -41,21 +44,28 @@ const POPUP_TRIGGERS = ["pointerdown", "keydown", "wheel"] as const;
 const CHAT_SELECTOR = "[data-chat-entry], #crisp-chatbox, .crisp-client";
 /** Үйлдлээс хойш — гүйлгэж буй хуруун доор шууд унахгүй. */
 const OPEN_DELAY_MS = 400;
+/** Үйлдэлгүй үед — хуудас бүрэн ачаалагдсанаас (`load`) хойш. */
+const AUTO_OPEN_MS = 1500;
+/** Цэс / хайлт / сагс нээлттэй үед хаагдсан эсэхийг шалгах давтамж. */
+const DIALOG_RECHECK_MS = 500;
 
 /**
- * Нэг document-д ганц удаа. Модулийн хувьсагч нь client navigation-ы үед
- * (нүүр → бараа → буцах) хадгалагдана, харин F5/шинэ таб дээр шинээр
- * ачаалагдаж false болно — яг «зөвхөн reload дээр» гэсэн хүсэлт.
- * sessionStorage тохирохгүй: тэр reload-ыг давж үлдэнэ.
+ * Нүүр хуудас руу орох БҮРД гарна — refresh ч, сайт дотроос буцаж ирэх ч
+ * (клиент, 2026-10). Модулийн хувьсагч нь document-ийн анхны mount-ыг
+ * ялгана: зөвхөн тэр үед хэрэглэгчийн үйлдлийг хүлээнэ (LCP, доорх
+ * POPUP_TRIGGERS). Client navigation-аар буцаж ирэхэд LCP аль хэдийн
+ * хаагдсан тул шууд гарна.
  */
-let shownForThisDocument = false;
+let documentLoaded = false;
 
 /**
- * Энэ document-д сурталчилгаа гаргахгүй — өөр чухал цонх (шинэ хэрэглэгчийн
- * мэндчилгээ, 0135) нээгдсэн үед хоёр dialog давхарлахгүйн тулд.
+ * Өөр чухал цонх (шинэ хэрэглэгчийн мэндчилгээ, 0135) нээгдсэн — хоёр dialog
+ * давхарлахгүйн тулд дараагийн нэг нээлтийг алгасна.
  */
+let suppressNext = false;
+
 export function suppressPromoPopup() {
-  shownForThisDocument = true;
+  suppressNext = true;
 }
 
 interface Size {
@@ -123,11 +133,10 @@ function useViewport(): Size | null {
  * Сурталчилгааны popup (backlog G1–G3).
  *
  * Зөвхөн зураг: гарчиг, текст, товч, купон байхгүй — зураг нь өөрөө зар,
- * холбоостой бол дарахад тийшээ очно. Зөвхөн нүүр хуудсанд, хуудас бүтнээрээ
- * ачаалагдах бүрд (эхний нээлт, refresh) нэг л удаа гарна — сайт дотор
- * навигаци хийгээд нүүр рүү буцахад дахин гарахгүй. Олон слайд бол
- * автоматаар шилжинэ, сум/свайпаар гараар солино; гараар хөдөлгөсний дараа
- * автомат зогсоно.
+ * холбоостой бол дарахад тийшээ очно. Зөвхөн нүүр хуудсанд, нүүр рүү орох
+ * бүрд (эхний нээлт, refresh, сайт дотроос буцаж ирэх) гарна. Олон слайд бол
+ * 3 секунд тутам автоматаар шилжинэ, сум/свайпаар гараар солино; гараар
+ * хөдөлгөсний дараа автомат зогсоно.
  *
  * Radix Dialog дээр суурилсан: Escape, гадна дарах, focus trap, scroll lock,
  * дэлгэц уншигчийн `role=dialog` бүгд бэлэн ирнэ.
@@ -181,11 +190,18 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
   React.useEffect(() => {
     if (!emblaApi) return;
     const onSelect = () => setIndex(emblaApi.selectedScrollSnap());
+    // Свайпаар (stopOnInteraction) зогсоход товчны дүрс ч дагана.
+    const onStop = () => setPlaying(false);
     emblaApi.on("select", onSelect);
+    emblaApi.on("autoplay:stop", onStop);
     return () => {
       emblaApi.off("select", onSelect);
+      emblaApi.off("autoplay:stop", onStop);
     };
   }, [emblaApi]);
+
+  /** Энэ mount-д нээгдсэн эсвэл алгассан — effect дахин ажиллахад давтахгүй. */
+  const settled = React.useRef(false);
 
   React.useEffect(() => {
     // Зочин/гишүүнд зориулсан зар байвал үзэгч тодорхой болтол хүлээнэ —
@@ -195,38 +211,75 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
     const live = liveSlides(settings.slides ?? [], now, viewer);
     setSlides(live);
     if (!settings.enabled || live.length === 0) return;
-    if (shownForThisDocument) return;
+    if (settled.current) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const arm = () => {
-      for (const t of POPUP_TRIGGERS)
-        window.addEventListener(t, onFirst, { passive: true });
+    const openSoon = () => {
+      timer = setTimeout(() => {
+        settled.current = true;
+        showWhenClear();
+      }, OPEN_DELAY_MS);
+    };
+    // Хэрэглэгч цэс / хайлт / сагс нээсэн бол түүний дээр давхарлахгүй —
+    // тэр цонх хаагдтал хүлээгээд гарна.
+    const showWhenClear = () => {
+      // Хүлээх хооронд өөр цонх (`suppressPromoPopup`) нээгдсэн байж болно.
+      if (suppressNext) {
+        suppressNext = false;
+        return;
+      }
+      if (document.querySelector('[role="dialog"][data-state="open"]')) {
+        timer = setTimeout(showWhenClear, DIALOG_RECHECK_MS);
+        return;
+      }
+      setOpen(true);
+    };
+
+    // Сайт дотроос нүүр рүү буцаж ирлээ — LCP хаагдсан, шууд гарна.
+    if (documentLoaded) {
+      openSoon();
+      return () => {
+        if (timer) clearTimeout(timer);
+      };
+    }
+
+    // Үйлдэлгүй ч гарна: хуудас бүрэн ачаалагдсаны дараа.
+    let autoTimer: ReturnType<typeof setTimeout> | undefined;
+    const startAuto = () => {
+      autoTimer = setTimeout(() => {
+        stopListening();
+        openSoon();
+      }, AUTO_OPEN_MS);
     };
     const onFirst = (e: Event) => {
       if (!isUserInput(e)) return;
-      for (const t of POPUP_TRIGGERS) window.removeEventListener(t, onFirst);
+      stopListening();
       if (e.target instanceof Element && e.target.closest(CHAT_SELECTOR)) {
-        shownForThisDocument = true;
+        settled.current = true;
         return;
       }
-      timer = setTimeout(() => {
-        // Хүлээх хооронд өөр цонх (`suppressPromoPopup`) нээгдсэн байж болно.
-        if (shownForThisDocument) return;
-        // Хэрэглэгч цэс / хайлт / сагс нээсэн бол түүний дээр давхарлахгүй —
-        // тэр цонх хаагдсаны дараах үйлдлийг хүлээнэ.
-        if (document.querySelector('[role="dialog"][data-state="open"]')) {
-          arm();
-          return;
-        }
-        shownForThisDocument = true;
-        setOpen(true);
-      }, OPEN_DELAY_MS);
+      openSoon();
     };
-    arm();
-    return () => {
+    function stopListening() {
       for (const t of POPUP_TRIGGERS) window.removeEventListener(t, onFirst);
+      window.removeEventListener("load", startAuto);
+      if (autoTimer) clearTimeout(autoTimer);
+    }
+    for (const t of POPUP_TRIGGERS)
+      window.addEventListener(t, onFirst, { passive: true });
+    if (document.readyState === "complete") startAuto();
+    else window.addEventListener("load", startAuto, { once: true });
+    return () => {
+      stopListening();
       if (timer) clearTimeout(timer);
     };
   }, [settings.enabled, settings.slides, targeted, viewer]);
+
+  // Анхны mount дууссаны дараа client navigation-ы mount-ууд шууд нээгдэнэ.
+  React.useEffect(() => {
+    return () => {
+      documentLoaded = true;
+    };
+  }, []);
 
   function stopAutoplay() {
     emblaApi?.plugins().autoplay?.stop();

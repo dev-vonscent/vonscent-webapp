@@ -15,11 +15,15 @@ import {
   getSocialSettings,
 } from "@/features/content/api";
 import {
-  getBestSellerCollections,
+  getHotRailCollections,
   getNewestCollections,
 } from "@/features/collections/api";
-import { fillRail, interleave, mixRandom } from "@/features/products/rail";
-import { HOT_COLLECTIONS_COUNT, NEW_COLLECTIONS_COUNT } from "@/lib/constants";
+import {
+  fillRail,
+  mixRandom,
+  scatterCollections,
+} from "@/features/products/rail";
+import { HOT_RAIL_COLLECTIONS, NEW_COLLECTIONS_COUNT } from "@/lib/constants";
 import {
   JsonLd,
   homePageJsonLd,
@@ -78,7 +82,7 @@ function sellableFirst<T extends { soldOut: boolean }>(list: T[]): T[] {
 /**
  * Home — storefront order (2026-10 refresh):
  *   campaign hero → shortcuts → Эрэлттэй → quiz / bundle cards → admin
- *   curated blocks → Шинээр нэмэгдсэн → Брэндээр → Тун удахгүй →
+ *   curated blocks → Шинээр ирсэн → Брэндээр → Тун удахгүй →
  *   reviews → (footer, parallel slot).
  *
  * No 3D runtime is imported here: the old DecantPlayground stays in the
@@ -174,19 +178,22 @@ async function HeroSlot() {
 }
 
 /**
- * Эрэлттэй = ус, багц тус тусдаа борлуулалтаар (6 + 6, багц дутвал ус
- * нөхнө), эрэмбээрээ ээлжилнэ.
+ * Эрэлттэй = 12 нүд: 9 ус + 3 багц (клиент, 2026-10). Ус зарагдсан ширхэгээрээ
+ * (мл биш) эрэмбээрээ эхнээсээ, дууссан нь ардаа (`sellableFirst`); 3 багц
+ * устай өрсөлдөхгүй — нэг нь 2–4 дэх нүдэнд, бусад нь түүнээс хойш санамсаргүй
+ * байранд (`scatterCollections`). Зарагдсан багц 3 хүрэхгүй бол бусдаас
+ * санамсаргүй нөхнө; багц огт байхгүй бол ус нөхнө.
  */
 async function BestSellersSection() {
   const [products, collections] = await Promise.all([
     hotProducts(),
-    getBestSellerCollections(HOT_COLLECTIONS_COUNT),
+    getHotRailCollections(HOT_RAIL_COLLECTIONS),
   ]);
   const rail = fillRail(
     sellableFirst(products),
     collections,
     RAIL_SIZE,
-    HOT_COLLECTIONS_COUNT,
+    HOT_RAIL_COLLECTIONS,
   );
   return (
     <section aria-labelledby="home-hot-title">
@@ -197,7 +204,7 @@ async function BestSellersSection() {
         href="/catalog?tags=hot"
       />
       <ProductCarousel
-        items={interleave(rail.products, rail.collections)}
+        items={scatterCollections(rail.products, rail.collections)}
         prefer={["hot"]}
       />
     </section>
@@ -224,7 +231,11 @@ async function CuratedSections() {
               subtitle={s.subtitle || undefined}
               href={s.href || undefined}
             />
-            {s.collections.length > 0 ? (
+            {/* «Онцлох» (featured) хэсэг ус, багцыг онцлох болгосон
+              дарааллаар (`items`); бусад хэсэг админы дарааллаараа. */}
+            {s.items ? (
+              <ProductCarousel items={s.items} prefer={prefer} />
+            ) : s.collections.length > 0 ? (
               <ProductCarousel
                 items={mixRandom(s.products, s.collections)}
                 prefer={prefer}
@@ -239,10 +250,6 @@ async function CuratedSections() {
   );
 }
 
-/**
- * Шинээр нэмэгдсэн = хамгийн сүүлийн ус ба багц (6 + 6, багц дутвал ус
- * нөхнө). Нэг мөр дүүрэхгүй бол нуугдана.
- */
 /**
  * Брэндийн хана — өмнөх нүүрнийх шиг автоматаар урсдаг хоёр мөр; утсан дээр
  * хүрэхэд зогсож, тавихад дахин урсана (`BrandMarquee`). Header-ийн цэсэнд
@@ -265,6 +272,12 @@ async function BrandsSection() {
   );
 }
 
+/**
+ * Шинээр ирсэн = 9 ус + 3 багц (клиент, 2026-10). Ус үүссэн дарааллаараа
+ * (шинэ нь) эхнээсээ, дууссан нь ардаа; хамгийн сүүлийн 3 багц усны дунд
+ * санамсаргүй байранд — «Эрэлттэй»-тэй ижил дүрмээр (`scatterCollections`).
+ * Багц дутвал ус нөхнө. Нэг мөр дүүрэхгүй бол нуугдана.
+ */
 async function NewArrivalsSection() {
   const [products, collections] = await Promise.all([
     newProducts(),
@@ -276,13 +289,13 @@ async function NewArrivalsSection() {
     RAIL_SIZE,
     NEW_COLLECTIONS_COUNT,
   );
-  const items = mixRandom(rail.products, rail.collections);
+  const items = scatterCollections(rail.products, rail.collections);
   if (items.length < 4) return null;
   return (
     <section>
       <SectionHeading
         compact
-        title="Шинээр нэмэгдсэн"
+        title="Шинээр ирсэн"
         href="/catalog?tags=new&sort=new"
       />
       <ProductCarousel items={items} prefer={["new"]} />

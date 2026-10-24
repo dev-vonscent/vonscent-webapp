@@ -3,7 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ImageOff, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ImageOff,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { Input } from "@/components/ui/input";
@@ -87,12 +94,32 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
   const [slides, setSlides] = React.useState<PopupSlide[]>(
     initial.slides ?? [],
   );
+  // Зар бүрийн тогтвортой key — дараалал солиход зураг оруулах талбарын
+  // дотоод төлөв өөр зар руу шилжихгүй. Хадгалагдахгүй.
+  const [keys, setKeys] = React.useState<number[]>(() =>
+    (initial.slides ?? []).map((_, i) => i),
+  );
+  const nextKey = React.useRef((initial.slides ?? []).length);
   const [busy, setBusy] = React.useState(false);
+
+  /** Зарыг `dir` (−1 дээш, +1 доош) байраар зөөнө — эхнийх нь эхэлж гарна. */
+  function moveSlide(i: number, dir: -1 | 1) {
+    const j = i + dir;
+    const swap = <T,>(xs: T[]) => {
+      if (j < 0 || j >= xs.length) return xs;
+      const out = [...xs];
+      [out[i], out[j]] = [out[j], out[i]];
+      return out;
+    };
+    setSlides(swap);
+    setKeys(swap);
+  }
 
   function setSlide(i: number, patch: Partial<PopupSlide>) {
     setSlides((ss) => ss.map((s, j) => (j === i ? { ...s, ...patch } : s)));
   }
   function addSlide() {
+    setKeys((ks) => [...ks, nextKey.current++]);
     setSlides((ss) => [
       ...ss,
       {
@@ -116,6 +143,7 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
     )
       return;
     setSlides((ss) => ss.filter((_, j) => j !== i));
+    setKeys((ks) => ks.filter((_, j) => j !== i));
   }
   async function save() {
     // Зураггүй зар гэж байхгүй (G2) — хадгалахаас өмнө хэлнэ, чимээгүй
@@ -147,7 +175,8 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
       <p className="text-muted-foreground text-sm">
         Зөвхөн нүүр хуудсанд, хуудас нээгдэх бүрд гарна — хаасан ч дараагийн
         удаа дахин гарна. Зар нь зөвхөн зураг: гарчиг, текст, купоныг зураг
-        дотроо бэлдэнэ. Олон зар байвал 5 секунд тутамд автоматаар шилжинэ.
+        дотроо бэлдэнэ. Олон зар байвал энэ дарааллаар, 3 секунд тутамд
+        автоматаар шилжинэ — сумаар дарааллыг сольж, хадгална уу.
       </p>
       <label className="flex items-center gap-2 text-sm">
         <Checkbox
@@ -159,17 +188,41 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
 
       <div className="space-y-4">
         {slides.map((s, i) => (
-          <div key={i} className="bg-muted/40 space-y-3 rounded-lg p-4">
+          <div key={keys[i]} className="bg-muted/40 space-y-3 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">Зар {i + 1}</p>
-              <button
-                type="button"
-                onClick={() => removeSlide(i)}
-                className="text-muted-foreground hover:text-destructive"
-                aria-label={`Зар ${i + 1} устгах`}
-              >
-                <Trash2 className="size-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => moveSlide(i, -1)}
+                  disabled={i === 0}
+                  aria-label={`Зар ${i + 1}-ийг дээш зөөх`}
+                >
+                  <ArrowUp className="size-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => moveSlide(i, 1)}
+                  disabled={i === slides.length - 1}
+                  aria-label={`Зар ${i + 1}-ийг доош зөөх`}
+                >
+                  <ArrowDown className="size-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeSlide(i)}
+                  className="text-muted-foreground hover:text-destructive"
+                  aria-label={`Зар ${i + 1} устгах`}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Зураг (босоо эсвэл дөрвөлжин зураг тохиромжтой)">
