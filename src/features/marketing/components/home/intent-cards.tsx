@@ -37,21 +37,21 @@ const CARDS: IntentCard[] = [
     index: "02",
     eyebrow: "Өөрийн багц",
     title: "Дуртай үнэртнүүдээ багцал",
-    body: "4 ба түүнээс дээш үнэртэн сонгоод хямдралтай үнээр аваарай — өөрт таалагдсан хослолоо хүссэнээрээ бүрдүүл",
+    body: "4 ба түүнээс дээш төрлийн үнэртэн сонгоод хямдралтай үнээр аваарай",
     meta: ["4+ үнэртэн", `${ML_SIZES[0]}–${ML_SIZES[ML_SIZES.length - 1]} мл`],
     cta: "Багц үүсгэх",
     href: "/collections/build",
-    image: "/bundle-side.webp",
-    imagePosition: "object-[50%_62%]",
+    image: "/collection.webp",
+    imagePosition: "object-[50%_25%]",
   },
 ];
 
 /**
  * Quiz ба багц үүсгэх — нүүрний хоёр «зам». Хоёр карт НЭГ бүтэцтэй (текст
  * зүүн, зураг баруун), тиймээс зэрэгцэхэд текстүүд нэг шугамаас эхэлж,
- * зургууд нэг хэмнэлээр давтагдана. Зураг нь картын дотор хүрээтэй
- * (inset) — gradient-ээр уусгахын оронд (design.md) цул ирмэгтэй. Зургийн
- * радиус = картын радиус − padding (p-2), булангууд концентрик байна.
+ * зургууд нэг хэмнэлээр давтагдана. Зураг нь padding-гүй, картын ирмэгт
+ * тулна (булангийг картын `overflow-hidden rounded-2xl` тайрна) —
+ * gradient-ээр уусгахын оронд (design.md) цул ирмэгтэй.
  *
  * CTA нь саарал, hover дээр л цагаан болно — хуудсанд байнгын цагаан товч
  * ганц (hero) байх дүрэм (globals.css `--cta`).
@@ -60,13 +60,13 @@ const CARDS: IntentCard[] = [
  * (stretched link), тиймээс холбоосын нэр богино «Эхлэх» хэвээр, дотор нь
  * давхар интерактив элемент үүсэхгүй.
  *
- * Утсан дээр (`< md`) карт нягт мөр болно: жижиг дөрвөлжин зураг + гарчиг +
+ * Утсан дээр (`< md`) карт нягт мөр болно: картын өндрөөр зураг + гарчиг +
  * meta + сум. Тайлбар нуугдаж, CTA зөвхөн сум (нэр нь sr-only) — хоёр зам
  * нэг дэлгэцэд зэрэг харагдах ёстой.
  */
 export function IntentCards() {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid auto-rows-fr gap-4 md:grid-cols-2">
       {CARDS.map((card) => (
         <IntentCardView key={card.href} card={card} />
       ))}
@@ -79,12 +79,12 @@ function IntentCardView({ card }: { card: IntentCard }) {
   return (
     <section
       aria-labelledby={titleId}
-      className="force-black bg-card group relative grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-3 overflow-hidden rounded-2xl p-2 md:grid-cols-1 md:grid-rows-[auto_1fr] md:items-stretch md:gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] lg:grid-rows-1"
+      className="force-black bg-card group relative grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-3 overflow-hidden rounded-2xl md:grid-cols-1 md:grid-rows-[auto_1fr] md:items-stretch md:gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] lg:grid-rows-1"
     >
       <SideImage
         src={card.image}
-        sizes="(max-width: 767px) 96px, (max-width: 1024px) 50vw, 22vw"
-        className="relative aspect-square overflow-hidden rounded-[calc(var(--radius-2xl)-var(--spacing)*2)] md:aspect-video lg:order-2 lg:aspect-auto lg:min-h-80"
+        sizes="(max-width: 767px) 128px, (max-width: 1024px) 50vw, 22vw"
+        className="relative min-h-24 self-stretch overflow-hidden md:aspect-video md:min-h-0 lg:order-2 lg:aspect-auto lg:min-h-80"
         imageClassName={cn(
           "object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100 lg:object-center",
           card.imagePosition,
@@ -92,7 +92,7 @@ function IntentCardView({ card }: { card: IntentCard }) {
         fallbackClassName="bg-muted"
       />
 
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 py-1 pr-2 md:flex md:flex-col md:items-stretch md:gap-5 md:p-6 lg:order-1 lg:gap-8">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 py-3 pr-4 md:flex md:flex-col md:items-stretch md:gap-5 md:p-6 lg:order-1 lg:gap-8">
         <p className="text-muted-foreground flex items-center gap-2 text-xs font-medium tracking-[0.14em] whitespace-nowrap uppercase md:gap-3 md:tracking-[0.2em]">
           <span className="text-foreground tabular-nums">{card.index}</span>
           <span
