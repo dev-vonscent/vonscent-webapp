@@ -78,9 +78,7 @@ export function OrderActions({
         ? "«Дараа захиалах» хэсгээс үргэлжлүүлээрэй."
         : "Захиалга устгагдлаа.",
     );
-    router.push(
-      saveForLater ? "/account/orders?tab=saved" : "/account/orders",
-    );
+    router.push(saveForLater ? "/account/orders?tab=saved" : "/account/orders");
   }
 
   async function saveForLater(token: string) {

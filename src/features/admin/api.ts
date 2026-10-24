@@ -30,6 +30,8 @@ import { matchesSearch, searchTerms } from "@/lib/search";
 import { stockState } from "./lib/stock-state";
 import { PRODUCT_OPTION_LIMIT, type ProductOption } from "./lib/product-option";
 import { customerSearchFilter } from "./lib/customer-search";
+import { getTiersForUsers } from "@/features/tiers/server";
+import type { UserTierKey } from "@/lib/constants";
 import {
   COUPON_TABS,
   filterCoupons,
@@ -55,6 +57,7 @@ import {
   NO_BOTTLE_LOCKS,
   type BottleLockState,
 } from "@/features/products/bottle-stock";
+import { collectionIdsOf } from "@/lib/orders/bundle-lines";
 
 /**
  * Admin read access. Uses the cookie-bound client so staff RLS applies (admins
@@ -276,6 +279,10 @@ export async function getOrderDetail(id: string): Promise<{
   payments: QpayPaymentRecord[];
   /** Хэрэглэгчийн бичсэн буцаалтын данс (0108) — буцаагдмагц устгагдана. */
   refundAccount: OrderRefundAccountRow | null;
+  /** Мөрүүдийн бэлэн (`base`) багцын id — нэг мөр болж харагдана. */
+  baseCollectionIds: string[];
+  /** Админы дотоод тэмдэглэл (0145) — хэрэглэгчид харагдахгүй. */
+  adminNote: { note: string; updated_at: string } | null;
 } | null> {
   const supabase = await createClient();
   if (!supabase) return null;
@@ -319,9 +326,31 @@ export async function getOrderDetail(id: string): Promise<{
       .maybeSingle(),
   ]);
 
+  const itemRows = (items as OrderItemRow[] | null) ?? [];
+  const collectionIds = collectionIdsOf(itemRows);
+  const [{ data: baseRows }, { data: noteRow }] = await Promise.all([
+    collectionIds.length
+      ? supabase
+          .from("collections")
+          .select("id")
+          .in("id", collectionIds)
+          .eq("type", "base")
+      : Promise.resolve({ data: [] }),
+    // 0145 хэрэгжээгүй бол алдаа → null (тэмдэглэлгүй мэт).
+    supabase
+      .from("order_admin_notes")
+      .select("note, updated_at")
+      .eq("order_id", id)
+      .maybeSingle(),
+  ]);
+
   return {
     order,
-    items: (items as OrderItemRow[] | null) ?? [],
+    items: itemRows,
+    baseCollectionIds: ((baseRows as { id: string }[] | null) ?? []).map(
+      (r) => r.id,
+    ),
+    adminNote: (noteRow as { note: string; updated_at: string } | null) ?? null,
     history: (history as OrderStatusHistoryRow[] | null) ?? [],
     customer: (customer.data as ProfileRow | null) ?? null,
     payments: (payments as QpayPaymentRecord[] | null) ?? [],
@@ -398,7 +427,10 @@ export const CUSTOMERS_PER_PAGE = 50;
 export async function getCustomers(
   search?: string,
   page = 0,
-): Promise<{ rows: ProfileRow[]; total: number | null }> {
+): Promise<{
+  rows: (ProfileRow & { tier: UserTierKey | null })[];
+  total: number | null;
+}> {
   const supabase = await createClient();
   if (!supabase) return { rows: [], total: null };
   let query = supabase
@@ -412,7 +444,13 @@ export async function getCustomers(
     page * CUSTOMERS_PER_PAGE,
     page * CUSTOMERS_PER_PAGE + CUSTOMERS_PER_PAGE - 1,
   );
-  return { rows: (data as ProfileRow[] | null) ?? [], total: count ?? 0 };
+  const rows = (data as ProfileRow[] | null) ?? [];
+  // Түвшин (feature flag `user_tiers`) — хаалттай бол бүгд null.
+  const tiers = await getTiersForUsers(rows.map((r) => r.id));
+  return {
+    rows: rows.map((r) => ({ ...r, tier: tiers[r.id] ?? null })),
+    total: count ?? 0,
+  };
 }
 
 /** One ml size as the admin edits it (product_variants). */

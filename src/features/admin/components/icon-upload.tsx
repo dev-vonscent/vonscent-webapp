@@ -43,7 +43,7 @@ export function IconUpload({
    * that decides who may write there, so this stays a closed set rather than a
    * free string.
    */
-  folder?: "families" | "brands";
+  folder?: "families" | "brands" | "notifications";
   /**
    * Render the preview under the storefront's brand-logo rule: the artwork is
    * single-colour dark on transparent, so on the black theme it is inverted to

@@ -368,6 +368,7 @@
   --animate-shimmer: shimmer 2.2s linear infinite;
   --animate-sheen: sheen-rotate 80s linear infinite;
   --animate-nudge-up: nudge-up 2s ease-in-out infinite;
+  --animate-search-open: search-open 0.2s ease-out;
 }
 
 @keyframes accordion-down {
@@ -394,6 +395,14 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+/* Хайлтын панель header-ийн pill-ийн байранд нээгдэхэд pill «идэвхжиж»
+   буй мэт: дэвсгэр нь secondary-аас card руу, сүүдэр нь тодорно. */
+@keyframes search-open {
+  from {
+    background-color: var(--secondary);
+    box-shadow: none;
   }
 }
 /* A small upward bob — the arrow on «Дээш буцах» pointing where it goes. */
@@ -480,6 +489,14 @@
   background: color-mix(in oklab, var(--foreground) 12%, transparent);
 }
 
+/* Theme-adaptive logo mark: the PNG is only an alpha mask, the ink is
+   `currentColor`, so it reads on every theme without a second asset. */
+.brand-mark {
+  background-color: currentColor;
+  -webkit-mask: url("/brand/von-mark.png") center / contain no-repeat;
+  mask: url("/brand/von-mark.png") center / contain no-repeat;
+}
+
 /* Typography plugin colors follow the active theme (.navy/.black/…),
    not prefers-color-scheme — map every prose token to our theme vars. */
 .prose {
@@ -534,7 +551,7 @@
 
    Each value is the header's own height plus the gap that should show under
    it. Header heights come from site-header: a 4rem compact bar below md
-   (`h-16`), and above it the floating pill at 4.5rem (`pt-4` + `h-14`).
+   (`h-16`), and above it the solid two-row header (`h-18` + `h-11`).
 
    The gap is a hairline 4px at every width, so the header and the sticky
    content under it read as one stacked block rather than two things that
@@ -548,7 +565,7 @@
 }
 @media (min-width: 48rem) {
   :root {
-    --header-offset: 4.75rem; /* 4.5rem pill + 4px */
+    --header-offset: 7.5rem; /* 4.5rem bar + 2.75rem nav row + 4px */
   }
 }
 /* Must stay after the media query — same specificity, so source order wins. */
@@ -558,9 +575,15 @@
 
 /* The single hairline in a borderless system: separates form controls from
    their surface without reintroducing `border`, which the global rule
-   collapses to transparent. Kept deliberately dim — see `--field-edge`. */
+   collapses to transparent. Kept deliberately dim — see `--field-edge`.
+   Зөвхөн админд зурагдана: дэлгүүрийн талын талбар, dropdown хүрээгүй,
+   дэвсгэр өнгөөрөө л ялгарна. `:root:has()` — админы dialog/sheet `body`
+   руу portal хийгддэг тул `.admin-shell` дотор биш ч хүрээгээ авна. */
 @utility field-edge {
-  box-shadow: inset 0 0 0 1px var(--field-edge);
+  box-shadow: inset 0 0 0 1px var(--input-edge, transparent);
+}
+:root:has(.admin-shell) {
+  --input-edge: var(--field-edge);
 }
 
 /* The same hairline in the error voice. */
@@ -596,6 +619,15 @@
   *::before,
   *::after {
     border-color: transparent !important;
+  }
+  /* The one exception: a full-bleed rule between the storefront header's
+     two rows (DESIGN.md «The Chrome Divider Rule»). It has to live in this
+     layer — an `!important` utility loses to the base layer above — and a
+     class outranks `*`, so it wins here. Tinted from the foreground, so it
+     reads on every theme. */
+  .chrome-rule-t {
+    border-top: 1px solid
+      color-mix(in oklab, var(--foreground) 10%, transparent) !important;
   }
   /* Focus, the vonscent way.
      Pointer interaction stays completely clean — no ring on click or tap.
@@ -818,4 +850,162 @@
 #crisp-chatbox [data-maximized="false"],
 #crisp-chatbox [data-animate-maximize="true"] {
   display: none !important;
+}
+
+/*
+ * ── Хэрэглэгчийн түвшин (0143, feature flag `user_tiers`) ────────────────
+ *
+ * Хүрээ нь зураг (`public/tiers/*.webp`, `TierFrame`); энд түүн дээрх
+ * хөдөлгөөн (`tier-aura/shimmer/spark/ring`).
+ *
+ * design.md-ийн «gradient хэрэглэхгүй» дүрмийн зориуд үл хамаарал: металл,
+ * чулуу бодитоор харагдах ганц арга (клиентийн шаардлага — «бодит мэт»).
+ * Өнгө нь материалынх тул theme-ээс хамаарахгүй.
+ */
+
+/* Хүрээний ард өнгөт гэрэл лугшина. */
+.tier-aura {
+  filter: blur(14px);
+  animation: tier-pulse 3.2s ease-in-out infinite;
+}
+/*
+ * Ойлт: хүрээний дүрсээр маскласан цайвар туузан гэрэл хөндлөн гүйнэ —
+ * металл, чулуу гэрэл ойлгож буй мэт. Гүйлт хооронд завсарлагатай.
+ */
+.tier-shimmer {
+  pointer-events: none;
+  background: linear-gradient(
+      105deg,
+      transparent 42%,
+      rgb(255 255 255 / 0.65) 50%,
+      transparent 58%
+    )
+    no-repeat;
+  background-size: 300% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mix-blend-mode: overlay;
+  animation: tier-sweep 4.8s ease-in-out infinite;
+}
+/* Чулуун дээрх 4 цацрагт гялбаа. */
+.tier-spark {
+  pointer-events: none;
+  translate: -50% -50%;
+  filter: drop-shadow(0 0 3px rgb(255 255 255 / 0.9));
+  scale: 0;
+  animation: tier-twinkle 3.6s ease-in-out infinite;
+}
+@keyframes tier-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    scale: 0.96;
+  }
+  50% {
+    opacity: 1;
+    scale: 1.04;
+  }
+}
+@keyframes tier-sweep {
+  0% {
+    background-position: 100% 0;
+  }
+  55%,
+  100% {
+    background-position: 0% 0;
+  }
+}
+@keyframes tier-twinkle {
+  0%,
+  60%,
+  100% {
+    scale: 0;
+    rotate: 0deg;
+  }
+  72% {
+    scale: 1;
+    rotate: 45deg;
+  }
+  84% {
+    scale: 0;
+    rotate: 90deg;
+  }
+}
+
+/*
+ * Түвшний шатны идэвхтэй карт: түвшний өнгөтэй, эрдэнийн чулуу шиг
+ * тасттай хүрээ (`--tier-ring`; цайвар/гол/бараан ирмэг ээлжилнэ) +
+ * ижил өнгийн гэрэл. Түвшний өнгөөр зөөлрүүлсэн гялбаа зүүн дээд
+ * булангаас баруун доод булан руу нэг гүйж, завсарлаад давтана.
+ */
+.tier-ring {
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--tier-ring) 40%, transparent),
+    inset 0 0 14px color-mix(in srgb, var(--tier-ring) 18%, transparent);
+}
+.tier-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 3px;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      135deg,
+      transparent 40%,
+      color-mix(in srgb, var(--tier-ring), white 55%) 50%,
+      transparent 60%
+    ),
+    repeating-conic-gradient(
+      from 0deg,
+      color-mix(in srgb, var(--tier-ring), white 45%) 0deg 5deg,
+      var(--tier-ring) 5deg 11deg,
+      color-mix(in srgb, var(--tier-ring), black 45%) 11deg 15deg,
+      var(--tier-ring) 15deg 20deg
+    );
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  background-size:
+    300% 300%,
+    auto;
+  background-repeat: no-repeat;
+  background-position:
+    100% 100%,
+    center;
+  animation: tier-ring-glint 5s ease-in-out infinite;
+}
+@keyframes tier-ring-glint {
+  0% {
+    background-position:
+      100% 100%,
+      center;
+  }
+  /* Үлдсэн хугацаанд гялбаа хүрээнээс гадна хүлээнэ. */
+  30%,
+  100% {
+    background-position:
+      0% 0%,
+      center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.tier-aura, .tier-shimmer, .tier-spark),
+  .tier-ring::before {
+    animation: none;
+  }
+}
+
+/* Theme switch-ийн дугуй reveal (theme-switcher.tsx) — browser-ийн өгөгдмөл
+   cross-fade-ийг унтрааж, clip-path animation-ийг JS-ээс өгнө. (CSS
+   keyframes-ээр хийвэл Lightning CSS `html.x::view-transition-new()`
+   selector-ийг хасдаг.) */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }

@@ -105,13 +105,13 @@ export default function WishlistPage() {
   }
 
   return (
-    <div className="mx-auto max-w-352 px-4 py-10 md:px-8">
+    <div className="mx-auto max-w-420 px-4 py-10 md:px-8">
       <h1 className="mb-6 hidden font-serif text-3xl font-semibold md:block">
         Хүслийн жагсаалт
       </h1>
 
       {!mounted || isLoading || bundlesLoading ? (
-        <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="space-y-3">
               <Skeleton className="aspect-4/5 w-full" />
@@ -121,23 +121,27 @@ export default function WishlistPage() {
           ))}
         </div>
       ) : items.length === 0 && bundles.length === 0 ? (
-        <EmptyState
-          size="lg"
-          icon={Heart}
-          title="Хүслийн жагсаалт хоосон байна"
-          description={
-            <>
-              Барааны зурган дээрх{" "}
-              <Heart className="inline size-3.5 align-[-2px]" aria-hidden />{" "}
-              тэмдгийг дарж дуртай үнэртнээ хадгалаарай.
-            </>
-          }
-          action={
-            <Button asChild>
-              <Link href="/catalog">Бараа үзэх</Link>
-            </Button>
-          }
-        />
+        // Утсан дээр хоосон төлөв дэлгэцийн дунд — толгой, доод цэсийн
+        // хоорондох зайд босоогоор голлоно («Миний багцууд»-тай ижил).
+        <div className="flex flex-col justify-center max-md:min-h-[calc(100svh-15rem)]">
+          <EmptyState
+            size="lg"
+            icon={Heart}
+            title="Хүслийн жагсаалт хоосон байна"
+            description={
+              <>
+                Барааны зурган дээрх{" "}
+                <Heart className="inline size-3.5 align-[-2px]" aria-hidden />{" "}
+                тэмдгийг дарж дуртай үнэртнээ хадгалаарай.
+              </>
+            }
+            action={
+              <Button asChild>
+                <Link href="/catalog">Бараа үзэх</Link>
+              </Button>
+            }
+          />
+        </div>
       ) : (
         <>
           {/* Action bar — summary + bulk actions */}
@@ -230,7 +234,7 @@ export default function WishlistPage() {
             </section>
           )}
 
-          <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
             {items.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}

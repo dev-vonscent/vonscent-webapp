@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   Palette,
   Ticket,
+  User,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,6 +32,8 @@ import { Badge } from "@/components/ui/badge";
 import { useNewBadge } from "@/features/account/use-new-badge";
 import { COUPONS_NEW_BADGE_UNTIL } from "@/lib/constants";
 import { useFeatureFlag } from "@/components/feature-flags";
+import { TierAvatar } from "@/features/tiers/components/tier-avatar";
+import { useMyTier } from "@/features/tiers/use-tier";
 
 export function ProfileMenu() {
   const [askSignOut, signOutDialog] = useSignOutConfirm();
@@ -54,20 +57,25 @@ export function ProfileMenu() {
           <button
             type="button"
             aria-label="Профайл цэс"
-            className="bg-secondary text-foreground relative size-9 shrink-0 overflow-hidden rounded-full transition-transform hover:scale-105"
+            className="bg-secondary text-foreground relative size-10 shrink-0 overflow-hidden rounded-full transition-transform hover:scale-105"
           >
             {profile?.avatar ? (
               <Image
                 src={profile.avatar}
                 alt={name}
                 fill
-                sizes="36px"
+                sizes="40px"
                 className="object-cover"
               />
             ) : (
               // Анх ачаалж байхад хоосон дугуй — «?» гараад нэр рүү үсрэхгүй.
               <span className="flex h-full items-center justify-center text-sm font-semibold">
-                {loading ? null : initial}
+                {loading ? null : profile ? (
+                  initial
+                ) : (
+                  // Зочин: «?» биш хүний дүрс — нэвтрэх цэс гэдэг нь ойлгомжтой.
+                  <User className="size-5" aria-hidden />
+                )}
               </span>
             )}
           </button>
@@ -95,21 +103,11 @@ export function ProfileMenu() {
           {profile && (
             <DropdownMenuItem asChild className="gap-3 px-2.5 py-2">
               <Link href="/account">
-                <span className="bg-secondary relative size-10 shrink-0 overflow-hidden rounded-full">
-                  {profile?.avatar ? (
-                    <Image
-                      src={profile.avatar}
-                      alt=""
-                      fill
-                      sizes="40px"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <span className="flex h-full items-center justify-center text-sm font-semibold">
-                      {initial}
-                    </span>
-                  )}
-                </span>
+                <MenuAvatar
+                  src={profile.avatar}
+                  name={profile.name || profile.handle || "?"}
+                  size={40}
+                />
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-semibold">
                     {name}
@@ -222,4 +220,21 @@ export function ProfileMenu() {
       </DropdownMenu>
     </>
   );
+}
+
+/**
+ * Цэсний толгойн зураг — түвшний хүрээтэй (feature flag `user_tiers`).
+ * Цэс нээгдэх үед л mount болох тул түвшний хүсэлт хуудас бүрд явахгүй.
+ */
+export function MenuAvatar({
+  src,
+  name,
+  size,
+}: {
+  src: string | null;
+  name: string;
+  size: number;
+}) {
+  const { data } = useMyTier();
+  return <TierAvatar tier={data?.tier} src={src} name={name} size={size} />;
 }

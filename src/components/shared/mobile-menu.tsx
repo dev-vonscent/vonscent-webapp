@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   ArrowRight,
@@ -17,7 +16,11 @@ import {
   PackageSearch,
   Ticket,
 } from "lucide-react";
-import { Logo } from "./logo";
+import {
+  STORE_NAV_PRIMARY,
+  STORE_NAV_SECONDARY,
+  isNavActive,
+} from "./store-nav";
 import { ThemeSwitcher } from "./theme-switcher";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,20 +37,19 @@ import { cn } from "@/lib/utils";
 import { useNewBadge } from "@/features/account/use-new-badge";
 import { COUPONS_NEW_BADGE_UNTIL } from "@/lib/constants";
 import { useFeatureFlag } from "@/components/feature-flags";
+import { MenuAvatar } from "@/features/account/components/profile-menu";
 
 /**
- * Гол зорилгууд — том, бичвэрээр. Доод цэс (`BottomNav`) Нүүр/Каталог/Багц/
- * Хүсэл/Профайлыг аль хэдийн үүрдэг тул энэ жагсаалт нь давхардлыг биш,
- * дэлгүүрийн бүрэн зургийг өгөх ёстой.
+ * Гол зорилгууд — том, бичвэрээр. Зөвхөн доод цэс (`BottomNav`: Нүүр/
+ * Каталог/Багц/Хүсэл/Профайл)-д БАЙХГҮЙ зүйл — давхардсан мөр цэсийг
+ * урт болгож, чухлыг нь доош түлхдэг байв. «Үнэрээ олох» (quiz) нь нүүрний
+ * IntentCards-д бий.
  */
-const PRIMARY = [
-  { href: "/catalog", label: "Каталог", hint: "Бүх үнэртэн · 2–20 мл" },
-  {
-    href: "/collections",
-    label: "Багц",
-    hint: "Хамтад нь аваад хэмнээрэй",
-  },
-];
+const MENU_HIDDEN = new Set(["/catalog", "/collections", "/quiz"]);
+const PRIMARY: { href: string; label: string; hint: string }[] = [
+  ...STORE_NAV_PRIMARY,
+  ...STORE_NAV_SECONDARY,
+].filter((item) => !MENU_HIDDEN.has(item.href));
 
 /** `PRIMARY`-ийн сүүлд — feature flag `lucky_wheel` нээлттэй үед л. */
 const WHEEL_LINK = {
@@ -99,11 +101,13 @@ export function MobileMenu({
   const primary = useFeatureFlag("lucky_wheel")
     ? [...PRIMARY, WHEEL_LINK]
     : PRIMARY;
-  const secondary = useFeatureFlag("perfume_requests")
-    ? [...SECONDARY, REQUEST_LINK]
-    : SECONDARY;
+  const secondary = [
+    ...SECONDARY,
+    ...(useFeatureFlag("perfume_requests") ? [REQUEST_LINK] : []),
+    // Нэвтэрсэн хүнд дээрх «Захиалга» товчлол бий — давхардуулахгүй.
+  ].filter((item) => !(profile && item.href === "/order/find"));
 
-  const isActive = (href: string) => pathname.startsWith(href);
+  const isActive = (href: string) => isNavActive(href, pathname);
 
   return (
     <>
@@ -113,7 +117,8 @@ export function MobileMenu({
           <Button
             variant="ghost"
             size="icon"
-            className={className}
+            // `Button` svg-г 16px болгодог — хайлт, хонх, сагстай ижил 20px.
+            className={cn("[&_svg]:size-5", className)}
             aria-label="Цэс"
           >
             <Menu className="size-5" />
@@ -122,18 +127,26 @@ export function MobileMenu({
 
         <SheetContent
           side="left"
-          className="bg-popover/95 shadow-lift flex w-[86vw] max-w-sm flex-col gap-0 p-0 backdrop-blur-xl"
+          // Theme солих дугуй шилжилтийн зуур бүтэн өнгөтэй (theme-switcher.tsx).
+          data-vt-solid=""
+          // Radix эхний товч (theme switch)-ийг focus хийдэг — iOS Safari
+          // түүнийг :focus-visible гэж ring зурдаг байв. Самбар өөрөө focus
+          // авна; Tab-аар товчнууд руу хэвээр шилжинэ.
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            (e.currentTarget as HTMLElement).focus();
+          }}
+          className="bg-popover/95 shadow-lift flex w-[86vw] max-w-sm flex-col gap-0 p-0 outline-none backdrop-blur-xl"
         >
-          {/* Толгой: брэнд өөрөө гарчиг. «Цэс» гэдэг үг дэлгэц эзлэхгүй, зөвхөн
-            дэлгэц уншигчид үлдэнэ. Хаах товч нь Sheet-ийн өөрийн, баруун дээд. */}
+          {/* Толгой: лого БАЙХГҮЙ (дэлгүүрийн header-т аль хэдийн бий) —
+            зөвхөн Sheet-ийн өөрийн хаах товч баруун дээд буланд. «Цэс» гэдэг
+            үг дэлгэц уншигчид л үлдэнэ. */}
           <SheetTitle className="sr-only">Цэс</SheetTitle>
-          <div className="flex h-14 shrink-0 items-center px-5 pt-2">
-            <SheetClose asChild>
-              <Logo className="text-xl" />
-            </SheetClose>
-          </div>
 
-          <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-4">
+          {/* Нэг гүйлгэх багана; доод хэсэг (`mt-auto`) урсгал дотроо —
+            тогтмол (fixed) тавцан биш. Цэс богино тул ихэнх утсанд гүйлгэх
+            шаардлагагүй. */}
+          <div className="pb-safe flex flex-1 flex-col overflow-y-auto overscroll-contain px-5 pt-14">
             {/* 1. Таних хэсэг */}
             <div className="animate-fade-up animation-duration-[380ms] motion-reduce:animate-none">
               {loading ? (
@@ -239,7 +252,7 @@ export function MobileMenu({
                       </span>
                       <span
                         className={cn(
-                          "flex size-9 shrink-0 items-center justify-center rounded-full transition-colors",
+                          "flex size-9 shrink-0 items-center justify-center rounded-full",
                           active
                             ? "bg-foreground text-background"
                             : "bg-secondary text-foreground group-hover:bg-foreground group-hover:text-background",
@@ -253,63 +266,57 @@ export function MobileMenu({
               })}
             </nav>
 
-            {/* 3. Танилцах хуудсууд — капсул тор */}
-            <div
+            {/* 3. Танилцах хуудсууд — жижиг мөрүүд */}
+            <nav
+              aria-label="Тусламж"
               style={{ animationDelay: "240ms" }}
-              className="animate-fade-up animation-duration-[380ms] mt-6 flex flex-wrap gap-2 motion-reduce:animate-none"
+              className="animate-fade-up animation-duration-[380ms] mt-4 flex flex-col motion-reduce:animate-none"
             >
               {secondary.map((item) => (
                 <SheetClose asChild key={item.href}>
                   <Link
                     href={item.href}
-                    className="bg-secondary hover:bg-accent flex h-11 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors"
+                    className="text-muted-foreground hover:text-foreground flex h-11 items-center gap-3 text-sm font-medium transition-colors"
                   >
-                    <item.icon className="text-muted-foreground size-4 shrink-0" />
+                    <item.icon className="size-4 shrink-0" />
                     {item.label}
                   </Link>
                 </SheetClose>
               ))}
-            </div>
+            </nav>
 
-            {/* 4. Сошиал — сайтаас гадагш хөтөлдөг тул тусдаа хэсэг */}
-            {social}
-          </div>
+            {/* 4. Доод хэсэг: сошиал + загвар нэг мөрөнд, дараа нь админ/гарах */}
+            <div className="border-border mt-auto border-t pt-3 pb-4">
+              <div className="flex h-11 items-center justify-between gap-3">
+                {social}
+                <ThemeSwitcher className="ml-auto" />
+              </div>
 
-          {/* 5. Тавцан: загвар сонгох — гар утаснаас хүрэх цорын ганц зам */}
-          <div className="pb-safe bg-secondary/40 shrink-0 px-5 pt-4">
-            <div className="flex h-11 items-center justify-between">
-              <span className="text-muted-foreground text-[11px] font-medium tracking-[0.18em] uppercase">
-                Загвар
-              </span>
-              <ThemeSwitcher />
-            </div>
-
-            <div
-              className={cn(
-                "flex items-center gap-2 pb-4",
-                (isStaff || (configured && profile)) && "mt-2",
-              )}
-            >
-              {isStaff && (
-                <SheetClose asChild>
-                  <Link
-                    href="/admin"
-                    className="bg-secondary hover:bg-accent flex h-11 flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium transition-colors"
-                  >
-                    <LayoutDashboard className="size-4 shrink-0" /> Админ хэсэг
-                  </Link>
-                </SheetClose>
-              )}
-              {configured && profile && (
-                // Форм ба баталгаажуулах цонх нь Sheet-ийн ГАДНА (дээр) —
-                // самбар хаагдахад энэ товч устдаг.
-                <button
-                  type="button"
-                  onClick={askSignOut}
-                  className="bg-destructive/10 text-destructive hover:bg-destructive/20 ml-auto flex h-11 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors"
-                >
-                  <LogOut className="size-4 shrink-0" /> Гарах
-                </button>
+              {(isStaff || (configured && profile)) && (
+                <div className="mt-3 flex items-center gap-2">
+                  {isStaff && (
+                    <SheetClose asChild>
+                      <Link
+                        href="/admin"
+                        className="bg-secondary hover:bg-accent flex h-11 flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium transition-colors"
+                      >
+                        <LayoutDashboard className="size-4 shrink-0" /> Админ
+                        хэсэг
+                      </Link>
+                    </SheetClose>
+                  )}
+                  {configured && profile && (
+                    // Форм ба баталгаажуулах цонх нь Sheet-ийн ГАДНА (дээр) —
+                    // самбар хаагдахад энэ товч устдаг.
+                    <button
+                      type="button"
+                      onClick={askSignOut}
+                      className="bg-destructive/10 text-destructive hover:bg-destructive/20 ml-auto flex h-11 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors"
+                    >
+                      <LogOut className="size-4 shrink-0" /> Гарах
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -324,22 +331,6 @@ function Avatar({
 }: {
   profile: { name: string; avatar: string | null };
 }) {
-  const initial = profile.name.charAt(0).toUpperCase();
-  return (
-    <span className="bg-background relative size-11 shrink-0 overflow-hidden rounded-full">
-      {profile.avatar ? (
-        <Image
-          src={profile.avatar}
-          alt=""
-          fill
-          sizes="44px"
-          className="object-cover"
-        />
-      ) : (
-        <span className="flex h-full items-center justify-center text-base font-semibold">
-          {initial}
-        </span>
-      )}
-    </span>
-  );
+  // Түвшний хүрээтэй (feature flag `user_tiers`) — цэс нээгдэх үед л.
+  return <MenuAvatar src={profile.avatar} name={profile.name} size={44} />;
 }

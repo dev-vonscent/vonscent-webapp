@@ -11,7 +11,7 @@ import {
 export default function Loading() {
   return (
     <div
-      className="mx-auto max-w-352 px-4 py-10 md:px-8"
+      className="mx-auto max-w-420 px-4 py-10 md:px-8"
       role="status"
       aria-label="Ачаалж байна"
     >

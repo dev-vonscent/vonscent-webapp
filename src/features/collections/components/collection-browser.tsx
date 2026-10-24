@@ -116,17 +116,31 @@ function GenderSegmented({
   className?: string;
 }) {
   const opts: GenderFilter[] = ["all", ...GENDERS];
+  const index = Math.max(0, opts.indexOf(value));
   return (
     <div
       role="radiogroup"
       aria-label="Хүйс"
       // `repeat(4,1fr)` — багана нь бичгээсээ нарийсахгүй. `grid-cols-4`
       // (minmax(0,1fr)) үед «Эрэгтэй», «Эмэгтэй» нь «Эрэгт…» болж тасардаг байв.
+      // `rounded-md` — хажуугийн хайлт, эрэмбийн select-тэй ижил радиус.
       className={cn(
-        "bg-secondary grid grid-cols-[repeat(4,1fr)] gap-1 rounded-lg p-1",
+        "bg-secondary relative grid grid-cols-[repeat(4,1fr)] rounded-md p-1",
         className,
       )}
     >
+      {/*
+        Сонголтын цул pill нэг л элемент бөгөөд сонгосон багана руу гулсана.
+        Багана тэнцүү өргөнтэй тул `translateX(index * 100%)` нь яг давхцана.
+      */}
+      <span
+        aria-hidden
+        className="bg-foreground absolute inset-y-1 inset-s-1 rounded-sm transition-transform duration-200 ease-out motion-reduce:transition-none"
+        style={{
+          width: `calc((100% - 0.5rem) / ${opts.length})`,
+          transform: `translateX(${index * 100}%)`,
+        }}
+      />
       {opts.map((g) => (
         <button
           key={g}
@@ -135,9 +149,9 @@ function GenderSegmented({
           aria-checked={value === g}
           onClick={() => onChange(g)}
           className={cn(
-            "rounded-md px-2.5 py-1.5 text-center text-sm font-medium whitespace-nowrap transition-colors",
+            "relative rounded-sm px-2.5 py-1.5 text-center text-sm font-medium whitespace-nowrap transition-colors duration-200",
             value === g
-              ? "bg-foreground text-background"
+              ? "text-background"
               : "text-muted-foreground hover:text-foreground",
           )}
         >
@@ -215,8 +229,6 @@ export function CollectionBrowser({
     });
   }, [collections, q, gender, sort, savedOf, showControls, showSearch]);
 
-  const activeCount = (gender !== "all" ? 1 : 0) + (showSearch && q ? 1 : 0);
-
   React.useEffect(() => {
     const next = new URLSearchParams();
     if (q) next.set("q", q);
@@ -235,12 +247,6 @@ export function CollectionBrowser({
     setQ("");
     setGender("all");
   }
-
-  const clearButton = activeCount > 0 && (
-    <Button variant="ghost" size="sm" onClick={clearAll}>
-      Цэвэрлэх ({activeCount})
-    </Button>
-  );
 
   const sortSelect = (
     <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
@@ -276,7 +282,6 @@ export function CollectionBrowser({
             className="w-full sm:w-auto"
           />
           <div className="ms-auto flex flex-1 items-center justify-end gap-2 sm:flex-none">
-            {clearButton}
             {showSearch && (
               <SearchInput
                 value={q}
@@ -289,7 +294,7 @@ export function CollectionBrowser({
         </div>
       )}
 
-      <div className="mt-6 lg:mt-8">
+      <div className="mt-4">
         {shown.length === 0 ? (
           <EmptyState
             icon={PackageOpen}

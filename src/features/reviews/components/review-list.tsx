@@ -12,9 +12,23 @@ import {
   type ReviewTarget,
 } from "@/features/reviews/types";
 import { DeleteReviewButton } from "./delete-review-button";
+import { TierAvatar } from "@/features/tiers/components/tier-avatar";
+import type { UserTierKey } from "@/lib/constants";
 
-/** Round avatar — photo when available, otherwise the author's initial. */
-function Avatar({ name, src }: { name: string; src: string | null }) {
+/**
+ * Round avatar — photo when available, otherwise the author's initial. With
+ * the author's tier known (feature flag `user_tiers`) it wears the tier frame.
+ */
+function Avatar({
+  name,
+  src,
+  tier,
+}: {
+  name: string;
+  src: string | null;
+  tier?: UserTierKey | null;
+}) {
+  if (tier) return <TierAvatar tier={tier} src={src} name={name} size={36} />;
   if (src) {
     return (
       <Image
@@ -45,7 +59,11 @@ function ReviewCard({
   return (
     <article className="py-5 first:pt-0">
       <div className="flex items-start gap-3">
-        <Avatar name={review.authorName} src={review.authorAvatar} />
+        <Avatar
+          name={review.authorName}
+          src={review.authorAvatar}
+          tier={review.authorTier}
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">

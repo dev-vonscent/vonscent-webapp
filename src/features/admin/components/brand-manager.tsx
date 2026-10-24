@@ -98,7 +98,7 @@ export function BrandManager({ brands }: { brands: BrandOption[] }) {
 
       <Card>
         <CardContent className="p-0">
-          <ul className="[&>li:nth-child(even)]:bg-muted/40">
+          <ul className="[&>li:nth-child(even)]:bg-secondary/60">
             {brands.map((b) => (
               <li key={b.id} className="flex items-center gap-3 px-4 py-3">
                 {/* The logo writes through on pick: it is one field, and a

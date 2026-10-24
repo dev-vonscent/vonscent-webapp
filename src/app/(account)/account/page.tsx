@@ -3,10 +3,11 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useReducedMotion } from "motion/react";
+import { motion } from "motion/react";
 import {
   BadgeCheck,
   ChevronRight,
+  Gem,
   KeyRound,
   LogOut,
   Pencil,
@@ -23,12 +24,23 @@ import { ProfileEditDialog } from "@/features/account/components/profile-edit-di
 import { EmailSettings } from "@/features/account/components/email-settings";
 import { useSignOutConfirm } from "@/features/account/components/use-sign-out-confirm";
 import { isPhoneEmail } from "@/lib/auth/phone-email";
+import { formatPhone } from "@/lib/format";
 import { WheelEntryCard } from "@/features/lucky-wheel/components/wheel-entry-card";
 import type { ProductListItem } from "@/lib/types";
 import { useFeatureFlag } from "@/components/feature-flags";
+import { useMyTier } from "@/features/tiers/use-tier";
+import { tierByKey } from "@/features/tiers/lib";
+import {
+  TierBadge,
+  TierFrame,
+  TierGem,
+} from "@/features/tiers/components/tier-frame";
 
 export default function ProfilePage() {
   const wheelOn = useFeatureFlag("lucky_wheel");
+  const tiersOn = useFeatureFlag("user_tiers");
+  const { data: tierSummary } = useMyTier();
+  const tier = tierSummary ? tierByKey(tierSummary.tier) : null;
   const [askSignOut, signOutDialog] = useSignOutConfirm();
   /** Supabase auth-ийн хаяг — утсаар бүртгүүлсэн хүнд синтетик тул харуулахгүй. */
   const [authEmail, setAuthEmail] = React.useState("");
@@ -141,11 +153,23 @@ export default function ProfilePage() {
   const realEmail = isPhoneEmail(authEmail) ? "" : authEmail;
   const displayEmail = contactEmail ?? realEmail;
   const initial = (fullName || displayEmail || "?").charAt(0).toUpperCase();
-  const handle = (
-    displayEmail.split("@")[0] ||
-    phone ||
-    "vonscent"
-  ).toLowerCase();
+  const avatarContent = avatar ? (
+    <Image
+      src={avatar}
+      alt="avatar"
+      fill
+      sizes="128px"
+      className="object-cover"
+    />
+  ) : (
+    <span className="text-muted-foreground flex h-full items-center justify-center font-serif text-4xl">
+      {initial}
+    </span>
+  );
+  // Нэрийн доорх мөр: дэлгүүр хэрэглэгчийг утсаар нь таньдаг (verify.mn) тул
+  // эхлээд дугаар, байхгүй бол имэйл. Өмнө нь имэйлийн «@»-ийн өмнөх хэсгийг
+  // social маягийн «@handle» болгодог байсан нь имэйл ил гарсан мэт харагдаж байв.
+  const subline = phone ? formatPhone(phone) : displayEmail;
 
   return (
     <div className="space-y-8">
@@ -156,51 +180,67 @@ export default function ProfilePage() {
         </p>
       )}
 
-      {/* Instagram-style profile header */}
-      <header className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
+      {/* Профайлын толгой: зураг зүүн талд, нэр · утас · түвшин баруун
+          талд нь нэг багана болж зэрэгцэнэ (утсан дээр ч); «Засах» баруун
+          дээд буланд — утсан дээр зөвхөн icon. */}
+      <header className="flex items-center gap-5 sm:gap-8">
         <div className="relative shrink-0">
-          <div className="bg-secondary rounded-full p-0.75">
-            <div className="border-background bg-secondary relative size-28 overflow-hidden rounded-full border-2 sm:size-32">
-              {avatar ? (
-                <Image
-                  src={avatar}
-                  alt="avatar"
-                  fill
-                  sizes="128px"
-                  className="object-cover"
-                />
-              ) : (
-                <div className="text-muted-foreground flex h-full items-center justify-center font-serif text-4xl">
-                  {initial}
-                </div>
-              )}
+          {tier ? (
+            <Link href="/account/tier" aria-label="Хэрэглэгчийн түвшин">
+              <TierFrame
+                tier={tier.key}
+                className="[--avatar:76px] sm:[--avatar:104px]"
+              >
+                {avatarContent}
+              </TierFrame>
+            </Link>
+          ) : (
+            <div className="bg-secondary rounded-full p-0.75">
+              <div className="border-background bg-secondary relative size-24 overflow-hidden rounded-full border-2 sm:size-32">
+                {avatarContent}
+              </div>
             </div>
-          </div>
-          {phoneVerified && (
-            <span className="bg-foreground text-background absolute right-1 bottom-1 flex items-center justify-center rounded-full p-1">
-              <BadgeCheck className="size-4" />
-            </span>
           )}
         </div>
 
-        <div className="flex-1 space-y-4 text-center sm:text-left">
-          <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center">
-            <div>
-              <h1 className="font-serif text-2xl font-semibold sm:text-3xl">
-                {fullName || "vonscent гишүүн"}
-              </h1>
-              <p className="text-muted-foreground text-sm">@{handle}</p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="sm:ml-auto"
-              onClick={() => setProfileOpen(true)}
-            >
-              <Pencil className="size-4" /> Засах
-            </Button>
+        <div className="min-w-0 flex-1 space-y-3">
+          <div className="min-w-0">
+            {/* Баталгаажсан тэмдэг нэрийн ард — урт нэр тасарсан ч харагдана. */}
+            <h1 className="flex min-w-0 items-center gap-1.5 font-serif text-2xl font-semibold sm:text-3xl">
+              <span className="truncate">{fullName || "vonscent гишүүн"}</span>
+              {phoneVerified && (
+                <BadgeCheck
+                  aria-label="Утас баталгаажсан"
+                  className="fill-foreground text-background size-5 shrink-0 sm:size-6"
+                />
+              )}
+            </h1>
+            {subline && (
+              <p className="text-muted-foreground truncate text-sm tabular-nums">
+                {subline}
+              </p>
+            )}
           </div>
+          {tier && (
+            <Link
+              href="/account/tier"
+              className="inline-flex transition-opacity hover:opacity-80"
+            >
+              <TierBadge tier={tier.key} />
+            </Link>
+          )}
         </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0 self-start"
+          aria-label="Профайл засах"
+          onClick={() => setProfileOpen(true)}
+        >
+          <Pencil className="size-4" />
+          <span className="max-sm:sr-only">Засах</span>
+        </Button>
       </header>
 
       {/* Stat tiles */}
@@ -238,6 +278,25 @@ export default function ProfilePage() {
         {/* Above the settings, not among them: the wheel is something to do,
             and it hides itself when there is nothing to collect. */}
         {configured && wheelOn && <WheelEntryCard />}
+
+        {configured && tiersOn && (
+          <Link
+            href="/account/tier"
+            className="bg-card hover:bg-accent flex w-full items-center gap-4 rounded-xl p-4 text-left transition-colors"
+          >
+            <IconCircle icon={Gem} />
+            <span className="font-medium">Түвшин</span>
+            {tier && (
+              <span className="text-muted-foreground ml-auto flex items-center gap-1.5 text-sm">
+                <TierGem tier={tier.key} />
+                {tier.label} · {tier.rate}%
+              </span>
+            )}
+            <ChevronRight
+              className={cn("text-muted-foreground size-4", !tier && "ml-auto")}
+            />
+          </Link>
+        )}
 
         {/* Купонууд өөрийн хуудсанд шилжсэн (0104) — энд зөвхөн орох зам. */}
         {configured && (
@@ -316,7 +375,7 @@ function IconCircle({ icon: Icon }: { icon: LucideIcon }) {
   );
 }
 
-// Link needs to be a motion component so the tile can own the hover state.
+// Link needs to be a motion component for the tap-scale feedback.
 const MotionLink = motion.create(Link);
 
 function Tile({
@@ -334,27 +393,13 @@ function Tile({
 }) {
   // The chevron is the tile's "I'm tappable" signal. Touch devices have no
   // hover, so there it simply stays visible; only on a fine pointer does it
-  // hide and glide out from behind the kicker.
-  const [hoverCapable, setHoverCapable] = React.useState(false);
-  React.useEffect(() => {
-    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
-    const sync = () => setHoverCapable(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-  const reduceMotion = useReducedMotion();
-  const [active, setActive] = React.useState(false);
-  const tucked = hoverCapable && !reduceMotion && !active;
-
+  // hide and glide out from behind the kicker. Pure CSS with a pinned
+  // compositor layer: the old JS/WAAPI spring dropped the layer when the
+  // exit animation finished, which made the tile just left flicker.
   return (
     <MotionLink
       href={href}
       initial={false}
-      onHoverStart={() => setActive(true)}
-      onHoverEnd={() => setActive(false)}
-      onFocus={() => setActive(true)}
-      onBlur={() => setActive(false)}
       whileTap={{ scale: 0.985 }}
       transition={{ type: "spring", stiffness: 320, damping: 30, mass: 0.6 }}
       className={cn(
@@ -371,22 +416,14 @@ function Tile({
         >
           {kicker}
         </p>
-        {/* Animating opacity/x only — the span keeps its slot in the flow at
-            every state, so the tile never reflows. */}
-        <motion.span
+        {/* Animating opacity/translate only — the span keeps its slot in the
+            flow at every state, so the tile never reflows. */}
+        <span
           aria-hidden
-          className="text-muted-foreground group-hover:text-foreground ml-auto shrink-0 transition-colors"
-          initial={false}
-          animate={{ opacity: tucked ? 0 : 1, x: tucked ? -16 : 0 }}
-          transition={{
-            type: "spring",
-            stiffness: 420,
-            damping: 34,
-            mass: 0.6,
-          }}
+          className="text-muted-foreground group-hover:text-foreground ml-auto shrink-0 transition-[opacity,translate,color] duration-300 ease-out will-change-[opacity,translate] group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100 pointer-fine:motion-safe:-translate-x-4 pointer-fine:motion-safe:opacity-0"
         >
           <ChevronRight className="size-4" />
-        </motion.span>
+        </span>
       </div>
       <p className="font-serif text-2xl/snug font-semibold tabular-nums">
         {value}

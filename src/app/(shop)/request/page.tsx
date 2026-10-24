@@ -39,7 +39,7 @@ export default async function PerfumeRequestPage({
   const user = supabase ? (await supabase.auth.getUser()).data.user : null;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-12 md:px-8 md:py-16">
+    <div className="mx-auto max-w-2xl px-4 pt-4 pb-10 md:px-8 md:py-16">
       <h1 className="font-serif text-3xl font-semibold tracking-tight md:text-4xl">
         Хүссэн үнэртэн тань алга уу?
       </h1>

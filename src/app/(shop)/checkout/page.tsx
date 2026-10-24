@@ -109,6 +109,8 @@ import {
 import { trackBeginCheckout } from "@/lib/analytics";
 import { createClient } from "@/lib/supabase/browser";
 import type { AddressRow } from "@/db/types";
+import { useMyTier } from "@/features/tiers/use-tier";
+import { pointsAtTierRate, tierByKey } from "@/features/tiers/lib";
 
 interface ShippingSettingsShape {
   zones: {
@@ -305,6 +307,8 @@ export default function CheckoutPage() {
 
   const [loyaltyPoints, setLoyaltyPoints] = React.useState(0);
   const [loyaltyRules, setLoyaltyRules] = React.useState(DEFAULT_LOYALTY_RULES);
+  // Туг асаалттай бол оноо түвшний хувиар (0143); зочинд `undefined`.
+  const { data: myTier } = useMyTier();
   /**
    * Оноогоор төлөхөөр хэрэглэгчийн ӨӨРӨӨ бичсэн дүн (₮). Өмнө нь энэ нь
    * чагт байсан тул «бүгд эсвэл юу ч үгүй» гэсэн хоёрхон сонголттой байв.
@@ -859,10 +863,12 @@ export default function CheckoutPage() {
    * Энэ захиалгаас хуримтлагдах оноо. Сан нь купоны дараах барааны дүнгээс
    * бодох тул оноогоор төлсөн хэсэг үүнийг бууруулахгүй (lib/loyalty.ts).
    */
-  const pointsEarned = pointsEarnedFor(
-    Math.max(subtotal - discount, 0),
-    loyaltyRules,
-  );
+  const pointsEarned = myTier
+    ? pointsAtTierRate(
+        Math.max(subtotal - discount, 0),
+        tierByKey(myTier.tier).rate,
+      )
+    : pointsEarnedFor(Math.max(subtotal - discount, 0), loyaltyRules);
 
   const contactName = watch("contactName") ?? "";
   const contactPhone = watch("contactPhone") ?? "";
@@ -1522,7 +1528,7 @@ export default function CheckoutPage() {
               <Field
                 label="Хүргүүлэх өдөр"
                 error={errors.deliverOn?.message}
-                hint={`Сонгосон өдрийн ${DISPATCH_HOUR}:00–${DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ. Цаг заах боломжгүйг анхаарна уу.`}
+                hint={`Сонгосон өдрийн ${DISPATCH_HOUR}:00–${DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ. Хүргүүлэхийг хүсэж буй цагийн хязгаараа нэмэлт тэмдэглэл хэсэгт бичиж үлдээнэ үү. Заасан цагийн дагуу хүргэхийг хичээх ба энэ нь амлалт биш юм.`}
               >
                 <Select
                   value={watch("deliverOn") ?? deliveryDays[0]}
@@ -1582,7 +1588,7 @@ export default function CheckoutPage() {
                           on ? t.filter((x) => x !== opt) : [...t, opt],
                         )
                       }
-                      className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
+                      className={`rounded-full px-3 py-1.5 text-sm ${
                         on
                           ? "bg-foreground text-background"
                           : "bg-secondary hover:bg-accent"
@@ -1899,7 +1905,7 @@ export default function CheckoutPage() {
                   <Clock className="mr-1 inline size-3.5 align-[-2px]" />
                   {`Захиалга ${formatDeliveryDay(
                     watch("deliverOn") ?? deliveryDays[0] ?? "",
-                  )} ${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.`}{" "}
+                  )} ${DISPATCH_HOUR}:00–${DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.`}{" "}
                   <strong>
                     {formatEditCutoff(
                       watch("deliverOn") ?? deliveryDays[0] ?? "",

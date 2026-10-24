@@ -32,6 +32,8 @@ const FOLDERS = {
   blog: "staff",
   /** Marketing imagery — promo popup slides (admin A8). */
   marketing: "staff",
+  /** Мэдэгдлийн thumbnail (0138) — panel-д 48px, toast-д 40px. */
+  notifications: "staff",
 } as const;
 
 type Folder = keyof typeof FOLDERS;

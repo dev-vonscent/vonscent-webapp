@@ -3,10 +3,17 @@
 import * as React from "react";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { SEARCH_PLACEHOLDER } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useFilterQuery } from "./use-filter-query";
 
-export function CatalogSearch({ className }: { className?: string }) {
+export function CatalogSearch({
+  className,
+  placeholder = SEARCH_PLACEHOLDER,
+}: {
+  className?: string;
+  placeholder?: string;
+}) {
   const { setSingle, searchParams } = useFilterQuery();
   const urlQuery = searchParams.get("q") ?? "";
   const [value, setValue] = React.useState(urlQuery);
@@ -48,7 +55,7 @@ export function CatalogSearch({ className }: { className?: string }) {
         type="search"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Үнэртэн, брэнд хайх…"
+        placeholder={placeholder}
         aria-label="Хайх"
         className="px-9 [&::-webkit-search-cancel-button]:hidden"
       />

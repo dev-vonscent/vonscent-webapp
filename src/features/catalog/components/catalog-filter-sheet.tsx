@@ -24,11 +24,13 @@ export function CatalogFilterSheet({
   brandLogos,
   priceBounds,
   families,
+  showKind,
 }: {
   brands: string[];
   brandLogos: BrandLogos;
   priceBounds: { min: number; max: number };
   families: ScentFamilyOption[];
+  showKind?: boolean;
 }) {
   const { activeCount, clearAll } = useFilterQuery();
   const [open, setOpen] = React.useState(false);
@@ -100,6 +102,7 @@ export function CatalogFilterSheet({
             priceBounds={priceBounds}
             families={families}
             showClear={false}
+            showKind={showKind}
           />
         </div>
         <button

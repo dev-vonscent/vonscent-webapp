@@ -2,6 +2,7 @@ import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { RAIL_TRACK, SLIDE_WIDTH } from "@/features/products/slide-width";
 
 /**
  * Loading shapes shared by the route-level `loading.tsx` files.
@@ -72,7 +73,7 @@ export function HeadingSkeleton({ className }: { className?: string }) {
  */
 export function ProductGridSkeleton({ count = 8 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="flex flex-col">
           <SkeletonBlock className="aspect-4/5 w-full rounded-2xl" />
@@ -204,7 +205,8 @@ export function DetailSkeleton({ label }: { label: string }) {
  * placeholder bar over a heading the visitor can read is a step backwards.
  */
 export function CarouselSkeleton({
-  cards = 4,
+  // 6: 2xl дээр нэг мөрөнд 6 карт багтана.
+  cards = 6,
   heading = true,
   action = false,
 }: {
@@ -221,12 +223,9 @@ export function CarouselSkeleton({
           {action && <SkeletonBlock className="h-4 w-28" />}
         </div>
       )}
-      <div className="flex gap-4 overflow-hidden">
+      <div className={cn(RAIL_TRACK, "overflow-hidden")}>
         {Array.from({ length: cards }).map((_, i) => (
-          <div
-            key={i}
-            className="w-[44%] min-w-0 shrink-0 sm:w-[31%] lg:w-[23.5%]"
-          >
+          <div key={i} className={SLIDE_WIDTH}>
             <SkeletonBlock className="aspect-4/5 w-full rounded-2xl" />
             <div className="mt-3 flex flex-col gap-1.5">
               <SkeletonBlock className="h-2.5 w-16" />
@@ -366,7 +365,7 @@ export function ReviewsSkeleton({ cards = 3 }: { cards?: number }) {
 }
 
 /**
- * The home page: hero, the trust strip, then the first rail.
+ * The home page: campaign hero, shortcuts, then the first product block.
  *
  * Only what sits above the fold is drawn. The page itself streams — its shell
  * is static and every data-backed rail carries its own Suspense skeleton — so
@@ -375,43 +374,57 @@ export function ReviewsSkeleton({ cards = 3 }: { cards?: number }) {
  */
 export function HomeSkeleton() {
   return (
-    <div role="status" aria-label="Нүүр хуудас ачаалж байна">
-      <section className="bg-background relative -mt-18 w-full overflow-hidden">
-        <div className="mx-auto grid max-w-352 items-center gap-8 px-4 pt-28 pb-16 md:grid-cols-2 md:px-8">
-          <div className="max-w-xl space-y-6 max-md:mx-auto max-md:flex max-md:w-full max-md:flex-col max-md:items-center md:order-1">
-            <SkeletonBlock className="h-3.5 w-44" />
-            <SkeletonBlock className="h-12 w-full sm:h-16" />
-            <SkeletonBlock className="h-12 w-4/5 sm:h-16" />
-            <SkeletonBlock className="h-4 w-full" />
-            <div className="flex gap-3">
-              <SkeletonBlock className="h-11 w-36 rounded-md" />
-              <SkeletonBlock className="h-11 w-36 rounded-md" />
-            </div>
-          </div>
-          <div className="order-first mx-auto aspect-square w-full max-w-140 md:order-2">
-            <SkeletonBlock className="size-full rounded-full" />
-          </div>
-        </div>
-      </section>
+    <div
+      role="status"
+      aria-label="Нүүр хуудас ачаалж байна"
+      className="mx-auto max-w-420 space-y-8 px-4 pt-3 pb-10 sm:space-y-12 sm:pt-5 md:px-8"
+    >
+      <HeroSkeleton />
+      <HomeGridSkeleton />
+    </div>
+  );
+}
 
-      <div className="mx-auto max-w-352 space-y-10 px-4 py-8 sm:space-y-16 sm:py-14 md:px-8">
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl md:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-card flex items-center gap-3 p-5">
-              <SkeletonBlock className="size-6 shrink-0 rounded-full" />
-              <div className="flex-1 space-y-1.5">
-                <SkeletonBlock className="h-3.5 w-24" />
-                <SkeletonBlock className="h-3 w-32" />
-              </div>
-            </div>
-          ))}
-        </div>
-        <CarouselSkeleton action />
+/**
+ * Mirrors `CampaignHero`'s photo layout: same aspect ratios and min-heights,
+ * copy on the photo's empty wall (top on a phone, left half on sm+).
+ */
+export function HeroSkeleton() {
+  return (
+    <div className="bg-secondary flex aspect-4/3 min-h-64 w-full overflow-hidden rounded-2xl sm:aspect-14/5 sm:max-h-[58svh] sm:min-h-64 md:min-h-80 lg:min-h-88">
+      <div className="flex w-[62%] flex-col justify-start gap-3 p-4 sm:w-[52%] sm:justify-center sm:p-8 md:p-10 lg:px-14">
+        <SkeletonBlock className="h-3 w-28" />
+        <SkeletonBlock className="h-7 w-full max-w-md sm:h-10" />
+        <SkeletonBlock className="h-7 w-3/4 max-w-sm sm:h-10" />
+        <SkeletonBlock className="mt-2 h-11 w-36 rounded-md" />
       </div>
     </div>
   );
 }
 
+/** Mirrors `HomeProductGrid`: compact heading + 2 / 4 product cards. */
+export function HomeGridSkeleton() {
+  return (
+    <div>
+      <div className="mb-3 flex items-end justify-between sm:mb-4">
+        <SkeletonBlock className="h-6 w-32" />
+        <SkeletonBlock className="h-4 w-24" />
+      </div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-6 md:grid-cols-4 md:gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className={cn(i > 1 && "max-md:hidden")}>
+            <SkeletonBlock className="aspect-4/5 w-full rounded-2xl" />
+            <div className="mt-3 space-y-1.5">
+              <SkeletonBlock className="h-2.5 w-16" />
+              <SkeletonBlock className="h-4 w-3/4" />
+              <SkeletonBlock className="h-4 w-20" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 /** The scent-family tiles: icon over a label, six across on desktop. */
 export function TileGridSkeleton({ tiles = 6 }: { tiles?: number }) {
   return (

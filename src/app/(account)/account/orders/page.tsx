@@ -8,7 +8,6 @@ import {
   PackageCheck,
   XCircle,
   ChevronRight,
-  ArrowLeft,
   MessageSquarePlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,9 +26,14 @@ import {
 import { cn } from "@/lib/utils";
 import type { OrderRow } from "@/db/types";
 import { EmptyState } from "@/components/shared/empty-state";
+import { AccountPageHeader } from "@/features/account/components/account-page-header";
+import { OrderTabs } from "@/features/account/components/order-tabs";
 import { SavedCheckouts } from "@/features/checkout/components/saved-checkouts";
 import { reviewPointsOf } from "@/lib/loyalty";
 import { settleExpiredOrders } from "@/features/account/settle-expired";
+import { isFeatureEnabled } from "@/lib/feature-flags";
+import { lifetimeSpendOf, tierProgress } from "@/features/tiers/lib";
+import { TierBadge } from "@/features/tiers/components/tier-frame";
 
 const STATUS_ICON: Record<
   OrderStatus,
@@ -68,12 +72,13 @@ type OrderWithItems = OrderRow & { order_items: OrderItemPreview[] };
  * холилдож, хэрэглэгч хэрэгтэйгээ хайж олоход хэцүү байв. Таб нь URL-д
  * (`?tab=`) — буцах товч, линк хуваалцах хоёулаа тухайн табаа хадгална.
  */
+// `short` — утсан дээр таван таб тэнцүү өргөнтэй нэг мөрөнд багтахын тулд.
 const TABS = [
-  { key: "all", label: "Бүгд" },
-  { key: "active", label: "Идэвхтэй" },
-  { key: "saved", label: "Дараа захиалах" },
-  { key: "delivered", label: "Хүргэгдсэн" },
-  { key: "cancelled", label: "Цуцлагдсан" },
+  { key: "all", label: "Бүгд", short: "Бүгд" },
+  { key: "active", label: "Идэвхтэй", short: "Идэвхтэй" },
+  { key: "saved", label: "Дараа захиалах", short: "Дараа" },
+  { key: "delivered", label: "Хүргэгдсэн", short: "Хүргэсэн" },
+  { key: "cancelled", label: "Цуцлагдсан", short: "Цуцалсан" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -173,7 +178,7 @@ export default async function OrdersPage({
   if (orders.length === 0 && savedCount === 0) {
     return (
       <div className="space-y-6">
-        <PageHeader />
+        <AccountPageHeader title="Миний захиалга" />
         <EmptyState
           size="lg"
           icon={Package}
@@ -212,34 +217,56 @@ export default async function OrdersPage({
     (counts.active > 0 ? "active" : orders.length > 0 ? "all" : "saved");
 
   // Төлбөр хүлээж буй нь эхэнд — хугацаатай, үйлдэл шаарддаг. Бусад нь
-  // огнооны дарааллаараа (sort тогтвортой).
-  const shown = orders
-    .filter((o) => tab === "all" || (tab !== "saved" && tabOf(o) === tab))
-    .sort(
-      (a, b) => Number(isAwaitingPayment(b)) - Number(isAwaitingPayment(a)),
-    );
+  // огнооны дарааллаараа (sort тогтвортой). Таб бүр энэ дарааллыг шүүж л авна.
+  const sorted = [...orders].sort(
+    (a, b) => Number(isAwaitingPayment(b)) - Number(isAwaitingPayment(a)),
+  );
+
+  // Нийт захиалгын дүн ба түвшин (feature flag `user_tiers`, 0143).
+  const tiersOn = await isFeatureEnabled("user_tiers");
 
   return (
     <div className="space-y-6">
-      <PageHeader count={orders.length + savedCount} />
-      <OrderTabs tabs={tabs} current={tab} counts={counts} />
-
-      {tab === "saved" ? (
-        <SavedCheckouts emptyState={<TabEmpty tab="saved" />} />
-      ) : shown.length === 0 ? (
-        <TabEmpty tab={tab} />
-      ) : (
-        <div className="space-y-4">
-          {shown.map((o) => (
+      {/* Тоо нь утсан дээр нуугдана — толгой бүхэлдээ нуугдахгүй бол хоосон
+          мөр `space-y`-ийн зай авч, бусад дэд хуудаснаас доогуур эхэлнэ. */}
+      <AccountPageHeader
+        title="Миний захиалга"
+        className="hidden md:flex"
+        aside={
+          <span className="text-muted-foreground hidden text-sm md:inline">
+            {orders.length + savedCount} захиалга
+          </span>
+        }
+      />
+      {tiersOn && <SpendSummary spend={lifetimeSpendOf(orders)} />}
+      <OrderTabs
+        tabs={tabs.map((t) => ({
+          value: t.key,
+          label: t.label,
+          short: t.short,
+          count: counts[t.key],
+        }))}
+        initialTab={tab}
+        orders={sorted.map((o) => ({
+          id: o.id,
+          tab: tabOf(o),
+          card: (
             <OrderCard
-              key={o.id}
               o={o}
               imageById={imageById}
               reviewPoints={reviewPoints}
             />
-          ))}
-        </div>
-      )}
+          ),
+        }))}
+        saved={<SavedCheckouts emptyState={<TabEmpty tab="saved" />} />}
+        empty={{
+          all: <TabEmpty tab="all" />,
+          active: <TabEmpty tab="active" />,
+          saved: <TabEmpty tab="saved" />,
+          delivered: <TabEmpty tab="delivered" />,
+          cancelled: <TabEmpty tab="cancelled" />,
+        }}
+      />
     </div>
   );
 }
@@ -250,61 +277,6 @@ function isAwaitingPayment(o: OrderRow): boolean {
     o.payment_status === "unpaid" &&
     o.status !== "cancelled" &&
     Boolean(o.pay_token)
-  );
-}
-
-/**
- * Табын мөр — линкээр: шүүлт нь серверт, хуудас JS-гүйгээр ч ажиллана.
- *
- * Утсан дээр таван таб тоотойгоо нэг мөрөнд багтахгүй. Хэвтээ гүйлгэлт нь
- * сүүлчийн табуудыг «тасарсан» мэт нууж байсан тул тэнд мөр ороож буудаг
- * тусдаа чипүүд; `md`-ээс дээш газар хангалттай тул нэг segmented мөр
- * (`GenderSegmented`, collections-ийн хэлбэр).
- */
-function OrderTabs({
-  tabs,
-  current,
-  counts,
-}: {
-  tabs: readonly (typeof TABS)[number][];
-  current: TabKey;
-  counts: Record<TabKey, number>;
-}) {
-  return (
-    <nav aria-label="Захиалгын ангилал">
-      <div className="md:bg-secondary flex flex-wrap gap-2 md:inline-flex md:flex-nowrap md:gap-1 md:rounded-lg md:p-1">
-        {tabs.map((t) => {
-          const active = t.key === current;
-          return (
-            <Link
-              key={t.key}
-              href={`/account/orders?tab=${t.key}`}
-              replace
-              scroll={false}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium whitespace-nowrap transition-colors md:h-auto md:rounded-md md:px-3 md:py-1.5",
-                active
-                  ? "bg-foreground text-background"
-                  : "bg-secondary text-muted-foreground hover:text-foreground md:bg-transparent",
-              )}
-            >
-              {t.label}
-              {counts[t.key] > 0 && (
-                <span
-                  className={cn(
-                    "text-xs tabular-nums",
-                    active ? "text-background/70" : "text-muted-foreground/80",
-                  )}
-                >
-                  {counts[t.key]}
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
   );
 }
 
@@ -496,23 +468,38 @@ function OrderCard({
  * the "Миний захиалга" title and a back button, so we hide this to avoid a
  * duplicate title.
  */
-function PageHeader({ count }: { count?: number }) {
+/** Нийт захиалгын дүн + түвшин рүү орох зам (feature flag `user_tiers`). */
+function SpendSummary({ spend }: { spend: number }) {
+  const { tier, next, remaining, ratio } = tierProgress(spend);
   return (
-    <div className="hidden items-center gap-3 md:flex">
-      <Link
-        href="/account"
-        aria-label="Буцах"
-        className="bg-secondary text-foreground hover:bg-secondary/70 flex size-9 shrink-0 items-center justify-center rounded-full transition-colors"
-      >
-        <ArrowLeft className="size-5" />
-      </Link>
-      <h1 className="font-serif text-2xl font-semibold">Миний захиалга</h1>
-      {count != null && count > 0 && (
-        <span className="text-muted-foreground ml-auto text-sm">
-          {count} захиалга
-        </span>
+    <Link
+      href="/account/tier"
+      className="bg-card hover:bg-accent group block space-y-3 rounded-2xl p-4 transition-colors"
+    >
+      <div className="flex items-center gap-3">
+        <div className="min-w-0">
+          <p className="text-muted-foreground text-sm">Нийт захиалгын дүн</p>
+          <p className="font-serif text-2xl font-semibold tabular-nums">
+            {formatPrice(spend)}
+          </p>
+        </div>
+        <TierBadge tier={tier.key} className="ml-auto" />
+        <ChevronRight className="text-muted-foreground group-hover:text-foreground size-4 shrink-0 transition-colors" />
+      </div>
+      {next && (
+        <div className="space-y-1.5">
+          <div className="bg-secondary h-1.5 overflow-hidden rounded-full">
+            <div
+              className="bg-foreground h-full rounded-full"
+              style={{ width: `${Math.round(ratio * 100)}%` }}
+            />
+          </div>
+          <p className="text-muted-foreground text-xs">
+            {next.label} түвшин хүртэл {formatPrice(remaining)} дутуу
+          </p>
+        </div>
       )}
-    </div>
+    </Link>
   );
 }
 

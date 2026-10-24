@@ -17,6 +17,17 @@ export function formatPrice(amount: number): string {
   return `${mnt.format(Math.round(amount))}₮`;
 }
 
+/**
+ * Монгол 8 оронтой дугаарыг 4-4 болгож бүлэглэнэ: "99112233" -> "9911 2233".
+ * Өөр хэлбэрийнхийг (гадаад, бүрэн бус) хөндөхгүй.
+ */
+export function formatPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "").replace(/^976(?=\d{8}$)/, "");
+  return digits.length === 8
+    ? `${digits.slice(0, 4)} ${digits.slice(4)}`
+    : phone;
+}
+
 /** Format a millilitre amount, e.g. 5 -> "5ml". */
 export function formatMl(ml: number): string {
   return `${ml}ml`;

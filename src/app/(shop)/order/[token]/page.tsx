@@ -15,7 +15,12 @@ import {
   PAYMENT_STATUS_LABEL,
   RESERVE_TIMEOUT_MINUTES,
 } from "@/lib/constants";
-import { deliveryDayOf, formatDeliveryDay, DISPATCH_HOUR } from "@/lib/time";
+import {
+  deliveryDayOf,
+  formatDeliveryDay,
+  DELIVERY_END_HOUR,
+  DISPATCH_HOUR,
+} from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { orderSummaryRows, type OrderSummaryRow } from "@/lib/orders/summary";
 
@@ -120,7 +125,8 @@ export default async function OrderStatusPage({
             </span>
             <span className="text-muted-foreground">
               {" "}
-              · {DISPATCH_HOUR}:00 цагт гарна
+              · {DISPATCH_HOUR}:00–{DELIVERY_END_HOUR}:00 цагийн хооронд
+              хүргэгдэнэ
             </span>
           </CardContent>
         </Card>

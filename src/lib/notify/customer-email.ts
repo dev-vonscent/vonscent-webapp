@@ -10,7 +10,12 @@ import { env } from "@/lib/env";
 import { formatPrice, formatMl } from "@/lib/format";
 import { orderSummaryRows, summarySource } from "@/lib/orders/summary";
 import { RESERVE_TIMEOUT_MINUTES } from "@/lib/constants";
-import { DISPATCH_HOUR, deliveryDayOf, formatDeliveryDay } from "@/lib/time";
+import {
+  DELIVERY_END_HOUR,
+  DISPATCH_HOUR,
+  deliveryDayOf,
+  formatDeliveryDay,
+} from "@/lib/time";
 
 /**
  * Захиалгын имэйл мэдэгдэл — гурван үед: захиалга үүсэхэд (`placed`, төлбөр
@@ -116,7 +121,7 @@ export async function sendOrderCustomerEmail(
               "Сайн байна уу! Таны захиалгын төлбөр амжилттай хүлээн авлаа.",
               `Захиалгын дугаар: ${order.order_no}. Захиалга тань ` +
                 `${formatDeliveryDay(deliveryDayOf(order)).toLowerCase()} ` +
-                `${DISPATCH_HOUR}:00 цагт хүргэлтэд гарна.`,
+                `${DISPATCH_HOUR}:00–${DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.`,
               ...(autoCoupon
                 ? [
                     `🎁 Танд дараагийн захиалгад зориулсан ${autoCoupon.label} ` +

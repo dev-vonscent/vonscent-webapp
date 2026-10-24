@@ -7,6 +7,10 @@ import { getCustomerDetail } from "@/features/admin/api";
 import { formatPrice, formatDate, formatDateTime } from "@/lib/format";
 import { ORDER_STATUS_LABEL, ORDER_STATUS_STYLE } from "@/lib/constants";
 import { CustomerControl } from "@/features/admin/components/customer-control";
+import { isFeatureEnabled } from "@/lib/feature-flags";
+import { lifetimeSpendOf, tierForSpend } from "@/features/tiers/lib";
+import { TierAvatar } from "@/features/tiers/components/tier-avatar";
+import { TierBadge } from "@/features/tiers/components/tier-frame";
 
 export default async function AdminCustomerDetail({
   params,
@@ -20,6 +24,10 @@ export default async function AdminCustomerDetail({
   const spent = orders
     .filter((o) => o.payment_status === "paid")
     .reduce((s, o) => s + o.total, 0);
+  // Түвшин (feature flag `user_tiers`) — «Миний захиалга»-тай ижил дүрмээр.
+  const tier = (await isFeatureEnabled("user_tiers"))
+    ? tierForSpend(lifetimeSpendOf(orders))
+    : null;
 
   return (
     <div className="space-y-6">
@@ -30,18 +38,38 @@ export default async function AdminCustomerDetail({
         <ArrowLeft className="size-4" /> Хэрэглэгчид
       </Link>
 
-      <div className="flex items-center gap-3">
-        <h1 className="font-serif text-2xl font-semibold">
-          {profile.full_name || "Нэргүй"}
-        </h1>
-        {profile.is_blocked && <Badge variant="sale">Хориглосон</Badge>}
+      <div className="flex items-center gap-4">
+        <TierAvatar
+          tier={tier?.key}
+          src={profile.avatar_url}
+          name={profile.full_name || "?"}
+          size={72}
+        />
+        <div className="min-w-0 space-y-1.5">
+          <h1 className="truncate font-serif text-2xl font-semibold">
+            {profile.full_name || "Нэргүй"}
+          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            {tier && <TierBadge tier={tier.key} />}
+            {tier && (
+              <span className="text-muted-foreground text-xs">
+                {tier.rate}% V point
+              </span>
+            )}
+            {profile.is_blocked && <Badge variant="sale">Хориглосон</Badge>}
+          </div>
+        </div>
       </div>
 
       {/* `items-start`: grid-ийн багана өгөгдмөлөөр мөрийн өндрөөр сунадаг тул
           баруун талын «Удирдах» карт зүүн талын урт баганыг дагаж сунаж, доогоо
-          хоосон зайтай болдог байв. */}
-      <div className="grid items-start gap-6 lg:grid-cols-[1fr_300px]">
-        <div className="space-y-6">
+          хоосон зайтай болдог байв.
+          `grid-cols-1` / `minmax(0,1fr)` + `min-w-0`: grid-ийн багана өгөгдмөлөөр
+          агуулгаасаа нарийсдаггүй тул утсан дээр захиалгын хүснэгт баганаа
+          сунгаж, хуудсыг бүхэлд нь хажуу тийш гүйлгэдэг байв — одоо хүснэгт
+          өөрийн `overflow-x-auto` дотроо гүйлгэгдэнэ. */}
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0 space-y-6">
           <Card>
             <CardContent className="grid grid-cols-3 gap-4 p-5 text-center">
               <Stat label="Захиалга" value={String(orders.length)} />
@@ -96,7 +124,7 @@ export default async function AdminCustomerDetail({
                     <tbody>
                       {orders.map((o) => (
                         <tr key={o.id} className="even:bg-muted/40">
-                          <th scope="row" className="p-2  text-left">
+                          <th scope="row" className="p-2 text-left">
                             <Link
                               href={`/admin/orders/${o.id}`}
                               className="hover:text-gold-strong font-mono font-normal"
@@ -104,15 +132,15 @@ export default async function AdminCustomerDetail({
                               {o.order_no}
                             </Link>
                           </th>
-                          <td className="text-muted-foreground p-2  tabular-nums">
+                          <td className="text-muted-foreground p-2 tabular-nums">
                             {formatDateTime(o.created_at)}
                           </td>
-                          <td className="p-2 ">
+                          <td className="p-2">
                             <Badge className={ORDER_STATUS_STYLE[o.status]}>
                               {ORDER_STATUS_LABEL[o.status]}
                             </Badge>
                           </td>
-                          <td className="p-2  text-right font-medium tabular-nums">
+                          <td className="p-2 text-right font-medium tabular-nums">
                             {formatPrice(o.total)}
                           </td>
                         </tr>
@@ -128,7 +156,7 @@ export default async function AdminCustomerDetail({
             <Card>
               <CardContent className="p-5">
                 <h2 className="mb-3 font-medium">V point гүйлгээ</h2>
-                <ul className="[&>li:nth-child(even)]:bg-muted/40 text-sm [&>li]:rounded-md [&>li]:px-2">
+                <ul className="[&>li:nth-child(even)]:bg-secondary/60 text-sm [&>li]:rounded-md [&>li]:px-2">
                   {ledger.map((l) => (
                     <li
                       key={l.id}
