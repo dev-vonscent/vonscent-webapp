@@ -19,7 +19,6 @@ import {
   DELIVERY_END_HOUR,
   DISPATCH_HOUR,
   deliveryDayOf,
-  formatEditCutoff,
   formatDeliveryDay,
   isOrderEditable,
 } from "@/lib/time";
@@ -37,6 +36,8 @@ import { maskAccount, refundBreakdown } from "@/lib/refund";
 import { settleExpiredOrders } from "@/features/account/settle-expired";
 import { EmptyState } from "@/components/shared/empty-state";
 import { reviewPointsOf } from "@/lib/loyalty";
+import { isFeatureEnabled } from "@/lib/feature-flags";
+import type { ReviewRejectReason, ReviewStatus } from "@/lib/constants";
 import {
   OrderReviewPrompt,
   type ReviewableItem,
@@ -162,55 +163,159 @@ export default async function OrderDetailPage({
   let reviewItems: ReviewableItem[] = [];
   let reviewPoints = 0;
   if (reviewPromptOpen) {
+    // Туг `review_moderation` (0162): base багцаар авсан ус багц доторх ус тус
+    // бүрт биш, багцад нэг сэтгэгдэл; тусад нь авсан ус бол усанд.
+    const moderated = await isFeatureEnabled("review_moderation");
+    const bought = items.filter(
+      (i) => i.product_id && !i.is_gift && !i.is_sample,
+    );
     const purchased = [
       ...new Set(
-        items
-          .filter((i) => i.product_id && !i.is_gift && !i.is_sample)
+        bought
+          .filter((i) => !moderated || !i.collection_id)
           .map((i) => i.product_id as string),
       ),
     ].filter((pid) => byId.get(pid)?.slug);
-    if (purchased.length > 0) {
-      const [{ data: reviewData }, { data: loyaltyData }] = await Promise.all([
+    const bundleIds = moderated
+      ? [
+          ...new Set(
+            bought.map((i) => i.collection_id).filter(Boolean) as string[],
+          ),
+        ]
+      : [];
+
+    if (purchased.length > 0 || bundleIds.length > 0) {
+      const none = Promise.resolve({ data: null });
+      const [
+        { data: reviewData },
+        { data: loyaltyData },
+        { data: rewardData },
+        { data: bundleData },
+        { data: bundleRewardData },
+      ] = await Promise.all([
         supabase
           .from("reviews")
-          .select("product_id")
+          .select("product_id, collection_id, status, reject_reason")
           .eq("user_id", user.id)
-          .in("product_id", purchased),
+          .or(
+            [
+              purchased.length && `product_id.in.(${purchased.join(",")})`,
+              bundleIds.length && `collection_id.in.(${bundleIds.join(",")})`,
+            ]
+              .filter(Boolean)
+              .join(","),
+          ),
         supabase
           .from("settings")
           .select("value")
           .eq("key", "loyalty")
           .maybeSingle(),
+        moderated && purchased.length
+          ? supabase
+              .from("review_rewards")
+              .select("product_id, points")
+              .eq("user_id", user.id)
+              .in("product_id", purchased)
+          : none,
+        bundleIds.length
+          ? supabase
+              .from("collections")
+              .select("id, slug, name, image_url")
+              .eq("type", "base")
+              .in("id", bundleIds)
+          : none,
+        bundleIds.length
+          ? supabase
+              .from("collection_review_rewards")
+              .select("collection_id, points")
+              .eq("user_id", user.id)
+              .in("collection_id", bundleIds)
+          : none,
       ]);
-      const reviewed = new Set(
-        ((reviewData as { product_id: string }[] | null) ?? []).map(
-          (r) => r.product_id,
-        ),
+
+      type ReviewRef = {
+        product_id: string | null;
+        collection_id: string | null;
+        status: ReviewStatus;
+        reject_reason: ReviewRejectReason | null;
+      };
+      const reviewed = new Map(
+        ((reviewData as ReviewRef[] | null) ?? []).map((r) => [
+          r.product_id ? `p:${r.product_id}` : `c:${r.collection_id}`,
+          r,
+        ]),
       );
+      const rewarded = new Map<string, number>([
+        ...(
+          (rewardData as { product_id: string; points: number }[] | null) ?? []
+        ).map((r) => [`p:${r.product_id}`, r.points] as const),
+        ...(
+          (bundleRewardData as
+            | { collection_id: string; points: number }[]
+            | null) ?? []
+        ).map((r) => [`c:${r.collection_id}`, r.points] as const),
+      ]);
       reviewPoints = reviewPointsOf(
         (loyaltyData as { value?: unknown } | null)?.value,
       );
-      reviewItems = purchased.map((pid) => {
-        const p = byId.get(pid)!;
-        const line = items.find((i) => i.product_id === pid)!;
+
+      const withStatus = (
+        key: string,
+        item: Pick<ReviewableItem, "href" | "title" | "image">,
+      ): ReviewableItem => {
+        const review = reviewed.get(key);
         return {
-          productId: pid,
-          slug: p.slug,
-          name: line.product_name,
-          brand: line.brand,
-          image: p.image?.url ?? null,
-          reviewed: reviewed.has(pid),
+          key,
+          ...item,
+          reviewed: Boolean(review),
+          moderation:
+            moderated && review
+              ? {
+                  status: review.status,
+                  rejectReason: review.reject_reason,
+                  rewardPoints: rewarded.get(key) ?? 0,
+                }
+              : undefined,
         };
-      });
+      };
+
+      reviewItems = [
+        ...purchased.map((pid) => {
+          const p = byId.get(pid)!;
+          const line = items.find((i) => i.product_id === pid)!;
+          return withStatus(`p:${pid}`, {
+            href: `/products/${p.slug}`,
+            title: `${line.brand} ${line.product_name}`,
+            image: p.image?.url ?? null,
+          });
+        }),
+        // Идэвхгүй/устсан багц уншигдахгүй — сэтгэгдлийн хуудасгүй тул алгасна.
+        ...(
+          (bundleData as
+            | {
+                id: string;
+                slug: string;
+                name: string;
+                image_url: string | null;
+              }[]
+            | null) ?? []
+        ).map((c) =>
+          withStatus(`c:${c.id}`, {
+            href: `/collections/${c.slug}`,
+            title: `${c.name} (багц)`,
+            image: c.image_url,
+          }),
+        ),
+      ];
     }
   }
 
-  // Cancellable only while the status allows it AND the delivery day has not
-  // started yet (cut-off 00:00 UB, client 2026-09-21) — which for a pre-order
-  // can be a week or more away.
-  const openStatus = order.status === "pending" || order.status === "confirmed";
-  const beforeCutoff = isOrderEditable(order);
-  const cancellable = openStatus && beforeCutoff;
+  // Төлсөн захиалгыг хэрэглэгч цуцлахгүй (клиент, 2026-10-26) — зөвхөн
+  // төлөөгүй, хүргэх өдөр нь эхлээгүй захиалга.
+  const cancellable =
+    order.payment_status !== "paid" &&
+    (order.status === "pending" || order.status === "confirmed") &&
+    isOrderEditable(order);
 
   return (
     <div className="space-y-6">
@@ -300,21 +405,11 @@ export default async function OrderDetailPage({
             </Card>
           )}
 
-          {openStatus && !beforeCutoff && (
-            <p className="bg-secondary text-muted-foreground rounded-xl px-4 py-3 text-sm">
-              Захиалга бэлтгэгдэж эхэлсэн тул (
-              {formatEditCutoff(deliveryDayOf(order))} өнгөрсөн) цуцлах, өөрчлөх
-              боломжгүй. Асуудал гарвал пэйж чат эсвэл утсаар холбогдоно уу.
-            </p>
-          )}
-
           {(reorderItems.length > 0 || awaitingPayment || cancellable) && (
             <OrderActions
               orderId={order.id}
               items={reorderItems}
               cancellable={cancellable}
-              paid={order.payment_status === "paid"}
-              total={order.total}
               payToken={awaitingPayment ? order.pay_token : null}
               canSaveForLater={order.checkout_snapshot !== null}
             />

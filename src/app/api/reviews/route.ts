@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
 import {
-  revalidateCollectionReviews,
-  revalidateProductReviews,
-} from "@/lib/cache";
-import {
+  moderatedReviewInputSchema,
   reviewDeleteSchema,
   reviewInputSchema,
   reviewPageSchema,
 } from "@/lib/validators/review";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 import { getReviewById, getReviewPage } from "@/features/reviews/api";
 import type { ReviewTarget } from "@/features/reviews/types";
+import { revalidateTarget } from "@/features/reviews/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -25,22 +24,6 @@ function toTarget(v: {
   return v.collectionId
     ? { kind: "collection", id: v.collectionId }
     : { kind: "product", id: v.productId! };
-}
-
-/** Purge the page the review lives on — the rows only carry the id. */
-async function revalidateTarget(
-  supabase: SupabaseClient,
-  target: ReviewTarget,
-) {
-  const table = target.kind === "product" ? "products" : "collections";
-  const { data } = await supabase
-    .from(table)
-    .select("slug")
-    .eq("id", target.id)
-    .maybeSingle();
-  const slug = (data as { slug?: string } | null)?.slug ?? null;
-  if (target.kind === "product") revalidateProductReviews(slug);
-  else revalidateCollectionReviews(slug);
 }
 
 /**
@@ -68,7 +51,11 @@ export async function GET(req: Request) {
  */
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
-  const parsed = reviewInputSchema.safeParse(body);
+  // Туг `review_moderation` (0162): текст заавал, 100+ тэмдэгт, нэг удаа.
+  const moderated = await isFeatureEnabled("review_moderation");
+  const parsed = (
+    moderated ? moderatedReviewInputSchema : reviewInputSchema
+  ).safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: "VALIDATION", issues: parsed.error.flatten() },
@@ -122,6 +109,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
 
+  if (moderated) return insertModerated(supabase, user.id, target, input);
+
   // Owner-scoped RLS lets the user upsert their own review.
   const { data: saved, error } = await supabase
     .from("reviews")
@@ -151,6 +140,40 @@ export async function POST(req: Request) {
   // болох тул жагсаалт үүгээр шууд шинэчлэгдэнэ.
   const review = await getReviewById((saved as { id: string }).id);
   return NextResponse.json({ ok: true, review });
+}
+
+/**
+ * Хяналттай бичилт (0162): upsert биш insert — засах боломжгүй. Нөхцлийг
+ * (бүртгэл, худалдан авалт, урт, давхардал) `reviews_moderation_guard`
+ * trigger барина; энд түүний алдааг клиентийн код болгоно. Мөр `pending`
+ * тул нийтэд харагдахгүй — кэш цэвэрлэх шаардлагагүй.
+ */
+async function insertModerated(
+  supabase: SupabaseClient,
+  userId: string,
+  target: ReviewTarget,
+  input: { rating: number; body: string },
+) {
+  const { error } = await supabase.from("reviews").insert({
+    product_id: target.kind === "product" ? target.id : null,
+    collection_id: target.kind === "collection" ? target.id : null,
+    user_id: userId,
+    rating: input.rating,
+    body: input.body,
+  });
+  if (!error) return NextResponse.json({ ok: true, pending: true });
+
+  if (error.code === "23505") {
+    return NextResponse.json({ error: "already_reviewed" }, { status: 409 });
+  }
+  const blocked = /REVIEW_BLOCKED:(\w+)/.exec(error.message)?.[1];
+  if (blocked) {
+    return NextResponse.json({ error: blocked }, { status: 403 });
+  }
+  if (error.message.includes("REVIEW_TOO_SHORT")) {
+    return NextResponse.json({ error: "too_short" }, { status: 400 });
+  }
+  return NextResponse.json({ error: "INSERT_FAILED" }, { status: 500 });
 }
 
 /** Delete a review — staff only (client decision: зөвхөн админ устгана). */

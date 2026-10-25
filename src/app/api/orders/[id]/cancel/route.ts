@@ -9,22 +9,17 @@ import { isOrderEditable } from "@/lib/time";
 import { sendEmail, STORE_INBOX, renderEmail } from "@/lib/email";
 import { formatPrice } from "@/lib/format";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
-import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
-import { cancelOrderSchema } from "@/lib/validators/refund";
-import { maskAccount, refundBreakdown } from "@/lib/refund";
 import type { OrderRow } from "@/db/types";
 
 /**
  * Customer-initiated cancellation. Allowed only while the order is still
  * `pending` or `confirmed`; releases the reserved inventory via cancel_order.
  *
- * Төлсөн захиалгад буцаалтын данс ЗААВАЛ (`refundAccount`, клиент
- * 2026-09-30): QPay зөвхөн картын гүйлгээг буцаадаг тул админ гараар
- * шилжүүлнэ. Данс нь цуцлахаас ӨМНӨ хадгалагдана — хадгалж чадаагүй бол
- * захиалга цуцлагдахгүй, эс бөгөөс мөнгө нь хаашаа ч буцахгүй цуцлалт үлдэнэ.
+ * Зөвхөн ТӨЛӨӨГҮЙ захиалга (клиент, 2026-10-26): төлсөн захиалгыг хэрэглэгч
+ * өөрөө цуцлахгүй — шаардлагатай бол пэйж чат/утсаар, админ цуцална.
  */
 export async function POST(
-  req: Request,
+  _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
@@ -42,13 +37,6 @@ export async function POST(
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   // RLS lets the owner read their own order; confirm ownership + status.
-  // Хоосон бие (төлөөгүй захиалга, хуучин клиент) = данс байхгүй.
-  const raw = await req.text();
-  const parsed = cancelOrderSchema.safeParse(raw ? safeJson(raw) : {});
-  if (!parsed.success) {
-    return NextResponse.json({ error: "VALIDATION" }, { status: 400 });
-  }
-
   const { data } = await supabase
     .from("orders")
     .select("id, user_id, status, payment_status, created_at, deliver_on")
@@ -64,6 +52,12 @@ export async function POST(
   if (order.status !== "pending" && order.status !== "confirmed") {
     return NextResponse.json({ error: "NOT_CANCELLABLE" }, { status: 409 });
   }
+  if (order.payment_status === "paid") {
+    return NextResponse.json(
+      { error: "PAID_NOT_CANCELLABLE" },
+      { status: 409 },
+    );
+  }
   // Once the delivery day has begun (00:00 UB) the decants are being prepared
   // for it. A pre-order therefore stays cancellable right up to the midnight
   // before the day it was booked for. Enforced server-side, not just in the UI.
@@ -78,30 +72,6 @@ export async function POST(
   if (!admin) {
     return NextResponse.json({ error: "NO_DB" }, { status: 500 });
   }
-  const refundAccount = parsed.data.refundAccount;
-  if (order.payment_status === "paid") {
-    if (!refundAccount) {
-      return NextResponse.json(
-        { error: "REFUND_ACCOUNT_REQUIRED" },
-        { status: 400 },
-      );
-    }
-    const { error: accountError } = await admin
-      .from("order_refund_accounts")
-      .upsert({
-        order_id: id,
-        bank: refundAccount.bank,
-        account_number: refundAccount.accountNumber,
-        holder_name: refundAccount.holderName,
-      });
-    if (accountError) {
-      return NextResponse.json(
-        { error: "REFUND_ACCOUNT_FAILED" },
-        { status: 500 },
-      );
-    }
-  }
-
   const { error: cancelError } = await callRpc(admin, "update_order_status", {
     p_order: id,
     p_status: "cancelled",
@@ -118,11 +88,10 @@ export async function POST(
   await cancelOrderInvoice(id);
 
   // The DB trigger (0032) already dropped an admin_notifications row; the
-  // email and Telegram are best-effort extra channels so the admin hears
-  // about it fast enough to arrange the refund.
+  // email is a best-effort extra channel. Төлөөгүй тул буцаалт байхгүй.
   const { data: full } = await admin
     .from("orders")
-    .select("order_no, contact_name, contact_phone, total, payment_status")
+    .select("order_no, contact_name, contact_phone, total")
     .eq("id", id)
     .maybeSingle();
   const o = full as {
@@ -130,11 +99,8 @@ export async function POST(
     contact_name: string | null;
     contact_phone: string | null;
     total: number;
-    payment_status: string;
   } | null;
   if (o) {
-    const refund =
-      o.payment_status === "paid" ? refundBreakdown(o.total) : null;
     const { html, text } = renderEmail({
       preheader: `${o.order_no} — цуцлагдсан захиалга`,
       heading: `Захиалга цуцлагдлаа — ${o.order_no}`,
@@ -142,25 +108,9 @@ export async function POST(
       lines: [
         { label: "Хэрэглэгч", value: o.contact_name ?? "—" },
         { label: "Утас", value: o.contact_phone ?? "—" },
-        { label: "Дүн", value: formatPrice(o.total), strong: !refund },
-        ...(refund && refundAccount
-          ? [
-              {
-                label: "Буцаах дүн",
-                value: `${formatPrice(refund.amount)} (шимтгэл ${formatPrice(refund.fee)})`,
-                strong: true,
-              },
-              {
-                label: "Данс",
-                // Бүтэн дугаар имэйлээр явахгүй — админы хуудсанд л.
-                value: `${refundAccount.bank} · ${maskAccount(refundAccount.accountNumber)} · ${refundAccount.holderName}`,
-              },
-            ]
-          : []),
+        { label: "Дүн", value: formatPrice(o.total) },
       ],
-      note: refund
-        ? "Төлбөр төлөгдсөн байсан — захиалгын хуудаснаас дансыг харж мөнгийг нь буцаагаад «Буцаалт хийх» гэж тэмдэглэнэ үү."
-        : "Төлбөр төлөгдөөгүй байсан.",
+      note: "Төлбөр төлөгдөөгүй байсан.",
       cta: {
         label: "Захиалгыг нээх",
         href: `${env.siteUrl}/admin/orders/${id}`,
@@ -172,34 +122,10 @@ export async function POST(
       text,
       html,
     });
-    // Telegram зөвхөн төлсөн захиалгад — буцаалт хийх ажил тэр үед л үүснэ.
-    // Төлөөгүй цуцлалтад админд хийх зүйл байхгүй (нөөц өөрөө чөлөөлөгдсөн).
-    // Цуцлахаас өмнөх `order.payment_status`-ийг хэрэглэнэ: мөнгө орсон эсэх.
-    if (order.payment_status === "paid") {
-      const { fee, amount } = refundBreakdown(o.total);
-      await notifyAdmin(
-        `⚠️ <b>Хэрэглэгч цуцаллаа — буцаалт хийх</b> — ${tgEscape(o.order_no)}\n` +
-          `👤 ${tgEscape(o.contact_name ?? "—")} · ${tgEscape(o.contact_phone ?? "—")}\n` +
-          `💰 Буцаах: ${formatPrice(amount)} (шимтгэл ${formatPrice(fee)})\n` +
-          (refundAccount
-            ? // Бүтэн дугаар Telegram-аар явахгүй — админы хуудсанд л.
-              `🏦 ${tgEscape(refundAccount.bank)} · ${tgEscape(maskAccount(refundAccount.accountNumber))} · ${tgEscape(refundAccount.holderName)}\n`
-            : "") +
-          `🔗 ${env.siteUrl}/admin/orders/${id}`,
-      );
-    }
   }
   // The customer gets their own copy on the email they registered (if any).
   await sendOrderCustomerEmail(id, "cancelled");
 
   revalidatePublic();
   return NextResponse.json({ ok: true });
-}
-
-function safeJson(raw: string): unknown {
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
 }

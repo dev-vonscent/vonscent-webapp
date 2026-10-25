@@ -1,4 +1,8 @@
-import type { UserTierKey } from "@/lib/constants";
+import type {
+  ReviewRejectReason,
+  ReviewStatus,
+  UserTierKey,
+} from "@/lib/constants";
 /**
  * Review shapes shared by the server data layer (`api.ts`, which is
  * `server-only`) and the client list/form components. Kept in their own module
@@ -52,4 +56,48 @@ export interface ReviewPage {
   reviews: Review[];
   /** Every review on the product, text or rating-only — matches `rating_count`. */
   total: number;
+}
+
+/** `review_block_reason()` (0162) — яагаад бичиж болохгүй вэ. */
+export type ReviewBlockReason =
+  | "unauthorized"
+  | "profile_incomplete"
+  | "not_purchased"
+  /** Усыг зөвхөн base багц дотор авсан — сэтгэгдэл нь багцын хуудсанд. */
+  | "bought_in_bundle"
+  | "already_reviewed";
+
+/** Хэрэглэгчийн өөрийн сэтгэгдэл — ямар ч төлөвтэй. */
+export interface OwnReview {
+  rating: number;
+  body: string;
+  status: ReviewStatus;
+  rejectReason: ReviewRejectReason | null;
+}
+
+/** GET /api/reviews/eligibility — хяналттай формын төлөв. */
+export interface ReviewEligibility {
+  reason: ReviewBlockReason | null;
+  /** Батлагдвал олгох оноо (ус, багц хоёуланд); 0 бол урамшуулалгүй. */
+  points: number;
+  own: OwnReview | null;
+}
+
+/** Админы хяналтын жагсаалтын мөр (/admin/reviews). */
+export interface AdminReview {
+  id: string;
+  rating: number;
+  body: string;
+  status: ReviewStatus;
+  rejectReason: ReviewRejectReason | null;
+  isVisible: boolean;
+  isFeatured: boolean;
+  createdAt: string;
+  moderatedAt: string | null;
+  authorName: string | null;
+  authorPhone: string | null;
+  /** «Брэнд Нэр» эсвэл багцын нэр. */
+  targetName: string;
+  /** `/products/<slug>` эсвэл `/collections/<slug>`; олдохгүй бол null. */
+  targetHref: string | null;
 }
