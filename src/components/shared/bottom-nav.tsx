@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { selectWishCount, useWishlist } from "@/features/wishlist/store";
 import { useBottomNavHidden } from "@/components/shared/bottom-nav-store";
 import { useChatLauncher } from "@/features/chat/use-chat-launcher";
+import { markHomePopupIntent } from "@/features/marketing/home-popup-intent";
 
 /**
  * Шил гадаргуу — цэс ба чатын товч хоёуланд. Тунгалаг дэвсгэр + хүчтэй
@@ -167,6 +168,8 @@ function Tab({
   // дээш гүйлгэнэ (iOS-ийн таб цэсний зуршил). Query (каталогийн шүүлтүүр)
   // хадгалагдана — Link рүү явбал `/catalog` болж шүүлтүүр арилах байсан.
   const onClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    // «Нүүр» icon-оор нүүр рүү ороход сурталчилгааны popup гарна.
+    if (href === "/" && !current) markHomePopupIntent();
     if (!current || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
     const reduce = window.matchMedia(
