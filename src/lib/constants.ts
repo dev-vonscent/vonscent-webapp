@@ -581,6 +581,41 @@ export const REVIEWS_PAGE_SIZE = 6;
 export const REVIEW_BODY_MAX = 200;
 
 /**
+ * Хяналттай сэтгэгдэл (0162, feature flag `review_moderation`): зайг
+ * тооцохгүйгээр доод тал нь хэдэн тэмдэгт. DB trigger
+ * (`reviews_moderation_guard`) ижил тоог барина.
+ */
+export const REVIEW_MODERATED_BODY_MIN = 100;
+/** Хяналттай сэтгэгдлийн дээд урт — DB check `reviews_body_len` (0162). */
+export const REVIEW_MODERATED_BODY_MAX = 1000;
+
+/** Нүүрэнд харуулах сонгосон сэтгэгдлийн дээд тоо (шинэ нь эхэнд, 3 баганаар). */
+export const HOME_FEATURED_REVIEWS_MAX = 6;
+
+export type ReviewStatus = "pending" | "approved" | "rejected";
+
+/** Хэрэглэгчид харагдах төлөв («Миний захиалга»). */
+export const REVIEW_STATUS_LABEL: Record<ReviewStatus, string> = {
+  pending: "Шалгагдаж байна",
+  approved: "Оноо цуглуулсан",
+  rejected: "Цуцлагдсан",
+};
+
+/** Админ цуцлахдаа сонгох шалтгаан — DB check `reviews_reject_reason_check`. */
+export const REVIEW_REJECT_REASONS = [
+  "profanity",
+  "false_info",
+  "other",
+] as const;
+export type ReviewRejectReason = (typeof REVIEW_REJECT_REASONS)[number];
+
+export const REVIEW_REJECT_REASON_LABEL: Record<ReviewRejectReason, string> = {
+  profanity: "Ёс бус үг хэллэг ашигласан",
+  false_info: "Илт худал мэдээлэл оруулсан",
+  other: "Бусад",
+};
+
+/**
  * Дундаж захиалгын дүн (AOV) — зөвхөн **тооцооны таамаг**, дүрэм биш.
  *
  * Азын хүрдний эдийн засаг (docs/lucky-wheel.md §3) бүхэлдээ үүн дээр
@@ -753,6 +788,11 @@ export const FEATURE_FLAGS = {
     label: "Хэрэглэгчийн түвшин",
     description:
       "Standard/Gold/Platinum/Sapphire/Ruby: /account/tier хуудас, профайл ба цэсний түвшний хүрээ, сэтгэгдлийн зургийн хүрээ, нүүр хуудасны «Top 3 хэрэглэгч», «Миний захиалга»-ын нийт дүн, /api/account/tier, mark_order_paid-ийн түвшний V point хувь (0143). Унтраалттай үед оноо хуучин settings.loyalty дүрмээр бодогдоно.",
+  },
+  review_moderation: {
+    label: "Сэтгэгдлийн хяналт",
+    description:
+      "Сэтгэгдэл админ батласны дараа нийтлэгдэж, оноо батлах үед олгогдоно: 100+ тэмдэгт, худалдаж авсан ус, бүрэн бүртгэл, засах/устгах боломжгүй; «Миний захиалга»-ын төлөв, админ /admin/reviews (/api/admin/reviews), нүүрний сонгосон сэтгэгдэл, /api/reviews/eligibility, moderation guard trigger ба award_review_points (0162).",
   },
 } as const satisfies Record<string, FeatureFlagMeta>;
 

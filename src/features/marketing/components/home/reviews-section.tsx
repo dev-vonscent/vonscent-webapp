@@ -5,15 +5,24 @@ import { formatDate } from "@/lib/format";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { Stars } from "@/components/shared/stars";
 import { getRecentReviews } from "@/features/reviews/api";
+import { isFeatureEnabled } from "@/lib/feature-flags";
+import { HOME_FEATURED_REVIEWS_MAX } from "@/lib/constants";
 import { TierAvatar } from "@/features/tiers/components/tier-avatar";
 
 /**
- * Real, published reviews only (`public_reviews`, non-empty text). No
+ * Real, published reviews only (`public_reviews`, non-empty text; with
+ * `review_moderation` on, only the ones the admin picked). No
  * aggregate rating or customer count is shown — none is computed here, and
  * the section disappears when there is nothing to quote.
  */
 export async function ReviewsSection() {
-  const reviews = (await getRecentReviews(3)).filter((r) => r.body?.trim());
+  // Туг `review_moderation` (0162): админы сонгосон (`is_featured`) сэтгэгдэл.
+  const featuredOnly = await isFeatureEnabled("review_moderation");
+  const reviews = (
+    await getRecentReviews(featuredOnly ? HOME_FEATURED_REVIEWS_MAX : 3, {
+      featuredOnly,
+    })
+  ).filter((r) => r.body?.trim());
   if (reviews.length === 0) return null;
   return (
     <section aria-labelledby="home-reviews-title">
