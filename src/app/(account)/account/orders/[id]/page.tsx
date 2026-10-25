@@ -19,7 +19,6 @@ import {
   DELIVERY_END_HOUR,
   DISPATCH_HOUR,
   deliveryDayOf,
-  formatEditCutoff,
   formatDeliveryDay,
   isOrderEditable,
 } from "@/lib/time";
@@ -311,12 +310,12 @@ export default async function OrderDetailPage({
     }
   }
 
-  // Cancellable only while the status allows it AND the delivery day has not
-  // started yet (cut-off 00:00 UB, client 2026-09-21) — which for a pre-order
-  // can be a week or more away.
-  const openStatus = order.status === "pending" || order.status === "confirmed";
-  const beforeCutoff = isOrderEditable(order);
-  const cancellable = openStatus && beforeCutoff;
+  // Төлсөн захиалгыг хэрэглэгч цуцлахгүй (клиент, 2026-10-26) — зөвхөн
+  // төлөөгүй, хүргэх өдөр нь эхлээгүй захиалга.
+  const cancellable =
+    order.payment_status !== "paid" &&
+    (order.status === "pending" || order.status === "confirmed") &&
+    isOrderEditable(order);
 
   return (
     <div className="space-y-6">
@@ -406,21 +405,11 @@ export default async function OrderDetailPage({
             </Card>
           )}
 
-          {openStatus && !beforeCutoff && (
-            <p className="bg-secondary text-muted-foreground rounded-xl px-4 py-3 text-sm">
-              Захиалга бэлтгэгдэж эхэлсэн тул (
-              {formatEditCutoff(deliveryDayOf(order))} өнгөрсөн) цуцлах, өөрчлөх
-              боломжгүй. Асуудал гарвал пэйж чат эсвэл утсаар холбогдоно уу.
-            </p>
-          )}
-
           {(reorderItems.length > 0 || awaitingPayment || cancellable) && (
             <OrderActions
               orderId={order.id}
               items={reorderItems}
               cancellable={cancellable}
-              paid={order.payment_status === "paid"}
-              total={order.total}
               payToken={awaitingPayment ? order.pay_token : null}
               canSaveForLater={order.checkout_snapshot !== null}
             />

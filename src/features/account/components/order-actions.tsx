@@ -2,14 +2,12 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { BookmarkPlus, Info, RotateCcw, Trash2, XCircle } from "lucide-react";
+import { BookmarkPlus, RotateCcw, Trash2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart, type CartItem } from "@/features/cart/store";
 import { useConfirm } from "@/components/shared/confirm-dialog";
-import { REFUND_FEE_PCT } from "@/lib/constants";
 import { requestCancel } from "@/features/account/cancel-order";
 import { useRefreshAndWait } from "@/features/account/use-refresh-and-wait";
-import { RefundCancelDialog } from "@/features/account/components/refund-cancel-dialog";
 import { requestAbandon } from "@/features/payment/abandon";
 import { clearPendingOrder } from "@/features/checkout/pending-order";
 import { LoadingButton } from "@/components/shared/loading-button";
@@ -23,14 +21,13 @@ export type ReorderItem = Omit<CartItem, "key" | "qty"> & { qty: number };
  *     Төлөөгүй захиалгыг «цуцлах» гэж байхгүй: устгасан нь хаана ч
  *     үлдэхгүй (0124), дахин захиалах нь утгагүй — захиалга аль хэдийн нээлттэй;
  *   • хүргэгдсэн — «Дахин захиалах», бэлгийн мөргүйгээр (бэлэг сар бүр өөр);
- *   • төлсөн, хугацаа нь болоогүй — «Цуцлах» (буцаалтын данстай).
+ *   • төлөөгүй, нээлттэй (pay_token-гүй) — «Цуцлах». Төлсөн захиалгыг
+ *     хэрэглэгч цуцлахгүй (клиент, 2026-10-26).
  */
 export function OrderActions({
   orderId,
   items,
   cancellable,
-  paid,
-  total,
   payToken = null,
   canSaveForLater = true,
 }: {
@@ -45,21 +42,11 @@ export function OrderActions({
   payToken?: string | null;
   /** Захиалгад сагсны хуулбар бий эсэх — байхгүй бол зөвхөн «Устгах». */
   canSaveForLater?: boolean;
-  /**
-   * Төлбөр орсон эсэх. Төлсөн захиалгыг цуцлахад мөнгө буцаагдах бөгөөд
-   * банкны шимтгэл хасагдана — цуцлахаас ӨМНӨ хэлж, буцаалтын дансыг
-   * `RefundCancelDialog`-оор авна (клиент, 2026-09-30). Төлөөгүй бол буцаах
-   * мөнгө байхгүй — энгийн баталгаажуулалт.
-   */
-  paid: boolean;
-  /** Захиалгын нийт дүн — буцаах дүнг харуулахад. */
-  total: number;
 }) {
   const router = useRouter();
   const add = useCart((s) => s.add);
   const [confirm, confirmDialog] = useConfirm();
   const refresh = useRefreshAndWait();
-  const [refundOpen, setRefundOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
 
@@ -111,10 +98,6 @@ export function OrderActions({
 
   async function cancel() {
     setError(null);
-    if (paid) {
-      setRefundOpen(true);
-      return;
-    }
     await confirm({
       title: "Энэ захиалгыг цуцлах уу?",
       description:
@@ -140,14 +123,6 @@ export function OrderActions({
   return (
     <div className="space-y-3">
       {confirmDialog}
-      {paid && (
-        <RefundCancelDialog
-          orderId={orderId}
-          total={total}
-          open={refundOpen}
-          onOpenChange={setRefundOpen}
-        />
-      )}
       <div className="flex flex-wrap gap-3">
         {payToken ? (
           <>
@@ -181,15 +156,6 @@ export function OrderActions({
           </Button>
         )}
       </div>
-      {/* Товч дарахаас өмнө ч харагдана — баталгаажуулах цонхонд анх удаа
-          сонсох нь «нуусан нөхцөл» мэт санагдана. */}
-      {cancellable && paid && (
-        <p className="text-muted-foreground flex items-start gap-2 text-sm">
-          <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
-          Цуцалбал төлсөн дүнгээс банкны {REFUND_FEE_PCT}%-ийн шимтгэлийг хасаж
-          буцаана.
-        </p>
-      )}
       {error && <p className="text-destructive text-sm">{error}</p>}
     </div>
   );
