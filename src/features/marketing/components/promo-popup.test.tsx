@@ -125,22 +125,42 @@ describe("PromoPopup", () => {
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
 
-  it("сайт дотроос нүүр рүү буцаж ирэхэд үйлдэлгүйгээр дахин гарна", async () => {
-    const { PromoPopup, view } = await renderPopup();
+  /** Эхний нээлтийг дуусгаад нүүрээс гарна (ижил document, шинэ mount-д бэлэн). */
+  async function openThenLeave() {
+    const ctx = await renderPopup();
     await act(async () => {
       window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
       vi.advanceTimersByTime(500);
     });
     expect(screen.getByRole("dialog")).toBeTruthy();
+    ctx.view.unmount();
+    return ctx;
+  }
 
-    // Нүүрээс гараад (unmount) буцаж ирлээ (шинэ mount, ижил document).
-    view.unmount();
+  it("лого / «Нүүр» icon-оор нүүр рүү ороход үйлдэлгүйгээр дахин гарна", async () => {
+    const { PromoPopup } = await openThenLeave();
+    // Popup-ын импортолсон модультай ижил instance (resetModules-ийн дараа).
+    const intent = await import("../home-popup-intent");
+    window.history.replaceState(null, "", "/products/x");
+    intent.markHomePopupIntent();
+    window.history.replaceState(null, "", "/");
+
     render(<PromoPopup settings={settings} />);
     expect(screen.queryByRole("dialog")).toBeNull();
     await act(async () => {
       vi.advanceTimersByTime(500);
     });
     expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("back дарж нүүр рүү буцахад гарахгүй (клиент, 2026-10-26)", async () => {
+    const { PromoPopup } = await openThenLeave();
+    render(<PromoPopup settings={settings} />);
+    await act(async () => {
+      window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
+      vi.advanceTimersByTime(3000);
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("мэндчилгээний цонх нээгдсэн бол дараагийн нэг нээлтийг алгасна", async () => {

@@ -18,7 +18,6 @@ import { orderSummaryRows, type OrderSummaryRow } from "@/lib/orders/summary";
 import {
   DELIVERY_END_HOUR,
   DISPATCH_HOUR,
-  formatEditCutoff,
   earliestDeliveryDay,
   formatDeliveryDay,
   projectedDeliveryDay,
@@ -300,7 +299,10 @@ export function PaymentPanel({
     }
     clearPendingOrder(token);
     if (saveForLater) {
-      toast("«Миний захиалга» хэсгээс үргэлжлүүлээрэй.", "Дараа захиалах руу шилжлээ");
+      toast(
+        "«Миний захиалга» хэсгээс үргэлжлүүлээрэй.",
+        "Дараа захиалах руу шилжлээ",
+      );
       router.push("/account/orders?tab=saved");
     } else {
       toast("Захиалга устгагдлаа.");
@@ -577,19 +579,6 @@ function OrderRecap({ view }: { view: PaymentView }) {
           </strong>{" "}
           {DISPATCH_HOUR}:00–{DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.
         </p>
-        {/* Цуцлах зам нь «Миний захиалга» — зочинд тэр хэсэг байхгүй. */}
-        {view.canSaveForLater && (
-          <p className="text-muted-foreground mt-1.5 text-xs">
-            Захиалга баталгаажсан өдрийн 23:59:59 цагаас өмнө бол{" "}
-            <Link
-              href="/account/orders"
-              className="text-foreground underline underline-offset-2"
-            >
-              «Миний захиалга»
-            </Link>{" "}
-            хэсгээс захиалгаа цуцлах боломжтой.
-          </p>
-        )}
       </div>
     </div>
   );
@@ -1005,8 +994,7 @@ function PaidState({
           {DISPATCH_HOUR}:00–{DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.
         </p>
         <p className="text-muted-foreground mt-2 text-xs">
-          {formatEditCutoff(deliverOn ?? earliestDeliveryDay())} хүртэл цуцлах
-          боломжтой. Захиалгын явцыг «Захиалгаа харах» хэсгээс хянана.
+          Захиалгын явцыг «Захиалгаа харах» хэсгээс хянана.
         </p>
 
         {/* Захиалга цуцлагдаж болох хугацаанд оноо түгжээтэй байдаг

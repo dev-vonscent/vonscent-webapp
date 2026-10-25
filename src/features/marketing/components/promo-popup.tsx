@@ -12,6 +12,7 @@ import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import { useProfileSummary } from "@/features/account/use-profile-summary";
 import type { PopupSettings, PopupSlide } from "@/features/content/api";
 import { isUserInput, liveSlides, type PopupViewer } from "../popup-schedule";
+import { clearHomePopupIntent, hasHomePopupIntent } from "../home-popup-intent";
 
 /** Слайд хоорондын хугацаа (клиент, 2026-10). Зогсоох товч бий (WCAG 2.2.2). */
 const AUTOPLAY_MS = 3000;
@@ -50,11 +51,12 @@ const AUTO_OPEN_MS = 1500;
 const DIALOG_RECHECK_MS = 500;
 
 /**
- * Нүүр хуудас руу орох БҮРД гарна — refresh ч, сайт дотроос буцаж ирэх ч
- * (клиент, 2026-10). Модулийн хувьсагч нь document-ийн анхны mount-ыг
- * ялгана: зөвхөн тэр үед хэрэглэгчийн үйлдлийг хүлээнэ (LCP, доорх
- * POPUP_TRIGGERS). Client navigation-аар буцаж ирэхэд LCP аль хэдийн
- * хаагдсан тул шууд гарна.
+ * Гарах 3 тохиолдол (клиент, 2026-10-26): refresh / анхны нээлт, лого дээр
+ * дарж нүүр рүү орох, доод цэсний «Нүүр» icon дээр дарж орох
+ * (`home-popup-intent`). Back дарж буцахад (нүүр байсан ч) гарахгүй.
+ * Модулийн хувьсагч нь document-ийн анхны mount-ыг ялгана: зөвхөн тэр үед
+ * хэрэглэгчийн үйлдлийг хүлээнэ (LCP, доорх POPUP_TRIGGERS). Client
+ * navigation-аар орж ирэхэд LCP аль хэдийн хаагдсан тул шууд гарна.
  */
 let documentLoaded = false;
 
@@ -133,8 +135,8 @@ function useViewport(): Size | null {
  * Сурталчилгааны popup (backlog G1–G3).
  *
  * Зөвхөн зураг: гарчиг, текст, товч, купон байхгүй — зураг нь өөрөө зар,
- * холбоостой бол дарахад тийшээ очно. Зөвхөн нүүр хуудсанд, нүүр рүү орох
- * бүрд (эхний нээлт, refresh, сайт дотроос буцаж ирэх) гарна. Олон слайд бол
+ * холбоостой бол дарахад тийшээ очно. Зөвхөн нүүр хуудсанд: эхний нээлт /
+ * refresh, эсвэл лого / «Нүүр» icon-оор орж ирэхэд гарна. Олон слайд бол
  * 3 секунд тутам автоматаар шилжинэ, сум/свайпаар гараар солино; гараар
  * хөдөлгөсний дараа автомат зогсоно.
  *
@@ -202,6 +204,9 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
 
   /** Энэ mount-д нээгдсэн эсвэл алгассан — effect дахин ажиллахад давтахгүй. */
   const settled = React.useRef(false);
+  // Лого / «Нүүр» icon-оор орж ирсэн эсэх — mount-ын мөчид нэг удаа уншина.
+  // Initializer цэвэр (StrictMode хоёр дуудна); арилгах нь доорх effect-д.
+  const [fromHomeLink] = React.useState(hasHomePopupIntent);
 
   React.useEffect(() => {
     // Зочин/гишүүнд зориулсан зар байвал үзэгч тодорхой болтол хүлээнэ —
@@ -234,8 +239,13 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
       setOpen(true);
     };
 
-    // Сайт дотроос нүүр рүү буцаж ирлээ — LCP хаагдсан, шууд гарна.
+    // Сайт дотроос нүүр рүү орж ирлээ: зөвхөн лого / «Нүүр» icon-оор бол
+    // гарна (back биш). LCP хаагдсан тул шууд.
     if (documentLoaded) {
+      if (!fromHomeLink) {
+        settled.current = true;
+        return;
+      }
       openSoon();
       return () => {
         if (timer) clearTimeout(timer);
@@ -272,10 +282,12 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
       stopListening();
       if (timer) clearTimeout(timer);
     };
-  }, [settings.enabled, settings.slides, targeted, viewer]);
+  }, [settings.enabled, settings.slides, targeted, viewer, fromHomeLink]);
 
+  // Тэмдэглэгээг энэ mount ашигласан — дараагийн back-д дахин хэрэглэгдэхгүй.
   // Анхны mount дууссаны дараа client navigation-ы mount-ууд шууд нээгдэнэ.
   React.useEffect(() => {
+    clearHomePopupIntent();
     return () => {
       documentLoaded = true;
     };

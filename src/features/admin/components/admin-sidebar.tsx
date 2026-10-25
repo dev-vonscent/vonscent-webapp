@@ -21,6 +21,7 @@ import {
   LayoutList,
   Megaphone,
   MessageSquarePlus,
+  MessageSquareText,
   Menu,
   PartyPopper,
   Package,
@@ -143,6 +144,13 @@ const GROUPS: NavGroup[] = [
     links: [
       { href: "/admin/promotions", label: "Урамшуулал", icon: TicketPercent },
       { href: "/admin/loyalty", label: "V point", icon: Award },
+      // Сэтгэгдлийн хяналт (0162).
+      {
+        href: "/admin/reviews",
+        label: "Сэтгэгдэл",
+        icon: MessageSquareText,
+        flag: "review_moderation",
+      },
       { href: "/admin/gifts", label: "Бэлгийн үнэрүүд", icon: Gift },
       { href: "/admin/lucky-wheel", label: "Азын хүрд", icon: Disc3 },
       {

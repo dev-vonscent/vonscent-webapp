@@ -33,11 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { checkoutSchema } from "@/lib/validators/order";
-import {
-  REFUND_FEE_PCT,
-  SHIPPING_ZONES,
-  type ShippingZoneConfig,
-} from "@/lib/constants";
+import { SHIPPING_ZONES, type ShippingZoneConfig } from "@/lib/constants";
 import { giftSlotsFor } from "@/lib/gift";
 import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { GiftSamplePicker } from "@/features/checkout/components/gift-sample-picker";
@@ -46,7 +42,6 @@ import {
   DELIVERY_END_HOUR,
   DISPATCH_HOUR,
   MAX_PREORDER_DAYS,
-  formatEditCutoff,
   formatDeliveryDay,
   ubDayFromNow,
 } from "@/lib/time";
@@ -1905,14 +1900,7 @@ export default function CheckoutPage() {
                   <Clock className="mr-1 inline size-3.5 align-[-2px]" />
                   {`Захиалга ${formatDeliveryDay(
                     watch("deliverOn") ?? deliveryDays[0] ?? "",
-                  )} ${DISPATCH_HOUR}:00–${DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.`}{" "}
-                  <strong>
-                    {formatEditCutoff(
-                      watch("deliverOn") ?? deliveryDays[0] ?? "",
-                    )}
-                  </strong>
-                  -с хойш захиалга цуцлах, өөрчлөх боломжгүй.{" "}
-                  {`Хэрэглэгчийн хүсэлтээр цуцалсан тохиолдолд банкны ${REFUND_FEE_PCT}%-ийн шимтгэл хасагдаж бодогдохыг анхаарна уу.`}
+                  )} ${DISPATCH_HOUR}:00–${DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.`}
                 </p>
               )}
             </CardContent>
