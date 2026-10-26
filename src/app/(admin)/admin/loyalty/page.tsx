@@ -10,7 +10,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/browser";
 import { saveSetting } from "@/features/admin/lib/mutate";
 import { toast } from "@/lib/toast";
-import { DEFAULT_REVIEW_POINTS, reviewPointsOf } from "@/lib/loyalty";
+import {
+  DEFAULT_REVIEW_POINTS,
+  profilePointsOf,
+  reviewPointsOf,
+} from "@/lib/loyalty";
+import { DEFAULT_PROFILE_POINTS } from "@/lib/constants";
+import { useFeatureFlag } from "@/components/feature-flags";
 
 export default function AdminLoyaltyPage() {
   const [earnPer, setEarnPer] = React.useState(100);
@@ -18,6 +24,11 @@ export default function AdminLoyaltyPage() {
   const [redeemRate, setRedeemRate] = React.useState(1);
   const [lockHours, setLockHours] = React.useState(24);
   const [reviewPoints, setReviewPoints] = React.useState(DEFAULT_REVIEW_POINTS);
+  // Туг хаалттай үед талбар нуугдана, гэхдээ хадгалахад утга нь хэвээр үлдэнэ.
+  const profileInfoOn = useFeatureFlag("profile_info");
+  const [profilePoints, setProfilePoints] = React.useState(
+    DEFAULT_PROFILE_POINTS,
+  );
   const [busy, setBusy] = React.useState(false);
   const [loaded, setLoaded] = React.useState(false);
 
@@ -40,6 +51,7 @@ export default function AdminLoyaltyPage() {
           setRedeemRate(v.redeemRate ?? 1);
           setLockHours(v.lockHours ?? 24);
           setReviewPoints(reviewPointsOf(v));
+          setProfilePoints(profilePointsOf(v));
         }
         setLoaded(true);
       });
@@ -51,7 +63,14 @@ export default function AdminLoyaltyPage() {
     try {
       const ok = await saveSetting(
         "loyalty",
-        { earnPer, earnPoints, redeemRate, lockHours, reviewPoints },
+        {
+          earnPer,
+          earnPoints,
+          redeemRate,
+          lockHours,
+          reviewPoints,
+          profilePoints,
+        },
         "V point тохиргоо хадгалагдсангүй",
       );
       if (ok) toast.success("V point тохиргоо хадгалагдлаа.");
@@ -136,6 +155,26 @@ export default function AdminLoyaltyPage() {
                   бүрт нэг удаа олгоно. 0 бол урамшуулал унтарна.
                 </p>
               </div>
+              {profileInfoOn && (
+                <div className="space-y-1.5">
+                  <Label>Мэдээлэл бөглөсний урамшуулал (оноо)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={profilePoints}
+                    onChange={(e) =>
+                      setProfilePoints(
+                        // SQL нь `::int`-ээр уншдаг — бутархай хадгалагдвал алдаа.
+                        Math.max(Math.floor(Number(e.target.value)) || 0, 0),
+                      )
+                    }
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    «Миний мэдээлэл»-ийг бүрэн бөглөсөн хэрэглэгчид нэг удаа
+                    олгоно. 0 бол урамшуулал унтарна.
+                  </p>
+                </div>
+              )}
             </div>
             <LoadingButton loading={busy} type="submit">
               Хадгалах

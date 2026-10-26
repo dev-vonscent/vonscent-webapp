@@ -5,7 +5,9 @@ import {
   pointsEarnedFor,
   reviewPointsOf,
   DEFAULT_REVIEW_POINTS,
+  profilePointsOf,
 } from "./loyalty";
+import { DEFAULT_PROFILE_POINTS } from "./constants";
 
 describe("parseLoyaltyRules", () => {
   it("falls back to the 1% rule when the settings row is missing", () => {
@@ -60,5 +62,19 @@ describe("reviewPointsOf", () => {
     expect(reviewPointsOf({ reviewPoints: -10 })).toBe(0);
     expect(reviewPointsOf({ reviewPoints: "x" })).toBe(0);
     expect(reviewPointsOf({ reviewPoints: 250 })).toBe(250);
+  });
+});
+
+describe("profilePointsOf", () => {
+  it("falls back to the 0163 seed when the setting predates it", () => {
+    expect(profilePointsOf({ earnPer: 100 })).toBe(DEFAULT_PROFILE_POINTS);
+    expect(profilePointsOf(null)).toBe(DEFAULT_PROFILE_POINTS);
+  });
+
+  it("keeps 0 as «off», floors, and rejects junk", () => {
+    expect(profilePointsOf({ profilePoints: 0 })).toBe(0);
+    expect(profilePointsOf({ profilePoints: -5 })).toBe(0);
+    expect(profilePointsOf({ profilePoints: "x" })).toBe(0);
+    expect(profilePointsOf({ profilePoints: 300.7 })).toBe(300);
   });
 });

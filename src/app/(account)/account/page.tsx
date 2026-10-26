@@ -29,6 +29,7 @@ import { WheelEntryCard } from "@/features/lucky-wheel/components/wheel-entry-ca
 import type { ProductListItem } from "@/lib/types";
 import { useFeatureFlag } from "@/components/feature-flags";
 import { useMyTier } from "@/features/tiers/use-tier";
+import { ProfileInfoEntryCard } from "@/features/profile-info/components/profile-info-entry-card";
 import { tierByKey } from "@/features/tiers/lib";
 import {
   TierBadge,
@@ -39,6 +40,8 @@ import {
 export default function ProfilePage() {
   const wheelOn = useFeatureFlag("lucky_wheel");
   const tiersOn = useFeatureFlag("user_tiers");
+  // Асаалттай үед засвар «Миний мэдээлэл» хуудсанд шилжинэ (0163).
+  const profileInfoOn = useFeatureFlag("profile_info");
   const { data: tierSummary } = useMyTier();
   const tier = tierSummary ? tierByKey(tierSummary.tier) : null;
   const [askSignOut, signOutDialog] = useSignOutConfirm();
@@ -231,16 +234,18 @@ export default function ProfilePage() {
           )}
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          className="shrink-0 self-start"
-          aria-label="Профайл засах"
-          onClick={() => setProfileOpen(true)}
-        >
-          <Pencil className="size-4" />
-          <span className="max-sm:sr-only">Засах</span>
-        </Button>
+        {!profileInfoOn && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 self-start"
+            aria-label="Профайл засах"
+            onClick={() => setProfileOpen(true)}
+          >
+            <Pencil className="size-4" />
+            <span className="max-sm:sr-only">Засах</span>
+          </Button>
+        )}
       </header>
 
       {/* Stat tiles */}
@@ -278,6 +283,7 @@ export default function ProfilePage() {
         {/* Above the settings, not among them: the wheel is something to do,
             and it hides itself when there is nothing to collect. */}
         {configured && wheelOn && <WheelEntryCard />}
+        {configured && profileInfoOn && <ProfileInfoEntryCard />}
 
         {configured && tiersOn && (
           <Link

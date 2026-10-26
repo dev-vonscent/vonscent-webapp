@@ -30,7 +30,12 @@ function sortDefaultFirst(list: AddressRow[]): AddressRow[] {
   return [...list].sort((a, b) => Number(b.is_default) - Number(a.is_default));
 }
 
-export function AddressBook() {
+export function AddressBook({
+  onChange,
+}: {
+  /** Жагсаалт ачаалагдах/өөрчлөгдөх бүрд — «Миний мэдээлэл» дахин уншина. */
+  onChange?: (addresses: AddressRow[]) => void;
+} = {}) {
   const zones = useShippingZones();
   const [userId, setUserId] = React.useState<string | null>(null);
   /** Хүлээн авагчийн нэр, утас — хаяг бүр дээр асуухын оронд дансаас. */
@@ -84,6 +89,15 @@ export function AddressBook() {
   React.useEffect(() => {
     load();
   }, [load]);
+
+  // Callback-ийг ref-д барина: эцэг нь render бүрд шинэ функц дамжуулдаг.
+  const notify = React.useRef(onChange);
+  React.useEffect(() => {
+    notify.current = onChange;
+  }, [onChange]);
+  React.useEffect(() => {
+    if (loaded) notify.current?.(items);
+  }, [loaded, items]);
 
   function openNew() {
     setEditing(null);
