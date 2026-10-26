@@ -65,11 +65,16 @@ export function parseFilters(params: Params): CatalogFilters {
     return Number.isFinite(n) ? n : undefined;
   };
 
+  // Багцад брэнд / үнэрийн төрөл / улирал байхгүй — «Багц» дээр эдгээр
+  // шүүлтүүр нуугддаг тул хуучин холбоосоор ирсэн утга жагсаалтыг хоосолж,
+  // арилгах товчгүй үлдэх ёсгүй.
+  const bundle = kind === "bundle";
+
   return {
-    brand: list(params.brand),
+    brand: bundle ? [] : list(params.brand),
     gender,
-    family,
-    season,
+    family: bundle ? [] : family,
+    season: bundle ? [] : season,
     tags,
     featured: featured || undefined,
     kind,

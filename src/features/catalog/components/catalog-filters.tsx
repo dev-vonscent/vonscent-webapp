@@ -25,7 +25,7 @@ const BRANDS_COLLAPSED = 10;
 
 const KINDS: { value: string | undefined; label: string }[] = [
   { value: undefined, label: "Бүгд" },
-  { value: "perfume", label: "Ус" },
+  { value: "perfume", label: "Дан" },
   { value: "bundle", label: "Багц" },
 ];
 
@@ -146,6 +146,25 @@ export function CatalogFilters({
 
   const featured = searchParams.get("featured") === "1";
 
+  // Багцад брэнд / үнэрийн төрөл / улирал байхгүй (клиент, 2026-10-26) —
+  // «Багц» дээр эдгээр бүлэг нуугдаж, шилжихэд сонголт нь цэвэрлэгдэнэ
+  // (эс тэгвээс далд шүүлтүүр жагсаалтыг хоосолно).
+  const kind = searchParams.get("kind") ?? undefined;
+  const isBundle = kind === "bundle";
+
+  function selectKind(value: string | undefined) {
+    setMany(
+      value === "bundle"
+        ? {
+            kind: value,
+            brand: undefined,
+            family: undefined,
+            season: undefined,
+          }
+        : { kind: value },
+    );
+  }
+
   // Хураасан үед ч сонгосон брэнд харагдсаар байна — эс тэгвээс идэвхтэй
   // шүүлтүүр нүднээс далд болж, яаж арилгахаа олохгүй.
   const [showAllBrands, setShowAllBrands] = React.useState(false);
@@ -198,8 +217,8 @@ export function CatalogFilters({
               {KINDS.map((k) => (
                 <Chip
                   key={k.label}
-                  active={(searchParams.get("kind") ?? undefined) === k.value}
-                  onClick={() => setSingle("kind", k.value)}
+                  active={kind === k.value}
+                  onClick={() => selectKind(k.value)}
                 >
                   {k.label}
                 </Chip>
@@ -225,55 +244,59 @@ export function CatalogFilters({
       </Group>
       <Separator />
 
-      <Group title="Үнэрийн төрөл">
-        <div className="grid grid-cols-2 gap-2">
-          {families.map((f) => (
-            <Chip
-              key={f.slug}
-              active={values("family").includes(f.slug)}
-              onClick={() => toggle("family", f.slug)}
-            >
-              <span className="flex items-center justify-center gap-1.5">
-                {/* Admin-added families may have no icon yet. */}
-                {f.iconUrl && (
-                  <Image
-                    src={f.iconUrl}
-                    alt=""
-                    width={18}
-                    height={18}
-                    unoptimized
-                    className="size-4.5 shrink-0 object-contain"
-                  />
-                )}
-                {f.label}
-              </span>
-            </Chip>
-          ))}
-        </div>
-      </Group>
-      <Separator />
+      {!isBundle && (
+        <>
+          <Group title="Үнэрийн төрөл">
+            <div className="grid grid-cols-2 gap-2">
+              {families.map((f) => (
+                <Chip
+                  key={f.slug}
+                  active={values("family").includes(f.slug)}
+                  onClick={() => toggle("family", f.slug)}
+                >
+                  <span className="flex items-center justify-center gap-1.5">
+                    {/* Admin-added families may have no icon yet. */}
+                    {f.iconUrl && (
+                      <Image
+                        src={f.iconUrl}
+                        alt=""
+                        width={18}
+                        height={18}
+                        unoptimized
+                        className="size-4.5 shrink-0 object-contain"
+                      />
+                    )}
+                    {f.label}
+                  </span>
+                </Chip>
+              ))}
+            </div>
+          </Group>
+          <Separator />
 
-      <Group title="Улирал">
-        <div className="grid grid-cols-2 gap-2">
-          <Chip
-            active={allSeasons}
-            onClick={toggleAllSeasons}
-            className="col-span-2"
-          >
-            {SEASON_LABEL.all}
-          </Chip>
-          {SINGLE_SEASONS.map((s) => (
-            <Chip
-              key={s}
-              active={!allSeasons && season.includes(s)}
-              onClick={() => toggleSeason(s)}
-            >
-              {SEASON_LABEL[s]}
-            </Chip>
-          ))}
-        </div>
-      </Group>
-      <Separator />
+          <Group title="Улирал">
+            <div className="grid grid-cols-2 gap-2">
+              <Chip
+                active={allSeasons}
+                onClick={toggleAllSeasons}
+                className="col-span-2"
+              >
+                {SEASON_LABEL.all}
+              </Chip>
+              {SINGLE_SEASONS.map((s) => (
+                <Chip
+                  key={s}
+                  active={!allSeasons && season.includes(s)}
+                  onClick={() => toggleSeason(s)}
+                >
+                  {SEASON_LABEL[s]}
+                </Chip>
+              ))}
+            </div>
+          </Group>
+          <Separator />
+        </>
+      )}
 
       <Group title="Таг">
         <div className="grid grid-cols-2 gap-2">
@@ -315,59 +338,62 @@ export function CatalogFilters({
               </div>
             </div>
           </Group>
-          <Separator />
+          {/* «Багц» дээр брэнд нуугдана — доор нь юу ч үлдэхгүй. */}
+          {!isBundle && <Separator />}
         </>
       )}
 
-      <Group title="Брэнд">
-        <div id="catalog-brands" className="grid grid-cols-2 gap-2">
-          {visibleBrands.map((b) => {
-            const logo = brandLogos[b];
-            return (
-              <Chip
-                key={b}
-                active={pickedBrands.includes(b)}
-                onClick={() => toggle("brand", b)}
-              >
-                {logo ? (
-                  <span className="flex h-6 items-center justify-center">
-                    <Image
-                      src={logo}
-                      alt={b}
-                      width={120}
-                      height={24}
-                      unoptimized
-                      className="brand-logo h-5 w-auto object-contain"
-                    />
-                  </span>
-                ) : (
-                  b
+      {!isBundle && (
+        <Group title="Брэнд">
+          <div id="catalog-brands" className="grid grid-cols-2 gap-2">
+            {visibleBrands.map((b) => {
+              const logo = brandLogos[b];
+              return (
+                <Chip
+                  key={b}
+                  active={pickedBrands.includes(b)}
+                  onClick={() => toggle("brand", b)}
+                >
+                  {logo ? (
+                    <span className="flex h-6 items-center justify-center">
+                      <Image
+                        src={logo}
+                        alt={b}
+                        width={120}
+                        height={24}
+                        unoptimized
+                        className="brand-logo h-5 w-auto object-contain"
+                      />
+                    </span>
+                  ) : (
+                    b
+                  )}
+                </Chip>
+              );
+            })}
+          </div>
+          {hiddenBrandCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowAllBrands((v) => !v)}
+              aria-expanded={showAllBrands}
+              aria-controls="catalog-brands"
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm font-medium transition-colors"
+            >
+              {showAllBrands
+                ? "Хураах"
+                : `Бүх брэнд харах (+${hiddenBrandCount})`}
+              <ChevronDown
+                aria-hidden
+                className={cn(
+                  "size-4 transition-transform",
+                  showAllBrands && "rotate-180",
                 )}
-              </Chip>
-            );
-          })}
-        </div>
-        {hiddenBrandCount > 0 && (
-          <button
-            type="button"
-            onClick={() => setShowAllBrands((v) => !v)}
-            aria-expanded={showAllBrands}
-            aria-controls="catalog-brands"
-            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm font-medium transition-colors"
-          >
-            {showAllBrands
-              ? "Хураах"
-              : `Бүх брэнд харах (+${hiddenBrandCount})`}
-            <ChevronDown
-              aria-hidden
-              className={cn(
-                "size-4 transition-transform",
-                showAllBrands && "rotate-180",
-              )}
-            />
-          </button>
-        )}
-      </Group>
+              />
+            </button>
+          )}
+        </Group>
+      )}
     </div>
   );
 }
