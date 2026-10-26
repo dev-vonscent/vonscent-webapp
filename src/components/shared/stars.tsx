@@ -24,7 +24,7 @@ export function Stars({
           height={size}
           className={cn(
             n <= rounded
-              ? "fill-gold text-gold"
+              ? "fill-rating text-rating"
               : "text-muted-foreground/40 fill-transparent",
           )}
         />

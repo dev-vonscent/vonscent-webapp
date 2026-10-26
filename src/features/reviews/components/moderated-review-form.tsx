@@ -290,7 +290,7 @@ export function ModeratedReviewForm({
                   className={cn(
                     "size-8 transition-colors",
                     n <= shown
-                      ? "fill-gold text-gold"
+                      ? "fill-rating text-rating"
                       : "text-muted-foreground/50 fill-transparent",
                   )}
                   strokeWidth={1.5}

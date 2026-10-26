@@ -53,6 +53,9 @@
   --gold: #d4d4d4;
   --gold-soft: #a1a1a1;
   --gold-strong: #ffffff;
+  /* Үнэлгээний од — монохром палитрын бас нэг санаатай эвдрэл: «gold» токен
+     theme бүрт саарал/navy тул од өнгөгүй харагддаг байв (клиент, 2026-10-26). */
+  --rating: #f5b82e;
 
   /* destructive must stay legible as text on black — not a gray surface */
   --destructive: #f87171;
@@ -135,6 +138,7 @@
   --gold: #4d4d4d;
   --gold-soft: #6b6b6b;
   --gold-strong: #171717;
+  --rating: #f0a81c;
 
   --destructive: #c02626;
   --destructive-foreground: #ffffff;
@@ -193,6 +197,7 @@
   --gold: #2d4373;
   --gold-soft: #4b5f88; /* 6.00:1 */
   --gold-strong: #1a2e5a;
+  --rating: #f0a81c;
 
   --destructive: #c02626;
   --destructive-foreground: #ffffff;
@@ -278,6 +283,7 @@
   --gold: #a8425f;
   --gold-soft: #8f4a63;
   --gold-strong: #b81f56;
+  --rating: #f0a81c;
 
   --destructive: #b3213f;
   --destructive-foreground: #ffffff;
@@ -326,6 +332,7 @@
   --color-gold: var(--gold);
   --color-gold-soft: var(--gold-soft);
   --color-gold-strong: var(--gold-strong);
+  --color-rating: var(--rating);
   --color-surface-deep: var(--surface-deep);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);

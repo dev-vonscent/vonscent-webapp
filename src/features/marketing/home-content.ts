@@ -84,11 +84,16 @@ export const HOME_CAMPAIGNS: readonly HomeCampaign[] = [
     startsOn: "2026-09-15",
     endsOn: "2027-02-28",
     eyebrow: "Энэ улирлын сонголт",
-    title: "Сэрүүн улирлын тансаг үнэртнүүд",
+    title: "Өвлийн тансаг үнэртнүүд",
     description:
-      "Намар, өвөлд тохирох үнэртнүүдийг бүтнээр нь авалгүй хямд өртгөөр туршаад үзээрэй.",
+      "Өвөлд тохирох үнэртнүүдийг бүтнээр нь авалгүй хямд өртгөөр туршаад үзээрэй.",
     mobileDescription: "Бүтнээр нь авалгүй хямд өртгөөр туршаарай.",
-    primary: { label: "Сонголтыг үзэх", href: "/catalog?season=autumn,winter" },
+    // Дан ус + өвөл: бараг бүх өвлийн ус «намар+өвөл» тагтай тул «өвөл»
+    // дангаараа хангалттай; багцад улирал байхгүй (клиент, 2026-10-26).
+    primary: {
+      label: "Сонголтыг үзэх",
+      href: "/catalog?kind=perfume&season=winter",
+    },
     secondary: { label: "Бүх үнэртэн", href: "/catalog" },
     image: HERO_PHOTO,
   },
