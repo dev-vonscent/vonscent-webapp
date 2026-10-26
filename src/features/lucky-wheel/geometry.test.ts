@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isFlick,
   norm360,
   positionOfSlot,
   segmentAngle,
@@ -82,5 +83,22 @@ describe("wheel geometry", () => {
   it("falls back to the first position for a slot that is not on the wheel", () => {
     expect(positionOfSlot([1, 3, 4], 2)).toBe(1);
     expect(positionOfSlot([], 5)).toBe(1);
+  });
+});
+
+describe("isFlick", () => {
+  it("accepts a quick sideways swipe either way", () => {
+    expect(isFlick(80, 10, 200)).toBe(true);
+    expect(isFlick(-60, -20, 300)).toBe(true);
+  });
+
+  it("leaves vertical swipes to the page scroll", () => {
+    expect(isFlick(50, 120, 200)).toBe(false);
+  });
+
+  it("ignores taps, short nudges and slow drags", () => {
+    expect(isFlick(0, 0, 80)).toBe(false);
+    expect(isFlick(30, 0, 120)).toBe(false);
+    expect(isFlick(200, 0, 900)).toBe(false);
   });
 });

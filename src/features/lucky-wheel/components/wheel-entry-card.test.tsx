@@ -4,6 +4,7 @@ import { WheelEntryCard } from "./wheel-entry-card";
 import type { WheelState } from "../types";
 
 const state = vi.fn();
+const grand = vi.fn(() => undefined as unknown);
 vi.mock("../use-wheel", async () => {
   const actual =
     await vi.importActual<typeof import("../use-wheel")>("../use-wheel");
@@ -12,6 +13,7 @@ vi.mock("../use-wheel", async () => {
     // Only the network read is faked; useCountdown stays real so the row's
     // "in 05:42:00" text is the one the customer would actually see.
     useWheelState: () => ({ data: state() }),
+    useGrandPrizes: () => ({ data: grand() }),
   };
 });
 

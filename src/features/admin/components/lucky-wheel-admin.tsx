@@ -2,29 +2,34 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import {
-  Check,
-  Crown,
-  Heart,
-  Loader2,
-  Package,
-  Save,
-  Ticket,
-} from "lucide-react";
+import { Crown, Heart, Loader2, Save, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { mutateJson } from "@/features/admin/lib/mutate";
 import { toast } from "@/lib/toast";
-import { formatDate, formatPrice } from "@/lib/format";
+import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { VPointIcon } from "@/components/shared/v-point-icon";
 import { ASSUMED_AOV } from "@/lib/constants";
 import type { SpinWheelPrizeRow } from "@/db/types";
-import type { WheelReport, WheelSettings } from "@/features/admin/api";
+import type {
+  GrandAdminRow,
+  GrandBundleChoice,
+  WheelReport,
+  WheelSettings,
+} from "@/features/admin/api";
+import { GrandPrizesAdmin } from "./grand-prizes-admin";
 
 /**
  * Азын хүрдний удирдлага.
@@ -38,7 +43,7 @@ const KIND_LABEL: Record<string, string> = {
   points: "V point",
   coupon_percent: "Хувийн купон",
   coupon_fixed: "Дүнгийн купон",
-  bundle: "Бодит бэлэг",
+  bundle: "2мл багц (гранд)",
   none: "Баярлалаа (шагналгүй)",
 };
 
@@ -55,6 +60,9 @@ const KIND_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   bundle: Crown,
   none: Heart,
 };
+
+/** Radix Select has no empty value — this stands for «no bundle». */
+const NONE = "none";
 
 /** Editable copy of a prize row — every numeric field is a string while typing. */
 interface Draft {
@@ -142,10 +150,14 @@ export function LuckyWheelAdmin({
   prizes,
   settings,
   report,
+  grand,
+  bundleChoices,
 }: {
   prizes: SpinWheelPrizeRow[];
   settings: WheelSettings;
   report: WheelReport;
+  grand: GrandAdminRow[];
+  bundleChoices: GrandBundleChoice[];
 }) {
   const router = useRouter();
   const [drafts, setDrafts] = React.useState<Draft[]>(() =>
@@ -153,7 +165,6 @@ export function LuckyWheelAdmin({
   );
   const [config, setConfig] = React.useState(settings);
   const [busy, setBusy] = React.useState(false);
-  const [fulfilling, setFulfilling] = React.useState<string | null>(null);
 
   const totalWeight = drafts.reduce(
     (sum, d) => sum + (d.isActive ? num(d.weight) : 0),
@@ -191,21 +202,6 @@ export function LuckyWheelAdmin({
     setBusy(false);
     if (ok) {
       toast.success("Хүрдний тохиргоо хадгалагдлаа");
-      router.refresh();
-    }
-  }
-
-  async function markFulfilled(spinId: string) {
-    setFulfilling(spinId);
-    const ok = await mutateJson(
-      "/api/admin/lucky-wheel",
-      "PATCH",
-      { spinId, fulfilled: true },
-      "Тэмдэглэж чадсангүй",
-    );
-    setFulfilling(null);
-    if (ok) {
-      toast.success("Хүргэсэн гэж тэмдэглэлээ");
       router.refresh();
     }
   }
@@ -262,47 +258,8 @@ export function LuckyWheelAdmin({
         />
       </section>
 
-      {/* ── Хүлээгдэж буй бодит шагнал ───────────────────────────────── */}
-      {report.pending.length > 0 && (
-        <section>
-          <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
-            <Package className="size-4" />
-            Хүргэгдээгүй бодит шагнал ({report.pending.length})
-          </h2>
-          <Card>
-            <CardContent className="divide-muted/60 divide-y p-0">
-              {report.pending.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex flex-wrap items-center justify-between gap-3 p-4"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{item.label}</p>
-                    <p className="text-muted-foreground text-xs">
-                      {item.customer}
-                      {item.phone ? ` · ${item.phone}` : ""} ·{" "}
-                      {formatDate(item.createdAt)}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={fulfilling === item.id}
-                    onClick={() => markFulfilled(item.id)}
-                  >
-                    {fulfilling === item.id ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Check className="size-4" />
-                    )}
-                    Хүргэсэн
-                  </Button>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </section>
-      )}
+      {/* ── Гранд шагнал: хожсоноос хүргэлт хүртэл (0165) ─────────────── */}
+      <GrandPrizesAdmin rows={grand} />
 
       {/* ── Салбарууд ─────────────────────────────────────────────────── */}
       <section className="space-y-3">
@@ -551,6 +508,64 @@ export function LuckyWheelAdmin({
                 />
               </Field>
             </div>
+
+            {/* Гранд шагнал (0165): хэрэглэгч эдгээр хоёроос нэгийг сонгоно. */}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {(["male", "female"] as const).map((g) => (
+                <Field
+                  key={g}
+                  label={`Гранд шагнал — ${g === "male" ? "эрэгтэй" : "эмэгтэй"} багц (2мл)`}
+                >
+                  <Select
+                    value={config.grandBundles[g] ?? NONE}
+                    onValueChange={(v) =>
+                      setConfig({
+                        ...config,
+                        grandBundles: {
+                          ...config.grandBundles,
+                          [g]: v === NONE ? null : v,
+                        },
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Сонгоогүй" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>Сонгоогүй</SelectItem>
+                      {/* Эрэгтэй шагналд эрэгтэй + unisex, эмэгтэйд эмэгтэй +
+                          unisex — эсрэг хүйсийн багц санал болгохгүй. */}
+                      {bundleChoices
+                        .filter((c) => c.gender === g || c.gender === "unisex")
+                        .map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name} · {formatPrice(c.price)}
+                            {c.available ? "" : " · 2мл дууссан"}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              ))}
+              <Field label="Шагналаа авах хугацаа (хоног)">
+                <Input
+                  inputMode="numeric"
+                  value={config.bundleClaimDays}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      bundleClaimDays: Number(e.target.value) || 0,
+                    })
+                  }
+                />
+              </Field>
+            </div>
+            {(!config.grandBundles.male || !config.grandBundles.female) && (
+              <p className="text-destructive text-xs">
+                Гранд шагналын хоёр багцыг хоёуланг нь сонгоно уу — эс бөгөөс
+                хожсон хэрэглэгч сонгох юмгүй үлдэнэ.
+              </p>
+            )}
 
             <div className="space-y-2">
               <label className="flex w-fit items-center gap-2 text-sm">

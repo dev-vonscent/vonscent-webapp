@@ -3,6 +3,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
+import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
 import type { CouponRow, SpinWheelSpinRow } from "@/db/types";
 import type {
   SpinHistoryItem,
@@ -168,5 +169,46 @@ export async function spinWheel(mode: SpinMode): Promise<SpinOutcome> {
     p_mode: mode,
   });
   if (error || !data) return { ok: false, reason: "NO_DB" };
+
+  // Grand prize (0165): hand the reveal the spin's id so the customer can pick
+  // their bundle at once, and tell the shop straight away — a real parcel is
+  // now owed. The in-app bell for staff is written by the spin's trigger.
+  if (data.ok && data.kind === "bundle") {
+    const { data: row } = await supabase
+      .from("spin_wheel_spins")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("kind", "bundle")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const spinId = (row as { id: string } | null)?.id;
+    await notifyGrandWin(supabase, userId, data.label);
+    return spinId ? { ...data, spinId } : data;
+  }
   return data;
+}
+
+/** Telegram to the shop on a grand win. Best-effort: never fails the spin. */
+async function notifyGrandWin(
+  supabase: NonNullable<ReturnType<typeof createAdminClient>>,
+  userId: string,
+  label: string,
+): Promise<void> {
+  try {
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name, phone")
+      .eq("id", userId)
+      .maybeSingle();
+    const p = data as { full_name: string | null; phone: string | null } | null;
+    await notifyAdmin(
+      `🏆 <b>Азын хүрд — гранд шагнал</b>\n` +
+        `${tgEscape(label)}\n` +
+        `👤 ${tgEscape(p?.full_name?.trim() || "Хэрэглэгч")} · ${tgEscape(p?.phone ?? "—")}\n` +
+        `Хэрэглэгч багцаа сонгоод дараагийн захиалгадаа авна.`,
+    );
+  } catch {
+    // Telegram is a nicety; the admin page and bell carry the same news.
+  }
 }

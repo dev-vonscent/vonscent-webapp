@@ -333,6 +333,14 @@
   --color-gold-soft: var(--gold-soft);
   --color-gold-strong: var(--gold-strong);
   --color-rating: var(--rating);
+  --color-wheel-frame: var(--wheel-frame);
+  --color-wheel-gold: var(--wheel-gold);
+  --color-wheel-cta: var(--wheel-cta);
+  --color-wheel-gold-deep: var(--wheel-gold-deep);
+  --color-wheel-gold-light: var(--wheel-gold-light);
+  --color-wheel-ink-dark: var(--wheel-ink-dark);
+  --color-wheel-title: var(--wheel-title);
+  --color-wheel-accent: var(--wheel-accent);
   --color-surface-deep: var(--surface-deep);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -461,6 +469,88 @@
   }
   50% {
     transform: translate(0, -14px);
+  }
+}
+
+/*
+ * Азын хүрдний палитр: хүрд нь темийн монохром саарал, ганц онцгой нь алт —
+ * хүрээ, icon, гранд шагнал (клиент, 2026-10-26, зөвхөн /lucky-wheel).
+ * Цул өнгө л — алтан «металл» ч давхар цул цагиргаар бүтнэ, gradient
+ * хэрэглэхгүй (design.md §2).
+ *
+ * Хуудасны агуулга `.force-black` дотор (header нь темээрээ) — темээс хамаарах
+ * token-ыг тэнд ДАХИН зарлана: custom property зарласан элемент дээрээ
+ * тооцоологдож удамшдаг тул :root дээрх цагаан темийн утга уруудахгүйн тулд.
+ */
+:root,
+.force-black {
+  /* Хүрдний хайрцаг — темийн өөрийн саарал (хар дээр бараан, цагаан дээр
+     цайвар); алт, чийдэн л темээс үл хамаарна. */
+  --wheel-frame: color-mix(in oklab, var(--foreground) 9%, var(--background));
+  --wheel-frame-edge: color-mix(
+    in oklab,
+    var(--foreground) 18%,
+    var(--background)
+  );
+  --wheel-gold-deep: #6f4e14;
+  /* Металл алт (#D4AF37 орчим) — шар биш: улаавтар, гүн аястай. */
+  --wheel-gold: #d6aa45;
+  --wheel-gold-mid: #b8862f;
+  --wheel-gold-light: #efd48f;
+  /* Гранд хэсгийн гялбаа — хамгийн цайвар алт. */
+  --wheel-gold-shine: #fbedc6;
+  /* Гарчиг ба «Эргүүлэх» товч — тод шар хэвээр (клиентийн хүсэлт): металл алтнаас
+     ялгарч, хуудасны гол үйлдэл гэдэг нь шууд харагдана. */
+  --wheel-cta: #ffc83d;
+  --wheel-cta-deep: #8a5a00;
+  /* Алтан гадаргуу дээрх бичиг. */
+  --wheel-ink-dark: #141414;
+  /* Хонжворын картын метал (зэрэглэлээр): ховор — мөнгө, энгийн — хүрэл,
+     «Баярлалаа» — төмөр. Гранд нь дээрх алт. Тус бүр гадаргуу, ирмэг,
+     дунд, гялбаа — цул давхаргаар «металл» харагдана, gradient биш. */
+  --metal-silver: #c7cbd1;
+  --metal-silver-deep: #5f646c;
+  --metal-silver-mid: #9ea3ab;
+  --metal-silver-shine: #f5f7fa;
+  --metal-bronze: #b87a4b;
+  --metal-bronze-deep: #5a3418;
+  --metal-bronze-mid: #93592f;
+  --metal-bronze-shine: #f1cfb0;
+  --metal-iron: #3b3f45;
+  --metal-iron-deep: #17191c;
+  --metal-iron-mid: #2a2d31;
+  --metal-iron-shine: #8d939b;
+}
+
+/*
+ * Тайз. /lucky-wheel-ийн агуулга бүх темд хар (`.force-black`, клиент
+ * 2026-10-26) тул эдгээр нь зөвхөн хар дэвсгэрт тохируулагдсан.
+ */
+:root {
+  --wheel-title: var(--wheel-cta);
+  --wheel-accent: var(--wheel-gold-light);
+  /* Туяа нь цул алт + opacity: color-mix(…, transparent)-ийг blur хийхэд
+     ирмэгт нь цэнхэр өнгө цацарч байсан. */
+  --wheel-beam-opacity: 0.22;
+  --wheel-halo: color-mix(in oklab, var(--wheel-gold) 24%, transparent);
+  --wheel-star: #ffffff;
+}
+
+@keyframes wheel-twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    scale: 0.4;
+  }
+  50% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wheel-twinkle {
+    animation: none !important;
+    opacity: 0.6;
   }
 }
 

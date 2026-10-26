@@ -318,6 +318,8 @@ export interface OrderItemRow {
   collection_id: string | null;
   collection_name: string | null;
   is_gift: boolean;
+  /** Азын хүрдний гранд шагналын мөр (0165) — 2мл, 0₮. */
+  spin_id?: string | null;
 }
 
 export interface CouponRow {
@@ -490,9 +492,17 @@ export interface SpinWheelSpinRow {
   coupon_id: string | null;
   /** `order` spins only — whose credit it consumed (0129). */
   credit_order_id: string | null;
-  /** Physical prizes only — set when the admin has handed it over. */
+  /** Grand prize: set when its order is delivered, or by staff (0165). */
   fulfilled_at: string | null;
   created_at: string;
+  /** Grand prize (0165): the bundle picked, when, and the claim window. */
+  bundle_collection_id?: string | null;
+  bundle_gender?: "male" | "female" | null;
+  chosen_at?: string | null;
+  /** The order it rides in (`place_order_with_prize`); cleared on cancel. */
+  claim_order_id?: string | null;
+  claimed_at?: string | null;
+  expires_at?: string | null;
 }
 
 export interface OrderStatusHistoryRow {
