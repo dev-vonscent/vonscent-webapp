@@ -43,6 +43,7 @@ const TITLES: Record<string, string> = {
   "/account/loyalty": "Урамшуулал",
   "/account/addresses": "Хаягууд",
   "/account/coupons": "Миний купон",
+  "/account/info": "Миний мэдээлэл",
   "/account/notifications": "Мэдэгдэл",
   "/account/tier": "Түвшин",
   "/request": "Санал болгох",

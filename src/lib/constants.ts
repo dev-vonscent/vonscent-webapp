@@ -775,6 +775,11 @@ export const FEATURE_FLAGS = {
     description:
       "Сэтгэгдэл админ батласны дараа нийтлэгдэж, оноо батлах үед олгогдоно: 100+ тэмдэгт, худалдаж авсан ус, бүрэн бүртгэл, засах/устгах боломжгүй; «Миний захиалга»-ын төлөв, админ /admin/reviews (/api/admin/reviews), нүүрний сонгосон сэтгэгдэл, /api/reviews/eligibility, moderation guard trigger ба award_review_points (0162).",
   },
+  profile_info: {
+    label: "Миний мэдээлэл",
+    description:
+      "/account/info хуудас (зураг, нэр, утас, имэйл, хүйс, төрсөн өдөр, ажил, хаяг, дуртай үнэрийн төрөл/үнэртэн), профайлын «Миний мэдээлэл» мөр (асаалттай үед «Засах» товч нуугдана), /api/account/profile-info, бүрэн бөглөсөн үеийн нэг удаагийн V point — claim_profile_reward (0163). Хэмжээ нь Админ → V point → «Мэдээлэл бөглөсний урамшуулал».",
+  },
 } as const satisfies Record<string, FeatureFlagMeta>;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
@@ -817,6 +822,39 @@ export type UserTierKey = (typeof USER_TIERS)[number]["key"];
 
 /** Түвшний хуудасны топ жагсаалтын урт (7 хоног / сар). */
 export const TIER_LEADERBOARD_SIZE = 3;
+
+/** «Миний мэдээлэл» (0163) — хязгаарууд SQL-ийн check-тэй таарна. */
+export const PROFILE_GENDERS = ["female", "male", "other"] as const;
+export type ProfileGender = (typeof PROFILE_GENDERS)[number];
+export const PROFILE_GENDER_LABEL: Record<ProfileGender, string> = {
+  female: "Эмэгтэй",
+  male: "Эрэгтэй",
+  other: "Бусад",
+};
+export const PROFILE_NAME_MAX = 80;
+export const PROFILE_JOB_MAX = 80;
+/**
+ * «Ажил мэргэжил»-ийн бэлэн сонголтууд — санд энэ шошгоороо (text) хадгалагдана,
+ * жагсаалтад байхгүй бол «Бусад»-аар гараар бичнэ.
+ */
+export const PROFILE_JOB_OPTIONS = [
+  "Сурагч",
+  "Оюутан",
+  "Эмч",
+  "Багш",
+  "Инженер",
+  "Дизайнер",
+  "Бизнес эрхлэгч",
+  "Менежер",
+  "Нягтлан бодогч",
+  "Хуульч",
+  "Төрийн албан хаагч",
+] as const;
+export const PROFILE_FAVORITE_PERFUMES_MAX = 3;
+export const PROFILE_PERFUME_NAME_MAX = 80;
+export const PROFILE_SCENT_PREFS_MAX = 10;
+/** `settings.loyalty.profilePoints` байхгүй үеийн утга (0163-ийн seed). */
+export const DEFAULT_PROFILE_POINTS = 500;
 
 export const COUPONS_NEW_BADGE_UNTIL = "2026-11-01T00:00:00+08:00";
 
