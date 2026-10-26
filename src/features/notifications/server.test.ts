@@ -66,7 +66,16 @@ function fakeAdmin(opts: {
       const q: Query = { table, calls: [] };
       queries.push(q);
       const chain: Record<string, unknown> = {};
-      for (const m of ["select", "eq", "lte", "neq", "is", "gt", "order", "limit"]) {
+      for (const m of [
+        "select",
+        "eq",
+        "lte",
+        "neq",
+        "is",
+        "gt",
+        "order",
+        "limit",
+      ]) {
         chain[m] = (...args: unknown[]) => {
           q.calls.push([m, args]);
           return chain;
@@ -93,7 +102,8 @@ function fakeAdmin(opts: {
       return chain;
     },
   };
-  const notifQueries = () => queries.filter((q) => q.table === "user_notifications");
+  const notifQueries = () =>
+    queries.filter((q) => q.table === "user_notifications");
   const fresh = () =>
     notifQueries().find((q) => q.calls.some(([m]) => m === "gt"))!;
   return { admin: admin as unknown as SupabaseClient, notifQueries, fresh };
@@ -129,7 +139,10 @@ describe("pollNotifications", () => {
     expect(res.unread).toBe(3);
     expect(res.fresh.map((n) => n.id)).toEqual(["a"]);
     // Мөр now-оос өмнө — cursor now дээр үлдэнэ.
-    expect(decodeCursor(res.nextCursor)).toEqual({ visibleAt: NOW, id: ZERO_UUID });
+    expect(decodeCursor(res.nextCursor)).toEqual({
+      visibleAt: NOW,
+      id: ZERO_UUID,
+    });
   });
 
   it("looks back from the cursor and advances it to a newer row", async () => {

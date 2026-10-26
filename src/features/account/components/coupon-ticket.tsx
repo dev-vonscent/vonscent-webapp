@@ -38,6 +38,7 @@ export function CouponTicket({
   muted = false,
   size = "row",
   onCard = false,
+  bigSymbol = false,
   className,
   children,
 }: {
@@ -54,6 +55,12 @@ export function CouponTicket({
    * `secondary`, or a card-coloured ticket vanishes into it in dark theme.
    */
   onCard?: boolean;
+  /**
+   * Set the `%` / `₮` as large as the number («10%», «10k₮») and drop the
+   * word «хөнгөлөлт» on phones — the wheel's prize card, where the ticket is
+   * the headline rather than a row in a list.
+   */
+  bigSymbol?: boolean;
   className?: string;
   /** The small lines under the value: expiry, terms, last use. */
   children?: React.ReactNode;
@@ -103,9 +110,15 @@ export function CouponTicket({
               )}
             >
               {face.amount}
+              {bigSymbol && (type === "percent" ? "%" : "₮")}
             </span>
-            <span className="text-[11px] font-medium tracking-[0.12em] whitespace-nowrap uppercase">
-              {face.unit}
+            <span
+              className={cn(
+                "text-[11px] font-medium tracking-[0.12em] whitespace-nowrap uppercase",
+                bigSymbol && "max-sm:hidden",
+              )}
+            >
+              {bigSymbol ? "хөнгөлөлт" : face.unit}
             </span>
           </p>
           {children && (

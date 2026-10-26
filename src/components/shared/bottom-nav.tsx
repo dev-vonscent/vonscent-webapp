@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DARK_STAGE_ROUTES } from "@/lib/constants";
 import { selectWishCount, useWishlist } from "@/features/wishlist/store";
 import { useBottomNavHidden } from "@/components/shared/bottom-nav-store";
 import { useChatLauncher } from "@/features/chat/use-chat-launcher";
@@ -63,6 +64,8 @@ export function BottomNav() {
     <div
       className={cn(
         "pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center transition-transform duration-300 ease-out motion-reduce:transition-none md:hidden",
+        // Over a black stage (the wheel) the bar is black in every theme.
+        DARK_STAGE_ROUTES.includes(pathname) && "force-black",
         // Буцаж гарахдаа «Захиалах» зурвас гулсаж гарахыг хүлээнэ.
         hidden ? "translate-y-[140%]" : "delay-150",
       )}

@@ -280,9 +280,8 @@ export default function ProfilePage() {
 
       {/* Settings rows */}
       <div className="space-y-2">
-        {/* Above the settings, not among them: the wheel is something to do,
-            and it hides itself when there is nothing to collect. */}
-        {configured && wheelOn && <WheelEntryCard />}
+        {/* Миний мэдээлэл → Түвшин → Купон → Азын хүрд → Нэвтрэх код:
+            хувийн мэдээллээс урамшуулал руу, тохиргоо хамгийн сүүлд. */}
         {configured && profileInfoOn && <ProfileInfoEntryCard />}
 
         {configured && tiersOn && (
@@ -315,6 +314,10 @@ export default function ProfilePage() {
             <ChevronRight className="text-muted-foreground ml-auto size-4" />
           </Link>
         )}
+
+        {/* Хүрд урамшууллын хажууд — эргэлт, гранд шагнал хүлээж байвал өөрөө
+            хэлнэ, юу ч байхгүй үед харагдахгүй. */}
+        {configured && wheelOn && <WheelEntryCard />}
 
         {/* Passcode change — phone accounts only (the 4-digit code is theirs;
             an email/OAuth account would just get a 401 from the route). */}

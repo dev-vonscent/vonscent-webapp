@@ -748,7 +748,7 @@ export const FEATURE_FLAGS = {
   lucky_wheel: {
     label: "Азын хүрд",
     description:
-      "/lucky-wheel хуудас, цэс ба купоны холбоосууд, /api/lucky-wheel, төлөгдсөн захиалгаас эрх олгох trigger (0134). Эргүүлэх ажиллагаа нь Азын хүрдний «Идэвхтэй» тохиргоогоор тусдаа.",
+      "/lucky-wheel хуудас, цэс ба купоны холбоосууд, /api/lucky-wheel, төлөгдсөн захиалгаас эрх олгох trigger (0134); гранд шагнал (2мл багц) сонгох /api/lucky-wheel/prizes, checkout-д хавсаргах place_order_with_prize, сануулгын cron (0165). Эргүүлэх ажиллагаа нь Азын хүрдний «Идэвхтэй» тохиргоогоор тусдаа.",
   },
   campaigns: {
     label: "Кампанит ажил",
@@ -855,6 +855,16 @@ export const PROFILE_PERFUME_NAME_MAX = 80;
 export const PROFILE_SCENT_PREFS_MAX = 10;
 /** `settings.loyalty.profilePoints` байхгүй үеийн утга (0163-ийн seed). */
 export const DEFAULT_PROFILE_POINTS = 500;
+
+/**
+ * Хар «тайзтай» хуудсууд: агуулга нь бүх темд хар (`.force-black`), тиймээс
+ * утасны хөвөгч толгойн товч, доод цэс ч мөн хар болно — цагаан товч хар тайз
+ * дээр тасархай харагддаг (азын хүрд, клиент 2026-10-26).
+ */
+/** Азын хүрдний гранд шагнал (0165): багцын гишүүн бүр энэ хэмжээгээр. */
+export const GRAND_BUNDLE_ML = 2;
+
+export const DARK_STAGE_ROUTES: readonly string[] = ["/lucky-wheel"];
 
 export const COUPONS_NEW_BADGE_UNTIL = "2026-11-01T00:00:00+08:00";
 
