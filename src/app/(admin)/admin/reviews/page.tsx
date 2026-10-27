@@ -36,6 +36,7 @@ interface Row {
   body: string | null;
   status: ReviewStatus;
   reject_reason: ReviewRejectReason | null;
+  reject_note: string | null;
   is_visible: boolean;
   is_featured: boolean;
   created_at: string;
@@ -72,7 +73,7 @@ export default async function AdminReviewsPage({
     let query = supabase
       .from("reviews")
       .select(
-        "id, user_id, rating, body, status, reject_reason, is_visible, is_featured, created_at, moderated_at, product:products(name, brand, slug), collection:collections(name, slug)",
+        "id, user_id, rating, body, status, reject_reason, reject_note, is_visible, is_featured, created_at, moderated_at, product:products(name, brand, slug), collection:collections(name, slug)",
         { count: "exact" },
       )
       .order("created_at", { ascending: tab === "pending" })
@@ -122,6 +123,7 @@ export default async function AdminReviewsPage({
       body: r.body ?? "",
       status: r.status,
       rejectReason: r.reject_reason,
+      rejectNote: r.reject_note,
       isVisible: r.is_visible,
       isFeatured: r.is_featured,
       createdAt: r.created_at,

@@ -8,9 +8,19 @@ import {
   fieldErrorProps,
   fieldErrorClass,
 } from "@/components/ui/form-field";
+import { useFeatureFlag } from "@/components/feature-flags";
 import { ML_SIZES } from "@/lib/constants";
 import { formatPrice } from "@/lib/format";
 import { unpricedActiveSizes } from "@/lib/validators/product";
+import { roundSalePrice } from "@/features/products/sale";
+import { DatePicker } from "@/features/admin/components/date-picker";
+import {
+  dayEndIso,
+  dayStartIso,
+  isoEndToDay,
+  isoToDay,
+  ubToday,
+} from "@/features/admin/lib/date-range";
 
 export interface VariantDraft {
   ml: number;
@@ -22,10 +32,34 @@ export interface VariantDraft {
    * явна.
    */
   salePrice: number | null;
+  /**
+   * Хямдралын хугацаа (0166, ISO). null бол тэр талдаа хязгааргүй — хоёулаа
+   * null = байнгын хямдрал. Дуусмагц үнэ өөрөө үндсэн үнэ рүүгээ буцна.
+   */
+  saleStartsAt: string | null;
+  saleEndsAt: string | null;
   active: boolean;
 }
 
 export { unpricedActiveSizes };
+
+/** Хямдралгүй хэмжээний draft-ийн хямдралын талбарууд. */
+export const EMPTY_SALE = {
+  salePrice: null,
+  saleStartsAt: null,
+  saleEndsAt: null,
+} as const satisfies Partial<VariantDraft>;
+
+/** Хугацааны төлөв — админ хадгалахаасаа өмнө нүдээр шалгана. */
+function salePhase(v: VariantDraft): string | null {
+  if (!v.salePrice || (!v.saleStartsAt && !v.saleEndsAt)) return null;
+  const now = Date.now();
+  if (v.saleStartsAt && new Date(v.saleStartsAt).getTime() > now)
+    return "Эхлээгүй";
+  if (v.saleEndsAt && new Date(v.saleEndsAt).getTime() <= now)
+    return "Дууссан — энгийн үнээр зарагдаж байна";
+  return "Хүчинтэй";
+}
 
 /**
  * A blank price row per size, for the create form.
@@ -40,7 +74,7 @@ export function emptyVariants(): VariantDraft[] {
   return ML_SIZES.map((ml) => ({
     ml,
     price: 0,
-    salePrice: null,
+    ...EMPTY_SALE,
     active: false,
   }));
 }
@@ -66,11 +100,23 @@ export function VariantPriceTable({
   showErrors?: boolean;
   idPrefix?: string;
 }) {
+  // Хугацааны талбар зөвхөн `sale_page` туг асаалттай үед (0166).
+  const periodOn = useFeatureFlag("sale_page");
   const unpriced = new Set(unpricedActiveSizes(variants));
   // Үндсэн үнээс өндөр «хямдрал» бол алдаа — DB-ийн check ч үүнийг татгалзана.
   const badSale = new Set(
     variants
       .filter((v) => v.salePrice != null && v.salePrice > v.price)
+      .map((v) => v.ml),
+  );
+  const badPeriod = new Set(
+    variants
+      .filter(
+        (v) =>
+          v.saleStartsAt &&
+          v.saleEndsAt &&
+          new Date(v.saleEndsAt) <= new Date(v.saleStartsAt),
+      )
       .map((v) => v.ml),
   );
 
@@ -119,76 +165,136 @@ export function VariantPriceTable({
               // хямдралтай хэмжээ хямд болсон нь энэ баганад харагдахгүй.
               const charged =
                 v.salePrice && v.salePrice > 0 ? v.salePrice : v.price;
+              const showPeriod = periodOn && Boolean(v.salePrice);
+              const periodError = badPeriod.has(v.ml)
+                ? "Дуусах хугацаа эхлэхээс хойш байх ёстой."
+                : undefined;
+              const phase = salePhase(v);
               return (
-                <tr key={v.ml} className="even:bg-muted/40">
-                  <th
-                    scope="row"
-                    className="px-3 py-2 text-left text-base font-medium md:text-sm"
-                  >
-                    {v.ml}ml
-                  </th>
-                  <td className="px-3 py-2 align-top">
-                    <Input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      step={100}
-                      // 44px on a phone: a mistap between the 5ml and 10ml rows
-                      // is a live pricing error, not a cosmetic one.
-                      className={`h-11 w-28 md:h-8 md:w-32 ${fieldErrorClass(error)}`}
-                      aria-label={`${v.ml}ml-ийн үнэ`}
-                      value={v.price === 0 ? "" : v.price}
-                      placeholder="0"
-                      {...fieldErrorProps(id, error)}
-                      onChange={(e) =>
-                        update(v.ml, {
-                          price: Math.max(0, Number(e.target.value) || 0),
-                        })
-                      }
-                    />
-                    <FieldError id={id} message={error} />
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    <Input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      step={100}
-                      className={`h-11 w-28 md:h-8 md:w-32 ${fieldErrorClass(saleError)}`}
-                      aria-label={`${v.ml}ml-ийн хямдарсан үнэ`}
-                      value={v.salePrice == null ? "" : v.salePrice}
-                      placeholder="—"
-                      {...fieldErrorProps(`${id}-sale`, saleError)}
-                      onChange={(e) => {
-                        const raw = e.target.value.trim();
-                        update(v.ml, {
-                          // Хоосон талбар = хямдрал байхгүй (null). 0 гэсэн
-                          // тоог «үнэгүй» гэж ойлгохгүйн тулд түүнийг ч мөн
-                          // хямдралгүйд тооцно.
-                          salePrice:
-                            raw === "" ? null : Math.max(0, Number(raw) || 0),
-                        });
-                      }}
-                    />
-                    <FieldError id={`${id}-sale`} message={saleError} />
-                  </td>
-                  {/* Not a pricing input — just so the admin can eyeball whether
+                <React.Fragment key={v.ml}>
+                  <tr className="even:bg-muted/40">
+                    <th
+                      scope="row"
+                      className="px-3 py-2 text-left text-base font-medium md:text-sm"
+                    >
+                      {v.ml}ml
+                    </th>
+                    <td className="px-3 py-2 align-top">
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        step={100}
+                        // 44px on a phone: a mistap between the 5ml and 10ml rows
+                        // is a live pricing error, not a cosmetic one.
+                        className={`h-11 w-28 md:h-8 md:w-32 ${fieldErrorClass(error)}`}
+                        aria-label={`${v.ml}ml-ийн үнэ`}
+                        value={v.price === 0 ? "" : v.price}
+                        placeholder="0"
+                        {...fieldErrorProps(id, error)}
+                        onChange={(e) =>
+                          update(v.ml, {
+                            price: Math.max(0, Number(e.target.value) || 0),
+                          })
+                        }
+                      />
+                      <FieldError id={id} message={error} />
+                    </td>
+                    <td className="px-3 py-2 align-top">
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        step={100}
+                        className={`h-11 w-28 md:h-8 md:w-32 ${fieldErrorClass(saleError)}`}
+                        aria-label={`${v.ml}ml-ийн хямдарсан үнэ`}
+                        value={v.salePrice == null ? "" : v.salePrice}
+                        placeholder="—"
+                        {...fieldErrorProps(`${id}-sale`, saleError)}
+                        onChange={(e) => {
+                          const raw = e.target.value.trim();
+                          update(v.ml, {
+                            // Хоосон талбар = хямдрал байхгүй (null). 0 гэсэн
+                            // тоог «үнэгүй» гэж ойлгохгүйн тулд түүнийг ч мөн
+                            // хямдралгүйд тооцно.
+                            salePrice:
+                              raw === "" ? null : Math.max(0, Number(raw) || 0),
+                          });
+                        }}
+                        // Бичиж дуусмагц 100₮-д тоймлоно — бичих зуур
+                        // тоймловол цифр бүрт тоо үсэрнэ. Сервер ч дахин
+                        // тоймлоно (`variantSaleColumns`).
+                        onBlur={() => {
+                          if (v.salePrice)
+                            update(v.ml, {
+                              salePrice: roundSalePrice(v.salePrice, v.price),
+                            });
+                        }}
+                      />
+                      <FieldError id={`${id}-sale`} message={saleError} />
+                    </td>
+                    {/* Not a pricing input — just so the admin can eyeball whether
                       the four sizes are priced consistently. */}
-                  <td className="text-muted-foreground px-3 py-2 align-top tabular-nums">
-                    {charged > 0
-                      ? formatPrice(Math.round(charged / v.ml))
-                      : "—"}
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    <Checkbox
-                      aria-label={`${v.ml}ml-ийг зарна`}
-                      checked={v.active}
-                      onCheckedChange={(c) =>
-                        update(v.ml, { active: Boolean(c) })
-                      }
-                    />
-                  </td>
-                </tr>
+                    <td className="text-muted-foreground px-3 py-2 align-top tabular-nums">
+                      {charged > 0
+                        ? formatPrice(Math.round(charged / v.ml))
+                        : "—"}
+                    </td>
+                    <td className="px-3 py-2 align-top">
+                      <Checkbox
+                        aria-label={`${v.ml}ml-ийг зарна`}
+                        checked={v.active}
+                        onCheckedChange={(c) =>
+                          update(v.ml, { active: Boolean(c) })
+                        }
+                      />
+                    </td>
+                  </tr>
+                  {showPeriod && (
+                    <tr>
+                      <td colSpan={5} className="px-3 pb-3">
+                        <div className="flex flex-wrap items-end gap-3">
+                          <div className="w-52 space-y-1 text-xs">
+                            <span className="text-muted-foreground block">
+                              Хямдрал эхлэх
+                            </span>
+                            <DatePicker
+                              aria-label={`${v.ml}ml-ийн хямдрал эхлэх`}
+                              value={isoToDay(v.saleStartsAt)}
+                              placeholder="Одооноос"
+                              onChange={(day) =>
+                                update(v.ml, { saleStartsAt: dayStartIso(day) })
+                              }
+                            />
+                          </div>
+                          <div className="w-52 space-y-1 text-xs">
+                            <span className="text-muted-foreground block">
+                              Хямдрал дуусах
+                            </span>
+                            <DatePicker
+                              aria-label={`${v.ml}ml-ийн хямдрал дуусах`}
+                              value={isoEndToDay(v.saleEndsAt)}
+                              min={
+                                isoToDay(v.saleStartsAt) > ubToday()
+                                  ? isoToDay(v.saleStartsAt)
+                                  : ubToday()
+                              }
+                              placeholder="Хугацаагүй"
+                              {...fieldErrorProps(`${id}-period`, periodError)}
+                              onChange={(day) =>
+                                update(v.ml, { saleEndsAt: dayEndIso(day) })
+                              }
+                            />
+                          </div>
+                          <span className="text-muted-foreground pb-2 text-xs">
+                            {phase ?? "Хоосон бол хугацаагүй"}
+                          </span>
+                        </div>
+                        <FieldError id={`${id}-period`} message={periodError} />
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               );
             })}
           </tbody>

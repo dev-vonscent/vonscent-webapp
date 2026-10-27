@@ -16,6 +16,7 @@ import { addBottleImage } from "@/features/admin/bottle-image";
 import { hasVisibleImage } from "@/features/admin/lib/product-status";
 import { getUntranslatedNotes } from "@/features/admin/note-translations";
 import type { ProductStatus } from "@/lib/constants";
+import { variantSaleColumns } from "@/features/products/sale";
 
 function slugify(name: string, brand: string) {
   return `${brand}-${name}`
@@ -188,12 +189,12 @@ export async function POST(req: Request) {
   };
 
   // Variants: the admin priced each size by hand, so store the figure as-is.
-  // `sale_price` нь тухайн хэмжээний бодит хямдрал (0054) — хоосон бол null.
+  // Хямдрал (0054) ба түүний хугацаа (0166) — `variantSaleColumns`.
   const variants = input.variants.map((v) => ({
     product_id: productId,
     ml: v.ml,
     price: v.price,
-    sale_price: v.salePrice && v.salePrice > 0 ? v.salePrice : null,
+    ...variantSaleColumns(v),
     is_active: v.active,
   }));
 

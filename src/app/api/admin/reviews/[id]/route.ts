@@ -59,6 +59,11 @@ export async function PATCH(req: Request, { params }: Ctx) {
       patch = {
         status: input.action === "approve" ? "approved" : "rejected",
         reject_reason: input.action === "reject" ? input.reason : null,
+        // Тайлбар зөвхөн «Бусад»-д (0167); батлахад цэвэрлэгдэнэ.
+        reject_note:
+          input.action === "reject" && input.reason === "other"
+            ? (input.note ?? null)
+            : null,
         // Цуцалсан сэтгэгдэл нүүрэнд үлдэхгүй.
         ...(input.action === "reject" && { is_featured: false }),
         moderated_at: new Date().toISOString(),

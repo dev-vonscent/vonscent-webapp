@@ -122,6 +122,9 @@ export interface ProductVariantRow {
    * төлөх дүн — `variant_price()` үүнийг эхэлж авна.
    */
   sale_price: number | null;
+  /** Хямдралын хугацаа (0166) — null бол тэр талдаа хязгааргүй. */
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
   is_active: boolean;
 }
 
@@ -592,7 +595,10 @@ export interface Database {
         | "coming_soon_note"
       >;
       product_images: Table<ProductImageRow, "id">;
-      product_variants: Table<ProductVariantRow, "id" | "sale_price">;
+      product_variants: Table<
+        ProductVariantRow,
+        "id" | "sale_price" | "sale_starts_at" | "sale_ends_at"
+      >;
       inventory: Table<InventoryRow, "updated_at">;
       tags: Table<TagRow, "id">;
       scent_families: Table<ScentFamilyRow, "created_at">;
@@ -686,6 +692,20 @@ export interface Database {
       };
       merge_perfume_requests: {
         Args: { p_source: string; p_target: string };
+        Returns: number;
+      };
+      // Олноор хямдрал (0166) — өөрчлөгдсөн хэмжээний тоо.
+      apply_bulk_sale: {
+        Args: {
+          p_product_ids: string[];
+          p_pcts: Record<string, number>;
+          p_starts: string | null;
+          p_ends: string;
+        };
+        Returns: number;
+      };
+      clear_bulk_sale: {
+        Args: { p_product_ids: string[] };
         Returns: number;
       };
       launch_product: {

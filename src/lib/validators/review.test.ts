@@ -61,8 +61,10 @@ describe("moderated review validators (0162)", () => {
 
   it("rejects need a known reason", () => {
     expect(
-      reviewModerationSchema.safeParse({ action: "reject", reason: "other" })
-        .success,
+      reviewModerationSchema.safeParse({
+        action: "reject",
+        reason: "profanity",
+      }).success,
     ).toBe(true);
     expect(
       reviewModerationSchema.safeParse({ action: "reject", reason: "spam" })
@@ -71,5 +73,21 @@ describe("moderated review validators (0162)", () => {
     expect(reviewModerationSchema.safeParse({ action: "reject" }).success).toBe(
       false,
     );
+  });
+
+  it("«Бусад» шалтгаан тайлбартай байх ёстой (0167)", () => {
+    const other = { action: "reject", reason: "other" } as const;
+    expect(reviewModerationSchema.safeParse(other).success).toBe(false);
+    expect(
+      reviewModerationSchema.safeParse({ ...other, note: "   " }).success,
+    ).toBe(false);
+    expect(
+      reviewModerationSchema.safeParse({ ...other, note: "Өөр барааны тухай" })
+        .success,
+    ).toBe(true);
+    expect(
+      reviewModerationSchema.safeParse({ ...other, note: "x".repeat(301) })
+        .success,
+    ).toBe(false);
   });
 });

@@ -62,6 +62,7 @@ import { getBaseCollections } from "@/features/collections/api";
 import { grandPrizeState } from "@/features/lucky-wheel/prize-state";
 import type { GrandPrizeState } from "@/features/lucky-wheel/types";
 import { GRAND_BUNDLE_ML } from "@/lib/constants";
+import { effectivePrice } from "@/features/products/sale";
 
 /**
  * Admin read access. Uses the cookie-bound client so staff RLS applies (admins
@@ -464,6 +465,9 @@ export interface AdminVariant {
   price: number;
   /** Хямдарсан үнэ, эсвэл null (0054) — байвал бодитоор төлөх дүн. */
   salePrice: number | null;
+  /** Хямдралын хугацаа (0166, ISO) — null бол тэр талдаа хязгааргүй. */
+  saleStartsAt: string | null;
+  saleEndsAt: string | null;
   isActive: boolean;
   /**
    * Савны түгжээнээс чөлөөлсөн эсэх (0095) — өөр өнгийн саванд цутгахыг
@@ -559,7 +563,7 @@ const ADMIN_PRODUCT_SELECT = `
   bottle_ml, is_active, status, launched_at, coming_soon_note,
   is_featured,
   product_images ( id, url, alt, sort_order, is_visible ),
-  product_variants ( id, ml, price, sale_price, is_active ),
+  product_variants ( id, ml, price, sale_price, sale_starts_at, sale_ends_at, is_active ),
   inventory ( on_hand_ml, reserved_ml, low_stock_ml ),
   product_tags ( tags ( slug ) ),
   product_image_generations ( id, status, result_url, prompt, error, created_at )
@@ -609,6 +613,8 @@ interface AdminProductRow {
     ml: number;
     price: number;
     sale_price: number | null;
+    sale_starts_at: string | null;
+    sale_ends_at: string | null;
     is_active: boolean;
   }[];
   inventory:
@@ -628,7 +634,7 @@ function mapAdminProduct(
   // Жагсаалтын «-аас» үнэ нь бодитоор төлөх дүнгээр (хямдрал орсон, 0054).
   const prices = r.product_variants
     .filter((v) => v.is_active)
-    .map((v) => v.sale_price ?? v.price);
+    .map((v) => effectivePrice(v));
   const tags = r.product_tags
     .map((pt) => (Array.isArray(pt.tags) ? pt.tags[0] : pt.tags)?.slug)
     .filter((s): s is string => Boolean(s));
@@ -660,6 +666,8 @@ function mapAdminProduct(
         ml: v.ml,
         price: v.price,
         salePrice: v.sale_price,
+        saleStartsAt: v.sale_starts_at,
+        saleEndsAt: v.sale_ends_at,
         isActive: v.is_active,
         // Чөлөөлөлтийг багана уншиж биш, кэштэй жагсаалтаас (0095) — 0095
         // ажиллаагүй сан дээр админы жагсаалт унах ёсгүй.

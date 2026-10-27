@@ -30,11 +30,14 @@ export function Calendar({
   onPick,
   /** Highlighted as "today"; pass the shop's date, not the browser's. */
   today,
+  /** Үүнээс өмнөх өдөр сонгогдохгүй (`YYYY-MM-DD`, хаалттай харагдана). */
+  min,
 }: {
   start: string;
   end?: string;
   onPick: (dateKey: string) => void;
   today?: string | null;
+  min?: string;
 }) {
   const anchor = start || today || todayFallback();
   const [view, setView] = React.useState(() => ({
@@ -94,10 +97,12 @@ export function Calendar({
           const isEnd = key === rangeEnd;
           const inRange = start && rangeEnd && key > start && key < rangeEnd;
           const isToday = key === today;
+          const isDisabled = Boolean(min && key < min);
           return (
             <button
               key={key}
               type="button"
+              disabled={isDisabled}
               onClick={() => onPick(key)}
               aria-pressed={isStart || isEnd}
               aria-label={key}
@@ -109,6 +114,7 @@ export function Calendar({
                   : inRange
                     ? "bg-secondary text-foreground"
                     : "hover:bg-muted",
+                "disabled:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent",
                 // Today is marked but never painted like a selection, or the
                 // operator reads it as already chosen.
                 isToday && !isStart && !isEnd && "text-gold-strong font-medium",

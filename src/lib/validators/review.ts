@@ -3,6 +3,7 @@ import {
   REVIEW_BODY_MAX,
   REVIEW_MODERATED_BODY_MAX,
   REVIEW_MODERATED_BODY_MIN,
+  REVIEW_REJECT_NOTE_MAX,
   REVIEW_REJECT_REASONS,
 } from "@/lib/constants";
 
@@ -59,15 +60,22 @@ export const reviewEligibilitySchema = z
   .refine(oneTarget, ONE_TARGET);
 
 /** PATCH /api/admin/reviews/[id] — админы хяналтын нэг үйлдэл. */
-export const reviewModerationSchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("approve") }),
-  z.object({
-    action: z.literal("reject"),
-    reason: z.enum(REVIEW_REJECT_REASONS),
-  }),
-  z.object({ action: z.literal("visibility"), visible: z.boolean() }),
-  z.object({ action: z.literal("featured"), featured: z.boolean() }),
-]);
+export const reviewModerationSchema = z
+  .discriminatedUnion("action", [
+    z.object({ action: z.literal("approve") }),
+    z.object({
+      action: z.literal("reject"),
+      reason: z.enum(REVIEW_REJECT_REASONS),
+      /** «Бусад» дээр админы бичсэн шалтгаан (0167) — тэр үед заавал. */
+      note: z.string().trim().max(REVIEW_REJECT_NOTE_MAX).optional(),
+    }),
+    z.object({ action: z.literal("visibility"), visible: z.boolean() }),
+    z.object({ action: z.literal("featured"), featured: z.boolean() }),
+  ])
+  .refine(
+    (v) => v.action !== "reject" || v.reason !== "other" || Boolean(v.note),
+    { message: "Шалтгаанаа бичнэ үү.", path: ["note"] },
+  );
 
 export type ReviewModerationInput = z.infer<typeof reviewModerationSchema>;
 
