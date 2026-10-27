@@ -10,11 +10,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  REVIEW_REJECT_REASON_LABEL,
   REVIEW_STATUS_LABEL,
   type ReviewRejectReason,
   type ReviewStatus,
 } from "@/lib/constants";
+import { rejectReasonText } from "@/features/reviews/reject-reason";
 
 export interface ReviewableItem {
   /** `p:<productId>` эсвэл `c:<collectionId>` — base багцаар авсан бол багц. */
@@ -30,6 +30,7 @@ export interface ReviewableItem {
   moderation?: {
     status: ReviewStatus;
     rejectReason: ReviewRejectReason | null;
+    rejectNote: string | null;
     /** Олгосон оноо (`review_rewards`); олгоогүй бол 0. */
     rewardPoints: number;
   };
@@ -41,7 +42,7 @@ function ModerationStatus({
 }: {
   moderation: NonNullable<ReviewableItem["moderation"]>;
 }) {
-  const { status, rejectReason, rewardPoints } = moderation;
+  const { status, rejectReason, rejectNote, rewardPoints } = moderation;
   if (status === "pending") {
     return (
       <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
@@ -54,7 +55,7 @@ function ModerationStatus({
     return (
       <span className="flex flex-col items-end gap-0.5 text-xs">
         <span className="flex items-center gap-1.5 font-medium">
-          <CheckCircle2 className="text-success size-3.5" />
+          <CheckCircle2 className="text-done size-3.5" />
           Баталгаажсан. Баярлалаа!
         </span>
         {/* Оноо 0 үед батлагдсан ч оноо олгогдоогүй. */}
@@ -74,7 +75,7 @@ function ModerationStatus({
       </span>
       {rejectReason && (
         <span className="text-muted-foreground">
-          {REVIEW_REJECT_REASON_LABEL[rejectReason]}
+          {rejectReasonText(rejectReason, rejectNote)}
         </span>
       )}
     </span>

@@ -590,6 +590,9 @@ export const REVIEW_REJECT_REASONS = [
 ] as const;
 export type ReviewRejectReason = (typeof REVIEW_REJECT_REASONS)[number];
 
+/** «Бусад» шалтгааны тайлбарын дээд урт — DB check `reviews_reject_note_len`. */
+export const REVIEW_REJECT_NOTE_MAX = 300;
+
 export const REVIEW_REJECT_REASON_LABEL: Record<ReviewRejectReason, string> = {
   profanity: "Ёс бус үг хэллэг ашигласан",
   false_info: "Илт худал мэдээлэл оруулсан",

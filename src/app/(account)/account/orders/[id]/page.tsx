@@ -195,7 +195,9 @@ export default async function OrderDetailPage({
       ] = await Promise.all([
         supabase
           .from("reviews")
-          .select("product_id, collection_id, status, reject_reason")
+          .select(
+            "product_id, collection_id, status, reject_reason, reject_note",
+          )
           .eq("user_id", user.id)
           .or(
             [
@@ -238,6 +240,7 @@ export default async function OrderDetailPage({
         collection_id: string | null;
         status: ReviewStatus;
         reject_reason: ReviewRejectReason | null;
+        reject_note: string | null;
       };
       const reviewed = new Map(
         ((reviewData as ReviewRef[] | null) ?? []).map((r) => [
@@ -273,6 +276,7 @@ export default async function OrderDetailPage({
               ? {
                   status: review.status,
                   rejectReason: review.reject_reason,
+                  rejectNote: review.reject_note,
                   rewardPoints: rewarded.get(key) ?? 0,
                 }
               : undefined,

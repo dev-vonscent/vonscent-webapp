@@ -55,7 +55,7 @@ export async function GET(req: Request) {
     user
       ? supabase
           .from("reviews")
-          .select("rating, body, status, reject_reason")
+          .select("rating, body, status, reject_reason, reject_note")
           .eq(
             productId ? "product_id" : "collection_id",
             productId ?? collectionId,
@@ -80,6 +80,7 @@ export async function GET(req: Request) {
     body: string | null;
     status: ReviewStatus;
     reject_reason: ReviewRejectReason | null;
+    reject_note: string | null;
   } | null;
 
   return NextResponse.json<ReviewEligibility>({
@@ -91,6 +92,7 @@ export async function GET(req: Request) {
           body: row.body ?? "",
           status: row.status,
           rejectReason: row.reject_reason,
+          rejectNote: row.reject_note,
         }
       : null,
   });

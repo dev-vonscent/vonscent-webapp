@@ -14,16 +14,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
+import { LoadingButton } from "@/components/shared/loading-button";
 import { Stars } from "@/components/shared/stars";
 import { useConfirm } from "@/components/shared/confirm-dialog";
 import { mutate, mutateJson } from "@/features/admin/lib/mutate";
 import { formatDateTime } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import {
+  REVIEW_REJECT_NOTE_MAX,
   REVIEW_REJECT_REASONS,
   REVIEW_REJECT_REASON_LABEL,
+  type ReviewRejectReason,
   type ReviewStatus,
 } from "@/lib/constants";
+import { rejectReasonText } from "../reject-reason";
 import type { ReviewModerationInput } from "@/lib/validators/review";
 import type { AdminReview } from "../types";
 
@@ -40,8 +45,16 @@ function ReviewCard({ review }: { review: AdminReview }) {
   const router = useRouter();
   const [busy, setBusy] = React.useState(false);
   const [confirm, confirmDialog] = useConfirm();
+  // Цуцлахаас өмнө баталгаажуулна; «Бусад» дээр шалтгааныг бичүүлнэ.
+  const [rejecting, setRejecting] = React.useState<ReviewRejectReason | null>(
+    null,
+  );
+  const [note, setNote] = React.useState("");
 
-  async function moderate(input: ReviewModerationInput, success: string) {
+  async function moderate(
+    input: ReviewModerationInput,
+    success: string,
+  ): Promise<boolean> {
     setBusy(true);
     try {
       const ok = await mutateJson(
@@ -54,9 +67,23 @@ function ReviewCard({ review }: { review: AdminReview }) {
         toast.success(success);
         router.refresh();
       }
+      return ok;
     } finally {
       setBusy(false);
     }
+  }
+
+  async function reject() {
+    if (!rejecting) return;
+    const ok = await moderate(
+      {
+        action: "reject",
+        reason: rejecting,
+        ...(rejecting === "other" && { note: note.trim() }),
+      },
+      "Сэтгэгдэл цуцлагдлаа.",
+    );
+    if (ok) setRejecting(null);
   }
 
   async function remove() {
@@ -120,7 +147,7 @@ function ReviewCard({ review }: { review: AdminReview }) {
 
         {review.status === "rejected" && review.rejectReason && (
           <p className="text-destructive text-xs">
-            Шалтгаан: {REVIEW_REJECT_REASON_LABEL[review.rejectReason]}
+            Шалтгаан: {rejectReasonText(review.rejectReason, review.rejectNote)}
           </p>
         )}
 
@@ -137,7 +164,8 @@ function ReviewCard({ review }: { review: AdminReview }) {
               Батлах
             </Button>
           )}
-          {review.status !== "rejected" && (
+          {/* Батлагдсаныг цуцлахгүй — нуух бол «Сайтад харуулах». */}
+          {review.status === "pending" && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="secondary" disabled={busy}>
@@ -150,12 +178,10 @@ function ReviewCard({ review }: { review: AdminReview }) {
                 {REVIEW_REJECT_REASONS.map((reason) => (
                   <DropdownMenuItem
                     key={reason}
-                    onSelect={() =>
-                      moderate(
-                        { action: "reject", reason },
-                        "Сэтгэгдэл цуцлагдлаа.",
-                      )
-                    }
+                    onSelect={() => {
+                      setNote("");
+                      setRejecting(reason);
+                    }}
                   >
                     {REVIEW_REJECT_REASON_LABEL[reason]}
                   </DropdownMenuItem>
@@ -212,6 +238,54 @@ function ReviewCard({ review }: { review: AdminReview }) {
         </div>
       </CardContent>
       {confirmDialog}
+      {rejecting && (
+        <ResponsiveDialog
+          open
+          onOpenChange={(open) => !open && !busy && setRejecting(null)}
+          title="Сэтгэгдэл цуцлах уу?"
+          description={
+            rejecting === "other"
+              ? "Цуцалсан шалтгааныг бичнэ үү. Хэрэглэгч энэ шалтгааныг харна."
+              : `Шалтгаан: ${REVIEW_REJECT_REASON_LABEL[rejecting]}. Хэрэглэгч энэ шалтгааныг харна.`
+          }
+          className="sm:max-w-md"
+        >
+          {rejecting === "other" && (
+            <div className="space-y-1">
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={3}
+                maxLength={REVIEW_REJECT_NOTE_MAX}
+                autoFocus
+                aria-label="Цуцалсан шалтгаан"
+                placeholder="Жишээ: Өөр бүтээгдэхүүний тухай бичсэн"
+                className="bg-secondary placeholder:text-muted-foreground/70 w-full resize-y rounded-xl px-4 py-3 text-base/relaxed md:text-sm/relaxed"
+              />
+              <p className="text-muted-foreground text-right text-xs tabular-nums">
+                {note.length}/{REVIEW_REJECT_NOTE_MAX}
+              </p>
+            </div>
+          )}
+          <div className="mt-2 flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onClick={() => setRejecting(null)}
+            >
+              Болих
+            </Button>
+            <LoadingButton
+              variant="destructive"
+              loading={busy}
+              disabled={rejecting === "other" && !note.trim()}
+              onClick={reject}
+            >
+              Цуцлах
+            </LoadingButton>
+          </div>
+        </ResponsiveDialog>
+      )}
     </Card>
   );
 }

@@ -530,9 +530,10 @@ function OrderCard({
         {reviewInvite && (
           <Link
             href={`/account/orders/${o.id}`}
-            className="bg-secondary text-muted-foreground hover:text-foreground mb-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-colors"
+            // Урилга нь хийх зүйл — шараар (одны өнгө) ялгарна.
+            className="bg-rating/10 text-muted-foreground hover:text-foreground mb-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-colors"
           >
-            <MessageSquarePlus className="size-4 shrink-0" />
+            <MessageSquarePlus className="text-rating size-4 shrink-0" />
             <span>
               {o.status === "delivered"
                 ? "Бараагаа хэрэглэж үзээд сэтгэгдлээ бичээд "
@@ -666,7 +667,7 @@ function ReviewStateNote({
     >
       {state.kind === "approved" ? (
         <>
-          <CheckCircle2 className="text-success size-4 shrink-0" />
+          <CheckCircle2 className="text-done size-4 shrink-0" />
           <span>
             Сэтгэгдэл баталгаажсан. Баярлалаа!
             {state.points > 0 && (

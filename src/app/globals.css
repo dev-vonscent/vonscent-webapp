@@ -56,6 +56,9 @@
   /* Үнэлгээний од — монохром палитрын бас нэг санаатай эвдрэл: «gold» токен
      theme бүрт саарал/navy тул од өнгөгүй харагддаг байв (клиент, 2026-10-26). */
   --rating: #f5b82e;
+  /* «Хангалттай» — сэтгэгдлийн 100 тэмдэгтийн мөр ногоон болдог (0162). Од
+     шиг санаатай эвдрэл: монохром `success` нь «болсон»-ыг хэлж чаддаггүй. */
+  --done: #4ade80;
 
   /* destructive must stay legible as text on black — not a gray surface */
   --destructive: #f87171;
@@ -139,6 +142,7 @@
   --gold-soft: #6b6b6b;
   --gold-strong: #171717;
   --rating: #f0a81c;
+  --done: #16a34a;
 
   --destructive: #c02626;
   --destructive-foreground: #ffffff;
@@ -198,6 +202,7 @@
   --gold-soft: #4b5f88; /* 6.00:1 */
   --gold-strong: #1a2e5a;
   --rating: #f0a81c;
+  --done: #16a34a;
 
   --destructive: #c02626;
   --destructive-foreground: #ffffff;
@@ -284,6 +289,7 @@
   --gold-soft: #8f4a63;
   --gold-strong: #b81f56;
   --rating: #f0a81c;
+  --done: #16a34a;
 
   --destructive: #b3213f;
   --destructive-foreground: #ffffff;
@@ -333,6 +339,7 @@
   --color-gold-soft: var(--gold-soft);
   --color-gold-strong: var(--gold-strong);
   --color-rating: var(--rating);
+  --color-done: var(--done);
   --color-wheel-frame: var(--wheel-frame);
   --color-wheel-gold: var(--wheel-gold);
   --color-wheel-cta: var(--wheel-cta);
