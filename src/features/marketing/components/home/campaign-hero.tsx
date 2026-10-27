@@ -20,6 +20,8 @@ interface HeroImage {
   srcSet?: string;
   /** Утасны (< sm) art-directed зураг. */
   mobile?: { src: string; width: number; height: number };
+  /** Зургийн хана бараан — текст цайвар. */
+  dark?: boolean;
 }
 
 interface ResolvedHero {
@@ -84,6 +86,7 @@ function staticHero(
       height: img.height,
       srcSet: img.srcSet,
       mobile: img.mobile,
+      dark: img.dark,
     },
   };
 }
@@ -110,13 +113,22 @@ export function CampaignHero({ hero }: { hero: ResolvedHero }) {
 function HeroCopy({
   campaign,
   tone,
+  dark = false,
 }: {
   campaign: HomeCampaign;
   tone: "theme" | "photo";
+  /** Зургийн хана бараан — текст цайвар. */
+  dark?: boolean;
 }) {
   // On the photo the wall is light beige in every theme, so the copy is
-  // pinned to dark neutrals instead of following theme tokens.
-  const muted = tone === "photo" ? "text-neutral-700" : "text-muted-foreground";
+  // pinned to dark neutrals instead of following theme tokens — or to light
+  // ones when the photo has a dark wall.
+  const muted =
+    tone === "photo"
+      ? dark
+        ? "text-neutral-300"
+        : "text-neutral-700"
+      : "text-muted-foreground";
   return (
     <>
       <p className={`${muted} text-xs font-medium sm:text-sm`}>
@@ -125,7 +137,7 @@ function HeroCopy({
       <h1
         id="home-hero-title"
         className={`text-[clamp(1.125rem,5.6vw,1.375rem)]/[1.15] font-bold tracking-tight text-balance sm:text-2xl md:text-3xl lg:text-[2.75rem]/[1.1] ${
-          tone === "photo" ? "text-neutral-950" : ""
+          tone === "photo" ? (dark ? "text-white" : "text-neutral-950") : ""
         }`}
       >
         {campaign.title}
@@ -146,7 +158,14 @@ function HeroCopy({
       >
         {/* Гэрэл зураг дээр ч theme-ийн primary — хоёр theme-д (black/white)
             хоёуланд нь бараан тул шаргал хана дээр тод уншигдана. */}
-        <Button asChild className="h-11 px-4 sm:px-6">
+        {/* Бараан хана дээр theme-ийн primary (black theme-д саарал) бүдэг тул
+            цагаан товч. */}
+        <Button
+          asChild
+          className={`h-11 px-4 sm:px-6 ${
+            dark ? "bg-white text-neutral-950 hover:bg-white/90" : ""
+          }`}
+        >
           <Link href={campaign.primary.href}>
             {campaign.primary.label} <ArrowRight className="size-4" />
           </Link>
@@ -157,7 +176,9 @@ function HeroCopy({
             variant="outline"
             className={`hidden h-11 px-6 md:inline-flex ${
               tone === "photo"
-                ? "border-neutral-950/15 bg-white/70 text-neutral-950 backdrop-blur hover:bg-white hover:text-neutral-950"
+                ? dark
+                  ? "bg-white/15 text-white backdrop-blur hover:bg-white/25 hover:text-white"
+                  : "border-neutral-950/15 bg-white/70 text-neutral-950 backdrop-blur hover:bg-white hover:text-neutral-950"
                 : ""
             }`}
           >
@@ -221,7 +242,9 @@ function PhotoHero({
   return (
     <section
       aria-labelledby="home-hero-title"
-      className="relative isolate flex aspect-4/3 min-h-64 w-full overflow-hidden rounded-2xl bg-[#e8dccd] sm:aspect-14/5 sm:max-h-[58svh] sm:min-h-64 md:min-h-80 lg:min-h-88"
+      className={`relative isolate flex aspect-4/3 min-h-64 w-full overflow-hidden rounded-2xl sm:aspect-14/5 sm:max-h-[58svh] sm:min-h-64 md:min-h-80 lg:min-h-88 ${
+        image.dark ? "bg-[#1c1a1c]" : "bg-[#e8dccd]"
+      }`}
     >
       {/* Art direction: next/image can't switch files per breakpoint, so the
           two optimized srcsets go into a <picture>. On sm–md the card is taller
@@ -240,11 +263,11 @@ function PhotoHero({
           className="absolute inset-0 -z-10 size-full object-cover object-right sm:object-[65%_50%]"
         />
       </picture>
-      {/* Утас: 4:3 намхан карт (дэлгэцийн ~⅓) — бичиг зүүн 62%-д, бараа
+      {/* Утас: 4:3 намхан карт (дэлгэцийн ~⅓) — бичиг зүүн 56%-д, бараа
           баруун талд, товч зүүн доод буланд. Desktop-той ижил «зүүн талд
           хоосон хана» зохиомж, тиймээс зураг нь ч мөн адил: prompts/hero-mobile.md. */}
-      <div className="flex w-[62%] flex-col justify-start gap-1.5 p-4 sm:w-[52%] sm:justify-center sm:gap-3 sm:p-8 md:p-10 lg:px-14">
-        <HeroCopy campaign={campaign} tone="photo" />
+      <div className="flex w-[56%] flex-col justify-start gap-1.5 p-4 sm:w-[52%] sm:justify-center sm:gap-3 sm:p-8 md:p-10 lg:px-14">
+        <HeroCopy campaign={campaign} tone="photo" dark={image.dark} />
       </div>
     </section>
   );
