@@ -780,6 +780,11 @@ export const FEATURE_FLAGS = {
     description:
       "/account/info хуудас (зураг, нэр, утас, имэйл, хүйс, төрсөн өдөр, ажил, хаяг, дуртай үнэрийн төрөл/үнэртэн), профайлын «Миний мэдээлэл» мөр (асаалттай үед «Засах» товч нуугдана), /api/account/profile-info, бүрэн бөглөсөн үеийн нэг удаагийн V point — claim_profile_reward (0163). Хэмжээ нь Админ → V point → «Мэдээлэл бөглөсний урамшуулал».",
   },
+  sale_page: {
+    label: "Хямдрал",
+    description:
+      "Админ → Каталог → Хямдрал (/admin/sales, /api/admin/sales): олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал тавих/цуцлах ба барааны үнийн хүснэгтэд эхлэх/дуусах хугацаа (0166: apply_bulk_sale, clear_bulk_sale). Хугацаа дуусмагц үнэ өөрөө энгийн болно. Багц хамаарахгүй, хэрэглэгчийн талд шинэ хуудас байхгүй.",
+  },
 } as const satisfies Record<string, FeatureFlagMeta>;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;

@@ -14,6 +14,10 @@ import {
   seriesBucket,
   ubIso,
   ubIsoEnd,
+  dayStartIso,
+  dayEndIso,
+  isoToDay,
+  isoEndToDay,
 } from "./date-range";
 
 describe("addDaysKey", () => {
@@ -242,5 +246,24 @@ describe("тайлангийн мужийн хил", () => {
         Number(inRange(edge, cur.from, cur.to));
       expect(hits).toBe(1);
     }
+  });
+});
+
+describe("өдрөөр сонгох хугацаа", () => {
+  it("эхлэх өдөр 00:00 УБ, дуусах өдөр бүтнээрээ", () => {
+    expect(dayStartIso("2026-11-01")).toBe("2026-11-01T00:00:00+08:00");
+    expect(dayEndIso("2026-11-03")).toBe("2026-11-03T16:00:00.000Z");
+  });
+
+  it("урвуу хөрвүүлэлт өдрөө буцаана", () => {
+    expect(isoToDay(dayStartIso("2026-11-01"))).toBe("2026-11-01");
+    expect(isoEndToDay(dayEndIso("2026-11-03"))).toBe("2026-11-03");
+  });
+
+  it("хоосон утга", () => {
+    expect(dayStartIso("")).toBeNull();
+    expect(dayEndIso("")).toBeNull();
+    expect(isoToDay(null)).toBe("");
+    expect(isoEndToDay("бишээ")).toBe("");
   });
 });

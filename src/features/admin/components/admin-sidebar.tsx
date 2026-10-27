@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Award,
+  BadgePercent,
   BellRing,
   BarChart3,
   Boxes,
@@ -126,6 +127,13 @@ const GROUPS: NavGroup[] = [
       // тэр нь захиалгын барьсан шингэн, энэ нь өнгө/хэмжээний хоосон сав.
       { href: "/admin/bottles", label: "Савны нөөц", icon: FlaskConical },
       { href: "/admin/collections", label: "Багц", icon: Layers },
+      // Олон бараанд нэг дор хугацаатай хямдрал (0166).
+      {
+        href: "/admin/sales",
+        label: "Хямдрал",
+        icon: BadgePercent,
+        flag: "sale_page",
+      },
       { href: "/admin/brands", label: "Брэнд", icon: Crown },
       // Хэрэглэгчийн санал болгосон, манайд байхгүй үнэртэн (0137).
       {
