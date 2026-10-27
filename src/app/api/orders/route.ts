@@ -80,7 +80,8 @@ function parseSnapshot(body: unknown) {
   if (raw === undefined) return null;
   const parsed = savedCheckoutInputSchema.safeParse(raw);
   if (!parsed.success) return null;
-  if (JSON.stringify(parsed.data).length > SAVED_CHECKOUT_MAX_BYTES) return null;
+  if (JSON.stringify(parsed.data).length > SAVED_CHECKOUT_MAX_BYTES)
+    return null;
   return parsed.data;
 }
 
@@ -277,10 +278,18 @@ export async function POST(req: Request) {
         return base;
       }),
     };
+    // Гранд шагнал (0165): зөвхөн бүртгэлтэй хэрэглэгч, ижил transaction-д.
+    // Шагнал авах боломжгүй бол захиалга ч үүсэхгүй — клиент шагналгүйгээр
+    // дахин илгээнэ (PRIZE_UNAVAILABLE).
+    const prizeSpinId = userId ? (input.prizeSpinId ?? null) : null;
     const { data, error } = await callRpc<{
       order_no: string;
       total: number;
-    }>(supabase, "place_order", rpcArgs);
+    }>(
+      supabase,
+      prizeSpinId ? "place_order_with_prize" : "place_order",
+      prizeSpinId ? { ...rpcArgs, p_spin: prizeSpinId } : rpcArgs,
+    );
 
     if (error) {
       // Захиалга үүсээгүй тул эзэмшлийг суллана — хэрэглэгч сагсаа засаад
@@ -298,6 +307,12 @@ export async function POST(req: Request) {
       // «Тун удахгүй» болсон — computeSummary шалгасны дараа админ сольсон.
       // Хариу нь дээрх ItemsUnavailableError-тай ижил, клиент мөрийг хасна.
       const unavailable = /ITEMS_UNAVAILABLE:(\S*)/.exec(error.message ?? "");
+      if (error.message?.includes("PRIZE_UNAVAILABLE")) {
+        return NextResponse.json(
+          { error: "PRIZE_UNAVAILABLE" },
+          { status: 409 },
+        );
+      }
       if (unavailable) {
         return NextResponse.json(
           {

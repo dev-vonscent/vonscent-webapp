@@ -36,8 +36,24 @@ function row(overrides: Partial<DbProduct> = {}): DbProduct {
     coming_soon_note: null,
     product_images: [],
     product_variants: [
-      { id: "v5", ml: 5, price: 30000, sale_price: null, is_active: true },
-      { id: "v10", ml: 10, price: 52000, sale_price: null, is_active: true },
+      {
+        id: "v5",
+        ml: 5,
+        price: 30000,
+        sale_price: null,
+        sale_starts_at: null,
+        sale_ends_at: null,
+        is_active: true,
+      },
+      {
+        id: "v10",
+        ml: 10,
+        price: 52000,
+        sale_price: null,
+        sale_starts_at: null,
+        sale_ends_at: null,
+        is_active: true,
+      },
     ],
     // Хоёр хэмжээг хангалттай дүүргэх үлдэгдэл.
     inventory: { on_hand_ml: 100, reserved_ml: 0, is_sold_out: false },
@@ -89,5 +105,44 @@ describe("mapProduct — «Тун удахгүй»", () => {
     expect(
       mapProduct(row({ status: "coming_soon", launched_at: null })).createdAt,
     ).toBe("2026-10-01T00:00:00Z");
+  });
+});
+
+describe("mapProduct — хугацаатай хямдрал (0166)", () => {
+  const sale = (patch: Record<string, string | null>) =>
+    row({
+      product_variants: [
+        {
+          id: "v5",
+          ml: 5,
+          price: 30000,
+          sale_price: 24000,
+          sale_starts_at: null,
+          sale_ends_at: null,
+          is_active: true,
+          ...patch,
+        },
+      ],
+    });
+
+  it("хугацаа дотор хямдарсан үнээр", () => {
+    const ends = new Date(Date.now() + 86_400_000).toISOString();
+    const [v] = mapProduct(sale({ sale_ends_at: ends })).variants;
+    expect(v.price).toBe(24000);
+    expect(v.basePrice).toBe(30000);
+  });
+
+  it("дууссан хямдрал энгийн үнэ рүү буцна", () => {
+    const ended = new Date(Date.now() - 1000).toISOString();
+    const p = mapProduct(sale({ sale_ends_at: ended }));
+    expect(p.variants[0].price).toBe(30000);
+    expect(p.startingPrice).toBe(p.startingBasePrice);
+  });
+
+  it("эхлээгүй хямдрал үндсэн үнээр", () => {
+    const later = new Date(Date.now() + 86_400_000).toISOString();
+    expect(mapProduct(sale({ sale_starts_at: later })).variants[0].price).toBe(
+      30000,
+    );
   });
 });

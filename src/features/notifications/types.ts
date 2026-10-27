@@ -9,6 +9,8 @@ export const NOTIFICATION_KINDS = [
   // personal
   "points_released",
   "free_spin_ready",
+  // Азын хүрдний гранд шагнал: хожсон, хугацаа дуусах сануулга (0164/0165).
+  "prize_won",
   "order_paid",
   "order_shipping",
   "order_delivered",

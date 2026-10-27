@@ -200,7 +200,9 @@ export async function pollNotifications(
   const now = new Date().toISOString();
   const hideSpin = await hideFreeSpin(admin);
   const anchor = cursor ? Date.parse(cursor.visibleAt) : Date.parse(now);
-  const windowStart = new Date(anchor - NOTIFICATION_POLL_LOOKBACK_MS).toISOString();
+  const windowStart = new Date(
+    anchor - NOTIFICATION_POLL_LOOKBACK_MS,
+  ).toISOString();
 
   const unreadQ = visibleRows(admin, userId, now, hideSpin, {
     count: true,

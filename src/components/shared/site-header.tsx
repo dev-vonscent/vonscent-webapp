@@ -17,6 +17,7 @@ import { NotificationCenter } from "@/features/notifications/components/notifica
 import { selectWishCount, useWishlist } from "@/features/wishlist/store";
 import { GlobalSearch } from "./global-search";
 import { cn } from "@/lib/utils";
+import { DARK_STAGE_ROUTES } from "@/lib/constants";
 import {
   STORE_NAV_PRIMARY,
   STORE_NAV_SECONDARY,
@@ -35,7 +36,7 @@ const TITLES: Record<string, string> = {
   "/cart": "Сагс",
   "/checkout": "Захиалга",
   "/faq": "Тусламж",
-  "/lucky-wheel": "Азын хүрд",
+  "/lucky-wheel": "", // the dark stage runs up behind the bar — no title
   "/quiz": "Үнэрээ олох",
   "/wishlist": "Хүслийн жагсаалт",
   "/account": "Миний бүртгэл",
@@ -43,6 +44,7 @@ const TITLES: Record<string, string> = {
   "/account/loyalty": "Урамшуулал",
   "/account/addresses": "Хаягууд",
   "/account/coupons": "Миний купон",
+  "/account/info": "Миний мэдээлэл",
   "/account/notifications": "Мэдэгдэл",
   "/account/tier": "Түвшин",
   "/request": "Санал болгох",
@@ -53,7 +55,9 @@ const TITLES: Record<string, string> = {
 };
 
 function getTitle(pathname: string): string {
-  if (TITLES[pathname]) return TITLES[pathname];
+  // `in`, not truthiness: an exact "" means "no title" (the wheel's stage),
+  // not "unknown page — fall back to the brand name".
+  if (pathname in TITLES) return TITLES[pathname];
   const match = Object.keys(TITLES)
     .filter((k) => pathname.startsWith(`${k}/`))
     .sort((a, b) => b.length - a.length)[0];
@@ -165,13 +169,19 @@ export function SiteHeader({
         Header доторх `fixed` элементүүд (dialog, sheet) бүгд portal-оор гардаг. */}
       <header
         className={cn(
-          "sticky top-0 z-40 will-change-transform transition-transform duration-300 ease-out motion-reduce:transition-none",
+          "sticky top-0 z-40 transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none",
           hidden && "-translate-y-full",
         )}
       >
         {/* Mobile compact header — inner pages only (back + title + cart). */}
         {!isHome && (
-          <div className="relative flex h-16 items-center justify-between gap-3 px-4 md:hidden">
+          <div
+            className={cn(
+              "relative flex h-16 items-center justify-between gap-3 px-4 md:hidden",
+              // Floats over a black stage there — its buttons go black too.
+              DARK_STAGE_ROUTES.includes(pathname) && "force-black",
+            )}
+          >
             {/*
             A scrim, because this bar has no background of its own: the back
             button and the cart carry their own pills, but the title sat

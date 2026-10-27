@@ -37,6 +37,9 @@ import { SHIPPING_ZONES, type ShippingZoneConfig } from "@/lib/constants";
 import { giftSlotsFor } from "@/lib/gift";
 import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { GiftSamplePicker } from "@/features/checkout/components/gift-sample-picker";
+import { CheckoutPrize } from "@/features/lucky-wheel/components/checkout-prize";
+import { GRAND_PRIZES_KEY } from "@/features/lucky-wheel/use-wheel";
+import { useFeatureFlag } from "@/components/feature-flags";
 import { useGiftPool } from "@/features/gifts/use-gift-pool";
 import {
   DELIVERY_END_HOUR,
@@ -319,6 +322,9 @@ export default function CheckoutPage() {
   const [storePhone, setStorePhone] = React.useState<string | null>(null);
   const [noteTags, setNoteTags] = React.useState<string[]>([]);
   const [giftIds, setGiftIds] = React.useState<string[]>([]);
+  // Азын хүрдний гранд шагнал (0165): энэ захиалгад хавсаргах эргэлт.
+  const wheelOn = useFeatureFlag("lucky_wheel");
+  const [prizeSpinId, setPrizeSpinId] = React.useState<string | null>(null);
   // Khoroo lives outside the form: it is folded into shipDetail on submit,
   // since orders has no dedicated column for it.
   const [khoroo, setKhoroo] = React.useState<number | null>(null);
@@ -1127,6 +1133,7 @@ export default function CheckoutPage() {
       loyaltyUsed: loyaltyApplied,
       saveAddress: saveAddr,
       giftProductIds: giftIds,
+      prizeSpinId: authed && wheelOn ? (prizeSpinId ?? undefined) : undefined,
       items: items.map((i) => ({
         productId: i.productId,
         variantId: i.variantId,
@@ -1209,6 +1216,17 @@ export default function CheckoutPage() {
         // server refuses the order rather than quietly charging for whatever
         // survived, and the dead lines come back by variant id (the cart's
         // line key) so they can be cleared here.
+        // Гранд шагналын багцын нэг үнэртэн 2мл-ээр дууссан — захиалга
+        // үүсээгүй. Шагнал хадгалагдсан хэвээр; энэ удаад хасаад дахин дарахад
+        // шагналгүйгээр үргэлжилнэ.
+        if (data.error === "PRIZE_UNAVAILABLE") {
+          setPrizeSpinId(null);
+          void queryClient.invalidateQueries({ queryKey: GRAND_PRIZES_KEY });
+          setServerError(
+            "Шагналын багцын нэг үнэртэн түр дууссан тул энэ захиалгад орсонгүй. Шагнал тань хадгалагдсан — «Төлбөр төлөх»-ийг дахин дарж шагналгүйгээр үргэлжлүүлнэ үү.",
+          );
+          return;
+        }
         if (data.error === "ITEMS_UNAVAILABLE") {
           const ids: string[] = Array.isArray(data.variantIds)
             ? data.variantIds
@@ -1720,6 +1738,14 @@ export default function CheckoutPage() {
               />
             </div>
           )}
+
+          {mounted && (
+            <CheckoutPrize
+              enabled={authed && wheelOn}
+              value={prizeSpinId}
+              onChange={setPrizeSpinId}
+            />
+          )}
         </div>
 
         {/* Summary.
@@ -1841,6 +1867,13 @@ export default function CheckoutPage() {
                 {/* Бэлэг нь тоймд ил мөр болж байж л «захиалгад юу орсон бэ»
                     гэдгийн хэсэг болно — эс тэгвээс хуудасны дунд сонгоод
                     мартчихдаг, хасагдсаныг нь ч мэдэхгүй өнгөрдөг. */}
+                {prizeSpinId && (
+                  <SummaryRow
+                    label="Азын хүрдний шагнал · 2мл багц"
+                    value="Үнэгүй"
+                    credit
+                  />
+                )}
                 {giftIds.length > 0 && (
                   <SummaryRow
                     label={`Бэлэг · ${giftPool?.sampleMl ?? 1}мл дээж × ${giftIds.length}`}

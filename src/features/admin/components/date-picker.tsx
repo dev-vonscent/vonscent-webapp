@@ -26,6 +26,8 @@ export function DatePicker({
   placeholder = "Огноо сонгох",
   /** Lets the operator clear the date back to empty. */
   clearable = true,
+  /** Үүнээс өмнөх өдрийг календарь хаана (`YYYY-MM-DD`). */
+  min,
   className,
   ...aria
 }: {
@@ -33,6 +35,7 @@ export function DatePicker({
   onChange: (value: string) => void;
   placeholder?: string;
   clearable?: boolean;
+  min?: string;
   className?: string;
 } & React.AriaAttributes & { id?: string }) {
   const fieldProps = useFieldProps(aria);
@@ -79,6 +82,7 @@ export function DatePicker({
           <Calendar
             start={value}
             today={today}
+            min={min}
             onPick={(key) => {
               onChange(key);
               // One tap, one date: unlike a range there is nothing else to
@@ -90,7 +94,7 @@ export function DatePicker({
             <Button
               type="button"
               variant="ghost"
-              disabled={!today}
+              disabled={!today || Boolean(min && today < min)}
               onClick={() => {
                 onChange(today!);
                 setOpen(false);

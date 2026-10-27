@@ -590,6 +590,9 @@ export const REVIEW_REJECT_REASONS = [
 ] as const;
 export type ReviewRejectReason = (typeof REVIEW_REJECT_REASONS)[number];
 
+/** «Бусад» шалтгааны тайлбарын дээд урт — DB check `reviews_reject_note_len`. */
+export const REVIEW_REJECT_NOTE_MAX = 300;
+
 export const REVIEW_REJECT_REASON_LABEL: Record<ReviewRejectReason, string> = {
   profanity: "Ёс бус үг хэллэг ашигласан",
   false_info: "Илт худал мэдээлэл оруулсан",
@@ -748,7 +751,7 @@ export const FEATURE_FLAGS = {
   lucky_wheel: {
     label: "Азын хүрд",
     description:
-      "/lucky-wheel хуудас, цэс ба купоны холбоосууд, /api/lucky-wheel, төлөгдсөн захиалгаас эрх олгох trigger (0134). Эргүүлэх ажиллагаа нь Азын хүрдний «Идэвхтэй» тохиргоогоор тусдаа.",
+      "/lucky-wheel хуудас, цэс ба купоны холбоосууд, /api/lucky-wheel, төлөгдсөн захиалгаас эрх олгох trigger (0134); гранд шагнал (2мл багц) сонгох /api/lucky-wheel/prizes, checkout-д хавсаргах place_order_with_prize, сануулгын cron (0165). Эргүүлэх ажиллагаа нь Азын хүрдний «Идэвхтэй» тохиргоогоор тусдаа.",
   },
   campaigns: {
     label: "Кампанит ажил",
@@ -774,6 +777,16 @@ export const FEATURE_FLAGS = {
     label: "Сэтгэгдлийн хяналт",
     description:
       "Сэтгэгдэл админ батласны дараа нийтлэгдэж, оноо батлах үед олгогдоно: 100+ тэмдэгт, худалдаж авсан ус, бүрэн бүртгэл, засах/устгах боломжгүй; «Миний захиалга»-ын төлөв, админ /admin/reviews (/api/admin/reviews), нүүрний сонгосон сэтгэгдэл, /api/reviews/eligibility, moderation guard trigger ба award_review_points (0162).",
+  },
+  profile_info: {
+    label: "Миний мэдээлэл",
+    description:
+      "/account/info хуудас (зураг, нэр, утас, имэйл, хүйс, төрсөн өдөр, ажил, хаяг, дуртай үнэрийн төрөл/үнэртэн), профайлын «Миний мэдээлэл» мөр (асаалттай үед «Засах» товч нуугдана), /api/account/profile-info, бүрэн бөглөсөн үеийн нэг удаагийн V point — claim_profile_reward (0163). Хэмжээ нь Админ → V point → «Мэдээлэл бөглөсний урамшуулал».",
+  },
+  sale_page: {
+    label: "Хямдрал",
+    description:
+      "Админ → Каталог → Хямдрал (/admin/sales, /api/admin/sales): олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал тавих/цуцлах ба барааны үнийн хүснэгтэд эхлэх/дуусах хугацаа (0166: apply_bulk_sale, clear_bulk_sale). Хугацаа дуусмагц үнэ өөрөө энгийн болно. Багц хамаарахгүй, хэрэглэгчийн талд шинэ хуудас байхгүй.",
   },
 } as const satisfies Record<string, FeatureFlagMeta>;
 
@@ -817,6 +830,49 @@ export type UserTierKey = (typeof USER_TIERS)[number]["key"];
 
 /** Түвшний хуудасны топ жагсаалтын урт (7 хоног / сар). */
 export const TIER_LEADERBOARD_SIZE = 3;
+
+/** «Миний мэдээлэл» (0163) — хязгаарууд SQL-ийн check-тэй таарна. */
+export const PROFILE_GENDERS = ["female", "male", "other"] as const;
+export type ProfileGender = (typeof PROFILE_GENDERS)[number];
+export const PROFILE_GENDER_LABEL: Record<ProfileGender, string> = {
+  female: "Эмэгтэй",
+  male: "Эрэгтэй",
+  other: "Бусад",
+};
+export const PROFILE_NAME_MAX = 80;
+export const PROFILE_JOB_MAX = 80;
+/**
+ * «Ажил мэргэжил»-ийн бэлэн сонголтууд — санд энэ шошгоороо (text) хадгалагдана,
+ * жагсаалтад байхгүй бол «Бусад»-аар гараар бичнэ.
+ */
+export const PROFILE_JOB_OPTIONS = [
+  "Сурагч",
+  "Оюутан",
+  "Эмч",
+  "Багш",
+  "Инженер",
+  "Дизайнер",
+  "Бизнес эрхлэгч",
+  "Менежер",
+  "Нягтлан бодогч",
+  "Хуульч",
+  "Төрийн албан хаагч",
+] as const;
+export const PROFILE_FAVORITE_PERFUMES_MAX = 3;
+export const PROFILE_PERFUME_NAME_MAX = 80;
+export const PROFILE_SCENT_PREFS_MAX = 10;
+/** `settings.loyalty.profilePoints` байхгүй үеийн утга (0163-ийн seed). */
+export const DEFAULT_PROFILE_POINTS = 500;
+
+/**
+ * Хар «тайзтай» хуудсууд: агуулга нь бүх темд хар (`.force-black`), тиймээс
+ * утасны хөвөгч толгойн товч, доод цэс ч мөн хар болно — цагаан товч хар тайз
+ * дээр тасархай харагддаг (азын хүрд, клиент 2026-10-26).
+ */
+/** Азын хүрдний гранд шагнал (0165): багцын гишүүн бүр энэ хэмжээгээр. */
+export const GRAND_BUNDLE_ML = 2;
+
+export const DARK_STAGE_ROUTES: readonly string[] = ["/lucky-wheel"];
 
 export const COUPONS_NEW_BADGE_UNTIL = "2026-11-01T00:00:00+08:00";
 

@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import { ChevronRight, Disc3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
-import { useCountdown, useWheelState } from "../use-wheel";
+import { useCountdown, useGrandPrizes, useWheelState } from "../use-wheel";
 
 /**
  * The wheel's entry point on the profile page.
@@ -19,6 +19,12 @@ import { useCountdown, useWheelState } from "../use-wheel";
  */
 export function WheelEntryCard({ className }: { className?: string }) {
   const { data: state } = useWheelState();
+  const { data: grand } = useGrandPrizes(Boolean(state?.signedIn));
+  // A grand prize waiting on the customer outranks the spin status: it is a
+  // real parcel they can still lose to the clock.
+  const openPrize = grand?.prizes.find(
+    (p) => p.state === "choose" || p.state === "ready",
+  );
   const countdown = useCountdown(state?.nextFreeAt);
   const reduced = usePrefersReducedMotion();
 
@@ -26,23 +32,26 @@ export function WheelEntryCard({ className }: { className?: string }) {
 
   const freeReady = state.freeReady || countdown.ready;
   const orderSpins = state.orderSpins;
-  const ready = freeReady || orderSpins > 0;
+  const ready = freeReady || orderSpins > 0 || Boolean(openPrize);
   const canPay = state.points >= state.spinCost && state.spinCost > 0;
 
-  const status = freeReady
-    ? "Үнэгүй эргэлт бэлэн боллоо"
-    : orderSpins > 0
-      ? `Захиалгын ${orderSpins} эрх бэлэн байна`
-      : canPay
-        ? `${state.spinCost.toLocaleString("mn-MN")}V-оор эргүүлэх боломжтой`
-        : `Дараагийн үнэгүй эргэлт ${countdown.label}-ийн дараа`;
+  const status = openPrize
+    ? openPrize.state === "choose"
+      ? "Гранд шагнал хүлээж байна — багцаа сонгоорой"
+      : "Гранд шагнал дараагийн захиалгад тань орно"
+    : freeReady
+      ? "Үнэгүй эргэлт бэлэн боллоо"
+      : orderSpins > 0
+        ? `Захиалгын ${orderSpins} эрх бэлэн байна`
+        : canPay
+          ? `${state.spinCost.toLocaleString("mn-MN")}V-оор эргүүлэх боломжтой`
+          : `Дараагийн үнэгүй эргэлт ${countdown.label}-ийн дараа`;
 
   return (
     <Link
-      href="/lucky-wheel"
+      href={openPrize ? "/lucky-wheel#prizes" : "/lucky-wheel"}
       className={cn(
         "bg-card hover:bg-accent flex items-center gap-4 rounded-xl p-4 transition-colors",
-        ready && "ring-gold/60 ring-1",
         className,
       )}
     >

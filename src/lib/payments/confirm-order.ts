@@ -177,7 +177,7 @@ async function notifyPaid(
   const { data: itemData } = await supabase
     .from("order_items")
     .select(
-      "product_name, brand, ml, qty, unit_price, list_price, is_gift, collection_id, collection_name",
+      "product_name, brand, ml, qty, unit_price, list_price, is_gift, collection_id, collection_name, spin_id",
     )
     .eq("order_id", order.id);
   const items = (itemData ?? []) as {
@@ -190,6 +190,8 @@ async function notifyPaid(
     is_gift: boolean;
     collection_id: string | null;
     collection_name: string | null;
+    /** Азын хүрдний гранд шагналын мөр (0165). */
+    spin_id: string | null;
   }[];
 
   // Бэлэн багц нэг мөр болно («Gentleman багц · 5ml × 1»); хэрэглэгчийн
@@ -222,7 +224,7 @@ async function notifyPaid(
       const base = (i.list_price ?? i.unit_price) * i.qty;
       return (
         `• ${tgEscape(name)} ${formatMl(i.ml)} × ${i.qty}${bundle}` +
-        (i.is_gift ? " 🎁" : ` — ${formatPrice(base)}`)
+        (i.spin_id ? " 🏆" : i.is_gift ? " 🎁" : ` — ${formatPrice(base)}`)
       );
     })
     .join("\n");

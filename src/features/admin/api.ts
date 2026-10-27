@@ -58,6 +58,11 @@ import {
   type BottleLockState,
 } from "@/features/products/bottle-stock";
 import { collectionIdsOf } from "@/lib/orders/bundle-lines";
+import { getBaseCollections } from "@/features/collections/api";
+import { grandPrizeState } from "@/features/lucky-wheel/prize-state";
+import type { GrandPrizeState } from "@/features/lucky-wheel/types";
+import { GRAND_BUNDLE_ML } from "@/lib/constants";
+import { effectivePrice } from "@/features/products/sale";
 
 /**
  * Admin read access. Uses the cookie-bound client so staff RLS applies (admins
@@ -460,6 +465,9 @@ export interface AdminVariant {
   price: number;
   /** Хямдарсан үнэ, эсвэл null (0054) — байвал бодитоор төлөх дүн. */
   salePrice: number | null;
+  /** Хямдралын хугацаа (0166, ISO) — null бол тэр талдаа хязгааргүй. */
+  saleStartsAt: string | null;
+  saleEndsAt: string | null;
   isActive: boolean;
   /**
    * Савны түгжээнээс чөлөөлсөн эсэх (0095) — өөр өнгийн саванд цутгахыг
@@ -555,7 +563,7 @@ const ADMIN_PRODUCT_SELECT = `
   bottle_ml, is_active, status, launched_at, coming_soon_note,
   is_featured,
   product_images ( id, url, alt, sort_order, is_visible ),
-  product_variants ( id, ml, price, sale_price, is_active ),
+  product_variants ( id, ml, price, sale_price, sale_starts_at, sale_ends_at, is_active ),
   inventory ( on_hand_ml, reserved_ml, low_stock_ml ),
   product_tags ( tags ( slug ) ),
   product_image_generations ( id, status, result_url, prompt, error, created_at )
@@ -605,6 +613,8 @@ interface AdminProductRow {
     ml: number;
     price: number;
     sale_price: number | null;
+    sale_starts_at: string | null;
+    sale_ends_at: string | null;
     is_active: boolean;
   }[];
   inventory:
@@ -624,7 +634,7 @@ function mapAdminProduct(
   // Жагсаалтын «-аас» үнэ нь бодитоор төлөх дүнгээр (хямдрал орсон, 0054).
   const prices = r.product_variants
     .filter((v) => v.is_active)
-    .map((v) => v.sale_price ?? v.price);
+    .map((v) => effectivePrice(v));
   const tags = r.product_tags
     .map((pt) => (Array.isArray(pt.tags) ? pt.tags[0] : pt.tags)?.slug)
     .filter((s): s is string => Boolean(s));
@@ -656,6 +666,8 @@ function mapAdminProduct(
         ml: v.ml,
         price: v.price,
         salePrice: v.sale_price,
+        saleStartsAt: v.sale_starts_at,
+        saleEndsAt: v.sale_ends_at,
         isActive: v.is_active,
         // Чөлөөлөлтийг багана уншиж биш, кэштэй жагсаалтаас (0095) — 0095
         // ажиллаагүй сан дээр админы жагсаалт унах ёсгүй.
@@ -1607,6 +1619,10 @@ export interface WheelSettings {
   rareCouponPerMonth: number;
   couponValidDays: number;
   singleActiveCoupon: boolean;
+  /** Гранд шагналын хоёр багц (0165) — `collections.id`, сонгоогүй бол null. */
+  grandBundles: { male: string | null; female: string | null };
+  /** Хожсоноос хойш шагналаа авах хоног (0165). */
+  bundleClaimDays: number;
 }
 
 export const WHEEL_SETTINGS_DEFAULTS: WheelSettings = {
@@ -1621,7 +1637,34 @@ export const WHEEL_SETTINGS_DEFAULTS: WheelSettings = {
   couponValidDays: 30,
   // Клиент 2026-09-07-д цуцаллаа: купон хуримтлагдана (0066, docs §0 №1).
   singleActiveCoupon: false,
+  grandBundles: { male: null, female: null },
+  bundleClaimDays: 60,
 };
+
+/** One grand prize as the admin follows it from win to doorstep (0165). */
+export interface GrandAdminRow {
+  id: string;
+  customer: string;
+  phone: string | null;
+  wonAt: string;
+  expiresAt: string | null;
+  state: GrandPrizeState;
+  bundleName: string | null;
+  gender: "male" | "female" | null;
+  orderId: string | null;
+  orderNo: string | null;
+}
+
+/** A base bundle the admin can offer as the grand prize. */
+export interface GrandBundleChoice {
+  id: string;
+  name: string;
+  gender: string;
+  /** Every member pourable at 2ml right now. */
+  available: boolean;
+  /** The bundle's 2ml catalogue price — what the prize is worth. */
+  price: number;
+}
 
 export interface WheelReport {
   days: number;
@@ -1674,6 +1717,8 @@ export async function getWheelAdmin(): Promise<{
   prizes: SpinWheelPrizeRow[];
   settings: WheelSettings;
   report: WheelReport;
+  grand: GrandAdminRow[];
+  bundleChoices: GrandBundleChoice[];
 }> {
   const supabase = await createClient();
   if (!supabase) {
@@ -1681,25 +1726,105 @@ export async function getWheelAdmin(): Promise<{
       prizes: [],
       settings: WHEEL_SETTINGS_DEFAULTS,
       report: EMPTY_REPORT,
+      grand: [],
+      bundleChoices: [],
     };
   }
 
-  const [prizesRes, settingRes, reportRes] = await Promise.all([
-    supabase.from("spin_wheel_prizes").select("*").order("slot"),
-    supabase.from("settings").select("value").eq("key", "spin").maybeSingle(),
-    callRpc<WheelReport & { error?: string }>(supabase, "spin_wheel_report", {
-      p_days: 30,
-    }),
-  ]);
+  const [prizesRes, settingRes, reportRes, grand, collections] =
+    await Promise.all([
+      supabase.from("spin_wheel_prizes").select("*").order("slot"),
+      supabase.from("settings").select("value").eq("key", "spin").maybeSingle(),
+      callRpc<WheelReport & { error?: string }>(supabase, "spin_wheel_report", {
+        p_days: 30,
+      }),
+      getGrandAdminRows(supabase),
+      getBaseCollections(),
+    ]);
 
   const stored = (settingRes.data as { value?: Partial<WheelSettings> } | null)
     ?.value;
   const report = reportRes.data;
   return {
     prizes: (prizesRes.data as SpinWheelPrizeRow[] | null) ?? [],
-    settings: { ...WHEEL_SETTINGS_DEFAULTS, ...(stored ?? {}) },
+    settings: {
+      ...WHEEL_SETTINGS_DEFAULTS,
+      ...(stored ?? {}),
+      grandBundles: {
+        ...WHEEL_SETTINGS_DEFAULTS.grandBundles,
+        ...(stored?.grandBundles ?? {}),
+      },
+    },
     report: report && !report.error ? report : EMPTY_REPORT,
+    grand,
+    bundleChoices: collections.map((c) => ({
+      id: c.id,
+      name: c.name,
+      gender: c.gender,
+      available: c.availableMls.includes(GRAND_BUNDLE_ML),
+      price: c.prices.find((p) => p.ml === GRAND_BUNDLE_ML)?.price ?? 0,
+    })),
   };
+}
+
+/**
+ * Every grand prize, newest first, with where it is (0165). Staff RLS reads
+ * spins, profiles and orders, so this stays on the cookie-bound client.
+ */
+async function getGrandAdminRows(
+  supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>,
+): Promise<GrandAdminRow[]> {
+  const { data } = await supabase
+    .from("spin_wheel_spins")
+    .select(
+      "id, user_id, created_at, expires_at, bundle_collection_id, bundle_gender, claim_order_id, fulfilled_at, collections:bundle_collection_id(name), orders:claim_order_id(order_no)",
+    )
+    .eq("kind", "bundle")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  const rows = (data ?? []) as unknown as {
+    id: string;
+    user_id: string;
+    created_at: string;
+    expires_at: string | null;
+    bundle_collection_id: string | null;
+    bundle_gender: "male" | "female" | null;
+    claim_order_id: string | null;
+    fulfilled_at: string | null;
+    collections: { name: string } | null;
+    orders: { order_no: string } | null;
+  }[];
+  if (rows.length === 0) return [];
+
+  const { data: people } = await supabase
+    .from("profiles")
+    .select("id, full_name, phone")
+    .in("id", [...new Set(rows.map((r) => r.user_id))]);
+  const byId = new Map(
+    (
+      (people ?? []) as {
+        id: string;
+        full_name: string | null;
+        phone: string | null;
+      }[]
+    ).map((p) => [p.id, p]),
+  );
+  const now = new Date();
+  return rows.map((r) => {
+    const p = byId.get(r.user_id);
+    return {
+      id: r.id,
+      customer: p?.full_name?.trim() || "Хэрэглэгч",
+      phone: p?.phone ?? null,
+      wonAt: r.created_at,
+      expiresAt: r.expires_at,
+      state: grandPrizeState(r, now),
+      bundleName: r.collections?.name ?? null,
+      gender: r.bundle_gender,
+      orderId: r.claim_order_id,
+      orderNo: r.orders?.order_no ?? null,
+    };
+  });
 }
 
 // ── Савны нөөц (0095) ───────────────────────────────────────────────────────

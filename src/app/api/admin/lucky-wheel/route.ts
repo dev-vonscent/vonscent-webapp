@@ -9,7 +9,8 @@ import { getStaffUser } from "@/lib/auth/guard";
  * бүр админаас тохируулагдана — код дотор хатуу бичихгүй").
  *
  *   PUT   → segments and/or the `settings.spin` tunables
- *   PATCH → mark a physical prize as handed over
+ *   PATCH → a grand prize by hand: mark it delivered, or give an expired
+ *           one 14 more days (0165)
  *
  * Reads live in `getWheelAdmin()`; this file only writes.
  */
@@ -40,6 +41,12 @@ const settingsSchema = z.object({
   rareCouponPerMonth: z.number().int().min(0),
   couponValidDays: z.number().int().min(1).max(365),
   singleActiveCoupon: z.boolean(),
+  // Гранд шагнал (0165): хоёр багц ба авах хугацаа.
+  grandBundles: z.object({
+    male: z.string().uuid().nullable(),
+    female: z.string().uuid().nullable(),
+  }),
+  bundleClaimDays: z.number().int().min(1).max(365),
 });
 
 const putSchema = z
@@ -71,6 +78,35 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: gate.error }, { status: gate.status });
   }
   const { supabase } = gate;
+
+  // Гранд шагнал (0165): эрэгтэй шагналд эрэгтэй/unisex, эмэгтэйд
+  // эмэгтэй/unisex идэвхтэй бэлэн багц л — UI шүүсэн ч энд дахин шалгана.
+  const grand = parsed.data.settings?.grandBundles;
+  for (const gender of ["male", "female"] as const) {
+    const id = grand?.[gender];
+    if (!id) continue;
+    const { data: coll } = await supabase
+      .from("collections")
+      .select("gender, type, is_active")
+      .eq("id", id)
+      .maybeSingle();
+    const c = coll as {
+      gender: string;
+      type: string;
+      is_active: boolean;
+    } | null;
+    if (
+      !c ||
+      c.type !== "base" ||
+      !c.is_active ||
+      (c.gender !== gender && c.gender !== "unisex")
+    ) {
+      return NextResponse.json(
+        { error: "GRAND_BUNDLE_INVALID" },
+        { status: 400 },
+      );
+    }
+  }
 
   if (parsed.data.settings) {
     const { error } = await supabase
@@ -107,10 +143,13 @@ export async function PUT(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
-const patchSchema = z.object({
-  spinId: z.string().uuid(),
-  fulfilled: z.boolean(),
-});
+const patchSchema = z.union([
+  z.object({ spinId: z.string().uuid(), fulfilled: z.boolean() }),
+  z.object({ spinId: z.string().uuid(), extend: z.literal(true) }),
+]);
+
+/** Days an «extend» adds — enough for one more order cycle. */
+const EXTEND_DAYS = 14;
 
 export async function PATCH(req: Request) {
   const body = await req.json().catch(() => null);
@@ -125,12 +164,24 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: gate.error }, { status: gate.status });
   }
 
+  // Only grand prizes are handed over by hand, and only while not already
+  // riding in an order (the order's own status settles those).
+  const update =
+    "extend" in parsed.data
+      ? {
+          expires_at: new Date(
+            Date.now() + EXTEND_DAYS * 86_400_000,
+          ).toISOString(),
+        }
+      : {
+          fulfilled_at: parsed.data.fulfilled ? new Date().toISOString() : null,
+        };
   const { error } = await gate.supabase
     .from("spin_wheel_spins")
-    .update({
-      fulfilled_at: parsed.data.fulfilled ? new Date().toISOString() : null,
-    })
-    .eq("id", parsed.data.spinId);
+    .update(update)
+    .eq("id", parsed.data.spinId)
+    .eq("kind", "bundle")
+    .is("claim_order_id", null);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

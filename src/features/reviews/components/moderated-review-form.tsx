@@ -21,7 +21,6 @@ import {
 import {
   REVIEW_MODERATED_BODY_MAX,
   REVIEW_MODERATED_BODY_MIN,
-  REVIEW_REJECT_REASON_LABEL,
 } from "@/lib/constants";
 import { rateLimitMessage } from "@/lib/rate-limit-client";
 import {
@@ -34,6 +33,7 @@ import {
   reviewEligibilityKey,
   useReviewEligibility,
 } from "@/features/reviews/use-review-eligibility";
+import { rejectReasonText } from "@/features/reviews/reject-reason";
 
 const EXAMPLE =
   "Жишээ: Чихэрлэг дулаахан мэдрэмж төрүүлэхээр, өвөл юм уу орой сэрүүхэн үед түрхэхэд тохиромжтой санагдсан, 27 настай миний үеийн хүмүүст бол таалагдахаар үнэртэн…";
@@ -96,7 +96,7 @@ function OwnStatus({ own, points }: { own: OwnReview; points: number }) {
       </p>
       {own.rejectReason && (
         <p className="text-muted-foreground">
-          Шалтгаан: {REVIEW_REJECT_REASON_LABEL[own.rejectReason]}
+          Шалтгаан: {rejectReasonText(own.rejectReason, own.rejectNote)}
         </p>
       )}
     </div>
@@ -232,6 +232,7 @@ export function ModeratedReviewForm({
               body: parsed.data.body,
               status: "pending",
               rejectReason: null,
+              rejectNote: null,
             },
           },
       );
@@ -290,7 +291,7 @@ export function ModeratedReviewForm({
                   className={cn(
                     "size-8 transition-colors",
                     n <= shown
-                      ? "fill-gold text-gold"
+                      ? "fill-rating text-rating"
                       : "text-muted-foreground/50 fill-transparent",
                   )}
                   strokeWidth={1.5}
@@ -328,33 +329,37 @@ export function ModeratedReviewForm({
           className="bg-secondary h-1 overflow-hidden rounded-full"
           aria-hidden
         >
+          {/* 100 тэмдэгтэд хүрмэгц мөр ногоон болно — хязгаар биш, босго. */}
           <div
-            className="bg-gold-strong h-full rounded-full transition-[width] duration-300"
+            className={cn(
+              "h-full rounded-full transition-[width,background-color] duration-300",
+              enough ? "bg-done" : "bg-gold-strong",
+            )}
             style={{ width: `${progress * 100}%` }}
           />
         </div>
         <div
           id={`${bodyId}-hint`}
-          className="flex items-center justify-between gap-3 text-xs"
+          aria-live="polite"
+          className="flex min-h-4 items-center justify-between gap-3 text-xs"
         >
+          {/* Босгонд хүрсний дараа тоо «/100»-гүй — дээд хязгаар мэт
+              харагдвал хэрэглэгч 100-д зогсдог. Урт сэтгэгдэлд урамшуулна. */}
           {enough ? (
-            <span className="text-foreground flex items-center gap-1">
+            <span className="text-done flex items-center gap-1 font-medium">
               <Check className="size-3.5" />
-              Хангалттай урттай
+              Болсон! Дэлгэрэнгүй бичвэл бусдад илүү тустай
             </span>
           ) : (
-            <span className="text-muted-foreground">
-              Зай тооцохгүйгээр {REVIEW_MODERATED_BODY_MIN} тэмдэгтэд хүрээгүй
-              бол хадгалагдахгүй
-            </span>
+            <span />
           )}
           <span
             className={cn(
               "shrink-0 tabular-nums",
-              enough ? "text-foreground" : "text-muted-foreground",
+              enough ? "text-done" : "text-muted-foreground",
             )}
           >
-            {chars}/{REVIEW_MODERATED_BODY_MIN}
+            {enough ? chars : `${chars}/${REVIEW_MODERATED_BODY_MIN}`}
           </span>
         </div>
       </div>

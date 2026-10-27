@@ -17,6 +17,7 @@ import {
   hasVisibleImage,
   statusConflict,
 } from "@/features/admin/lib/product-status";
+import { variantSaleColumns } from "@/features/products/sale";
 
 async function guard() {
   if (!isSupabaseConfigured) return { demo: true as const };
@@ -162,9 +163,7 @@ export async function PATCH(
           product_id: id,
           ml: v.ml,
           price: v.price,
-          // 0 буюу хоосон = хямдрал байхгүй. Мөрийг үргэлж бичих нь чухал —
-          // тэгэхгүй бол хямдралыг цуцлах арга байхгүй болно.
-          sale_price: v.salePrice && v.salePrice > 0 ? v.salePrice : null,
+          ...variantSaleColumns(v),
           is_active: v.active,
         },
         { onConflict: "product_id,ml" },

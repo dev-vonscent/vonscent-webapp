@@ -73,6 +73,8 @@ export interface OwnReview {
   body: string;
   status: ReviewStatus;
   rejectReason: ReviewRejectReason | null;
+  /** «Бусад» шалтгааны админы тайлбар (0167). */
+  rejectNote: string | null;
 }
 
 /** GET /api/reviews/eligibility — хяналттай формын төлөв. */
@@ -90,6 +92,8 @@ export interface AdminReview {
   body: string;
   status: ReviewStatus;
   rejectReason: ReviewRejectReason | null;
+  /** «Бусад» шалтгааны админы тайлбар (0167). */
+  rejectNote: string | null;
   isVisible: boolean;
   isFeatured: boolean;
   createdAt: string;

@@ -122,6 +122,9 @@ export interface ProductVariantRow {
    * төлөх дүн — `variant_price()` үүнийг эхэлж авна.
    */
   sale_price: number | null;
+  /** Хямдралын хугацаа (0166) — null бол тэр талдаа хязгааргүй. */
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
   is_active: boolean;
 }
 
@@ -318,6 +321,8 @@ export interface OrderItemRow {
   collection_id: string | null;
   collection_name: string | null;
   is_gift: boolean;
+  /** Азын хүрдний гранд шагналын мөр (0165) — 2мл, 0₮. */
+  spin_id?: string | null;
 }
 
 export interface CouponRow {
@@ -490,9 +495,17 @@ export interface SpinWheelSpinRow {
   coupon_id: string | null;
   /** `order` spins only — whose credit it consumed (0129). */
   credit_order_id: string | null;
-  /** Physical prizes only — set when the admin has handed it over. */
+  /** Grand prize: set when its order is delivered, or by staff (0165). */
   fulfilled_at: string | null;
   created_at: string;
+  /** Grand prize (0165): the bundle picked, when, and the claim window. */
+  bundle_collection_id?: string | null;
+  bundle_gender?: "male" | "female" | null;
+  chosen_at?: string | null;
+  /** The order it rides in (`place_order_with_prize`); cleared on cancel. */
+  claim_order_id?: string | null;
+  claimed_at?: string | null;
+  expires_at?: string | null;
 }
 
 export interface OrderStatusHistoryRow {
@@ -582,7 +595,10 @@ export interface Database {
         | "coming_soon_note"
       >;
       product_images: Table<ProductImageRow, "id">;
-      product_variants: Table<ProductVariantRow, "id" | "sale_price">;
+      product_variants: Table<
+        ProductVariantRow,
+        "id" | "sale_price" | "sale_starts_at" | "sale_ends_at"
+      >;
       inventory: Table<InventoryRow, "updated_at">;
       tags: Table<TagRow, "id">;
       scent_families: Table<ScentFamilyRow, "created_at">;
@@ -676,6 +692,20 @@ export interface Database {
       };
       merge_perfume_requests: {
         Args: { p_source: string; p_target: string };
+        Returns: number;
+      };
+      // Олноор хямдрал (0166) — өөрчлөгдсөн хэмжээний тоо.
+      apply_bulk_sale: {
+        Args: {
+          p_product_ids: string[];
+          p_pcts: Record<string, number>;
+          p_starts: string | null;
+          p_ends: string;
+        };
+        Returns: number;
+      };
+      clear_bulk_sale: {
+        Args: { p_product_ids: string[] };
         Returns: number;
       };
       launch_product: {
