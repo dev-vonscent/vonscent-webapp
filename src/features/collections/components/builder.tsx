@@ -4,6 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { BadgePercent, Check, Plus, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -426,7 +427,14 @@ function BuilderInner({
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
               {grid.map((p) => {
-                const stock = Boolean(p.variantByMl[ml]?.inStock);
+                const variant = p.variantByMl[ml];
+                const stock = Boolean(variant?.inStock);
+                // Хямдрал хэмжээ тус бүрд — 5ml хямдарсан ус 2ml-ийн жагсаалтад
+                // «Хямдрал» гэж худал бичигдэхгүй.
+                const onSale =
+                  stock &&
+                  variant?.basePrice != null &&
+                  variant.basePrice > variant.price;
                 const on = ids.includes(p.productId);
                 // Can't add something the chosen size can't fill; an already-
                 // picked one stays removable.
@@ -461,6 +469,15 @@ function BuilderInner({
                           {ml}ml-д байхгүй
                         </span>
                       )}
+                      {/* Барааны card-тай ижил badge (`ProductCard`). */}
+                      {onSale && (
+                        <Badge
+                          variant="sale"
+                          className="bg-background/85! absolute top-2 left-2 w-fit backdrop-blur-sm"
+                        >
+                          Хямдрал
+                        </Badge>
+                      )}
                       <button
                         onClick={() => toggle(p)}
                         disabled={disabled}
@@ -491,15 +508,20 @@ function BuilderInner({
                       </span>
                       <span
                         className={cn(
-                          "text-xs font-semibold",
+                          "flex items-baseline gap-1.5 text-xs font-semibold",
                           stock
                             ? "text-foreground/70"
                             : "text-muted-foreground",
                         )}
                       >
                         {stock
-                          ? formatPrice(p.variantByMl[ml]?.price ?? 0)
+                          ? formatPrice(variant?.price ?? 0)
                           : `${ml}ml-д байхгүй`}
+                        {onSale && (
+                          <span className="text-muted-foreground text-[11px] font-normal line-through">
+                            {formatPrice(variant.basePrice as number)}
+                          </span>
+                        )}
                       </span>
                     </div>
                   </div>
