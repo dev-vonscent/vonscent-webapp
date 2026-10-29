@@ -30,15 +30,15 @@ export const STORE_NAV_PRIMARY: readonly StoreNavItem[] = [
     hint: "Бүх үнэртэн · 2/5/10/20 мл",
     menu: "catalog",
   },
-  { href: "/collections", label: "Багц", hint: "Бэлэн багцууд" },
-];
-
-export const STORE_NAV_SECONDARY: readonly StoreNavItem[] = [
+  { href: "/collections", label: "Бэлэн багц", hint: "Бэлэн багцууд" },
   {
     href: "/collections/build",
     label: "Багц үүсгэх",
     hint: "Дуртай үнэртнүүдээ өөрөө сонго",
   },
+];
+
+export const STORE_NAV_SECONDARY: readonly StoreNavItem[] = [
   { href: "/quiz", label: "Үнэрээ олох", hint: "Хэдэн асуултаар тохирохыг ол" },
 ];
 
