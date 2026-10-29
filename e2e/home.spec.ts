@@ -98,7 +98,7 @@ test("desktop header: лого, хайлт, үндсэн ба туслах цэ�
   await expect(catalog).toHaveAttribute("aria-expanded", "false");
   await expect(catalog).toBeFocused();
   for (const [name, href] of [
-    ["Багц", "/collections"],
+    ["Бэлэн багц", "/collections"],
     ["Багц үүсгэх", "/collections/build"],
     ["Үнэрээ олох", "/quiz"],
   ]) {

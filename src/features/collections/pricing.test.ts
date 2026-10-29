@@ -167,6 +167,14 @@ describe("discountRange", () => {
     expect(discountRange(prices, [5, 10])).toEqual({ min: 5, max: 5 });
   });
 
+  it("keeps a 0% size in the span", () => {
+    // Гишүүдийн 2ml хямдарсан тул тогтмол үнэтэй 2ml багц хэмнэлтгүй болсон.
+    expect(discountRange(rows({ 2: 0, 5: 5, 10: 5 }), [2, 5, 10])).toEqual({
+      min: 0,
+      max: 5,
+    });
+  });
+
   it("still shows a genuine range when sizes have real per-ml overrides", () => {
     const members = [
       member({ 5: 20000, 20: 60000 }, [5, 20]),
@@ -182,7 +190,10 @@ describe("formatDiscountRange", () => {
     expect(formatDiscountRange({ min: 10, max: 10 })).toBe("10%");
   });
   it("shows a span", () => {
-    expect(formatDiscountRange({ min: 5, max: 10 })).toBe("5-10%");
+    expect(formatDiscountRange({ min: 5, max: 10 })).toBe("10% хүртэл");
+  });
+  it("reads «up to» when a size has no cut at all", () => {
+    expect(formatDiscountRange({ min: 0, max: 5 })).toBe("5% хүртэл");
   });
   it("is empty when there is no discount", () => {
     expect(formatDiscountRange({ min: 0, max: 0 })).toBe("");
