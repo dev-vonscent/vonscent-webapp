@@ -502,7 +502,12 @@ export async function getBuilderProducts(
               v.ml,
               // `inStock` нь «энэ хэмжээг одоо авч болох уу» — үлдэгдэл ба
               // савны түгжээ (0095) хоёуланг агуулна (RPC-тэй ижил).
-              { variantId: v.id, price: v.price, inStock: v.sellable },
+              {
+                  variantId: v.id,
+                  price: v.price,
+                  basePrice: v.basePrice,
+                  inStock: v.sellable,
+                },
             ]),
         ),
       });
@@ -513,10 +518,7 @@ export async function getBuilderProducts(
       {
         product_id: string;
         available_ml: number;
-        variants: Record<
-          string,
-          { variantId: string; price: number; inStock: boolean }
-        > | null;
+        variants: Record<string, BuilderProduct["variantByMl"][number]> | null;
       }[]
     >(supabase, "product_variants_for", { p_ids: items.map((i) => i.id) });
     if (!data?.length) {
@@ -529,7 +531,12 @@ export async function getBuilderProducts(
               .filter((v) => v.isActive)
               .map((v) => [
                 v.ml,
-                { variantId: v.id, price: v.price, inStock: v.sellable },
+                {
+                  variantId: v.id,
+                  price: v.price,
+                  basePrice: v.basePrice,
+                  inStock: v.sellable,
+                },
               ]),
           ),
         });
