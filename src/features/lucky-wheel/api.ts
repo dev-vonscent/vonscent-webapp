@@ -6,6 +6,7 @@ import { callRpc } from "@/lib/supabase/rpc";
 import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
 import type { CouponRow, SpinWheelSpinRow } from "@/db/types";
 import type {
+  MissTip,
   SpinHistoryItem,
   SpinHistoryPage,
   SpinMode,
@@ -28,6 +29,7 @@ const OFFLINE_STATE: WheelState = {
   signedIn: false,
   history: [],
   hasMoreHistory: false,
+  missTips: [],
 };
 
 /** Spins shown on the page itself; the rest open in the history dialog. */
@@ -110,11 +112,14 @@ export async function getWheelState(): Promise<WheelState> {
   if (!supabase) return OFFLINE_STATE;
 
   const userId = await currentUserId();
-  const { data, error } = await callRpc<Omit<WheelState, "history">>(
-    supabase,
-    "spin_wheel_state",
-    { p_user: userId },
-  );
+  const [{ data, error }, missTips] = await Promise.all([
+    callRpc<Omit<WheelState, "history" | "hasMoreHistory" | "missTips">>(
+      supabase,
+      "spin_wheel_state",
+      { p_user: userId },
+    ),
+    readMissTips(supabase),
+  ]);
   if (error || !data) return OFFLINE_STATE;
 
   // One row past the preview tells whether the "see all" button has anything
@@ -127,7 +132,32 @@ export async function getWheelState(): Promise<WheelState> {
     prizes: (data.prizes ?? []) as WheelPrize[],
     history: recent.slice(0, HISTORY_PREVIEW),
     hasMoreHistory: recent.length > HISTORY_PREVIEW,
+    missTips,
   };
+}
+
+/**
+ * The «Хоосон» card's tips (0170, `settings.spin.missTips`) — public shop
+ * copy, unlike the weights in the same row's neighbours. Malformed entries
+ * are dropped rather than shown half-empty.
+ */
+async function readMissTips(
+  supabase: NonNullable<ReturnType<typeof createAdminClient>>,
+): Promise<MissTip[]> {
+  const { data } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", "spin")
+    .maybeSingle();
+  const raw = (data?.value as { missTips?: unknown } | null)?.missTips;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (t): t is MissTip =>
+      !!t &&
+      typeof t.title === "string" &&
+      typeof t.body === "string" &&
+      t.body.trim() !== "",
+  );
 }
 
 /**
@@ -170,30 +200,21 @@ export async function spinWheel(mode: SpinMode): Promise<SpinOutcome> {
   });
   if (error || !data) return { ok: false, reason: "NO_DB" };
 
-  // Grand prize (0165): hand the reveal the spin's id so the customer can pick
-  // their bundle at once, and tell the shop straight away — a real parcel is
-  // now owed. The in-app bell for staff is written by the spin's trigger.
-  if (data.ok && data.kind === "bundle") {
-    const { data: row } = await supabase
-      .from("spin_wheel_spins")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("kind", "bundle")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const spinId = (row as { id: string } | null)?.id;
-    await notifyGrandWin(supabase, userId, data.label);
-    return spinId ? { ...data, spinId } : data;
+  // A physical prize (grand bundle 0165, product 0170): tell the shop straight
+  // away — a real parcel is now owed. The in-app bell for staff is written by
+  // the spin's trigger.
+  if (data.ok && (data.kind === "bundle" || data.kind === "product")) {
+    await notifyPhysicalWin(supabase, userId, data.label, data.kind);
   }
   return data;
 }
 
-/** Telegram to the shop on a grand win. Best-effort: never fails the spin. */
-async function notifyGrandWin(
+/** Telegram to the shop on a physical win. Best-effort: never fails the spin. */
+async function notifyPhysicalWin(
   supabase: NonNullable<ReturnType<typeof createAdminClient>>,
   userId: string,
   label: string,
+  kind: "bundle" | "product",
 ): Promise<void> {
   try {
     const { data } = await supabase
@@ -203,10 +224,12 @@ async function notifyGrandWin(
       .maybeSingle();
     const p = data as { full_name: string | null; phone: string | null } | null;
     await notifyAdmin(
-      `🏆 <b>Азын хүрд — гранд шагнал</b>\n` +
+      `🏆 <b>Азын хүрд — ${kind === "bundle" ? "гранд шагнал" : "бодит шагнал"}</b>\n` +
         `${tgEscape(label)}\n` +
         `👤 ${tgEscape(p?.full_name?.trim() || "Хэрэглэгч")} · ${tgEscape(p?.phone ?? "—")}\n` +
-        `Хэрэглэгч багцаа сонгоод дараагийн захиалгадаа авна.`,
+        (kind === "bundle"
+          ? `Хэрэглэгч багцаа сонгоод дараагийн захиалгадаа авна.`
+          : `Дараагийн захиалгад нь 0₮-өөр хавсарна.`),
     );
   } catch {
     // Telegram is a nicety; the admin page and bell carry the same news.

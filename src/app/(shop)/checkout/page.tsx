@@ -322,9 +322,9 @@ export default function CheckoutPage() {
   const [storePhone, setStorePhone] = React.useState<string | null>(null);
   const [noteTags, setNoteTags] = React.useState<string[]>([]);
   const [giftIds, setGiftIds] = React.useState<string[]>([]);
-  // Азын хүрдний гранд шагнал (0165): энэ захиалгад хавсаргах эргэлт.
+  // Азын хүрдний бодит шагнал (0165/0170): энэ захиалгад хавсаргах эргэлтүүд.
   const wheelOn = useFeatureFlag("lucky_wheel");
-  const [prizeSpinId, setPrizeSpinId] = React.useState<string | null>(null);
+  const [prizeSpinIds, setPrizeSpinIds] = React.useState<string[]>([]);
   // Khoroo lives outside the form: it is folded into shipDetail on submit,
   // since orders has no dedicated column for it.
   const [khoroo, setKhoroo] = React.useState<number | null>(null);
@@ -1133,7 +1133,8 @@ export default function CheckoutPage() {
       loyaltyUsed: loyaltyApplied,
       saveAddress: saveAddr,
       giftProductIds: giftIds,
-      prizeSpinId: authed && wheelOn ? (prizeSpinId ?? undefined) : undefined,
+      prizeSpinIds:
+        authed && wheelOn && prizeSpinIds.length > 0 ? prizeSpinIds : undefined,
       items: items.map((i) => ({
         productId: i.productId,
         variantId: i.variantId,
@@ -1216,14 +1217,14 @@ export default function CheckoutPage() {
         // server refuses the order rather than quietly charging for whatever
         // survived, and the dead lines come back by variant id (the cart's
         // line key) so they can be cleared here.
-        // Гранд шагналын багцын нэг үнэртэн 2мл-ээр дууссан — захиалга
+        // Шагналын (гранд багц эсвэл бараа) үнэртэн дууссан — захиалга
         // үүсээгүй. Шагнал хадгалагдсан хэвээр; энэ удаад хасаад дахин дарахад
         // шагналгүйгээр үргэлжилнэ.
         if (data.error === "PRIZE_UNAVAILABLE") {
-          setPrizeSpinId(null);
+          setPrizeSpinIds([]);
           void queryClient.invalidateQueries({ queryKey: GRAND_PRIZES_KEY });
           setServerError(
-            "Шагналын багцын нэг үнэртэн түр дууссан тул энэ захиалгад орсонгүй. Шагнал тань хадгалагдсан — «Төлбөр төлөх»-ийг дахин дарж шагналгүйгээр үргэлжлүүлнэ үү.",
+            "Шагналын үнэртэн түр дууссан тул энэ захиалгад орсонгүй. Шагнал тань хадгалагдсан — «Төлбөр төлөх»-ийг дахин дарж шагналгүйгээр үргэлжлүүлнэ үү.",
           );
           return;
         }
@@ -1742,8 +1743,8 @@ export default function CheckoutPage() {
           {mounted && (
             <CheckoutPrize
               enabled={authed && wheelOn}
-              value={prizeSpinId}
-              onChange={setPrizeSpinId}
+              value={prizeSpinIds}
+              onChange={setPrizeSpinIds}
             />
           )}
         </div>
@@ -1867,9 +1868,9 @@ export default function CheckoutPage() {
                 {/* Бэлэг нь тоймд ил мөр болж байж л «захиалгад юу орсон бэ»
                     гэдгийн хэсэг болно — эс тэгвээс хуудасны дунд сонгоод
                     мартчихдаг, хасагдсаныг нь ч мэдэхгүй өнгөрдөг. */}
-                {prizeSpinId && (
+                {prizeSpinIds.length > 0 && (
                   <SummaryRow
-                    label="Азын хүрдний шагнал · 2мл багц"
+                    label={`Азын хүрдний шагнал × ${prizeSpinIds.length}`}
                     value="Үнэгүй"
                     credit
                   />

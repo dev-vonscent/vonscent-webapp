@@ -751,7 +751,7 @@ export const FEATURE_FLAGS = {
   lucky_wheel: {
     label: "Азын хүрд",
     description:
-      "/lucky-wheel хуудас, цэс ба купоны холбоосууд, /api/lucky-wheel, төлөгдсөн захиалгаас эрх олгох trigger (0134); гранд шагнал (2мл багц) сонгох /api/lucky-wheel/prizes, checkout-д хавсаргах place_order_with_prize, сануулгын cron (0165). Эргүүлэх ажиллагаа нь Азын хүрдний «Идэвхтэй» тохиргоогоор тусдаа.",
+      "/lucky-wheel хуудас, цэс ба купоны холбоосууд, /api/lucky-wheel, төлөгдсөн захиалгаас эрх олгох trigger (0134); гранд шагнал (2мл багц) сонгох /api/lucky-wheel/prizes, checkout-д хавсаргах place_order_with_prize, сануулгын cron (0165); бодит бараа шагнал, админаас шагнал нэмэх/хасах, хүрдний тайлан (0170). Эргүүлэх ажиллагаа нь Азын хүрдний «Идэвхтэй» тохиргоогоор тусдаа.",
   },
   campaigns: {
     label: "Кампанит ажил",

@@ -43,6 +43,7 @@ export type SpinPrizeKind =
   | "coupon_percent"
   | "coupon_fixed"
   | "bundle"
+  | "product"
   | "none";
 export type SpinTier = "common" | "rare" | "grand";
 export type SpinType = "free" | "paid" | "order";
@@ -478,6 +479,9 @@ export interface SpinWheelPrizeRow {
   fallback_slot: number | null;
   is_active: boolean;
   created_at: string;
+  /** `product` prize (0170): the perfume and the size handed over. */
+  product_id?: string | null;
+  ml?: number | null;
 }
 
 /** One spin. Prize fields are snapshots so history survives a prize edit. */
@@ -506,6 +510,9 @@ export interface SpinWheelSpinRow {
   claim_order_id?: string | null;
   claimed_at?: string | null;
   expires_at?: string | null;
+  /** `product` prize (0170): snapshot of the perfume and size won. */
+  product_id?: string | null;
+  ml?: number | null;
 }
 
 export interface OrderStatusHistoryRow {

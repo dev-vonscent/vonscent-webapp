@@ -36,23 +36,22 @@ const ORDER: GrandPrizeState[] = [
 const GENDER = { male: "Эрэгтэй", female: "Эмэгтэй" } as const;
 
 /**
- * The grand prizes (2ml bundles, 0165) from win to doorstep. Most of the
- * journey runs itself — the customer picks a bundle, it rides with their next
- * order, the order's status settles it. Staff step in only for the edges:
+ * The physical prizes — grand 2ml bundles (0165) and products (0170) — from
+ * win to doorstep. Most of the journey runs itself — the customer picks a
+ * bundle (a product needs no pick), it rides with their next order, the
+ * order's status settles it. Staff step in only for the edges:
  * hand a prize over outside an order, or give an expired one more time.
  */
 export function GrandPrizesAdmin({ rows }: { rows: GrandAdminRow[] }) {
   const router = useRouter();
   const [busy, setBusy] = React.useState<string | null>(null);
-  const [showAll, setShowAll] = React.useState(false);
 
   const counts = Object.fromEntries(
     ORDER.map((s) => [s, rows.filter((r) => r.state === s).length]),
   ) as Record<GrandPrizeState, number>;
-  // Still needing someone: everything but the settled ones, unless asked.
-  const visible = showAll
-    ? rows
-    : rows.filter((r) => r.state !== "delivered" && r.state !== "expired");
+  // Every prize, newest first — the state badge and the counts above say
+  // which still need someone.
+  const visible = rows;
 
   async function act(id: string, body: Record<string, unknown>, done: string) {
     setBusy(id);
@@ -71,19 +70,10 @@ export function GrandPrizesAdmin({ rows }: { rows: GrandAdminRow[] }) {
 
   return (
     <section className="space-y-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-sm font-semibold">
-          <Gift className="size-4" />
-          Гранд шагнал (нийт {rows.length})
-        </h2>
-        <button
-          type="button"
-          onClick={() => setShowAll((v) => !v)}
-          className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-4"
-        >
-          {showAll ? "Зөвхөн хүлээгдэж буй" : "Бүгдийг харах"}
-        </button>
-      </div>
+      <h2 className="flex items-center gap-2 text-sm font-semibold">
+        <Gift className="size-4" />
+        Бодит шагнал (нийт {rows.length})
+      </h2>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {ORDER.map((s) => (
@@ -120,6 +110,13 @@ export function GrandPrizesAdmin({ rows }: { rows: GrandAdminRow[] }) {
                   </p>
                   <p className="text-muted-foreground text-xs">
                     Хожсон {formatDate(r.wonAt)}
+                    {r.kind === "product" && (
+                      <>
+                        {" · "}
+                        {r.productName ?? r.label}
+                        {r.ml ? ` ${r.ml}мл` : ""}
+                      </>
+                    )}
                     {r.bundleName && (
                       <>
                         {" · "}

@@ -278,17 +278,26 @@ export async function POST(req: Request) {
         return base;
       }),
     };
-    // Гранд шагнал (0165): зөвхөн бүртгэлтэй хэрэглэгч, ижил transaction-д.
-    // Шагнал авах боломжгүй бол захиалга ч үүсэхгүй — клиент шагналгүйгээр
-    // дахин илгээнэ (PRIZE_UNAVAILABLE).
-    const prizeSpinId = userId ? (input.prizeSpinId ?? null) : null;
+    // Бодит шагнал (0165/0170): зөвхөн бүртгэлтэй хэрэглэгч, ижил
+    // transaction-д. Аль нэг шагнал авах боломжгүй бол захиалга ч үүсэхгүй —
+    // клиент шагналгүйгээр дахин илгээнэ (PRIZE_UNAVAILABLE).
+    const prizeSpinIds = userId
+      ? [
+          ...new Set([
+            ...(input.prizeSpinIds ?? []),
+            ...(input.prizeSpinId ? [input.prizeSpinId] : []),
+          ]),
+        ]
+      : [];
     const { data, error } = await callRpc<{
       order_no: string;
       total: number;
     }>(
       supabase,
-      prizeSpinId ? "place_order_with_prize" : "place_order",
-      prizeSpinId ? { ...rpcArgs, p_spin: prizeSpinId } : rpcArgs,
+      prizeSpinIds.length > 0 ? "place_order_with_prizes" : "place_order",
+      prizeSpinIds.length > 0
+        ? { ...rpcArgs, p_spins: prizeSpinIds }
+        : rpcArgs,
     );
 
     if (error) {

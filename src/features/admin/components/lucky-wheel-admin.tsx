@@ -2,619 +2,474 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Crown, Heart, Loader2, Save, Ticket } from "lucide-react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
+  Crown,
+  GripVertical,
+  HeartCrack,
+  Lightbulb,
+  MoreHorizontal,
+  Package,
+  Pencil,
+  Plus,
+  Settings2,
+  Ticket,
+  Trash2,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Field } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useConfirm } from "@/components/shared/confirm-dialog";
+import { VPointIcon } from "@/components/shared/v-point-icon";
 import { mutateJson } from "@/features/admin/lib/mutate";
 import { toast } from "@/lib/toast";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { VPointIcon } from "@/components/shared/v-point-icon";
-import { ASSUMED_AOV } from "@/lib/constants";
-import type { SpinWheelPrizeRow } from "@/db/types";
-import type {
-  GrandAdminRow,
-  GrandBundleChoice,
-  WheelReport,
-  WheelSettings,
-} from "@/features/admin/api";
-import { GrandPrizesAdmin } from "./grand-prizes-admin";
+import type { SpinPrizeKind, SpinWheelPrizeRow } from "@/db/types";
+import type { GrandBundleChoice, WheelSettings } from "@/features/admin/api";
+import type { ProductOption } from "@/features/admin/lib/product-option";
+import {
+  KIND_LABEL,
+  KIND_ORDER,
+  TIER_LABEL,
+  blankDraft,
+  nominalWorth,
+  prizeDetail,
+  toDraft,
+  toPayload,
+  type PrizeDraft,
+} from "@/features/admin/lib/wheel-prizes";
+import { WheelPrizeDialog } from "./wheel-prize-dialog";
+import { MissTipsDialog, WheelSettingsDialog } from "./wheel-settings-dialog";
 
 /**
- * Азын хүрдний удирдлага.
- *
- * Жин (weight) нь хувь биш харьцангуй тоо, тул админ нэг салбарыг өөрчлөхөд
- * бусдыг гараар 100% болгож тэнцүүлэх шаардлагагүй — багана бүрийн жинг нийт
- * дүнд харьцуулж энд шууд хувиар харуулна (docs/lucky-wheel.md §2-ын хүснэгт).
+ * Азын хүрдний шагналууд (0170) — хүснэгт дарааллаараа (1 = дээд нүд, цагийн
+ * зүүний дагуу). Бариулаар чирж байрлал солино; мөр бүрийн «⋯»: засах,
+ * устгах; нэмэх, засах нь popup. Үйлдэл бүр шууд хадгалагдана (бүтэн жагсаалт
+ * нэг transaction-д).
  */
 
-const KIND_LABEL: Record<string, string> = {
-  points: "V point",
-  coupon_percent: "Хувийн купон",
-  coupon_fixed: "Дүнгийн купон",
-  bundle: "2мл багц (гранд)",
-  none: "Баярлалаа (шагналгүй)",
-};
-
-const TIER_LABEL: Record<string, string> = {
-  common: "Энгийн",
-  rare: "Ховор",
-  grand: "Гранд",
-};
-
-const KIND_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+const KIND_ICON: Record<
+  SpinPrizeKind,
+  React.ComponentType<{ className?: string }>
+> = {
+  none: HeartCrack,
   points: VPointIcon,
   coupon_percent: Ticket,
   coupon_fixed: Ticket,
+  product: Package,
   bundle: Crown,
-  none: Heart,
 };
 
-/** Radix Select has no empty value — this stands for «no bundle». */
-const NONE = "none";
+/** Menu rows tall enough for a finger on a phone. */
+const ITEM = "min-h-11 md:min-h-0";
 
-/** Editable copy of a prize row — every numeric field is a string while typing. */
-interface Draft {
-  id: string;
-  slot: number;
-  kind: string;
-  tier: string;
-  label: string;
-  shortLabel: string;
-  value: string;
-  minSubtotal: string;
-  maxDiscount: string;
-  weight: string;
-  monthlyCap: string;
-  fallbackSlot: string;
-  isActive: boolean;
-}
-
-function toDraft(row: SpinWheelPrizeRow): Draft {
-  return {
-    id: row.id,
-    slot: row.slot,
-    kind: row.kind,
-    tier: row.tier,
-    label: row.label,
-    shortLabel: row.short_label,
-    value: String(row.value),
-    minSubtotal: String(row.min_subtotal),
-    maxDiscount: row.max_discount == null ? "" : String(row.max_discount),
-    weight: String(Number(row.weight)),
-    monthlyCap: row.monthly_cap == null ? "" : String(row.monthly_cap),
-    fallbackSlot: row.fallback_slot == null ? "" : String(row.fallback_slot),
-    isActive: row.is_active,
-  };
-}
-
-/**
- * Нэг хожилтын нэрлэсэн үнэ ₮-өөр — админы «дундаж шагнал / эргэлт»-д л
- * хэрэглэнэ (docs/lucky-wheel.md §3-ын «Нэрлэсэн» багана).
- *
- * Хувиар хөнгөлөх купоныг **сагсанд харьцуулж** үнэлнэ: дээд хязгаар (`maxDiscount`)
- * тавьсан бол түүгээр тагласан, үгүй бол ASSUMED_AOV дээрх бүтэн хувь. Урьд нь
- * энэ нь `maxDiscount || minSubtotal * value/100` байсан — 2026-09-07-оос хойш
- * хүрдний хувийн купон хязгааргүй, доод хязгааргүй болсон тул хоёулаа 0 болж,
- * 5% ба 10% купон тооцоонд бүрэн орохоо больж байв.
- */
-function nominalWorth(
-  kind: string,
-  value: number,
-  maxDiscount: number,
-): number {
-  if (kind === "points" || kind === "coupon_fixed") return value;
-  if (kind !== "coupon_percent") return 0;
-  const full = (ASSUMED_AOV * value) / 100;
-  return maxDiscount > 0 ? Math.min(full, maxDiscount) : full;
-}
-
-const num = (v: string) => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-};
-const optional = (v: string) => (v.trim() === "" ? null : Math.trunc(num(v)));
-
-function Stat({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <p className="text-muted-foreground text-xs">{label}</p>
-        <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
-        {hint && <p className="text-muted-foreground mt-0.5 text-xs">{hint}</p>}
-      </CardContent>
-    </Card>
-  );
-}
+const pct = (n: number) =>
+  `${n.toLocaleString("mn-MN", { maximumFractionDigits: 2 })}%`;
 
 export function LuckyWheelAdmin({
   prizes,
   settings,
-  report,
-  grand,
   bundleChoices,
+  productOptions,
 }: {
   prizes: SpinWheelPrizeRow[];
   settings: WheelSettings;
-  report: WheelReport;
-  grand: GrandAdminRow[];
   bundleChoices: GrandBundleChoice[];
+  productOptions: ProductOption[];
 }) {
   const router = useRouter();
-  const [drafts, setDrafts] = React.useState<Draft[]>(() =>
-    prizes.map(toDraft),
-  );
-  const [config, setConfig] = React.useState(settings);
+  const [confirm, confirmDialog] = useConfirm();
   const [busy, setBusy] = React.useState(false);
+  /** The prize open in the popup: its index, or null for a new one. */
+  const [editing, setEditing] = React.useState<{
+    index: number | null;
+    draft: PrizeDraft;
+  } | null>(null);
+  const [dialog, setDialog] = React.useState<"settings" | "tips" | null>(null);
+  /**
+   * The order just dragged into place — shown until the server's rows replace
+   * `prizes` (a new array after the refresh), so nothing jumps back meanwhile.
+   */
+  const [ordered, setOrdered] = React.useState<{
+    base: SpinWheelPrizeRow[];
+    rows: SpinWheelPrizeRow[];
+  } | null>(null);
+  const rows = ordered?.base === prizes ? ordered.rows : prizes;
 
-  const totalWeight = drafts.reduce(
-    (sum, d) => sum + (d.isActive ? num(d.weight) : 0),
-    0,
-  );
+  const weights = prizes.map((p) => Number(p.weight));
+  const total = weights.reduce((s, w) => s + w, 0);
+  const prizeShare = prizes
+    .filter((p) => p.kind !== "none")
+    .reduce((s, p) => s + Number(p.weight), 0);
+  const off = Math.abs(total - 100) > 0.001;
+  const priceOf = (p: SpinWheelPrizeRow) =>
+    (p.product_id &&
+      p.ml &&
+      productOptions.find((o) => o.id === p.product_id)?.priceByMl[p.ml]) ||
+    0;
+  const perSpin =
+    total > 0
+      ? prizes.reduce(
+          (s, p) =>
+            s + (Number(p.weight) / total) * nominalWorth(p, priceOf(p)),
+          0,
+        )
+      : 0;
+  const needsBundles =
+    prizes.some((p) => p.kind === "bundle") &&
+    (!settings.grandBundles.male || !settings.grandBundles.female);
 
-  function edit<K extends keyof Draft>(id: string, key: K, value: Draft[K]) {
-    setDrafts((rows) =>
-      rows.map((row) => (row.id === id ? { ...row, [key]: value } : row)),
-    );
-  }
-
-  async function save() {
+  /** Save the whole wheel; true on success. */
+  async function persist(next: PrizeDraft[], done: string) {
     setBusy(true);
     const ok = await mutateJson(
       "/api/admin/lucky-wheel",
       "PUT",
-      {
-        settings: config,
-        prizes: drafts.map((d) => ({
-          id: d.id,
-          label: d.label,
-          shortLabel: d.shortLabel,
-          value: Math.trunc(num(d.value)),
-          minSubtotal: Math.trunc(num(d.minSubtotal)),
-          maxDiscount: optional(d.maxDiscount),
-          weight: num(d.weight),
-          monthlyCap: optional(d.monthlyCap),
-          fallbackSlot: optional(d.fallbackSlot),
-          isActive: d.isActive,
-        })),
-      },
+      { prizes: next.map(toPayload) },
       "Хадгалж чадсангүй",
     );
     setBusy(false);
     if (ok) {
-      toast.success("Хүрдний тохиргоо хадгалагдлаа");
+      toast.success(done);
       router.refresh();
+    }
+    return ok;
+  }
+
+  const drafts = () => rows.map(toDraft);
+
+  const sensors = useSensors(
+    // A few pixels before a drag starts — a tap on the handle stays a tap.
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  async function onDragEnd({ active, over }: DragEndEvent) {
+    if (!over || active.id === over.id) return;
+    const from = rows.findIndex((p) => p.id === active.id);
+    const to = rows.findIndex((p) => p.id === over.id);
+    if (from < 0 || to < 0) return;
+    const next = arrayMove(rows, from, to);
+    // Shown at once; the server's order replaces it after the save (or the
+    // old one comes back if the save fails).
+    setOrdered({ base: prizes, rows: next });
+    if (!(await persist(next.map(toDraft), "Байрлал солигдлоо"))) {
+      setOrdered(null);
     }
   }
 
-  const drawn = new Map(report.bySlot.map((s) => [s.slot, s.count]));
+  async function remove(index: number) {
+    const p = rows[index];
+    const ok = await confirm({
+      title: "Шагнал устгах уу?",
+      description: `«${p.label}» хүрднээс хасагдана. Өмнө хожсон түүх хэвээр үлдэнэ. Магадлалын нийлбэрийг 100 болгохоо мартуузай.`,
+      confirmLabel: "Устгах",
+      destructive: true,
+    });
+    if (!ok) return;
+    void persist(
+      drafts().filter((_, i) => i !== index),
+      "Шагнал устгагдлаа",
+    );
+  }
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Азын хүрд</h1>
-          <p className="text-muted-foreground text-sm">
-            Магадлал, хязгаар, шагнал бүр эндээс тохируулагдана.
-          </p>
-        </div>
-        <Button onClick={save} disabled={busy}>
-          {busy ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Save className="size-4" />
-          )}
-          Хадгалах
-        </Button>
-      </header>
+    <div className="space-y-4">
+      {confirmDialog}
 
-      {/* ── Сүүлийн 30 хоног ─────────────────────────────────────────── */}
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <Stat
-          label="Нийт эргэлт (30 хоног)"
-          value={report.spins.toLocaleString("mn-MN")}
-          hint={`${report.freeSpins} үнэгүй · ${report.orderSpins} захиалгаар · ${report.paidSpins} пойнтоор`}
-        />
-        <Stat
-          label="Захиалгаас олгосон эрх"
-          value={report.orderSpinsGranted.toLocaleString("mn-MN")}
-          hint={`${report.thanks.toLocaleString("mn-MN")} эргэлт «Баярлалаа» дээр буусан`}
-        />
-        <Stat
-          label="Олгосон V point"
-          value={report.pointsAwarded.toLocaleString("mn-MN")}
-          hint={`${report.pointsSpent.toLocaleString("mn-MN")}V зарцуулагдсан`}
-        />
-        <Stat
-          label="Олгосон купон"
-          value={report.couponsIssued.toLocaleString("mn-MN")}
-          hint={`${report.couponsUsed} нь ашиглагдсан`}
-        />
-        <Stat
-          label="Цэвэр пойнтын урсгал"
-          value={(report.pointsAwarded - report.pointsSpent).toLocaleString(
-            "mn-MN",
-          )}
-          hint="Олгосон − зарцуулсан"
-        />
-      </section>
-
-      {/* ── Гранд шагнал: хожсоноос хүргэлт хүртэл (0165) ─────────────── */}
-      <GrandPrizesAdmin rows={grand} />
-
-      {/* ── Салбарууд ─────────────────────────────────────────────────── */}
-      <section className="space-y-3">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-sm font-semibold">Салбарууд ба магадлал</h2>
-          <p className="text-muted-foreground text-xs">
-            Нийт жин {totalWeight.toFixed(1)} — магадлал үүнээс харьцангуйгаар
-            бодогдоно.
-          </p>
-        </div>
-
-        <div className="space-y-3">
-          {drafts.map((draft) => {
-            const Icon = KIND_ICON[draft.kind] ?? VPointIcon;
-            const chance =
-              totalWeight > 0 && draft.isActive
-                ? (num(draft.weight) / totalWeight) * 100
-                : 0;
-            return (
-              <Card
-                key={draft.id}
-                className={cn(!draft.isActive && "opacity-60")}
-              >
-                <CardContent className="space-y-4 p-4">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="bg-secondary grid size-8 shrink-0 place-items-center rounded-full text-xs font-semibold">
-                      {draft.slot}
-                    </span>
-                    <Icon className="text-muted-foreground size-4" />
-                    <Badge
-                      variant={draft.tier === "grand" ? "gold" : "secondary"}
-                    >
-                      {TIER_LABEL[draft.tier]}
-                    </Badge>
-                    <span className="text-muted-foreground text-xs">
-                      {KIND_LABEL[draft.kind]}
-                    </span>
-                    <span className="ml-auto text-sm font-semibold tabular-nums">
-                      {chance.toFixed(1)}%
-                      <span className="text-muted-foreground ml-2 text-xs font-normal">
-                        {chance > 0
-                          ? `1 : ${Math.round(100 / chance)}`
-                          : "хаалттай"}
-                      </span>
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      30 хоногт {drawn.get(draft.slot) ?? 0} удаа
-                    </span>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <Field label="Нэр">
-                      <Input
-                        value={draft.label}
-                        onChange={(e) =>
-                          edit(draft.id, "label", e.target.value)
-                        }
-                      />
-                    </Field>
-                    <Field label="Хүрдэн дээрх бичиг">
-                      <Input
-                        value={draft.shortLabel}
-                        onChange={(e) =>
-                          edit(draft.id, "shortLabel", e.target.value)
-                        }
-                      />
-                    </Field>
-                    {draft.kind !== "none" && (
-                      <Field
-                        label={
-                          draft.kind === "coupon_percent"
-                            ? "Хувь (%)"
-                            : draft.kind === "points"
-                              ? "V point"
-                              : draft.kind === "bundle"
-                                ? "Ширхэг"
-                                : "Дүн (₮)"
-                        }
-                      >
-                        <Input
-                          inputMode="numeric"
-                          value={draft.value}
-                          onChange={(e) =>
-                            edit(draft.id, "value", e.target.value)
-                          }
-                        />
-                      </Field>
-                    )}
-                    <Field label="Жин">
-                      <Input
-                        inputMode="decimal"
-                        value={draft.weight}
-                        onChange={(e) =>
-                          edit(draft.id, "weight", e.target.value)
-                        }
-                      />
-                    </Field>
-                  </div>
-
-                  {draft.kind !== "none" && (
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                      <Field
-                        label="Доод дүн (₮)"
-                        hint={
-                          draft.kind.startsWith("coupon")
-                            ? "0 = хязгааргүй"
-                            : "Купонд л хамаарна"
-                        }
-                      >
-                        <Input
-                          inputMode="numeric"
-                          value={draft.minSubtotal}
-                          onChange={(e) =>
-                            edit(draft.id, "minSubtotal", e.target.value)
-                          }
-                        />
-                      </Field>
-                      <Field
-                        label="Дээд хөнгөлөлт (₮)"
-                        hint="Хоосон = хязгааргүй"
-                      >
-                        <Input
-                          inputMode="numeric"
-                          value={draft.maxDiscount}
-                          onChange={(e) =>
-                            edit(draft.id, "maxDiscount", e.target.value)
-                          }
-                        />
-                      </Field>
-                      <Field label="Сарын хязгаар" hint="Хоосон = хязгааргүй">
-                        <Input
-                          inputMode="numeric"
-                          value={draft.monthlyCap}
-                          onChange={(e) =>
-                            edit(draft.id, "monthlyCap", e.target.value)
-                          }
-                        />
-                      </Field>
-                      <Field
-                        label="Хаалттай үед шилжих салбар"
-                        hint="Салбарын дугаар"
-                      >
-                        <Input
-                          inputMode="numeric"
-                          value={draft.fallbackSlot}
-                          onChange={(e) =>
-                            edit(draft.id, "fallbackSlot", e.target.value)
-                          }
-                        />
-                      </Field>
-                    </div>
-                  )}
-
-                  <label className="flex w-fit items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={draft.isActive}
-                      onCheckedChange={(v) =>
-                        edit(draft.id, "isActive", v === true)
-                      }
-                    />
-                    Идэвхтэй
-                  </label>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ── Ерөнхий тохиргоо ──────────────────────────────────────────── */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Ерөнхий тохиргоо</h2>
-        <Card>
-          <CardContent className="space-y-4 p-4">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <Field label="Үнэгүй эргэлтийн завсар (цаг)">
-                <Input
-                  inputMode="numeric"
-                  value={config.freeSpinHours}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      freeSpinHours: Number(e.target.value) || 0,
-                    })
-                  }
-                />
-              </Field>
-              <Field label="Захиалгын хэдэн ₮ тутамд нэг эрх (0 = унтраах)">
-                <Input
-                  inputMode="numeric"
-                  value={config.orderSpinStep}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      orderSpinStep: Number(e.target.value) || 0,
-                    })
-                  }
-                />
-              </Field>
-              <Field label="Нэмэлт эргэлтийн үнэ (V)">
-                <Input
-                  inputMode="numeric"
-                  value={config.spinCost}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      spinCost: Number(e.target.value) || 0,
-                    })
-                  }
-                />
-              </Field>
-              <Field label="Сард олгох V point-ийн дээд хэмжээ (0 = хязгааргүй)">
-                <Input
-                  inputMode="numeric"
-                  value={config.monthlyPointCap}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      monthlyPointCap: Number(e.target.value) || 0,
-                    })
-                  }
-                />
-              </Field>
-              <Field label="Ховор купон сард, удаа (0 = хязгааргүй)">
-                <Input
-                  inputMode="numeric"
-                  value={config.rareCouponPerMonth}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      rareCouponPerMonth: Number(e.target.value) || 0,
-                    })
-                  }
-                />
-              </Field>
-              <Field label="Купоны хүчинтэй хугацаа (хоног)">
-                <Input
-                  inputMode="numeric"
-                  value={config.couponValidDays}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      couponValidDays: Number(e.target.value) || 0,
-                    })
-                  }
-                />
-              </Field>
-            </div>
-
-            {/* Гранд шагнал (0165): хэрэглэгч эдгээр хоёроос нэгийг сонгоно. */}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {(["male", "female"] as const).map((g) => (
-                <Field
-                  key={g}
-                  label={`Гранд шагнал — ${g === "male" ? "эрэгтэй" : "эмэгтэй"} багц (2мл)`}
-                >
-                  <Select
-                    value={config.grandBundles[g] ?? NONE}
-                    onValueChange={(v) =>
-                      setConfig({
-                        ...config,
-                        grandBundles: {
-                          ...config.grandBundles,
-                          [g]: v === NONE ? null : v,
-                        },
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Сонгоогүй" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NONE}>Сонгоогүй</SelectItem>
-                      {/* Эрэгтэй шагналд эрэгтэй + unisex, эмэгтэйд эмэгтэй +
-                          unisex — эсрэг хүйсийн багц санал болгохгүй. */}
-                      {bundleChoices
-                        .filter((c) => c.gender === g || c.gender === "unisex")
-                        .map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name} · {formatPrice(c.price)}
-                            {c.available ? "" : " · 2мл дууссан"}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-              ))}
-              <Field label="Шагналаа авах хугацаа (хоног)">
-                <Input
-                  inputMode="numeric"
-                  value={config.bundleClaimDays}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      bundleClaimDays: Number(e.target.value) || 0,
-                    })
-                  }
-                />
-              </Field>
-            </div>
-            {(!config.grandBundles.male || !config.grandBundles.female) && (
-              <p className="text-destructive text-xs">
-                Гранд шагналын хоёр багцыг хоёуланг нь сонгоно уу — эс бөгөөс
-                хожсон хэрэглэгч сонгох юмгүй үлдэнэ.
-              </p>
+      {/* ── Нийлбэр ба үйлдлүүд ───────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-muted-foreground mr-auto text-sm">
+          <span
+            className={cn(
+              "font-semibold tabular-nums",
+              off ? "text-destructive" : "text-foreground",
             )}
-
-            <div className="space-y-2">
-              <label className="flex w-fit items-center gap-2 text-sm">
-                <Checkbox
-                  checked={config.enabled}
-                  onCheckedChange={(v) =>
-                    setConfig({ ...config, enabled: v === true })
+          >
+            Нийт {pct(total)}
+          </span>{" "}
+          · шагнал {pct(prizeShare)} · хоосон {pct(total - prizeShare)} ·{" "}
+          {prizes.length} нүд · дундаж {formatPrice(Math.round(perSpin))} /
+          эргэлт
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setDialog("tips")}
+        >
+          <Lightbulb className="size-4" />
+          Зөвлөгөө ({settings.missTips.length})
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setDialog("settings")}
+        >
+          <Settings2 className="size-4" />
+          Тохиргоо
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" disabled={busy || prizes.length >= 40}>
+              <Plus className="size-4" />
+              Шагнал нэмэх
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {KIND_ORDER.map((k) => {
+              const Icon = KIND_ICON[k];
+              return (
+                <DropdownMenuItem
+                  key={k}
+                  className={ITEM}
+                  // Let the menu hand focus back before the popup takes it.
+                  onSelect={() =>
+                    requestAnimationFrame(() =>
+                      setEditing({ index: null, draft: blankDraft(k) }),
+                    )
                   }
-                />
-                Хүрд идэвхтэй
-              </label>
-              <label className="flex w-fit items-center gap-2 text-sm">
-                <Checkbox
-                  checked={config.singleActiveCoupon}
-                  onCheckedChange={(v) =>
-                    setConfig({ ...config, singleActiveCoupon: v === true })
-                  }
-                />
-                Хүрднээс ашиглагдаагүй купон нэг дор нэг л байна
-              </label>
-            </div>
+                >
+                  <Icon />
+                  {KIND_LABEL[k]}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
-            <p className="text-muted-foreground text-xs">
-              Эрх гурван замаар: {config.freeSpinHours} цагт нэг үнэгүй,
-              захиалгын {formatPrice(config.orderSpinStep)} тутамд нэг,{" "}
-              {config.spinCost.toLocaleString("mn-MN")}V-оор нэг. Сарын таг
-              унтраалттай (0) — зардлыг жин ба эдгээр тохиргоогоор барина
-              (docs/lucky-wheel.md §9). Одоогийн дундаж шагналын нэрлэсэн үнэ
-              (бодит бэлгийг оруулаагүй):{" "}
-              <span className="text-foreground font-medium">
-                {formatPrice(
-                  Math.round(
-                    drafts.reduce((sum, d) => {
-                      if (!d.isActive || totalWeight <= 0) return sum;
-                      const share = num(d.weight) / totalWeight;
-                      return (
-                        sum +
-                        share *
-                          nominalWorth(d.kind, num(d.value), num(d.maxDiscount))
-                      );
-                    }, 0),
-                  ),
-                )}
-              </span>{" "}
-              / эргэлт.
-            </p>
-          </CardContent>
-        </Card>
-      </section>
+      {off && (
+        <p className="text-destructive text-xs">
+          Магадлалын нийлбэр 100% биш байна — хүрд нийлбэрээс нь харьцангуйгаар
+          сугалах тул ажиллана, гэхдээ хүснэгтийн хувь бодит магадлалаас зөрнө.
+        </p>
+      )}
+      {needsBundles && (
+        <p className="text-destructive text-xs">
+          Гранд шагналын эрэгтэй, эмэгтэй 2мл багцыг «Тохиргоо»-ноос сонгоно уу
+          — эс бөгөөс хожсон хэрэглэгч сонгох юмгүй үлдэнэ.
+        </p>
+      )}
+
+      {/* ── Хүснэгт ───────────────────────────────────────────────────── */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="text-muted-foreground hidden grid-cols-[3.25rem_minmax(0,1fr)_6rem_6rem_5rem_2.5rem] items-center gap-3 border-b py-2.5 pr-4 pl-2 text-xs font-medium md:grid">
+            <span>#</span>
+            <span>Шагнал</span>
+            <span>Зэрэглэл</span>
+            <span className="text-right">Магадлал</span>
+            <span className="text-right">Нэг удаа</span>
+            <span />
+          </div>
+          <DndContext
+            // Fixed id: dnd-kit's generated one drifts between server and
+            // client and breaks hydration (product-images.tsx).
+            id="wheel-prizes"
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={onDragEnd}
+          >
+            <SortableContext
+              items={rows.map((p) => p.id)}
+              strategy={verticalListSortingStrategy}
+            >
+          <ol className="divide-muted/60 divide-y">
+            {rows.map((p, i) => (
+              <PrizeRow
+                key={p.id}
+                prize={p}
+                index={i}
+                share={total > 0 ? (Number(p.weight) / total) * 100 : 0}
+                busy={busy}
+                canDelete={rows.length > 2}
+                onEdit={() =>
+                  requestAnimationFrame(() =>
+                    setEditing({ index: i, draft: toDraft(p) }),
+                  )
+                }
+                onDelete={() => requestAnimationFrame(() => void remove(i))}
+              />
+            ))}
+          </ol>
+            </SortableContext>
+          </DndContext>
+        </CardContent>
+      </Card>
+
+      {editing && (
+        <WheelPrizeDialog
+          // A fresh form per opening — never yesterday's half-typed draft.
+          key={editing.index ?? "new"}
+          open
+          onOpenChange={(open) => !open && setEditing(null)}
+          initial={editing.draft}
+          productOptions={productOptions}
+          onSave={(draft) => {
+            const next = drafts();
+            if (editing.index === null) next.push(draft);
+            else next[editing.index] = draft;
+            return persist(
+              next,
+              editing.index === null ? "Шагнал нэмэгдлээ" : "Шагнал хадгалагдлаа",
+            );
+          }}
+        />
+      )}
+      {dialog === "settings" && (
+        <WheelSettingsDialog
+          open
+          onOpenChange={(open) => !open && setDialog(null)}
+          settings={settings}
+          bundleChoices={bundleChoices}
+        />
+      )}
+      {dialog === "tips" && (
+        <MissTipsDialog
+          open
+          onOpenChange={(open) => !open && setDialog(null)}
+          settings={settings}
+        />
+      )}
     </div>
+  );
+}
+
+/** One wedge in the table — dragged by its grip, edited from its «⋯». */
+function PrizeRow({
+  prize: p,
+  index,
+  share,
+  busy,
+  canDelete,
+  onEdit,
+  onDelete,
+}: {
+  prize: SpinWheelPrizeRow;
+  index: number;
+  /** Real chance in percent (weight over the total). */
+  share: number;
+  busy: boolean;
+  canDelete: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: p.id, disabled: busy });
+  const Icon = KIND_ICON[p.kind];
+  const none = p.kind === "none";
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(
+        "bg-card relative grid grid-cols-[2.75rem_minmax(0,1fr)_auto_2.5rem] items-center gap-3 py-2.5 pr-4 pl-1 md:grid-cols-[3.25rem_minmax(0,1fr)_6rem_6rem_5rem_2.5rem]",
+        none && "text-muted-foreground",
+        isDragging && "z-10 shadow-lg",
+      )}
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        aria-label={`${index + 1}-р нүд «${p.label}» — чирж байрлал солих (Space дараад сумаар зөөнө)`}
+        className="text-muted-foreground hover:text-foreground flex cursor-grab touch-none items-center gap-0.5 rounded-md py-1.5 pl-1 active:cursor-grabbing disabled:cursor-default"
+        disabled={busy}
+      >
+        <GripVertical className="size-4 shrink-0" />
+        <span className="text-xs tabular-nums">{index + 1}</span>
+      </button>
+      <div className="flex min-w-0 items-center gap-2.5">
+        <Icon className="text-muted-foreground size-4 shrink-0" />
+        <div className="min-w-0">
+          <p
+            className={cn(
+              "truncate text-sm",
+              !none && "text-foreground font-medium",
+            )}
+          >
+            {p.label}
+          </p>
+          {!none && (
+            <p className="text-muted-foreground truncate text-xs">
+              {prizeDetail(p)}
+            </p>
+          )}
+        </div>
+      </div>
+      <span className="hidden md:block">
+        {!none && (
+          <Badge variant={p.tier === "grand" ? "gold" : "secondary"}>
+            {TIER_LABEL[p.tier]}
+          </Badge>
+        )}
+      </span>
+      <span className="text-right text-sm font-semibold tabular-nums">
+        {pct(Number(p.weight))}
+      </span>
+      <span className="text-muted-foreground hidden text-right text-xs tabular-nums md:block">
+        {share > 0 ? `1 : ${Math.round(100 / share)}` : "—"}
+      </span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={busy}
+            aria-label={`${p.label} — үйлдэл`}
+          >
+            <MoreHorizontal className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem className={ITEM} onSelect={onEdit}>
+            <Pencil />
+            Засах
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className={cn(ITEM, "text-destructive")}
+            disabled={!canDelete}
+            onSelect={onDelete}
+          >
+            <Trash2 />
+            Устгах
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </li>
   );
 }
