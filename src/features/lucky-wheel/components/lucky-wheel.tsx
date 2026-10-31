@@ -3,7 +3,16 @@
 import * as React from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { Clock, Gift, Lock, ShoppingBag, Volume2, VolumeX } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  Clock,
+  Gift,
+  Lock,
+  Package,
+  ShoppingBag,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Accordion,
@@ -24,12 +33,14 @@ import { SpinHistory } from "./spin-history";
 import { MyGrandPrizes } from "./my-grand-prizes";
 import { colorOf, prizeColors, type PrizeColor } from "../palette";
 import {
+  WHEEL_QUERY_KEY,
   useCountdown,
   useSpin,
   useWheelSound,
   useWheelState,
 } from "../use-wheel";
 import type {
+  MissTip,
   SpinFailure,
   SpinMode,
   SpinSuccess,
@@ -132,8 +143,8 @@ function StageBackdrop() {
 /* ── Paytable ──────────────────────────────────────────────────────────── */
 
 /**
- * Each prize once, with how many wedges it holds — the wheel repeats coupons
- * across the rim and «Баярлалаа» is not a prize.
+ * Each prize once, with how many wedges it holds — the wheel may repeat a
+ * prize across the rim, and «Хоосон» is not a prize.
  */
 function payItems(prizes: WheelPrize[]) {
   const seen = new Map<string, { prize: WheelPrize; count: number }>();
@@ -230,6 +241,8 @@ function Paytable({ prizes }: { prizes: WheelPrize[] }) {
             {grand && <Glint />}
             {grand ? (
               <Gift className="size-5 shrink-0" />
+            ) : prize.kind === "product" ? (
+              <Package className="size-4 shrink-0" />
             ) : (
               <Swatch color={colorOf(colors, prize)} />
             )}
@@ -237,7 +250,9 @@ function Paytable({ prizes }: { prizes: WheelPrize[] }) {
               <span className="block text-sm/tight font-bold">
                 {prize.label}
               </span>
-              {(grand || prize.minSubtotal > 0) && (
+              {(grand ||
+                prize.kind === "product" ||
+                prize.minSubtotal > 0) && (
                 <span
                   className={cn(
                     "block text-xs",
@@ -246,7 +261,9 @@ function Paytable({ prizes }: { prizes: WheelPrize[] }) {
                 >
                   {grand
                     ? "Гранд шагнал — хамгийн ховор"
-                    : `${fmt(prize.minSubtotal)}₮-с дээш захиалгад`}
+                    : prize.kind === "product"
+                      ? "Дараагийн захиалгад тань үнэгүй орно"
+                      : `${fmt(prize.minSubtotal)}₮-с дээш захиалгад`}
                 </span>
               )}
             </span>
@@ -406,8 +423,16 @@ function TextAction({
   );
 }
 
+/** One of the shop's tips for a miss, different from the last one shown. */
+function pickTip(tips: MissTip[], last: MissTip | null): MissTip | null {
+  if (tips.length === 0) return null;
+  const pool = tips.length > 1 ? tips.filter((t) => t !== last) : tips;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 export function LuckyWheel() {
   const { data: state, isLoading, refetch } = useWheelState();
+  const queryClient = useQueryClient();
   const spin = useSpin();
   const wheelRef = React.useRef<WheelHandle>(null);
   const sound = useWheelSound();
@@ -416,6 +441,11 @@ export function LuckyWheel() {
   const [result, setResult] = React.useState<SpinSuccess | null>(null);
   const [revealOpen, setRevealOpen] = React.useState(false);
   const [burst, setBurst] = React.useState(0);
+  const [tip, setTip] = React.useState<MissTip | null>(null);
+  // The V point balance as the stats pill shows it while a spin is in the
+  // air: the cost comes off at once, but a points prize is only added once the
+  // card reveals it — never while the wheel is still turning.
+  const [heldPoints, setHeldPoints] = React.useState<number | null>(null);
 
   const countdown = useCountdown(state?.nextFreeAt);
   const freeReady =
@@ -451,6 +481,7 @@ export function LuckyWheel() {
       if (busy || !state) return;
       setSpinning(true);
       setRevealOpen(false);
+      setHeldPoints(state.points - (mode === "points" ? state.spinCost : 0));
       try {
         const outcome = await spin.mutateAsync(mode);
         const win = outcome.kind !== "none";
@@ -465,11 +496,15 @@ export function LuckyWheel() {
           setBurst((n) => n + 1);
         } else {
           sound.miss();
+          setTip((last) => pickTip(state.missTips ?? [], last));
         }
         // Let the lit wedge register before the card covers it — and use the
-        // pause to refresh, so «Дахин эргүүлэх» on the card offers an
-        // entitlement that still exists.
-        await Promise.all([refetch(), wait(win ? 900 : 500)]);
+        // pause to refresh (state, history, prizes), so «Дахин эргүүлэх» on
+        // the card offers an entitlement that still exists.
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: WHEEL_QUERY_KEY }),
+          wait(win ? 900 : 500),
+        ]);
         setRevealOpen(true);
       } catch (error) {
         const failure = error as SpinFailure;
@@ -481,9 +516,11 @@ export function LuckyWheel() {
         void refetch();
       } finally {
         setSpinning(false);
+        // Under the card now (or after a refusal) — the real balance.
+        setHeldPoints(null);
       }
     },
-    [busy, state, spin, sound, refetch],
+    [busy, state, spin, sound, refetch, queryClient],
   );
 
   // Same shape the route boundary shows, so the hand-over is invisible.
@@ -593,7 +630,7 @@ export function LuckyWheel() {
                 <StatPill
                   icon={VPointIcon}
                   label="V point"
-                  value={fmt(state.points)}
+                  value={fmt(heldPoints ?? state.points)}
                 />
               )}
               <button
@@ -764,6 +801,7 @@ export function LuckyWheel() {
 
       <PrizeReveal
         result={result}
+        tip={tip}
         open={revealOpen}
         onClose={() => setRevealOpen(false)}
         // Straight back to the wheel for the next one — the loop is the fun.

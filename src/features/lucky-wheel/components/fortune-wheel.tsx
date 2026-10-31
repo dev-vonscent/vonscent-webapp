@@ -56,7 +56,7 @@ export interface WheelHandle {
   /**
    * Spin to the prize occupying `slot` and resolve once the pointer settles.
    * Takes the **database** slot, not a wheel position — see `positionOfSlot`.
-   * `win: false` (a «Баярлалаа» wedge) lands quietly: no flashing rim.
+   * `win: false` (a «Хоосон» wedge) lands quietly: no flashing rim.
    */
   spinTo(slot: number, opts?: { win?: boolean }): Promise<void>;
 }
@@ -148,7 +148,7 @@ function PrizeGlyph({ kind }: { kind: WheelPrize["kind"] }) {
       />
     );
   }
-  if (kind === "bundle") {
+  if (kind === "bundle" || kind === "product") {
     return <StrokeIcon paths={GIFT} color="var(--wheel-gold-light)" />;
   }
   return (
@@ -451,19 +451,20 @@ export const FortuneWheel = React.forwardRef<WheelHandle, WheelProps>(
               })}
 
               {/* Labels run along the radius, rim → hub, flipped on the right
-                half so none reads upside down. */}
+                half so none reads upside down. A miss («Хоосон») has no
+                words — its broken heart says it (client, 2026-10-31). */}
               {prizes.map((prize, i) => {
+                if (prize.kind === "none") return null;
                 const center = (i + 0.5) * seg;
                 const color = colorOf(colors, prize);
-                const blank = prize.kind === "none";
                 const flipped = center < 180;
                 const text = prize.shortLabel || prize.label;
                 const textProps = {
                   textAnchor: flipped ? ("end" as const) : ("start" as const),
                   dominantBaseline: "central" as const,
-                  fontSize: blank ? 5 : 6.6,
-                  fontWeight: blank ? 600 : 800,
-                  letterSpacing: blank ? 0.2 : 0.3,
+                  fontSize: 6.6,
+                  fontWeight: 800,
+                  letterSpacing: 0.3,
                 };
                 if (prize.tier === "grand") {
                   // The jackpot's name in plain white, glowing — no outline.
@@ -493,7 +494,7 @@ export const FortuneWheel = React.forwardRef<WheelHandle, WheelProps>(
               })}
 
               {/* A lit icon per prize at the rim — V point coin, coupon,
-                  broken heart for «Баярлалаа» (the grand has its crown). */}
+                  broken heart for «Хоосон» (the grand has its crown). */}
               {prizes.map((prize, i) =>
                 prize.tier === "grand" ? null : (
                   <g

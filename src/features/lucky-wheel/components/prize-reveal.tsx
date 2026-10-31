@@ -4,7 +4,17 @@ import * as React from "react";
 import Link from "next/link";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { animate, motion, useMotionValue } from "motion/react";
-import { Check, Copy, Gift, Heart, RotateCw, Ticket, X } from "lucide-react";
+import {
+  BookOpen,
+  Check,
+  Copy,
+  Gift,
+  HeartCrack,
+  Package,
+  RotateCw,
+  Ticket,
+  X,
+} from "lucide-react";
 import { formatDate, formatPrice } from "@/lib/format";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import { toast } from "@/lib/toast";
@@ -12,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { VPointIcon } from "@/components/shared/v-point-icon";
 import { VPointMark } from "@/components/shared/v-point-mark";
 import { CouponTicket } from "@/features/account/components/coupon-ticket";
-import type { SpinSuccess } from "../types";
+import type { MissTip, SpinSuccess } from "../types";
 
 /** Headline per tier — the wheel's only moment of raised voice. */
 const TIER_TITLE = {
@@ -21,6 +31,9 @@ const TIER_TITLE = {
   grand: "ГРАНД ШАГНАЛ!",
 } as const;
 
+/** A miss in one line — no «Баярлалаа», no spent-points note (client). */
+const MISS_LINE = "Энэ удаад шагнал таарсангүй";
+
 /** How long the card stays face-down before it turns over. */
 const FLIP_DELAY = 0.45;
 
@@ -28,17 +41,17 @@ function PrizeIcon({ kind }: { kind: SpinSuccess["kind"] }) {
   const className = "size-9";
   if (kind === "points") return <VPointIcon className={className} />;
   if (kind === "bundle") return <Gift className={className} />;
-  if (kind === "none") return <Heart className={className} />;
+  if (kind === "product") return <Package className={className} />;
+  // The wheel's own broken heart — the card and the wedge say the same thing.
+  if (kind === "none") return <HeartCrack className={className} />;
   return <Ticket className={className} />;
 }
 
 /** The lines that say what the customer actually holds now. */
 export function prizeTerms(result: SpinSuccess): string[] {
   const terms: string[] = [];
-  if (result.kind === "none") {
-    terms.push("Энэ удаад шагнал таарсангүй — дараагийн эргэлтэд амжилт!");
-    return terms;
-  }
+  // A miss carries a tip instead (`MissTipCard`).
+  if (result.kind === "none") return terms;
   if (result.kind === "points") {
     terms.push("Оноо шууд зарцуулагдах боломжтой.");
     terms.push(`Одоогийн үлдэгдэл: ${result.points.toLocaleString("mn-MN")}V`);
@@ -47,6 +60,12 @@ export function prizeTerms(result: SpinSuccess): string[] {
   if (result.kind === "bundle") {
     terms.push(
       "Та Азын хүрд хуудасны «Миний шагнал» хэсгээс багцаа сонгоод дараагийн захиалгатайгаа хамт хүргүүлээд аваарай.",
+    );
+    return terms;
+  }
+  if (result.kind === "product") {
+    terms.push(
+      "Шагнал «Миний шагнал» хэсэгт хадгалагдлаа — дараагийн захиалгад тань үнэгүй орно.",
     );
     return terms;
   }
@@ -182,7 +201,7 @@ function GrandTitle({ text }: { text: string }) {
 
 /**
  * Each prize comes on a metal card by tier — gold for the grand, silver for a
- * rare one, bronze for the everyday, dark iron for «Баярлалаа». Same build
+ * rare one, bronze for the everyday, dark iron for a miss («Хоосон»). Same build
  * for all: a bright lip, a deeper ledge, an engraved inner frame and an outer
  * rim, all solid insets (design.md §2 — no gradient), foil streaks, a glint.
  */
@@ -301,16 +320,19 @@ const PLAIN_BUTTON =
  * does the prize count up — the beat of suspense the wheel's slow stop has
  * been building. Each tier has its metal (`METALS`).
  *
- * A miss («Баярлалаа») skips the show: no rays, no flip, just a kind word and
- * the way to the next spin.
+ * A miss («Хоосон») skips the show: no rays, no flip — one plain line, a tip
+ * about the shop (`settings.spin.missTips`) and the way to the next spin.
  */
 export function PrizeReveal({
   result,
+  tip,
   open,
   onClose,
   again,
 }: {
   result: SpinSuccess | null;
+  /** Shown on a miss; picked by the page so it changes from spin to spin. */
+  tip?: MissTip | null;
   open: boolean;
   onClose: () => void;
   /** Offered when the customer can spin again right away. */
@@ -323,7 +345,7 @@ export function PrizeReveal({
   const grand = result.tier === "grand";
   const metal = METALS[metalOf(result)];
   const flip = !reduced && !miss;
-  const title = miss ? "Оролцсонд баярлалаа" : TIER_TITLE[result.tier];
+  const title = miss ? MISS_LINE : TIER_TITLE[result.tier];
   const contentDelay = flip ? FLIP_DELAY + 0.3 : 0.1;
   const ink = metal.dark ? "text-wheel-ink-dark" : "text-white";
   const soft = metal.dark ? "text-wheel-ink-dark/70" : "text-white/70";
@@ -445,7 +467,10 @@ export function PrizeReveal({
                 <div className="space-y-2">
                   <DialogPrimitive.Title
                     className={cn(
-                      "text-xs font-black tracking-[0.3em] uppercase",
+                      // A miss says it once, in the big line below.
+                      miss
+                        ? "sr-only"
+                        : "text-xs font-black tracking-[0.3em] uppercase",
                       metal.dark ? "text-wheel-ink-dark" : "text-white/70",
                     )}
                   >
@@ -460,9 +485,14 @@ export function PrizeReveal({
                       stiffness: 300,
                       damping: 16,
                     }}
-                    className="text-3xl/tight font-black tracking-tight"
+                    className={cn(
+                      "font-black tracking-tight",
+                      miss ? "text-2xl/tight" : "text-3xl/tight",
+                    )}
                   >
-                    {result.kind === "points" ? (
+                    {miss ? (
+                      MISS_LINE
+                    ) : result.kind === "points" ? (
                       <>
                         +<CountUp value={result.value} delay={contentDelay} /> V
                         point
@@ -471,7 +501,7 @@ export function PrizeReveal({
                       result.label
                     )}
                   </motion.p>
-                  {result.pointsSpent > 0 && (
+                  {!miss && result.pointsSpent > 0 && (
                     <p className={cn("text-xs", soft)}>
                       {result.pointsSpent.toLocaleString("mn-MN")}V зарцуулав
                     </p>
@@ -486,16 +516,44 @@ export function PrizeReveal({
                 >
                   {result.couponCode && <WonCoupon result={result} />}
 
-                  <DialogPrimitive.Description asChild>
-                    <ul className={cn("space-y-1 text-sm", soft)}>
-                      {(result.couponCode
-                        ? ["Купон таны «Миний купон» хэсэгт хадгалагдлаа."]
-                        : prizeTerms(result)
-                      ).map((line) => (
-                        <li key={line}>{line}</li>
-                      ))}
-                    </ul>
-                  </DialogPrimitive.Description>
+                  {miss ? (
+                    tip ? (
+                      <DialogPrimitive.Description asChild>
+                        {/* Shop know-how, not a prize: a book and a «Та
+                            мэдэх үү?» eyebrow, set apart from the miss line
+                            by a rule, so nobody reads it as something won. */}
+                        <div className="w-full border-t border-white/10 pt-4 text-left">
+                          <p className="flex items-center gap-1.5 text-[0.7rem] font-semibold tracking-[0.2em] text-white/50 uppercase">
+                            <BookOpen className="size-3.5" />
+                            Та мэдэх үү?
+                          </p>
+                          <div className="mt-2 rounded-2xl bg-white/6 px-4 py-3.5">
+                            <p className="text-sm font-bold text-white">
+                              {tip.title}
+                            </p>
+                            <p className="mt-1 text-sm/relaxed text-white/70">
+                              {tip.body}
+                            </p>
+                          </div>
+                        </div>
+                      </DialogPrimitive.Description>
+                    ) : (
+                      <DialogPrimitive.Description className="sr-only">
+                        {MISS_LINE}
+                      </DialogPrimitive.Description>
+                    )
+                  ) : (
+                    <DialogPrimitive.Description asChild>
+                      <ul className={cn("space-y-1 text-sm", soft)}>
+                        {(result.couponCode
+                          ? ["Купон таны «Миний купон» хэсэгт хадгалагдлаа."]
+                          : prizeTerms(result)
+                        ).map((line) => (
+                          <li key={line}>{line}</li>
+                        ))}
+                      </ul>
+                    </DialogPrimitive.Description>
+                  )}
 
                   <div className="flex w-full flex-col gap-2.5 pt-1">
                     {again && (

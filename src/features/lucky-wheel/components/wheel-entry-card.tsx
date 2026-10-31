@@ -20,8 +20,8 @@ import { useCountdown, useGrandPrizes, useWheelState } from "../use-wheel";
 export function WheelEntryCard({ className }: { className?: string }) {
   const { data: state } = useWheelState();
   const { data: grand } = useGrandPrizes(Boolean(state?.signedIn));
-  // A grand prize waiting on the customer outranks the spin status: it is a
-  // real parcel they can still lose to the clock.
+  // A physical prize waiting on the customer outranks the spin status: it is
+  // a real parcel they can still lose to the clock.
   const openPrize = grand?.prizes.find(
     (p) => p.state === "choose" || p.state === "ready",
   );
@@ -38,7 +38,9 @@ export function WheelEntryCard({ className }: { className?: string }) {
   const status = openPrize
     ? openPrize.state === "choose"
       ? "Гранд шагнал хүлээж байна — багцаа сонгоорой"
-      : "Гранд шагнал дараагийн захиалгад тань орно"
+      : openPrize.kind === "product"
+        ? "Шагнал дараагийн захиалгад тань орно"
+        : "Гранд шагнал дараагийн захиалгад тань орно"
     : freeReady
       ? "Үнэгүй эргэлт бэлэн боллоо"
       : orderSpins > 0
