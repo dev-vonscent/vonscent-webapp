@@ -20,7 +20,7 @@ export default async function Image({
   return coverOgCard({
     kicker: post.category || "Блог",
     name: post.title,
-    price: formatDate(post.date),
+    note: formatDate(post.date),
     imageUrl: post.cover,
   });
 }

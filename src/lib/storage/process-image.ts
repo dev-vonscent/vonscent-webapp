@@ -217,7 +217,7 @@ export async function toBlurBackdrop(
   input: ArrayBuffer | Uint8Array | Buffer,
   width: number,
   height: number,
-  brightness = 0.42,
+  brightness = 0.4,
 ): Promise<Buffer | null> {
   const buffer = Buffer.isBuffer(input)
     ? input
@@ -232,10 +232,35 @@ export async function toBlurBackdrop(
         fit: "cover",
       })
       .blur(12)
-      .modulate({ brightness, saturation: 0.9 })
+      .modulate({ brightness, saturation: 0.7 })
       .resize({ width, height })
       .jpeg({ quality: 80 })
       .toBuffer();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Framed share-card photo: cover-cropped JPEG; `faded` washes it out
+ * (desaturated, lifted) for a sold-out product.
+ */
+export async function toOgFrame(
+  input: ArrayBuffer | Uint8Array | Buffer,
+  width: number,
+  height: number,
+  { faded = false }: { faded?: boolean } = {},
+): Promise<Buffer | null> {
+  const buffer = Buffer.isBuffer(input)
+    ? input
+    : Buffer.from(input as ArrayBuffer);
+  const sharp = await loadSharp();
+  try {
+    let img = sharp(buffer, { failOn: "error" })
+      .rotate()
+      .resize({ width, height, fit: "cover" });
+    if (faded) img = img.modulate({ saturation: 0.25, brightness: 1.06 });
+    return await img.jpeg({ quality: 82 }).toBuffer();
   } catch {
     return null;
   }
