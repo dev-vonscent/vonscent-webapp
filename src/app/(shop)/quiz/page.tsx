@@ -3,10 +3,9 @@ import { pageMetadata } from "@/lib/seo";
 import { ScentQuiz } from "@/features/quiz/components/scent-quiz";
 
 export const metadata: Metadata = {
-  title: "Үнэрээ олох",
   description:
     "Хэдэн асуултад хариулаад өөрт тохирох үнэртнүүдээ олоорой — 2/5/10/20 мл decant.",
-  ...pageMetadata("/quiz"),
+  ...pageMetadata("/quiz", { title: "Үнэрээ олох" }),
 };
 
 /**
