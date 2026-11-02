@@ -1,4 +1,4 @@
-# Нүүрний hero — Эрт өвөл (2026-11 → 12-14)
+# Нүүрний hero — Эрт өвөл (2026-11-01 → 12-25)
 
 > Солих бүрэн дараалал: [hero.md](./hero.md). Хэмжээ, тайралт: [hero-desktop.md](./hero-desktop.md), [hero-mobile.md](./hero-mobile.md).
 

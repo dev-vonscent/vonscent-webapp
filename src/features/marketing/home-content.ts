@@ -127,6 +127,23 @@ export const HOME_CAMPAIGNS: readonly HomeCampaign[] = [
     image: HALLOWEEN_PHOTO,
   },
   {
+    id: "2026-early-winter",
+    startsOn: "2026-11-01",
+    endsOn: "2026-12-25",
+    eyebrow: "Энэ улирлын сонголт",
+    title: "Өвлийн тансаг үнэртнүүд",
+    description:
+      "Өвөлд тохирох үнэртнүүдийг бүтнээр нь авалгүй хямд өртгөөр туршаад үзээрэй.",
+    mobileDescription: "Бүтнээр нь авалгүй хямд өртгөөр туршаарай.",
+    // Текст нь cold-season-тэй ижил — зөвхөн зураг солигдоно.
+    primary: {
+      label: "Сонголтыг үзэх",
+      href: "/catalog?kind=perfume&season=winter",
+    },
+    secondary: { label: "Бүх үнэртэн", href: "/catalog" },
+    image: WINTER_PHOTO,
+  },
+  {
     id: "2026-cold-season",
     startsOn: "2026-09-15",
     endsOn: "2027-02-28",
@@ -142,7 +159,7 @@ export const HOME_CAMPAIGNS: readonly HomeCampaign[] = [
       href: "/catalog?kind=perfume&season=winter",
     },
     secondary: { label: "Бүх үнэртэн", href: "/catalog" },
-    image: WINTER_PHOTO,
+    image: HERO_PHOTO,
   },
 ];
 
