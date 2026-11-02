@@ -1,4 +1,4 @@
-import { ogCard, OG_SIZE } from "@/lib/og";
+import { coverOgCard, OG_SIZE } from "@/lib/og";
 import { getBlogPost } from "@/features/blog/api";
 import { formatDate } from "@/lib/format";
 import { SITE } from "@/lib/constants";
@@ -15,12 +15,10 @@ export default async function Image({
 }) {
   const { slug } = await params;
   const post = await getBlogPost(slug);
-  if (!post) return ogCard({ title: SITE.tagline });
+  if (!post) return coverOgCard({ imageUrl: null });
 
-  return ogCard({
-    kicker: post.category,
-    title: post.title,
-    subtitle: formatDate(post.date),
+  return coverOgCard({
     imageUrl: post.cover,
+    line: [post.category, formatDate(post.date)].filter(Boolean).join(" · "),
   });
 }

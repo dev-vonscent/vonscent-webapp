@@ -1,4 +1,4 @@
-import { ogCard, OG_SIZE } from "@/lib/og";
+import { coverOgCard, OG_SIZE } from "@/lib/og";
 import { getCollectionBySlug } from "@/features/collections/api";
 import { formatPrice } from "@/lib/format";
 import { SITE } from "@/lib/constants";
@@ -16,17 +16,16 @@ export default async function Image({
 }) {
   const { slug } = await params;
   const collection = await getCollectionBySlug(slug);
-  if (!collection) return ogCard({ title: SITE.tagline });
+  if (!collection) return coverOgCard({ imageUrl: null });
 
-  return ogCard({
-    kicker: "Багц",
-    title: collection.name,
-    subtitle: collection.soldOut
-      ? "Дууссан"
-      : `${formatPrice(collection.startingPrice)}-с эхэлнэ`,
+  return coverOgCard({
     imageUrl: collection.image,
-    badge: collection.discountRange.max
-      ? `-${formatDiscountRange(collection.discountRange)}`
-      : undefined,
+    line: collection.soldOut
+      ? "Дууссан"
+      : `${formatPrice(collection.startingPrice)}-с`,
+    badge:
+      !collection.soldOut && collection.discountRange.max
+        ? `−${formatDiscountRange(collection.discountRange)}`
+        : undefined,
   });
 }
