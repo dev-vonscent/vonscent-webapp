@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CONTENT_PAGES_HIDDEN } from "@/lib/constants";
+import { pageMetadata } from "@/lib/seo";
 import Image from "next/image";
 import { BadgeCheck, Sparkles, Truck, Heart } from "lucide-react";
 import { getAboutSettings } from "@/features/content/api";
@@ -13,7 +14,7 @@ import { getAboutSettings } from "@/features/content/api";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "Бидний тухай",
+  ...pageMetadata("/about", { title: "Бидний тухай" }),
   description: "vonscent — үнэртэн decant хэлбэрээр туршиж сонгох дэлгүүр.",
 };
 

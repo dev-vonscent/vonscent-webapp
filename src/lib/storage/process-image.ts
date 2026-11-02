@@ -161,17 +161,36 @@ export async function isOpaqueImage(
   }
 }
 
+/** Paints an alpha-mask PNG (e.g. the brand mark) in a solid colour. */
+export async function tintMask(
+  mask: Buffer,
+  color: string,
+): Promise<Buffer | null> {
+  const sharp = await loadSharp();
+  try {
+    const { width = 0, height = 0 } = await sharp(mask).metadata();
+    if (!width || !height) return null;
+    return await sharp({
+      create: { width, height, channels: 4, background: color },
+    })
+      .composite([{ input: mask, blend: "dest-in" }])
+      .png()
+      .toBuffer();
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Cover-crop to exactly `width`×`height` and encode as JPEG. For the OG cards:
- * next/og (satori) cannot decode WebP, which is what every upload is stored
- * as. Null when the bytes aren't a decodable image; throws
- * `ImageToolUnavailableError` when sharp itself can't load.
+ * Card backdrop made from the photo itself: cover-cropped to the canvas,
+ * heavily blurred and dimmed so white text reads on top. No gradient — one
+ * flat dimming step (design.md §2).
  */
-export async function toJpegCover(
+export async function toBlurBackdrop(
   input: ArrayBuffer | Uint8Array | Buffer,
   width: number,
   height: number,
-  quality = 80,
+  brightness = 0.4,
 ): Promise<Buffer | null> {
   const buffer = Buffer.isBuffer(input)
     ? input
@@ -180,9 +199,41 @@ export async function toJpegCover(
   try {
     return await sharp(buffer, { failOn: "error" })
       .rotate()
-      .resize({ width, height, fit: "cover" })
-      .jpeg({ quality })
+      .resize({
+        width: Math.round(width / 4),
+        height: Math.round(height / 4),
+        fit: "cover",
+      })
+      .blur(12)
+      .modulate({ brightness, saturation: 0.7 })
+      .resize({ width, height })
+      .jpeg({ quality: 80 })
       .toBuffer();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Framed share-card photo: cover-cropped JPEG; `faded` washes it out
+ * (desaturated, lifted) for a sold-out product.
+ */
+export async function toOgFrame(
+  input: ArrayBuffer | Uint8Array | Buffer,
+  width: number,
+  height: number,
+  { faded = false }: { faded?: boolean } = {},
+): Promise<Buffer | null> {
+  const buffer = Buffer.isBuffer(input)
+    ? input
+    : Buffer.from(input as ArrayBuffer);
+  const sharp = await loadSharp();
+  try {
+    let img = sharp(buffer, { failOn: "error" })
+      .rotate()
+      .resize({ width, height, fit: "cover" });
+    if (faded) img = img.modulate({ saturation: 0.25, brightness: 1.06 });
+    return await img.jpeg({ quality: 82 }).toBuffer();
   } catch {
     return null;
   }

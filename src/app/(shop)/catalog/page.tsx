@@ -32,8 +32,7 @@ import { isFeatureEnabled } from "@/lib/feature-flags";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  ...pageMetadata("/catalog"),
-  title: "Каталог",
+  ...pageMetadata("/catalog", { title: "Каталог" }),
   description: "Бүх үнэртэн — брэнд, хүйс, үнэрийн төрлөөр шүүж сонгоорой.",
 };
 
