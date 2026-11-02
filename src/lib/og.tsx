@@ -32,8 +32,6 @@ export const OG_SIZE = { width: 1200, height: 630 };
 /** Larger sources aren't worth decoding for a share card. */
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 
-/** Brand navy (globals.css `.navy` --foreground). */
-const NAVY = "#0b1d3a";
 const WHITE = "#ffffff";
 
 /** VON/SCENT mark artwork (alpha mask, 233×240). */
