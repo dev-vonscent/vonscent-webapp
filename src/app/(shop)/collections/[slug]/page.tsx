@@ -42,10 +42,12 @@ export async function generateMetadata({
   const collection = await getCollectionBySlug(slug);
   if (!collection) return { title: "Багц олдсонгүй" };
   return {
-    title: `${collection.name} — Багц`,
     description: collection.description.slice(0, 160),
     // og:image comes from the sibling opengraph-image.tsx file convention.
-    ...pageMetadata(`/collections/${collection.slug}`, { ownImage: true }),
+    ...pageMetadata(`/collections/${collection.slug}`, {
+      title: `${collection.name} — Багц`,
+      ownImage: true,
+    }),
   };
 }
 

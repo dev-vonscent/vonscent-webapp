@@ -14,8 +14,7 @@ import { SITE } from "@/lib/constants";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  ...pageMetadata("/contact"),
-  title: "Холбоо барих",
+  ...pageMetadata("/contact", { title: "Холбоо барих" }),
   description: "Бидэнтэй холбогдоорой — утас, имэйл, сошиал, мессеж.",
 };
 
