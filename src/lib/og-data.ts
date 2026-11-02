@@ -103,7 +103,6 @@ export async function collectionOgData(
         off: soldOut || !collection.availableMls.includes(p.ml),
       }))
       .sort((a, b) => a.ml - b.ml),
-    sizesLabel: soldOut ? "Хэмжээ" : "Хэмжээ сонгох · ширхэг бүрд",
     imageUrl: collection.image,
   };
 }

@@ -31,7 +31,6 @@ export const OG_SIZE = { width: 1200, height: 630 };
 /** Larger sources aren't worth decoding for a share card. */
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 
-const WHITE = "#ffffff";
 
 /** VON/SCENT mark artwork (alpha mask, 233×240). */
 const MARK_PATH = "brand/von-mark.png";
