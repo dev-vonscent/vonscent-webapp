@@ -188,53 +188,6 @@ export async function toJpegCover(
   }
 }
 
-/**
- * Share-card photo: fits the whole image inside `width`×`height` (bottles are
- * never cropped) and returns the colour of its top edge, so the card can
- * paint its background in the same tone and the photo has no visible seam.
- * The letterbox around a non-matching aspect ratio is filled with that
- * colour too. Null on any decode failure.
- */
-export async function toOgPhoto(
-  input: ArrayBuffer | Uint8Array | Buffer,
-  width: number,
-  height: number,
-): Promise<{ jpeg: Buffer; bg: [number, number, number] } | null> {
-  const buffer = Buffer.isBuffer(input)
-    ? input
-    : Buffer.from(input as ArrayBuffer);
-  const sharp = await loadSharp();
-  try {
-    const base = sharp(buffer, { failOn: "error" }).rotate().flatten({
-      background: "#ffffff",
-    });
-    const { width: w = 0, height: h = 0 } = await base.clone().metadata();
-    if (!w || !h) return null;
-    const strip = Math.max(1, Math.round(h * 0.04));
-    const { data } = await base
-      .clone()
-      .extract({ left: 0, top: 0, width: w, height: strip })
-      .resize(1, 1)
-      .removeAlpha()
-      .raw()
-      .toBuffer({ resolveWithObject: true });
-    const bg: [number, number, number] = [data[0], data[1], data[2]];
-    const jpeg = await base
-      .clone()
-      .resize({
-        width,
-        height,
-        fit: "contain",
-        background: { r: bg[0], g: bg[1], b: bg[2] },
-      })
-      .jpeg({ quality: 82 })
-      .toBuffer();
-    return { jpeg, bg };
-  } catch {
-    return null;
-  }
-}
-
 /** Paints an alpha-mask PNG (e.g. the brand mark) in a solid colour. */
 export async function tintMask(
   mask: Buffer,
@@ -255,19 +208,34 @@ export async function tintMask(
   }
 }
 
-/** Width ÷ height after EXIF rotation; null when the bytes aren't an image. */
-export async function imageAspect(
+/**
+ * Card backdrop made from the photo itself: cover-cropped to the canvas,
+ * heavily blurred and dimmed so white text reads on top. No gradient — one
+ * flat dimming step (design.md §2).
+ */
+export async function toBlurBackdrop(
   input: ArrayBuffer | Uint8Array | Buffer,
-): Promise<number | null> {
+  width: number,
+  height: number,
+  brightness = 0.42,
+): Promise<Buffer | null> {
   const buffer = Buffer.isBuffer(input)
     ? input
     : Buffer.from(input as ArrayBuffer);
   const sharp = await loadSharp();
   try {
-    const { width, height, orientation } = await sharp(buffer).metadata();
-    if (!width || !height) return null;
-    // EXIF 5–8 = rotated a quarter turn: width and height swap.
-    return orientation && orientation >= 5 ? height / width : width / height;
+    return await sharp(buffer, { failOn: "error" })
+      .rotate()
+      .resize({
+        width: Math.round(width / 4),
+        height: Math.round(height / 4),
+        fit: "cover",
+      })
+      .blur(12)
+      .modulate({ brightness, saturation: 0.9 })
+      .resize({ width, height })
+      .jpeg({ quality: 80 })
+      .toBuffer();
   } catch {
     return null;
   }

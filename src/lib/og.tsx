@@ -3,22 +3,22 @@ import { join } from "node:path";
 import type { ReactElement } from "react";
 import { ImageResponse } from "next/og";
 import { SITE } from "@/lib/constants";
-import { formatPrice } from "@/lib/format";
 import {
-  imageAspect,
   tintMask,
+  toBlurBackdrop,
   toJpegCover,
-  toOgPhoto,
 } from "@/lib/storage/process-image";
 
 /**
  * Share cards for the per-page dynamic `opengraph-image.tsx` routes. The
  * site-wide card is a static file — see `SITE.ogImage`.
  *
- * The card never repeats what the preview already prints under it: no
- * product/collection name (og:title), no domain (Messenger/Telegram show
- * it). It carries the brand mark once and the thing a title can't — the
- * per-size prices, or the collection's own photo.
+ * One layout for every card: the photo framed on the left, the mark and a
+ * kicker · serif name · price block on the right, on black — the same mood
+ * as the site-wide card. Collections/blog swap the black for their own
+ * cover, blurred and dimmed. The brand appears once (the mark); no domain —
+ * Messenger/Telegram print it under the image already. Names are set in a
+ * serif (design.md §3: serif headings, sans body).
  *
  * next/og (satori) ships only a latin Inter subset, so Cyrillic text would
  * render as tofu — we fetch a per-request Google-Fonts subset containing
@@ -39,8 +39,6 @@ const WHITE = "#ffffff";
 /** VON/SCENT mark artwork (alpha mask, 233×240). */
 const MARK_PATH = "brand/von-mark.png";
 const MARK_RATIO = 233 / 240;
-
-type Rgb = [number, number, number];
 
 async function fetchBytes(url: string): Promise<ArrayBuffer | null> {
   try {
@@ -125,17 +123,19 @@ async function loadGoogleFont(
   }
 }
 
+const SERIF = "Cormorant Garamond";
+
 async function render(content: ReactElement, text: string) {
   const all = `${text}${SITE.brandName}`;
-  const [regular, bold] = await Promise.all([
-    loadGoogleFont("Noto Sans:wght@400", all),
-    loadGoogleFont("Noto Sans:wght@600", all),
+  const [regular, bold, serif] = await Promise.all([
+    loadGoogleFont("Inter:wght@400", all),
+    loadGoogleFont("Inter:wght@600", all),
+    loadGoogleFont(`${SERIF}:wght@600`, all),
   ]);
   const fonts = [
-    ...(regular
-      ? [{ name: "sans", data: regular, weight: 400 as const }]
-      : []),
+    ...(regular ? [{ name: "sans", data: regular, weight: 400 as const }] : []),
     ...(bold ? [{ name: "sans", data: bold, weight: 600 as const }] : []),
+    ...(serif ? [{ name: "serif", data: serif, weight: 600 as const }] : []),
   ];
   return new ImageResponse(content, {
     ...OG_SIZE,
@@ -143,304 +143,177 @@ async function render(content: ReactElement, text: string) {
   });
 }
 
-/** Ink colours readable on `bg` (navy on light photos, white on dark). */
-function inkFor([r, g, b]: Rgb) {
-  const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-  return luminance > 0.55
-    ? { ink: NAVY, muted: "rgba(11,29,58,0.55)", rule: "rgba(11,29,58,0.14)" }
-    : {
-        ink: WHITE,
-        muted: "rgba(255,255,255,0.6)",
-        rule: "rgba(255,255,255,0.18)",
-      };
-}
+const BLACK = "#000000";
+const MUTED = "rgba(255,255,255,0.68)";
+const RULE = "rgba(255,255,255,0.38)";
 
-const rgb = ([r, g, b]: Rgb) => `rgb(${r},${g},${b})`;
+/** Framed photo — 4:5, the shop's card ratio. */
+const FRAME = { width: 440, height: 550 };
 
-function Badge({ label, fg, bg }: { label: string; fg: string; bg: string }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignSelf: "flex-start",
-        backgroundColor: bg,
-        color: fg,
-        fontSize: 26,
-        fontWeight: 600,
-        padding: "8px 22px",
-        borderRadius: 999,
-      }}
-    >
-      {label}
-    </div>
-  );
-}
+const nameSize = (name: string) =>
+  name.length > 28 ? 56 : name.length > 18 ? 68 : 80;
 
-export interface OgSizeRow {
-  ml: number;
-  price: number;
-  /** Crossed-out base price, only when the size is discounted. */
-  basePrice?: number;
-  soldOut?: boolean;
-}
-
-/** Product photo column width — the bottle is the hero of the card. */
-const PRODUCT_PHOTO = { width: 600, height: 630 };
-
-/**
- * Product card: the bottle on its own studio background (the card takes the
- * photo's edge colour, so there is no seam) and the 2/5/10/20 ml price list
- * — the shop's whole point, which the preview text never says.
- */
-export async function productOgCard({
-  imageUrl,
-  sizes,
-  badge,
-}: {
-  imageUrl: string | null;
-  sizes: OgSizeRow[];
+export interface OgCardProps {
+  /** Small caps line over the name — brand, «Багц», blog category. */
+  kicker: string;
+  name: string;
+  /** «17,000₮-с», «Дууссан», a date … */
+  price?: string;
+  /** Line under the price, e.g. «2 · 5 · 10 · 20 мл». */
+  sizes?: string;
   badge?: string;
-}): Promise<ImageResponse> {
-  const bytes = imageUrl ? await fetchBytes(imageUrl) : null;
-  const photo = bytes
-    ? await toOgPhoto(bytes, PRODUCT_PHOTO.width, PRODUCT_PHOTO.height)
-    : null;
-  const bg: Rgb = photo?.bg ?? [255, 255, 255];
-  const { ink, muted, rule } = inkFor(bg);
-  const mark = await brandMark(ink);
+  imageUrl: string | null;
+  /** Blurred cover behind the card instead of flat black. */
+  backdrop?: boolean;
+}
 
-  const rows = sizes.slice(0, 5);
-  const rowFont = rows.length > 4 ? 34 : 40;
-  const text = rows
-    .map(
-      (r) =>
-        `${r.ml} мл${formatPrice(r.price)}${r.basePrice ? formatPrice(r.basePrice) : ""}Дууссан`,
-    )
-    .join("");
+async function ogCard(p: OgCardProps): Promise<ImageResponse> {
+  const bytes = p.imageUrl ? await fetchBytes(p.imageUrl) : null;
+  const [photo, backdrop, mark] = await Promise.all([
+    bytes ? toJpegCover(bytes, FRAME.width, FRAME.height) : null,
+    bytes && p.backdrop
+      ? toBlurBackdrop(bytes, OG_SIZE.width, OG_SIZE.height)
+      : null,
+    brandMark(WHITE),
+  ]);
+  const text = `${p.kicker}${p.kicker.toUpperCase()}${p.name}${p.price ?? ""}${p.sizes ?? ""}${p.badge ?? ""}`;
 
-  const content = (
+  return render(
     <div
       style={{
         width: "100%",
         height: "100%",
         display: "flex",
-        backgroundColor: rgb(bg),
-        color: ink,
+        alignItems: "center",
+        backgroundColor: BLACK,
+        color: WHITE,
         fontFamily: "sans",
+        padding: 40,
+        gap: 72,
+        position: "relative",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          ...PRODUCT_PHOTO,
-        }}
-      >
-        {photo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={dataUrl("image/jpeg", photo.jpeg)}
-            alt=""
-            {...PRODUCT_PHOTO}
-          />
-        ) : (
-          <Mark src={mark} height={260} color={ink} />
-        )}
-      </div>
-
+      {backdrop ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={dataUrl("image/jpeg", backdrop)}
+          alt=""
+          {...OG_SIZE}
+          style={{ position: "absolute", top: 0, left: 0 }}
+        />
+      ) : null}
+      {photo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={dataUrl("image/jpeg", photo)}
+          alt=""
+          {...FRAME}
+          style={{
+            borderRadius: 18,
+            ...(backdrop ? { boxShadow: "0 24px 60px rgba(0,0,0,0.45)" } : {}),
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            ...FRAME,
+            alignItems: "center",
+          }}
+        >
+          <Mark src={mark} height={220} color={WHITE} />
+        </div>
+      )}
       <div
         style={{
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
+          height: FRAME.height,
           flex: 1,
-          padding: "56px 80px 56px 24px",
+          paddingRight: 40,
         }}
       >
-        {photo ? (
-          <Mark src={mark} height={84} color={ink} />
-        ) : (
-          <div style={{ height: 84 }} />
-        )}
-
+        <Mark src={mark} height={72} color={WHITE} />
         <div style={{ display: "flex", flexDirection: "column" }}>
-          {rows.map((r, i) => (
+          {p.kicker ? (
             <div
-              key={r.ml}
               style={{
-                display: "flex",
-                alignItems: "baseline",
-                justifyContent: "space-between",
-                padding: "14px 0",
-                borderTop: i === 0 ? "none" : `1px solid ${rule}`,
-                fontSize: rowFont,
-                color: r.soldOut ? muted : ink,
+                fontSize: 22,
+                letterSpacing: 6,
+                textTransform: "uppercase",
+                color: MUTED,
               }}
             >
-              <div style={{ display: "flex" }}>{r.ml} мл</div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-                {r.soldOut ? (
-                  <div style={{ fontSize: rowFont * 0.7 }}>Дууссан</div>
-                ) : (
-                  <>
-                    {r.basePrice ? (
-                      <div
-                        style={{
-                          fontSize: rowFont * 0.6,
-                          color: muted,
-                          textDecoration: "line-through",
-                        }}
-                      >
-                        {formatPrice(r.basePrice)}
-                      </div>
-                    ) : null}
-                    <div style={{ fontWeight: 600 }}>{formatPrice(r.price)}</div>
-                  </>
-                )}
+              {p.kicker}
+            </div>
+          ) : null}
+          <div
+            style={{
+              fontFamily: "serif",
+              fontWeight: 600,
+              fontSize: nameSize(p.name),
+              lineHeight: 1.02,
+              marginTop: 14,
+            }}
+          >
+            {p.name}
+          </div>
+          {p.price || p.badge ? (
+            // satori flattens fragments into the parent row — wrap in a column.
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div
+                style={{
+                  width: 64,
+                  height: 1,
+                  backgroundColor: RULE,
+                  margin: "32px 0",
+                }}
+              />
+              <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+                {p.price ? (
+                  <div style={{ fontSize: 34, fontWeight: 600 }}>{p.price}</div>
+                ) : null}
+                {p.badge ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      backgroundColor: WHITE,
+                      color: BLACK,
+                      fontSize: 22,
+                      fontWeight: 600,
+                      letterSpacing: 1,
+                      padding: "8px 20px",
+                      borderRadius: 999,
+                    }}
+                  >
+                    {p.badge}
+                  </div>
+                ) : null}
               </div>
             </div>
-          ))}
+          ) : null}
+          {p.sizes ? (
+            <div style={{ fontSize: 24, color: MUTED, marginTop: 10 }}>
+              {p.sizes}
+            </div>
+          ) : null}
         </div>
-
-        {badge ? (
-          <Badge label={badge} fg={rgb(bg)} bg={ink} />
-        ) : (
-          <div style={{ height: 50 }} />
-        )}
-      </div>
-    </div>
-  );
-
-  return render(content, `${text}${badge ?? ""}`);
-}
-
-/** Bottom band of the wide cover card. */
-const BAND_HEIGHT = 128;
-/** Covers at least this wide (w/h) go full-bleed; narrower ones go beside. */
-const WIDE_COVER = 1.5;
-/** Photo column of the tall cover card — 4:5, the shop's card ratio. */
-const TALL_PHOTO = { width: 504, height: 630 };
-
-function PriceLine({
-  line,
-  badge,
-  size,
-}: {
-  line?: string;
-  badge?: string;
-  size: number;
-}) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-      {line ? (
-        <div style={{ fontSize: size, fontWeight: 600 }}>{line}</div>
-      ) : null}
-      {badge ? <Badge label={badge} fg={NAVY} bg={WHITE} /> : null}
-    </div>
-  );
-}
-
-/**
- * Cover card (collections, blog): the admin's cover photo with a solid navy
- * panel carrying the mark and one short line (price, discount). A wide
- * cover runs full-bleed above a band; a tall one (collection covers are
- * 4:5) stands whole beside the panel — cropping it to 1.91:1 cut the
- * bottles in half.
- */
-export async function coverOgCard({
-  imageUrl,
-  line,
-  badge,
-}: {
-  imageUrl: string | null;
-  line?: string;
-  badge?: string;
-}): Promise<ImageResponse> {
-  const bytes = imageUrl ? await fetchBytes(imageUrl) : null;
-  const aspect = bytes ? await imageAspect(bytes) : null;
-  const wide = aspect !== null && aspect >= WIDE_COVER;
-  const photoSize = wide
-    ? { width: OG_SIZE.width, height: OG_SIZE.height - BAND_HEIGHT }
-    : TALL_PHOTO;
-  const jpeg =
-    bytes && aspect !== null
-      ? await toJpegCover(bytes, photoSize.width, photoSize.height)
-      : null;
-  const mark = await brandMark(WHITE);
-  const text = `${line ?? ""}${badge ?? ""}`;
-
-  const shell = {
-    width: "100%",
-    height: "100%",
-    display: "flex",
-    backgroundColor: NAVY,
-    color: WHITE,
-    fontFamily: "sans",
-  } as const;
-
-  if (!jpeg) {
-    return render(
-      <div
-        style={{
-          ...shell,
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 48,
-        }}
-      >
-        <Mark src={mark} height={240} color={WHITE} />
-        <PriceLine line={line} badge={badge} size={44} />
-      </div>,
-      text,
-    );
-  }
-
-  const photo = (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={dataUrl("image/jpeg", jpeg)} alt="" {...photoSize} />
-  );
-
-  if (wide) {
-    return render(
-      <div style={{ ...shell, flexDirection: "column" }}>
-        {photo}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            height: BAND_HEIGHT,
-            padding: "0 80px",
-          }}
-        >
-          <Mark src={mark} height={88} color={WHITE} />
-          <PriceLine line={line} badge={badge} size={40} />
-        </div>
-      </div>,
-      text,
-    );
-  }
-
-  return render(
-    <div style={shell}>
-      {photo}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "flex-start",
-          flex: 1,
-          gap: 56,
-          padding: "0 80px",
-        }}
-      >
-        <Mark src={mark} height={150} color={WHITE} />
-        <PriceLine line={line} badge={badge} size={56} />
+        <div style={{ height: 20 }} />
       </div>
     </div>,
     text,
   );
 }
+
+/** Product card: the studio shot framed on black. */
+export const productOgCard = (p: Omit<OgCardProps, "backdrop">) => ogCard(p);
+
+/** Collection / blog card: the cover framed on its own blurred self. */
+export const coverOgCard = (p: Omit<OgCardProps, "backdrop">) =>
+  ogCard({ ...p, backdrop: true });
+
+/** Not-found fallback: just the mark and the tagline. */
+export const fallbackOgCard = () =>
+  ogCard({ kicker: "", name: SITE.tagline, imageUrl: null });
