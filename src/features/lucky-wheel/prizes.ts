@@ -80,6 +80,7 @@ export async function getGrandOptions(
 
 interface PrizeRow {
   id: string;
+  kind: "bundle" | "product";
   label: string;
   created_at: string;
   expires_at: string | null;
@@ -87,11 +88,13 @@ interface PrizeRow {
   bundle_gender: BundleGender | null;
   claim_order_id: string | null;
   fulfilled_at: string | null;
+  ml: number | null;
   collections: { name: string } | null;
+  products: { name: string; brand: string } | null;
   orders: { order_no: string } | null;
 }
 
-/** Every grand prize the customer has won, newest first. */
+/** Every physical prize the customer has won (bundle or product), newest first. */
 export async function getMyGrandPrizes(
   admin: AdminClient,
   userId: string,
@@ -99,22 +102,27 @@ export async function getMyGrandPrizes(
   const { data, error } = await admin
     .from("spin_wheel_spins")
     .select(
-      "id, label, created_at, expires_at, bundle_collection_id, bundle_gender, claim_order_id, fulfilled_at, collections:bundle_collection_id(name), orders:claim_order_id(order_no)",
+      "id, kind, label, created_at, expires_at, bundle_collection_id, bundle_gender, claim_order_id, fulfilled_at, ml, collections:bundle_collection_id(name), products:product_id(name, brand), orders:claim_order_id(order_no)",
     )
     .eq("user_id", userId)
-    .eq("kind", "bundle")
+    .in("kind", ["bundle", "product"])
     .order("created_at", { ascending: false })
     .limit(20);
   if (error) throw new Error(`grand prizes: ${error.message}`);
   const now = new Date();
   return ((data ?? []) as unknown as PrizeRow[]).map((r) => ({
     spinId: r.id,
+    kind: r.kind,
     label: r.label,
     wonAt: r.created_at,
     expiresAt: r.expires_at,
     state: grandPrizeState(r, now),
     gender: r.bundle_gender,
     bundleName: r.collections?.name ?? null,
+    productName: r.products
+      ? `${r.products.brand} ${r.products.name}`.trim()
+      : null,
+    ml: r.ml,
     orderNo: r.orders?.order_no ?? null,
   }));
 }
@@ -161,6 +169,7 @@ export async function chooseGrandBundle(
     fulfilled_at: string | null;
     expires_at: string | null;
   } | null;
+  // Only a grand bundle is picked; a product prize came with its perfume.
   if (!row || row.user_id !== userId || row.kind !== "bundle") {
     return { ok: false, reason: "NOT_FOUND" };
   }

@@ -44,6 +44,7 @@ function wheel(over: Partial<WheelState> = {}): WheelState {
     signedIn: true,
     history: [],
     hasMoreHistory: false,
+    missTips: [],
     ...over,
   };
 }

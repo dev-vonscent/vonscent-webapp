@@ -51,6 +51,14 @@ export interface WheelState {
   history: SpinHistoryItem[];
   /** Older spins exist beyond `history` (see `/api/lucky-wheel/history`). */
   hasMoreHistory: boolean;
+  /** What a miss shows instead of a prize — one picked at random (0170). */
+  missTips: MissTip[];
+}
+
+/** A line of shop know-how on the «Хоосон» card (`settings.spin.missTips`). */
+export interface MissTip {
+  title: string;
+  body: string;
 }
 
 /** One page of the full history. */
@@ -78,8 +86,7 @@ export interface SpinSuccess {
   orderSpins: number;
   nextFreeAt: string | null;
   freeReady: boolean;
-  /** The spin's id — set for a grand (bundle) win, so the reveal can let
-   *  the customer pick their bundle straight away. */
+  /** The spin's own id (0170; older servers sent it for grand wins only). */
   spinId?: string;
 }
 
@@ -106,13 +113,14 @@ export type SpinOutcome = SpinSuccess | SpinFailure;
 /** Which entitlement a spin draws on — `spin_wheel(p_mode)`. */
 export type SpinMode = "free" | "order" | "points";
 
-/* ── Гранд шагнал: 2мл багц (0165) ─────────────────────────────────── */
+/* ── Бодит шагнал: гранд 2мл багц (0165), бараа × мл (0170) ──────────── */
 
 export type BundleGender = "male" | "female";
 
 /**
- * Where a won grand prize is on its way to the customer:
- * - `choose`    — won, no bundle picked yet;
+ * Where a won physical prize is on its way to the customer:
+ * - `choose`    — a grand bundle won, none picked yet (a product prize
+ *                 skips this — the admin chose the perfume);
  * - `ready`     — picked, waiting for the next order;
  * - `in_order`  — attached to an order that is not delivered yet;
  * - `delivered` — that order arrived (or staff marked it by hand);
@@ -140,12 +148,17 @@ export interface GrandBundleOption {
 
 export interface GrandPrize {
   spinId: string;
+  /** `bundle` — the grand 2ml bundle; `product` — one perfume × ml (0170). */
+  kind: "bundle" | "product";
   label: string;
   wonAt: string;
   expiresAt: string | null;
   state: GrandPrizeState;
   gender: BundleGender | null;
   bundleName: string | null;
+  /** `product` prize: the perfume and size (null for a bundle). */
+  productName: string | null;
+  ml: number | null;
   orderNo: string | null;
 }
 

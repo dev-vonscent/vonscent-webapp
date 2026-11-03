@@ -56,9 +56,10 @@ export function useSpinHistory(enabled: boolean) {
 }
 
 /**
- * One spin. The result is *not* written into the cache here — the wheel has to
- * finish turning first, or the page would announce the prize while the pointer
- * is still moving. The caller refreshes once the animation lands.
+ * One spin. Nothing is refreshed here on success — the wheel has to finish
+ * turning first, or the page would announce the prize (a V point balance
+ * already grown, a history row) while the pointer is still moving. The caller
+ * invalidates `WHEEL_QUERY_KEY` once the animation lands.
  */
 export function useSpin() {
   const queryClient = useQueryClient();
@@ -75,7 +76,8 @@ export function useSpin() {
       }
       return data;
     },
-    onSettled: () => {
+    // A refusal changes nothing on screen worth hiding — refresh at once.
+    onError: () => {
       void queryClient.invalidateQueries({ queryKey: WHEEL_QUERY_KEY });
     },
   });
@@ -229,7 +231,7 @@ export function useWheelSound() {
     [blip],
   );
 
-  /** «Баярлалаа»: two soft falling notes — consolation, not a buzzer. */
+  /** A miss («Хоосон»): two soft falling notes — consolation, not a buzzer. */
   const miss = React.useCallback(() => {
     blip(523, 0.22, 0.06, "sine");
     setTimeout(() => blip(392, 0.4, 0.06, "sine"), 160);
@@ -246,11 +248,11 @@ export function useWheelSound() {
   return { on, toggle, tick, whoosh, fanfare, miss };
 }
 
-/* ── Гранд шагнал: 2мл багц (0165) ─────────────────────────────────── */
+/* ── Бодит шагнал: гранд 2мл багц (0165), бараа (0170) ──────────────── */
 
 export const GRAND_PRIZES_KEY = [...WHEEL_QUERY_KEY, "prizes"] as const;
 
-/** The customer's grand prizes and today's two bundles. */
+/** The customer's physical prizes and today's two grand bundles. */
 export function useGrandPrizes(enabled = true) {
   return useQuery<GrandPrizesResponse>({
     queryKey: GRAND_PRIZES_KEY,

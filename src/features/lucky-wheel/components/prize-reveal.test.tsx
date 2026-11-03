@@ -63,17 +63,37 @@ describe("PrizeReveal", () => {
           ...base,
           kind: "none",
           tier: "common",
-          label: "Баярлалаа",
+          label: "Хоосон",
           couponCode: null,
+          pointsSpent: 1000,
         }}
+        tip={{ title: "Түвшин гэж юу вэ?", body: "Түвшин ахих тусам…" }}
         open
         onClose={onClose}
       />,
     );
-    expect(screen.getByRole("dialog")).toHaveTextContent("Оролцсонд баярлалаа");
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("Энэ удаад шагнал таарсангүй");
+    expect(dialog).toHaveTextContent("Түвшин гэж юу вэ?");
+    // Клиент (2026-10-31): «Баярлалаа», зарцуулсан оноо харагдахгүй.
+    expect(dialog).not.toHaveTextContent(/баярлалаа/i);
+    expect(dialog).not.toHaveTextContent("зарцуулав");
     expect(screen.queryByRole("link")).toBeNull();
     await userEvent.click(screen.getAllByRole("button", { name: "Хаах" })[0]);
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("бодит бараа хожвол дараагийн захиалгад орно гэж хэлнэ", () => {
+    expect(
+      prizeTerms({
+        ...base,
+        kind: "product",
+        label: "Eau Fraiche 5мл",
+        couponCode: null,
+      }),
+    ).toEqual([
+      "Шагнал «Миний шагнал» хэсэгт хадгалагдлаа — дараагийн захиалгад тань үнэгүй орно.",
+    ]);
   });
 });
 

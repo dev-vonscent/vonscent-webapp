@@ -75,6 +75,20 @@ const HALLOWEEN_PHOTO: HomeCampaignImage = {
   dark: true,
 };
 
+/**
+ * Эрт өвөл — анхны цас, хяруу (prompts/hero-winter.md). Эх нь
+ * `public/desktop-winter.png`, `mobile-winter.png`. Цайвар хана тул текст
+ * бараан хэвээр.
+ */
+const WINTER_PHOTO: HomeCampaignImage = {
+  ...HERO_PHOTO,
+  src: "/hero-desktop-winter-1600.webp",
+  srcSet: [1600, 2400, 3200]
+    .map((w) => `/hero-desktop-winter-${w}.webp ${w}w`)
+    .join(", "),
+  mobile: { src: "/hero-mobile-winter.webp", width: 1600, height: 1200 },
+};
+
 export interface HomeCampaign {
   id: string;
   /** Улаанбаатарын огноо `YYYY-MM-DD`, хоёулаа хамааруулна. null = хязгааргүй. */
@@ -111,6 +125,23 @@ export const HOME_CAMPAIGNS: readonly HomeCampaign[] = [
     },
     secondary: { label: "Бүх үнэртэн", href: "/catalog" },
     image: HALLOWEEN_PHOTO,
+  },
+  {
+    id: "2026-early-winter",
+    startsOn: "2026-11-01",
+    endsOn: "2026-12-25",
+    eyebrow: "Энэ улирлын сонголт",
+    title: "Өвлийн тансаг үнэртнүүд",
+    description:
+      "Өвөлд тохирох үнэртнүүдийг бүтнээр нь авалгүй хямд өртгөөр туршаад үзээрэй.",
+    mobileDescription: "Бүтнээр нь авалгүй хямд өртгөөр туршаарай.",
+    // Текст нь cold-season-тэй ижил — зөвхөн зураг солигдоно.
+    primary: {
+      label: "Сонголтыг үзэх",
+      href: "/catalog?kind=perfume&season=winter",
+    },
+    secondary: { label: "Бүх үнэртэн", href: "/catalog" },
+    image: WINTER_PHOTO,
   },
   {
     id: "2026-cold-season",

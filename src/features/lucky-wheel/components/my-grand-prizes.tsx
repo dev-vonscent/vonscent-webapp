@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Gift, PackageCheck, Truck, XCircle } from "lucide-react";
+import { Gift, Package, PackageCheck, Truck, XCircle } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { daysLeft } from "../prize-state";
@@ -36,7 +36,8 @@ function PrizeRow({
   const [changing, setChanging] = React.useState(false);
   const open = prize.state === "choose" || prize.state === "ready";
   const left = daysLeft(prize.expiresAt);
-  const Icon = STATE_ICON[prize.state];
+  const Icon =
+    prize.kind === "product" && open ? Package : STATE_ICON[prize.state];
 
   return (
     <li
@@ -61,9 +62,14 @@ function PrizeRow({
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-bold">
-            {prize.bundleName ?? prize.label}
-            {prize.gender && (
-              <span className="text-muted-foreground font-normal"> · 2мл</span>
+            {prize.kind === "product"
+              ? (prize.productName ?? prize.label)
+              : (prize.bundleName ?? prize.label)}
+            {(prize.kind === "product" ? prize.ml : prize.gender && 2) && (
+              <span className="text-muted-foreground font-normal">
+                {" "}
+                · {prize.kind === "product" ? prize.ml : 2}мл
+              </span>
             )}
           </p>
           <p className="text-muted-foreground text-xs">
@@ -77,7 +83,7 @@ function PrizeRow({
             {!open && <> · {formatDate(prize.wonAt)}</>}
           </p>
         </div>
-        {prize.state === "ready" && !changing && (
+        {prize.state === "ready" && prize.kind === "bundle" && !changing && (
           <button
             type="button"
             onClick={() => setChanging(true)}
@@ -110,8 +116,9 @@ function PrizeRow({
 }
 
 /**
- * «Миний шагнал» — the grand prizes this customer has won and where each one
- * is. Renders nothing for a customer who has never won one.
+ * «Миний шагнал» — the physical prizes this customer has won (grand bundles,
+ * products) and where each one is. Renders nothing for a customer who has
+ * never won one.
  */
 export function MyGrandPrizes({
   signedIn,

@@ -1,7 +1,9 @@
 import type { GrandPrizeState } from "./types";
 
-/** The columns of a `bundle` spin that decide where its prize is (0165). */
+/** The columns of a physical-prize spin that decide where it is (0165/0170). */
 export interface GrandPrizeRow {
+  /** `product` prizes are ready from the start — there is nothing to pick. */
+  kind?: string;
   bundle_collection_id: string | null;
   claim_order_id: string | null;
   fulfilled_at: string | null;
@@ -21,7 +23,9 @@ export function grandPrizeState(
   if (row.fulfilled_at) return "delivered";
   if (row.claim_order_id) return "in_order";
   if (row.expires_at && new Date(row.expires_at) <= now) return "expired";
-  return row.bundle_collection_id ? "ready" : "choose";
+  return row.kind === "product" || row.bundle_collection_id
+    ? "ready"
+    : "choose";
 }
 
 /** Still waiting on the customer — the states that count as «a prize to get». */

@@ -29,6 +29,19 @@ describe("grandPrizeState", () => {
     ).toBe("delivered");
   });
 
+  it("a product prize (0170) has nothing to pick — ready from the start", () => {
+    expect(grandPrizeState({ ...row, kind: "product" }, NOW)).toBe("ready");
+    expect(
+      grandPrizeState({ ...row, kind: "product", claim_order_id: "o" }, NOW),
+    ).toBe("in_order");
+    expect(
+      grandPrizeState(
+        { ...row, kind: "product", expires_at: "2026-10-01T00:00:00Z" },
+        NOW,
+      ),
+    ).toBe("expired");
+  });
+
   it("expires only while it is still waiting on the customer", () => {
     const past = { ...row, expires_at: "2026-10-01T00:00:00Z" };
     expect(grandPrizeState(past, NOW)).toBe("expired");
