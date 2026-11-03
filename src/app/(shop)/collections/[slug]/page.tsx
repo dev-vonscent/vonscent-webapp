@@ -23,6 +23,7 @@ import {
 import { getCollectionBySlug } from "@/features/collections/api";
 import { CollectionDetail } from "@/features/collections/components/collection-detail";
 import { ProductGallery } from "@/features/products/components/product-gallery";
+import { TrackViewItem } from "@/features/products/components/track-view-item";
 import type { ProductImage } from "@/lib/types";
 import { GENDER_LABEL } from "@/lib/constants";
 import { formatDiscountRange } from "@/features/collections/pricing";
@@ -130,6 +131,14 @@ export default async function CollectionPage({
           </div>
 
           <CollectionDetail collection={collection} />
+          {/* Барааны хуудсын адил ViewContent — багц үзсэн зочин ч retargeting
+              audience-д орно. */}
+          <TrackViewItem
+            id={collection.id}
+            name={collection.name}
+            brand="vonscent"
+            price={collection.startingPrice}
+          />
 
           {/* Дан усных шиг accordion (клиент, 2026-09 UG; 0106). Тайлбар нь
               өмнө нь хэмжээний доор эвхэгддэг догол мөр байсан — одоо

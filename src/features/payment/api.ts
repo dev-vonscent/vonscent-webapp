@@ -91,6 +91,7 @@ export async function paymentLines(
   const imageById = new Map(products.map((p) => [p.id, p.image?.url ?? null]));
 
   return rows.map((r) => ({
+    productId: r.product_id,
     name: r.product_name,
     brand: r.brand,
     ml: r.ml,

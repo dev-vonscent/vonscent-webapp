@@ -16,7 +16,7 @@ import { useCart } from "@/features/cart/store";
 import { cartMlFor } from "@/features/cart/budget";
 import { maxUnits } from "@/features/products/sellable";
 import { bestValueOf } from "@/features/products/best-value";
-import { trackAddToCart, trackBeginCheckout } from "@/lib/analytics";
+import { trackAddToCart } from "@/lib/analytics";
 import type { ProductDetail } from "@/lib/types";
 
 export function ProductPurchase({ product }: { product: ProductDetail }) {
@@ -155,20 +155,9 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
    */
   function onBuyNow() {
     if (!addToCart("buy-now")) return;
-    if (selected) {
-      trackBeginCheckout(
-        [
-          {
-            id: product.id,
-            name: `${product.name} ${selected.ml}ml`,
-            brand: product.brand,
-            price: unitPrice,
-            quantity: qty,
-          },
-        ],
-        unitPrice * qty,
-      );
-    }
+    // InitiateCheckout-ыг энд БҮҮ явуул: checkout хуудас нээгдэхдээ buy-now
+    // мөрийг оруулаад нэг удаа явуулдаг (`checkout/page.tsx`). Энд явуулбал
+    // нэг худалдан авалт хоёр InitiateCheckout болж тоологддог байв.
     router.push("/checkout");
   }
 

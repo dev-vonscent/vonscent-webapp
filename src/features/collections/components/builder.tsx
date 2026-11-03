@@ -18,6 +18,7 @@ import {
   DEFAULT_BUNDLE_ML,
 } from "@/lib/constants";
 import { useCart } from "@/features/cart/store";
+import { trackAddToCart } from "@/lib/analytics";
 import { CatalogFilters } from "@/features/catalog/components/catalog-filters";
 import { CatalogFilterSheet } from "@/features/catalog/components/catalog-filter-sheet";
 import { CatalogSort } from "@/features/catalog/components/catalog-sort";
@@ -147,6 +148,14 @@ function BuilderInner({
         price: p.variantByMl[ml].price,
       })),
       unitPrice: price,
+    });
+    // Өөрөө угсарсан багц санд id-гүй — checkout-ын begin_checkout-тай
+    // адил `slug` ("custom")-ийг id болгоно.
+    trackAddToCart({
+      id: "custom",
+      name: `${name.trim() || "Миний багц"} ${ml}ml`,
+      brand: "vonscent",
+      price,
     });
 
     if (save && isLoggedIn && name.trim()) {
