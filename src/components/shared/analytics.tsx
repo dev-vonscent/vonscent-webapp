@@ -8,6 +8,12 @@ import { env } from "@/lib/env";
  *
  * GA4 loads through @next/third-parties, which schedules the gtag script
  * off the critical path and still exposes window.gtag for lib/analytics.ts.
+ *
+ * Pixel `autoConfig: false` — `init`-ээс ӨМНӨ байх ёстой. Үгүй бол pixel товч
+ * бүрийн дарилтыг `SubscribedButtonClick` болгож, хуудасны metadata-г өөрөө
+ * илгээдэг. Event-үүдийг бид `lib/analytics.ts`-ээр тодорхой явуулдаг тул
+ * эдгээр нь зөвхөн шуугиан, Events Manager-ийн «Automatic events» toggle
+ * үүнийг унтраадаггүй.
  */
 export function Analytics() {
   return (
@@ -25,6 +31,7 @@ export function Analytics() {
             t.src=v;s=b.getElementsByTagName(e)[0];
             s.parentNode.insertBefore(t,s)}(window,document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('set', 'autoConfig', false, '${env.metaPixelId}');
             fbq('init', '${env.metaPixelId}');
             fbq('track', 'PageView');
           `}
