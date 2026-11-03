@@ -120,7 +120,7 @@ export const HOME_CAMPAIGNS: readonly HomeCampaign[] = [
     mobileDescription: "Бүтнээр нь авалгүй хямд өртгөөр туршаарай.",
     // Текст нь cold-season-тэй ижил — зөвхөн зураг солигдоно.
     primary: {
-      label: "Сонголтыг үзэх",
+      label: "Өвлийн үнэртэн",
       href: "/catalog?kind=perfume&season=winter",
     },
     secondary: { label: "Бүх үнэртэн", href: "/catalog" },
@@ -137,7 +137,7 @@ export const HOME_CAMPAIGNS: readonly HomeCampaign[] = [
     mobileDescription: "Бүтнээр нь авалгүй хямд өртгөөр туршаарай.",
     // Текст нь cold-season-тэй ижил — зөвхөн зураг солигдоно.
     primary: {
-      label: "Сонголтыг үзэх",
+      label: "Өвлийн үнэртэн",
       href: "/catalog?kind=perfume&season=winter",
     },
     secondary: { label: "Бүх үнэртэн", href: "/catalog" },
@@ -155,7 +155,7 @@ export const HOME_CAMPAIGNS: readonly HomeCampaign[] = [
     // Дан ус + өвөл: бараг бүх өвлийн ус «намар+өвөл» тагтай тул «өвөл»
     // дангаараа хангалттай; багцад улирал байхгүй (клиент, 2026-10-26).
     primary: {
-      label: "Сонголтыг үзэх",
+      label: "Өвлийн үнэртэн",
       href: "/catalog?kind=perfume&season=winter",
     },
     secondary: { label: "Бүх үнэртэн", href: "/catalog" },
