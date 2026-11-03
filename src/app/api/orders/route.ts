@@ -23,6 +23,7 @@ import { RESERVE_TIMEOUT_MINUTES, SHIPPING_ZONES } from "@/lib/constants";
 import { isQpayMockMode } from "@/lib/payments/qpay";
 import { ensureInvoice } from "@/lib/payments/invoice";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
+import { captureOrderContext } from "@/lib/meta/capi";
 import { earliestDeliveryDay, latestDeliveryDay } from "@/lib/time";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import {
@@ -381,6 +382,10 @@ export async function POST(req: Request) {
     if (input.requestId && order) {
       await completeOrderRequest(supabase, input.requestId, order.id);
     }
+
+    // Meta CAPI-д (`meta_capi` туг): төлбөр батлагдахад серверийн Purchase-ийг
+    // browser-ынхтой тааруулах cookie/IP/UA. Туг хаалттай бол юу ч бичихгүй.
+    if (order) await captureOrderContext(supabase, order.id, req);
 
     // «Дараа захиалах» нь бүртгэлд хадгалагддаг тул зочинд хуулбар хэрэггүй.
     const snapshot = userId && order ? parseSnapshot(body) : null;

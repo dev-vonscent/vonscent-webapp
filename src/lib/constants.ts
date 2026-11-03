@@ -798,7 +798,19 @@ export const FEATURE_FLAGS = {
     description:
       "Админ → Каталог → Хямдрал (/admin/sales, /api/admin/sales): олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал тавих/цуцлах ба барааны үнийн хүснэгтэд эхлэх/дуусах хугацаа (0166: apply_bulk_sale, clear_bulk_sale). Хугацаа дуусмагц үнэ өөрөө энгийн болно. Багц хамаарахгүй, хэрэглэгчийн талд шинэ хуудас байхгүй.",
   },
+  meta_capi: {
+    label: "Meta Conversions API",
+    description:
+      "Төлбөр баталгаажих мөчид (QPay болон гараар баталсан) Purchase event-ийг серверээс Meta руу илгээнэ — browser pixel-ийн алдагдсан худалдан авалтыг нөхнө (lib/meta/capi.ts). Захиалга үүсэхэд _fbp/_fbc cookie, IP, user agent-ийг захиалга дээр хадгална (0171). Утас, имэйлийг SHA-256 hash хийж явуулна. META_CAPI_ACCESS_TOKEN env шаардлагатай.",
+  },
 } as const satisfies Record<string, FeatureFlagMeta>;
+
+/**
+ * Meta Graph API-ийн хувилбар (Conversions API). v26.0 нь 2026-07-29-нд
+ * гарсан; хувилбар нь дараагийнх гарснаас 2 жилийн дараа хаагддаг тул
+ * жилд нэг удаа changelog-оос шалгаж ахиулна.
+ */
+export const META_GRAPH_API_VERSION = "v26.0";
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
 

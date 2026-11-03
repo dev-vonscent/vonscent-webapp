@@ -34,6 +34,20 @@ export const env = {
   gaId: process.env.NEXT_PUBLIC_GA_ID ?? "",
   metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "",
 
+  /**
+   * Server-only. Meta Conversions API-ийн access token (Events Manager →
+   * Dataset → Settings → Generate access token). Тавигдаагүй бол CAPI юу ч
+   * илгээхгүй — `meta_capi` туг асаалттай байсан ч.
+   */
+  metaCapiToken: process.env.META_CAPI_ACCESS_TOKEN ?? "",
+
+  /**
+   * Сонголтоор. Events Manager → Test events-ийн код (TEST12345). Тавьсан үед
+   * CAPI event бодит статистикт орохгүй, зөвхөн Test events-д харагдана —
+   * dev/preview-д. Production-д ХЭЗЭЭ Ч бүү тавь.
+   */
+  metaCapiTestEventCode: process.env.META_CAPI_TEST_EVENT_CODE ?? "",
+
   /** OpenAI (gpt-image-2) — server-only, AI product-image generation. */
   openaiKey: process.env.OPENAI_API_KEY ?? "",
 

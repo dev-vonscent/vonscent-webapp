@@ -63,6 +63,7 @@ function view(over: Partial<PaymentView> = {}): PaymentView {
     total: 45000,
     lines: [
       {
+        productId: "p-floral",
         name: "Floral",
         brand: "Coach",
         ml: 5,

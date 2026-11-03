@@ -25,8 +25,13 @@ function ga(event: string, params: Record<string, unknown>) {
   window.gtag?.("event", event, params);
 }
 
-function pixel(event: string, params: Record<string, unknown>) {
-  window.fbq?.("track", event, params);
+function pixel(
+  event: string,
+  params: Record<string, unknown>,
+  eventId?: string,
+) {
+  if (eventId) window.fbq?.("track", event, params, { eventID: eventId });
+  else window.fbq?.("track", event, params);
 }
 
 // GA4 has no MNT (support.google.com/analytics/answer/9796179), so an MNT
@@ -112,12 +117,19 @@ export function trackPurchase(
     value,
     items: gaItems(items),
   });
-  pixel("Purchase", {
-    content_ids: items.map((i) => i.id),
-    content_type: "product",
-    value,
-    currency: PIXEL_CURRENCY,
-  });
+  // eventID = order_no: серверийн CAPI Purchase (lib/meta/capi.ts) ижил
+  // id-тай тул Meta хоёуланг нь хүлээн авбал нэг л удаа тоолно.
+  pixel(
+    "Purchase",
+    {
+      content_ids: [...new Set(items.map((i) => i.id))],
+      content_type: "product",
+      num_items: items.reduce((n, i) => n + (i.quantity ?? 1), 0),
+      value,
+      currency: PIXEL_CURRENCY,
+    },
+    orderNo,
+  );
 }
 
 /** Чатын товч дарагдсан тоо — хэдэн хүн админтай холбогдохыг оролдсоныг хэмжинэ. */
