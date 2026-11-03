@@ -74,6 +74,23 @@ export function trackAddToCart(item: TrackedItem) {
   });
 }
 
+/**
+ * Олон мөр нэг дор сагсанд орох үйлдэл («Бүгдийг сагслах», «Дахин захиалах»)
+ * — мөр бүрт тусдаа биш, нэг AddToCart event.
+ */
+export function trackAddToCartMany(items: TrackedItem[]) {
+  if (items.length === 0) return;
+  const value = items.reduce((sum, i) => sum + i.price * (i.quantity ?? 1), 0);
+  ga("add_to_cart", { currency: GA_CURRENCY, value, items: gaItems(items) });
+  pixel("AddToCart", {
+    content_ids: items.map((i) => i.id),
+    content_type: "product",
+    num_items: items.reduce((n, i) => n + (i.quantity ?? 1), 0),
+    value,
+    currency: PIXEL_CURRENCY,
+  });
+}
+
 export function trackBeginCheckout(items: TrackedItem[], value: number) {
   ga("begin_checkout", { currency: GA_CURRENCY, value, items: gaItems(items) });
   pixel("InitiateCheckout", {

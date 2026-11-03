@@ -13,6 +13,7 @@ import type { Collection } from "@/features/collections/types";
 import { useWishlist } from "@/features/wishlist/store";
 import { useCart } from "@/features/cart/store";
 import { formatPrice } from "@/lib/format";
+import { trackAddToCartMany } from "@/lib/analytics";
 import type { ProductDetail } from "@/lib/types";
 import { isAddable, wishlistCartLines } from "@/features/wishlist/cart-lines";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -101,6 +102,14 @@ export default function WishlistPage() {
   function addAllToCart() {
     const lines = wishlistCartLines(items);
     for (const line of lines) addToCart(line);
+    trackAddToCartMany(
+      lines.map((l) => ({
+        id: l.productId,
+        name: `${l.name} ${l.ml}ml`,
+        brand: l.brand,
+        price: l.unitPrice,
+      })),
+    );
     if (lines.length > 0) setAddedAll(true);
   }
 

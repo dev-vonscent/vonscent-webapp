@@ -12,6 +12,7 @@ import { requestAbandon } from "@/features/payment/abandon";
 import { clearPendingOrder } from "@/features/checkout/pending-order";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { toast } from "@/lib/toast";
+import { trackAddToCartMany } from "@/lib/analytics";
 
 export type ReorderItem = Omit<CartItem, "key" | "qty"> & { qty: number };
 
@@ -93,6 +94,15 @@ export function OrderActions({
     for (const { qty, ...item } of items) {
       add(item, qty);
     }
+    trackAddToCartMany(
+      items.map((i) => ({
+        id: i.productId,
+        name: `${i.name} ${i.ml}ml`,
+        brand: i.brand,
+        price: i.unitPrice,
+        quantity: i.qty,
+      })),
+    );
     router.push("/cart");
   }
 
