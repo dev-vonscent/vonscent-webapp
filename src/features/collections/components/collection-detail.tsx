@@ -12,7 +12,7 @@ import {
   MobileBuyBar,
   useScrolledPast,
 } from "@/components/shared/mobile-buy-bar";
-import { trackBeginCheckout } from "@/lib/analytics";
+import { trackAddToCart, trackBeginCheckout } from "@/lib/analytics";
 import type { Collection } from "../types";
 import { toCartCollection } from "../to-cart";
 import { CollectionSizePicker } from "./collection-size-picker";
@@ -65,6 +65,14 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
 
   function onAdd() {
     if (!addToCart()) return;
+    if (priceRow) {
+      trackAddToCart({
+        id: collection.id,
+        name: `${collection.name} ${ml}ml`,
+        brand: "vonscent",
+        price: priceRow.price,
+      });
+    }
     setAdded(true);
     if (addedTimer.current) clearTimeout(addedTimer.current);
     addedTimer.current = setTimeout(() => setAdded(false), 2000);

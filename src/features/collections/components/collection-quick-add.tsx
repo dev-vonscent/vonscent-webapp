@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
+import { trackAddToCart } from "@/lib/analytics";
 import { toCartCollection } from "../to-cart";
 import { CollectionSizePicker } from "./collection-size-picker";
 import type { Collection } from "../types";
@@ -43,6 +44,12 @@ export function CollectionQuickAdd({
   function onAdd() {
     if (!priceRow || !available) return;
     addCollection(toCartCollection(collection, priceRow));
+    trackAddToCart({
+      id: collection.id,
+      name: `${collection.name} ${ml}ml`,
+      brand: "vonscent",
+      price: priceRow.price,
+    });
     setAdded(true);
     setTimeout(() => {
       setAdded(false);

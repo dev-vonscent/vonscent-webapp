@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
+import { trackAddToCart } from "@/lib/analytics";
 import type { Collection } from "../types";
 import { EmptyState } from "@/components/shared/empty-state";
 
@@ -47,6 +48,12 @@ function Card({ collection }: { collection: Collection }) {
         price: m.variantByMl[ml].price,
       })),
       unitPrice: priceRow.price,
+    });
+    trackAddToCart({
+      id: collection.id,
+      name: `${collection.name} ${ml}ml`,
+      brand: "vonscent",
+      price: priceRow.price,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
