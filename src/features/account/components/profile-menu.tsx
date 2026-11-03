@@ -33,6 +33,7 @@ import { useNewBadge } from "@/features/account/use-new-badge";
 import { COUPONS_NEW_BADGE_UNTIL } from "@/lib/constants";
 import { useFeatureFlag } from "@/components/feature-flags";
 import { TierAvatar } from "@/features/tiers/components/tier-avatar";
+import { tierFrameSlot } from "@/features/tiers/components/tier-frame";
 import { useMyTier } from "@/features/tiers/use-tier";
 
 export function ProfileMenu() {
@@ -43,6 +44,10 @@ export function ProfileMenu() {
   const { profile, loading, configured } = useProfileSummary();
   const isStaff = useIsStaff();
   const wheelOn = useFeatureFlag("lucky_wheel");
+  // Түвшинг цэс нээгдэхээс өмнө ачаална (зөвхөн нэвтэрсэн үед) — цэсний
+  // толгой дахь хүрээ нээгдэх мөчид бэлэн, кэш нь header-тай хамт амьд.
+  // Mobile цэс ч ижил query key-г хуваалцана (энэ компонент утсан дээр ч mount).
+  useMyTier({ enabled: !!profile });
 
   const name = profile?.name ?? "Зочин";
   const initial = (profile?.name || profile?.handle || "?")
@@ -224,7 +229,9 @@ export function ProfileMenu() {
 
 /**
  * Цэсний толгойн зураг — түвшний хүрээтэй (feature flag `user_tiers`).
- * Цэс нээгдэх үед л mount болох тул түвшний хүсэлт хуудас бүрд явахгүй.
+ * Түвшин мэдэгдсэн бол хүрээ нь өөрийн хэмжээгээр (илүү зайгүй). Ачаалж
+ * байх ховор агшинд (header урьдчилан ачаалдаг) хамгийн түгээмэл Standard
+ * хүрээний зайг гаргана — нээгдэх мөчид цэс үсрэхгүй.
  */
 export function MenuAvatar({
   src,
@@ -235,6 +242,19 @@ export function MenuAvatar({
   name: string;
   size: number;
 }) {
-  const { data } = useMyTier();
-  return <TierAvatar tier={data?.tier} src={src} name={name} size={size} />;
+  const flagOn = useFeatureFlag("user_tiers");
+  const { data, isPending } = useMyTier();
+  const avatar = (
+    <TierAvatar tier={data?.tier} src={src} name={name} size={size} />
+  );
+  if (!flagOn || !isPending) return avatar;
+  const slot = tierFrameSlot(size, "standard");
+  return (
+    <span
+      className="flex shrink-0 items-center justify-center"
+      style={{ width: slot.width, height: slot.height }}
+    >
+      {avatar}
+    </span>
+  );
 }
