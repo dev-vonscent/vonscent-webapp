@@ -13,6 +13,7 @@ import { formatPrice, formatMl } from "@/lib/format";
 import { deliveryDayOf, formatDeliveryDay } from "@/lib/time";
 import { env } from "@/lib/env";
 import { orderSummaryRows, summarySource } from "@/lib/orders/summary";
+import { reportPurchase } from "@/lib/meta/capi";
 
 /**
  * Committing a payment.
@@ -125,6 +126,9 @@ async function commit(
   // өөрөө дуудна. Тэр нь `mark_order_paid`-ийн UPDATE-ийн дотор явдаг тул
   // энэ мөрөнд хүрэхэд купон аль хэдийн бэлэн — имэйл түүнийг уншина.
   await sendOrderCustomerEmail(order.id, "paid");
+  // Meta CAPI Purchase (`meta_capi` туг, 0171) — browser pixel алдсан
+  // худалдан авалтыг нөхнө. Best-effort, дотроо туг/env/mock-ийг шалгана.
+  await reportPurchase(supabase, order.id, source);
   return { ok: true };
 }
 
