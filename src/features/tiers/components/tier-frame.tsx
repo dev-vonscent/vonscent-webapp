@@ -103,6 +103,16 @@ const FRAME_IMAGES: Record<UserTierKey, FrameImage> = {
   },
 };
 
+/**
+ * Тухайн түвшний хүрээний хэмжээ (px) — түвшин ачаалагдаж байхад зай
+ * гаргахад (профайл цэс). Хүрээний өргөн = аватар / (2r), өндөр = өргөн × aspect.
+ */
+export function tierFrameSlot(avatarSize: number, tier: UserTierKey) {
+  const frame = FRAME_IMAGES[tier];
+  const width = avatarSize / (2 * frame.r);
+  return { width: Math.ceil(width), height: Math.ceil(width * frame.aspect) };
+}
+
 const pct = (n: number) => `${(n * 100).toFixed(3)}%`;
 
 const SPARK_PATH =
