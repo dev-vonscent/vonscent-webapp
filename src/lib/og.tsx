@@ -206,7 +206,7 @@ export interface OgCardProps {
   chip?: { text: string; dot?: string };
   /** One muted line under the name — collection members. */
   subline?: string;
-  /** «17,000₮» — followed by a muted «-с эхлэн». */
+  /** «17,000₮» — followed by a muted «-с эхэлнэ». */
   price?: string;
   /** Plain line instead of a price (blog date). */
   note?: string;
@@ -283,7 +283,7 @@ function textOf(p: OgCardProps) {
     p.note,
     p.sizesLabel?.toUpperCase(),
     sizes,
-    "-с эхлэнДууссанУдахгүй дахин нэмэгдэнэХЭМЖЭЭ СОНГОХ",
+    "-с эхэлнэДууссанУдахгүй дахин нэмэгдэнэХЭМЖЭЭ СОНГОХ",
   ]
     .filter(Boolean)
     .join("");
@@ -521,7 +521,7 @@ async function ogCard(p: OgCardProps): Promise<ImageResponse> {
                   paddingBottom: 9,
                 }}
               >
-                -с эхлэн
+                -с эхэлнэ
               </div>
             </div>
           ) : p.note ? (
