@@ -21,7 +21,9 @@ function track3d(page: Page) {
 
 async function exercise(page: Page) {
   await page.goto("/");
-  const hero = page.locator("section[aria-labelledby='home-hero-title']");
+  const hero = page
+    .locator("section[aria-labelledby='home-hero-title']")
+    .filter({ visible: true });
   await expect(hero).toBeVisible({ timeout: 60_000 });
   await hero.hover();
   await page.mouse.wheel(0, 1500);
@@ -46,7 +48,9 @@ test.describe("хүрэлтийн дэлгэц", () => {
   test("hero-г хүрсэн ч 3D ачаалагдахгүй", async ({ page }) => {
     const requests = track3d(page);
     await page.goto("/");
-    const hero = page.locator("section[aria-labelledby='home-hero-title']");
+    const hero = page
+      .locator("section[aria-labelledby='home-hero-title']")
+      .filter({ visible: true });
     await expect(hero).toBeVisible({ timeout: 60_000 });
     await hero.locator("h1").tap();
     await page.waitForTimeout(1500);
