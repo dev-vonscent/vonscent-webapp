@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { animate, motion, useReducedMotion } from "motion/react";
+import { animate, MotionConfig, motion, useReducedMotion } from "motion/react";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { SegmentedTabs } from "@/components/shared/segmented-tabs";
@@ -39,57 +39,61 @@ export function TopCustomers({
   useStickyMinHeight(panelRef);
 
   return (
-    <section className="bg-card relative space-y-6 overflow-hidden rounded-2xl p-5 sm:space-y-8 sm:p-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
-        <div className="min-w-0">
-          <h2
-            className={cn(
-              "font-serif text-xl font-semibold tracking-tight",
-              headingClassName,
-            )}
-          >
-            Top 3 хэрэглэгч
-          </h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Хамгийн их худалдан авалт хийсэн хэрэглэгчид
-          </p>
+    // Түвшний хуудас (account) shop template-ийн MotionConfig-оос гадуур —
+    // motion унтраасан хэрэглэгчид тавцан өсөх хөдөлгөөнийг энд ч унтраана.
+    <MotionConfig reducedMotion="user">
+      <section className="bg-card relative space-y-6 overflow-hidden rounded-2xl p-5 sm:space-y-8 sm:p-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+          <div className="min-w-0">
+            <h2
+              className={cn(
+                "font-serif text-xl font-semibold tracking-tight",
+                headingClassName,
+              )}
+            >
+              Top 3 хэрэглэгч
+            </h2>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Хамгийн их худалдан авалт хийсэн хэрэглэгчид
+            </p>
+          </div>
+          <SegmentedTabs
+            label="Хугацаа"
+            tabs={LEADERBOARD_PERIODS.map((p) => ({
+              value: p.key,
+              label: p.label,
+            }))}
+            value={period}
+            onChange={setPeriod}
+            className="shrink-0 sm:inline-flex"
+          />
         </div>
-        <SegmentedTabs
-          label="Хугацаа"
-          tabs={LEADERBOARD_PERIODS.map((p) => ({
-            value: p.key,
-            label: p.label,
-          }))}
-          value={period}
-          onChange={setPeriod}
-          className="shrink-0 sm:inline-flex"
-        />
-      </div>
 
-      {/* Табаас хамаарч өндөр өөр (нэр мөр шилжих, сул байр, мессеж) —
+        {/* Табаас хамаарч өндөр өөр (нэр мөр шилжих, сул байр, мессеж) —
           хуудасны доод хэсэгт байхад агшвал browser scroll-ыг дээш татдаг. */}
-      <div ref={panelRef} className="space-y-6 sm:space-y-8">
-        {showMe && (
-          <p className="text-muted-foreground bg-secondary rounded-xl px-4 py-3 text-center text-sm">
-            {board.me ? (
-              <>
-                Таны байр{" "}
-                <span className="text-foreground font-semibold">
-                  #{board.me.rank}
-                </span>{" "}
-                — шилдэг гуравт ойртож байна!
-              </>
-            ) : board.top.some((e) => e.isMe) ? (
-              "Та шилдэг гуравт байна — байраа хадгалаарай!"
-            ) : (
-              "Энэ хугацаанд захиалга хийгээд жагсаалтад нэрээ гаргаарай."
-            )}
-          </p>
-        )}
+        <div ref={panelRef} className="space-y-6 sm:space-y-8">
+          {showMe && (
+            <p className="text-muted-foreground bg-secondary rounded-xl px-4 py-3 text-center text-sm">
+              {board.me ? (
+                <>
+                  Таны байр{" "}
+                  <span className="text-foreground font-semibold">
+                    #{board.me.rank}
+                  </span>{" "}
+                  — шилдэг гуравт ойртож байна!
+                </>
+              ) : board.top.some((e) => e.isMe) ? (
+                "Та шилдэг гуравт байна — байраа хадгалаарай!"
+              ) : (
+                "Энэ хугацаанд захиалга хийгээд жагсаалтад нэрээ гаргаарай."
+              )}
+            </p>
+          )}
 
-        <Podium key={period} board={board} myAvatar={myAvatar} />
-      </div>
-    </section>
+          <Podium key={period} board={board} myAvatar={myAvatar} />
+        </div>
+      </section>
+    </MotionConfig>
   );
 }
 
@@ -288,7 +292,8 @@ function Podium({
 function CountUpPrice({ value, delay }: { value: number; delay: number }) {
   const ref = React.useRef<HTMLSpanElement>(null);
   const reduceMotion = useReducedMotion();
-  React.useEffect(() => {
+  // Layout effect: paint-аас өмнө — reduced motion үед «0₮» анивчихгүй.
+  React.useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (reduceMotion) {
