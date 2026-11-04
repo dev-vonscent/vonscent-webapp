@@ -1,7 +1,7 @@
 import "server-only";
 import { createPublicClient } from "@/lib/supabase/public";
 import { callRpc } from "@/lib/supabase/rpc";
-import { SEARCH_LIMIT_PER_KIND } from "@/lib/constants";
+import { SEARCH_LIMIT_PER_KIND, SEARCH_PRODUCT_LIMIT } from "@/lib/constants";
 import { isSearchable, matchesSearch, searchTerms } from "@/lib/search";
 import { SEED_PRODUCTS } from "@/features/products/seed";
 import {
@@ -72,22 +72,42 @@ function toHit(row: SearchRow): SearchHit {
   };
 }
 
+/**
+ * Төрөл бүрийн хязгаар. `limit` өгөөгүй (глобал панель) бол бараа
+ * `SEARCH_PRODUCT_LIMIT`, бусад нь `SEARCH_LIMIT_PER_KIND`; өгсөн бол бүх
+ * төрөлд ижил. 1…20 мужид хавчина.
+ */
+export function searchLimits(limit?: number): {
+  product: number;
+  other: number;
+} {
+  const clamp = (n: number) => Math.min(Math.max(Math.trunc(n), 1), 20);
+  return limit === undefined
+    ? {
+        product: clamp(SEARCH_PRODUCT_LIMIT),
+        other: clamp(SEARCH_LIMIT_PER_KIND),
+      }
+    : { product: clamp(limit), other: clamp(limit) };
+}
+
 export async function globalSearch(
   query: string,
-  limitPerKind: number = SEARCH_LIMIT_PER_KIND,
+  limit?: number,
 ): Promise<SearchResults> {
   if (!isSearchable(query)) return EMPTY_SEARCH_RESULTS;
   const terms = searchTerms(query);
+  const limits = searchLimits(limit);
 
   const supabase = createPublicClient();
-  if (!supabase) return seedSearch(query, limitPerKind);
+  if (!supabase) return seedSearch(query, limits.product);
 
   const { data, error } = await callRpc<SearchRow[]>(
     supabase,
     "global_search",
     {
       p_terms: terms,
-      p_limit: Math.min(Math.max(limitPerKind, 1), 20),
+      // RPC нэг хязгаартай — хамгийн томоор авч, төрөл бүрийг доор таслана.
+      p_limit: Math.max(limits.product, limits.other),
     },
   );
   if (error || !data) return EMPTY_SEARCH_RESULTS;
@@ -103,7 +123,9 @@ export async function globalSearch(
     // хэвээр үлдээв: хуудсыг эргүүлж нээхэд энэ шүүлтийг л авна).
     if (row.kind === "post") continue;
     // RPC эрэмбэлж өгсөн — дараалал нь хэвээр.
-    results[row.kind]?.push(toHit(row));
+    const bucket = results[row.kind];
+    const max = row.kind === "product" ? limits.product : limits.other;
+    if (bucket && bucket.length < max) bucket.push(toHit(row));
   }
   return results;
 }
