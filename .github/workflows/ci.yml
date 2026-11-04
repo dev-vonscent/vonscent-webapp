@@ -51,11 +51,11 @@ jobs:
       - name: Test
         run: pnpm test
 
-  # E2E нь дотроо `pnpm build && pnpm start` хийдэг (playwright.config.ts) тул
-  # хамаагүй урт. `check` унасан үед ажиллуулах нь runner-ийн цаг дэмий үрэх
-  # болно.
+  # E2E нь дотроо `pnpm build && pnpm start` хийдэг (playwright.config.ts).
+  # `check`-тэй ЗЭРЭГ ажиллана: өмнө нь `needs: check`-ээр дараалуулдаг байсан
+  # тул жижиг PR ч ~5.5 минут хүлээдэг байв. `check` унасан үед e2e-ийн
+  # runner-ийн цаг дэмий зарцуулагдах ч хариу хурдан ирэх нь илүү чухал.
   e2e:
-    needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
