@@ -9,6 +9,7 @@ import {
   getCollectionPriceBounds,
 } from "@/features/collections/api";
 import { parseFilters } from "@/features/catalog/parse";
+import { catalogCanonical } from "@/features/catalog/canonical";
 import { preferredStatuses } from "@/features/products/card-status";
 import { CatalogFilters } from "@/features/catalog/components/catalog-filters";
 import { CatalogFilterSheet } from "@/features/catalog/components/catalog-filter-sheet";
@@ -31,10 +32,27 @@ import { isFeatureEnabled } from "@/lib/feature-flags";
  */
 export const revalidate = 60;
 
-export const metadata: Metadata = {
-  ...pageMetadata("/catalog", { title: "Каталог" }),
-  description: "Бүх үнэртэн — брэнд, хүйс, үнэрийн төрлөөр шүүж сонгоорой.",
-};
+/**
+ * Canonical нь `catalogCanonical`-аас: шүүлтүүргүй `?page=N` өөрийгөө,
+ * бусад нь `/catalog`. Сүүлчийн хуудсыг мэдэхийн тулд шүүлтүүргүй эхний
+ * хуудсыг асууна — `/catalog`-ийн өөрийн дуудлагатай ижил cache түлхүүр.
+ */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  const params = await searchParams;
+  const { total } = await getCatalog({
+    ...parseFilters({}),
+    perPage: CATALOG_PAGE_SIZE,
+  });
+  const lastPage = Math.max(1, Math.ceil(total / CATALOG_PAGE_SIZE));
+  return {
+    ...pageMetadata(catalogCanonical(params, lastPage), { title: "Каталог" }),
+    description: "Бүх үнэртэн — брэнд, хүйс, үнэрийн төрлөөр шүүж сонгоорой.",
+  };
+}
 
 export default async function CatalogPage({
   searchParams,
