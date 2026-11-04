@@ -1,7 +1,7 @@
 # Google хайлтын thumbnail (1:1)
 
-**Файл:** `public/og-image-square.jpg` — **1200×1200 (1:1)**, JPEG q85, < 200 kB.
-**Ашиглалт:** вэб дээр хаана ч харагдахгүй. Нүүр хуудасны JSON-LD-д `primaryImageOfPage` + `image` болж, Google хайлтын үр дүнгийн баруун талын дөрвөлжин thumbnail-д гарна. Messenger/Facebook-ийн share зураг (`public/og-image.jpg`, 1.91:1) хэвээр үлдэнэ — энэ нь түүний дөрвөлжин хос.
+**Файл:** `public/og-share-square.jpg` — **1200×1200 (1:1)**, JPEG q85, < 200 kB.
+**Ашиглалт:** вэб дээр хаана ч харагдахгүй. Нүүр хуудасны JSON-LD-д `primaryImageOfPage` + `image` болж, Google хайлтын үр дүнгийн баруун талын дөрвөлжин thumbnail-д гарна. Messenger/Facebook-ийн share зураг (`public/og-share.jpg`, 1.91:1) хэвээр үлдэнэ — энэ нь түүний дөрвөлжин хос.
 **Model:** `gpt-image-1.5` (эсвэл `gpt-image-2`), size **1024×1024** (square), quality high → 1200×1200 болгож томруулна (доорх «Гаргасны дараа»).
 
 ## Зарчим
@@ -22,7 +22,7 @@
 
 ## Гаргасны дараа
 
-1. Томруулж хадгалах: `node -e "require('sharp')('<эх>.png').resize(1200,1200,{fit:'cover'}).jpeg({quality:85,mozjpeg:true}).toFile('public/og-image-square.jpg')"`
-2. 90px болгож харж шалгах: `node -e "require('sharp')('public/og-image-square.jpg').resize(92).toFile('/tmp/thumb-92.png')"` → 4 шил шат мэт танигдаж байвал болно.
+1. Томруулж хадгалах: `node -e "require('sharp')('<эх>.png').resize(1200,1200,{fit:'cover'}).jpeg({quality:85,mozjpeg:true}).toFile('public/og-share-square.jpg')"`
+2. 90px болгож харж шалгах: `node -e "require('sharp')('public/og-share-square.jpg').resize(92).toFile('/tmp/thumb-92.png')"` → 4 шил шат мэт танигдаж байвал болно.
 3. Код: `src/components/shared/json-ld.tsx`-д нүүр хуудасны `WebPage` entity нэмж `primaryImageOfPage` + `image: [square, og-image]` заана (Claude-д хэлбэл хийнэ).
 4. Deploy-н дараа Search Console → URL Inspection → `https://www.vonscent.mn` → **Request indexing**. <https://search.google.com/test/rich-results> дээр JSON-LD зөв уншигдаж байгааг шалгана.
