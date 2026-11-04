@@ -124,6 +124,16 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns,
     /**
+     * E2E (playwright.config.ts) зургийг шахахгүй, `public/` болон seed
+     * URL-аас шууд ачаална. `next start`-ын өөрийн optimizer CI дээр
+     * `/_next/image?url=/hero-mobile-*.webp` хүсэлтэд хааяа хариу өгөхгүй
+     * гацдаг. Тэгэхээр `load` event ирэхгүй, `page.goto` 30 секундэд унадаг.
+     * Retry бүр мөн л гацсан тэр сервер рүү очдог тул гараар rerun хийх
+     * хэрэг гардаг байв. Prod дээр `/_next/image`-ийг Vercel-ийн үйлчилгээ
+     * боловсруулдаг тул энэ замыг e2e-д шалгах шаардлагагүй.
+     */
+    unoptimized: process.env.E2E_UNOPTIMIZED_IMAGES === "1",
+    /**
      * Vercel bills a transformation on every cache MISS/STALE, so the knobs
      * below all aim at fewer variants and longer-lived cache entries.
      */

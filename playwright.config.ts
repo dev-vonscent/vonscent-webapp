@@ -28,6 +28,9 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_URL: "",
       NEXT_PUBLIC_SUPABASE_ANON_KEY: "",
       SUPABASE_SERVICE_ROLE_KEY: "",
+      // Next-ийн image optimizer-ийг унтраана (next.config.ts `images.unoptimized`).
+      // Build-ийн үед уншдаг тул энд тавина — `pnpm build` ч энэ env-тэй ажиллана.
+      E2E_UNOPTIMIZED_IMAGES: "1",
     },
   },
 });
