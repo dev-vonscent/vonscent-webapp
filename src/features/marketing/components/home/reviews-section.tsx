@@ -31,12 +31,12 @@ export async function ReviewsSection() {
         compact
         title="Худалдан авагчдын сэтгэгдэл"
       />
-      <ul className="grid gap-3 md:grid-cols-3 md:gap-4">
+      <ul className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
         {reviews.map((r) => (
-          <li key={r.id}>
+          <li key={r.id} className="min-w-0">
             <figure className="bg-card flex h-full flex-col gap-3 rounded-2xl p-4 sm:p-5">
               <Stars rating={r.rating} size={14} />
-              <blockquote className="text-foreground/90 line-clamp-4 text-sm/relaxed">
+              <blockquote className="text-foreground/90 line-clamp-4 text-sm/relaxed wrap-anywhere">
                 “{r.body}”
               </blockquote>
               <figcaption className="mt-auto flex items-center gap-3 pt-2">
