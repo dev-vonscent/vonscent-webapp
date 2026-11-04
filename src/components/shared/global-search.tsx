@@ -183,8 +183,14 @@ export function GlobalSearch({
     if (!open) return;
     function measure() {
       const r = fieldRef.current?.getBoundingClientRect();
+      // Доош гүйлгэхэд header `-translate-y-full`-аар нуугддаг — тэр үед
+      // ⌘K дарвал pill дэлгэцийн дээд талаас гадна (top < 0) байх тул панель
+      // ч тийшээ гарч, input харагдахгүй байв. Pill бүтэн харагдахгүй бол
+      // төвд (12vh) нээнэ.
       setAnchor(
-        r && r.width > 0 ? { top: r.top, left: r.left, width: r.width } : null,
+        r && r.width > 0 && r.top >= 0
+          ? { top: r.top, left: r.left, width: r.width }
+          : null,
       );
     }
     measure();
