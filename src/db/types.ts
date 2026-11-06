@@ -348,6 +348,8 @@ export interface CouponRow {
   used_count: number;
   /** Generated: shop-wide cap reached (0119). Read-only. */
   used_up: boolean;
+  /** Last expiry reminder sent to the owner (0174 cron). null = never. */
+  expiry_reminded_at?: string | null;
   /** Cap on a percent coupon's ₮ discount (0053). null = uncapped. */
   max_discount: number | null;
   /** Who issued it: 'manual' | 'spin' (0053) | 'campaign' (0135). */

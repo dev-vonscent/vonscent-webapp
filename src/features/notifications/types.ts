@@ -17,6 +17,8 @@ export const NOTIFICATION_KINDS = [
   "order_cancelled",
   "order_refunded",
   "order_saved",
+  // Хувийн купон дуусахаас 3 хоногийн өмнө (0173/0174).
+  "coupon_expiring",
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
