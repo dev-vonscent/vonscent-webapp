@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { daysLeft, describeRedemption, type CouponStatus } from "./coupons";
 import { useWalletCoupon } from "../use-coupons";
 import { CopyCodeButton } from "./coupon-actions";
-import { CouponTicket } from "./coupon-ticket";
+import { CouponTerms, CouponTicket } from "./coupon-ticket";
 
 /**
  * One coupon, in full.
@@ -134,7 +134,18 @@ export function CouponDetail({ code }: { code: string }) {
         size="hero"
         className="mt-4"
       >
-        {STATUS_LABEL[coupon.status]}
+        {!active && (
+          <p className="text-foreground/80 font-medium">
+            {STATUS_LABEL[coupon.status]}
+          </p>
+        )}
+        <CouponTerms
+          type={coupon.type}
+          endsAt={coupon.endsAt}
+          minSubtotal={coupon.minSubtotal}
+          maxDiscount={coupon.maxDiscount}
+          ended={!active}
+        />
       </CouponTicket>
 
       <div className="bg-secondary mt-4 flex items-center gap-3 rounded-xl px-4 py-3">

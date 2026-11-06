@@ -1,8 +1,10 @@
 import Image from "next/image";
 import type * as React from "react";
+import { BadgePercent, CalendarClock, ShoppingBag } from "lucide-react";
 import { SkeletonBlock } from "@/components/shared/skeletons";
-import { formatPrice } from "@/lib/format";
+import { formatDate, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { daysLeft } from "./coupons";
 
 /**
  * A coupon drawn as a printed voucher: the brand on a stub, a perforation,
@@ -38,7 +40,6 @@ export function CouponTicket({
   muted = false,
   size = "row",
   onCard = false,
-  bigSymbol = false,
   className,
   children,
 }: {
@@ -55,17 +56,10 @@ export function CouponTicket({
    * `secondary`, or a card-coloured ticket vanishes into it in dark theme.
    */
   onCard?: boolean;
-  /**
-   * Set the `%` / `₮` as large as the number («10%», «10k₮») and drop the
-   * word «хөнгөлөлт» on phones — the wheel's prize card, where the ticket is
-   * the headline rather than a row in a list.
-   */
-  bigSymbol?: boolean;
   className?: string;
   /** The small lines under the value: expiry, terms, last use. */
   children?: React.ReactNode;
 }) {
-  const face = couponFace(type, value);
   const hero = size === "hero";
 
   return (
@@ -73,10 +67,11 @@ export function CouponTicket({
       <div
         style={MASK_STYLE}
         className={cn(
-          "flex aspect-11/4 items-stretch rounded-xl",
+          "flex items-stretch rounded-xl",
           onCard ? "bg-secondary" : "bg-card",
         )}
       >
+        <TicketSpacer />
         <div className="flex w-[37%] shrink-0 items-center justify-center">
           <Image
             src="/von-logo.png"
@@ -93,7 +88,7 @@ export function CouponTicket({
 
         <Perforation />
 
-        <div className="text-foreground/80 flex min-w-0 flex-1 flex-col justify-center px-6 py-3 *:shrink-0">
+        <div className="text-foreground/80 @container flex min-w-0 flex-1 flex-col justify-center py-4 pr-5 pl-6 *:shrink-0">
           <p
             className={cn(
               "truncate font-medium tracking-[0.15em] uppercase",
@@ -102,27 +97,26 @@ export function CouponTicket({
           >
             {code}
           </p>
+          {/* The whole amount, symbol included («10,000₮», «10%»), set large;
+              the word «хөнгөлөлт» follows only where there is room for it — a
+              phone-width ticket has none once the amount is spelled out. */}
           <p className="mt-1 flex items-baseline gap-1.5">
             <span
               className={cn(
-                "leading-none font-bold tabular-nums",
-                hero ? "text-5xl" : "text-4xl",
+                "leading-none font-bold whitespace-nowrap tabular-nums",
+                // Shrinks with the column (`cqw`) so «10,000₮» never runs
+                // into the bite on a narrow ticket.
+                hero ? "text-[min(3rem,21cqw)]" : "text-[min(2.25rem,21cqw)]",
               )}
             >
-              {face.amount}
-              {bigSymbol && (type === "percent" ? "%" : "₮")}
+              {couponLabel(type, value)}
             </span>
-            <span
-              className={cn(
-                "text-[11px] font-medium tracking-[0.12em] whitespace-nowrap uppercase",
-                bigSymbol && "max-sm:hidden",
-              )}
-            >
-              {bigSymbol ? "хөнгөлөлт" : face.unit}
+            <span className="min-w-0 truncate text-[11px] font-medium tracking-[0.12em] uppercase @max-[17rem]:hidden">
+              хөнгөлөлт
             </span>
           </p>
           {children && (
-            <div className="text-muted-foreground/80 mt-2 text-[11px] tracking-wide">
+            <div className="text-muted-foreground/80 mt-2 space-y-0.5 text-[11px] tracking-wide">
               {children}
             </div>
           )}
@@ -130,6 +124,98 @@ export function CouponTicket({
       </div>
     </div>
   );
+}
+
+/**
+ * The two lines every ticket carries under its value, so a coupon reads the
+ * same wherever it shows up (wallet, wheel prize, welcome gift, checkout):
+ *
+ * - when it ends — the date, a countdown in the last week (red in the last
+ *   three days), or «Хугацаагүй»;
+ * - the order total it needs («Доод дүн») — left out when there is none,
+ *   since «no minimum» is the default nobody needs told — and a percent
+ *   coupon's cap when it has one.
+ *
+ * Each sits on its own line with an icon, worded short enough to fit a
+ * phone: joined by «·», or as «…-өөс дээш захиалгад», the minimum was the
+ * part truncated away — and it decides whether the coupon applies at all.
+ */
+export function CouponTerms({
+  type,
+  endsAt,
+  minSubtotal,
+  maxDiscount,
+  ended = false,
+}: {
+  type: "percent" | "fixed";
+  endsAt: string | null;
+  minSubtotal: number;
+  maxDiscount: number | null;
+  /** Used or expired — the date is history, not a countdown. */
+  ended?: boolean;
+}) {
+  const expiry = expiryText(endsAt, ended);
+  const cap = type === "percent" && maxDiscount != null;
+  return (
+    <>
+      <TermLine icon={CalendarClock}>
+        <span className={cn(expiry.urgent && "text-destructive font-medium")}>
+          {expiry.label}
+        </span>
+      </TermLine>
+      {minSubtotal > 0 && (
+        <TermLine icon={ShoppingBag}>
+          Доод дүн {formatPrice(minSubtotal)}
+        </TermLine>
+      )}
+      {cap && (
+        <TermLine icon={BadgePercent}>
+          Дээд хөнгөлөлт {formatPrice(maxDiscount)}
+        </TermLine>
+      )}
+    </>
+  );
+}
+
+function TermLine({
+  icon: Icon,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <p className="flex min-w-0 items-center gap-1.5">
+      <Icon className="size-3 shrink-0 opacity-70" />
+      <span className="truncate">{children}</span>
+    </p>
+  );
+}
+
+/** When the coupon ends, in the words a customer would use. */
+export function expiryText(
+  endsAt: string | null,
+  ended = false,
+  now = Date.now(),
+): { label: string; urgent: boolean } {
+  if (!endsAt) return { label: "Хугацаагүй", urgent: false };
+  if (ended)
+    return { label: `${formatDate(endsAt)} хүртэл байсан`, urgent: false };
+  const days = daysLeft(endsAt, now);
+  if (days == null) return { label: "Хугацаа дууссан", urgent: true };
+  if (days <= 1) return { label: "Өнөөдөр дуусна", urgent: true };
+  if (days <= 7) return { label: `${days} хоног үлдсэн`, urgent: days <= 3 };
+  return { label: `${formatDate(endsAt)} хүртэл`, urgent: false };
+}
+
+/**
+ * Holds the card at least 11:4. `aspect-ratio` alone fixed the height, so a
+ * third line (a cap, «Ашигласан: …») ran into the bottom edge instead of
+ * growing the card; a zero-width strut with percentage padding (relative to
+ * the card's width) sets the floor and lets the content push past it.
+ */
+function TicketSpacer() {
+  return <span aria-hidden className="w-0 shrink-0 pb-[36.36%]" />;
 }
 
 /** The perforation: long dashes, shorter than the card is tall. */
@@ -172,10 +258,8 @@ export function CouponTicketSkeleton({
   const hero = size === "hero";
   return (
     <div aria-hidden className={cn("drop-shadow-md", className)}>
-      <div
-        style={MASK_STYLE}
-        className="bg-card flex aspect-11/4 items-stretch rounded-xl"
-      >
+      <div style={MASK_STYLE} className="bg-card flex items-stretch rounded-xl">
+        <TicketSpacer />
         <div className="flex w-[37%] shrink-0 items-center justify-center">
           <SkeletonBlock
             className={cn("rounded-xl", hero ? "size-20" : "size-14")}
@@ -193,31 +277,11 @@ export function CouponTicketSkeleton({
 }
 
 /**
- * What the coupon is worth, and nothing else.
+ * What the coupon is worth, and nothing else: «10%», «10,000₮».
  *
- * `10,000₮` is too long to read at card size, so a round thousand becomes
- * `10k` — the notation the client asked for and the one already on the wheel.
+ * Amounts are spelled out in full — «10k» read as shorthand the client did
+ * not want, and it is not how prices appear anywhere else on the site.
  */
 export function couponLabel(type: "percent" | "fixed", value: number): string {
-  if (type === "percent") return `${value}%`;
-  return value >= 1000 && value % 1000 === 0
-    ? `${value / 1000}k`
-    : formatPrice(value);
-}
-
-/**
- * The coupon's face split in two — the big number and the small word after
- * it, the way a printed voucher sets «25 % OFF». A round thousand still reads
- * `10k`, as in `couponLabel`.
- */
-export function couponFace(
-  type: "percent" | "fixed",
-  value: number,
-): { amount: string; unit: string } {
-  if (type === "percent") return { amount: String(value), unit: "% хөнгөлөлт" };
-  const amount =
-    value >= 1000 && value % 1000 === 0
-      ? `${value / 1000}k`
-      : formatPrice(value).replace("₮", "");
-  return { amount, unit: "₮ хөнгөлөлт" };
+  return type === "percent" ? `${value}%` : formatPrice(value);
 }

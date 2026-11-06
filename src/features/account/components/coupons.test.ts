@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   couponStatus,
-  couponTerms,
   daysLeft,
   describeRedemption,
   hiddenFromWallet,
@@ -11,7 +10,7 @@ import {
   type WalletCoupon,
   type WalletRedemption,
 } from "./coupons";
-import { couponLabel } from "./coupon-ticket";
+import { couponLabel, expiryText } from "./coupon-ticket";
 
 const NOW = Date.parse("2026-09-08T00:00:00Z");
 const inDays = (n: number) => new Date(NOW + n * 86_400_000).toISOString();
@@ -139,17 +138,31 @@ describe("describeRedemption", () => {
   });
 });
 
-describe("couponTerms", () => {
-  it("lists the minimum and a percent coupon's cap", () => {
-    expect(
-      couponTerms({ type: "percent", minSubtotal: 100000, maxDiscount: 20000 }),
-    ).toBe("100,000₮-өөс дээш захиалгад · дээд тал нь 20,000₮");
+describe("expiryText", () => {
+  it("says a coupon with no end date never lapses", () => {
+    expect(expiryText(null, false, NOW)).toEqual({
+      label: "Хугацаагүй",
+      urgent: false,
+    });
   });
 
-  it("is null when there are no conditions", () => {
-    expect(
-      couponTerms({ type: "fixed", minSubtotal: 0, maxDiscount: 5000 }),
-    ).toBeNull();
+  it("gives the date while it is more than a week away", () => {
+    expect(expiryText(inDays(10), false, NOW).label).toMatch(
+      /^\d{4}\.\d{2}\.\d{2} хүртэл$/,
+    );
+  });
+
+  it("counts down in the last week, urgent in the last three days", () => {
+    expect(expiryText(inDays(5), false, NOW)).toEqual({
+      label: "5 хоног үлдсэн",
+      urgent: false,
+    });
+    expect(expiryText(inDays(3), false, NOW).urgent).toBe(true);
+    expect(expiryText(inDays(0.5), false, NOW).label).toBe("Өнөөдөр дуусна");
+  });
+
+  it("reads as history once used or expired", () => {
+    expect(expiryText(inDays(-2), true, NOW).label).toMatch(/хүртэл байсан$/);
   });
 });
 
@@ -170,9 +183,9 @@ describe("couponLabel", () => {
     expect(couponLabel("percent", 5)).toBe("5%");
   });
 
-  it("shortens round thousands, which is all the card has room for", () => {
-    expect(couponLabel("fixed", 5000)).toBe("5k");
-    expect(couponLabel("fixed", 10000)).toBe("10k");
+  it("spells out round thousands too — no «5k» shorthand", () => {
+    expect(couponLabel("fixed", 5000)).toBe("5,000₮");
+    expect(couponLabel("fixed", 10000)).toBe("10,000₮");
   });
 
   it("spells out an amount that is not a round thousand", () => {

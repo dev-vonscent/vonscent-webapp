@@ -21,7 +21,10 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { VPointIcon } from "@/components/shared/v-point-icon";
 import { VPointMark } from "@/components/shared/v-point-mark";
-import { CouponTicket } from "@/features/account/components/coupon-ticket";
+import {
+  CouponTerms,
+  CouponTicket,
+} from "@/features/account/components/coupon-ticket";
 import type { MissTip, SpinSuccess } from "../types";
 
 /** Headline per tier — the wheel's only moment of raised voice. */
@@ -137,12 +140,15 @@ function CountUp({ value, delay }: { value: number; delay: number }) {
 }
 
 /**
- * The won coupon, drawn as it appears in «Миний купон» (the shared
- * `CouponTicket`) — just the code and the value. Tap to copy the code.
+ * The won coupon, drawn exactly as it appears in «Миний купон» (the shared
+ * `CouponTicket`) — value, code, when it ends and from what order total it
+ * works. The ticket used to carry only code and value, so a customer who won
+ * a coupon could not tell it would lapse in a week. Tap to copy the code.
  */
 function WonCoupon({ result }: { result: SpinSuccess }) {
   const [copied, setCopied] = React.useState(false);
   const code = result.couponCode ?? "";
+  const type = result.kind === "coupon_percent" ? "percent" : "fixed";
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(code);
@@ -159,13 +165,14 @@ function WonCoupon({ result }: { result: SpinSuccess }) {
       aria-label={`Купоны код ${code} хуулах`}
       className="w-full text-left transition-transform hover:-translate-y-0.5"
     >
-      <CouponTicket
-        type={result.kind === "coupon_percent" ? "percent" : "fixed"}
-        value={result.value}
-        code={code}
-        bigSymbol
-      />
-      {/* Under the ticket: the ticket itself carries only code and value. */}
+      <CouponTicket type={type} value={result.value} code={code}>
+        <CouponTerms
+          type={type}
+          endsAt={result.couponExpiresAt}
+          minSubtotal={result.minSubtotal}
+          maxDiscount={result.maxDiscount}
+        />
+      </CouponTicket>
       <span className="mt-2 flex items-center justify-center gap-1 text-xs opacity-70">
         {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
         {copied ? "Код хуулагдсан" : "Дарж кодоо хуулна"}

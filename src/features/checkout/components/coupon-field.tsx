@@ -1,18 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { Check, Tag, X } from "lucide-react";
+import { Check, Lock, Tag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatDate, formatPrice } from "@/lib/format";
+import { LoadingButton } from "@/components/shared/loading-button";
+import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { AvailableCoupon } from "@/app/api/coupons/available/route";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
-import { couponTerms } from "@/features/account/components/coupons";
 import {
-  Perforation,
+  CouponTerms,
+  CouponTicket,
   couponLabel,
-  ticketMask,
 } from "@/features/account/components/coupon-ticket";
 
 /**
@@ -82,16 +82,19 @@ export function CouponField({
       <div className="bg-secondary flex items-center gap-2.5 rounded-xl py-2 pr-1 pl-3">
         <Check className="text-gold-strong size-4 shrink-0" strokeWidth={2.5} />
         <span className="min-w-0 flex-1">
+          {/* Утсан дээр код зай л эзэлнэ — хэрэглэгч кодоор биш дүнгээр
+              сонгодог, код нь «Нийт» хэсгийн мөрөнд бий. */}
           <span className="flex items-baseline gap-1.5 text-sm">
-            <span className="truncate font-mono font-semibold">
+            <span className="truncate font-mono font-semibold max-sm:hidden">
               {applied.code}
             </span>
-            <span className="text-muted-foreground" aria-hidden>
+            <span className="text-muted-foreground max-sm:hidden" aria-hidden>
               ·
             </span>
             <span className="text-gold-strong shrink-0 font-semibold tabular-nums">
               −{formatPrice(applied.discount)}
             </span>
+            <span className="text-muted-foreground sm:hidden">хөнгөлөлт</span>
           </span>
           {autoApplied && (
             <span className="text-muted-foreground block text-xs">
@@ -153,25 +156,43 @@ export function CouponField({
   // Хэрэглэх боломжгүй (доод дүнд хүрээгүй) купон л байгаа үед тэдгээрийг
   // жагсаалтаар нь харах зам.
   const lockedOnly = !applied && !loading && usable.length === 0;
+  const nearest = nearestLocked(offers);
 
   return (
     <div className="space-y-1.5">
       <p className="text-muted-foreground text-xs font-medium">Купон</p>
       {row}
       {!open && message && <Message text={message} />}
-      {lockedOnly && offers.length > 0 && (
+      {/* Хүрэхэд хамгийн ойр купоныг хэлнэ — «Бусад купон (2)» гэх нь купон
+          байгааг л хэлдэг, юу хийвэл ашиглаж болохыг хэлдэггүй байв. */}
+      {lockedOnly && nearest && (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className={LINK_CLASS}
+          className="bg-secondary hover:bg-accent flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-colors"
         >
-          Бусад купон ({offers.length})
+          <Lock className="text-muted-foreground size-4 shrink-0" />
+          <span className="min-w-0 flex-1 text-xs">
+            Дахин{" "}
+            <span className="font-semibold tabular-nums">
+              {formatPrice(nearest.shortfall)}
+            </span>
+            -ийн бараа нэмбэл{" "}
+            <span className="font-semibold">
+              {couponLabel(nearest.type, nearest.value)}
+            </span>{" "}
+            купон ашиглах боломжтой
+          </span>
+          <span className="shrink-0 text-xs font-semibold">
+            {offers.length > 1 ? `Харах (${offers.length})` : "Харах"}
+          </span>
         </button>
       )}
 
       <ResponsiveDialog
         open={open}
         onOpenChange={setOpen}
+        className="sm:max-w-2xl"
         title="Купон сонгох"
         description="Нэг захиалгад нэг купон хэрэглэнэ."
       >
@@ -204,8 +225,33 @@ export function CouponField({
   );
 }
 
-const LINK_CLASS =
-  "text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs underline-offset-2 transition-colors hover:underline";
+/**
+ * Хүрэхэд хамгийн ойр купон. Ижил доод дүнтэй (100k-ын 5k ба 10k) бол нэг
+ * дүнд хоёулаа нээгдэх тул их хөнгөлөлттэйг нь хэлнэ — 5k-ыг хэлбэл илүү
+ * сайн нь байгааг нууна.
+ */
+export function nearestLocked(
+  offers: AvailableCoupon[],
+): AvailableCoupon | null {
+  let best: AvailableCoupon | null = null;
+  for (const o of offers) {
+    if (
+      !best ||
+      o.shortfall < best.shortfall ||
+      (o.shortfall === best.shortfall && worth(o) > worth(best))
+    ) {
+      best = o;
+    }
+  }
+  return best;
+}
+
+/** Доод дүнд яг хүрэх үед купон хэдэн ₮ хэмнэх вэ. */
+function worth(o: AvailableCoupon): number {
+  if (o.type === "fixed") return o.value;
+  const raw = Math.floor((o.minSubtotal * o.value) / 100);
+  return o.maxDiscount != null ? Math.min(raw, o.maxDiscount) : raw;
+}
 
 function ChangeButton({
   onClick,
@@ -259,21 +305,25 @@ function ManualEntry({
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();
-            onApply();
+            // Шалгаж байх үед Enter дахин хүсэлт илгээхгүй.
+            if (!applying) onApply();
           }
         }}
       />
-      <Button
+      {/* «…» гэж үгээ солихоор товч жижгэрч, юу болж буй нь ойлгомжгүй байв —
+          spinner нь үгийн байранд гарч, өргөн хэвээр үлдэнэ. */}
+      <LoadingButton
         type="button"
         size="sm"
         className="h-10 shrink-0 md:h-9"
-        disabled={applying || !code.trim()}
+        loading={applying}
+        disabled={!code.trim()}
         // Шууд `onClick={onApply}` бол click event нь `apply(raw)`-ийн код
         // болж ирээд `.trim()` дээр унадаг байв.
         onClick={() => onApply()}
       >
-        {applying ? "…" : "Хэрэглэх"}
-      </Button>
+        Хэрэглэх
+      </LoadingButton>
     </div>
   );
 }
@@ -300,7 +350,7 @@ function OfferList({
     // `p-1` нь сонгосон мөрийн ring-ийг overflow хайчлахаас хамгаална.
     <ul
       aria-label="Таны купон"
-      className="-mx-1 max-h-[min(50dvh,22rem)] space-y-2 overflow-y-auto overscroll-contain p-1"
+      className="-mx-1 max-h-[min(60dvh,32rem)] space-y-3 overflow-y-auto overscroll-contain p-1"
     >
       {offers.map((o) => (
         <li key={o.id}>
@@ -316,19 +366,18 @@ function OfferList({
   );
 }
 
-/** Shallower bites than the wallet's: the row is a third of its height. */
-const ROW_MASK = ticketMask("10px");
-
 /**
- * One offer as a low ticket — the wallet's shape, cut to a list row: the value
- * on the stub, a perforation, the code and its terms, and what it saves.
+ * One offer: the same logo ticket as «Миний купон» (with its expiry and
+ * minimum lines), a radio, and a note on what picking it means for this cart.
  *
- * The saving is the loudest thing on the row: it is the number the customer is
- * choosing by, not the code or the coupon's type. Choosing is a radio on the
- * right, not a heavy ring and an «in use» badge on top of it.
- *
- * The mask sits on a background layer, not on the button: a masked button
- * would also clip its own focus ring.
+ * The ticket stays the coupon and nothing else — what this cart still lacks
+ * is not a property of the coupon, so it is never printed on the ticket.
+ * Under the ticket the radio read as a separate control. On a wide dialog
+ * it sits to the ticket's left and the note (the saving, or how far the cart
+ * is from the minimum) to its right; on a phone both move into one header
+ * row above the ticket, which keeps the full width — a radio column beside
+ * it squeezed the ticket until its amount ran into the bite. One element
+ * each, moved by grid areas, so nothing is rendered twice.
  */
 function OfferRow({
   offer,
@@ -342,8 +391,6 @@ function OfferRow({
   active: boolean;
   onPick: () => void;
 }) {
-  const expiry = expiryNote(offer.endsAt);
-  const terms = couponTerms(offer);
   const locked = !offer.eligible;
   return (
     <button
@@ -351,109 +398,114 @@ function OfferRow({
       onClick={onPick}
       disabled={locked}
       aria-pressed={active}
-      className="group relative flex min-h-19 w-full items-stretch rounded-xl text-left disabled:cursor-not-allowed"
+      className={cn(
+        "group enabled:hover:bg-secondary/50 grid w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2.5 rounded-2xl p-3 text-left transition-colors [grid-template-areas:'mark_note''ticket_ticket'] disabled:cursor-not-allowed sm:grid-cols-[auto_minmax(0,1fr)_9.5rem] sm:gap-x-4 sm:[grid-template-areas:'mark_ticket_note']",
+      )}
     >
-      <span
-        aria-hidden
-        style={ROW_MASK}
-        className={cn(
-          "absolute inset-0 rounded-xl transition-colors",
-          active
-            ? "bg-accent"
-            : "bg-secondary group-enabled:group-hover:bg-accent",
-        )}
-      />
-
-      <span
-        className={cn(
-          "relative flex w-20 shrink-0 items-center justify-center pl-2 text-lg font-bold tabular-nums",
-          locked && "text-muted-foreground",
-        )}
-      >
-        {couponLabel(offer.type, offer.value)}
-      </span>
-
-      <Perforation className="relative h-11" />
-
-      <span
-        className={cn(
-          "relative flex min-w-0 flex-1 flex-col justify-center py-2.5 pr-3 pl-4",
-          locked && "opacity-70",
-        )}
-      >
-        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="truncate font-mono text-xs font-semibold tracking-wider">
-            {offer.code}
-          </span>
-          {best && (
-            <span className="bg-foreground text-background rounded-full px-1.5 py-px text-[11px] font-semibold">
-              Хамгийн их хэмнэлт
-            </span>
-          )}
-          {/* Most offers are the customer's own; the shared code is the odd one. */}
-          {!offer.personal && (
-            <span className="bg-card text-muted-foreground rounded-full px-1.5 py-px text-[11px] font-medium">
-              Бүгдэд
-            </span>
-          )}
-        </span>
-        {(expiry || terms) && (
-          <span className="text-muted-foreground mt-0.5 block text-[11px]">
-            {expiry && (
-              <span className={cn(expiry.urgent && "text-destructive")}>
-                {expiry.label}
-              </span>
-            )}
-            {expiry && terms && " · "}
-            {terms}
-          </span>
-        )}
-        {/* Доод дүнд хүрээгүй: нөхцөлийг нь хэлж, хэдийг нэмэхийг тоолж өгнө. */}
-        {locked && offer.shortfall > 0 && (
-          <span className="text-foreground mt-0.5 block text-[11px] font-medium">
-            Дахин {formatPrice(offer.shortfall)}-ийн бараа нэмбэл ашиглана
-          </span>
-        )}
-      </span>
-
-      {!locked && (
-        <span className="relative flex shrink-0 items-center gap-3 pr-7">
-          <span className="text-gold-strong text-base font-bold tabular-nums">
-            −{formatPrice(offer.discount)}
-          </span>
+      <span className="flex [grid-area:mark]">
+        {locked ? (
+          <Lock className="text-muted-foreground size-5" />
+        ) : (
           <span
             aria-hidden
             className={cn(
               "flex size-5 items-center justify-center rounded-full ring-2 transition-colors",
               active
                 ? "bg-foreground ring-foreground"
-                : "ring-muted-foreground/40",
+                : "ring-muted-foreground/40 group-hover:ring-muted-foreground",
             )}
           >
             {active && <span className="bg-background size-2 rounded-full" />}
           </span>
-          {active && <span className="sr-only">Хэрэглэж байна</span>}
-        </span>
-      )}
+        )}
+        {active && <span className="sr-only">Хэрэглэж байна</span>}
+      </span>
+
+      <CouponTicket
+        type={offer.type}
+        value={offer.value}
+        code={offer.code}
+        muted={locked}
+        onCard
+        className="[grid-area:ticket]"
+      >
+        <CouponTerms
+          type={offer.type}
+          endsAt={offer.endsAt}
+          minSubtotal={offer.minSubtotal}
+          maxDiscount={offer.maxDiscount}
+        />
+      </CouponTicket>
+
+      <span className="min-w-0 [grid-area:note]">
+        {locked ? (
+          <ShortfallNote offer={offer} />
+        ) : (
+          <span className="flex items-center gap-x-2 gap-y-1.5 sm:flex-col sm:items-start">
+            <span className="flex items-baseline gap-1.5 max-sm:order-last max-sm:ml-auto sm:flex-col sm:gap-0">
+              {/* Утсан дээр шошго «…хэмнэлт» гэж аль хэдийн хэлдэг — нэг мөрөнд
+                  багтаахын тулд давхардсан үгийг нууна. */}
+              <span
+                className={cn(
+                  "text-muted-foreground text-xs",
+                  best && "max-sm:hidden",
+                )}
+              >
+                Хэмнэлт
+              </span>
+              <span className="text-gold-strong text-base font-bold tabular-nums sm:text-xl">
+                −{formatPrice(offer.discount)}
+              </span>
+            </span>
+            {best && (
+              <span className="bg-foreground text-background rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                Хамгийн их хэмнэлт
+              </span>
+            )}
+            {/* Most offers are the customer's own; the shared code is the odd one. */}
+            {!offer.personal && (
+              <span className="bg-secondary text-muted-foreground rounded-full px-2 py-0.5 text-[11px] font-medium">
+                Бүгдэд
+              </span>
+            )}
+          </span>
+        )}
+      </span>
     </button>
   );
 }
 
-/**
- * When the coupon ends. Rows are no longer merged, so the date is what tells
- * two otherwise identical coupons apart: a countdown when it is close enough
- * to act on, the plain date otherwise.
- */
-function expiryNote(
-  endsAt: string | null,
-): { label: string; urgent: boolean } | null {
-  if (!endsAt) return null;
-  const ms = new Date(endsAt).getTime() - Date.now();
-  if (!Number.isFinite(ms) || ms <= 0) return null;
-  const days = Math.ceil(ms / 86_400_000);
-  if (days > 7) return { label: `${formatDate(endsAt)} хүртэл`, urgent: false };
-  return {
-    label: days <= 1 ? "Өнөөдөр дуусна" : `${days} хоногийн дараа дуусна`,
-    urgent: days <= 3,
-  };
+/** How far the cart is from a coupon's minimum, and what is left to add. */
+function ShortfallNote({ offer }: { offer: AvailableCoupon }) {
+  const reached = Math.max(0, offer.minSubtotal - offer.shortfall);
+  const pct =
+    offer.minSubtotal > 0
+      ? Math.min(100, Math.round((reached / offer.minSubtotal) * 100))
+      : 0;
+  return (
+    <span className="block space-y-1.5">
+      <span className="block text-xs">
+        <span>
+          Дахин{" "}
+          <span className="font-semibold tabular-nums">
+            {formatPrice(offer.shortfall)}
+          </span>
+          -ийн бараа нэмбэл ашиглах боломжтой
+        </span>
+      </span>
+      <span
+        role="progressbar"
+        aria-label="Купоны доод дүн хүртэл"
+        aria-valuemin={0}
+        aria-valuemax={offer.minSubtotal}
+        aria-valuenow={reached}
+        className="bg-secondary block h-1.5 overflow-hidden rounded-full"
+      >
+        <span
+          className="bg-gold-strong block h-full rounded-full"
+          style={{ width: `${pct}%` }}
+        />
+      </span>
+    </span>
+  );
 }

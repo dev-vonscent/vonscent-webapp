@@ -118,9 +118,10 @@ describe("available coupons", () => {
     render(<CouponField {...NOOP} applied={null} offers={OFFERS} />);
     const dialog = await openPicker();
 
+    // The same logo ticket as «Миний купон»: big number, small unit.
     expect(within(dialog).getByText("10%")).toBeTruthy();
-    // A fixed amount is compacted so it fits the tile.
-    expect(within(dialog).getByText("5k")).toBeTruthy();
+    // A fixed amount is spelled out in full, never «5k».
+    expect(within(dialog).getByText("5,000₮")).toBeTruthy();
     expect(within(dialog).getByText("−8,000₮")).toBeTruthy();
   });
 
@@ -194,10 +195,12 @@ describe("available coupons", () => {
     );
     const dialog = await openPicker();
 
-    // Close: a countdown. Far: the plain date, never "25 хоногийн дараа".
-    expect(within(dialog).getByText("2 хоногийн дараа дуусна")).toBeTruthy();
+    // Close: a countdown. Far: the plain date, never "25 хоног үлдсэн".
+    expect(within(dialog).getByText("2 хоног үлдсэн")).toBeTruthy();
     expect(within(dialog).queryByText(/25 хоног/)).toBeNull();
-    expect(within(dialog).getByText(/хүртэл$/)).toBeTruthy();
+    expect(
+      within(dialog).getByText(/^\d{4}\.\d{2}\.\d{2} хүртэл$/),
+    ).toBeTruthy();
   });
 
   it("lists every coupon separately, even identical offers", async () => {
@@ -241,11 +244,14 @@ describe("available coupons", () => {
         offers={[offer({ minSubtotal: 100000, maxDiscount: 20000 })]}
       />,
     );
-    expect(
-      within(await openPicker()).getByText(
-        /100,000₮-өөс дээш захиалгад · дээд тал нь 20,000₮/,
-      ),
-    ).toBeTruthy();
+    const dialog = await openPicker();
+    expect(within(dialog).getByText("Доод дүн 100,000₮")).toBeTruthy();
+    expect(within(dialog).getByText("Дээд хөнгөлөлт 20,000₮")).toBeTruthy();
+  });
+
+  it("leaves the minimum line out when there is no minimum", async () => {
+    render(<CouponField {...NOOP} applied={null} offers={[offer()]} />);
+    expect(within(await openPicker()).queryByText(/Доод дүн/)).toBeNull();
   });
 
   it("shows a coupon below its minimum with what is left to add, unpickable", async () => {
@@ -269,10 +275,17 @@ describe("available coupons", () => {
     // Nothing pickable, so the manual input is open on the page …
     expect(screen.getByPlaceholderText("Купон код")).toBeTruthy();
     // … and the locked coupon is one tap away.
-    const dialog = await openPicker(/Бусад купон \(1\)/);
-    expect(
-      within(dialog).getByText("Дахин 40,000₮-ийн бараа нэмбэл ашиглана"),
-    ).toBeTruthy();
+    await userEvent.click(
+      screen.getByText(/купон ашиглах боломжтой/).closest("button")!,
+    );
+    const dialog = await screen.findByRole("dialog");
+    // What the cart lacks sits under the ticket, with a bar of how far along
+    // it is (60,000 of 100,000) — never printed on the ticket itself.
+    const bar = within(dialog).getByRole("progressbar");
+    expect(bar.getAttribute("aria-valuenow")).toBe("60000");
+    expect(bar.closest("button")?.textContent).toMatch(
+      /Дахин 40,000₮-ийн бараа нэмбэл ашиглах боломжтой/,
+    );
     const row = within(dialog).getByText("MIN100").closest("button")!;
     expect(row.hasAttribute("disabled")).toBe(true);
     await userEvent.click(row);
@@ -281,17 +294,55 @@ describe("available coupons", () => {
 });
 
 describe("links under the field", () => {
-  it("offers the locked coupons when none can be used yet", async () => {
+  it("names the bigger coupon when two unlock at the same total", () => {
+    const locked = {
+      eligible: false,
+      discount: 0,
+      minSubtotal: 100000,
+      shortfall: 65000,
+      type: "fixed" as const,
+    };
     render(
       <CouponField
         {...NOOP}
         applied={null}
-        offers={[offer({ eligible: false, discount: 0, shortfall: 1000 })]}
+        offers={[
+          offer({ ...locked, code: "FIVE", value: 5000 }),
+          offer({ ...locked, code: "TEN", value: 10000 }),
+        ]}
       />,
     );
-    await userEvent.click(
-      screen.getByRole("button", { name: "Бусад купон (1)" }),
+    expect(
+      screen.getByText(/купон ашиглах боломжтой/).closest("button")
+        ?.textContent,
+    ).toContain("10,000₮ купон");
+  });
+
+  it("says how much more unlocks the nearest coupon when none can be used yet", async () => {
+    render(
+      <CouponField
+        {...NOOP}
+        applied={null}
+        offers={[
+          offer({ code: "FAR", eligible: false, discount: 0, shortfall: 9000 }),
+          offer({
+            code: "NEAR",
+            type: "fixed",
+            value: 5000,
+            eligible: false,
+            discount: 0,
+            shortfall: 1000,
+          }),
+        ]}
+      />,
     );
+    const nudge = screen
+      .getByText(/купон ашиглах боломжтой/)
+      .closest("button")!;
+    expect(nudge.textContent).toBe(
+      "Дахин 1,000₮-ийн бараа нэмбэл 5,000₮ купон ашиглах боломжтойХарах (2)",
+    );
+    await userEvent.click(nudge);
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
 
@@ -304,6 +355,26 @@ describe("links under the field", () => {
 });
 
 describe("manual entry", () => {
+  it("shows a spinner while checking, keeps its label, and ignores Enter", async () => {
+    const onApply = vi.fn();
+    render(
+      <CouponField
+        {...NOOP}
+        applied={null}
+        offers={[]}
+        code="SALE10"
+        applying
+        onApply={onApply}
+      />,
+    );
+    const button = screen.getByRole("button", { name: /Хэрэглэх/ });
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    expect(button.hasAttribute("disabled")).toBe(true);
+    expect(within(button).getByText("Түр хүлээнэ үү")).toBeTruthy();
+    await userEvent.type(screen.getByPlaceholderText("Купон код"), "{Enter}");
+    expect(onApply).not.toHaveBeenCalled();
+  });
+
   it("stays disabled until something is typed", () => {
     render(<CouponField {...NOOP} applied={null} offers={[]} />);
     expect(

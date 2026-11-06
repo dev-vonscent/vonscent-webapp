@@ -7,10 +7,13 @@ import { Button } from "@/components/ui/button";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { useFeatureFlag } from "@/components/feature-flags";
 import { useProfileSummary } from "@/features/account/use-profile-summary";
-import { CouponTicket } from "@/features/account/components/coupon-ticket";
+import {
+  CouponTerms,
+  CouponTicket,
+} from "@/features/account/components/coupon-ticket";
 import { CopyCodeButton } from "@/features/account/components/coupon-actions";
 import { suppressPromoPopup } from "@/features/marketing/components/promo-popup";
-import { formatDate, formatPrice } from "@/lib/format";
+import { formatPrice } from "@/lib/format";
 import type { WelcomeGift } from "../types";
 
 /**
@@ -134,14 +137,12 @@ export function WelcomeGiftDialog() {
           code="Бэлгийн купон"
           onCard
         >
-          {gift.endsAt && (
-            <p className="truncate">{formatDate(gift.endsAt)} хүртэл</p>
-          )}
-          <p className="truncate">
-            {gift.minSubtotal > 0
-              ? `${formatPrice(gift.minSubtotal)}-өөс дээш захиалгад`
-              : "Ямар ч захиалгад"}
-          </p>
+          <CouponTerms
+            type="fixed"
+            endsAt={gift.endsAt}
+            minSubtotal={gift.minSubtotal}
+            maxDiscount={null}
+          />
         </CouponTicket>
 
         <div className="space-y-2">
