@@ -11,7 +11,7 @@ import {
   PackagePlus,
   Percent,
   Rocket,
-  TicketPercent,
+  Ticket,
   RotateCcw,
   Truck,
   XCircle,
@@ -37,7 +37,7 @@ const ICONS: Record<NotificationKind, IconComponent> = {
   order_cancelled: XCircle,
   order_refunded: RotateCcw,
   order_saved: Bookmark,
-  coupon_expiring: TicketPercent,
+  coupon_expiring: Ticket,
 };
 
 /** Төрлийн дүрс — map-аас сонгоно (render бүрт шинэ component үүсгэхгүй). */
