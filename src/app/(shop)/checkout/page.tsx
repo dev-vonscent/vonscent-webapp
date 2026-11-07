@@ -122,11 +122,12 @@ interface ShippingSettingsShape {
 }
 
 /**
- * Ready-made delivery notes. Хүргэлтэд үнэхээр өөр үйлдэл шаарддаг хоёрыг л
+ * Ready-made delivery notes. Хүргэлтэд үнэхээр өөр үйлдэл шаарддагийг л
  * үлдээв — «өөр хүн хүлээж авна» гэдэг нь хүлээн авагчийн мэдээллээр аль
  * хэдийн шийдэгддэг, «ажлын цагаар хүргэх» нь хүргэлтийн цагтай зөрчилддөг.
+ * «Хүргэхээс өмнө залгах»-ыг клиентийн хүсэлтээр хассан (2026-11).
  */
-const NOTE_OPTIONS = ["Бэлгийн боолт хийлгэх", "Хүргэхээс өмнө залгах"];
+const NOTE_OPTIONS = ["Бэлгийн боолт хийлгэх"];
 
 const formSchema = checkoutSchema.omit({ items: true, collections: true });
 type FormValues = z.infer<typeof formSchema>;
@@ -549,7 +550,9 @@ export default function CheckoutPage() {
         }
       }
       setKhoroo(saved.khoroo);
-      setNoteTags(saved.noteTags);
+      // Хассан сонголт хуучин draft-аас сэргэвэл товчгүй тул харагдахгүй ч
+      // захиалгын тэмдэглэлд орчихно — зөвхөн одоо байгааг нь авна.
+      setNoteTags(saved.noteTags.filter((t) => NOTE_OPTIONS.includes(t)));
       setGiftIds(saved.giftIds);
       if (saved.address) {
         setDraft(saved.address);
@@ -1396,7 +1399,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="mx-auto max-w-352 px-4 pt-8 md:px-8 md:pb-24 lg:pb-8">
+    <div className="mx-auto max-w-352 px-4 pt-4 md:px-8 md:pt-8 md:pb-24 lg:pb-8">
       {confirmDialog}
       <form
         onSubmit={handleSubmit(onSubmit, onInvalid)}
@@ -1417,8 +1420,12 @@ export default function CheckoutPage() {
               Гарчиг зүүн баганад: хоёр баганын дээр байхдаа тоймыг ~68px доош
               түлхэж, хуудас нээгдэх мөчид «Төлбөр төлөх» дэлгэцээс хагас
               гардаг байв — картын `max-h` нь sticky үеийн `top-24`-өөр
-              бодогддог. Одоо тойм толгойн доор шууд эхэлнэ. */}
-          <h1 className="mb-8 text-3xl font-semibold tracking-tight">
+              бодогддог. Одоо тойм толгойн доор шууд эхэлнэ.
+
+              Утсан дээр нуугдана: толгой аль хэдийн «Захиалга» гэж бичдэг
+              тул давхар гарчиг ~80px зай эзэлдэг байв (хүслийн жагсаалт,
+              бүртгэлийн хуудсуудтай ижил `hidden md:block`). */}
+          <h1 className="mb-8 hidden font-serif text-2xl font-semibold tracking-tight sm:text-3xl md:block">
             Захиалга өгөх
           </h1>
 

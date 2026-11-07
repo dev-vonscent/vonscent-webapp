@@ -7,8 +7,6 @@ import {
   Cell,
   Line,
   LineChart,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -16,7 +14,6 @@ import {
   Legend,
 } from "recharts";
 import { formatPrice } from "@/lib/format";
-import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/constants";
 import {
   stockState,
   STOCK_STATE_LABEL,
@@ -168,61 +165,6 @@ export function SalesSeriesChart({
             yAxisId={0}
           />
         </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-const STATUS_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-];
-
-/** Donut of order counts per status. */
-export function StatusDonut({
-  counts,
-}: {
-  counts: Partial<Record<OrderStatus, number>>;
-}) {
-  const data = (Object.entries(counts) as [OrderStatus, number][])
-    .filter(([, n]) => n > 0)
-    .map(([status, n]) => ({
-      name: ORDER_STATUS_LABEL[status] ?? status,
-      value: n,
-    }));
-
-  if (data.length === 0) {
-    return <p className="text-muted-foreground text-sm">Өгөгдөл алга.</p>;
-  }
-
-  return (
-    <div className="h-64 w-full">
-      <ChartTable
-        caption="Захиалгын төлөв"
-        columns={["Төлөв", "Тоо"]}
-        rows={data.map((d) => [d.name, d.value])}
-      />
-      <ResponsiveContainer>
-        <PieChart>
-          <Pie
-            data={data}
-            dataKey="value"
-            nameKey="name"
-            innerRadius="55%"
-            outerRadius="80%"
-            paddingAngle={2}
-            stroke="var(--card)"
-          >
-            {data.map((_, i) => (
-              <Cell key={i} fill={STATUS_COLORS[i % STATUS_COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip contentStyle={TOOLTIP_STYLE} />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
-        </PieChart>
       </ResponsiveContainer>
     </div>
   );

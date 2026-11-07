@@ -61,17 +61,19 @@ describe("coupon detail", () => {
 
     // On the ticket and in the copy box.
     expect(screen.getAllByText("VW-3QAQYS")).toHaveLength(2);
-    expect(screen.getByText("10")).toBeTruthy();
-    expect(screen.getByText("% хөнгөлөлт")).toBeTruthy();
+    expect(screen.getByText("10%")).toBeTruthy();
     expect(screen.getByText("Купоны код")).toBeTruthy();
     expect(screen.getByText("Хүчинтэй хугацаа")).toBeTruthy();
+    // On the ticket and in the details list.
+    expect(screen.getByText("Доод дүн 100,000₮")).toBeTruthy();
     expect(screen.getByText(/100,000₮-өөс дээш захиалга/)).toBeTruthy();
     expect(
       screen.getByText("Ашиглах тоо").nextElementSibling?.textContent,
     ).toBe("1");
     // A wheel coupon says where it came from.
     expect(screen.getByText(/Азын хүрднээс/)).toBeTruthy();
-    expect(screen.getByText("Идэвхтэй")).toBeTruthy();
+    // An active coupon needs no status line — only a used/expired one does.
+    expect(screen.queryByText("Идэвхтэй")).toBeNull();
   });
 
   it("offers copy on an active coupon", () => {
@@ -81,7 +83,7 @@ describe("coupon detail", () => {
 
   it("flags an expiry that is nearly up", () => {
     render(<CouponDetail code="VW-3QAQYS" />);
-    expect(screen.getByText(/2 хоног үлдсэн/)).toBeTruthy();
+    expect(screen.getAllByText(/2 хоног үлдсэн/).length).toBeGreaterThan(0);
   });
 
   it("says the coupon is not theirs rather than rendering a blank ticket", () => {

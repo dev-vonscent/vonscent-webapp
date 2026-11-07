@@ -118,7 +118,7 @@ export default async function CatalogPage({
         <div className="mb-6">
           <h1
             data-page-title
-            className="font-serif text-3xl font-semibold tracking-tight"
+            className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl"
           >
             {filters.search ? `«${filters.search}» хайлтын үр дүн` : "Каталог"}
           </h1>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BackLink } from "@/features/admin/components/back-link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -41,12 +42,12 @@ export default async function EditProductPage({
 
   return (
     <div className="space-y-6">
-      <Link
+      <BackLink
         href="/admin/products"
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
       >
         <ArrowLeft className="size-4" /> Бараа
-      </Link>
+      </BackLink>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-serif text-2xl font-semibold">Бараа засах</h1>
         {/* Нуугдсан бараа руу холбоос илгээх нь 404 руу хөтөлнө. */}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BackLink } from "@/features/admin/components/back-link";
 import { ArrowLeft } from "lucide-react";
 import { ProductForm } from "@/features/admin/components/product-form";
 import {
@@ -18,13 +19,13 @@ export default async function NewProductPage() {
   ]);
   return (
     <div className="space-y-6">
-      <Link
+      <BackLink
         href="/admin/products"
         className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
       >
         <ArrowLeft className="size-4" />
         Бараа руу буцах
-      </Link>
+      </BackLink>
       <h1 className="font-serif text-2xl font-semibold">Шинэ бараа нэмэх</h1>
       <ProductForm
         families={families}

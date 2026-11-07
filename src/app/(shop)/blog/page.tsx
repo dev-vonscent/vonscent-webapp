@@ -27,7 +27,9 @@ export default async function BlogPage() {
   const [featured, ...rest] = posts;
   return (
     <div className="mx-auto max-w-352 px-4 py-12 md:px-8">
-      <h1 className="font-serif text-4xl font-semibold tracking-tight">Блог</h1>
+      <h1 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
+        Блог
+      </h1>
       <p className="text-muted-foreground mt-2">
         Үнэр сонгох гарын авлага, зөвлөмж, түүх.
       </p>

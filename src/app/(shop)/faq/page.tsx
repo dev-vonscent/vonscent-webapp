@@ -26,7 +26,7 @@ export default async function FaqPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 pt-4 pb-10 md:px-8 md:py-16">
       <JsonLd data={faqJsonLd(faqs)} />
-      <h1 className="text-center font-serif text-4xl font-semibold tracking-tight">
+      <h1 className="text-center font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
         Түгээмэл асуулт
       </h1>
       <FaqSearch items={faqs} />

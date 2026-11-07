@@ -13,14 +13,13 @@ import { useFeatureFlag } from "@/components/feature-flags";
 import { useWallet } from "../use-coupons";
 import { markSeen } from "../use-new-badge";
 import {
-  couponTerms,
-  daysLeft,
   describeRedemption,
   sortForTab,
   type CouponStatus,
   type WalletCoupon,
 } from "./coupons";
 import {
+  CouponTerms,
   CouponTicket,
   CouponTicketSkeleton,
   couponLabel,
@@ -144,7 +143,6 @@ export function CouponWallet() {
 
 /** One coupon in the wallet — the whole ticket opens its detail. */
 export function CouponRow({ coupon: c }: { coupon: WalletCoupon }) {
-  const terms = couponTerms(c);
   const last = c.redemptions[0];
 
   return (
@@ -155,10 +153,13 @@ export function CouponRow({ coupon: c }: { coupon: WalletCoupon }) {
         code={c.code}
         muted={c.status !== "active"}
       >
-        <p className="truncate">
-          <ExpiryLine coupon={c} />
-        </p>
-        {terms && <p className="truncate">{terms}</p>}
+        <CouponTerms
+          type={c.type}
+          endsAt={c.endsAt}
+          minSubtotal={c.minSubtotal}
+          maxDiscount={c.maxDiscount}
+          ended={c.status !== "active"}
+        />
         {c.status === "used" && last && (
           <p className="text-foreground/80 mt-0.5 truncate">
             <span className="text-muted-foreground">Ашигласан: </span>
@@ -177,18 +178,4 @@ export function CouponRow({ coupon: c }: { coupon: WalletCoupon }) {
       />
     </article>
   );
-}
-
-function ExpiryLine({ coupon: c }: { coupon: WalletCoupon }) {
-  if (!c.endsAt) return <>Хугацаагүй</>;
-  if (c.status !== "active") return <>{formatDate(c.endsAt)} хүртэл байсан</>;
-  const days = daysLeft(c.endsAt);
-  if (days != null && days <= 7) {
-    return (
-      <span className={cn(days <= 3 && "text-destructive font-medium")}>
-        {days <= 1 ? "Өнөөдөр дуусна" : `${days} хоног үлдсэн`}
-      </span>
-    );
-  }
-  return <>{formatDate(c.endsAt)} хүртэл</>;
 }

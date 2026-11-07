@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BackLink } from "@/features/admin/components/back-link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -31,12 +32,12 @@ export default async function AdminCustomerDetail({
 
   return (
     <div className="space-y-6">
-      <Link
+      <BackLink
         href="/admin/customers"
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
       >
         <ArrowLeft className="size-4" /> Хэрэглэгчид
-      </Link>
+      </BackLink>
 
       <div className="flex items-center gap-4">
         <TierAvatar

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import {
   REPORT_DATE_PRESETS,
   activePreset,
   dateKeyOf,
+  presetIsAmbiguous,
   timeOf,
   ubToday,
 } from "@/features/admin/lib/date-range";
@@ -55,18 +56,51 @@ export function DateRangeFilter({
   basePath?: string;
   presetSet?: "orders" | "reports";
 }) {
-  const presets =
-    presetSet === "reports" ? REPORT_DATE_PRESETS : DATE_PRESETS;
+  const presets = presetSet === "reports" ? REPORT_DATE_PRESETS : DATE_PRESETS;
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   // Ulaanbaatar's today, not the laptop's: an operator abroad must still see
   // the same "Өнөөдөр" as the shop.
-  const [today, setToday] = React.useState<string | null>(null);
-  React.useEffect(() => setToday(ubToday()), []);
+  //
+  // Сервер ч УБ-ын өдрийг өөрөө тооцно (`ubToday` нь цагийн бүсээ заадаг) —
+  // өмнө нь серверт `null` байсан тул хугацаатай URL-ийг ачаалах бүрд эхний
+  // frame-д бүх chip disabled + «Бүх хугацаа» асаж анивчдаг байв. Шөнө дундын
+  // ховор зөрүүг `useSyncExternalStore` hydration-ий дараа өөрөө засна.
+  const today: string | null = React.useSyncExternalStore(
+    subscribeNever,
+    ubToday,
+    ubToday,
+  );
 
-  const current = today ? activePreset(from, to, today, presets) : "all";
+  // `preset` нь зөвхөн хоёр preset ижил муж гаргах өдөр URL-д бичигдэнэ
+  // (`presetIsAmbiguous`) — тэр үед дарсан chip-ийг нь асаана.
+  const hint = useSearchParams().get("preset");
+  const settled = today ? activePreset(from, to, today, presets, hint) : "all";
+  // Дарсан chip шууд асч, URL яг ОЧИХ ёстой утгандаа хүрэх хүртэл ассан
+  // хэвээр байна. «URL өөрчлөгдмөгц мартах» нь хангалтгүй байв: давхцсан
+  // шилжилтийн үед App Router хуучин/завсрын RSC хариуг түр render хийдэг
+  // (vercel/next.js#70977, nuqs#714) тул A chip хэдэн frame асдаг. Зорилтот
+  // түлхүүр таарахаас бусад бүх завсрын утгыг үл тоомсорлоно.
+  const urlKey = presetKey(from, to, hint);
+  const [pending, setPending] = React.useState<{
+    id: string;
+    target: string;
+  } | null>(null);
+  if (pending && pending.target === urlKey) setPending(null);
+  const current = pending ? pending.id : settled;
 
-  function apply(range: { from?: string; to?: string }) {
+  // Browser-ийн back/forward нь бидний зорилтыг хүчингүй болгоно — эс бөгөөс
+  // pending нь өөр URL дээр гацна.
+  React.useEffect(() => {
+    const clear = () => setPending(null);
+    window.addEventListener("popstate", clear);
+    return () => window.removeEventListener("popstate", clear);
+  }, []);
+
+  function apply(
+    range: { from?: string; to?: string; preset?: string },
+    id: string,
+  ) {
     const next = new URLSearchParams();
     for (const [k, v] of Object.entries({
       ...params,
@@ -78,11 +112,19 @@ export function DateRangeFilter({
       if (v) next.set(k, v);
     }
     const qs = next.toString();
-    router.push(qs ? `${basePath}?${qs}` : basePath);
+    const href = qs ? `${basePath}?${qs}` : basePath;
+    // Ижил URL руу push хийвэл URL солигдохгүй тул pending хэзээ ч арилахгүй —
+    // тийм үед юу ч хийх шаардлагагүй.
+    if (href === `${window.location.pathname}${window.location.search}`) return;
+    setPending({ id, target: presetKey(range.from, range.to, range.preset) });
+    router.push(href);
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div
+      className="flex flex-wrap items-center gap-1.5"
+      aria-busy={pending !== null}
+    >
       {presets.map((p) => (
         <button
           key={p.id}
@@ -91,11 +133,28 @@ export function DateRangeFilter({
           // Until the effect has run we don't know the shop's date, and a chip
           // that computes the wrong range is worse than one that waits.
           disabled={!today}
-          onClick={() => apply(p.range(today!) ?? { from: undefined, to: undefined })}
+          onClick={() =>
+            apply(
+              {
+                ...(p.range(today!) ?? { from: undefined, to: undefined }),
+                preset: presetIsAmbiguous(p.id, today!, presets)
+                  ? p.id
+                  : undefined,
+              },
+              p.id,
+            )
+          }
           className={cn(
-            "min-h-11 rounded-full px-3.5 text-xs font-medium transition-colors disabled:opacity-50 md:min-h-9",
+            "min-h-11 rounded-full px-3.5 text-xs font-medium disabled:opacity-50 md:min-h-9",
+            // `transition-colors` санаатай БАЙХГҮЙ: background-color-ийн
+            // transition main thread дээр явдаг тул шинэ тайланг render хийх
+            // үе давхцвал хуучин chip хагас цагаанаар гацаж «анивчдаг» байв
+            // (Playwright-аар frame бүрээр барьсан). Сонголт шууд солигдоно.
+            // `cta`, `primary` биш: хар theme-д primary (#262626) нь secondary
+            // (#1c1c1c)-оос бараг ялгагдахгүй тул сонгосон chip харагддаггүй
+            // байв. cta нь хар дээр цагаан, бусад theme-д primary-тэй ижил.
             current === p.id
-              ? "bg-primary text-primary-foreground"
+              ? "bg-cta text-cta-foreground"
               : "bg-secondary text-muted-foreground hover:text-foreground",
           )}
         >
@@ -108,9 +167,9 @@ export function DateRangeFilter({
         aria-pressed={current === "custom"}
         onClick={() => setOpen(true)}
         className={cn(
-          "flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-xs font-medium transition-colors md:min-h-9",
+          "flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-xs font-medium md:min-h-9",
           current === "custom"
-            ? "bg-primary text-primary-foreground"
+            ? "bg-cta text-cta-foreground"
             : "bg-secondary text-muted-foreground hover:text-foreground",
         )}
       >
@@ -127,12 +186,29 @@ export function DateRangeFilter({
           today={today}
           onApply={(r) => {
             setOpen(false);
-            apply(r);
+            apply(
+              { ...r, preset: undefined },
+              r.from || r.to ? "custom" : "all",
+            );
           }}
         />
       )}
     </div>
   );
+}
+
+/** URL-ийн хугацааг харьцуулах түлхүүр (`from|to|preset`). */
+function presetKey(
+  from: string | undefined,
+  to: string | undefined,
+  preset: string | null | undefined,
+): string {
+  return `${from ?? ""}|${to ?? ""}|${preset ?? ""}`;
+}
+
+/** Өдөр солигдохыг дагах шаардлагагүй — хуудас дахин ачаалахад шинэчлэгдэнэ. */
+function subscribeNever(): () => void {
+  return () => {};
 }
 
 function rangeLabel(from?: string, to?: string): string {

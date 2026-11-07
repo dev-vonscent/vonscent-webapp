@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BackLink } from "@/features/admin/components/back-link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getCollectionSettings } from "@/features/collections/api";
@@ -57,12 +58,12 @@ export default async function EditCollectionPage({
 
   return (
     <div className="space-y-6">
-      <Link
+      <BackLink
         href="/admin/collections"
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
       >
         <ArrowLeft className="size-4" /> Багц руу буцах
-      </Link>
+      </BackLink>
       <h1 className="font-serif text-2xl font-semibold">Багц засах</h1>
       <CollectionForm
         collection={collection}

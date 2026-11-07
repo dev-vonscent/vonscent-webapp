@@ -89,7 +89,13 @@ export function useCoupon(
   const [offersReady, setOffersReady] = React.useState(false);
   /** Автоматаар тавьсан купоны код — «хамгийн их хэмнэлттэйг сонгов» гэж хэлнэ. */
   const [autoCode, setAutoCode] = React.useState<string | null>(null);
+  const autoCodeRef = React.useRef<string | null>(null);
   const autoTried = React.useRef(false);
+  /**
+   * Автоматаар тавьсан купон дүн буурснаас унахад автомат сонголтыг дахин
+   * сэргээнэ — шинэ дүнд таарах өөр купон байвал түүнийг тавина.
+   */
+  const [rearm, setRearm] = React.useState(0);
 
   const appliedCode = coupon?.code ?? null;
 
@@ -181,14 +187,25 @@ export function useCoupon(
 
   // Хамгийн их хэмнэлттэйг нэг удаа өөрөө тавина.
   React.useEffect(() => {
-    if (!autoPickBest || !enabled || !offersReady || autoTried.current) return;
+    // Хуучин дүнгийн санал дээр сонгохгүй — шинэ дүнгийнх ирэхийг хүлээнэ.
+    if (!autoPickBest || !enabled || !offersReady || offersLoading) return;
+    if (autoTried.current) return;
     autoTried.current = true;
     if (useCart.getState().coupon || readDismissed()) return;
     const best = bestOffer(offers);
     if (!best) return;
     setCoupon({ code: best.code, discount: best.discount });
     setAutoCode(best.code);
-  }, [autoPickBest, enabled, offersReady, offers, setCoupon]);
+    autoCodeRef.current = best.code;
+  }, [
+    autoPickBest,
+    enabled,
+    offersReady,
+    offersLoading,
+    offers,
+    rearm,
+    setCoupon,
+  ]);
 
   // Хэрэглэсэн купоныг дүн өөрчлөгдөх тутам дахин шалгана: хөнгөлөлт хуучирсан
   // бол шинэчилж, хүчингүй болсон бол хаяна.
@@ -215,9 +232,21 @@ export function useCoupon(
           setMessage(null);
         } else {
           setCoupon(null);
-          setMessage(
-            data.message ?? "Купон энэ захиалгад хэрэглэх боломжгүй болсон.",
-          );
+          // Доод дүнгээс доош орсон нь алдаа биш: талбарын доорх «Дахин N₮
+          // нэмбэл …» сануулга үүнийг аль хэдийн хэлдэг. Улаан мессеж нь
+          // ялангуяа хуудас өөрөө тавьсан купонд «би юу буруу хийв» гэж
+          // ойлгогддог байв. Хугацаа дууссан/ашиглагдсан мэтийг л хэлнэ.
+          if (data.reason === "MIN_SUBTOTAL") {
+            setMessage(null);
+          } else {
+            setMessage(
+              data.message ?? "Купон энэ захиалгад хэрэглэх боломжгүй болсон.",
+            );
+          }
+          if (autoCodeRef.current === appliedCode) {
+            autoTried.current = false;
+            setRearm((n) => n + 1);
+          }
         }
       })
       .catch(() => undefined);

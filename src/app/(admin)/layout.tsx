@@ -1,5 +1,8 @@
 import { AdminSidebar } from "@/features/admin/components/admin-sidebar";
+import { Suspense } from "react";
 import { SkipLink } from "@/components/shared/skip-link";
+import { ScrollReset } from "@/components/shared/scroll-reset";
+import { AdminNavTracker } from "@/features/admin/components/back-link";
 
 // Admin screens must always show live data — never serve them from the
 // static cache. The layout itself no longer fetches anything: the sidebar
@@ -19,6 +22,12 @@ export default function AdminLayout({
       {/* Хажуугийн цэс 25 холбоостой — гараар ажилладаг оператор хуудас бүр
           дээр тэр бүгдийг давах ёсгүй. */}
       <SkipLink />
+      {/* Жагсаалт → дэлгэрэнгүй → буцахад гүйлгэлт хэвээр (iOS-д ч), шинэ
+          хуудас дээрээс эхэлнэ. BackLink-ийн «өмнөх хуудас» эндээс. */}
+      <ScrollReset />
+      <Suspense fallback={null}>
+        <AdminNavTracker />
+      </Suspense>
       <AdminSidebar />
       {/* max-w-5xl is a reading measure borrowed from the storefront; this is a
           table surface, so on a wide operator monitor it squeezed 7 columns

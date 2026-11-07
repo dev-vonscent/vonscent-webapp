@@ -685,6 +685,13 @@
    руу portal хийгддэг тул `.admin-shell` дотор биш ч хүрээгээ авна. */
 @utility field-edge {
   box-shadow: inset 0 0 0 1px var(--input-edge, transparent);
+
+  /* Алдаатай талбар өөрөө улаан хүрээтэй болно — доорх жижиг улаан мөр
+     ганцаараа анзаарагддаггүй байв. `Field`-ийн дотор `aria-invalid`
+     автоматаар тавигддаг тул form бүрт класс нэмэх шаардлагагүй. */
+  &[aria-invalid="true"] {
+    box-shadow: inset 0 0 0 1.5px var(--destructive);
+  }
 }
 :root:has(.admin-shell) {
   --input-edge: var(--field-edge);
