@@ -122,11 +122,12 @@ interface ShippingSettingsShape {
 }
 
 /**
- * Ready-made delivery notes. Хүргэлтэд үнэхээр өөр үйлдэл шаарддаг хоёрыг л
+ * Ready-made delivery notes. Хүргэлтэд үнэхээр өөр үйлдэл шаарддагийг л
  * үлдээв — «өөр хүн хүлээж авна» гэдэг нь хүлээн авагчийн мэдээллээр аль
  * хэдийн шийдэгддэг, «ажлын цагаар хүргэх» нь хүргэлтийн цагтай зөрчилддөг.
+ * «Хүргэхээс өмнө залгах»-ыг клиентийн хүсэлтээр хассан (2026-11).
  */
-const NOTE_OPTIONS = ["Бэлгийн боолт хийлгэх", "Хүргэхээс өмнө залгах"];
+const NOTE_OPTIONS = ["Бэлгийн боолт хийлгэх"];
 
 const formSchema = checkoutSchema.omit({ items: true, collections: true });
 type FormValues = z.infer<typeof formSchema>;
@@ -549,7 +550,9 @@ export default function CheckoutPage() {
         }
       }
       setKhoroo(saved.khoroo);
-      setNoteTags(saved.noteTags);
+      // Хассан сонголт хуучин draft-аас сэргэвэл товчгүй тул харагдахгүй ч
+      // захиалгын тэмдэглэлд орчихно — зөвхөн одоо байгааг нь авна.
+      setNoteTags(saved.noteTags.filter((t) => NOTE_OPTIONS.includes(t)));
       setGiftIds(saved.giftIds);
       if (saved.address) {
         setDraft(saved.address);
