@@ -91,8 +91,13 @@ export default function CartPage() {
   }
 
   return (
-    <div className="mx-auto max-w-352 px-4 py-8 md:px-8">
-      <h1 data-page-title className="mb-8 font-serif text-3xl font-semibold">
+    // Утсан дээр толгой (h-16) өөрөө зай авдаг тул гарчгийг дээш шахна —
+    // өмнө нь буцах товч ба гарчгийн хооронд ~50px хоосон зай байв.
+    <div className="mx-auto max-w-352 px-4 pt-1 pb-8 md:px-8 md:pt-8">
+      <h1
+        data-page-title
+        className="mb-5 font-serif text-3xl font-semibold md:mb-8"
+      >
         Таны сагс
       </h1>
 
