@@ -169,12 +169,15 @@ export function GiftSamplePicker({
 
       {/* Том 4 карт (~800px) нэг ширхэг сонгохын тулд хуудасны хамгийн том
           блок болдог байв. Одоо ~120px өндөр хэвтээ мөр; ус нэмэгдвэл
-          хажуу тийш гүйнэ (themed scrollbar нь `html`-ээс удамшина). */}
+          хажуу тийш гүйнэ (themed scrollbar нь `html`-ээс удамшина).
+          `scroll-px-*` нь snap-ийн зогсох цэгийг `px-*`-тэй тэнцүүлнэ —
+          эс тэгвэл утсан дээр эхний хавтас scroller-ийн ирмэг (картын
+          ирмэг) рүү snap хийгдэж, жийргэвчгүй наалдсан харагддаг байв. */}
       {allowance > 0 && (
         <div
           role={single ? "radiogroup" : "group"}
           aria-label="Бэлгийн дээж сонгох"
-          className="-mx-5 flex snap-x gap-3 overflow-x-auto px-5 pt-1 pb-2 sm:-mx-6 sm:px-6"
+          className="-mx-5 flex snap-x scroll-px-5 gap-3 overflow-x-auto px-5 pt-1 pb-2 sm:-mx-6 sm:scroll-px-6 sm:px-6"
         >
           {options.map((o) => {
             const count = counts.get(o.id) ?? 0;
