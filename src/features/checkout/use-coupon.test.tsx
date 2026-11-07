@@ -105,6 +105,70 @@ describe("useCoupon", () => {
     expect(result.current.message).toBe("Захиалгын дүн хүрэхгүй байна.");
   });
 
+  it("drops a coupon below its minimum quietly — the nudge under the field explains it", async () => {
+    mockFetch((url) =>
+      url.includes("validate")
+        ? {
+            valid: false,
+            discount: 0,
+            reason: "MIN_SUBTOTAL",
+            message: "Энэ купон 100,000₮-өөс дээш захиалгад хэрэглэгдэнэ.",
+          }
+        : { coupons: [] },
+    );
+    useCart.setState({ coupon: { code: "MIN100", discount: 5000 } });
+
+    const { result } = renderHook(() => useCoupon(35000));
+
+    await waitFor(() => expect(useCart.getState().coupon).toBeNull());
+    expect(result.current.message).toBeNull();
+  });
+
+  it("re-picks the best fit when the coupon it chose stops qualifying", async () => {
+    const offer = (
+      code: string,
+      discount: number,
+      min: number,
+      sub: number,
+    ) => ({
+      id: code,
+      code,
+      type: "fixed" as const,
+      value: discount,
+      discount: sub >= min ? discount : 0,
+      minSubtotal: min,
+      maxDiscount: null,
+      endsAt: null,
+      personal: true,
+      eligible: sub >= min,
+      shortfall: Math.max(0, min - sub),
+    });
+    const offersAt = (sub: number) => [
+      offer("BIG", 10000, 100000, sub),
+      offer("SMALL", 2000, 0, sub),
+    ];
+    mockFetch((url, body) => {
+      const sub = Number(body.subtotal);
+      if (url.includes("available")) return { coupons: offersAt(sub) };
+      const o = offersAt(sub).find((x) => x.code === body.code)!;
+      return o.eligible
+        ? { valid: true, code: o.code, discount: o.discount }
+        : { valid: false, discount: 0, reason: "MIN_SUBTOTAL" };
+    });
+
+    const { result, rerender } = renderHook(
+      ({ sub }) => useCoupon(sub, { autoPickBest: true }),
+      { initialProps: { sub: 144000 } },
+    );
+    await waitFor(() => expect(useCart.getState().coupon?.code).toBe("BIG"));
+
+    // Сагсаа засаж 100k-аас доош болгов.
+    rerender({ sub: 35000 });
+    await waitFor(() => expect(useCart.getState().coupon?.code).toBe("SMALL"));
+    expect(result.current.message).toBeNull();
+    expect(result.current.autoApplied).toBe(true);
+  });
+
   it("never shows a discount larger than the subtotal", () => {
     useCart.setState({ coupon: { code: "BIG", discount: 90000 } });
     const { result } = renderHook(() => useCoupon(10000));

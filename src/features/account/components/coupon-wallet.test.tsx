@@ -76,7 +76,7 @@ describe("CouponWallet", () => {
   it("puts a minimum order on its own line", () => {
     data.mockReturnValue([coupon({ code: "MIN", minSubtotal: 100000 })]);
     render(<CouponWallet />);
-    expect(screen.getByText("100,000₮-өөс дээш захиалгад")).toBeTruthy();
+    expect(screen.getByText("Доод дүн 100,000₮")).toBeTruthy();
   });
 
   it("shows a shared coupon under «Ашиглагдсан» with the masked friend", async () => {

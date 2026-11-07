@@ -10,7 +10,6 @@
  */
 
 import { WALLET_HISTORY_DAYS } from "@/lib/constants";
-import { formatPrice } from "@/lib/format";
 
 export type CouponStatus = "active" | "used" | "expired";
 
@@ -182,20 +181,4 @@ export function describeRedemption(r: WalletRedemption): string {
   const { name, phone } = r.by;
   if (name && phone) return `${name} (${phone})`;
   return name ?? phone ?? "Өөр хэрэглэгч";
-}
-
-/** The conditions attached to a coupon, in as few words as possible. */
-export function couponTerms(c: {
-  type: "percent" | "fixed";
-  minSubtotal: number;
-  maxDiscount: number | null;
-}): string | null {
-  const parts: string[] = [];
-  if (c.minSubtotal > 0) {
-    parts.push(`${formatPrice(c.minSubtotal)}-өөс дээш захиалгад`);
-  }
-  if (c.type === "percent" && c.maxDiscount != null) {
-    parts.push(`дээд тал нь ${formatPrice(c.maxDiscount)}`);
-  }
-  return parts.length > 0 ? parts.join(" · ") : null;
 }
