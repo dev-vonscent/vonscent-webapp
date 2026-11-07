@@ -1399,7 +1399,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="mx-auto max-w-352 px-4 pt-8 md:px-8 md:pb-24 lg:pb-8">
+    <div className="mx-auto max-w-352 px-4 pt-4 md:px-8 md:pt-8 md:pb-24 lg:pb-8">
       {confirmDialog}
       <form
         onSubmit={handleSubmit(onSubmit, onInvalid)}
@@ -1420,8 +1420,12 @@ export default function CheckoutPage() {
               Гарчиг зүүн баганад: хоёр баганын дээр байхдаа тоймыг ~68px доош
               түлхэж, хуудас нээгдэх мөчид «Төлбөр төлөх» дэлгэцээс хагас
               гардаг байв — картын `max-h` нь sticky үеийн `top-24`-өөр
-              бодогддог. Одоо тойм толгойн доор шууд эхэлнэ. */}
-          <h1 className="mb-8 text-3xl font-semibold tracking-tight">
+              бодогддог. Одоо тойм толгойн доор шууд эхэлнэ.
+
+              Утсан дээр нуугдана: толгой аль хэдийн «Захиалга» гэж бичдэг
+              тул давхар гарчиг ~80px зай эзэлдэг байв (хүслийн жагсаалт,
+              бүртгэлийн хуудсуудтай ижил `hidden md:block`). */}
+          <h1 className="mb-8 hidden text-3xl font-semibold tracking-tight md:block">
             Захиалга өгөх
           </h1>
 
