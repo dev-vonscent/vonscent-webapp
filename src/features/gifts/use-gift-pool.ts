@@ -1,12 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { GIFT_SAMPLE_ML, GIFT_THRESHOLD } from "@/lib/constants";
+import { GIFT_SAMPLE_ML, GIFT_THRESHOLD, type Gender } from "@/lib/constants";
 
 export interface GiftPoolProduct {
   id: string;
   name: string;
   brand: string;
+  /** Хуучин кэштэй хариунд байхгүй байж болно — тэгвэл бүлэггүй, сүүлд. */
+  gender?: Gender;
   image: string | null;
 }
 

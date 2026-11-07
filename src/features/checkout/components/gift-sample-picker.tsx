@@ -8,7 +8,12 @@ import { formatPrice } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { GIFT_MAX_SAMPLES, GIFT_PER_PRODUCT_LIMIT } from "@/lib/constants";
 import { giftAllowanceFor } from "@/lib/gift";
-import { useGiftPool } from "@/features/gifts/use-gift-pool";
+import {
+  useGiftPool,
+  type GiftPoolProduct,
+} from "@/features/gifts/use-gift-pool";
+import { useLeadGender } from "@/features/gifts/use-lead-gender";
+import { genderNoun, groupByGender } from "@/features/gifts/gender";
 import { CheckoutSection } from "./checkout-section";
 
 /**
@@ -59,6 +64,7 @@ export function GiftSamplePicker({
   onChange: (ids: string[]) => void;
 }) {
   const pool = useGiftPool();
+  const lead = useLeadGender();
   const options = pool?.enabled ? pool.products : [];
   const threshold = pool?.threshold ?? 0;
 
@@ -81,6 +87,8 @@ export function GiftSamplePicker({
   // Сан унтраалттай / хоосон үед л бүрэн нуугдана — энэ тохиолдолд «бэлэг»
   // гэдэг ойлголт тэр захиалгад огт байхгүй.
   if (options.length === 0) return null;
+
+  const groups = groupByGender(options, lead);
 
   /** Дүнгээс олсон эрх — сангийн багтаамжид хумигдахаас өмнөх тоо. */
   const earned = giftAllowanceFor(goodsAfterDiscount);
@@ -141,6 +149,79 @@ export function GiftSamplePicker({
     if (left > 0) add(id);
   }
 
+  function renderCard(o: GiftPoolProduct) {
+    const count = counts.get(o.id) ?? 0;
+    const canAdd = left > 0 && count < GIFT_PER_PRODUCT_LIMIT;
+    const disabled = !single && count === 0 && left <= 0;
+    return (
+      <div key={o.id} className="relative w-20 shrink-0 snap-start">
+        <button
+          type="button"
+          onClick={() => pick(o.id)}
+          disabled={disabled}
+          {...(single
+            ? { role: "radio", "aria-checked": count > 0 }
+            : { "aria-pressed": count > 0 })}
+          aria-label={
+            single
+              ? `${o.brand} ${o.name}`
+              : `${o.brand} ${o.name} — ${count > 0 ? `${count} ширхэг, сонголтоо болих` : "сонгох"}`
+          }
+          className="block w-full text-left disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <span
+            className={cn(
+              "bg-muted relative block size-20 overflow-hidden rounded-lg ring-2 ring-transparent transition-all",
+              count > 0 && "ring-gold-strong",
+            )}
+          >
+            {o.image && (
+              <Image
+                src={o.image}
+                alt=""
+                fill
+                sizes="80px"
+                className="object-cover"
+              />
+            )}
+            {count > 0 && (
+              <span className="bg-gold-strong text-background absolute right-1 bottom-1 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">
+                {single ? <Check className="size-3" strokeWidth={3} /> : count}
+              </span>
+            )}
+          </span>
+          <span className="text-muted-foreground mt-1.5 block truncate text-[11px] uppercase">
+            {o.brand}
+          </span>
+          <span className="block truncate text-xs font-medium">{o.name}</span>
+        </button>
+        {/* Нэг уснаас 2 дахийг нь авах ЦОРЫН ГАНЦ зам — хавтас дарах нь
+            зөвхөн сонгох / болих (дээрх №4). */}
+        {!single && count > 0 && canAdd && (
+          <button
+            type="button"
+            onClick={() => add(o.id)}
+            aria-label={`${o.name} — нэгээр нэмэх`}
+            className="bg-card text-foreground absolute top-1 right-1 flex size-6 items-center justify-center rounded-full shadow-sm before:absolute before:size-8 before:content-['']"
+          >
+            <Plus className="size-3.5" />
+          </button>
+        )}
+        {/* Олон эрхтэй үед: нэгээр хасна. */}
+        {!single && count > 0 && (
+          <button
+            type="button"
+            onClick={() => remove(o.id)}
+            aria-label={`${o.name} — нэгээр хасах`}
+            className="bg-card text-foreground absolute top-1 left-1 flex size-6 items-center justify-center rounded-full shadow-sm before:absolute before:size-8 before:content-['']"
+          >
+            <Minus className="size-3.5" />
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <CheckoutSection
       step={step}
@@ -177,84 +258,52 @@ export function GiftSamplePicker({
         <div
           role={single ? "radiogroup" : "group"}
           aria-label="Бэлгийн дээж сонгох"
-          className="-mx-5 flex snap-x scroll-px-5 gap-3 overflow-x-auto px-5 pt-1 pb-2 sm:-mx-6 sm:scroll-px-6 sm:px-6"
+          className="-mx-5 flex snap-x scroll-px-5 gap-6 overflow-x-auto px-5 pt-1 pb-2 sm:-mx-6 sm:scroll-px-6 sm:px-6"
         >
-          {options.map((o) => {
-            const count = counts.get(o.id) ?? 0;
-            const canAdd = left > 0 && count < GIFT_PER_PRODUCT_LIMIT;
-            const disabled = !single && count === 0 && left <= 0;
+          {groups.map((g) => (
+            <div
+              key={g.gender ?? "other"}
+              role="group"
+              aria-label={g.label ?? undefined}
+              className="flex shrink-0 flex-col gap-1.5"
+            >
+              {/* Бүлгийн нэр — хавтас бүрт badge нэмэхийн оронд. Урт бүлгийг
+                  гүйлгэхэд зүүн талд наалдаж үлдэнэ (`sticky`). */}
+              {g.label && (
+                <span className="text-foreground sticky left-0 w-fit text-xs font-semibold">
+                  {g.label}
+                </span>
+              )}
+              <div className="flex gap-3">{g.items.map(renderCard)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Сонгосон усны хүйсийг ҮГЭЭР давтана — гомдол нь захиалсны дараа
+          «эмэгтэй ус ирлээ» гэж гарсан тул сонгох мөчид нь хэлнэ. */}
+      {allowance > 0 && (
+        <div aria-live="polite" className="space-y-0.5 text-sm">
+          {[...counts].map(([id, count]) => {
+            const o = options.find((x) => x.id === id);
+            if (!o) return null;
+            const noun = genderNoun(o.gender);
             return (
-              <div key={o.id} className="relative w-20 shrink-0 snap-start">
-                <button
-                  type="button"
-                  onClick={() => pick(o.id)}
-                  disabled={disabled}
-                  {...(single
-                    ? { role: "radio", "aria-checked": count > 0 }
-                    : { "aria-pressed": count > 0 })}
-                  aria-label={
-                    single
-                      ? `${o.brand} ${o.name}`
-                      : `${o.brand} ${o.name} — ${count > 0 ? `${count} ширхэг, сонголтоо болих` : "сонгох"}`
-                  }
-                  className="block w-full text-left disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <span
-                    className={cn(
-                      "bg-muted relative block size-20 overflow-hidden rounded-lg ring-2 ring-transparent transition-all",
-                      count > 0 && "ring-gold-strong",
-                    )}
-                  >
-                    {o.image && (
-                      <Image
-                        src={o.image}
-                        alt=""
-                        fill
-                        sizes="80px"
-                        className="object-cover"
-                      />
-                    )}
-                    {count > 0 && (
-                      <span className="bg-gold-strong text-background absolute right-1 bottom-1 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">
-                        {single ? (
-                          <Check className="size-3" strokeWidth={3} />
-                        ) : (
-                          count
-                        )}
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-muted-foreground mt-1.5 block truncate text-[11px] uppercase">
-                    {o.brand}
-                  </span>
-                  <span className="block truncate text-xs font-medium">
-                    {o.name}
-                  </span>
-                </button>
-                {/* Нэг уснаас 2 дахийг нь авах ЦОРЫН ГАНЦ зам — хавтас дарах нь
-                    зөвхөн сонгох / болих (дээрх №4). */}
-                {!single && count > 0 && canAdd && (
-                  <button
-                    type="button"
-                    onClick={() => add(o.id)}
-                    aria-label={`${o.name} — нэгээр нэмэх`}
-                    className="bg-card text-foreground absolute top-1 right-1 flex size-6 items-center justify-center rounded-full shadow-sm before:absolute before:size-8 before:content-['']"
-                  >
-                    <Plus className="size-3.5" />
-                  </button>
+              <p key={id} className="text-muted-foreground">
+                Сонгосон:{" "}
+                <span className="text-foreground">
+                  {o.brand} {o.name}
+                  {count > 1 && ` ×${count}`}
+                </span>
+                {noun && (
+                  <>
+                    {" — "}
+                    <span className="text-foreground font-semibold">
+                      {noun}
+                    </span>
+                  </>
                 )}
-                {/* Олон эрхтэй үед: нэгээр хасна. */}
-                {!single && count > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => remove(o.id)}
-                    aria-label={`${o.name} — нэгээр хасах`}
-                    className="bg-card text-foreground absolute top-1 left-1 flex size-6 items-center justify-center rounded-full shadow-sm before:absolute before:size-8 before:content-['']"
-                  >
-                    <Minus className="size-3.5" />
-                  </button>
-                )}
-              </div>
+              </p>
             );
           })}
         </div>
