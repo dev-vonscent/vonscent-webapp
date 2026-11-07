@@ -35,9 +35,7 @@ const GROUPS: { value: Group; label: string }[] = [
   { value: "none", label: "Хоосон" },
 ];
 
-function groupOf(
-  kind: WheelPrizeReportRow["kind"],
-): Exclude<Group, "all"> {
+function groupOf(kind: WheelPrizeReportRow["kind"]): Exclude<Group, "all"> {
   if (kind === "coupon_fixed" || kind === "coupon_percent") return "coupon";
   if (kind === "points") return "points";
   if (kind === "bundle" || kind === "product") return "physical";
@@ -243,7 +241,7 @@ export function LuckyWheelReport({
             className={cn(
               "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
               group === g.value
-                ? "bg-primary text-primary-foreground"
+                ? "bg-cta text-cta-foreground"
                 : "bg-secondary text-muted-foreground hover:text-foreground",
             )}
           >
