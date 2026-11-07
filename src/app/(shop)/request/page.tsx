@@ -40,7 +40,7 @@ export default async function PerfumeRequestPage({
 
   return (
     <div className="mx-auto max-w-2xl px-4 pt-4 pb-10 md:px-8 md:py-16">
-      <h1 className="font-serif text-3xl font-semibold tracking-tight md:text-4xl">
+      <h1 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
         Хүссэн үнэртэн тань алга уу?
       </h1>
       <p className="text-muted-foreground mt-3">

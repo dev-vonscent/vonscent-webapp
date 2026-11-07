@@ -10,7 +10,11 @@ import { GIFT_SAMPLE_ML, GIFT_THRESHOLD } from "@/lib/constants";
 export async function GET() {
   const settings = await getGiftSettings();
   if (!settings.enabled || settings.productIds.length === 0) {
-    return NextResponse.json({ enabled: false, threshold: GIFT_THRESHOLD, products: [] });
+    return NextResponse.json({
+      enabled: false,
+      threshold: GIFT_THRESHOLD,
+      products: [],
+    });
   }
 
   const all = await fetchProducts();
@@ -23,6 +27,9 @@ export async function GET() {
       id: p.id,
       name: p.name,
       brand: p.brand,
+      // Бэлгийн мөрийг хүйсээр бүлэглэнэ — хэрэглэгчид эмэгтэй/эрэгтэй
+      // усаа мэдэлгүй сонгоод дараа нь гомдоллосон (2026-11).
+      gender: p.gender,
       image: p.images[0]?.url ?? null,
     }));
 

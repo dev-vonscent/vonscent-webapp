@@ -193,20 +193,26 @@ function BuilderInner({
       <div className="border-border from-card/95 to-card/90 shadow-lift rounded-2xl border bg-linear-to-b p-3 backdrop-blur sm:p-4">
         {/* Header — bundle size (left) + running count / price (right) */}
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className="mb-2 flex w-full items-center justify-between gap-2">
+          {/* Шошгыг бүтнээр нь үлдээнэ — «үнэртэн бүрт өөр хэмжээ сонгож
+              болох уу» гэдэг асуулт байнга ирдэг тул «нэг тус бүрийн» гэдэг
+              нь хариулт нь. Утсан дээр зүүн талд байхдаа гурван мөрөнд
+              тасарч мөрийг сунгадаг байсан тул товчны ДЭЭР нэг мөрөөр. */}
+          <div className="mb-2 flex w-full flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
             <span className="text-muted-foreground text-xs font-medium">
               Үнэртэн нэг тус бүрийн хэмжээ сонгох
             </span>
-            <div className="bg-secondary flex items-center gap-0.5 rounded-full p-0.5">
+            <div className="bg-secondary flex items-center gap-0.5 rounded-full p-0.5 *:flex-1 sm:*:flex-none">
               {BUNDLE_ML_SIZES.map((size) => (
                 <button
                   key={size}
                   onClick={() => changeMl(size)}
                   aria-pressed={size === ml}
                   className={cn(
-                    // Утсан дээр 44px — DESIGN.md-ийн доод хязгаар. Десктоп
-                    // дээр нягтруулна (`md:`), учир нь тэнд хулгана нарийн.
-                    "flex min-h-11 items-center justify-center rounded-full px-4 text-xs font-semibold md:min-h-0 md:px-3 md:py-1",
+                    // Харагдах өндөр 36px, дарах талбай нь `before:`-ээр 44px
+                    // (DESIGN.md-ийн доод хязгаар) — 44px-ийн цул товч sticky
+                    // тавиурыг хэт өндөр болгодог байв. Десктоп дээр
+                    // нягтруулна (`md:`), учир нь тэнд хулгана нарийн.
+                    "relative flex min-h-9 items-center justify-center rounded-full px-4 text-xs font-semibold before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] md:min-h-0 md:px-3 md:py-1 md:before:hidden",
                     size === ml
                       ? "bg-foreground text-background shadow-sm"
                       : "text-muted-foreground hover:text-foreground",
