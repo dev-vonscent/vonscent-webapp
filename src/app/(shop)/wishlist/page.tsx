@@ -115,7 +115,7 @@ export default function WishlistPage() {
 
   return (
     <div className="mx-auto max-w-420 px-4 py-10 md:px-8">
-      <h1 className="mb-6 hidden font-serif text-3xl font-semibold md:block">
+      <h1 className="mb-6 hidden font-serif text-2xl font-semibold tracking-tight sm:text-3xl md:block">
         Хүслийн жагсаалт
       </h1>
 

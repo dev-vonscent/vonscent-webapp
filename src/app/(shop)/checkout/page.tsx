@@ -1425,7 +1425,7 @@ export default function CheckoutPage() {
               Утсан дээр нуугдана: толгой аль хэдийн «Захиалга» гэж бичдэг
               тул давхар гарчиг ~80px зай эзэлдэг байв (хүслийн жагсаалт,
               бүртгэлийн хуудсуудтай ижил `hidden md:block`). */}
-          <h1 className="mb-8 hidden text-3xl font-semibold tracking-tight md:block">
+          <h1 className="mb-8 hidden font-serif text-2xl font-semibold tracking-tight sm:text-3xl md:block">
             Захиалга өгөх
           </h1>
 
