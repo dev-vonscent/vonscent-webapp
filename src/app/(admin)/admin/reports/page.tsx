@@ -51,6 +51,7 @@ export default async function AdminReportsPage({
   const bucketHead = report.bucket === "day" ? "Өдөр" : "Сар";
   const lowestStock = stock.items.map((p) => ({
     name: `${p.brand} — ${p.name}`,
+    searchQuery: `${p.brand} ${p.name}`,
     availableMl: p.availableMl,
     lowStockMl: p.lowStockMl,
   }));
