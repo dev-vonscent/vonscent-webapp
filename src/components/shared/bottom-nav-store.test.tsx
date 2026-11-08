@@ -35,3 +35,19 @@ describe("bottom-nav-store", () => {
     expect(claimed.result.current).toBe(false);
   });
 });
+
+describe("хуудасны төгсгөл", () => {
+  it("доош гүйлгэсэн ч төгсгөлд хүрвэл доод цэс гарна", () => {
+    const reader = renderHook(() => useScrollHidden());
+    const header = renderHook(
+      ({ hidden, atEnd }) => usePublishScrollHidden(hidden, atEnd),
+      { initialProps: { hidden: true, atEnd: false } },
+    );
+    reader.rerender();
+    expect(reader.result.current).toBe(true);
+    header.rerender({ hidden: true, atEnd: true });
+    reader.rerender();
+    expect(reader.result.current).toBe(false);
+    header.unmount();
+  });
+});

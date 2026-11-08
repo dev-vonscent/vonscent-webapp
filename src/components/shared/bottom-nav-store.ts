@@ -19,7 +19,13 @@ interface BottomNavState {
    * гүйлгэлтийн дүрэм ганцаараа, тэгэхгүй бол хоёр зурвас өөр мөчид хөдөлнө.
    */
   scrollHidden: boolean;
-  setScrollHidden: (hidden: boolean) => void;
+  /**
+   * Хуудасны доод төгсгөлд хүрсэн — уншиж дууссан хүн дараагийн алхам руу
+   * шилжинэ (iOS Safari-ийн toolbar шиг). Доод цэс гарч, footer-ийн доорх
+   * нөөц зайг дүүргэнэ; header нуугдсан чигээрээ.
+   */
+  atEnd: boolean;
+  setScroll: (scrollHidden: boolean, atEnd: boolean) => void;
 }
 
 const useBottomNavStore = create<BottomNavState>((set) => ({
@@ -27,7 +33,8 @@ const useBottomNavStore = create<BottomNavState>((set) => ({
   claim: () => set((s) => ({ claims: s.claims + 1 })),
   release: () => set((s) => ({ claims: Math.max(0, s.claims - 1) })),
   scrollHidden: false,
-  setScrollHidden: (scrollHidden) => set({ scrollHidden }),
+  atEnd: false,
+  setScroll: (scrollHidden, atEnd) => set({ scrollHidden, atEnd }),
 }));
 
 /** Хуудасны үйлдлийн зурвас доод ирмэгийг эзэлсэн эсэх. */
@@ -35,18 +42,18 @@ export function useBottomBarClaimed() {
   return useBottomNavStore((s) => s.claims > 0);
 }
 
-/** Доош гүйлгэснээр header ба доод цэс нуугдсан эсэх. */
+/** Доош гүйлгэснээр доод цэс нуугдах ёстой эсэх (төгсгөлд хүрвэл гарна). */
 export function useScrollHidden() {
-  return useBottomNavStore((s) => s.scrollHidden);
+  return useBottomNavStore((s) => s.scrollHidden && !s.atEnd);
 }
 
 /** `SiteHeader` гүйлгэлтийн төлөвөө энд нийтэлнэ. */
-export function usePublishScrollHidden(hidden: boolean) {
-  const setScrollHidden = useBottomNavStore((s) => s.setScrollHidden);
+export function usePublishScrollHidden(hidden: boolean, atEnd = false) {
+  const setScroll = useBottomNavStore((s) => s.setScroll);
   React.useEffect(() => {
-    setScrollHidden(hidden);
-  }, [hidden, setScrollHidden]);
-  React.useEffect(() => () => setScrollHidden(false), [setScrollHidden]);
+    setScroll(hidden, atEnd);
+  }, [hidden, atEnd, setScroll]);
+  React.useEffect(() => () => setScroll(false, false), [setScroll]);
 }
 
 /**
