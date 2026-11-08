@@ -1,10 +1,7 @@
 "use client";
 
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
-  Cell,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -14,6 +11,9 @@ import {
   Legend,
 } from "recharts";
 import { formatPrice } from "@/lib/format";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   stockState,
   STOCK_STATE_LABEL,
@@ -172,75 +172,96 @@ export function SalesSeriesChart({
 
 export interface StockPoint {
   name: string;
+  /**
+   * Барааны жагсаалтын хайлт руу дамжих текст. «Брэнд — Нэр» дэх «—» нь
+   * хайлтын нэг үг болж таарахгүй тул брэнд, нэрийг зайгаар л залгана.
+   */
+  searchQuery: string;
   availableMl: number;
   lowStockMl: number;
 }
 
-/** Horizontal bar chart of the lowest-stock products. */
+/**
+ * Хамгийн бага үлдэгдэлтэй бараанууд — recharts биш, HTML мөрүүд.
+ *
+ * Recharts-ийн хэвтээ bar-т гурван асуудал байв: урт нэр Y тэнхлэгт 3 мөр
+ * болж хөршөөрөө давхцдаг, hover-ын cursor нь бүтэн мөрийг цайвар саарал
+ * зурвасаар бүрхдэг, tooltip-ийн утга хар theme-д харанхуй өнгөтэй гардаг.
+ * Мөн 0ml бараа (яг анхаарах ёстой нь) зураасгүй тул хоосон харагддаг байв.
+ * Энд утга бүр шууд бичигдсэн тул tooltip хэрэггүй, нэр 2 мөрөөс хэтэрвэл тасарна.
+ *
+ * Өнгө нь зөвхөн төлөв: «Бага» — улаан, «Дууссан» — хоосон зам + улаан
+ * тэмдэг, хэвийн — ногоон (`--done`; монохром `success` нь саарал).
+ * Нэр дээр дарвал барааны жагсаалт тухайн бараагаар хайгдсан нээгдэнэ. Тэмдэг (үг) байгаа тул өнгө дангаараа
+ * утга тээхгүй. Зам дээрх босоо зураас нь тухайн барааны «бага» босго.
+ */
 export function StockBarChart({ data }: { data: StockPoint[] }) {
   if (data.length === 0) {
     return <p className="text-muted-foreground text-sm">Өгөгдөл алга.</p>;
   }
+  // Босго ч хуваарьт багтах ёстой — эс бөгөөс бага үлдэгдэлтэй бараан дээр
+  // зураас замаас гадагш гарна.
+  const max = Math.max(
+    1,
+    ...data.map((d) => Math.max(d.availableMl, d.lowStockMl)),
+  );
+  const pct = (ml: number) => `${Math.min(100, (ml / max) * 100)}%`;
+
   return (
-    <div className="w-full" style={{ height: Math.max(180, data.length * 34) }}>
-      <ChartTable
-        caption="Үлдэгдэл багатай бараа"
-        columns={["Бараа", "Үлдэгдэл (ml)", "Төлөв"]}
-        rows={data.map((d) => [
-          d.name,
-          d.availableMl,
-          STOCK_STATE_LABEL[stockState(d.availableMl, d.lowStockMl)],
-        ])}
-      />
-      <ResponsiveContainer>
-        <BarChart data={data} layout="vertical" margin={{ left: 8, right: 16 }}>
-          <CartesianGrid stroke="var(--muted)" horizontal={false} />
-          <XAxis
-            type="number"
-            tick={AXIS_TICK}
-            tickLine={false}
-            axisLine={false}
-            unit="ml"
-          />
-          <YAxis
-            type="category"
-            dataKey="name"
-            tick={AXIS_TICK}
-            tickLine={false}
-            axisLine={false}
-            width={160}
-            tickFormatter={(name: string) => {
-              const row = data.find((d) => d.name === name);
-              if (!row) return name;
-              const state = stockState(row.availableMl, row.lowStockMl);
-              return state === "ok"
-                ? name
-                : `${name} · ${STOCK_STATE_LABEL[state]}`;
-            }}
-          />
-          <Tooltip
-            contentStyle={TOOLTIP_STYLE}
-            formatter={(value) => [`${value ?? 0}ml`, "Үлдэгдэл"]}
-          />
-          <Bar dataKey="availableMl" name="Үлдэгдэл" radius={[0, 4, 4, 0]}>
-            {data.map((d, i) => (
-              <Cell
-                key={i}
-                // Low is a warning, sold out is a failure — the chart painted
-                // both `--destructive`, which is the same conflation the
-                // dashboard had.
-                fill={
-                  {
-                    soldout: "var(--destructive)",
-                    low: "var(--warning)",
-                    ok: "var(--chart-2)",
-                  }[stockState(d.availableMl, d.lowStockMl)]
-                }
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="space-y-4">
+      <ul className="grid grid-cols-1 gap-x-10 gap-y-3.5 lg:grid-cols-2">
+        {data.map((d) => {
+          const state = stockState(d.availableMl, d.lowStockMl);
+          return (
+            <li key={d.name} className="min-w-0">
+              <div className="flex items-start gap-2 text-sm">
+                <Link
+                  href={`/admin/products?q=${encodeURIComponent(d.searchQuery)}`}
+                  className="line-clamp-2 min-w-0 flex-1 wrap-break-word underline-offset-4 hover:underline"
+                >
+                  {d.name}
+                </Link>
+                {state !== "ok" && (
+                  <Badge variant="sale">{STOCK_STATE_LABEL[state]}</Badge>
+                )}
+                <span
+                  className={cn(
+                    "w-14 shrink-0 text-right font-medium tabular-nums",
+                    state === "soldout" && "text-destructive",
+                  )}
+                >
+                  {d.availableMl}ml
+                </span>
+              </div>
+              <div
+                aria-hidden
+                className="bg-muted relative mt-1.5 h-1.5 overflow-hidden rounded-full"
+              >
+                <div
+                  className={cn(
+                    "h-full rounded-full",
+                    state === "low" ? "bg-destructive" : "bg-done",
+                  )}
+                  style={{ width: pct(d.availableMl) }}
+                />
+                {d.lowStockMl > 0 && (
+                  <div
+                    className="bg-foreground/50 absolute inset-y-0 w-0.5"
+                    style={{ left: pct(d.lowStockMl) }}
+                  />
+                )}
+              </div>
+              <span className="sr-only">
+                Бага үлдэгдлийн босго {d.lowStockMl}ml.
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-muted-foreground flex items-center gap-2 text-xs">
+        <span aria-hidden className="bg-foreground/50 inline-block h-3 w-0.5" />
+        Босоо зураас — тухайн барааны «Бага» босго
+      </p>
     </div>
   );
 }

@@ -18,6 +18,7 @@ import { selectWishCount, useWishlist } from "@/features/wishlist/store";
 import { GlobalSearch } from "./global-search";
 import { cn } from "@/lib/utils";
 import { DARK_STAGE_ROUTES } from "@/lib/constants";
+import { usePublishScrollHidden } from "@/components/shared/bottom-nav-store";
 import {
   STORE_NAV_PRIMARY,
   STORE_NAV_SECONDARY,
@@ -27,6 +28,9 @@ import {
 } from "./store-nav";
 
 /** Page titles for the mobile compact header (exact path or longest prefix). */
+/** Доод төгсгөлөөс энэ px дотор бол «төгсгөлд хүрсэн» — доод цэс дахин гарна. */
+const PAGE_END_THRESHOLD = 40;
+
 const TITLES: Record<string, string> = {
   "/catalog": "Каталог",
   "/collections": "Багц",
@@ -124,12 +128,18 @@ export function SiteHeader({
 
   // Hide on scroll down, reveal on scroll up.
   const [hidden, setHidden] = React.useState(false);
+  // Хуудасны доод төгсгөлд хүрсэн эсэх — доод цэс тэнд дахин гарна (header биш).
+  const [atEnd, setAtEnd] = React.useState(false);
   React.useEffect(() => {
     let lastY = window.scrollY;
     function onScroll() {
       const y = window.scrollY;
       const diff = y - lastY;
       lastY = y;
+      setAtEnd(
+        y + window.innerHeight >=
+          document.documentElement.scrollHeight - PAGE_END_THRESHOLD,
+      );
       if (y < 80) {
         setHidden(false); // always visible near the top
         return;
@@ -150,6 +160,9 @@ export function SiteHeader({
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Доод цэс ч энэ төлөвөөр гулсана — нэг дүрэм, нэг мөч.
+  usePublishScrollHidden(hidden, atEnd);
 
   // Expose the hidden state so sticky page content (e.g. product gallery) can
   // shrink its top offset while the header is away and clear it when it returns.

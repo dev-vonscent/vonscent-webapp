@@ -13,17 +13,47 @@ interface BottomNavState {
   claims: number;
   claim: () => void;
   release: () => void;
+  /**
+   * Доош гүйлгэж байгаа үед `true` — header-тэй хамт цэс ч гулсаж бууна
+   * (Material «hide on scroll», Instagram/X шиг). Эх сурвалж нь `SiteHeader`-ийн
+   * гүйлгэлтийн дүрэм ганцаараа, тэгэхгүй бол хоёр зурвас өөр мөчид хөдөлнө.
+   */
+  scrollHidden: boolean;
+  /**
+   * Хуудасны доод төгсгөлд хүрсэн — уншиж дууссан хүн дараагийн алхам руу
+   * шилжинэ (iOS Safari-ийн toolbar шиг). Доод цэс гарч, footer-ийн доорх
+   * нөөц зайг дүүргэнэ; header нуугдсан чигээрээ.
+   */
+  atEnd: boolean;
+  setScroll: (scrollHidden: boolean, atEnd: boolean) => void;
 }
 
 const useBottomNavStore = create<BottomNavState>((set) => ({
   claims: 0,
   claim: () => set((s) => ({ claims: s.claims + 1 })),
   release: () => set((s) => ({ claims: Math.max(0, s.claims - 1) })),
+  scrollHidden: false,
+  atEnd: false,
+  setScroll: (scrollHidden, atEnd) => set({ scrollHidden, atEnd }),
 }));
 
-/** Доод цэс яг одоо нуугдсан эсэх — зөвхөн `BottomNav` уншина. */
-export function useBottomNavHidden() {
+/** Хуудасны үйлдлийн зурвас доод ирмэгийг эзэлсэн эсэх. */
+export function useBottomBarClaimed() {
   return useBottomNavStore((s) => s.claims > 0);
+}
+
+/** Доош гүйлгэснээр доод цэс нуугдах ёстой эсэх (төгсгөлд хүрвэл гарна). */
+export function useScrollHidden() {
+  return useBottomNavStore((s) => s.scrollHidden && !s.atEnd);
+}
+
+/** `SiteHeader` гүйлгэлтийн төлөвөө энд нийтэлнэ. */
+export function usePublishScrollHidden(hidden: boolean, atEnd = false) {
+  const setScroll = useBottomNavStore((s) => s.setScroll);
+  React.useEffect(() => {
+    setScroll(hidden, atEnd);
+  }, [hidden, atEnd, setScroll]);
+  React.useEffect(() => () => setScroll(false, false), [setScroll]);
 }
 
 /**
