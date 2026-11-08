@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, renderHook, screen } from "@testing-library/react";
 import {
   afterEach,
   beforeAll,
@@ -70,7 +70,10 @@ beforeAll(() => {
 });
 
 describe("PromoPopup", () => {
-  beforeEach(() => vi.useFakeTimers());
+  beforeEach(() => {
+    vi.useFakeTimers();
+    window.sessionStorage.clear();
+  });
   afterEach(() => vi.useRealTimers());
 
   it("харьцаагүй ч хуудас ачаалагдсаны дараа өөрөө гарна (refresh бүрд)", async () => {
@@ -137,23 +140,7 @@ describe("PromoPopup", () => {
     return ctx;
   }
 
-  it("лого / «Нүүр» icon-оор нүүр рүү ороход үйлдэлгүйгээр дахин гарна", async () => {
-    const { PromoPopup } = await openThenLeave();
-    // Popup-ын импортолсон модультай ижил instance (resetModules-ийн дараа).
-    const intent = await import("../home-popup-intent");
-    window.history.replaceState(null, "", "/products/x");
-    intent.markHomePopupIntent();
-    window.history.replaceState(null, "", "/");
-
-    render(<PromoPopup settings={settings} />);
-    expect(screen.queryByRole("dialog")).toBeNull();
-    await act(async () => {
-      vi.advanceTimersByTime(500);
-    });
-    expect(screen.getByRole("dialog")).toBeTruthy();
-  });
-
-  it("back дарж нүүр рүү буцахад гарахгүй (клиент, 2026-10-26)", async () => {
+  it("сайт дотроос нүүр рүү буцахад дахин гарахгүй, teaser үлдэнэ", async () => {
     const { PromoPopup } = await openThenLeave();
     render(<PromoPopup settings={settings} />);
     await act(async () => {
@@ -161,6 +148,106 @@ describe("PromoPopup", () => {
       vi.advanceTimersByTime(3000);
     });
     expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("button", { name: "Зар" })).toBeTruthy();
+  });
+
+  it("reload (шинэ document) хийхэд ч энэ session-д дахин гарахгүй", async () => {
+    await openThenLeave();
+    // renderPopup нь модулийг шинээр ачаална = reload.
+    await renderPopup();
+    await act(async () => {
+      window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
+      vi.advanceTimersByTime(3000);
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("админ өөр зар тавьбал session-д харсан ч дахин гарна", async () => {
+    await openThenLeave();
+    await renderPopup({
+      popup: {
+        enabled: true,
+        slides: [{ ...settings.slides[0], imageUrl: "https://x/b.webp" }],
+      },
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("нүүр анх mount болоход гараагүй бол client navigation-аар орж ирэхэд шууд гарна", async () => {
+    const { PromoPopup, view } = await renderPopup();
+    view.unmount(); // popup гарахаас өмнө өөр хуудас руу гарсан
+    render(<PromoPopup settings={settings} />);
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("teaser дарахад popup дахин нээгдэнэ, × дарвал нуугдана", async () => {
+    await renderPopup();
+    await act(async () => {
+      window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
+      vi.advanceTimersByTime(500);
+    });
+    // Хаах (Escape).
+    await act(async () => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const teaser = screen.getByRole("button", { name: "Зар" });
+    await act(async () => {
+      teaser.click();
+    });
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    await act(async () => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+      vi.advanceTimersByTime(500);
+    });
+    await act(async () => {
+      screen.getByRole("button", { name: "Зарын товчийг нуух" }).click();
+    });
+    expect(screen.queryByRole("button", { name: "Зар" })).toBeNull();
+  });
+
+  it("teaser доод цэсийг дагана: цэс нуугдахад бууж хумигдана", async () => {
+    await renderPopup();
+    await act(async () => {
+      window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
+      vi.advanceTimersByTime(500);
+    });
+    await act(async () => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+      vi.advanceTimersByTime(500);
+    });
+    // `renderPopup` модулиудыг шинэчилдэг — store-ийг ижил instance-аас авна.
+    const { usePublishScrollHidden } =
+      await import("@/components/shared/bottom-nav-store");
+    const header = renderHook(
+      ({ hidden, atEnd }) => usePublishScrollHidden(hidden, atEnd),
+      { initialProps: { hidden: false, atEnd: false } },
+    );
+    const hide = () =>
+      screen.getByRole("button", { name: "Зарын товчийг нуух" });
+    const isHidden = /(^|\s)hidden(\s|$)/;
+    expect(hide().className).not.toMatch(isHidden);
+    act(() => header.rerender({ hidden: true, atEnd: false }));
+    // Хумигдсан ч нэр нь «Зар» хэвээр (дэлгэц уншигч).
+    expect(screen.getByRole("button", { name: "Зар" })).toBeTruthy();
+    expect(hide().className).toMatch(isHidden);
+    // Хуудасны төгсгөлд цэс гарахад teaser ч дээшилж дэлгэгдэнэ.
+    act(() => header.rerender({ hidden: true, atEnd: true }));
+    expect(hide().className).not.toMatch(isHidden);
+    header.unmount();
   });
 
   it("мэндчилгээний цонх нээгдсэн бол дараагийн нэг нээлтийг алгасна", async () => {
