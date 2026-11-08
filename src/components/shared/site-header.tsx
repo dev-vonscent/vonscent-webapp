@@ -18,6 +18,7 @@ import { selectWishCount, useWishlist } from "@/features/wishlist/store";
 import { GlobalSearch } from "./global-search";
 import { cn } from "@/lib/utils";
 import { DARK_STAGE_ROUTES } from "@/lib/constants";
+import { usePublishScrollHidden } from "@/components/shared/bottom-nav-store";
 import {
   STORE_NAV_PRIMARY,
   STORE_NAV_SECONDARY,
@@ -150,6 +151,9 @@ export function SiteHeader({
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Доод цэс ч энэ төлөвөөр гулсана — нэг дүрэм, нэг мөч.
+  usePublishScrollHidden(hidden);
 
   // Expose the hidden state so sticky page content (e.g. product gallery) can
   // shrink its top offset while the header is away and clear it when it returns.
