@@ -54,4 +54,9 @@ describe("customerSearchFilter", () => {
     expect(customerSearchFilter("")).toBeNull();
     expect(customerSearchFilter("   ")).toBeNull();
   });
+  it("үсэгтэй үгийн цифрийг утас гэж хайхгүй (купоны код)", () => {
+    expect(customerSearchFilter("VW-CE2YKU")).toBe(
+      'full_name.ilike."%VW-CE2YKU%"',
+    );
+  });
 });
