@@ -14,6 +14,7 @@ import { isExtraLine, orderLineMeta, orderLineTitle } from "@/lib/order-lines";
 import { deliveryDayOf, formatDeliveryDay } from "@/lib/time";
 import { env } from "@/lib/env";
 import { orderSummaryRows, summarySource } from "@/lib/orders/summary";
+import { reportPurchase } from "@/lib/meta/capi";
 
 /**
  * Committing a payment.
@@ -146,6 +147,9 @@ async function commit(
   // өөрөө дуудна. Тэр нь `mark_order_paid`-ийн UPDATE-ийн дотор явдаг тул
   // энэ мөрөнд хүрэхэд купон аль хэдийн бэлэн — имэйл түүнийг уншина.
   await sendOrderCustomerEmail(order.id, "paid");
+  // Meta CAPI Purchase (`meta_capi` туг, 0171) — browser pixel алдсан
+  // худалдан авалтыг нөхнө. Best-effort, дотроо туг/env/mock-ийг шалгана.
+  await reportPurchase(supabase, order.id, source);
   return { ok: true };
 }
 
@@ -198,7 +202,7 @@ async function notifyPaid(
   const { data: itemData } = await supabase
     .from("order_items")
     .select(
-      "product_name, brand, ml, qty, unit_price, list_price, is_gift, collection_id, collection_name, line_kind, variant_label",
+      "product_name, brand, ml, qty, unit_price, list_price, is_gift, collection_id, collection_name, line_kind, variant_label, spin_id",
     )
     .eq("order_id", order.id);
   const items = (itemData ?? []) as {
@@ -213,6 +217,8 @@ async function notifyPaid(
     collection_name: string | null;
     line_kind: "perfume" | "extra";
     variant_label: string | null;
+    /** Азын хүрдний гранд шагналын мөр (0165). */
+    spin_id: string | null;
   }[];
 
   // Бэлэн багц нэг мөр болно («Gentleman багц · 5ml × 1»); хэрэглэгчийн
@@ -250,7 +256,7 @@ async function notifyPaid(
         : "";
       return (
         `• ${tgEscape(name)} ${orderLineMeta(i)}${bundle}` +
-        (i.is_gift ? " 🎁" : ` — ${formatPrice(base)}`)
+        (i.spin_id ? " 🏆" : i.is_gift ? " 🎁" : ` — ${formatPrice(base)}`)
       );
     })
     .join("\n");

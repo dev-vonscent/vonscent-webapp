@@ -204,12 +204,22 @@ export function QuickAdd({
                       !v.sellable
                         ? "bg-secondary/50 text-muted-foreground cursor-not-allowed opacity-50"
                         : active
-                          ? "bg-foreground/30"
+                          ? // Багцын сонголттой ижил — эргэсэн цул өнгө. Бүдэг
+                            // `foreground/30` нь цайвар загварт саарал болж,
+                            // сонгогдоогүйгээс бараг ялгарахгүй байв.
+                            "bg-foreground text-background"
                           : "bg-secondary hover:bg-accent",
                     )}
                   >
                     <span className="text-sm font-semibold">{v.ml}ml</span>
-                    <span className="text-muted-foreground text-xs">
+                    <span
+                      className={cn(
+                        "text-xs",
+                        active && v.sellable
+                          ? "text-background/75"
+                          : "text-muted-foreground",
+                      )}
+                    >
                       {label}
                     </span>
                   </button>

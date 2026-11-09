@@ -100,13 +100,43 @@ export function activePreset(
   to: string | undefined,
   today: string,
   presets: Preset[] = DATE_PRESETS,
+  /**
+   * URL-ийн `preset` — хоёр preset ИЖИЛ муж гаргах үед аль нь дарагдсныг
+   * хэлнэ. Жишээ нь сарын 7-нд «Энэ сар» = «7 хоног» (01–07), сарын 1-нд
+   * «Энэ сар» = «Өнөөдөр»: hint-гүй бол эхний таарсан chip асч, дарсан chip
+   * сонгогдоогүй мэт харагддаг байв.
+   */
+  hint?: string | null,
 ): string {
   if (!from && !to) return "all";
+  const hinted = hint ? presets.find((p) => p.id === hint) : undefined;
+  if (hinted) {
+    const r = hinted.range(today);
+    if (r && r.from === from && r.to === to) return hinted.id;
+  }
   for (const p of presets) {
     const r = p.range(today);
     if (r && r.from === from && r.to === to) return p.id;
   }
   return "custom";
+}
+
+/**
+ * Энэ preset-ийн муж өнөөдөр өөр preset-тэй давхцаж байна уу. Давхцвал л URL-д
+ * `preset` бичнэ — бусад үед URL цэвэр хэвээр.
+ */
+export function presetIsAmbiguous(
+  id: string,
+  today: string,
+  presets: Preset[],
+): boolean {
+  const self = presets.find((p) => p.id === id)?.range(today);
+  if (!self) return false;
+  return presets.some((p) => {
+    if (p.id === id) return false;
+    const r = p.range(today);
+    return !!r && r.from === self.from && r.to === self.to;
+  });
 }
 
 /** `2026-08-29T14:30` → `2026-08-29`; anything unparseable → `""`. */
@@ -292,4 +322,31 @@ export function rangeSummary(from?: string, to?: string): string {
   if (!a && !b) return "Бүх хугацаа";
   if (a && b) return a === b ? a : `${a} — ${b}`;
   return a ? `${a}-с хойш` : `${b} хүртэл`;
+}
+
+/**
+ * Өдрөөр сонгодог хугацаа (хямдрал, 0166): эхлэх өдөр = тэр өдрийн 00:00,
+ * дуусах өдөр = тэр өдрийг БҮТНЭЭР нь хамарна (дараагийн өдрийн 00:00 УБ,
+ * exclusive — `sale_ends_at > now()`). Хоосон бол null.
+ */
+export function dayStartIso(day: string): string | null {
+  return ubIso(day ? startOfDayLocal(day) : undefined) ?? null;
+}
+
+export function dayEndIso(day: string): string | null {
+  return ubIsoEnd(day ? endOfDayLocal(day) : undefined) ?? null;
+}
+
+/** `dayStartIso`-ийн урвуу: ISO → `YYYY-MM-DD` (УБ). Хоосон бол "". */
+export function isoToDay(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? "" : ubDateKey(new Date(t));
+}
+
+/** `dayEndIso`-ийн урвуу — exclusive хилээс нэг мөч ухарч өдрийг нь авна. */
+export function isoEndToDay(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? "" : ubDateKey(new Date(t - 1));
 }

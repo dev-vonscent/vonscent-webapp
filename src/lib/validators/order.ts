@@ -119,6 +119,13 @@ export const checkoutSchema = z.object({
    * тэр үед зан төлөв нь өмнөхтэй яг адил.
    */
   requestId: z.string().uuid().optional(),
+  /**
+   * Азын хүрдний бодит шагнал (0165/0170) — энэ захиалгад 0₮-өөр хавсаргах
+   * шагналын эргэлтүүд. Эзэмшил, хугацаа, нөөцийг `place_order_with_prizes`
+   * шалгана; энд зөвхөн хэлбэр. `prizeSpinId` — нэг шагналтай хуучин клиент.
+   */
+  prizeSpinIds: z.array(z.string().uuid()).max(10).optional(),
+  prizeSpinId: z.string().uuid().optional(),
 });
 
 /** Хорооны мессежийг нэг эх сурвалжаас — форм ба сервер ижил үг хэлнэ. */

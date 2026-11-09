@@ -14,8 +14,7 @@ import { SITE } from "@/lib/constants";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  ...pageMetadata("/contact"),
-  title: "Холбоо барих",
+  ...pageMetadata("/contact", { title: "Холбоо барих" }),
   description: "Бидэнтэй холбогдоорой — утас, имэйл, сошиал, мессеж.",
 };
 
@@ -36,7 +35,7 @@ export default async function ContactPage() {
     <div className="mx-auto max-w-5xl px-4 pt-4 pb-10 md:px-8 md:py-16">
       <h1
         data-page-title
-        className="font-serif text-4xl font-semibold tracking-tight"
+        className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl"
       >
         Холбоо барих
       </h1>

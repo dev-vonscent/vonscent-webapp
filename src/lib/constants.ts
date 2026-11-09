@@ -9,8 +9,18 @@ export const SITE = {
   // (canonical, og:url, JSON-LD) points at www to avoid a redirect hop.
   url: "https://www.vonscent.mn",
   description:
-    "Von Scent — дэлхийн шилдэг оригинал үнэртнүүдийг 2, 5, 10, 20 мл-ээр туршиж, өөрийн үнэрээ олоорой",
+    "Дэлхийн шилдэг оригинал үнэртнүүдийг 2, 5, 10, 20 мл-ээр туршиж, өөрийн үнэрээ олоорой",
   tagline: "Үнэрээ ол",
+  /**
+   * Нүүр хуудсыг Messenger/Telegram-д хуваалцахад гарах гарчиг, тайлбар.
+   * Брэндийн нэрийг давтахгүй — og:site_name/домэйн, зураг дээрх лого
+   * аль хэдийн харуулна. `<title>` нь «Von Scent — Үнэрээ ол» хэвээр (SEO).
+   */
+  share: {
+    title: "Үнэрээ ол — оригинал үнэртэн 2 мл-ээс",
+    description:
+      "Бүтэн сав авахаасаа өмнө 2, 5, 10, 20 мл-ээр туршаад, өөрт тохирох үнэрээ сонгоорой.",
+  },
   /**
    * Брэндийн бичигдэх нэр — Facebook хуудасны нэртэй ижил (клиент, 2026-09 UG).
    * Хайлтад харагдах бүх газарт (title, og:site_name, JSON-LD) үүнийг
@@ -25,12 +35,12 @@ export const SITE = {
    * илгээхэд, Google-ийн thumbnail-д гарна. `public/`-д байрлах, вэб дээр
    * хаана ч харагддаггүй тусгай зураг; 1200×630 (1.91:1).
    */
-  ogImage: { url: "/og-image.jpg", width: 1200, height: 630 },
+  ogImage: { url: "/og-share.jpg", width: 1200, height: 630 },
   /**
    * `ogImage`-ийн 1:1 хос — Google хайлтын дөрвөлжин thumbnail-д зориулсан,
    * нүүр хуудасны JSON-LD `primaryImageOfPage`. Мөн вэб дээр харагддаггүй.
    */
-  searchImage: { url: "/og-image-square.jpg", width: 1200, height: 1200 },
+  searchImage: { url: "/og-share-square.jpg", width: 1200, height: 1200 },
 } as const;
 
 /**
@@ -203,25 +213,6 @@ export const REFUND_FEE_PCT = 1;
  * 2026-10-01.
  */
 export const QPAY_FEE_PCT = 1;
-
-/**
- * Буцаалтын данс сонгох банкууд. QPay нь зөвхөн картын гүйлгээг буцаадаг
- * тул бусад төлбөрийг админ энэ данс руу гараар шилжүүлнэ.
- */
-export const MN_BANKS = [
-  "Хаан банк",
-  "Голомт банк",
-  "Худалдаа хөгжлийн банк",
-  "Хас банк",
-  "Төрийн банк",
-  "Капитрон банк",
-  "Богд банк",
-  "Ариг банк",
-  "Тээвэр хөгжлийн банк",
-  "Чингис хаан банк",
-  "Үндэсний хөрөнгө оруулалтын банк",
-  "М банк",
-] as const;
 
 /**
  * Доод хязгаар (ml) — шинэ бараа энэ утгаас эхэлнэ.
@@ -559,8 +550,15 @@ export const SEARCH_PLACEHOLDER = "Үнэртэн, багц, брэнд хайх
 /** Багц үүсгэгчид зөвхөн ус сонгогдоно — багц дотор багц орохгүй. */
 export const BUILDER_SEARCH_PLACEHOLDER = "Үнэртэн, брэнд хайх";
 
-/** Глобал хайлтын нэг төрөлд ногдох илэрцийн тоо. */
+/** Глобал хайлтын нэг төрөлд (багц, брэнд) ногдох илэрцийн тоо. */
 export const SEARCH_LIMIT_PER_KIND = 5;
+
+/**
+ * Глобал хайлтын барааны илэрцийн тоо — бусад төрлөөс их: брэндийн нэрээр
+ * хайхад (жишээ нь «dior») тухайн брэндийн бүх ус харагдах ёстой. Хамгийн олон
+ * бараатай брэнд 9 (YSL, 2026-11) — нөөцтэй.
+ */
+export const SEARCH_PRODUCT_LIMIT = 12;
 
 /**
  * Бүтээгдэхүүний хуудсанд нэг удаад харуулах сэтгэгдлийн тоо.
@@ -579,6 +577,44 @@ export const REVIEWS_PAGE_SIZE = 6;
  * гурвуулаа энэ утгыг барина (0072).
  */
 export const REVIEW_BODY_MAX = 200;
+
+/**
+ * Хяналттай сэтгэгдэл (0162, feature flag `review_moderation`): зайг
+ * тооцохгүйгээр доод тал нь хэдэн тэмдэгт. DB trigger
+ * (`reviews_moderation_guard`) ижил тоог барина.
+ */
+export const REVIEW_MODERATED_BODY_MIN = 100;
+/** Хяналттай сэтгэгдлийн дээд урт — DB check `reviews_body_len` (0162). */
+export const REVIEW_MODERATED_BODY_MAX = 1000;
+
+/** Нүүрэнд харуулах сонгосон сэтгэгдлийн дээд тоо (шинэ нь эхэнд, 3 баганаар). */
+export const HOME_FEATURED_REVIEWS_MAX = 6;
+
+export type ReviewStatus = "pending" | "approved" | "rejected";
+
+/** Хэрэглэгчид харагдах төлөв («Миний захиалга»). */
+export const REVIEW_STATUS_LABEL: Record<ReviewStatus, string> = {
+  pending: "Шалгагдаж байна",
+  approved: "Оноо цуглуулсан",
+  rejected: "Цуцлагдсан",
+};
+
+/** Админ цуцлахдаа сонгох шалтгаан — DB check `reviews_reject_reason_check`. */
+export const REVIEW_REJECT_REASONS = [
+  "profanity",
+  "false_info",
+  "other",
+] as const;
+export type ReviewRejectReason = (typeof REVIEW_REJECT_REASONS)[number];
+
+/** «Бусад» шалтгааны тайлбарын дээд урт — DB check `reviews_reject_note_len`. */
+export const REVIEW_REJECT_NOTE_MAX = 300;
+
+export const REVIEW_REJECT_REASON_LABEL: Record<ReviewRejectReason, string> = {
+  profanity: "Ёс бус үг хэллэг ашигласан",
+  false_info: "Илт худал мэдээлэл оруулсан",
+  other: "Бусад",
+};
 
 /**
  * Дундаж захиалгын дүн (AOV) — зөвхөн **тооцооны таамаг**, дүрэм биш.
@@ -732,7 +768,7 @@ export const FEATURE_FLAGS = {
   lucky_wheel: {
     label: "Азын хүрд",
     description:
-      "/lucky-wheel хуудас, цэс ба купоны холбоосууд, /api/lucky-wheel, төлөгдсөн захиалгаас эрх олгох trigger (0134). Эргүүлэх ажиллагаа нь Азын хүрдний «Идэвхтэй» тохиргоогоор тусдаа.",
+      "/lucky-wheel хуудас, цэс ба купоны холбоосууд, /api/lucky-wheel, төлөгдсөн захиалгаас эрх олгох trigger (0134); гранд шагнал (2мл багц) сонгох /api/lucky-wheel/prizes, checkout-д хавсаргах place_order_with_prize, сануулгын cron (0165); бодит бараа шагнал, админаас шагнал нэмэх/хасах, хүрдний тайлан (0170). Эргүүлэх ажиллагаа нь Азын хүрдний «Идэвхтэй» тохиргоогоор тусдаа.",
   },
   campaigns: {
     label: "Кампанит ажил",
@@ -764,7 +800,34 @@ export const FEATURE_FLAGS = {
     description:
       "Хоосон декант савыг ширхэгээр тоолох: /admin/bottles-ийн тоон горим, «Грамын сав» ангилал, хэмжээ зарагдах эсэх (variant_sellable) савны тоогоор, захиалгад савны reserve (0145–). Унтраалттай үед хуучин асаах/унтраах түгжээ (0095) хэвээр.",
   },
+  review_moderation: {
+    label: "Сэтгэгдлийн хяналт",
+    description:
+      "Сэтгэгдэл админ батласны дараа нийтлэгдэж, оноо батлах үед олгогдоно: 100+ тэмдэгт, худалдаж авсан ус, бүрэн бүртгэл, засах/устгах боломжгүй; «Миний захиалга»-ын төлөв, админ /admin/reviews (/api/admin/reviews), нүүрний сонгосон сэтгэгдэл, /api/reviews/eligibility, moderation guard trigger ба award_review_points (0162).",
+  },
+  profile_info: {
+    label: "Миний мэдээлэл",
+    description:
+      "/account/info хуудас (зураг, нэр, утас, имэйл, хүйс, төрсөн өдөр, ажил, хаяг, дуртай үнэрийн төрөл/үнэртэн), профайлын «Миний мэдээлэл» мөр (асаалттай үед «Засах» товч нуугдана), /api/account/profile-info, бүрэн бөглөсөн үеийн нэг удаагийн V point — claim_profile_reward (0163). Хэмжээ нь Админ → V point → «Мэдээлэл бөглөсний урамшуулал».",
+  },
+  sale_page: {
+    label: "Хямдрал",
+    description:
+      "Админ → Каталог → Хямдрал (/admin/sales, /api/admin/sales): олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал тавих/цуцлах ба барааны үнийн хүснэгтэд эхлэх/дуусах хугацаа (0166: apply_bulk_sale, clear_bulk_sale). Хугацаа дуусмагц үнэ өөрөө энгийн болно. Багц хамаарахгүй, хэрэглэгчийн талд шинэ хуудас байхгүй.",
+  },
+  meta_capi: {
+    label: "Meta Conversions API",
+    description:
+      "Төлбөр баталгаажих мөчид (QPay болон гараар баталсан) Purchase event-ийг серверээс Meta руу илгээнэ — browser pixel-ийн алдагдсан худалдан авалтыг нөхнө (lib/meta/capi.ts). Захиалга үүсэхэд _fbp/_fbc cookie, IP, user agent-ийг захиалга дээр хадгална (0171). Утас, имэйлийг SHA-256 hash хийж явуулна. META_CAPI_ACCESS_TOKEN env шаардлагатай.",
+  },
 } as const satisfies Record<string, FeatureFlagMeta>;
+
+/**
+ * Meta Graph API-ийн хувилбар (Conversions API). v26.0 нь 2026-07-29-нд
+ * гарсан; хувилбар нь дараагийнх гарснаас 2 жилийн дараа хаагддаг тул
+ * жилд нэг удаа changelog-оос шалгаж ахиулна.
+ */
+export const META_GRAPH_API_VERSION = "v26.0";
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
 
@@ -829,6 +892,49 @@ export const USED_GOODS_CONSENT_TEXT =
   "үүнээс үүдэх хохирлыг манайх хариуцахгүй.";
 export const USED_GOODS_CONSENT_LABEL =
   "Хэрэглэсэн бараа гэдгийг ойлгож, нөхцөлийг зөвшөөрч байна";
+
+/** «Миний мэдээлэл» (0163) — хязгаарууд SQL-ийн check-тэй таарна. */
+export const PROFILE_GENDERS = ["female", "male", "other"] as const;
+export type ProfileGender = (typeof PROFILE_GENDERS)[number];
+export const PROFILE_GENDER_LABEL: Record<ProfileGender, string> = {
+  female: "Эмэгтэй",
+  male: "Эрэгтэй",
+  other: "Бусад",
+};
+export const PROFILE_NAME_MAX = 80;
+export const PROFILE_JOB_MAX = 80;
+/**
+ * «Ажил мэргэжил»-ийн бэлэн сонголтууд — санд энэ шошгоороо (text) хадгалагдана,
+ * жагсаалтад байхгүй бол «Бусад»-аар гараар бичнэ.
+ */
+export const PROFILE_JOB_OPTIONS = [
+  "Сурагч",
+  "Оюутан",
+  "Эмч",
+  "Багш",
+  "Инженер",
+  "Дизайнер",
+  "Бизнес эрхлэгч",
+  "Менежер",
+  "Нягтлан бодогч",
+  "Хуульч",
+  "Төрийн албан хаагч",
+] as const;
+export const PROFILE_FAVORITE_PERFUMES_MAX = 3;
+export const PROFILE_PERFUME_NAME_MAX = 80;
+export const PROFILE_SCENT_PREFS_MAX = 10;
+/** `settings.loyalty.profilePoints` байхгүй үеийн утга (0163-ийн seed). */
+export const DEFAULT_PROFILE_POINTS = 500;
+
+/**
+ * Хар «тайзтай» хуудсууд: агуулга нь бүх темд хар (`.force-black`), тиймээс
+ * утасны хөвөгч толгойн товч, доод цэс ч мөн хар болно — цагаан товч хар тайз
+ * дээр тасархай харагддаг (азын хүрд, клиент 2026-10-26).
+ */
+/** Азын хүрдний гранд шагнал (0165): багцын гишүүн бүр энэ хэмжээгээр. */
+export const GRAND_BUNDLE_ML = 2;
+
+export const DARK_STAGE_ROUTES: readonly string[] = ["/lucky-wheel"];
 
 export const COUPONS_NEW_BADGE_UNTIL = "2026-11-01T00:00:00+08:00";
 

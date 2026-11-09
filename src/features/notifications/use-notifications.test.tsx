@@ -20,9 +20,8 @@ vi.mock("./api", async (orig) => ({
   postNotificationsRead: (...a: unknown[]) => postNotificationsRead(...a),
 }));
 
-const { notificationKeys, useMarkNotificationsRead } = await import(
-  "./use-notifications"
-);
+const { notificationKeys, useMarkNotificationsRead } =
+  await import("./use-notifications");
 type PollState = import("./use-notifications").PollState;
 
 /**
@@ -49,7 +48,9 @@ function n(id: string, read = false): AppNotification {
   };
 }
 
-const feed = (items: AppNotification[]): InfiniteData<NotificationFeedPage> => ({
+const feed = (
+  items: AppNotification[],
+): InfiniteData<NotificationFeedPage> => ({
   pages: [{ items, nextCursor: null }],
   pageParams: [undefined],
 });
@@ -158,7 +159,9 @@ describe("useMarkNotificationsRead", () => {
   it("rolls every cache back when the request fails", async () => {
     const { client, result } = setup();
     seed(client, 5, [n("t")]);
-    postNotificationsRead.mockRejectedValue(new Error("notifications_read_failed"));
+    postNotificationsRead.mockRejectedValue(
+      new Error("notifications_read_failed"),
+    );
 
     act(() => result.current.mutate({ all: true }));
 

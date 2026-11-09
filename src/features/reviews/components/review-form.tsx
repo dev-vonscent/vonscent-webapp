@@ -171,7 +171,7 @@ export function ReviewForm({
               className={cn(
                 "size-6 transition-colors",
                 n <= (hover || rating)
-                  ? "fill-gold text-gold"
+                  ? "fill-rating text-rating"
                   : "text-muted-foreground/40 fill-transparent",
               )}
             />

@@ -66,10 +66,12 @@ export async function generateMetadata({
   const product = await getProductPageBySlug(slug);
   if (!product) return { title: "Бараа олдсонгүй" };
   return {
-    title: `${product.name} — ${product.brand}`,
     description: product.description.slice(0, 160),
     // og:image comes from the sibling opengraph-image.tsx file convention.
-    ...pageMetadata(`/products/${product.slug}`, { ownImage: true }),
+    ...pageMetadata(`/products/${product.slug}`, {
+      title: `${product.name} — ${product.brand}`,
+      ownImage: true,
+    }),
   };
 }
 

@@ -24,7 +24,11 @@ import {
   mixRandom,
   scatterCollections,
 } from "@/features/products/rail";
-import { HOT_RAIL_COLLECTIONS, NEW_COLLECTIONS_COUNT } from "@/lib/constants";
+import {
+  HOT_RAIL_COLLECTIONS,
+  NEW_COLLECTIONS_COUNT,
+  SITE,
+} from "@/lib/constants";
 import {
   JsonLd,
   homePageJsonLd,
@@ -59,7 +63,11 @@ import {
  * is just the safety net for writes that bypass the admin API.
  */
 export const revalidate = 60;
-export const metadata: Metadata = pageMetadata("/");
+const homeMetadata = pageMetadata("/");
+export const metadata: Metadata = {
+  ...homeMetadata,
+  openGraph: { ...homeMetadata.openGraph, ...SITE.share },
+};
 
 /** Нүүрний rail бүрийн нүдний тоо (гүйлгэдэг carousel). */
 const RAIL_SIZE = 12;

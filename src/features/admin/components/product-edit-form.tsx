@@ -49,6 +49,7 @@ import {
   useUnsavedGuard,
 } from "@/features/admin/lib/return-to";
 import {
+  EMPTY_SALE,
   VariantPriceTable,
   unpricedActiveSizes,
   type VariantDraft,
@@ -149,9 +150,11 @@ export function ProductEditForm({
             ml,
             price: v.price,
             salePrice: v.salePrice,
+            saleStartsAt: v.saleStartsAt,
+            saleEndsAt: v.saleEndsAt,
             active: v.isActive,
           }
-        : { ml, price: 0, salePrice: null, active: false };
+        : { ml, ...EMPTY_SALE, price: 0, active: false };
     }),
   );
   const [customTags, rawToggleCustomTag] = useToggleList(product.customTags);

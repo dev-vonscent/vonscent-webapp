@@ -25,8 +25,13 @@ function ga(event: string, params: Record<string, unknown>) {
   window.gtag?.("event", event, params);
 }
 
-function pixel(event: string, params: Record<string, unknown>) {
-  window.fbq?.("track", event, params);
+function pixel(
+  event: string,
+  params: Record<string, unknown>,
+  eventId?: string,
+) {
+  if (eventId) window.fbq?.("track", event, params, { eventID: eventId });
+  else window.fbq?.("track", event, params);
 }
 
 // GA4 has no MNT (support.google.com/analytics/answer/9796179), so an MNT
@@ -74,6 +79,23 @@ export function trackAddToCart(item: TrackedItem) {
   });
 }
 
+/**
+ * Олон мөр нэг дор сагсанд орох үйлдэл («Бүгдийг сагслах», «Дахин захиалах»)
+ * — мөр бүрт тусдаа биш, нэг AddToCart event.
+ */
+export function trackAddToCartMany(items: TrackedItem[]) {
+  if (items.length === 0) return;
+  const value = items.reduce((sum, i) => sum + i.price * (i.quantity ?? 1), 0);
+  ga("add_to_cart", { currency: GA_CURRENCY, value, items: gaItems(items) });
+  pixel("AddToCart", {
+    content_ids: items.map((i) => i.id),
+    content_type: "product",
+    num_items: items.reduce((n, i) => n + (i.quantity ?? 1), 0),
+    value,
+    currency: PIXEL_CURRENCY,
+  });
+}
+
 export function trackBeginCheckout(items: TrackedItem[], value: number) {
   ga("begin_checkout", { currency: GA_CURRENCY, value, items: gaItems(items) });
   pixel("InitiateCheckout", {
@@ -95,12 +117,19 @@ export function trackPurchase(
     value,
     items: gaItems(items),
   });
-  pixel("Purchase", {
-    content_ids: items.map((i) => i.id),
-    content_type: "product",
-    value,
-    currency: PIXEL_CURRENCY,
-  });
+  // eventID = order_no: серверийн CAPI Purchase (lib/meta/capi.ts) ижил
+  // id-тай тул Meta хоёуланг нь хүлээн авбал нэг л удаа тоолно.
+  pixel(
+    "Purchase",
+    {
+      content_ids: [...new Set(items.map((i) => i.id))],
+      content_type: "product",
+      num_items: items.reduce((n, i) => n + (i.quantity ?? 1), 0),
+      value,
+      currency: PIXEL_CURRENCY,
+    },
+    orderNo,
+  );
 }
 
 /** Чатын товч дарагдсан тоо — хэдэн хүн админтай холбогдохыг оролдсоныг хэмжинэ. */

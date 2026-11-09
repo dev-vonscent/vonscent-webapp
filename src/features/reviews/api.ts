@@ -124,17 +124,25 @@ export async function getCommentCount(target: ReviewTarget): Promise<number> {
   return count ?? 0;
 }
 
-/** Newest reviews with text, for the home page strip. Active products only. */
-export async function getRecentReviews(limit = 6): Promise<RecentReview[]> {
+/**
+ * Newest reviews with text, for the home page strip. Active products only.
+ * `featuredOnly` — туг `review_moderation` (0162): админы сонгосон нь л.
+ */
+export async function getRecentReviews(
+  limit = 6,
+  { featuredOnly = false }: { featuredOnly?: boolean } = {},
+): Promise<RecentReview[]> {
   const supabase = createPublicClient();
   if (!supabase) return [];
-  const { data } = await supabase
+  let query = supabase
     .from("public_reviews")
     .select(
       `${REVIEW_COLUMNS}, product_name, product_slug, product_brand, product_image`,
     )
     .neq("body", "")
-    .eq("product_is_active", true)
+    .eq("product_is_active", true);
+  if (featuredOnly) query = query.eq("is_featured", true);
+  const { data } = await query
     .order("created_at", { ascending: false })
     .limit(limit);
   const rows = (data as unknown as PublicReviewRow[] | null) ?? [];

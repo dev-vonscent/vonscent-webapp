@@ -20,7 +20,7 @@ export function FilterChip({
         // read as bare floating words. Every chip now carries a surface.
         "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
         active
-          ? "bg-primary text-primary-foreground"
+          ? "bg-cta text-cta-foreground"
           : "bg-secondary text-muted-foreground hover:text-foreground",
       )}
     >

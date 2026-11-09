@@ -106,3 +106,26 @@ export function segmentPath(
     "Z",
   ].join(" ");
 }
+
+/** A flick must cross at least this many px, sideways, within FLICK_MS. */
+export const FLICK_MIN_PX = 48;
+export const FLICK_MS = 450;
+
+/**
+ * Whether a pointer gesture over the wheel counts as a flick to spin it.
+ *
+ * Sideways only: on a phone a vertical swipe over the wheel is the customer
+ * scrolling the page, and stealing it would trap them on the wheel. A slow
+ * drag is not a flick either — it reads as someone resting a thumb.
+ */
+export function isFlick(dx: number, dy: number, ms: number): boolean {
+  return (
+    ms > 0 &&
+    ms <= FLICK_MS &&
+    Math.abs(dx) >= FLICK_MIN_PX &&
+    Math.abs(dx) > Math.abs(dy) * 1.2
+  );
+}
+
+/** What the wheel is doing — drives the halo and the landed wedge. */
+export type LightPhase = "idle" | "spin" | "win" | "miss";

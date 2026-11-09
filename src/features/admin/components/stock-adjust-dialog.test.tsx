@@ -97,3 +97,52 @@ describe("StockAdjustDialog — «Тун удахгүй» бараа (0125)", ()
     expect(screen.queryByText("Худалдаанд гаргах уу?")).toBeNull();
   });
 });
+
+describe("StockAdjustDialog — залруулга, «Өөр суваг»", () => {
+  beforeEach(() => {
+    mutateJson.mockReset().mockResolvedValue(true);
+    refresh.mockReset();
+  });
+
+  function setupCorrection() {
+    render(
+      <StockAdjustDialog
+        open
+        onOpenChange={vi.fn()}
+        mode="correction"
+        productId="p1"
+        productLabel="Creed — Aventus"
+        onHandMl={100}
+        reservedMl={0}
+      />,
+    );
+  }
+
+  async function removeMl(ml: string) {
+    await userEvent.type(screen.getByLabelText("Хасах хэмжээ (ml)"), ml);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Үлдэгдэл хасах" }),
+    );
+    await waitFor(() => expect(mutateJson).toHaveBeenCalled());
+    return mutateJson.mock.calls[0][2] as { reason: string; delta: number };
+  }
+
+  it("чөлөөт тайлбарын оронд Zary / Чат гарна, өгөгдмөл нь Zary", async () => {
+    setupCorrection();
+    expect(screen.queryByLabelText("Тайлбар (сонголтоор)")).toBeNull();
+    expect(
+      screen.getByRole("radio", { name: "Zary" }).getAttribute("aria-checked"),
+    ).toBe("true");
+
+    const body = await removeMl("20");
+    expect(body).toMatchObject({ delta: -20, reason: "sold-elsewhere: Zary" });
+  });
+
+  it("Чат сонговол сувгийг хадгална", async () => {
+    setupCorrection();
+    await userEvent.click(screen.getByRole("radio", { name: "Чат" }));
+
+    const body = await removeMl("5");
+    expect(body.reason).toBe("sold-elsewhere: Чат");
+  });
+});

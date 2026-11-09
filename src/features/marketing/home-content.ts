@@ -38,6 +38,8 @@ export type HomeCampaignImage =
        */
       srcSet?: string;
       mobile?: { src: string; width: number; height: number };
+      /** Зургийн (desktop, утас хоёулаа) хана бараан — текст цайвар болно. */
+      dark?: boolean;
     };
 
 /**
@@ -57,6 +59,34 @@ const HERO_PHOTO: HomeCampaignImage = {
   // Зургийг солихдоо файлын НЭРИЙГ ч соль: ижил URL-д Next-ийн зургийн кэш
   // (.next/cache/images, Vercel CDN) болон Safari хуучин зургийг өгсөөр байдаг.
   mobile: { src: "/hero-mobile-v4.webp", width: 1600, height: 1200 },
+};
+
+/**
+ * Halloween (prompts/hero-halloween.md, B — шөнийн бараан). Эх нь
+ * `public/desktop-halloween-dark.webp`, `mobile-halloween.webp`.
+ */
+const HALLOWEEN_PHOTO: HomeCampaignImage = {
+  ...HERO_PHOTO,
+  src: "/hero-desktop-halloween-dark-1600.webp",
+  srcSet: [1600, 2400, 3200]
+    .map((w) => `/hero-desktop-halloween-dark-${w}.webp ${w}w`)
+    .join(", "),
+  mobile: { src: "/hero-mobile-halloween.webp", width: 1600, height: 1200 },
+  dark: true,
+};
+
+/**
+ * Эрт өвөл — анхны цас, хяруу (prompts/hero-winter.md). Эх нь
+ * `public/desktop-winter.png`, `mobile-winter.png`. Цайвар хана тул текст
+ * бараан хэвээр.
+ */
+const WINTER_PHOTO: HomeCampaignImage = {
+  ...HERO_PHOTO,
+  src: "/hero-desktop-winter-1600.webp",
+  srcSet: [1600, 2400, 3200]
+    .map((w) => `/hero-desktop-winter-${w}.webp ${w}w`)
+    .join(", "),
+  mobile: { src: "/hero-mobile-winter.webp", width: 1600, height: 1200 },
 };
 
 export interface HomeCampaign {
@@ -80,15 +110,54 @@ export interface HomeCampaign {
  */
 export const HOME_CAMPAIGNS: readonly HomeCampaign[] = [
   {
+    id: "2026-halloween",
+    startsOn: "2026-10-26",
+    endsOn: "2026-10-31",
+    eyebrow: "Энэ улирлын сонголт",
+    title: "Өвлийн тансаг үнэртнүүд",
+    description:
+      "Өвөлд тохирох үнэртнүүдийг бүтнээр нь авалгүй хямд өртгөөр туршаад үзээрэй.",
+    mobileDescription: "Бүтнээр нь авалгүй хямд өртгөөр туршаарай.",
+    // Текст нь cold-season-тэй ижил — зөвхөн зураг солигдоно.
+    primary: {
+      label: "Өвлийн үнэртэн",
+      href: "/catalog?kind=perfume&season=winter",
+    },
+    secondary: { label: "Бүх үнэртэн", href: "/catalog" },
+    image: HALLOWEEN_PHOTO,
+  },
+  {
+    id: "2026-early-winter",
+    startsOn: "2026-11-01",
+    endsOn: "2026-12-25",
+    eyebrow: "Энэ улирлын сонголт",
+    title: "Өвлийн тансаг үнэртнүүд",
+    description:
+      "Өвөлд тохирох үнэртнүүдийг бүтнээр нь авалгүй хямд өртгөөр туршаад үзээрэй.",
+    mobileDescription: "Бүтнээр нь авалгүй хямд өртгөөр туршаарай.",
+    // Текст нь cold-season-тэй ижил — зөвхөн зураг солигдоно.
+    primary: {
+      label: "Өвлийн үнэртэн",
+      href: "/catalog?kind=perfume&season=winter",
+    },
+    secondary: { label: "Бүх үнэртэн", href: "/catalog" },
+    image: WINTER_PHOTO,
+  },
+  {
     id: "2026-cold-season",
     startsOn: "2026-09-15",
     endsOn: "2027-02-28",
     eyebrow: "Энэ улирлын сонголт",
-    title: "Сэрүүн улирлын тансаг үнэртнүүд",
+    title: "Өвлийн тансаг үнэртнүүд",
     description:
-      "Намар, өвөлд тохирох үнэртнүүдийг бүтнээр нь авалгүй хямд өртгөөр туршаад үзээрэй.",
+      "Өвөлд тохирох үнэртнүүдийг бүтнээр нь авалгүй хямд өртгөөр туршаад үзээрэй.",
     mobileDescription: "Бүтнээр нь авалгүй хямд өртгөөр туршаарай.",
-    primary: { label: "Сонголтыг үзэх", href: "/catalog?season=autumn,winter" },
+    // Дан ус + өвөл: бараг бүх өвлийн ус «намар+өвөл» тагтай тул «өвөл»
+    // дангаараа хангалттай; багцад улирал байхгүй (клиент, 2026-10-26).
+    primary: {
+      label: "Өвлийн үнэртэн",
+      href: "/catalog?kind=perfume&season=winter",
+    },
     secondary: { label: "Бүх үнэртэн", href: "/catalog" },
     image: HERO_PHOTO,
   },

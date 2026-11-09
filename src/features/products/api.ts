@@ -24,6 +24,7 @@ import {
   NO_BOTTLE_LOCKS,
   type BottleLockState,
 } from "./bottle-stock";
+import { isSaleActive } from "./sale";
 
 /**
  * Product data access (development.md §3 — features domain api).
@@ -40,6 +41,9 @@ interface DbVariant {
   price: number;
   /** Хямдарсан үнэ, эсвэл null (0054). */
   sale_price: number | null;
+  /** Хямдралын хугацаа (0166) — null бол тэр талдаа хязгааргүй. */
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
   is_active: boolean;
 }
 interface DbImage {
@@ -103,7 +107,7 @@ const SELECT = `
   rating_avg, rating_count, is_featured, created_at, launched_at,
   status, coming_soon_note,
   product_images ( url, alt, sort_order, is_visible ),
-  product_variants ( id, ml, price, sale_price, is_active ),
+  product_variants ( id, ml, price, sale_price, sale_starts_at, sale_ends_at, is_active ),
   inventory ( on_hand_ml, reserved_ml, is_sold_out ),
   product_tags ( tags ( slug, kind ) )
 `;
@@ -145,13 +149,15 @@ export function mapProduct(
       const bottleLocked = isBottleLocked(locks, row.gender, v.ml, v.id);
       const isActive = v.is_active;
       const inStock = !comingSoon && !inv?.is_sold_out && availableMl >= v.ml;
+      // Хугацаатай хямдрал (0166): эхлээгүй / дууссан бол үндсэн үнэ.
+      const onSale = isSaleActive(v);
       return {
         id: v.id,
         ml: v.ml,
         // Хямдарсан үнэ байвал БОДИТООР төлөх дүн нь тэр (0054). Сагс, захиалга,
         // тайлан бүгд `price`-аар явдаг тул хямдрал энэ нэг мөрөөр бүх урсгалд
         // хүчин төгөлдөр болно; үндсэн үнэ нь зөвхөн зураастай харагдана.
-        price: v.sale_price ?? v.price,
+        price: onSale ? (v.sale_price as number) : v.price,
         basePrice: v.price,
         isActive,
         inStock,

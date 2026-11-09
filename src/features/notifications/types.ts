@@ -9,12 +9,16 @@ export const NOTIFICATION_KINDS = [
   // personal
   "points_released",
   "free_spin_ready",
+  // Азын хүрдний гранд шагнал: хожсон, хугацаа дуусах сануулга (0164/0165).
+  "prize_won",
   "order_paid",
   "order_shipping",
   "order_delivered",
   "order_cancelled",
   "order_refunded",
   "order_saved",
+  // Хувийн купон дуусахаас 3 хоногийн өмнө (0173/0174).
+  "coupon_expiring",
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];

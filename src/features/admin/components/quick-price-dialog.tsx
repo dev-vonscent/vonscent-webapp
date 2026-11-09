@@ -11,6 +11,7 @@ import { toast } from "@/lib/toast";
 import { adminFetch } from "@/features/admin/lib/mutate";
 import { ML_SIZES, PRODUCT_STATUS_LABEL } from "@/lib/constants";
 import {
+  EMPTY_SALE,
   VariantPriceTable,
   unpricedActiveSizes,
   type VariantDraft,
@@ -172,7 +173,14 @@ function draftFrom(product: AdminProduct): VariantDraft[] {
   return ML_SIZES.map((ml) => {
     const v = product.variants.find((x) => x.ml === ml);
     return v
-      ? { ml, price: v.price, salePrice: v.salePrice, active: v.isActive }
-      : { ml, price: 0, salePrice: null, active: false };
+      ? {
+          ml,
+          price: v.price,
+          salePrice: v.salePrice,
+          saleStartsAt: v.saleStartsAt,
+          saleEndsAt: v.saleEndsAt,
+          active: v.isActive,
+        }
+      : { ml, ...EMPTY_SALE, price: 0, active: false };
   });
 }

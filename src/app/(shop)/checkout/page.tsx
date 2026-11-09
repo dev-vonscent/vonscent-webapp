@@ -37,7 +37,6 @@ import type { ServerTotals } from "@/features/checkout/place-order-result";
 import { numAblative } from "@/lib/mn-grammar";
 import { cn } from "@/lib/utils";
 import {
-  REFUND_FEE_PCT,
   SHIPPING_ZONES,
   USED_GOODS_CONSENT_LABEL,
   USED_GOODS_CONSENT_TEXT,
@@ -46,12 +45,14 @@ import {
 import { giftSlotsFor } from "@/lib/gift";
 import { useClaimBottomBar } from "@/components/shared/bottom-nav-store";
 import { GiftSamplePicker } from "@/features/checkout/components/gift-sample-picker";
+import { CheckoutPrize } from "@/features/lucky-wheel/components/checkout-prize";
+import { GRAND_PRIZES_KEY } from "@/features/lucky-wheel/use-wheel";
+import { useFeatureFlag } from "@/components/feature-flags";
 import { useGiftPool } from "@/features/gifts/use-gift-pool";
 import {
   DELIVERY_END_HOUR,
   DISPATCH_HOUR,
   MAX_PREORDER_DAYS,
-  formatEditCutoff,
   formatDeliveryDay,
   ubDayFromNow,
 } from "@/lib/time";
@@ -129,11 +130,12 @@ interface ShippingSettingsShape {
 }
 
 /**
- * Ready-made delivery notes. Хүргэлтэд үнэхээр өөр үйлдэл шаарддаг хоёрыг л
+ * Ready-made delivery notes. Хүргэлтэд үнэхээр өөр үйлдэл шаарддагийг л
  * үлдээв — «өөр хүн хүлээж авна» гэдэг нь хүлээн авагчийн мэдээллээр аль
  * хэдийн шийдэгддэг, «ажлын цагаар хүргэх» нь хүргэлтийн цагтай зөрчилддөг.
+ * «Хүргэхээс өмнө залгах»-ыг клиентийн хүсэлтээр хассан (2026-11).
  */
-const NOTE_OPTIONS = ["Бэлгийн боолт хийлгэх", "Хүргэхээс өмнө залгах"];
+const NOTE_OPTIONS = ["Бэлгийн боолт хийлгэх"];
 
 const formSchema = checkoutSchema.omit({
   items: true,
@@ -362,6 +364,9 @@ export default function CheckoutPage() {
   const [storePhone, setStorePhone] = React.useState<string | null>(null);
   const [noteTags, setNoteTags] = React.useState<string[]>([]);
   const [giftIds, setGiftIds] = React.useState<string[]>([]);
+  // Азын хүрдний бодит шагнал (0165/0170): энэ захиалгад хавсаргах эргэлтүүд.
+  const wheelOn = useFeatureFlag("lucky_wheel");
+  const [prizeSpinIds, setPrizeSpinIds] = React.useState<string[]>([]);
   // Khoroo lives outside the form: it is folded into shipDetail on submit,
   // since orders has no dedicated column for it.
   const [khoroo, setKhoroo] = React.useState<number | null>(null);
@@ -588,7 +593,9 @@ export default function CheckoutPage() {
         }
       }
       setKhoroo(saved.khoroo);
-      setNoteTags(saved.noteTags);
+      // Хассан сонголт хуучин draft-аас сэргэвэл товчгүй тул харагдахгүй ч
+      // захиалгын тэмдэглэлд орчихно — зөвхөн одоо байгааг нь авна.
+      setNoteTags(saved.noteTags.filter((t) => NOTE_OPTIONS.includes(t)));
       setGiftIds(saved.giftIds);
       if (saved.address) {
         setDraft(saved.address);
@@ -1214,6 +1221,8 @@ export default function CheckoutPage() {
       saveAddress: saveAddr,
       giftProductIds: giftIds,
       usedGoodsConsent: needsConsent && usedConsent,
+      prizeSpinIds:
+        authed && wheelOn && prizeSpinIds.length > 0 ? prizeSpinIds : undefined,
       items: items.map((i) => ({
         productId: i.productId,
         variantId: i.variantId,
@@ -1316,6 +1325,17 @@ export default function CheckoutPage() {
         // server refuses the order rather than quietly charging for whatever
         // survived, and the dead lines come back by variant id (the cart's
         // line key) so they can be cleared here.
+        // Шагналын (гранд багц эсвэл бараа) үнэртэн дууссан — захиалга
+        // үүсээгүй. Шагнал хадгалагдсан хэвээр; энэ удаад хасаад дахин дарахад
+        // шагналгүйгээр үргэлжилнэ.
+        if (data.error === "PRIZE_UNAVAILABLE") {
+          setPrizeSpinIds([]);
+          void queryClient.invalidateQueries({ queryKey: GRAND_PRIZES_KEY });
+          setServerError(
+            "Шагналын үнэртэн түр дууссан тул энэ захиалгад орсонгүй. Шагнал тань хадгалагдсан — «Төлбөр төлөх»-ийг дахин дарж шагналгүйгээр үргэлжлүүлнэ үү.",
+          );
+          return;
+        }
         if (data.error === "ITEMS_UNAVAILABLE") {
           const ids: string[] = Array.isArray(data.variantIds)
             ? data.variantIds
@@ -1585,7 +1605,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="mx-auto max-w-352 px-4 pt-8 md:px-8 md:pb-24 lg:pb-8">
+    <div className="mx-auto max-w-352 px-4 pt-4 md:px-8 md:pt-8 md:pb-24 lg:pb-8">
       {confirmDialog}
       <form
         onSubmit={handleSubmit(onSubmit, onInvalid)}
@@ -1606,8 +1626,12 @@ export default function CheckoutPage() {
               Гарчиг зүүн баганад: хоёр баганын дээр байхдаа тоймыг ~68px доош
               түлхэж, хуудас нээгдэх мөчид «Төлбөр төлөх» дэлгэцээс хагас
               гардаг байв — картын `max-h` нь sticky үеийн `top-24`-өөр
-              бодогддог. Одоо тойм толгойн доор шууд эхэлнэ. */}
-          <h1 className="mb-8 text-3xl font-semibold tracking-tight">
+              бодогддог. Одоо тойм толгойн доор шууд эхэлнэ.
+
+              Утсан дээр нуугдана: толгой аль хэдийн «Захиалга» гэж бичдэг
+              тул давхар гарчиг ~80px зай эзэлдэг байв (хүслийн жагсаалт,
+              бүртгэлийн хуудсуудтай ижил `hidden md:block`). */}
+          <h1 className="mb-8 hidden font-serif text-2xl font-semibold tracking-tight sm:text-3xl md:block">
             Захиалга өгөх
           </h1>
 
@@ -1928,6 +1952,14 @@ export default function CheckoutPage() {
               />
             </div>
           )}
+
+          {mounted && (
+            <CheckoutPrize
+              enabled={authed && wheelOn}
+              value={prizeSpinIds}
+              onChange={setPrizeSpinIds}
+            />
+          )}
         </div>
 
         {/* Summary.
@@ -2050,6 +2082,13 @@ export default function CheckoutPage() {
                 {/* Бэлэг нь тоймд ил мөр болж байж л «захиалгад юу орсон бэ»
                     гэдгийн хэсэг болно — эс тэгвээс хуудасны дунд сонгоод
                     мартчихдаг, хасагдсаныг нь ч мэдэхгүй өнгөрдөг. */}
+                {prizeSpinIds.length > 0 && (
+                  <SummaryRow
+                    label={`Азын хүрдний шагнал × ${prizeSpinIds.length}`}
+                    value="Үнэгүй"
+                    credit
+                  />
+                )}
                 {giftIds.length > 0 && (
                   <SummaryRow
                     label={`Бэлэг · ${giftPool?.sampleMl ?? 1}мл дээж × ${giftIds.length}`}
@@ -2109,14 +2148,7 @@ export default function CheckoutPage() {
                   <Clock className="mr-1 inline size-3.5 align-[-2px]" />
                   {`Захиалга ${formatDeliveryDay(
                     watch("deliverOn") ?? deliveryDays[0] ?? "",
-                  )} ${DISPATCH_HOUR}:00–${DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.`}{" "}
-                  <strong>
-                    {formatEditCutoff(
-                      watch("deliverOn") ?? deliveryDays[0] ?? "",
-                    )}
-                  </strong>
-                  -с хойш захиалга цуцлах, өөрчлөх боломжгүй.{" "}
-                  {`Хэрэглэгчийн хүсэлтээр цуцалсан тохиолдолд банкны ${REFUND_FEE_PCT}%-ийн шимтгэл хасагдаж бодогдохыг анхаарна уу.`}
+                  )} ${DISPATCH_HOUR}:00–${DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.`}
                 </p>
               )}
             </CardContent>

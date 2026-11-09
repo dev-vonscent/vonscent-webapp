@@ -64,6 +64,13 @@ export const variantDraftSchema = z
      * зураастай харагдах үндсэн үнэ болно. null бол хямдрал байхгүй.
      */
     salePrice: z.number().int().nonnegative().nullable().default(null),
+    /** Хямдралын хугацаа (0166) — null бол тэр талдаа хязгааргүй. */
+    saleStartsAt: z
+      .string()
+      .datetime({ offset: true })
+      .nullable()
+      .default(null),
+    saleEndsAt: z.string().datetime({ offset: true }).nullable().default(null),
     active: z.boolean(),
   })
   .refine((v) => !v.active || v.price > 0, {
@@ -75,7 +82,17 @@ export const variantDraftSchema = z
   .refine((v) => v.salePrice == null || v.salePrice <= v.price, {
     message: "Хямдарсан үнэ үндсэн үнээс их байж болохгүй.",
     path: ["salePrice"],
-  });
+  })
+  .refine(
+    (v) =>
+      !v.saleStartsAt ||
+      !v.saleEndsAt ||
+      new Date(v.saleEndsAt) > new Date(v.saleStartsAt),
+    {
+      message: "Дуусах хугацаа эхлэхээс хойш байх ёстой.",
+      path: ["saleEndsAt"],
+    },
+  );
 
 /**
  * The same rule as a plain predicate, for the forms: the client blocks the

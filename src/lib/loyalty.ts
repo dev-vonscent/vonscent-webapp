@@ -1,3 +1,5 @@
+import { DEFAULT_PROFILE_POINTS } from "@/lib/constants";
+
 /**
  * V point-ийн дүрмүүд — `settings.loyalty` мөрийн клиент тал дахь толь.
  *
@@ -67,5 +69,16 @@ export function reviewPointsOf(value: unknown): number {
   const raw = (value ?? {}) as { reviewPoints?: unknown };
   if (raw.reviewPoints === undefined) return DEFAULT_REVIEW_POINTS;
   const n = Number(raw.reviewPoints);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
+/**
+ * `settings.loyalty.profilePoints` — «Миний мэдээлэл»-ийг бүрэн бөглөсний
+ * нэг удаагийн урамшуулал (0163). 0 бол урамшуулал унтарна.
+ */
+export function profilePointsOf(value: unknown): number {
+  const raw = (value ?? {}) as { profilePoints?: unknown };
+  if (raw.profilePoints === undefined) return DEFAULT_PROFILE_POINTS;
+  const n = Number(raw.profilePoints);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }

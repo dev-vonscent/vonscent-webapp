@@ -3,7 +3,6 @@ import { z } from "zod";
 import { globalSearch } from "@/features/search/api";
 import { isSearchable } from "@/lib/search";
 import { EMPTY_SEARCH_RESULTS } from "@/features/search/types";
-import { SEARCH_LIMIT_PER_KIND } from "@/lib/constants";
 
 /**
  * Глобал хайлт — `/api/search?q=<текст>&limit=<n>`.
@@ -18,7 +17,9 @@ import { SEARCH_LIMIT_PER_KIND } from "@/lib/constants";
 
 const querySchema = z.object({
   q: z.string().max(100).default(""),
-  limit: z.coerce.number().int().min(1).max(20).default(SEARCH_LIMIT_PER_KIND),
+  // Өгөөгүй бол төрөл бүрийн өгөгдмөл хязгаар (`globalSearch`); өгвөл бүх
+  // төрөлд ижил (жишээ нь санал болгох форм `limit=3`).
+  limit: z.coerce.number().int().min(1).max(20).optional(),
 });
 
 export async function GET(req: Request) {

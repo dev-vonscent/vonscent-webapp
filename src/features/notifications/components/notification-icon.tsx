@@ -5,11 +5,13 @@ import {
   Bookmark,
   CreditCard,
   Gift,
+  Trophy,
   Megaphone,
   PackageCheck,
   PackagePlus,
   Percent,
   Rocket,
+  Ticket,
   RotateCcw,
   Truck,
   XCircle,
@@ -28,12 +30,14 @@ const ICONS: Record<NotificationKind, IconComponent> = {
   announcement: BellRing,
   points_released: VPointIcon,
   free_spin_ready: Gift,
+  prize_won: Trophy,
   order_paid: CreditCard,
   order_shipping: Truck,
   order_delivered: PackageCheck,
   order_cancelled: XCircle,
   order_refunded: RotateCcw,
   order_saved: Bookmark,
+  coupon_expiring: Ticket,
 };
 
 /** Төрлийн дүрс — map-аас сонгоно (render бүрт шинэ component үүсгэхгүй). */

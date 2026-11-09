@@ -10,7 +10,9 @@ import { test, expect } from "@playwright/test";
 
 test("hero: ганц h1, үндсэн CTA, бүтэн дэлгэцийн биш", async ({ page }) => {
   await page.goto("/");
-  const hero = page.locator("section[aria-labelledby='home-hero-title']");
+  const hero = page
+    .locator("section[aria-labelledby='home-hero-title']")
+    .filter({ visible: true });
   await expect(hero).toBeVisible();
   await expect(page.locator("h1")).toHaveCount(1);
   await expect(hero.getByRole("link").first()).toHaveAttribute(
@@ -44,7 +46,11 @@ test("«Эрэлттэй»: 12 хүртэл нүдтэй carousel, «Бүгди�
   page,
 }) => {
   await page.goto("/");
-  const section = page.locator("section[aria-labelledby='home-hot-title']");
+  // CSS selector биш role: Suspense-ийн агуулга эхлээд `<div hidden>` дотор
+  // ирж, React 19.2 түүнийг хойшлуулан (batched reveal) байрлалд нь
+  // шилжүүлдэг. Тэр завсарт CSS selector нуугдмал хуулбарыг ч олж, strict
+  // mode violation (2 элемент) өгдөг. Role нь нуугдмал элементийг алгасна.
+  const section = page.getByRole("region", { name: "Эрэлттэй" });
   await expect(section).toBeVisible();
   await expect(
     section.getByRole("link", { name: /Бүгдийг үзэх/ }),
@@ -98,7 +104,7 @@ test("desktop header: лого, хайлт, үндсэн ба туслах цэ�
   await expect(catalog).toHaveAttribute("aria-expanded", "false");
   await expect(catalog).toBeFocused();
   for (const [name, href] of [
-    ["Багц", "/collections"],
+    ["Бэлэн багц", "/collections"],
     ["Багц үүсгэх", "/collections/build"],
     ["Үнэрээ олох", "/quiz"],
   ]) {

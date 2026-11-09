@@ -78,6 +78,13 @@ PR-аас өмнө: `pnpm typecheck` + `pnpm lint` + `pnpm test` цэвэр ба
 - Mobile-first responsive, dark mode-д бэлэн (next-themes).
 - Themed scrollbar нь `html` дээр өгөгдмөл, бүх гүйдэг элементэд удамшина — элемент
   бүрт класс нэмэхгүй. Нуух шаардлагатай ховор тохиолдолд л `no-scrollbar` (design.md §6.1).
+- **Сонгогдсон chip/tab-д `transition-colors` хэрэглэхгүй**, хэрэв сонголт нь URL
+  солиж серверийн render өдөөдөг бол (шүүлт, хугацааны chip г.м.). Өнгөний transition
+  main thread дээр явдаг тул render давхцахад хуучин chip хагас гэрэлтсэн чигээрээ
+  гацаж «анивчина» (тайлангийн хугацааны chip — Playwright-аар frame бүрээр баталсан).
+  Сонгогдсон төлөвт `bg-cta text-cta-foreground`: хар theme-д `bg-primary` нь
+  `bg-secondary`-оос бараг ялгагдахгүй. Үлдсэн газрууд (`FilterChip`,
+  `products-toolbar` chip, `calendar`) — анзаарагдвал засна.
 
 ## Git
 

@@ -22,6 +22,7 @@ import {
   ORDER_STATUS_STYLE,
   PAYMENT_STATUS_LABEL,
   type OrderStatus,
+  type ReviewStatus,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { OrderRow } from "@/db/types";
@@ -67,7 +68,48 @@ type OrderItemPreview = {
   line_kind: "perfume" | "extra";
   variant_label: string | null;
   image_url: string | null;
+  is_gift: boolean | null;
+  is_sample: boolean | null;
+  collection_id: string | null;
 };
+
+/**
+ * Хүргэгдсэн захиалгын сэтгэгдлийн төлөв (туг `review_moderation`, 0162):
+ * сэтгэгдлийн нэгж бүрт (тусад нь авсан ус `p:<id>`, base багц `c:<id>`)
+ * бичсэн бол шалгагдаж буй / батлагдсан / цуцлагдсан.
+ */
+type OrderReviewState =
+  | { kind: "invite" }
+  | { kind: "pending" }
+  | { kind: "approved"; points: number }
+  | { kind: "rejected" };
+
+function orderReviewState(
+  o: OrderWithItems,
+  statusByKey: Map<string, ReviewStatus>,
+  rewardByKey: Map<string, number>,
+): OrderReviewState | null {
+  const bought = [
+    ...new Set(
+      (o.order_items ?? [])
+        .filter((i) => i.product_id && !i.is_gift && !i.is_sample)
+        .map((i) =>
+          i.collection_id ? `c:${i.collection_id}` : `p:${i.product_id}`,
+        ),
+    ),
+  ];
+  if (bought.length === 0) return null;
+  const statuses = bought.map((key) => statusByKey.get(key));
+  if (statuses.some((st) => st === undefined)) return { kind: "invite" };
+  if (statuses.includes("pending")) return { kind: "pending" };
+  if (statuses.every((st) => st === "approved")) {
+    return {
+      kind: "approved",
+      points: bought.reduce((n, key) => n + (rewardByKey.get(key) ?? 0), 0),
+    };
+  }
+  return { kind: "rejected" };
+}
 type OrderWithItems = OrderRow & { order_items: OrderItemPreview[] };
 
 /**
@@ -127,6 +169,9 @@ export default async function OrdersPage({
   let orders: OrderWithItems[] = [];
   let reviewPoints = 0;
   let savedCount = 0;
+  // Туг `review_moderation` (0162) нээлттэй үед л дүүрнэ.
+  let reviewStatuses: Map<string, ReviewStatus> | null = null;
+  let reviewRewards = new Map<string, number>();
 
   if (supabase) {
     const {
@@ -141,7 +186,7 @@ export default async function OrdersPage({
       const { data } = await supabase
         .from("orders")
         .select(
-          "*, order_items(product_id, product_name, brand, ml, qty, line_kind, variant_label, image_url)",
+          "*, order_items(product_id, product_name, brand, ml, qty, line_kind, variant_label, image_url, is_gift, is_sample, collection_id)",
         )
         .eq("user_id", user.id)
         // Төлөгдөөгүй цуцлалт захиалга биш (0124) — устгасан нь хаана ч
@@ -164,6 +209,52 @@ export default async function OrdersPage({
       reviewPoints = reviewPointsOf(
         (loyalty as { value?: unknown } | null)?.value,
       );
+
+      if (await isFeatureEnabled("review_moderation")) {
+        const [
+          { data: reviewRows },
+          { data: rewardRows },
+          { data: bundleRewardRows },
+        ] = await Promise.all([
+          supabase
+            .from("reviews")
+            .select("product_id, collection_id, status")
+            .eq("user_id", user.id),
+          supabase
+            .from("review_rewards")
+            .select("product_id, points")
+            .eq("user_id", user.id),
+          supabase
+            .from("collection_review_rewards")
+            .select("collection_id, points")
+            .eq("user_id", user.id),
+        ]);
+        reviewStatuses = new Map(
+          (
+            (reviewRows as
+              | {
+                  product_id: string | null;
+                  collection_id: string | null;
+                  status: ReviewStatus;
+                }[]
+              | null) ?? []
+          ).map((r) => [
+            r.product_id ? `p:${r.product_id}` : `c:${r.collection_id}`,
+            r.status,
+          ]),
+        );
+        reviewRewards = new Map([
+          ...(
+            (rewardRows as { product_id: string; points: number }[] | null) ??
+            []
+          ).map((r) => [`p:${r.product_id}`, r.points] as const),
+          ...(
+            (bundleRewardRows as
+              | { collection_id: string; points: number }[]
+              | null) ?? []
+          ).map((r) => [`c:${r.collection_id}`, r.points] as const),
+        ]);
+      }
     }
   }
 
@@ -261,6 +352,11 @@ export default async function OrdersPage({
               o={o}
               imageById={imageById}
               reviewPoints={reviewPoints}
+              reviewState={
+                reviewStatuses && o.status === "delivered"
+                  ? orderReviewState(o, reviewStatuses, reviewRewards)
+                  : undefined
+              }
             />
           ),
         }))}
@@ -308,10 +404,13 @@ function OrderCard({
   o,
   imageById,
   reviewPoints,
+  reviewState,
 }: {
   o: OrderWithItems;
   imageById: Map<string, string | null>;
   reviewPoints: number;
+  /** null — сэтгэгдэл бичих бараагүй; undefined — хуучин урилга (туг хаалттай). */
+  reviewState?: OrderReviewState | null;
 }) {
   const StatusIcon = STATUS_ICON[o.status];
   const items = o.order_items ?? [];
@@ -329,6 +428,7 @@ function OrderCard({
   const awaitingPayment = isAwaitingPayment(o);
   // Сэтгэгдлийн урилга (0117) — төлөгдсөн, явж буй/хүргэгдсэн захиалгад.
   const reviewInvite =
+    (reviewState === undefined || reviewState?.kind === "invite") &&
     reviewPoints > 0 &&
     o.payment_status === "paid" &&
     (o.status === "confirmed" ||
@@ -434,12 +534,17 @@ function OrderCard({
       <div className="px-5 pb-5">
         <Separator className="my-3" />
 
+        {reviewState && reviewState.kind !== "invite" && (
+          <ReviewStateNote orderId={o.id} state={reviewState} />
+        )}
+
         {reviewInvite && (
           <Link
             href={`/account/orders/${o.id}`}
-            className="bg-secondary text-muted-foreground hover:text-foreground mb-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-colors"
+            // Урилга нь хийх зүйл — шараар (одны өнгө) ялгарна.
+            className="bg-rating/10 text-muted-foreground hover:text-foreground mb-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-colors"
           >
-            <MessageSquarePlus className="size-4 shrink-0" />
+            <MessageSquarePlus className="text-rating size-4 shrink-0" />
             <span>
               {o.status === "delivered"
                 ? "Бараагаа хэрэглэж үзээд сэтгэгдлээ бичээд "
@@ -555,5 +660,54 @@ function Stepper({ status, paid }: { status: OrderStatus; paid: boolean }) {
         );
       })}
     </div>
+  );
+}
+
+/** Хүргэгдсэн захиалгын сэтгэгдлийн төлөв — дэлгэрэнгүй рүү үсэрнэ. */
+function ReviewStateNote({
+  orderId,
+  state,
+}: {
+  orderId: string;
+  state: Exclude<OrderReviewState, { kind: "invite" }>;
+}) {
+  return (
+    <Link
+      href={`/account/orders/${orderId}`}
+      className="bg-secondary text-muted-foreground hover:text-foreground mb-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition-colors"
+    >
+      {state.kind === "approved" ? (
+        <>
+          <CheckCircle2 className="text-done size-4 shrink-0" />
+          <span>
+            Сэтгэгдэл баталгаажсан. Баярлалаа!
+            {state.points > 0 && (
+              <>
+                {" "}
+                <strong className="text-foreground font-medium tabular-nums">
+                  +{state.points.toLocaleString("mn-MN")} V point
+                </strong>{" "}
+                цуглуулсан.
+              </>
+            )}
+          </span>
+        </>
+      ) : state.kind === "pending" ? (
+        <>
+          <Clock className="size-4 shrink-0" />
+          <span>
+            Сэтгэгдэл шалгагдаж байна. Батлагдсаны дараа 24 цагийн дотор V point
+            нэмэгдэнэ.
+          </span>
+        </>
+      ) : (
+        <>
+          <XCircle className="text-destructive size-4 shrink-0" />
+          <span>
+            Сэтгэгдэл цуцлагдсан — шалтгааныг дэлгэрэнгүйгээс харна уу.
+          </span>
+        </>
+      )}
+    </Link>
   );
 }

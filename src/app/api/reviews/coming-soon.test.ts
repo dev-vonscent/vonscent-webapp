@@ -17,8 +17,12 @@ vi.mock("@/lib/cache", () => ({
   revalidateCollectionReviews: () => {},
   revalidatePublic: () => {},
 }));
+vi.mock("@/lib/feature-flags", () => ({ isFeatureEnabled: async () => false }));
 vi.mock("@/lib/auth/guard", () => ({ getStaffUser: async () => null }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => null }));
+vi.mock("@/features/reviews/server", () => ({
+  revalidateTarget: async () => {},
+}));
 vi.mock("@/features/reviews/api", () => ({
   getReviewById: async () => null,
   getReviewPage: async () => ({ reviews: [] }),

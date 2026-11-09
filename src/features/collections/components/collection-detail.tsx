@@ -12,7 +12,7 @@ import {
   MobileBuyBar,
   useScrolledPast,
 } from "@/components/shared/mobile-buy-bar";
-import { trackBeginCheckout } from "@/lib/analytics";
+import { trackAddToCart } from "@/lib/analytics";
 import type { Collection } from "../types";
 import { toCartCollection } from "../to-cart";
 import { CollectionSizePicker } from "./collection-size-picker";
@@ -41,6 +41,13 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
     if (!priceRow || !available) return false;
     const put = mode === "buy-now" ? startBuyNowCollection : addCollection;
     put(toCartCollection(collection, priceRow));
+    // Барааны хуудсын адил «Захиалах» ч AddToCart болно (`product-purchase.tsx`).
+    trackAddToCart({
+      id: collection.id,
+      name: `${collection.name} ${ml}ml`,
+      brand: "vonscent",
+      price: priceRow.price,
+    });
     return true;
   }
 
@@ -80,20 +87,9 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
    */
   function onBuyNow() {
     if (!addToCart("buy-now")) return;
-    if (priceRow) {
-      trackBeginCheckout(
-        [
-          {
-            id: collection.id,
-            name: `${collection.name} ${ml}ml`,
-            brand: "vonscent",
-            price: priceRow.price,
-            quantity: 1,
-          },
-        ],
-        priceRow.price,
-      );
-    }
+    // InitiateCheckout-ыг энд БҮҮ явуул: checkout хуудас нээгдэхдээ buy-now
+    // мөрийг оруулаад нэг удаа явуулдаг (`checkout/page.tsx`). Энд явуулбал
+    // нэг худалдан авалт хоёр InitiateCheckout болж тоологддог байв.
     router.push("/checkout");
   }
 

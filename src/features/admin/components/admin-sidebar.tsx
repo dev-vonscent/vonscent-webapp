@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Award,
+  BadgePercent,
   BellRing,
   BarChart3,
   Boxes,
@@ -21,6 +22,7 @@ import {
   LayoutList,
   Megaphone,
   MessageSquarePlus,
+  MessageSquareText,
   Menu,
   PartyPopper,
   Package,
@@ -133,6 +135,13 @@ const GROUPS: NavGroup[] = [
         flag: "extras_shop",
       },
       { href: "/admin/collections", label: "Багц", icon: Layers },
+      // Олон бараанд нэг дор хугацаатай хямдрал (0166).
+      {
+        href: "/admin/sales",
+        label: "Хямдрал",
+        icon: BadgePercent,
+        flag: "sale_page",
+      },
       { href: "/admin/brands", label: "Брэнд", icon: Crown },
       // Хэрэглэгчийн санал болгосон, манайд байхгүй үнэртэн (0137).
       {
@@ -151,6 +160,13 @@ const GROUPS: NavGroup[] = [
     links: [
       { href: "/admin/promotions", label: "Урамшуулал", icon: TicketPercent },
       { href: "/admin/loyalty", label: "V point", icon: Award },
+      // Сэтгэгдлийн хяналт (0162).
+      {
+        href: "/admin/reviews",
+        label: "Сэтгэгдэл",
+        icon: MessageSquareText,
+        flag: "review_moderation",
+      },
       { href: "/admin/gifts", label: "Бэлгийн үнэрүүд", icon: Gift },
       { href: "/admin/lucky-wheel", label: "Азын хүрд", icon: Disc3 },
       {

@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { REVIEW_BODY_MAX } from "@/lib/constants";
+import {
+  REVIEW_BODY_MAX,
+  REVIEW_MODERATED_BODY_MAX,
+  REVIEW_MODERATED_BODY_MIN,
+  REVIEW_REJECT_NOTE_MAX,
+  REVIEW_REJECT_REASONS,
+} from "@/lib/constants";
 
 /**
  * Сэтгэгдлийн зорилт: ус (`productId`) эсвэл бэлэн багц (`collectionId`,
@@ -24,6 +30,54 @@ export const reviewInputSchema = z
   .refine(oneTarget, ONE_TARGET);
 
 export type ReviewInput = z.infer<typeof reviewInputSchema>;
+
+/** Зайг тооцохгүй тэмдэгтийн тоо — «100 тэмдэгт» нь үүгээр (0162). */
+export function countReviewChars(body: string): number {
+  return body.replace(/\s/g, "").length;
+}
+
+/**
+ * Хяналттай сэтгэгдэл (feature flag `review_moderation`): текст заавал,
+ * зайг тооцохгүйгээр `REVIEW_MODERATED_BODY_MIN`+. DB trigger ижил дүрэмтэй.
+ */
+export const moderatedReviewInputSchema = z
+  .object({
+    ...target,
+    rating: z.number().int().min(1).max(5),
+    body: z
+      .string()
+      .trim()
+      .max(REVIEW_MODERATED_BODY_MAX)
+      .refine((b) => countReviewChars(b) >= REVIEW_MODERATED_BODY_MIN, {
+        message: `Хамгийн багадаа ${REVIEW_MODERATED_BODY_MIN} тэмдэгт`,
+      }),
+  })
+  .refine(oneTarget, ONE_TARGET);
+
+/** GET /api/reviews/eligibility — ус эсвэл багц. */
+export const reviewEligibilitySchema = z
+  .object(target)
+  .refine(oneTarget, ONE_TARGET);
+
+/** PATCH /api/admin/reviews/[id] — админы хяналтын нэг үйлдэл. */
+export const reviewModerationSchema = z
+  .discriminatedUnion("action", [
+    z.object({ action: z.literal("approve") }),
+    z.object({
+      action: z.literal("reject"),
+      reason: z.enum(REVIEW_REJECT_REASONS),
+      /** «Бусад» дээр админы бичсэн шалтгаан (0167) — тэр үед заавал. */
+      note: z.string().trim().max(REVIEW_REJECT_NOTE_MAX).optional(),
+    }),
+    z.object({ action: z.literal("visibility"), visible: z.boolean() }),
+    z.object({ action: z.literal("featured"), featured: z.boolean() }),
+  ])
+  .refine(
+    (v) => v.action !== "reject" || v.reason !== "other" || Boolean(v.note),
+    { message: "Шалтгаанаа бичнэ үү.", path: ["note"] },
+  );
+
+export type ReviewModerationInput = z.infer<typeof reviewModerationSchema>;
 
 /** Query params for DELETE /api/reviews — staff removing a review. */
 export const reviewDeleteSchema = z.object({

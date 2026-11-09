@@ -8,20 +8,30 @@ import { SITE } from "@/lib/constants";
  * than merging, so type/siteName/locale are repeated here and the site-wide
  * og:image (SITE.ogImage, a static file in public/) has to be named again — except for a
  * segment with its own opengraph-image file (`ownImage`), where an explicit
- * image would win over that file. og:title/og:description are left for Next
- * to fill from the page's own title and description.
+ * image would win over that file.
+ *
+ * `title` is the page's own title: it becomes `<title>` (through the root
+ * `· Von Scent` template) and og:title *without* that suffix — Telegram and
+ * Messenger already print og:site_name / the domain above it, so the share
+ * card would otherwise repeat the brand. og:description is left for Next to
+ * fill from the page's description.
  */
 export function pageMetadata(
   path: string,
-  { ownImage = false }: { ownImage?: boolean } = {},
+  {
+    title,
+    ownImage = false,
+  }: { title?: string; ownImage?: boolean } = {},
 ): Metadata {
   return {
+    ...(title ? { title } : {}),
     alternates: { canonical: path },
     openGraph: {
       type: "website",
       siteName: SITE.brandName,
       locale: "mn_MN",
       url: path,
+      ...(title ? { title } : {}),
       ...(ownImage ? {} : { images: { ...SITE.ogImage, alt: SITE.brandName } }),
     },
   };

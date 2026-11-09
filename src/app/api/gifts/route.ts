@@ -53,6 +53,9 @@ export async function GET() {
       id: p.id,
       name: p.name,
       brand: p.brand,
+      // Бэлгийн мөрийг хүйсээр бүлэглэнэ — хэрэглэгчид эмэгтэй/эрэгтэй
+      // усаа мэдэлгүй сонгоод дараа нь гомдоллосон (2026-11).
+      gender: p.gender,
       image: p.images[0]?.url ?? null,
     }));
 

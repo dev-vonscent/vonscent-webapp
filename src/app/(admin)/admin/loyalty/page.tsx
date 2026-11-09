@@ -10,7 +10,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/browser";
 import { saveSetting } from "@/features/admin/lib/mutate";
 import { toast } from "@/lib/toast";
-import { DEFAULT_REVIEW_POINTS, reviewPointsOf } from "@/lib/loyalty";
+import {
+  DEFAULT_REVIEW_POINTS,
+  profilePointsOf,
+  reviewPointsOf,
+} from "@/lib/loyalty";
+import { DEFAULT_PROFILE_POINTS, USER_TIERS } from "@/lib/constants";
+import { formatPrice } from "@/lib/format";
+import { useFeatureFlag } from "@/components/feature-flags";
+
+const TIER_RATE_RANGE = `${USER_TIERS[0].rate}–${USER_TIERS[USER_TIERS.length - 1].rate}%`;
 
 export default function AdminLoyaltyPage() {
   const [earnPer, setEarnPer] = React.useState(100);
@@ -18,6 +27,15 @@ export default function AdminLoyaltyPage() {
   const [redeemRate, setRedeemRate] = React.useState(1);
   const [lockHours, setLockHours] = React.useState(24);
   const [reviewPoints, setReviewPoints] = React.useState(DEFAULT_REVIEW_POINTS);
+  // Туг хаалттай үед талбар нуугдана, гэхдээ хадгалахад утга нь хэвээр үлдэнэ.
+  const profileInfoOn = useFeatureFlag("profile_info");
+  // Түвшин асаалттай үед оноог `tier_rate_for_spend` (0143) бодож, earnPer /
+  // earnPoints-ийг огт уншдаггүй — талбарыг нь харуулбал засах нь ажиллахгүй.
+  // Нуусан ч утга нь хадгалахад хэвээр үлдэнэ (тугийг хаавал буцаж ажиллана).
+  const tiersOn = useFeatureFlag("user_tiers");
+  const [profilePoints, setProfilePoints] = React.useState(
+    DEFAULT_PROFILE_POINTS,
+  );
   const [busy, setBusy] = React.useState(false);
   const [loaded, setLoaded] = React.useState(false);
 
@@ -40,6 +58,7 @@ export default function AdminLoyaltyPage() {
           setRedeemRate(v.redeemRate ?? 1);
           setLockHours(v.lockHours ?? 24);
           setReviewPoints(reviewPointsOf(v));
+          setProfilePoints(profilePointsOf(v));
         }
         setLoaded(true);
       });
@@ -51,7 +70,14 @@ export default function AdminLoyaltyPage() {
     try {
       const ok = await saveSetting(
         "loyalty",
-        { earnPer, earnPoints, redeemRate, lockHours, reviewPoints },
+        {
+          earnPer,
+          earnPoints,
+          redeemRate,
+          lockHours,
+          reviewPoints,
+          profilePoints,
+        },
         "V point тохиргоо хадгалагдсангүй",
       );
       if (ok) toast.success("V point тохиргоо хадгалагдлаа.");
@@ -80,25 +106,61 @@ export default function AdminLoyaltyPage() {
         <CardContent className="space-y-5 p-6">
           <form onSubmit={save} noValidate className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Оноо авах нэгж (₮ тутамд)</Label>
-                <Input
-                  type="number"
-                  value={earnPer}
-                  onChange={(e) => setEarnPer(Number(e.target.value) || 1)}
-                />
-                <p className="text-muted-foreground text-xs">
-                  Жишээ: 1000 → 1000₮ тутамд оноо хуримтлуулна.
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Авах оноо</Label>
-                <Input
-                  type="number"
-                  value={earnPoints}
-                  onChange={(e) => setEarnPoints(Number(e.target.value) || 0)}
-                />
-              </div>
+              {tiersOn ? (
+                <div className="space-y-2 sm:col-span-2">
+                  <p className="text-sm font-medium">Оноо хуримтлуулах хувь</p>
+                  <p className="text-muted-foreground text-xs">
+                    Хэрэглэгчийн түвшин асаалттай тул оноо түвшнээс хамаарч
+                    купоны дараах барааны дүнгийн (хүргэлтгүй) {TIER_RATE_RANGE}
+                    -иар бодогдоно. Түвшин нь өмнөх захиалгуудын нийт дүнгээр
+                    тогтоно.
+                  </p>
+                  <ul className="divide-border bg-muted/40 divide-y rounded-md border text-sm">
+                    {USER_TIERS.map((t) => (
+                      <li
+                        key={t.key}
+                        className="flex items-center justify-between gap-3 px-3 py-2"
+                      >
+                        <span>
+                          {t.label}
+                          <span className="text-muted-foreground ml-2 text-xs">
+                            {t.minSpend === 0
+                              ? "Анхны түвшин"
+                              : `${formatPrice(t.minSpend)}-өөс`}
+                          </span>
+                        </span>
+                        <span className="font-medium tabular-nums">
+                          {t.rate}%
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Оноо авах нэгж (₮ тутамд)</Label>
+                    <Input
+                      type="number"
+                      value={earnPer}
+                      onChange={(e) => setEarnPer(Number(e.target.value) || 1)}
+                    />
+                    <p className="text-muted-foreground text-xs">
+                      Жишээ: 1000 → 1000₮ тутамд оноо хуримтлуулна.
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Авах оноо</Label>
+                    <Input
+                      type="number"
+                      value={earnPoints}
+                      onChange={(e) =>
+                        setEarnPoints(Number(e.target.value) || 0)
+                      }
+                    />
+                  </div>
+                </>
+              )}
               <div className="space-y-1.5">
                 <Label>Оноо хөрвүүлэх ханш (1 оноо = X ₮)</Label>
                 <Input
@@ -136,6 +198,26 @@ export default function AdminLoyaltyPage() {
                   бүрт нэг удаа олгоно. 0 бол урамшуулал унтарна.
                 </p>
               </div>
+              {profileInfoOn && (
+                <div className="space-y-1.5">
+                  <Label>Мэдээлэл бөглөсний урамшуулал (оноо)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={profilePoints}
+                    onChange={(e) =>
+                      setProfilePoints(
+                        // SQL нь `::int`-ээр уншдаг — бутархай хадгалагдвал алдаа.
+                        Math.max(Math.floor(Number(e.target.value)) || 0, 0),
+                      )
+                    }
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    «Миний мэдээлэл»-ийг бүрэн бөглөсөн хэрэглэгчид нэг удаа
+                    олгоно. 0 бол урамшуулал унтарна.
+                  </p>
+                </div>
+              )}
             </div>
             <LoadingButton loading={busy} type="submit">
               Хадгалах

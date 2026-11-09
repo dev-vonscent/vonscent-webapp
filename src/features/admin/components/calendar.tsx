@@ -124,6 +124,7 @@ export function Calendar({
                   : inRange
                     ? "bg-secondary text-foreground"
                     : "hover:bg-muted",
+                "disabled:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent",
                 // Today is marked but never painted like a selection, or the
                 // operator reads it as already chosen.
                 isToday && !isStart && !isEnd && "text-gold-strong font-medium",

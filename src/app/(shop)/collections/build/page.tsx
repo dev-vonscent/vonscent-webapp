@@ -14,8 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
-  ...pageMetadata("/collections/build"),
-  title: "Багц үүсгэх",
+  ...pageMetadata("/collections/build", { title: "Багц үүсгэх" }),
   description: "Дуртай үнэртнүүдээ сонгож, хямдралтай өөрийн багц үүсгээрэй.",
 };
 

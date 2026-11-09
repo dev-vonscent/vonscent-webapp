@@ -1,5 +1,5 @@
 import * as React from "react";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { GiftPool } from "@/features/gifts/use-gift-pool";
@@ -10,9 +10,27 @@ const POOL: GiftPool = {
   sampleMl: 1,
   vialOut: false,
   products: [
-    { id: "g1", name: "Santal 33", brand: "Le Labo", image: null },
-    { id: "g2", name: "Baccarat Rouge", brand: "MFK", image: null },
-    { id: "g3", name: "Oud Wood", brand: "Tom Ford", image: null },
+    {
+      id: "g1",
+      name: "Santal 33",
+      brand: "Le Labo",
+      gender: "unisex",
+      image: null,
+    },
+    {
+      id: "g2",
+      name: "Baccarat Rouge",
+      brand: "MFK",
+      gender: "female",
+      image: null,
+    },
+    {
+      id: "g3",
+      name: "Oud Wood",
+      brand: "Tom Ford",
+      gender: "male",
+      image: null,
+    },
   ],
 };
 
@@ -21,6 +39,10 @@ vi.mock("@/features/gifts/use-gift-pool", () => ({
   useGiftPool: () => pool,
 }));
 vi.mock("@/lib/toast", () => ({ toast: vi.fn() }));
+let lead: "male" | "female" | null = null;
+vi.mock("@/features/gifts/use-lead-gender", () => ({
+  useLeadGender: () => lead,
+}));
 
 import { GiftSamplePicker } from "./gift-sample-picker";
 
@@ -244,6 +266,43 @@ describe("GiftSamplePicker", () => {
       ).toBeNull();
       pool = POOL;
     });
+  });
+
+  it("groups the waters by gender, the cart's gender first", () => {
+    lead = "male";
+    renderPicker();
+    const names = screen
+      .getAllByRole("group")
+      .map((g) => g.getAttribute("aria-label"));
+    expect(names).toEqual(["Эрэгтэй", "Unisex", "Эмэгтэй"]);
+    lead = null;
+    cleanup();
+    renderPicker();
+    expect(
+      screen.getAllByRole("group").map((g) => g.getAttribute("aria-label")),
+    ).toEqual(["Эмэгтэй", "Unisex", "Эрэгтэй"]);
+  });
+
+  it("names the gender of what was picked, in words", () => {
+    renderPicker({ value: ["g2"] });
+    expect(
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === "P" &&
+          el.textContent === "Сонгосон: MFK Baccarat Rouge — эмэгтэй ус",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("counts a doubled pick in the confirmation", () => {
+    renderPicker({ allowance: 2, value: ["g3", "g3"] });
+    expect(
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === "P" &&
+          el.textContent === "Сонгосон: Tom Ford Oud Wood ×2 — эрэгтэй ус",
+      ),
+    ).toBeTruthy();
   });
 
   it("disappears when the pool is off", () => {

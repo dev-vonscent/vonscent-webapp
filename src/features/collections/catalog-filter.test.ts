@@ -54,29 +54,20 @@ describe("filterCatalogCollections", () => {
     );
   });
 
-  it("брэнд, үнэрийн төрөл — аль нэг гишүүнээр", () => {
+  it("брэнд, үнэрийн төрөл, улирал — багцад байхгүй тул гарахгүй", () => {
+    const yearRound = c({ members: [m({ seasons: ["all"] })] });
     expect(filterCatalogCollections([c()], { brand: ["Creed"] })).toHaveLength(
-      1,
-    );
-    expect(filterCatalogCollections([c()], { brand: ["Chanel"] })).toHaveLength(
       0,
     );
     expect(filterCatalogCollections([c()], { family: ["woody"] })).toHaveLength(
-      1,
+      0,
     );
     expect(
-      filterCatalogCollections([c()], { family: ["floral"] }),
-    ).toHaveLength(0);
-  });
-
-  it("улирал — «all» гишүүн бүх улиралд таарна", () => {
-    expect(
-      filterCatalogCollections([c()], { season: ["winter"] }),
-    ).toHaveLength(0);
-    const yearRound = c({ members: [m({ seasons: ["all"] })] });
-    expect(
       filterCatalogCollections([yearRound], { season: ["winter"] }),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
+    expect(
+      filterCatalogCollections([yearRound], { season: ["all"] }),
+    ).toHaveLength(0);
   });
 
   it("хүйс, үнэ, хэмжээ", () => {

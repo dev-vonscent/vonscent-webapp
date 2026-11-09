@@ -115,7 +115,15 @@ export interface BuilderProduct {
   availableMl: number;
   variantByMl: Record<
     number,
-    { variantId: string; price: number; inStock: boolean }
+    {
+      variantId: string;
+      /** Бодитоор төлөх үнэ (хямдралтай бол хямдарсан). */
+      price: number;
+      /** Үндсэн үнэ — `price`-аас их бол тэр хэмжээ хямдралтай (0168).
+       * 0168-аас өмнөх сан дээр байхгүй. */
+      basePrice?: number;
+      inStock: boolean;
+    }
   >;
   scentFamilies: ScentFamily[];
   seasons: Season[];

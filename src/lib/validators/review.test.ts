@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { reviewInputSchema, reviewPageSchema } from "./review";
+import {
+  countReviewChars,
+  moderatedReviewInputSchema,
+  reviewInputSchema,
+  reviewModerationSchema,
+  reviewPageSchema,
+} from "./review";
 
 const P = "6f1c1e8e-1d0b-4a8e-9f55-0c1f3b7a2d11";
 const C = "0589d723-5b37-4e0c-9ca1-3b197178d142";
@@ -27,5 +33,61 @@ describe("review validators — ус эсвэл багц (0107)", () => {
       reviewPageSchema.safeParse({ collectionId: C, offset: "5" }).success,
     ).toBe(true);
     expect(reviewPageSchema.safeParse({ offset: 0 }).success).toBe(false);
+  });
+});
+
+describe("moderated review validators (0162)", () => {
+  it("counts characters without whitespace", () => {
+    expect(countReviewChars("а б\nв\tг ")).toBe(4);
+  });
+
+  it("needs 100 non-space characters", () => {
+    const spaced = "аб ".repeat(49); // 98 тэмдэгт + 49 зай
+    expect(
+      moderatedReviewInputSchema.safeParse({
+        productId: P,
+        rating: 5,
+        body: spaced,
+      }).success,
+    ).toBe(false);
+    expect(
+      moderatedReviewInputSchema.safeParse({
+        productId: P,
+        rating: 5,
+        body: spaced + "вг",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects need a known reason", () => {
+    expect(
+      reviewModerationSchema.safeParse({
+        action: "reject",
+        reason: "profanity",
+      }).success,
+    ).toBe(true);
+    expect(
+      reviewModerationSchema.safeParse({ action: "reject", reason: "spam" })
+        .success,
+    ).toBe(false);
+    expect(reviewModerationSchema.safeParse({ action: "reject" }).success).toBe(
+      false,
+    );
+  });
+
+  it("«Бусад» шалтгаан тайлбартай байх ёстой (0167)", () => {
+    const other = { action: "reject", reason: "other" } as const;
+    expect(reviewModerationSchema.safeParse(other).success).toBe(false);
+    expect(
+      reviewModerationSchema.safeParse({ ...other, note: "   " }).success,
+    ).toBe(false);
+    expect(
+      reviewModerationSchema.safeParse({ ...other, note: "Өөр барааны тухай" })
+        .success,
+    ).toBe(true);
+    expect(
+      reviewModerationSchema.safeParse({ ...other, note: "x".repeat(301) })
+        .success,
+    ).toBe(false);
   });
 });

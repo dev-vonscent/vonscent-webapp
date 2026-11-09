@@ -22,6 +22,8 @@ interface Piece {
   angle: number;
   color: string;
   ratio: number;
+  /** Round sequins among the paper strips. */
+  round: boolean;
 }
 
 const GRAVITY = 0.16;
@@ -32,6 +34,8 @@ function themeColors(): string[] {
   const pick = (name: string, fallback: string) =>
     style.getPropertyValue(name).trim() || fallback;
   return [
+    pick("--rating", "#f5b82e"),
+    pick("--rating", "#f5b82e"),
     pick("--gold", "#d4d4d4"),
     pick("--gold-soft", "#a1a1a1"),
     pick("--foreground", "#ffffff"),
@@ -45,7 +49,7 @@ export function Confetti({
 }: {
   /** Increment to fire a burst; 0 means "nothing yet". */
   fire: number;
-  /** The grand prize gets twice the pieces and a wider spread. */
+  /** The grand prize gets a wider spread and two corner cannons. */
   intense?: boolean;
 }) {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
@@ -67,24 +71,42 @@ export function Confetti({
     ctx.scale(dpr, dpr);
 
     const colors = themeColors();
-    const count = intense ? 220 : 120;
-    const originY = height * 0.42;
-    const pieces: Piece[] = Array.from({ length: count }, () => {
-      const angle =
-        -Math.PI / 2 + (Math.random() - 0.5) * (intense ? 2.6 : 1.9);
-      const speed = (intense ? 9 : 7) + Math.random() * 7;
-      return {
-        x: width / 2 + (Math.random() - 0.5) * width * 0.25,
-        y: originY,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        size: 5 + Math.random() * 6,
-        ratio: 0.35 + Math.random() * 0.5,
-        spin: (Math.random() - 0.5) * 0.3,
-        angle: Math.random() * Math.PI,
-        color: colors[Math.floor(Math.random() * colors.length)],
-      };
+    const piece = (x: number, y: number, angle: number, speed: number) => ({
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      size: 5 + Math.random() * 6,
+      ratio: 0.35 + Math.random() * 0.5,
+      spin: (Math.random() - 0.5) * 0.3,
+      angle: Math.random() * Math.PI,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      round: Math.random() < 0.2,
     });
+
+    // A burst from the middle of the screen…
+    const count = intense ? 160 : 120;
+    const originY = height * 0.42;
+    const pieces: Piece[] = Array.from({ length: count }, () =>
+      piece(
+        width / 2 + (Math.random() - 0.5) * width * 0.25,
+        originY,
+        -Math.PI / 2 + (Math.random() - 0.5) * (intense ? 2.6 : 1.9),
+        (intense ? 9 : 7) + Math.random() * 7,
+      ),
+    );
+    // …and for the grand prize, two cannons firing in from the bottom corners.
+    if (intense) {
+      for (const side of [-1, 1]) {
+        for (let i = 0; i < 90; i++) {
+          const x = side < 0 ? 0 : width;
+          // Up and towards the middle: −60°…−80° from the horizontal.
+          const lift = (60 + Math.random() * 20) * (Math.PI / 180);
+          const angle = side < 0 ? -lift : Math.PI + lift;
+          pieces.push(piece(x, height, angle, 14 + Math.random() * 9));
+        }
+      }
+    }
 
     let raf = 0;
     let alive = true;
@@ -105,12 +127,18 @@ export function Confetti({
         // Flip the piece as it tumbles — a rectangle that never turns edge-on
         // reads as a sticker rather than a scrap of paper.
         ctx.globalAlpha = 0.55 + 0.45 * Math.abs(Math.cos(p.angle));
-        ctx.fillRect(
-          -p.size / 2,
-          -(p.size * p.ratio) / 2,
-          p.size,
-          p.size * p.ratio,
-        );
+        if (p.round) {
+          ctx.beginPath();
+          ctx.arc(0, 0, p.size * 0.32, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillRect(
+            -p.size / 2,
+            -(p.size * p.ratio) / 2,
+            p.size,
+            p.size * p.ratio,
+          );
+        }
         ctx.restore();
       }
       if (onScreen === 0 || !alive) {

@@ -4,6 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { BadgePercent, Check, Plus, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ import {
   DEFAULT_BUNDLE_ML,
 } from "@/lib/constants";
 import { useCart } from "@/features/cart/store";
+import { trackAddToCart } from "@/lib/analytics";
 import { CatalogFilters } from "@/features/catalog/components/catalog-filters";
 import { CatalogFilterSheet } from "@/features/catalog/components/catalog-filter-sheet";
 import { CatalogSort } from "@/features/catalog/components/catalog-sort";
@@ -147,6 +149,14 @@ function BuilderInner({
       })),
       unitPrice: price,
     });
+    // Өөрөө угсарсан багц санд id-гүй — checkout-ын begin_checkout-тай
+    // адил `slug` ("custom")-ийг id болгоно.
+    trackAddToCart({
+      id: "custom",
+      name: `${name.trim() || "Миний багц"} ${ml}ml`,
+      brand: "vonscent",
+      price,
+    });
 
     if (save && isLoggedIn && name.trim()) {
       await fetch("/api/collections/mine", {
@@ -183,20 +193,26 @@ function BuilderInner({
       <div className="border-border from-card/95 to-card/90 shadow-lift rounded-2xl border bg-linear-to-b p-3 backdrop-blur sm:p-4">
         {/* Header — bundle size (left) + running count / price (right) */}
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className="mb-2 flex w-full items-center justify-between gap-2">
+          {/* Шошгыг бүтнээр нь үлдээнэ — «үнэртэн бүрт өөр хэмжээ сонгож
+              болох уу» гэдэг асуулт байнга ирдэг тул «нэг тус бүрийн» гэдэг
+              нь хариулт нь. Утсан дээр зүүн талд байхдаа гурван мөрөнд
+              тасарч мөрийг сунгадаг байсан тул товчны ДЭЭР нэг мөрөөр. */}
+          <div className="mb-2 flex w-full flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
             <span className="text-muted-foreground text-xs font-medium">
               Үнэртэн нэг тус бүрийн хэмжээ сонгох
             </span>
-            <div className="bg-secondary flex items-center gap-0.5 rounded-full p-0.5">
+            <div className="bg-secondary flex items-center gap-0.5 rounded-full p-0.5 *:flex-1 sm:*:flex-none">
               {BUNDLE_ML_SIZES.map((size) => (
                 <button
                   key={size}
                   onClick={() => changeMl(size)}
                   aria-pressed={size === ml}
                   className={cn(
-                    // Утсан дээр 44px — DESIGN.md-ийн доод хязгаар. Десктоп
-                    // дээр нягтруулна (`md:`), учир нь тэнд хулгана нарийн.
-                    "flex min-h-11 items-center justify-center rounded-full px-4 text-xs font-semibold md:min-h-0 md:px-3 md:py-1",
+                    // Харагдах өндөр 36px, дарах талбай нь `before:`-ээр 44px
+                    // (DESIGN.md-ийн доод хязгаар) — 44px-ийн цул товч sticky
+                    // тавиурыг хэт өндөр болгодог байв. Десктоп дээр
+                    // нягтруулна (`md:`), учир нь тэнд хулгана нарийн.
+                    "relative flex min-h-9 items-center justify-center rounded-full px-4 text-xs font-semibold before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] md:min-h-0 md:px-3 md:py-1 md:before:hidden",
                     size === ml
                       ? "bg-foreground text-background shadow-sm"
                       : "text-muted-foreground hover:text-foreground",
@@ -426,7 +442,14 @@ function BuilderInner({
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
               {grid.map((p) => {
-                const stock = Boolean(p.variantByMl[ml]?.inStock);
+                const variant = p.variantByMl[ml];
+                const stock = Boolean(variant?.inStock);
+                // Хямдрал хэмжээ тус бүрд — 5ml хямдарсан ус 2ml-ийн жагсаалтад
+                // «Хямдрал» гэж худал бичигдэхгүй.
+                const onSale =
+                  stock &&
+                  variant?.basePrice != null &&
+                  variant.basePrice > variant.price;
                 const on = ids.includes(p.productId);
                 // Can't add something the chosen size can't fill; an already-
                 // picked one stays removable.
@@ -461,6 +484,15 @@ function BuilderInner({
                           {ml}ml-д байхгүй
                         </span>
                       )}
+                      {/* Барааны card-тай ижил badge (`ProductCard`). */}
+                      {onSale && (
+                        <Badge
+                          variant="sale"
+                          className="bg-background/85! absolute top-2 left-2 w-fit backdrop-blur-sm"
+                        >
+                          Хямдрал
+                        </Badge>
+                      )}
                       <button
                         onClick={() => toggle(p)}
                         disabled={disabled}
@@ -491,15 +523,20 @@ function BuilderInner({
                       </span>
                       <span
                         className={cn(
-                          "text-xs font-semibold",
+                          "flex items-baseline gap-1.5 text-xs font-semibold",
                           stock
                             ? "text-foreground/70"
                             : "text-muted-foreground",
                         )}
                       >
                         {stock
-                          ? formatPrice(p.variantByMl[ml]?.price ?? 0)
+                          ? formatPrice(variant?.price ?? 0)
                           : `${ml}ml-д байхгүй`}
+                        {onSale && (
+                          <span className="text-muted-foreground text-[11px] font-normal line-through">
+                            {formatPrice(variant.basePrice as number)}
+                          </span>
+                        )}
                       </span>
                     </div>
                   </div>

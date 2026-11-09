@@ -27,6 +27,7 @@ import { RESERVE_TIMEOUT_MINUTES, SHIPPING_ZONES } from "@/lib/constants";
 import { isQpayMockMode } from "@/lib/payments/qpay";
 import { ensureInvoice } from "@/lib/payments/invoice";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
+import { captureOrderContext } from "@/lib/meta/capi";
 import { earliestDeliveryDay, latestDeliveryDay } from "@/lib/time";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import {
@@ -290,20 +291,32 @@ export async function POST(req: Request) {
         })),
       ],
     };
-    let { data, error } = await callRpc<OrderSummaryRow>(
-      supabase,
-      "place_order",
-      rpcArgs,
-    );
+    // Бодит шагнал (0165/0170): зөвхөн бүртгэлтэй хэрэглэгч, ижил
+    // transaction-д. Аль нэг шагнал авах боломжгүй бол захиалга ч үүсэхгүй —
+    // клиент шагналгүйгээр дахин илгээнэ (PRIZE_UNAVAILABLE).
+    const prizeSpinIds = userId
+      ? [
+          ...new Set([
+            ...(input.prizeSpinIds ?? []),
+            ...(input.prizeSpinId ? [input.prizeSpinId] : []),
+          ]),
+        ]
+      : [];
+    // `place_order_with_prizes` нь `place_order`-ыг дуудаад хариуг нь
+    // өргөтгөдөг тул хариу нь мөн `order_summary()` хэлбэртэй.
+    const placeOrder = () =>
+      prizeSpinIds.length > 0
+        ? callRpc<OrderSummaryRow>(supabase, "place_order_with_prizes", {
+            ...rpcArgs,
+            p_spins: prizeSpinIds,
+          })
+        : callRpc<OrderSummaryRow>(supabase, "place_order", rpcArgs);
+    let { data, error } = await placeOrder();
     // Deadlock (40P01) — бүх нөөцийг нэг дарааллаар түгжих ч өдрийн cron
     // batch зэрэг ажиллахад ховор тохиолдоно. Transaction бүхэлдээ буцсан тул
     // нэг удаа дахин оролдоход аюулгүй.
     if (error && /deadlock detected/i.test(error.message)) {
-      ({ data, error } = await callRpc<OrderSummaryRow>(
-        supabase,
-        "place_order",
-        rpcArgs,
-      ));
+      ({ data, error } = await placeOrder());
     }
 
     if (error || !data) {
@@ -355,6 +368,10 @@ export async function POST(req: Request) {
     if (input.requestId && order) {
       await completeOrderRequest(supabase, input.requestId, order.id);
     }
+
+    // Meta CAPI-д (`meta_capi` туг): төлбөр батлагдахад серверийн Purchase-ийг
+    // browser-ынхтой тааруулах cookie/IP/UA. Туг хаалттай бол юу ч бичихгүй.
+    if (order) await captureOrderContext(supabase, order.id, req);
 
     // «Дараа захиалах» нь бүртгэлд хадгалагддаг тул зочинд хуулбар хэрэггүй.
     const snapshot = userId && order ? parseSnapshot(body) : null;

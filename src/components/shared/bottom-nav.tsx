@@ -14,8 +14,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DARK_STAGE_ROUTES } from "@/lib/constants";
 import { selectWishCount, useWishlist } from "@/features/wishlist/store";
-import { useBottomNavHidden } from "@/components/shared/bottom-nav-store";
+import {
+  useBottomBarClaimed,
+  useScrollHidden,
+} from "@/components/shared/bottom-nav-store";
 import { useChatLauncher } from "@/features/chat/use-chat-launcher";
 
 /**
@@ -48,7 +52,15 @@ export function BottomNav() {
   // Хуудасны үйлдлийн зурвас доод ирмэгийг эзэлсэн үед цэс замаа тавьж өгнө
   // (`useClaimBottomBar`). Унтраахын оронд гулсаж буух нь хаашаа явсныг
   // харуулж, буцаж гарахдаа ч гэнэт үсэрдэггүй.
-  const hidden = useBottomNavHidden();
+  // Доош гүйлгэхэд header-тэй хамт гулсаж бууж, дээш гүйлгэхэд гарна.
+  const claimed = useBottomBarClaimed();
+  const scrollHidden = useScrollHidden();
+  const hidden = claimed || scrollHidden;
+  // Зурвас хаагдаж буцаж гарахдаа л 150ms хүлээнэ (зурвас гулсаж гарахыг).
+  // Гүйлгэлтээр гарахдаа header-тэй зэрэг, хоцрохгүй.
+  const [afterClaim, setAfterClaim] = React.useState(false);
+  if (claimed && !afterClaim) setAfterClaim(true);
+  if (scrollHidden && !claimed && afterClaim) setAfterClaim(false);
 
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -62,8 +74,10 @@ export function BottomNav() {
     <div
       className={cn(
         "pb-safe pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center transition-transform duration-300 ease-out motion-reduce:transition-none md:hidden",
+        // Over a black stage (the wheel) the bar is black in every theme.
+        DARK_STAGE_ROUTES.includes(pathname) && "force-black",
         // Буцаж гарахдаа «Захиалах» зурвас гулсаж гарахыг хүлээнэ.
-        hidden ? "translate-y-[140%]" : "delay-150",
+        hidden ? "translate-y-[140%]" : afterClaim && "delay-150",
       )}
     >
       {/* Цэс + баруун талд нь тусдаа чатын товч (Crisp-ийн апп шиг). Нэг

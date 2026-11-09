@@ -43,6 +43,7 @@ export type SpinPrizeKind =
   | "coupon_percent"
   | "coupon_fixed"
   | "bundle"
+  | "product"
   | "none";
 export type SpinTier = "common" | "rare" | "grand";
 export type SpinType = "free" | "paid" | "order";
@@ -126,6 +127,9 @@ export interface ProductVariantRow {
    * төлөх дүн — `variant_price()` үүнийг эхэлж авна.
    */
   sale_price: number | null;
+  /** Хямдралын хугацаа (0166) — null бол тэр талдаа хязгааргүй. */
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
   is_active: boolean;
 }
 
@@ -342,6 +346,8 @@ interface OrderItemBase {
   /** Энэ мөрөнд түгжсэн хоосон сав ба түүний төлөв (0146). */
   vial_id: string | null;
   vial_state: OrderItemStockState | null;
+  /** Азын хүрдний гранд шагналын мөр (0165) — 2мл, 0₮. */
+  spin_id?: string | null;
 }
 
 /** Нөөцийн төлөв: reserved → committed (хүргэгдэх) | released (0146). */
@@ -399,6 +405,8 @@ export interface CouponRow {
   used_count: number;
   /** Generated: shop-wide cap reached (0119). Read-only. */
   used_up: boolean;
+  /** Last expiry reminder sent to the owner (0174 cron). null = never. */
+  expiry_reminded_at?: string | null;
   /** Cap on a percent coupon's ₮ discount (0053). null = uncapped. */
   max_discount: number | null;
   /** Who issued it: 'manual' | 'spin' (0053) | 'campaign' (0135). */
@@ -530,6 +538,9 @@ export interface SpinWheelPrizeRow {
   fallback_slot: number | null;
   is_active: boolean;
   created_at: string;
+  /** `product` prize (0170): the perfume and the size handed over. */
+  product_id?: string | null;
+  ml?: number | null;
 }
 
 /** One spin. Prize fields are snapshots so history survives a prize edit. */
@@ -547,9 +558,20 @@ export interface SpinWheelSpinRow {
   coupon_id: string | null;
   /** `order` spins only — whose credit it consumed (0129). */
   credit_order_id: string | null;
-  /** Physical prizes only — set when the admin has handed it over. */
+  /** Grand prize: set when its order is delivered, or by staff (0165). */
   fulfilled_at: string | null;
   created_at: string;
+  /** Grand prize (0165): the bundle picked, when, and the claim window. */
+  bundle_collection_id?: string | null;
+  bundle_gender?: "male" | "female" | null;
+  chosen_at?: string | null;
+  /** The order it rides in (`place_order_with_prize`); cleared on cancel. */
+  claim_order_id?: string | null;
+  claimed_at?: string | null;
+  expires_at?: string | null;
+  /** `product` prize (0170): snapshot of the perfume and size won. */
+  product_id?: string | null;
+  ml?: number | null;
 }
 
 export interface OrderStatusHistoryRow {
@@ -783,7 +805,10 @@ export interface Database {
         | "vial_style"
       >;
       product_images: Table<ProductImageRow, "id">;
-      product_variants: Table<ProductVariantRow, "id" | "sale_price">;
+      product_variants: Table<
+        ProductVariantRow,
+        "id" | "sale_price" | "sale_starts_at" | "sale_ends_at"
+      >;
       inventory: Table<InventoryRow, "updated_at">;
       tags: Table<TagRow, "id">;
       scent_families: Table<ScentFamilyRow, "created_at">;
@@ -934,6 +959,20 @@ export interface Database {
       };
       merge_perfume_requests: {
         Args: { p_source: string; p_target: string };
+        Returns: number;
+      };
+      // Олноор хямдрал (0166) — өөрчлөгдсөн хэмжээний тоо.
+      apply_bulk_sale: {
+        Args: {
+          p_product_ids: string[];
+          p_pcts: Record<string, number>;
+          p_starts: string | null;
+          p_ends: string;
+        };
+        Returns: number;
+      };
+      clear_bulk_sale: {
+        Args: { p_product_ids: string[] };
         Returns: number;
       };
       launch_product: {

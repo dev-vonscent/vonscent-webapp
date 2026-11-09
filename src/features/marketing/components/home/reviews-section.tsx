@@ -5,15 +5,24 @@ import { formatDate } from "@/lib/format";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { Stars } from "@/components/shared/stars";
 import { getRecentReviews } from "@/features/reviews/api";
+import { isFeatureEnabled } from "@/lib/feature-flags";
+import { HOME_FEATURED_REVIEWS_MAX } from "@/lib/constants";
 import { TierAvatar } from "@/features/tiers/components/tier-avatar";
 
 /**
- * Real, published reviews only (`public_reviews`, non-empty text). No
+ * Real, published reviews only (`public_reviews`, non-empty text; with
+ * `review_moderation` on, only the ones the admin picked). No
  * aggregate rating or customer count is shown — none is computed here, and
  * the section disappears when there is nothing to quote.
  */
 export async function ReviewsSection() {
-  const reviews = (await getRecentReviews(3)).filter((r) => r.body?.trim());
+  // Туг `review_moderation` (0162): админы сонгосон (`is_featured`) сэтгэгдэл.
+  const featuredOnly = await isFeatureEnabled("review_moderation");
+  const reviews = (
+    await getRecentReviews(featuredOnly ? HOME_FEATURED_REVIEWS_MAX : 3, {
+      featuredOnly,
+    })
+  ).filter((r) => r.body?.trim());
   if (reviews.length === 0) return null;
   return (
     <section aria-labelledby="home-reviews-title">
@@ -22,12 +31,12 @@ export async function ReviewsSection() {
         compact
         title="Худалдан авагчдын сэтгэгдэл"
       />
-      <ul className="grid gap-3 md:grid-cols-3 md:gap-4">
+      <ul className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
         {reviews.map((r) => (
-          <li key={r.id}>
+          <li key={r.id} className="min-w-0">
             <figure className="bg-card flex h-full flex-col gap-3 rounded-2xl p-4 sm:p-5">
               <Stars rating={r.rating} size={14} />
-              <blockquote className="text-foreground/90 line-clamp-4 text-sm/relaxed">
+              <blockquote className="text-foreground/90 line-clamp-4 text-sm/relaxed wrap-anywhere">
                 “{r.body}”
               </blockquote>
               <figcaption className="mt-auto flex items-center gap-3 pt-2">

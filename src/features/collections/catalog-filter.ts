@@ -7,7 +7,8 @@ import type { Collection } from "./types";
  * (клиент, 2026-10: таг дээр гараад брэнд/үнэ сонгоход алга болдог байсан).
  *
  * - Хүйс: багцын хүйс (`gender` нь `expandGenders`-ээр өргөссөн байх ёстой).
- * - Брэнд / үнэрийн төрөл / улирал: аль нэг гишүүн нь таарвал.
+ * - Брэнд / үнэрийн төрөл / улирал: багцад эдгээр байхгүй гэж үзнэ (клиент,
+ *   2026-10-26) — аль нэгийг нь сонговол багц гарахгүй, зөвхөн ус.
  * - Таг: автомат «Эрэлттэй»/«Шинэ»; «Хямдрал» багцад хамаарахгүй
  *   (клиент, 2026-09-30) — зөвхөн «Хямдрал» сонговол багц гарахгүй.
  * - Үнэ: картанд харагддаг «-өөс» үнээр (ус ч `startingPrice`-аараа);
@@ -22,22 +23,7 @@ export function filterCatalogCollections(
 ): Collection[] {
   return all.filter((c) => {
     if (f.gender?.length && !f.gender.includes(c.gender)) return false;
-    if (f.brand?.length && !c.members.some((m) => f.brand!.includes(m.brand)))
-      return false;
-    if (
-      f.family?.length &&
-      !c.members.some((m) => m.scentFamilies.some((x) => f.family!.includes(x)))
-    )
-      return false;
-    if (
-      f.season?.length &&
-      !c.members.some(
-        (m) =>
-          m.seasons.includes("all") ||
-          m.seasons.some((s) => f.season!.includes(s)),
-      )
-    )
-      return false;
+    if (f.brand?.length || f.family?.length || f.season?.length) return false;
     if (
       f.tags?.length &&
       !f.tags.some((t) => t !== "sale" && c.tags.includes(t))

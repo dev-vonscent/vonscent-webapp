@@ -9,7 +9,6 @@ import {
 } from "@/features/admin/api";
 import {
   SalesSeriesChart,
-  StatusDonut,
   StockBarChart,
 } from "@/features/admin/components/report-charts";
 import { DateRangeFilter } from "@/features/admin/components/date-range-filter";
@@ -59,6 +58,7 @@ export default async function AdminReportsPage({
   const bucketHead = report.bucket === "day" ? "Өдөр" : "Сар";
   const lowestStock = stock.items.map((p) => ({
     name: `${p.brand} — ${p.name}`,
+    searchQuery: `${p.brand} ${p.name}`,
     availableMl: p.availableMl,
     lowStockMl: p.lowStockMl,
   }));
@@ -206,29 +206,20 @@ export default async function AdminReportsPage({
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
-          <CardContent className="p-5">
-            <h2 className="mb-4 font-medium">Захиалгын төлөв</h2>
-            {/* Төлвийн тоо нь мужид хамаарна (0074) — өмнө нь энэ бялуу
-                самбарын «бүх цаг үе»-ийн тоог харуулдаг байсан тул дээрх
-                тоонуудтай зөрж болох байв. */}
-            <StatusDonut counts={report.statusCounts} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5">
-            <h2 className="mb-4 font-medium">
-              Хамгийн бага үлдэгдэлтэй{" "}
-              <span className="text-muted-foreground text-xs font-normal">
-                (одоогийн байдлаар)
-              </span>
-            </h2>
-            <StockBarChart data={lowestStock} />
-          </CardContent>
-        </Card>
-      </div>
+      {/* «Захиалгын төлөв»-ийн бялууг хассан: хар theme-д бүх зүсэм саарал/
+          цагаан тул аль нь аль төлөв болохыг ялгах боломжгүй байв, тоо нь
+          захиалгын жагсаалтын төлвийн chip-ээс аль хэдийн харагдана. */}
+      <Card>
+        <CardContent className="p-5">
+          <h2 className="mb-4 font-medium">
+            Хамгийн бага үлдэгдэлтэй{" "}
+            <span className="text-muted-foreground text-xs font-normal">
+              (одоогийн байдлаар)
+            </span>
+          </h2>
+          <StockBarChart data={lowestStock} />
+        </CardContent>
+      </Card>
 
       {/* `grid-cols-1` (= minmax(0,1fr)) заавал: багана заагаагүй бол мөр нь
           агуулгынхаа (урт нэр, график) өргөнөөр сунаж утсан дээр хуудсыг

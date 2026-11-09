@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addDaysKey,
   activePreset,
+  presetIsAmbiguous,
   dateKeyOf,
   endOfDayLocal,
   monthGrid,
@@ -14,6 +15,10 @@ import {
   seriesBucket,
   ubIso,
   ubIsoEnd,
+  dayStartIso,
+  dayEndIso,
+  isoToDay,
+  isoEndToDay,
 } from "./date-range";
 
 describe("addDaysKey", () => {
@@ -65,6 +70,37 @@ describe("activePreset", () => {
   });
   it("calls an empty range «all»", () => {
     expect(activePreset(undefined, undefined, today)).toBe("all");
+  });
+  it("honours the clicked preset when two presets share a range", () => {
+    // 11-07: «Энэ сар» (11-01–11-07) нь «7 хоног»-той яг ижил муж.
+    const t = "2026-11-07";
+    const from = "2026-11-01T00:00";
+    const to = "2026-11-07T23:59";
+    expect(activePreset(from, to, t, REPORT_DATE_PRESETS)).toBe("7d");
+    expect(activePreset(from, to, t, REPORT_DATE_PRESETS, "month")).toBe(
+      "month",
+    );
+    // A stale hint that no longer matches the range is ignored.
+    expect(
+      activePreset(
+        "2026-11-07T00:00",
+        "2026-11-07T23:59",
+        t,
+        REPORT_DATE_PRESETS,
+        "month",
+      ),
+    ).toBe("today");
+  });
+  it("flags only overlapping presets as ambiguous", () => {
+    expect(presetIsAmbiguous("month", "2026-11-07", REPORT_DATE_PRESETS)).toBe(
+      true,
+    );
+    expect(presetIsAmbiguous("month", "2026-11-20", REPORT_DATE_PRESETS)).toBe(
+      false,
+    );
+    expect(presetIsAmbiguous("today", "2026-11-01", REPORT_DATE_PRESETS)).toBe(
+      true,
+    );
   });
   it("calls anything else «custom»", () => {
     expect(activePreset("2026-08-01T09:00", "2026-08-04T18:00", today)).toBe(
@@ -242,5 +278,24 @@ describe("тайлангийн мужийн хил", () => {
         Number(inRange(edge, cur.from, cur.to));
       expect(hits).toBe(1);
     }
+  });
+});
+
+describe("өдрөөр сонгох хугацаа", () => {
+  it("эхлэх өдөр 00:00 УБ, дуусах өдөр бүтнээрээ", () => {
+    expect(dayStartIso("2026-11-01")).toBe("2026-11-01T00:00:00+08:00");
+    expect(dayEndIso("2026-11-03")).toBe("2026-11-03T16:00:00.000Z");
+  });
+
+  it("урвуу хөрвүүлэлт өдрөө буцаана", () => {
+    expect(isoToDay(dayStartIso("2026-11-01"))).toBe("2026-11-01");
+    expect(isoEndToDay(dayEndIso("2026-11-03"))).toBe("2026-11-03");
+  });
+
+  it("хоосон утга", () => {
+    expect(dayStartIso("")).toBeNull();
+    expect(dayEndIso("")).toBeNull();
+    expect(isoToDay(null)).toBe("");
+    expect(isoEndToDay("бишээ")).toBe("");
   });
 });

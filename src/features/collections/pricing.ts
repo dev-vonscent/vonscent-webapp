@@ -115,7 +115,14 @@ export function discountRange(
   return { min: Math.min(...pcts), max: Math.max(...pcts) };
 }
 
-/** «10%» when the span is flat, «5-10%» when it is not. Empty when there is none. */
+/**
+ * «10%» when every size takes the same cut, «10% хүртэл» when they differ.
+ * Empty when there is none.
+ *
+ * Зөвхөн дээд хувийг «хүртэл»-тэй хэлнэ, «5-10%» биш: гишүүд нь хямдралд
+ * орсон тогтмол үнэтэй хэмжээ 0% болж badge «−0-5%» гэж гардаг байв.
+ * «5% хүртэл» нь 0%-тэй хэмжээ байсан ч үнэн хэвээр.
+ */
 export function formatDiscountRange({
   min,
   max,
@@ -124,5 +131,5 @@ export function formatDiscountRange({
   max: number;
 }): string {
   if (max <= 0) return "";
-  return min === max ? `${min}%` : `${min}-${max}%`;
+  return min === max ? `${max}%` : `${max}% хүртэл`;
 }

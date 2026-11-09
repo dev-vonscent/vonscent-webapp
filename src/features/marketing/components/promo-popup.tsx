@@ -3,15 +3,33 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Megaphone,
+  Pause,
+  Play,
+  X,
+} from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import {
+  useBottomBarClaimed,
+  useScrollHidden,
+} from "@/components/shared/bottom-nav-store";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import { useProfileSummary } from "@/features/account/use-profile-summary";
 import type { PopupSettings, PopupSlide } from "@/features/content/api";
 import { isUserInput, liveSlides, type PopupViewer } from "../popup-schedule";
+import {
+  hideTeaser,
+  isTeaserHidden,
+  markPopupSeen,
+  popupSignature,
+  wasPopupSeen,
+} from "../popup-seen";
 
 /** Слайд хоорондын хугацаа (клиент, 2026-10). Зогсоох товч бий (WCAG 2.2.2). */
 const AUTOPLAY_MS = 3000;
@@ -50,11 +68,11 @@ const AUTO_OPEN_MS = 1500;
 const DIALOG_RECHECK_MS = 500;
 
 /**
- * Нүүр хуудас руу орох БҮРД гарна — refresh ч, сайт дотроос буцаж ирэх ч
- * (клиент, 2026-10). Модулийн хувьсагч нь document-ийн анхны mount-ыг
- * ялгана: зөвхөн тэр үед хэрэглэгчийн үйлдлийг хүлээнэ (LCP, доорх
- * POPUP_TRIGGERS). Client navigation-аар буцаж ирэхэд LCP аль хэдийн
- * хаагдсан тул шууд гарна.
+ * Давтамж нь `popup-seen` (табын session-д нэг удаа, шинэ зар гарвал дахин).
+ * Энэ хувьсагч нь зөвхөн document-ийн анхны mount-ыг ялгана: тэр үед л
+ * хэрэглэгчийн үйлдэл / `load`-ыг хүлээнэ (LCP, доорх POPUP_TRIGGERS).
+ * Client navigation-аар нүүр рүү орж ирэхэд (popup хараахан гараагүй бол)
+ * LCP аль хэдийн хаагдсан тул шууд гарна.
  */
 let documentLoaded = false;
 
@@ -133,8 +151,8 @@ function useViewport(): Size | null {
  * Сурталчилгааны popup (backlog G1–G3).
  *
  * Зөвхөн зураг: гарчиг, текст, товч, купон байхгүй — зураг нь өөрөө зар,
- * холбоостой бол дарахад тийшээ очно. Зөвхөн нүүр хуудсанд, нүүр рүү орох
- * бүрд (эхний нээлт, refresh, сайт дотроос буцаж ирэх) гарна. Олон слайд бол
+ * холбоостой бол дарахад тийшээ очно. Зөвхөн нүүр хуудсанд, табын session-д
+ * нэг удаа; хаасны дараа «Зар» teaser-ээр дахин нээнэ. Олон слайд бол
  * 3 секунд тутам автоматаар шилжинэ, сум/свайпаар гараар солино; гараар
  * хөдөлгөсний дараа автомат зогсоно.
  *
@@ -143,6 +161,9 @@ function useViewport(): Size | null {
  */
 export function PromoPopup({ settings }: { settings: PopupSettings }) {
   const [open, setOpen] = React.useState(false);
+  // Popup энэ session-д гарсан — хаагдсан үед teaser товч харагдана.
+  const [teaser, setTeaser] = React.useState(false);
+  const [signature, setSignature] = React.useState("");
   const [index, setIndex] = React.useState(0);
   // Автомат шилжилт ажиллаж байгаа эсэх — WCAG 2.2.2 нь 5 секундээс урт
   // автоматаар хөдөлдөг агуулгад ЗОГСООХ арга шаарддаг.
@@ -211,7 +232,15 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
     const live = liveSlides(settings.slides ?? [], now, viewer);
     setSlides(live);
     if (!settings.enabled || live.length === 0) return;
+    const sig = popupSignature(live);
+    setSignature(sig);
     if (settled.current) return;
+    // Энэ session-д энэ зар аль хэдийн гарсан — reload / буцахад дахин биш.
+    if (wasPopupSeen(sig)) {
+      settled.current = true;
+      setTeaser(!isTeaserHidden(sig));
+      return;
+    }
     let timer: ReturnType<typeof setTimeout> | undefined;
     const openSoon = () => {
       timer = setTimeout(() => {
@@ -232,9 +261,12 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
         return;
       }
       setOpen(true);
+      setTeaser(true);
+      markPopupSeen(sig);
     };
 
-    // Сайт дотроос нүүр рүү буцаж ирлээ — LCP хаагдсан, шууд гарна.
+    // Сайт дотроос нүүр рүү орж ирлээ (popup хараахан гараагүй). LCP
+    // хаагдсан тул шууд.
     if (documentLoaded) {
       openSoon();
       return () => {
@@ -303,124 +335,202 @@ export function PromoPopup({ settings }: { settings: PopupSettings }) {
   if (slides.length === 0) return null;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent
-        aria-describedby={undefined}
-        // Зөвхөн зураг харагдана: хүрээ/дэвсгэр/сүүдэргүй. Хайрцаг нь
-        // оруулсан зурагны өөрийн хэмжээгээр гарна — тогтсон өргөнд
-        // сунгах/агшаахгүй, letterbox үүсэхгүй.
-        style={width ? { width } : undefined}
-        className="w-auto max-w-[calc(100vw-2rem)] gap-0 border-0 bg-transparent p-0 shadow-none"
-      >
-        <DialogTitle className="sr-only">Сурталчилгаа</DialogTitle>
+    <>
+      {teaser && !open && (
+        <PromoTeaser
+          onOpen={() => setOpen(true)}
+          onHide={() => {
+            hideTeaser(signature);
+            setTeaser(false);
+          }}
+        />
+      )}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent
+          aria-describedby={undefined}
+          // Зөвхөн зураг харагдана: хүрээ/дэвсгэр/сүүдэргүй. Хайрцаг нь
+          // оруулсан зурагны өөрийн хэмжээгээр гарна — тогтсон өргөнд
+          // сунгах/агшаахгүй, letterbox үүсэхгүй.
+          style={width ? { width } : undefined}
+          className="w-auto max-w-[calc(100vw-2rem)] gap-0 border-0 bg-transparent p-0 shadow-none"
+        >
+          <DialogTitle className="sr-only">Сурталчилгаа</DialogTitle>
 
-        {/* `aria-roledescription="carousel"` нь дэлгэц уншигчид энэ бүлэг
+          {/* `aria-roledescription="carousel"` нь дэлгэц уншигчид энэ бүлэг
             нь эргэлддэг гэдгийг хэлнэ; слайд бүр «N / M» гэсэн нэртэй.
             Өмнө нь цэгүүд нь `role="tablist"`/`role="tab"` байсан нь буруу
             байв — tab нь `tabpanel` шаарддаг бөгөөд энд тийм зүйл байхгүй. */}
-        <div
-          ref={emblaRef}
-          className="overflow-hidden rounded-2xl"
-          role="group"
-          aria-roledescription="carousel"
-          aria-label="Сурталчилгааны зарууд"
-        >
-          <div className="flex items-start">
-            {slides.map((slide, i) => (
-              <div
-                key={`${slide.imageUrl}-${i}`}
-                className="min-w-0 flex-[0_0_100%]"
-                role="group"
-                aria-roledescription="slide"
-                aria-label={`${i + 1} / ${slides.length}`}
-                // Харагдахгүй байгаа слайдууд нь DOM-д үлддэг тул дэлгэц
-                // уншигч тэднийг ч уншиж, Tab нь тэдний холбоос дээр
-                // очдог байв — хэрэглэгч «алга болсон» товч дээр гацна.
-                aria-hidden={i !== index}
-              >
-                <SlideImage
-                  slide={slide}
-                  size={sizes[slide.imageUrl!]}
-                  eager={i === 0}
-                  focusable={i === index}
-                  onNavigate={() => setOpen(false)}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Слайд солигдохыг чимээгүй зарлана. `aria-live` нь ЗААВАЛ DOM-д
-            урьдчилан байх ёстой — агуулгатай нь хамт нэмэгдвэл уншигдахгүй. */}
-        <div aria-live="polite" aria-atomic className="sr-only">
-          {many ? `${index + 1} / ${slides.length} зар` : ""}
-        </div>
-
-        {many && (
-          <>
-            <button
-              type="button"
-              onClick={() => go(-1)}
-              aria-label="Өмнөх зар"
-              className="bg-background/70 text-foreground hover:bg-background absolute top-1/2 left-2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full backdrop-blur transition-colors"
-            >
-              <ChevronLeft className="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => go(1)}
-              aria-label="Дараах зар"
-              className="bg-background/70 text-foreground hover:bg-background absolute top-1/2 right-2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full backdrop-blur transition-colors"
-            >
-              <ChevronRight className="size-4" />
-            </button>
-            <div className="bg-background/70 absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-2.5 py-1.5 backdrop-blur">
-              {slides.map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  aria-label={`${i + 1}-р зар руу очих`}
-                  aria-current={i === index ? "true" : undefined}
-                  onClick={() => {
-                    stopAutoplay();
-                    emblaApi?.scrollTo(i);
-                  }}
-                  className={cn(
-                    // Товшилтын талбай нь хараагдах цэгээсээ том: 6px өндөр
-                    // зорилт нь гар чичирдэг хүнд бараг боломжгүй.
-                    "flex h-6 items-center px-0.5",
-                    "after:block after:h-1.5 after:rounded-full after:transition-all",
-                    i === index
-                      ? "after:bg-foreground after:w-4"
-                      : "after:bg-foreground/35 after:w-1.5",
-                  )}
-                />
-              ))}
-              {/* Автомат шилжилтийг зогсоох арга (WCAG 2.2.2). Сум/свайп нь
-                  ч зогсоодог ч тэр нь «зогсоох» гэж нэрлэгдээгүй байв. */}
-              {!reducedMotion && (
-                <button
-                  type="button"
-                  onClick={togglePlay}
-                  aria-label={
-                    playing
-                      ? "Автомат шилжилтийг зогсоох"
-                      : "Автомат шилжилтийг үргэлжлүүлэх"
-                  }
-                  className="text-foreground/70 hover:text-foreground ml-1 flex size-6 items-center justify-center"
+          <div
+            ref={emblaRef}
+            className="overflow-hidden rounded-2xl"
+            role="group"
+            aria-roledescription="carousel"
+            aria-label="Сурталчилгааны зарууд"
+          >
+            <div className="flex items-start">
+              {slides.map((slide, i) => (
+                <div
+                  key={`${slide.imageUrl}-${i}`}
+                  className="min-w-0 flex-[0_0_100%]"
+                  role="group"
+                  aria-roledescription="slide"
+                  aria-label={`${i + 1} / ${slides.length}`}
+                  // Харагдахгүй байгаа слайдууд нь DOM-д үлддэг тул дэлгэц
+                  // уншигч тэднийг ч уншиж, Tab нь тэдний холбоос дээр
+                  // очдог байв — хэрэглэгч «алга болсон» товч дээр гацна.
+                  aria-hidden={i !== index}
                 >
-                  {playing ? (
-                    <Pause className="size-3" />
-                  ) : (
-                    <Play className="size-3" />
-                  )}
-                </button>
-              )}
+                  <SlideImage
+                    slide={slide}
+                    size={sizes[slide.imageUrl!]}
+                    eager={i === 0}
+                    focusable={i === index}
+                    onNavigate={() => setOpen(false)}
+                  />
+                </div>
+              ))}
             </div>
-          </>
+          </div>
+
+          {/* Слайд солигдохыг чимээгүй зарлана. `aria-live` нь ЗААВАЛ DOM-д
+            урьдчилан байх ёстой — агуулгатай нь хамт нэмэгдвэл уншигдахгүй. */}
+          <div aria-live="polite" aria-atomic className="sr-only">
+            {many ? `${index + 1} / ${slides.length} зар` : ""}
+          </div>
+
+          {many && (
+            <>
+              <button
+                type="button"
+                onClick={() => go(-1)}
+                aria-label="Өмнөх зар"
+                className="bg-background/70 text-foreground hover:bg-background absolute top-1/2 left-2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full backdrop-blur transition-colors"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => go(1)}
+                aria-label="Дараах зар"
+                className="bg-background/70 text-foreground hover:bg-background absolute top-1/2 right-2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full backdrop-blur transition-colors"
+              >
+                <ChevronRight className="size-4" />
+              </button>
+              <div className="bg-background/70 absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-2.5 py-1.5 backdrop-blur">
+                {slides.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    aria-label={`${i + 1}-р зар руу очих`}
+                    aria-current={i === index ? "true" : undefined}
+                    onClick={() => {
+                      stopAutoplay();
+                      emblaApi?.scrollTo(i);
+                    }}
+                    className={cn(
+                      // Товшилтын талбай нь хараагдах цэгээсээ том: 6px өндөр
+                      // зорилт нь гар чичирдэг хүнд бараг боломжгүй.
+                      "flex h-6 items-center px-0.5",
+                      "after:block after:h-1.5 after:rounded-full after:transition-all",
+                      i === index
+                        ? "after:bg-foreground after:w-4"
+                        : "after:bg-foreground/35 after:w-1.5",
+                    )}
+                  />
+                ))}
+                {/* Автомат шилжилтийг зогсоох арга (WCAG 2.2.2). Сум/свайп нь
+                  ч зогсоодог ч тэр нь «зогсоох» гэж нэрлэгдээгүй байв. */}
+                {!reducedMotion && (
+                  <button
+                    type="button"
+                    onClick={togglePlay}
+                    aria-label={
+                      playing
+                        ? "Автомат шилжилтийг зогсоох"
+                        : "Автомат шилжилтийг үргэлжлүүлэх"
+                    }
+                    className="text-foreground/70 hover:text-foreground ml-1 flex size-6 items-center justify-center"
+                  >
+                    {playing ? (
+                      <Pause className="size-3" />
+                    ) : (
+                      <Play className="size-3" />
+                    )}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+/**
+ * Popup хаагдсаны дараа нүүрэнд үлдэх жижиг товч — санамсаргүй хаасан хүн
+ * зарыг дахин олж харна. Юу ч бүрхэхгүй; × дарвал энэ session-д нуугдана.
+ * Утсан дээр доод цэсний (62px + 12px зай) дээр, desktop-д зүүн доод буланд
+ * (чатын товч баруун талд).
+ *
+ * Утсан дээр доод цэсийг дагана: цэс (доош гүйлгэхэд) нуугдахад teaser
+ * дэлгэцийн ирмэг рүү бууж, зөвхөн icon-той дугуй болж хумигдана (extended
+ * FAB) — агаарт өлгөөтэй үлдэхгүй, барааны картын булан халхлагдахгүй. Цэс
+ * буцаж гарахад (дээш гүйлгэх / оройд / хуудасны төгсгөлд) дээшилж дэлгэгдэнэ.
+ * Төлөв нь `bottom-nav-store`-оос — тусдаа scroll listener байхгүй.
+ * Desktop-д доод цэс байхгүй тул үргэлж зүүн доод буланд, дэлгэгдсэн.
+ */
+function PromoTeaser({
+  onOpen,
+  onHide,
+}: {
+  onOpen: () => void;
+  onHide: () => void;
+}) {
+  const claimed = useBottomBarClaimed();
+  const scrollHidden = useScrollHidden();
+  const collapsed = claimed || scrollHidden;
+  return (
+    <div
+      className={cn(
+        "bg-cta text-cta-foreground animate-in fade-in slide-in-from-bottom-2 fixed left-4 z-30 flex items-center rounded-full shadow-lg transition-[bottom] duration-300 ease-out motion-reduce:animate-none motion-reduce:transition-none md:bottom-6 md:left-6",
+        collapsed
+          ? "bottom-[calc(env(safe-area-inset-bottom)+1rem)]"
+          : "bottom-[calc(env(safe-area-inset-bottom)+5.5rem)]",
+      )}
+    >
+      <button
+        type="button"
+        onClick={onOpen}
+        className={cn(
+          "flex h-10 items-center rounded-full pl-3 text-sm font-medium transition-[padding] duration-200 motion-reduce:transition-none md:pr-1 md:pl-3.5",
+          collapsed ? "pr-3" : "pr-1 pl-3.5",
         )}
-      </DialogContent>
-    </Dialog>
+      >
+        <Megaphone className="size-4 shrink-0" aria-hidden />
+        {/* Хумигдсан үед ч дэлгэц уншигчид «Зар» нэр хэвээр — нуухдаа
+            `hidden` биш өргөнийг 0 болгоно. */}
+        <span
+          className={cn(
+            "overflow-hidden whitespace-nowrap transition-[max-width,opacity,margin] duration-200 motion-reduce:transition-none md:ml-2 md:max-w-16 md:opacity-100",
+            collapsed ? "ml-0 max-w-0 opacity-0" : "ml-2 max-w-16 opacity-100",
+          )}
+        >
+          Зар
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={onHide}
+        aria-label="Зарын товчийг нуух"
+        className={cn(
+          "size-10 items-center justify-center rounded-full opacity-70 hover:opacity-100 md:flex",
+          collapsed ? "hidden" : "flex",
+        )}
+      >
+        <X className="size-4" aria-hidden />
+      </button>
+    </div>
   );
 }
 

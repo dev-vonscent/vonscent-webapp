@@ -18,7 +18,6 @@ import { orderSummaryRows, type OrderSummaryRow } from "@/lib/orders/summary";
 import {
   DELIVERY_END_HOUR,
   DISPATCH_HOUR,
-  formatEditCutoff,
   earliestDeliveryDay,
   formatDeliveryDay,
   projectedDeliveryDay,
@@ -233,8 +232,25 @@ export function PaymentPanel({
     } catch {
       // storage blocked — fire anyway; a duplicate event beats none
     }
-    trackPurchase(view.orderNo, [], view.total);
-  }, [paid, view.orderNo, view.total]);
+    // Бэлгийн дээж (0₮) худалдан авалт биш. Устсан барааны мөр id-гүй.
+    trackPurchase(
+      view.orderNo,
+      view.lines.flatMap((l) =>
+        !l.isSample && l.productId
+          ? [
+              {
+                id: l.productId,
+                name: `${l.name} ${l.ml}ml`,
+                brand: l.brand,
+                price: Math.round(l.lineTotal / Math.max(l.qty, 1)),
+                quantity: l.qty,
+              },
+            ]
+          : [],
+      ),
+      view.total,
+    );
+  }, [paid, view.orderNo, view.total, view.lines]);
 
   /**
    * Invoice үүсээгүй үед сэргээх зам. Серверийг дахин ажиллуулна —
@@ -598,19 +614,6 @@ function OrderRecap({ view }: { view: PaymentView }) {
           </strong>{" "}
           {DISPATCH_HOUR}:00–{DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.
         </p>
-        {/* Цуцлах зам нь «Миний захиалга» — зочинд тэр хэсэг байхгүй. */}
-        {view.canSaveForLater && (
-          <p className="text-muted-foreground mt-1.5 text-xs">
-            Захиалга баталгаажсан өдрийн 23:59:59 цагаас өмнө бол{" "}
-            <Link
-              href="/account/orders"
-              className="text-foreground underline underline-offset-2"
-            >
-              «Миний захиалга»
-            </Link>{" "}
-            хэсгээс захиалгаа цуцлах боломжтой.
-          </p>
-        )}
       </div>
     </div>
   );
@@ -1026,8 +1029,7 @@ function PaidState({
           {DISPATCH_HOUR}:00–{DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.
         </p>
         <p className="text-muted-foreground mt-2 text-xs">
-          {formatEditCutoff(deliverOn ?? earliestDeliveryDay())} хүртэл цуцлах
-          боломжтой. Захиалгын явцыг «Захиалгаа харах» хэсгээс хянана.
+          Захиалгын явцыг «Захиалгаа харах» хэсгээс хянана.
         </p>
 
         {/* Захиалга цуцлагдаж болох хугацаанд оноо түгжээтэй байдаг

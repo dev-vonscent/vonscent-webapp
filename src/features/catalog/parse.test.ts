@@ -12,3 +12,24 @@ describe("parseFilters — featured (backlog C2)", () => {
     expect(parseFilters({ featured: ["1", "0"] }).featured).toBe(true);
   });
 });
+
+describe("parseFilters — «Багц»", () => {
+  it("брэнд, үнэрийн төрөл, улирлыг хаяна (багцад байхгүй)", () => {
+    const f = parseFilters({
+      kind: "bundle",
+      brand: "Dior",
+      family: "woody",
+      season: "winter",
+      gender: "male",
+    });
+    expect(f).toMatchObject({ brand: [], family: [], season: [] });
+    expect(f.gender).toEqual(["male"]);
+  });
+
+  it("ус болон бүгд дээр хэвээр", () => {
+    expect(parseFilters({ season: "winter" }).season).toEqual(["winter"]);
+    expect(parseFilters({ kind: "perfume", brand: "Dior" }).brand).toEqual([
+      "Dior",
+    ]);
+  });
+});

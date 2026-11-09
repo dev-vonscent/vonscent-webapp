@@ -40,6 +40,13 @@ const CORRECTION_REASONS: { value: string; label: string }[] = [
 ];
 
 /**
+ * Дэлгүүр өөр сувгаар зөвхөн эдгээр хоёроор л зардаг. Чөлөөт текст байсан
+ * бол «zary» / «Зары» / «zari» гэж гурван өөр мөр болж тайланд задрах байсан.
+ */
+const SALE_CHANNELS = ["Zary", "Чат"] as const;
+type SaleChannel = (typeof SALE_CHANNELS)[number];
+
+/**
  * The one place source-bottle ml are changed by hand.
  *
  * Two directions, never one field that takes a sign. `RestockControl` used to
@@ -88,7 +95,9 @@ export function StockAdjustDialog({
   const [day, setDay] = React.useState(() => ubToday());
   const [reason, setReason] = React.useState(CORRECTION_REASONS[0].value);
   const [note, setNote] = React.useState("");
+  const [channel, setChannel] = React.useState<SaleChannel>(SALE_CHANNELS[0]);
   const [busy, setBusy] = React.useState(false);
+  const channelLabelId = React.useId();
 
   const isRestock = mode === "restock";
   // Reserved ml belong to orders that are already placed. The server refuses to
@@ -107,6 +116,7 @@ export function StockAdjustDialog({
       setDay(ubToday());
       setReason(CORRECTION_REASONS[0].value);
       setNote("");
+      setChannel(SALE_CHANNELS[0]);
       setAddedMl(null);
     }
   }, [open]);
@@ -118,6 +128,9 @@ export function StockAdjustDialog({
   const dayError = isRestock ? purchaseDateError(day) : null;
   const canSubmit = qty > 0 && !tooMany && !dayError && !busy;
   const nextOnHand = isRestock ? onHandMl + qty : onHandMl - qty;
+  const soldElsewhere = reason === "sold-elsewhere";
+  // `шалтгаан: дэлгэрэнгүй` — бүх шалтгаанд нэг хэлбэр, тайлан `:`-аар задална.
+  const detail = soldElsewhere ? channel : note.trim();
 
   async function submit() {
     if (!canSubmit) return;
@@ -133,7 +146,7 @@ export function StockAdjustDialog({
           delta: isRestock ? qty : -qty,
           reason: isRestock
             ? "restock"
-            : [reason, note.trim()].filter(Boolean).join(": "),
+            : [reason, detail].filter(Boolean).join(": "),
           cost: isRestock ? costValue : 0,
           ...(isRestock ? { purchasedOn: day } : {}),
         },
@@ -298,14 +311,48 @@ export function StockAdjustDialog({
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Тайлбар (сонголтоор)">
-              <Input
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Жишээ: Instagram-аар 20ml зарагдсан"
-                maxLength={120}
-              />
-            </Field>
+            {soldElsewhere ? (
+              <div className="space-y-2">
+                <p id={channelLabelId} className="text-sm font-medium">
+                  Хаана зарагдсан бэ?
+                </p>
+                <div
+                  role="radiogroup"
+                  aria-labelledby={channelLabelId}
+                  className="grid grid-cols-2 gap-1.5"
+                >
+                  {SALE_CHANNELS.map((c) => {
+                    const selected = c === channel;
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => setChannel(c)}
+                        className={cn(
+                          "min-h-11 rounded-md border px-3 text-sm font-medium",
+                          selected
+                            ? "bg-cta text-cta-foreground border-transparent"
+                            : "bg-background hover:bg-muted",
+                        )}
+                      >
+                        {c}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <Field label="Тайлбар (сонголтоор)">
+                <Input
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Жишээ: сав унаж хагарсан"
+                  maxLength={120}
+                />
+              </Field>
+            )}
           </>
         )}
 

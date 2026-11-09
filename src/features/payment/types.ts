@@ -5,6 +5,8 @@ export type { QpayDeeplink };
 
 /** One line of the order being paid for, as stored on `order_items`. */
 export interface PaymentLine {
+  /** Барааны id — Purchase event-ийн `content_ids`. Бараа устсан бол null. */
+  productId: string | null;
   name: string;
   brand: string;
   /** Декантын хэмжээ; нэмэлт барааны мөрөнд null (0146). */

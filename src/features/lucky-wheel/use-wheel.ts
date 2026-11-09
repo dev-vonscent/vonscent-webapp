@@ -8,6 +8,8 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import type {
+  BundleGender,
+  GrandPrizesResponse,
   SpinFailure,
   SpinHistoryPage,
   SpinMode,
@@ -54,9 +56,10 @@ export function useSpinHistory(enabled: boolean) {
 }
 
 /**
- * One spin. The result is *not* written into the cache here — the wheel has to
- * finish turning first, or the page would announce the prize while the pointer
- * is still moving. The caller refreshes once the animation lands.
+ * One spin. Nothing is refreshed here on success — the wheel has to finish
+ * turning first, or the page would announce the prize (a V point balance
+ * already grown, a history row) while the pointer is still moving. The caller
+ * invalidates `WHEEL_QUERY_KEY` once the animation lands.
  */
 export function useSpin() {
   const queryClient = useQueryClient();
@@ -73,7 +76,8 @@ export function useSpin() {
       }
       return data;
     },
-    onSettled: () => {
+    // A refusal changes nothing on screen worth hiding — refresh at once.
+    onError: () => {
       void queryClient.invalidateQueries({ queryKey: WHEEL_QUERY_KEY });
     },
   });
@@ -182,20 +186,56 @@ export function useWheelSound() {
     [context],
   );
 
+  // A few cents of random detune: a wooden peg never clicks twice alike.
   const tick = React.useCallback(
-    () => blip(1180, 0.035, 0.05, "square"),
+    () => blip(1100 + Math.random() * 160, 0.035, 0.05, "square"),
     [blip],
   );
 
+  /** The launch: a short band of filtered noise sweeping down. */
+  const whoosh = React.useCallback(() => {
+    const ctx = context();
+    if (!ctx) return;
+    const length = Math.floor(ctx.sampleRate * 0.5);
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.Q.value = 1.4;
+    filter.frequency.setValueAtTime(2400, ctx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(380, ctx.currentTime + 0.5);
+    const amp = ctx.createGain();
+    amp.gain.setValueAtTime(0.0001, ctx.currentTime);
+    amp.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.06);
+    amp.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+    noise.connect(filter).connect(amp).connect(ctx.destination);
+    noise.start();
+  }, [context]);
+
+  /** A win: a rising arpeggio, then the chord held under it. */
   const fanfare = React.useCallback(
     (grand: boolean) => {
       const notes = grand ? [523, 659, 784, 1046, 1318] : [523, 659, 784];
       notes.forEach((freq, i) => {
         setTimeout(() => blip(freq, 0.28, 0.09, "triangle"), i * 95);
       });
+      const chordAt = notes.length * 95;
+      const chord = grand ? [523, 659, 784, 1046] : [523, 659, 784];
+      chord.forEach((freq) => {
+        setTimeout(() => blip(freq, grand ? 1.4 : 0.8, 0.05, "sine"), chordAt);
+      });
     },
     [blip],
   );
+
+  /** A miss («Хоосон»): two soft falling notes — consolation, not a buzzer. */
+  const miss = React.useCallback(() => {
+    blip(523, 0.22, 0.06, "sine");
+    setTimeout(() => blip(392, 0.4, 0.06, "sine"), 160);
+  }, [blip]);
 
   React.useEffect(
     () => () => {
@@ -205,5 +245,55 @@ export function useWheelSound() {
     [],
   );
 
-  return { on, toggle, tick, fanfare };
+  return { on, toggle, tick, whoosh, fanfare, miss };
+}
+
+/* ── Бодит шагнал: гранд 2мл багц (0165), бараа (0170) ──────────────── */
+
+export const GRAND_PRIZES_KEY = [...WHEEL_QUERY_KEY, "prizes"] as const;
+
+/** The customer's physical prizes and today's two grand bundles. */
+export function useGrandPrizes(enabled = true) {
+  return useQuery<GrandPrizesResponse>({
+    queryKey: GRAND_PRIZES_KEY,
+    queryFn: async () => {
+      const res = await fetch("/api/lucky-wheel/prizes", { cache: "no-store" });
+      if (!res.ok) throw new Error("grand_prizes_failed");
+      return res.json();
+    },
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+/** Why a bundle could not be picked, in the customer's words. */
+export const CHOOSE_REFUSAL: Record<string, string> = {
+  LOCKED: "Шагнал аль хэдийн захиалгад орсон байна.",
+  EXPIRED: "Шагналын хугацаа дууссан байна.",
+  NO_OPTION: "Энэ багц одоогоор санал болгогдоогүй байна.",
+  SOLD_OUT: "Энэ багц 2мл-ээр түр дууссан байна. Нөгөөг нь сонгоно уу.",
+  NOT_FOUND: "Шагнал олдсонгүй.",
+};
+
+export function useChooseBundle() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    GrandPrizesResponse,
+    Error,
+    { spinId: string; gender: BundleGender }
+  >({
+    mutationFn: async (input) => {
+      const res = await fetch("/api/lucky-wheel/prizes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? "CHOOSE_FAILED");
+      return data as GrandPrizesResponse;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(GRAND_PRIZES_KEY, data);
+    },
+  });
 }

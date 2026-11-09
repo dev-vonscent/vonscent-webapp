@@ -12,6 +12,9 @@ import type {
   HomeSectionRow,
   FaqRow,
   BlogPostRow,
+  SpinPrizeKind,
+  SpinTier,
+  SpinType,
   SpinWheelPrizeRow,
   Sillage,
   Gender,
@@ -61,6 +64,14 @@ import {
   type BottleLockState,
 } from "@/features/products/bottle-stock";
 import { collectionIdsOf } from "@/lib/orders/bundle-lines";
+import { getBaseCollections } from "@/features/collections/api";
+import { grandPrizeState } from "@/features/lucky-wheel/prize-state";
+import type {
+  GrandPrizeState,
+  MissTip,
+} from "@/features/lucky-wheel/types";
+import { GRAND_BUNDLE_ML } from "@/lib/constants";
+import { effectivePrice } from "@/features/products/sale";
 
 /**
  * Admin read access. Uses the cookie-bound client so staff RLS applies (admins
@@ -492,6 +503,9 @@ export interface AdminVariant {
   price: number;
   /** Хямдарсан үнэ, эсвэл null (0054) — байвал бодитоор төлөх дүн. */
   salePrice: number | null;
+  /** Хямдралын хугацаа (0166, ISO) — null бол тэр талдаа хязгааргүй. */
+  saleStartsAt: string | null;
+  saleEndsAt: string | null;
   isActive: boolean;
   /**
    * Савны түгжээнээс чөлөөлсөн эсэх (0095) — өөр өнгийн саванд цутгахыг
@@ -587,7 +601,7 @@ const ADMIN_PRODUCT_SELECT = `
   bottle_ml, is_active, status, launched_at, coming_soon_note,
   is_featured,
   product_images ( id, url, alt, sort_order, is_visible ),
-  product_variants ( id, ml, price, sale_price, is_active ),
+  product_variants ( id, ml, price, sale_price, sale_starts_at, sale_ends_at, is_active ),
   inventory ( on_hand_ml, reserved_ml, low_stock_ml ),
   product_tags ( tags ( slug ) ),
   product_image_generations ( id, status, result_url, prompt, error, created_at )
@@ -637,6 +651,8 @@ interface AdminProductRow {
     ml: number;
     price: number;
     sale_price: number | null;
+    sale_starts_at: string | null;
+    sale_ends_at: string | null;
     is_active: boolean;
   }[];
   inventory:
@@ -656,7 +672,7 @@ function mapAdminProduct(
   // Жагсаалтын «-аас» үнэ нь бодитоор төлөх дүнгээр (хямдрал орсон, 0054).
   const prices = r.product_variants
     .filter((v) => v.is_active)
-    .map((v) => v.sale_price ?? v.price);
+    .map((v) => effectivePrice(v));
   const tags = r.product_tags
     .map((pt) => (Array.isArray(pt.tags) ? pt.tags[0] : pt.tags)?.slug)
     .filter((s): s is string => Boolean(s));
@@ -688,6 +704,8 @@ function mapAdminProduct(
         ml: v.ml,
         price: v.price,
         salePrice: v.sale_price,
+        saleStartsAt: v.sale_starts_at,
+        saleEndsAt: v.sale_ends_at,
         isActive: v.is_active,
         // Чөлөөлөлтийг багана уншиж биш, кэштэй жагсаалтаас (0095) — 0095
         // ажиллаагүй сан дээр админы жагсаалт унах ёсгүй.
@@ -1704,6 +1722,12 @@ export interface WheelSettings {
   rareCouponPerMonth: number;
   couponValidDays: number;
   singleActiveCoupon: boolean;
+  /** Гранд шагналын хоёр багц (0165) — `collections.id`, сонгоогүй бол null. */
+  grandBundles: { male: string | null; female: string | null };
+  /** Хожсоноос хойш бодит шагналаа авах хоног (0165, бараанд ч — 0170). */
+  bundleClaimDays: number;
+  /** «Хоосон» дээр буухад гарах зөвлөгөө (0170). */
+  missTips: MissTip[];
 }
 
 export const WHEEL_SETTINGS_DEFAULTS: WheelSettings = {
@@ -1718,85 +1742,259 @@ export const WHEEL_SETTINGS_DEFAULTS: WheelSettings = {
   couponValidDays: 30,
   // Клиент 2026-09-07-д цуцаллаа: купон хуримтлагдана (0066, docs §0 №1).
   singleActiveCoupon: false,
+  grandBundles: { male: null, female: null },
+  bundleClaimDays: 60,
+  missTips: [],
 };
 
+/** One physical prize as the admin follows it from win to doorstep (0165/0170). */
+export interface GrandAdminRow {
+  id: string;
+  kind: "bundle" | "product";
+  label: string;
+  customer: string;
+  phone: string | null;
+  wonAt: string;
+  expiresAt: string | null;
+  state: GrandPrizeState;
+  bundleName: string | null;
+  gender: "male" | "female" | null;
+  /** `product` prize: «Brand Name» and its size. */
+  productName: string | null;
+  ml: number | null;
+  orderId: string | null;
+  orderNo: string | null;
+}
+
+/** A base bundle the admin can offer as the grand prize. */
+export interface GrandBundleChoice {
+  id: string;
+  name: string;
+  gender: string;
+  /** Every member pourable at 2ml right now. */
+  available: boolean;
+  /** The bundle's 2ml catalogue price — what the prize is worth. */
+  price: number;
+}
+
+/** Which spins the wheel's report counts (0170). */
+export interface WheelReportFilter {
+  /** `YYYY-MM-DDTHH:mm`, UB wall time — the report page's URL contract. */
+  from?: string;
+  to?: string;
+  type?: SpinType;
+}
+
+/**
+ * One prize in the report — every spin that landed on it, grouped by what
+ * was won (kind, value, label), so a prize spread over several wedges, or
+ * since removed, is still one row (`spin_wheel_prize_report`).
+ */
+export interface WheelPrizeReportRow {
+  kind: SpinPrizeKind;
+  value: number;
+  label: string;
+  tier: SpinTier;
+  count: number;
+  couponsIssued: number;
+  /** Redeemed on an order that was not cancelled. */
+  couponsUsed: number;
+  /** Never used and past its date (or switched off). */
+  couponsExpired: number;
+  /** Never used and still valid. */
+  couponsOpen: number;
+  /** ₮ the coupons took off orders that were not cancelled. */
+  discount: number;
+  physicalWaiting: number;
+  physicalInOrder: number;
+  physicalDelivered: number;
+  physicalExpired: number;
+}
+
 export interface WheelReport {
-  days: number;
   spins: number;
   freeSpins: number;
-  paidSpins: number;
   orderSpins: number;
-  /** Order credits issued in the window, cancelled orders excluded. */
-  orderSpinsGranted: number;
-  /** Spins that landed on «Баярлалаа». */
-  thanks: number;
+  paidSpins: number;
+  /** Spins that landed on «Хоосон». */
+  misses: number;
   pointsAwarded: number;
   pointsSpent: number;
-  couponsIssued: number;
-  couponsUsed: number;
-  bySlot: { slot: number; label: string; count: number }[];
-  /** Physical prizes still owed, oldest first — never windowed away. */
-  pending: {
-    id: string;
-    label: string;
-    createdAt: string;
-    customer: string;
-    phone: string | null;
-  }[];
+  /** Order credits issued in the window, cancelled orders excluded. */
+  orderSpinsGranted: number;
+  prizes: WheelPrizeReportRow[];
 }
 
 const EMPTY_REPORT: WheelReport = {
-  days: 30,
   spins: 0,
   freeSpins: 0,
-  paidSpins: 0,
   orderSpins: 0,
-  orderSpinsGranted: 0,
-  thanks: 0,
+  paidSpins: 0,
+  misses: 0,
   pointsAwarded: 0,
   pointsSpent: 0,
-  couponsIssued: 0,
-  couponsUsed: 0,
-  bySlot: [],
-  pending: [],
+  orderSpinsGranted: 0,
+  prizes: [],
 };
 
 /**
- * Everything the wheel's admin page shows: the segments with their weights,
- * the tunables, and how the wheel has actually paid out (docs/lucky-wheel.md
- * §6 — "олгосон vs ашигласан"). Staff RLS gates the prize table, so this is
- * the cookie-bound client, not the service role.
+ * The wheel's prize page: the segments with their odds, the tunables, the
+ * bundles the grand prize may offer and the products already on the wheel
+ * (docs/lucky-wheel.md §11). Staff RLS gates the prize table, so this is the
+ * cookie-bound client, not the service role.
  */
 export async function getWheelAdmin(): Promise<{
   prizes: SpinWheelPrizeRow[];
   settings: WheelSettings;
-  report: WheelReport;
+  bundleChoices: GrandBundleChoice[];
+  /** Products already on the wheel, then the picker's first page. */
+  productOptions: ProductOption[];
 }> {
   const supabase = await createClient();
   if (!supabase) {
     return {
       prizes: [],
       settings: WHEEL_SETTINGS_DEFAULTS,
-      report: EMPTY_REPORT,
+      bundleChoices: [],
+      productOptions: [],
     };
   }
 
-  const [prizesRes, settingRes, reportRes] = await Promise.all([
+  const [prizesRes, settingRes, collections, firstPage] = await Promise.all([
     supabase.from("spin_wheel_prizes").select("*").order("slot"),
     supabase.from("settings").select("value").eq("key", "spin").maybeSingle(),
-    callRpc<WheelReport & { error?: string }>(supabase, "spin_wheel_report", {
-      p_days: 30,
-    }),
+    getBaseCollections(),
+    getProductOptions(),
   ]);
 
+  const prizes = (prizesRes.data as SpinWheelPrizeRow[] | null) ?? [];
+  const onWheel = [
+    ...new Set(
+      prizes.map((p) => p.product_id).filter((id): id is string => !!id),
+    ),
+  ];
+  const chosen = await getProductOptions({ ids: onWheel });
   const stored = (settingRes.data as { value?: Partial<WheelSettings> } | null)
     ?.value;
-  const report = reportRes.data;
   return {
-    prizes: (prizesRes.data as SpinWheelPrizeRow[] | null) ?? [],
-    settings: { ...WHEEL_SETTINGS_DEFAULTS, ...(stored ?? {}) },
-    report: report && !report.error ? report : EMPTY_REPORT,
+    prizes,
+    settings: {
+      ...WHEEL_SETTINGS_DEFAULTS,
+      ...(stored ?? {}),
+      grandBundles: {
+        ...WHEEL_SETTINGS_DEFAULTS.grandBundles,
+        ...(stored?.grandBundles ?? {}),
+      },
+      missTips: Array.isArray(stored?.missTips) ? stored.missTips : [],
+    },
+    bundleChoices: collections.map((c) => ({
+      id: c.id,
+      name: c.name,
+      gender: c.gender,
+      available: c.availableMls.includes(GRAND_BUNDLE_ML),
+      price: c.prices.find((p) => p.ml === GRAND_BUNDLE_ML)?.price ?? 0,
+    })),
+    productOptions: [
+      ...chosen,
+      ...firstPage.filter((p) => !onWheel.includes(p.id)),
+    ],
   };
+}
+
+/** How the wheel paid out for `filter` (0170, `spin_wheel_prize_report`). */
+export async function getWheelReport(
+  filter: WheelReportFilter = {},
+): Promise<WheelReport> {
+  const supabase = await createClient();
+  if (!supabase) return EMPTY_REPORT;
+  const { data } = await callRpc<WheelReport & { error?: string }>(
+    supabase,
+    "spin_wheel_prize_report",
+    {
+      p_from: ubIso(filter.from) ?? null,
+      p_to: ubIsoEnd(filter.to) ?? null,
+      p_type: filter.type ?? null,
+    },
+  );
+  return data && !data.error ? { ...EMPTY_REPORT, ...data } : EMPTY_REPORT;
+}
+
+/** Every physical prize, for the wheel's «Бодит шагнал» page. */
+export async function getWheelPhysicalPrizes(): Promise<GrandAdminRow[]> {
+  const supabase = await createClient();
+  if (!supabase) return [];
+  return getGrandAdminRows(supabase);
+}
+
+/**
+ * Every physical prize (grand bundle, product), newest first, with where it
+ * is (0165/0170). Staff RLS reads spins, profiles and orders, so this stays
+ * on the cookie-bound client.
+ */
+async function getGrandAdminRows(
+  supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>,
+): Promise<GrandAdminRow[]> {
+  const { data } = await supabase
+    .from("spin_wheel_spins")
+    .select(
+      "id, kind, label, user_id, created_at, expires_at, bundle_collection_id, bundle_gender, claim_order_id, fulfilled_at, ml, collections:bundle_collection_id(name), products:product_id(name, brand), orders:claim_order_id(order_no)",
+    )
+    .in("kind", ["bundle", "product"])
+    .order("created_at", { ascending: false })
+    .limit(200);
+  const rows = (data ?? []) as unknown as {
+    id: string;
+    kind: "bundle" | "product";
+    label: string;
+    user_id: string;
+    created_at: string;
+    expires_at: string | null;
+    bundle_collection_id: string | null;
+    bundle_gender: "male" | "female" | null;
+    claim_order_id: string | null;
+    fulfilled_at: string | null;
+    ml: number | null;
+    collections: { name: string } | null;
+    products: { name: string; brand: string } | null;
+    orders: { order_no: string } | null;
+  }[];
+  if (rows.length === 0) return [];
+
+  const { data: people } = await supabase
+    .from("profiles")
+    .select("id, full_name, phone")
+    .in("id", [...new Set(rows.map((r) => r.user_id))]);
+  const byId = new Map(
+    (
+      (people ?? []) as {
+        id: string;
+        full_name: string | null;
+        phone: string | null;
+      }[]
+    ).map((p) => [p.id, p]),
+  );
+  const now = new Date();
+  return rows.map((r) => {
+    const p = byId.get(r.user_id);
+    return {
+      id: r.id,
+      kind: r.kind,
+      label: r.label,
+      customer: p?.full_name?.trim() || "Хэрэглэгч",
+      phone: p?.phone ?? null,
+      wonAt: r.created_at,
+      expiresAt: r.expires_at,
+      state: grandPrizeState(r, now),
+      bundleName: r.collections?.name ?? null,
+      gender: r.bundle_gender,
+      productName: r.products
+        ? `${r.products.brand} ${r.products.name}`.trim()
+        : null,
+      ml: r.ml,
+      orderId: r.claim_order_id,
+      orderNo: r.orders?.order_no ?? null,
+    };
+  });
 }
 
 // ── Савны нөөц (0095) ───────────────────────────────────────────────────────
