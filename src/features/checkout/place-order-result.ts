@@ -94,6 +94,7 @@ export type PlaceOrderError =
   | { error: "ITEMS_UNAVAILABLE"; variantIds: string[] }
   | { error: "OUT_OF_STOCK"; productId: string }
   | { error: "BOTTLE_UNAVAILABLE" }
+  | { error: "PRIZE_UNAVAILABLE" }
   | {
       error: "VIAL_UNAVAILABLE";
       productId: string | null;
@@ -218,6 +219,9 @@ export function placeOrderError(
       ml: vial.ml == null ? null : Number(vial.ml),
     });
   }
+  // Азын хүрдний шагнал (0165/0170) — клиент шагналгүйгээр дахин илгээнэ.
+  if (m.includes("PRIZE_UNAVAILABLE"))
+    return conflict({ error: "PRIZE_UNAVAILABLE" });
   if (m.includes("BOTTLE_UNAVAILABLE"))
     return conflict({ error: "BOTTLE_UNAVAILABLE" });
   if (m.includes("EXTRAS_DISABLED"))
