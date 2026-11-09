@@ -37,6 +37,9 @@ export function customerSearchFilter(search: string): string | null {
  * number itself than a prefix.
  */
 function phoneDigits(term: string): string {
+  // A term with letters is a name or a coupon code, not a number: «VW-CE2YKU»
+  // would otherwise reduce to «2» and match nearly every phone.
+  if (/\p{L}/u.test(term)) return "";
   const digits = term.replace(/\D/gu, "");
   return digits.length > 8 && digits.startsWith("976")
     ? digits.slice(3)
