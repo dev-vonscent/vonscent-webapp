@@ -11,7 +11,8 @@
 export interface OrderLineInput {
   product_name: string;
   brand: string | null;
-  ml: number;
+  /** Нэмэлт барааны мөрд (0146) null — тэр нь багцад хэзээ ч ордоггүй. */
+  ml: number | null;
   qty: number;
   unit_price: number;
   list_price: number | null;
@@ -42,12 +43,13 @@ export function groupBundleLines<T extends OrderLineInput>(
   const bundles = new Map<string, Extract<OrderLine<T>, { kind: "bundle" }>>();
   for (const item of items) {
     const id = item.collection_id;
-    if (!id || item.is_gift || !baseCollectionIds.has(id)) {
+    const ml = item.ml;
+    if (!id || ml == null || item.is_gift || !baseCollectionIds.has(id)) {
       out.push({ kind: "item", item });
       continue;
     }
     // Нэг багцыг хоёр хэмжээгээр авсан бол тусдаа мөр.
-    const key = `${id}:${item.ml}`;
+    const key = `${id}:${ml}`;
     const base = (item.list_price ?? item.unit_price) * item.qty;
     const existing = bundles.get(key);
     if (existing) {
@@ -59,7 +61,7 @@ export function groupBundleLines<T extends OrderLineInput>(
     const line = {
       kind: "bundle" as const,
       name: item.collection_name ?? "Багц",
-      ml: item.ml,
+      ml,
       qty: item.qty,
       base,
       members: [item],

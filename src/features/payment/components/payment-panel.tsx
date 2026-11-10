@@ -499,7 +499,7 @@ function OrderRecap({ view }: { view: PaymentView }) {
         <ul className="mt-3">
           {view.lines.map((line, i) => (
             <li
-              key={`${line.name}-${line.ml}-${i}`}
+              key={`${line.name}-${line.ml ?? line.variantLabel}-${i}`}
               className="flex items-center gap-3 py-2.5"
             >
               <div className="relative size-11 shrink-0">
@@ -526,8 +526,13 @@ function OrderRecap({ view }: { view: PaymentView }) {
                 </p>
                 <p className="text-muted-foreground truncate text-xs">
                   {[
+                    // Нэмэлт барааны `brand` нь ангиллын нэр (0146).
                     line.brand,
-                    `${line.ml}ml`,
+                    line.isExtra
+                      ? line.variantLabel || null
+                      : line.ml != null
+                        ? `${line.ml}ml`
+                        : null,
                     line.collectionName ?? null,
                     line.isSample ? "бэлэг" : null,
                   ]
@@ -543,6 +548,19 @@ function OrderRecap({ view }: { view: PaymentView }) {
             </li>
           ))}
         </ul>
+        {/* Захиалах мөчид ороогүй бэлэг (0149) — сангаас, reload хийсэн ч. */}
+        {view.omittedGifts.length > 0 && (
+          <ul className="bg-secondary mt-2 space-y-1 rounded-xl px-3 py-2.5 text-xs">
+            {view.omittedGifts.map((g, i) => (
+              <li key={`${g.name}-${i}`}>
+                {g.name} —{" "}
+                {g.reason === "threshold"
+                  ? "Захиалгын дүн өөрчлөгдсөн тул бэлгийн дээж ороогүй."
+                  : "Бэлгийн дээж дууссан тул энэ удаа ороогүй."}
+              </li>
+            ))}
+          </ul>
+        )}
 
         {/*
         Тоог тайлбарлах бүтэц — «яагаад 22,790₮ болов?» гэсэн асуулт хуудсан

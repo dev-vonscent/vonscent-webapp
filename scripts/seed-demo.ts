@@ -288,17 +288,22 @@ async function main() {
       if (status !== "pending" && status !== "cancelled") {
         await sb.rpc("mark_order_paid", { p_order: orderId });
       }
-      if (
-        status === "shipping" ||
-        status === "delivered" ||
-        status === "cancelled"
-      ) {
-        await sb.rpc("update_order_status", {
+      // Шилжилт SQL-д шалгагдана (0149): delivered нь shipping-ээр дамжина.
+      const steps =
+        status === "delivered"
+          ? ["shipping", "delivered"]
+          : status === "shipping" || status === "cancelled"
+            ? [status]
+            : [];
+      for (const step of steps) {
+        const { error: stepError } = await sb.rpc("update_order_status", {
           p_order: orderId,
-          p_status: status,
+          p_status: step,
           p_note: "Demo төлөв",
           p_by: opId,
         });
+        if (stepError)
+          console.warn(`  order ${i} → ${step}: ${stepError.message}`);
       }
       // Spread the order date into the past.
       await sb

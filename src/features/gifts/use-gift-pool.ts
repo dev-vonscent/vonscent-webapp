@@ -18,6 +18,8 @@ export interface GiftPool {
   threshold: number;
   sampleMl: number;
   products: GiftPoolProduct[];
+  /** 1ml сав дууссан (0152) — сан идэвхтэй ч сонгох боломжгүй. */
+  vialOut: boolean;
 }
 
 const EMPTY: GiftPool = {
@@ -25,6 +27,7 @@ const EMPTY: GiftPool = {
   threshold: GIFT_THRESHOLD,
   sampleMl: GIFT_SAMPLE_ML,
   products: [],
+  vialOut: false,
 };
 
 /**
@@ -45,6 +48,7 @@ function loadPool(): Promise<GiftPool> {
         threshold: Number(d?.threshold) || GIFT_THRESHOLD,
         sampleMl: Number(d?.sampleMl) || GIFT_SAMPLE_ML,
         products,
+        vialOut: d?.vialOut === true,
       };
     })
     .catch(() => EMPTY);

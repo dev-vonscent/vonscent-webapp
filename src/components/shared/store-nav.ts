@@ -1,3 +1,5 @@
+import type { FeatureFlag } from "@/lib/constants";
+
 /**
  * Storefront navigation — one list for the desktop header row and the mobile
  * drawer, so the two never disagree.
@@ -7,10 +9,9 @@
  * header by key (see `SiteHeader`'s `menus` prop). The drawer still links
  * straight to `href`.
  *
- * «Нэмэлт бараа» (extras) is deliberately absent: the extras shop is not on
- * this branch's base yet, and a menu entry must not lead to an empty page.
- * When it lands, add `{ href: "/extras", label: "Нэмэлт бараа", menu: "extras" }`
- * here and pass its panel under the same key.
+ * An entry with `flag` shows only while that feature flag is on — «Үнэртний
+ * шил», «Дагалдах хэрэгсэл» (`extras_shop`) must not lead to a 404 (the pages
+ * check the flag themselves too).
  *
  * Size (ml) is a product variant, not a category — never add an `?ml=` entry.
  */
@@ -21,6 +22,7 @@ export interface StoreNavItem {
   label: string;
   hint: string;
   menu?: StoreMenuKey;
+  flag?: FeatureFlag;
 }
 
 export const STORE_NAV_PRIMARY: readonly StoreNavItem[] = [
@@ -36,11 +38,34 @@ export const STORE_NAV_PRIMARY: readonly StoreNavItem[] = [
     label: "Багц үүсгэх",
     hint: "Дуртай үнэртнүүдээ өөрөө сонго",
   },
+  // Нэмэлт бараа хоёр хуудас (extras-shop-plan §19): шил нь үнэртнээр,
+  // хэрэгсэл нь зорилгоор хайгддаг. Дэлгэрэнгүй `/extras/[slug]` аль алийг
+  // нь тодруулахгүй — `/products/[slug]` «Каталог»-ийг тодруулдаггүйтэй ижил.
+  {
+    href: "/bottles",
+    label: "Үнэртний шил",
+    hint: "Бүтэн, үлдэгдэлтэй, хоосон шил",
+    flag: "extras_shop",
+  },
+  {
+    href: "/accessories",
+    label: "Дагалдах хэрэгсэл",
+    hint: "Бэлгийн сав, грамын сав, шприц",
+    flag: "extras_shop",
+  },
 ];
 
 export const STORE_NAV_SECONDARY: readonly StoreNavItem[] = [
   { href: "/quiz", label: "Үнэрээ олох", hint: "Хэдэн асуултаар тохирохыг ол" },
 ];
+
+/** Асаалттай тугтай (эсвэл туггүй) мөрүүд л. */
+export function visibleNavItems<T extends StoreNavItem>(
+  items: readonly T[],
+  flags: ReadonlySet<string>,
+): T[] {
+  return items.filter((item) => !item.flag || flags.has(item.flag));
+}
 
 /** `/collections` is active on bundle pages but not inside the builder. */
 export function isNavActive(href: string, pathname: string): boolean {

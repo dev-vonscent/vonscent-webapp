@@ -9,7 +9,11 @@ export interface PaymentLine {
   productId: string | null;
   name: string;
   brand: string;
-  ml: number;
+  /** Декантын хэмжээ; нэмэлт барааны мөрөнд null (0146). */
+  ml: number | null;
+  /** Нэмэлт бараа бол хувилбарын нэр («Хар»); үнэртэнд null. */
+  variantLabel: string | null;
+  isExtra: boolean;
   qty: number;
   /** Төлсөн дүн — багцын гишүүнд хямдарсан. */
   lineTotal: number;
@@ -32,6 +36,11 @@ export interface PaymentView {
    * хэдэн төгрөг гэдгийг төлөгч хүн харах ёстой.
    */
   lines: PaymentLine[];
+  /**
+   * Захиалах мөчид ороогүй бэлгийн дээж (0149) — сангаас тул reload хийсэн ч
+   * ижил. Нэр нь «Брэнд Нэр».
+   */
+  omittedGifts: { name: string; reason: "threshold" | "vial" | "stock" }[];
   subtotal: number;
   /** Багцын хямдралын өмнөх барааны дүн. Хуучин захиалгад null (0097). */
   grossSubtotal: number | null;

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { revalidatePublic } from "@/lib/cache";
-import { ML_SIZES } from "@/lib/constants";
+import { BOTTLE_STYLES, ML_SIZES } from "@/lib/constants";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getStaffUser } from "@/lib/auth/guard";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -20,6 +21,11 @@ const schema = z.object({
     .int()
     .refine((v) => (ML_SIZES as readonly number[]).includes(v)),
   override: z.boolean(),
+  /**
+   * Савны тоон горимд (vial_inventory, 0152) заавал: орлох савны өнгө —
+   * тэр саванд цутгаж, тэр савны тооноос хасагдана.
+   */
+  style: z.enum(BOTTLE_STYLES).nullable().optional(),
 });
 
 export async function PATCH(
@@ -39,12 +45,30 @@ export async function PATCH(
   const supabase = createAdminClient();
   if (!supabase) return NextResponse.json({ error: "NO_DB" }, { status: 500 });
 
+  // Тоон горимд override нь «аль саванд» гэдгийг заавал хадгална (§2.2 E).
+  const vialsOn = await isFeatureEnabled("vial_inventory");
+  if (vialsOn && parsed.data.override && !parsed.data.style) {
+    return NextResponse.json(
+      { error: "Аль саванд цутгах вэ? Савны өнгийг сонгоно уу." },
+      { status: 400 },
+    );
+  }
+
   // `select()` нь хөндөгдсөн мөрийг буцаана: тэр бараанд тэр хэмжээ огт
   // байхгүй бол UPDATE нь 0 мөр засаад чимээгүй амжилттай болох тул админ
   // чөлөөлөгдсөн гэж итгээд үлдэнэ.
   const { data, error } = await supabase
     .from("product_variants")
-    .update({ bottle_override: parsed.data.override })
+    .update({
+      bottle_override: parsed.data.override,
+      ...(vialsOn
+        ? {
+            bottle_override_style: parsed.data.override
+              ? (parsed.data.style ?? null)
+              : null,
+          }
+        : {}),
+    })
     .eq("product_id", id)
     .eq("ml", parsed.data.ml)
     .select("id");

@@ -9,7 +9,8 @@ import { callRpc } from "@/lib/supabase/rpc";
 import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
 import { collectionIdsOf, groupBundleLines } from "@/lib/orders/bundle-lines";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
-import { formatPrice, formatMl } from "@/lib/format";
+import { formatMl, formatPrice } from "@/lib/format";
+import { isExtraLine, orderLineMeta, orderLineTitle } from "@/lib/order-lines";
 import { deliveryDayOf, formatDeliveryDay } from "@/lib/time";
 import { env } from "@/lib/env";
 import { orderSummaryRows, summarySource } from "@/lib/orders/summary";
@@ -115,6 +116,26 @@ async function commit(
       );
       return { ok: false, error: "ORDER_CANCELLED" };
     }
+    // 0149: төлбөрийг зөвхөн хүлээгдэж буй / баталгаажсан захиалгад. Хуучин
+    // (хамгаалалтаас өмнө гараар хүргэлтэд гаргасан) эсвэл буцаасан захиалгад
+    // орсон мөнгө чимээгүй алга болохгүй — цуцлагдсантай адил хүний ажил.
+    if (error.message.includes("ILLEGAL_TRANSITION")) {
+      await supabase.from("admin_notifications").insert({
+        kind: "payment_after_cancel",
+        order_id: order.id,
+        message:
+          `${order.order_no}-д ${formatPrice(order.total)} төлбөр орж ирсэн ч ` +
+          `захиалгын төлөвөөс шалтгаалан автоматаар бүртгэгдсэнгүй. ` +
+          `Шалгаад гараар шийдвэрлэнэ үү.`,
+      });
+      await notifyAdmin(
+        `⚠️ <b>Төлбөр бүртгэгдсэнгүй</b> — ${tgEscape(order.order_no)}\n` +
+          `💰 ${formatPrice(order.total)}\n` +
+          `Захиалгын төлөвөөс шалтгаалан автоматаар бүртгэгдсэнгүй.\n` +
+          `🔗 ${env.siteUrl}/admin/orders/${order.id}`,
+      );
+      return { ok: false, error: "ORDER_CANCELLED" };
+    }
     return { ok: false, error: "COMMIT_FAILED" };
   }
 
@@ -181,19 +202,21 @@ async function notifyPaid(
   const { data: itemData } = await supabase
     .from("order_items")
     .select(
-      "product_name, brand, ml, qty, unit_price, list_price, is_gift, collection_id, collection_name, spin_id",
+      "product_name, brand, ml, qty, unit_price, list_price, is_gift, collection_id, collection_name, line_kind, variant_label, spin_id",
     )
     .eq("order_id", order.id);
   const items = (itemData ?? []) as {
     product_name: string;
     brand: string | null;
-    ml: number;
+    ml: number | null;
     qty: number;
     unit_price: number;
     list_price: number | null;
     is_gift: boolean;
     collection_id: string | null;
     collection_name: string | null;
+    line_kind: "perfume" | "extra";
+    variant_label: string | null;
     /** Азын хүрдний гранд шагналын мөр (0165). */
     spin_id: string | null;
   }[];
@@ -221,13 +244,18 @@ async function notifyPaid(
         return `• ${tgEscape(l.name)} багц ${formatMl(l.ml)} × ${l.qty} — ${formatPrice(l.base)}`;
       }
       const i = l.item;
+      const base = (i.list_price ?? i.unit_price) * i.qty;
+      // Нэмэлт бараа (0146): `brand` нь ангиллын нэр — «Нэмэлт» шошго нь
+      // савлагчид энэ мөрийг декант биш гэж шууд хэлнэ.
+      if (isExtraLine(i)) {
+        return `• Нэмэлт: ${tgEscape(orderLineTitle(i))} × ${i.qty} — ${formatPrice(base)}`;
+      }
       const name = i.brand ? `${i.brand} — ${i.product_name}` : i.product_name;
       const bundle = i.collection_name
         ? ` · ${tgEscape(i.collection_name)}`
         : "";
-      const base = (i.list_price ?? i.unit_price) * i.qty;
       return (
-        `• ${tgEscape(name)} ${formatMl(i.ml)} × ${i.qty}${bundle}` +
+        `• ${tgEscape(name)} ${orderLineMeta(i)}${bundle}` +
         (i.spin_id ? " 🏆" : i.is_gift ? " 🎁" : ` — ${formatPrice(base)}`)
       );
     })

@@ -7,6 +7,7 @@ import {
   type OrderSummaryRow,
 } from "@/lib/orders/summary";
 import { PrintButton } from "@/features/admin/components/print-button";
+import { orderLineTitle, orderLineVariant } from "@/lib/order-lines";
 
 export default async function InvoicePage({
   params,
@@ -56,7 +57,9 @@ export default async function InvoicePage({
           {items.map((i) => (
             <tr key={i.id} className="border-border/60 border-b">
               <td className="py-2">
-                {i.brand} {i.product_name} ({i.ml}ml)
+                {i.line_kind === "extra"
+                  ? orderLineTitle(i)
+                  : `${i.brand} ${i.product_name} (${orderLineVariant(i)})`}
               </td>
               <td className="py-2 text-center">{i.qty}</td>
               {/* Үндсэн үнээр — багцын хямдрал доорх тоймд ганц мөр болно,

@@ -1,3 +1,4 @@
+import { ExtraCard } from "@/features/extras/components/extra-card";
 import { Suspense, cache } from "react";
 import { preload } from "react-dom";
 import type { Metadata } from "next";
@@ -248,7 +249,23 @@ async function CuratedSections() {
             />
             {/* «Онцлох» (featured) хэсэг ус, багцыг онцлох болгосон
               дарааллаар (`items`); бусад хэсэг админы дарааллаараа. */}
-            {s.items ? (
+            {s.extras.length > 0 ? (
+              <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-4 md:gap-5 md:overflow-visible md:px-0">
+                {s.extras.map((e) => (
+                  <li
+                    key={e.id}
+                    className="w-[40%] shrink-0 snap-start md:w-auto"
+                  >
+                    <ExtraCard
+                      extra={e}
+                      href={`/extras/${e.slug}`}
+                      quickAdd
+                      showKind
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : s.items ? (
               <ProductCarousel items={s.items} prefer={prefer} />
             ) : s.collections.length > 0 ? (
               <ProductCarousel

@@ -20,6 +20,9 @@ import {
   useCartAvailability,
   unavailableLabel,
 } from "@/features/cart/use-cart-availability";
+import { useExtrasAvailability } from "@/features/extras/use-extras-availability";
+import { CartExtraLine } from "@/features/extras/components/cart-extra-line";
+import { CartCompleteOrder } from "@/features/extras/components/cart-complete-order";
 
 export default function CartPage() {
   const items = useCart((s) => s.items);
@@ -34,6 +37,9 @@ export default function CartPage() {
   const removeCollection = useCart((s) => s.removeCollection);
   const setItemSelected = useCart((s) => s.setItemSelected);
   const setCollectionSelected = useCart((s) => s.setCollectionSelected);
+  const extras = useCart((s) => s.extras);
+  const removeExtra = useCart((s) => s.removeExtra);
+  const { statusOf: extraStatusOf, blockedExtraKeys } = useExtrasAvailability();
   // Сагс долоо хоногоор суудаг тул хаагдсан хэмжээ (үлдэгдэл, эсвэл савны
   // түгжээ) энд хүртэл амьд үлдэж болно — нээгдэхэд нэг удаа шалгана.
   const {
@@ -47,6 +53,7 @@ export default function CartPage() {
   const {
     isItemSelected,
     isCollectionSelected,
+    isExtraSelected,
     setAllSelected,
     removeSelected,
     lineCount,
@@ -56,6 +63,7 @@ export default function CartPage() {
   } = useCartSelection({
     blockedItemKeys,
     blockedCollectionKeys,
+    blockedExtraKeys,
   });
   // Устгах нь буцаагдахгүй тул нэг дарааж баталгаажуулна.
   const [confirmRemove, setConfirmRemove] = React.useState(false);
@@ -70,12 +78,13 @@ export default function CartPage() {
    * улам доошилдог байв. Доод цэсний оронд суудаг (`useClaimBottomBar`).
    */
   const showCheckoutBar =
-    mounted && (items.length > 0 || collections.length > 0);
+    mounted &&
+    (items.length > 0 || collections.length > 0 || extras.length > 0);
   useClaimBottomBar(showCheckoutBar);
 
   if (!mounted) return <div className="mx-auto max-w-352 px-4 py-16 md:px-8" />;
 
-  if (items.length === 0 && collections.length === 0) {
+  if (items.length === 0 && collections.length === 0 && extras.length === 0) {
     return (
       <div className="mx-auto flex max-w-352 flex-col items-center gap-4 px-4 py-24 text-center md:px-8">
         <ShoppingCart className="text-muted-foreground size-12" />
@@ -325,6 +334,20 @@ export default function CartPage() {
               </CardContent>
             </Card>
           ))}
+
+          {extras.map((e) => (
+            <Card key={e.key}>
+              <CardContent className="p-4">
+                <CartExtraLine
+                  line={e}
+                  status={extraStatusOf(e.key)}
+                  selected={isExtraSelected(e.key)}
+                  onRemove={() => removeExtra(e.key)}
+                />
+              </CardContent>
+            </Card>
+          ))}
+          <CartCompleteOrder />
         </div>
 
         <div className="lg:sticky lg:top-20 lg:h-fit">

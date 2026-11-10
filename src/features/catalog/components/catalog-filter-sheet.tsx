@@ -14,11 +14,7 @@ import type { BrandLogos } from "@/features/products/components/brand-marquee";
 import { useFilterQuery } from "./use-filter-query";
 import type { ScentFamilyOption } from "@/lib/types";
 
-/**
- * Mobile filter sheet — slides down from the top, full width with a rounded
- * bottom and a bottom gap. The grab handle at the bottom can be dragged up to
- * dismiss.
- */
+/** Үнэртний каталогийн утасны шүүлтүүр. */
 export function CatalogFilterSheet({
   brands,
   brandLogos,
@@ -32,6 +28,26 @@ export function CatalogFilterSheet({
   families: ScentFamilyOption[];
   showKind?: boolean;
 }) {
+  return (
+    <FilterSheet>
+      <CatalogFilters
+        brands={brands}
+        brandLogos={brandLogos}
+        priceBounds={priceBounds}
+        families={families}
+        showClear={false}
+        showKind={showKind}
+      />
+    </FilterSheet>
+  );
+}
+
+/**
+ * Mobile filter sheet — slides down from the top, full width with a rounded
+ * bottom and a bottom gap. The grab handle at the bottom can be dragged up to
+ * dismiss. `children` нь шүүлтүүр өөрөө (үнэртэн, нэмэлт бараа).
+ */
+export function FilterSheet({ children }: { children: React.ReactNode }) {
   const { activeCount, clearAll } = useFilterQuery();
   const [open, setOpen] = React.useState(false);
   const contentRef = React.useRef<HTMLDivElement>(null);
@@ -64,7 +80,7 @@ export function CatalogFilterSheet({
         <Button
           variant="secondary"
           size="icon"
-          className="relative shrink-0 lg:hidden"
+          className="relative shrink-0 before:absolute before:-inset-0.5 before:content-[''] lg:hidden"
           aria-label="Шүүлтүүр"
         >
           <SlidersHorizontal className="size-4" />
@@ -96,14 +112,7 @@ export function CatalogFilterSheet({
           )}
         </div>
         <div className="no-scrollbar -mx-2 flex-1 overflow-y-auto px-2">
-          <CatalogFilters
-            brands={brands}
-            brandLogos={brandLogos}
-            priceBounds={priceBounds}
-            families={families}
-            showClear={false}
-            showKind={showKind}
-          />
+          {children}
         </div>
         <button
           type="button"

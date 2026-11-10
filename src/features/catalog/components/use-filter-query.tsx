@@ -22,6 +22,8 @@ const FILTER_KEYS = [
   "minPrice",
   "maxPrice",
   "q",
+  // «Үнэртний шил» (`/bottles`). Tab (`type`) нь шүүлтүүр биш — тоолохгүй.
+  "stock",
 ];
 
 /** Helpers to read/update multi-value catalog filter params in the URL. */

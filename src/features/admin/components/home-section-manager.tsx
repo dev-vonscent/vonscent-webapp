@@ -46,6 +46,7 @@ const KIND_LABEL: Record<SectionKind, string> = {
   manual: "Гараар сонгосон бараа",
   featured: "«Онцлох» тэмдэгтэй бараа (автомат)",
   tag: "Тагтай бараа (автомат)",
+  extras: "Нэмэлт бараа (автомат)",
 };
 
 /**
@@ -165,8 +166,8 @@ function SectionCard({
   const [picked, setPicked] = React.useState<string[]>(section.productIds);
   const kinds: SectionKind[] =
     section.kind === "tag"
-      ? ["tag", "manual", "featured"]
-      : ["manual", "featured"];
+      ? ["tag", "manual", "featured", "extras"]
+      : ["manual", "featured", "extras"];
 
   // Хайлт нь сервер дээр — өмнө нь бүх каталог props-оор ирж, сонгогч нь
   // хэдэн зуун мөртэй `Select` болдог байв.
@@ -282,6 +283,13 @@ function SectionCard({
               -ын мөрийн цэснээс шууд солино.
             </p>
           </div>
+        ) : kind === "extras" ? (
+          // Нэмэлт бараа (0151) — нийтэлсэн, зарагдаж буй бараа автоматаар.
+          // Туг `extras_shop` хаалттай үед нүүр хуудсанд гарахгүй.
+          <p className="text-muted-foreground text-xs">
+            Нийтэлсэн, одоо зарагдаж буй нэмэлт бараа (хайрцаг, сав, шил г.м.)
+            автоматаар гарна — хамгийн ихдээ {section.max_items}.
+          </p>
         ) : kind === "tag" ? (
           <p className="text-muted-foreground text-xs">
             Энэ хэсэг «

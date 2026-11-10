@@ -1,11 +1,19 @@
 /** Глобал хайлтын үр дүнгийн төрлүүд (backlog H1). */
-export const SEARCH_KINDS = ["product", "collection", "post", "brand"] as const;
+export const SEARCH_KINDS = [
+  "product",
+  "collection",
+  "extra",
+  "post",
+  "brand",
+] as const;
 export type SearchKind = (typeof SEARCH_KINDS)[number];
 
 /** Төрөл бүрийн бүлгийн гарчиг — үр дүн бүлэглэж харагдана (H1.4). */
 export const SEARCH_KIND_LABEL: Record<SearchKind, string> = {
   product: "Үнэртэн",
   collection: "Багц",
+  // 0148 — туг `extras_shop` хаалттай үед RPC энэ төрлийг буцаадаггүй.
+  extra: "Нэмэлт бараа",
   post: "Нийтлэл",
   brand: "Брэнд",
 };
@@ -20,7 +28,7 @@ export interface SearchHit {
   /** Барааны брэнд, нийтлэлийн ангилал — байхгүй бол null. */
   subtitle: string | null;
   imageUrl: string | null;
-  /** Зөвхөн бараа: «-аас эхлэх» үнэ (₮). */
+  /** Бараа, нэмэлт бараа: «-аас эхлэх» үнэ (₮). */
   price: number | null;
   soldOut: boolean;
   /** Багцын гишүүдийн тоо, брэндийн барааны тоо. */
@@ -35,6 +43,7 @@ export type SearchResults = Record<SearchKind, SearchHit[]>;
 export const EMPTY_SEARCH_RESULTS: SearchResults = {
   product: [],
   collection: [],
+  extra: [],
   post: [],
   brand: [],
 };

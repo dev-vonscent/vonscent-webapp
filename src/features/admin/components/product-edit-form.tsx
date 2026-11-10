@@ -1,5 +1,13 @@
 "use client";
 
+import { defaultVialStyle } from "@/lib/vials";
+import { useFeatureFlag } from "@/components/feature-flags";
+import {
+  BOTTLE_STYLES,
+  BOTTLE_STYLE_LABEL,
+  type BottleStyle,
+} from "@/lib/constants";
+import type { Gender } from "@/db/types";
 import * as React from "react";
 import { InfoTip } from "@/components/shared/info-tip";
 import { fieldErrorClass } from "@/components/ui/form-field";
@@ -73,6 +81,7 @@ export function ProductEditForm({
   customTagPool = [],
   aiEnabled = false,
   untranslatedNotes = [],
+  vialStyle = null,
 }: {
   product: AdminProduct;
   families: ScentFamilyOption[];
@@ -84,9 +93,13 @@ export function ProductEditForm({
   aiEnabled?: boolean;
   /** Хадгалсан нотуудаас англи нэргүй нь (0102) — зураг үүсгэхэд хэрэгтэй. */
   untranslatedNotes?: string[];
+  /** Цутгах сав (0145); null = хүйсээр. */
+  vialStyle?: BottleStyle | null;
 }) {
   const router = useRouter();
   const params = useSearchParams();
+  // «Цутгах сав» — савны тоон нөөц (vial_inventory) нээлттэй үед л.
+  const vialsOn = useFeatureFlag("vial_inventory");
   // The list's own `?q/status/sort`, carried in so saving returns to the exact
   // view the operator was working through (return-to.ts).
   const backHref = listHref(params.get(RETURN_PARAM));
@@ -119,6 +132,7 @@ export function ProductEditForm({
     releaseYear: product.releaseYear ? String(product.releaseYear) : "",
     bottlePrice: String(product.bottlePrice),
     lowStockMl: String(product.lowStockMl),
+    vialStyle: vialStyle ?? "auto",
   });
   const [scentFamilies, rawToggleFamily] = useToggleList(product.scentFamilies);
   const [seasons, rawToggleSeason] = useToggleList(product.seasons, {
@@ -231,6 +245,15 @@ export function ProductEditForm({
           gender: form.gender,
           concentration: form.concentration,
           sillage: form.sillage,
+          // Талбар харагдаагүй (туг хаалттай) бол хадгалсан өнгийг хөндөхгүй.
+          ...(vialsOn
+            ? {
+                vialStyle:
+                  form.vialStyle === "auto"
+                    ? null
+                    : (form.vialStyle as BottleStyle),
+              }
+            : {}),
           longevity: form.longevity,
           scentFamilies,
           seasons,
@@ -408,6 +431,37 @@ export function ProductEditForm({
                 onChange={(v) => set("concentration", v)}
               />
             </Field>
+            {vialsOn && (
+              <Field
+                label="Цутгах сав"
+                hint="Декантыг аль өнгийн саванд цутгах вэ. Савны тоон нөөц энэ өнгөөр хасагдана."
+              >
+                <Select
+                  value={form.vialStyle}
+                  onValueChange={(v) => set("vialStyle", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">
+                      Хүйсээр (
+                      {
+                        BOTTLE_STYLE_LABEL[
+                          defaultVialStyle(form.gender as Gender)
+                        ]
+                      }
+                      )
+                    </SelectItem>
+                    {BOTTLE_STYLES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {BOTTLE_STYLE_LABEL[s]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
             <Field
               label="Үнэртэх зай"
               hint={SILLAGE_HINT[form.sillage as Sillage]}
@@ -663,7 +717,7 @@ export function ProductEditForm({
       )}
 
       {/* Sticky on a phone — see product-form.tsx. */}
-      <div className="bg-background/85 pb-safe sticky bottom-0 -mx-4 flex items-center justify-between gap-3 px-4 py-3 backdrop-blur md:static md:mx-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+      <div className="bg-background/85 sticky bottom-0 -mx-4 flex items-center justify-between gap-3 px-4 py-3 backdrop-blur max-md:-mb-8 max-md:pb-[max(env(safe-area-inset-bottom),0.75rem)] md:static md:mx-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
         <div className="flex flex-1 gap-3 md:flex-none">
           <LoadingButton
             loading={pending}

@@ -6,7 +6,15 @@ import { useRouter } from "next/navigation";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import * as Sentry from "@sentry/nextjs";
 import { Command } from "cmdk";
-import { BookOpen, Layers, Search, Sparkles, Tag, X } from "lucide-react";
+import {
+  BookOpen,
+  Layers,
+  Search,
+  ShoppingBag,
+  Sparkles,
+  Tag,
+  X,
+} from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { MIN_SEARCH_LENGTH, SEARCH_PLACEHOLDER } from "@/lib/constants";
 import { isSearchable } from "@/lib/search";
@@ -43,13 +51,14 @@ const KIND_ICON: Record<
 > = {
   product: Sparkles,
   collection: Layers,
+  extra: ShoppingBag,
   post: BookOpen,
   brand: Tag,
 };
 
 /** Right-hand meta line: the one number that matters for this kind. */
 function hitMeta(hit: SearchHit): string | null {
-  if (hit.kind === "product") {
+  if (hit.kind === "product" || hit.kind === "extra") {
     return hit.soldOut ? "Дууссан" : formatPrice(hit.price ?? 0);
   }
   if (hit.itemCount != null && hit.itemCount > 0) {
@@ -132,6 +141,8 @@ export function GlobalSearch({
 } = {}) {
   const router = useRouter();
   const requestsOn = useFeatureFlag("perfume_requests");
+  // Нэмэлт бараа ч хайлтад орно (0148) — үнэртнээр хязгаарлагдахгүй гэж хэлнэ.
+  const extrasOn = useFeatureFlag("extras_shop");
   const [open, setOpen] = React.useState(false);
   const [value, setValue] = React.useState("");
   const [results, setResults] =
@@ -313,7 +324,9 @@ export function GlobalSearch({
                 autoFocus
                 value={value}
                 onValueChange={setValue}
-                placeholder={SEARCH_PLACEHOLDER}
+                placeholder={
+                  extrasOn ? "Бүх бараанаас хайх…" : SEARCH_PLACEHOLDER
+                }
                 className="placeholder:text-muted-foreground h-11 w-full border-0 bg-transparent pr-11 pl-10.5 text-base outline-none md:h-10 md:text-sm"
               />
               <DialogPrimitive.Close

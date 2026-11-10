@@ -20,6 +20,7 @@ import {
   STORE_NAV_PRIMARY,
   STORE_NAV_SECONDARY,
   isNavActive,
+  visibleNavItems,
 } from "./store-nav";
 import { ThemeSwitcher } from "./theme-switcher";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,7 @@ import { useSignOutConfirm } from "@/features/account/components/use-sign-out-co
 import { cn } from "@/lib/utils";
 import { useNewBadge } from "@/features/account/use-new-badge";
 import { COUPONS_NEW_BADGE_UNTIL } from "@/lib/constants";
-import { useFeatureFlag } from "@/components/feature-flags";
+import { useFeatureFlag, useFeatureFlagSet } from "@/components/feature-flags";
 import { MenuAvatar } from "@/features/account/components/profile-menu";
 
 /**
@@ -46,10 +47,9 @@ import { MenuAvatar } from "@/features/account/components/profile-menu";
  * IntentCards-д бий.
  */
 const MENU_HIDDEN = new Set(["/catalog", "/collections", "/quiz"]);
-const PRIMARY: { href: string; label: string; hint: string }[] = [
-  ...STORE_NAV_PRIMARY,
-  ...STORE_NAV_SECONDARY,
-].filter((item) => !MENU_HIDDEN.has(item.href));
+const PRIMARY = [...STORE_NAV_PRIMARY, ...STORE_NAV_SECONDARY].filter(
+  (item) => !MENU_HIDDEN.has(item.href),
+);
 
 /** `PRIMARY`-ийн сүүлд — feature flag `lucky_wheel` нээлттэй үед л. */
 const WHEEL_LINK = {
@@ -98,9 +98,10 @@ export function MobileMenu({
   const isStaff = useIsStaff();
   const { profile, loading, configured } = useProfileSummary();
   const couponsNew = useNewBadge("coupons", COUPONS_NEW_BADGE_UNTIL);
+  const visiblePrimary = visibleNavItems(PRIMARY, useFeatureFlagSet());
   const primary = useFeatureFlag("lucky_wheel")
-    ? [...PRIMARY, WHEEL_LINK]
-    : PRIMARY;
+    ? [...visiblePrimary, WHEEL_LINK]
+    : visiblePrimary;
   const secondary = [
     ...SECONDARY,
     ...(useFeatureFlag("perfume_requests") ? [REQUEST_LINK] : []),

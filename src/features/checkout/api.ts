@@ -1,13 +1,8 @@
 import "server-only";
 import { getProductById, fetchProducts } from "@/features/products/api";
 import { maxUnits } from "@/features/products/sellable";
-import {
-  BUNDLE_ML_SIZES,
-  GIFT_SAMPLE_ML,
-  SHIPPING_ZONES,
-} from "@/lib/constants";
-import { giftAllowanceFor, limitGiftPicks } from "@/lib/gift";
-import { getGiftSettings, getShippingSettings } from "@/features/content/api";
+import { BUNDLE_ML_SIZES, SHIPPING_ZONES } from "@/lib/constants";
+import { getShippingSettings } from "@/features/content/api";
 import {
   getCollectionSettings,
   getCollectionOrderInfo,
@@ -311,72 +306,6 @@ export async function quoteBundleSizes(input: {
     }),
   );
   return { sizes, stock };
-}
-
-/**
- * Validate the buyer's 1ml gift picks and turn them into 0₮ lines.
- * `goodsAfterDiscount` is subtotal − coupon discount (shipping excluded) —
- * see giftAllowanceFor() in src/lib/gift.ts. Picks outside the admin's pool, picks past the
- * per-product limit, or picks beyond the allowance are silently dropped — the
- * order still goes through, just without the invalid gift.
- *
- * Нэг ус олон удаа орж болно (`GIFT_PER_PRODUCT_LIMIT` хүртэл): сан 4 устай
- * байхад 5 эрхтэй хэрэглэгчийн сүүлчийн эрх үрэгдэхгүй байх нь зорилго.
- * Ижил ус нь нэг мөр болж qty-гаараа нэгдэнэ — order_items, савлалтын хуудсанд
- * «1мл × 2» гэж нэг мөрөөр гарах нь ойлгомжтой.
- *
- * Энэ бол бэлгийн ЦОРЫН ГАНЦ эх сурвалж: багц дотроос ирсэн бэлэг байхгүй,
- * сан хоосон / унтраалттай бол бэлэг огт олгогдохгүй.
- */
-export async function priceGiftLines(
-  giftProductIds: string[],
-  goodsAfterDiscount: number,
-  /**
-   * Төлбөртэй мөрүүд тухайн бараанаас аль хэдийн авсан ml (`mlByProduct`).
-   * Бэлэг нь эх савны ҮЛДСЭН хэсгээс гарна: сагс савыг бүрэн дуусгасан
-   * байхад бэлэг нэмбэл `place_order` нөөц түгжихдээ бүхэл захиалгыг унагана.
-   */
-  usedMl: ReadonlyMap<string, number> = new Map(),
-): Promise<PricedLine[]> {
-  if (!giftProductIds.length) return [];
-  const allowance = giftAllowanceFor(goodsAfterDiscount);
-  if (allowance <= 0) return [];
-
-  const settings = await getGiftSettings();
-  if (!settings.enabled || settings.productIds.length === 0) return [];
-  const pool = new Set(settings.productIds);
-
-  const products = await fetchProducts();
-  // `taken` нь тухайн уснаас энэ захиалгад аль хэдийн өгсөн бэлгийн тоо —
-  // хоёр дахь ширхэгт нь эх савнаас дахин 1мл үлдсэн байх ёстой.
-  const picks = limitGiftPicks(giftProductIds, allowance, (id, taken) => {
-    if (!pool.has(id)) return false;
-    const p = products.find((x) => x.id === id);
-    if (!p || p.soldOut) return false;
-    const left =
-      p.availableMl - (usedMl.get(p.id) ?? 0) - taken * GIFT_SAMPLE_ML;
-    return left >= GIFT_SAMPLE_ML;
-  });
-
-  const out: PricedLine[] = [];
-  for (const [id, qty] of picks) {
-    const p = products.find((x) => x.id === id);
-    if (!p) continue;
-    out.push({
-      productId: p.id,
-      variantId: "",
-      name: p.name,
-      brand: p.brand,
-      ml: GIFT_SAMPLE_ML,
-      qty,
-      unitPrice: 0,
-      lineTotal: 0,
-      collectionId: null,
-      collectionName: undefined,
-      isGift: true,
-    });
-  }
-  return out;
 }
 
 /** productId → эх савны үлдэгдэл ml (`inventory.available_ml`). */

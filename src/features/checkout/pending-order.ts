@@ -3,6 +3,7 @@
 import type {
   AppliedCoupon,
   CartCollection,
+  CartExtra,
   CartItem,
 } from "@/features/cart/store";
 
@@ -34,6 +35,8 @@ export interface PendingOrder<D> {
   buyNow: boolean;
   items: CartItem[];
   collections: CartCollection[];
+  /** 0150-аас өмнө хадгалсан хуулбарт байхгүй. */
+  extras?: CartExtra[];
   coupon: AppliedCoupon | null;
 }
 

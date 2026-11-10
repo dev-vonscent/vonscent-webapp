@@ -30,8 +30,6 @@ vi.mock("@/features/checkout/api", () => {
       shippingFee: 0,
       shipZone: "ub",
     }),
-    mlByProduct: () => new Map(),
-    priceGiftLines: async () => [],
     BundleUnavailableError: E,
     InsufficientStockError: E,
     ItemsUnavailableError: E,

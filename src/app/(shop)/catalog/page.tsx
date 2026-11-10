@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { SearchX } from "lucide-react";
 import { getCatalog, getBrands, getPriceBounds } from "@/features/products/api";
 import { getActiveBrands, getScentFamilies } from "@/features/taxonomy/api";
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CATALOG_PAGE_SIZE } from "@/lib/constants";
 import { isFeatureEnabled } from "@/lib/feature-flags";
+import { legacyExtrasHref } from "@/features/extras/lib/sections";
 
 /**
  * The route itself is dynamic — it reads `searchParams`, so a filtered view is
@@ -60,6 +62,12 @@ export default async function CatalogPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
+  // Нэмэлт бараа нь «Үнэртний шил» / «Дагалдах хэрэгсэл» хуудас болсон
+  // (extras-shop-plan §19) — хуучин таб холбоос (`?tab=extras&cat=…`) тийш.
+  // Туг хаалттай бол тэр хуудас 404 тул энгийн каталог хэвээр.
+  if (params.tab === "extras" && (await isFeatureEnabled("extras_shop"))) {
+    redirect(legacyExtrasHref(params));
+  }
   const filters = parseFilters(params);
   // `page`-гүй шүүлтүүр: доош гүйлгэх жагсаалтын түлхүүр. Шүүлтүүр солигдоход
   // жагсаалт шинээр эхэлнэ.
@@ -123,8 +131,13 @@ export default async function CatalogPage({
             {filters.search ? `«${filters.search}» хайлтын үр дүн` : "Каталог"}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {counts || "0 бараа"} олдлоо
+            {counts || "0 бараа"}
           </p>
+        </div>
+
+        {/* Эрэмбэ desktop-д энд, утсан дээр удирдлагын мөрөнд. */}
+        <div className="hidden items-center justify-end py-2 lg:flex">
+          <CatalogSort />
         </div>
 
         {/* Controls — mobile only (on desktop the search sits above the sidebar) */}
@@ -139,7 +152,7 @@ export default async function CatalogPage({
           <CatalogSearch className="flex-1" />
         </div>
 
-        <div className="mt-6 flex gap-10 lg:mt-8">
+        <div className="mt-6 flex gap-10">
           {/* Desktop sidebar: search above the filter, sharing its width */}
           <aside className="hidden w-72 shrink-0 lg:block">
             <CatalogSearch className="mb-6" />
@@ -158,11 +171,6 @@ export default async function CatalogPage({
           93px of it, measured at 390px.
         */}
           <div className="min-w-0 flex-1">
-            {/* Sort — top-right above the products (desktop) */}
-            <div className="mb-4 hidden items-center justify-end lg:flex">
-              <CatalogSort />
-            </div>
-
             <CatalogResults>
               {result.items.length === 0 && collections.length === 0 ? (
                 <EmptyState

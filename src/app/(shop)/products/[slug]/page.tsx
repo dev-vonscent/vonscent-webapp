@@ -1,3 +1,6 @@
+import { isFeatureEnabled } from "@/lib/feature-flags";
+import { getBottlesFor, getGiftOffers } from "@/features/extras/api";
+import { ProductExtras } from "@/features/extras/components/product-extras";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
@@ -17,6 +20,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { NoteColumn } from "@/features/products/components/note-column";
 import { ProductGallery } from "@/features/products/components/product-gallery";
 import { ProductPurchase } from "@/features/products/components/product-purchase";
 import { ComingSoonPurchase } from "@/features/products/components/coming-soon-purchase";
@@ -77,18 +81,6 @@ const TAG_LABEL: Record<string, string> = {
   sale: "Хямдрал",
 };
 
-function NoteColumn({ title, notes }: { title: string; notes: string[] }) {
-  if (!notes.length) return null;
-  return (
-    <div>
-      <p className="text-muted-foreground mb-1 text-xs font-semibold tracking-wide uppercase">
-        {title}
-      </p>
-      <p className="text-sm">{notes.join(", ")}</p>
-    </div>
-  );
-}
-
 export default async function ProductPage({
   params,
 }: {
@@ -98,9 +90,13 @@ export default async function ProductPage({
   const product = await getProductPageBySlug(slug);
   if (!product) notFound();
 
-  const [related, familyLabelMap] = await Promise.all([
+  const extrasOn = await isFeatureEnabled("extras_shop");
+  const [related, familyLabelMap, gifts, bottles] = await Promise.all([
     getRelated(slug),
     getScentFamilyLabels(),
+    // Нэмэлт бараа (0151) — туг хаалттай бол огт асуухгүй.
+    extrasOn ? getGiftOffers() : Promise.resolve([]),
+    extrasOn ? getBottlesFor(product.id) : Promise.resolve([]),
   ]);
   // A family the admin deleted still shows as its slug rather than vanishing.
   const familyLabels = product.scentFamilies.map((f) => familyLabelMap[f] ?? f);
@@ -183,6 +179,12 @@ export default async function ProductPage({
             ) : (
               <ProductPurchase product={product} />
             )}
+            {/* «Энэ үнэрийн шил» нь удахгүй ирэх үнэртэнд ч (хоосон шил) —
+                бэлгийн сав л декант захиалгатай хамт. */}
+            <ProductExtras
+              gifts={product.comingSoon ? [] : gifts}
+              bottles={bottles}
+            />
             <TrackViewItem
               id={product.id}
               name={product.name}

@@ -1,3 +1,6 @@
+import { isFeatureEnabled } from "@/lib/feature-flags";
+import { getVialOptions } from "@/features/extras/admin-api";
+import { vialName } from "@/lib/vials";
 import Link from "next/link";
 import {
   Boxes,
@@ -31,7 +34,8 @@ const DASHBOARD_STOCK_LIMIT = 20;
 export default async function AdminDashboard() {
   // Тоолох, эрэмбэлэх ажил SQL-д (0062). Өмнө нь энэ хуудас бүх каталогийг
   // татаж аваад JS дотор шүүдэг байв.
-  const [stock, dash, unreadCount, launchReady] = await Promise.all([
+  const vialsOn = await isFeatureEnabled("vial_inventory");
+  const [stock, dash, unreadCount, launchReady, vials] = await Promise.all([
     // Alert against each product's own configured threshold (A1) — not a
     // hardcoded figure. Шүүлт нь SQL-д (0065): `items` нь `available_ml`-ээр
     // эрэмбэлэгддэг тул дууссан бараа «бага» бүгдээс ӨМНӨ орно. Хязгаарлаж
@@ -42,7 +46,16 @@ export default async function AdminDashboard() {
     getDashboardData(),
     getUnreadNotificationCount(),
     getLaunchReadyCount(),
+    // Савны тоон нөөц (0152) — «Цөөхөн үлдсэн сав» картын эх.
+    vialsOn ? getVialOptions() : Promise.resolve([]),
   ]);
+  const lowVials = vials.filter(
+    (v) =>
+      v.isActive &&
+      v.onHand != null &&
+      v.available != null &&
+      v.available <= v.lowThreshold,
+  );
   const lowStock = stock.items;
   const topSellerIds = dash?.topSellerIds ?? [];
   // Real sales data when there is any. Without it the card falls back to the
@@ -90,6 +103,32 @@ export default async function AdminDashboard() {
                 Харах <ArrowRight className="size-3.5" />
               </Link>
             </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Савны тоон нөөц (plan §2.1 №13): цөөрсөн сав — самбарын карт л. */}
+      {lowVials.length > 0 && (
+        <Card className="bg-destructive/5">
+          <CardContent className="space-y-3 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-medium">Цөөхөн үлдсэн сав</h2>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/admin/bottles">
+                  Савны нөөц <ArrowRight className="size-3.5" />
+                </Link>
+              </Button>
+            </div>
+            <ul className="flex flex-wrap gap-2 text-sm">
+              {lowVials.map((v) => (
+                <li key={v.id} className="bg-secondary rounded-full px-3 py-1">
+                  {vialName(v)} ·{" "}
+                  {v.available === 0
+                    ? "Дууссан"
+                    : `Цөөхөн үлдсэн: ${v.available} ширхэг`}
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
       )}

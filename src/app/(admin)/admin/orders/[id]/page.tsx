@@ -21,6 +21,7 @@ import {
   PAYMENT_STATUS_LABEL,
 } from "@/lib/constants";
 import { OrderStatusControl } from "@/features/admin/components/order-status-control";
+import { ExtraRestockPanel } from "@/features/admin/components/extra-restock-panel";
 import {
   OrderAdminNote,
   OrderPreparedButton,
@@ -31,6 +32,7 @@ import {
   refundBreakdown,
 } from "@/lib/refund";
 import { cn } from "@/lib/utils";
+import { orderLineTitle, vialLabel } from "@/lib/order-lines";
 
 export default async function AdminOrderDetail({
   params,
@@ -50,6 +52,8 @@ export default async function AdminOrderDetail({
     customer,
     payments,
     refundAccount,
+    vials,
+    omittedGiftNames,
     baseCollectionIds,
     adminNote,
   } = detail;
@@ -65,6 +69,25 @@ export default async function AdminOrderDetail({
     order.status === "delivered" &&
     order.payment_status === "paid" &&
     staff?.role === "super_admin";
+  // Хүргэгдсэн энгийн нэмэлт бараа — мөр бүрээр нөөцөд буцаана (§7.4).
+  const restockLines =
+    order.status === "delivered" &&
+    order.payment_status !== "unpaid" &&
+    staff?.role === "super_admin"
+      ? items
+          .filter(
+            (i) =>
+              i.line_kind === "extra" &&
+              i.extra_inventory_mode === "local_quantity" &&
+              i.extra_state === "committed",
+          )
+          .map((i) => ({
+            id: i.id,
+            title: orderLineTitle(i),
+            qty: i.qty,
+            restocked: i.restocked_qty,
+          }))
+      : [];
   const refund = deliveredRefund
     ? deliveredRefundAmount(order.total, order.shipping_fee)
     : { ...refundBreakdown(order.total), shipping: 0 };
@@ -128,7 +151,11 @@ export default async function AdminOrderDetail({
                       <ul className="mt-1 space-y-0.5 pl-4">
                         {l.members.map((m) => (
                           <li key={m.id}>
-                            {m.brand} {m.product_name} · {m.ml}ml × {m.qty}
+                            {m.brand} {orderLineTitle(m)}
+                            {m.vial_id && vials.get(m.vial_id)
+                              ? ` · ${vialLabel(vials.get(m.vial_id)!)}`
+                              : ""}{" "}
+                            × {m.qty}
                           </li>
                         ))}
                       </ul>
@@ -143,8 +170,25 @@ export default async function AdminOrderDetail({
                       {!(l.item.is_gift || l.item.is_sample) && (
                         <LineNo n={++lineNo} />
                       )}
-                      {l.item.brand} {l.item.product_name} · {l.item.ml}ml ×{" "}
-                      {l.item.qty}
+                      {l.item.line_kind === "extra" ? (
+                        <>
+                          {/* Савлагч декант биш, бэлэн бараа гэдгийг шууд
+                              харна (0146). */}
+                          <Badge variant="outline" className="mr-2">
+                            Нэмэлт
+                          </Badge>
+                          {orderLineTitle(l.item)} × {l.item.qty}
+                        </>
+                      ) : (
+                        <>
+                          {l.item.brand} {orderLineTitle(l.item)}
+                          {/* Аль саванд цутгах вэ — савны тоон нөөц (0146). */}
+                          {l.item.vial_id && vials.get(l.item.vial_id)
+                            ? ` · ${vialLabel(vials.get(l.item.vial_id)!)}`
+                            : ""}{" "}
+                          × {l.item.qty}
+                        </>
+                      )}
                       {l.item.is_sample && (
                         /* Not "Sample": 2ml is an ordinary paid size in this
                            shop. This flag marks the free 1ml gift line. */
@@ -161,6 +205,26 @@ export default async function AdminOrderDetail({
                   </div>
                 ),
               )}
+              {(order.omitted_gifts ?? []).map((g) => (
+                <div
+                  key={`omitted-${g.product_id}`}
+                  className="text-muted-foreground flex justify-between gap-3 p-4 text-sm"
+                >
+                  <span>
+                    <Badge variant="secondary" className="mr-2">
+                      Ороогүй бэлэг
+                    </Badge>
+                    {omittedGiftNames.get(g.product_id) ?? "Бэлгийн дээж"}
+                  </span>
+                  <span className="text-right">
+                    {g.reason === "vial"
+                      ? "1ml сав дууссан"
+                      : g.reason === "stock"
+                        ? "Үнэртний үлдэгдэл дууссан"
+                        : "Захиалгын дүн босгод хүрээгүй"}
+                  </span>
+                </div>
+              ))}
             </CardContent>
           </Card>
 
@@ -332,6 +396,9 @@ export default async function AdminOrderDetail({
                 hasQpayInvoice={Boolean(order.qpay_invoice_id)}
                 canRecover={staff?.role === "super_admin"}
               />
+              {restockLines.length > 0 && (
+                <ExtraRestockPanel orderId={order.id} lines={restockLines} />
+              )}
             </CardContent>
           </Card>
 

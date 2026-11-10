@@ -22,6 +22,9 @@ interface EventRow {
   cash: number;
   qpay_fee: number;
   refund_fee: number;
+  /** goods-ийн задаргаа (0146): perfume_goods + extras_goods = goods. */
+  perfume_goods: number;
+  extras_goods: number;
 }
 
 /**
@@ -113,6 +116,8 @@ export async function GET(req: Request) {
         "Огноо",
         "Хэрэглэгч",
         "Барааны дүн",
+        "Үүнээс үнэртэн",
+        "Үүнээс нэмэлт бараа",
         "Купон",
         "V-point",
         "Цэвэр борлуулалт",
@@ -130,6 +135,8 @@ export async function GET(req: Request) {
         ubDateKey(new Date(e.at)),
         e.contact_name,
         e.goods,
+        e.perfume_goods,
+        e.extras_goods,
         e.coupon,
         e.points,
         e.net_goods,

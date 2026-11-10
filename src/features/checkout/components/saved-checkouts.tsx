@@ -79,15 +79,22 @@ function SavedCard({
       key: i.key,
       name: `${i.brand} ${i.name}`,
       image: i.image,
-      ml: i.ml,
+      meta: `${i.ml}ml`,
       qty: i.qty,
     })),
     ...entry.collections.map((c) => ({
       key: c.key,
       name: c.name,
       image: c.image,
-      ml: c.ml,
+      meta: `${c.ml}ml`,
       qty: c.qty,
+    })),
+    ...entry.extras.map((e) => ({
+      key: e.key,
+      name: e.name,
+      image: e.image,
+      meta: e.label || e.categoryName,
+      qty: e.qty,
     })),
   ];
   const count = lines.reduce((n, l) => n + l.qty, 0);
@@ -139,7 +146,7 @@ function SavedCard({
                 {first.name}
                 {lines.length > 1 && ` ба бусад ${lines.length - 1}`}
               </p>
-              <p className="text-muted-foreground text-xs">{first.ml}ml</p>
+              <p className="text-muted-foreground text-xs">{first.meta}</p>
             </div>
           )}
         </div>

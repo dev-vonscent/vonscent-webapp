@@ -94,6 +94,10 @@ export interface ProductRow {
   launched_at: string | null;
   /** «Тун удахгүй» үеийн ойролцоо хугацаа, ж: «10-р сарын сүүлээр» (0125). */
   coming_soon_note: string | null;
+  /**
+   * Декант цутгах савны өнгө (0145). null = хүйсээр (`defaultVialStyle`).
+   */
+  vial_style: VialStyle | null;
   /** «Онцлох бараа» (0055) — нүүрийн 'featured' хэсэг эндээс автоматаар уншина. */
   is_featured: boolean;
   /** Онцлох болсон мөч (0144) — нүүрийн «Онцлох» энэ дарааллаар; үгүй бол null. */
@@ -239,8 +243,23 @@ export interface OrderRow {
    * руу шилжүүлэхэд. Төлөгдсөн / цуцлагдсан мөчид trigger арилгана.
    */
   checkout_snapshot: Record<string, unknown> | null;
+  /**
+   * `cancelled → pending` сэргээлт бүрт нэмэгдэнэ (0146) — нөөцийн
+   * хөдөлгөөний event_key-д орно.
+   */
+  lifecycle_cycle: number;
+  /** Захиалах мөчид хасагдсан бэлэг (0146). */
+  omitted_gifts: OmittedGift[] | null;
+  /** Хэрэглэсэн барааны нөхцөлийг зөвшөөрсөн цаг (0153). */
+  used_goods_consent_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** Захиалах мөчид ороогүй бэлгийн дээж — босго эсвэл 1ml сав дууссан. */
+export interface OmittedGift {
+  product_id: string;
+  reason: "threshold" | "vial" | "stock";
 }
 
 /**
@@ -305,14 +324,12 @@ export interface OrderRefundAccountRow {
   created_at: string;
 }
 
-export interface OrderItemRow {
+interface OrderItemBase {
   id: string;
   order_id: string;
-  product_id: string | null;
-  variant_id: string | null;
   product_name: string;
+  /** Үнэртэнд брэнд, нэмэлт бараанд ангиллын нэр (0146). */
   brand: string;
-  ml: number;
   unit_price: number;
   /** Хямдраагүй нэгж үнэ (0097). Багцын гишүүнд л unit_price-аас их. */
   list_price: number | null;
@@ -322,9 +339,49 @@ export interface OrderItemRow {
   collection_id: string | null;
   collection_name: string | null;
   is_gift: boolean;
+  /** Зарсан мөчийн хувилбарын нэр: «Хар», «18 / 100ml» (0146). */
+  variant_label: string | null;
+  /** Зарсан мөчийн зураг (0146) — нэмэлт бараанд. */
+  image_url: string | null;
+  /** Энэ мөрөнд түгжсэн хоосон сав ба түүний төлөв (0146). */
+  vial_id: string | null;
+  vial_state: OrderItemStockState | null;
   /** Азын хүрдний гранд шагналын мөр (0165) — 2мл, 0₮. */
   spin_id?: string | null;
 }
+
+/** Нөөцийн төлөв: reserved → committed (хүргэгдэх) | released (0146). */
+export type OrderItemStockState = "reserved" | "committed" | "released";
+
+/** Декантын мөр — ml-тэй. */
+export interface PerfumeOrderItemRow extends OrderItemBase {
+  line_kind: "perfume";
+  product_id: string | null;
+  variant_id: string | null;
+  ml: number;
+  extra_variant_id: null;
+  extra_product_id: null;
+  extra_inventory_mode: null;
+  extra_state: null;
+  restocked_qty: 0;
+}
+
+/** Нэмэлт барааны мөр (0146) — ml-гүй, үнэртэнтэй холбоогүй. */
+export interface ExtraOrderItemRow extends OrderItemBase {
+  line_kind: "extra";
+  product_id: null;
+  variant_id: null;
+  ml: null;
+  extra_variant_id: string;
+  extra_product_id: string;
+  extra_inventory_mode: ExtraInventoryMode;
+  extra_state: OrderItemStockState;
+  /** Хүргэгдсэний дараах буцаалтад нөөцөд буцаасан ширхэг (эцсийн нийт). */
+  restocked_qty: number;
+}
+
+/** `line_kind`-аар салбарладаг — `ml`-ийг шалгахгүйгээр бүү уншаарай. */
+export type OrderItemRow = PerfumeOrderItemRow | ExtraOrderItemRow;
 
 export interface CouponRow {
   id: string;
@@ -446,7 +503,7 @@ export interface HomeSectionRow {
    * 'manual' = hand-picked list, 'tag' = everything carrying `tag`,
    * 'featured' = every product the admin marked «Онцлох» (0055).
    */
-  kind: "manual" | "tag" | "featured";
+  kind: "manual" | "tag" | "featured" | "extras";
   tag: TagKind | null;
   max_items: number;
   sort_order: number;
@@ -581,6 +638,149 @@ export interface PerfumeRequestVoteRow {
   created_at: string;
 }
 
+// ── Нэмэлт бараа ба савны тоон нөөц (0145, extras-shop-plan §5) ─────────
+
+/** Савны өнгө — `BOTTLE_STYLES` (constants) ба SQL check-тэй ижил. */
+export type VialStyle = "black" | "pink" | "silver";
+
+/** Нөөцийн горим: ангилал+горим (0153) → бараа → хувилбар composite FK-аар. */
+export type ExtraInventoryMode =
+  | "local_quantity"
+  | "shared_vial"
+  | "leftover_liquid";
+
+export type ExtraProductStatus = "draft" | "published" | "archived";
+
+export interface ExtraCategoryRow {
+  id: string;
+  slug: string;
+  name: string;
+  image_url: string | null;
+  sort: number;
+  is_active: boolean;
+}
+
+/** Ангилалд зөвшөөрөгдсөн горим (0153) — анхааруулга, зөвшөөрөл горим тус бүрт. */
+export interface ExtraCategoryModeRow {
+  category_id: string;
+  inventory_mode: ExtraInventoryMode;
+  notice: string;
+  requires_consent: boolean;
+}
+
+export interface ExtraProductRow {
+  id: string;
+  category_id: string;
+  /** Ганц горимтой ангилалд trigger сонгоно; «Шилтэй ус»-д заавал (0153). */
+  inventory_mode: ExtraInventoryMode;
+  slug: string;
+  name: string;
+  description: string;
+  images: string[];
+  status: ExtraProductStatus;
+  /** leftover_liquid: эх үнэртэн, үлдсэн ба бүтэн савны ml. */
+  product_id: string | null;
+  remaining_ml: number | null;
+  full_ml: number | null;
+  /**
+   * Зөвхөн дэлгэцийн утга — тооцоонд оролцохгүй. `bottle_ml`: хоосон/бүтэн
+   * шилний бүтэн хэмжээ («0/125ml», 0153).
+   */
+  attrs: { bottle_ml?: number };
+  sort: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExtraVariantRow {
+  id: string;
+  extra_id: string;
+  inventory_mode: ExtraInventoryMode;
+  label: string;
+  price: number;
+  /** Зөвхөн `extra_stock_move`-оор өөрчлөгдөнө (guard trigger). */
+  on_hand_qty: number;
+  reserved_qty: number;
+  /** shared_vial-д л. */
+  vial_id: string | null;
+  is_active: boolean;
+  sort: number;
+  updated_at: string;
+  /** Хоосон/бүтэн шилний batch code (0153). */
+  batch_code: string | null;
+  image_url: string | null;
+  /** Чөлөөт хэмжээ/тохирох тайлбар (0153). */
+  size_note: string | null;
+}
+
+export type StockMovementKind =
+  | "set"
+  | "purchase"
+  | "adjust"
+  | "reserve"
+  | "release"
+  | "commit"
+  | "restock";
+
+export interface ExtraMovementRow {
+  id: number;
+  extra_variant_id: string;
+  kind: StockMovementKind;
+  delta_on_hand: number;
+  delta_reserved: number;
+  order_item_id: string | null;
+  event_key: string | null;
+  note: string;
+  actor: string | null;
+  created_at: string;
+  /** `purchase`-д л (0153): нэгж үнэ, нийт = delta × нэгж, авсан өдөр (УБ). */
+  unit_cost: number | null;
+  cost: number | null;
+  purchased_on: string | null;
+}
+
+export interface VialRow {
+  id: string;
+  /** 1ml, 2ml сав өнгөгүй (null). */
+  style: VialStyle | null;
+  ml: 1 | 2 | 5 | 10 | 20;
+  /** null = тоолж эхлээгүй (зарах боломж хязгааргүй). */
+  on_hand: number | null;
+  reserved: number;
+  low_threshold: number;
+  is_active: boolean;
+  note: string;
+  updated_by: string | null;
+  updated_at: string;
+}
+
+export interface VialMovementRow {
+  id: number;
+  vial_id: string;
+  kind: StockMovementKind;
+  delta_on_hand: number;
+  delta_reserved: number;
+  order_item_id: string | null;
+  event_key: string | null;
+  note: string;
+  actor: string | null;
+  created_at: string;
+  /** `purchase`-д л (0153): нэгж үнэ, нийт = delta × нэгж, авсан өдөр (УБ). */
+  unit_cost: number | null;
+  cost: number | null;
+  purchased_on: string | null;
+}
+
+export type LeftoverLockState = "listed" | "reserved" | "committed" | "released";
+
+export interface LeftoverLiquidLockRow {
+  extra_product_id: string;
+  locked_ml: number;
+  state: LeftoverLockState;
+  order_item_id: string | null;
+  updated_at: string;
+}
+
 type Table<Row, Optional extends keyof Row> = {
   Row: Row;
   Insert: WithDefaults<Row, Optional>;
@@ -602,6 +802,7 @@ export interface Database {
         | "is_active"
         | "launched_at"
         | "coming_soon_note"
+        | "vial_style"
       >;
       product_images: Table<ProductImageRow, "id">;
       product_variants: Table<
@@ -617,7 +818,16 @@ export interface Database {
       >;
       profiles: Table<ProfileRow, "created_at" | "updated_at">;
       addresses: Table<AddressRow, "id" | "created_at">;
-      orders: Table<OrderRow, "id" | "order_no" | "created_at" | "updated_at">;
+      orders: Table<
+        OrderRow,
+        | "id"
+        | "order_no"
+        | "created_at"
+        | "updated_at"
+        | "lifecycle_cycle"
+        | "omitted_gifts"
+        | "used_goods_consent_at"
+      >;
       order_items: Table<OrderItemRow, "id">;
       order_refund_accounts: Table<OrderRefundAccountRow, "created_at">;
       coupons: Table<CouponRow, "id" | "created_at" | "used_up">;
@@ -662,6 +872,54 @@ export interface Database {
         | "created_at"
       >;
       perfume_request_votes: Table<PerfumeRequestVoteRow, "note" | "created_at">;
+      extra_categories: Table<
+        ExtraCategoryRow,
+        "id" | "image_url" | "sort" | "is_active"
+      >;
+      extra_category_modes: Table<
+        ExtraCategoryModeRow,
+        "notice" | "requires_consent"
+      >;
+      extra_products: Table<
+        ExtraProductRow,
+        | "id"
+        | "inventory_mode"
+        | "description"
+        | "images"
+        | "status"
+        | "product_id"
+        | "remaining_ml"
+        | "full_ml"
+        | "attrs"
+        | "sort"
+        | "created_at"
+        | "updated_at"
+      >;
+      extra_variants: Table<
+        ExtraVariantRow,
+        | "id"
+        | "inventory_mode"
+        | "label"
+        | "on_hand_qty"
+        | "reserved_qty"
+        | "vial_id"
+        | "is_active"
+        | "sort"
+        | "updated_at"
+        | "batch_code"
+        | "image_url"
+        | "size_note"
+      >;
+      extra_movements: Table<
+        ExtraMovementRow,
+        "id" | "created_at" | "unit_cost" | "cost" | "purchased_on"
+      >;
+      vials: Table<VialRow, "id" | "updated_at">;
+      vial_movements: Table<
+        VialMovementRow,
+        "id" | "created_at" | "unit_cost" | "cost" | "purchased_on"
+      >;
+      leftover_liquid_locks: Table<LeftoverLiquidLockRow, "updated_at">;
     };
     Views: Record<string, never>;
     Functions: {

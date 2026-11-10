@@ -10,7 +10,7 @@ const schema = z.object({
   title: z.string().min(1).max(80),
   subtitle: z.string().max(160).default(""),
   href: z.string().max(200).default(""),
-  kind: z.enum(["manual", "tag", "featured"]).default("manual"),
+  kind: z.enum(["manual", "tag", "featured", "extras"]).default("manual"),
   tag: z.enum(["new", "hot", "sale"]).nullable().default(null),
   maxItems: z.number().int().min(1).max(24).default(8),
   sortOrder: z.number().int().default(0),

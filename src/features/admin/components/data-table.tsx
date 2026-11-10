@@ -12,7 +12,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -169,32 +169,38 @@ export function DataTable<TData>({
   const filteredCount = table.getFilteredRowModel().rows.length;
   const { pageIndex, pageSize: currentPageSize } = table.getState().pagination;
   const firstRow = pageIndex * currentPageSize;
+  const showSort = showCards && phoneSort && sortableColumns.length > 0;
   const lastRow = Math.min(firstRow + currentPageSize, filteredCount);
 
   return (
     <div className="space-y-3">
-      {searchPlaceholder !== undefined && (
-        <>
-          <label htmlFor={searchId} className="sr-only">
-            {searchPlaceholder}
-          </label>
-          <input
-            id={searchId}
-            type="search"
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            placeholder={searchPlaceholder}
-            // text-base on mobile, or iOS Safari zooms the page on focus.
-            className="bg-secondary field-edge h-11 w-64 max-w-full rounded-md px-3 text-base md:h-9 md:text-sm"
-          />
-        </>
-      )}
-
-      {showCards && renderCard ? (
-        <>
-          {phoneSort && sortableColumns.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span id={sortId} className="text-muted-foreground text-xs">
+      {/* Утсан дээр хайлт + эрэмбэ нэг мөрөнд (хайлт үлдсэн өргөнийг
+          дүүргэнэ); өмнө нь хоёр тусдаа мөр, хайлт 256px-д тогтсон байв. */}
+      {(searchPlaceholder !== undefined || showSort) && (
+        <div className="flex items-center gap-2">
+          {searchPlaceholder !== undefined && (
+            <div className="relative min-w-0 flex-1 md:max-w-64">
+              <label htmlFor={searchId} className="sr-only">
+                {searchPlaceholder}
+              </label>
+              <Search
+                className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+                aria-hidden
+              />
+              <input
+                id={searchId}
+                type="search"
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder={searchPlaceholder}
+                // text-base on mobile, or iOS Safari zooms the page on focus.
+                className="bg-secondary field-edge h-11 w-full rounded-md pr-3 pl-9 text-base md:h-9 md:text-sm"
+              />
+            </div>
+          )}
+          {showSort && (
+            <>
+              <span id={sortId} className="sr-only">
                 Эрэмбэ
               </span>
               {/* The sort buttons live in the table header, which the phone
@@ -214,10 +220,24 @@ export function DataTable<TData>({
                   setSorting([{ id, desc: dir === "desc" }]);
                 }}
               >
-                <SelectTrigger aria-labelledby={sortId} className="h-11 flex-1">
-                  <SelectValue />
+                <SelectTrigger
+                  aria-labelledby={sortId}
+                  className={cn(
+                    "h-11 shrink-0 gap-1.5",
+                    searchPlaceholder !== undefined
+                      ? "w-auto max-w-[45%]"
+                      : "flex-1",
+                  )}
+                >
+                  <ArrowUpDown
+                    className="size-4 shrink-0 opacity-60"
+                    aria-hidden
+                  />
+                  <span className="truncate">
+                    {sorting[0] ? <SelectValue /> : "Эрэмбэ"}
+                  </span>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent align="end">
                   <SelectItem value="none">Эрэмбэлэхгүй</SelectItem>
                   {sortableColumns.map((c) => [
                     <SelectItem key={`${c.id}:asc`} value={`${c.id}:asc`}>
@@ -229,8 +249,13 @@ export function DataTable<TData>({
                   ])}
                 </SelectContent>
               </Select>
-            </div>
+            </>
           )}
+        </div>
+      )}
+
+      {showCards && renderCard ? (
+        <>
           {table.getRowModel().rows.length === 0 ? (
             <p className="bg-card text-muted-foreground rounded-lg py-10 text-center text-sm">
               {emptyText}

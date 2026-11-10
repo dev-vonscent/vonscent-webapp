@@ -28,6 +28,7 @@ const saved = (over: Partial<SavedCheckout>): SavedCheckout => ({
   buyNow: false,
   items: [],
   collections: [],
+  extras: [],
   draft: {},
   ...over,
 });

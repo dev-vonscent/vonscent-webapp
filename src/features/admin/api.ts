@@ -4,6 +4,7 @@ import { callRpc } from "@/lib/supabase/rpc";
 import type {
   OrderRow,
   OrderItemRow,
+  VialRow,
   OrderRefundAccountRow,
   OrderStatusHistoryRow,
   ProfileRow,
@@ -52,7 +53,9 @@ import {
   EMPTY_FINANCE,
   financeFromRow,
   type FinanceRow,
+  type ReportExtraCategory,
   type ReportFinance,
+  type ReportVial,
 } from "./lib/report-finance";
 import {
   getBottleLocks,
@@ -290,6 +293,10 @@ export async function getOrderDetail(id: string): Promise<{
   payments: QpayPaymentRecord[];
   /** Хэрэглэгчийн бичсэн буцаалтын данс (0108) — буцаагдмагц устгагдана. */
   refundAccount: OrderRefundAccountRow | null;
+  /** Мөрүүдэд түгжсэн хоосон сав (0146): vial_id → өнгө, хэмжээ. */
+  vials: Map<string, Pick<VialRow, "style" | "ml">>;
+  /** Хасагдсан бэлгийн барааны нэр: product_id → «Брэнд Нэр». */
+  omittedGiftNames: Map<string, string>;
   /** Мөрүүдийн бэлэн (`base`) багцын id — нэг мөр болж харагдана. */
   baseCollectionIds: string[];
   /** Админы дотоод тэмдэглэл (0145) — хэрэглэгчид харагдахгүй. */
@@ -337,9 +344,24 @@ export async function getOrderDetail(id: string): Promise<{
       .maybeSingle(),
   ]);
 
-  const itemRows = (items as OrderItemRow[] | null) ?? [];
-  const collectionIds = collectionIdsOf(itemRows);
-  const [{ data: baseRows }, { data: noteRow }] = await Promise.all([
+  const rows = (items as OrderItemRow[] | null) ?? [];
+  const vialIds = [
+    ...new Set(rows.map((i) => i.vial_id).filter((v): v is string => !!v)),
+  ];
+  const giftIds = (order.omitted_gifts ?? []).map((g) => g.product_id);
+  const collectionIds = collectionIdsOf(rows);
+  const [
+    { data: vialRows },
+    { data: giftRows },
+    { data: baseRows },
+    { data: noteRow },
+  ] = await Promise.all([
+    vialIds.length
+      ? supabase.from("vials").select("id, style, ml").in("id", vialIds)
+      : Promise.resolve({ data: [] }),
+    giftIds.length
+      ? supabase.from("products").select("id, brand, name").in("id", giftIds)
+      : Promise.resolve({ data: [] }),
     collectionIds.length
       ? supabase
           .from("collections")
@@ -357,7 +379,7 @@ export async function getOrderDetail(id: string): Promise<{
 
   return {
     order,
-    items: itemRows,
+    items: rows,
     baseCollectionIds: ((baseRows as { id: string }[] | null) ?? []).map(
       (r) => r.id,
     ),
@@ -366,6 +388,16 @@ export async function getOrderDetail(id: string): Promise<{
     customer: (customer.data as ProfileRow | null) ?? null,
     payments: (payments as QpayPaymentRecord[] | null) ?? [],
     refundAccount: (refundAccount as OrderRefundAccountRow | null) ?? null,
+    vials: new Map(
+      ((vialRows as Pick<VialRow, "id" | "style" | "ml">[] | null) ?? []).map(
+        (v) => [v.id, { style: v.style, ml: v.ml }],
+      ),
+    ),
+    omittedGiftNames: new Map(
+      (
+        (giftRows as { id: string; brand: string; name: string }[] | null) ?? []
+      ).map((p) => [p.id, `${p.brand} ${p.name}`]),
+    ),
   };
 }
 
@@ -693,9 +725,17 @@ function mapAdminProduct(
     isFeatured: r.is_featured === true,
     startingPrice: prices.length ? Math.min(...prices) : 0,
     // Чөлөөлсөн хэмжээ ч ЭНД ОРНО: мөрөн дээр «чөлөөлсөн» гэж харуулж,
-    // цуцлах үйлдлийг санал болгох ёстой (variantId дамжуулахгүй).
+    // цуцлах үйлдлийг санал болгох ёстой (variantId дамжуулахгүй). Савны
+    // тоон горимд (0152) хувилбар бүр өөрийн савтай — id-аар шийднэ.
     bottleLockedMls: r.product_variants
-      .filter((v) => isBottleLocked(locks, r.gender as Gender, v.ml))
+      .filter((v) =>
+        isBottleLocked(
+          locks,
+          r.gender as Gender,
+          v.ml,
+          locks.vialMode ? v.id : undefined,
+        ),
+      )
       .map((v) => v.ml)
       .sort((a, b) => a - b),
     availableMl: inv ? inv.on_hand_ml - inv.reserved_ml : 0,
@@ -1354,10 +1394,15 @@ export interface ReportData {
   }[];
   /** Графикийн бүлэглэлт — мужийн уртаас гарна. */
   bucket: "day" | "month";
+  /** «Нэмэлт бараа» (0156) — туг хаалттай бол хоосон. */
+  extras: ReportExtraCategory[];
+  vials: ReportVial[];
 }
 
 export async function getReportData(
   range: ReportRange = {},
+  /** `extras_shop` / `vial_inventory` нээлттэй үед л хэсгийг уншина. */
+  opts: { extras?: boolean; vials?: boolean } = {},
 ): Promise<ReportData> {
   const supabase = await createClient();
   const bucket = seriesBucket(range.from, range.to);
@@ -1368,6 +1413,8 @@ export async function getReportData(
     statusCounts: {},
     series: [],
     bucket,
+    extras: [],
+    vials: [],
   };
   if (!supabase) return empty;
 
@@ -1390,6 +1437,8 @@ export async function getReportData(
     { data: products },
     { data: brands },
     { data: statuses },
+    { data: extraRows },
+    { data: vialRows },
   ] = await Promise.all([
     callRpc<FinanceRow[]>(supabase, "admin_report_finance", {
       p_from,
@@ -1416,6 +1465,34 @@ export async function getReportData(
       "admin_report_status",
       { p_from, p_to },
     ),
+    opts.extras
+      ? callRpc<
+          {
+            category_slug: string;
+            category_name: string;
+            sales: number;
+            sold_qty: number;
+            purchases: number;
+            purchased_qty: number;
+          }[]
+        >(supabase, "admin_report_extras", { p_from, p_to })
+      : Promise.resolve({ data: null }),
+    opts.vials
+      ? callRpc<
+          {
+            vial_id: string;
+            style: ReportVial["style"];
+            ml: number;
+            purchased_qty: number;
+            purchases: number;
+            used_perfume: number;
+            used_gift: number;
+            sold_standalone: number;
+            on_hand: number | null;
+            reserved: number;
+          }[]
+        >(supabase, "admin_report_vials", { p_from, p_to })
+      : Promise.resolve({ data: null }),
   ]);
 
   const t = totals?.[0];
@@ -1438,6 +1515,26 @@ export async function getReportData(
     statusCounts,
     series: series ?? [],
     bucket,
+    extras: (extraRows ?? []).map((r) => ({
+      slug: r.category_slug,
+      name: r.category_name,
+      sales: Number(r.sales),
+      soldQty: Number(r.sold_qty),
+      purchases: Number(r.purchases),
+      purchasedQty: Number(r.purchased_qty),
+    })),
+    vials: (vialRows ?? []).map((r) => ({
+      id: r.vial_id,
+      style: r.style,
+      ml: r.ml,
+      purchasedQty: Number(r.purchased_qty),
+      purchases: Number(r.purchases),
+      usedPerfume: Number(r.used_perfume),
+      usedGift: Number(r.used_gift),
+      soldStandalone: Number(r.sold_standalone),
+      onHand: r.on_hand,
+      reserved: r.reserved,
+    })),
   };
 }
 

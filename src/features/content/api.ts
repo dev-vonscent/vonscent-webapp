@@ -1,4 +1,6 @@
 import "server-only";
+import { getShopExtras } from "@/features/extras/api";
+import type { ShopExtraCard } from "@/features/extras/types";
 import { cache } from "react";
 import { createPublicClient } from "@/lib/supabase/public";
 import {
@@ -239,6 +241,8 @@ export interface HomeSection {
   collections: Collection[];
   /** Хэсгийн төлөв — card бүр үүнийг харуулна («Онцлох» дотор «Онцлох»). */
   status: CardStatus | null;
+  /** Зөвхөн 'extras' хэсэгт (0151) — нэмэлт барааны карт. */
+  extras: ShopExtraCard[];
   /**
    * Ус, багц холимог дараалал (зөвхөн 'featured' хэсэгт) — байвал
    * `products` / `collections`-ийн оронд яг энэ дарааллаар харуулна.
@@ -339,8 +343,15 @@ export async function getHomeSections(): Promise<HomeSection[]> {
     let products: ProductListItem[];
     let collections: Collection[] = [];
     let status: CardStatus | null = null;
+    let extras: ShopExtraCard[] = [];
     let items: RailItem[] | undefined;
-    if (row.kind === "tag" && row.tag) {
+    if (row.kind === "extras") {
+      // Туг хаалттай бол SQL хоосон буцаана — хэсэг алгасагдана.
+      products = [];
+      extras = (await getShopExtras())
+        .filter((e) => !e.soldOut)
+        .slice(0, row.max_items);
+    } else if (row.kind === "tag" && row.tag) {
       products = await getProductsByTag(row.tag, row.max_items);
       if (row.tag !== "sale") status = row.tag;
     } else if (row.kind === "featured") {
@@ -365,7 +376,12 @@ export async function getHomeSections(): Promise<HomeSection[]> {
         .filter((p): p is ProductListItem => Boolean(p))
         .slice(0, row.max_items);
     }
-    if (products.length === 0 && collections.length === 0) continue;
+    if (
+      products.length === 0 &&
+      collections.length === 0 &&
+      extras.length === 0
+    )
+      continue;
     sections.push({
       id: row.id,
       title: row.title,
@@ -374,6 +390,7 @@ export async function getHomeSections(): Promise<HomeSection[]> {
       products,
       collections,
       status,
+      extras,
       items,
     });
   }

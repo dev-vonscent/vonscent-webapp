@@ -35,6 +35,7 @@ import { settleExpiredOrders } from "@/features/account/settle-expired";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { lifetimeSpendOf, tierProgress } from "@/features/tiers/lib";
 import { TierBadge } from "@/features/tiers/components/tier-frame";
+import { isExtraLine, orderLineVariant } from "@/lib/order-lines";
 
 const STATUS_ICON: Record<
   OrderStatus,
@@ -62,8 +63,11 @@ type OrderItemPreview = {
   product_id: string | null;
   product_name: string;
   brand: string;
-  ml: number;
+  ml: number | null;
   qty: number;
+  line_kind: "perfume" | "extra";
+  variant_label: string | null;
+  image_url: string | null;
   is_gift: boolean | null;
   is_sample: boolean | null;
   collection_id: string | null;
@@ -182,7 +186,7 @@ export default async function OrdersPage({
       const { data } = await supabase
         .from("orders")
         .select(
-          "*, order_items(product_id, product_name, brand, ml, qty, is_gift, is_sample, collection_id)",
+          "*, order_items(product_id, product_name, brand, ml, qty, line_kind, variant_label, image_url, is_gift, is_sample, collection_id)",
         )
         .eq("user_id", user.id)
         // Төлөгдөөгүй цуцлалт захиалга биш (0124) — устгасан нь хаана ч
@@ -413,10 +417,13 @@ function OrderCard({
   const itemCount = items.reduce((n, i) => n + (i.qty ?? 0), 0);
   const thumbs = items.slice(0, 4);
   const extraCount = items.length - thumbs.length;
+  // Нэмэлт барааны `brand` нь ангиллын нэр (0146) — нэрийн өмнө тавихгүй.
   const firstName = items[0]
-    ? `${items[0].brand} ${items[0].product_name}`
+    ? isExtraLine(items[0])
+      ? items[0].product_name
+      : `${items[0].brand} ${items[0].product_name}`
     : "";
-  const firstMl = items[0]?.ml;
+  const firstVariant = items[0] ? orderLineVariant(items[0]) : "";
   // `pay_token` байхгүй (демо/хуучин мөр) бол төлөх зам ч байхгүй.
   const awaitingPayment = isAwaitingPayment(o);
   // Сэтгэгдлийн урилга (0117) — төлөгдсөн, явж буй/хүргэгдсэн захиалгад.
@@ -470,7 +477,9 @@ function OrderCard({
           {thumbs.length > 0 && (
             <div className="mt-4 flex items-center gap-2">
               {thumbs.map((i, idx) => {
-                const url = i.product_id ? imageById.get(i.product_id) : null;
+                const url =
+                  i.image_url ??
+                  (i.product_id ? imageById.get(i.product_id) : null);
                 return (
                   <div
                     key={idx}
@@ -503,8 +512,10 @@ function OrderCard({
                     {firstName}
                     {items.length > 1 && ` ба бусад ${items.length - 1}`}
                   </p>
-                  {firstMl != null && (
-                    <p className="text-muted-foreground text-xs">{firstMl}ml</p>
+                  {firstVariant && (
+                    <p className="text-muted-foreground text-xs">
+                      {firstVariant}
+                    </p>
                   )}
                 </div>
               )}

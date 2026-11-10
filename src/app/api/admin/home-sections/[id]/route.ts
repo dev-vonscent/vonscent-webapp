@@ -9,7 +9,7 @@ const patchSchema = z.object({
   title: z.string().min(1).max(80).optional(),
   subtitle: z.string().max(160).optional(),
   href: z.string().max(200).optional(),
-  kind: z.enum(["manual", "tag", "featured"]).optional(),
+  kind: z.enum(["manual", "tag", "featured", "extras"]).optional(),
   tag: z.enum(["new", "hot", "sale"]).nullable().optional(),
   maxItems: z.number().int().min(1).max(24).optional(),
   sortOrder: z.number().int().optional(),

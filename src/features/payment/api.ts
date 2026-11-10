@@ -46,26 +46,32 @@ interface OrderRow {
   deliver_on: string | null;
   /** «Дараа захиалах»-ын хуулбар (0124) — байгаа эсэх нь л хэрэгтэй. */
   checkout_snapshot: unknown;
+  omitted_gifts:
+    | { product_id: string; reason: "threshold" | "vial" | "stock" }[]
+    | null;
 }
 
 interface ItemRow {
   product_id: string | null;
   product_name: string;
   brand: string;
-  ml: number;
+  ml: number | null;
   qty: number;
   unit_price: number;
   list_price: number | null;
   line_total: number;
   is_sample: boolean;
   collection_name: string | null;
+  line_kind: "perfume" | "extra";
+  variant_label: string | null;
+  image_url: string | null;
 }
 
 const SELECT =
-  "id, order_no, user_id, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, status, payment_method, payment_status, deliver_on, checkout_snapshot";
+  "id, order_no, user_id, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, status, payment_method, payment_status, deliver_on, checkout_snapshot, omitted_gifts";
 
 const ITEM_SELECT =
-  "product_id, product_name, brand, ml, qty, unit_price, list_price, line_total, is_sample, collection_name";
+  "product_id, product_name, brand, ml, qty, unit_price, list_price, line_total, is_sample, collection_name, line_kind, variant_label, image_url";
 
 /**
  * The order's lines, with a product image where the product still exists.
@@ -95,6 +101,8 @@ export async function paymentLines(
     name: r.product_name,
     brand: r.brand,
     ml: r.ml,
+    variantLabel: r.line_kind === "extra" ? (r.variant_label ?? "") : null,
+    isExtra: r.line_kind === "extra",
     qty: r.qty,
     lineTotal: r.line_total,
     // Мөр нь үндсэн үнээрээ бичигдэнэ — багцын хямдрал доор тусдаа мөр
@@ -103,7 +111,10 @@ export async function paymentLines(
     baseTotal: (r.list_price ?? r.unit_price) * r.qty,
     isSample: r.is_sample,
     collectionName: r.collection_name,
-    image: r.product_id ? (imageById.get(r.product_id) ?? null) : null,
+    // Нэмэлт бараа зарсан мөчийн зурагтай (0146); үнэртэн барааныхаа зургийг.
+    image:
+      r.image_url ??
+      (r.product_id ? (imageById.get(r.product_id) ?? null) : null),
   }));
 }
 
@@ -167,6 +178,15 @@ export async function getPaymentByToken(
   const paid = order.payment_status === "paid";
   const cancelled = order.status === "cancelled";
   const lines = await paymentLines(supabase, order.id);
+  const omitted = order.omitted_gifts ?? [];
+  const giftNames = omitted.length
+    ? new Map(
+        (await getProductsByIds(omitted.map((g) => g.product_id))).map((p) => [
+          p.id,
+          `${p.brand} ${p.name}`,
+        ]),
+      )
+    : new Map<string, string>();
   const { pointsEarned, reviewPoints } = await loyaltyFor(supabase, order);
 
   // An invoice is only worth having while the order can still be paid. Asking
@@ -191,6 +211,10 @@ export async function getPaymentByToken(
     orderNo: order.order_no,
     total: order.total,
     lines,
+    omittedGifts: omitted.map((g) => ({
+      name: giftNames.get(g.product_id) ?? "Бэлгийн дээж",
+      reason: g.reason,
+    })),
     subtotal: order.subtotal,
     grossSubtotal: order.gross_subtotal,
     couponCode: order.coupon_code,

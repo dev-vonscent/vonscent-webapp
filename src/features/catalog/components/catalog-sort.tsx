@@ -24,9 +24,12 @@ const OPTIONS: { value: string; label: string }[] = [
 export function CatalogSort({
   iconOnly = false,
   className,
+  options = OPTIONS,
 }: {
   iconOnly?: boolean;
   className?: string;
+  /** Нэмэлт барааны таб өөрийн эрэмбийн жагсаалттай. */
+  options?: { value: string; label: string }[];
 }) {
   const { setSingle, searchParams } = useFilterQuery();
   const current = searchParams.get("sort") ?? DEFAULT_CATALOG_SORT;
@@ -42,7 +45,7 @@ export function CatalogSort({
         aria-label="Эрэмбэлэх"
         className={cn(
           iconOnly
-            ? "size-10 shrink-0 justify-center p-0 [&>svg:last-child]:hidden"
+            ? "relative size-10 shrink-0 justify-center p-0 before:absolute before:-inset-0.5 before:content-[''] [&>svg:last-child]:hidden"
             : "w-45",
           className,
         )}
@@ -54,7 +57,7 @@ export function CatalogSort({
         )}
       </SelectTrigger>
       <SelectContent>
-        {OPTIONS.map((o) => (
+        {options.map((o) => (
           <SelectItem key={o.value} value={o.value}>
             {o.label}
           </SelectItem>

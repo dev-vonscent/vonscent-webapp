@@ -8,6 +8,7 @@ const POOL: GiftPool = {
   enabled: true,
   threshold: 200000,
   sampleMl: 1,
+  vialOut: false,
   products: [
     {
       id: "g1",

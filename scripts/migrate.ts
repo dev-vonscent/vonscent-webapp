@@ -55,6 +55,11 @@ const RENAMED: Record<string, string> = {
   // 0138 нь notifications-тай зэрэг авагдсан — dev сан дээр хуучин нэрээр
   // ажилласан. Prod дээр 0143 нэрээрээ хэвийн ажиллана.
   "0143_user_tiers.sql": "0138_user_tiers.sql",
+  // 0144, 0145 нь dev (featured_rolling, order_admin_notes) ба extras-ийн
+  // салаанд зэрэг авагдсан — dev сан дээр extras хуучин нэрээр ажилласан.
+  // Хамааралгүй тул prod дээр аль нь түрүүлэх нь хамаагүй.
+  "0144a_place_order_loyalty_lock.sql": "0144_place_order_loyalty_lock.sql",
+  "0145a_extras_schema.sql": "0145_extras_schema.sql",
   // 0144 нь featured_rolling-тай зэрэг авагдсан — dev сан дээр хуучин нэрээр
   // ажилласан байж болно. Prod дээр 0163 нэрээрээ хэвийн ажиллана.
   "0163_profile_info.sql": "0144_profile_info.sql",

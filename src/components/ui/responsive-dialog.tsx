@@ -37,6 +37,9 @@ function useIsDesktop() {
  * Desktop дээр төвийн Dialog, мобайл (< sm) дээр grab handle-тай bottom
  * sheet болдог нэг wrapper. Гар гарахад sheet нь харагдах хэсгийн доод
  * ирмэгт бэхлэгдэнэ (`--vv-bottom`, KeyboardInset).
+ *
+ * `footer` (заавал биш) — агуулга гүйсэн ч доод талдаа тогтмол үлдэх мөр
+ * (ж: «Хаах»). Өгөөгүй бол урьдын адил бүх агуулга нэг дор гүйнэ.
  */
 export function ResponsiveDialog({
   open,
@@ -44,6 +47,7 @@ export function ResponsiveDialog({
   title,
   description,
   children,
+  footer,
   className,
 }: {
   open: boolean;
@@ -51,6 +55,7 @@ export function ResponsiveDialog({
   title: string;
   description?: string;
   children: React.ReactNode;
+  footer?: React.ReactNode;
   className?: string;
 }) {
   const isDesktop = useIsDesktop();
@@ -59,12 +64,26 @@ export function ResponsiveDialog({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className={cn("max-h-[85dvh] overflow-y-auto", className)}
+          className={cn(
+            "max-h-[85dvh]",
+            // Footer-тэй үед зөвхөн дунд хэсэг гүйнэ — гарчиг, footer тогтмол.
+            footer ? "overflow-hidden" : "overflow-y-auto",
+            className,
+          )}
           aria-describedby={description ? undefined : ""}
         >
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
-          {children}
+          {footer ? (
+            <>
+              <div className="-mx-6 flex min-h-0 flex-1 flex-col gap-[inherit] overflow-y-auto px-6">
+                {children}
+              </div>
+              <div className="shrink-0">{footer}</div>
+            </>
+          ) : (
+            children
+          )}
         </DialogContent>
       </Dialog>
     );
@@ -101,7 +120,7 @@ export function ResponsiveDialog({
         {/* Толгой гүйдэггүй: агуулга багтахгүй үед зөвхөн доорх хэсэг гүйж,
             гарчиг ямагт харагдана. Хоёулаа sheet-ийн `gap`-ийг удамшуулна —
             дуудагч `className="gap-3"` өгвөл урьдын адил бүх мөрөнд үйлчилнэ. */}
-        <div className="flex shrink-0 flex-col px-6 gap-[inherit]">
+        <div className="flex shrink-0 flex-col gap-[inherit] px-6">
           <div
             aria-hidden
             className="bg-muted-foreground/40 mx-auto h-1 w-10 shrink-0 rounded-full"
@@ -109,9 +128,10 @@ export function ResponsiveDialog({
           <SheetTitle>{title}</SheetTitle>
           {description && <SheetDescription>{description}</SheetDescription>}
         </div>
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-6 pb-1 gap-[inherit]">
+        <div className="flex min-h-0 flex-1 flex-col gap-[inherit] overflow-y-auto overscroll-contain px-6 pb-1">
           {children}
         </div>
+        {footer && <div className="shrink-0 px-6">{footer}</div>}
       </SheetContent>
     </Sheet>
   );
