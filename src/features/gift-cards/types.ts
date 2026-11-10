@@ -33,6 +33,8 @@ export interface GiftCardPublicView extends GiftCardFaceText {
   design: GiftCardDesign;
   /** Нэвтэрсэн хэрэглэгч өөрөө оноо болгосон эсэх. */
   redeemedByViewer: boolean;
+  /** Нэвтэрсэн хэрэглэгч энэ картыг худалдаж авсан эсэх (өөрөө бүү ав). */
+  viewerIsBuyer: boolean;
   redeemedAt: string | null;
 }
 

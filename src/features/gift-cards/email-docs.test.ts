@@ -21,7 +21,7 @@ describe("recipientEmail", () => {
     expect(html).toContain(`https://vonscent.mn/api/gift-cards/${card.token}/qr`);
     expect(html).toContain("VON-7K4P-Q9XM");
     expect(text).toContain("«Төрсөн өдрийн мэнд!» — Болд");
-    expect(text).toMatch(/хүртэл оноо болгоно/u);
+    expect(text).toMatch(/хүртэл оноо болгох боломжтой/u);
   });
 
   it("мэндчилгээгүй бол note хоосон", () => {

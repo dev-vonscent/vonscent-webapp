@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { LoadingButton } from "@/components/shared/loading-button";
 import { FieldError, fieldErrorProps } from "@/components/ui/form-field";
 import { rateLimitMessage } from "@/lib/rate-limit-client";
 import { toast } from "@/lib/toast";
+import { SignOutForm } from "@/features/account/components/sign-out-form";
 import { GENERIC_ERROR, REDEEM_MESSAGES } from "../messages";
 
 interface RedeemResponse {
@@ -54,10 +55,16 @@ export function GiftCardRedeemAction({
   token,
   amount,
   loggedIn,
+  viewerName = null,
+  viewerIsBuyer = false,
 }: {
   token: string;
   amount: number;
   loggedIn: boolean;
+  /** Нэвтэрсэн бүртгэлийн нэр — оноо хэний дансанд орохыг хэлнэ. */
+  viewerName?: string | null;
+  /** Худалдан авагч өөрөө нээсэн (холбоосоо шалгах гэж г.м.). */
+  viewerIsBuyer?: boolean;
 }) {
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
@@ -127,6 +134,19 @@ export function GiftCardRedeemAction({
 
   return (
     <div className="space-y-3">
+      {viewerIsBuyer && (
+        <div
+          role="note"
+          className="bg-secondary flex gap-3 rounded-xl p-4 text-sm"
+        >
+          <TriangleAlert className="text-warning mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <p>
+            Энэ картыг <strong className="font-semibold">та</strong> худалдаж
+            авсан. Бэлэглэх гэж байгаа бол доорх товчийг бүү дар — оноо таны
+            дансанд орж, карт хүлээн авагчид ашиглагдахгүй болно.
+          </p>
+        </div>
+      )}
       <LoadingButton
         loading={pending}
         onClick={onRedeem}
@@ -139,6 +159,25 @@ export function GiftCardRedeemAction({
           {error}
         </p>
       )}
+      <SignOutForm
+        next={`/login?next=${next}`}
+        className="text-muted-foreground text-center text-sm"
+      >
+        {viewerName ? (
+          <>
+            <strong className="text-foreground font-medium">{viewerName}</strong>{" "}
+            бүртгэлд нэмэгдэнэ.{" "}
+          </>
+        ) : (
+          "Таны нэвтэрсэн бүртгэлд нэмэгдэнэ. "
+        )}
+        <button
+          type="submit"
+          className="text-foreground font-medium underline underline-offset-2"
+        >
+          Өөр бүртгэлээр авах
+        </button>
+      </SignOutForm>
     </div>
   );
 }

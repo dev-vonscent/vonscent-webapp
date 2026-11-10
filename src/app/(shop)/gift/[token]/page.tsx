@@ -42,6 +42,17 @@ export default async function GiftPage({
   } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
   const card = await getGiftCardByToken(token, user?.id ?? null);
   if (!card || card.status === "void") notFound();
+  // Бэлэг ХЭНИЙ дансанд орохыг товчны дээр хэлнэ — худалдан авагч эсвэл
+  // өөр хүний бүртгэлтэй хөтчөөс нээхэд андуурч авахаас сэргийлнэ.
+  const viewerName = user
+    ? ((
+        await supabase!
+          .from("profiles")
+          .select("full_name")
+          .eq("id", user.id)
+          .maybeSingle()
+      ).data?.full_name ?? null)
+    : null;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:py-12">
@@ -68,11 +79,13 @@ export default async function GiftPage({
               token={card.token}
               amount={card.amount}
               loggedIn={Boolean(user)}
+              viewerName={viewerName}
+              viewerIsBuyer={card.viewerIsBuyer}
             />
             {card.expiresAt && (
               <p className="text-muted-foreground mt-3 text-center text-xs">
-                {formatDate(card.expiresAt)} хүртэл оноо болгоно. Оноо болсны
-                дараа хугацаагүй.
+                {formatDate(card.expiresAt)} хүртэл оноо болгох боломжтой. Оноо
+                болсны дараа хугацаагүй.
               </p>
             )}
           </>

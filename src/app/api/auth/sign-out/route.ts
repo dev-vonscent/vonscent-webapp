@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { SIGN_OUT_TIMEOUT_MS } from "@/lib/constants";
+import { safeNext } from "@/lib/safe-next";
 
 /**
  * Гарах — сервер тал дээр, хариу нь **үргэлж** нүүр рүү чиглүүлнэ.
@@ -44,7 +45,11 @@ export async function POST(req: Request) {
   // cookie хэвээр үлдэх тул энд гараар устгана. Нэр нь project ref-ээс
   // хамаардаг (`sb-<ref>-auth-token`, урт токен хэд хуваагдсан бол
   // `…-auth-token.0`) тул нэрээр нь биш загвараар нь шүүнэ.
-  const response = NextResponse.redirect(new URL("/", req.url), {
+  // «Өөр бүртгэлээр авах» (/gift/[token]) — гараад нэвтрэх рүү, буцаад
+  // тэр хуудас руу. Форм дахь `next` нь зөвхөн өөрийн сайтын зам.
+  const form = await req.formData().catch(() => null);
+  const next = safeNext(form?.get("next")?.toString());
+  const response = NextResponse.redirect(new URL(next, req.url), {
     status: 303,
   });
   const store = await cookies();

@@ -93,7 +93,7 @@ export async function getGiftCardByToken(
   const { data } = await supabase
     .from("gift_cards")
     .select(
-      "token, status, amount, design_id, recipient_name, message, from_name, expires_at, redeemed_by, redeemed_at",
+      "token, status, amount, design_id, recipient_name, message, from_name, expires_at, redeemed_by, redeemed_at, buyer_id",
     )
     .eq("token", token)
     .maybeSingle();
@@ -109,6 +109,7 @@ export async function getGiftCardByToken(
     | "expires_at"
     | "redeemed_by"
     | "redeemed_at"
+    | "buyer_id"
   > | null;
   if (!row || row.status === "pending") return null;
   const designs = await designsByIds(supabase, [row.design_id]);
@@ -127,6 +128,7 @@ export async function getGiftCardByToken(
     expiresAt: row.expires_at,
     design: designs.get(row.design_id) ?? FALLBACK_DESIGN,
     redeemedByViewer: viewerId !== null && row.redeemed_by === viewerId,
+    viewerIsBuyer: viewerId !== null && row.buyer_id === viewerId,
     redeemedAt: row.redeemed_at,
   };
 }
