@@ -506,7 +506,7 @@ function OrderRecap({ view }: { view: PaymentView }) {
               className="flex items-center gap-3 py-2.5"
             >
               <div className="relative size-11 shrink-0">
-                <div className="bg-muted size-full overflow-hidden rounded-lg">
+                <div className="bg-muted relative size-full overflow-hidden rounded-lg">
                   {line.image && (
                     <Image
                       src={line.image}
