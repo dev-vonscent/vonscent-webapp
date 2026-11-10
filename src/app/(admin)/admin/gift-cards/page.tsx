@@ -66,8 +66,8 @@ export default async function AdminGiftCardsPage({
             <strong className="text-foreground tabular-nums">
               {formatPrice(stats.outstanding)}
             </strong>{" "}
-            ({stats.counts.active} карт). Энэ нь худалдан авагчдад өгөх
-            ёстой оноо — тайланд «мэдээлэл» болж харагдана.
+            ({stats.counts.active} карт). Энэ нь карт эзэмшигчид кодоо
+            оруулахад олгох оноо — тайланд «мэдээлэл» болж харагдана.
           </>
         }
         actions={

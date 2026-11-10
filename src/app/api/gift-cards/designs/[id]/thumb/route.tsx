@@ -25,6 +25,9 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
   const { id } = await params;
+  if (!/^[a-z0-9-]{2,40}$/u.test(id)) {
+    return new Response("Not found", { status: 404 });
+  }
   const d = await getGiftCardDesign(id);
   if (!d) return new Response("Not found", { status: 404 });
   const mark = d.imageUrl

@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { callRpc } from "@/lib/supabase/rpc";
 import { enforceRateLimit } from "@/lib/rate-limit";
-import { REDEEM_MESSAGES } from "@/features/gift-cards/messages";
+import { REDEEM_MESSAGES, knownErrorCode } from "@/features/gift-cards/messages";
 
 interface RedeemResult {
   ok: boolean;
@@ -60,16 +60,26 @@ export async function POST(req: Request) {
   if (!supabase) {
     return NextResponse.json({ error: "REDEEM_FAILED" }, { status: 503 });
   }
-  const { data, error } = await callRpc<RedeemResult>(
-    supabase,
-    "redeem_gift_card",
-    {
-      p_user: user.id,
-      p_code: parsed.data.code ?? null,
-      p_token: parsed.data.token ?? null,
-    },
-  );
+  const args = {
+    p_user: user.id,
+    p_code: parsed.data.code ?? null,
+    p_token: parsed.data.token ?? null,
+  };
+  let { data, error } = await callRpc<RedeemResult>(supabase, "redeem_gift_card", args);
+  // Хоёр хүн бие биеийнхээ авсан картыг яг зэрэг оруулбал profile-ийн
+  // түгжээ эсрэг дараалалд орж Postgres нэгийг нь цуцалж болно (40P01).
+  // Оноо давхардахгүй (транзакц бүтнээрээ буцсан) — нэг удаа дахин.
+  if (error && /deadlock/iu.test(error.message)) {
+    ({ data, error } = await callRpc<RedeemResult>(supabase, "redeem_gift_card", args));
+  }
   if (error || !data) {
+    const code = knownErrorCode(error?.message, REDEEM_MESSAGES);
+    if (code) {
+      return NextResponse.json(
+        { error: code, message: REDEEM_MESSAGES[code] },
+        { status: code === "FEATURE_DISABLED" ? 404 : 409 },
+      );
+    }
     return NextResponse.json({ error: "REDEEM_FAILED" }, { status: 500 });
   }
   if (!data.ok) {
