@@ -315,10 +315,12 @@ begin
 
   insert into order_items (
     order_id, line_no, line_kind, product_name, brand, ml,
-    unit_price, list_price, qty, line_total, variant_label
+    unit_price, list_price, qty, line_total, variant_label, image_url
   ) values (
     v_order_id, 1, 'gift_card', 'Бэлгийн карт', 'Vonscent', null,
-    v_amount, v_amount, 1, v_amount, v_design.title
+    v_amount, v_amount, 1, v_amount, v_design.title,
+    -- Мөрийн thumbnail: загварын жижиг карт (route нь хувийн өгөгдөлгүй).
+    '/api/gift-cards/designs/' || v_design.id || '/thumb'
   ) returning id into v_item_id;
 
   insert into gift_cards (

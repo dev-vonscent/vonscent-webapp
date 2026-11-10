@@ -58,6 +58,15 @@ async function designsByIds(
   );
 }
 
+/** Нэг загвар (идэвхгүй ч) — захиалгын мөрийн thumbnail. */
+export async function getGiftCardDesign(
+  id: string,
+): Promise<GiftCardDesign | null> {
+  const supabase = createAdminClient();
+  if (!supabase) return null;
+  return (await designsByIds(supabase, [id])).get(id) ?? null;
+}
+
 const FALLBACK_DESIGN: GiftCardDesign = {
   id: "classic",
   title: "Үндсэн",
