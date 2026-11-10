@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.34.5",
   "scripts": {
     "dev": "next dev",
+    "dev:local": "node scripts/dev-local.mjs",
     "build": "next build",
     "analyze": "next build --experimental-analyze && node --import tsx scripts/bundle-report.ts",
     "hero:posters": "node --import tsx scripts/hero-posters.ts",
@@ -34,6 +35,7 @@
     "db:test-extras-dev": "node --env-file=.env.dev --import tsx scripts/test-extras.ts",
     "db:seed-extras-dev": "node --env-file=.env.dev --import tsx scripts/seed-dev-extras.ts",
     "db:dev-signup-dev": "node --env-file=.env.dev --import tsx scripts/dev-signup.ts",
+    "db:dev-signup-local": "node --env-file=.env.dev --env-file=.env.localdb --import tsx scripts/dev-signup.ts",
     "db:test-campaigns-dev": "node --env-file=.env.dev --import tsx scripts/test-campaigns.ts",
     "db:test-perfume-requests-dev": "node --env-file=.env.dev --import tsx scripts/test-perfume-requests.ts",
     "db:test-reports-dev": "node --env-file=.env.dev --import tsx scripts/test-reports.ts",
@@ -42,6 +44,7 @@
     "db:backup-dev": "node --env-file=.env.dev --import tsx scripts/db-backup.ts",
     "db:clone-catalog-dev": "SRC_ENV=.env.prod DST_ENV=.env.dev node --import tsx scripts/db-clone.ts",
     "db:seed": "node --env-file=.env.dev --import tsx scripts/seed.ts",
+    "db:seed-local": "node --env-file=.env.localdb --import tsx scripts/seed.ts",
     "db:seed-sql": "node --env-file=.env.dev --import tsx scripts/seed-sql.ts",
     "db:diff": "node --import tsx scripts/schema-diff.ts",
     "db:snapshot": "node --import tsx scripts/schema-snapshot.ts",

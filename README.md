@@ -193,6 +193,11 @@ pnpm db:local reset          # өгөгдлийг устгаж эхнээс
 `.env.localdb`-г скрипт өөрөө үүсгэнэ. Dev руу зөвхөн салбар merge хийхэд
 бэлэн болсон үед (`pnpm db:migrate-dev`).
 
+Апп-ыг локал сан руу: `pnpm db:seed-local` (демо каталог),
+`pnpm db:dev-signup-local 99001122 1234` (SMS-гүй нэвтрэлт), дараа нь
+`pnpm dev:local`. Туг локал санд тусдаа: `update feature_flags set enabled = true where key = '...'`
+(эсвэл super_admin-аар Админ → Feature flag). `pnpm dev` нь dev сан руу хэвээр.
+
 **5. PR бүр preview дээр эхлээд хэрэгжинэ.**
 
 ```bash

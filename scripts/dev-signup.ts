@@ -50,7 +50,8 @@ if (!url || !key || !pepper) {
 }
 
 /** Зөвхөн dev төсөл. Prod-ыг ЭНД БҮҮ НЭМ. */
-const DEV_PROJECT_REFS = ["zxvbgsnhldntcuswdpqm"];
+// 127.0.0.1:54321 = локал Supabase (pnpm db:local).
+const DEV_PROJECT_REFS = ["zxvbgsnhldntcuswdpqm", "127.0.0.1:54321"];
 if (!DEV_PROJECT_REFS.some((ref) => url.includes(ref))) {
   console.error("✖ Энэ скрипт зөвхөн dev сан дээр ажиллана.");
   process.exit(1);
