@@ -43,7 +43,7 @@ export async function sendOrderCustomerEmail(
   const { data } = await supabase
     .from("orders")
     .select(
-      "order_no, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, user_id, payment_status, created_at, deliver_on, contact_email, pay_token, status",
+      "order_no, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, user_id, payment_status, created_at, deliver_on, contact_email, pay_token, status, order_type",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -63,8 +63,12 @@ export async function sendOrderCustomerEmail(
     contact_email: string | null;
     pay_token: string | null;
     status: string;
+    order_type: string;
   } | null;
   if (!order) return;
+  // Бэлгийн картын захиалга (0179) өөрийн имэйлтэй — хүргэлт, нөөцийн тухай
+  // энэ текстүүд түүнд хамаарахгүй (`features/gift-cards/email.ts`).
+  if (order.order_type === "gift_card") return;
 
   const recipient = await resolveRecipient(supabase, order);
   if (!recipient) return;
@@ -191,7 +195,7 @@ export async function sendOrderCustomerEmail(
  * хаягаас давуу: захиалгаа тэр хаягаар хүлээж байгаа бөгөөд зочны хувьд өөр
  * зам байхгүй. Бүртгэлийн хаяг руу явахдаа л unsubscribe линк хамт явна.
  */
-async function resolveRecipient(
+export async function resolveRecipient(
   supabase: NonNullable<ReturnType<typeof createAdminClient>>,
   order: { user_id: string | null; contact_email: string | null },
 ): Promise<{ email: string; unsubscribeUrl?: string } | null> {

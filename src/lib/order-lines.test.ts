@@ -38,6 +38,19 @@ describe("order-lines", () => {
     expect(orderLineTitle({ ...line, product_name: "Шприц" })).toBe("Шприц");
   });
 
+  it("бэлгийн картын мөр загварын нэрээр (0179)", () => {
+    const line = {
+      line_kind: "gift_card" as const,
+      ml: null,
+      qty: 1,
+      variant_label: "Төрсөн өдөр",
+    };
+    expect(orderLineMeta(line)).toBe("Төрсөн өдөр × 1");
+    expect(orderLineTitle({ ...line, product_name: "Бэлгийн карт" })).toBe(
+      "Бэлгийн карт — Төрсөн өдөр",
+    );
+  });
+
   it("савны шошго", () => {
     expect(vialLabel({ style: "black", ml: 10 })).toBe("Хар сав");
     expect(vialLabel({ style: null, ml: 2 })).toBe("2ml сав");

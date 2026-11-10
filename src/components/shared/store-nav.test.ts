@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { STORE_NAV_PRIMARY, isNavActive, visibleNavItems } from "./store-nav";
+import {
+  STORE_NAV_PRIMARY,
+  STORE_NAV_SECONDARY,
+  isNavActive,
+  visibleNavItems,
+} from "./store-nav";
 
 describe("isNavActive — «Үнэртний шил», «Дагалдах хэрэгсэл»", () => {
   it("өөрийн хуудсан дээр тодорч «Каталог» унтарна", () => {
@@ -32,5 +37,14 @@ describe("visibleNavItems", () => {
       new Set(["extras_shop"]),
     ).map((i) => i.href);
     expect(hrefs.slice(-2)).toEqual(["/bottles", "/accessories"]);
+  });
+});
+
+describe("«Бэлгийн карт» (gift_cards)", () => {
+  it("туг хаалттай үед харагдахгүй, extras_shop-оос хамааралгүй", () => {
+    const off = visibleNavItems(STORE_NAV_SECONDARY, new Set(["extras_shop"]));
+    expect(off.map((i) => i.href)).not.toContain("/gift-cards");
+    const on = visibleNavItems(STORE_NAV_SECONDARY, new Set(["gift_cards"]));
+    expect(on.map((i) => i.href)).toEqual(["/quiz", "/gift-cards"]);
   });
 });

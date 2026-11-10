@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   Palette,
   Ticket,
+  Gift,
   User,
 } from "lucide-react";
 import {
@@ -44,6 +45,7 @@ export function ProfileMenu() {
   const { profile, loading, configured } = useProfileSummary();
   const isStaff = useIsStaff();
   const wheelOn = useFeatureFlag("lucky_wheel");
+  const giftCardsOn = useFeatureFlag("gift_cards");
   // Түвшинг цэс нээгдэхээс өмнө ачаална (зөвхөн нэвтэрсэн үед) — цэсний
   // толгой дахь хүрээ нээгдэх мөчид бэлэн, кэш нь header-тай хамт амьд.
   // Mobile цэс ч ижил query key-г хуваалцана (энэ компонент утсан дээр ч mount).
@@ -148,6 +150,13 @@ export function ProfileMenu() {
                     Шинэ
                   </Badge>
                 )}
+              </Link>
+            </DropdownMenuItem>
+          )}
+          {profile && giftCardsOn && (
+            <DropdownMenuItem asChild>
+              <Link href="/account/gift-cards">
+                <Gift /> Бэлгийн карт
               </Link>
             </DropdownMenuItem>
           )}

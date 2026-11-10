@@ -9,6 +9,7 @@ import {
   XCircle,
   ChevronRight,
   MessageSquarePlus,
+  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -65,7 +66,7 @@ type OrderItemPreview = {
   brand: string;
   ml: number | null;
   qty: number;
-  line_kind: "perfume" | "extra";
+  line_kind: "perfume" | "extra" | "gift_card";
   variant_label: string | null;
   image_url: string | null;
   is_gift: boolean | null;
@@ -412,14 +413,24 @@ function OrderCard({
   /** null — сэтгэгдэл бичих бараагүй; undefined — хуучин урилга (туг хаалттай). */
   reviewState?: OrderReviewState | null;
 }) {
-  const StatusIcon = STATUS_ICON[o.status];
+  // Бэлгийн карт (0179): хүргэлтгүй, сэтгэгдэлгүй — төлөгдмөгц идэвхжинэ.
+  // Карт өөрөө «Бэлгийн карт» хуудсанд (код, хуваалцах) — тийшээ заана.
+  const isGiftCard = o.order_type === "gift_card";
+  // Төлөгдөөгүй карт «Бэлгийн карт»-д харагддаггүй — захиалга руугаа.
+  const href =
+    isGiftCard && o.payment_status === "paid"
+      ? "/account/gift-cards"
+      : `/account/orders/${o.id}`;
+  const StatusIcon = isGiftCard && o.status === "delivered" ? Gift : STATUS_ICON[o.status];
+  const statusLabel =
+    isGiftCard && o.status === "delivered" ? "Идэвхжсэн" : ORDER_STATUS_LABEL[o.status];
   const items = o.order_items ?? [];
   const itemCount = items.reduce((n, i) => n + (i.qty ?? 0), 0);
   const thumbs = items.slice(0, 4);
   const extraCount = items.length - thumbs.length;
   // Нэмэлт барааны `brand` нь ангиллын нэр (0146) — нэрийн өмнө тавихгүй.
   const firstName = items[0]
-    ? isExtraLine(items[0])
+    ? isExtraLine(items[0]) || isGiftCard
       ? items[0].product_name
       : `${items[0].brand} ${items[0].product_name}`
     : "";
@@ -428,6 +439,7 @@ function OrderCard({
   const awaitingPayment = isAwaitingPayment(o);
   // Сэтгэгдлийн урилга (0117) — төлөгдсөн, явж буй/хүргэгдсэн захиалгад.
   const reviewInvite =
+    !isGiftCard &&
     (reviewState === undefined || reviewState?.kind === "invite") &&
     reviewPoints > 0 &&
     o.payment_status === "paid" &&
@@ -440,7 +452,7 @@ function OrderCard({
       key={o.id}
       className="group hover:border-gold-strong hover:shadow-lift overflow-hidden transition-all"
     >
-      <Link href={`/account/orders/${o.id}`} className="block">
+      <Link href={href} className="block">
         <CardContent className="p-5 pb-0">
           {/* Header: order no + date · status */}
           <div className="flex items-start justify-between gap-3">
@@ -454,7 +466,7 @@ function OrderCard({
             <div className="flex shrink-0 flex-col items-end gap-1.5">
               <Badge className={cn("gap-1", ORDER_STATUS_STYLE[o.status])}>
                 <StatusIcon className="size-3.5" />
-                {ORDER_STATUS_LABEL[o.status]}
+                {statusLabel}
               </Badge>
               {/* Төлбөрийн төлөв: «төлсөн pending» ба «төлөөгүй
                     pending» хоёр өмнө нь ялгагдахгүй байв. */}
@@ -523,7 +535,7 @@ function OrderCard({
           )}
 
           {/* Progress stepper (hidden for cancelled orders) */}
-          {o.status !== "cancelled" && (
+          {o.status !== "cancelled" && !isGiftCard && (
             <Stepper status={o.status} paid={o.payment_status !== "unpaid"} />
           )}
         </CardContent>
@@ -534,7 +546,7 @@ function OrderCard({
       <div className="px-5 pb-5">
         <Separator className="my-3" />
 
-        {reviewState && reviewState.kind !== "invite" && (
+        {!isGiftCard && reviewState && reviewState.kind !== "invite" && (
           <ReviewStateNote orderId={o.id} state={reviewState} />
         )}
 
@@ -568,10 +580,10 @@ function OrderCard({
             </Button>
           ) : (
             <Link
-              href={`/account/orders/${o.id}`}
+              href={href}
               className="text-muted-foreground group-hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
             >
-              Дэлгэрэнгүй
+              {isGiftCard && o.payment_status === "paid" ? "Карт харах" : "Дэлгэрэнгүй"}
               <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
           )}

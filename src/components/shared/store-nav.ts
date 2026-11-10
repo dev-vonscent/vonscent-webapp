@@ -70,6 +70,14 @@ export const STORE_NAV_PRIMARY: readonly StoreNavItem[] = [
 
 export const STORE_NAV_SECONDARY: readonly StoreNavItem[] = [
   { href: "/quiz", label: "Үнэрээ олох", hint: "Хэдэн асуултаар тохирохыг ол" },
+  // gift-cards-plan §5.2 — `extras_shop`-оос бие даасан туг.
+  {
+    href: "/gift-cards",
+    label: "Бэлгийн карт",
+    hint: "Хайртай хүндээ үнэрийн сонголт бэлэглэ",
+    flag: "gift_cards",
+    newBadge: { key: "gift-cards" },
+  },
 ];
 
 /** Асаалттай тугтай (эсвэл туггүй) мөрүүд л. */

@@ -54,4 +54,33 @@ describe("renderEmail", () => {
     expect(withLink.html).toContain("unsubscribe?token=t");
     expect(withLink.text).toContain("Мэдэгдэл авахаа болих");
   });
+
+  it("бэлгийн картын блокууд (зураг, код, алхам, QR) html ба текстэд", () => {
+    const doc = renderEmail({
+      ...base,
+      hero: {
+        src: "https://vonscent.mn/api/gift-cards/t/image",
+        alt: "Бэлгийн карт",
+        width: 600,
+        height: 378,
+        href: "https://vonscent.mn/gift/t",
+      },
+      code: { label: "Бэлгийн код", value: "VON-7K4P-Q9XM" },
+      steps: { title: "Хэрхэн ашиглах вэ", items: ["Дарна", "Бүртгүүлнэ"] },
+      qr: { src: "https://vonscent.mn/qr.png", alt: "QR", caption: "Утсаар уншуул" },
+    });
+    expect(doc.html).toContain('src="https://vonscent.mn/api/gift-cards/t/image"');
+    expect(doc.html).toContain("VON-7K4P-Q9XM");
+    expect(doc.html).toContain("Утсаар уншуул");
+    expect(doc.text).toContain("Бэлгийн код: VON-7K4P-Q9XM");
+    expect(doc.text).toContain("2. Бүртгүүлнэ");
+  });
+
+  it("зурагт https-ээс өөр src зөвшөөрөхгүй", () => {
+    const doc = renderEmail({
+      ...base,
+      hero: { src: "data:image/png;base64,AAA", alt: "x", width: 1, height: 1 },
+    });
+    expect(doc.html).not.toContain("data:image");
+  });
 });

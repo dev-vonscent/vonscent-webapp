@@ -25,6 +25,8 @@ interface EventRow {
   /** goods-ийн задаргаа (0146): perfume_goods + extras_goods = goods. */
   perfume_goods: number;
   extras_goods: number;
+  /** 0180 — бэлгийн карт (goods-ийн хэсэг). */
+  gift_card_goods?: number;
 }
 
 /**
@@ -118,6 +120,7 @@ export async function GET(req: Request) {
         "Барааны дүн",
         "Үүнээс үнэртэн",
         "Үүнээс нэмэлт бараа",
+        "Үүнээс бэлгийн карт",
         "Купон",
         "V-point",
         "Цэвэр борлуулалт",
@@ -137,6 +140,7 @@ export async function GET(req: Request) {
         e.goods,
         e.perfume_goods,
         e.extras_goods,
+        e.gift_card_goods ?? 0,
         e.coupon,
         e.points,
         e.net_goods,

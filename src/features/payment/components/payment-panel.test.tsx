@@ -91,6 +91,7 @@ function view(over: Partial<PaymentView> = {}): PaymentView {
     cancelled: false,
     canSaveForLater: true,
     deliverOn: "2026-09-09",
+    giftCard: null,
     invoice: {
       invoiceId: "inv_42",
       amount: 45000,

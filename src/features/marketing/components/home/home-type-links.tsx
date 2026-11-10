@@ -12,8 +12,7 @@ interface TypeLink {
   /**
    * Нэг хэв маягтай тунгалаг дүрс (`public/type-*.webp`, 192px) — монохром
    * 3D, ирмэгийн гэрэлтэй тул цайвар, хар theme аль алинд тод. Хүйсний хар
-   * цагаан фото картуудтай нэг гэр бүл. «Бэлгийн карт» (`type-gift-cards`)
-   * тэр хуудас гарахад нэмэгдэнэ.
+   * цагаан фото картуудтай нэг гэр бүл.
    */
   image: string;
 }
@@ -39,6 +38,7 @@ const COLS: Record<number, string> = {
  */
 export function HomeTypeLinks() {
   const extrasOn = useFeatureFlag("extras_shop");
+  const giftCardsOn = useFeatureFlag("gift_cards");
   const links: TypeLink[] = [
     {
       href: "/collections",
@@ -56,6 +56,15 @@ export function HomeTypeLinks() {
             href: EXTRA_SECTION.accessories.href,
             title: EXTRA_SECTION.accessories.title,
             image: "/type-accessories.webp",
+          },
+        ]
+      : []),
+    ...(giftCardsOn
+      ? [
+          {
+            href: "/gift-cards",
+            title: "Бэлгийн карт",
+            image: "/type-gift-cards.webp",
           },
         ]
       : []),

@@ -13,7 +13,7 @@ import {
  * барина, service role хэрэггүй.
  */
 
-const SELECT = "id, buy_now, items, collections, extras, draft, created_at";
+const SELECT = "id, buy_now, items, collections, extras, draft, gift_card, created_at";
 const NO_STORE = { "Cache-Control": "private, no-store" };
 
 async function sessionUser() {

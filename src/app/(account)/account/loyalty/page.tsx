@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ArrowDownLeft, ArrowUpRight, Lock } from "lucide-react";
+import Link from "next/link";
+import { ArrowDownLeft, ArrowUpRight, Gift, Lock } from "lucide-react";
+import { useFeatureFlag } from "@/components/feature-flags";
 import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/browser";
 import type { LoyaltyLedgerRow } from "@/db/types";
@@ -18,6 +20,7 @@ const REASON_LABEL: Record<string, string> = {
   cancel_pending: "Цуцлагдсан захиалгын оноо",
   review: "Сэтгэгдлийн урамшуулал",
   profile: "Мэдээлэл бөглөсний урамшуулал",
+  gift_card: "Бэлгийн карт",
 };
 
 function formatDate(iso: string) {
@@ -29,6 +32,7 @@ function formatDate(iso: string) {
 }
 
 export default function LoyaltyHistoryPage() {
+  const giftCardsOn = useFeatureFlag("gift_cards");
   const [points, setPoints] = React.useState(0);
   const [pending, setPending] = React.useState(0);
   const [entries, setEntries] = React.useState<LoyaltyLedgerRow[]>([]);
@@ -99,12 +103,26 @@ export default function LoyaltyHistoryPage() {
                 </span>
               </p>
               <p className="text-muted-foreground text-xs">
-                Түгжээтэй — хүргэгдсэний дараа нээгдэнэ
+                {giftCardsOn
+                  ? "Түгжээтэй — захиалга хүргэгдсэний дараа нээгдэнэ (бэлгийн картынх: карт ашиглагдах эсвэл 7 хоногийн дараа)"
+                  : "Түгжээтэй — хүргэгдсэний дараа нээгдэнэ"}
               </p>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Бэлгийн код (0179) — оноо болгох газар нь «Бэлгийн карт» хуудас. */}
+      {giftCardsOn && (
+        <Link
+          href="/account/gift-cards"
+          className="bg-secondary hover:bg-secondary/70 flex items-center gap-3 rounded-xl px-4 py-3 text-sm"
+        >
+          <Gift className="size-5 shrink-0" aria-hidden="true" />
+          <span className="flex-1">Бэлгийн код ирсэн үү? Энд оруулж оноо болгоно.</span>
+          <span aria-hidden="true">→</span>
+        </Link>
+      )}
 
       {/* History */}
       <section className="space-y-3">

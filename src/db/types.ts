@@ -200,9 +200,14 @@ export interface AddressRow {
   created_at: string;
 }
 
+/** Захиалгын төрөл (0179): бэлгийн карт нь хүргэлтгүй, сагсгүй. */
+export type OrderType = "goods" | "gift_card";
+
 export interface OrderRow {
   id: string;
   order_no: string;
+  /** 0179. Бэлгийн картын захиалга төлөгдмөгц `delivered` — буцаалтгүй. */
+  order_type: OrderType;
   user_id: string | null;
   status: OrderStatus;
   payment_method: PaymentMethod;
@@ -380,8 +385,90 @@ export interface ExtraOrderItemRow extends OrderItemBase {
   restocked_qty: number;
 }
 
+/** Бэлгийн картын мөр (0179) — нөөц, сав, ml-гүй, qty = 1. */
+export interface GiftCardOrderItemRow extends OrderItemBase {
+  line_kind: "gift_card";
+  product_id: null;
+  variant_id: null;
+  ml: null;
+  extra_variant_id: null;
+  extra_product_id: null;
+  extra_inventory_mode: null;
+  extra_state: null;
+  restocked_qty: 0;
+}
+
 /** `line_kind`-аар салбарладаг — `ml`-ийг шалгахгүйгээр бүү уншаарай. */
-export type OrderItemRow = PerfumeOrderItemRow | ExtraOrderItemRow;
+export type OrderItemRow =
+  | PerfumeOrderItemRow
+  | ExtraOrderItemRow
+  | GiftCardOrderItemRow;
+
+/** Бэлгийн картын загвар (0179). Зочин ч уншина (is_active). */
+export interface GiftCardDesignRow {
+  id: string;
+  title: string;
+  heading: string;
+  default_message: string | null;
+  /** Storage зам; null бол `bg_color`-оор зурна. */
+  image_path: string | null;
+  bg_color: string;
+  text_color: string;
+  muted_color: string;
+  accent_color: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type GiftCardStatus =
+  | "pending"
+  | "active"
+  | "redeemed"
+  | "expired"
+  | "void";
+
+/**
+ * Бэлгийн карт (0179). `code`, `token` нь нууц — зөвхөн service role
+ * уншина, эрх шалгалт route handler дотор.
+ */
+export interface GiftCardRow {
+  id: string;
+  order_id: string;
+  order_item_id: string;
+  buyer_id: string | null;
+  amount: number;
+  design_id: string;
+  recipient_name: string;
+  message: string | null;
+  from_name: string;
+  /** null = «Өөрөө өгнө». */
+  recipient_email: string | null;
+  send_at: string | null;
+  code: string;
+  token: string;
+  status: GiftCardStatus;
+  issued_at: string | null;
+  /** Кодыг V point болгох эцсийн хугацаа (төлбөрөөс 1 жил). */
+  expires_at: string | null;
+  sent_at: string | null;
+  send_count: number;
+  last_send_error: string | null;
+  redeemed_by: string | null;
+  redeemed_at: string | null;
+  points: number | null;
+  voided_at: string | null;
+  void_reason: string | null;
+  /** Худалдан авагчийн баримт явсан цаг (0180). */
+  buyer_notified_at?: string | null;
+  /** Сануулга нэг удаа (0180): 7 хоног ашиглаагүй, хугацаа 30 / 7 хоног. */
+  reminded_unused_at?: string | null;
+  reminded_expiry_30_at?: string | null;
+  reminded_expiry_7_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface CouponRow {
   id: string;
@@ -479,6 +566,8 @@ export interface LoyaltyLedgerRow {
   available_at: string | null;
   /** false only while an 'earn' row is still locked. */
   released: boolean;
+  /** `reason = 'gift_card'` мөрийн карт (0179). */
+  gift_card_id?: string | null;
   created_at: string;
 }
 
@@ -827,8 +916,21 @@ export interface Database {
         | "lifecycle_cycle"
         | "omitted_gifts"
         | "used_goods_consent_at"
+        | "order_type"
       >;
       order_items: Table<OrderItemRow, "id">;
+      gift_card_designs: Table<
+        GiftCardDesignRow,
+        "sort_order" | "is_active" | "created_at" | "updated_at"
+      >;
+      gift_cards: Table<
+        GiftCardRow,
+        | "id"
+        | "status"
+        | "send_count"
+        | "created_at"
+        | "updated_at"
+      >;
       order_refund_accounts: Table<OrderRefundAccountRow, "created_at">;
       coupons: Table<CouponRow, "id" | "created_at" | "used_up">;
       coupon_redemptions: Table<CouponRedemptionRow, "id" | "created_at">;
