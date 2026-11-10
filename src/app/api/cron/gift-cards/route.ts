@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { env } from "@/lib/env";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import {
+  retryBuyerReceipts,
   retryPendingGiftCardEmails,
   sendGiftCardReminders,
 } from "@/features/gift-cards/email";
@@ -33,7 +34,10 @@ export async function GET(req: Request) {
   if (!(await isFeatureEnabled("gift_cards"))) {
     return NextResponse.json({ ok: true, skipped: "FEATURE_DISABLED" });
   }
+  // Эрэмбэ: хүлээн авагчийн бэлэг → худалдан авагчийн баримт → сануулга
+  // (өдрийн имэйлийн хязгаарт хүрвэл чухал нь түрүүлж явна).
   const sent = await retryPendingGiftCardEmails();
+  const receipts = await retryBuyerReceipts();
   const reminded = await sendGiftCardReminders();
-  return NextResponse.json({ ok: true, sent, reminded });
+  return NextResponse.json({ ok: true, sent, receipts, reminded });
 }

@@ -12,6 +12,7 @@ import { FieldError, fieldErrorProps } from "@/components/ui/form-field";
 import { rateLimitMessage } from "@/lib/rate-limit-client";
 import { toast } from "@/lib/toast";
 import { GENERIC_ERROR } from "../messages";
+import { formatSendAt } from "../email-docs";
 
 /**
  * Картаа имэйлээр илгээх / дахин илгээх / буруу хаягаа засах
@@ -53,6 +54,7 @@ export function GiftCardSendButton({
       const data = (await res.json().catch(() => null)) as {
         ok?: boolean;
         email?: string;
+        scheduled?: string | null;
         message?: string;
       } | null;
       if (!res.ok || !data?.ok) {
@@ -60,7 +62,14 @@ export function GiftCardSendButton({
         return;
       }
       setOpen(false);
-      toast.success(`${data.email} руу илгээлээ.`, "Бэлгийн карт илгээгдлээ");
+      if (data.scheduled) {
+        toast.success(
+          `${formatSendAt(data.scheduled)}-д ${data.email} руу илгээгдэнэ.`,
+          "Хаяг шинэчлэгдлээ",
+        );
+      } else {
+        toast.success(`${data.email} руу илгээлээ.`, "Бэлгийн карт илгээгдлээ");
+      }
       router.refresh();
     } catch {
       setError(GENERIC_ERROR);

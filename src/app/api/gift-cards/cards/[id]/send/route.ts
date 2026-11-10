@@ -13,6 +13,7 @@ const MESSAGES: Record<string, string> = {
   NOT_FOUND: "Карт олдсонгүй.",
   NOT_ACTIVE: "Энэ картыг илгээх боломжгүй (оноо болсон эсвэл хугацаа дууссан).",
   TOO_MANY: "Энэ картыг хэт олон удаа илгээсэн байна. Бидэнтэй холбогдоно уу.",
+  TOO_SOON: "Саяхан илгээсэн байна. 5 минутын дараа дахин оролдоно уу.",
   SEND_FAILED: "Имэйл илгээж чадсангүй. Хэсэг хугацааны дараа дахин оролдоно уу.",
 };
 
@@ -65,5 +66,9 @@ export async function POST(
       { status: result.error === "NOT_FOUND" ? 404 : 409 },
     );
   }
-  return NextResponse.json({ ok: true, email: result.email });
+  return NextResponse.json({
+    ok: true,
+    email: result.email,
+    scheduled: result.scheduled ?? null,
+  });
 }
