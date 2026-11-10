@@ -155,17 +155,22 @@ export function GiftCardDesignEditor({ design }: { design: AdminGiftCardDesign }
             </div>
             <div className="flex items-center gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="d-sort">Эрэмбэ</Label>
+                <Label htmlFor="d-sort">Дараалал</Label>
                 <Input
                   id="d-sort"
                   type="number"
                   inputMode="numeric"
+                  min={1}
                   className="w-24"
+                  aria-describedby="d-sort-hint"
                   value={v.sortOrder}
                   onChange={(e) => set("sortOrder", Number(e.target.value) || 0)}
                 />
+                <p id="d-sort-hint" className="text-muted-foreground text-xs">
+                  1 = хамгийн эхэнд
+                </p>
               </div>
-              <label className="mt-6 flex items-center gap-2 text-sm">
+              <label className="flex items-center gap-2 text-sm">
                 <Checkbox
                   checked={v.isActive}
                   onCheckedChange={(c) => set("isActive", c === true)}
