@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { isFeatureEnabled } from "@/lib/feature-flags";
-import { getStaffUser } from "@/lib/auth/guard";
 import { formatDateTime, formatPrice } from "@/lib/format";
 import { getAdminGiftCard } from "@/features/gift-cards/admin-api";
 import { getGiftCardByToken } from "@/features/gift-cards/server";
@@ -22,16 +21,12 @@ const EVENT_LABEL: Record<string, string> = {
   email_changed: "Имэйл өөрчилсөн",
   redeemed: "Оноо болгосон",
   expired: "Хугацаа дууссан",
-  extended: "Хугацаа сунгасан",
   voided: "Хүчингүй болгосон",
   reminded: "Сануулга",
   buyer_notified: "Худалдан авагчид мэдэгдсэн",
 };
 
 function eventDetail(kind: string, data: Record<string, unknown>): string {
-  if (kind === "extended") {
-    return `${String(data.reason ?? "")} → ${data.to ? formatDateTime(String(data.to)) : ""}`;
-  }
   if (kind === "email_changed") return `${String(data.from ?? "—")} → ${String(data.to ?? "")}`;
   if (kind === "redeemed") return `${Number(data.points ?? 0).toLocaleString("mn-MN")} V point`;
   if (kind === "reminded") {
@@ -52,7 +47,7 @@ export default async function AdminGiftCardPage({
   if (!(await isFeatureEnabled("gift_cards"))) notFound();
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/u.test(id)) notFound();
-  const [card, staff] = await Promise.all([getAdminGiftCard(id), getStaffUser()]);
+  const card = await getAdminGiftCard(id);
   if (!card) notFound();
   const face = await getGiftCardByToken(card.token, null);
 
@@ -90,7 +85,6 @@ export default async function AdminGiftCardPage({
             cardId={card.id}
             status={card.status}
             recipientEmail={card.recipientEmail}
-            canExtend={staff?.role === "super_admin"}
           />
         }
       />

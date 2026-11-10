@@ -14,7 +14,7 @@
 -- Клиентийн шийдвэр (plan §12): нэвтрэлт заавал, сагсгүй шууд худалдан
 -- авалт, купон/оноо хэрэглэхгүй, буцаалтгүй, худалдан авагчийн оноо карт
 -- ашиглагдах эсвэл 7 хоногийн дараа нээгдэнэ, зэрэглэлийн зарцуулалтад
--- орохгүй, код 1 жил (admin сунгана), оноо болсны дараа хугацаагүй.
+-- орохгүй, код 1 жил (сунгахгүй), оноо болсны дараа хугацаагүй.
 
 insert into feature_flags (key) values ('gift_cards') on conflict do nothing;
 
@@ -188,13 +188,13 @@ create index if not exists gift_cards_unsent_idx on gift_cards (send_at)
 alter table gift_cards enable row level security;
 revoke all on table gift_cards from anon, authenticated;
 
--- Админ үйлдлийн түүх (дахин илгээх, имэйл засах, хугацаа сунгах).
+-- Админ үйлдлийн түүх (дахин илгээх, имэйл засах).
 create table if not exists gift_card_events (
   id bigint generated always as identity primary key,
   gift_card_id uuid not null references gift_cards(id) on delete cascade,
   kind text not null check (kind in (
     'issued', 'sent', 'send_failed', 'resent', 'email_changed',
-    'redeemed', 'expired', 'extended', 'voided')),
+    'redeemed', 'expired', 'voided')),
   actor uuid references profiles(id) on delete set null,
   data jsonb not null default '{}',
   created_at timestamptz not null default now()
@@ -804,7 +804,7 @@ end $$;
 revoke all on function orders_user_notify() from public, anon, authenticated;
 
 ------------------------------------------------------------------------------
--- 10. Хугацаа: дуусгах (cron), админ сунгах (§4.7, §12-Q8)
+-- 10. Хугацаа: дуусгах (cron) (§4.7, §12-Q8 — сунгахгүй, сануулга л)
 --
 -- Хугацаа = кодыг V point болгох хугацаа (төлбөрөөс 1 жил). Оноо болсны
 -- дараа хугацаагүй.
@@ -831,46 +831,6 @@ end $$;
 
 revoke all on function expire_gift_cards() from public, anon, authenticated;
 grant execute on function expire_gift_cards() to service_role;
-
-create or replace function admin_extend_gift_card(
-  p_card uuid, p_until timestamptz, p_by uuid, p_reason text
-) returns jsonb language plpgsql security definer set search_path = public as $$
-declare
-  v_card gift_cards;
-begin
-  if not feature_enabled('gift_cards') then
-    raise exception 'FEATURE_DISABLED' using errcode = 'check_violation';
-  end if;
-  if coalesce(length(btrim(p_reason)), 0) < 3 then
-    raise exception 'REASON_REQUIRED' using errcode = 'check_violation';
-  end if;
-  if p_until is null or p_until <= now() or p_until > now() + interval '2 years' then
-    raise exception 'GIFT_CARD_EXTEND_DATE' using errcode = 'check_violation';
-  end if;
-
-  select * into v_card from gift_cards where id = p_card for update;
-  if not found then
-    raise exception 'NOT_FOUND' using errcode = 'check_violation';
-  end if;
-  if v_card.status not in ('active', 'expired') then
-    raise exception 'GIFT_CARD_NOT_EXTENDABLE:%', v_card.status
-      using errcode = 'check_violation';
-  end if;
-
-  update gift_cards
-     set status = 'active', expires_at = p_until, updated_at = now()
-   where id = p_card;
-  insert into gift_card_events (gift_card_id, kind, actor, data)
-    values (p_card, 'extended', p_by, jsonb_build_object(
-      'from', v_card.expires_at, 'to', p_until,
-      'reason', btrim(p_reason), 'was', v_card.status));
-  return jsonb_build_object('ok', true, 'expires_at', p_until);
-end $$;
-
-revoke all on function admin_extend_gift_card(uuid, timestamptz, uuid, text)
-  from public, anon, authenticated;
-grant execute on function admin_extend_gift_card(uuid, timestamptz, uuid, text)
-  to service_role;
 
 -- 01:00 UTC = 09:00 Улаанбаатар.
 do $$

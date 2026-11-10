@@ -260,38 +260,16 @@ async function main() {
       check("void → VOID", r.reason === "VOID", r);
     });
 
-    await scenario(c, "Хугацаа дуусах, админ сунгах", async () => {
+    await scenario(c, "Хугацаа дуусах", async () => {
       await setFlag(c, true);
       const placed = await place(c, buyer, { amount: 300000 });
       await c.query("select mark_order_paid($1, null, 'mock')", [placed.order_id]);
-      let k = await card(c, placed.order_id);
+      const k = await card(c, placed.order_id);
       await c.query("update gift_cards set expires_at = now() - interval '1 minute' where id = $1", [k.id]);
       const { rows } = await c.query<{ n: number }>("select expire_gift_cards() as n");
       check("cron дуусгасан", rows[0].n >= 1);
       const r = await redeem(c, recipient, k.code);
       check("EXPIRED", r.reason === "EXPIRED", r);
-
-      const noReason = await errorOf(
-        c,
-        "select admin_extend_gift_card($1, now() + interval '30 days', null, '')",
-        [k.id],
-      );
-      check("шалтгаангүй → REASON_REQUIRED", noReason?.includes("REASON_REQUIRED") ?? false, noReason);
-      await c.query(
-        "select admin_extend_gift_card($1, now() + interval '30 days', null, 'Клиентийн хүсэлт')",
-        [k.id],
-      );
-      k = await card(c, placed.order_id);
-      check("сунгасан → active", k.status === "active", k);
-      const ok = await redeem(c, recipient, k.code);
-      check("сунгасны дараа оноо болсон", ok.ok === true && ok.points === 300000, ok);
-      const again = await errorOf(
-        c,
-        "select admin_extend_gift_card($1, now() + interval '30 days', null, 'Дахин')",
-        [k.id],
-      );
-      check("ашигласан картыг сунгахгүй",
-        again?.includes("GIFT_CARD_NOT_EXTENDABLE") ?? false, again);
     });
   } finally {
     await c.end();

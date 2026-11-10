@@ -33,7 +33,7 @@ function isStatus(v: string | undefined): v is GiftCardStatus {
 
 /**
  * Админ → Маркетинг → Бэлгийн карт (gift-cards-plan §5.1). Туг хаалттай бол
- * 404. Жагсаалт, хайлт; дэлгэрэнгүй хуудсанд дахин илгээх, хугацаа сунгах.
+ * 404. Жагсаалт, хайлт; дэлгэрэнгүй хуудсанд дахин илгээх.
  */
 export default async function AdminGiftCardsPage({
   searchParams,

@@ -109,7 +109,8 @@ export default async function GiftPage({
           <div className="bg-secondary rounded-2xl p-6 text-center">
             <p className="font-semibold">Энэ бэлгийн картын хугацаа дууссан.</p>
             <p className="text-muted-foreground mt-1 text-sm">
-              Бидэнтэй холбогдвол шалгаж, боломжтой бол сунгаж өгье.
+              Бэлгийн картыг худалдан авснаас хойш 1 жилийн дотор оноо болгох
+              боломжтой байсан. Асуух зүйл байвал бидэнтэй холбогдоорой.
             </p>
             <Button asChild variant="secondary" className="mt-4">
               <Link href="/contact">Холбоо барих</Link>

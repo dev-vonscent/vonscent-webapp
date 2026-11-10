@@ -23,7 +23,7 @@ alter table gift_card_events drop constraint if exists gift_card_events_kind_che
 alter table gift_card_events add constraint gift_card_events_kind_check
   check (kind in (
     'issued', 'sent', 'send_failed', 'resent', 'email_changed',
-    'redeemed', 'expired', 'extended', 'voided',
+    'redeemed', 'expired', 'voided',
     'reminded', 'buyer_notified'));
 
 create index if not exists gift_cards_reminder_idx on gift_cards (sent_at)

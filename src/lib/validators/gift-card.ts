@@ -130,18 +130,6 @@ export const giftCardResendSchema = z.object({
   email: z.string().trim().email("Имэйл хаяг буруу байна.").max(254),
 });
 
-/** Хугацаа сунгах (§12-Q8): шинэ эцсийн өдөр (УБ, тэр өдрийн төгсгөл) + шалтгаан. */
-export const giftCardExtendSchema = z.object({
-  until: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/u, "Шинэ хугацаагаа сонгоно уу."),
-  reason: z
-    .string()
-    .trim()
-    .min(3, "Шалтгаанаа бичнэ үү.")
-    .max(200, "Шалтгаан 200 тэмдэгтээс хэтрэхгүй."),
-});
-
 const hex = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/u, "Өнгийг #RRGGBB хэлбэрээр бичнэ үү.");
