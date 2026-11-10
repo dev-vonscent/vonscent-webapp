@@ -153,13 +153,21 @@ export async function getMyGiftCards(userId: string): Promise<MyGiftCard[]> {
     .filter((r) => r.status !== "void")
     .map((r) => {
       const role = r.buyer_id === userId ? "bought" : "received";
+      // Хугацаа өнгөрсөн ч өдрийн cron хараахан тэмдэглээгүй — хүлээн
+      // авагчийн хуудастай (`getGiftCardByToken`) ижил үнэнийг харуулна.
+      const status: GiftCardRow["status"] =
+        r.status === "active" &&
+        r.expires_at !== null &&
+        new Date(r.expires_at).getTime() <= Date.now()
+          ? "expired"
+          : r.status;
       // Код/холбоосыг зөвхөн худалдан авагчид, ашиглагдаагүй үед — оноо
       // болсон кодыг дахин хуваалцах шалтгаан байхгүй.
-      const shareable = role === "bought" && r.status === "active";
+      const shareable = role === "bought" && status === "active";
       return {
         id: r.id,
         role,
-        status: r.status,
+        status,
         amount: r.amount,
         recipientName: r.recipient_name,
         message: r.message ?? "",

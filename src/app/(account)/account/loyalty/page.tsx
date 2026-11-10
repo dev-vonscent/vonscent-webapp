@@ -103,7 +103,9 @@ export default function LoyaltyHistoryPage() {
                 </span>
               </p>
               <p className="text-muted-foreground text-xs">
-                Түгжээтэй — хүргэгдсэний дараа нээгдэнэ
+                {giftCardsOn
+                  ? "Түгжээтэй — захиалга хүргэгдсэний дараа нээгдэнэ (бэлгийн картынх: карт ашиглагдах эсвэл 7 хоногийн дараа)"
+                  : "Түгжээтэй — хүргэгдсэний дараа нээгдэнэ"}
               </p>
             </div>
           )}
