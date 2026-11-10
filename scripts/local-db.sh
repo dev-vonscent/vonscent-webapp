@@ -20,6 +20,7 @@ if [ ! -f "$ROOT/.env.localdb" ]; then
   printf '%s\n' '# Локал Supabase (pnpm db:local start)' \
     'DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres' \
     'CRON_SECRET=local-cron-secret' \
+    'EMAIL_MAILPIT_URL=http://127.0.0.1:54324' \
     > "$ROOT/.env.localdb"
 fi
 cd "$WORK"

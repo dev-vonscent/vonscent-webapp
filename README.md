@@ -197,6 +197,8 @@ pnpm db:local reset          # өгөгдлийг устгаж эхнээс
 `pnpm db:dev-signup-local 99001122 1234` (SMS-гүй нэвтрэлт), дараа нь
 `pnpm dev:local`. Туг локал санд тусдаа: `update feature_flags set enabled = true where key = '...'`
 (эсвэл super_admin-аар Админ → Feature flag). `pnpm dev` нь dev сан руу хэвээр.
+Локал дээр имэйл Resend рүү биш Mailpit рүү очно (`EMAIL_MAILPIT_URL`) —
+http://127.0.0.1:54324-д нээж харна, гадагш юу ч илгээгдэхгүй.
 
 **5. PR бүр preview дээр эхлээд хэрэгжинэ.**
 

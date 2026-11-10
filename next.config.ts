@@ -27,15 +27,21 @@ const remotePatterns: NonNullable<
   // NEXT_PUBLIC_SUPABASE_URL байдаг тул fallback шаардлагагүй.
 ];
 
+/** `pnpm dev:local` — Storage нь 127.0.0.1 дээр (Next 16 local IP-г хаадаг). */
+let localSupabase = false;
+
 if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
   try {
     const url = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL);
     // Supabase public objects: <project>.supabase.co/storage/v1/object/public/...
     remotePatterns.push({
-      protocol: "https",
+      // Локал Supabase (`pnpm dev:local`) нь http://127.0.0.1:54321.
+      protocol: url.protocol === "http:" ? "http" : "https",
       hostname: url.hostname,
+      ...(url.port ? { port: url.port } : {}),
       pathname: "/storage/v1/object/public/**",
     });
+    localSupabase = ["127.0.0.1", "localhost"].includes(url.hostname);
   } catch {
     // ignore malformed NEXT_PUBLIC_SUPABASE_URL
   }
@@ -133,6 +139,8 @@ const nextConfig: NextConfig = {
      * боловсруулдаг тул энэ замыг e2e-д шалгах шаардлагагүй.
      */
     unoptimized: process.env.E2E_UNOPTIMIZED_IMAGES === "1",
+    // Зөвхөн локал Supabase-тай үед — dev/prod-ийн хост нь *.supabase.co.
+    dangerouslyAllowLocalIP: localSupabase,
     /**
      * Vercel bills a transformation on every cache MISS/STALE, so the knobs
      * below all aim at fewer variants and longer-lived cache entries.
