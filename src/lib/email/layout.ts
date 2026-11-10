@@ -39,6 +39,17 @@ export type EmailDoc = {
   footerNotes?: string[];
   /** Байвал footer-т «мэдэгдэл авахаа болих» линк нэмнэ */
   unsubscribeUrl?: string;
+  /**
+   * Гарчгийн дээрх том зураг (бэлгийн карт). Hosted https URL — data URI-г
+   * Gmail/Outlook хаадаг. `href` өгвөл зураг өөрөө линк.
+   */
+  hero?: { src: string; alt: string; width: number; height: number; href?: string };
+  /** CTA-ийн доорх том, хуулахад хялбар код (бэлгийн код). */
+  code?: { label: string; value: string };
+  /** Дугаартай алхмууд — «Хэрхэн ашиглах вэ». */
+  steps?: { title: string; items: string[] };
+  /** Жижиг зураг + тайлбар (QR) — имэйлийг компьютерээс нээсэн үед утсаар. */
+  qr?: { src: string; alt: string; caption: string };
 };
 
 const BRAND = "vonscent";
@@ -137,6 +148,62 @@ function renderHtml(doc: EmailDoc): string {
       `${escapeHtml(doc.cta.label)}</a></td></tr></table>`
     : "";
 
+  const hero = doc.hero
+    ? (() => {
+        const img =
+          `<img src="${safeHref(doc.hero.src)}" alt="${escapeHtml(doc.hero.alt)}" ` +
+          `width="${doc.hero.width}" height="${doc.hero.height}" ` +
+          `style="display:block;width:100%;max-width:${doc.hero.width}px;height:auto;` +
+          `border:0;border-radius:10px">`;
+        return (
+          `<div style="margin:0 0 22px">` +
+          (doc.hero.href
+            ? `<a href="${safeHref(doc.hero.href)}" style="text-decoration:none">${img}</a>`
+            : img) +
+          `</div>`
+        );
+      })()
+    : "";
+
+  const code = doc.code
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" ` +
+      `style="border-collapse:collapse;margin:22px 0 4px">` +
+      `<tr><td align="center" style="border:1px dashed ${C.rule};border-radius:10px;padding:16px">` +
+      `<p style="margin:0 0 6px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;` +
+      `color:${C.muted}">${escapeHtml(doc.code.label)}</p>` +
+      `<p style="margin:0;font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:24px;` +
+      `font-weight:600;letter-spacing:0.12em;color:${C.text}">${escapeHtml(doc.code.value)}</p>` +
+      `</td></tr></table>`
+    : "";
+
+  const steps = doc.steps?.items.length
+    ? `<p style="margin:26px 0 10px;font-size:15px;font-weight:600;color:${C.text}">` +
+      `${escapeHtml(doc.steps.title)}</p>` +
+      `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" ` +
+      `style="border-collapse:collapse">` +
+      doc.steps.items
+        .map(
+          (step, i) =>
+            `<tr><td valign="top" style="padding:6px 12px 6px 0;width:28px">` +
+            `<div style="width:24px;height:24px;line-height:24px;border-radius:12px;` +
+            `background:${C.page};text-align:center;font-size:13px;font-weight:600;` +
+            `color:${C.text}">${i + 1}</div></td>` +
+            `<td style="padding:6px 0;font-size:14px;line-height:1.6;color:${C.text}">` +
+            `${escapeHtml(step)}</td></tr>`,
+        )
+        .join("") +
+      `</table>`
+    : "";
+
+  const qr = doc.qr
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:22px 0 4px">` +
+      `<tr><td style="padding-right:14px">` +
+      `<img src="${safeHref(doc.qr.src)}" alt="${escapeHtml(doc.qr.alt)}" width="96" ` +
+      `height="96" style="display:block;border:0"></td>` +
+      `<td style="font-size:13px;line-height:1.6;color:${C.muted}">` +
+      `${escapeHtml(doc.qr.caption)}</td></tr></table>`
+    : "";
+
   const footerLines = [...(doc.footerNotes ?? [])].map(
     (line) =>
       `<p style="margin:0 0 6px;font-size:12px;line-height:1.6;color:${C.muted}">` +
@@ -166,6 +233,7 @@ function renderHtml(doc: EmailDoc): string {
     `<tr><td style="padding:28px 28px 8px">` +
     `<p style="margin:0 0 20px;font-size:18px;font-weight:600;letter-spacing:0.08em;` +
     `text-transform:uppercase;color:${C.text}">${BRAND}</p>` +
+    hero +
     `<h1 style="margin:0 0 16px;font-size:20px;line-height:1.35;font-weight:600;` +
     `color:${C.text}">${escapeHtml(doc.heading)}</h1>` +
     doc.paragraphs.map(p).join("") +
@@ -173,6 +241,9 @@ function renderHtml(doc: EmailDoc): string {
     lines +
     note +
     cta +
+    code +
+    steps +
+    qr +
     `</td></tr>` +
     `<tr><td style="padding:20px 28px 26px">` +
     `<div style="height:1px;background:${C.rule};margin-bottom:16px"></div>` +
@@ -198,6 +269,12 @@ function renderText(doc: EmailDoc): string {
   }
   if (doc.note) parts.push(doc.note, "");
   if (doc.cta) parts.push(`${doc.cta.label}: ${doc.cta.href}`, "");
+  if (doc.code) parts.push(`${doc.code.label}: ${doc.code.value}`, "");
+  if (doc.steps?.items.length) {
+    parts.push(doc.steps.title);
+    doc.steps.items.forEach((step, i) => parts.push(`${i + 1}. ${step}`));
+    parts.push("");
+  }
 
   parts.push("—");
   parts.push(...(doc.footerNotes ?? []));

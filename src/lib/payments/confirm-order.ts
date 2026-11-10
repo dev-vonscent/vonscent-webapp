@@ -9,6 +9,7 @@ import { callRpc } from "@/lib/supabase/rpc";
 import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
 import { collectionIdsOf, groupBundleLines } from "@/lib/orders/bundle-lines";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
+import { deliverGiftCardOrder } from "@/features/gift-cards/email";
 import { formatMl, formatPrice } from "@/lib/format";
 import { isExtraLine, orderLineMeta, orderLineTitle } from "@/lib/order-lines";
 import { deliveryDayOf, formatDeliveryDay } from "@/lib/time";
@@ -147,6 +148,10 @@ async function commit(
   // өөрөө дуудна. Тэр нь `mark_order_paid`-ийн UPDATE-ийн дотор явдаг тул
   // энэ мөрөнд хүрэхэд купон аль хэдийн бэлэн — имэйл түүнийг уншина.
   await sendOrderCustomerEmail(order.id, "paid");
+  // Бэлгийн карт (0179): худалдан авагчийн баримт + хүлээн авагч руу код.
+  // Энгийн захиалгад карт байхгүй тул юу ч хийхгүй. `sent_at`-ийн эзэмшил
+  // нь webhook/reconcile давхар дуудагдахад нэг л имэйл баталгаажуулна.
+  await deliverGiftCardOrder(order.id);
   // Meta CAPI Purchase (`meta_capi` туг, 0171) — browser pixel алдсан
   // худалдан авалтыг нөхнө. Best-effort, дотроо туг/env/mock-ийг шалгана.
   await reportPurchase(supabase, order.id, source);

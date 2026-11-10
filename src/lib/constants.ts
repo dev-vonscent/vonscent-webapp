@@ -733,6 +733,8 @@ export const RATE_LIMITS = {
   giftCardRedeem: { limit: 5, windowSec: 10 * 60 },
   /** Мөн IP-ээр — олон бүртгэлээр ээлжлэн таахаас. */
   giftCardRedeemIp: { limit: 20, windowSec: 60 * 60 },
+  /** Бэлгийн картыг имэйлээр (дахин) илгээх — хүний хаяг руу спам болохоос. */
+  giftCardSend: { limit: 5, windowSec: 60 * 60 },
 } as const;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

@@ -13,6 +13,7 @@ import { getMyGiftCards } from "@/features/gift-cards/server";
 import { GiftCardFace } from "@/features/gift-cards/components/gift-card-face";
 import { GiftCardCodeForm } from "@/features/gift-cards/components/gift-card-redeem";
 import { GiftCardShare } from "@/features/gift-cards/components/gift-card-share";
+import { GiftCardSendButton } from "@/features/gift-cards/components/gift-card-send";
 import {
   GIFT_STATUS_LABEL,
   formatGiftAmount,
@@ -51,11 +52,18 @@ function BoughtCard({ card }: { card: MyGiftCard }) {
             : ""}
         </p>
         {card.code && card.token && (
-          <GiftCardShare
-            code={card.code}
-            url={giftUrl(card.token, env.siteUrl)}
-            recipientName={card.recipientName}
-          />
+          <>
+            <GiftCardShare
+              code={card.code}
+              url={giftUrl(card.token, env.siteUrl)}
+              recipientName={card.recipientName}
+            />
+            <GiftCardSendButton
+              cardId={card.id}
+              currentEmail={card.recipientEmail}
+              sent={Boolean(card.sentAt)}
+            />
+          </>
         )}
       </div>
     </li>
