@@ -178,6 +178,21 @@ prod-д ажилласан, шинэ санд ажиллахгүй зөрүү ү
 дугаар авсан бол дарааллыг хадгалахаар `a`/`b` үсэг залгаад `RENAMED`-д
 бүртгэнэ.
 
+**5. Шинэ migration-ийг эхлээд локал Supabase дээр турш.**
+Dev сан хуваалцсан тул merge хийгээгүй migration-ийг тэнд ажиллуулбал өөр
+инженерийн ажилтай зөрчилдөнө. Docker + Supabase CLI
+(`brew install supabase/tap/supabase`)-тай:
+
+```bash
+pnpm db:local start          # 127.0.0.1:54322, Studio :54323
+pnpm db:migrate-local        # бүх migration хоосон сан дээр
+pnpm db:test-gift-cards-local  # жишээ: SQL integration тест
+pnpm db:local reset          # өгөгдлийг устгаж эхнээс
+```
+
+`.env.localdb`-г скрипт өөрөө үүсгэнэ. Dev руу зөвхөн салбар merge хийхэд
+бэлэн болсон үед (`pnpm db:migrate-dev`).
+
 **5. PR бүр preview дээр эхлээд хэрэгжинэ.**
 
 ```bash
