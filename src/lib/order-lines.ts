@@ -7,11 +7,12 @@ import { formatMl } from "@/lib/format";
  *
  *   perfume → `10ml × 2`
  *   extra   → `Хар × 2`  (хувилбаргүй бол `× 2`)
+ *   gift_card → `Төрсөн өдөр × 1` (variant_label = загварын нэр, 0179)
  *
  * Нэр/брэнд нь дуудагч талдаа — газар бүр өөр байрлалтай.
  */
 export interface OrderLineLike {
-  line_kind?: "perfume" | "extra" | null;
+  line_kind?: "perfume" | "extra" | "gift_card" | null;
   ml: number | null;
   qty: number;
   variant_label?: string | null;
@@ -21,9 +22,14 @@ export function isExtraLine(line: Pick<OrderLineLike, "line_kind">): boolean {
   return line.line_kind === "extra";
 }
 
+/** ml-гүй, хувилбарын нэрээр харагддаг мөр (нэмэлт бараа, бэлгийн карт). */
+function isLabelLine(line: Pick<OrderLineLike, "line_kind">): boolean {
+  return line.line_kind === "extra" || line.line_kind === "gift_card";
+}
+
 /** Хэмжээ эсвэл хувилбар — тоогүй: `10ml`, `Хар`, эсвэл хоосон. */
 export function orderLineVariant(line: OrderLineLike): string {
-  if (isExtraLine(line)) return line.variant_label?.trim() ?? "";
+  if (isLabelLine(line)) return line.variant_label?.trim() ?? "";
   return line.ml != null ? formatMl(line.ml) : "";
 }
 
@@ -39,7 +45,7 @@ export function orderLineTitle(
 ): string {
   const variant = orderLineVariant(line);
   if (!variant) return line.product_name;
-  return isExtraLine(line)
+  return isLabelLine(line)
     ? `${line.product_name} — ${variant}`
     : `${line.product_name} · ${variant}`;
 }

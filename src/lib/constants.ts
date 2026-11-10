@@ -820,7 +820,26 @@ export const FEATURE_FLAGS = {
     description:
       "Төлбөр баталгаажих мөчид (QPay болон гараар баталсан) Purchase event-ийг серверээс Meta руу илгээнэ — browser pixel-ийн алдагдсан худалдан авалтыг нөхнө (lib/meta/capi.ts). Захиалга үүсэхэд _fbp/_fbc cookie, IP, user agent-ийг захиалга дээр хадгална (0171). Утас, имэйлийг SHA-256 hash хийж явуулна. META_CAPI_ACCESS_TOKEN env шаардлагатай.",
   },
+  gift_cards: {
+    label: "Бэлгийн карт",
+    description:
+      "100k/200k/300k/500k₮-ийн бэлгийн карт: /gift-cards (зочин харна, худалдан авахад нэвтрэлт), /gift/[token] хүлээн авагчийн хуудас, /account/gift-cards, кодыг V point болгох, имэйлээр илгээх; place_gift_card_order, mark_order_paid-ийн картын салаа, redeem_gift_card, хугацаа дуусгах cron (0179). Админ → Бэлгийн карт мөн тугаар хаагдана (gift-cards-plan).",
+  },
 } as const satisfies Record<string, FeatureFlagMeta>;
+
+/** Бэлгийн картын дүн, ₮ (0179 check-тэй ижил). */
+export const GIFT_CARD_AMOUNTS = [100000, 200000, 300000, 500000] as const;
+export type GiftCardAmount = (typeof GIFT_CARD_AMOUNTS)[number];
+
+/** Талбарын урт (0179 check-тэй ижил). */
+export const GIFT_CARD_LIMITS = {
+  recipientName: 40,
+  fromName: 40,
+  message: 120,
+} as const;
+
+/** Худалдан авагчийн оноо карт ашиглагдаагүй бол хэдэн хоногийн дараа нээгдэх (0179). */
+export const GIFT_CARD_BUYER_POINTS_LOCK_DAYS = 7;
 
 /**
  * Meta Graph API-ийн хувилбар (Conversions API). v26.0 нь 2026-07-29-нд

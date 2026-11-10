@@ -18,6 +18,7 @@ const REASON_LABEL: Record<string, string> = {
   cancel_pending: "Цуцлагдсан захиалгын оноо",
   review: "Сэтгэгдлийн урамшуулал",
   profile: "Мэдээлэл бөглөсний урамшуулал",
+  gift_card: "Бэлгийн карт",
 };
 
 function formatDate(iso: string) {

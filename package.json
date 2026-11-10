@@ -27,6 +27,7 @@
     "db:migrate-dev": "node --env-file=.env.dev --import tsx scripts/migrate.ts",
     "db:test-coupons-dev": "node --env-file=.env.dev --import tsx scripts/test-coupons.ts",
     "db:test-orders-dev": "node --env-file=.env.dev --import tsx scripts/test-orders.ts",
+    "db:test-gift-cards-dev": "node --env-file=.env.dev --import tsx scripts/test-gift-cards.ts",
     "db:test-extras-dev": "node --env-file=.env.dev --import tsx scripts/test-extras.ts",
     "db:seed-extras-dev": "node --env-file=.env.dev --import tsx scripts/seed-dev-extras.ts",
     "db:dev-signup-dev": "node --env-file=.env.dev --import tsx scripts/dev-signup.ts",
