@@ -123,3 +123,41 @@ export const giftCardRedeemSchema = z
   });
 
 export type GiftCardRedeemInput = z.infer<typeof giftCardRedeemSchema>;
+
+// ── Админ (gift-cards-plan §5.1) ──────────────────────────────────────────
+
+export const giftCardResendSchema = z.object({
+  email: z.string().trim().email("Имэйл хаяг буруу байна.").max(254),
+});
+
+/** Хугацаа сунгах (§12-Q8): шинэ эцсийн өдөр (УБ, тэр өдрийн төгсгөл) + шалтгаан. */
+export const giftCardExtendSchema = z.object({
+  until: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/u, "Шинэ хугацаагаа сонгоно уу."),
+  reason: z
+    .string()
+    .trim()
+    .min(3, "Шалтгаанаа бичнэ үү.")
+    .max(200, "Шалтгаан 200 тэмдэгтээс хэтрэхгүй."),
+});
+
+const hex = z
+  .string()
+  .regex(/^#[0-9a-fA-F]{6}$/u, "Өнгийг #RRGGBB хэлбэрээр бичнэ үү.");
+
+export const giftCardDesignSchema = z.object({
+  title: z.string().trim().min(1, "Нэрээ бичнэ үү.").max(40),
+  heading: z.string().trim().min(1, "Гарчгаа бичнэ үү.").max(60),
+  defaultMessage: z.string().trim().max(120),
+  /** Storage-ийн public URL эсвэл хоосон (зураггүй — цул өнгө). */
+  imageUrl: z.string().trim().url().nullable(),
+  bgColor: hex,
+  textColor: hex,
+  mutedColor: hex,
+  accentColor: hex.nullable(),
+  sortOrder: z.number().int().min(0).max(10000),
+  isActive: z.boolean(),
+});
+
+export type GiftCardDesignInput = z.infer<typeof giftCardDesignSchema>;

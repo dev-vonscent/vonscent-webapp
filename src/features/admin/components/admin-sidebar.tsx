@@ -15,6 +15,7 @@ import {
   FileText,
   Flag,
   FlaskConical,
+  CreditCard,
   Gift,
   Globe,
   Layers,
@@ -168,6 +169,13 @@ const GROUPS: NavGroup[] = [
         flag: "review_moderation",
       },
       { href: "/admin/gifts", label: "Бэлгийн үнэрүүд", icon: Gift },
+      // Бэлгийн карт (0179) — туг хаалттай бол холбоос, хуудас хоёулаа алга.
+      {
+        href: "/admin/gift-cards",
+        label: "Бэлгийн карт",
+        icon: CreditCard,
+        flag: "gift_cards",
+      },
       { href: "/admin/lucky-wheel", label: "Азын хүрд", icon: Disc3 },
       {
         href: "/admin/campaigns",
