@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarClock, Info, Mail, UserRound } from "lucide-react";
+import { CalendarClock, Check, Info, Mail, UserRound } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingButton } from "@/components/shared/loading-button";
@@ -261,7 +261,7 @@ export function GiftCardPurchase({ designs }: { designs: GiftCardDesign[] }) {
 
           <fieldset className="min-w-0 space-y-3">
             <StepLegend n={1}>Загвар сонгох</StepLegend>
-            <div className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 md:scroll-px-0 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0">
+            <div className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 py-1 md:scroll-px-0 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0">
               {designs.map((d) => {
                 const selected = d.id === values.designId;
                 return (
@@ -269,18 +269,21 @@ export function GiftCardPurchase({ designs }: { designs: GiftCardDesign[] }) {
                     key={d.id}
                     type="button"
                     aria-pressed={selected}
-                    onClick={() => setValue("designId", d.id)}
+                    onClick={(e) => {
+                      setValue("designId", d.id);
+                      // Утсан дээрх хэвтээ эгнээнд хагас харагдаж байсан бол.
+                      e.currentTarget.scrollIntoView({
+                        behavior: "smooth",
+                        block: "nearest",
+                        inline: "nearest",
+                      });
+                    }}
                     className="group w-28 shrink-0 snap-start text-left outline-none md:w-auto"
                   >
-                    <span
-                      className={cn(
-                        "block rounded-xl p-0.5 ring-2 group-focus-visible:ring-ring",
-                        selected ? "ring-cta" : "ring-transparent group-hover:ring-border",
-                      )}
-                    >
+                    <span className="relative block">
                       <GiftCardFace
                         design={d}
-                        className="rounded-lg shadow-none"
+                        className="rounded-lg shadow-none group-focus-visible:ring-2 group-focus-visible:ring-ring"
                         text={{
                           amount: values.amount,
                           recipientName: "",
@@ -288,16 +291,24 @@ export function GiftCardPurchase({ designs }: { designs: GiftCardDesign[] }) {
                           fromName: "",
                         }}
                       />
+                      {/* Хүрээ биш: карт бүр өөр өнгөтэй тул хүрээ нь
+                          зарим дээр уусаж, заримд хэт хүнд харагддаг.
+                          Баруун доод булан нь картын хоосон бүс. */}
+                      {selected && (
+                        <span className="absolute right-1.5 bottom-1.5 flex size-5 items-center justify-center rounded-full bg-black text-white shadow-md ring-2 ring-white md:size-6">
+                          <Check className="size-3 md:size-3.5" strokeWidth={3} aria-hidden="true" />
+                        </span>
+                      )}
                     </span>
                     <span
                       className={cn(
-                        "mt-1.5 block truncate px-0.5 text-xs",
+                        "mt-1.5 block px-0.5 text-xs",
                         selected
                           ? "text-foreground font-semibold"
                           : "text-muted-foreground font-medium",
                       )}
                     >
-                      {d.title}
+                      <span className="truncate">{d.title}</span>
                     </span>
                   </button>
                 );
