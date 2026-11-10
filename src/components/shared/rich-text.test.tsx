@@ -5,9 +5,7 @@ import { RichText } from "./rich-text";
 describe("RichText", () => {
   it("renders TipTap HTML with dangerous markup stripped", () => {
     const { container } = render(
-      <RichText
-        content={'<p>Сайн уу <script>alert("x")</script><b>найз</b></p>'}
-      />,
+      <RichText content={'<p>Сайн уу <script>alert("x")</script><b>найз</b></p>'} />,
     );
     expect(container.querySelector("script")).toBeNull();
     expect(screen.getByText(/найз/)).toBeInTheDocument();
