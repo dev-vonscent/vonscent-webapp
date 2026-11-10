@@ -58,6 +58,7 @@ export function GiftCardDesignEditor({ design }: { design: AdminGiftCardDesign }
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
+  const formId = React.useId();
   const [v, setV] = React.useState(design);
   const set = <K extends keyof AdminGiftCardDesign>(k: K, value: AdminGiftCardDesign[K]) =>
     setV((prev) => ({ ...prev, [k]: value }));
@@ -76,6 +77,8 @@ export function GiftCardDesignEditor({ design }: { design: AdminGiftCardDesign }
         bgColor: v.bgColor,
         textColor: v.textColor,
         mutedColor: v.mutedColor,
+        // Өргөлт нь зураггүй загварын тойрогт л харагдана — UI-гаас хассан,
+        // хадгалсан утга нь хэвээр явна.
         accentColor: v.accentColor || null,
         sortOrder: v.sortOrder,
         isActive: v.isActive,
@@ -100,8 +103,14 @@ export function GiftCardDesignEditor({ design }: { design: AdminGiftCardDesign }
         onOpenChange={setOpen}
         title={`Загвар: ${design.title}`}
         className="md:max-w-3xl"
+        // Товч доор тайрагдахгүй: зөвхөн дунд хэсэг гүйнэ.
+        footer={
+          <LoadingButton type="submit" form={formId} loading={pending} className="w-full">
+            Хадгалах
+          </LoadingButton>
+        }
       >
-        <form onSubmit={save} className="grid gap-5 md:grid-cols-2">
+        <form id={formId} onSubmit={save} className="grid gap-5 md:grid-cols-2">
           <div className="space-y-3 md:order-2">
             <GiftCardFace
               design={{
@@ -116,16 +125,17 @@ export function GiftCardDesignEditor({ design }: { design: AdminGiftCardDesign }
                 fromName: "Болд",
               }}
             />
-            <p className="text-muted-foreground text-xs">
-              Дэвсгэр зураг: 2400×1512 (1200×756 харьцаа), текстгүй. Нэр, дүн,
-              мэндчилгээг систем өөрөө тавина; чимэглэл баруун талд.
-            </p>
             <ImageUpload
+              compact
               folder="gift-cards"
-              label="Дэвсгэр зураг"
+              label="Зураг"
               value={v.imageUrl}
               onChange={(url) => set("imageUrl", url)}
             />
+            <p className="text-muted-foreground text-xs">
+              1536×1024-ээс том, текстгүй зураг. Чимэглэл зөвхөн баруун талд —
+              бичгийг систем тавина.
+            </p>
           </div>
           <div className="space-y-3 md:order-1">
             <div className="space-y-1.5">
@@ -148,10 +158,9 @@ export function GiftCardDesignEditor({ design }: { design: AdminGiftCardDesign }
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <ColorField id="d-bg" label="Дэвсгэр" value={v.bgColor} onChange={(c) => set("bgColor", c)} />
+              <ColorField id="d-bg" label="Ар талын өнгө" value={v.bgColor} onChange={(c) => set("bgColor", c)} />
               <ColorField id="d-text" label="Үндсэн текст" value={v.textColor} onChange={(c) => set("textColor", c)} />
               <ColorField id="d-muted" label="Бүдэг текст" value={v.mutedColor} onChange={(c) => set("mutedColor", c)} />
-              <ColorField id="d-accent" label="Өргөлт" value={v.accentColor ?? ""} onChange={(c) => set("accentColor", c || null)} />
             </div>
             <div className="flex items-center gap-4">
               <div className="space-y-1.5">
@@ -178,9 +187,6 @@ export function GiftCardDesignEditor({ design }: { design: AdminGiftCardDesign }
                 Хэрэглэгчид харагдана
               </label>
             </div>
-            <LoadingButton type="submit" loading={pending} className="w-full">
-              Хадгалах
-            </LoadingButton>
           </div>
         </form>
       </ResponsiveDialog>

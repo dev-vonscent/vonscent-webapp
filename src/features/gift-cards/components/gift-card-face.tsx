@@ -127,8 +127,10 @@ export function GiftCardFace({
               className="line-clamp-3 wrap-break-word"
               style={{
                 marginTop: u(12),
-                maxWidth: u(600),
-                fontSize: u(26),
+                // 540: баруун талын чимэглэлээс зай авна; 24px-ээр 120
+                // тэмдэгт 3 мөрөнд багтсан хэвээр (line-clamp-3).
+                maxWidth: u(540),
+                fontSize: u(24),
                 lineHeight: 1.45,
                 color: design.mutedColor,
               }}
@@ -139,7 +141,7 @@ export function GiftCardFace({
           {from && (
             <div
               className="truncate"
-              style={{ marginTop: u(24), fontSize: u(26), color: design.mutedColor }}
+              style={{ marginTop: u(24), fontSize: u(24), color: design.mutedColor }}
             >
               Илгээгч:{" "}
               <span className="font-bold" style={{ color: design.textColor }}>
