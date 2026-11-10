@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderEmail } from "@/lib/email/layout";
-import { recipientEmail } from "./email-docs";
+import { recipientEmail, reminderEmail } from "./email-docs";
 
 const card = {
   token: "a".repeat(32),
@@ -27,5 +27,18 @@ describe("recipientEmail", () => {
   it("мэндчилгээгүй бол note хоосон", () => {
     const { doc } = recipientEmail({ ...card, message: null }, "https://vonscent.mn");
     expect(doc.note).toBeUndefined();
+  });
+});
+
+describe("reminderEmail", () => {
+  it("ашиглаагүй сануулга нэр, код, холбоостой", () => {
+    const { subject, doc } = reminderEmail(card, "unused", "https://vonscent.mn");
+    expect(subject).toBe("Сараа, таны бэлэг хүлээж байна");
+    expect(renderEmail(doc).html).toContain("VON-7K4P-Q9XM");
+  });
+
+  it("хугацааны сануулга 7 / 30 хоногийг гарчигт", () => {
+    expect(reminderEmail(card, "expiry_7", "https://vonscent.mn").subject).toMatch(/7 хоног/u);
+    expect(reminderEmail(card, "expiry_30", "https://vonscent.mn").subject).toMatch(/30 хоног/u);
   });
 });

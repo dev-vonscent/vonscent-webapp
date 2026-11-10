@@ -71,3 +71,49 @@ export function recipientEmail(
   };
 }
 
+
+export type GiftReminderKind = "unused" | "expiry_30" | "expiry_7";
+
+/**
+ * Сануулга (gift-cards-plan §6.3) — нэг карт тутамд төрөл бүр нэг удаа.
+ * Код, холбоос, хугацааг дахин өгнө: анхны имэйл spam-д унасан байж болно.
+ */
+export function reminderEmail(
+  card: Pick<
+    GiftCardRow,
+    "token" | "amount" | "from_name" | "recipient_name" | "code" | "expires_at"
+  >,
+  kind: GiftReminderKind,
+  siteUrl: string,
+): { subject: string; doc: EmailDoc } {
+  const link = giftUrl(card.token, siteUrl);
+  const amount = formatGiftAmount(card.amount);
+  const until = card.expires_at ? formatDate(card.expires_at) : null;
+  const subject =
+    kind === "unused"
+      ? `${card.recipient_name}, таны бэлэг хүлээж байна`
+      : `Бэлгийн картын хугацаа ${kind === "expiry_7" ? "7" : "30"} хоногийн дараа дуусна`;
+  const lead =
+    kind === "unused"
+      ? `${card.from_name} танд ${amount}-ийн бэлгийн карт илгээсэн боловч хараахан ашиглаагүй байна. Нэг товчоор V point болгоод хүссэн үнэртнээ сонгоорой.`
+      : `Танд ирсэн ${amount}-ийн бэлгийн картыг (илгээгч: ${card.from_name}) ${until ?? "удахгүй"} хүртэл оноо болгоно. Хугацаа дуусвал карт хүчингүй болно.`;
+  return {
+    subject,
+    doc: {
+      preheader:
+        kind === "unused"
+          ? `${amount}-ийн бэлгийн карт таныг хүлээж байна`
+          : `${until ?? ""} хүртэл оноо болгоорой`,
+      heading:
+        kind === "unused" ? "Таны бэлэг хүлээж байна" : "Бэлгийн картын хугацаа дуусах гэж байна",
+      paragraphs: [lead],
+      cta: { label: "Бэлгээ авах", href: link },
+      code: { label: "Эсвэл кодоо гараар оруулна", value: card.code },
+      steps: { title: "Хэрхэн ашиглах вэ", items: STEPS },
+      footerNotes: [
+        "Оноо болсны дараа хугацаагүй — хүссэн үедээ зарцуулна.",
+        "Асуулт байвал энэ имэйлд хариу бичээрэй — бид туслая.",
+      ],
+    },
+  };
+}

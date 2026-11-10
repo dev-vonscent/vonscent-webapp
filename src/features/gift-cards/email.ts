@@ -7,7 +7,12 @@ import { formatPrice } from "@/lib/format";
 import { resolveRecipient } from "@/lib/notify/customer-email";
 import type { GiftCardRow } from "@/db/types";
 import { formatGiftAmount } from "./lib";
-import { formatSendAt, recipientEmail } from "./email-docs";
+import {
+  formatSendAt,
+  recipientEmail,
+  reminderEmail,
+  type GiftReminderKind,
+} from "./email-docs";
 
 /**
  * Бэлгийн картын имэйл (gift-cards-plan §6).
@@ -25,7 +30,7 @@ export const MAX_AUTO_SENDS = 5;
 async function logEvent(
   supabase: Admin,
   cardId: string,
-  kind: "sent" | "send_failed" | "resent" | "email_changed",
+  kind: "sent" | "send_failed" | "resent" | "email_changed" | "reminded",
   actor: string | null,
   data: Record<string, unknown> = {},
 ) {
@@ -241,4 +246,99 @@ export async function resendGiftCard(input: {
     { manual: true, actor: input.actor },
   );
   return ok ? { ok: true, email } : { ok: false, error: "SEND_FAILED" };
+}
+
+const REMINDER_COLUMN: Record<GiftReminderKind, string> = {
+  unused: "reminded_unused_at",
+  expiry_30: "reminded_expiry_30_at",
+  expiry_7: "reminded_expiry_7_at",
+};
+
+/** Сануулга шөнө очихгүй — УБ 09:00–20:00. */
+function isDaytimeUb(now = new Date()): boolean {
+  const hour = Number(
+    now.toLocaleString("en-GB", {
+      timeZone: "Asia/Ulaanbaatar",
+      hour: "2-digit",
+      hour12: false,
+    }),
+  );
+  return hour >= 9 && hour < 20;
+}
+
+/**
+ * Cron: хүлээн авагч руу илгээгдсэн, ашиглагдаагүй картад сануулга
+ * (gift-cards-plan §6.3). Төрөл бүр нэг удаа — баганыг илгээхээс ӨМНӨ
+ * эзэмшинэ; бүтэлгүйтвэл дахин оролдохгүй (сануулга, үүрэг биш).
+ *
+ *   unused    — илгээснээс 7 хоног, хугацаа 30+ хоног үлдсэн
+ *   expiry_30 — хугацаа дуусахад 8–30 хоног
+ *   expiry_7  — хугацаа дуусахад ≤7 хоног
+ */
+export async function sendGiftCardReminders(now = new Date()): Promise<number> {
+  if (!isDaytimeUb(now)) return 0;
+  const supabase = createAdminClient();
+  if (!supabase) return 0;
+  const day = 86400e3;
+  const iso = (ms: number) => new Date(now.getTime() + ms).toISOString();
+
+  const base = () =>
+    supabase
+      .from("gift_cards")
+      .select("*")
+      .eq("status", "active")
+      .not("recipient_email", "is", null)
+      .not("sent_at", "is", null)
+      .limit(50);
+
+  const sets: [GiftReminderKind, PromiseLike<{ data: unknown }>][] = [
+    [
+      "unused",
+      base()
+        .is("reminded_unused_at", null)
+        .lte("sent_at", iso(-7 * day))
+        .gt("expires_at", iso(30 * day)),
+    ],
+    [
+      "expiry_30",
+      base()
+        .is("reminded_expiry_30_at", null)
+        .gt("expires_at", iso(7 * day))
+        .lte("expires_at", iso(30 * day)),
+    ],
+    [
+      "expiry_7",
+      base()
+        .is("reminded_expiry_7_at", null)
+        .gt("expires_at", now.toISOString())
+        .lte("expires_at", iso(7 * day)),
+    ],
+  ];
+
+  let n = 0;
+  for (const [kind, query] of sets) {
+    const { data } = await query;
+    for (const card of (data as GiftCardRow[] | null) ?? []) {
+      const column = REMINDER_COLUMN[kind];
+      const { data: claimed } = await supabase
+        .from("gift_cards")
+        .update({ [column]: now.toISOString() })
+        .eq("id", card.id)
+        .is(column, null)
+        .select("id");
+      if (!(claimed as unknown[] | null)?.length) continue;
+      const { subject, doc } = reminderEmail(card, kind, env.siteUrl);
+      const { html, text } = renderEmail(doc);
+      const ok = await sendEmail({
+        to: card.recipient_email!,
+        subject,
+        html,
+        text,
+        replyTo: STORE_INBOX,
+      });
+      await logEvent(supabase, card.id, "reminded", null, { kind, ok });
+      if (ok) n++;
+    }
+  }
+  return n;
 }

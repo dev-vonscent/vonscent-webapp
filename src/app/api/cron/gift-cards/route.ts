@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { env } from "@/lib/env";
 import { isFeatureEnabled } from "@/lib/feature-flags";
-import { retryPendingGiftCardEmails } from "@/features/gift-cards/email";
+import {
+  retryPendingGiftCardEmails,
+  sendGiftCardReminders,
+} from "@/features/gift-cards/email";
 
 /**
  * Бэлгийн картын имэйлийн хуваарь (gift-cards-plan §6.4): төлбөрийн дараа
- * унасан илгээлтийг дахин оролдоно (`send_count` < 5). Туг хаалттай бол юу ч
+ * унасан ба товлосон илгээлт (`send_count` < 5), мөн сануулга (§6.3: 7 хоног
+ * ашиглаагүй, хугацаа 30 / 7 хоног — УБ 09–20 цагт). Туг хаалттай бол юу ч
  * хийхгүй. Хугацаа дуусгах нь pg_cron (`expire_gift_cards`, 0179).
  */
 export const dynamic = "force-dynamic";
@@ -30,5 +34,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, skipped: "FEATURE_DISABLED" });
   }
   const sent = await retryPendingGiftCardEmails();
-  return NextResponse.json({ ok: true, sent });
+  const reminded = await sendGiftCardReminders();
+  return NextResponse.json({ ok: true, sent, reminded });
 }
