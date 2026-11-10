@@ -9,9 +9,11 @@ import type { FeatureFlag } from "@/lib/constants";
 export function Providers({
   children,
   enabledFlags,
+  flagSince,
 }: {
   children: React.ReactNode;
   enabledFlags: readonly FeatureFlag[];
+  flagSince?: Partial<Record<FeatureFlag, string>>;
 }) {
   const [queryClient] = React.useState(
     () =>
@@ -34,7 +36,7 @@ export function Providers({
       disableTransitionOnChange
     >
       <QueryClientProvider client={queryClient}>
-        <FeatureFlagsProvider enabled={enabledFlags}>
+        <FeatureFlagsProvider enabled={enabledFlags} since={flagSince}>
           {children}
         </FeatureFlagsProvider>
       </QueryClientProvider>
