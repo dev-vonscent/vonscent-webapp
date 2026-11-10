@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarClock, Mail, UserRound } from "lucide-react";
+import { CalendarClock, Info, Mail, UserRound } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingButton } from "@/components/shared/loading-button";
@@ -50,6 +50,30 @@ const DELIVERY_OPTIONS = [
       "Карт таны бүртгэлд хадгалагдана — холбоосоор хуваалцах эсвэл дараа нь имэйлээр илгээнэ.",
   },
 ] as const;
+
+const RULES = [
+  "Кодыг төлбөр төлөгдсөнөөс хойш 1 жилийн дотор оноо болгоно. Оноо болсны дараа хугацаагүй.",
+  "Бэлгийн картыг купон, V point-оор хямдруулах боломжгүй.",
+  "Бэлгийн картыг буцаах боломжгүй.",
+];
+
+/**
+ * Утсан дээр карт дээд талд наалттай тул focus авсан талбар түүний ард
+ * нуугдахгүй: толгой + картын өндөр (өргөн × 756/1200, max-w-sm) + зай.
+ */
+const STICKY_SCROLL_MARGIN =
+  "max-md:scroll-mt-[calc(var(--header-offset)+min(100vw-2rem,24rem)*0.63+1.5rem)]";
+
+function StepLegend({ n, children }: { n: number; children: React.ReactNode }) {
+  return (
+    <legend className="flex items-center gap-2.5 text-base font-semibold">
+      <span className="bg-secondary flex size-6 items-center justify-center rounded-full text-xs tabular-nums">
+        {n}
+      </span>
+      {children}
+    </legend>
+  );
+}
 
 function readDraft(): Partial<GiftCardPurchaseInput> | null {
   try {
@@ -191,152 +215,184 @@ export function GiftCardPurchase({ designs }: { designs: GiftCardDesign[] }) {
 
   if (!design) return null;
   const messageLength = values.message?.length ?? 0;
+  const faceText = {
+    amount: values.amount,
+    recipientName: values.recipientName ?? "",
+    message: values.message ?? "",
+    fromName: values.fromName ?? "",
+  };
+  const pointsNote = (
+    <p className="text-muted-foreground text-center text-xs">
+      Хүлээн авагч кодоо оруулмагц{" "}
+      <strong className="text-foreground font-medium">
+        {values.amount.toLocaleString("mn-MN")} V point
+      </strong>{" "}
+      түүний дансанд орно (1 оноо = 1₮).
+    </p>
+  );
 
   return (
-    <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:gap-12">
-      {/* Утсан дээр preview эхэнд — юу бэлэглэж байгаагаа хардаг. */}
-      <div className="md:order-2">
-        <div className="md:sticky md:top-28">
-          <GiftCardFace
-            design={design}
-            priority
-            text={{
-              amount: values.amount,
-              recipientName: values.recipientName ?? "",
-              message: values.message ?? "",
-              fromName: values.fromName ?? "",
-            }}
-          />
-          <p className="text-muted-foreground mt-3 text-center text-xs">
-            Хүлээн авагч кодоо оруулмагц{" "}
-            <strong className="text-foreground font-medium">
-              {values.amount.toLocaleString("mn-MN")} V point
-            </strong>{" "}
-            түүний дансанд орно (1 оноо = 1₮).
-          </p>
+    <div className="grid grid-cols-1 gap-10 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:gap-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+      {/* Компьютер: баруун баганад наалттай. */}
+      <div className="hidden md:order-2 md:block">
+        <div className="space-y-3 md:sticky md:top-(--header-offset) md:transition-[top] md:duration-300 md:ease-out">
+          <GiftCardFace design={design} priority text={faceText} />
+          {pointsNote}
         </div>
       </div>
 
       <form
         onSubmit={handleSubmit(onSubmit)}
         noValidate
-        className="space-y-8 md:order-1"
+        className="min-w-0 space-y-10 md:order-1"
       >
-        <fieldset className="space-y-3">
-          <legend className="text-sm font-semibold">1. Загвар</legend>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {designs.map((d) => {
-              const selected = d.id === values.designId;
-              return (
-                <button
-                  key={d.id}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => setValue("designId", d.id)}
-                  className={cn(
-                    "rounded-xl p-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    selected ? "ring-cta ring-2" : "hover:bg-secondary",
-                  )}
-                >
-                  <GiftCardFace
-                    design={d}
-                    className="rounded-lg shadow-none"
-                    text={{
-                      amount: values.amount,
-                      recipientName: "",
-                      message: " ",
-                      fromName: "",
-                    }}
-                  />
-                  <span className="mt-1.5 block truncate px-1 text-xs font-medium">
-                    {d.title}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
-
-        <fieldset className="space-y-3">
-          <legend className="text-sm font-semibold">2. Дүн</legend>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {GIFT_CARD_AMOUNTS.map((amount) => {
-              const selected = amount === values.amount;
-              return (
-                <button
-                  key={amount}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => setValue("amount", amount)}
-                  className={cn(
-                    "h-12 rounded-xl text-sm font-semibold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    selected
-                      ? "bg-cta text-cta-foreground"
-                      : "bg-secondary hover:bg-secondary/70",
-                  )}
-                >
-                  {formatGiftAmount(amount)}
-                </button>
-              );
-            })}
-          </div>
-          <FieldError id="amount" message={errors.amount?.message} />
-        </fieldset>
-
-        <fieldset className="space-y-4">
-          <legend className="text-sm font-semibold">3. Мэндчилгээ</legend>
-          <div className="space-y-1.5">
-            <Label htmlFor="recipientName">Хэнд</Label>
-            <Input
-              placeholder="Жишээ нь: Сараа"
-              autoComplete="off"
-              maxLength={GIFT_CARD_LIMITS.recipientName}
-              {...fieldErrorProps("recipientName", errors.recipientName?.message)}
-              {...register("recipientName")}
-            />
-            <FieldError
-              id="recipientName"
-              message={errors.recipientName?.message}
+        {/* Утас: загвар, дүн, мэндчилгээ бөглөх зуур карт дээд талд наалттай
+            — бичсэн үг шууд картад гарахыг хардаг. Хүргэлтийн хэсэгт хүрэхэд
+            энэ wrapper дуусаж карт өөрөө гүйж гарна. */}
+        <div className="space-y-10">
+          <div className="bg-background sticky top-(--header-offset) z-20 -mx-4 px-4 pt-1 pb-3 transition-[top] duration-300 ease-out md:hidden">
+            <GiftCardFace
+              design={design}
+              priority
+              text={faceText}
+              className="mx-auto max-w-sm shadow-md"
             />
           </div>
-          <div className="space-y-1.5">
-            <div className="flex items-baseline justify-between">
-              <Label htmlFor="message">Мэндчилгээ</Label>
-              <span className="text-muted-foreground text-xs tabular-nums">
-                {messageLength}/{GIFT_CARD_LIMITS.message}
-              </span>
+
+          <fieldset className="min-w-0 space-y-3">
+            <StepLegend n={1}>Загвар сонгох</StepLegend>
+            <div className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 md:scroll-px-0 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0">
+              {designs.map((d) => {
+                const selected = d.id === values.designId;
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setValue("designId", d.id)}
+                    className="group w-28 shrink-0 snap-start text-left outline-none md:w-auto"
+                  >
+                    <span
+                      className={cn(
+                        "block rounded-xl p-0.5 ring-2 group-focus-visible:ring-ring",
+                        selected ? "ring-cta" : "ring-transparent group-hover:ring-border",
+                      )}
+                    >
+                      <GiftCardFace
+                        design={d}
+                        className="rounded-lg shadow-none"
+                        text={{
+                          amount: values.amount,
+                          recipientName: "",
+                          message: " ",
+                          fromName: "",
+                        }}
+                      />
+                    </span>
+                    <span
+                      className={cn(
+                        "mt-1.5 block truncate px-0.5 text-xs",
+                        selected
+                          ? "text-foreground font-semibold"
+                          : "text-muted-foreground font-medium",
+                      )}
+                    >
+                      {d.title}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-            <textarea
-              rows={3}
-              maxLength={GIFT_CARD_LIMITS.message}
-              placeholder={design.defaultMessage ?? "Хэдэн үгээр сэтгэлээ илэрхийлээрэй"}
-              className="bg-secondary field-edge flex w-full resize-none rounded-md px-3 py-2 text-base md:text-sm"
-              {...fieldErrorProps("message", errors.message?.message)}
-              {...register("message")}
-            />
-            <FieldError id="message" message={errors.message?.message} />
-            {!values.message && design.defaultMessage && (
-              <p className="text-muted-foreground text-xs">
-                Хоосон үлдээвэл картад дээрх санал болгосон мэндчилгээ гарна.
-              </p>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="fromName">Хэнээс</Label>
-            <Input
-              placeholder="Таны нэр"
-              autoComplete="given-name"
-              maxLength={GIFT_CARD_LIMITS.fromName}
-              {...fieldErrorProps("fromName", errors.fromName?.message)}
-              {...register("fromName")}
-            />
-            <FieldError id="fromName" message={errors.fromName?.message} />
-          </div>
-        </fieldset>
+          </fieldset>
+
+          <fieldset className="space-y-3">
+            <StepLegend n={2}>Дүн</StepLegend>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {GIFT_CARD_AMOUNTS.map((amount) => {
+                const selected = amount === values.amount;
+                return (
+                  <button
+                    key={amount}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setValue("amount", amount)}
+                    className={cn(
+                      "h-12 rounded-xl text-sm font-semibold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      selected
+                        ? "bg-cta text-cta-foreground"
+                        : "bg-secondary hover:bg-secondary/70",
+                    )}
+                  >
+                    {formatGiftAmount(amount)}
+                  </button>
+                );
+              })}
+            </div>
+            <FieldError id="amount" message={errors.amount?.message} />
+          </fieldset>
+
+          <fieldset className="space-y-4">
+            <StepLegend n={3}>Мэндчилгээ</StepLegend>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="recipientName">Хэнд</Label>
+                <Input
+                  placeholder="Жишээ нь: Сараа"
+                  autoComplete="off"
+                  maxLength={GIFT_CARD_LIMITS.recipientName}
+                  className={STICKY_SCROLL_MARGIN}
+                  {...fieldErrorProps("recipientName", errors.recipientName?.message)}
+                  {...register("recipientName")}
+                />
+                <FieldError
+                  id="recipientName"
+                  message={errors.recipientName?.message}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="fromName">Хэнээс</Label>
+                <Input
+                  placeholder="Таны нэр"
+                  autoComplete="given-name"
+                  maxLength={GIFT_CARD_LIMITS.fromName}
+                  className={STICKY_SCROLL_MARGIN}
+                  {...fieldErrorProps("fromName", errors.fromName?.message)}
+                  {...register("fromName")}
+                />
+                <FieldError id="fromName" message={errors.fromName?.message} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-baseline justify-between">
+                <Label htmlFor="message">Мэндчилгээ</Label>
+                <span className="text-muted-foreground text-xs tabular-nums">
+                  {messageLength}/{GIFT_CARD_LIMITS.message}
+                </span>
+              </div>
+              <textarea
+                rows={3}
+                maxLength={GIFT_CARD_LIMITS.message}
+                placeholder={design.defaultMessage ?? "Хэдэн үгээр сэтгэлээ илэрхийлээрэй"}
+                className={cn(
+                  "bg-secondary field-edge flex w-full resize-none rounded-md px-3 py-2 text-base md:text-sm",
+                  STICKY_SCROLL_MARGIN,
+                )}
+                {...fieldErrorProps("message", errors.message?.message)}
+                {...register("message")}
+              />
+              <FieldError id="message" message={errors.message?.message} />
+              {!values.message && design.defaultMessage && (
+                <p className="text-muted-foreground text-xs">
+                  Хоосон үлдээвэл картад санал болгосон мэндчилгээ гарна.
+                </p>
+              )}
+            </div>
+          </fieldset>
+        </div>
 
         <fieldset className="space-y-3">
-          <legend className="text-sm font-semibold">4. Хэрхэн өгөх вэ</legend>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <StepLegend n={4}>Хэрхэн өгөх вэ</StepLegend>
+          <div className="space-y-2" role="radiogroup" aria-label="Хэрхэн өгөх вэ">
             {DELIVERY_OPTIONS.map((o) => {
               const selected = values.delivery === o.value;
               const Icon = o.icon;
@@ -344,17 +400,25 @@ export function GiftCardPurchase({ designs }: { designs: GiftCardDesign[] }) {
                 <button
                   key={o.value}
                   type="button"
-                  aria-pressed={selected}
+                  role="radio"
+                  aria-checked={selected}
                   onClick={() => setValue("delivery", o.value)}
                   className={cn(
-                    "flex gap-3 rounded-xl p-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "flex w-full items-center gap-3 rounded-xl p-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     selected
                       ? "bg-secondary ring-cta ring-2"
                       : "bg-secondary/60 hover:bg-secondary",
                   )}
                 >
-                  <Icon className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
-                  <span>
+                  <span
+                    className={cn(
+                      "flex size-9 shrink-0 items-center justify-center rounded-full",
+                      selected ? "bg-cta text-cta-foreground" : "bg-background",
+                    )}
+                  >
+                    <Icon className="size-4" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0">
                     <span className="block text-sm font-semibold">{o.title}</span>
                     <span className="text-muted-foreground mt-0.5 block text-xs">
                       {o.description}
@@ -365,7 +429,7 @@ export function GiftCardPurchase({ designs }: { designs: GiftCardDesign[] }) {
             })}
           </div>
           {delivery === "scheduled" && (
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 pt-1">
               <Label htmlFor="sendDay">Илгээх өдөр</Label>
               <DatePicker
                 id="sendDay"
@@ -384,7 +448,7 @@ export function GiftCardPurchase({ designs }: { designs: GiftCardDesign[] }) {
             </div>
           )}
           {values.delivery !== "self" && (
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 pt-1">
               <Label htmlFor="recipientEmail">Хүлээн авагчийн имэйл</Label>
               <Input
                 type="email"
@@ -405,32 +469,40 @@ export function GiftCardPurchase({ designs }: { designs: GiftCardDesign[] }) {
           )}
         </fieldset>
 
-        <ul className="text-muted-foreground space-y-1.5 text-xs">
-          <li>• Код төлбөр төлөгдсөнөөс хойш 1 жилийн дотор оноо болгоно. Оноо болсны дараа хугацаагүй.</li>
-          <li>• Бэлгийн картыг купон, V point-оор хямдруулах боломжгүй.</li>
-          <li>• Бэлгийн картыг буцаах боломжгүй.</li>
-        </ul>
+        <div className="space-y-4">
+          <div className="bg-secondary/60 rounded-xl p-4">
+            <ul className="text-muted-foreground space-y-2 text-xs">
+              {RULES.map((rule) => (
+                <li key={rule} className="flex gap-2">
+                  <Info className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+                  <span>{rule}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
 
-        {serverError && (
-          <p role="alert" className="text-destructive text-sm">
-            {serverError}
-          </p>
-        )}
-
-        <div className="space-y-2">
-          <LoadingButton
-            type="submit"
-            loading={isSubmitting}
-            disabled={profileLoading}
-            className="bg-cta text-cta-foreground hover:bg-cta/90 h-12 w-full rounded-xl"
-          >
-            {formatGiftAmount(values.amount)} — Төлбөр төлөх
-          </LoadingButton>
-          {!profileLoading && !profile && (
-            <p className="text-muted-foreground text-center text-xs">
-              Төлбөр төлөхийн өмнө утасны дугаараараа нэвтэрнэ. Бөглөсөн зүйл тань хадгалагдана.
+          {serverError && (
+            <p role="alert" className="text-destructive text-sm">
+              {serverError}
             </p>
           )}
+
+          <div className="space-y-2">
+            <LoadingButton
+              type="submit"
+              loading={isSubmitting}
+              disabled={profileLoading}
+              className="bg-cta text-cta-foreground hover:bg-cta/90 h-12 w-full rounded-xl text-base"
+            >
+              {formatGiftAmount(values.amount)} — Төлбөр төлөх
+            </LoadingButton>
+            {!profileLoading && !profile && (
+              <p className="text-muted-foreground text-center text-xs">
+                Төлбөр төлөхийн өмнө утасны дугаараараа нэвтэрнэ. Бөглөсөн зүйл тань хадгалагдана.
+              </p>
+            )}
+            <div className="md:hidden">{pointsNote}</div>
+          </div>
         </div>
       </form>
     </div>
