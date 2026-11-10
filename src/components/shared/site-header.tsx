@@ -28,6 +28,7 @@ import {
   type StoreMenuKey,
   type StoreNavItem,
 } from "./store-nav";
+import { NavNewBadge } from "./nav-new-badge";
 
 /** Page titles for the mobile compact header (exact path or longest prefix). */
 /** Доод төгсгөлөөс энэ px дотор бол «төгсгөлд хүрсэн» — доод цэс дахин гарна. */
@@ -458,6 +459,9 @@ function DesktopNav({
                 className={itemClass}
               >
                 {item.label}
+                {item.newBadge && (
+                  <NavNewBadge item={item} className="mt-2 -ml-0.5" />
+                )}
               </Link>
             )}
           </li>

@@ -22,10 +22,7 @@ export function VPointMark({
       fill="currentColor"
       role="img"
       {...props}
-      className={cn(
-        "inline-block h-[1em] w-[0.8em] align-[-0.2em]",
-        className,
-      )}
+      className={cn("inline-block h-[1em] w-[0.8em] align-[-0.2em]", className)}
     >
       <title>V point</title>
       {/* cap дээд тал y=2, baseline y=16 — доорх 4 нэгж нь descender зай */}

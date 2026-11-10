@@ -19,7 +19,7 @@ vi.mock("@/lib/constants", async (orig) => ({
   },
 }));
 
-const { getEnabledFeatureFlags, isFeatureEnabled } =
+const { getEnabledFeatureFlagSince, getEnabledFeatureFlags, isFeatureEnabled } =
   await import("./feature-flags");
 const { featureFlagUpdateSchema } = await import("./validators/feature-flag");
 
@@ -32,10 +32,17 @@ beforeEach(() => {
 describe("getEnabledFeatureFlags", () => {
   it("зөвхөн асаалттай, кодонд бүртгэлтэй тугууд", async () => {
     eq.mockResolvedValue({
-      data: [{ key: "tier_list" }, { key: "removed_flag" }],
+      data: [
+        { key: "tier_list", updated_at: "2026-11-20T10:00:00Z" },
+        { key: "removed_flag", updated_at: "2026-11-01T00:00:00Z" },
+      ],
       error: null,
     });
     expect(await getEnabledFeatureFlags()).toEqual(["tier_list"]);
+    // «Шинэ» тэмдгийн хугацаа — асаасан цаг (бүртгэлгүй туг орохгүй).
+    expect(await getEnabledFeatureFlagSince()).toEqual({
+      tier_list: "2026-11-20T10:00:00Z",
+    });
     expect(eq).toHaveBeenCalledWith("enabled", true);
     // FEATURE_FLAGS mock — төрлийн түвшинд хоосон хэвээр тул `as never`.
     expect(await isFeatureEnabled("tier_list" as never)).toBe(true);

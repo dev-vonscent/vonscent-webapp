@@ -21,7 +21,9 @@ import {
   STORE_NAV_SECONDARY,
   isNavActive,
   visibleNavItems,
+  type StoreNavItem,
 } from "./store-nav";
+import { NavNewBadge } from "./nav-new-badge";
 import { ThemeSwitcher } from "./theme-switcher";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,7 +54,7 @@ const PRIMARY = [...STORE_NAV_PRIMARY, ...STORE_NAV_SECONDARY].filter(
 );
 
 /** `PRIMARY`-ийн сүүлд — feature flag `lucky_wheel` нээлттэй үед л. */
-const WHEEL_LINK = {
+const WHEEL_LINK: StoreNavItem = {
   href: "/lucky-wheel",
   label: "Азын хүрд",
   hint: "Эргүүлээд бэлгээ аваарай",
@@ -137,7 +139,7 @@ export function MobileMenu({
             e.preventDefault();
             (e.currentTarget as HTMLElement).focus();
           }}
-          className="bg-popover/95 shadow-lift flex w-[86vw] max-w-sm flex-col gap-0 p-0 outline-none backdrop-blur-xl"
+          className="bg-popover/95 shadow-lift flex w-[86vw] max-w-sm flex-col gap-0 p-0 backdrop-blur-xl outline-none"
         >
           {/* Толгой: лого БАЙХГҮЙ (дэлгүүрийн header-т аль хэдийн бий) —
             зөвхөн Sheet-ийн өөрийн хаах товч баруун дээд буланд. «Цэс» гэдэг
@@ -243,6 +245,7 @@ export function MobileMenu({
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2 text-xl font-semibold tracking-tight">
                           {item.label}
+                          {item.newBadge && <NavNewBadge item={item} />}
                           {active && (
                             <span className="bg-foreground size-1.5 shrink-0 rounded-full" />
                           )}

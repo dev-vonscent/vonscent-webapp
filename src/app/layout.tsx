@@ -2,7 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { SITE } from "@/lib/constants";
 import { Providers } from "@/components/providers";
-import { getEnabledFeatureFlags } from "@/lib/feature-flags";
+import {
+  getEnabledFeatureFlagSince,
+  getEnabledFeatureFlags,
+} from "@/lib/feature-flags";
 import { Toaster } from "@/components/ui/toaster";
 import { Analytics } from "@/components/shared/analytics";
 import { KeyboardDismissRepair } from "@/components/shared/keyboard-dismiss-repair";
@@ -58,7 +61,10 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   // Кэштэй (unstable_cache) — cookie уншдаггүй тул хуудас ISR хэвээр.
-  const enabledFlags = await getEnabledFeatureFlags();
+  const [enabledFlags, flagSince] = await Promise.all([
+    getEnabledFeatureFlags(),
+    getEnabledFeatureFlagSince(),
+  ]);
   return (
     <html
       lang="mn"
@@ -69,7 +75,9 @@ export default async function RootLayout({
         <Script id="focus-method" strategy="beforeInteractive">
           {FOCUS_METHOD_SCRIPT}
         </Script>
-        <Providers enabledFlags={enabledFlags}>{children}</Providers>
+        <Providers enabledFlags={enabledFlags} flagSince={flagSince}>
+          {children}
+        </Providers>
         <Toaster />
         <KeyboardDismissRepair />
         <Analytics />

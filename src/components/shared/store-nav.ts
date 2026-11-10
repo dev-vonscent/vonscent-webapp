@@ -23,6 +23,17 @@ export interface StoreNavItem {
   hint: string;
   menu?: StoreMenuKey;
   flag?: FeatureFlag;
+  /**
+   * Шошгоны баруун дээд талд «Шинэ» тэмдэг (header, drawer). Хэрэглэгч
+   * `key`-тэй хуудсыг нээмэгц (`MarkSeen`) алга болно. Хугацаа: `flag`-тай
+   * мөрөнд тугийг АСААСНААС `days` хоног (өгөгдмөл 30) — нээх өдрийг
+   * урьдчилж мэдэх шаардлагагүй; туггүй мөрөнд `until` (ISO) заавал.
+   * Мөнхөд гялалзах тэмдэг анхаарал татахаа больдог.
+   *
+   * Шинэ цэс нэмэхэд: `newBadge: { key: "<хуудас>" }` + тэр хуудсанд
+   * `<MarkSeen seenKey="<хуудас>" />`.
+   */
+  newBadge?: { key: string; days?: number; until?: string };
 }
 
 export const STORE_NAV_PRIMARY: readonly StoreNavItem[] = [
@@ -46,12 +57,14 @@ export const STORE_NAV_PRIMARY: readonly StoreNavItem[] = [
     label: "Үнэртний шил",
     hint: "Бүтэн, үлдэгдэлтэй, хоосон шил",
     flag: "extras_shop",
+    newBadge: { key: "bottles" },
   },
   {
     href: "/accessories",
     label: "Дагалдах хэрэгсэл",
     hint: "Бэлгийн сав, грамын сав, шприц",
     flag: "extras_shop",
+    newBadge: { key: "accessories" },
   },
 ];
 

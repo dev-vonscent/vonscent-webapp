@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { MarkSeen } from "@/components/shared/mark-seen";
 import { notFound } from "next/navigation";
 import { pageMetadata } from "@/lib/seo";
 import { isFeatureEnabled } from "@/lib/feature-flags";
@@ -27,16 +28,14 @@ export default async function AccessoriesPage() {
   return (
     <div className="mx-auto max-w-420 px-4 py-8 md:px-8">
       <div className="mb-4">
-        <h1
-          data-page-title
-          className="text-3xl font-semibold tracking-tight"
-        >
+        <h1 data-page-title className="text-3xl font-semibold tracking-tight">
           Дагалдах хэрэгсэл
         </h1>
         <p className="text-muted-foreground mt-1 text-sm text-pretty">
           Үнэртнээ бэлэглэх, цутгах, авч явахад хэрэгтэй бүхэн.
         </p>
       </div>
+      <MarkSeen seenKey="accessories" />
       <AccessoriesCatalog items={items} />
     </div>
   );

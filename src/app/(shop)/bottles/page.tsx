@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { MarkSeen } from "@/components/shared/mark-seen";
 import { notFound } from "next/navigation";
 import { pageMetadata } from "@/lib/seo";
 import { isFeatureEnabled } from "@/lib/feature-flags";
@@ -46,6 +47,7 @@ export default async function BottlesPage() {
         >
           Үнэртний шил
         </h1>
+        <MarkSeen seenKey="bottles" />
         <BottlesCatalog
           items={items}
           families={families}

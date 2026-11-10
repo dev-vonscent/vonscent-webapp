@@ -28,17 +28,20 @@ import { isFeatureFlag } from "@/lib/validators/feature-flag";
  * нэр anon-д ил гарахгүй). Cookie уншдаггүй тул хуудас ISR хэвээр.
  */
 const fetchEnabledKeys = unstable_cache(
-  async (): Promise<string[]> => {
+  async (): Promise<{ key: string; since: string }[]> => {
     const supabase = createAdminClient();
     if (!supabase) return [];
     const { data, error } = await supabase
       .from("feature_flags")
-      .select("key")
+      .select("key, updated_at")
       .eq("enabled", true);
     if (error) throw new Error(`feature_flags: ${error.message}`);
-    return ((data as { key: string }[] | null) ?? []).map((r) => r.key);
+    return ((data as { key: string; updated_at: string }[] | null) ?? []).map(
+      (r) => ({ key: r.key, since: r.updated_at }),
+    );
   },
-  ["feature-flags-enabled"],
+  // v2: утга `{ key, since }` болсон — хуучин кэш (string[]) уншигдахгүй.
+  ["feature-flags-enabled-v2"],
   // `revalidate` ЗОРИУД өгөөгүй: root layout уншдаг тул энд өгсөн хугацаа
   // бүх хуудсын ISR-ийг (login, account, 404 …) тэр хэмжээнд буулгана.
   // Шинэчлэлт нь зөвхөн tag-аар — админы унтраалга `revalidateFeatureFlags()`
@@ -48,8 +51,25 @@ const fetchEnabledKeys = unstable_cache(
 
 /** Асаалттай, кодонд бүртгэлтэй тугууд. */
 export async function getEnabledFeatureFlags(): Promise<FeatureFlag[]> {
+  return (await enabledRows()).map((r) => r.key);
+}
+
+/**
+ * Асаалттай туг бүрийг хэзээ асаасан — `updated_at` (туг солих бүрт
+ * шинэчлэгдэнэ, асаалттай үед = сүүлд асаасан цаг). «Шинэ» тэмдгийг
+ * нээлтээс N хоног харуулахад (`NavNewBadge`).
+ */
+export async function getEnabledFeatureFlagSince(): Promise<
+  Partial<Record<FeatureFlag, string>>
+> {
+  return Object.fromEntries((await enabledRows()).map((r) => [r.key, r.since]));
+}
+
+async function enabledRows(): Promise<{ key: FeatureFlag; since: string }[]> {
   try {
-    return (await fetchEnabledKeys()).filter(isFeatureFlag);
+    return (await fetchEnabledKeys()).filter(
+      (r): r is { key: FeatureFlag; since: string } => isFeatureFlag(r.key),
+    );
   } catch (err) {
     Sentry.captureException(err);
     return [];

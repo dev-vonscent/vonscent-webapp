@@ -121,9 +121,7 @@ export function breadcrumbJsonLd(
       position: i + 1,
       name: item.name,
       // `""` (нүүр) ч URL авна — сүүлчийнхээс бусад алхамд `item` заавал (Google).
-      ...(item.path !== undefined
-        ? { item: `${SITE.url}${item.path}` }
-        : {}),
+      ...(item.path !== undefined ? { item: `${SITE.url}${item.path}` } : {}),
     })),
   };
 }
