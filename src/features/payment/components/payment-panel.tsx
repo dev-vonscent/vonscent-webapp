@@ -328,6 +328,8 @@ export function PaymentPanel({
   }
 
   if (cancelled) return <CancelledState token={token} />;
+  if (paid && view.giftCard)
+    return <GiftCardPaidState view={view} giftCard={view.giftCard} />;
   if (paid)
     return <PaidState view={view} deliverOn={deliverOn} token={token} />;
 
@@ -574,9 +576,12 @@ function OrderRecap({ view }: { view: PaymentView }) {
       */}
         <div className="gold-rule mt-3" />
         <div className="mt-3 space-y-1.5 text-xs">
-          {orderSummaryRows(view).map((row) => (
-            <RecapRow key={row.label} {...row} />
-          ))}
+          {orderSummaryRows(view)
+            // Бэлгийн карт хүргэлтгүй (0179) — «Хүргэлт: Үнэгүй» төөрөгдүүлнэ.
+            .filter((row) => !(view.giftCard && row.label === "Хүргэлт"))
+            .map((row) => (
+              <RecapRow key={row.label} {...row} />
+            ))}
           {/* Тооцооны эцсийн мөр. Хэмжээний алхам нь checkout-ийн тоймтой нэг
               хэмжээст: жагсаалтын мөр → дүн нь ~1.7 дахин том, шошго нь дүнгээс
               нэг зэрэг жижиг. Урьд нь 12px мөрийн дараа 14px байсан тул «бага
@@ -608,12 +613,18 @@ function OrderRecap({ view }: { view: PaymentView }) {
         {/* Төлбөр хоцорсон бол сонгосон өдөр аль хэдийн өнгөрсөн байж мэднэ —
           `mark_order_paid` (0069) төлөх мөчид өдрийг ахиулна. Тиймээс энд
           хадгалсан өдрийг биш, одоо төлөхөд хүргэгдэх өдрийг харуулна. */}
-        <p className="text-muted-foreground mt-3 text-xs">
-          <strong className="text-foreground font-medium">
-            {formatDeliveryDay(projectedDeliveryDay(view.deliverOn))}
-          </strong>{" "}
-          {DISPATCH_HOUR}:00–{DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.
-        </p>
+        {view.giftCard ? (
+          <p className="text-muted-foreground mt-3 text-xs">
+            Төлбөр орсон даруйд бэлгийн карт идэвхжинэ — хүргэлтгүй.
+          </p>
+        ) : (
+          <p className="text-muted-foreground mt-3 text-xs">
+            <strong className="text-foreground font-medium">
+              {formatDeliveryDay(projectedDeliveryDay(view.deliverOn))}
+            </strong>{" "}
+            {DISPATCH_HOUR}:00–{DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -1075,6 +1086,75 @@ function PaidState({
           <Link href={`/order/${token}`}>Захиалгаа харах</Link>
         </Button>
         <Button asChild className="flex-1">
+          <Link href="/catalog">Дэлгүүр үзэх</Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Бэлгийн картын төлбөр орлоо (0179). Хүргэлтгүй — хүргэх өдөр, «Захиалгаа
+ * харах»-ын оронд картаа хуваалцах газар руу. Худалдан авагчийн оноо карт
+ * ашиглагдах эсвэл 7 хоногийн дараа нээгдэнэ (gift-cards-plan §12-Q4).
+ */
+function GiftCardPaidState({
+  view,
+  giftCard,
+}: {
+  view: PaymentView;
+  giftCard: NonNullable<PaymentView["giftCard"]>;
+}) {
+  return (
+    <div className="mx-auto max-w-lg px-4 py-16 text-center md:py-24">
+      <motion.span
+        initial={{ scale: 0.85, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.35, delay: 0.05, ease: "easeOut" }}
+        className="bg-success/12 text-success mx-auto flex size-16 items-center justify-center rounded-full"
+      >
+        <Check className="size-8" strokeWidth={2.5} />
+      </motion.span>
+      <h1 className="mt-6 text-3xl font-semibold tracking-tight">
+        Бэлгийн карт бэлэн боллоо
+      </h1>
+      <p className="text-muted-foreground mt-2">
+        Хүлээн авагч:{" "}
+        <span className="text-foreground font-medium">
+          {giftCard.recipientName}
+        </span>{" "}
+        · {formatPrice(view.total)}
+      </p>
+      <div className="bg-card mt-8 rounded-2xl p-5 text-left">
+        <p className="text-sm">
+          {giftCard.recipientEmail ? (
+            <>
+              Код, заавар{" "}
+              <strong className="font-medium">{giftCard.recipientEmail}</strong>{" "}
+              хаяг руу илгээгдэнэ.
+            </>
+          ) : (
+            "Картаа «Бэлгийн карт» хэсгээс холбоосоор хуваалцах эсвэл кодыг нь өгөөрэй."
+          )}
+        </p>
+        {view.pointsEarned > 0 && (
+          <>
+            <div className="gold-rule mt-3" />
+            <p className="text-muted-foreground mt-3 text-xs">
+              <strong className="text-foreground font-medium tabular-nums">
+                +{view.pointsEarned.toLocaleString("mn-MN")} V point
+              </strong>{" "}
+              хуримтлагдлаа — карт ашиглагдмагц эсвэл 7 хоногийн дараа
+              зарцуулах боломжтой болно.
+            </p>
+          </>
+        )}
+      </div>
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <Button asChild className="flex-1">
+          <Link href="/account/gift-cards">Картаа харах</Link>
+        </Button>
+        <Button asChild variant="secondary" className="flex-1">
           <Link href="/catalog">Дэлгүүр үзэх</Link>
         </Button>
       </div>

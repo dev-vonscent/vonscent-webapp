@@ -12,6 +12,7 @@ import {
   pointsEarnedFor,
   reviewPointsOf,
 } from "@/lib/loyalty";
+import { getOrderGiftCard } from "@/features/gift-cards/server";
 import type { PaymentLine, PaymentView } from "./types";
 import type { PaymentMethod } from "@/db/types";
 
@@ -49,6 +50,7 @@ interface OrderRow {
   omitted_gifts:
     | { product_id: string; reason: "threshold" | "vial" | "stock" }[]
     | null;
+  order_type: "goods" | "gift_card";
 }
 
 interface ItemRow {
@@ -62,13 +64,13 @@ interface ItemRow {
   line_total: number;
   is_sample: boolean;
   collection_name: string | null;
-  line_kind: "perfume" | "extra";
+  line_kind: "perfume" | "extra" | "gift_card";
   variant_label: string | null;
   image_url: string | null;
 }
 
 const SELECT =
-  "id, order_no, user_id, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, status, payment_method, payment_status, deliver_on, checkout_snapshot, omitted_gifts";
+  "id, order_no, user_id, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, status, payment_method, payment_status, deliver_on, checkout_snapshot, omitted_gifts, order_type";
 
 const ITEM_SELECT =
   "product_id, product_name, brand, ml, qty, unit_price, list_price, line_total, is_sample, collection_name, line_kind, variant_label, image_url";
@@ -101,8 +103,9 @@ export async function paymentLines(
     name: r.product_name,
     brand: r.brand,
     ml: r.ml,
-    variantLabel: r.line_kind === "extra" ? (r.variant_label ?? "") : null,
-    isExtra: r.line_kind === "extra",
+    // Бэлгийн карт (0179) ч ml-гүй, загварын нэрээр — нэмэлт бараатай ижил.
+    variantLabel: r.line_kind !== "perfume" ? (r.variant_label ?? "") : null,
+    isExtra: r.line_kind !== "perfume",
     qty: r.qty,
     lineTotal: r.line_total,
     // Мөр нь үндсэн үнээрээ бичигдэнэ — багцын хямдрал доор тусдаа мөр
@@ -145,18 +148,22 @@ async function loyaltyFor(
       () => null,
     );
     if (lifetime != null) {
+      // Бэлгийн картын захиалга зарцуулалтад тоологддоггүй (0179).
       const counted =
-        order.payment_status === "paid" && order.status !== "cancelled";
+        order.payment_status === "paid" &&
+        order.status !== "cancelled" &&
+        order.order_type === "goods";
       const before = Math.max(lifetime - (counted ? base : 0), 0);
       return {
         pointsEarned: pointsAtTierRate(base, tierForSpend(before).rate),
-        reviewPoints: reviewPointsOf(value),
+        reviewPoints:
+          order.order_type === "gift_card" ? 0 : reviewPointsOf(value),
       };
     }
   }
   return {
     pointsEarned: pointsEarnedFor(base, parseLoyaltyRules(value)),
-    reviewPoints: reviewPointsOf(value),
+    reviewPoints: order.order_type === "gift_card" ? 0 : reviewPointsOf(value),
   };
 }
 
@@ -188,6 +195,8 @@ export async function getPaymentByToken(
       )
     : new Map<string, string>();
   const { pointsEarned, reviewPoints } = await loyaltyFor(supabase, order);
+  const giftCard =
+    order.order_type === "gift_card" ? await getOrderGiftCard(order.id) : null;
 
   // An invoice is only worth having while the order can still be paid. Asking
   // QPay for one on a cancelled or already-paid order would create a live
@@ -230,6 +239,7 @@ export async function getPaymentByToken(
     // юу ч үлдэхгүй (VS-1086/1087, 2026-10-12).
     canSaveForLater: order.user_id !== null && order.checkout_snapshot !== null,
     deliverOn: order.deliver_on,
+    giftCard,
     invoice,
     mock: isQpayMockMode(),
   };

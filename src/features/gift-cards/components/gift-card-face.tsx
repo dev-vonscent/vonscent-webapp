@@ -1,0 +1,174 @@
+import Image from "next/image";
+import { cn } from "@/lib/utils";
+import { formatGiftAmount } from "../lib";
+import type { GiftCardDesign, GiftCardFaceText } from "../types";
+
+/**
+ * Бэлгийн картын нүүр (gift-cards-plan §9.1, canvas «00 · Safe zone»).
+ *
+ * 1200×756 (≈ банкны карт) харьцаатай, хэмжээ нь контейнерийн өргөнөөс
+ * (`cqw`) — preview, жагсаалт, хүлээн авагчийн хуудас бүгд нэг бүрэлдэхүүн.
+ * Байрлал нь canvas-ийн px-ийг 1200-д хуваасан нь: `u(64)` = 64px @1200.
+ *
+ * Дэвсгэр зураг (дизайнерын, текстгүй) байвал бүтэн дүүргэнэ; байхгүй бол
+ * загварын цул өнгө. Өнгө нь загварын өгөгдөл (DB) тул inline style — сайтын
+ * theme token биш, картын «зураг»-ийн нэг хэсэг.
+ *
+ * Код энд ХЭЗЭЭ Ч гарахгүй: карт хуваалцагдана, код нь нууц (§5.3).
+ */
+export function GiftCardFace({
+  design,
+  text,
+  className,
+  priority = false,
+}: {
+  design: GiftCardDesign;
+  text: GiftCardFaceText;
+  className?: string;
+  priority?: boolean;
+}) {
+  const u = (px: number) => `${(px / 12).toFixed(3)}cqw`;
+  const recipient = text.recipientName.trim();
+  const message = text.message.trim() || design.defaultMessage || "";
+  const from = text.fromName.trim();
+
+  return (
+    <div
+      className={cn(
+        "@container relative aspect-1200/756 w-full overflow-hidden rounded-2xl shadow-sm select-none",
+        className,
+      )}
+      style={{ backgroundColor: design.bgColor, color: design.textColor }}
+      role="img"
+      aria-label={`Vonscent бэлгийн карт, ${formatGiftAmount(text.amount)}${recipient ? `, ${recipient}-д` : ""}`}
+    >
+      {design.imageUrl ? (
+        <Image
+          src={design.imageUrl}
+          alt=""
+          fill
+          sizes="(min-width: 768px) 600px, 100vw"
+          priority={priority}
+          className="object-cover"
+        />
+      ) : (
+        // Зураггүй загварт: чимэглэлийн бүсэд нимгэн хоёр тойрог (canvas
+        // «Үндсэн»-ий хэлбэр), gradient-гүй.
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 380 440"
+          fill="none"
+          className="absolute"
+          style={{ left: u(760), top: u(180), width: u(380) }}
+        >
+          <circle
+            cx="190"
+            cy="250"
+            r="160"
+            stroke={design.accentColor ?? design.mutedColor}
+            strokeWidth="1.5"
+          />
+          <circle
+            cx="190"
+            cy="250"
+            r="184"
+            stroke={design.mutedColor}
+            strokeOpacity="0.35"
+            strokeWidth="1"
+          />
+        </svg>
+      )}
+
+      <div aria-hidden="true" className="absolute inset-0">
+        <div
+          className="absolute font-bold"
+          style={{
+            left: u(64),
+            top: u(52),
+            fontSize: u(18),
+            letterSpacing: "0.42em",
+          }}
+        >
+          VONSCENT
+        </div>
+
+        <div
+          className="absolute text-right"
+          style={{ right: u(64), top: u(40) }}
+        >
+          <div
+            className="leading-none font-bold tabular-nums"
+            style={{ fontSize: u(60) }}
+          >
+            {formatGiftAmount(text.amount)}
+          </div>
+          <div
+            className="font-semibold tabular-nums"
+            style={{
+              marginTop: u(10),
+              fontSize: u(16),
+              color: design.mutedColor,
+            }}
+          >
+            = {text.amount.toLocaleString("en-US")} V point
+          </div>
+        </div>
+
+        <div className="absolute" style={{ left: u(64), top: u(200), width: u(640) }}>
+          <div
+            className="line-clamp-2 font-semibold tracking-tight"
+            style={{ fontSize: u(64), lineHeight: 1.02 }}
+          >
+            {design.heading}
+          </div>
+          {recipient && (
+            <div
+              className="truncate font-bold"
+              style={{ marginTop: u(28), fontSize: u(26) }}
+            >
+              {recipient} танд,
+            </div>
+          )}
+          {message && (
+            <div
+              className="line-clamp-3 wrap-break-word"
+              style={{
+                marginTop: u(10),
+                maxWidth: u(560),
+                fontSize: u(20),
+                lineHeight: 1.5,
+                color: design.mutedColor,
+              }}
+            >
+              {message}
+            </div>
+          )}
+        </div>
+
+        <div
+          className="absolute"
+          style={{ left: u(64), bottom: u(52), fontSize: u(15), color: design.mutedColor }}
+        >
+          vonscent.mn
+        </div>
+
+        {from && (
+          <div
+            className="absolute max-w-[45%] truncate text-right"
+            style={{
+              right: u(64),
+              bottom: u(52),
+              fontSize: u(18),
+              color: design.mutedColor,
+            }}
+          >
+            Илгээгч:{" "}
+            <span className="font-bold" style={{ color: design.textColor }}>
+              {from}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

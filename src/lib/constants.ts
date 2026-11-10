@@ -726,6 +726,13 @@ export const RATE_LIMITS = {
   broadcastSend: { limit: 10, windowSec: 60 * 60 },
   /** «Надад туршиж илгээх» — зөвхөн өөртөө, засах явцад хэд хэдэн удаа. */
   broadcastTest: { limit: 30, windowSec: 10 * 60 },
+  /**
+   * Бэлгийн код оруулах (0179) — хэрэглэгчээр. Код 32^8 хувилбартай, гэхдээ
+   * таах оролдлогыг утгагүй болгох нь энэ хязгаар: жинхэнэ хүн 1–2 удаа.
+   */
+  giftCardRedeem: { limit: 5, windowSec: 10 * 60 },
+  /** Мөн IP-ээр — олон бүртгэлээр ээлжлэн таахаас. */
+  giftCardRedeemIp: { limit: 20, windowSec: 60 * 60 },
 } as const;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

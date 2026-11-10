@@ -70,6 +70,11 @@ export interface PaymentView {
   canSaveForLater: boolean;
   /** "yyyy-MM-dd" (UB) — chosen at checkout. */
   deliverOn: string | null;
+  /**
+   * Бэлгийн картын захиалга (0179) — хүргэлтгүй. Төлсний дараах дэлгэц,
+   * хүргэх өдрийн мөр үүгээр солигдоно. Энгийн захиалгад null.
+   */
+  giftCard: { recipientName: string; recipientEmail: string | null } | null;
   invoice: {
     invoiceId: string;
     /**
