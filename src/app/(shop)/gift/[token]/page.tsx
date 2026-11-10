@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
+import { env } from "@/lib/env";
 import { getGiftCardByToken } from "@/features/gift-cards/server";
 import { GiftCardFace } from "@/features/gift-cards/components/gift-card-face";
 import { GiftCardRedeemAction } from "@/features/gift-cards/components/gift-card-redeem";
@@ -15,12 +16,45 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+const BASE_METADATA: Metadata = {
   title: "Танд бэлэг ирлээ",
   // Token бол эрх — хайлтад, урьдчилан харах зурагт код гарахгүй ч индекслэхгүй.
   robots: { index: false, follow: false },
   referrer: "no-referrer",
 };
+
+/**
+ * Messenger / Viber-ээр холбоос илгээхэд preview нь картын зураг (код
+ * агуулдаггүй, `/api/gift-cards/<token>/image`). Сайтын ерөнхий OG зураг
+ * биш — хүлээн авагч юу ирснийг шууд харна.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}): Promise<Metadata> {
+  if (!(await isFeatureEnabled("gift_cards"))) return BASE_METADATA;
+  const { token } = await params;
+  const card = await getGiftCardByToken(token, null);
+  if (!card || card.status === "void") return BASE_METADATA;
+  const title = `${card.recipientName}, танд бэлэг ирлээ`;
+  const description = `${card.fromName} танд Vonscent-ийн ${card.amount.toLocaleString("mn-MN")}₮-ийн бэлгийн карт илгээлээ.`;
+  const image = {
+    // Орчин бүрийн өөрийн хост (preview нь dev сангийн картыг prod-оос
+    // хайхгүй) — `metadataBase` нь үргэлж prod домэйн.
+    url: `${env.siteUrl}/api/gift-cards/${token}/image`,
+    width: 1200,
+    height: 756,
+    alt: "Vonscent бэлгийн карт",
+  };
+  return {
+    ...BASE_METADATA,
+    title,
+    description,
+    openGraph: { title, description, images: [image], type: "website" },
+    twitter: { card: "summary_large_image", title, description, images: [image.url] },
+  };
+}
 
 /**
  * `/gift/<token>` — хүлээн авагчийн хуудас (gift-cards-plan §2.3).
