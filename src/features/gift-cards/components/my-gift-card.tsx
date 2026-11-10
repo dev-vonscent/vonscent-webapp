@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Copy, Link2, RotateCcw, Share2 } from "lucide-react";
+import { Copy, Link2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
@@ -48,9 +48,11 @@ function StatusPill({ status }: { status: MyGiftCard["status"] }) {
 function GiftCardBack({
   card,
   qrSrc,
+  onFlip,
 }: {
   card: MyGiftCard;
   qrSrc: string;
+  onFlip: () => void;
 }) {
   const u = (px: number) => `${(px / 12).toFixed(3)}cqw`;
   const d = card.design;
@@ -82,7 +84,7 @@ function GiftCardBack({
             type="button"
             onClick={() => copy(card.code ?? "", "Код хуулагдлаа.")}
             aria-label="Кодыг хуулах"
-            className="flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-current"
+            className="relative z-20 flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-current"
             style={{
               width: u(64),
               height: u(64),
@@ -117,6 +119,13 @@ function GiftCardBack({
       >
         vonscent.mn
       </div>
+      {/* Ар тал дээр дахин дарахад нүүр рүү — хуулах товч (z-20) дээгүүр. */}
+      <button
+        type="button"
+        onClick={onFlip}
+        aria-label="Картын нүүр тал руу эргүүлэх"
+        className="absolute inset-0 z-10 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      />
     </div>
   );
 }
@@ -209,6 +218,7 @@ export function MyGiftCardItem({
               <GiftCardBack
                 card={card}
                 qrSrc={`/api/gift-cards/${card.token}/qr`}
+                onFlip={() => setFlipped(false)}
               />
             </div>
           )}
@@ -231,16 +241,6 @@ export function MyGiftCardItem({
 
       {shareable && url && (
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            className="bg-cta text-cta-foreground hover:bg-cta/90"
-            onClick={() => setFlipped((v) => !v)}
-            aria-pressed={flipped}
-          >
-            <RotateCcw className="size-4" aria-hidden="true" />
-            {flipped ? "Нүүр тал" : "Код харах"}
-          </Button>
           {canShare ? (
             <Button type="button" size="sm" variant="secondary" onClick={share}>
               <Share2 className="size-4" aria-hidden="true" />
@@ -256,7 +256,7 @@ export function MyGiftCardItem({
               }
             >
               <Link2 className="size-4" aria-hidden="true" />
-              Холбоос
+              Холбоос хуулах
             </Button>
           )}
           <GiftCardSendButton

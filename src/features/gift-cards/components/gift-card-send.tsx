@@ -79,7 +79,7 @@ export function GiftCardSendButton({
         onClick={() => setOpen(true)}
       >
         <Mail className="size-4" aria-hidden="true" />
-        {size ? "Имэйл" : sent ? "Дахин илгээх" : "Имэйлээр илгээх"}
+        {sent ? "Дахин илгээх" : "Имэйлээр илгээх"}
       </Button>
       <ResponsiveDialog
         open={open}
