@@ -3,6 +3,10 @@ import { isFeatureEnabled } from "@/lib/feature-flags";
 import { getGiftCardByToken } from "@/features/gift-cards/server";
 import { formatGiftAmount } from "@/features/gift-cards/lib";
 import { interFonts } from "@/features/gift-cards/og-font";
+import {
+  BRAND_MARK_RATIO,
+  brandMarkDataUrl,
+} from "@/features/gift-cards/og-logo";
 
 /**
  * GET /api/gift-cards/<token>/image — картын PNG (1200×756), имэйл, OG,
@@ -10,7 +14,7 @@ import { interFonts } from "@/features/gift-cards/og-font";
  * код ХЭЗЭЭ Ч гарахгүй (зураг хуваалцагдана). Token нь эрх.
  */
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ token: string }> },
 ) {
   if (!(await isFeatureEnabled("gift_cards"))) {
@@ -23,7 +27,10 @@ export async function GET(
   }
   const d = card.design;
   const message = card.message.trim() || d.defaultMessage || "";
-  const fonts = await interFonts();
+  const [fonts, mark] = await Promise.all([
+    interFonts(),
+    brandMarkDataUrl(new URL(req.url).origin, d.textColor),
+  ]);
 
   return new ImageResponse(
     (
@@ -61,24 +68,35 @@ export async function GET(
             }}
           />
         )}
-        <div
-          style={{
-            position: "absolute",
-            left: 64,
-            top: 52,
-            fontSize: 18,
-            fontWeight: 700,
-            letterSpacing: 7,
-            display: "flex",
-          }}
-        >
-          VONSCENT
-        </div>
+        {mark ? (
+          // eslint-disable-next-line @next/next/no-img-element -- satori
+          <img
+            src={mark}
+            alt=""
+            height={88}
+            width={Math.round(88 * BRAND_MARK_RATIO)}
+            style={{ position: "absolute", left: 64, top: 48 }}
+          />
+        ) : (
+          <div
+            style={{
+              position: "absolute",
+              left: 64,
+              top: 60,
+              fontSize: 22,
+              fontWeight: 700,
+              letterSpacing: 8,
+              display: "flex",
+            }}
+          >
+            VONSCENT
+          </div>
+        )}
         <div
           style={{
             position: "absolute",
             right: 64,
-            top: 40,
+            top: 48,
             display: "flex",
             flexDirection: "column",
             alignItems: "flex-end",
@@ -89,8 +107,8 @@ export async function GET(
           </div>
           <div
             style={{
-              marginTop: 10,
-              fontSize: 16,
+              marginTop: 12,
+              fontSize: 24,
               fontWeight: 700,
               color: d.mutedColor,
             }}
@@ -102,29 +120,44 @@ export async function GET(
           style={{
             position: "absolute",
             left: 64,
-            top: 200,
+            top: 216,
             width: 640,
             display: "flex",
             flexDirection: "column",
           }}
         >
-          <div style={{ fontSize: 64, fontWeight: 700, lineHeight: 1.02 }}>
+          <div style={{ fontSize: 60, fontWeight: 700, lineHeight: 1.05 }}>
             {d.heading}
           </div>
-          <div style={{ marginTop: 28, fontSize: 26, fontWeight: 700 }}>
+          <div style={{ marginTop: 32, fontSize: 32, fontWeight: 700 }}>
             {`${card.recipientName} танд,`}
           </div>
           {message ? (
             <div
               style={{
-                marginTop: 10,
-                maxWidth: 560,
-                fontSize: 20,
-                lineHeight: 1.5,
+                marginTop: 12,
+                maxWidth: 600,
+                fontSize: 26,
+                lineHeight: 1.45,
                 color: d.mutedColor,
               }}
             >
               {message}
+            </div>
+          ) : null}
+          {card.fromName ? (
+            <div
+              style={{
+                marginTop: 24,
+                fontSize: 26,
+                color: d.mutedColor,
+                display: "flex",
+              }}
+            >
+              <span>Илгээгч:&nbsp;</span>
+              <span style={{ fontWeight: 700, color: d.textColor }}>
+                {card.fromName}
+              </span>
             </div>
           ) : null}
         </div>
@@ -132,28 +165,13 @@ export async function GET(
           style={{
             position: "absolute",
             left: 64,
-            bottom: 52,
-            fontSize: 15,
+            bottom: 48,
+            fontSize: 22,
             color: d.mutedColor,
             display: "flex",
           }}
         >
           vonscent.mn
-        </div>
-        <div
-          style={{
-            position: "absolute",
-            right: 64,
-            bottom: 52,
-            fontSize: 18,
-            color: d.mutedColor,
-            display: "flex",
-          }}
-        >
-          <span>Илгээгч:&nbsp;</span>
-          <span style={{ fontWeight: 700, color: d.textColor }}>
-            {card.fromName}
-          </span>
         </div>
       </div>
     ),

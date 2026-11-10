@@ -80,21 +80,14 @@ export function GiftCardFace({
       )}
 
       <div aria-hidden="true" className="absolute inset-0">
-        <div
-          className="absolute font-bold"
-          style={{
-            left: u(64),
-            top: u(52),
-            fontSize: u(18),
-            letterSpacing: "0.42em",
-          }}
-        >
-          VONSCENT
-        </div>
+        <span
+          className="brand-mark absolute block aspect-233/240"
+          style={{ left: u(64), top: u(48), height: u(88) }}
+        />
 
         <div
           className="absolute text-right"
-          style={{ right: u(64), top: u(40) }}
+          style={{ right: u(64), top: u(48) }}
         >
           <div
             className="leading-none font-bold tabular-nums"
@@ -105,8 +98,8 @@ export function GiftCardFace({
           <div
             className="font-semibold tabular-nums"
             style={{
-              marginTop: u(10),
-              fontSize: u(16),
+              marginTop: u(12),
+              fontSize: u(24),
               color: design.mutedColor,
             }}
           >
@@ -114,17 +107,17 @@ export function GiftCardFace({
           </div>
         </div>
 
-        <div className="absolute" style={{ left: u(64), top: u(200), width: u(640) }}>
+        <div className="absolute" style={{ left: u(64), top: u(216), width: u(640) }}>
           <div
             className="line-clamp-2 font-semibold tracking-tight"
-            style={{ fontSize: u(64), lineHeight: 1.02 }}
+            style={{ fontSize: u(60), lineHeight: 1.05 }}
           >
             {design.heading}
           </div>
           {recipient && (
             <div
               className="truncate font-bold"
-              style={{ marginTop: u(28), fontSize: u(26) }}
+              style={{ marginTop: u(32), fontSize: u(32) }}
             >
               {recipient} танд,
             </div>
@@ -133,41 +126,35 @@ export function GiftCardFace({
             <div
               className="line-clamp-3 wrap-break-word"
               style={{
-                marginTop: u(10),
-                maxWidth: u(560),
-                fontSize: u(20),
-                lineHeight: 1.5,
+                marginTop: u(12),
+                maxWidth: u(600),
+                fontSize: u(26),
+                lineHeight: 1.45,
                 color: design.mutedColor,
               }}
             >
               {message}
             </div>
           )}
+          {from && (
+            <div
+              className="truncate"
+              style={{ marginTop: u(24), fontSize: u(26), color: design.mutedColor }}
+            >
+              Илгээгч:{" "}
+              <span className="font-bold" style={{ color: design.textColor }}>
+                {from}
+              </span>
+            </div>
+          )}
         </div>
 
         <div
-          className="absolute"
-          style={{ left: u(64), bottom: u(52), fontSize: u(15), color: design.mutedColor }}
+          className="absolute font-medium"
+          style={{ left: u(64), bottom: u(48), fontSize: u(22), color: design.mutedColor }}
         >
           vonscent.mn
         </div>
-
-        {from && (
-          <div
-            className="absolute max-w-[45%] truncate text-right"
-            style={{
-              right: u(64),
-              bottom: u(52),
-              fontSize: u(18),
-              color: design.mutedColor,
-            }}
-          >
-            Илгээгч:{" "}
-            <span className="font-bold" style={{ color: design.textColor }}>
-              {from}
-            </span>
-          </div>
-        )}
       </div>
     </div>
   );
