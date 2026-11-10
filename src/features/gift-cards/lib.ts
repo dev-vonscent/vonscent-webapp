@@ -28,3 +28,13 @@ export const GIFT_STATUS_LABEL: Record<GiftCardStatus, string> = {
 export function formatGiftAmount(amount: number): string {
   return `${amount.toLocaleString("en-US")}₮`;
 }
+
+/** RPC-ийн `redeem_gift_card`-тай ижил кодын хэвшүүлэлт (0179). */
+export function normalizeGiftCode(raw: string): string | null {
+  const c = raw.toUpperCase().replace(/[^0-9A-Z]/gu, "");
+  if (c.length === 11 && c.startsWith("VON")) {
+    return `VON-${c.slice(3, 7)}-${c.slice(7, 11)}`;
+  }
+  if (c.length === 8) return `VON-${c.slice(0, 4)}-${c.slice(4, 8)}`;
+  return null;
+}

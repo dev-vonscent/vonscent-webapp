@@ -27,6 +27,8 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
   const d = card.design;
+  // «Зураг татах» (`?download=1`) — хөтөч файл болгон хадгална.
+  const download = new URL(req.url).searchParams.get("download") === "1";
   const message = card.message.trim() || d.defaultMessage || "";
   const [fonts, mark, bg] = await Promise.all([
     interFonts(),
@@ -182,7 +184,12 @@ export async function GET(
       height: 756,
       fonts,
       // Карт өөрчлөгддөггүй (зөвхөн төлөв) — CDN дээр удаан хадгална.
-      headers: { "Cache-Control": "public, max-age=86400, immutable" },
+      headers: {
+        "Cache-Control": "public, max-age=86400, immutable",
+        ...(download && {
+          "Content-Disposition": `attachment; filename="vonscent-gift-card-${card.amount}.png"`,
+        }),
+      },
     },
   );
 }

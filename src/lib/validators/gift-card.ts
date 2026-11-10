@@ -116,6 +116,8 @@ export const giftCardRedeemSchema = z
       .string()
       .regex(/^[0-9a-f]{32}$/u)
       .optional(),
+    /** Өөрийн худалдаж авсан картыг өөртөө оноо болгохыг баталсан. */
+    confirmOwn: z.boolean().optional(),
   })
   .refine((v) => Boolean(v.token || v.code), {
     message: "Бэлгийн кодоо бичнэ үү.",

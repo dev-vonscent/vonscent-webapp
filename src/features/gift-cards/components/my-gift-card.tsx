@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Copy, Link2, Share2 } from "lucide-react";
+import { Copy, Download, Link2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
@@ -270,6 +270,13 @@ export function MyGiftCardItem({
               Холбоос хуулах
             </Button>
           )}
+          {/* Картын нүүр (код, QR-гүй) — Messenger, story-д хавсаргах. */}
+          <Button asChild size="sm" variant="secondary">
+            <a href={`/api/gift-cards/${card.token}/image?download=1`} download>
+              <Download className="size-4" aria-hidden="true" />
+              Зураг татах
+            </a>
+          </Button>
           <GiftCardSendButton
             cardId={card.id}
             currentEmail={card.recipientEmail}

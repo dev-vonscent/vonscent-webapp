@@ -6,6 +6,29 @@ import { createClient } from "@/lib/supabase/server";
 import { callRpc } from "@/lib/supabase/rpc";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { REDEEM_MESSAGES, knownErrorCode } from "@/features/gift-cards/messages";
+import { normalizeGiftCode } from "@/features/gift-cards/lib";
+
+async function ownActiveCard(
+  supabase: NonNullable<ReturnType<typeof createAdminClient>>,
+  userId: string,
+  input: { code?: string; token?: string },
+): Promise<{ amount: number } | null> {
+  let query = supabase
+    .from("gift_cards")
+    .select("amount, buyer_id, status");
+  if (input.token) {
+    query = query.eq("token", input.token.toLowerCase());
+  } else {
+    const code = input.code ? normalizeGiftCode(input.code) : null;
+    if (!code) return null;
+    query = query.eq("code", code);
+  }
+  const { data } = await query.maybeSingle();
+  const row = data as { amount: number; buyer_id: string | null; status: string } | null;
+  return row && row.status === "active" && row.buyer_id === userId
+    ? { amount: row.amount }
+    : null;
+}
 
 interface RedeemResult {
   ok: boolean;
@@ -60,6 +83,19 @@ export async function POST(req: Request) {
   if (!supabase) {
     return NextResponse.json({ error: "REDEEM_FAILED" }, { status: 503 });
   }
+  // Худалдан авагч өөрийн картаа андуурч (бэлэглэх гэж байснаа) оноо
+  // болгохоос сэргийлнэ: эхний оролдлогод `OWN_CARD` буцааж, client
+  // баталгаажуулалтын цонх гаргаад `confirmOwn: true`-тэй дахин илгээнэ.
+  if (!parsed.data.confirmOwn) {
+    const own = await ownActiveCard(supabase, user.id, parsed.data);
+    if (own) {
+      return NextResponse.json(
+        { error: "OWN_CARD", message: REDEEM_MESSAGES.OWN_CARD, amount: own.amount },
+        { status: 409 },
+      );
+    }
+  }
+
   const args = {
     p_user: user.id,
     p_code: parsed.data.code ?? null,
