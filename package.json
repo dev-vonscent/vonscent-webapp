@@ -4,8 +4,8 @@
   "private": true,
   "packageManager": "pnpm@10.34.5",
   "scripts": {
-    "dev": "next dev",
-    "dev:local": "node scripts/dev-local.mjs",
+    "dev": "node scripts/dev.mjs",
+    "dev:local": "node scripts/dev.mjs --local",
     "build": "next build",
     "analyze": "next build --experimental-analyze && node --import tsx scripts/bundle-report.ts",
     "hero:posters": "node --import tsx scripts/hero-posters.ts",
