@@ -153,8 +153,9 @@ as $$
       coalesce(sum(shipping)  filter (where kind = 'sale'), 0)   as shipping,
       coalesce(sum(qpay_fee), 0)                                 as qpay_fee,
       coalesce(sum(refund_fee), 0)                               as refund_fee,
-      count(*) filter (where kind = 'sale')                      as sale_orders,
-      count(*) filter (where kind = 'refund')                    as refund_orders,
+      -- Захиалгын ТОО нь барааны (хүргэлтийн) — карт зөвхөн дүнд (gift_sold).
+      count(*) filter (where kind = 'sale' and gift_card_goods = 0)   as sale_orders,
+      count(*) filter (where kind = 'refund' and gift_card_goods = 0) as refund_orders,
       coalesce(sum(extras_goods) filter (where kind = 'sale'), 0) as extras_goods,
       coalesce(sum(gift_card_goods) filter (where kind = 'sale'), 0) as gift_goods,
       count(*) filter (where kind = 'sale' and gift_card_goods > 0) as gift_sold
@@ -220,3 +221,52 @@ $$;
 
 revoke all on function admin_report_finance(timestamptz, timestamptz, numeric) from public;
 grant execute on function admin_report_finance(timestamptz, timestamptz, numeric) to authenticated;
+
+------------------------------------------------------------------------------
+-- 3. Захиалгын тоо, төлвийн задаргаа — бэлгийн картгүй (дүн нь хэвээр)
+--
+-- Картын захиалга `delivered` болдог ч хүргэлт биш: «Хүргэгдсэн»-ийн тоо,
+-- графикийн «захиалга» нь барааны захиалгыг л тоолно. Орлого (revenue) нь
+-- картыг багтаасан хэвээр (K9).
+------------------------------------------------------------------------------
+
+create or replace function admin_report_status(
+  p_from timestamptz default null,
+  p_to   timestamptz default null
+)
+returns table (status text, count bigint)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select o.status::text, count(*)::bigint
+  from orders o
+  where is_staff()
+    and o.order_type <> 'gift_card'
+    and (p_from is null or o.created_at >= p_from)
+    and (p_to   is null or o.created_at <  p_to)
+  group by 1;
+$$;
+
+create or replace function admin_report_series(
+  p_from     timestamptz default null,
+  p_to       timestamptz default null,
+  p_bucket   text default 'month',
+  p_qpay_pct numeric default 1
+)
+returns table (bucket text, revenue bigint, orders bigint, ml bigint)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select to_char(e.at at time zone 'Asia/Ulaanbaatar',
+                 case when p_bucket = 'day' then 'YYYY-MM-DD' else 'YYYY-MM' end),
+         sum(e.net_goods)::bigint,
+         count(*) filter (where e.kind = 'sale' and e.gift_card_goods = 0)::bigint,
+         coalesce(sum(e.ml), 0)::bigint
+    from admin_report_events(p_from, p_to, p_qpay_pct) e
+   group by 1
+   order by 1 desc;
+$$;
