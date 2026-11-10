@@ -24,7 +24,7 @@ async function build(
     const sharp = (await import("sharp")).default;
     const jpg = await sharp(Buffer.from(await res.arrayBuffer()))
       .resize({ width, height, fit: "cover" })
-      .jpeg({ quality: 86 })
+      .jpeg({ quality: 92 })
       .toBuffer();
     return `data:image/jpeg;base64,${jpg.toString("base64")}`;
   } catch {

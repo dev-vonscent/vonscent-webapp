@@ -177,7 +177,7 @@ async function notifyPaid(
   const { data } = await supabase
     .from("orders")
     .select(
-      "contact_name, contact_phone, ship_city, ship_district, ship_detail, note, payment_method, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, deliver_on, created_at",
+      "contact_name, contact_phone, ship_city, ship_district, ship_detail, note, payment_method, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, deliver_on, created_at, order_type",
     )
     .eq("id", order.id)
     .maybeSingle();
@@ -198,6 +198,7 @@ async function notifyPaid(
     total: number;
     deliver_on: string | null;
     created_at: string;
+    order_type: string | null;
   } | null;
   if (!row) {
     await notifyAdmin(`${head}💰 ${formatPrice(order.total)}\n${link}`);
@@ -272,7 +273,11 @@ async function notifyPaid(
   // Задаргаа нь pay хуудасны тооцоотой нэг эх сурвалжаас (`orderSummaryRows`):
   // үндсэн үнэ → багцын хямдрал → купон → V point → хүргэлт → нийт.
   // Купоны код хэрэглэгчийн оруулсан утга тул escape хийнэ.
+  // Бэлгийн карт (0179) хүргэгдэхгүй — «🚚 Маргааш», «Хүргэлт Үнэгүй» мөр
+  // савлагч/курьерыг төөрөгдүүлнэ.
+  const isGiftCard = row.order_type === "gift_card";
   const breakdown = orderSummaryRows(summarySource(row))
+    .filter((r) => !(isGiftCard && r.label === "Хүргэлт"))
     .map((r) => tgEscape(`${r.label} ${r.value}`))
     .join("\n");
 
@@ -280,7 +285,9 @@ async function notifyPaid(
     head +
       `👤 ${tgEscape(row.contact_name ?? "")} · ${tgEscape(row.contact_phone ?? "")}\n` +
       (address ? `📍 ${tgEscape(address)}\n` : "") +
-      `🚚 ${tgEscape(formatDeliveryDay(deliveryDayOf(row)))}\n` +
+      (isGiftCard
+        ? ""
+        : `🚚 ${tgEscape(formatDeliveryDay(deliveryDayOf(row)))}\n`) +
       (itemList ? `\n${itemList}\n` : "") +
       (row.note ? `\n📝 ${tgEscape(row.note)}\n` : "") +
       `\n${breakdown}\n` +

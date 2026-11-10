@@ -32,8 +32,7 @@ export default async function GiftCardsPage() {
           Бэлгийн карт
         </h1>
         <p className="text-muted-foreground mt-2">
-          Үнэр бол хамгийн хувийн бэлэг. Сонголтыг нь өөрт нь үлдээгээрэй —
-          тэр хүн хүссэн үнэртнээ өөрөө сонгоно.
+          Үнэр бол хамгийн хувийн бэлэг. Сонголтыг нь өөрт нь үлдээгээрэй.
         </p>
       </header>
       <GiftCardPurchase designs={designs} />

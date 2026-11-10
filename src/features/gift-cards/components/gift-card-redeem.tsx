@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingButton } from "@/components/shared/loading-button";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { FieldError, fieldErrorProps } from "@/components/ui/form-field";
 import { rateLimitMessage } from "@/lib/rate-limit-client";
 import { toast } from "@/lib/toast";
@@ -19,11 +20,14 @@ interface RedeemResponse {
   points?: number;
   error?: string;
   message?: string;
+  amount?: number;
 }
 
 async function redeem(
-  body: { token: string } | { code: string },
-): Promise<{ points: number } | { error: string; code?: string }> {
+  body: ({ token: string } | { code: string }) & { confirmOwn?: boolean },
+): Promise<
+  { points: number } | { error: string; code?: string; amount?: number }
+> {
   try {
     const res = await fetch("/api/gift-cards/redeem", {
       method: "POST",
@@ -36,6 +40,7 @@ async function redeem(
     if (res.ok && data?.ok) return { points: data.points ?? 0 };
     return {
       code: data?.error,
+      amount: data?.amount,
       error:
         data?.message ??
         (data?.error ? REDEEM_MESSAGES[data.error] : undefined) ??
@@ -44,6 +49,40 @@ async function redeem(
   } catch {
     return { error: GENERIC_ERROR };
   }
+}
+
+/**
+ * Худалдан авагч өөрийн картаа оноо болгох гэж байна — сервер `OWN_CARD`
+ * буцаасны дараа л гарна (redeem route). Бэлэглэх гэж байсан картаа андуурч
+ * ашиглахаас сэргийлнэ.
+ */
+function OwnCardConfirm({
+  open,
+  onOpenChange,
+  amount,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  amount: number;
+  onConfirm: () => Promise<void>;
+}) {
+  return (
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Өөрийн картаа ашиглах уу?"
+      description={
+        <>
+          Та өөрийн худалдаж авсан бэлгийн картаа өөрөө ашиглах гэж байна.
+          {amount > 0 && ` ${amount.toLocaleString("mn-MN")} V point таны дансанд орно.`}{" "}
+          Үүний дараа карт өөр хүнд ашиглагдахгүй.
+        </>
+      }
+      confirmLabel="Тийм, ашиглах"
+      onConfirm={onConfirm}
+    />
+  );
 }
 
 /**
@@ -70,6 +109,7 @@ export function GiftCardRedeemAction({
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [points, setPoints] = React.useState<number | null>(null);
+  const [confirmOwn, setConfirmOwn] = React.useState(false);
   const next = encodeURIComponent(`/gift/${token}`);
 
   if (points !== null) {
@@ -119,15 +159,19 @@ export function GiftCardRedeemAction({
     );
   }
 
-  async function onRedeem() {
+  async function onRedeem(own = false) {
     setPending(true);
     setError(null);
-    const result = await redeem({ token });
+    const result = await redeem({ token, confirmOwn: own });
     setPending(false);
     if ("points" in result) {
+      setConfirmOwn(false);
       setPoints(result.points);
       router.refresh();
+    } else if (result.code === "OWN_CARD") {
+      setConfirmOwn(true);
     } else {
+      setConfirmOwn(false);
       setError(result.error);
     }
   }
@@ -147,9 +191,15 @@ export function GiftCardRedeemAction({
           </p>
         </div>
       )}
+      <OwnCardConfirm
+        open={confirmOwn}
+        onOpenChange={setConfirmOwn}
+        amount={amount}
+        onConfirm={() => onRedeem(true)}
+      />
       <LoadingButton
         loading={pending}
-        onClick={onRedeem}
+        onClick={() => onRedeem()}
         className="bg-cta text-cta-foreground hover:bg-cta/90 h-12 w-full rounded-xl text-base"
       >
         {amount.toLocaleString("mn-MN")} V point-оо дансандаа нэмэх
@@ -188,31 +238,46 @@ export function GiftCardCodeForm() {
   const [code, setCode] = React.useState("");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | undefined>();
+  const [ownAmount, setOwnAmount] = React.useState<number | null>(null);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!code.trim()) {
-      setError("Бэлгийн кодоо бичнэ үү.");
-      return;
-    }
+  async function submit(own: boolean) {
     setPending(true);
     setError(undefined);
-    const result = await redeem({ code });
+    const result = await redeem({ code, confirmOwn: own });
     setPending(false);
     if ("points" in result) {
+      setOwnAmount(null);
       setCode("");
       toast.success(
         `${result.points.toLocaleString("mn-MN")} V point таны дансанд орлоо.`,
         "Бэлэг хүлээн авлаа",
       );
       router.refresh();
+    } else if (result.code === "OWN_CARD") {
+      setOwnAmount(result.amount ?? 0);
     } else {
+      setOwnAmount(null);
       setError(result.error);
     }
   }
 
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!code.trim()) {
+      setError("Бэлгийн кодоо бичнэ үү.");
+      return;
+    }
+    void submit(false);
+  }
+
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-1.5">
+      <OwnCardConfirm
+        open={ownAmount !== null}
+        onOpenChange={(o) => !o && setOwnAmount(null)}
+        amount={ownAmount ?? 0}
+        onConfirm={() => submit(true)}
+      />
       <Label htmlFor="gift-code">Бэлгийн код</Label>
       <div className="flex gap-2">
         <Input

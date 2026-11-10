@@ -14,6 +14,8 @@ export const REDEEM_MESSAGES: Record<string, string> = {
   LOGIN_REQUIRED: "Бэлгээ авахын тулд нэвтэрнэ үү.",
   FEATURE_DISABLED: "Бэлгийн карт одоогоор идэвхгүй байна.",
   AUTH_REQUIRED: "Бэлгээ авахын тулд нэвтэрнэ үү.",
+  OWN_CARD:
+    "Энэ картыг та өөрөө худалдаж авсан. Оноо таны дансанд орж, карт өөр хүнд ашиглагдахгүй болно.",
 };
 
 export const ORDER_MESSAGES: Record<string, string> = {

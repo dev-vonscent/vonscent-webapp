@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Gift, Ticket } from "lucide-react";
+import { Gift, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AccountPageHeader } from "@/features/account/components/account-page-header";
@@ -91,7 +91,7 @@ export default async function AccountGiftCardsPage() {
       >
         <div className="flex gap-3 md:w-72 md:shrink-0">
           <span className="bg-background flex size-10 shrink-0 items-center justify-center rounded-full">
-            <Ticket className="size-5" aria-hidden="true" />
+            <KeyRound className="size-5" aria-hidden="true" />
           </span>
           <div>
             <h2 id="gift-redeem" className="font-semibold">

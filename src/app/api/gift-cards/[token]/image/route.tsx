@@ -27,11 +27,17 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
   const d = card.design;
+  // «Зураг татах» (`?download=1`) — хөтөч файл болгон хадгална.
+  const download = new URL(req.url).searchParams.get("download") === "1";
+  // Татаж авах зураг 2x (2400×1512) — утсанд томруулж харахад бичиг тод.
+  // Имэйл/OG нь 1200×756 хэвээр (имэйлийн жин).
+  const scale = download ? 2 : 1;
+  const x = (px: number) => px * scale;
   const message = card.message.trim() || d.defaultMessage || "";
   const [fonts, mark, bg] = await Promise.all([
     interFonts(),
     brandMarkDataUrl(new URL(req.url).origin, d.textColor),
-    d.imageUrl ? designBackgroundDataUrl(d.imageUrl, 1200, 756) : null,
+    d.imageUrl ? designBackgroundDataUrl(d.imageUrl, 1200 * scale, 756 * scale) : null,
   ]);
 
   return new ImageResponse(
@@ -52,20 +58,20 @@ export async function GET(
           <img
             src={bg}
             alt=""
-            width={1200}
-            height={756}
-            style={{ position: "absolute", left: 0, top: 0 }}
+            width={x(1200)}
+            height={x(756)}
+            style={{ position: "absolute", left: x(0), top: x(0) }}
           />
         ) : (
           <div
             style={{
               position: "absolute",
-              left: 790,
-              top: 270,
-              width: 320,
-              height: 320,
-              borderRadius: 160,
-              border: `2px solid ${d.accentColor ?? d.mutedColor}`,
+              left: x(790),
+              top: x(270),
+              width: x(320),
+              height: x(320),
+              borderRadius: x(160),
+              border: `${x(2)}px solid ${d.accentColor ?? d.mutedColor}`,
               display: "flex",
             }}
           />
@@ -75,19 +81,19 @@ export async function GET(
           <img
             src={mark}
             alt=""
-            height={88}
-            width={Math.round(88 * BRAND_MARK_RATIO)}
-            style={{ position: "absolute", left: 64, top: 48 }}
+            height={x(88)}
+            width={Math.round(x(88) * BRAND_MARK_RATIO)}
+            style={{ position: "absolute", left: x(64), top: x(48) }}
           />
         ) : (
           <div
             style={{
               position: "absolute",
-              left: 64,
-              top: 60,
-              fontSize: 22,
+              left: x(64),
+              top: x(60),
+              fontSize: x(22),
               fontWeight: 700,
-              letterSpacing: 8,
+              letterSpacing: x(8),
               display: "flex",
             }}
           >
@@ -97,20 +103,20 @@ export async function GET(
         <div
           style={{
             position: "absolute",
-            right: 64,
-            top: 48,
+            right: x(64),
+            top: x(48),
             display: "flex",
             flexDirection: "column",
             alignItems: "flex-end",
           }}
         >
-          <div style={{ fontSize: 60, fontWeight: 700, lineHeight: 1 }}>
+          <div style={{ fontSize: x(60), fontWeight: 700, lineHeight: 1 }}>
             {formatGiftAmount(card.amount)}
           </div>
           <div
             style={{
-              marginTop: 12,
-              fontSize: 24,
+              marginTop: x(12),
+              fontSize: x(24),
               fontWeight: 700,
               color: d.mutedColor,
             }}
@@ -121,25 +127,25 @@ export async function GET(
         <div
           style={{
             position: "absolute",
-            left: 64,
-            top: 216,
-            width: 640,
+            left: x(64),
+            top: x(216),
+            width: x(640),
             display: "flex",
             flexDirection: "column",
           }}
         >
-          <div style={{ fontSize: 60, fontWeight: 700, lineHeight: 1.05 }}>
+          <div style={{ fontSize: x(60), fontWeight: 700, lineHeight: 1.05 }}>
             {d.heading}
           </div>
-          <div style={{ marginTop: 32, fontSize: 32, fontWeight: 700 }}>
+          <div style={{ marginTop: x(32), fontSize: x(32), fontWeight: 700 }}>
             {`${card.recipientName} танд,`}
           </div>
           {message ? (
             <div
               style={{
-                marginTop: 12,
-                maxWidth: 540, // gift-card-face.tsx-тэй ижил
-                fontSize: 24,
+                marginTop: x(12),
+                maxWidth: x(540), // gift-card-face.tsx-тэй ижил
+                fontSize: x(24),
                 lineHeight: 1.45,
                 color: d.mutedColor,
               }}
@@ -150,8 +156,8 @@ export async function GET(
           {card.fromName ? (
             <div
               style={{
-                marginTop: 24,
-                fontSize: 24,
+                marginTop: x(24),
+                fontSize: x(24),
                 color: d.mutedColor,
                 display: "flex",
               }}
@@ -166,9 +172,9 @@ export async function GET(
         <div
           style={{
             position: "absolute",
-            left: 64,
-            bottom: 48,
-            fontSize: 22,
+            left: x(64),
+            bottom: x(48),
+            fontSize: x(22),
             color: d.mutedColor,
             display: "flex",
           }}
@@ -178,11 +184,16 @@ export async function GET(
       </div>
     ),
     {
-      width: 1200,
-      height: 756,
+      width: x(1200),
+      height: x(756),
       fonts,
       // Карт өөрчлөгддөггүй (зөвхөн төлөв) — CDN дээр удаан хадгална.
-      headers: { "Cache-Control": "public, max-age=86400, immutable" },
+      headers: {
+        "Cache-Control": "public, max-age=86400, immutable",
+        ...(download && {
+          "Content-Disposition": `attachment; filename="vonscent-gift-card-${card.amount}.png"`,
+        }),
+      },
     },
   );
 }
