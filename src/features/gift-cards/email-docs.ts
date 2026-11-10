@@ -13,6 +13,18 @@ const STEPS = [
   "Картын дүн V point болж дансанд тань орно (1 оноо = 1₮). Үнэртэн сонгоод төлбөр төлөхдөө «V point ашиглах»-ыг сонгоорой.",
 ];
 
+/** Товлосон өдөр: «2026.12.01 09:00». */
+export function formatSendAt(iso: string): string {
+  const d = new Date(iso);
+  const day = d.toLocaleDateString("en-CA", { timeZone: "Asia/Ulaanbaatar" });
+  const time = d.toLocaleTimeString("en-GB", {
+    timeZone: "Asia/Ulaanbaatar",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${day.replaceAll("-", ".")} ${time}`;
+}
+
 export function recipientEmail(
   card: Pick<
     GiftCardRow,

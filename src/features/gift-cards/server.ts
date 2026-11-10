@@ -157,6 +157,7 @@ export async function getMyGiftCards(userId: string): Promise<MyGiftCard[]> {
         code: shareable ? r.code : null,
         token: shareable ? r.token : null,
         recipientEmail: role === "bought" ? r.recipient_email : null,
+        sendAt: role === "bought" ? r.send_at : null,
         sentAt: r.sent_at,
         issuedAt: r.issued_at,
         expiresAt: r.expires_at,
@@ -172,19 +173,25 @@ export async function getMyGiftCards(userId: string): Promise<MyGiftCard[]> {
 export async function getOrderGiftCard(orderId: string): Promise<{
   recipientName: string;
   recipientEmail: string | null;
+  sendAt: string | null;
 } | null> {
   const supabase = createAdminClient();
   if (!supabase) return null;
   const { data } = await supabase
     .from("gift_cards")
-    .select("recipient_name, recipient_email")
+    .select("recipient_name, recipient_email, send_at")
     .eq("order_id", orderId)
     .maybeSingle();
   const row = data as {
     recipient_name: string;
     recipient_email: string | null;
+    send_at: string | null;
   } | null;
   return row
-    ? { recipientName: row.recipient_name, recipientEmail: row.recipient_email }
+    ? {
+        recipientName: row.recipient_name,
+        recipientEmail: row.recipient_email,
+        sendAt: row.send_at,
+      }
     : null;
 }

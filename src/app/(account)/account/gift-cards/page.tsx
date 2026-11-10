@@ -14,6 +14,7 @@ import { GiftCardFace } from "@/features/gift-cards/components/gift-card-face";
 import { GiftCardCodeForm } from "@/features/gift-cards/components/gift-card-redeem";
 import { GiftCardShare } from "@/features/gift-cards/components/gift-card-share";
 import { GiftCardSendButton } from "@/features/gift-cards/components/gift-card-send";
+import { formatSendAt } from "@/features/gift-cards/email-docs";
 import {
   GIFT_STATUS_LABEL,
   formatGiftAmount,
@@ -45,7 +46,11 @@ function BoughtCard({ card }: { card: MyGiftCard }) {
           {card.status === "redeemed" && card.redeemedAt
             ? `${formatDate(card.redeemedAt)}-нд оноо болгосон.`
             : card.recipientEmail
-              ? `${card.recipientEmail} руу ${card.sentAt ? "илгээсэн" : "илгээгдэнэ"}.`
+              ? card.sentAt
+                ? `${card.recipientEmail} руу илгээсэн.`
+                : card.sendAt && new Date(card.sendAt) > new Date()
+                  ? `${card.recipientEmail} руу ${formatSendAt(card.sendAt)}-д илгээгдэнэ.`
+                  : `${card.recipientEmail} руу илгээгдэнэ.`
               : "Та өөрөө өгнө — холбоос эсвэл кодоо хуваалцаарай."}
           {card.status === "active" && card.expiresAt
             ? ` ${formatDate(card.expiresAt)} хүртэл хүчинтэй.`

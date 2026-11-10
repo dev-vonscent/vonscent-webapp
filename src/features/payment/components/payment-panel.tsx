@@ -25,6 +25,7 @@ import {
 import { clearPendingOrder } from "@/features/checkout/pending-order";
 import { requestAbandon } from "../abandon";
 import type { PaymentView } from "../types";
+import { formatSendAt as formatGiftSendAt } from "@/features/gift-cards/email-docs";
 import { BankApps } from "./bank-apps";
 import { CopyRow } from "./copy-row";
 
@@ -1131,7 +1132,10 @@ function GiftCardPaidState({
             <>
               Код, заавар{" "}
               <strong className="font-medium">{giftCard.recipientEmail}</strong>{" "}
-              хаяг руу илгээгдэнэ.
+              хаяг руу{" "}
+              {giftCard.sendAt && new Date(giftCard.sendAt) > new Date()
+                ? `${formatGiftSendAt(giftCard.sendAt)}-д илгээгдэнэ.`
+                : "илгээгдэнэ."}
             </>
           ) : (
             "Картаа «Бэлгийн карт» хэсгээс холбоосоор хуваалцах эсвэл кодыг нь өгөөрэй."

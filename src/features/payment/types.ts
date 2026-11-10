@@ -74,7 +74,12 @@ export interface PaymentView {
    * Бэлгийн картын захиалга (0179) — хүргэлтгүй. Төлсний дараах дэлгэц,
    * хүргэх өдрийн мөр үүгээр солигдоно. Энгийн захиалгад null.
    */
-  giftCard: { recipientName: string; recipientEmail: string | null } | null;
+  giftCard: {
+    recipientName: string;
+    recipientEmail: string | null;
+    /** Товлосон илгээлт — ирээдүйн цаг бол «…-д илгээгдэнэ». */
+    sendAt: string | null;
+  } | null;
   invoice: {
     invoiceId: string;
     /**

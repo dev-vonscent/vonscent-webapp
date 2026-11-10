@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { giftCardPurchaseSchema, giftCardRedeemSchema } from "./gift-card";
+import {
+  giftCardPurchaseSchema,
+  giftCardRedeemSchema,
+  giftCardSendAt,
+} from "./gift-card";
 
 const base = {
   amount: 100000,
@@ -9,6 +13,7 @@ const base = {
   fromName: "Болд",
   delivery: "email" as const,
   recipientEmail: "saraa@example.com",
+  sendDay: "",
 };
 
 describe("giftCardPurchaseSchema", () => {
@@ -46,6 +51,33 @@ describe("giftCardPurchaseSchema", () => {
       message: "а".repeat(121),
     });
     expect(r.success).toBe(false);
+  });
+});
+
+describe("товлосон илгээлт", () => {
+  it("өдөргүй бол татгалзана", () => {
+    const r = giftCardPurchaseSchema.safeParse({ ...base, delivery: "scheduled" });
+    expect(r.success).toBe(false);
+  });
+
+  it("өнгөрсөн өдрийг татгалзана", () => {
+    const r = giftCardPurchaseSchema.safeParse({
+      ...base,
+      delivery: "scheduled",
+      sendDay: "2020-01-01",
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("ирэх өдөр + имэйлтэй бол зөвшөөрнө, 09:00 УБ", () => {
+    const day = new Date(Date.now() + 5 * 86400e3).toISOString().slice(0, 10);
+    const r = giftCardPurchaseSchema.safeParse({
+      ...base,
+      delivery: "scheduled",
+      sendDay: day,
+    });
+    expect(r.success).toBe(true);
+    expect(giftCardSendAt("2026-12-01")).toBe("2026-12-01T09:00:00+08:00");
   });
 });
 

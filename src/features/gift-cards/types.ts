@@ -46,6 +46,8 @@ export interface MyGiftCard extends GiftCardFaceText {
   code: string | null;
   token: string | null;
   recipientEmail: string | null;
+  /** Товлосон илгээлт (худалдан авагчид). */
+  sendAt: string | null;
   sentAt: string | null;
   issuedAt: string | null;
   expiresAt: string | null;

@@ -4,16 +4,20 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Mail, UserRound } from "lucide-react";
+import { CalendarClock, Mail, UserRound } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { FieldError, fieldErrorProps } from "@/components/ui/form-field";
+import { DatePicker } from "@/features/admin/components/date-picker";
+import { ubDayFromNow } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { GIFT_CARD_AMOUNTS, GIFT_CARD_LIMITS } from "@/lib/constants";
 import { rateLimitMessage } from "@/lib/rate-limit-client";
 import { useProfileSummary } from "@/features/account/use-profile-summary";
 import {
+  GIFT_CARD_MAX_SCHEDULE_DAYS,
+  GIFT_CARD_SEND_HOUR,
   giftCardPurchaseSchema,
   type GiftCardPurchaseInput,
 } from "@/lib/validators/gift-card";
@@ -31,6 +35,12 @@ const DELIVERY_OPTIONS = [
     icon: Mail,
     title: "Имэйлээр илгээх",
     description: "Төлбөр орсон даруйд код, заавар хүлээн авагч руу очно.",
+  },
+  {
+    value: "scheduled",
+    icon: CalendarClock,
+    title: "Тодорхой өдөр илгээх",
+    description: `Төрсөн өдөр, баярын өглөө ${GIFT_CARD_SEND_HOUR}:00 цагт хүлээн авагч руу очно.`,
   },
   {
     value: "self",
@@ -91,6 +101,7 @@ export function GiftCardPurchase({ designs }: { designs: GiftCardDesign[] }) {
       fromName: "",
       delivery: "email",
       recipientEmail: "",
+      sendDay: "",
     },
   });
 
@@ -107,7 +118,7 @@ export function GiftCardPurchase({ designs }: { designs: GiftCardDesign[] }) {
     }
   }, [profile, getValues, setValue]);
 
-  const [amount, designId, recipientName, message, fromName, delivery] =
+  const [amount, designId, recipientName, message, fromName, delivery, sendDay] =
     useWatch({
       control,
       name: [
@@ -117,6 +128,7 @@ export function GiftCardPurchase({ designs }: { designs: GiftCardDesign[] }) {
         "message",
         "fromName",
         "delivery",
+        "sendDay",
       ],
     });
   const values = {
@@ -324,7 +336,7 @@ export function GiftCardPurchase({ designs }: { designs: GiftCardDesign[] }) {
 
         <fieldset className="space-y-3">
           <legend className="text-sm font-semibold">4. Хэрхэн өгөх вэ</legend>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid gap-2 sm:grid-cols-3">
             {DELIVERY_OPTIONS.map((o) => {
               const selected = values.delivery === o.value;
               const Icon = o.icon;
@@ -352,7 +364,26 @@ export function GiftCardPurchase({ designs }: { designs: GiftCardDesign[] }) {
               );
             })}
           </div>
-          {values.delivery === "email" && (
+          {delivery === "scheduled" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="sendDay">Илгээх өдөр</Label>
+              <DatePicker
+                id="sendDay"
+                value={sendDay ?? ""}
+                onChange={(v) =>
+                  setValue("sendDay", v, { shouldValidate: Boolean(errors.sendDay) })
+                }
+                min={ubDayFromNow(1)}
+                max={ubDayFromNow(GIFT_CARD_MAX_SCHEDULE_DAYS)}
+                placeholder="Өдөр сонгох"
+                clearable={false}
+                aria-invalid={Boolean(errors.sendDay)}
+                aria-describedby={errors.sendDay ? "sendDay-error" : undefined}
+              />
+              <FieldError id="sendDay" message={errors.sendDay?.message} />
+            </div>
+          )}
+          {values.delivery !== "self" && (
             <div className="space-y-1.5">
               <Label htmlFor="recipientEmail">Хүлээн авагчийн имэйл</Label>
               <Input

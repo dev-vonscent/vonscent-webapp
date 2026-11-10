@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { giftCardPurchaseSchema } from "@/lib/validators/gift-card";
+import {
+  giftCardPurchaseSchema,
+  giftCardSendAt,
+} from "@/lib/validators/gift-card";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -100,7 +103,9 @@ export async function POST(req: Request) {
         message: input.message,
         from_name: input.fromName,
         recipient_email:
-          input.delivery === "email" ? input.recipientEmail : null,
+          input.delivery === "self" ? null : input.recipientEmail,
+        send_at:
+          input.delivery === "scheduled" ? giftCardSendAt(input.sendDay) : null,
         contact_name: profile?.full_name || input.fromName,
         contact_phone: profile?.phone ?? "",
         contact_email:

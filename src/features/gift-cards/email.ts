@@ -7,7 +7,7 @@ import { formatPrice } from "@/lib/format";
 import { resolveRecipient } from "@/lib/notify/customer-email";
 import type { GiftCardRow } from "@/db/types";
 import { formatGiftAmount } from "./lib";
-import { recipientEmail } from "./email-docs";
+import { formatSendAt, recipientEmail } from "./email-docs";
 
 /**
  * Бэлгийн картын имэйл (gift-cards-plan §6).
@@ -103,6 +103,8 @@ async function sendBuyerReceipt(supabase: Admin, orderId: string, card: GiftCard
   if (!to) return;
   const base = env.siteUrl.replace(/\/+$/u, "");
   const self = !card.recipient_email;
+  const scheduled =
+    !self && card.send_at !== null && new Date(card.send_at).getTime() > Date.now();
   const { html, text } = renderEmail({
     preheader: `${order.order_no} — бэлгийн карт идэвхжлээ`,
     hero: {
@@ -115,7 +117,9 @@ async function sendBuyerReceipt(supabase: Admin, orderId: string, card: GiftCard
     paragraphs: [
       self
         ? "Картаа холбоосоор хуваалцах эсвэл доорх кодыг хүлээн авагчдаа өгөөрэй."
-        : `Карт ${card.recipient_email} хаяг руу код, зааврын хамт илгээгдлээ.`,
+        : scheduled
+          ? `Карт ${card.recipient_email} хаяг руу ${formatSendAt(card.send_at!)}-д код, зааврын хамт илгээгдэнэ.`
+          : `Карт ${card.recipient_email} хаяг руу код, зааврын хамт илгээгдлээ.`,
       "Хүлээн авагч кодоо оруулмагц картын дүн түүний дансанд V point болж орно.",
     ],
     lines: [
@@ -156,24 +160,19 @@ export async function deliverGiftCardOrder(orderId: string): Promise<void> {
   const cards = (data as GiftCardRow[] | null) ?? [];
   for (const card of cards) {
     const due = !card.send_at || new Date(card.send_at).getTime() <= Date.now();
-    // Баримт нэг л удаа: хүлээн авагчийн илгээлтийг эзэмшсэн дуудлага, эсвэл
-    // «Өөрөө өгнө» бол анх удаа (sent_at-гүй, send_count = 0).
     if (card.recipient_email && due) {
-      const sent = await sendToRecipient(supabase, card, {
-        manual: false,
-        actor: null,
-      });
-      if (sent) await sendBuyerReceipt(supabase, orderId, card);
-    } else if (!card.recipient_email && card.send_count === 0) {
-      const { data: claimed } = await supabase
-        .from("gift_cards")
-        .update({ send_count: 1 })
-        .eq("id", card.id)
-        .eq("send_count", 0)
-        .select("id");
-      if ((claimed as unknown[] | null)?.length) {
-        await sendBuyerReceipt(supabase, orderId, card);
-      }
+      await sendToRecipient(supabase, card, { manual: false, actor: null });
+    }
+    // Худалдан авагчийн баримт НЭГ удаа (0180 `buyer_notified_at`-ийн
+    // эзэмшил) — шууд, товлосон, «Өөрөө өгнө» аль ч үед төлбөр орсон даруйд.
+    const { data: claimed } = await supabase
+      .from("gift_cards")
+      .update({ buyer_notified_at: new Date().toISOString() })
+      .eq("id", card.id)
+      .is("buyer_notified_at", null)
+      .select("id");
+    if ((claimed as unknown[] | null)?.length) {
+      await sendBuyerReceipt(supabase, orderId, card);
     }
   }
 }
