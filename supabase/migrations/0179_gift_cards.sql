@@ -292,8 +292,9 @@ begin
     if v_email is null then
       raise exception 'GIFT_CARD_SEND_AT_NEEDS_EMAIL' using errcode = 'check_violation';
     end if;
-    -- Өнгөрсөн цаг = одоо илгээнэ; 1 жилээс хол товлохгүй (код хугацаатай).
-    if v_send_at > now() + interval '360 days' then
+    -- Өнгөрсөн цаг = одоо илгээнэ. UI-тай ижил 300 хоног (GIFT_CARD_MAX_
+    -- SCHEDULE_DAYS): хүлээн авагчид 1 жилийн хугацаанаас ≥2 сар үлдэнэ.
+    if v_send_at > now() + interval '300 days' then
       raise exception 'GIFT_CARD_SEND_AT' using errcode = 'check_violation';
     end if;
     if v_send_at <= now() then v_send_at := null; end if;
@@ -302,7 +303,8 @@ begin
   insert into orders (
     user_id, order_type, payment_method, contact_name, contact_phone, contact_email,
     ship_city, ship_detail, note, shipping_fee, reserve_expires_at,
-    subtotal, gross_subtotal, discount, loyalty_used, total, deliver_on
+    subtotal, gross_subtotal, discount, loyalty_used, total, deliver_on,
+    checkout_snapshot
   ) values (
     p_user, 'gift_card', 'qpay',
     coalesce(nullif(btrim(p_card->>'contact_name'), ''), 'Хэрэглэгч'),
@@ -310,7 +312,11 @@ begin
     nullif(btrim(coalesce(p_card->>'contact_email', '')), ''),
     '', 'Бэлгийн карт — хүргэлтгүй', null, 0,
     now() + (v_reserve_min || ' minutes')::interval,
-    v_amount, v_amount, 0, 0, v_amount, null
+    v_amount, v_amount, 0, 0, v_amount, null,
+    -- Төлөгдөөгүй цуцлагдвал «Дараа захиалах» (save_order_for_later) —
+    -- маягтын ноорог, барааных шиг дахин үргэлжлүүлнэ.
+    case when jsonb_typeof(p_card->'draft') = 'object'
+         then jsonb_build_object('giftCard', p_card->'draft') end
   ) returning id, order_no into v_order_id, v_order_no;
 
   insert into order_items (
@@ -635,6 +641,13 @@ begin
           or new.payment_status is distinct from old.payment_status) then
     raise exception 'GIFT_CARD_NOT_REFUNDABLE' using errcode = 'check_violation';
   end if;
+  -- Цуцлагдсан картын захиалгыг сэргээхгүй: карт нь аль хэдийн void, төлбөр
+  -- орвол мөнгө авчихаад карт гаргахгүй. Хэрэглэгч «Дараа захиалах»-аас
+  -- шинэ захиалгаар дахин төлнө.
+  if old.order_type = 'gift_card' and old.status = 'cancelled'
+     and new.status is distinct from old.status then
+    raise exception 'GIFT_CARD_ORDER_CANCELLED' using errcode = 'check_violation';
+  end if;
   if new.order_type is distinct from old.order_type then
     raise exception 'ORDER_TYPE_IMMUTABLE' using errcode = 'check_violation';
   end if;
@@ -649,9 +662,14 @@ create trigger orders_gift_card_guard
 create or replace function orders_gift_card_void()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  update gift_cards
-     set status = 'void', voided_at = now(), void_reason = 'unpaid', updated_at = now()
-   where order_id = new.id and status = 'pending';
+  with v as (
+    update gift_cards
+       set status = 'void', voided_at = now(), void_reason = 'unpaid', updated_at = now()
+     where order_id = new.id and status = 'pending'
+     returning id
+  )
+  insert into gift_card_events (gift_card_id, kind, data)
+    select id, 'voided', jsonb_build_object('reason', 'unpaid') from v;
   return new;
 end $$;
 
@@ -662,6 +680,75 @@ create trigger orders_gift_card_void
   when (new.order_type = 'gift_card' and new.status = 'cancelled'
         and old.status is distinct from 'cancelled')
   execute function orders_gift_card_void();
+
+------------------------------------------------------------------------------
+-- 8b. «Дараа захиалах» (0116/0124) — төлөгдөөгүй картын захиалга
+--
+-- Барааных шиг: хугацаа дуусахад `abandon_unpaid_order` → энд хадгална,
+-- хэрэглэгч «Үргэлжлүүлэх»-ээр маягтаа сэргээж шинэ захиалгаар төлнө.
+-- Expand only: nullable багана; has_lines check-ийг сулруулна (хуучин мөр
+-- бүгд хангана).
+------------------------------------------------------------------------------
+
+alter table saved_checkouts add column if not exists gift_card jsonb
+  check (gift_card is null or jsonb_typeof(gift_card) = 'object');
+alter table saved_checkouts drop constraint if exists saved_checkouts_has_lines;
+alter table saved_checkouts add constraint saved_checkouts_has_lines
+  check (jsonb_array_length(items) + jsonb_array_length(collections)
+         + jsonb_array_length(extras) > 0 or gift_card is not null);
+
+-- 0150-ийн бие + бэлгийн картын салаа.
+create or replace function save_order_for_later(p_order uuid)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare
+  v_user uuid;
+  v_snap jsonb;
+  v_id uuid;
+  v_type text;
+begin
+  select user_id, checkout_snapshot, order_type into v_user, v_snap, v_type
+    from orders where id = p_order;
+  if v_user is null or v_snap is null then
+    return null;
+  end if;
+
+  if v_type = 'gift_card' then
+    if not feature_enabled('gift_cards')
+       or jsonb_typeof(v_snap->'giftCard') is distinct from 'object' then
+      return null;
+    end if;
+    insert into saved_checkouts (user_id, buy_now, gift_card, source_order_id)
+    values (v_user, true, v_snap->'giftCard', p_order)
+    on conflict (source_order_id) where source_order_id is not null do nothing
+    returning id into v_id;
+  else
+    insert into saved_checkouts (user_id, buy_now, items, collections, extras,
+                                 draft, source_order_id)
+    values (
+      v_user,
+      coalesce((v_snap->>'buyNow')::boolean, false),
+      coalesce(v_snap->'items', '[]'::jsonb),
+      coalesce(v_snap->'collections', '[]'::jsonb),
+      case when jsonb_typeof(v_snap->'extras') = 'array'
+           then v_snap->'extras' else '[]'::jsonb end,
+      coalesce(v_snap->'draft', '{}'::jsonb),
+      p_order
+    )
+    on conflict (source_order_id) where source_order_id is not null do nothing
+    returning id into v_id;
+  end if;
+
+  delete from saved_checkouts s
+   where s.user_id = v_user
+     and s.id in (
+       select id from saved_checkouts
+        where user_id = v_user
+        order by created_at desc
+        offset 10
+     );
+
+  return v_id;
+end $$;
 
 ------------------------------------------------------------------------------
 -- 9. Картын захиалга бусад урамшуулалд орохгүй

@@ -1,5 +1,11 @@
 import type { GiftCardStatus } from "@/db/types";
 
+/**
+ * `/gift-cards`-ийн маягтын ноорог (sessionStorage): нэвтрэх рүү шилжихэд,
+ * «Дараа захиалах»-аас үргэлжлүүлэхэд (`savedId`-тай) сэргээнэ.
+ */
+export const GIFT_CARD_DRAFT_KEY = "vonscent:gift-card-draft";
+
 /** Хүлээн авагчийн хуудасны зам (`/gift/<token>`). */
 export function giftPath(token: string): string {
   return `/gift/${token}`;

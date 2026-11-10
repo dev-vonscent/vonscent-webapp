@@ -67,10 +67,14 @@ export async function POST(req: Request) {
       if (!claim.existingOrderId) {
         return NextResponse.json({ error: "ORDER_PENDING" }, { status: 409 });
       }
+      // Өөр хэрэглэгч / энгийн захиалгын түлхүүр таарсан ч бусдын
+      // pay_token буцаахгүй.
       const { data } = await supabase
         .from("orders")
         .select("pay_token")
         .eq("id", claim.existingOrderId)
+        .eq("user_id", user.id)
+        .eq("order_type", "gift_card")
         .maybeSingle();
       return NextResponse.json({
         payToken: (data as { pay_token: string } | null)?.pay_token ?? null,
@@ -111,6 +115,18 @@ export async function POST(req: Request) {
         contact_email:
           user.email && !isPhoneEmail(user.email) ? user.email : null,
         reserve_minutes: RESERVE_TIMEOUT_MINUTES,
+        // «Дараа захиалах» (0179 §8b): төлөгдөөгүй цуцлагдвал маягт
+        // сэргээгдэнэ. requestId-гүй — дахин илгээхэд шинэ захиалга.
+        draft: {
+          amount: input.amount,
+          designId: input.designId,
+          recipientName: input.recipientName,
+          message: input.message ?? "",
+          fromName: input.fromName,
+          delivery: input.delivery,
+          recipientEmail: input.recipientEmail ?? "",
+          sendDay: input.sendDay ?? "",
+        },
       },
     },
   );

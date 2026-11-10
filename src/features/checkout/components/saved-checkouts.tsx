@@ -9,6 +9,7 @@ import { useConfirm } from "@/components/shared/confirm-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatDateTime, formatPrice } from "@/lib/format";
+import { GIFT_CARD_DRAFT_KEY } from "@/features/gift-cards/lib";
 import {
   resumeSavedCheckout,
   savedSubtotal,
@@ -35,6 +36,20 @@ export function SavedCheckouts({ emptyState }: { emptyState?: ReactNode }) {
   // хүний хадгалсан захиалга алга болдог байв. Захиалга үүсэх, эсвэл
   // checkout дотор «Устгах» дарах үед л устна (saved-checkouts.ts).
   function resume(entry: SavedCheckout) {
+    // Бэлгийн карт (0179 §8b): checkout биш — маягтаа сэргээгээд шинэ
+    // захиалгаар төлнө. Захиалга үүсмэгц `savedId`-аар энэ мөр устна.
+    if (entry.giftCard) {
+      try {
+        sessionStorage.setItem(
+          GIFT_CARD_DRAFT_KEY,
+          JSON.stringify({ ...entry.giftCard, savedId: entry.id }),
+        );
+      } catch {
+        // Хувийн цонх — хоосон маягтаар нээгдэнэ.
+      }
+      router.push("/gift-cards");
+      return;
+    }
     resumeSavedCheckout(entry);
     router.push("/checkout");
   }
@@ -96,6 +111,17 @@ function SavedCard({
       meta: e.label || e.categoryName,
       qty: e.qty,
     })),
+    ...(entry.giftCard
+      ? [
+          {
+            key: "gift-card",
+            name: "Бэлгийн карт",
+            image: `/api/gift-cards/designs/${entry.giftCard.designId}/thumb`,
+            meta: `${entry.giftCard.recipientName}-д`,
+            qty: 1,
+          },
+        ]
+      : []),
   ];
   const count = lines.reduce((n, l) => n + l.qty, 0);
   const thumbs = lines.slice(0, 4);
@@ -159,7 +185,9 @@ function SavedCard({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             {/* Хадгалах үеийн үнэ — захиалахад checkout одоогийн үнээр бодно. */}
-            <p className="text-muted-foreground text-xs">Барааны дүн</p>
+            <p className="text-muted-foreground text-xs">
+              {entry.giftCard ? "Картын дүн" : "Барааны дүн"}
+            </p>
             <p className="text-lg font-semibold">
               {formatPrice(savedSubtotal(entry))}
             </p>

@@ -200,7 +200,12 @@ export async function POST(
                 : // 0178: хүргэгдсэн нэмэлт бараа, сав цуцлалтаар нөөцөд буцдаггүй.
                   error.message.includes("ORDER_HAS_DELIVERED_ITEMS")
                   ? "Энэ захиалгын бараа хүргэгдсэн тул цуцлах боломжгүй. «Хүргэсэн» болгоод буцаалт хийнэ үү."
-                  : null;
+                  : // 0179: бэлгийн карт — буцаалтгүй, цуцлагдсаныг сэргээхгүй.
+                    error.message.includes("GIFT_CARD_NOT_REFUNDABLE")
+                    ? "Бэлгийн картыг цуцлах, буцаах боломжгүй."
+                    : error.message.includes("GIFT_CARD_ORDER_CANCELLED")
+                      ? "Цуцлагдсан бэлгийн картын захиалгыг сэргээхгүй. Хэрэглэгч «Дараа захиалах»-аас дахин төлнө."
+                      : null;
       if (statusMessage) {
         return NextResponse.json({ error: statusMessage }, { status: 409 });
       }

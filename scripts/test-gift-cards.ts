@@ -260,6 +260,38 @@ async function main() {
       check("void → VOID", r.reason === "VOID", r);
     });
 
+    await scenario(c, "Төлөгдөөгүй → «Дараа захиалах», сэргээхгүй", async () => {
+      await setFlag(c, true);
+      const placed = await place(c, buyer, {
+        amount: 100000,
+        draft: { amount: 100000, designId: "classic", recipientName: "Сараа", fromName: "Болд", delivery: "self" },
+      });
+      await c.query("select abandon_unpaid_order($1, true, 'test', null)", [placed.order_id]);
+      const { rows: saved } = await c.query<{ id: string | null }>(
+        "select (select id from saved_checkouts where source_order_id = $1) as id",
+        [placed.order_id],
+      );
+      check("«Дараа захиалах»-д хадгалсан", saved[0].id !== null, saved[0]);
+      const { rows: gc } = await c.query<{ gift_card: Record<string, unknown> }>(
+        "select gift_card from saved_checkouts where source_order_id = $1",
+        [placed.order_id],
+      );
+      check("маягтын ноорог хадгалагдсан", gc[0]?.gift_card?.recipientName === "Сараа", gc[0]);
+      const k = await card(c, placed.order_id);
+      check("карт void", k.status === "void", k);
+      const { rows: ev } = await c.query<{ n: number }>(
+        "select count(*)::int as n from gift_card_events where gift_card_id = $1 and kind = 'voided'",
+        [k.id],
+      );
+      check("voided түүхэнд", ev[0].n === 1, ev[0]);
+      const restore = await errorOf(
+        c,
+        "select update_order_status($1, 'pending', 'restore', null)",
+        [placed.order_id],
+      );
+      check("сэргээхийг хориглосон", restore?.includes("GIFT_CARD_ORDER_CANCELLED") ?? false, restore);
+    });
+
     await scenario(c, "Хугацаа дуусах", async () => {
       await setFlag(c, true);
       const placed = await place(c, buyer, { amount: 300000 });

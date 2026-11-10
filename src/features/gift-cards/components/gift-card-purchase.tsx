@@ -22,12 +22,10 @@ import {
   type GiftCardPurchaseInput,
 } from "@/lib/validators/gift-card";
 import { GENERIC_ERROR, ORDER_MESSAGES } from "../messages";
-import { formatGiftAmount } from "../lib";
+import { GIFT_CARD_DRAFT_KEY, formatGiftAmount } from "../lib";
 import type { GiftCardDesign } from "../types";
 import { GiftCardFace } from "./gift-card-face";
 
-/** Нэвтрэх рүү шилжихэд бөглөсөн талбарууд алга болохгүй (§12-Q1). */
-const DRAFT_KEY = "vonscent:gift-card-draft";
 
 const DELIVERY_OPTIONS = [
   {
@@ -75,10 +73,12 @@ function StepLegend({ n, children }: { n: number; children: React.ReactNode }) {
   );
 }
 
-function readDraft(): Partial<GiftCardPurchaseInput> | null {
+function readDraft(): (Partial<GiftCardPurchaseInput> & { savedId?: string }) | null {
   try {
-    const raw = sessionStorage.getItem(DRAFT_KEY);
-    return raw ? (JSON.parse(raw) as Partial<GiftCardPurchaseInput>) : null;
+    const raw = sessionStorage.getItem(GIFT_CARD_DRAFT_KEY);
+    return raw
+      ? (JSON.parse(raw) as Partial<GiftCardPurchaseInput> & { savedId?: string })
+      : null;
   } catch {
     return null;
   }
@@ -86,8 +86,8 @@ function readDraft(): Partial<GiftCardPurchaseInput> | null {
 
 function writeDraft(values: GiftCardPurchaseInput | null) {
   try {
-    if (values) sessionStorage.setItem(DRAFT_KEY, JSON.stringify(values));
-    else sessionStorage.removeItem(DRAFT_KEY);
+    if (values) sessionStorage.setItem(GIFT_CARD_DRAFT_KEY, JSON.stringify(values));
+    else sessionStorage.removeItem(GIFT_CARD_DRAFT_KEY);
   } catch {
     // Хувийн цонх — ноорог хадгалахгүй, урсгал зогсохгүй.
   }
@@ -129,16 +129,28 @@ export function GiftCardPurchase({ designs }: { designs: GiftCardDesign[] }) {
     },
   });
 
-  // Нэвтрээд буцаж ирэхэд ноорог сэргэнэ.
+  // «Дараа захиалах»-аас ирсэн бол захиалга үүсмэгц тэр мөрийг устгана.
+  const [savedId, setSavedId] = React.useState<string | null>(null);
+
+  // Нэвтрээд буцаж ирэхэд / «Дараа захиалах»-аас ноорог сэргэнэ.
   React.useEffect(() => {
     const draft = readDraft();
-    if (draft) reset({ ...getValues(), ...draft });
-  }, [reset, getValues]);
+    if (!draft) return;
+    const { savedId: fromSaved, ...values } = draft;
+    setSavedId(fromSaved ?? null);
+    // Хадгалснаас хойш идэвхгүй болсон загвар — сонголтгүй үлдэхгүй.
+    if (values.designId && !designs.some((d) => d.id === values.designId)) {
+      delete values.designId;
+    }
+    reset({ ...getValues(), ...values });
+  }, [reset, getValues, designs]);
 
-  // «Хэнээс» хоосон бол нэвтэрсэн хэрэглэгчийн нэрээр.
+  // «Хэнээс» хоосон бол нэвтэрсэн хэрэглэгчийн нэрээр. «Б. Болд» → «Болд»
+  // (овгийн үсгийг алгасна).
   React.useEffect(() => {
     if (profile?.name && !getValues("fromName")) {
-      setValue("fromName", profile.name.split(" ")[0] ?? profile.name);
+      const parts = profile.name.trim().split(/\s+/u);
+      setValue("fromName", parts.find((p) => !p.endsWith(".")) ?? profile.name);
     }
   }, [profile, getValues, setValue]);
 
@@ -195,9 +207,10 @@ export function GiftCardPurchase({ designs }: { designs: GiftCardDesign[] }) {
         return;
       }
       if (!res.ok || !data?.payToken) {
-        // Алдаатай оролдлогын түлхүүрийг шинэчилнэ — засаад дахин илгээхэд
-        // шинэ захиалга.
-        renewRequestId();
+        // Татгалзсан (validation, бизнес дүрэм) оролдлогын түлхүүрийг
+        // шинэчилнэ — засаад илгээхэд шинэ захиалга. «Үүсч байна» (409
+        // ORDER_PENDING) бол хуучин түлхүүрээр л дахин асууна.
+        if (data?.error !== "ORDER_PENDING") renewRequestId();
         setServerError(
           data?.message ??
             (data?.error ? ORDER_MESSAGES[data.error] : undefined) ??
@@ -206,9 +219,16 @@ export function GiftCardPurchase({ designs }: { designs: GiftCardDesign[] }) {
         return;
       }
       writeDraft(null);
+      if (savedId) {
+        void fetch(`/api/account/saved-checkouts/${savedId}`, {
+          method: "DELETE",
+          keepalive: true,
+        }).catch(() => undefined);
+      }
       router.push(`/pay/${data.payToken}`);
     } catch {
-      renewRequestId();
+      // Сүлжээ тасарсан — сервер захиалгыг үүсгэсэн байж магадгүй тул ИЖИЛ
+      // түлхүүрээр дахин илгээхэд тэр захиалга буцна (давхар үүсэхгүй).
       setServerError(GENERIC_ERROR);
     }
   }

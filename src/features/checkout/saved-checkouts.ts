@@ -102,9 +102,25 @@ export interface SavedCheckout {
   extras: CartExtra[];
   /** Checkout-ийн маягтын ноорог (`CheckoutDraft`). */
   draft: Record<string, unknown>;
+  /**
+   * Төлөгдөөгүй бэлгийн картын захиалга (0179 §8b) — `/gift-cards`-ийн
+   * маягтын ноорог. Байвал бусад мөр хоосон, checkout биш тэр хуудас руу.
+   */
+  giftCard?: SavedGiftCard | null;
 }
 
-export type SavedCheckoutInput = Omit<SavedCheckout, "id" | "savedAt">;
+export interface SavedGiftCard {
+  amount: number;
+  designId: string;
+  recipientName: string;
+  message?: string;
+  fromName: string;
+  delivery: "email" | "scheduled" | "self";
+  recipientEmail?: string;
+  sendDay?: string;
+}
+
+export type SavedCheckoutInput = Omit<SavedCheckout, "id" | "savedAt" | "giftCard">;
 
 interface SavedCheckoutRow {
   id: string;
@@ -113,6 +129,7 @@ interface SavedCheckoutRow {
   collections: CartCollection[];
   extras?: CartExtra[] | null;
   draft: Record<string, unknown>;
+  gift_card?: SavedGiftCard | null;
   created_at: string;
 }
 
@@ -124,6 +141,7 @@ const fromRow = (r: SavedCheckoutRow): SavedCheckout => ({
   collections: r.collections,
   extras: r.extras ?? [],
   draft: r.draft,
+  giftCard: r.gift_card ?? null,
 });
 
 /** Нэвтэрсэн хэрэглэгчийн хадгалсан захиалгууд (шинэ нь эхэнд). */
@@ -193,6 +211,7 @@ export function useDeleteSavedCheckout() {
 
 /** Хадгалсан захиалгын барааны дүн (хадгалах үеийн үнээр). */
 export function savedSubtotal(entry: SavedCheckout): number {
+  if (entry.giftCard) return entry.giftCard.amount;
   return (
     entry.items.reduce((n, i) => n + i.unitPrice * i.qty, 0) +
     entry.collections.reduce((n, c) => n + c.unitPrice * c.qty, 0) +
