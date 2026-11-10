@@ -1,25 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Gift } from "lucide-react";
+import { Gift, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AccountPageHeader } from "@/features/account/components/account-page-header";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
-import { formatDate } from "@/lib/format";
 import { getMyGiftCards } from "@/features/gift-cards/server";
-import { GiftCardFace } from "@/features/gift-cards/components/gift-card-face";
 import { GiftCardCodeForm } from "@/features/gift-cards/components/gift-card-redeem";
-import { GiftCardShare } from "@/features/gift-cards/components/gift-card-share";
-import { GiftCardSendButton } from "@/features/gift-cards/components/gift-card-send";
-import { formatSendAt } from "@/features/gift-cards/email-docs";
-import {
-  GIFT_STATUS_LABEL,
-  formatGiftAmount,
-  giftUrl,
-} from "@/features/gift-cards/lib";
+import { MyGiftCardItem } from "@/features/gift-cards/components/my-gift-card";
+import { giftUrl } from "@/features/gift-cards/lib";
 import type { MyGiftCard } from "@/features/gift-cards/types";
 
 export const dynamic = "force-dynamic";
@@ -29,55 +21,42 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-function BoughtCard({ card }: { card: MyGiftCard }) {
+function CardGrid({ cards }: { cards: MyGiftCard[] }) {
   return (
-    <li className="bg-secondary grid gap-4 rounded-2xl p-4 sm:grid-cols-[220px_minmax(0,1fr)]">
-      <GiftCardFace design={card.design} text={card} />
-      <div className="min-w-0 space-y-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <p className="font-semibold">
-            {card.recipientName} · {formatGiftAmount(card.amount)}
-          </p>
-          <span className="text-muted-foreground text-xs">
-            {GIFT_STATUS_LABEL[card.status]}
-          </span>
-        </div>
-        <p className="text-muted-foreground text-sm">
-          {card.status === "redeemed" && card.redeemedAt
-            ? `${formatDate(card.redeemedAt)}-нд оноо болгосон.`
-            : card.recipientEmail
-              ? card.sentAt
-                ? `${card.recipientEmail} руу илгээсэн.`
-                : card.sendAt && new Date(card.sendAt) > new Date()
-                  ? `${card.recipientEmail} руу ${formatSendAt(card.sendAt)}-д илгээгдэнэ.`
-                  : `${card.recipientEmail} руу илгээгдэнэ.`
-              : "Та өөрөө өгнө — холбоос эсвэл кодоо хуваалцаарай."}
-          {card.status === "active" && card.expiresAt
-            ? ` ${formatDate(card.expiresAt)} хүртэл хүчинтэй.`
-            : ""}
-        </p>
-        {card.code && card.token && (
-          <>
-            <GiftCardShare
-              code={card.code}
-              url={giftUrl(card.token, env.siteUrl)}
-              recipientName={card.recipientName}
-            />
-            <GiftCardSendButton
-              cardId={card.id}
-              currentEmail={card.recipientEmail}
-              sent={Boolean(card.sentAt)}
-            />
-          </>
-        )}
-      </div>
-    </li>
+    <ul className="grid gap-x-6 gap-y-8 sm:grid-cols-2">
+      {cards.map((c) => (
+        <MyGiftCardItem
+          key={c.id}
+          card={c}
+          url={c.token && c.code ? giftUrl(c.token, env.siteUrl) : null}
+        />
+      ))}
+    </ul>
+  );
+}
+
+function SectionTitle({
+  id,
+  children,
+  count,
+}: {
+  id: string;
+  children: React.ReactNode;
+  count: number;
+}) {
+  return (
+    <h2 id={id} className="flex items-baseline gap-2 text-lg font-semibold">
+      {children}
+      <span className="text-muted-foreground text-sm font-normal tabular-nums">
+        {count}
+      </span>
+    </h2>
   );
 }
 
 /**
- * «Бэлгийн карт» (gift-cards-plan §2.2) — код оруулах, миний худалдаж авсан
- * (хуваалцах), хүлээн авсан картууд. Туг хаалттай бол 404.
+ * «Бэлгийн карт» (gift-cards-plan §2.2) — код оруулах, миний илгээсэн
+ * (эргүүлж кодоо харна, хуваалцана), надад ирсэн. Туг хаалттай бол 404.
  */
 export default async function AccountGiftCardsPage() {
   if (!(await isFeatureEnabled("gift_cards"))) notFound();
@@ -88,11 +67,15 @@ export default async function AccountGiftCardsPage() {
   if (!user) redirect("/login?next=%2Faccount%2Fgift-cards");
 
   const cards = await getMyGiftCards(user.id);
-  const bought = cards.filter((c) => c.role === "bought");
+  // Ашиглагдаагүй нь эхэнд — хуваалцах, илгээх ажил тэдэн дээр л үлдсэн.
+  const rank = (c: MyGiftCard) => (c.status === "active" ? 0 : 1);
+  const bought = cards
+    .filter((c) => c.role === "bought")
+    .sort((a, b) => rank(a) - rank(b));
   const received = cards.filter((c) => c.role === "received");
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <AccountPageHeader
         title="Бэлгийн карт"
         aside={
@@ -102,18 +85,32 @@ export default async function AccountGiftCardsPage() {
         }
       />
 
-      <section className="bg-secondary rounded-2xl p-5">
-        <h2 className="font-semibold">Бэлгийн код оруулах</h2>
-        <p className="text-muted-foreground mt-1 mb-3 text-sm">
-          Танд ирсэн кодыг оруулбал картын дүн V point болж дансанд орно.
-        </p>
-        <GiftCardCodeForm />
+      <section
+        aria-labelledby="gift-redeem"
+        className="bg-secondary flex flex-col gap-4 rounded-2xl p-5 md:flex-row md:items-center md:gap-8"
+      >
+        <div className="flex gap-3 md:w-72 md:shrink-0">
+          <span className="bg-background flex size-10 shrink-0 items-center justify-center rounded-full">
+            <Ticket className="size-5" aria-hidden="true" />
+          </span>
+          <div>
+            <h2 id="gift-redeem" className="font-semibold">
+              Танд код ирсэн үү?
+            </h2>
+            <p className="text-muted-foreground mt-0.5 text-sm">
+              Кодоо оруулбал картын дүн V point болж дансанд орно.
+            </p>
+          </div>
+        </div>
+        <div className="min-w-0 flex-1">
+          <GiftCardCodeForm />
+        </div>
       </section>
 
-      <section aria-labelledby="gift-bought" className="space-y-3">
-        <h2 id="gift-bought" className="text-lg font-semibold">
+      <section aria-labelledby="gift-bought" className="space-y-4">
+        <SectionTitle id="gift-bought" count={bought.length}>
           Миний илгээсэн
-        </h2>
+        </SectionTitle>
         {bought.length === 0 ? (
           <EmptyState
             icon={Gift}
@@ -126,39 +123,23 @@ export default async function AccountGiftCardsPage() {
             }
           />
         ) : (
-          <ul className="space-y-3">
-            {bought.map((c) => (
-              <BoughtCard key={c.id} card={c} />
-            ))}
-          </ul>
+          <>
+            {bought.some((c) => c.code) && (
+              <p className="text-muted-foreground -mt-2 text-sm">
+                Карт дээр дарж эргүүлбэл код, QR нь харагдана.
+              </p>
+            )}
+            <CardGrid cards={bought} />
+          </>
         )}
       </section>
 
       {received.length > 0 && (
-        <section aria-labelledby="gift-received" className="space-y-3">
-          <h2 id="gift-received" className="text-lg font-semibold">
+        <section aria-labelledby="gift-received" className="space-y-4">
+          <SectionTitle id="gift-received" count={received.length}>
             Надад ирсэн
-          </h2>
-          <ul className="space-y-3">
-            {received.map((c) => (
-              <li
-                key={c.id}
-                className="bg-secondary grid gap-4 rounded-2xl p-4 sm:grid-cols-[220px_minmax(0,1fr)]"
-              >
-                <GiftCardFace design={c.design} text={c} />
-                <div className="space-y-1">
-                  <p className="font-semibold">
-                    Илгээгч: {c.fromName} · {formatGiftAmount(c.amount)}
-                  </p>
-                  <p className="text-muted-foreground text-sm">
-                    {c.redeemedAt ? `${formatDate(c.redeemedAt)}-нд ` : ""}
-                    {(c.points ?? c.amount).toLocaleString("mn-MN")} V point
-                    дансанд орсон.
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          </SectionTitle>
+          <CardGrid cards={received} />
         </section>
       )}
     </div>

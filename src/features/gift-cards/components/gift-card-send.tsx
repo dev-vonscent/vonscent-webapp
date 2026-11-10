@@ -21,10 +21,13 @@ export function GiftCardSendButton({
   cardId,
   currentEmail,
   sent,
+  size,
 }: {
   cardId: string;
   currentEmail: string | null;
   sent: boolean;
+  /** Жагсаалтын товчнуудын мөрөнд `sm`. */
+  size?: "sm";
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -71,11 +74,12 @@ export function GiftCardSendButton({
       <Button
         type="button"
         variant="secondary"
-        className="w-full"
+        size={size}
+        className={size ? undefined : "w-full"}
         onClick={() => setOpen(true)}
       >
         <Mail className="size-4" aria-hidden="true" />
-        {sent ? "Дахин илгээх / хаяг засах" : "Имэйлээр илгээх"}
+        {size ? "Имэйл" : sent ? "Дахин илгээх" : "Имэйлээр илгээх"}
       </Button>
       <ResponsiveDialog
         open={open}
