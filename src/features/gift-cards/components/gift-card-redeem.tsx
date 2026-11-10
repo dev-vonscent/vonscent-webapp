@@ -223,7 +223,8 @@ export function GiftCardCodeForm() {
           autoCapitalize="characters"
           spellCheck={false}
           maxLength={20}
-          className="font-mono tracking-wider"
+          // Хэсэг нь өөрөө `bg-secondary` — талбар дэвсгэртэйгээ уусахгүй.
+          className="bg-background font-mono tracking-wider"
           {...fieldErrorProps("gift-code", error)}
         />
         <LoadingButton type="submit" loading={pending} className="shrink-0">
