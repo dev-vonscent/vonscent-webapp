@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { ImagePlus, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { IMAGE_ACCEPT } from "@/lib/storage/limits";
 import { prepareUpload } from "@/lib/storage/prepare-upload";
 import { xhrUpload, uploadErrorMessage } from "@/lib/storage/upload-progress";
@@ -19,11 +20,18 @@ export function ImageUpload({
   onChange,
   folder = "marketing",
   label = "Зураг",
+  compact = false,
 }: {
   value: string | null;
   onChange: (url: string | null) => void;
   folder?: string;
   label?: string;
+  /**
+   * Tile-гүй, зөвхөн «оруулах/солих» + «хасах» товч. Зургийг өөр газар
+   * (ж: бэлгийн картын live preview) аль хэдийн харуулж байгаа үед давхар
+   * thumbnail хэрэггүй.
+   */
+  compact?: boolean;
 }) {
   const [busy, setBusy] = React.useState(false);
   /** 0–100 while the bytes leave the browser; null once the server is working. */
@@ -82,6 +90,61 @@ export function ImageUpload({
     }
   }
 
+  const fileInput = (
+    <input
+      ref={inputRef}
+      type="file"
+      accept={IMAGE_ACCEPT}
+      hidden
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file) upload(file);
+      }}
+    />
+  );
+  const messages = (
+    <>
+      {error && <p className="text-destructive text-xs">{error}</p>}
+      {warning && <p className="text-muted-foreground text-xs">⚠ {warning}</p>}
+    </>
+  );
+
+  if (compact) {
+    return (
+      <div className="space-y-1.5">
+        {busy ? (
+          <UploadProgress pct={progress} className="items-start px-0" />
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => inputRef.current?.click()}
+            >
+              <ImagePlus className="size-4" aria-hidden="true" />
+              {value ? `${label} солих` : `${label} оруулах`}
+            </Button>
+            {value && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => onChange(null)}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                <X className="size-4" aria-hidden="true" />
+                Хасах
+              </Button>
+            )}
+          </div>
+        )}
+        {fileInput}
+        {messages}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-1.5">
       <div className="relative w-full max-w-60">
@@ -123,18 +186,8 @@ export function ImageUpload({
         )}
       </div>
 
-      <input
-        ref={inputRef}
-        type="file"
-        accept={IMAGE_ACCEPT}
-        hidden
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) upload(file);
-        }}
-      />
-      {error && <p className="text-destructive text-xs">{error}</p>}
-      {warning && <p className="text-muted-foreground text-xs">⚠ {warning}</p>}
+      {fileInput}
+      {messages}
     </div>
   );
 }

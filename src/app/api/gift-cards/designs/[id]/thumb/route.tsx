@@ -5,6 +5,7 @@ import {
   BRAND_MARK_RATIO,
   brandMarkDataUrl,
 } from "@/features/gift-cards/og-logo";
+import { designBackgroundDataUrl } from "@/features/gift-cards/og-background";
 
 /** 44–56px дөрвөлжин мөрөнд 4x. */
 const SIZE = 224;
@@ -30,7 +31,10 @@ export async function GET(
   }
   const d = await getGiftCardDesign(id);
   if (!d) return new Response("Not found", { status: 404 });
-  const mark = d.imageUrl
+  const bg = d.imageUrl
+    ? await designBackgroundDataUrl(d.imageUrl, CARD_W, CARD_H)
+    : null;
+  const mark = bg
     ? null
     : await brandMarkDataUrl(new URL(req.url).origin, d.textColor);
   const markH = 30;
@@ -57,15 +61,9 @@ export async function GET(
             backgroundColor: d.bgColor,
           }}
         >
-          {d.imageUrl ? (
+          {bg ? (
             // eslint-disable-next-line @next/next/no-img-element -- satori
-            <img
-              src={d.imageUrl}
-              alt=""
-              width={CARD_W}
-              height={CARD_H}
-              style={{ objectFit: "cover" }}
-            />
+            <img src={bg} alt="" width={CARD_W} height={CARD_H} />
           ) : (
             <>
               {mark ? (

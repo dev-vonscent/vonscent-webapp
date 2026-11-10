@@ -7,6 +7,7 @@ import {
   BRAND_MARK_RATIO,
   brandMarkDataUrl,
 } from "@/features/gift-cards/og-logo";
+import { designBackgroundDataUrl } from "@/features/gift-cards/og-background";
 
 /**
  * GET /api/gift-cards/<token>/image — картын PNG (1200×756), имэйл, OG,
@@ -27,9 +28,10 @@ export async function GET(
   }
   const d = card.design;
   const message = card.message.trim() || d.defaultMessage || "";
-  const [fonts, mark] = await Promise.all([
+  const [fonts, mark, bg] = await Promise.all([
     interFonts(),
     brandMarkDataUrl(new URL(req.url).origin, d.textColor),
+    d.imageUrl ? designBackgroundDataUrl(d.imageUrl, 1200, 756) : null,
   ]);
 
   return new ImageResponse(
@@ -45,14 +47,14 @@ export async function GET(
           fontFamily: "Inter",
         }}
       >
-        {d.imageUrl ? (
+        {bg ? (
           // eslint-disable-next-line @next/next/no-img-element -- satori
           <img
-            src={d.imageUrl}
+            src={bg}
             alt=""
             width={1200}
             height={756}
-            style={{ position: "absolute", left: 0, top: 0, objectFit: "cover" }}
+            style={{ position: "absolute", left: 0, top: 0 }}
           />
         ) : (
           <div
@@ -136,8 +138,8 @@ export async function GET(
             <div
               style={{
                 marginTop: 12,
-                maxWidth: 600,
-                fontSize: 26,
+                maxWidth: 540, // gift-card-face.tsx-тэй ижил
+                fontSize: 24,
                 lineHeight: 1.45,
                 color: d.mutedColor,
               }}
@@ -149,7 +151,7 @@ export async function GET(
             <div
               style={{
                 marginTop: 24,
-                fontSize: 26,
+                fontSize: 24,
                 color: d.mutedColor,
                 display: "flex",
               }}
