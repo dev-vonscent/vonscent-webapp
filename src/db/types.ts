@@ -460,6 +460,12 @@ export interface GiftCardRow {
   points: number | null;
   voided_at: string | null;
   void_reason: string | null;
+  /** Худалдан авагчийн баримт явсан цаг (0180). */
+  buyer_notified_at?: string | null;
+  /** Сануулга нэг удаа (0180): 7 хоног ашиглаагүй, хугацаа 30 / 7 хоног. */
+  reminded_unused_at?: string | null;
+  reminded_expiry_30_at?: string | null;
+  reminded_expiry_7_at?: string | null;
   created_at: string;
   updated_at: string;
 }
