@@ -12,6 +12,7 @@ import {
   LogOut,
   Pencil,
   Ticket,
+  Gift,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ export default function ProfilePage() {
   const tiersOn = useFeatureFlag("user_tiers");
   // Асаалттай үед засвар «Миний мэдээлэл» хуудсанд шилжинэ (0163).
   const profileInfoOn = useFeatureFlag("profile_info");
+  const giftCardsOn = useFeatureFlag("gift_cards");
   const { data: tierSummary } = useMyTier();
   const tier = tierSummary ? tierByKey(tierSummary.tier) : null;
   const [askSignOut, signOutDialog] = useSignOutConfirm();
@@ -280,7 +282,7 @@ export default function ProfilePage() {
 
       {/* Settings rows */}
       <div className="space-y-2">
-        {/* Миний мэдээлэл → Түвшин → Купон → Азын хүрд → Нэвтрэх код:
+        {/* Миний мэдээлэл → Түвшин → Купон → Бэлгийн карт → Азын хүрд → Нэвтрэх код:
             хувийн мэдээллээс урамшуулал руу, тохиргоо хамгийн сүүлд. */}
         {configured && profileInfoOn && <ProfileInfoEntryCard />}
 
@@ -311,6 +313,17 @@ export default function ProfilePage() {
           >
             <IconCircle icon={Ticket} />
             <span className="font-medium">Миний купон</span>
+            <ChevronRight className="text-muted-foreground ml-auto size-4" />
+          </Link>
+        )}
+
+        {configured && giftCardsOn && (
+          <Link
+            href="/account/gift-cards"
+            className="bg-card hover:bg-accent flex w-full items-center gap-4 rounded-xl p-4 text-left transition-colors"
+          >
+            <IconCircle icon={Gift} />
+            <span className="font-medium">Бэлгийн карт</span>
             <ChevronRight className="text-muted-foreground ml-auto size-4" />
           </Link>
         )}
