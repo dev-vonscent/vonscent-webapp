@@ -416,7 +416,11 @@ function OrderCard({
   // Бэлгийн карт (0179): хүргэлтгүй, сэтгэгдэлгүй — төлөгдмөгц идэвхжинэ.
   // Карт өөрөө «Бэлгийн карт» хуудсанд (код, хуваалцах) — тийшээ заана.
   const isGiftCard = o.order_type === "gift_card";
-  const href = isGiftCard ? "/account/gift-cards" : `/account/orders/${o.id}`;
+  // Төлөгдөөгүй карт «Бэлгийн карт»-д харагддаггүй — захиалга руугаа.
+  const href =
+    isGiftCard && o.payment_status === "paid"
+      ? "/account/gift-cards"
+      : `/account/orders/${o.id}`;
   const StatusIcon = isGiftCard && o.status === "delivered" ? Gift : STATUS_ICON[o.status];
   const statusLabel =
     isGiftCard && o.status === "delivered" ? "Идэвхжсэн" : ORDER_STATUS_LABEL[o.status];
@@ -579,7 +583,7 @@ function OrderCard({
               href={href}
               className="text-muted-foreground group-hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
             >
-              {isGiftCard ? "Карт харах" : "Дэлгэрэнгүй"}
+              {isGiftCard && o.payment_status === "paid" ? "Карт харах" : "Дэлгэрэнгүй"}
               <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
           )}

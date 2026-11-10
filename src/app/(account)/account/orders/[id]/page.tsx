@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Bookmark } from "lucide-react";
 import { AccountBackButton } from "@/features/account/components/account-page-header";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +79,11 @@ export default async function OrderDetailPage({
     .maybeSingle();
   const order = orderData as OrderRow | null;
   if (!order) notFound();
+  // Бэлгийн карт (0179): хүргэлт, сэтгэгдэлгүй — төлөгдсөн бол карт нь
+  // өөрийн хуудсанд (код, хуваалцах). Төлөгдөөгүй нь доорх төлбөрийн урсгал.
+  if (order.order_type === "gift_card" && order.payment_status === "paid") {
+    redirect("/account/gift-cards");
+  }
   // Төлөгдөөгүй цуцлалт захиалга болж үлдэхгүй (0124, клиент 2026-10).
   // «Дараа захиалах» руу шилжсэн бол хуучин линкээр ирсэн хүнд «Цуцлагдсан»
   // биш, хаана очсоныг нь хэлнэ; устгасан бол юу ч үлдээгүй — 404.
