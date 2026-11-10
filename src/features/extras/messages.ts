@@ -63,6 +63,8 @@ export function extrasErrorMessage(raw: string | undefined): string | null {
     return "Нэгж авсан үнийг 0-ээс 10,000,000₮ хооронд оруулна уу.";
   if (raw.includes("STOCK_NOT_COUNTED"))
     return "Эхлээд савны эхний тооллогыг оруулна уу.";
+  if (raw.includes("EXTRA_HAS_HISTORY"))
+    return "Захиалга эсвэл нөөцийн бүртгэлтэй бараа тул устгах боломжгүй. Оронд нь архивлана уу.";
   if (raw.includes("NOT_FOUND")) return "Бараа олдсонгүй. Хуудсаа сэргээнэ үү.";
   return null;
 }

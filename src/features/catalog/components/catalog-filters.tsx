@@ -96,6 +96,7 @@ export function CatalogFilters({
   families,
   showClear = true,
   showKind = true,
+  showTags = true,
 }: {
   brands: string[];
   /**
@@ -115,6 +116,11 @@ export function CatalogFilters({
    * can't go inside a bundle — so there the toggle has nothing to switch.
    */
   showKind?: boolean;
+  /**
+   * «Таг» (онцлох, шинэ, эрэлттэй, хямдрал) — үнэртний тэмдэглэгээ.
+   * «Үнэртний шил» хуудсанд шил өөрөө тэр тэмдэглэгээгүй тул нуугдана.
+   */
+  showTags?: boolean;
 }) {
   const {
     values,
@@ -298,26 +304,32 @@ export function CatalogFilters({
         </>
       )}
 
-      <Group title="Таг">
-        <div className="grid grid-cols-2 gap-2">
-          <Chip
-            active={featured}
-            onClick={() => setSingle("featured", featured ? undefined : "1")}
-          >
-            Онцлох
-          </Chip>
-          {TAGS.map((t) => (
-            <Chip
-              key={t.value}
-              active={values("tags").includes(t.value)}
-              onClick={() => toggle("tags", t.value)}
-            >
-              {t.label}
-            </Chip>
-          ))}
-        </div>
-      </Group>
-      <Separator />
+      {showTags && (
+        <>
+          <Group title="Таг">
+            <div className="grid grid-cols-2 gap-2">
+              <Chip
+                active={featured}
+                onClick={() =>
+                  setSingle("featured", featured ? undefined : "1")
+                }
+              >
+                Онцлох
+              </Chip>
+              {TAGS.map((t) => (
+                <Chip
+                  key={t.value}
+                  active={values("tags").includes(t.value)}
+                  onClick={() => toggle("tags", t.value)}
+                >
+                  {t.label}
+                </Chip>
+              ))}
+            </div>
+          </Group>
+          <Separator />
+        </>
+      )}
 
       {hasPriceRange && (
         <>

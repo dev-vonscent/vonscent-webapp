@@ -57,11 +57,15 @@ describe("stockText", () => {
 });
 
 describe("eyebrowText", () => {
-  const base = { leftover: null, categoryName: "Шилтэй ус" } as const;
-  it("лацтай шил «Бүтэн ус», үлдэгдэлтэй шил брэнд, бусад ангилал", () => {
+  const base = {
+    leftover: null,
+    perfume: null,
+    categoryName: "Шилтэй ус",
+  } as const;
+  it("холбоогүй лацтай шил «Бүтэн шил», үлдэгдэлтэй шил брэнд, бусад ангилал", () => {
     expect(
       eyebrowText({ ...base, categorySlug: "bottled", mode: "local_quantity" }),
-    ).toBe("Бүтэн ус");
+    ).toBe("Бүтэн шил");
     expect(
       eyebrowText({
         ...base,
@@ -77,11 +81,33 @@ describe("eyebrowText", () => {
     ).toBe("Versace");
     expect(
       eyebrowText({
-        leftover: null,
+        ...base,
         categoryName: "Хоосон шил",
         categorySlug: "empty-bottle",
         mode: "local_quantity",
       }),
     ).toBe("Хоосон шил");
+  });
+
+  it("эх үнэртэнтэй хоосон/бүтэн шил брэндээр; дагалдах хэрэгсэлд брэнд хэрэглэхгүй", () => {
+    const perfume = { brand: "Dior", name: "Sauvage" };
+    for (const categorySlug of ["empty-bottle", "bottled"])
+      expect(
+        eyebrowText({
+          ...base,
+          perfume,
+          categorySlug,
+          mode: "local_quantity",
+        }),
+      ).toBe("Dior");
+    expect(
+      eyebrowText({
+        ...base,
+        perfume,
+        categoryName: "Шприц",
+        categorySlug: "syringe",
+        mode: "local_quantity",
+      }),
+    ).toBe("Шприц");
   });
 });

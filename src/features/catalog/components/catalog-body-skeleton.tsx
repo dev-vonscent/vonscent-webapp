@@ -4,9 +4,9 @@ import {
 } from "@/components/shared/skeletons";
 
 /**
- * Каталогийн гарчиг, табын доорх хэсэг — утасны удирдлагын мөр, sidebar,
- * grid. `loading.tsx` ба таб солих үеийн шууд skeleton (`CatalogTabShell`)
- * хоёулаа үүнийг харуулна — хоёр skeleton зөрөхгүй.
+ * Каталогийн гарчиг, эрэмбийн доорх хэсэг — утасны удирдлагын мөр, sidebar,
+ * grid. `/catalog` ба `/bottles`-ийн `loading.tsx` хоёулаа үүнийг харуулна —
+ * хоёр skeleton зөрөхгүй.
  */
 export function CatalogBodySkeleton() {
   return (

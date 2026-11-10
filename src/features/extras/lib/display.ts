@@ -15,18 +15,21 @@ export function bottleSizeText(
 }
 
 /**
- * Картын/хуудасны дээрх жижиг бичиг: үлдэгдэлтэй шилэнд брэнд, лацтай
- * бүтэн шилэнд «Бүтэн ус» («Шилтэй ус» ангилал нь хоёр горимтой — нэр нь
- * бүтэн эсэхийг хэлдэггүй), бусадд ангиллын нэр.
+ * Картын/хуудасны дээрх жижиг бичиг: эх үнэртэнтэй шилэнд брэнд (шилний гол
+ * таних тэмдэг — «Үнэртний шил» хуудсанд tab нь төрлийг аль хэдийн хэлдэг),
+ * холбоогүй лацтай шилэнд «Бүтэн шил» («Шилтэй ус» ангилал нь хоёр горимтой —
+ * нэр нь бүтэн эсэхийг хэлдэггүй), бусадд ангиллын нэр.
  */
 export function eyebrowText(
   card: Pick<
     ShopExtraCard,
-    "leftover" | "categorySlug" | "categoryName" | "mode"
+    "leftover" | "perfume" | "categorySlug" | "categoryName" | "mode"
   >,
 ): string {
-  if (card.leftover) return card.leftover.brand;
-  if (bottleKind(card.categorySlug, card.mode) === "sealed") return "Бүтэн ус";
+  const kind = bottleKind(card.categorySlug, card.mode);
+  const brand = card.leftover?.brand || (kind ? card.perfume?.brand : null);
+  if (brand) return brand;
+  if (kind === "sealed") return "Бүтэн шил";
   return card.categoryName;
 }
 

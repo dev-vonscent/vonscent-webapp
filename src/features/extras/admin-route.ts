@@ -54,7 +54,10 @@ export function savePayload(
   const common = {
     id: extra.id ?? null,
     category_id: extra.categoryId ?? null,
-    slug: extraSlug(input.name, normalizeSearchText),
+    // Slug зөвхөн шинэ бараанд — засахад илгээвэл SQL `coalesce(v_slug, slug)`
+    // нэр солигдоход эсвэл давхардлын санамсаргүй дагавараар slug-ийг сольж,
+    // хуучин холбоос (хуваалцсан, хадгалсан, сагсанд байгаа) 404 болдог байв.
+    slug: extra.id ? null : extraSlug(input.name, normalizeSearchText),
     name: input.name,
     description: input.description,
     images: input.images,

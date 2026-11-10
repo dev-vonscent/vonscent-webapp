@@ -4,7 +4,6 @@ export const EXTRA_SORTS = [
   "recommended",
   "price_asc",
   "price_desc",
-  "new",
 ] as const;
 export type ExtraSort = (typeof EXTRA_SORTS)[number];
 
@@ -12,7 +11,6 @@ export const EXTRA_SORT_LABEL: Record<ExtraSort, string> = {
   recommended: "Санал болгох",
   price_asc: "Үнэ: бага → их",
   price_desc: "Үнэ: их → бага",
-  new: "Шинэ эхэндээ",
 };
 
 /** `CatalogSort`-ийн сонголт. */
@@ -28,6 +26,11 @@ export function parseExtraSort(v: unknown): ExtraSort {
 }
 
 /**
+ * «Шинэ эхэндээ» байхгүй (клиент, 2026-11-10): шил бүр ганц ширхэг шахуу,
+ * «шинэ» гэх ойлголт хэрэглэгчид хамаагүй. «Санал болгох» нь админы
+ * дарааллын дараа шинийг эхэнд тавьдаг хэвээр; хуучин `?sort=new` холбоос
+ * «Санал болгох» руу унана.
+ *
  * Дууссан бараа ямагт сүүлд — «Санал болгох» нь админы дараалал (`sort`).
  * Эх жагсаалтыг өөрчлөхгүй.
  */
@@ -44,7 +47,6 @@ export function sortExtras<
       b.createdAt.localeCompare(a.createdAt),
     price_asc: (a, b) => a.fromPrice - b.fromPrice,
     price_desc: (a, b) => b.fromPrice - a.fromPrice,
-    new: (a, b) => b.createdAt.localeCompare(a.createdAt),
   };
   return [...items].sort(
     (a, b) => Number(a.soldOut) - Number(b.soldOut) || by[sort](a, b),

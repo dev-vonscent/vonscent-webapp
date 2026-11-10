@@ -6,6 +6,7 @@ import {
   selectCheckoutItems,
   selectCheckoutCollections,
   selectCheckoutExtras,
+  buyNowExtras,
 } from "@/features/cart/store";
 
 const NONE: ReadonlySet<string> = new Set();
@@ -50,7 +51,8 @@ export function useCartSelection({
   );
 
   const isExtraSelected = React.useCallback(
-    (key: string) => !excludedExtras.includes(key) && !blockedExtraKeys.has(key),
+    (key: string) =>
+      !excludedExtras.includes(key) && !blockedExtraKeys.has(key),
     [excludedExtras, blockedExtraKeys],
   );
 
@@ -123,9 +125,7 @@ export function useCheckoutLines() {
     extras: React.useMemo(
       () =>
         buyNow
-          ? buyNow.kind === "extra"
-            ? [buyNow.extra]
-            : []
+          ? buyNowExtras(buyNow)
           : extras.filter((e) => !excludedExtras.includes(e.key)),
       [buyNow, extras, excludedExtras],
     ),

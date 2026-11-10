@@ -10,6 +10,7 @@ import {
   getExtraCategories,
 } from "@/features/extras/admin-api";
 import { ExtrasAdminList } from "@/features/extras/components/admin/extras-admin-list";
+import { extraFilterChips } from "@/features/extras/lib/admin-filter";
 
 export const dynamic = "force-dynamic";
 
@@ -30,14 +31,16 @@ export default async function AdminExtrasPage({
     getAdminExtras(),
     getExtraCategories(),
   ]);
-  const active = categories.some((c) => c.slug === cat) ? cat! : null;
+  const active = extraFilterChips(categories).some((c) => c.key === cat)
+    ? cat!
+    : null;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Нэмэлт бараа"
         count={extras.length}
-        description="Үнэртнээс гадуурх бараа: гоёмсог бэлгийн сав, грамын сав, шилтэй ус, хоосон шил, шприц."
+        description="Үнэртнээс гадуурх бараа: бэлгийн сав, грамын сав, бүтэн болон үлдэгдэлтэй шил, хоосон шил, шприц."
         actions={
           <Button asChild>
             <Link href="/admin/extras/new">

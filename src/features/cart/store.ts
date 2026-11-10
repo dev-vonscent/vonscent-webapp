@@ -121,7 +121,15 @@ export interface CartCollection {
  * захиалгыг алдах шалтгаан болох ёсгүй.
  */
 export type BuyNowLine =
-  | { kind: "item"; item: CartItem }
+  | {
+      kind: "item";
+      item: CartItem;
+      /**
+       * Үнэртний хуудсанд хамт сонгосон бэлгийн боодол (хайрцаг, уут) —
+       * «Захиалах» сагсыг тойрдог тул сагсанд биш, энэ мөртэй хамт явна.
+       */
+      addOns?: CartExtra[];
+    }
   | { kind: "collection"; collection: CartCollection }
   | { kind: "extra"; extra: CartExtra };
 
@@ -149,7 +157,17 @@ interface CartState {
    * хэвтэж байсан бараа дагаж төлөгдөхгүй, захиалахаа больсон бол сагсанд
    * юу ч нэмэгдээгүй байна.
    */
-  startBuyNow: (item: Omit<CartItem, "key" | "qty">, qty?: number) => void;
+  startBuyNow: (
+    item: Omit<CartItem, "key" | "qty">,
+    qty?: number,
+    /** Хамт явах нэмэлт бараа (бэлгийн боодол) — тус бүр 1 ширхэг. */
+    addOns?: Omit<CartExtra, "key" | "qty">[],
+  ) => void;
+  /**
+   * «Захиалах» (үнэртэн) мөрөнд бэлгийн боодол нэмнэ — төлбөрийн хуудасны
+   * «Бэлгийн боодол». Нэг захиалга — боодол бүр 1 ширхэг. Хасахдаа `removeExtra`.
+   */
+  addBuyNowAddOn: (extra: Omit<CartExtra, "key" | "qty">) => void;
   remove: (key: string) => void;
   /**
    * Мөрийн тоо ширхэг. `max` нь эх савны үлдэгдэлд багтах дээд тоо
@@ -318,7 +336,7 @@ export const useCart = create<CartState>()(
           buyNow:
             state.buyNow?.kind === "extra" && state.buyNow.extra.key === key
               ? null
-              : state.buyNow,
+              : mapAddOns(state.buyNow, (a) => a.filter((e) => e.key !== key)),
         })),
       setExtraQty: (key, qty, max) =>
         set((state) => ({
@@ -336,7 +354,13 @@ export const useCart = create<CartState>()(
                     qty: clampQty(qty, extraCap(state.buyNow.extra.mode, max)),
                   },
                 }
-              : state.buyNow,
+              : mapAddOns(state.buyNow, (a) =>
+                  a.map((e) =>
+                    e.key === key
+                      ? { ...e, qty: clampQty(qty, extraCap(e.mode, max)) }
+                      : e,
+                  ),
+                ),
         })),
       setExtraSelected: (key, selected) =>
         set((state) => ({
@@ -361,7 +385,13 @@ export const useCart = create<CartState>()(
                     unitPrice: prices[state.buyNow.extra.key],
                   },
                 }
-              : state.buyNow,
+              : mapAddOns(state.buyNow, (a) =>
+                  a.map((e) =>
+                    prices[e.key] != null
+                      ? { ...e, unitPrice: prices[e.key] }
+                      : e,
+                  ),
+                ),
         })),
       add: (item, qty = 1) =>
         set((state) => {
@@ -383,12 +413,37 @@ export const useCart = create<CartState>()(
             items: [...state.items, { ...item, key, qty }],
           };
         }),
-      startBuyNow: (item, qty = 1) =>
+      startBuyNow: (item, qty = 1, addOns) =>
         set({
           buyNow: {
             kind: "item",
             item: { ...item, key: item.variantId, qty },
+            ...(addOns?.length
+              ? {
+                  addOns: addOns.map((e) => ({
+                    ...e,
+                    key: e.extraVariantId,
+                    qty: 1,
+                  })),
+                }
+              : {}),
           },
+        }),
+      addBuyNowAddOn: (extra) =>
+        set((state) => {
+          const b = state.buyNow;
+          if (b?.kind !== "item") return state;
+          const addOns = b.addOns ?? [];
+          if (addOns.some((e) => e.key === extra.extraVariantId)) return state;
+          return {
+            buyNow: {
+              ...b,
+              addOns: [
+                ...addOns,
+                { ...extra, key: extra.extraVariantId, qty: 1 },
+              ],
+            },
+          };
         }),
       remove: (key) =>
         set((state) => ({
@@ -804,11 +859,28 @@ export const selectCheckoutCollections = (s: CartState) =>
       : EMPTY_COLLECTIONS
     : selectedCollections(s);
 export const selectCheckoutExtras = (s: CartState) =>
-  s.buyNow
-    ? s.buyNow.kind === "extra"
-      ? [s.buyNow.extra]
-      : EMPTY_EXTRAS
-    : selectedExtras(s);
+  s.buyNow ? buyNowExtras(s.buyNow) : selectedExtras(s);
+
+/** «Захиалах» мөрөөр явах нэмэлт бараа: нэмэлт бараа өөрөө, эсвэл үнэртний бэлгийн боодол. */
+export function buyNowExtras(b: BuyNowLine): CartExtra[] {
+  if (b.kind === "extra") return [b.extra];
+  if (b.kind === "item") return b.addOns ?? EMPTY_EXTRAS;
+  return EMPTY_EXTRAS;
+}
+
+/** «Захиалах» мөрийн бэлгийн боодлыг өөрчилнө; хоосон болбол талбарыг авна. */
+function mapAddOns(
+  b: BuyNowLine | null,
+  fn: (addOns: CartExtra[]) => CartExtra[],
+): BuyNowLine | null {
+  if (b?.kind !== "item" || !b.addOns) return b;
+  const next = fn(b.addOns).filter((e) => e.qty > 0);
+  return {
+    kind: "item",
+    item: b.item,
+    ...(next.length ? { addOns: next } : {}),
+  };
+}
 
 /** Төлбөрийн хуудасны дүн — купон, хүргэлт, бэлэг бүгд эндээс тооцогдоно. */
 export const selectCheckoutSubtotal = (s: CartState) =>

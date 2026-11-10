@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { env } from "@/lib/env";
 import { createPublicClient } from "@/lib/supabase/public";
 import { SEED_COMING_SOON, SEED_PRODUCTS } from "@/features/products/seed";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 import { getShopExtras } from "@/features/extras/api";
 
 /**
@@ -69,14 +70,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
   // Блог/Танилцуулга нуугдсан тул sitemap-д ч байхгүй.
   // Нэмэлт бараа (0148) — туг хаалттай үед `extras_catalog()` хоосон.
-  const [products, collections, extras] = await Promise.all([
+  const [products, collections, extras, extrasOn] = await Promise.all([
     productEntries(),
     collectionEntries(),
     getShopExtras(),
+    isFeatureEnabled("extras_shop"),
   ]);
 
   return [
     ...staticPaths.map((p) => entry(base, p)),
+    // «Үнэртний шил», «Дагалдах хэрэгсэл» нь туг хаалттай үед 404.
+    ...(extrasOn
+      ? [entry(base, "/bottles"), entry(base, "/accessories")]
+      : []),
     ...products.map((r) => entry(base, `/products/${r.slug}`, r.updated_at)),
     ...collections.map((r) =>
       entry(base, `/collections/${r.slug}`, r.updated_at),

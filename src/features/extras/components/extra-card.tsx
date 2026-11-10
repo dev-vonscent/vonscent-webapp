@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { BOTTLE_KIND, bottleKind } from "../lib/bottle-kind";
+import { BOTTLE_BADGE } from "../lib/sections";
 import {
   bottleSizeText,
   eyebrowText,
@@ -30,6 +31,8 @@ export function ExtraCard({
   className,
   sizes = "(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw",
   quickAdd = false,
+  showKind = false,
+  compact = false,
 }: {
   extra: ShopExtraCard;
   /** Байхгүй бол (урьдчилан харах) холбоосгүй. */
@@ -38,6 +41,17 @@ export function ExtraCard({
   sizes?: string;
   /** Зураг дээрх «Сагсанд нэмэх» товч — үнэртний карттай ижил. */
   quickAdd?: boolean;
+  /**
+   * Шилний төрлийн badge («Бүтэн», «Хоосон») — төрөл холилдсон газарт
+   * (нүүр, «Хамт авдаг»). «Үнэртний шил» хуудсанд tab нь төрлийг хэлдэг.
+   */
+  showKind?: boolean;
+  /**
+   * Үнэртний картаас жижиг (`/accessories` — цөөн, нэг дор олныг нь
+   * харуулна): булан, зай, нэрийн үсэг багасна. Ангиллын eyebrow-гүй —
+   * «Бэлгийн хайрцаг», «Шприц» гэх нэр нь өөрөө төрлөө хэлнэ.
+   */
+  compact?: boolean;
 }) {
   const leftover = extra.leftover;
   const size = bottleSizeText(extra);
@@ -50,12 +64,26 @@ export function ExtraCard({
   // «ШПРИЦ / Шприц» — нэртэйгээ ижил ангиллыг давтахгүй. Мөр нь үлдэнэ:
   // эс бөгөөс grid-ийн мөрөнд нэр, үнэ хөрш картаасаа доогуур буудаг.
   const eyebrowRepeats = repeatsName(eyebrow, extra.name);
+  const kind = bottleKind(extra.categorySlug, extra.mode);
+  const badge = extra.soldOut
+    ? null
+    : showKind && kind
+      ? BOTTLE_BADGE[kind]
+      : leftover
+        ? "Ганц ширхэг"
+        : null;
 
   return (
     <div className={cn("group relative flex flex-col", className)}>
+      {/* Нэрийн холбоостой ижил хаяг — гараар/screen reader-ээр нэг л удаа
+          (зураггүй үед энэ холбоос нэргүй үлддэг байв). */}
       <MaybeLink
         href={href}
-        className="group-hover:shadow-lift bg-secondary relative block aspect-4/5 overflow-hidden rounded-2xl transition-all duration-300 [-webkit-touch-callout:none]"
+        decorative
+        className={cn(
+          "group-hover:shadow-lift bg-secondary relative block aspect-4/5 overflow-hidden transition-all duration-300 [-webkit-touch-callout:none]",
+          compact ? "rounded-xl" : "rounded-2xl",
+        )}
       >
         {extra.image ? (
           <Image
@@ -66,14 +94,18 @@ export function ExtraCard({
             className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           />
         ) : (
-          <Placeholder extra={extra} icon={categoryIcon(extra.categorySlug)} />
+          <Placeholder
+            extra={extra}
+            icon={categoryIcon(extra.categorySlug)}
+            compact={compact}
+          />
         )}
-        {leftover && !extra.soldOut && (
+        {badge && (
           <Badge
             variant="outline"
             className="bg-background/85! absolute top-2.5 left-2.5 w-fit border-transparent backdrop-blur-sm"
           >
-            Ганц ширхэг
+            {badge}
           </Badge>
         )}
         {extra.soldOut && (
@@ -86,24 +118,34 @@ export function ExtraCard({
       </MaybeLink>
 
       {quickAdd && href && !extra.soldOut && (
-        <div className="absolute top-2.5 right-2.5">
+        <div
+          className={cn(
+            "absolute",
+            compact ? "top-1.5 right-1.5" : "top-2.5 right-2.5",
+          )}
+        >
           <ExtraQuickAdd extra={extra} />
         </div>
       )}
 
-      <div className="mt-3 flex flex-col gap-0.5">
-        <span
-          aria-hidden={eyebrowRepeats || undefined}
-          className={cn(
-            "text-muted-foreground truncate text-[11px] tracking-[0.15em] uppercase",
-            eyebrowRepeats && "invisible",
-          )}
-        >
-          {eyebrow}
-        </span>
+      <div className={cn("flex flex-col gap-0.5", compact ? "mt-2" : "mt-3")}>
+        {!compact && (
+          <span
+            aria-hidden={eyebrowRepeats || undefined}
+            className={cn(
+              "text-muted-foreground truncate text-[11px] tracking-[0.15em] uppercase",
+              eyebrowRepeats && "invisible",
+            )}
+          >
+            {eyebrow}
+          </span>
+        )}
         <MaybeLink
           href={href}
-          className="hover:text-gold-strong line-clamp-2 font-serif text-base/tight font-medium transition-colors"
+          className={cn(
+            "hover:text-gold-strong line-clamp-2 font-medium transition-colors",
+            compact ? "text-sm/tight" : "text-base/tight",
+          )}
         >
           {extra.name}
         </MaybeLink>
@@ -135,9 +177,11 @@ export function ExtraCard({
 function Placeholder({
   extra,
   icon: Icon,
+  compact,
 }: {
   extra: ShopExtraCard;
   icon: LucideIcon;
+  compact: boolean;
 }) {
   const kind = bottleKind(extra.categorySlug, extra.mode);
   return (
@@ -145,7 +189,11 @@ function Placeholder({
       {kind ? (
         <BottleGlyph fill={BOTTLE_KIND[kind].fill} className="h-20 w-15" />
       ) : (
-        <Icon className="size-16" strokeWidth={1} aria-hidden />
+        <Icon
+          className={compact ? "size-10" : "size-16"}
+          strokeWidth={1}
+          aria-hidden
+        />
       )}
     </span>
   );
@@ -155,13 +203,21 @@ function MaybeLink({
   href,
   className,
   children,
+  decorative = false,
 }: {
   href?: string;
   className: string;
   children: React.ReactNode;
+  /** Давхар холбоос — tab-аас, accessibility tree-ээс хасна (хулганаар дарагдана). */
+  decorative?: boolean;
 }) {
   return href ? (
-    <Link href={href} className={className}>
+    <Link
+      href={href}
+      className={className}
+      tabIndex={decorative ? -1 : undefined}
+      aria-hidden={decorative || undefined}
+    >
       {children}
     </Link>
   ) : (

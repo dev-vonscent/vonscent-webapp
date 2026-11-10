@@ -11,6 +11,11 @@ import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { AdminExtra, ExtraCategory } from "../../types";
 import { extraStockLabel, type StockTone } from "../../lib/stock";
+import {
+  extraFilterChips,
+  extraFilterKey,
+  extraKindName,
+} from "../../lib/admin-filter";
 import { ExtraRowActions } from "./extra-row-actions";
 
 const STATUS_LABEL: Record<AdminExtra["status"], string> = {
@@ -68,62 +73,61 @@ function StatusBadge({ extra }: { extra: AdminExtra }) {
   );
 }
 
+function PriceText({ extra }: { extra: AdminExtra }) {
+  if (extra.fromPrice == null)
+    return <span className="text-muted-foreground">—</span>;
+  const many =
+    new Set(extra.variants.filter((v) => v.isActive).map((v) => v.price)).size >
+    1;
+  return (
+    <span className="whitespace-nowrap tabular-nums">
+      {formatPrice(extra.fromPrice)}
+      {many && "-өөс"}
+    </span>
+  );
+}
+
+/**
+ * Зураг, нэр, ангилал нэг нүдэнд — тусдаа гурван багана 820px-ийн tablet-д
+ * багтахгүй, «Төлөв», үйлдлийн товч тасардаг байв. Ангиллаар chip шүүнэ.
+ * Тусдаа «Төлөв» багана ч үгүй (1024px + хажуугийн цэст багтдаггүй): бараг
+ * бүгд «Нийтэлсэн» тул ноорог/архивласныг л нэрийн доор badge-аар.
+ */
 const columns: ColumnDef<AdminExtra, unknown>[] = [
   {
-    id: "image",
-    header: "Зураг",
-    enableSorting: false,
-    cell: ({ row }) => <Thumb extra={row.original} className="size-12" />,
-  },
-  {
     accessorKey: "name",
-    header: "Нэр",
+    header: "Бараа",
     cell: ({ row }) => (
-      <Link
-        href={`/admin/extras/${row.original.id}`}
-        className="block max-w-64 truncate font-medium hover:underline"
-      >
-        {row.original.name}
-      </Link>
-    ),
-  },
-  {
-    accessorKey: "categoryName",
-    header: "Ангилал",
-    cell: ({ getValue }) => (
-      <span className="text-muted-foreground">{getValue<string>()}</span>
+      <div className="flex min-w-0 items-center gap-3">
+        <Thumb extra={row.original} className="size-11" />
+        <div className="min-w-0">
+          <Link
+            href={`/admin/extras/${row.original.id}`}
+            className="block max-w-72 truncate font-medium hover:underline"
+          >
+            {row.original.name}
+          </Link>
+          <p className="text-muted-foreground flex items-center gap-2 truncate text-xs">
+            {extraKindName(row.original)}
+            {row.original.status !== "published" && (
+              <StatusBadge extra={row.original} />
+            )}
+          </p>
+        </div>
+      </div>
     ),
   },
   {
     accessorKey: "fromPrice",
     header: "Үнэ",
     meta: { align: "right" },
-    cell: ({ row }) => {
-      const e = row.original;
-      if (e.fromPrice == null)
-        return <span className="text-muted-foreground">—</span>;
-      const many =
-        new Set(e.variants.filter((v) => v.isActive).map((v) => v.price)).size >
-        1;
-      return (
-        <span className="whitespace-nowrap tabular-nums">
-          {formatPrice(e.fromPrice)}
-          {many && "-өөс"}
-        </span>
-      );
-    },
+    cell: ({ row }) => <PriceText extra={row.original} />,
   },
   {
     id: "stock",
     header: "Нөөц",
     enableSorting: false,
     cell: ({ row }) => <StockCell extra={row.original} />,
-  },
-  {
-    id: "status",
-    header: "Төлөв",
-    enableSorting: false,
-    cell: ({ row }) => <StatusBadge extra={row.original} />,
   },
   {
     id: "actions",
@@ -148,28 +152,30 @@ export function ExtrasAdminList({
   activeCategory: string | null;
 }) {
   const shown = activeCategory
-    ? extras.filter((e) => e.categorySlug === activeCategory)
+    ? extras.filter((e) => extraFilterKey(e) === activeCategory)
     : extras;
-  const countBy = (slug: string) =>
-    extras.filter((e) => e.categorySlug === slug).length;
+  const countBy = (key: string) =>
+    extras.filter((e) => extraFilterKey(e) === key).length;
 
   return (
     <div className="space-y-4">
       <nav
         aria-label="Ангилал"
-        className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0"
+        // Утсан дээр ирмэг хүртэл гүйнэ (-mx-4), scrollbar-гүй — chip-ийн доорх
+        // саарал зураас ачааллын мөр мэт харагддаг байв (design.md §6.1).
+        className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:px-0"
       >
         <FilterChip
           label={`Бүгд ${extras.length}`}
           href="/admin/extras"
           active={!activeCategory}
         />
-        {categories.map((c) => (
+        {extraFilterChips(categories).map((c) => (
           <FilterChip
-            key={c.id}
-            label={`${c.name} ${countBy(c.slug)}`}
-            href={`/admin/extras?cat=${c.slug}`}
-            active={activeCategory === c.slug}
+            key={c.key}
+            label={`${c.label} ${countBy(c.key)}`}
+            href={`/admin/extras?cat=${c.key}`}
+            active={activeCategory === c.key}
           />
         ))}
       </nav>
@@ -181,37 +187,28 @@ export function ExtrasAdminList({
         emptyText="Энэ ангилалд бараа алга байна."
         rowHref={(e) => `/admin/extras/${e.id}`}
         renderCard={(e) => (
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <Thumb extra={e} className="size-16" />
-              <div className="min-w-0 flex-1">
-                <p className="text-muted-foreground text-[11px] tracking-[0.15em] uppercase">
-                  {e.categoryName}
-                </p>
-                <Link
-                  href={`/admin/extras/${e.id}`}
-                  className="line-clamp-2 font-medium"
-                >
-                  {e.name}
-                </Link>
-              </div>
-              <StatusBadge extra={e} />
+          // Нягт мөр: үйлдэл нь баруун дээд талд icon — бүтэн өргөнтэй
+          // «Үйлдэл» товч карт бүрийг хоёр дахин өндөр болгодог байв. Төлөв
+          // нь ихэнхдээ «Нийтэлсэн» тул зөвхөн ялгаатай үед badge.
+          <div className="flex items-start gap-3">
+            <Thumb extra={e} className="size-14" />
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="text-muted-foreground truncate text-xs">
+                {extraKindName(e)}
+              </p>
+              <Link
+                href={`/admin/extras/${e.id}`}
+                className="line-clamp-2 leading-snug font-medium"
+              >
+                {e.name}
+              </Link>
+              <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <PriceText extra={e} />
+                <StockCell extra={e} />
+                {e.status !== "published" && <StatusBadge extra={e} />}
+              </p>
             </div>
-            <dl className="grid grid-cols-2 gap-2 text-sm">
-              <div>
-                <dt className="text-muted-foreground text-xs">Үнэ</dt>
-                <dd className="whitespace-nowrap tabular-nums">
-                  {e.fromPrice != null ? formatPrice(e.fromPrice) : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground text-xs">Нөөц</dt>
-                <dd>
-                  <StockCell extra={e} />
-                </dd>
-              </div>
-            </dl>
-            <ExtraRowActions extra={e} variant="block" />
+            <ExtraRowActions extra={e} />
           </div>
         )}
       />

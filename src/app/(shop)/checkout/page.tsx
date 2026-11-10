@@ -48,6 +48,7 @@ import { GiftSamplePicker } from "@/features/checkout/components/gift-sample-pic
 import { CheckoutPrize } from "@/features/lucky-wheel/components/checkout-prize";
 import { GRAND_PRIZES_KEY } from "@/features/lucky-wheel/use-wheel";
 import { useFeatureFlag } from "@/components/feature-flags";
+import { CheckoutGiftWrap } from "@/features/extras/components/checkout-gift-wrap";
 import { useGiftPool } from "@/features/gifts/use-gift-pool";
 import {
   DELIVERY_END_HOUR,
@@ -366,6 +367,12 @@ export default function CheckoutPage() {
   const [giftIds, setGiftIds] = React.useState<string[]>([]);
   // Азын хүрдний бодит шагнал (0165/0170): энэ захиалгад хавсаргах эргэлтүүд.
   const wheelOn = useFeatureFlag("lucky_wheel");
+  // Нэмэлт бараа нээлттэй бол үнэгүй «Бэлгийн боолт» chip-ийн оронд
+  // төлбөртэй «Бэлгийн боодол» (CheckoutGiftWrap) — хоёр газар асуухгүй.
+  const extrasOn = useFeatureFlag("extras_shop");
+  // Боодлын бараа бодитоор санал болгогдож байгаа эсэх — байхгүй бол хуучин
+  // chip буцаж гарна (CheckoutGiftWrap `fallback`).
+  const [giftWrapOffered, setGiftWrapOffered] = React.useState(false);
   const [prizeSpinIds, setPrizeSpinIds] = React.useState<string[]>([]);
   // Khoroo lives outside the form: it is folded into shipDetail on submit,
   // since orders has no dedicated column for it.
@@ -639,7 +646,11 @@ export default function CheckoutPage() {
         const [item] = pending.items;
         const [bundle] = pending.collections;
         const [extra] = pending.extras ?? [];
-        if (!cart.buyNow && item) cart.startBuyNow(...toLineInput(item));
+        if (!cart.buyNow && item)
+          cart.startBuyNow(
+            ...toLineInput(item),
+            (pending.extras ?? []).map((e) => toLineInput(e)[0]),
+          );
         else if (!cart.buyNow && bundle)
           cart.startBuyNowCollection(...toLineInput(bundle));
         else if (!cart.buyNow && extra)
@@ -1207,7 +1218,10 @@ export default function CheckoutPage() {
     setSubmitting(true);
     setServerError(null);
     // Fold the quick-pick delivery options into the free-text note.
-    const note = [noteTags.join(" · "), values.note?.trim()]
+    const note = [
+      (extrasOn && giftWrapOffered ? [] : noteTags).join(" · "),
+      values.note?.trim(),
+    ]
       .filter(Boolean)
       .join(" — ");
     const payload = {
@@ -1604,6 +1618,38 @@ export default function CheckoutPage() {
     }
   }
 
+  // Хуучин үнэгүй «Бэлгийн боолт хийлгэх» — туг хаалттай үед, эсвэл туг
+  // нээлттэй ч боодлын бараа байхгүй үед (CheckoutGiftWrap `fallback`).
+  const freeWrapChip = (
+    <div className="space-y-2">
+      <Label>Нэмэлт сонголт (заавал биш)</Label>
+      <div className="flex flex-wrap gap-2">
+        {NOTE_OPTIONS.map((opt) => {
+          const on = noteTags.includes(opt);
+          return (
+            <button
+              key={opt}
+              type="button"
+              aria-pressed={on}
+              onClick={() =>
+                setNoteTags((t) =>
+                  on ? t.filter((x) => x !== opt) : [...t, opt],
+                )
+              }
+              className={`rounded-full px-3 py-1.5 text-sm ${
+                on
+                  ? "bg-foreground text-background"
+                  : "bg-secondary hover:bg-accent"
+              }`}
+            >
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   return (
     <div className="mx-auto max-w-352 px-4 pt-4 md:px-8 md:pt-8 md:pb-24 lg:pb-8">
       {confirmDialog}
@@ -1800,34 +1846,6 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label>Нэмэлт сонголт (заавал биш)</Label>
-              <div className="flex flex-wrap gap-2">
-                {NOTE_OPTIONS.map((opt) => {
-                  const on = noteTags.includes(opt);
-                  return (
-                    <button
-                      key={opt}
-                      type="button"
-                      aria-pressed={on}
-                      onClick={() =>
-                        setNoteTags((t) =>
-                          on ? t.filter((x) => x !== opt) : [...t, opt],
-                        )
-                      }
-                      className={`rounded-full px-3 py-1.5 text-sm ${
-                        on
-                          ? "bg-foreground text-background"
-                          : "bg-secondary hover:bg-accent"
-                      }`}
-                    >
-                      {opt}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* Орон нутагт ачаа унаагаар явдаг тул «унаа явах газар» нь
                 заавал: өмнө нь үүнийг «(заавал биш)» гэж шошголсон талбарт
                 шаарддаг байсан — шалгалтгүй, зөрчилтэй. Одоо бүс нь алслагдсан
@@ -1852,6 +1870,15 @@ export default function CheckoutPage() {
                 }
               />
             </Field>
+
+            {extrasOn ? (
+              <CheckoutGiftWrap
+                fallback={freeWrapChip}
+                onOfferedChange={setGiftWrapOffered}
+              />
+            ) : (
+              freeWrapChip
+            )}
           </CheckoutSection>
 
           {/* Хүлээн авагч — талбарууд зориуд хоосон эхэлнэ (дансны нэр, утсаар

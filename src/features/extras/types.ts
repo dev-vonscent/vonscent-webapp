@@ -140,6 +140,12 @@ export interface ShopExtraCard {
     remainingMl: number;
     fullMl: number;
   } | null;
+  /**
+   * Эх үнэртэн (0159): үлдэгдэлтэй, хоосон, бүтэн шил `product_id`-аар
+   * холбогдоно — «Үнэртний шил» хуудасны брэнд шүүлт, картын eyebrow.
+   * Холбоогүй (дагалдах хэрэгсэл) бол null.
+   */
+  perfume: { brand: string; name: string } | null;
   /** Хоосон/бүтэн шилний бүтэн хэмжээ (ml) — «0/125ml», «100/100ml». */
   bottleMl: number | null;
   /** Хэрэглэгчид харагдах нийт үлдэгдэл; null = хязгааргүй (тоолоогүй сав). */

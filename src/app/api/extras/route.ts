@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getShopExtra, getShopExtras } from "@/features/extras/api";
+import {
+  getGiftOffers,
+  getShopExtra,
+  getShopExtras,
+} from "@/features/extras/api";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 
 const slugSchema = z.string().trim().min(1).max(200);
@@ -10,6 +14,8 @@ const slugSchema = z.string().trim().min(1).max(200);
  *                             сав (хайрцаг, уут; зарагдаж буй)
  *   /api/extras?slug=<slug> → нэг бараа хувилбартайгаа (картын «Сагсанд
  *                             нэмэх» цонх)
+ *   /api/extras?gifts=1     → бэлгийн сав хувилбартайгаа (төлбөрийн хуудасны
+ *                             «Бэлгийн боодол»)
  * Туг хаалттай бол 404.
  */
 export async function GET(req: Request) {
@@ -17,7 +23,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
 
-  const rawSlug = new URL(req.url).searchParams.get("slug");
+  const url = new URL(req.url);
+  if (url.searchParams.get("gifts") === "1") {
+    return NextResponse.json(
+      { gifts: await getGiftOffers() },
+      { headers: { "Cache-Control": "public, max-age=60" } },
+    );
+  }
+
+  const rawSlug = url.searchParams.get("slug");
   if (rawSlug !== null) {
     const slug = slugSchema.safeParse(rawSlug);
     if (!slug.success) {

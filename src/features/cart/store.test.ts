@@ -8,6 +8,7 @@ import {
   selectCheckoutCollections,
   selectCheckoutSubtotal,
   selectCheckoutGross,
+  selectCheckoutExtras,
   type CartCollectionMember,
 } from "./store";
 
@@ -257,6 +258,50 @@ describe("buy now", () => {
     ]);
     expect(selectCheckoutSubtotal(state)).toBe(48000);
     expect(state.items.map((i) => [i.key, i.qty])).toEqual([["v1", 1]]);
+  });
+
+  it("carries gift packaging with the «Захиалах» line, cart untouched", () => {
+    const box = {
+      extraVariantId: "box-s",
+      extraId: "box",
+      slug: "box",
+      name: "Бэлгийн хайрцаг",
+      label: "Жижиг",
+      categoryName: "Бэлгийн сав",
+      mode: "local_quantity" as const,
+      unitPrice: 5000,
+      image: null,
+      requiresConsent: false,
+    };
+    useCart.getState().startBuyNow(line("v2", 20000), 1, [box]);
+
+    let state = useCart.getState();
+    expect(selectCheckoutExtras(state)).toMatchObject([
+      { key: "box-s", qty: 1 },
+    ]);
+    expect(selectCheckoutSubtotal(state)).toBe(25000);
+    expect(state.extras).toEqual([]);
+
+    // Хэмжээ солиход боодол үлдэнэ; checkout-оос хасахад зөвхөн боодол.
+    useCart.getState().setBuyNowQty(2);
+    expect(selectCheckoutExtras(useCart.getState())).toHaveLength(1);
+    useCart.getState().removeExtra("box-s");
+    state = useCart.getState();
+    expect(selectCheckoutExtras(state)).toEqual([]);
+    expect(selectCheckoutItems(state)).toHaveLength(1);
+
+    // Төлбөрийн хуудаснаас нэмэх: давхар нэмэгдэхгүй (нэг захиалга — 1).
+    useCart.getState().addBuyNowAddOn(box);
+    useCart.getState().addBuyNowAddOn(box);
+    expect(selectCheckoutExtras(useCart.getState())).toMatchObject([
+      { key: "box-s", qty: 1 },
+    ]);
+    expect(useCart.getState().extras).toEqual([]);
+
+    // Дараагийн «Захиалах» өмнөх боодлыг дагуулахгүй.
+    useCart.getState().startBuyNow(line("v2", 20000), 1, [box]);
+    useCart.getState().startBuyNow(line("v3", 20000));
+    expect(selectCheckoutExtras(useCart.getState())).toEqual([]);
   });
 
   it("clamps the «Захиалах» qty to [1, max]", () => {

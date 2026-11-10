@@ -5,12 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Archive,
-  Copy,
   Eye,
   EyeOff,
   MoreHorizontal,
   Pencil,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,10 +25,11 @@ import { adminFetch, mutateJson } from "@/features/admin/lib/mutate";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type { AdminExtra } from "../../types";
-import { draftOf, toSavePayload } from "./extra-draft";
 
 /**
- * Мөрийн үйлдэл: засах, нийтлэх/нуух, хуулбарлах, архивлах (plan §7.1).
+ * Мөрийн үйлдэл: засах, нийтлэх/нуух, архивлах, устгах
+ * (plan §7.1). Устгах нь зөвхөн түүхгүй бараанд (0177) — захиалга, худалдан
+ * авалттай бол сервер татгалзаж архивлахыг санал болгоно.
  * Утсан дээр картын доор бүтэн өргөнөөр (`block`).
  */
 export function ExtraRowActions({
@@ -66,29 +67,6 @@ export function ExtraRowActions({
     }
   }
 
-  async function duplicate() {
-    setBusy(true);
-    const draft = draftOf(extra);
-    // Хуулбар нь ноорог, тоогүй — нөөцийг «Нөөц нөхөх»-өөр тусад нь оруулна.
-    const payload = toSavePayload({
-      ...draft,
-      name: `${draft.name} (хуулбар)`,
-      variants: draft.variants.map((v) => ({ ...v, id: undefined })),
-    });
-    const res = await adminFetch<{ id: string }>("/api/admin/extras", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ categoryId: extra.categoryId, extra: payload }),
-    });
-    setBusy(false);
-    if (!res.ok) {
-      toast.error(res.error, "Хуулбарлаж чадсангүй");
-      return;
-    }
-    toast.success("Хуулбар үүслээ — ноорог хэлбэрээр");
-    router.push(`/admin/extras/${res.data.id}`);
-  }
-
   async function archive() {
     const ok = await confirm({
       title: "Архивлах уу?",
@@ -98,6 +76,28 @@ export function ExtraRowActions({
       destructive: true,
     });
     if (ok) await setStatus("archived");
+  }
+
+  async function remove() {
+    const ok = await confirm({
+      title: "Бүрмөсөн устгах уу?",
+      description:
+        "Бараа болон хувилбарууд нь сэргээгдэхгүйгээр устана. Захиалга, нөөцийн худалдан авалт бүртгэгдсэн бол устгах боломжгүй, архивлана уу.",
+      confirmLabel: "Устгах",
+      destructive: true,
+    });
+    if (!ok) return;
+    setBusy(true);
+    const res = await adminFetch(`/api/admin/extras/${extra.id}`, {
+      method: "DELETE",
+    });
+    setBusy(false);
+    if (!res.ok) {
+      toast.error(res.error, "Устгаж чадсангүй");
+      return;
+    }
+    toast.success("Устгалаа");
+    router.refresh();
   }
 
   return (
@@ -151,19 +151,15 @@ export function ExtraRowActions({
               </Link>
             </DropdownMenuItem>
           )}
-          {!leftover && (
-            <DropdownMenuItem onSelect={duplicate}>
-              <Copy className="size-4" /> Хуулбарлах
+          <DropdownMenuSeparator />
+          {extra.status !== "archived" && (
+            <DropdownMenuItem onSelect={archive} className="text-destructive">
+              <Archive className="size-4" /> Архивлах
             </DropdownMenuItem>
           )}
-          {extra.status !== "archived" && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={archive} className="text-destructive">
-                <Archive className="size-4" /> Архивлах
-              </DropdownMenuItem>
-            </>
-          )}
+          <DropdownMenuItem onSelect={remove} className="text-destructive">
+            <Trash2 className="size-4" /> Устгах
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </>

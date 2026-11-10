@@ -13,6 +13,7 @@ import {
   useScrolledPast,
 } from "@/components/shared/mobile-buy-bar";
 import { useCart } from "@/features/cart/store";
+import { useGiftPicks } from "@/features/extras/gift-picks";
 import { cartMlFor } from "@/features/cart/budget";
 import { maxUnits } from "@/features/products/sellable";
 import { bestValueOf } from "@/features/products/best-value";
@@ -33,6 +34,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
 
   const add = useCart((s) => s.add);
   const startBuyNow = useCart((s) => s.startBuyNow);
+  const addExtra = useCart((s) => s.addExtra);
   const router = useRouter();
 
   // Mobile sticky buy bar (1e): appears once the in-page CTA has been scrolled
@@ -110,8 +112,14 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
       unitPrice,
       image: product.image?.url ?? null,
     };
-    if (mode === "buy-now") startBuyNow(line, qty);
-    else add(line, qty);
+    // «Бэлэглэх бол»-д сонгосон боодол үнэртэнтэй хамт — аль ч замаар.
+    const gifts = useGiftPicks.getState().picks;
+    if (mode === "buy-now") startBuyNow(line, qty, gifts);
+    else {
+      add(line, qty);
+      // Нэг захиалга — нэг боодол: сагсанд байвал тоо нь нэмэгдэхгүй (max 1).
+      for (const g of gifts) addExtra(g, 1, 1);
+    }
     trackAddToCart({
       id: product.id,
       name: `${product.name} ${selected.ml}ml`,

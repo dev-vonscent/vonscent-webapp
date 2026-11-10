@@ -1,5 +1,5 @@
 import { isFeatureEnabled } from "@/lib/feature-flags";
-import { getGiftBoxOffer, getLeftoverFor } from "@/features/extras/api";
+import { getBottlesFor, getGiftOffers } from "@/features/extras/api";
 import { ProductExtras } from "@/features/extras/components/product-extras";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
@@ -91,12 +91,12 @@ export default async function ProductPage({
   if (!product) notFound();
 
   const extrasOn = await isFeatureEnabled("extras_shop");
-  const [related, familyLabelMap, giftBox, leftover] = await Promise.all([
+  const [related, familyLabelMap, gifts, bottles] = await Promise.all([
     getRelated(slug),
     getScentFamilyLabels(),
     // Нэмэлт бараа (0151) — туг хаалттай бол огт асуухгүй.
-    extrasOn ? getGiftBoxOffer() : Promise.resolve(null),
-    extrasOn ? getLeftoverFor(product.id) : Promise.resolve(null),
+    extrasOn ? getGiftOffers() : Promise.resolve([]),
+    extrasOn ? getBottlesFor(product.id) : Promise.resolve([]),
   ]);
   // A family the admin deleted still shows as its slug rather than vanishing.
   const familyLabels = product.scentFamilies.map((f) => familyLabelMap[f] ?? f);
@@ -179,9 +179,12 @@ export default async function ProductPage({
             ) : (
               <ProductPurchase product={product} />
             )}
-            {!product.comingSoon && (
-              <ProductExtras box={giftBox} leftover={leftover} />
-            )}
+            {/* «Энэ үнэрийн шил» нь удахгүй ирэх үнэртэнд ч (хоосон шил) —
+                бэлгийн сав л декант захиалгатай хамт. */}
+            <ProductExtras
+              gifts={product.comingSoon ? [] : gifts}
+              bottles={bottles}
+            />
             <TrackViewItem
               id={product.id}
               name={product.name}

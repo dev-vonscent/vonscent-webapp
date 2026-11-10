@@ -80,7 +80,7 @@ export function FilterSheet({ children }: { children: React.ReactNode }) {
         <Button
           variant="secondary"
           size="icon"
-          className="relative shrink-0 lg:hidden"
+          className="relative shrink-0 before:absolute before:-inset-0.5 before:content-[''] lg:hidden"
           aria-label="Шүүлтүүр"
         >
           <SlidersHorizontal className="size-4" />

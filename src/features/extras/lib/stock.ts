@@ -71,6 +71,11 @@ export function adminToShopCard(extra: AdminExtra): ShopExtraCard {
           fullMl: leftover.fullMl,
         }
       : null,
+    perfume: leftover
+      ? { brand: leftover.productBrand, name: leftover.productName }
+      : extra.perfume
+        ? { brand: extra.perfume.brand, name: extra.perfume.name }
+        : null,
     bottleMl: extra.bottleMl,
     stock: active.some((v) => v.isActive && v.available == null)
       ? null

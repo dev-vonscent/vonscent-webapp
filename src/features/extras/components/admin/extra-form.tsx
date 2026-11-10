@@ -85,6 +85,11 @@ function previewOf(d: ExtraDraft, category: ExtraCategory) {
           fullMl: Number(d.leftover.fullMl) || 0,
         }
       : null,
+    perfume: d.leftover
+      ? { brand: d.leftover.productBrand, name: d.leftover.productName }
+      : d.perfume
+        ? { brand: d.perfume.brand, name: d.perfume.name }
+        : null,
     bottleMl: Number(d.bottleMl) > 0 ? Number(d.bottleMl) : null,
     stock: null,
     notice: "",

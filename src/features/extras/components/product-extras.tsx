@@ -1,120 +1,145 @@
 "use client";
 
-import Image from "next/image";
+import * as React from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Package, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useCart } from "@/features/cart/store";
+import { ChevronRight } from "lucide-react";
 import { formatPrice } from "@/lib/format";
-import type { ShopExtraDetail } from "../types";
+import { useGiftPicks } from "../gift-picks";
+import { BOTTLE_KIND, bottleKind } from "../lib/bottle-kind";
+import { bottleSizeText } from "../lib/display";
+import type { ShopExtraCard, ShopExtraDetail } from "../types";
+import { GiftTile, giftLine, giftOffers, type GiftOffer } from "./gift-tile";
 
 /**
- * Үнэртний хуудасны нэмэлт бараа (extras-shop-plan §9):
- *   · «Бэлгийн хайрцаг нэмэх» — нэг товчоор сагсанд («Сагсанд 1 байна»)
- *   · «Энэ үнэрийн үлдэгдэлтэй шил байна» — эх шил рүү холбоос
+ * Үнэртний хуудасны нэмэлт бараа (extras-shop-plan §9, §19.4):
+ *   · «Шилээр нь авах» — тухайн үнэртний бүтэн / үлдэгдэлтэй / хоосон шил
+ *     (шилний хуудасны «Грамаар авах»-ын эсрэг тал).
+ *     Утсан дээр шилийг олох хамгийн богино зам: «Sauvage» хайсан хүн
+ *     «Үнэртний шил» хуудсанд дахин хайхгүй.
+ *   · «Бэлэглэх бол» — бүх бэлгийн сав (хайрцаг, уут) сонголтоор. Сонголт нь
+ *     сагсанд шууд биш: «Сагсанд нэмэх» / «Захиалах» дарахад үнэртэнтэй
+ *     хамт 1 ширхэгээр явна (`useGiftPicks`).
  * Туг хаалттай үед сервер юу ч дамжуулахгүй тул энэ хэсэг гарахгүй.
  */
 export function ProductExtras({
-  box,
-  leftover,
+  gifts,
+  bottles,
 }: {
-  box: ShopExtraDetail | null;
-  leftover: {
-    slug: string;
-    remainingMl: number;
-    fullMl: number;
-    price: number;
-  } | null;
+  gifts: ShopExtraDetail[];
+  bottles: ShopExtraCard[];
 }) {
-  const variant =
-    box?.variants.find((v) => v.available == null || v.available > 0) ?? null;
-  const inCart = useCart(
-    (s) => (variant ? s.extras.find((e) => e.key === variant.id)?.qty : 0) ?? 0,
-  );
-  const addExtra = useCart((s) => s.addExtra);
-  if (!leftover && !(box && variant)) return null;
+  const forSale = bottles.filter((b) => !b.soldOut);
+  const offers = giftOffers(gifts);
+  // Өөр хуудас руу гарахад сонголт дагаж явахгүй.
+  const reset = useGiftPicks((s) => s.reset);
+  React.useEffect(() => reset, [reset]);
+  if (forSale.length === 0 && offers.length === 0) return null;
 
   return (
-    <div className="space-y-3">
-      {leftover && (
-        <Link
-          href={`/extras/${leftover.slug}`}
-          className="bg-secondary hover:bg-accent flex min-h-11 items-center gap-3 rounded-xl px-4 py-3 text-sm transition-colors"
-        >
-          <span className="min-w-0 flex-1">
-            <span className="block font-medium">
-              Энэ үнэрийн үлдэгдэлтэй шил байна
-            </span>
-            <span className="text-muted-foreground text-xs tabular-nums">
-              ≈{leftover.remainingMl} / {leftover.fullMl}ml ·{" "}
-              {formatPrice(leftover.price)} · Ганц ширхэг
-            </span>
-          </span>
-          <ArrowRight className="text-muted-foreground size-4 shrink-0" />
-        </Link>
-      )}
-      {box && variant && (
-        <div className="flex items-center gap-3 rounded-xl p-1">
-          <Link
-            href={`/extras/${box.card.slug}`}
-            className="bg-secondary relative size-14 shrink-0 overflow-hidden rounded-lg"
-          >
-            {box.card.image ? (
-              <Image
-                src={box.card.image}
-                alt={box.card.name}
-                fill
-                sizes="56px"
-                className="object-cover"
-              />
-            ) : (
-              <span className="flex size-full items-center justify-center">
-                <Package className="text-muted-foreground size-5" aria-hidden />
-              </span>
-            )}
-          </Link>
-          <div className="min-w-0 flex-1 text-sm">
-            <p className="line-clamp-1 font-medium">{box.card.name}</p>
-            <p className="text-muted-foreground text-xs whitespace-nowrap">
-              {variant.label ? `${variant.label} · ` : ""}
-              {formatPrice(variant.price)}
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            className="min-h-11 shrink-0"
-            onClick={() =>
-              addExtra(
-                {
-                  extraVariantId: variant.id,
-                  extraId: box.card.id,
-                  slug: box.card.slug,
-                  name: box.card.name,
-                  label: variant.label,
-                  categoryName: box.card.categoryName,
-                  mode: box.card.mode,
-                  unitPrice: variant.price,
-                  image: box.card.image,
-                  requiresConsent: box.card.requiresConsent,
-                },
-                1,
-                variant.available ?? undefined,
-              )
-            }
-          >
-            {inCart > 0 ? (
-              <>
-                <Check className="size-4" /> Сагсанд {inCart} байна
-              </>
-            ) : (
-              <>
-                <Plus className="size-4" /> Бэлгийн хайрцаг нэмэх
-              </>
-            )}
-          </Button>
-        </div>
+    <div className="space-y-5">
+      <BottleList
+        id="product-bottles"
+        title="Шилээр нь авах"
+        bottles={bottles}
+      />
+      {offers.length > 0 && (
+        <section aria-labelledby="product-gifts" className="space-y-1.5">
+          <h2 id="product-gifts" className={EYEBROW}>
+            Бэлэглэх бол
+          </h2>
+          <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+            {offers.map((o) => (
+              <li key={o.gift.card.id}>
+                <GiftOption offer={o} />
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
+  );
+}
+
+/**
+ * Нэг үнэртний шилнүүд (зарагдаж буй) мөрөөр — үнэртний хуудасны «Шилээр нь
+ * авах», шилний хуудасны «Энэ үнэрийн бусад шил» хоёулаа (нэг хэлбэр).
+ */
+export function BottleList({
+  id,
+  title,
+  bottles,
+}: {
+  id: string;
+  title: string;
+  bottles: ShopExtraCard[];
+}) {
+  const forSale = bottles.filter((b) => !b.soldOut);
+  if (forSale.length === 0) return null;
+  return (
+    <section aria-labelledby={id} className="space-y-1.5">
+      <h2 id={id} className={EYEBROW}>
+        {title}
+      </h2>
+      <ul className="bg-secondary divide-border divide-y overflow-hidden rounded-xl">
+        {forSale.map((b) => (
+          <li key={b.id}>
+            <BottleRow bottle={b} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+const EYEBROW =
+  "text-muted-foreground text-xs font-medium tracking-wide uppercase";
+
+/** Нэг бэлгийн сав — сонголт нь `useGiftPicks`-д (сагсанд шууд биш). */
+function GiftOption({ offer }: { offer: GiftOffer }) {
+  const id = offer.gift.card.id;
+  const selected = useGiftPicks((s) => s.picks.some((p) => p.extraId === id));
+  const toggle = useGiftPicks((s) => s.toggle);
+  return (
+    <GiftTile
+      offer={offer}
+      selected={selected}
+      onToggle={() => toggle(giftLine(offer))}
+    />
+  );
+}
+
+/**
+ * Нэг шил — төрөл нь гол үг («Бүтэн шил»), доор нь хэмжээ. Төрөл бүр ганц
+ * мөр тул зураг давтахгүй (бүгд нэг үнэртний шил — зураг адилхан).
+ */
+function BottleRow({ bottle }: { bottle: ShopExtraCard }) {
+  const kind = bottleKind(bottle.categorySlug, bottle.mode);
+  const leftover = bottle.leftover;
+  const meta = leftover
+    ? `≈${leftover.remainingMl} / ${leftover.fullMl}ml · Ганц ширхэг`
+    : bottleSizeText(bottle);
+  return (
+    <Link
+      href={`/extras/${bottle.slug}`}
+      className="hover:bg-accent flex min-h-14 items-center gap-3 px-4 py-2.5 text-sm transition-colors"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block font-medium">
+          {kind ? BOTTLE_KIND[kind].title : bottle.name}
+        </span>
+        {meta && (
+          <span className="text-muted-foreground block text-xs tabular-nums">
+            {meta}
+          </span>
+        )}
+      </span>
+      <span className="text-sm font-semibold whitespace-nowrap tabular-nums">
+        {formatPrice(bottle.fromPrice)}
+      </span>
+      <ChevronRight
+        className="text-muted-foreground size-4 shrink-0"
+        aria-hidden
+      />
+    </Link>
   );
 }

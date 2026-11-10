@@ -22,8 +22,7 @@ const FILTER_KEYS = [
   "minPrice",
   "maxPrice",
   "q",
-  // Нэмэлт барааны таб (`?tab=extras`).
-  "cat",
+  // «Үнэртний шил» (`/bottles`). Tab (`type`) нь шүүлтүүр биш — тоолохгүй.
   "stock",
 ];
 
@@ -129,11 +128,7 @@ function useFilterQueryState() {
     [searchParams, navigate],
   );
 
-  // `tab` нь шүүлтүүр биш — «Нэмэлт бараа» табаас гарахгүй.
-  const clearAll = useCallback(() => {
-    const tab = searchParams.get("tab");
-    navigate(tab ? new URLSearchParams({ tab }).toString() : "");
-  }, [navigate, searchParams]);
+  const clearAll = useCallback(() => navigate(""), [navigate]);
 
   const activeCount = FILTER_KEYS.reduce(
     (n, k) => n + (searchParams.get(k) ? 1 : 0),

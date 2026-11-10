@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { SearchX } from "lucide-react";
 import { getCatalog, getBrands, getPriceBounds } from "@/features/products/api";
 import { getActiveBrands, getScentFamilies } from "@/features/taxonomy/api";
@@ -22,13 +23,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CATALOG_PAGE_SIZE } from "@/lib/constants";
 import { isFeatureEnabled } from "@/lib/feature-flags";
-import { getShopExtras } from "@/features/extras/api";
-import {
-  CatalogTabShell,
-  CatalogTabs,
-} from "@/features/extras/components/catalog-tabs";
-import { ExtrasCatalog } from "@/features/extras/components/extras-catalog";
-import { EXTRA_SORT_OPTIONS } from "@/features/extras/lib/sort";
+import { legacyExtrasHref } from "@/features/extras/lib/sections";
 
 /**
  * The route itself is dynamic — it reads `searchParams`, so a filtered view is
@@ -67,35 +62,11 @@ export default async function CatalogPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  // «Нэмэлт бараа» таб (extras-shop-plan §9, туг `extras_shop`). Хаалттай үед
-  // `?tab=extras` нь энгийн каталог руу унана — таб ч харагдахгүй.
-  const extrasOn = await isFeatureEnabled("extras_shop");
-  const q = typeof params.q === "string" ? params.q : undefined;
-  if (extrasOn && params.tab === "extras") {
-    const items = await getShopExtras();
-    return (
-      <FilterQueryProvider>
-        <div className="mx-auto max-w-352 px-4 py-8 md:px-8">
-          <div className="mb-6">
-            <h1 className="font-serif text-3xl font-semibold tracking-tight">
-              Каталог
-            </h1>
-            <p className="text-muted-foreground mt-1 text-sm">
-              {items.length} нэмэлт бараа
-            </p>
-          </div>
-          <CatalogTabShell
-            tabs={
-              <CatalogTabs active="extras" q={q}>
-                <CatalogSort options={EXTRA_SORT_OPTIONS} />
-              </CatalogTabs>
-            }
-          >
-            <ExtrasCatalog items={items} />
-          </CatalogTabShell>
-        </div>
-      </FilterQueryProvider>
-    );
+  // Нэмэлт бараа нь «Үнэртний шил» / «Дагалдах хэрэгсэл» хуудас болсон
+  // (extras-shop-plan §19) — хуучин таб холбоос (`?tab=extras&cat=…`) тийш.
+  // Туг хаалттай бол тэр хуудас 404 тул энгийн каталог хэвээр.
+  if (params.tab === "extras" && (await isFeatureEnabled("extras_shop"))) {
+    redirect(legacyExtrasHref(params));
   }
   const filters = parseFilters(params);
   // `page`-гүй шүүлтүүр: доош гүйлгэх жагсаалтын түлхүүр. Шүүлтүүр солигдоход
@@ -164,87 +135,84 @@ export default async function CatalogPage({
           </p>
         </div>
 
-        <CatalogTabShell
-          tabs={
-            <CatalogTabs active={extrasOn ? "perfume" : null} q={q}>
-              <CatalogSort />
-            </CatalogTabs>
-          }
-        >
-          {/* Controls — mobile only (on desktop the search sits above the sidebar) */}
-          <div className="border-border flex items-center gap-2 border-y py-3 lg:hidden">
-            <CatalogFilterSheet
+        {/* Эрэмбэ desktop-д энд, утсан дээр удирдлагын мөрөнд. */}
+        <div className="hidden items-center justify-end py-2 lg:flex">
+          <CatalogSort />
+        </div>
+
+        {/* Controls — mobile only (on desktop the search sits above the sidebar) */}
+        <div className="border-border flex items-center gap-2 border-y py-3 lg:hidden">
+          <CatalogFilterSheet
+            brands={brands}
+            brandLogos={brandLogos}
+            priceBounds={priceBounds}
+            families={families}
+          />
+          <CatalogSort iconOnly />
+          <CatalogSearch className="flex-1" />
+        </div>
+
+        <div className="mt-6 flex gap-10">
+          {/* Desktop sidebar: search above the filter, sharing its width */}
+          <aside className="hidden w-72 shrink-0 lg:block">
+            <CatalogSearch className="mb-6" />
+            <CatalogFilters
               brands={brands}
               brandLogos={brandLogos}
               priceBounds={priceBounds}
               families={families}
             />
-            <CatalogSort iconOnly />
-            <CatalogSearch className="flex-1" />
-          </div>
+          </aside>
 
-          <div className="mt-6 flex gap-10">
-            {/* Desktop sidebar: search above the filter, sharing its width */}
-            <aside className="hidden w-72 shrink-0 lg:block">
-              <CatalogSearch className="mb-6" />
-              <CatalogFilters
-                brands={brands}
-                brandLogos={brandLogos}
-                priceBounds={priceBounds}
-                families={families}
-              />
-            </aside>
-
-            {/*
+          {/*
           `min-w-0` is load-bearing, not tidiness. A flex child defaults to
           `min-width: auto`, so the product grid pushed this column out to its
           own content width and the whole page scrolled sideways on a phone —
           93px of it, measured at 390px.
         */}
-            <div className="min-w-0 flex-1">
-              <CatalogResults>
-                {result.items.length === 0 && collections.length === 0 ? (
-                  <EmptyState
-                    size="lg"
-                    icon={SearchX}
-                    title="Илэрц олдсонгүй"
-                    description={
-                      requestsOn && filters.search
-                        ? "Хайж буй үнэртэн тань манайд байхгүй бол бидэнд мэдэгдээрэй. Олон хүний хүссэн үнэртнийг бид түрүүлж оруулж ирнэ."
-                        : "Шүүлтүүрээ өөрчилж дахин оролдоно уу."
-                    }
-                    action={
-                      <div className="flex flex-wrap justify-center gap-2">
-                        {/* Хайлтаар олдоогүй үнэртнийг санал болгох (0137). */}
-                        {requestsOn && filters.search && (
-                          <Button asChild>
-                            <Link
-                              href={`/request?q=${encodeURIComponent(filters.search)}`}
-                            >
-                              Үнэртэн санал болгох
-                            </Link>
-                          </Button>
-                        )}
-                        <Button asChild variant="outline">
-                          <Link href="/catalog">Бүх барааг үзэх</Link>
+          <div className="min-w-0 flex-1">
+            <CatalogResults>
+              {result.items.length === 0 && collections.length === 0 ? (
+                <EmptyState
+                  size="lg"
+                  icon={SearchX}
+                  title="Илэрц олдсонгүй"
+                  description={
+                    requestsOn && filters.search
+                      ? "Хайж буй үнэртэн тань манайд байхгүй бол бидэнд мэдэгдээрэй. Олон хүний хүссэн үнэртнийг бид түрүүлж оруулж ирнэ."
+                      : "Шүүлтүүрээ өөрчилж дахин оролдоно уу."
+                  }
+                  action={
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {/* Хайлтаар олдоогүй үнэртнийг санал болгох (0137). */}
+                      {requestsOn && filters.search && (
+                        <Button asChild>
+                          <Link
+                            href={`/request?q=${encodeURIComponent(filters.search)}`}
+                          >
+                            Үнэртэн санал болгох
+                          </Link>
                         </Button>
-                      </div>
-                    }
-                  />
-                ) : (
-                  <CatalogInfiniteGrid
-                    key={query.toString()}
-                    initial={result}
-                    query={query.toString()}
-                    collections={collections}
-                    sort={filters.sort}
-                    prefer={preferredStatuses(filters)}
-                  />
-                )}
-              </CatalogResults>
-            </div>
+                      )}
+                      <Button asChild variant="outline">
+                        <Link href="/catalog">Бүх барааг үзэх</Link>
+                      </Button>
+                    </div>
+                  }
+                />
+              ) : (
+                <CatalogInfiniteGrid
+                  key={query.toString()}
+                  initial={result}
+                  query={query.toString()}
+                  collections={collections}
+                  sort={filters.sort}
+                  prefer={preferredStatuses(filters)}
+                />
+              )}
+            </CatalogResults>
           </div>
-        </CatalogTabShell>
+        </div>
       </div>
     </FilterQueryProvider>
   );

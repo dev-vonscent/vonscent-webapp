@@ -45,7 +45,7 @@ export function CatalogSort({
         aria-label="Эрэмбэлэх"
         className={cn(
           iconOnly
-            ? "size-10 shrink-0 justify-center p-0 [&>svg:last-child]:hidden"
+            ? "relative size-10 shrink-0 justify-center p-0 before:absolute before:-inset-0.5 before:content-[''] [&>svg:last-child]:hidden"
             : "w-45",
           className,
         )}

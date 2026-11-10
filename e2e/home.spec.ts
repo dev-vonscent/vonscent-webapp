@@ -31,11 +31,15 @@ test("хүйсний товчлол: зөвхөн утсан дээр, жагс�
   await page.goto("/");
   const nav = page.getByRole("navigation", { name: "Товч замууд" });
   await expect(nav).toBeVisible();
-  await expect(nav.getByRole("link")).toHaveCount(3);
+  await expect(nav.getByRole("list").first().getByRole("link")).toHaveCount(3);
   await expect(nav.getByRole("link", { name: "Эрэгтэй" })).toHaveAttribute(
     "href",
     "/catalog?gender=male",
   );
+  // Доорх «бусад төрөл»-ийн мөр нь `extras_shop` тугтай: demo горимд туг
+  // хаалттай тул мөр огт гарахгүй — prod өмнөхтэйгээ ижил.
+  await expect(nav.getByRole("list")).toHaveCount(1);
+  await expect(nav.getByRole("link", { name: /Бэлэн багц/ })).toHaveCount(0);
 
   // Desktop-д ижил сонголт каталог цэсэнд байгаа тул давтахгүй.
   await page.setViewportSize({ width: 1280, height: 800 });

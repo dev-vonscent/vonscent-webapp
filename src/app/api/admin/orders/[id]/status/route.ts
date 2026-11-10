@@ -197,7 +197,10 @@ export async function POST(
               ? "Нэмэлт барааны нөөц хүрэлцэхгүй тул захиалгыг сэргээх боломжгүй. Эхлээд нөөцөө нэмнэ үү."
               : error.message.includes("VIAL_UNAVAILABLE")
                 ? "Сав хүрэлцэхгүй тул захиалгыг сэргээх боломжгүй. Эхлээд савны нөөцөө нэмнэ үү."
-                : null;
+                : // 0178: хүргэгдсэн нэмэлт бараа, сав цуцлалтаар нөөцөд буцдаггүй.
+                  error.message.includes("ORDER_HAS_DELIVERED_ITEMS")
+                  ? "Энэ захиалгын бараа хүргэгдсэн тул цуцлах боломжгүй. «Хүргэсэн» болгоод буцаалт хийнэ үү."
+                  : null;
       if (statusMessage) {
         return NextResponse.json({ error: statusMessage }, { status: 409 });
       }

@@ -6,6 +6,8 @@ import { CACHE_TAG_CATALOG, CACHE_TAG_FEATURE_FLAGS } from "@/lib/cache-tags";
 import { createPublicClient } from "@/lib/supabase/public";
 import { callRpc } from "@/lib/supabase/rpc";
 import { vialName } from "@/lib/vials";
+import { bottleKind } from "./lib/bottle-kind";
+import { BOTTLE_TABS, type BottleFacets } from "./lib/sections";
 import type { ShopExtraCard, ShopExtraDetail } from "./types";
 
 /**
@@ -49,6 +51,11 @@ export interface ShopExtraListItem extends ShopExtraCard {
   updatedAt: string;
 }
 
+/** «Үнэртний шил»-ийн жагсаалтын мөр — эх үнэртний шинжтэй (шүүлтүүрт). */
+export interface BottleListItem extends ShopExtraListItem {
+  facets: BottleFacets | null;
+}
+
 function toCard(r: CatalogRow): ShopExtraListItem {
   return {
     id: r.id,
@@ -69,6 +76,11 @@ function toCard(r: CatalogRow): ShopExtraListItem {
             fullMl: r.full_ml ?? 0,
           }
         : null,
+    // `leftover_brand/product` нь горимоос үл хамааран `product_id`-ийн
+    // үнэртэн (0154-ийн `lp` join) — нэрээ үл харгалзан бүх шилэнд ирнэ.
+    perfume: r.leftover_brand
+      ? { brand: r.leftover_brand, name: r.leftover_product ?? "" }
+      : null,
     bottleMl: r.bottle_ml,
     stock: r.stock,
     notice: r.notice,
@@ -203,41 +215,87 @@ export async function getShopExtra(
   };
 }
 
-/** Үнэртний хуудасны «Бэлгийн хайрцаг нэмэх» — зарагдаж буй эхний хайрцаг. */
-export async function getGiftBoxOffer(): Promise<ShopExtraDetail | null> {
-  const box = (await getShopExtras()).find(
+/**
+ * Үнэртний хуудасны «Бэлэглэх бол» — зарагдаж буй бүх бэлгийн сав
+ * (хайрцаг, цаасан уут, даавуун уут), админы дарааллаар. Хувилбар хэрэгтэй
+ * тул дэлгэрэнгүйгээр (цөөн тул зэрэг уншина).
+ */
+export async function getGiftOffers(): Promise<ShopExtraDetail[]> {
+  const gifts = (await getShopExtras()).filter(
     (e) => e.categorySlug === "gift-box" && !e.soldOut,
   );
-  return box ? getShopExtra(box.slug) : null;
+  const details = await Promise.all(gifts.map((g) => getShopExtra(g.slug)));
+  return details.filter((d): d is ShopExtraDetail => d != null);
 }
 
-/** «Энэ үнэрийн үлдэгдэлтэй шил байна» — тухайн үнэртний зарагдаж буй шил. */
-export async function getLeftoverFor(productId: string): Promise<{
-  slug: string;
-  name: string;
-  remainingMl: number;
-  fullMl: number;
-  price: number;
-} | null> {
-  const supabase = createPublicClient();
-  if (!supabase) return null;
-  const { data } = await callRpc<
+const fetchBottleFacets = unstable_cache(
+  async (): Promise<
     {
-      slug: string;
-      name: string;
-      remaining_ml: number;
-      full_ml: number;
-      price: number;
+      id: string;
+      gender: string | null;
+      scent_families: string[];
+      seasons: string[];
     }[]
-  >(supabase, "extras_leftover_for", { p_product: productId });
-  const row = data?.[0];
-  return row
-    ? {
-        slug: row.slug,
-        name: row.name,
-        remainingMl: row.remaining_ml,
-        fullMl: row.full_ml,
-        price: row.price,
-      }
-    : null;
+  > => {
+    const supabase = createPublicClient();
+    if (!supabase) return [];
+    const { data, error } = await callRpc<
+      {
+        id: string;
+        gender: string | null;
+        scent_families: string[];
+        seasons: string[];
+      }[]
+    >(supabase, "extras_bottle_facets", {});
+    if (error) throw new Error(`extras_bottle_facets failed: ${error.message}`);
+    return data ?? [];
+  },
+  ["extras-bottle-facets"],
+  { revalidate: 60, tags: [CACHE_TAG_CATALOG, CACHE_TAG_FEATURE_FLAGS] },
+);
+
+/** Шил бүрийн эх үнэртний хүйс / үнэрийн төрөл / улирал (0176), id-аар. */
+export async function getBottleFacets(): Promise<Map<string, BottleFacets>> {
+  try {
+    return new Map(
+      (await fetchBottleFacets()).map((r) => [
+        r.id,
+        { gender: r.gender, families: r.scent_families, seasons: r.seasons },
+      ]),
+    );
+  } catch (err) {
+    Sentry.captureException(err);
+    return new Map();
+  }
+}
+
+/**
+ * «Энэ үнэрийн шил» (plan §19.4) — тухайн үнэртэнтэй холбогдсон бүтэн,
+ * үлдэгдэлтэй, хоосон шил; зарагдаж буй нь эхэнд, tab-ийн дарааллаар.
+ * id-г SQL-ээс (`extras_bottles_for`, 0175), картыг cache-тэй жагсаалтаас.
+ */
+export async function getBottlesFor(
+  productId: string,
+): Promise<ShopExtraListItem[]> {
+  const supabase = createPublicClient();
+  if (!supabase) return [];
+  const [{ data, error }, all] = await Promise.all([
+    callRpc<string[]>(supabase, "extras_bottles_for", { p_product: productId }),
+    getShopExtras(),
+  ]);
+  if (error) {
+    Sentry.captureException(new Error(`extras_bottles_for: ${error.message}`));
+    return [];
+  }
+  const ids = new Set(data ?? []);
+  const order = (e: ShopExtraListItem) =>
+    BOTTLE_TABS.indexOf(bottleKind(e.categorySlug, e.mode) ?? "empty");
+  return all
+    .filter((e) => ids.has(e.id))
+    .sort(
+      (a, b) =>
+        Number(a.soldOut) - Number(b.soldOut) ||
+        order(a) - order(b) ||
+        a.fromPrice - b.fromPrice,
+    );
 }

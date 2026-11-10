@@ -16,6 +16,7 @@ import {
 import { NotificationCenter } from "@/features/notifications/components/notification-center";
 import { selectWishCount, useWishlist } from "@/features/wishlist/store";
 import { GlobalSearch } from "./global-search";
+import { useFeatureFlagSet } from "@/components/feature-flags";
 import { cn } from "@/lib/utils";
 import { DARK_STAGE_ROUTES } from "@/lib/constants";
 import { usePublishScrollHidden } from "@/components/shared/bottom-nav-store";
@@ -23,6 +24,7 @@ import {
   STORE_NAV_PRIMARY,
   STORE_NAV_SECONDARY,
   isNavActive,
+  visibleNavItems,
   type StoreMenuKey,
   type StoreNavItem,
 } from "./store-nav";
@@ -33,6 +35,8 @@ const PAGE_END_THRESHOLD = 40;
 
 const TITLES: Record<string, string> = {
   "/catalog": "Каталог",
+  "/bottles": "Үнэртний шил",
+  "/accessories": "Дагалдах хэрэгсэл",
   "/collections": "Багц",
   "/collections/build": "Багц үүсгэх",
   "/account/collections": "Миний багцууд",
@@ -344,6 +348,7 @@ function DesktopNav({
   // click нь panel-ийг зүгээр л тогтооно, дараагийн click л хаана.
   const openedByHover = React.useRef(false);
   const panelId = React.useId();
+  const flags = useFeatureFlagSet();
 
   const schedule = React.useCallback(
     (next: StoreMenuKey | null, delay: number) => {
@@ -400,15 +405,17 @@ function DesktopNav({
 
   const renderItems = (items: readonly StoreNavItem[], muted = false) => (
     <ul className="flex items-center gap-1">
-      {items.map((item) => {
+      {visibleNavItems(items, flags).map((item) => {
         const panel = item.menu ? menus[item.menu] : undefined;
         const active = isNavActive(item.href, pathname);
         const expanded = Boolean(item.menu && open === item.menu);
         const highlighted =
           active || expanded || Boolean(item.menu && landing === item.menu);
         const itemClass = cn(
-          "relative flex h-11 items-center gap-1 px-3 text-sm transition-colors",
-          "after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors",
+          // 768px-д зургаан мөр нэг эгнээнд багтахын тулд md-д нарийн зай;
+          // шошго хэзээ ч хоёр мөр болж хугарахгүй.
+          "relative flex h-11 items-center gap-1 px-2 text-sm whitespace-nowrap transition-colors lg:px-3",
+          "after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors lg:after:inset-x-3",
           highlighted
             ? "text-foreground after:bg-primary font-semibold"
             : cn(

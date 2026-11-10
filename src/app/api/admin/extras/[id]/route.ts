@@ -57,3 +57,26 @@ export async function PATCH(
   revalidatePublic();
   return NextResponse.json({ ok: true, id: data.id, slug: data.slug });
 }
+
+/**
+ * Түүхгүй барааг бүрмөсөн устгах (0177). Захиалга, худалдан авалттай бол
+ * 409 — архивлахыг санал болгоно.
+ */
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const gate = await extrasAdminGate();
+  if ("error" in gate) return gate.error;
+
+  const { id } = await params;
+  if (!z.string().uuid().safeParse(id).success) {
+    return NextResponse.json({ error: "Буруу хүсэлт." }, { status: 400 });
+  }
+  const { error } = await callRpc(gate.supabase, "extras_delete", {
+    p_extra: id,
+  });
+  if (error) return extrasRpcError(error.message, "Устгаж чадсангүй.");
+  revalidatePublic();
+  return NextResponse.json({ ok: true });
+}

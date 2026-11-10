@@ -23,18 +23,9 @@ describe("sortExtras", () => {
     );
     expect(out.map((i) => i.id)).toEqual(["c", "b", "a"]);
   });
-  it("шинэ нь эхэнд", () => {
-    const out = sortExtras(
-      [
-        item("a", { createdAt: "2026-09-01" }),
-        item("b", { createdAt: "2026-10-05" }),
-      ],
-      "new",
-    );
-    expect(out[0].id).toBe("b");
-  });
   it("танихгүй утга → recommended", () => {
     expect(parseExtraSort("x")).toBe("recommended");
-    expect(parseExtraSort("new")).toBe("new");
+    // «Шинэ эхэндээ» хасагдсан — хуучин холбоос «Санал болгох».
+    expect(parseExtraSort("new")).toBe("recommended");
   });
 });

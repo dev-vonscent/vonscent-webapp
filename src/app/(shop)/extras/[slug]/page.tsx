@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Package } from "lucide-react";
+import Image from "next/image";
+import { ChevronRight, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
@@ -17,10 +18,15 @@ import {
   ExtraGallery,
   VariantImageProvider,
 } from "@/features/extras/components/variant-image";
-import { getShopExtra, getShopExtras } from "@/features/extras/api";
-import { ExtraCard } from "@/features/extras/components/extra-card";
+import { getBottlesFor, getShopExtra } from "@/features/extras/api";
+import { BottleList } from "@/features/extras/components/product-extras";
 import { ExtraPurchase } from "@/features/extras/components/extra-purchase";
-import { bottleKind } from "@/features/extras/lib/bottle-kind";
+import { BOTTLE_KIND, bottleKind } from "@/features/extras/lib/bottle-kind";
+import {
+  BOTTLE_TABS,
+  EXTRA_SECTION,
+  extraSection,
+} from "@/features/extras/lib/sections";
 import {
   bottleSizeText,
   eyebrowText,
@@ -72,7 +78,7 @@ export default async function ExtraPage({
 }) {
   if (!(await isFeatureEnabled("extras_shop"))) notFound();
   const { slug } = await params;
-  const [extra, all] = await Promise.all([getShopExtra(slug), getShopExtras()]);
+  const extra = await getShopExtra(slug);
   if (!extra) notFound();
   const { card } = extra;
   const leftover = card.leftover;
@@ -81,11 +87,15 @@ export default async function ExtraPage({
     leftover && leftover.remainingMl > 0
       ? Math.round(card.fromPrice / leftover.remainingMl)
       : null;
-  // «Хамт авдаг»: бусад ангиллын, одоо зарагдаж буй бараа.
-  const together = all
-    .filter((e) => e.categorySlug !== card.categorySlug && !e.soldOut)
-    .slice(0, 4);
-  const catalogHref = `/catalog?tab=extras&cat=${card.categorySlug}`;
+  const kind = bottleKind(card.categorySlug, card.mode);
+  // «Энэ үнэрийн бусад шил» (клиент, 2026-11-10): хоосон шилийг харж буй
+  // хүнд бүтэн / үлдэгдэлтэй нь — бодит сонголт. Дагалдах хэрэгсэлд юу ч
+  // санал болгохгүй: бараа цөөн, бүгд `/accessories`-д нэг дэлгэцэнд, бэлгийн
+  // савыг төлбөрийн хуудасны «Бэлгийн боодол» асууна (хуучин «Хамт авдаг»).
+  const otherBottles =
+    kind && extra.productId
+      ? (await getBottlesFor(extra.productId)).filter((b) => b.id !== card.id)
+      : [];
   // Хувилбарын зураг (5ml шприц, жижиг хайрцаг) галерейд байх ёстой —
   // эс бөгөөс хувилбар сонгоход галерей шилжих зураггүй.
   const gallery = [
@@ -95,11 +105,17 @@ export default async function ExtraPage({
     ]),
   ];
   const eyebrow = eyebrowText(card);
-  // «Шприц» ангиллын «Шприц» — breadcrumb-д ангиллыг давтахгүй.
-  const categoryCrumb = !repeatsName(card.categoryName, card.name);
   // Эх үнэртэн (0159): хоосон шилэнд холбоос л — дотор нь үнэртэн байхгүй
   // тул ноот, тайлбар хамаагүй. Бүтэн / үлдэгдэлтэй шилэнд бүгд.
-  const kind = bottleKind(card.categorySlug, card.mode);
+  // Breadcrumb (plan §19.1): Нүүр › Үнэртний шил › Хоосон шил › Нэр,
+  // Нүүр › Дагалдах хэрэгсэл › Нэр (тэр хуудас ангиллаар хуваагддаггүй).
+  const section = EXTRA_SECTION[extraSection(card)];
+  const groupCrumb = kind
+    ? {
+        name: BOTTLE_KIND[kind].title,
+        href: `${section.href}${kind === BOTTLE_TABS[0] ? "" : `?type=${kind}`}`,
+      }
+    : null;
   const perfume = extra.perfume;
   const scent =
     perfume && kind && kind !== "empty"
@@ -119,7 +135,7 @@ export default async function ExtraPage({
         data={[
           breadcrumbJsonLd([
             { name: "Нүүр", path: "" },
-            { name: "Нэмэлт бараа", path: "/catalog?tab=extras" },
+            { name: section.title, path: section.href },
             { name: card.name, path: `/extras/${card.slug}` },
           ]),
         ]}
@@ -134,15 +150,15 @@ export default async function ExtraPage({
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link href="/catalog?tab=extras">Нэмэлт бараа</Link>
+              <Link href={section.href}>{section.title}</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
-          {categoryCrumb && (
+          {groupCrumb && (
             <>
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
-                  <Link href={catalogHref}>{card.categoryName}</Link>
+                  <Link href={groupCrumb.href}>{groupCrumb.name}</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
@@ -213,14 +229,61 @@ export default async function ExtraPage({
                 </p>
               )}
               {perfume?.slug && (
+                // Эх үнэртэн рүү — шилээ биш, грамаар (2–20ml) авах сонголт.
                 <Link
                   href={`/products/${perfume.slug}`}
-                  className="text-sm underline-offset-4 hover:underline"
+                  className="bg-secondary hover:bg-accent flex min-h-16 items-center gap-3 rounded-xl p-2 pr-4 transition-colors"
                 >
-                  {perfume.brand} {perfume.name} — декантаар авах
+                  <span className="bg-card relative size-12 shrink-0 overflow-hidden rounded-lg">
+                    {card.image ? (
+                      <Image
+                        src={card.image}
+                        alt=""
+                        fill
+                        sizes="48px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <span className="flex size-full items-center justify-center">
+                        <Package
+                          className="text-muted-foreground size-5"
+                          aria-hidden
+                        />
+                      </span>
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium">
+                      Грамаар авах
+                    </span>
+                    <span className="text-muted-foreground block truncate text-xs">
+                      {perfume.brand} {perfume.name}
+                    </span>
+                  </span>
+                  <ChevronRight
+                    className="text-muted-foreground size-4 shrink-0"
+                    aria-hidden
+                  />
                 </Link>
               )}
+              <BottleList
+                id="extra-other-bottles"
+                title="Энэ үнэрийн бусад шил"
+                bottles={otherBottles}
+              />
             </div>
+
+            {/* Энэ шил өөрөө (нөхцөл, хайрцаг) эхэнд — дараа нь доторх үнэр. */}
+            {extra.description && (
+              <div>
+                <h2 className="mb-3 text-xl font-semibold">
+                  {kind ? "Шилний тухай" : "Тайлбар"}
+                </h2>
+                <p className="text-muted-foreground text-sm/relaxed whitespace-pre-line">
+                  {extra.description}
+                </p>
+              </div>
+            )}
 
             {scent?.hasNotes && perfume && (
               <div>
@@ -246,17 +309,6 @@ export default async function ExtraPage({
               </div>
             )}
 
-            {extra.description && (
-              <div>
-                <h2 className="mb-3 font-serif text-xl font-semibold">
-                  {kind ? "Шилний тухай" : "Тайлбар"}
-                </h2>
-                <p className="text-muted-foreground text-sm/relaxed whitespace-pre-line">
-                  {extra.description}
-                </p>
-              </div>
-            )}
-
             <div>
               <h2 className="mb-3 font-serif text-xl font-semibold">Хүргэлт</h2>
               <p className="text-muted-foreground text-sm/relaxed">
@@ -266,24 +318,6 @@ export default async function ExtraPage({
           </div>
         </div>
       </VariantImageProvider>
-
-      {together.length > 0 && (
-        <section aria-labelledby="extras-together" className="mt-16 space-y-4">
-          <h2
-            id="extras-together"
-            className="font-serif text-2xl font-semibold tracking-tight"
-          >
-            Хамт авдаг
-          </h2>
-          <ul className="grid grid-cols-2 gap-x-3 gap-y-8 md:grid-cols-4 md:gap-x-5">
-            {together.map((e) => (
-              <li key={e.id}>
-                <ExtraCard extra={e} href={`/extras/${e.slug}`} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </div>
   );
 }

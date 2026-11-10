@@ -212,7 +212,12 @@ export function resumeSavedCheckout(entry: SavedCheckout) {
     const [item] = entry.items;
     const [bundle] = entry.collections;
     const [extra] = entry.extras;
-    if (item) cart.startBuyNow(...toLineInput(item));
+    // Үнэртний «Захиалах»-тай хамт явсан бэлгийн боодол — мөрийн хамт.
+    if (item)
+      cart.startBuyNow(
+        ...toLineInput(item),
+        entry.extras.map((e) => toLineInput(e)[0]),
+      );
     else if (bundle) cart.startBuyNowCollection(...toLineInput(bundle));
     else if (extra) cart.startBuyNowExtra(...toLineInput(extra));
   } else {
