@@ -49,10 +49,12 @@ function GiftCardBack({
   card,
   qrSrc,
   onFlip,
+  flipRef,
 }: {
   card: MyGiftCard;
   qrSrc: string;
   onFlip: () => void;
+  flipRef: React.Ref<HTMLButtonElement>;
 }) {
   const u = (px: number) => `${(px / 12).toFixed(3)}cqw`;
   const d = card.design;
@@ -121,6 +123,7 @@ function GiftCardBack({
       </div>
       {/* Ар тал дээр дахин дарахад нүүр рүү — хуулах товч (z-20) дээгүүр. */}
       <button
+        ref={flipRef}
         type="button"
         onClick={onFlip}
         aria-label="Картын нүүр тал руу эргүүлэх"
@@ -144,6 +147,18 @@ export function MyGiftCardItem({
   url: string | null;
 }) {
   const [flipped, setFlipped] = React.useState(false);
+  const frontRef = React.useRef<HTMLButtonElement>(null);
+  const backRef = React.useRef<HTMLButtonElement>(null);
+  // Эргүүлсний дараа focus нөгөө тал руу — далд тал `inert` тул focus тэнд
+  // үлдэхгүй (keyboard, screen reader). Анх mount-д хөдлөхгүй.
+  const flippedOnce = React.useRef(false);
+  React.useEffect(() => {
+    if (!flippedOnce.current) {
+      flippedOnce.current = true;
+      return;
+    }
+    (flipped ? backRef : frontRef).current?.focus({ preventScroll: true });
+  }, [flipped]);
   const [canShare, setCanShare] = React.useState(false);
   React.useEffect(() => {
     setCanShare(typeof navigator !== "undefined" && "share" in navigator);
@@ -189,10 +204,7 @@ export function MyGiftCardItem({
             flipped && "rotate-y-180",
           )}
         >
-          <div
-            className={cn("backface-hidden", flipped && "pointer-events-none")}
-            aria-hidden={flipped}
-          >
+          <div className="backface-hidden" inert={flipped}>
             <GiftCardFace
               design={card.design}
               text={card}
@@ -200,6 +212,7 @@ export function MyGiftCardItem({
             />
             {shareable && (
               <button
+                ref={frontRef}
                 type="button"
                 onClick={() => setFlipped(true)}
                 className="absolute inset-0 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -209,16 +222,14 @@ export function MyGiftCardItem({
           </div>
           {shareable && card.token && (
             <div
-              className={cn(
-                "absolute inset-0 rotate-y-180 backface-hidden",
-                !flipped && "pointer-events-none",
-              )}
-              aria-hidden={!flipped}
+              className="absolute inset-0 rotate-y-180 backface-hidden"
+              inert={!flipped}
             >
               <GiftCardBack
                 card={card}
                 qrSrc={`/api/gift-cards/${card.token}/qr`}
                 onFlip={() => setFlipped(false)}
+                flipRef={backRef}
               />
             </div>
           )}
