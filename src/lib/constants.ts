@@ -832,7 +832,7 @@ export const FEATURE_FLAGS = {
   gift_cards: {
     label: "Бэлгийн карт",
     description:
-      "100k/200k/300k/500k₮-ийн бэлгийн карт: /gift-cards (зочин харна, худалдан авахад нэвтрэлт), /gift/[token] хүлээн авагчийн хуудас, /account/gift-cards, кодыг V point болгох, имэйлээр илгээх; place_gift_card_order, mark_order_paid-ийн картын салаа, redeem_gift_card, хугацаа дуусгах cron (0179). Админ → Бэлгийн карт мөн тугаар хаагдана (gift-cards-plan).",
+      "100k/200k/300k/500k₮-ийн бэлгийн карт: /gift-cards (зочин харна, худалдан авахад нэвтрэлт), /gift/[token] хүлээн авагчийн хуудас, /account/gift-cards, кодыг V point болгох, имэйлээр илгээх; place_gift_card_order, mark_order_paid-ийн картын салаа, redeem_gift_card, хугацаа дуусгах cron (0179). Админ → Бэлгийн карт мөн тугаар хаагдана (gift-cards-plan). АНХААР: карт зарагдсаны дараа хаавал хүлээн авагч кодоо оруулж чадахгүй ч 1 жилийн хугацаа нь үргэлжлэн тоологдоно — нээгдсэний дараа хаахгүй байх.",
   },
 } as const satisfies Record<string, FeatureFlagMeta>;
 

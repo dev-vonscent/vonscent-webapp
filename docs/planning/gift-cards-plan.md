@@ -140,7 +140,7 @@ Sephora карт худалдан авалтад оноо өгдөггүй; ма
 |--------|-------|---------|
 | id | text pk | `classic`, `birthday`, `love`, `thank-you`, `march-8`, `new-year`, `tsagaan-sar`, `teacher` |
 | title | text | «Төрсөн өдөр» |
-| default_heading | text | «Төрсөн өдрийн мэнд хүргэе!» |
+| heading | text | «Төрсөн өдрийн мэнд хүргэе!» |
 | default_message | text | Санал болгох мэндчилгээ |
 | image_path | text | Storage `gift-cards/designs/<id>@2x.png` |
 | text_color, muted_color, accent_color | text | Дизайнераас өгөх 2–3 өнгө (canvas-ийн safe zone дүрэм) |
@@ -161,8 +161,8 @@ Sephora карт худалдан авалтад оноо өгдөггүй; ма
 | recipient_name, message, from_name | text | Урт хязгаар DB check-ээр |
 | recipient_email | text null | «Өөрөө өгнө» үед null |
 | send_at | timestamptz null | Товлосон илгээлт |
-| code | text unique | `VON-XXXX-XXXX` (32 тэмдэгтийн цагаан толгой, `gen_random_bytes`) |
-| token | text unique | 22 тэмдэгт base64url (`/gift/<token>`) |
+| code | text unique | `VON-XXXX-XXXX` (32 тэмдэгтийн цагаан толгой, `gen_random_uuid`-ийн байт — pgcrypto-гүй) |
+| token | text unique | 32 hex (`/gift/<token>`) |
 | status | text | `pending` → `active` → `redeemed` / `expired` / `void` |
 | issued_at, expires_at | timestamptz | `expires_at = issued_at + interval '1 year'` |
 | sent_at, send_count | timestamptz, int | Илгээлтийн idempotency, дахин илгээх хязгаар |
@@ -562,7 +562,7 @@ QPay → `/gift/[token]` → бүртгүүлэх → redeem.
 
 | Хэсэг | Төлөв | Тэмдэглэл |
 |-------|-------|-----------|
-| DB, RPC (§3–§4) | ✅ | `pnpm db:test-gift-cards-local` — 38 шалгалт |
+| DB, RPC (§3–§4) | ✅ | `pnpm db:test-gift-cards-local` — 37 шалгалт |
 | Худалдан авах, хүлээн авагчийн хуудас, миний карт (§2, §5) | ✅ | HTTP-ээр эхнээс дуустал туршсан |
 | Имэйл, картын зураг, QR (§6.1–§6.2) | ✅ | Resend локалд унтраалттай — HTML-ийг `scripts/preview-gift-email.ts`-ээр шалгасан |
 | Товлосон илгээлт (§10) | ✅ | 09:00 УБ, маргаашаас 300 хоног |
@@ -573,7 +573,7 @@ QPay → `/gift/[token]` → бүртгүүлэх → redeem.
 | Физик карт, бөөний захиалга, улирлын онцлох | — | §10, дараа |
 
 **Туг хаалттай үед юу ч хуримтлагдахгүй:** `place_gift_card_order`,
-`redeem_gift_card`, `admin_extend_gift_card` → `FEATURE_DISABLED`;
+`redeem_gift_card` → `FEATURE_DISABLED`;
 `expire_gift_cards`, `/api/cron/gift-cards` → юу ч хийхгүй; бүх хуудас, API
 (хэрэглэгч, админ, зураг, QR) → 404. Бусад өөрчлөлт зөвхөн
 `order_type = 'gift_card'` мөрөнд хамаарна — ийм мөр зөвхөн туг асаалттай
@@ -593,3 +593,17 @@ QPay → `/gift/[token]` → бүртгүүлэх → redeem.
 **Таамаглал (клиентээр батлуулах):** картын захиалгад хүрдний эрх, автомат
 купон олгохгүй; «буцаалтгүй» нь ашиглаагүй картад ч хамаарна.
 
+
+### 13.1 Логик шалгалтын дараах шийдвэр (2026-11-10)
+
+- **Төлөгдөөгүй карт → «Дараа захиалах»** (барааных шиг): хугацаа дуусахад
+  маягтын ноорог `saved_checkouts.gift_card`-д, «Захиалах» → `/gift-cards`
+  сэргээгдэж шинэ захиалгаар төлнө. Цуцлагдсан картын захиалгыг админ
+  сэргээхгүй (`GIFT_CARD_ORDER_CANCELLED`).
+- **Тайлан:** карт зөвхөн мөнгөн дүнд; «Төлсөн захиалга», төлвийн
+  задаргаа, графикийн захиалгын тоонд орохгүй.
+- **Имэйл (Resend үнэгүй багц: өдөрт 100, сард 3,000):** cron-д 20 бэлэг +
+  10 баримт, 600ms зайтай; сануулга өдөрт ≤30. Гараар нэг картад 5 удаа,
+  5 минутын зайтай. 5 удаа бүтэлгүйтвэл админд (хонх + Telegram).
+- **Товлосон картын хаяг засах** нь товлосон өдрөө хүлээнэ.
+- **Тугийг нээгдсэний дараа хаахгүй** — хугацаа үргэлжлэн тоологдоно.
