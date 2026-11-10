@@ -19,6 +19,7 @@ cp "$ROOT/supabase/config.toml" "$WORK/supabase/config.toml"
 if [ ! -f "$ROOT/.env.localdb" ]; then
   printf '%s\n' '# Локал Supabase (pnpm db:local start)' \
     'DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres' \
+    'CRON_SECRET=local-cron-secret' \
     > "$ROOT/.env.localdb"
 fi
 cd "$WORK"
