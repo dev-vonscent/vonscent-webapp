@@ -6,7 +6,7 @@ import { Minus, Plus, ShoppingCart, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
-import { TRIAL_SIZE_ML } from "@/lib/constants";
+import { SPRAYS_PER_ML, TRIAL_SIZE_ML } from "@/lib/constants";
 import { toast } from "@/lib/toast";
 import {
   MobileBuyBar,
@@ -189,7 +189,20 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
       </div>
 
       <div className="space-y-3">
-        <p className="text-sm font-medium">Хэмжээ сонгох</p>
+        {/* Шүршилтийн тоо картын ДОТОР биш: карт бүр аль хэдийн 3 мөртэй
+            (үнэ, хуучин үнэ, ₮/ml). Гарчгийн мөрийн хоосон баруун талд
+            сонгосон хэмжээнийх нь л харагдана. */}
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-sm font-medium">Хэмжээ сонгох</p>
+          {selected && (
+            <p
+              className="text-muted-foreground text-xs tabular-nums"
+              aria-live="polite"
+            >
+              {selected.ml}ml ≈ {selected.ml * SPRAYS_PER_ML} шүршилт
+            </p>
+          )}
+        </div>
         {/*
           Хэмжээ бүр ХАРАГДАНА — «Зарна»-г авсан нь жагсаалтаас алга болдог
           байлаа. Тэгэхээр 5ml-г түр хаасан бараа 2 / 10 / 20 гэсэн цоорхойтой
