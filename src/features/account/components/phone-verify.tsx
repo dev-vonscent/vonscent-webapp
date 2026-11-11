@@ -46,13 +46,16 @@ export function PhoneVerify({
     // Дугаар руу илгээх код — smsUri дотроос (sms:144773?body=XXXXXX).
     const smsCode = /body=(\d+)/u.exec(session.smsUri)?.[1] ?? "";
     return (
-      <div className="bg-card space-y-5 rounded-2xl p-6 text-center">
+      <div className="bg-card space-y-4 rounded-2xl p-5 text-center">
         <div className="text-muted-foreground flex items-center justify-center gap-2 text-xs tracking-widest uppercase">
           <span className="relative flex size-2">
             <span className="bg-foreground absolute inline-flex size-full animate-ping rounded-full opacity-60" />
             <span className="bg-foreground relative inline-flex size-2 rounded-full" />
           </span>
           SMS хүлээж байна
+          <span className="tabular-nums">
+            · {mm}:{ss}
+          </span>
         </div>
 
         <SmsSendInstruction
@@ -70,10 +73,7 @@ export function PhoneVerify({
           </a>
         </Button>
 
-        <div className="space-y-2">
-          <p className="text-muted-foreground text-sm tabular-nums">
-            {mm}:{ss}
-          </p>
+        <div>
           <div className="bg-secondary h-1 overflow-hidden rounded-full">
             <div
               className="bg-foreground h-full rounded-full transition-[width] duration-1000 ease-linear"

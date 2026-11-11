@@ -17,7 +17,7 @@ export function SmsSendInstruction({
 }) {
   const displayPhone = phone.replace(/^(\d{4})(\d{4})$/u, "$1 $2");
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {code && (
         <p className="font-serif text-4xl font-semibold tracking-[0.3em] tabular-nums">
           {code}
@@ -36,9 +36,9 @@ export function SmsSendInstruction({
         руу илгээнэ үү.
       </p>
 
-      <p className="text-muted-foreground flex items-start justify-center gap-1.5 text-xs">
-        <TriangleAlert className="text-warning mt-px size-3.5 shrink-0" />
-        <span>2 SIM-тэй бол илгээхдээ SIM-ээ шалгаарай.</span>
+      <p className="text-muted-foreground text-xs text-balance">
+        <TriangleAlert className="text-warning -mt-0.5 mr-1 inline size-3.5" />2
+        SIM-тэй бол илгээхдээ SIM-ээ шалгаарай.
       </p>
     </div>
   );
