@@ -82,7 +82,7 @@ function ReviewCard({
           </div>
           <Stars rating={review.rating} size={14} className="mt-2" />
           {review.body && (
-            <p className="text-foreground/90 mt-2 max-w-prose text-sm/relaxed wrap-break-word">
+            <p className="text-foreground/90 mt-2 max-w-prose text-sm/relaxed wrap-anywhere">
               {review.body}
             </p>
           )}
