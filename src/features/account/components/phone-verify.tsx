@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { toast } from "@/lib/toast";
 import { useVerifyMn } from "@/features/auth/use-verify-mn";
+import { SmsSendInstruction } from "@/features/auth/components/sms-send-instruction";
 
 /**
  * Account хуудасны утас баталгаажуулалт / солилт. Нэвтэрсэн хэрэглэгчийн
@@ -28,7 +29,7 @@ export function PhoneVerify({
   React.useEffect(() => {
     if (stage === "error" && error) toast.error(error);
     if (stage === "expired") {
-      toast.error("Хугацаа дууслаа — СМС илгээгдээгүй байна.");
+      toast.error("Хугацаа дууслаа — SMS илгээгдээгүй байна.");
     }
   }, [stage, error]);
 
@@ -51,30 +52,21 @@ export function PhoneVerify({
             <span className="bg-foreground absolute inline-flex size-full animate-ping rounded-full opacity-60" />
             <span className="bg-foreground relative inline-flex size-2 rounded-full" />
           </span>
-          СМС хүлээж байна
+          SMS хүлээж байна
         </div>
 
-        {smsCode && (
-          <div className="space-y-1">
-            <p className="text-muted-foreground text-xs">
-              {session.shortcode} дугаарт илгээх код
-            </p>
-            <p className="font-serif text-4xl font-semibold tracking-[0.3em]">
-              {smsCode}
-            </p>
-          </div>
-        )}
-
-        <p className="text-muted-foreground text-sm">
-          {session.displayInstruction}
-        </p>
+        <SmsSendInstruction
+          phone={phone}
+          shortcode={session.shortcode}
+          code={smsCode}
+        />
 
         <Button
           asChild
           className="bg-cta text-cta-foreground hover:bg-cta/90 h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98]"
         >
           <a href={session.smsUri}>
-            <MessageSquareText className="size-4" /> СМС илгээх
+            <MessageSquareText className="size-4" /> SMS илгээх
           </a>
         </Button>
 
@@ -91,10 +83,6 @@ export function PhoneVerify({
             />
           </div>
         </div>
-
-        <p className="text-muted-foreground text-xs">
-          СМС-ийн төлбөр 150₮-ийг оператор таны дансаас суутгана.
-        </p>
 
         {/* Гарцууд: таймер дуусахыг хүлээх шаардлагагүй */}
         <div className="flex gap-2.5">

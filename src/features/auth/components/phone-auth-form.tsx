@@ -20,6 +20,11 @@ import { DigitInput } from "@/components/ui/digit-input";
 import { createClient } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { useVerifyMn } from "@/features/auth/use-verify-mn";
+import {
+  SmsHelp,
+  SmsSendInstruction,
+  type SmsHelpContact,
+} from "@/features/auth/components/sms-send-instruction";
 
 type Mode = "login" | "register" | "forgot";
 
@@ -113,7 +118,14 @@ function enterSite(next: string) {
  * Утас + 4 оронтой passcode-той нэвтрэлт (verify.mn MO-SMS дээр суурилсан).
  * register/forgot: дугаар баталгаажуулах → passcode тохируулах хоёр алхам.
  */
-export function PhoneAuthForm({ mode }: { mode: Mode }) {
+export function PhoneAuthForm({
+  mode,
+  helpContact,
+}: {
+  mode: Mode;
+  /** Баталгаажилтад гацвал харуулах дэлгүүрийн утас / Messenger. */
+  helpContact?: SmsHelpContact;
+}) {
   const router = useRouter();
   const params = useSearchParams();
   // Сайтаас гаргах `next`-ийг хаяна (open redirect).
@@ -149,7 +161,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
   React.useEffect(() => {
     if (verify.stage === "error" && verify.error) toast.error(verify.error);
     if (verify.stage === "expired") {
-      toast.error("Хугацаа дууслаа — СМС илгээгдээгүй байна.");
+      toast.error("Хугацаа дууслаа — SMS илгээгдээгүй байна.");
     }
   }, [verify.stage, verify.error]);
 
@@ -306,7 +318,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
         </Reveal>
       )}
 
-      {/* СМС хүлээх / нууц код тохируулах дэлгэцүүд өөрийн агуулгаараа
+      {/* SMS хүлээх / нууц код тохируулах дэлгэцүүд өөрийн агуулгаараа
           ойлгомжтой — том гарчгийг зөвхөн эхний алхамд харуулна. */}
       {(mode === "login" ||
         (verify.stage !== "waiting" && verify.stage !== "verified")) && (
@@ -443,7 +455,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
           </div>
         </form>
       ) : verify.stage === "waiting" && verify.session ? (
-        /* Алхам 2 — СМС хүлээж байна */
+        /* Алхам 2 — SMS хүлээж байна */
         <div className="animate-fade-up space-y-4">
           <button
             type="button"
@@ -458,30 +470,21 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
                 <span className="bg-foreground absolute inline-flex size-full animate-ping rounded-full opacity-60" />
                 <span className="bg-foreground relative inline-flex size-2 rounded-full" />
               </span>
-              СМС хүлээж байна
+              SMS хүлээж байна
             </div>
 
-            {smsCode && (
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">
-                  {verify.session.shortcode} дугаарт илгээх код
-                </p>
-                <p className="font-serif text-4xl font-semibold tracking-[0.3em]">
-                  {smsCode}
-                </p>
-              </div>
-            )}
-
-            <p className="text-muted-foreground text-sm">
-              {verify.session.displayInstruction}
-            </p>
+            <SmsSendInstruction
+              phone={phone}
+              shortcode={verify.session.shortcode}
+              code={smsCode}
+            />
 
             <Button
               asChild
               className="bg-cta text-cta-foreground hover:bg-cta/90 h-12 w-full rounded-xl tracking-wide transition-transform active:scale-[0.98]"
             >
               <a href={verify.session.smsUri}>
-                <MessageSquareText className="size-4" /> СМС илгээх
+                <MessageSquareText className="size-4" /> SMS илгээх
               </a>
             </Button>
 
@@ -498,10 +501,6 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
                 />
               </div>
             </div>
-
-            <p className="text-muted-foreground text-xs">
-              СМС-ийн төлбөр 150₮-ийг оператор таны дансаас суутгана.
-            </p>
 
             {/* Гарцууд: таймер дуусахыг хүлээх шаардлагагүй */}
             <div className="flex gap-2.5">
@@ -530,6 +529,8 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
                 <RotateCw className="size-4" /> Дахин илгээх
               </Button>
             </div>
+
+            <SmsHelp contact={helpContact} />
           </div>
         </div>
       ) : (
@@ -649,7 +650,7 @@ export function PhoneAuthForm({ mode }: { mode: Mode }) {
         </>
       )}
 
-      {/* СМС хүлээх/нууц код алхамд өөрийн гарцууд бий — доод линк илүүц. */}
+      {/* SMS хүлээх/нууц код алхамд өөрийн гарцууд бий — доод линк илүүц. */}
       {(mode === "login" ||
         (verify.stage !== "waiting" && verify.stage !== "verified")) && (
         <Reveal delay={240}>
