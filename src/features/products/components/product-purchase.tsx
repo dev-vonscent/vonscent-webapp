@@ -17,6 +17,7 @@ import { useGiftPicks } from "@/features/extras/gift-picks";
 import { cartMlFor } from "@/features/cart/budget";
 import { maxUnits } from "@/features/products/sellable";
 import { bestValueOf } from "@/features/products/best-value";
+import { SizeHeading } from "@/features/products/components/size-heading";
 import { trackAddToCart } from "@/lib/analytics";
 import type { ProductDetail } from "@/lib/types";
 
@@ -189,7 +190,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
       </div>
 
       <div className="space-y-3">
-        <p className="text-sm font-medium">Хэмжээ сонгох</p>
+        <SizeHeading ml={selected?.ml} />
         {/*
           Хэмжээ бүр ХАРАГДАНА — «Зарна»-г авсан нь жагсаалтаас алга болдог
           байлаа. Тэгэхээр 5ml-г түр хаасан бараа 2 / 10 / 20 гэсэн цоорхойтой
