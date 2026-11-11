@@ -667,7 +667,7 @@ export function PhoneAuthForm({
               </>
             ) : (
               <>
-                {mode === "forgot" ? "Санаа орлоо?" : "Бүртгэлтэй юу?"}{" "}
+                {mode === "forgot" ? "Нууц үгээ санасан уу?" : "Бүртгэлтэй юу?"}{" "}
                 <Link
                   href={withNext("/login")}
                   className="text-foreground underline-offset-4 hover:underline"
