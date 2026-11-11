@@ -18,6 +18,7 @@ import { cartMlFor } from "@/features/cart/budget";
 import { maxUnits } from "@/features/products/sellable";
 import { trackAddToCart } from "@/lib/analytics";
 import type { ProductDetail, ProductListItem } from "@/lib/types";
+import { SizeHeading } from "@/features/products/components/size-heading";
 
 export function QuickAdd({
   product,
@@ -176,7 +177,7 @@ export function QuickAdd({
 
         {/* Size options */}
         <div className="space-y-2">
-          <p className="text-sm font-medium">Хэмжээ сонгох</p>
+          <SizeHeading ml={selected?.ml} />
           {/* Барааны хуудасных шиг тэнцүү 4 багана (ML_SIZES = 4): flex-wrap
               үед «Түр байхгүй» шошготой товч өргөсөж 20ml доош унаад цонхыг
               нэг мөрөөр өндөрсгөдөг байв. */}

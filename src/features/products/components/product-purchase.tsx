@@ -6,7 +6,7 @@ import { Minus, Plus, ShoppingCart, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
-import { SPRAYS_PER_ML, TRIAL_SIZE_ML } from "@/lib/constants";
+import { TRIAL_SIZE_ML } from "@/lib/constants";
 import { toast } from "@/lib/toast";
 import {
   MobileBuyBar,
@@ -17,6 +17,7 @@ import { useGiftPicks } from "@/features/extras/gift-picks";
 import { cartMlFor } from "@/features/cart/budget";
 import { maxUnits } from "@/features/products/sellable";
 import { bestValueOf } from "@/features/products/best-value";
+import { SizeHeading } from "@/features/products/components/size-heading";
 import { trackAddToCart } from "@/lib/analytics";
 import type { ProductDetail } from "@/lib/types";
 
@@ -189,20 +190,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
       </div>
 
       <div className="space-y-3">
-        {/* Шүршилтийн тоо картын ДОТОР биш: карт бүр аль хэдийн 3 мөртэй
-            (үнэ, хуучин үнэ, ₮/ml). Гарчгийн мөрийн хоосон баруун талд
-            сонгосон хэмжээнийх нь л харагдана. */}
-        <div className="flex items-baseline justify-between gap-3">
-          <p className="text-sm font-medium">Хэмжээ сонгох</p>
-          {selected && (
-            <p
-              className="text-muted-foreground text-xs tabular-nums"
-              aria-live="polite"
-            >
-              {selected.ml}ml ≈ {selected.ml * SPRAYS_PER_ML} шүршилт
-            </p>
-          )}
-        </div>
+        <SizeHeading ml={selected?.ml} />
         {/*
           Хэмжээ бүр ХАРАГДАНА — «Зарна»-г авсан нь жагсаалтаас алга болдог
           байлаа. Тэгэхээр 5ml-г түр хаасан бараа 2 / 10 / 20 гэсэн цоорхойтой
