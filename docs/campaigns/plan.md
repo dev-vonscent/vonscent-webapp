@@ -457,7 +457,7 @@ render хийнэ, preload хэвээр. Lighthouse/Web Vitals-ыг өмнө/д�
   Жишээ: Цагаан сар — цэнхэр хадаг, мөнгөн аяга, ул боов **биш**, цагаан/мөнгөлөг; Наадам — хийморийн туг… (дизайнтай тохирох эсэхийг dev дээр туршиж тогтооно).
 - «Өөрөө бичих» → админы текст prompt-д `Theme details:` гэж нэмэгдэнэ. Монгол текстийг загвар
   ойлгодог ч тогтвортой биш — dev дээр туршиж, шаардлагатай бол OpenAI текст загвараар англи руу хөрвүүлэх (v2).
-- Model `gpt-image-2`, edits, quality high, `input_fidelity=high`, PNG.
+- Model `gpt-image-2.6-sunburst` (hero-д л — 2026-11-13 клиент сонгосон; барааны зураг `gpt-image-2` хэвээр), edits, quality high, PNG. `input_fidelity` илгээхгүй — gpt-image-2 татгалздаг.
   Reference: `public/desktop.webp` (+ барааны цэвэр зургууд, prompts/hero.md §2), mobile-д `public/mobile.png` + сонгосон desktop.
 - Reference файлууд serverless функцэд хүрэхүйц байх: storage-д нэг удаа байршуулж (`hero/reference/`) URL-аар уншина.
 - **`src/lib/ai/generate-image.ts`-д хийх өөрчлөлт (аудитаар):** одоогийн `generateProductImage` нь

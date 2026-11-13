@@ -54,8 +54,9 @@ PR → `main` → deploy (Vercel).
 **Тайрахаар бус, эцсийн харьцаагаар шууд** generate хий. 3:2 дээр барааг жижиг
 зураад тайрвал бараа цөөн пикселтэй болж бүдгэрдэг (v1-ийн сургамж).
 
-- Model: `gpt-image-2` (playground: *Size → Custom*), **edits** endpoint, quality **high**,
-  `input_fidelity=high`, output **PNG**, 2–4 хувилбар гаргаж сонго.
+- Model: `gpt-image-2.6-sunburst` (админы AI самбар үүнийг ашиглана; playground: *Size → Custom*),
+  **edits** endpoint, quality **high**, output **PNG**, 2–4 хувилбар гаргаж сонго.
+  `input_fidelity` API-д бүү өг — gpt-image-2 татгалздаг.
 - Хэмжээ: 16-ын үржвэр, харьцаа ≤3:1, урт тал <3840.
   - Desktop: **3584×1280** (артефакт гарвал 2688×960)
   - Утас: **2048×1536** (эсвэл 1536×1152)

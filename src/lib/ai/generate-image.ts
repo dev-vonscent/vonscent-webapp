@@ -151,10 +151,18 @@ export async function generateProductImage(
  * Нүүрний hero (docs/campaigns/plan.md §8.2, prompts/hero.md §2). Барааны
  * зургаас гурван зүйлээр ялгаатай тул тусдаа функц:
  *   · custom хэмжээ (3584×1280 = 2.8:1, 2048×1536 = 4:3) — `ImageSize`-д байхгүй;
- *   · `input_fidelity=high` — reference-ийн зохиомж, шошгыг хадгална;
+ *   · `HERO_IMAGE_MODEL` — барааны зургаас тусдаа model (клиент сонгосон);
  *   · PNG-ээр буцаана (lossless мастер) — webp-д «Ашиглах» үед л хувиргана.
  * Үргэлж edits (reference заавал): hero бол өмнөх зургийн restyle.
  */
+/**
+ * Hero-гийн model (2026-11-13, клиент playground-оос сонгосон). Барааны
+ * зургууд `MODEL`-оор хэвээр — каталог нэг model-оор нэг хэв маягтай үлдэнэ.
+ * `input_fidelity`-г ИЛГЭЭХГҮЙ: gpt-image-2 «does not support the
+ * 'input_fidelity' parameter» гэж татгалздаг (шинэ model-д ч баталгаагүй).
+ */
+export const HERO_IMAGE_MODEL = "gpt-image-2.6-sunburst";
+
 export async function generateHeroImage(opts: {
   prompt: string;
   referenceUrls: string[];
@@ -173,13 +181,12 @@ export async function generateHeroImage(opts: {
     }),
   );
   const form = new FormData();
-  form.append("model", MODEL);
+  form.append("model", HERO_IMAGE_MODEL);
   const field = refs.length === 1 ? "image" : "image[]";
   refs.forEach((blob, i) => form.append(field, blob, `reference-${i}.png`));
   form.append("prompt", opts.prompt);
   form.append("size", opts.size);
   form.append("quality", "high");
-  form.append("input_fidelity", "high");
   form.append("output_format", "png");
   form.append("n", "1");
   const b64 = await callOpenAi("/images/edits", form, false);

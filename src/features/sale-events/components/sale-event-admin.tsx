@@ -537,7 +537,7 @@ function EventForm({
             ? "Хуулж шинэ арга хэмжээ"
             : "Арга хэмжээ үүсгэх"
       }
-      description="Ноорог дэлгүүрт харагдахгүй. Нийтэлсний дараа эхлэх өдрийн 00:00-оос дуусах өдрийн 23:59 хүртэл (УБ) хүчинтэй."
+      description="Ноорог дэлгүүрт харагдахгүй. Нийтэлсний дараа эхлэх өдрийн 00:00:00-оос дуусах өдрийн 23:59:59 хүртэл (УБ) хүчинтэй."
       discardDescription="Бөглөсөн мэдээлэл тань хадгалагдахгүй."
       footer={
         <>
@@ -589,8 +589,8 @@ function EventForm({
                 />
               </Field>
               <Field
-                label="Хаяг (slug)"
-                hint={`vonscent.mn/sale/${draft.slug || "…"}`}
+                label="URL-д орох текст (slug)"
+                hint={`vonscent.mn/sale/${draft.slug || "…"} — латин жижиг үсэг, тоо, зураас`}
                 error={errors.slug}
               >
                 <Input
@@ -611,7 +611,7 @@ function EventForm({
                   }
                 />
               </Field>
-              <Field label="Эхлэх өдөр" hint="00:00-оос" error={errors.startsOn}>
+              <Field label="Эхлэх өдөр" hint="00:00:00-оос" error={errors.startsOn}>
                 <DatePicker
                   value={draft.startsOn}
                   placeholder="Огноо сонгох"
@@ -621,7 +621,7 @@ function EventForm({
               </Field>
               <Field
                 label="Дуусах өдөр"
-                hint="23:59 хүртэл"
+                hint="23:59:59 хүртэл"
                 error={errors.endsOn}
               >
                 <DatePicker
@@ -633,8 +633,8 @@ function EventForm({
                 />
               </Field>
               <Field
-                label="Картын тэмдэг"
-                hint="Хоосон бол «Хямдрал»."
+                label="Картын тэмдэг (Badge text)"
+                hint="Барааны картын буланд. Хоосон бол «Хямдрал»."
                 error={errors.badgeLabel}
               >
                 <Input
@@ -675,7 +675,10 @@ function EventForm({
                 checked={draft.showCountdown}
                 onCheckedChange={(v) => set("showCountdown", v === true)}
               />
-              «Дуусахад 2 өдөр 4 цаг» тоолуур харуулах
+              Дуусах тоолуур харуулах
+              <span className="text-muted-foreground text-xs">
+                («Дуусахад 2 өдөр 4 цаг»)
+              </span>
             </label>
           </section>
 

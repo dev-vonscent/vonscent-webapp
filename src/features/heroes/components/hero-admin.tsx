@@ -796,14 +796,14 @@ function HeroForm({
               </Field>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Эхлэх өдөр" hint="00:00-оос" error={errors.startsOn}>
+                <Field label="Эхлэх өдөр" hint="00:00:00-оос" error={errors.startsOn}>
                   <DatePicker
                     value={draft.startsOn}
                     clearable={false}
                     onChange={(v) => set("startsOn", v)}
                   />
                 </Field>
-                <Field label="Дуусах өдөр" hint="23:59 хүртэл" error={errors.endsOn}>
+                <Field label="Дуусах өдөр" hint="23:59:59 хүртэл" error={errors.endsOn}>
                   <DatePicker
                     value={draft.endsOn}
                     clearable={false}
