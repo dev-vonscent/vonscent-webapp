@@ -1,5 +1,5 @@
 /**
- * Нүүрний hero (0182_heroes) integration тест — бодит Postgres.
+ * Нүүрний hero (0182_heroes, 0183 AI зураг) integration тест — бодит Postgres.
  *
  *   pnpm db:test-heroes-dev      # зөвхөн .env.dev
  *
@@ -234,6 +234,29 @@ async function main() {
     );
     check("anon бичиж чадахгүй", w !== null, w?.message);
     await c.query("reset role");
+  });
+
+  await scenario(c, "8. AI зургийн ажил (0183)", async () => {
+    const insert = () =>
+      errorOf(
+        c,
+        `insert into hero_image_generations (group_id, target, theme_key, size, prompt)
+         values (gen_random_uuid(), 'desktop', 'winter', '3584x1280', 'p')`,
+      );
+    check("туг нээлттэй → insert болно", (await insert()) === null);
+    const bad = await errorOf(
+      c,
+      `insert into hero_image_generations (group_id, target, theme_key, size, prompt)
+       values (gen_random_uuid(), 'tablet', 'winter', '3584x1280', 'p')`,
+    );
+    check("target зөвхөн desktop/mobile", /check constraint/.test(bad?.message ?? ""), bad?.message);
+    await c.query("set local role anon");
+    const r = await c.query("select * from hero_image_generations");
+    check("anon уншихгүй", r.rowCount === 0);
+    await c.query("reset role");
+    await setFlag(c, "hero_admin", false);
+    const off = await insert();
+    check("туг хаалттай → FEATURE_DISABLED (зардал гарахгүй)", /FEATURE_DISABLED/.test(off?.message ?? ""), off?.message);
   });
 
   await c.end();

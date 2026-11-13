@@ -1,6 +1,6 @@
 # Хугацаат хямдрал (арга хэмжээ) + админаас удирддаг Hero
 
-> Төлөв: **v2 — кодтой тулгаж аудит хийсэн** (өөрчлөлтийн жагсаалт §18), клиентээр батлуулах (§16)
+> Төлөв: **v2 — хэрэгжүүлсэн** (PR1–3, §19), клиентээр батлуулах (§16)
 > Огноо: 2026-11-13
 > Feature flag: `sale_events` (арга хэмжээ, каталог, үнэ), `hero_admin` (hero засвар + AI зураг) — бие даасан, тус тусдаа нээгдэнэ
 > Салбар: `feat/sale-events`, `feat/hero-admin` (dev-ээс)
@@ -677,3 +677,39 @@ Sidebar-т «Хямдрал»-ын доор тусдаа цэс (`flag: "sale_ev
 - Baymard — Sales filter-based category: https://baymard.com/blog/sales-filter-based-category
 - Koozai — Black Friday хуудсыг жилийн турш байлгах: https://www.koozai.com/blog/search-marketing/should-you-keep-your-black-friday-pages-live-all-year/amp/
 - Shopify Community — Давтагдах хямдралын хуваарь, сэргээлтийн асуудал: https://community.shopify.com/t/how-do-you-handle-scheduled-collection-updates-for-recurring-sales/571464
+
+---
+
+## 19. Хэрэгжилтийн тэмдэглэл (2026-11-13)
+
+| PR | Салбар | Migration | DB тест |
+|----|--------|-----------|---------|
+| 1 | `feat/sale-events` | 0181_sale_events | `pnpm db:test-sale-events-dev` |
+| 2 | `feat/hero-admin` (1 дээр) | 0182_heroes | `pnpm db:test-heroes-dev` |
+| 3 | `feat/hero-ai` (2 дээр) | 0183_hero_image_generations | `pnpm db:test-heroes-dev` §8 |
+
+Төлөвлөгөөнөөс зөрсөн / нэмэгдсэн:
+
+- **Гүйцэтгэл (§5.1):** `variant_price` → definer функц мөр бүрт нь catalog_search-ийг dev дээр
+  94 → 567ms болгосон (үүрлэсэн `feature_enabled`). Тугийг `feature_flags`-тэй join-оор шалгаж,
+  `catalog_items` live хувийг нэг удаа (`live_event_discounts()`, materialized CTE) уншдаг болгосны
+  дараа 97ms (≈+3%). Томьёо нэг газар: `event_discount_price()`; view ↔ `variant_price` тэнцүүг DB тест шалгана.
+- `event_pct()` → `variant_event_price()` (үнийг шууд буцаана).
+- Давхцлын trigger нь **deferred constraint trigger**; `save_sale_event` нь гишүүд + хувийг нэг транзакцид
+  сольж, функц дотроо `set constraints … immediate`.
+- Slug архивлалт `save_sale_event` дотор: дууссан арга хэмжээний slug-ийг шинэд өгөхөд хуучныг `slug-YYYY`.
+- `/sale/[slug]` нь хуудас биш **route handler** (жинхэнэ 307) — async shop layout-ийн дараах `redirect()` 200 + meta refresh өгдөг.
+- Бэлэн багцын засвар (§5.3) **тугаас хамааралгүй** — main руу орохтой зэрэг prod-д үйлчилнэ.
+- Hero-той холбоотой ноорог арга хэмжээг устгахад hero ноорог болж, хугацаа нь хуулагдана (FK set null + period check).
+- Hero-гийн урьдчилж харах: `/admin/hero-preview` (тусдаа `(admin-bare)` route group, iframe, postMessage).
+- AI: суурь reference-ийг lambda-д файлаар (`outputFileTracingIncludes`) оруулж storage-д нэг удаа хуулна;
+  `generating`-д 6 мин-ээс удсан ажил `failed`; «хурдан» хэмжээ (2688×960 / 1536×1152).
+
+Хийгдээгүй (дараагийн PR):
+
+- Барааны сонгогчийг `sale-manager.tsx`-ээс салгаж хоёр газар ашиглах (§9.1) — одоо тусдаа сонгогч.
+- «Бараагаар» хуудсанд барааны мөрөнд арга хэмжээний нэр (§9.4) — зөвхөн тайлбар нэмсэн.
+- Админы багцын маягтын урьдчилж харах хямдарсан үнээр харуулсаар (зөвхөн харагдац).
+- Админы UI (`/admin/sale-events`, `/admin/heroes`, AI самбар) нэвтрэлт шаарддаг тул browser-оор гараар туршаагүй.
+  AI-ийг `OPENAI_API_KEY` нэмсний дараа dev дээр 5 сэдэв × 2 хувилбар (§13.3).
+

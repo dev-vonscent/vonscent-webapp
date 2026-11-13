@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { isFeatureEnabled } from "@/lib/feature-flags";
+import { isImageGenConfigured } from "@/lib/env";
 import { getHeroEventOptions, getHeroesAdmin } from "@/features/heroes/api";
 import { HeroAdmin } from "@/features/heroes/components/hero-admin";
 
@@ -14,5 +15,11 @@ export default async function AdminHeroesPage() {
     getHeroesAdmin(),
     getHeroEventOptions(),
   ]);
-  return <HeroAdmin rows={rows} events={events} />;
+  return (
+    <HeroAdmin
+      rows={rows}
+      events={events}
+      aiConfigured={isImageGenConfigured}
+    />
+  );
 }

@@ -7,8 +7,17 @@ Hero-гийн гэрэл зургийг (desktop / утас) шинээр genera
 
 ## 0. Текст, зураг хаана, яаж гарах
 
-Админ UI **байхгүй** — hero-гийн текст ба зураг хоёулаа кодод, солих нь
-PR → `main` → deploy (Vercel). Feature flag хэрэггүй (feature биш, агуулга).
+> **2026-11-13-аас:** feature flag `hero_admin` нээлттэй үед hero-г **Админ → Сайт →
+> Нүүрний hero**-оос бичнэ (текст, товч, хуваарь, зураг upload эсвэл AI үүсгэх —
+> docs/campaigns/plan.md §7–§8, 0182–0183). AI нь энэ баримтын бүсийн дүрэм,
+> хэмжээг `src/lib/ai/hero-prompt.ts`-д хэрэгжүүлсэн; upload/AI-ийн зураг энд
+> бичсэн §4-ийн sharp алхмыг автоматаар хийнэ. Доорх кодын зам (`HOME_CAMPAIGNS`)
+> нь **нөөц** — DB-д идэвхтэй hero байхгүй, туг хаалттай эсвэл demo үед гарна.
+> AI-ийн суурь reference нь `public/desktop.webp` / `mobile.png` — тэдгээрийг
+> солибол `src/lib/ai/hero-references.ts`-ийн `REFERENCE_VERSION`-ийг ахиул.
+
+Кодын hero: текст ба зураг хоёулаа кодод, солих нь
+PR → `main` → deploy (Vercel).
 
 - Текст: `home-content.ts` → `HOME_CAMPAIGNS`-ийн мөр (`eyebrow`, `title`,
   `description`, утсанд богино `mobileDescription`, `primary`/`secondary` холбоос).

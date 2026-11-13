@@ -883,8 +883,21 @@ export const HERO_LIMITS = {
  */
 export const HERO_IMAGE = {
   desktop: { ratio: 2.8, minWidth: 2400, widths: [1600, 2400, 3200], quality: 80 },
-  mobile: { ratio: 4 / 3, minWidth: 1600, width: 1600, quality: 85 },
+  // 1536 — AI-ийн «хурдан» хэмжээ (1536×1152) ч орно; том бол 1600 хүртэл.
+  mobile: { ratio: 4 / 3, minWidth: 1536, width: 1600, quality: 85 },
   ratioTolerance: 0.02,
+} as const;
+
+/**
+ * AI hero зураг (0183, plan §8.3) — санамсаргүй зардлаас хамгаалах. Нэг hero-д
+ * зэрэг 2 ажил, бүх админд өдөрт 30. `generating` төлөвт `staleMinutes`-ээс
+ * удсан ажлыг (функц `maxDuration`-д тасарсан) амжилтгүй гэж үзнэ.
+ */
+export const HERO_AI_LIMITS = {
+  concurrentPerHero: 2,
+  perDay: 30,
+  staleMinutes: 6,
+  extraMax: 500,
 } as const;
 
 /** Бэлгийн картын дүн, ₮ (0179 check-тэй ижил). */

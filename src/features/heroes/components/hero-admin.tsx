@@ -45,6 +45,7 @@ import {
 } from "@/lib/validators/hero";
 import { heroPeriod, heroSchedule, heroToCampaign, heroTargetHref } from "../lib";
 import { prepareHeroUpload } from "../prepare-upload";
+import { HeroAiPanel } from "./hero-ai-panel";
 import type {
   HeroAdminRow,
   HeroDesktopImage,
@@ -67,9 +68,12 @@ import {
 export function HeroAdmin({
   rows,
   events,
+  aiConfigured,
 }: {
   rows: HeroAdminRow[];
   events: HeroEventOption[];
+  /** `OPENAI_API_KEY` тохируулсан эсэх — AI самбар (0183). */
+  aiConfigured: boolean;
 }) {
   const router = useRouter();
   const [confirm, confirmDialog] = useConfirm();
@@ -194,6 +198,7 @@ export function HeroAdmin({
       <HeroForm
         editing={editing}
         events={events}
+        aiConfigured={aiConfigured}
         onClose={() => setEditing(null)}
         onSaved={() => {
           setEditing(null);
@@ -424,11 +429,13 @@ function toInput(d: Draft, isActive: boolean): unknown {
 function HeroForm({
   editing,
   events,
+  aiConfigured,
   onClose,
   onSaved,
 }: {
   editing: Editing | null;
   events: HeroEventOption[];
+  aiConfigured: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -608,6 +615,17 @@ function HeroForm({
                 onUploaded={(r) => r.mobile && set("mobileImage", r.mobile)}
               />
             </div>
+            <HeroAiPanel
+              groupId={draft.groupId}
+              heroId={isEdit ? editing.row.id : null}
+              configured={aiConfigured}
+              onUse={(r) => {
+                if (r.desktop) set("desktopImage", r.desktop);
+                if (r.mobile) set("mobileImage", r.mobile);
+                // Desktop-ын зүүн тал (текстийн бүс) л текстийн өнгийг шийднэ.
+                if (r.desktop && r.suggestDark !== draft.dark) set("dark", r.suggestDark);
+              }}
+            />
             <div className="grid gap-4 sm:grid-cols-2">
               <Field
                 label="Зургийн тайлбар (alt)"

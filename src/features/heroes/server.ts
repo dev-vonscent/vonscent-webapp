@@ -154,12 +154,12 @@ export type HeroImageResult =
  * (`hero/<groupId>/<uuid>-<w>.webp`) — CDN/Safari кэш (prompts/hero.md §4).
  */
 export async function processHeroImage(
-  bytes: ArrayBuffer,
+  bytes: ArrayBuffer | Buffer,
   kind: "desktop" | "mobile",
   groupId: string,
 ): Promise<HeroImageResult> {
   const sharp = await sharpLib();
-  const input = Buffer.from(bytes);
+  const input = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
   let meta: { width?: number; height?: number };
   try {
     meta = await sharp(input, { failOn: "error" }).rotate().metadata();
@@ -227,7 +227,7 @@ export async function processHeroImage(
   const m = HERO_IMAGE.mobile;
   const { data, info } = await sharp(input)
     .rotate()
-    .resize({ width: m.width })
+    .resize({ width: m.width, withoutEnlargement: true })
     .webp({ quality: m.quality })
     .toBuffer({ resolveWithObject: true });
   const up = await uploadImage(`hero/${groupId}/${id}-m${m.width}.webp`, data, "image/webp");
