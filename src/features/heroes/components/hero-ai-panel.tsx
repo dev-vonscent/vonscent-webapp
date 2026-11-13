@@ -1,9 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { Check, Search, Sparkles, X } from "lucide-react";
+import { Check, Maximize2, Search, Sparkles, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { LoadingButton } from "@/components/shared/loading-button";
@@ -60,6 +66,8 @@ export function HeroAiPanel({
     null,
   );
   const [using, setUsing] = React.useState<string | null>(null);
+  const [removing, setRemoving] = React.useState<string | null>(null);
+  const [preview, setPreview] = React.useState<HeroGenerationJob | null>(null);
 
   const load = React.useCallback(async () => {
     const res = await adminFetch<{ jobs: HeroGenerationJob[] }>(
@@ -131,6 +139,25 @@ export function HeroAiPanel({
       );
     } finally {
       setUsing(null);
+    }
+  }
+
+  /** Амжилтгүй / хэрэггүй хувилбарыг түүхээс устгана (PNG мастер хамт). */
+  async function remove(job: HeroGenerationJob) {
+    setRemoving(job.id);
+    try {
+      const res = await adminFetch(`/api/admin/heroes/generations/${job.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        toast.error(res.error, "Устгаж чадсангүй");
+        return;
+      }
+      if (job.result_url && desktopRef === job.result_url) setDesktopRef(null);
+      if (preview?.id === job.id) setPreview(null);
+      setJobs((list) => list.filter((j) => j.id !== job.id));
+    } finally {
+      setRemoving(null);
     }
   }
 
@@ -228,20 +255,28 @@ export function HeroAiPanel({
                 )}
               >
                 {j.status === "done" && j.result_url ? (
-                  <>
+                  <button
+                    type="button"
+                    className="group/preview block size-full cursor-zoom-in"
+                    aria-label="Томоор харах"
+                    onClick={() => setPreview(j)}
+                  >
                     {/* eslint-disable-next-line @next/next/no-img-element -- PNG мастер, админы preview */}
                     <img
                       src={j.result_url}
                       alt=""
                       className="size-full object-cover"
                     />
+                    <span className="bg-background/80 absolute top-1.5 right-1.5 grid size-8 place-items-center rounded-full opacity-80 group-hover/preview:opacity-100">
+                      <Maximize2 className="size-4" aria-hidden />
+                    </span>
                     {/* Текстийн бүс: энэ шугамын зүүн талд юу ч байх ёсгүй. */}
                     <div
                       aria-hidden
                       className="border-background/90 bg-background/10 absolute inset-y-0 left-0 border-r-2 border-dashed"
                       style={{ width: `${SAFE_ZONE[j.target]}%` }}
                     />
-                  </>
+                  </button>
                 ) : (
                   <div className="text-muted-foreground flex size-full items-center justify-center p-2 text-center text-xs">
                     {j.status === "failed"
@@ -264,8 +299,21 @@ export function HeroAiPanel({
                         .join(", ")}`
                     : ""}
                 </span>
+                {(j.status === "failed" || j.status === "done") && (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="text-muted-foreground hover:text-destructive ml-auto size-8"
+                    aria-label="Энэ хувилбарыг устгах"
+                    disabled={removing === j.id}
+                    onClick={() => remove(j)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                )}
                 {j.status === "done" && (
-                  <div className="ml-auto flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1">
                     {j.target === "desktop" && (
                       <Button
                         type="button"
@@ -300,7 +348,80 @@ export function HeroAiPanel({
           ))}
         </ul>
       )}
+      <PreviewDialog
+        job={preview}
+        onClose={() => setPreview(null)}
+        onUse={(j) => {
+          setPreview(null);
+          void use(j);
+        }}
+      />
     </div>
+  );
+}
+
+/**
+ * Үүсгэсэн зургийг томоор (plan §8.1 ③): шошго, жижиг бичгийг нүдээр
+ * шалгах. Текстийн бүсийн шугамыг асааж/унтрааж болно.
+ */
+function PreviewDialog({
+  job,
+  onClose,
+  onUse,
+}: {
+  job: HeroGenerationJob | null;
+  onClose: () => void;
+  onUse: (j: HeroGenerationJob) => void;
+}) {
+  const [zone, setZone] = React.useState(true);
+  return (
+    <Dialog open={job !== null} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[calc(100svh-2rem)] max-w-[min(96vw,1600px)] gap-3 overflow-y-auto p-3 sm:p-4">
+        {job?.result_url && (
+          <>
+            <DialogTitle className="pr-10 text-base">
+              {job.target === "desktop" ? "Desktop (2.8:1)" : "Утас (4:3)"} ·{" "}
+              {HERO_THEMES[job.theme_key as HeroThemeKey]?.label ?? job.theme_key}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Үүсгэсэн hero зургийг бүтэн хэмжээгээр харах
+            </DialogDescription>
+            <div className="bg-muted relative overflow-hidden rounded-md">
+              {/* eslint-disable-next-line @next/next/no-img-element -- PNG мастер, админы preview */}
+              <img src={job.result_url} alt="" className="block h-auto w-full" />
+              {zone && (
+                <div
+                  aria-hidden
+                  className="border-background/90 bg-background/10 absolute inset-y-0 left-0 border-r-2 border-dashed"
+                  style={{ width: `${SAFE_ZONE[job.target]}%` }}
+                />
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={zone}
+                  onChange={(e) => setZone(e.target.checked)}
+                />
+                Текстийн бүс ({SAFE_ZONE[job.target]}%) харуулах
+              </label>
+              <a
+                href={job.result_url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-muted-foreground ml-auto text-sm underline-offset-4 hover:underline"
+              >
+                Эх хэмжээгээр нээх
+              </a>
+              <Button type="button" size="sm" onClick={() => onUse(job)}>
+                Ашиглах
+              </Button>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
