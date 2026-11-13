@@ -1,0 +1,247 @@
+/**
+ * Нүүрний hero (0182_heroes) integration тест — бодит Postgres.
+ *
+ *   pnpm db:test-heroes-dev      # зөвхөн .env.dev
+ *
+ * docs/campaigns/plan.md §7.2, §11, §12. Сценари бүр `begin … rollback`.
+ */
+import type { Client } from "pg";
+import { connectDb } from "./db";
+
+const url = process.env.DATABASE_URL;
+if (!url) {
+  console.error("✖ DATABASE_URL is not set (use --env-file=.env.dev).");
+  process.exit(1);
+}
+
+let failed = 0;
+function check(name: string, ok: boolean, detail?: unknown) {
+  if (ok) console.log(`  ✓ ${name}`);
+  else {
+    failed++;
+    console.log(`  ✖ ${name}`, detail ?? "");
+  }
+}
+
+async function setFlag(c: Client, key: string, on: boolean) {
+  await c.query(
+    `insert into feature_flags (key, enabled) values ($1, $2)
+       on conflict (key) do update set enabled = excluded.enabled`,
+    [key, on],
+  );
+}
+
+async function scenario(c: Client, name: string, body: () => Promise<void>) {
+  console.log(`\n${name}`);
+  await c.query("begin");
+  try {
+    await setFlag(c, "hero_admin", true);
+    await setFlag(c, "sale_events", true);
+    // Dev санд жинхэнэ hero / арга хэмжээ байж болно — түр унтраана.
+    await c.query("update heroes set is_active = false where is_active");
+    await c.query("update sale_events set is_active = false where is_active");
+    await body();
+  } catch (e) {
+    failed++;
+    console.log("  ✖ алдаа", e);
+  } finally {
+    await c.query("rollback");
+  }
+}
+
+async function errorOf(c: Client, sql: string, params: unknown[] = []) {
+  await c.query("savepoint t");
+  try {
+    await c.query(sql, params);
+    await c.query("release savepoint t");
+    return null;
+  } catch (e) {
+    await c.query("rollback to savepoint t");
+    return e as Error;
+  }
+}
+
+const IMG = {
+  desktop: { base: "https://x/hero/a/b", widths: [1600, 2400, 3200], height1600: 571 },
+  mobile: { src: "https://x/hero/a/m.webp", width: 1600, height: 1200 },
+};
+
+async function addHero(
+  c: Client,
+  o: {
+    name?: string;
+    from?: string;
+    to?: string;
+    event?: string | null;
+    priority?: number;
+    active?: boolean;
+    images?: boolean;
+    primary?: object;
+  } = {},
+): Promise<string> {
+  const { rows } = await c.query<{ id: string }>(
+    `insert into heroes (name, sale_event_id, starts_at, ends_at, priority, is_active,
+                         title, primary_label, primary_target, desktop_image, mobile_image)
+     values ($1, $2, ${o.event ? "null" : (o.from ?? "now() - interval '1 hour'")},
+             ${o.event ? "null" : (o.to ?? "now() + interval '1 hour'")},
+             $3, $4, 'Гарчиг', 'Үзэх', $5::jsonb, $6::jsonb, $7::jsonb)
+     returning id`,
+    [
+      o.name ?? "H",
+      o.event ?? null,
+      o.priority ?? 0,
+      o.active ?? true,
+      JSON.stringify(o.primary ?? { type: "path", href: "/catalog" }),
+      o.images === false ? null : JSON.stringify(IMG.desktop),
+      o.images === false ? null : JSON.stringify(IMG.mobile),
+    ],
+  );
+  return rows[0].id;
+}
+
+async function addEvent(
+  c: Client,
+  slug: string,
+  from = "now() - interval '1 hour'",
+  to = "now() + interval '1 hour'",
+  active = true,
+): Promise<string> {
+  const { rows } = await c.query<{ id: string }>(
+    `insert into sale_events (slug, name, starts_at, ends_at, is_active)
+     values ($1, $1, ${from}, ${to}, $2) returning id`,
+    [slug, active],
+  );
+  return rows[0].id;
+}
+
+async function liveId(c: Client): Promise<string | null> {
+  const { rows } = await c.query<{ id: string }>("select id from live_hero()");
+  return rows[0]?.id ?? null;
+}
+
+async function main() {
+  const c = await connectDb(url!);
+
+  await scenario(c, "1. Туг хаалттай — хоосон, бичилт хориотой", async () => {
+    await addHero(c);
+    await setFlag(c, "hero_admin", false);
+    check("live_hero хоосон", (await liveId(c)) === null);
+    const err = await errorOf(
+      c,
+      `insert into heroes (name, starts_at, ends_at, title, primary_label, primary_target)
+       values ('x', now(), now() + interval '1 day', 't', 'b', '{"type":"path","href":"/"}')`,
+    );
+    check("insert → FEATURE_DISABLED", /FEATURE_DISABLED/.test(err?.message ?? ""), err?.message);
+  });
+
+  await scenario(c, "2. Хуваарь ба эрэмбэ", async () => {
+    check("hero байхгүй → хоосон (кодын hero)", (await liveId(c)) === null);
+    const a = await addHero(c, { name: "A" });
+    check("явж буй → гарна", (await liveId(c)) === a);
+    await addHero(c, { name: "future", from: "now() + interval '1 hour'", to: "now() + interval '2 hours'", priority: 50 });
+    check("эхлээгүй (их эрэмбэтэй ч) → гарахгүй", (await liveId(c)) === a);
+    const b = await addHero(c, { name: "B", priority: 10 });
+    check("их эрэмбэ түрүүлнэ", (await liveId(c)) === b);
+    await addHero(c, { name: "ended", from: "now() - interval '2 hours'", to: "now()", priority: 99 });
+    check("дууссан (ends_at exclusive) → гарахгүй", (await liveId(c)) === b);
+    await addHero(c, { name: "draft", active: false, priority: 99 });
+    check("ноорог → гарахгүй", (await liveId(c)) === b);
+  });
+
+  await scenario(c, "3. Зураггүй hero идэвхтэй болохгүй", async () => {
+    const err = await errorOf(
+      c,
+      `insert into heroes (name, starts_at, ends_at, is_active, title, primary_label, primary_target)
+       values ('x', now(), now() + interval '1 day', true, 't', 'b', '{"type":"path","href":"/"}')`,
+    );
+    check("heroes_active_images", /heroes_active_images/.test(err?.message ?? ""), err?.message);
+    const draft = await addHero(c, { active: false, images: false });
+    check("зураггүй ноорог болно", Boolean(draft));
+  });
+
+  await scenario(c, "4. Арга хэмжээтэй холбоо", async () => {
+    const ev = await addEvent(c, "hero-bf", "now() + interval '1 hour'", "now() + interval '2 hours'");
+    const h = await addHero(c, { event: ev });
+    check("арга хэмжээ эхлээгүй → гарахгүй", (await liveId(c)) === null);
+    await c.query("update sale_events set starts_at = now() - interval '1 hour' where id = $1", [ev]);
+    check("арга хэмжээ эхлэхэд → гарна", (await liveId(c)) === h);
+    const { rows } = await c.query("select ends_at from live_hero()");
+    const e = await c.query("select ends_at from sale_events where id = $1", [ev]);
+    check("хугацаа арга хэмжээнээс", String(rows[0].ends_at) === String(e.rows[0].ends_at));
+    await c.query("update sale_events set is_active = false where id = $1", [ev]);
+    check("арга хэмжээ цуцлагдвал → унтарна", (await liveId(c)) === null);
+    await c.query("update sale_events set is_active = true where id = $1", [ev]);
+    await setFlag(c, "sale_events", false);
+    check("sale_events туг хаалттай → холбоотой hero гарахгүй", (await liveId(c)) === null);
+    await setFlag(c, "sale_events", true);
+    await c.query("delete from sale_events where id = $1", [ev]);
+    const after = await c.query(
+      "select sale_event_id, is_active, starts_at, ends_at from heroes where id = $1",
+      [h],
+    );
+    check("арга хэмжээ устгахад hero үлдэнэ (set null)", after.rows[0].sale_event_id === null);
+    check("хугацаа хуулагдаж, ноорог болно", after.rows[0].is_active === false && after.rows[0].ends_at != null, after.rows[0]);
+  });
+
+  await scenario(c, "5. Товч live биш арга хэмжээ рүү заавал алгасна", async () => {
+    await addEvent(c, "btn-ev", "now() + interval '1 hour'", "now() + interval '2 hours'");
+    await addHero(c, { primary: { type: "event", slug: "btn-ev" }, priority: 5 });
+    const fallback = await addHero(c, { name: "fallback" });
+    check("эвдэрсэн товчтой hero алгасагдана", (await liveId(c)) === fallback);
+    const ok = await addHero(c, { primary: { type: "season", value: "winter" }, priority: 9 });
+    check("улирлын холбоос → гарна", (await liveId(c)) === ok);
+  });
+
+  await scenario(c, "6. Холбоосын хамгаалалт (hero_target_valid)", async () => {
+    const bad = [
+      { type: "path", href: "https://evil.example" },
+      { type: "path", href: "//evil.example" },
+      { type: "path", href: "/\\evil.example" },
+      { type: "path", href: "/a b" },
+      { type: "season", value: "all" },
+      { type: "event", slug: "Bad Slug" },
+      { type: "nope" },
+    ];
+    for (const t of bad) {
+      const err = await errorOf(
+        c,
+        `insert into heroes (name, starts_at, ends_at, title, primary_label, primary_target)
+         values ('x', now(), now() + interval '1 day', 't', 'b', $1::jsonb)`,
+        [JSON.stringify(t)],
+      );
+      check(`татгалзана: ${JSON.stringify(t)}`, /check constraint/.test(err?.message ?? ""), err?.message);
+    }
+    const good = await errorOf(
+      c,
+      `insert into heroes (name, starts_at, ends_at, title, primary_label, primary_target)
+       values ('x', now(), now() + interval '1 day', 't', 'b', '{"type":"path","href":"/collections/build"}')`,
+    );
+    check("дотоод хаяг зөвшөөрөгдөнө", good === null, good?.message);
+  });
+
+  await scenario(c, "7. Эрх (anon)", async () => {
+    await addHero(c, { name: "visible" });
+    await addHero(c, { name: "sched", from: "now() + interval '5 hours'", to: "now() + interval '6 hours'" });
+    await c.query("set local role anon");
+    const t = await c.query("select * from heroes");
+    check("heroes шууд select → 0 мөр", t.rowCount === 0);
+    const l = await c.query("select * from live_hero()");
+    check("live_hero нэг мөр, нэр/эрэмбэ ил гарахгүй", l.rowCount === 1 && !("name" in l.rows[0]) && !("priority" in l.rows[0]), l.rows[0]);
+    const w = await errorOf(
+      c,
+      `insert into heroes (name, starts_at, ends_at, title, primary_label, primary_target)
+       values ('x', now(), now() + interval '1 day', 't', 'b', '{"type":"path","href":"/"}')`,
+    );
+    check("anon бичиж чадахгүй", w !== null, w?.message);
+    await c.query("reset role");
+  });
+
+  await c.end();
+  console.log(failed ? `\n✖ ${failed} шалгалт унасан.` : "\n✅ Бүх шалгалт амжилттай.");
+  process.exit(failed ? 1 : 0);
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

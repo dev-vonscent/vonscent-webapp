@@ -7,7 +7,7 @@ import { isFeatureEnabled } from "@/lib/feature-flags";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
- * Арга хэмжээний эхлэх / дуусах мөч (plan §10). Үнэ нь DB-д секундын
+ * Арга хэмжээ (0181) ба нүүрний hero (0182)-гийн эхлэх / дуусах мөч (plan §10). Үнэ нь DB-д секундын
  * нарийвчлалтай солигддог ч тэр мөчид бичилт байхгүй тул `revalidatePublic()`
  * дуудагдахгүй — ISR (60с) + `unstable_cache` (60с) нь chip, badge, зурвасыг
  * 2 мин хүртэл хоцроох байв. Vercel cron минут тутам: сүүлийн хоёр минутад
@@ -33,7 +33,11 @@ export async function GET(req: Request) {
   if (!authorised(req)) {
     return NextResponse.json({ error: "UNAUTHORISED" }, { status: 401 });
   }
-  if (!(await isFeatureEnabled("sale_events"))) {
+  const [eventsOn, heroesOn] = await Promise.all([
+    isFeatureEnabled("sale_events"),
+    isFeatureEnabled("hero_admin"),
+  ]);
+  if (!eventsOn && !heroesOn) {
     return NextResponse.json({ ok: true, skipped: "FEATURE_DISABLED" });
   }
   const supabase = createAdminClient();
@@ -42,19 +46,26 @@ export async function GET(req: Request) {
   const now = Date.now();
   const from = new Date(now - WINDOW_MS).toISOString();
   const to = new Date(now).toISOString();
-  const { data, error } = await supabase
-    .from("sale_events")
-    .select("id")
-    .eq("is_active", true)
-    .or(
-      `and(starts_at.gt.${from},starts_at.lte.${to}),and(ends_at.gt.${from},ends_at.lte.${to})`,
-    )
-    .limit(1);
-  if (error) {
-    Sentry.captureException(new Error(`cron sale-events: ${error.message}`));
-    return NextResponse.json({ error: "DB" }, { status: 500 });
+  const boundary = `and(starts_at.gt.${from},starts_at.lte.${to}),and(ends_at.gt.${from},ends_at.lte.${to})`;
+  // Арга хэмжээ (hero-той холбоотой нь ч мөн эндээс) ба өөрийн хугацаатай
+  // hero (0182) — аль нэг нь хил давсан бол.
+  const checks = await Promise.all([
+    eventsOn
+      ? supabase.from("sale_events").select("id").eq("is_active", true).or(boundary).limit(1)
+      : null,
+    heroesOn
+      ? supabase.from("heroes").select("id").eq("is_active", true).or(boundary).limit(1)
+      : null,
+  ]);
+  let changed = false;
+  for (const res of checks) {
+    if (!res) continue;
+    if (res.error) {
+      Sentry.captureException(new Error(`cron sale-events: ${res.error.message}`));
+      return NextResponse.json({ error: "DB" }, { status: 500 });
+    }
+    if ((res.data?.length ?? 0) > 0) changed = true;
   }
-  const changed = (data?.length ?? 0) > 0;
   if (changed) revalidatePublic();
   return NextResponse.json({ ok: true, revalidated: changed });
 }

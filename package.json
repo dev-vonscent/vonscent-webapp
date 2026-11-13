@@ -38,6 +38,7 @@
     "db:dev-signup-local": "node --env-file=.env.dev --env-file=.env.localdb --import tsx scripts/dev-signup.ts",
     "db:test-campaigns-dev": "node --env-file=.env.dev --import tsx scripts/test-campaigns.ts",
     "db:test-sale-events-dev": "node --env-file=.env.dev --import tsx scripts/test-sale-events.ts",
+    "db:test-heroes-dev": "node --env-file=.env.dev --import tsx scripts/test-heroes.ts",
     "db:test-perfume-requests-dev": "node --env-file=.env.dev --import tsx scripts/test-perfume-requests.ts",
     "db:test-reports-dev": "node --env-file=.env.dev --import tsx scripts/test-reports.ts",
     "db:reset-test-data-dev": "node --env-file=.env.dev --import tsx scripts/reset-test-data.ts",

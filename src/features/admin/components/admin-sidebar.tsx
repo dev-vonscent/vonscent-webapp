@@ -18,6 +18,7 @@ import {
   FlaskConical,
   CreditCard,
   Gift,
+  GalleryHorizontal,
   Globe,
   Layers,
   LayoutDashboard,
@@ -205,6 +206,13 @@ const GROUPS: NavGroup[] = [
     icon: Globe,
     links: [
       { href: "/admin/content", label: "Контент", icon: FileText },
+      // Админаас бичдэг, хуваарьтай нүүрний hero (0182).
+      {
+        href: "/admin/heroes",
+        label: "Нүүрний hero",
+        icon: GalleryHorizontal,
+        flag: "hero_admin",
+      },
       {
         href: "/admin/home-sections",
         label: "Нүүрийн хэсэг",

@@ -829,6 +829,11 @@ export const FEATURE_FLAGS = {
     description:
       "Black Friday, Цагаан сар г.м. нэртэй, хугацаатай хямдрал: Админ → Каталог → Арга хэмжээ (/admin/sale-events, /api/admin/sale-events), каталогийн «?event=» шүүлтүүр, chip, зурвас, тоолуур, барааны картын badge, /sale/[slug] богино хаяг, минут тутмын /api/cron/sale-events. Үнэ variant_price()-д тооцоологдоно (0181) — sale_price-д бичигдэхгүй, гар хямдрал дарагдахгүй. Хаалттай үед үнэ, каталогт ямар ч нөлөөгүй, бичих RPC FEATURE_DISABLED.",
   },
+  hero_admin: {
+    label: "Нүүрний hero (админ)",
+    description:
+      "Нүүрний hero-гийн текст, товч, холбоос, зураг, хуваарийг админ бичнэ: Админ → Сайт → Нүүрний hero (/admin/heroes, /api/admin/heroes), арга хэмжээтэй холбох, 390/768/1440 урьдчилж харах (/hero-preview), live_hero() (0182). Хаалттай үед нүүр кодын hero-г (HOME_CAMPAIGNS) харуулна, бичилт FEATURE_DISABLED.",
+  },
   meta_capi: {
     label: "Meta Conversions API",
     description:
@@ -858,6 +863,29 @@ export const SALE_EVENT_MAX_PCT = 90;
 
 /** Badge хоосон үед картан дээр — одоогийн «Хямдрал» тэмдэг. */
 export const SALE_EVENT_DEFAULT_BADGE = "Хямдрал";
+
+/** Hero-гийн талбарын урт (0182 check-тэй ижил, plan §4.5). */
+export const HERO_LIMITS = {
+  name: 60,
+  eyebrow: 40,
+  title: 48,
+  description: 140,
+  mobileDescription: 70,
+  buttonLabel: 22,
+  imageAlt: 200,
+  catalogQuery: 300,
+  path: 300,
+} as const;
+
+/**
+ * Hero-гийн зургийн хэмжээ (prompts/hero.md, plan §7.6). Desktop эх 2.8:1
+ * (3584×1280), утас 4:3 (2048×1536). Харьцаа ±2%.
+ */
+export const HERO_IMAGE = {
+  desktop: { ratio: 2.8, minWidth: 2400, widths: [1600, 2400, 3200], quality: 80 },
+  mobile: { ratio: 4 / 3, minWidth: 1600, width: 1600, quality: 85 },
+  ratioTolerance: 0.02,
+} as const;
 
 /** Бэлгийн картын дүн, ₮ (0179 check-тэй ижил). */
 export const GIFT_CARD_AMOUNTS = [100000, 200000, 300000, 500000] as const;
