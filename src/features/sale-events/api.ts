@@ -11,6 +11,7 @@ import { SALE_EVENT_SLUG_RE } from "@/lib/validators/sale-event";
 import type {
   LiveSaleEvent,
   SaleEventAdminRow,
+  SaleEventProduct,
   SaleEventPublic,
   SaleEventState,
 } from "./types";
@@ -165,27 +166,13 @@ interface AdminRow {
     | null;
 }
 
-/**
- * Админы жагсаалт — session client (staff RLS, 0181). Арга хэмжээ цөөхөн
- * (жилд хэдэн арав) тул бүгдийг нь гишүүд, хувьтай нь нэг query-гээр.
- */
-export async function getSaleEventsAdmin(): Promise<SaleEventAdminRow[]> {
-  const supabase = await createClient();
-  if (!supabase) return [];
-  const { data, error } = await supabase
-    .from("sale_events")
-    .select(
-      `id, slug, name, badge_label, headline, description, starts_at, ends_at,
+const ADMIN_SELECT = `id, slug, name, badge_label, headline, description, starts_at, ends_at,
        is_active, show_countdown, created_at, updated_at,
        sale_event_products ( product_id, sort_order,
-         sale_event_discounts ( ml, pct ) )`,
-    )
-    .order("starts_at", { ascending: false });
-  if (error) {
-    Sentry.captureException(new Error(`sale_events admin: ${error.message}`));
-    return [];
-  }
-  return ((data as AdminRow[] | null) ?? []).map((r) => ({
+         sale_event_discounts ( ml, pct ) )`;
+
+function toAdminRow(r: AdminRow): SaleEventAdminRow {
+  return {
     id: r.id,
     slug: r.slug,
     name: r.name,
@@ -206,5 +193,77 @@ export async function getSaleEventsAdmin(): Promise<SaleEventAdminRow[]> {
           (p.sale_event_discounts ?? []).map((d) => [String(d.ml), d.pct]),
         ),
       })),
+  };
+}
+
+/**
+ * Админы жагсаалт — session client (staff RLS, 0181). Арга хэмжээ цөөхөн
+ * (жилд хэдэн арав) тул бүгдийг нь гишүүд, хувьтай нь нэг query-гээр.
+ */
+export async function getSaleEventsAdmin(): Promise<SaleEventAdminRow[]> {
+  const supabase = await createClient();
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("sale_events")
+    .select(ADMIN_SELECT)
+    .order("starts_at", { ascending: false });
+  if (error) {
+    Sentry.captureException(new Error(`sale_events admin: ${error.message}`));
+    return [];
+  }
+  return ((data as AdminRow[] | null) ?? []).map(toAdminRow);
+}
+
+/** Студийн нэг мөр (studio-ux.md §8.1). Олдохгүй / алдаа → null. */
+export async function getSaleEventAdmin(
+  id: string,
+): Promise<SaleEventAdminRow | null> {
+  const supabase = await createClient();
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("sale_events")
+    .select(ADMIN_SELECT)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) {
+    Sentry.captureException(new Error(`sale_event admin: ${error.message}`));
+    return null;
+  }
+  return data ? toAdminRow(data as AdminRow) : null;
+}
+
+interface ProductRow {
+  id: string;
+  name: string;
+  brand: string;
+  gender: SaleEventProduct["gender"];
+  product_variants: { ml: number; price: number; is_active: boolean }[];
+}
+
+/**
+ * Студийн барааны сонгогч — зөвхөн дэлгүүрт харагдаж буй («Идэвхтэй»,
+ * «Тун удахгүй») бараа, идэвхтэй ба үнэтэй хэмжээнүүдтэйгээ.
+ */
+export async function getSaleEventProductOptions(): Promise<
+  SaleEventProduct[]
+> {
+  const supabase = await createClient();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("products")
+    .select("id, name, brand, gender, product_variants ( ml, price, is_active )")
+    .in("status", ["active", "coming_soon"])
+    .order("brand")
+    .order("name");
+  return ((data as ProductRow[] | null) ?? []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    brand: r.brand,
+    gender: r.gender,
+    prices: Object.fromEntries(
+      r.product_variants
+        .filter((v) => v.is_active && v.price > 0)
+        .map((v) => [v.ml, v.price]),
+    ),
   }));
 }

@@ -108,7 +108,7 @@ export function formatEventPeriod(startsAt: string, endsAt: string): string {
  */
 export function overlapMessage(conflicts: readonly OverlapConflict[]): string {
   if (!conflicts.length) {
-    return "Зарим бараа хугацаа давхцсан өөр арга хэмжээнд аль хэдийн байна.";
+    return "Зарим бараа хугацаа давхацсан өөр арга хэмжээнд аль хэдийн байна.";
   }
   const byEvent = new Map<string, OverlapConflict[]>();
   for (const c of conflicts) {

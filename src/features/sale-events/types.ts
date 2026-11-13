@@ -1,3 +1,5 @@
+import type { Gender } from "@/db/types";
+
 /** Одоо явж буй арга хэмжээ (0181 `live_sale_events()`) — дэлгүүрийн харагдац. */
 export interface LiveSaleEvent {
   slug: string;
@@ -42,4 +44,14 @@ export interface SaleEventAdminRow {
   createdAt: string;
   updatedAt: string;
   items: { productId: string; pcts: Record<string, number> }[];
+}
+
+/** Студийн сонгогчийн нэг бараа (хуудас серверээс өгнө). */
+export interface SaleEventProduct {
+  id: string;
+  name: string;
+  brand: string;
+  gender: Gender;
+  /** Идэвхтэй, үнэтэй хэмжээнүүд — ml → үндсэн үнэ. */
+  prices: Record<number, number>;
 }
