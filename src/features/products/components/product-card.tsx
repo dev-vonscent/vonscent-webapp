@@ -6,6 +6,7 @@ import type { ProductListItem } from "@/lib/types";
 import { WishlistButton } from "@/features/wishlist/components/wishlist-button";
 import { QuickAdd } from "./quick-add";
 import { GenderBadge } from "./gender-badge";
+import { SaleBadge } from "@/features/sale-events/components/sale-badge";
 
 import { CARD_STATUS_LABEL, cardStatus, type CardStatus } from "../card-status";
 
@@ -54,14 +55,11 @@ export function ProductCard({
               {statusLabel}
             </Badge>
           )}
-          {product.tags.includes("sale") && (
-            <Badge
-              variant="sale"
-              className="bg-background/85! w-fit backdrop-blur-sm"
-            >
-              Хямдрал
-            </Badge>
-          )}
+          {/* «Black Friday» (арга хэмжээ, 0181) эсвэл «Хямдрал». */}
+          <SaleBadge
+            productId={product.id}
+            onSale={product.tags.includes("sale")}
+          />
         </div>
         {matchPct !== undefined && (
           <span className="bg-foreground text-background absolute bottom-2.5 left-2.5 rounded-full px-2 py-0.5 text-[11px] font-semibold">

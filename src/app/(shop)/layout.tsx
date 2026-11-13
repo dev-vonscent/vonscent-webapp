@@ -7,6 +7,9 @@ import { WishlistSync } from "@/features/wishlist/sync";
 import { ScrollReset } from "@/components/shared/scroll-reset";
 import { SkipLink } from "@/components/shared/skip-link";
 import { CatalogMenu } from "@/features/catalog/components/catalog-menu";
+import { getLiveSaleEvents } from "@/features/sale-events/api";
+import { eventBadgeMap } from "@/features/sale-events/lib";
+import { SaleEventsProvider } from "@/features/sale-events/components/sale-events-provider";
 
 /**
  * The footer arrives through a parallel route slot rather than being rendered
@@ -23,15 +26,21 @@ import { CatalogMenu } from "@/features/catalog/components/catalog-menu";
  * nested it inside `<main>`, where `<footer>` loses its `contentinfo` landmark
  * and screen-reader users lose the jump target.
  */
-export default function ShopLayout({
+export default async function ShopLayout({
   children,
   footer,
 }: {
   children: React.ReactNode;
   footer: React.ReactNode;
 }) {
+  // Арга хэмжээ (0181): каталогийн chip, картын badge. Кэштэй (60с), туг
+  // хаалттай / алдаатай үед хоосон — хуудсыг хэзээ ч унагахгүй.
+  const live = await getLiveSaleEvents();
   return (
-    <>
+    <SaleEventsProvider
+      events={live.map((e) => ({ slug: e.slug, name: e.name }))}
+      badges={eventBadgeMap(live)}
+    >
       <ScrollReset />
       {/* Хамгийн эхний фокус авах элемент байх ёстой тул толгойн ӨМНӨ. */}
       <SkipLink />
@@ -68,6 +77,6 @@ export default function ShopLayout({
       </Suspense>
       <WishlistSync />
       <WelcomeGiftDialog />
-    </>
+    </SaleEventsProvider>
   );
 }

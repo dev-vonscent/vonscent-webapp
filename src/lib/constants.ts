@@ -824,6 +824,11 @@ export const FEATURE_FLAGS = {
     description:
       "Админ → Каталог → Хямдрал (/admin/sales, /api/admin/sales): олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал тавих/цуцлах ба барааны үнийн хүснэгтэд эхлэх/дуусах хугацаа (0166: apply_bulk_sale, clear_bulk_sale). Хугацаа дуусмагц үнэ өөрөө энгийн болно. Багц хамаарахгүй, хэрэглэгчийн талд шинэ хуудас байхгүй.",
   },
+  sale_events: {
+    label: "Арга хэмжээ (хугацаат хямдрал)",
+    description:
+      "Black Friday, Цагаан сар г.м. нэртэй, хугацаатай хямдрал: Админ → Каталог → Арга хэмжээ (/admin/sale-events, /api/admin/sale-events), каталогийн «?event=» шүүлтүүр, chip, зурвас, тоолуур, барааны картын badge, /sale/[slug] богино хаяг, минут тутмын /api/cron/sale-events. Үнэ variant_price()-д тооцоологдоно (0181) — sale_price-д бичигдэхгүй, гар хямдрал дарагдахгүй. Хаалттай үед үнэ, каталогт ямар ч нөлөөгүй, бичих RPC FEATURE_DISABLED.",
+  },
   meta_capi: {
     label: "Meta Conversions API",
     description:
@@ -835,6 +840,24 @@ export const FEATURE_FLAGS = {
       "100k/200k/300k/500k₮-ийн бэлгийн карт: /gift-cards (зочин харна, худалдан авахад нэвтрэлт), /gift/[token] хүлээн авагчийн хуудас, /account/gift-cards, кодыг V point болгох, имэйлээр илгээх; place_gift_card_order, mark_order_paid-ийн картын салаа, redeem_gift_card, хугацаа дуусгах cron (0179). Админ → Бэлгийн карт мөн тугаар хаагдана (gift-cards-plan). АНХААР: карт зарагдсаны дараа хаавал хүлээн авагч кодоо оруулж чадахгүй ч 1 жилийн хугацаа нь үргэлжлэн тоологдоно — нээгдсэний дараа хаахгүй байх.",
   },
 } as const satisfies Record<string, FeatureFlagMeta>;
+
+/** Арга хэмжээний талбарын урт (0181 check-тэй ижил). */
+export const SALE_EVENT_LIMITS = {
+  name: 60,
+  badgeLabel: 24,
+  headline: 80,
+  description: 200,
+  slugMin: 2,
+  slugMax: 60,
+  /** Нэг арга хэмжээнд хамгийн олон бараа — каталог ~100 бараатай. */
+  products: 500,
+} as const;
+
+/** Арга хэмжээний хувь (0181 `sale_event_discounts.pct` check). */
+export const SALE_EVENT_MAX_PCT = 90;
+
+/** Badge хоосон үед картан дээр — одоогийн «Хямдрал» тэмдэг. */
+export const SALE_EVENT_DEFAULT_BADGE = "Хямдрал";
 
 /** Бэлгийн картын дүн, ₮ (0179 check-тэй ижил). */
 export const GIFT_CARD_AMOUNTS = [100000, 200000, 300000, 500000] as const;

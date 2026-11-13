@@ -24,7 +24,8 @@ import {
   NO_BOTTLE_LOCKS,
   type BottleLockState,
 } from "./bottle-stock";
-import { isSaleActive } from "./sale";
+import { effectivePrice } from "./sale";
+import { getLiveSaleEvents } from "@/features/sale-events/api";
 
 /**
  * Product data access (development.md §3 — features domain api).
@@ -45,6 +46,13 @@ interface DbVariant {
   sale_starts_at: string | null;
   sale_ends_at: string | null;
   is_active: boolean;
+  /**
+   * SQL-ийн бодсон бодит үнэ — `variant_price()` computed column (0181).
+   * Гар хямдрал (0166) ба арга хэмжээ (0181) хоёуланг агуулна. TS тал үнийг
+   * ДАХИН бодохгүй (plan §5.2): энэ нь багцын мөнгөний зам. Байхгүй бол
+   * (demo seed, хуучин fixture) `effectivePrice` нөөц.
+   */
+  variant_price?: number | null;
 }
 interface DbImage {
   url: string;
@@ -107,10 +115,21 @@ const SELECT = `
   rating_avg, rating_count, is_featured, created_at, launched_at,
   status, coming_soon_note,
   product_images ( url, alt, sort_order, is_visible ),
-  product_variants ( id, ml, price, sale_price, sale_starts_at, sale_ends_at, is_active ),
+  product_variants ( id, ml, price, sale_price, sale_starts_at, sale_ends_at, is_active, variant_price ),
   inventory ( on_hand_ml, reserved_ml, is_sold_out ),
   product_tags ( tags ( slug, kind ) )
 `;
+
+/**
+ * Бодит үнэ: SQL-ийн `variant_price` (гар хямдрал + арга хэмжээ, 0181), эс
+ * бөгөөс гар хямдралын толь (`effectivePrice`) — demo seed ба хуучин тестийн
+ * fixture-д. Үндсэн үнээс давахгүй.
+ */
+function variantPrice(v: DbVariant): number {
+  return typeof v.variant_price === "number"
+    ? Math.min(v.variant_price, v.price)
+    : effectivePrice(v);
+}
 
 /** DB мөр → дэлгүүрийн хэлбэр. Тестэд export хийсэн (map-product.test.ts). */
 export function mapProduct(
@@ -149,15 +168,13 @@ export function mapProduct(
       const bottleLocked = isBottleLocked(locks, row.gender, v.ml, v.id);
       const isActive = v.is_active;
       const inStock = !comingSoon && !inv?.is_sold_out && availableMl >= v.ml;
-      // Хугацаатай хямдрал (0166): эхлээгүй / дууссан бол үндсэн үнэ.
-      const onSale = isSaleActive(v);
       return {
         id: v.id,
         ml: v.ml,
-        // Хямдарсан үнэ байвал БОДИТООР төлөх дүн нь тэр (0054). Сагс, захиалга,
-        // тайлан бүгд `price`-аар явдаг тул хямдрал энэ нэг мөрөөр бүх урсгалд
-        // хүчин төгөлдөр болно; үндсэн үнэ нь зөвхөн зураастай харагдана.
-        price: onSale ? (v.sale_price as number) : v.price,
+        // БОДИТООР төлөх дүн (0054). Сагс, захиалга, багц, тайлан бүгд
+        // `price`-аар явдаг тул хямдрал энэ нэг мөрөөр бүх урсгалд хүчин
+        // төгөлдөр болно; үндсэн үнэ нь зөвхөн зураастай харагдана.
+        price: variantPrice(v),
         basePrice: v.price,
         isActive,
         inStock,
@@ -571,6 +588,8 @@ export async function getCatalog(
         p_sort: sort,
         p_page: page,
         p_per_page: perPage,
+        // 0181-ээс өмнөх сан дээр параметр байхгүй — зөвхөн хэрэгтэй үед.
+        ...(filters.event ? { p_event: filters.event } : {}),
       });
       return {
         items: data.map(fromCatalogRow),
@@ -607,13 +626,22 @@ async function memoryCatalog(filters: CatalogFilters): Promise<CatalogResult> {
     sort = "new",
     page = 1,
     perPage = DEFAULT_PER_PAGE,
+    event,
   } = filters;
 
   const all = await fetchProducts();
 
   const idSet = ids?.length ? new Set(ids) : null;
+  // Арга хэмжээ (0181): LIVE гишүүд — `catalog_search`-ийн `p_event`-тэй ижил.
+  const eventIds = event
+    ? new Set(
+        (await getLiveSaleEvents()).find((e) => e.slug === event)
+          ?.productIds ?? [],
+      )
+    : null;
   let items = all.filter((p) => {
     if (idSet && !idSet.has(p.id)) return false;
+    if (eventIds && !eventIds.has(p.id)) return false;
     if (brand?.length && !brand.includes(p.brand)) return false;
     if (gender?.length && !gender.includes(p.gender)) return false;
     // Multi-value tags: a product matches when it carries *any* of the picked

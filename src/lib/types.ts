@@ -190,6 +190,11 @@ export interface CatalogFilters {
   kind?: "perfume" | "bundle";
   /** Зөвхөн эдгээр id — нүүрийн эрэмбэлэгдсэн жагсаалт, хүслийн жагсаалт. */
   ids?: string[];
+  /**
+   * Арга хэмжээний slug (`?event=black-friday`, 0181) — зөвхөн LIVE үеийн
+   * гишүүд. Ус л; багц хамаарахгүй.
+   */
+  event?: string;
   ml?: number[];
   minPrice?: number;
   maxPrice?: number;

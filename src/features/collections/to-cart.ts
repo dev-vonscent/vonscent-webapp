@@ -1,5 +1,6 @@
 import type { CartCollection } from "@/features/cart/store";
 import type { Collection, CollectionPriceAtMl } from "./types";
+import { bundlePriceBasis, memberUnitPrice } from "./pricing";
 
 /**
  * Багцыг нэг хэмжээгээр сагсны мөр болгоно — багцын хуудас ба нүүрний
@@ -30,7 +31,9 @@ export function toCartCollection(
         name: m.name,
         brand: m.brand,
         image: m.image?.url ?? null,
-        price: v.price,
+        // Бэлэн багц үндсэн үнээр бодогддог тул «хэмнэлт» (гишүүдийн нийлбэр −
+        // багцын үнэ) ч үндсэн үнээс (plan §5.3).
+        price: memberUnitPrice(v, bundlePriceBasis(collection.type)),
       };
     }),
     unitPrice: priceRow.price,

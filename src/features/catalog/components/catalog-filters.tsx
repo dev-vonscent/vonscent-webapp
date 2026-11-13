@@ -12,6 +12,7 @@ import { GENDERS, GENDER_LABEL, SEASON_LABEL, SEASONS } from "@/lib/constants";
 import { useFilterQuery } from "./use-filter-query";
 import type { ScentFamilyOption } from "@/lib/types";
 import type { BrandLogos } from "@/features/products/components/brand-marquee";
+import { useLiveSaleEvents } from "@/features/sale-events/components/sale-events-provider";
 
 const PRICE_STEP = 1000;
 
@@ -151,6 +152,9 @@ export function CatalogFilters({
   }
 
   const featured = searchParams.get("featured") === "1";
+  // Одоо явж буй арга хэмжээ (0181) — дуусмагц chip өөрөө алга болно.
+  const liveEvents = useLiveSaleEvents();
+  const event = searchParams.get("event") ?? undefined;
 
   // Багцад брэнд / үнэрийн төрөл / улирал байхгүй (клиент, 2026-10-26) —
   // «Багц» дээр эдгээр бүлэг нуугдаж, шилжихэд сонголт нь цэвэрлэгдэнэ
@@ -166,6 +170,8 @@ export function CatalogFilters({
             brand: undefined,
             family: undefined,
             season: undefined,
+            // Арга хэмжээ = ус л (0181).
+            event: undefined,
           }
         : { kind: value },
     );
@@ -325,6 +331,20 @@ export function CatalogFilters({
                   {t.label}
                 </Chip>
               ))}
+              {/* Арга хэмжээ (Black Friday …) — нэг л сонгогдоно. Багцад
+                  хамаарахгүй. */}
+              {!isBundle &&
+                liveEvents.map((e) => (
+                  <Chip
+                    key={e.slug}
+                    active={event === e.slug}
+                    onClick={() =>
+                      setSingle("event", event === e.slug ? undefined : e.slug)
+                    }
+                  >
+                    {e.name}
+                  </Chip>
+                ))}
             </div>
           </Group>
           <Separator />

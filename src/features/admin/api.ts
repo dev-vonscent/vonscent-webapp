@@ -601,7 +601,7 @@ const ADMIN_PRODUCT_SELECT = `
   bottle_ml, is_active, status, launched_at, coming_soon_note,
   is_featured,
   product_images ( id, url, alt, sort_order, is_visible ),
-  product_variants ( id, ml, price, sale_price, sale_starts_at, sale_ends_at, is_active ),
+  product_variants ( id, ml, price, sale_price, sale_starts_at, sale_ends_at, is_active, variant_price ),
   inventory ( on_hand_ml, reserved_ml, low_stock_ml ),
   product_tags ( tags ( slug ) ),
   product_image_generations ( id, status, result_url, prompt, error, created_at )
@@ -654,6 +654,8 @@ interface AdminProductRow {
     sale_starts_at: string | null;
     sale_ends_at: string | null;
     is_active: boolean;
+    /** SQL-ийн бодит үнэ (0181) — гар хямдрал + арга хэмжээ. */
+    variant_price?: number | null;
   }[];
   inventory:
     | { on_hand_ml: number; reserved_ml: number; low_stock_ml: number }
@@ -669,10 +671,15 @@ function mapAdminProduct(
   locks: BottleLockState = NO_BOTTLE_LOCKS,
 ): AdminProduct {
   const inv = Array.isArray(r.inventory) ? r.inventory[0] : r.inventory;
-  // Жагсаалтын «-аас» үнэ нь бодитоор төлөх дүнгээр (хямдрал орсон, 0054).
+  // Жагсаалтын «-аас» үнэ нь бодитоор төлөх дүнгээр (хямдрал орсон, 0054;
+  // арга хэмжээ 0181 — SQL-ийн `variant_price`, байхгүй бол гар хямдралын толь).
   const prices = r.product_variants
     .filter((v) => v.is_active)
-    .map((v) => effectivePrice(v));
+    .map((v) =>
+      typeof v.variant_price === "number"
+        ? Math.min(v.variant_price, v.price)
+        : effectivePrice(v),
+    );
   const tags = r.product_tags
     .map((pt) => (Array.isArray(pt.tags) ? pt.tags[0] : pt.tags)?.slug)
     .filter((s): s is string => Boolean(s));

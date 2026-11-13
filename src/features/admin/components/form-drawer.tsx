@@ -10,6 +10,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useConfirm } from "@/components/shared/confirm-dialog";
+import { cn } from "@/lib/utils";
 
 /**
  * Drawer-ийн панел — Base UI popup-ууд (combobox) `<body>` биш энд portal
@@ -44,6 +45,7 @@ export function FormDrawer({
   description,
   footer,
   discardDescription = "Энд хийсэн өөрчлөлт тань хадгалагдахгүй.",
+  wide = false,
   children,
 }: {
   open: boolean;
@@ -57,6 +59,8 @@ export function FormDrawer({
   footer: React.ReactNode;
   /** «Хадгалахгүй гарах уу?» асуултын тайлбар. */
   discardDescription?: string;
+  /** Өргөн панел — хүснэгттэй маягт (арга хэмжээний бараа × хэмжээ). */
+  wide?: boolean;
   children: React.ReactNode;
 }) {
   const [confirm, confirmDialog] = useConfirm();
@@ -104,7 +108,10 @@ export function FormDrawer({
       <Sheet open={open} onOpenChange={(next) => !next && requestClose()}>
         <SheetContent
           side="right"
-          className="w-full max-w-none gap-0 p-0 sm:max-w-xl"
+          className={cn(
+            "w-full max-w-none gap-0 p-0",
+            wide ? "sm:max-w-3xl" : "sm:max-w-xl",
+          )}
           ref={setContent}
           onFocusOutside={(e) => e.preventDefault()}
           // Only a press on the Sheet's own backdrop means "close". Anything

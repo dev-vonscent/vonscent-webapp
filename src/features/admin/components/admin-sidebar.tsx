@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Award,
   BadgePercent,
+  CalendarHeart,
   BellRing,
   BarChart3,
   Boxes,
@@ -142,6 +143,14 @@ const GROUPS: NavGroup[] = [
         label: "Хямдрал",
         icon: BadgePercent,
         flag: "sale_page",
+      },
+      // Нэртэй, хугацаатай хямдрал — Black Friday г.м. (0181). «Хямдрал»-аас
+      // тусдаа туг, тусдаа route: бие даан нээгдэнэ.
+      {
+        href: "/admin/sale-events",
+        label: "Арга хэмжээ",
+        icon: CalendarHeart,
+        flag: "sale_events",
       },
       { href: "/admin/brands", label: "Брэнд", icon: Crown },
       // Хэрэглэгчийн санал болгосон, манайд байхгүй үнэртэн (0137).

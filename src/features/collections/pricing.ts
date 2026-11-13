@@ -48,6 +48,28 @@ export function bundlePrice(
 }
 
 /**
+ * Багцын гишүүний аль үнээс бодох вэ (Тайлан11.11.pptx слайд 2, plan §5.3):
+ *   · `base` — бэлэн багц: «өөрөө нэг бүтээгдэхүүн, үнэ тогтмол». Гишүүний
+ *     ҮНДСЭН үнийн нийлбэр − багцын хувь; барааны хямдрал нөлөөлөхгүй.
+ *   · `effective` — хэрэглэгчийн угсарсан багц: хямдарсан үнийн нийлбэрээс
+ *     дахин багцын хувь (давхарлана, backlog B5).
+ */
+export type BundlePriceBasis = "base" | "effective";
+
+/** Багцын төрлөөс үнийн суурь — бэлэн (`base`) багц үндсэн үнээр. */
+export function bundlePriceBasis(type: "base" | "custom"): BundlePriceBasis {
+  return type === "base" ? "base" : "effective";
+}
+
+/** Гишүүний нэг хэмжээний үнэ — сонгосон суурийн дагуу. */
+export function memberUnitPrice(
+  v: { price: number; basePrice?: number },
+  basis: BundlePriceBasis,
+): number {
+  return basis === "base" ? (v.basePrice ?? v.price) : v.price;
+}
+
+/**
  * Compute the bundle price for every ml the shop sells. A size is `available`
  * only when *every* member has an active, in-stock variant of it (§3.2).
  */
@@ -57,14 +79,18 @@ export function memberPrices(
   step = 100,
   overrides: MlDiscounts = {},
   fixedPrices: MlPrices = {},
+  basis: BundlePriceBasis = "effective",
 ): CollectionPriceAtMl[] {
   return BUNDLE_ML_SIZES.map((ml) => {
     const rows = members.map((m) => m.variantByMl[ml]);
     const available =
       members.length > 0 && rows.every((r) => r != null && r.inStock);
-    // Гишүүдийн үнэ нь БОДИТООР төлөх (хямдарсан) үнэ — тиймээс custom багц
-    // ч хямдарсан үнээр бодогдоно (backlog B5).
-    const memberSum = rows.reduce((sum, r) => sum + (r?.price ?? 0), 0);
+    // `effective`: БОДИТООР төлөх (хямдарсан) үнэ — угсарсан багц (B5).
+    // `base`: бэлэн багц үндсэн үнээр — хямдрал дамжихгүй (plan §5.3).
+    const memberSum = rows.reduce(
+      (sum, r) => sum + (r ? memberUnitPrice(r, basis) : 0),
+      0,
+    );
     const hasFixedPrice = Number.isFinite(fixedPrices[ml]);
     const nominalPct = discountForMl(ml, defaultDiscountPct, overrides);
     const price = hasFixedPrice
