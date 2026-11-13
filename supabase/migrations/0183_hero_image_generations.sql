@@ -34,6 +34,19 @@ create table if not exists hero_image_generations (
   updated_at     timestamptz not null default now()
 );
 
+-- Hero-д оруулах бараа (ихдээ 3) — тэдний зураг reference-ийн эхэнд орно.
+-- Хоосон = одоогийн hero-гийн бараагаар restyle (prompts/hero-winter.md загвар).
+alter table hero_image_generations
+  add column if not exists product_ids uuid[] not null default '{}';
+
+do $$
+begin
+  alter table hero_image_generations
+    add constraint hig_product_count check (cardinality(product_ids) <= 3);
+exception
+  when duplicate_object then null;
+end $$;
+
 create index if not exists hig_group_idx
   on hero_image_generations (group_id, created_at desc);
 -- Өдрийн хязгаар (route): сүүлийн 24 цагийн тоо.

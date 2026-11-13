@@ -704,6 +704,9 @@ Sidebar-т «Хямдрал»-ын доор тусдаа цэс (`flag: "sale_ev
 - Hero-гийн урьдчилж харах: `/admin/hero-preview` (тусдаа `(admin-bare)` route group, iframe, postMessage).
 - AI: суурь reference-ийг lambda-д файлаар (`outputFileTracingIncludes`) оруулж storage-д нэг удаа хуулна;
   `generating`-д 6 мин-ээс удсан ажил `failed`; «хурдан» хэмжээ (2688×960 / 1536×1152).
+- AI: DB-ээс **ихдээ 3 үнэртэн** сонгож hero-д оруулна (§17-ийн санааг урагшлуулсан). Лавлах зураг:
+  `reference_image_url` → харагдах эхний зураг; image 1…N = бараа, N+1 = scene (desktop: одоогийн hero,
+  mobile: сонгосон desktop). Сонгосон дараалал = зүүн / төв / баруун. `hero_image_generations.product_ids`.
 
 Хийгдээгүй (дараагийн PR):
 

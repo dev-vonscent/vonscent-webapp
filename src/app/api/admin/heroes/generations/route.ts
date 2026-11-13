@@ -6,11 +6,12 @@ import { storagePath } from "@/lib/storage/storage";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import { heroAdminGate } from "@/features/heroes/server";
 import {
+  HERO_AI_MAX_PRODUCTS,
   HERO_AI_SIZES,
   buildHeroPrompt,
   isHeroThemeKey,
 } from "@/lib/ai/hero-prompt";
-import { heroReferenceUrl } from "@/lib/ai/hero-references";
+import { heroProductRefs, heroReferenceUrl } from "@/lib/ai/hero-references";
 import { processHeroGeneration } from "@/lib/ai/process-hero-generation";
 
 /** Зураг хариу буцсаны дараа (`after()`) үүснэ — 3584×1280 high ≈1–2 мин. */
@@ -21,6 +22,7 @@ export interface HeroGenerationJob {
   id: string;
   target: "desktop" | "mobile";
   theme_key: string;
+  product_ids: string[];
   status: "pending" | "generating" | "done" | "failed";
   result_url: string | null;
   error: string | null;
@@ -36,6 +38,16 @@ const postSchema = z.object({
   quality: z.enum(["high", "fast"]).default("high"),
   /** Mobile: сонгосон desktop (PNG мастер эсвэл webp) — манай storage-оос л. */
   desktopRefUrl: z.string().url().nullable().default(null),
+  /** Hero-д оруулах бараа (DB), сонгосон дарааллаар — ихдээ 3. */
+  productIds: z
+    .array(z.string().uuid())
+    .max(HERO_AI_MAX_PRODUCTS, {
+      message: `Ихдээ ${HERO_AI_MAX_PRODUCTS} үнэртэн сонгоно.`,
+    })
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: "Нэг үнэртэн хоёр удаа сонгогдсон байна.",
+    })
+    .default([]),
 });
 
 /**
@@ -100,15 +112,34 @@ export async function POST(req: Request) {
     );
   }
 
+  // Бараа сонгосон бол тэдний цэвэр зураг reference-ийн ЭХЭНД (image 1…N),
+  // дараа нь scene: desktop → одоогийн hero; mobile → сонгосон desktop
+  // (байхгүй бол одоогийн mobile hero). prompt энэ дараалалтай таарна.
+  const productRefs = await heroProductRefs(supabase, input.productIds);
+  if (!productRefs.ok) {
+    return NextResponse.json(
+      {
+        error: `Зураггүй үнэртэн: ${productRefs.missing.join(", ")}. Барааны зураг эсвэл AI лавлах зураг оруулна уу.`,
+      },
+      { status: 400 },
+    );
+  }
+  const products = productRefs.products;
   let references: string[];
   try {
+    const productUrls = products.map((p) => p.url);
     references =
       input.target === "desktop"
-        ? [await heroReferenceUrl("desktop")]
-        : [
-            await heroReferenceUrl("mobile"),
-            ...(input.desktopRefUrl ? [input.desktopRefUrl] : []),
-          ];
+        ? [...productUrls, await heroReferenceUrl("desktop")]
+        : products.length
+          ? [
+              ...productUrls,
+              input.desktopRefUrl ?? (await heroReferenceUrl("mobile")),
+            ]
+          : [
+              await heroReferenceUrl("mobile"),
+              ...(input.desktopRefUrl ? [input.desktopRefUrl] : []),
+            ];
   } catch {
     return NextResponse.json(
       { error: "Лавлах зургийг бэлдэж чадсангүй." },
@@ -121,6 +152,7 @@ export async function POST(req: Request) {
     theme: input.theme as Parameters<typeof buildHeroPrompt>[0]["theme"],
     extra: input.extra,
     withDesktopStyleRef: Boolean(input.desktopRefUrl),
+    products: products.map((p) => ({ brand: p.brand, name: p.name })),
   });
   const { data: job, error } = await supabase
     .from("hero_image_generations")
@@ -133,6 +165,7 @@ export async function POST(req: Request) {
       size: HERO_AI_SIZES[input.target][input.quality],
       prompt,
       reference_urls: references,
+      product_ids: products.map((p) => p.id),
       created_by: gate.staff.id,
     })
     .select("id")
@@ -160,7 +193,7 @@ export async function GET(req: Request) {
   await expireStale(gate.supabase);
   const { data } = await gate.supabase
     .from("hero_image_generations")
-    .select("id, target, theme_key, status, result_url, error, created_at")
+    .select("id, target, theme_key, product_ids, status, result_url, error, created_at")
     .eq("group_id", parsed.data.groupId)
     .order("created_at", { ascending: false })
     .limit(24);

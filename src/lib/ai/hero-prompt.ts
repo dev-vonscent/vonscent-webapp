@@ -149,8 +149,60 @@ export interface HeroPromptInput {
   /**
    * Mobile: image 1 = утасны зохиомжийн reference, image 2 = СОНГОСОН desktop
    * (уур амьсгалыг тэндээс хуулна) — хоёр хувилбар ижил харагдана.
+   * Бараатай үед: сонгосон desktop нь scene reference болно.
    */
   withDesktopStyleRef?: boolean;
+  /**
+   * Hero-д оруулах бараа (ихдээ 3, DB-ээс). Өгвөл reference-ийн дараалал:
+   * image 1…N = барааны цэвэр зураг, image N+1 = scene (prompts/hero-desktop.md
+   * v4 загвар: «Replace the bottles … with these products»).
+   */
+  products?: readonly { brand: string; name: string }[];
+}
+
+/** Hero-д оруулах барааны дээд тоо — зохиомж (55–88%) 3 савыг л даана. */
+export const HERO_AI_MAX_PRODUCTS = 3;
+
+/** «image 1 is Creed "Aventus", image 2 is …» */
+function productList(products: readonly { brand: string; name: string }[]) {
+  return products
+    .map((p, i) => `image ${i + 1} is ${p.brand} "${p.name}"`)
+    .join(", ");
+}
+
+const ORDER = ["on the left", "in the center", "on the right"] as const;
+
+/** Бараатай үеийн scene хэсэг (desktop / mobile). */
+function productScene(
+  input: HeroPromptInput,
+  products: readonly { brand: string; name: string }[],
+): string {
+  const n = products.length;
+  const sceneImg = n + 1;
+  const refs =
+    n === 1
+      ? `Image 1 is the exact product reference — reproduce the bottle's shape, cap, glass color and printed text faithfully, sharp and legible: ${productList(products)}.`
+      : `Images 1–${n} are the exact product references — reproduce each bottle's shape, cap, glass color and printed text faithfully, sharp and legible: ${productList(products)}.`;
+  const upright =
+    "Show every bottle standing upright and photographed straight from the front; ignore the angle, background and lighting of the product reference photos.";
+  const arrangement =
+    n === 1
+      ? "one full-size bottle stands upright, facing the camera"
+      : `${n} full-size bottles stand side by side, all upright and facing the camera — ${products
+          .map((p, i) => `the ${p.brand} bottle ${n === 2 ? (i === 0 ? "on the left" : "on the right") : ORDER[i]}`)
+          .join(", ")}; each bottle is clearly visible, not hidden behind another`;
+
+  if (input.target === "desktop") {
+    return `${refs} ${upright} Image ${sceneImg} is the scene reference for lighting, materials, color and composition.
+
+Recompose the scene from image ${sceneImg} as an ultra-wide horizontal photograph with a 2.8:1 aspect ratio. Replace the bottles in image ${sceneImg} with ${n === 1 ? "this product" : `these ${n} products`} and keep the same stone blocks, the small glass decant vials, materials and photographic style. Place all the products tightly grouped between 55% and 88% of the frame width, leaving a clear margin of empty wall on the right: on top of the stone blocks ${arrangement}. One small glass decant spray vial stands on the surface in front, and one decant vial lies on the surface in front.`;
+  }
+  const scene = input.withDesktopStyleRef
+    ? `Image ${sceneImg} is the approved wide version of this hero with exactly these products: keep the same products, props, lighting, color palette and mood, so both images look like one photo shoot.`
+    : `Image ${sceneImg} is the scene reference for lighting, materials and color; replace its bottles with ${n === 1 ? "this product" : `these ${n} products`}.`;
+  return `${refs} ${upright} ${scene}
+
+Recompose the scene as a horizontal photograph with a 4:3 aspect ratio. Place all the products tightly grouped between 62% and 93% of the frame width — keep the bottles noticeably smaller so they fit inside this narrow area; nothing may extend left of 62% or right of 93%. On top of the stone blocks ${arrangement}. One small glass decant spray vial stands on the surface in front. The tallest bottle top at about 30% from the top edge and the lowest point of any product at about 85% from the top edge.`;
 }
 
 /**
@@ -163,8 +215,10 @@ export function buildHeroPrompt(input: HeroPromptInput): string {
   const extra = input.extra?.trim();
   const custom = input.theme === "custom";
 
-  const scene =
-    input.target === "mobile"
+  const products = (input.products ?? []).slice(0, HERO_AI_MAX_PRODUCTS);
+  const scene = products.length
+    ? productScene(input, products)
+    : input.target === "mobile"
       ? `Image 1 is the exact composition reference: keep its framing, camera angle, the size and the exact position of every object — the perfume bottles, the glass decant vials and the stone blocks — exactly where they are, in ${z.frame}. ${PRODUCTS_FAITHFUL}` +
         (input.withDesktopStyleRef
           ? " Image 2 is the approved wide version of the same scene: match its lighting, color palette, props and mood exactly, so both images look like one photo shoot."
@@ -173,17 +227,31 @@ export function buildHeroPrompt(input: HeroPromptInput): string {
 
   const mood = custom
     ? `Restyle the scene according to the theme details below, keeping it minimal, elegant and luxurious.`
-    : `Restyle the scene for this occasion: ${theme.mood}. The amber or colored liquid in the bottles keeps its natural color.`;
+    : `Restyle the scene for this occasion: ${theme.mood}. The liquid in the bottles keeps its natural color.`;
 
+  // Бараатай mobile нь дахин зохиомжлогдоно (prompts/hero-mobile.md v4) —
+  // «юуг ч бүү хөдөлгө» гэх дүрэм хамаарахгүй, хоосон бүс 62%.
+  const recomposedMobile = products.length > 0 && input.target === "mobile";
+  const band = recomposedMobile
+    ? "between 62% and 97% of the frame width"
+    : z.productBand;
   const details = custom
     ? ""
-    : `Add themed details only ${z.productBand}, around and behind the bottles, never covering any bottle or label: ${theme.details}. Keep the details small and refined.`;
+    : `Add themed details only ${band}, around and behind the bottles, never covering any bottle or label: ${theme.details}. Keep the details small and refined.`;
 
   const wallTone = theme.darkWall
     ? "a smooth wall in the theme's tone with soft light, dark and even enough for white text to be read on it"
     : "the smooth plaster wall in a light tone with soft window-light shadows, light enough for dark text to be read on it";
 
-  const empty = `${z.empty} must stay completely empty: only ${wallTone}, above the polished stone surface — no objects, no props, no decorations, no text in that area. The wall and the stone surface continue to every edge of the frame. ${z.vertical}`;
+  const emptyLabel = recomposedMobile
+    ? "The left 62% of the frame, including the bottom-left corner,"
+    : z.empty;
+  const vertical = products.length
+    ? input.target === "desktop"
+      ? "The tallest bottle top at about 14% from the top edge and the lowest point of any product at about 86% from the top edge."
+      : ""
+    : z.vertical;
+  const empty = `${emptyLabel} must stay completely empty: only ${wallTone}, above the polished stone surface — no objects, no props, no decorations, no text in that area. The wall and the stone surface continue to every edge of the frame. ${vertical}`.trim();
 
   return [
     scene,

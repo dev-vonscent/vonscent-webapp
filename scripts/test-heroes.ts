@@ -250,6 +250,13 @@ async function main() {
        values (gen_random_uuid(), 'tablet', 'winter', '3584x1280', 'p')`,
     );
     check("target зөвхөн desktop/mobile", /check constraint/.test(bad?.message ?? ""), bad?.message);
+    const four = await errorOf(
+      c,
+      `insert into hero_image_generations (group_id, target, theme_key, size, prompt, product_ids)
+       values (gen_random_uuid(), 'desktop', 'winter', '3584x1280', 'p',
+               array[gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), gen_random_uuid()])`,
+    );
+    check("үнэртэн ихдээ 3", /hig_product_count/.test(four?.message ?? ""), four?.message);
     await c.query("set local role anon");
     const r = await c.query("select * from hero_image_generations");
     check("anon уншихгүй", r.rowCount === 0);
