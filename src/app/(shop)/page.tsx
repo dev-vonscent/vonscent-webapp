@@ -43,6 +43,7 @@ import { PromoPopup } from "@/features/marketing/components/promo-popup";
 import { firstPopupImage } from "@/features/marketing/popup-schedule";
 import { CampaignHero } from "@/features/marketing/components/home/campaign-hero";
 import { resolveHomeHero } from "@/features/marketing/hero-resolve";
+import { normalizePromoHref } from "@/features/heroes/lib";
 import { HomeShortcuts } from "@/features/marketing/components/home/home-shortcuts";
 import { IntentCards } from "@/features/marketing/components/home/intent-cards";
 import { ReviewsSection } from "@/features/marketing/components/home/reviews-section";
@@ -97,7 +98,7 @@ function sellableFirst<T extends { soldOut: boolean }>(list: T[]): T[] {
  * Each data block streams behind its own `<Suspense>` with a skeleton of its
  * own shape (no layout shift). The hero alone is awaited up front: it is the
  * LCP, and a nested boundary is revealed late on a busy phone (see
- * `resolveStaticHero`). Its DB read (`live_hero`, 0182) is one cached RPC;
+ * `resolveStaticHero`). Its DB read (`live_heroes`, 0184) is one cached RPC;
  * any failure falls back to the code hero (plan §7.1, §7.5).
  */
 export default async function HomePage() {
@@ -106,7 +107,12 @@ export default async function HomePage() {
     <>
       {/* An overlay with nothing to reserve, so it streams with no fallback. */}
       <Suspense fallback={null}>
-        <PromoSlot heroHref={hero.campaign.primary.href} />
+        <PromoSlot
+          heroHrefs={[
+            hero.campaign.primary.href,
+            ...(hero.campaign.secondary ? [hero.campaign.secondary.href] : []),
+          ]}
+        />
       </Suspense>
       <Suspense fallback={null}>
         <SiteJsonLd />
@@ -167,12 +173,16 @@ async function SiteJsonLd() {
  * same place as the live hero campaign is dropped — the visitor would see
  * the same promotion twice.
  */
-async function PromoSlot({ heroHref }: { heroHref: string }) {
+async function PromoSlot({ heroHrefs }: { heroHrefs: string[] }) {
   const raw = await getPopupSettings();
-  // Шийдэгдсэн hero-гийн холбоос (DB эсвэл кодын, plan §7.2).
+  // Шийдэгдсэн hero-гийн хоёр товчны холбоос (DB эсвэл кодын, plan §7.2).
+  // `/sale/x` ба `/catalog?event=x`, origin, query-ийн дараалал ялгаагүй.
+  const taken = new Set(heroHrefs.map(normalizePromoHref));
   const settings = {
     ...raw,
-    slides: raw.slides.filter((s) => !s.href || s.href !== heroHref),
+    slides: raw.slides.filter(
+      (s) => !s.href || !taken.has(normalizePromoHref(s.href)),
+    ),
   };
   // Popup нээгдэхэд түүний зураг LCP болж болно — HTML parse хийх үед
   // JS-тэй зэрэг татаж эхэлнэ. Priority-г өсгөхгүй (hero-той өрсөлдөхгүй).

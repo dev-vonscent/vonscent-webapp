@@ -20,7 +20,9 @@ export function isInternalPath(href: string): boolean {
 export function heroTargetHref(t: HeroTarget): string {
   switch (t.type) {
     case "event":
-      return `/sale/${t.slug}`;
+      // Шууд каталог руу: `/sale/[slug]` нь 307 (илүү хүсэлт, Link prefetch
+      // хийгдэхгүй) — тэр богино хаяг сошиалд л үлдэнэ (fixes F3).
+      return `/catalog?event=${t.slug}`;
     case "season":
       return `/catalog?kind=perfume&season=${t.value}`;
     case "catalog": {
@@ -104,6 +106,97 @@ export function heroPeriod(
     : null;
 }
 
+/** Арга хэмжээ `at` мөчид LIVE эсэх — `live_hero()`-ийн `live_events`. */
+export function eventLiveAt(e: HeroEventOption, at: number): boolean {
+  return (
+    e.isActive && Date.parse(e.startsAt) <= at && at < Date.parse(e.endsAt)
+  );
+}
+
+export type HeroTargetBlockReason = "draft" | "scheduled" | "ended" | "missing";
+
+export interface HeroTargetBlock {
+  slug: string;
+  /** null = арга хэмжээ олдсонгүй (дууссан эсвэл `sale_events` туг хаалттай). */
+  name: string | null;
+  reason: HeroTargetBlockReason;
+  startsAt: string | null;
+}
+
+/**
+ * Hero-гийн товч (primary, secondary) LIVE биш арга хэмжээ рүү заавал hero
+ * дэлгүүрт ГАРАХГҮЙ — `live_hero()`-ийн `exists (… live_events x where
+ * x.slug = …)`-тэй ижил дүрэм. Шалтгааныг буцаана; гарах бол null.
+ * `events` — `getHeroEventOptions()` (дууссан болон туг хаалттай бол хоосон
+ * → `missing`).
+ */
+export function heroTargetBlock(
+  h: Pick<HeroAdminRow, "primaryTarget" | "secondaryTarget">,
+  events: readonly HeroEventOption[],
+  at: number,
+): HeroTargetBlock | null {
+  for (const t of [h.primaryTarget, h.secondaryTarget]) {
+    if (!t || t.type !== "event") continue;
+    const e = events.find((x) => x.slug === t.slug);
+    if (!e) return { slug: t.slug, name: null, reason: "missing", startsAt: null };
+    const base = { slug: e.slug, name: e.name, startsAt: e.startsAt };
+    if (!e.isActive) return { ...base, reason: "draft" };
+    if (at < Date.parse(e.startsAt)) return { ...base, reason: "scheduled" };
+    if (at >= Date.parse(e.endsAt)) return { ...base, reason: "ended" };
+  }
+  return null;
+}
+
+/** `11/23` (УБ). */
+export function ubMonthDay(iso: string): string {
+  const [, m, d] = dayKey(Date.parse(iso)).split("-");
+  return `${Number(m)}/${Number(d)}`;
+}
+
+/** Админд харуулах шалтгаан. */
+export function heroTargetBlockText(b: HeroTargetBlock): string {
+  const ev = `Товчны арга хэмжээ «${b.name ?? b.slug}»`;
+  switch (b.reason) {
+    case "scheduled":
+      return `${ev} ${ubMonthDay(b.startsAt!)}-нд эхэлнэ — тэр хүртэл дэлгүүрт гарахгүй.`;
+    case "draft":
+      return `${ev} нийтлэгдээгүй (ноорог) — дэлгүүрт гарахгүй.`;
+    case "ended":
+      return `${ev} дууссан — дэлгүүрт гарахгүй.`;
+    case "missing":
+      return `${ev} олдсонгүй эсвэл дууссан — дэлгүүрт гарахгүй.`;
+  }
+}
+
+/** Сонголтын жагсаалтад: Ноорог / 11/23-нд эхэлнэ / Явж байна / Дууссан. */
+export function eventOptionStatus(e: HeroEventOption, now: number): string {
+  if (!e.isActive) return "Ноорог";
+  if (now < Date.parse(e.startsAt)) return `${ubMonthDay(e.startsAt)}-нд эхэлнэ`;
+  if (now < Date.parse(e.endsAt)) return "Явж байна";
+  return "Дууссан";
+}
+
+/**
+ * Маягтын анхааруулга: hero-гийн хугацааны зарим хэсэгт товчны арга хэмжээ
+ * LIVE биш бол (эхлэхээс өмнө, дууссаны дараа, ноорог) тэр арга хэмжээг
+ * буцаана — hero тэр хэсэгт гарахгүй. Хадгалахыг хориглохгүй.
+ */
+export function targetOutsidePeriod(
+  period: { startsAt: string; endsAt: string } | null,
+  target: HeroTarget | null,
+  events: readonly HeroEventOption[],
+): HeroEventOption | null {
+  if (!target || target.type !== "event") return null;
+  const e = events.find((x) => x.slug === target.slug);
+  if (!e) return null;
+  if (!e.isActive) return e;
+  if (!period) return null;
+  return Date.parse(period.startsAt) < Date.parse(e.startsAt) ||
+    Date.parse(period.endsAt) > Date.parse(e.endsAt)
+    ? e
+    : null;
+}
+
 export interface ScheduleSegment {
   /** `YYYY-MM-DD` (УБ), хоёулаа хамааруулна. */
   from: string;
@@ -120,10 +213,38 @@ function dayKey(t: number): string {
 }
 
 /**
+ * `t` мөчид дэлгүүрт гарах DB hero — `live_hero()`-ийн дүрэм: идэвхтэй,
+ * зурагтай, хугацаандаа (холбоотой бол арга хэмжээ нь LIVE), товчны арга
+ * хэмжээ LIVE (`heroTargetBlock`), priority их нь, дараа нь сүүлд эхэлсэн нь.
+ */
+export function heroAt(
+  heroes: readonly HeroAdminRow[],
+  events: readonly HeroEventOption[],
+  t: number,
+): HeroAdminRow | null {
+  let best: { h: HeroAdminRow; start: number } | null = null;
+  for (const h of heroes) {
+    if (!h.isActive || !h.desktopImage || !h.mobileImage) continue;
+    const p = heroPeriod(h, events);
+    if (!p || !p.eventActive) continue;
+    const start = Date.parse(p.startsAt);
+    if (!(start <= t && t < Date.parse(p.endsAt))) continue;
+    if (heroTargetBlock(h, events, t)) continue;
+    if (
+      !best ||
+      h.priority > best.h.priority ||
+      (h.priority === best.h.priority &&
+        (start > best.start || (start === best.start && h.id < best.h.id)))
+    )
+      best = { h, start };
+  }
+  return best?.h ?? null;
+}
+
+/**
  * Ирэх N хоногийн хуваарь (plan §9.2): өдөр бүрийн УБ 12:00-д аль hero гарах
- * вэ (`live_hero()`-ийн дүрэм: идэвхтэй, зурагтай, priority их нь, дараа нь
- * сүүлд эхэлсэн нь), дараалсан ижил өдрүүдийг нэг хэсэг болгоно. Товчны
- * арга хэмжээний шалгалтыг энд хийхгүй — тойм.
+ * вэ (`heroAt` — `live_hero()`-тэй ижил дүрэм, товчны арга хэмжээ ч орно),
+ * дараалсан ижил өдрүүдийг нэг хэсэг болгоно.
  */
 export function heroSchedule(
   heroes: readonly HeroAdminRow[],
@@ -131,28 +252,13 @@ export function heroSchedule(
   now: number,
   days = 90,
 ): ScheduleSegment[] {
-  const candidates = heroes
-    .filter((h) => h.isActive && h.desktopImage && h.mobileImage)
-    .map((h) => ({ h, p: heroPeriod(h, events) }))
-    .filter(
-      (x): x is { h: HeroAdminRow; p: NonNullable<typeof x.p> } =>
-        x.p != null && x.p.eventActive,
-    );
   const today = dayKey(now);
   const startNoon = Date.parse(`${today}T12:00:00+08:00`);
   const out: ScheduleSegment[] = [];
   for (let i = 0; i < days; i++) {
     const t = startNoon + i * 86_400_000;
-    const live = candidates
-      .filter(
-        ({ p }) => Date.parse(p.startsAt) <= t && t < Date.parse(p.endsAt),
-      )
-      .sort(
-        (a, b) =>
-          b.h.priority - a.h.priority ||
-          Date.parse(b.p.startsAt) - Date.parse(a.p.startsAt),
-      )[0];
-    const heroId = live?.h.id ?? null;
+    const live = heroAt(heroes, events, t);
+    const heroId = live?.id ?? null;
     const day = dayKey(t);
     const last = out[out.length - 1];
     if (last && last.heroId === heroId) last.to = day;
@@ -161,8 +267,47 @@ export function heroSchedule(
         from: day,
         to: day,
         heroId,
-        label: live?.h.name ?? "Кодын hero",
+        label: live?.name ?? "Кодын hero",
       });
   }
   return out;
+}
+
+/**
+ * Popup-ийн слайд hero-той ижил газар заасан эсэхийг харьцуулах хэлбэр
+ * (fixes F3): өөрийн домэйны origin хасна, `/sale/x` → `/catalog?event=x`,
+ * query эрэмбэлнэ, төгсгөлийн `/` хасна. Гадаад хаяг хэвээр.
+ */
+export function normalizePromoHref(href: string): string {
+  let u: URL;
+  try {
+    u = new URL(href, "http://self.invalid");
+  } catch {
+    return href;
+  }
+  const own =
+    u.host === "self.invalid" || /(^|\.)vonscent\.mn$/u.test(u.hostname);
+  if (!own) return u.href;
+  let path = u.pathname.replace(/\/+$/u, "") || "/";
+  const params = new URLSearchParams(u.search);
+  const sale = /^\/sale\/([^/]+)$/u.exec(path);
+  if (sale) {
+    path = "/catalog";
+    params.set("event", decodeURIComponent(sale[1]));
+  }
+  params.sort();
+  const q = params.toString();
+  return q ? `${path}?${q}` : path;
+}
+
+/** `live_heroes()`-ийн кэшээс одоо гарах эхний hero (fixes F5). */
+export function pickLiveHero<T extends { startsAt: string; endsAt: string }>(
+  rows: readonly T[],
+  now: number,
+): T | null {
+  return (
+    rows.find(
+      (r) => Date.parse(r.startsAt) <= now && now < Date.parse(r.endsAt),
+    ) ?? null
+  );
 }

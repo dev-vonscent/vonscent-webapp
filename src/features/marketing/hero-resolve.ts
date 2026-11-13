@@ -15,7 +15,7 @@ import {
 /**
  * Нүүрний hero-гийн дараалал (plan §7.1):
  *
- *   hero_admin нээлттэй →  DB-ийн идэвхтэй hero (`live_hero()`)
+ *   hero_admin нээлттэй →  DB-ийн идэвхтэй hero (`live_heroes()`)
  *                        →  HOME_CAMPAIGNS (кодын)  →  EVERGREEN_HERO
  *   hero_admin хаалттай →  HOME_CAMPAIGNS → EVERGREEN_HERO
  *

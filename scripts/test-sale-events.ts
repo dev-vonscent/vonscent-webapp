@@ -417,16 +417,16 @@ async function main() {
 
   await scenario(c, "11. Slug дахин ашиглах, зогсоох, устгах", async () => {
     const old = await saveEvent(c, f, {
-      slug: "black-friday",
+      slug: "zz-bf-test",
       from: "now() - interval '3 hours'",
       to: "now() - interval '2 hours'",
     });
-    await saveEvent(c, f, { slug: "black-friday", name: "Шинэ BF" });
+    await saveEvent(c, f, { slug: "zz-bf-test", name: "Шинэ BF" });
     const r = await c.query<{ slug: string }>("select slug from sale_events where id = $1", [old]);
-    check("дууссан хуучны slug архивлагдсан", /^black-friday-\d{4}/.test(r.rows[0].slug), r.rows[0]);
+    check("дууссан хуучны slug архивлагдсан", /^zz-bf-test-\d{4}/.test(r.rows[0].slug), r.rows[0]);
     const taken = await errorOf(
       c,
-      `select save_sale_event(null, jsonb_build_object('slug','black-friday','name','X',
+      `select save_sale_event(null, jsonb_build_object('slug','zz-bf-test','name','X',
         'startsAt', now() + interval '9 hours', 'endsAt', now() + interval '10 hours', 'isActive', false), '[]')`,
     );
     check("явж буй slug давхардвал unique алдаа", /duplicate key|unique/i.test(taken?.message ?? ""), taken?.message);
@@ -444,6 +444,73 @@ async function main() {
     check("нийтэлсэн устгагдахгүй (NOT_DRAFT)", /NOT_DRAFT/.test(delLive?.message ?? ""), delLive?.message);
     const delDraft = await errorOf(c, "select delete_sale_event($1)", [sched]);
     check("ноорог устгагдана", delDraft === null, delDraft?.message);
+  });
+
+  await scenario(c, "12. Дууссан / зогсоосныг засахгүй (0184 EVENT_ENDED)", async () => {
+    const save = (id: string, from: string, to: string) =>
+      errorOf(
+        c,
+        `select save_sale_event($1, jsonb_build_object(
+            'slug', 'ended-x', 'name', 'Засвар',
+            'startsAt', ${from}, 'endsAt', ${to},
+            'isActive', true, 'showCountdown', true),
+           $2::jsonb, null)`,
+        [id, JSON.stringify([{ productId: f.product, pcts: { [String(f.ml)]: 20 } }])],
+      );
+
+    const live = await saveEvent(c, f, { slug: "ended-x" });
+    await c.query("select stop_sale_event($1)", [live]);
+    const before = await c.query("select ends_at from sale_events where id = $1", [live]);
+    // Маягт «өнөөдөр» гэж дуусах өдрийг илгээнэ → өдрийн төгсгөл.
+    const err = await save(live, "now() - interval '1 hour'", "now() + interval '10 hours'");
+    check("зогсоосныг хадгалах → EVENT_ENDED", /EVENT_ENDED/.test(err?.message ?? ""), err?.message);
+    const after = await c.query("select ends_at from sale_events where id = $1", [live]);
+    check("ends_at өөрчлөгдөөгүй", String(after.rows[0].ends_at) === String(before.rows[0].ends_at));
+    check("үнэ үндсэн хэвээр", (await priceOf(c, f.variant)).p === f.price);
+
+    const past = await saveEvent(c, f, {
+      slug: "past-x",
+      from: "now() - interval '3 days'",
+      to: "now() - interval '1 day'",
+      items: [{ productId: f.other, pcts: {} }],
+    });
+    const err2 = await errorOf(
+      c,
+      `select save_sale_event($1, jsonb_build_object('slug','past-x','name','X',
+         'startsAt', now() - interval '3 days', 'endsAt', now() + interval '1 day',
+         'isActive', true), '[]')`,
+      [past],
+    );
+    check("хугацаа өнгөрсөн → EVENT_ENDED", /EVENT_ENDED/.test(err2?.message ?? ""), err2?.message);
+
+    // Regression: ноорог, товлосон, явж буй засагдана.
+    const draft = await saveEvent(c, f, { slug: "draft-x", active: false, items: [] });
+    check("ноорог засагдана", (await errorOf(c, `select save_sale_event($1, jsonb_build_object('slug','draft-x','name','Y',
+      'startsAt', now(), 'endsAt', now() + interval '1 day', 'isActive', false), '[]')`, [draft])) === null);
+    const sched = await saveEvent(c, f, {
+      slug: "sched-y",
+      from: "now() + interval '5 hours'",
+      to: "now() + interval '6 hours'",
+      items: [{ productId: f.other, pcts: {} }],
+    });
+    check("товлосон засагдана", (await errorOf(c, `select save_sale_event($1, jsonb_build_object('slug','sched-y','name','Z',
+      'startsAt', now() + interval '5 hours', 'endsAt', now() + interval '7 hours', 'isActive', true), '[]')`, [sched])) === null);
+    await c.query("select stop_sale_event($1)", [sched]);
+    check("эхлээгүйг зогсоосон (→ ноорог) засагдана", (await errorOf(c, `select save_sale_event($1, jsonb_build_object('slug','sched-y','name','Z2',
+      'startsAt', now() + interval '5 hours', 'endsAt', now() + interval '7 hours', 'isActive', false), '[]')`, [sched])) === null);
+    const liveOk = await saveEvent(c, f, { slug: "live-y", items: [{ productId: f.other, pcts: {} }] });
+    check("явж буй засагдана", (await errorOf(c, `select save_sale_event($1, jsonb_build_object('slug','live-y','name','L',
+      'startsAt', now() - interval '1 hour', 'endsAt', now() + interval '2 hours', 'isActive', true), '[]')`, [liveOk])) === null);
+
+    // Хуулах (p_id null, ижил slug) → хуучны slug архивлагдана.
+    await saveEvent(c, f, {
+      slug: "ended-x",
+      from: "now() + interval '1 day'",
+      to: "now() + interval '2 days'",
+      items: [{ productId: f.other, pcts: {} }],
+    });
+    const arch = await c.query<{ slug: string }>("select slug from sale_events where id = $1", [live]);
+    check("дууссаныг хуулах → хуучны slug архивлагдана", /^ended-x-\d{4}/.test(arch.rows[0].slug), arch.rows[0]);
   });
 
   await c.end();

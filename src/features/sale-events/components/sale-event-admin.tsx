@@ -277,6 +277,11 @@ function EventCard({
               {e.badgeLabel ?? "Хямдрал"}
             </span>
           </p>
+          {phase === "ended" && (
+            <p className="text-muted-foreground text-xs">
+              Дууссан — дахин явуулах бол хуулна уу.
+            </p>
+          )}
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-1">
           {(phase === "live" || phase === "scheduled") && (
@@ -291,14 +296,18 @@ function EventCard({
               </a>
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onEdit}
-            aria-label={`«${e.name}»-г засах`}
-          >
-            <Pencil className="size-4" />
-          </Button>
+          {/* Дууссан (зогсоосон) арга хэмжээ засагдахгүй (0184 EVENT_ENDED) —
+              хадгалахад дахин LIVE болох эрсдэлтэй. Зөвхөн хуулна. */}
+          {phase !== "ended" && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onEdit}
+              aria-label={`«${e.name}»-г засах`}
+            >
+              <Pencil className="size-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -453,6 +462,8 @@ function EventForm({
   const row = editing && editing.mode !== "new" ? editing.row : null;
   const phase = isEdit && row ? saleEventPhase(row) : null;
   const published = isEdit && row?.isActive === true;
+  // Хуучин таб / state-ээс дууссан мөр нээгдсэн бол хадгалахыг хаана (F1).
+  const locked = phase === "ended";
   const byId = React.useMemo(
     () => new Map(products.map((p) => [p.id, p])),
     [products],
@@ -477,7 +488,7 @@ function EventForm({
   }
 
   async function save(isActive: boolean) {
-    if (!draft || !editing) return;
+    if (!draft || !editing || locked) return;
     const parsed = saleEventInputSchema.safeParse(toInput(draft, isActive));
     if (!parsed.success) {
       setErrors(saleEventFieldErrors(parsed.error));
@@ -545,7 +556,7 @@ function EventForm({
             type="button"
             variant="outline"
             loading={busy === "draft"}
-            disabled={busy !== null}
+            disabled={busy !== null || locked}
             onClick={() => save(false)}
           >
             {published ? "Ноорог болгох" : "Ноорог хадгалах"}
@@ -554,7 +565,7 @@ function EventForm({
             type="submit"
             form={FORM_ID}
             loading={busy === "publish"}
-            disabled={busy !== null}
+            disabled={busy !== null || locked}
           >
             {published ? "Хадгалах" : "Нийтлэх"}
           </LoadingButton>
@@ -562,6 +573,12 @@ function EventForm({
       }
     >
       {confirmDialog}
+      {locked && (
+        <p className="border-border bg-muted text-muted-foreground mb-4 rounded-md border px-3 py-2 text-sm">
+          Энэ арга хэмжээ дууссан тул засагдахгүй. Дахин явуулах бол
+          жагсаалтаас «Хуулах»-аар шинэ ноорог үүсгэнэ үү.
+        </p>
+      )}
       {draft && (
         <form
           id={FORM_ID}

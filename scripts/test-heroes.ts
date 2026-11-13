@@ -266,6 +266,31 @@ async function main() {
     check("туг хаалттай → FEATURE_DISABLED (зардал гарахгүй)", /FEATURE_DISABLED/.test(off?.message ?? ""), off?.message);
   });
 
+  await scenario(c, "9. live_heroes() (0184) — кэшийн жагсаалт", async () => {
+    const low = await addHero(c, { name: "winter", priority: 1 });
+    const high = await addHero(c, { name: "bf", priority: 10 });
+    await addHero(c, { name: "draft", priority: 50, active: false });
+    const { rows } = await c.query<{ id: string }>("select id from live_heroes()");
+    check(
+      "priority-ийн дарааллаар 2 мөр",
+      rows.length === 2 && rows[0].id === high && rows[1].id === low,
+      rows,
+    );
+    check("эхнийх нь live_hero()-тэй таарна", (await liveId(c)) === rows[0].id);
+    // Товлосон арга хэмжээ рүү заасан hero ороогүй (TS heroTargetBlock-тэй ижил).
+    await addEvent(c, "lh-sched", "now() + interval '1 day'", "now() + interval '2 days'");
+    const blocked = await addHero(c, { primary: { type: "event", slug: "lh-sched" }, priority: 99 });
+    const r2 = await c.query<{ id: string }>("select id from live_heroes()");
+    check("товлосон арга хэмжээ рүү заасан hero → жагсаалтад алга", !r2.rows.some((r) => r.id === blocked));
+    await c.query("set local role anon");
+    const a = await c.query("select * from live_heroes()");
+    check("anon дуудаж чадна", a.rowCount === 2);
+    await c.query("reset role");
+    await setFlag(c, "hero_admin", false);
+    const off = await c.query("select * from live_heroes()");
+    check("туг хаалттай → хоосон", off.rowCount === 0);
+  });
+
   await c.end();
   console.log(failed ? `\n✖ ${failed} шалгалт унасан.` : "\n✅ Бүх шалгалт амжилттай.");
   process.exit(failed ? 1 : 0);

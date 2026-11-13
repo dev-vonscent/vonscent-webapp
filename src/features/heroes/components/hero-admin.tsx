@@ -43,7 +43,19 @@ import {
   heroInputSchema,
   type HeroInput,
 } from "@/lib/validators/hero";
-import { heroPeriod, heroSchedule, heroToCampaign, heroTargetHref } from "../lib";
+import { dayEndIso, dayStartIso } from "@/features/admin/lib/date-range";
+import {
+  eventOptionStatus,
+  heroAt,
+  heroPeriod,
+  heroSchedule,
+  heroTargetBlock,
+  heroTargetBlockText,
+  heroTargetHref,
+  heroToCampaign,
+  targetOutsidePeriod,
+  ubMonthDay,
+} from "../lib";
 import { prepareHeroUpload } from "../prepare-upload";
 import { HeroAiPanel } from "./hero-ai-panel";
 import type {
@@ -123,6 +135,8 @@ export function HeroAdmin({
   }
 
   const schedule = now == null ? [] : heroSchedule(rows, events, now);
+  // Яг одоо дэлгүүрт гарч буй ганц hero (`live_hero()`-ийн дүрэм).
+  const liveId = now == null ? null : (heroAt(rows, events, now)?.id ?? null);
 
   return (
     <div className="space-y-6">
@@ -184,6 +198,7 @@ export function HeroAdmin({
                 hero={h}
                 events={events}
                 now={now}
+                live={liveId === h.id}
                 busy={busyId === h.id}
                 onEdit={() => setEditing({ mode: "edit", row: h })}
                 onCopy={() => setEditing({ mode: "copy", row: h })}
@@ -198,6 +213,7 @@ export function HeroAdmin({
       <HeroForm
         editing={editing}
         events={events}
+        now={now}
         aiConfigured={aiConfigured}
         onClose={() => setEditing(null)}
         onSaved={() => {
@@ -213,6 +229,7 @@ function HeroCard({
   hero: h,
   events,
   now,
+  live,
   busy,
   onEdit,
   onCopy,
@@ -222,6 +239,7 @@ function HeroCard({
   hero: HeroAdminRow;
   events: HeroEventOption[];
   now: number | null;
+  live: boolean;
   busy: boolean;
   onEdit: () => void;
   onCopy: () => void;
@@ -232,13 +250,26 @@ function HeroCard({
   const event = h.saleEventId
     ? events.find((e) => e.id === h.saleEventId)
     : null;
-  const live =
+  // Хугацаандаа байгаа (эсвэл ирээдүйд эхлэх) нийтэлсэн hero-гийн товч LIVE
+  // биш арга хэмжээ рүү заавал дэлгүүрт гарахгүй — шалтгааныг харуулна
+  // (fixes F2). Хугацаандаа бол «Хүлээгдэж байна».
+  const inPeriod =
     now != null &&
     h.isActive &&
     period != null &&
     period.eventActive &&
     Date.parse(period.startsAt) <= now &&
     now < Date.parse(period.endsAt);
+  const notEnded =
+    now != null && period != null && now < Date.parse(period.endsAt);
+  const block =
+    now != null && h.isActive && period != null && notEnded
+      ? heroTargetBlock(
+          h,
+          events,
+          Math.max(now, Date.parse(period.startsAt)),
+        )
+      : null;
   const thumb = h.desktopImage ? `${h.desktopImage.base}-1600.webp` : null;
   return (
     <Card className={cn(!h.isActive && "bg-card/60")}>
@@ -254,6 +285,8 @@ function HeroCard({
             <h2 className="font-semibold wrap-break-word">{h.name}</h2>
             {live ? (
               <Badge variant="new">Одоо гарч байна</Badge>
+            ) : inPeriod && block ? (
+              <Badge variant="outline">Хүлээгдэж байна</Badge>
             ) : h.isActive ? (
               <Badge variant="gold">Нийтэлсэн</Badge>
             ) : (
@@ -275,6 +308,9 @@ function HeroCard({
             </span>
             <span>→ {heroTargetHref(h.primaryTarget)}</span>
           </p>
+          {block && (
+            <p className="text-warning text-xs">{heroTargetBlockText(block)}</p>
+          )}
         </div>
         <div className="flex shrink-0 flex-wrap items-start gap-1">
           <Button
@@ -429,12 +465,14 @@ function toInput(d: Draft, isActive: boolean): unknown {
 function HeroForm({
   editing,
   events,
+  now,
   aiConfigured,
   onClose,
   onSaved,
 }: {
   editing: Editing | null;
   events: HeroEventOption[];
+  now: number | null;
   aiConfigured: boolean;
   onClose: () => void;
   onSaved: () => void;
@@ -457,6 +495,19 @@ function HeroForm({
 
   const isEdit = editing?.mode === "edit";
   const published = isEdit && editing.row.isActive;
+
+  // Hero-гийн хугацаа (өөрийн эсвэл холбосон арга хэмжээний) — товчны арга
+  // хэмжээний анхааруулгад (fixes F2).
+  const draftPeriod = React.useMemo(() => {
+    if (!draft) return null;
+    if (draft.scheduleMode === "event") {
+      const e = events.find((x) => x.id === draft.saleEventId);
+      return e ? { startsAt: e.startsAt, endsAt: e.endsAt } : null;
+    }
+    const startsAt = dayStartIso(draft.startsOn);
+    const endsAt = dayEndIso(draft.endsOn);
+    return startsAt && endsAt ? { startsAt, endsAt } : null;
+  }, [draft, events]);
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((d) => (d ? { ...d, [key]: value } : d));
@@ -698,6 +749,8 @@ function HeroForm({
               <TargetPicker
                 value={draft.primaryTarget}
                 events={events}
+                now={now}
+                period={draftPeriod}
                 error={errors.primaryTarget}
                 onChange={(t) => set("primaryTarget", t)}
               />
@@ -717,6 +770,8 @@ function HeroForm({
                     draft.secondaryTarget ?? { type: "path", href: "/catalog" }
                   }
                   events={events}
+                  now={now}
+                  period={draftPeriod}
                   error={errors.secondaryTarget}
                   onChange={(t) => set("secondaryTarget", t)}
                 />
@@ -788,7 +843,7 @@ function HeroForm({
                     {events.map((e) => (
                       <SelectItem key={e.id} value={e.id}>
                         {e.name} · {formatEventPeriod(e.startsAt, e.endsAt)}
-                        {!e.isActive && " (ноорог)"}
+                        {now != null && ` · ${eventOptionStatus(e, now)}`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -865,11 +920,15 @@ const TARGET_LABEL: Record<HeroTarget["type"], string> = {
 function TargetPicker({
   value,
   events,
+  now,
+  period,
   error,
   onChange,
 }: {
   value: HeroTarget;
   events: HeroEventOption[];
+  now: number | null;
+  period: { startsAt: string; endsAt: string } | null;
   error?: string;
   onChange: (t: HeroTarget) => void;
 }) {
@@ -888,12 +947,14 @@ function TargetPicker({
             : { type, href: "/" },
     );
   }
+  const outside = targetOutsidePeriod(period, value, events);
   return (
     <Field
       label="Холбоос"
       hint={`→ ${heroTargetHref(value)}`}
       error={error}
     >
+      <div className="space-y-2">
       <div className="flex flex-col gap-2 sm:flex-row">
         <Select
           value={value.type}
@@ -922,6 +983,7 @@ function TargetPicker({
               {events.map((e) => (
                 <SelectItem key={e.id} value={e.slug}>
                   {e.name}
+                  {now != null && ` · ${eventOptionStatus(e, now)}`}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -965,6 +1027,14 @@ function TargetPicker({
             onChange={(e) => onChange({ type: "path", href: e.target.value })}
           />
         )}
+      </div>
+      {outside && (
+        <p className="text-warning text-xs">
+          {outside.isActive
+            ? `Энэ hero зөвхөн «${outside.name}» явж байх үед (${ubMonthDay(outside.startsAt)}–${ubMonthDay(new Date(Date.parse(outside.endsAt) - 1).toISOString())}) гарна. Урьдчилсан зарлал бол товчийг каталог эсвэл өөр хуудас руу заана уу.`
+            : `«${outside.name}» нийтлэгдээгүй (ноорог) — нийтлэх хүртэл энэ hero дэлгүүрт гарахгүй.`}
+        </p>
+      )}
       </div>
     </Field>
   );

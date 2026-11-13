@@ -86,6 +86,15 @@ export function saleEventWriteError(error: {
       { status: 409 },
     );
   }
+  if (/EVENT_ENDED/.test(error.message)) {
+    return NextResponse.json(
+      {
+        error:
+          "Дууссан арга хэмжээг засахгүй. Дахин явуулах бол хуулж шинээр үүсгэнэ үү.",
+      },
+      { status: 409 },
+    );
+  }
   if (/FEATURE_DISABLED/.test(error.message)) {
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }

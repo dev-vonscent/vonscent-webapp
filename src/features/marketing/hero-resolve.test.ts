@@ -31,7 +31,7 @@ describe("resolveHomeHero", () => {
     });
     const r = await resolveHomeHero();
     expect(r.campaign.title).toBe("Black Friday");
-    expect(r.campaign.primary.href).toBe("/sale/black-friday");
+    expect(r.campaign.primary.href).toBe("/catalog?event=black-friday");
     expect(r.image.mobile?.src).toBe("https://s/m.webp");
   });
 

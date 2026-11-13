@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  eventOptionStatus,
+  heroAt,
   heroSchedule,
+  heroTargetBlock,
+  heroTargetBlockText,
   heroTargetHref,
   heroToCampaign,
   isInternalPath,
+  normalizePromoHref,
+  pickLiveHero,
+  targetOutsidePeriod,
 } from "./lib";
-import type { HeroAdminRow, LiveHero } from "./types";
+import type { HeroAdminRow, HeroEventOption, LiveHero } from "./types";
 
 describe("isInternalPath", () => {
   it("дотоод хаяг", () => {
@@ -28,8 +35,9 @@ describe("isInternalPath", () => {
 
 describe("heroTargetHref", () => {
   it("төрөл бүр", () => {
+    // `/sale/x` 307-гүйгээр шууд каталог (fixes F3).
     expect(heroTargetHref({ type: "event", slug: "black-friday" })).toBe(
-      "/sale/black-friday",
+      "/catalog?event=black-friday",
     );
     expect(heroTargetHref({ type: "season", value: "winter" })).toBe(
       "/catalog?kind=perfume&season=winter",
@@ -66,7 +74,10 @@ const live: LiveHero = {
 describe("heroToCampaign", () => {
   it("кодын hero-той ижил хэлбэр, srcSet өсөх дарааллаар", () => {
     const c = heroToCampaign(live);
-    expect(c.primary).toEqual({ label: "Үзэх", href: "/sale/black-friday" });
+    expect(c.primary).toEqual({
+      label: "Үзэх",
+      href: "/catalog?event=black-friday",
+    });
     expect(c.secondary).toBeUndefined();
     expect(c.image).toMatchObject({
       kind: "static",
@@ -82,18 +93,30 @@ describe("heroToCampaign", () => {
   });
 });
 
-describe("heroSchedule", () => {
-  const row = (p: Partial<HeroAdminRow>): HeroAdminRow => ({
-    ...live,
-    name: "A",
+const row = (p: Partial<HeroAdminRow>): HeroAdminRow => ({
+  ...live,
+  primaryTarget: { type: "path", href: "/catalog" },
+  name: "A",
     saleEventId: null,
-    startsAt: "2026-11-22T16:00:00Z",
-    endsAt: "2026-11-30T16:00:00Z",
-    priority: 0,
-    isActive: true,
-    updatedAt: "",
-    ...p,
-  });
+  startsAt: "2026-11-22T16:00:00Z",
+  endsAt: "2026-11-30T16:00:00Z",
+  priority: 0,
+  isActive: true,
+  updatedAt: "",
+  ...p,
+});
+
+// Black Friday: 11/23 00:00 – 12/01 00:00 (УБ), exclusive.
+const bf: HeroEventOption = {
+  id: "e-bf",
+  slug: "black-friday",
+  name: "Black Friday",
+  startsAt: "2026-11-22T16:00:00Z",
+  endsAt: "2026-11-30T16:00:00Z",
+  isActive: true,
+};
+
+describe("heroSchedule", () => {
   // 2026-11-20 УБ.
   const now = Date.parse("2026-11-20T04:00:00Z");
 
@@ -120,5 +143,129 @@ describe("heroSchedule", () => {
       5,
     );
     expect(s.find((x) => x.heroId)?.label).toBe("B");
+  });
+});
+
+describe("heroTargetBlock (fixes F2)", () => {
+  const at = Date.parse("2026-11-25T04:00:00Z");
+  const h = (slug: string, secondary = false) =>
+    secondary
+      ? {
+          primaryTarget: { type: "path", href: "/" } as const,
+          secondaryTarget: { type: "event", slug } as const,
+        }
+      : { primaryTarget: { type: "event", slug } as const, secondaryTarget: null };
+
+  it("live → null", () => {
+    expect(heroTargetBlock(h("black-friday"), [bf], at)).toBeNull();
+  });
+  it("товлосон → scheduled + startsAt", () => {
+    const b = heroTargetBlock(h("black-friday"), [bf], Date.parse("2026-11-20T04:00:00Z"));
+    expect(b).toMatchObject({ reason: "scheduled", startsAt: bf.startsAt, name: "Black Friday" });
+    expect(heroTargetBlockText(b!)).toBe(
+      "Товчны арга хэмжээ «Black Friday» 11/23-нд эхэлнэ — тэр хүртэл дэлгүүрт гарахгүй.",
+    );
+  });
+  it("ноорог → draft", () => {
+    expect(heroTargetBlock(h("black-friday"), [{ ...bf, isActive: false }], at)?.reason).toBe("draft");
+  });
+  it("дууссан → ended", () => {
+    expect(heroTargetBlock(h("black-friday"), [bf], Date.parse("2026-12-01T04:00:00Z"))?.reason).toBe("ended");
+  });
+  it("slug олдохгүй → missing", () => {
+    expect(heroTargetBlock(h("nope"), [bf], at)).toMatchObject({ reason: "missing", name: null });
+  });
+  it("secondary товч ч шалгагдана", () => {
+    expect(heroTargetBlock(h("nope", true), [bf], at)?.reason).toBe("missing");
+    expect(heroTargetBlock(h("black-friday", true), [bf], at)).toBeNull();
+  });
+});
+
+describe("heroSchedule — товчны арга хэмжээ (fixes F2)", () => {
+  it("11/20–11/30 hero, товч нь 11/23-нд эхлэх арга хэмжээ рүү → 11/23-аас", () => {
+    const s = heroSchedule(
+      [
+        row({
+          primaryTarget: { type: "event", slug: "black-friday" },
+          startsAt: "2026-11-19T16:00:00Z",
+        }),
+      ],
+      [bf],
+      Date.parse("2026-11-20T04:00:00Z"),
+      11,
+    );
+    expect(s).toEqual([
+      { from: "2026-11-20", to: "2026-11-22", heroId: null, label: "Кодын hero" },
+      { from: "2026-11-23", to: "2026-11-30", heroId: "h1", label: "A" },
+    ]);
+  });
+  it("heroAt: блоклогдсон бол дараагийн hero", () => {
+    const t = Date.parse("2026-11-21T04:00:00Z");
+    const blocked = row({
+      primaryTarget: { type: "event", slug: "black-friday" },
+      startsAt: "2026-11-19T16:00:00Z",
+      priority: 10,
+    });
+    const winter = row({ id: "h2", name: "Өвөл", startsAt: "2026-11-01T00:00:00Z" });
+    expect(heroAt([blocked, winter], [bf], t)?.id).toBe("h2");
+  });
+});
+
+describe("targetOutsidePeriod / eventOptionStatus", () => {
+  const t = { type: "event", slug: "black-friday" } as const;
+  it("hero-гийн хугацаа арга хэмжээнээс эрт эхэлбэл анхааруулна", () => {
+    expect(
+      targetOutsidePeriod({ startsAt: "2026-11-19T16:00:00Z", endsAt: bf.endsAt }, t, [bf]),
+    ).toBe(bf);
+    expect(targetOutsidePeriod({ startsAt: bf.startsAt, endsAt: bf.endsAt }, t, [bf])).toBeNull();
+    expect(targetOutsidePeriod(null, t, [{ ...bf, isActive: false }])?.id).toBe("e-bf");
+    expect(targetOutsidePeriod(null, { type: "path", href: "/" }, [bf])).toBeNull();
+  });
+  it("төлөв", () => {
+    expect(eventOptionStatus({ ...bf, isActive: false }, 0)).toBe("Ноорог");
+    expect(eventOptionStatus(bf, Date.parse("2026-11-20T04:00:00Z"))).toBe("11/23-нд эхэлнэ");
+    expect(eventOptionStatus(bf, Date.parse("2026-11-25T04:00:00Z"))).toBe("Явж байна");
+    expect(eventOptionStatus(bf, Date.parse("2026-12-02T04:00:00Z"))).toBe("Дууссан");
+  });
+});
+
+describe("normalizePromoHref (fixes F3)", () => {
+  it("/sale/x ба /catalog?event=x, origin, query дараалал — тэнцүү", () => {
+    const want = normalizePromoHref("/catalog?event=x");
+    for (const h of [
+      "/sale/x",
+      "/sale/x/",
+      "https://vonscent.mn/sale/x",
+      "https://www.vonscent.mn/catalog?event=x",
+    ])
+      expect(normalizePromoHref(h)).toBe(want);
+    expect(normalizePromoHref("/catalog?tags=new&event=x")).toBe(
+      normalizePromoHref("/catalog?event=x&tags=new"),
+    );
+  });
+  it("өөр газар / гадаад хаяг тэнцэхгүй", () => {
+    expect(normalizePromoHref("/catalog?event=y")).not.toBe(normalizePromoHref("/sale/x"));
+    expect(normalizePromoHref("https://evil.example/sale/x")).not.toBe(
+      normalizePromoHref("/sale/x"),
+    );
+  });
+});
+
+describe("pickLiveHero (fixes F5)", () => {
+  const r = (id: string, startsAt: string, endsAt: string) => ({ id, startsAt, endsAt });
+  const now = Date.parse("2026-11-30T16:00:30Z");
+  it("эхнийх дууссан → хоёр дахь", () => {
+    expect(
+      pickLiveHero(
+        [
+          r("bf", "2026-11-22T16:00:00Z", "2026-11-30T16:00:00Z"),
+          r("winter", "2026-11-01T00:00:00Z", "2027-02-01T00:00:00Z"),
+        ],
+        now,
+      )?.id,
+    ).toBe("winter");
+  });
+  it("бүгд дууссан → null", () => {
+    expect(pickLiveHero([r("bf", "2026-11-22T16:00:00Z", "2026-11-30T16:00:00Z")], now)).toBeNull();
   });
 });

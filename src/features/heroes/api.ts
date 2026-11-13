@@ -7,6 +7,7 @@ import { isFeatureEnabled } from "@/lib/feature-flags";
 import { callRpc } from "@/lib/supabase/rpc";
 import { createPublicClient } from "@/lib/supabase/public";
 import { createClient } from "@/lib/supabase/server";
+import { pickLiveHero } from "./lib";
 import type {
   HeroAdminRow,
   HeroDesktopImage,
@@ -19,7 +20,7 @@ import type {
 /**
  * Нүүрний hero (0182, feature flag `hero_admin`) — дэлгүүрийн уншилт.
  *
- * Нэг жижиг RPC, 60с кэш + `CACHE_TAG_CATALOG` (админ бичилт
+ * Нэг жижиг RPC (`live_heroes`), 60с кэш + `CACHE_TAG_CATALOG` (админ бичилт
  * `revalidatePublic()`, эхлэх/дуусах мөчийг `/api/cron/sale-events`).
  * Нүүр хуудас үүнийг Suspense-гүй хүлээнэ (LCP, plan §7.5) — тиймээс кэш
  * заавал, алдаа гарвал кодын hero руу унана.
@@ -43,15 +44,20 @@ interface Row {
   ends_at: string;
 }
 
-const fetchLiveHero = unstable_cache(
-  async (): Promise<(LiveHero & { endsAt: string }) | null> => {
+type CachedHero = LiveHero & { startsAt: string; endsAt: string };
+
+/**
+ * `live_heroes()` (0184) — одоо гарах ёстой hero-ууд эрэмбээр. Жагсаалтыг
+ * кэшлэх нь: эхнийх нь кэшийн дотор дуусахад дараагийнх нь шууд гарна
+ * (кодын hero руу унахгүй, fixes F5).
+ */
+const fetchLiveHeroes = unstable_cache(
+  async (): Promise<CachedHero[]> => {
     const supabase = createPublicClient();
-    if (!supabase) return null;
-    const { data, error } = await callRpc<Row[]>(supabase, "live_hero", {});
-    if (error) throw new Error(`live_hero: ${error.message}`);
-    const r = data?.[0];
-    if (!r) return null;
-    return {
+    if (!supabase) return [];
+    const { data, error } = await callRpc<Row[]>(supabase, "live_heroes", {});
+    if (error) throw new Error(`live_heroes: ${error.message}`);
+    return (data ?? []).map((r) => ({
       id: r.id,
       eyebrow: r.eyebrow,
       title: r.title,
@@ -65,10 +71,11 @@ const fetchLiveHero = unstable_cache(
       mobileImage: r.mobile_image,
       imageAlt: r.image_alt,
       dark: r.dark,
+      startsAt: r.starts_at,
       endsAt: r.ends_at,
-    };
+    }));
   },
-  ["live-hero"],
+  ["live-heroes"],
   { revalidate: 60, tags: [CACHE_TAG_CATALOG] },
 );
 
@@ -77,10 +84,8 @@ export async function getLiveHero(): Promise<LiveHero | null> {
   if (!isSupabaseConfigured) return null;
   if (!(await isFeatureEnabled("hero_admin"))) return null;
   try {
-    const h = await fetchLiveHero();
-    // Кэш 60с хоцорч болно — дууссан hero-г дахин шалгана.
-    if (!h || Date.parse(h.endsAt) <= Date.now()) return null;
-    return h;
+    // Кэш 60с хоцорч болно — дууссаныг алгасаж дараагийнхыг авна.
+    return pickLiveHero(await fetchLiveHeroes(), Date.now());
   } catch (err) {
     Sentry.captureException(err);
     return null;
