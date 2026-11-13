@@ -271,11 +271,7 @@ export function HeroAiPanel({
                       <Maximize2 className="size-4" aria-hidden />
                     </span>
                     {/* Текстийн бүс: энэ шугамын зүүн талд юу ч байх ёсгүй. */}
-                    <div
-                      aria-hidden
-                      className="border-background/90 bg-background/10 absolute inset-y-0 left-0 border-r-2 border-dashed"
-                      style={{ width: `${SAFE_ZONE[j.target]}%` }}
-                    />
+                    <SafeZoneLine target={j.target} />
                   </button>
                 ) : (
                   <div className="text-muted-foreground flex size-full items-center justify-center p-2 text-center text-xs">
@@ -390,11 +386,7 @@ function PreviewDialog({
               {/* eslint-disable-next-line @next/next/no-img-element -- PNG мастер, админы preview */}
               <img src={job.result_url} alt="" className="block h-auto w-full" />
               {zone && (
-                <div
-                  aria-hidden
-                  className="border-background/90 bg-background/10 absolute inset-y-0 left-0 border-r-2 border-dashed"
-                  style={{ width: `${SAFE_ZONE[job.target]}%` }}
-                />
+                <SafeZoneLine target={job.target} labelled />
               )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -531,5 +523,34 @@ function ProductRefs({
         )}
       </div>
     </Field>
+  );
+}
+
+/**
+ * Текстийн бүсийн ХИЛ — зөвхөн тасархай шугам (+ шошго). Бүсийг будахгүй:
+ * будалт зургийн жинхэнэ өнгийг өөрчилж харуулдаг байв (бараан хана цайвар
+ * мэт). Шугамын зүүн талд нүүрний гарчиг, товч сууна.
+ */
+function SafeZoneLine({
+  target,
+  labelled = false,
+}: {
+  target: "desktop" | "mobile";
+  labelled?: boolean;
+}) {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-y-0 left-0"
+      style={{ width: `${SAFE_ZONE[target]}%` }}
+    >
+      {/* `difference` — цайвар хана дээр бараан, бараан дээр цайвар харагдана. */}
+      <span className="absolute inset-y-0 right-0 border-r-2 border-dashed border-white mix-blend-difference" />
+      {labelled && (
+        <span className="absolute top-2 right-2 rounded bg-black/60 px-1.5 py-0.5 text-xs text-white">
+          ← Текстийн бүс
+        </span>
+      )}
+    </div>
   );
 }
