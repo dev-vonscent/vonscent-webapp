@@ -40,6 +40,12 @@ describe("processHeroImage (plan §7.6, §8.2)", () => {
     uploads.length = 0;
   });
 
+  it("AI ажлаас бол замд ажлын id орно (generationIdOf)", async () => {
+    const job = "0b5f3c1e-2a4d-4e8f-9c6b-1d2e3f4a5b6c";
+    const r = await processHeroImage(await image(1536, 1152, 30), "mobile", "g", job);
+    expect(r.ok && r.mobile?.src).toMatch(new RegExp(`/hero/g/gen-${job}-[0-9a-f]{8}-m\\d+\\.webp$`));
+  });
+
   it("desktop 3584×1280 → 1600/2400/3200 webp, height1600 = 571", async () => {
     const r = await processHeroImage(await image(3584, 1280, 235), "desktop", "g1");
     expect(r.ok).toBe(true);

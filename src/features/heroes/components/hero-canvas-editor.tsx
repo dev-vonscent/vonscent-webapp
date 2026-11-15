@@ -242,7 +242,7 @@ export function HeroCanvasEditor({
         {view === "mobile" && value.desktopImage && !value.mobileImage && (
           <p className="text-warning text-sm text-pretty" role="status">
             Утасны зураг хэрэгтэй — доорх «Зураг»-аас AI-аар (компьютерын
-            зургийг «Mobile-д лавлах» болгоод) үүсгэх эсвэл оруулна уу.
+            зураг дээрх «Mobile хувилбар үүсгэх») эсвэл өөрөө оруулна уу.
           </p>
         )}
       </section>

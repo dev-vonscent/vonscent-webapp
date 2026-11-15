@@ -61,20 +61,16 @@ export function StepBanner({
   return (
     <div className="space-y-6">
       {bannerError && (
-        <p className="text-destructive text-sm" role="alert">
+        <p
+          className="bg-destructive/10 text-destructive rounded-xl px-4 py-3 text-sm"
+          role="alert"
+        >
           Баннер хадгалагдсангүй — {bannerError} Арга хэмжээ өөрөө хадгалагдсан;
           засаад дахин хадгална уу.
         </p>
       )}
-      {!banner.draft && !banner.skip && !locked && (
-        <p className="text-muted-foreground text-sm text-pretty">
-          Арга хэмжээний нэр, хугацаа, хувиас бэлэн текст бөглөгдсөн. Текст
-          дээр дарж засах эсвэл зураг сонгоход баннер хадгалагдана.
-        </p>
-      )}
-
       {banner.skip ? (
-        <p className="bg-secondary rounded-lg p-4 text-sm text-pretty">
+        <p className="bg-secondary/50 text-muted-foreground rounded-2xl px-6 py-12 text-center text-sm text-pretty">
           Энэ арга хэмжээнд баннер хэрэггүй — нүүр хуудасны баннер солигдохгүй.
           {banner.id && " Хийсэн баннер устахгүй, буцааж асааж болно."}
         </p>
@@ -107,7 +103,7 @@ export function StepBanner({
       )}
 
       {!locked && (
-        <label className="flex items-center gap-3 text-sm">
+        <label className="bg-secondary/50 hover:bg-secondary flex w-fit cursor-pointer items-center gap-3 rounded-xl px-4 py-3 text-sm">
           <Checkbox
             checked={banner.skip}
             onCheckedChange={(v) => studio.setBannerSkip(v === true, canvas)}

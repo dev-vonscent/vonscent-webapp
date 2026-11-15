@@ -12,6 +12,18 @@ import {
 } from "./hero-preview-frame";
 
 /**
+ * Iframe-ийн «дэлгэцийн» өндөр — тухайн өргөний ердийн төхөөрөмжийнх.
+ * Hero нь компьютер дээр `max-h-[58svh]`-тэй: iframe-ийг агуулгынхаа өндрөөр
+ * (~600px) өгвөл 58svh нь ~348px болж зураг 4:1 болтол тайрагдаж, нүүр
+ * хуудаснаас (1440×900 → ~522px, бүтэн зураг) өөр харагддаг байв.
+ */
+function viewportHeight(width: number): number {
+  if (width < 640) return 844; // утас (390×844)
+  if (width < 1024) return 1024; // таблет (768×1024)
+  return 900; // компьютер (1440×900)
+}
+
+/**
  * Жинхэнэ `CampaignHero`-г тодорхой өргөнд (`/admin/hero-preview` iframe —
  * breakpoint нь viewport-оор), эх контейнерт багтаахаар scale-тэй.
  * `edit` өгвөл текстийг iframe дотор нь засна (studio-ux.md §6.3).
@@ -105,7 +117,9 @@ export function HeroFrame({
         src="/admin/hero-preview"
         title={title}
         width={width}
-        height={height}
+        // Viewport нь бодит дэлгэцийн өндөр (svh зөв бодогдоно); харагдах нь
+        // зөвхөн hero-гийн өндөр — эх хайрцаг доод хоосон хэсгийг тайрна.
+        height={Math.max(height, viewportHeight(width))}
         className="origin-top-left border-0"
         style={{ transform: `scale(${scale})` }}
       />

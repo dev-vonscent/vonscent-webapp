@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  eventOptionStatus,
+  generationIdOf,
   heroAt,
   heroSchedule,
   heroTargetBlock,
-  heroTargetBlockText,
   heroTargetHref,
   heroToCampaign,
   isInternalPath,
@@ -13,6 +12,18 @@ import {
   targetOutsidePeriod,
 } from "./lib";
 import type { HeroAdminRow, HeroEventOption, LiveHero } from "./types";
+
+describe("generationIdOf", () => {
+  const job = "0b5f3c1e-2a4d-4e8f-9c6b-1d2e3f4a5b6c";
+  it("AI ажлаас ирсэн desktop base / mobile src", () => {
+    expect(generationIdOf(`https://s/b/hero/g/gen-${job}-a1b2c3d4`)).toBe(job);
+    expect(generationIdOf(`https://s/b/hero/g/gen-${job}-a1b2c3d4-m1600.webp`)).toBe(job);
+  });
+  it("өөрөө оруулсан, хоосон бол null", () => {
+    expect(generationIdOf(`https://s/b/hero/g/${job}`)).toBeNull();
+    expect(generationIdOf(null)).toBeNull();
+  });
+});
 
 describe("isInternalPath", () => {
   it("дотоод хаяг", () => {
@@ -165,9 +176,6 @@ describe("heroTargetBlock (fixes F2)", () => {
   it("товлосон → scheduled + startsAt", () => {
     const b = heroTargetBlock(h("black-friday"), [bf], Date.parse("2026-11-20T04:00:00Z"));
     expect(b).toMatchObject({ reason: "scheduled", startsAt: bf.startsAt, name: "Black Friday" });
-    expect(heroTargetBlockText(b!)).toBe(
-      "Товчны арга хэмжээ «Black Friday» 11/23-нд эхэлнэ — тэр хүртэл дэлгүүрт гарахгүй.",
-    );
   });
   it("ноорог → draft", () => {
     expect(heroTargetBlock(h("black-friday"), [{ ...bf, isActive: false }], at)?.reason).toBe("draft");
@@ -214,7 +222,7 @@ describe("heroSchedule — товчны арга хэмжээ (fixes F2)", () =>
   });
 });
 
-describe("targetOutsidePeriod / eventOptionStatus", () => {
+describe("targetOutsidePeriod", () => {
   const t = { type: "event", slug: "black-friday" } as const;
   it("hero-гийн хугацаа арга хэмжээнээс эрт эхэлбэл анхааруулна", () => {
     expect(
@@ -223,12 +231,6 @@ describe("targetOutsidePeriod / eventOptionStatus", () => {
     expect(targetOutsidePeriod({ startsAt: bf.startsAt, endsAt: bf.endsAt }, t, [bf])).toBeNull();
     expect(targetOutsidePeriod(null, t, [{ ...bf, isActive: false }])?.id).toBe("e-bf");
     expect(targetOutsidePeriod(null, { type: "path", href: "/" }, [bf])).toBeNull();
-  });
-  it("төлөв", () => {
-    expect(eventOptionStatus({ ...bf, isActive: false }, 0)).toBe("Ноорог");
-    expect(eventOptionStatus(bf, Date.parse("2026-11-20T04:00:00Z"))).toBe("11/23-нд эхэлнэ");
-    expect(eventOptionStatus(bf, Date.parse("2026-11-25T04:00:00Z"))).toBe("Явж байна");
-    expect(eventOptionStatus(bf, Date.parse("2026-12-02T04:00:00Z"))).toBe("Дууссан");
   });
 });
 
@@ -327,5 +329,14 @@ describe("heroAt + улирлын шат (0185)", () => {
     });
     expect(heroAt([...seasons, special], [], at("2026-10-28"))?.id).toBe("hw");
     expect(heroAt([...seasons, special], [], at("2026-11-02"))?.id).toBe("autumn");
+  });
+
+  it("heroSchedule: Намар → арга хэмжээ → Өвөл (хил дээр өөрөө солигдоно)", () => {
+    const s = heroSchedule([...seasons, bf], [ev], at("2026-11-20"), 20);
+    expect(s.map((x) => [x.heroId, x.from, x.to])).toEqual([
+      ["autumn", "2026-11-20", "2026-11-22"],
+      ["bf", "2026-11-23", "2026-12-03"],
+      ["winter", "2026-12-04", "2026-12-09"],
+    ]);
   });
 });

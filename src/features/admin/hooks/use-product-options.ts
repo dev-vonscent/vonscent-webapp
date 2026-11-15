@@ -33,6 +33,10 @@ export function useProductOptions(
   // хуудсан дээр хэд хэдэн сонгогч байж болох тул (нүүрийн хэсгүүд) энэ нь
   // ижилхэн хүсэлт олон удаа явахаас ч сэргийлнэ.
   const primed = React.useRef(false);
+  // Сервер эхний хуудсыг өгөөгүй газар (`initial` нь зөвхөн сонгосон бараа)
+  // сонгогч нээгдэхэд нэг удаа татна — `loadFirstPage`.
+  const fetched = React.useRef(false);
+  const [nonce, setNonce] = React.useState(0);
 
   React.useEffect(() => {
     if (!primed.current) {
@@ -40,6 +44,7 @@ export function useProductOptions(
       return;
     }
     const term = q.trim();
+    fetched.current = true;
     let cancelled = false;
     setLoading(true);
     const t = setTimeout(async () => {
@@ -57,7 +62,12 @@ export function useProductOptions(
       cancelled = true;
       clearTimeout(t);
     };
-  }, [q, limit]);
+  }, [q, limit, nonce]);
+
+  /** Хайлт хийгээгүй бол эхний хуудсыг нэг удаа татна (popup нээгдэхэд). */
+  const loadFirstPage = React.useCallback(() => {
+    if (!fetched.current) setNonce((n) => n + 1);
+  }, []);
 
   /** Хэзээ нэгэн цагт харсан бараа — сонгогдсоныг нэрлэхэд хэрэглэнэ. */
   const byId = React.useCallback(
@@ -67,5 +77,5 @@ export function useProductOptions(
     [items], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  return { q, setQ, items, loading, byId };
+  return { q, setQ, items, loading, byId, loadFirstPage };
 }

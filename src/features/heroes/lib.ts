@@ -9,6 +9,18 @@ import type {
 } from "./types";
 
 /**
+ * Баннерын зураг аль AI ажлаас «Ашиглах»-аар ирсэн бэ — `processHeroImage`
+ * замд `gen-<jobId>-` гэж бичдэг. Өөрөө оруулсан / хуучин зураг → null.
+ */
+export function generationIdOf(url: string | null | undefined): string | null {
+  return (
+    /\/gen-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-/u.exec(
+      url ?? "",
+    )?.[1] ?? null
+  );
+}
+
+/**
  * Дотоод хаяг эсэх: `/`-ээр эхэлсэн, `//` (protocol-relative) ба `/\` биш,
  * хоосон зай, удирдах тэмдэгтгүй. Гадагш redirect / phishing-ээс сэргийлнэ.
  * SQL-ийн `hero_target_valid`-тай ижил дүрэм.
@@ -146,35 +158,6 @@ export function heroTargetBlock(
     if (at >= Date.parse(e.endsAt)) return { ...base, reason: "ended" };
   }
   return null;
-}
-
-/** `11/23` (УБ). */
-export function ubMonthDay(iso: string): string {
-  const [, m, d] = dayKey(Date.parse(iso)).split("-");
-  return `${Number(m)}/${Number(d)}`;
-}
-
-/** Админд харуулах шалтгаан. */
-export function heroTargetBlockText(b: HeroTargetBlock): string {
-  const ev = `Товчны арга хэмжээ «${b.name ?? b.slug}»`;
-  switch (b.reason) {
-    case "scheduled":
-      return `${ev} ${ubMonthDay(b.startsAt!)}-нд эхэлнэ — тэр хүртэл дэлгүүрт гарахгүй.`;
-    case "draft":
-      return `${ev} нийтлэгдээгүй (ноорог) — дэлгүүрт гарахгүй.`;
-    case "ended":
-      return `${ev} дууссан — дэлгүүрт гарахгүй.`;
-    case "missing":
-      return `${ev} олдсонгүй эсвэл дууссан — дэлгүүрт гарахгүй.`;
-  }
-}
-
-/** Сонголтын жагсаалтад: Ноорог / 11/23-нд эхэлнэ / Явж байна / Дууссан. */
-export function eventOptionStatus(e: HeroEventOption, now: number): string {
-  if (!e.isActive) return "Ноорог";
-  if (now < Date.parse(e.startsAt)) return `${ubMonthDay(e.startsAt)}-нд эхэлнэ`;
-  if (now < Date.parse(e.endsAt)) return "Явж байна";
-  return "Дууссан";
 }
 
 /**

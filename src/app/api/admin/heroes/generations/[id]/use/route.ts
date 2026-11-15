@@ -50,6 +50,7 @@ export async function POST(
       Buffer.from(await res.arrayBuffer()),
       job.target,
       job.group_id,
+      id.data,
     );
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 });

@@ -4,6 +4,8 @@ import { isImageGenConfigured } from "@/lib/env";
 import { HERO_AI_LIMITS } from "@/lib/constants";
 import { storagePath } from "@/lib/storage/storage";
 import type { createAdminClient } from "@/lib/supabase/admin";
+import { getProductOptions } from "@/features/admin/api";
+import type { ProductOption } from "@/features/admin/lib/product-option";
 import { heroAdminGate } from "@/features/heroes/server";
 import {
   HERO_AI_MAX_PRODUCTS,
@@ -22,6 +24,8 @@ export interface HeroGenerationJob {
   id: string;
   target: "desktop" | "mobile";
   theme_key: string;
+  /** Нэмэлт / «Өөрөө бичих» тайлбар — mobile хувилбар яг үүгээр үүснэ. */
+  theme_extra: string;
   product_ids: string[];
   status: "pending" | "generating" | "done" | "failed";
   result_url: string | null;
@@ -193,12 +197,19 @@ export async function GET(req: Request) {
   await expireStale(gate.supabase);
   const { data } = await gate.supabase
     .from("hero_image_generations")
-    .select("id, target, theme_key, product_ids, status, result_url, error, created_at")
+    .select(
+      "id, target, theme_key, theme_extra, product_ids, status, result_url, error, created_at",
+    )
     .eq("group_id", parsed.data.groupId)
     .order("created_at", { ascending: false })
     .limit(24);
+  const jobs = (data ?? []) as HeroGenerationJob[];
+  // Ажлуудын үнэртний нэр — картын шошго, маягтыг сүүлийн ажлаар бөглөхөд.
+  const ids = [...new Set(jobs.flatMap((j) => j.product_ids ?? []))];
+  const products: ProductOption[] = await getProductOptions({ ids });
   return NextResponse.json({
-    jobs: (data ?? []) as HeroGenerationJob[],
+    jobs,
+    products,
     configured: isImageGenConfigured,
   });
 }

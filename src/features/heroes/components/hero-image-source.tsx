@@ -5,6 +5,7 @@ import { ImagePlus, Sparkles } from "lucide-react";
 import type { ProductOption } from "@/features/admin/lib/product-option";
 import type { HeroThemeKey } from "@/lib/ai/hero-prompt";
 import { cn } from "@/lib/utils";
+import { generationIdOf } from "../lib";
 import type { HeroDesktopImage, HeroMobileImage } from "../types";
 import { HeroAiPanel, type HeroAiResult } from "./hero-ai-panel";
 import { ImageUpload } from "./hero-image-upload";
@@ -34,7 +35,18 @@ export function HeroImageSource({
   defaultProducts: ProductOption[];
   onImages: (r: HeroAiResult) => void;
 }) {
-  const [source, setSource] = React.useState<Source | null>(null);
+  // Буцаж ирэхэд (студи алхам солиход дахин mount) зураг нь хаанаас ирснийг
+  // сэргээнэ: AI ажлаас «Ашиглах»-аар бол AI хэсэг, өөрөө оруулсан бол
+  // оруулах хэсэг нээлттэй.
+  const [source, setSource] = React.useState<Source | null>(() => {
+    if (
+      aiConfigured &&
+      (generationIdOf(desktopImage?.base) || generationIdOf(mobileImage?.src))
+    ) {
+      return "ai";
+    }
+    return desktopImage || mobileImage ? "upload" : null;
+  });
   const cards: { key: Source; icon: typeof Sparkles; title: string; hint: string; off?: string }[] = [
     {
       key: "ai",
@@ -95,6 +107,10 @@ export function HeroImageSource({
           configured={aiConfigured}
           defaultTheme={defaultTheme}
           defaultProducts={defaultProducts}
+          inUse={{
+            desktop: generationIdOf(desktopImage?.base),
+            mobile: generationIdOf(mobileImage?.src),
+          }}
           onUse={onImages}
         />
       )}

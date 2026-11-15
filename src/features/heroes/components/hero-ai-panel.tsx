@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Maximize2, Search, Sparkles, Trash2, X } from "lucide-react";
+import { Check, Loader2, Maximize2, Sparkles, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,8 +10,19 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxScroll,
+  ComboboxStatus,
+  ComboboxTrigger,
+  ComboboxValue,
+} from "@/components/ui/combobox";
 import { Field } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { PickerPopup } from "@/features/admin/components/customer-picker";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { adminFetch } from "@/features/admin/lib/mutate";
 import { useProductOptions } from "@/features/admin/hooks/use-product-options";
@@ -50,6 +61,7 @@ export function HeroAiPanel({
   onUse,
   defaultTheme = "winter",
   defaultProducts = [],
+  inUse = { desktop: null, mobile: null },
 }: {
   groupId: string;
   heroId: string | null;
@@ -60,29 +72,70 @@ export function HeroAiPanel({
   defaultTheme?: HeroThemeKey;
   /** Урьдчилж бөглөх үнэртэн (студи: ②-т сонгосон эхний 3). */
   defaultProducts?: ProductOption[];
+  /** Баннерт одоо байгаа зургийн AI ажлын id (`generationIdOf`). */
+  inUse?: { desktop: string | null; mobile: string | null };
 }) {
+  const isUsed = (j: HeroGenerationJob) => j.id === inUse[j.target];
   const [theme, setTheme] = React.useState<HeroThemeKey>(defaultTheme);
   const [extra, setExtra] = React.useState("");
   const [fast, setFast] = React.useState(false);
-  const [desktopRef, setDesktopRef] = React.useState<string | null>(null);
-  // Hero-д оруулах үнэртэн (DB) — дараалал = зүүн / төв / баруун байрлал.
-  const [productIds, setProductIds] = React.useState<string[]>(() =>
-    defaultProducts.slice(0, HERO_AI_MAX_PRODUCTS).map((p) => p.id),
+  // Hero-д оруулах үнэртэн (DB) — тогтмол гурван байрлал: зүүн / төв / баруун.
+  const [slots, setSlots] = React.useState<Slots>(() =>
+    toSlots(defaultProducts.slice(0, HERO_AI_MAX_PRODUCTS)),
   );
   const products = useProductOptions(defaultProducts);
+  // Сервер, prompt нь дарааллаар байрлуулна (зэрэгцэн зогсох бүлэг) — хоосон
+  // байрлалыг алгасаад зүүнээс баруун тийш илгээнэ.
+  const productIds = slots.flatMap((p) => (p ? [p.id] : []));
   const [jobs, setJobs] = React.useState<HeroGenerationJob[]>([]);
-  const [starting, setStarting] = React.useState<"desktop" | "mobile" | null>(
-    null,
-  );
+  // "desktop" эсвэл `mobile:<desktop ажлын id>` — аль товч ачаалж байгаа.
+  const [starting, setStarting] = React.useState<string | null>(null);
   const [using, setUsing] = React.useState<string | null>(null);
   const [removing, setRemoving] = React.useState<string | null>(null);
   const [preview, setPreview] = React.useState<HeroGenerationJob | null>(null);
 
+  // Ажлуудын үнэртний нэр (сервер өгнө) — хайлтын кэшэд байхгүй ч нэрлэнэ.
+  const [named, setNamed] = React.useState<Map<string, ProductOption>>(
+    () => new Map(),
+  );
+  const nameOf = (id: string) => named.get(id) ?? products.byId(id);
+  // Хэрэглэгч маягтад хүрээгүй бол эхний ачаалалтаар сүүлийн ажлын сэдэв,
+  // үнэртнийг сэргээнэ: генерац 1–2 мин явах хооронд өөр алхам руу явж
+  // ирэхэд (панел дахин mount) сонголт өгөгдмөл рүүгээ буцахгүй. Нэмэлт
+  // тайлбар санаатайгаар хоосон эхэлнэ.
+  const touched = React.useRef(false);
+  const seeded = React.useRef(false);
+  const pickSlots = (next: Slots) => {
+    touched.current = true;
+    setSlots(next);
+  };
+  const pickTheme = (next: HeroThemeKey) => {
+    touched.current = true;
+    setTheme(next);
+  };
+
   const load = React.useCallback(async () => {
-    const res = await adminFetch<{ jobs: HeroGenerationJob[] }>(
-      `/api/admin/heroes/generations?groupId=${groupId}`,
-    );
-    if (res.ok) setJobs(res.data.jobs);
+    const res = await adminFetch<{
+      jobs: HeroGenerationJob[];
+      products?: ProductOption[];
+    }>(`/api/admin/heroes/generations?groupId=${groupId}`);
+    if (!res.ok) return;
+    const { jobs: list, products: names = [] } = res.data;
+    setJobs(list);
+    const map = new Map(names.map((p) => [p.id, p]));
+    setNamed(map);
+    if (seeded.current) return;
+    seeded.current = true;
+    const last = list[0];
+    if (!last || touched.current) return;
+    if (HERO_THEME_KEYS.includes(last.theme_key as HeroThemeKey)) {
+      setTheme(last.theme_key as HeroThemeKey);
+    }
+    const picked = (last.product_ids ?? []).flatMap((id) => {
+      const p = map.get(id);
+      return p ? [p] : [];
+    });
+    if (picked.length > 0) setSlots(toSlots(picked));
   }, [groupId]);
 
   React.useEffect(() => {
@@ -99,8 +152,43 @@ export function HeroAiPanel({
     return () => window.clearInterval(id);
   }, [busy, load]);
 
-  async function start(target: "desktop" | "mobile") {
-    setStarting(target);
+  /** Формын сэдэв, үнэртнээр desktop зураг. */
+  function startDesktop() {
+    return generate("desktop", {
+      target: "desktop",
+      theme,
+      extra,
+      productIds,
+      desktopRefUrl: null,
+    });
+  }
+
+  /**
+   * Үүссэн desktop-оос mobile хувилбар: тэр зургийг лавлаж, тэр л сэдэв,
+   * тайлбар, үнэртнээр — хоёр зураг нэг зураг авалт шиг тохирно (маягтын
+   * одоогийн утгаас үл хамаарна; «Өөрөө бичих» сэдэвт тайлбар нь заавал).
+   */
+  function startMobile(desktop: HeroGenerationJob) {
+    return generate(`mobile:${desktop.id}`, {
+      target: "mobile",
+      theme: desktop.theme_key as HeroThemeKey,
+      extra: desktop.theme_extra ?? "",
+      productIds: desktop.product_ids ?? [],
+      desktopRefUrl: desktop.result_url,
+    });
+  }
+
+  async function generate(
+    key: string,
+    input: {
+      target: "desktop" | "mobile";
+      theme: HeroThemeKey;
+      extra: string;
+      productIds: string[];
+      desktopRefUrl: string | null;
+    },
+  ) {
+    setStarting(key);
     try {
       const res = await adminFetch("/api/admin/heroes/generations", {
         method: "POST",
@@ -108,12 +196,8 @@ export function HeroAiPanel({
         body: JSON.stringify({
           groupId,
           heroId,
-          target,
-          theme,
-          extra,
           quality: fast ? "fast" : "high",
-          desktopRefUrl: target === "mobile" ? desktopRef : null,
-          productIds,
+          ...input,
         }),
       });
       if (!res.ok) {
@@ -162,7 +246,6 @@ export function HeroAiPanel({
         toast.error(res.error, "Устгаж чадсангүй");
         return;
       }
-      if (job.result_url && desktopRef === job.result_url) setDesktopRef(null);
       if (preview?.id === job.id) setPreview(null);
       setJobs((list) => list.filter((j) => j.id !== job.id));
     } finally {
@@ -173,8 +256,8 @@ export function HeroAiPanel({
   if (!configured) {
     return (
       <p className="text-muted-foreground bg-secondary/40 rounded-md p-3 text-sm">
-        AI зураг үүсгэхэд <code>OPENAI_API_KEY</code> тохируулаагүй байна. Одоохондоо
-        дизайнерын зургийг «Зураг оруулах»-аар оруулна уу.
+        AI зураг үүсгэхэд <code>OPENAI_API_KEY</code> тохируулаагүй байна.
+        Одоохондоо дизайнерын зургийг «Зураг оруулах»-аар оруулна уу.
       </p>
     );
   }
@@ -185,7 +268,11 @@ export function HeroAiPanel({
         <Sparkles className="size-4" aria-hidden />
         AI-аар үүсгэх
       </div>
-      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Сэдэв">
+      <div
+        className="flex flex-wrap gap-2"
+        role="radiogroup"
+        aria-label="Сэдэв"
+      >
         {HERO_THEME_KEYS.map((k) => (
           <Button
             key={k}
@@ -194,19 +281,17 @@ export function HeroAiPanel({
             role="radio"
             aria-checked={theme === k}
             variant={theme === k ? "default" : "outline"}
-            onClick={() => setTheme(k)}
+            onClick={() => pickTheme(k)}
           >
             {HERO_THEMES[k].label}
           </Button>
         ))}
       </div>
-      <ProductRefs
-        ids={productIds}
-        onChange={setProductIds}
-        picker={products}
-      />
+      <ProductSlots slots={slots} onChange={pickSlots} picker={products} />
       <Field
-        label={theme === "custom" ? "Сэдвийн тайлбар" : "Нэмэлт тайлбар (заавал биш)"}
+        label={
+          theme === "custom" ? "Сэдвийн тайлбар" : "Нэмэлт тайлбар (заавал биш)"
+        }
         hint={`${extra.length}/${HERO_AI_LIMITS.extraMax}. Англиар бичвэл илүү тогтвортой.`}
       >
         <textarea
@@ -232,31 +317,22 @@ export function HeroAiPanel({
           size="sm"
           loading={starting === "desktop"}
           disabled={starting !== null || (theme === "custom" && !extra.trim())}
-          onClick={() => start("desktop")}
+          onClick={() => void startDesktop()}
         >
           Desktop үүсгэх
         </LoadingButton>
-        <LoadingButton
-          type="button"
-          size="sm"
-          variant="outline"
-          loading={starting === "mobile"}
-          disabled={starting !== null || (theme === "custom" && !extra.trim())}
-          onClick={() => start("mobile")}
-        >
-          Mobile үүсгэх
-        </LoadingButton>
-        <span className="text-muted-foreground text-xs">
-          {desktopRef
-            ? "Mobile нь сонгосон desktop-ын уур амьсгалыг дагана."
-            : "Mobile-ийн өмнө desktop хувилбараас «Mobile-д лавлах» сонгоорой."}
-        </span>
       </div>
 
       {jobs.length > 0 && (
         <ul role="list" className="grid gap-3 sm:grid-cols-2">
           {jobs.map((j) => (
-            <li key={j.id} className="bg-card space-y-2 rounded-md p-2">
+            <li
+              key={j.id}
+              className={cn(
+                "space-y-2 rounded-md p-2",
+                isUsed(j) ? "bg-cta/10" : "bg-card",
+              )}
+            >
               <div
                 className={cn(
                   "bg-muted relative overflow-hidden rounded",
@@ -281,6 +357,7 @@ export function HeroAiPanel({
                     </span>
                     {/* Текстийн бүс: энэ шугамын зүүн талд юу ч байх ёсгүй. */}
                     <SafeZoneLine target={j.target} />
+                    {isUsed(j) && <InUseMark className="absolute top-1.5 left-1.5" />}
                   </button>
                 ) : (
                   <div className="text-muted-foreground flex size-full items-center justify-center p-2 text-center text-xs">
@@ -297,10 +374,11 @@ export function HeroAiPanel({
                   {j.target === "desktop" ? "Desktop" : "Утас"}
                 </Badge>
                 <span className="text-muted-foreground text-xs">
-                  {HERO_THEMES[j.theme_key as HeroThemeKey]?.label ?? j.theme_key}
+                  {HERO_THEMES[j.theme_key as HeroThemeKey]?.label ??
+                    j.theme_key}
                   {j.product_ids?.length
                     ? ` · ${j.product_ids
-                        .map((id) => products.byId(id)?.name ?? "үнэртэн")
+                        .map((id) => nameOf(id)?.name ?? "үнэртэн")
                         .join(", ")}`
                     : ""}
                 </span>
@@ -319,33 +397,35 @@ export function HeroAiPanel({
                 )}
                 {j.status === "done" && (
                   <div className="flex flex-wrap gap-1">
-                    {j.target === "desktop" && (
-                      <Button
+                    {j.target === "desktop" && j.result_url && (
+                      <LoadingButton
                         type="button"
                         size="sm"
-                        variant={desktopRef === j.result_url ? "default" : "ghost"}
-                        onClick={() => {
-                          const on = desktopRef !== j.result_url;
-                          setDesktopRef(on ? j.result_url : null);
-                          // Mobile нь тэр desktop-ын үнэртнүүдээр — хоёр
-                          // зураг ижил бараатай байх ёстой.
-                          if (on) setProductIds(j.product_ids ?? []);
-                        }}
+                        variant="ghost"
+                        loading={starting === `mobile:${j.id}`}
+                        disabled={starting !== null}
+                        onClick={() => void startMobile(j)}
                       >
-                        {desktopRef === j.result_url && <Check className="size-4" />}
-                        Mobile-д лавлах
-                      </Button>
+                        Mobile хувилбар үүсгэх
+                      </LoadingButton>
                     )}
-                    <LoadingButton
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      loading={using === j.id}
-                      disabled={using !== null}
-                      onClick={() => use(j)}
-                    >
-                      Ашиглах
-                    </LoadingButton>
+                    {isUsed(j) ? (
+                      <span className="text-muted-foreground inline-flex h-9 items-center gap-1.5 px-3 text-sm">
+                        <Check className="size-4" aria-hidden />
+                        Ашиглаж байна
+                      </span>
+                    ) : (
+                      <LoadingButton
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        loading={using === j.id}
+                        disabled={using !== null}
+                        onClick={() => use(j)}
+                      >
+                        Ашиглах
+                      </LoadingButton>
+                    )}
                   </div>
                 )}
               </div>
@@ -355,6 +435,7 @@ export function HeroAiPanel({
       )}
       <PreviewDialog
         job={preview}
+        used={preview ? isUsed(preview) : false}
         onClose={() => setPreview(null)}
         onUse={(j) => {
           setPreview(null);
@@ -369,12 +450,29 @@ export function HeroAiPanel({
  * Үүсгэсэн зургийг томоор (plan §8.1 ③): шошго, жижиг бичгийг нүдээр
  * шалгах. Текстийн бүсийн шугамыг асааж/унтрааж болно.
  */
+/** «Баннерт байгаа» — ашиглагдаж буй зургийн тэмдэг. */
+function InUseMark({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "bg-cta text-cta-foreground inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium",
+        className,
+      )}
+    >
+      <Check className="size-3.5" aria-hidden />
+      Баннерт байгаа
+    </span>
+  );
+}
+
 function PreviewDialog({
   job,
+  used,
   onClose,
   onUse,
 }: {
   job: HeroGenerationJob | null;
+  used: boolean;
   onClose: () => void;
   onUse: (j: HeroGenerationJob) => void;
 }) {
@@ -386,17 +484,24 @@ function PreviewDialog({
           <>
             <DialogTitle className="pr-10 text-base">
               {job.target === "desktop" ? "Desktop (2.8:1)" : "Утас (4:3)"} ·{" "}
-              {HERO_THEMES[job.theme_key as HeroThemeKey]?.label ?? job.theme_key}
+              {HERO_THEMES[job.theme_key as HeroThemeKey]?.label ??
+                job.theme_key}
             </DialogTitle>
             <DialogDescription className="sr-only">
               Үүсгэсэн hero зургийг бүтэн хэмжээгээр харах
             </DialogDescription>
-            <div className="bg-muted relative overflow-hidden rounded-md">
+            {/* Бүтэн зураг дэлгэцэнд багтана (өндрөөр хязгаарлана) — 4:3 утасны
+                зураг өргөн цонхонд тайрагдаж / гүйлгэгдэж харагдахгүй. Шугам нь
+                зургийн өргөнийг дагана (`w-fit`). */}
+            <div className="bg-muted relative mx-auto w-fit max-w-full overflow-hidden rounded-md">
               {/* eslint-disable-next-line @next/next/no-img-element -- PNG мастер, админы preview */}
-              <img src={job.result_url} alt="" className="block h-auto w-full" />
-              {zone && (
-                <SafeZoneLine target={job.target} labelled />
-              )}
+              <img
+                src={job.result_url}
+                alt=""
+                className="block size-auto max-h-[calc(100svh-9rem)] max-w-full"
+              />
+              {zone && <SafeZoneLine target={job.target} labelled />}
+              {used && <InUseMark className="absolute top-2 left-2" />}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-2 text-sm">
@@ -415,9 +520,16 @@ function PreviewDialog({
               >
                 Эх хэмжээгээр нээх
               </a>
-              <Button type="button" size="sm" onClick={() => onUse(job)}>
-                Ашиглах
-              </Button>
+              {used ? (
+                <span className="text-muted-foreground inline-flex h-9 items-center gap-1.5 px-3 text-sm">
+                  <Check className="size-4" aria-hidden />
+                  Ашиглаж байна
+                </span>
+              ) : (
+                <Button type="button" size="sm" onClick={() => onUse(job)}>
+                  Ашиглах
+                </Button>
+              )}
             </div>
           </>
         )}
@@ -428,110 +540,160 @@ function PreviewDialog({
 
 const POSITION = ["Зүүн", "Төв", "Баруун"] as const;
 
+/** Зүүн / төв / баруун — хоосон байрлал `null`. */
+type Slots = [ProductOption | null, ProductOption | null, ProductOption | null];
+
 /**
- * Hero-д оруулах үнэртэн (ихдээ 3, plan §17 «Hero-д бараа сонгож AI-аар тэр
- * бараатай зураг»). Хоосон бол одоогийн hero-гийн бараагаар restyle.
- * Тэдний зураг (AI лавлах эсвэл барааны эхний зураг) reference-ийн эхэнд орно.
+ * Дараалсан жагсаалт → байрлал. Prompt-ийн дүрэмтэй ижил (hero-prompt.ts
+ * `ORDER`): 1 сав → төв, 2 → зүүн + баруун, 3 → зүүн, төв, баруун.
  */
-function ProductRefs({
-  ids,
+function toSlots(list: readonly ProductOption[]): Slots {
+  const [a = null, b = null, c = null] = list;
+  if (list.length === 1) return [null, a, null];
+  if (list.length === 2) return [a, null, b];
+  return [a, b, c];
+}
+
+const optionLabel = (p: ProductOption) =>
+  p.brand ? `${p.brand} ${p.name}` : p.name;
+
+/**
+ * Hero-д оруулах үнэртэн (ихдээ 3, plan §17): тогтмол гурван сонгогч — зүүн,
+ * төв, баруун. Хоосон бол одоогийн hero-гийн бараагаар restyle. Тэдний зураг
+ * (AI лавлах эсвэл барааны эхний зураг) reference-ийн эхэнд орно.
+ */
+function ProductSlots({
+  slots,
   onChange,
   picker,
 }: {
-  ids: string[];
-  onChange: (ids: string[]) => void;
+  slots: Slots;
+  onChange: (slots: Slots) => void;
+  /** Гурвуулаа нэг хайлтыг хуваалцана — нэг удаад нэг л popup нээгдэнэ. */
   picker: ReturnType<typeof useProductOptions>;
 }) {
-  const { q, setQ, items, loading, byId } = picker;
-  const full = ids.length >= HERO_AI_MAX_PRODUCTS;
-  const label = (id: string) => {
-    const p = byId(id);
-    return p ? `${p.brand} ${p.name}` : "Сонгосон үнэртэн";
-  };
+  const any = slots.some(Boolean);
   return (
-    <Field
-      label={`Hero-д оруулах үнэртэн (ихдээ ${HERO_AI_MAX_PRODUCTS})`}
-      hint={
-        ids.length
-          ? "Сонгосон дарааллаар зүүнээс баруун тийш байрлана. Шошго тод гарахын тулд бараанд «AI лавлах зураг» байвал сайн."
-          : "Сонгохгүй бол одоогийн hero-гийн савнууд хэвээр, зөвхөн уур амьсгал солигдоно."
-      }
-    >
-      <div className="space-y-2">
-        {ids.length > 0 && (
-          <ul role="list" className="flex flex-wrap gap-2">
-            {ids.map((id, i) => (
-              <li
-                key={id}
-                className="bg-card flex items-center gap-2 rounded-md py-1 pr-1 pl-2 text-sm"
-              >
-                <span className="text-muted-foreground text-xs">
-                  {ids.length === 1 ? "Төв" : ids.length === 2 ? (i === 0 ? "Зүүн" : "Баруун") : POSITION[i]}
-                </span>
-                <span className="max-w-48 truncate">{label(id)}</span>
-                <button
-                  type="button"
-                  aria-label={`${label(id)}-г хасах`}
-                  className="text-muted-foreground hover:text-foreground grid size-8 place-items-center"
-                  onClick={() => onChange(ids.filter((x) => x !== id))}
-                >
-                  <X className="size-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {!full && (
-          <div className="space-y-1">
-            <div className="relative">
-              <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Нэр, брэндээр хайх…"
-                aria-label="Hero-д оруулах үнэртэн хайх"
-                className="bg-background pl-9"
-              />
-            </div>
-            {q.trim() && (
-              <ul
-                className={cn(
-                  "bg-card max-h-48 overflow-y-auto rounded-md",
-                  loading && "opacity-60",
+    <fieldset className="space-y-2">
+      <legend className="text-sm leading-none font-medium">
+        Hero-д оруулах үнэртэн
+      </legend>
+      <div className="grid gap-2 pt-1 sm:grid-cols-3">
+        {POSITION.map((pos, i) => (
+          <SlotPicker
+            key={pos}
+            position={pos}
+            value={slots[i]}
+            taken={slots.flatMap((p, j) => (p && j !== i ? [p.id] : []))}
+            picker={picker}
+            onChange={(next) => {
+              const copy = [...slots] as Slots;
+              copy[i] = next;
+              onChange(copy);
+            }}
+          />
+        ))}
+      </div>
+      <p className="text-muted-foreground text-xs text-pretty">
+        {any
+          ? "Сонгосон савнууд зүүнээс баруун тийш зэрэгцэн зогсоно; хоосон байрлал алгасна. Шошго тод гарахын тулд бараанд «AI лавлах зураг» байвал сайн."
+          : "Сонгохгүй бол одоогийн hero-гийн савнууд хэвээр, зөвхөн уур амьсгал солигдоно."}
+      </p>
+    </fieldset>
+  );
+}
+
+/** Нэг байрлалын хайлттай сонгогч (сервер дээр хайна). */
+function SlotPicker({
+  position,
+  value,
+  taken,
+  picker,
+  onChange,
+}: {
+  position: string;
+  value: ProductOption | null;
+  /** Бусад байрлалд сонгосон — давхар сонгогдохгүй. */
+  taken: string[];
+  picker: ReturnType<typeof useProductOptions>;
+  onChange: (next: ProductOption | null) => void;
+}) {
+  const { q, setQ, items, loading, loadFirstPage } = picker;
+  const list = React.useMemo(() => {
+    const free = items.filter((p) => !taken.includes(p.id));
+    return value && !free.some((p) => p.id === value.id)
+      ? [value, ...free]
+      : free;
+  }, [items, taken, value]);
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-muted-foreground text-xs">{position}</p>
+      <div className="flex items-center gap-1">
+        <Combobox
+          items={list}
+          value={value}
+          onValueChange={(next: ProductOption | null) => onChange(next ?? null)}
+          itemToStringLabel={optionLabel}
+          isItemEqualToValue={(a: ProductOption, b: ProductOption) =>
+            a.id === b.id
+          }
+          filter={null}
+          inputValue={q}
+          onInputValueChange={setQ}
+          onOpenChange={(open) => {
+            if (open) loadFirstPage();
+            else setQ("");
+          }}
+        >
+          <ComboboxTrigger
+            aria-label={`${position} байрлалын үнэртэн`}
+            className="bg-background h-11 min-w-0 flex-1 rounded-lg"
+          >
+            <ComboboxValue placeholder="Хоосон" />
+          </ComboboxTrigger>
+          <PickerPopup aria-busy={loading || undefined}>
+            <ComboboxInput
+              placeholder="Нэр, брэндээр хайх"
+              aria-label={`${position} байрлалд үнэртэн хайх`}
+            />
+            <ComboboxScroll>
+              <ComboboxStatus>
+                {loading && (
+                  <>
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                    Хайж байна…
+                  </>
                 )}
-                aria-busy={loading}
-              >
-                {items.filter((p) => !ids.includes(p.id)).length === 0 ? (
-                  <li className="text-muted-foreground p-3 text-sm">
-                    {loading ? "Хайж байна…" : "Илэрц алга."}
-                  </li>
-                ) : (
-                  items
-                    .filter((p) => !ids.includes(p.id))
-                    .map((p) => (
-                      <li key={p.id}>
-                        <button
-                          type="button"
-                          className="hover:bg-accent flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm md:min-h-9"
-                          onClick={() => {
-                            onChange([...ids, p.id]);
-                            setQ("");
-                          }}
-                        >
-                          <span className="text-muted-foreground text-xs uppercase">
-                            {p.brand}
-                          </span>
-                          <span className="min-w-0 flex-1 truncate">{p.name}</span>
-                        </button>
-                      </li>
-                    ))
+              </ComboboxStatus>
+              <ComboboxEmpty>
+                {!loading && "Ийм үнэртэн олдсонгүй."}
+              </ComboboxEmpty>
+              <ComboboxList>
+                {(p: ProductOption) => (
+                  <ComboboxItem key={p.id} value={p}>
+                    <span className="text-muted-foreground mr-2 shrink-0 text-xs uppercase">
+                      {p.brand}
+                    </span>
+                    <span className="truncate">{p.name}</span>
+                  </ComboboxItem>
                 )}
-              </ul>
-            )}
-          </div>
+              </ComboboxList>
+            </ComboboxScroll>
+          </PickerPopup>
+        </Combobox>
+        {value && (
+          <button
+            type="button"
+            aria-label={`${position} байрлалыг хоослох`}
+            className="text-muted-foreground hover:text-foreground grid size-9 shrink-0 place-items-center rounded-md"
+            onClick={() => onChange(null)}
+          >
+            <X className="size-4" />
+          </button>
         )}
       </div>
-    </Field>
+    </div>
   );
 }
 
