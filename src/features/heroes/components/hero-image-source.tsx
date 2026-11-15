@@ -4,6 +4,7 @@ import * as React from "react";
 import { ImagePlus, Sparkles } from "lucide-react";
 import type { ProductOption } from "@/features/admin/lib/product-option";
 import type { HeroThemeKey } from "@/lib/ai/hero-prompt";
+import { Tooltip } from "@/components/shared/tooltip";
 import { cn } from "@/lib/utils";
 import { generationIdOf } from "../lib";
 import type { HeroDesktopImage, HeroMobileImage } from "../types";
@@ -47,57 +48,69 @@ export function HeroImageSource({
     }
     return desktopImage || mobileImage ? "upload" : null;
   });
-  const cards: { key: Source; icon: typeof Sparkles; title: string; hint: string; off?: string }[] = [
+  const tabs: {
+    key: Source;
+    icon: typeof Sparkles;
+    title: string;
+    off?: string;
+  }[] = [
     {
       key: "ai",
       icon: Sparkles,
       title: "AI-аар үүсгэх",
-      hint: "Сэдэв, үнэртнээ сонгоод 1–2 минутад.",
-      off: aiConfigured ? undefined : "AI-ийн түлхүүр тохируулаагүй — зургаа оруулна уу.",
+      off: aiConfigured
+        ? undefined
+        : "AI-ийн түлхүүр тохируулаагүй — зургаа оруулна уу.",
     },
-    {
-      key: "upload",
-      icon: ImagePlus,
-      title: "Өөрийн зураг оруулах",
-      hint: "Компьютер 2.8:1, утас 4:3.",
-    },
+    { key: "upload", icon: ImagePlus, title: "Өөрөө оруулах" },
   ];
+  const hint =
+    source === "ai"
+      ? "Сэдэв, үнэртнээ сонгоод 1–2 минутад."
+      : source === "upload"
+        ? "Компьютер 2.8:1 (бараа баруун талд), утас 4:3."
+        : desktopImage || mobileImage
+          ? "Зураг солих бол аль нэгийг сонгоно."
+          : "Зургаа хаанаас авахаа сонгоно.";
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Зураг">
-        {cards.map((c) => {
-          const selected = source === c.key;
-          return (
-            <button
-              key={c.key}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              disabled={Boolean(c.off)}
-              onClick={() => setSource(selected ? null : c.key)}
-              className={cn(
-                "flex items-start gap-3 rounded-lg p-4 text-left disabled:cursor-not-allowed disabled:opacity-60",
-                selected
-                  ? "bg-cta text-cta-foreground"
-                  : "bg-secondary hover:bg-accent",
-              )}
-            >
-              <c.icon className="mt-0.5 size-5 shrink-0" aria-hidden />
-              <span className="space-y-0.5">
-                <span className="block text-sm font-medium">{c.title}</span>
-                <span
-                  className={cn(
-                    "block text-xs",
-                    selected ? "text-cta-foreground/80" : "text-muted-foreground",
-                  )}
-                >
-                  {c.off ?? c.hint}
-                </span>
-              </span>
-            </button>
-          );
-        })}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div
+          role="radiogroup"
+          aria-label="Зураг"
+          className="bg-secondary flex rounded-full p-0.5"
+        >
+          {tabs.map((t) => {
+            const selected = source === t.key;
+            const button = (
+              <button
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                disabled={Boolean(t.off)}
+                onClick={() => setSource(selected ? null : t.key)}
+                className={cn(
+                  "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-50",
+                  selected
+                    ? "bg-cta text-cta-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <t.icon className="size-3.5" aria-hidden />
+                {t.title}
+              </button>
+            );
+            return t.off ? (
+              <Tooltip key={t.key} content={t.off} align="start">
+                {button}
+              </Tooltip>
+            ) : (
+              <React.Fragment key={t.key}>{button}</React.Fragment>
+            );
+          })}
+        </div>
+        <p className="text-muted-foreground text-xs">{hint}</p>
       </div>
 
       {source === "ai" && (
@@ -116,10 +129,6 @@ export function HeroImageSource({
       )}
       {source === "upload" && (
         <div className="space-y-2">
-          <p className="text-muted-foreground text-sm text-pretty">
-            Компьютер: өргөн зураг (2.8:1), бараа баруун талд, зүүн тал хоосон
-            хана. Утас: 4:3.
-          </p>
           {/* Хоёр урьдчилсан зураг ижил өндөртэй: 2.8:1 ба 4:3. */}
           <div className="grid gap-4 sm:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
             <ImageUpload
@@ -127,14 +136,18 @@ export function HeroImageSource({
               label="Компьютер"
               groupId={groupId}
               preview={desktopImage ? `${desktopImage.base}-1600.webp` : null}
-              onUploaded={(r) => onImages({ desktop: r.desktop, suggestDark: r.suggestDark })}
+              onUploaded={(r) =>
+                onImages({ desktop: r.desktop, suggestDark: r.suggestDark })
+              }
             />
             <ImageUpload
               kind="mobile"
               label="Утас"
               groupId={groupId}
               preview={mobileImage?.src ?? null}
-              onUploaded={(r) => onImages({ mobile: r.mobile, suggestDark: r.suggestDark })}
+              onUploaded={(r) =>
+                onImages({ mobile: r.mobile, suggestDark: r.suggestDark })
+              }
             />
           </div>
         </div>

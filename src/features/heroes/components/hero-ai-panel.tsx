@@ -3,6 +3,8 @@
 import * as React from "react";
 import { Check, Loader2, Maximize2, Sparkles, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { InfoTip } from "@/components/shared/info-tip";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -263,36 +265,46 @@ export function HeroAiPanel({
   }
 
   return (
-    <div className="bg-secondary/40 space-y-4 rounded-lg p-3">
-      <div className="flex items-center gap-2 text-sm font-medium">
-        <Sparkles className="size-4" aria-hidden />
-        AI-аар үүсгэх
-      </div>
-      <div
-        className="flex flex-wrap gap-2"
-        role="radiogroup"
-        aria-label="Сэдэв"
-      >
-        {HERO_THEME_KEYS.map((k) => (
-          <Button
-            key={k}
-            type="button"
-            size="sm"
-            role="radio"
-            aria-checked={theme === k}
-            variant={theme === k ? "default" : "outline"}
-            onClick={() => pickTheme(k)}
-          >
-            {HERO_THEMES[k].label}
-          </Button>
-        ))}
-      </div>
+    <div className="bg-card space-y-5 rounded-lg p-4">
+      <fieldset className="space-y-2">
+        <legend className="flex items-center gap-1.5 text-sm leading-none font-medium">
+          Сэдэв
+          <InfoTip label="Сэдэв гэж юу вэ">
+            Сэдэв бүрт бэлэн prompt бий: уур амьсгал, гэрэл, чимэглэл,
+            оруулахгүй зүйлс. Сонгоод үнэртнээ тавихад хангалттай. «Өөрөө бичих»
+            сонговол сэдвээ доорх талбарт өөрөө тайлбарлана.
+          </InfoTip>
+        </legend>
+        <div
+          className="flex flex-wrap gap-1.5 pt-1"
+          role="radiogroup"
+          aria-label="Сэдэв"
+        >
+          {HERO_THEME_KEYS.map((k) => (
+            <button
+              key={k}
+              type="button"
+              role="radio"
+              aria-checked={theme === k}
+              onClick={() => pickTheme(k)}
+              className={cn(
+                "h-8 rounded-full px-3 text-[13px] font-medium",
+                theme === k
+                  ? "bg-cta text-cta-foreground"
+                  : "bg-secondary text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {HERO_THEMES[k].label}
+            </button>
+          ))}
+        </div>
+      </fieldset>
       <ProductSlots slots={slots} onChange={pickSlots} picker={products} />
       <Field
         label={
           theme === "custom" ? "Сэдвийн тайлбар" : "Нэмэлт тайлбар (заавал биш)"
         }
-        hint={`${extra.length}/${HERO_AI_LIMITS.extraMax}. Англиар бичвэл илүү тогтвортой.`}
+        hint={`${extra.length}/${HERO_AI_LIMITS.extraMax} · Англиар бичвэл тогтвортой.`}
       >
         <textarea
           rows={2}
@@ -300,42 +312,50 @@ export function HeroAiPanel({
           value={extra}
           placeholder="жишээ: more gold accents, softer light"
           onChange={(e) => setExtra(e.target.value)}
-          className="bg-background field-edge flex w-full rounded-md px-3 py-2 text-base md:text-sm"
+          className="bg-secondary field-edge flex w-full rounded-md px-3 py-2 text-base md:text-sm"
         />
       </Field>
-      <label className="flex items-center gap-2 text-xs">
-        <input
-          type="checkbox"
-          checked={fast}
-          onChange={(e) => setFast(e.target.checked)}
-        />
-        Хурдан хэмжээ (2688×960 / 1536×1152) — өндөр нарийвчлал хугацаа хэтэрвэл
-      </label>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="inline-flex items-center gap-1.5 text-sm">
+          <label className="inline-flex cursor-pointer items-center gap-2">
+            <Checkbox
+              checked={fast}
+              onCheckedChange={(v) => setFast(v === true)}
+            />
+            Хурдан горим
+          </label>
+          <InfoTip label="Хурдан горим гэж юу вэ">
+            Бага нарийвчлал (2688×960 / 1536×1152). Ердийн горим удаад амжилтгүй
+            болбол ашиглана.
+          </InfoTip>
+        </span>
         <LoadingButton
           type="button"
-          size="sm"
+          className="bg-cta text-cta-foreground hover:bg-cta/90"
           loading={starting === "desktop"}
           disabled={starting !== null || (theme === "custom" && !extra.trim())}
           onClick={() => void startDesktop()}
         >
-          Desktop үүсгэх
+          <Sparkles />
+          Компьютерын зураг үүсгэх
         </LoadingButton>
       </div>
 
       {jobs.length > 0 && (
-        <ul role="list" className="grid gap-3 sm:grid-cols-2">
+        <ul role="list" className="flex flex-wrap items-start gap-3">
           {jobs.map((j) => (
             <li
               key={j.id}
               className={cn(
-                "space-y-2 rounded-md p-2",
-                isUsed(j) ? "bg-cta/10" : "bg-card",
+                "w-full space-y-2 rounded-md p-2 sm:w-auto",
+                isUsed(j) ? "bg-cta/10" : "bg-secondary/50",
               )}
             >
               <div
                 className={cn(
                   "bg-muted relative overflow-hidden rounded",
+                  // Ижил өндөр (h-40), өргөн нь харьцаанаасаа: 2.8:1 ба 4:3.
+                  "w-full sm:h-40 sm:w-auto",
                   j.target === "desktop" ? "aspect-14/5" : "aspect-4/3",
                 )}
               >
@@ -357,7 +377,9 @@ export function HeroAiPanel({
                     </span>
                     {/* Текстийн бүс: энэ шугамын зүүн талд юу ч байх ёсгүй. */}
                     <SafeZoneLine target={j.target} />
-                    {isUsed(j) && <InUseMark className="absolute top-1.5 left-1.5" />}
+                    {isUsed(j) && (
+                      <InUseMark className="absolute top-1.5 left-1.5" />
+                    )}
                   </button>
                 ) : (
                   <div className="text-muted-foreground flex size-full items-center justify-center p-2 text-center text-xs">
@@ -369,9 +391,10 @@ export function HeroAiPanel({
                   </div>
                 )}
               </div>
-              <div className="flex flex-wrap items-center gap-1.5">
+              {/* `w-0 min-w-full`: мөр нь картын өргөнийг тэлэхгүй. */}
+              <div className="flex w-0 min-w-full flex-wrap items-center gap-1.5">
                 <Badge variant="secondary">
-                  {j.target === "desktop" ? "Desktop" : "Утас"}
+                  {j.target === "desktop" ? "Компьютер" : "Утас"}
                 </Badge>
                 <span className="text-muted-foreground text-xs">
                   {HERO_THEMES[j.theme_key as HeroThemeKey]?.label ??
@@ -406,7 +429,7 @@ export function HeroAiPanel({
                         disabled={starting !== null}
                         onClick={() => void startMobile(j)}
                       >
-                        Mobile хувилбар үүсгэх
+                        Утасны хувилбар үүсгэх
                       </LoadingButton>
                     )}
                     {isUsed(j) ? (
@@ -576,7 +599,7 @@ function ProductSlots({
   return (
     <fieldset className="space-y-2">
       <legend className="text-sm leading-none font-medium">
-        Hero-д оруулах үнэртэн
+        Баннерт гарах үнэртэн
       </legend>
       <div className="grid gap-2 pt-1 sm:grid-cols-3">
         {POSITION.map((pos, i) => (
@@ -596,8 +619,8 @@ function ProductSlots({
       </div>
       <p className="text-muted-foreground text-xs text-pretty">
         {any
-          ? "Сонгосон савнууд зүүнээс баруун тийш зэрэгцэн зогсоно; хоосон байрлал алгасна. Шошго тод гарахын тулд бараанд «AI лавлах зураг» байвал сайн."
-          : "Сонгохгүй бол одоогийн hero-гийн савнууд хэвээр, зөвхөн уур амьсгал солигдоно."}
+          ? "Зүүнээс баруун тийш зэрэгцэнэ. Хоосон байрлал алгасна."
+          : "Сонгохгүй бол одоогийн савнууд хэвээр, уур амьсгал л солигдоно."}
       </p>
     </fieldset>
   );
@@ -648,7 +671,7 @@ function SlotPicker({
         >
           <ComboboxTrigger
             aria-label={`${position} байрлалын үнэртэн`}
-            className="bg-background h-11 min-w-0 flex-1 rounded-lg"
+            className="h-10 min-w-0 flex-1 rounded-md"
           >
             <ComboboxValue placeholder="Хоосон" />
           </ComboboxTrigger>

@@ -35,7 +35,7 @@ export type BulkSaleInput = z.infer<typeof bulkSaleSchema>;
 export const clearSaleSchema = z.object({ productIds });
 
 /**
- * Хувиас хямдарсан үнэ — `apply_bulk_sale`-ийн толь (100₮-д дугуйрна,
+ * Хувиас хямдарсан үнэ — `apply_bulk_sale`-ийн толь (100₮-д тоймлоно,
  * үндсэн үнээс давахгүй). Админы урьдчилан харах мөрөнд.
  */
 export function bulkSalePrice(price: number, pct: number): number {

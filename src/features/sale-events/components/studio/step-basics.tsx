@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/features/admin/components/date-picker";
 import { SALE_EVENT_LIMITS as L, SITE } from "@/lib/constants";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
 import { periodSentence, saleLink } from "./studio-model";
 import type { EventStudio } from "./use-event-studio";
 
@@ -36,17 +35,17 @@ export function StepBasics({ studio }: { studio: EventStudio }) {
   }
 
   return (
-    <div className="max-w-2xl space-y-10">
+    <div className="max-w-2xl space-y-6">
       <Field
         label="Нэр"
-        hint="Энэ нэр каталогийн шүүлтүүрт харагдана."
+        hint="Каталогийн шүүлтүүрт харагдана."
         error={errors.name}
       >
         <Input
           value={draft.name}
           maxLength={L.name}
           placeholder="Жишээ: Black Friday, Цагаан сар"
-          className={cn("h-14 rounded-xl px-4 text-lg md:text-lg", fieldErrorClass(errors.name))}
+          className={fieldErrorClass(errors.name)}
           onChange={(e) => studio.setName(e.target.value)}
         />
       </Field>
@@ -71,9 +70,8 @@ export function StepBasics({ studio }: { studio: EventStudio }) {
             />
           </Field>
         </div>
-        <p className="text-muted-foreground pt-1 text-sm text-pretty">
-          {sentence ??
-            "Эхлэх өдрийн 00:00-оос дуусах өдрийн 23:59 хүртэл үргэлжилнэ (Улаанбаатарын цагаар)."}
+        <p className="text-muted-foreground text-xs text-pretty">
+          {sentence ?? "00:00-оос 23:59 хүртэл, Улаанбаатарын цагаар."}
         </p>
       </div>
 
@@ -105,7 +103,7 @@ export function StepBasics({ studio }: { studio: EventStudio }) {
             </div>
           </Field>
         ) : (
-          <div className="bg-secondary flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl py-2 pr-2 pl-4">
+          <div className="bg-secondary flex min-h-10 flex-wrap items-center gap-1 rounded-md py-0.5 pr-0.5 pl-3">
             <span className="min-w-0 flex-1 basis-40 text-sm break-all">
               <span className="text-muted-foreground">{SITE.domain}/sale/</span>
               <span className="font-medium">{draft.slug || "…"}</span>
@@ -136,9 +134,8 @@ export function StepBasics({ studio }: { studio: EventStudio }) {
             Холбоосыг өөрчилбөл өмнө тараасан холбоос ажиллахаа болино.
           </p>
         )}
-        <p className="text-muted-foreground text-sm text-pretty">
-          Сошиал пост, сторид энэ холбоосыг тавина.
-          {studio.bannerEnabled && " Баннерын товч автоматаар энд холбогдоно."}
+        <p className="text-muted-foreground text-xs text-pretty">
+          Сошиал пост, сторид тавих холбоос.
         </p>
       </div>
     </div>
