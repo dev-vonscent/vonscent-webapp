@@ -481,7 +481,12 @@ function DesktopNav({
       aria-label="Дэлгүүрийн цэс"
       className="chrome-rule-t relative hidden md:block"
     >
-      <div className="mx-auto flex h-11 max-w-420 items-center justify-between gap-6 px-5">
+      {/* Туг бүгд асаалттай үед 7 цэс md (768–1023px, iPad босоо) дээр
+          ~950px болж, бүх хуудсыг хажуу тийш гүйлгэдэг байсан. Мөр өөрөө
+          хажуу тийш гүйнэ — тасарсан сүүлийн шошго нь «цааш бий» гэдгийг
+          илтгэнэ. lg-ээс дээш бүгд багтана. Dropdown panel энэ div-ийн
+          гадна (nav-ийн хүүхэд) тул overflow-д тасрахгүй. */}
+      <div className="no-scrollbar mx-auto flex h-11 max-w-420 items-center justify-between gap-4 overflow-x-auto overscroll-x-contain px-3 lg:gap-6 lg:px-5">
         {renderItems(STORE_NAV_PRIMARY)}
         {renderItems(STORE_NAV_SECONDARY, true)}
       </div>

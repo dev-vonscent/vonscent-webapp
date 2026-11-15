@@ -98,7 +98,7 @@ function HeroCopy({
       <h1
         id="home-hero-title"
         data-hero-field="title"
-        className={`text-[clamp(1.125rem,5.6vw,1.375rem)]/[1.15] font-bold tracking-tight text-balance sm:text-2xl md:text-3xl lg:text-[2.75rem]/[1.1] ${
+        className={`text-[clamp(1.125rem,5.6vw,1.375rem)]/[1.15] font-bold tracking-tight text-balance min-[440px]:text-2xl md:text-3xl lg:text-[2.75rem]/[1.1] ${
           tone === "photo" ? (dark ? "text-white" : "text-neutral-950") : ""
         }`}
       >
@@ -121,7 +121,9 @@ function HeroCopy({
           (`mt-auto`) — эрхий хуруунд ойр, гарчгийн уртаас үл хамаарна. */}
       <div
         className={`flex flex-wrap items-center gap-x-5 gap-y-2 sm:mt-3 ${
-          tone === "photo" ? "mt-auto pt-2" : "mt-2"
+          tone === "photo"
+            ? "mt-auto pt-2 min-[440px]:mt-3 min-[440px]:pt-0"
+            : "mt-2"
         }`}
       >
         {/* Гэрэл зураг дээр ч theme-ийн primary — хоёр theme-д (black/white)
@@ -213,7 +215,7 @@ function PhotoHero({
   return (
     <section
       aria-labelledby="home-hero-title"
-      className={`relative isolate flex aspect-4/3 min-h-64 w-full overflow-hidden rounded-2xl sm:aspect-14/5 sm:max-h-[58svh] sm:min-h-64 md:min-h-80 lg:min-h-88 ${
+      className={`relative isolate flex aspect-4/3 min-h-64 w-full overflow-hidden rounded-2xl min-[440px]:aspect-video sm:aspect-14/5 sm:max-h-[58svh] sm:min-h-64 md:min-h-80 lg:min-h-88 ${
         image.dark ? "bg-[#1c1a1c]" : "bg-[#e8dccd]"
       }`}
     >
@@ -235,9 +237,12 @@ function PhotoHero({
         />
       </picture>
       {/* Утас: 4:3 намхан карт (дэлгэцийн ~⅓) — бичиг зүүн 56%-д, бараа
-          баруун талд, товч зүүн доод буланд. Desktop-той ижил «зүүн талд
+          баруун талд, товч зүүн доод буланд. 440–639px (том утас, нугалдаг
+          утас, жижиг tablet) дээр 4:3 карт ~480px өндөр болж, бичиг дээд,
+          товч доод буланд хол тасарч дунд нь хоосон үлддэг байсан — тэнд
+          16:9 карт, бичиг+товч нэг бүлгээр босоо голд. Desktop-той ижил «зүүн талд
           хоосон хана» зохиомж, тиймээс зураг нь ч мөн адил: prompts/hero-mobile.md. */}
-      <div className="flex w-[56%] flex-col justify-start gap-1.5 p-4 sm:w-[52%] sm:justify-center sm:gap-3 sm:p-8 md:p-10 lg:px-14">
+      <div className="flex w-[56%] flex-col justify-start gap-1.5 p-4 min-[440px]:justify-center min-[440px]:gap-2 min-[440px]:p-6 sm:w-[52%] sm:gap-3 sm:p-8 md:p-10 lg:px-14">
         <HeroCopy campaign={campaign} tone="photo" dark={image.dark} />
       </div>
     </section>
