@@ -66,8 +66,8 @@ describe("saleEventInputSchema", () => {
       false,
     );
     expect(saleEventInputSchema.safeParse(item({ "7": 10 })).success).toBe(false);
-    // Хувьгүй гишүүн («сонголт») зөвшөөрөгдөнө.
-    expect(saleEventInputSchema.safeParse(item({})).success).toBe(true);
+    // Хувьгүй гишүүн нийтлэхэд хориотой (клиент 2026-11-15) — доорх тест.
+    expect(saleEventInputSchema.safeParse(item({})).success).toBe(false);
   });
 
   it("дуусах өдөр эхлэхээс өмнө байж болохгүй (нэг өдөр болно)", () => {
@@ -102,5 +102,26 @@ describe("parseEventSlug", () => {
     expect(parseEventSlug(["naadam", "x"])).toBe("naadam");
     expect(parseEventSlug("../etc")).toBeUndefined();
     expect(parseEventSlug(undefined)).toBeUndefined();
+  });
+});
+
+describe("хувьгүй бараа", () => {
+  const items = [
+    ...base.items,
+    { productId: "22222222-2222-4222-8222-222222222222", pcts: {} },
+  ];
+
+  it("нийтлэхэд бараа бүр дор хаяж нэг хувьтай байна", () => {
+    const r = saleEventInputSchema.safeParse({ ...base, items });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(r.error.issues[0]?.message).toMatch(/дор хаяж нэг хэмжээнд/u);
+    }
+  });
+
+  it("ноорогт (autosave) зөвшөөрнө", () => {
+    expect(
+      saleEventInputSchema.safeParse({ ...base, isActive: false, items }).success,
+    ).toBe(true);
   });
 });

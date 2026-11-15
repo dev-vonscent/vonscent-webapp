@@ -102,6 +102,8 @@ export function studioChecklist(input: {
   bannerSkipped?: boolean;
   /** Сүүлийн баннерын хадгалалтын алдаа (D7: арга хэмжээ хадгалагдсан). */
   bannerError?: string | null;
+  /** Баннерын текст дэх хугацаатай таарахгүй огноо (`staleBannerDates`). */
+  bannerStaleDates?: readonly string[];
 }): ChecklistItem[] {
   const { draft: d, today, conflicts = [], banner = null } = input;
   const out: ChecklistItem[] = [];
@@ -141,13 +143,23 @@ export function studioChecklist(input: {
       text: "Бараа сонгоогүй — дор хаяж нэг бараа хэрэгтэй",
       action: "Засах",
     });
-  } else if (r.invalid > 0) {
-    out.push({
-      step: "products",
-      level: "error",
-      text: `${r.invalid} барааны хувь буруу — 1–${SALE_EVENT_MAX_PCT} бүхэл тоо`,
-      action: "Засах",
-    });
+  } else if (r.invalid > 0 || r.noPct > 0) {
+    if (r.invalid > 0) {
+      out.push({
+        step: "products",
+        level: "error",
+        text: `${r.invalid} барааны хувь буруу — 1–${SALE_EVENT_MAX_PCT} бүхэл тоо`,
+        action: "Засах",
+      });
+    }
+    if (r.noPct > 0) {
+      out.push({
+        step: "products",
+        level: "error",
+        text: `${r.noPct} бараанд хувь өгөөгүй — сонгосон бараа бүр дор хаяж нэг хэмжээнд хямдрах ёстой`,
+        action: "Засах",
+      });
+    }
   } else {
     const span = pctSpan(r);
     out.push({
@@ -203,6 +215,15 @@ export function studioChecklist(input: {
         action: "Харах",
       });
     } else {
+      const stale = input.bannerStaleDates ?? [];
+      if (stale.length) {
+        out.push({
+          step: "banner",
+          level: "warn",
+          text: `Баннерын текстэд хугацаатай таарахгүй огноо байна (${stale.join(", ")}) — шалгаж засна уу`,
+          action: "Засах",
+        });
+      }
       const gaps = bannerGaps(banner);
       out.push(
         gaps.length

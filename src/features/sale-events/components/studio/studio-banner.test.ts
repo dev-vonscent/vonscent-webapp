@@ -7,6 +7,8 @@ import {
   bannerSummary,
   effectiveCanvas,
   initialBannerState,
+  staleBannerDates,
+  syncBannerCopy,
   type BannerState,
 } from "./studio-banner";
 import { studioChecklist } from "./studio-checklist";
@@ -158,5 +160,60 @@ describe("checklist + баннер", () => {
       bannerError: "Хадгалж чадсангүй.",
     }).filter((i) => i.step === "banner");
     expect(items.map((i) => i.level)).toEqual(["warn", "ok"]);
+  });
+});
+
+describe("баннерын текст арга хэмжээг дагах", () => {
+  const prev = event();
+  const base = effectiveCanvas(
+    { id: null, groupId: "g", draft: null, skip: false, productIds: [] },
+    prev,
+  );
+
+  it("хөндөөгүй бэлэн текст огноо, хувийг дагана", () => {
+    const next = event({
+      endsOn: "2026-12-02",
+      items: [{ productId: "p", pcts: { 5: "40" } }],
+    });
+    const d = syncBannerCopy(base, prev, next);
+    expect(d.eyebrow).toBe("Black Friday · 11/23–12/2");
+    expect(d.description).toBe("Сонгосон үнэртнүүд 40% хүртэл хямдарлаа. 12/2 хүртэл.");
+    expect(d.mobileDescription).toBe("40% хүртэл хямдрал");
+  });
+
+  it("админы бичсэн текстийг хөндөхгүй", () => {
+    const own = { ...base, eyebrow: "Зөвхөн энэ 7 хоног" };
+    const d = syncBannerCopy(own, prev, event({ endsOn: "2026-12-02" }));
+    expect(d.eyebrow).toBe("Зөвхөн энэ 7 хоног");
+  });
+
+  it("өөрчлөлтгүй бол ижил объект", () => {
+    expect(syncBannerCopy(base, prev, event())).toBe(base);
+  });
+
+  it("хугацаатай таарахгүй огноог олно", () => {
+    const d = { ...base, eyebrow: "Black Friday · 11/23–11/24", description: "" };
+    expect(staleBannerDates(d, prev)).toEqual(["11/24"]);
+    expect(staleBannerDates(base, prev)).toEqual([]);
+    expect(staleBannerDates({ ...base, title: "1/0 биш, 13/5 ч биш" }, prev)).toEqual([]);
+  });
+
+  it("checklist-д анхааруулга", () => {
+    const items = studioChecklist({
+      draft: prev,
+      today: "2026-11-15",
+      bannerEnabled: true,
+      banner: bannerSummary({
+        id: "x",
+        groupId: "g",
+        draft: base,
+        skip: false,
+        productIds: [],
+      }),
+      bannerStaleDates: ["11/24"],
+    });
+    expect(
+      items.find((i) => i.step === "banner" && i.text.includes("11/24"))?.level,
+    ).toBe("warn");
   });
 });

@@ -34,8 +34,8 @@ export function StepProducts({
           {itemsSummary(draft.items)}
         </span>
         <span className="text-muted-foreground text-sm text-pretty">
-          Хувь бичээгүй бараа үнээрээ үлдэнэ. Хувь нь үндсэн үнээс, 100₮-д
-          дугуйрна.
+          Сонгосон бараа бүр дор хаяж нэг хэмжээнд хямдрах ёстой. Хувь нь
+          үндсэн үнээс, 100₮-д дугуйрна.
         </span>
       </div>
       {conflicts.length > 0 && (

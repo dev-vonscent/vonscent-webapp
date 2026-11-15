@@ -80,7 +80,16 @@ export const saleEventInputSchema = z
   .refine((v) => !v.isActive || v.items.length > 0, {
     message: "Нийтлэхийн өмнө дор хаяж нэг бараа сонгоно уу.",
     path: ["items"],
-  });
+  })
+  // Сонгосон бараа бүр дор хаяж нэг хэмжээнд хямдрах ёстой (клиент,
+  // 2026-11-15). Ноорогт (autosave) зөвшөөрнө — хувиа дараа нь бичнэ.
+  .refine(
+    (v) => !v.isActive || v.items.every((i) => Object.keys(i.pcts).length > 0),
+    {
+      message: "Сонгосон бараа бүр дор хаяж нэг хэмжээнд хувьтай байна.",
+      path: ["items"],
+    },
+  );
 
 export type SaleEventInput = z.infer<typeof saleEventInputSchema>;
 

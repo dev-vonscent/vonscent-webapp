@@ -178,6 +178,10 @@ export function EventItemsSection({
               const p = byId.get(item.productId);
               const conflict = conflictIds.has(item.productId);
               const sizes = ML_SIZES.filter((ml) => p?.prices[ml] != null);
+              // Сонгосон бараа бүр дор хаяж нэг хэмжээнд хямдрах ёстой.
+              const noPct = Object.values(item.pcts).every(
+                (v) => v.trim() === "",
+              );
               return (
                 <li
                   key={item.productId}
@@ -197,6 +201,11 @@ export function EventItemsSection({
                       {conflict && (
                         <p className="text-destructive mt-1 text-xs">
                           Өөр арга хэмжээнд давхацсан
+                        </p>
+                      )}
+                      {noPct && (
+                        <p className="text-destructive mt-1 text-xs">
+                          Дор хаяж нэг хэмжээнд хувь бичнэ үү
                         </p>
                       )}
                     </div>

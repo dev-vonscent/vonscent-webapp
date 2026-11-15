@@ -219,6 +219,11 @@ export interface DiscountRange {
   withPct: number;
   /** Хоосон биш мөртлөө буруу хувьтай бараа. */
   invalid: number;
+  /**
+   * Нэг ч хэмжээнд хувь бичээгүй бараа. Сонгосон бараа бүр дор хаяж нэг
+   * хэмжээнд хямдрах ёстой — нийтлэхийг хориглоно (checklist, Zod).
+   */
+  noPct: number;
   min: number | null;
   max: number | null;
 }
@@ -229,6 +234,7 @@ export function discountRange(
 ): DiscountRange {
   let withPct = 0;
   let invalid = 0;
+  let noPct = 0;
   let min: number | null = null;
   let max: number | null = null;
   for (const item of items) {
@@ -238,12 +244,30 @@ export function discountRange(
     const valid = filled.filter(isValidPct).map(Number);
     if (valid.length < filled.length) invalid++;
     if (valid.length) withPct++;
+    if (filled.length === 0) noPct++;
     for (const n of valid) {
       min = min === null ? n : Math.min(min, n);
       max = max === null ? n : Math.max(max, n);
     }
   }
-  return { count: items.length, withPct, invalid, min, max };
+  return { count: items.length, withPct, invalid, noPct, min, max };
+}
+
+/**
+ * ②-оос цааш явахыг хориглох шалтгаан (шинэ ноорог): сонгосон бараа бүр дор
+ * хаяж нэг хэмжээнд хүчинтэй хувьтай байх ёстой. Бүгд зөв бол null.
+ */
+export function productsStepBlock(
+  items: readonly { pcts: Record<string | number, string | number> }[],
+): string | null {
+  const r = discountRange(items);
+  if (r.invalid > 0) {
+    return `${r.invalid} барааны хувь буруу — 1–${SALE_EVENT_MAX_PCT} бүхэл тоо.`;
+  }
+  if (r.noPct > 0) {
+    return `${r.noPct} бараанд хувь өгөөгүй — бараа бүр дор хаяж нэг хэмжээнд хямдрах ёстой.`;
+  }
+  return null;
 }
 
 /** «20%» / «20–30%»; хувьгүй бол null. */

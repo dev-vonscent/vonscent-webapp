@@ -305,3 +305,20 @@ describe("openingStep (D2)", () => {
     }
   });
 });
+
+describe("хувьгүй бараа (клиент 2026-11-15)", () => {
+  it("сонгосон бараа бүр хувьтай байх ёстой — нийтлэхийг хориглоно", () => {
+    const items = studioChecklist({
+      draft: draft({
+        items: [
+          { productId: P1, pcts: { 5: "20" } },
+          { productId: P2, pcts: {} },
+        ],
+      }),
+      today: TODAY,
+    });
+    const err = items.find((i) => i.step === "products" && i.level === "error");
+    expect(err?.text).toMatch(/^1 бараанд хувь өгөөгүй/u);
+    expect(hasBlocking(items)).toBe(true);
+  });
+});

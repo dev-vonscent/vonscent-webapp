@@ -4,7 +4,7 @@ import {
   heroCanvasComplete,
   type HeroCanvasDraft,
 } from "@/features/heroes/canvas-model";
-import { defaultHeroCopy } from "@/features/heroes/default-copy";
+import { defaultHeroCopy, monthDay, type HeroCopy } from "@/features/heroes/default-copy";
 import { rebindEventTarget } from "@/features/heroes/link-presets";
 import type { HeroAdminRow } from "@/features/heroes/types";
 import type { StudioBanner } from "./studio-checklist";
@@ -75,18 +75,70 @@ function maxPct(d: StudioDraft): number | null {
   return discountRange(d.items).max;
 }
 
+/** Арга хэмжээний одоогийн утгаас бэлэн текст (§6.2). */
+function eventCopy(event: StudioDraft): HeroCopy {
+  return defaultHeroCopy({
+    name: event.name,
+    headline: event.headline,
+    slug: event.slug,
+    startsOn: event.startsOn,
+    endsOn: event.endsOn,
+    maxPct: maxPct(event),
+  });
+}
+
+/** Бэлэн текстээс ирдэг, арга хэмжээ солигдоход дагах ёстой талбарууд. */
+const SYNCED_FIELDS = [
+  "eyebrow",
+  "title",
+  "description",
+  "mobileDescription",
+  "primaryLabel",
+] as const;
+
+/**
+ * Арга хэмжээний нэр, огноо, хувь солигдоход баннерын текстийг дагуулна —
+ * зөвхөн админ ХӨНДӨӨГҮЙ (өмнөх бэлэн тексттэй яг ижил) талбарыг. Админы
+ * бичсэн текст хэвээр. Өөрчлөлтгүй бол яг тэр объектыг буцаана.
+ */
+export function syncBannerCopy(
+  d: HeroCanvasDraft,
+  prev: StudioDraft,
+  next: StudioDraft,
+): HeroCanvasDraft {
+  const a = eventCopy(prev);
+  const b = eventCopy(next);
+  let out = d;
+  for (const f of SYNCED_FIELDS) {
+    if (d[f] === a[f] && a[f] !== b[f]) out = { ...out, [f]: b[f] };
+  }
+  return out;
+}
+
+/**
+ * Баннерын текст дэх «11/14» хэлбэрийн огноо арга хэмжээний эхлэх / дуусах
+ * өдөртэй таарахгүй бол тэдгээрийг буцаана (хуучирсан текст — checklist warn).
+ */
+export function staleBannerDates(d: HeroCanvasDraft, event: StudioDraft): string[] {
+  const ok = new Set([monthDay(event.startsOn), monthDay(event.endsOn)].filter(Boolean));
+  if (ok.size === 0) return [];
+  const text = [d.eyebrow, d.title, d.description, d.mobileDescription].join(" ");
+  const out: string[] = [];
+  for (const m of text.matchAll(/(?<!\d)(\d{1,2})\/(\d{1,2})(?!\d)/gu)) {
+    const month = Number(m[1]);
+    const day = Number(m[2]);
+    if (month < 1 || month > 12 || day < 1 || day > 31) continue;
+    const md = `${month}/${day}`;
+    if (!ok.has(md) && !out.includes(md)) out.push(md);
+  }
+  return out;
+}
+
 /** Canvas-д харагдах утга: админы засвар эсвэл арга хэмжээнээс бэлэн текст. */
 export function effectiveCanvas(s: BannerState, event: StudioDraft): HeroCanvasDraft {
   if (s.draft) return s.draft;
   return {
-    ...defaultHeroCopy({
-      name: event.name,
-      headline: event.headline,
-      slug: event.slug,
-      startsOn: event.startsOn,
-      endsOn: event.endsOn,
-      maxPct: maxPct(event),
-    }),
+    ...eventCopy(event),
     desktopImage: null,
     mobileImage: null,
     imageAlt: "",

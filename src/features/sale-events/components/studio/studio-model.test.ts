@@ -12,6 +12,7 @@ import {
   itemsSummary,
   parseStep,
   pctSpan,
+  productsStepBlock,
   periodSentence,
   publishAction,
   saleLink,
@@ -173,13 +174,32 @@ describe("хувийн тойм", () => {
       { pcts: { 5: "95" } },
       { pcts: { 5: 25 } },
     ]);
-    expect(r).toEqual({ count: 4, withPct: 2, invalid: 1, min: 20, max: 30 });
+    expect(r).toEqual({
+      count: 4,
+      withPct: 2,
+      invalid: 1,
+      noPct: 1,
+      min: 20,
+      max: 30,
+    });
     expect(pctSpan(r)).toBe("20–30%");
   });
 
   it("нэг хувь / хувьгүй", () => {
     expect(pctSpan(discountRange([{ pcts: { 5: "20" } }]))).toBe("20%");
     expect(pctSpan(discountRange([{ pcts: {} }]))).toBeNull();
+  });
+
+  it("②-оос цааш: бараа бүр дор хаяж нэг хувьтай", () => {
+    expect(productsStepBlock([])).toBeNull();
+    expect(productsStepBlock([{ pcts: { 5: "20" } }])).toBeNull();
+    expect(productsStepBlock([{ pcts: { 5: "20" } }, { pcts: {} }])).toMatch(
+      /^1 бараанд хувь өгөөгүй/u,
+    );
+    expect(productsStepBlock([{ pcts: { 5: "", 10: " " } }])).toMatch(
+      /хувь өгөөгүй/u,
+    );
+    expect(productsStepBlock([{ pcts: { 5: "120" } }])).toMatch(/хувь буруу/u);
   });
 
   it("②-ын тойм мөр", () => {

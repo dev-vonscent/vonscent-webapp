@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowLeft, ArrowRight, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
+import { toast } from "@/lib/toast";
 import { useFeatureFlag } from "@/components/feature-flags";
 import { UB_TIMEZONE } from "@/lib/time";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ import {
   STUDIO_STEP_HINT,
   STUDIO_STEP_LABEL,
   parseStep,
+  productsStepBlock,
   publishAction,
   visibleSteps,
   type StudioStep,
@@ -97,8 +99,19 @@ export function EventStudio({
   const prev = steps[index - 1];
   const next = steps[index + 1];
 
+  // Шинэ ноорог: ②-т хувьгүй / буруу хувьтай бараа байвал цааш явахгүй
+  // (сонгосон бараа бүр хямдрах ёстой). Нийтэлсэн арга хэмжээг Zod хамгаална.
+  const productsBlock =
+    mode === "auto" && step === "products"
+      ? productsStepBlock(draft.items)
+      : null;
+
   function go(to: StudioStep) {
     if (to === step || mode === "create") return;
+    if (productsBlock && steps.indexOf(to) > steps.indexOf(step)) {
+      toast.error(productsBlock, "Цааш явах боломжгүй");
+      return;
+    }
     // Ноорог: алхам солих бүрт хадгална (D7).
     if (mode === "auto") void studio.autosave();
     setStep(to);
@@ -327,6 +340,7 @@ export function EventStudio({
                 type="button"
                 size="lg"
                 className={cn(STUDIO_CTA, "min-w-0 shrink px-5 sm:px-8")}
+                disabled={productsBlock !== null}
                 onClick={() => go(next)}
               >
                 <span className="text-cta-foreground/70 hidden font-normal sm:inline">
@@ -338,6 +352,14 @@ export function EventStudio({
             )
           )}
         </nav>
+      )}
+      {productsBlock && (
+        <p
+          role="status"
+          className="text-destructive -mt-8 text-right text-sm text-pretty"
+        >
+          {productsBlock}
+        </p>
       )}
 
       {mode === "manual" && dirty && (

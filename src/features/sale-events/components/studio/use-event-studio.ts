@@ -24,6 +24,8 @@ import {
   bannerPayload,
   bannerSummary,
   initialBannerState,
+  staleBannerDates,
+  syncBannerCopy,
   type BannerState,
 } from "./studio-banner";
 import { hasBlocking, studioChecklist } from "./studio-checklist";
@@ -175,6 +177,13 @@ export function useEventStudio(input: {
   const dirty = eventDirty || bannerDirty;
 
   const summary = React.useMemo(() => bannerSummary(banner), [banner]);
+  const staleDates = React.useMemo(
+    () =>
+      bannerEnabled && banner.draft && !banner.skip
+        ? staleBannerDates(banner.draft, draft)
+        : [],
+    [bannerEnabled, banner.draft, banner.skip, draft],
+  );
   const checklist = React.useMemo(
     () =>
       studioChecklist({
@@ -185,9 +194,24 @@ export function useEventStudio(input: {
         bannerEnabled,
         bannerSkipped: banner.skip,
         bannerError,
+        bannerStaleDates: staleDates,
       }),
-    [draft, today, conflicts, summary, bannerEnabled, banner.skip, bannerError],
+    [draft, today, conflicts, summary, bannerEnabled, banner.skip, bannerError, staleDates],
   );
+
+  // Нэр, огноо, хувь солигдоход баннерын бэлэн текст (админ хөндөөгүй
+  // талбар) дагана — «11/13–11/14» гэх мэт хуучин огноо үлдэхгүй (§6.2).
+  const prevDraft = React.useRef(draft);
+  React.useEffect(() => {
+    const prev = prevDraft.current;
+    prevDraft.current = draft;
+    if (prev === draft) return;
+    setBannerState((s) => {
+      if (!s.draft) return s;
+      const synced = syncBannerCopy(s.draft, prev, draft);
+      return synced === s.draft ? s : { ...s, draft: synced };
+    });
+  }, [draft]);
 
   // Асинхрон ажил (дараалал, timer, unmount) хамгийн сүүлийн утгыг ref-ээс уншина.
   const live = React.useRef({ draft, baseline, meta, banner, bannerSaved, knownSlugs });
@@ -382,6 +406,56 @@ export function useEventStudio(input: {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [unsaved]);
 
+  // Товлосон / явж буй арга хэмжээ (гараар хадгалдаг): хадгалаагүй засвартай
+  // үед sidebar г.м. холбоосоор гарвал асууна. `beforeunload` нь client
+  // navigation-д ажилладаггүй, unmount-ийн хадгалалт ноорогт л явдаг тул
+  // эс бөгөөс засвар чимээгүй алга болдог байв. Capture үед Next-ийн Link-ээс
+  // өмнө барина.
+  React.useEffect(() => {
+    if (mode !== "manual" || !dirty) return;
+    const onClick = (e: MouseEvent) => {
+      if (
+        e.defaultPrevented ||
+        e.button !== 0 ||
+        e.metaKey ||
+        e.ctrlKey ||
+        e.shiftKey ||
+        e.altKey
+      ) {
+        return;
+      }
+      const a =
+        e.target instanceof Element ? e.target.closest("a[href]") : null;
+      if (!(a instanceof HTMLAnchorElement)) return;
+      if ((a.target && a.target !== "_self") || a.hasAttribute("download")) {
+        return;
+      }
+      const url = new URL(a.href, window.location.href);
+      // Гадны холбоос → `beforeunload`; ижил хуудас (hash) → асуухгүй.
+      if (url.origin !== window.location.origin) return;
+      if (
+        url.pathname === window.location.pathname &&
+        url.search === window.location.search
+      ) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      void (async () => {
+        const ok = await confirm({
+          title: "Хадгалаагүй өөрчлөлт байна",
+          description: "Гарвал сүүлд хийсэн өөрчлөлт тань хадгалагдахгүй.",
+          confirmLabel: "Гарах",
+          cancelLabel: "Үлдэх",
+          destructive: true,
+        });
+        if (ok) router.push(`${url.pathname}${url.search}${url.hash}`);
+      })();
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, [mode, dirty, confirm, router]);
+
   // ── Засвар ──────────────────────────────────────────────────────────────
 
   function patch(next: Partial<StudioDraft>) {
@@ -552,9 +626,10 @@ export function useEventStudio(input: {
     const ok = await confirm({
       title: `«${name}»-г зогсоох уу?`,
       description:
-        phase === "live"
+        (phase === "live"
           ? "Үнэ яг одоо үндсэн (эсвэл өмнөх гар хямдрал) руугаа буцна. Арга хэмжээ түүхэнд үлдэнэ."
-          : "Нийтлэлээс буцаж ноорог болно. Дэлгүүрт юу ч өөрчлөгдөхгүй.",
+          : "Нийтлэлээс буцаж ноорог болно. Дэлгүүрт юу ч өөрчлөгдөхгүй.") +
+        (dirty ? " Хадгалаагүй өөрчлөлт тань устна." : ""),
       confirmLabel: "Зогсоох",
       destructive: phase === "live",
     });
