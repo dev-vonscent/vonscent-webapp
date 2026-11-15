@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Арга хэмжээ" };
 
 /**
- * Админ → Каталог → Арга хэмжээ (0181, feature flag `sale_events`) — жагсаалт.
+ * Админ → Маркетинг → Арга хэмжээ (0181, feature flag `sale_events`) — жагсаалт.
  * Үүсгэх / засах нь студид: `/admin/sale-events/new`, `/[id]`.
  */
 export default async function AdminSaleEventsPage() {

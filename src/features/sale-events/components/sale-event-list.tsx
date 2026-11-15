@@ -44,7 +44,7 @@ import { discountRange, draftFromRow, pctSpan } from "./studio/studio-model";
 const NEW_HREF = "/admin/sale-events/new";
 
 /**
- * Админ → Каталог → Арга хэмжээ — жагсаалт (studio-ux.md §4.1).
+ * Админ → Маркетинг → Арга хэмжээ — жагсаалт (studio-ux.md §4.1).
  *
  * Арга хэмжээ = нэртэй, хугацаатай хямдрал (Black Friday, Цагаан сар …).
  * Карт бүхэлдээ студи рүү; үүсгэх / засах нь бүтэн хуудсанд (drawer биш).
