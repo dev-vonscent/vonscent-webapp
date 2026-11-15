@@ -24,10 +24,16 @@ import {
 export function SaleBadge({
   productId,
   onSale,
+  surface = "image",
 }: {
   productId: string;
   /** `product.tags.includes("sale")`. */
   onSale: boolean;
+  /**
+   * `image` — картын зураг дээр (цагаан хагас тунгалаг дэвсгэр); `page` —
+   * барааны хуудасны тагуудын мөрөнд (бусад тагтай ижил өнгөт дэвсгэр).
+   */
+  surface?: "image" | "page";
 }) {
   const event = useSaleEventBadge(productId);
   const pct = eventPctText(useSaleEventPct(productId));
@@ -35,7 +41,7 @@ export function SaleBadge({
   const label = event ?? (onSale || pct ? SALE_EVENT_DEFAULT_BADGE : null);
   if (!label) return null;
   return (
-    <SaleChip theme={theme} pct={pct}>
+    <SaleChip theme={theme} pct={pct} surface={surface}>
       {label}
     </SaleChip>
   );
@@ -50,11 +56,13 @@ export function SaleBadge({
 export function SaleChip({
   theme,
   pct,
+  surface = "image",
   className,
   children,
 }: {
   theme: SaleEventTickerTheme | null;
   pct: string | null;
+  surface?: "image" | "page";
   className?: string;
   children: React.ReactNode;
 }) {
@@ -66,7 +74,7 @@ export function SaleChip({
         "w-fit gap-1",
         theme
           ? "bg-announce! text-announce-chip! font-semibold"
-          : "bg-background/85! backdrop-blur-sm",
+          : surface === "image" && "bg-background/85! backdrop-blur-sm",
         className,
       )}
     >

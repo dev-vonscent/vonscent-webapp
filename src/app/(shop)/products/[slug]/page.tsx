@@ -37,6 +37,7 @@ import {
 import { getScentFamilyLabels } from "@/features/taxonomy/api";
 import { ReviewSection } from "@/features/reviews/components/review-section";
 import { GenderBadge } from "@/features/products/components/gender-badge";
+import { SaleBadge } from "@/features/sale-events/components/sale-badge";
 import {
   GENDER_LABEL,
   RELATED_SECTION_ID,
@@ -155,11 +156,20 @@ export default async function ProductPage({
                 {product.comingSoon && (
                   <Badge variant="gold">Тун удахгүй</Badge>
                 )}
-                {product.tags.map((t) => (
-                  <Badge key={t} variant={t}>
-                    {TAG_LABEL[t]}
-                  </Badge>
-                ))}
+                {/* Хямдрал: арга хэмжээнд байвал түүний тэмдэг + «~10%»,
+                    зурвасны өнгөтэй (картын `SaleBadge`-тэй ижил дүрэм). */}
+                <SaleBadge
+                  productId={product.id}
+                  onSale={product.tags.includes("sale")}
+                  surface="page"
+                />
+                {product.tags
+                  .filter((t) => t !== "sale")
+                  .map((t) => (
+                    <Badge key={t} variant={t}>
+                      {TAG_LABEL[t]}
+                    </Badge>
+                  ))}
                 {/* Хүйс — тагуудын хажууд нэг мөрөнд (backlog C1). */}
                 <GenderBadge gender={product.gender} />
               </div>
