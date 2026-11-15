@@ -877,6 +877,21 @@ export const HERO_LIMITS = {
   path: 300,
 } as const;
 
+/** Улирлын баннер (0185) — `heroes.season`. */
+export const HERO_SEASONS = ["spring", "summer", "autumn", "winter"] as const;
+export type HeroSeason = (typeof HERO_SEASONS)[number];
+
+/**
+ * Улирлын баннерын өгөгдмөл эхлэх өдөр 'MM-DD' (УБ, studio-ux.md D9). Админ
+ * өөрчилж болно; дуусах өдөр байхгүй — дараагийн бэлэн улирал хүртэл.
+ */
+export const SEASON_HERO_STARTS: Record<HeroSeason, string> = {
+  spring: "03-01",
+  summer: "06-01",
+  autumn: "09-01",
+  winter: "12-01",
+};
+
 /**
  * Арга хэмжээний студид үүссэн баннерын эрэмбэ (studio-ux.md D6) — тусгай
  * өдрийн баннераас (0) дээгүүр. Админд харагдахгүй.

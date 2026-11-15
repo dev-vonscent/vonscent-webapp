@@ -104,6 +104,9 @@ interface AdminRow extends Omit<Row, "desktop_image" | "mobile_image"> {
   desktop_image: HeroDesktopImage | null;
   mobile_image: HeroMobileImage | null;
   updated_at: string;
+  season: HeroAdminRow["season"];
+  season_start_md: string | null;
+  product_ids: string[] | null;
 }
 
 /** Админы жагсаалт — session client (staff RLS). */
@@ -141,6 +144,9 @@ export async function getHeroesAdmin(): Promise<HeroAdminRow[]> {
     imageAlt: r.image_alt,
     dark: r.dark,
     updatedAt: r.updated_at,
+    season: r.season ?? null,
+    seasonStartMd: r.season_start_md ?? null,
+    productIds: r.product_ids ?? [],
   }));
 }
 

@@ -46,6 +46,9 @@ const row = (over: Partial<HeroAdminRow> = {}): HeroAdminRow => ({
   imageAlt: "",
   dark: false,
   updatedAt: "2026-11-01T00:00:00Z",
+  season: null,
+  seasonStartMd: null,
+  productIds: [],
   ...over,
 });
 

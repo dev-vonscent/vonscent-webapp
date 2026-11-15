@@ -37,6 +37,14 @@ describe("heroLinkOptions", () => {
   });
 });
 
+describe("heroLinkOptions + арга хэмжээ (тусгай өдөр)", () => {
+  it("арга хэмжээнүүд төгсгөлд, таарна", () => {
+    const opts = heroLinkOptions({ isEnabled: () => false, events: [{ slug: "bf", name: "Black Friday" }] });
+    expect(opts.at(-1)).toMatchObject({ key: "event:bf", label: "Арга хэмжээ: Black Friday" });
+    expect(linkOptionKey({ type: "event", slug: "bf" }, opts)).toBe("event:bf");
+  });
+});
+
 describe("linkOptionKey", () => {
   const opts = heroLinkOptions({ eventSlug: "bf", isEnabled: () => true });
   it("таарсан сонголт", () => {

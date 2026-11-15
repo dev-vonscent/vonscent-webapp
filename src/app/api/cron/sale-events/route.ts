@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { revalidatePublic } from "@/lib/cache";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { seasonBoundaryWithin } from "@/features/heroes/season";
 
 /**
  * Арга хэмжээ (0181) ба нүүрний hero (0182)-гийн эхлэх / дуусах мөч (plan §10). Үнэ нь DB-д секундын
@@ -65,6 +66,32 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "DB" }, { status: 500 });
     }
     if ((res.data?.length ?? 0) > 0) changed = true;
+  }
+  // Улирлын баннер (0185) — хил нь DB-д мөр биш, `season_start_md`-ээс
+  // тооцоологдоно (жилд ~4 удаа). Алдсан ч `revalidate: 60` нөхнө.
+  if (heroesOn && !changed) {
+    const { data, error } = await supabase
+      .from("heroes")
+      .select("id, season, season_start_md, is_active, desktop_image, mobile_image")
+      .not("season", "is", null);
+    if (error) {
+      Sentry.captureException(new Error(`cron sale-events seasons: ${error.message}`));
+    } else if (
+      seasonBoundaryWithin(
+        (data ?? []).map((r) => ({
+          id: r.id,
+          season: r.season,
+          seasonStartMd: r.season_start_md,
+          isActive: r.is_active,
+          desktopImage: r.desktop_image,
+          mobileImage: r.mobile_image,
+        })),
+        now,
+        WINDOW_MS,
+      )
+    ) {
+      changed = true;
+    }
   }
   if (changed) revalidatePublic();
   return NextResponse.json({ ok: true, revalidated: changed });

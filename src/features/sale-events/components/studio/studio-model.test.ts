@@ -245,7 +245,7 @@ describe("studioTimeline (§5.5)", () => {
       phase: "draft",
       bannerReady: true,
       bannerThumb: "/x.webp",
-      bannerAfter: "Halloween",
+      bannerAfter: "«Halloween» баннер",
     });
     expect(named[1].image).toBe("/x.webp");
     expect(named[2].lines).toContain("Нүүр хуудсанд «Halloween» баннер гарна.");

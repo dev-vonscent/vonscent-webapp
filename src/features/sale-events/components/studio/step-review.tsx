@@ -8,6 +8,7 @@ import { canvasPreview } from "@/features/heroes/canvas-model";
 import { HeroFrame } from "@/features/heroes/components/hero-frame";
 import { heroAt } from "@/features/heroes/lib";
 import type { HeroAdminRow, HeroEventOption } from "@/features/heroes/types";
+import { SEASON_LABEL } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { toast } from "@/lib/toast";
@@ -72,7 +73,11 @@ export function StepReview({
     const end = studio.endsAt && phase === "ended" ? studio.endsAt : dayEndIso(draft.endsOn);
     if (!end) return undefined;
     const others = heroes.filter((h) => h.saleEventId !== studio.id);
-    return heroAt(others, heroEvents, Date.parse(end) + 1)?.name ?? null;
+    const h = heroAt(others, heroEvents, Date.parse(end) + 1);
+    if (!h) return null;
+    return h.season
+      ? `«${SEASON_LABEL[h.season]}» улирлын баннер`
+      : `«${h.name}» баннер`;
   }, [heroes, heroEvents, studio.id, studio.endsAt, phase, draft.endsOn]);
   const timeline = studioTimeline({
     draft,

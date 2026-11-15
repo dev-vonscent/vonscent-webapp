@@ -97,6 +97,9 @@ const row = (p: Partial<HeroAdminRow>): HeroAdminRow => ({
   ...live,
   primaryTarget: { type: "path", href: "/catalog" },
   name: "A",
+  season: null,
+  seasonStartMd: null,
+  productIds: [],
     saleEventId: null,
   startsAt: "2026-11-22T16:00:00Z",
   endsAt: "2026-11-30T16:00:00Z",
@@ -267,5 +270,62 @@ describe("pickLiveHero (fixes F5)", () => {
   });
   it("бүгд дууссан → null", () => {
     expect(pickLiveHero([r("bf", "2026-11-22T16:00:00Z", "2026-11-30T16:00:00Z")], now)).toBeNull();
+  });
+});
+
+describe("heroAt + улирлын шат (0185)", () => {
+  const IMG = { base: "b", widths: [1600], height1600: 571 };
+  const MOB = { src: "m", width: 1600, height: 1200 };
+  const season = (s: "autumn" | "winter", md: string): HeroAdminRow =>
+    row({
+      id: s,
+      name: s,
+      season: s,
+      seasonStartMd: md,
+      startsAt: null,
+      endsAt: null,
+      isActive: true,
+      desktopImage: IMG,
+      mobileImage: MOB,
+    });
+  const seasons = [season("autumn", "09-01"), season("winter", "12-01")];
+  const ev = {
+    id: "e1",
+    slug: "bf",
+    name: "BF",
+    startsAt: "2026-11-22T16:00:00Z",
+    endsAt: "2026-12-03T16:00:00Z",
+    isActive: true,
+  };
+  const bf = row({
+    id: "bf",
+    saleEventId: "e1",
+    startsAt: null,
+    endsAt: null,
+    priority: 10,
+    isActive: true,
+    desktopImage: IMG,
+    mobileImage: MOB,
+  });
+  const at = (d: string) => Date.parse(`${d}T12:00:00+08:00`);
+
+  it("арга хэмжээ 11/23–12/3: 11/22 Намар, хугацаандаа арга хэмжээ, 12/4 Өвөл", () => {
+    const all = [...seasons, bf];
+    expect(heroAt(all, [ev], at("2026-11-22"))?.id).toBe("autumn");
+    expect(heroAt(all, [ev], at("2026-11-25"))?.id).toBe("bf");
+    expect(heroAt(all, [ev], at("2026-12-04"))?.id).toBe("winter");
+  });
+
+  it("тусгай өдөр улирлаас дээгүүр", () => {
+    const special = row({
+      id: "hw",
+      startsAt: "2026-10-25T16:00:00Z",
+      endsAt: "2026-10-31T16:00:00Z",
+      isActive: true,
+      desktopImage: IMG,
+      mobileImage: MOB,
+    });
+    expect(heroAt([...seasons, special], [], at("2026-10-28"))?.id).toBe("hw");
+    expect(heroAt([...seasons, special], [], at("2026-11-02"))?.id).toBe("autumn");
   });
 });

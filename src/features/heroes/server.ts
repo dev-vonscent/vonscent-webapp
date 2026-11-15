@@ -49,7 +49,8 @@ function ownHeroUrl(url: string): boolean {
  * арга хэмжээ байгаа эсэхийг route `checkHeroRefs`-ээр тусад нь.
  */
 export function toHeroColumns(input: HeroInput) {
-  const linked = Boolean(input.saleEventId);
+  // Улирлын мөрийн хугацааг `season_start_md` шийднэ (0185).
+  const linked = Boolean(input.saleEventId) || Boolean(input.season);
   return {
     name: input.name,
     sale_event_id: input.saleEventId,
@@ -70,6 +71,9 @@ export function toHeroColumns(input: HeroInput) {
     mobile_image: input.mobileImage,
     image_alt: input.imageAlt,
     dark: input.dark,
+    season: input.season,
+    season_start_md: input.seasonStartMd,
+    product_ids: input.productIds,
   };
 }
 
@@ -81,6 +85,8 @@ export function toHeroColumns(input: HeroInput) {
 export async function checkHeroRefs(
   supabase: NonNullable<ReturnType<typeof createAdminClient>>,
   input: HeroInput,
+  /** Засаж буй мөр (PUT) — улирлын давхардлыг шалгахад өөрийгөө алгасна. */
+  selfId?: string,
 ): Promise<string | null> {
   if (input.desktopImage && !ownHeroUrl(input.desktopImage.base + "-1600.webp"))
     return "Desktop зураг танигдсангүй — дахин оруулна уу.";
@@ -98,6 +104,17 @@ export async function checkHeroRefs(
       .maybeSingle();
     if (!data) return "Холбосон арга хэмжээ олдсонгүй.";
   }
+  if (input.season) {
+    // Хоёр улирал нэг өдөр эхэлбэл нэг нь хэзээ ч гарахгүй (D9).
+    let q = supabase
+      .from("heroes")
+      .select("id, season")
+      .eq("season_start_md", input.seasonStartMd!)
+      .neq("season", input.season);
+    if (selfId) q = q.neq("id", selfId);
+    const { data } = await q.limit(1);
+    if (data?.length) return "Өөр улирал энэ өдөр эхэлдэг — өөр өдөр сонгоно уу.";
+  }
   if (slugs.length) {
     const { data } = await supabase
       .from("sale_events")
@@ -113,6 +130,12 @@ export async function checkHeroRefs(
 export function heroWriteError(message: string) {
   if (/FEATURE_DISABLED/.test(message)) {
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  }
+  if (/heroes_season_uniq/.test(message)) {
+    return NextResponse.json(
+      { error: "Энэ улирлын баннер аль хэдийн байна." },
+      { status: 409 },
+    );
   }
   if (/heroes_active_images/.test(message)) {
     return NextResponse.json(

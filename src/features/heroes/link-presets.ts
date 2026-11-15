@@ -23,6 +23,11 @@ export const CUSTOM_LINK_KEY = "custom";
 export function heroLinkOptions(input: {
   eventSlug?: string | null;
   isEnabled: (flag: string) => boolean;
+  /**
+   * Тусгай өдрийн баннерт л: арга хэмжээ рүү заах сонголтууд (F2-ийн
+   * анхааруулгатай). Студид өгөхгүй.
+   */
+  events?: readonly { slug: string; name: string }[];
 }): HeroLinkOption[] {
   const out: HeroLinkOption[] = [];
   if (input.eventSlug) {
@@ -39,6 +44,13 @@ export function heroLinkOptions(input: {
       label: p.label,
       target: p.target as HeroTarget,
       ...("group" in p ? { group: p.group } : {}),
+    });
+  }
+  for (const e of input.events ?? []) {
+    out.push({
+      key: `event:${e.slug}`,
+      label: `Арга хэмжээ: ${e.name}`,
+      target: { type: "event", slug: e.slug },
     });
   }
   return out;

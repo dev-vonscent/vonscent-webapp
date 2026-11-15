@@ -2,7 +2,12 @@ import { HERO_LIMITS as L } from "@/lib/constants";
 import { HERO_PHOTO, type HomeCampaign } from "@/features/marketing/home-content";
 import type { HeroCopy } from "./default-copy";
 import { desktopSrc, heroTargetHref } from "./lib";
-import type { HeroDesktopImage, HeroMobileImage, HeroTarget } from "./types";
+import type {
+  HeroAdminRow,
+  HeroDesktopImage,
+  HeroMobileImage,
+  HeroTarget,
+} from "./types";
 
 /**
  * Баннерын canvas засварын (studio-ux.md D3, §5.4, §6) цэвэр хэсэг: аль
@@ -14,6 +19,24 @@ export interface HeroCanvasDraft extends HeroCopy {
   mobileImage: HeroMobileImage | null;
   imageAlt: string;
   dark: boolean;
+}
+
+/** DB мөр → canvas. */
+export function canvasFromHero(r: HeroAdminRow): HeroCanvasDraft {
+  return {
+    eyebrow: r.eyebrow,
+    title: r.title,
+    description: r.description,
+    mobileDescription: r.mobileDescription ?? "",
+    primaryLabel: r.primaryLabel,
+    primaryTarget: r.primaryTarget,
+    secondaryLabel: r.secondaryLabel ?? "",
+    secondaryTarget: r.secondaryTarget,
+    desktopImage: r.desktopImage,
+    mobileImage: r.mobileImage,
+    imageAlt: r.imageAlt,
+    dark: r.dark,
+  };
 }
 
 /** `CampaignHero` доторх `data-hero-field` утгууд. */

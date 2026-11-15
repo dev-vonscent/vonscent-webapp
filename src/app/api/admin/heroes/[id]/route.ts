@@ -30,7 +30,7 @@ export async function PUT(req: Request, { params }: Ctx) {
       { status: 400 },
     );
   }
-  const refError = await checkHeroRefs(gate.supabase, parsed.data);
+  const refError = await checkHeroRefs(gate.supabase, parsed.data, id.data);
   if (refError) return NextResponse.json({ error: refError }, { status: 400 });
 
   const { data, error } = await gate.supabase

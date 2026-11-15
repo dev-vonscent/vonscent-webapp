@@ -345,8 +345,8 @@ const NOW_LINE: Record<SaleEventPhase, string> = {
 /**
  * Хугацааны шугам. `bannerReady` — энэ арга хэмжээнд холбоотой, бүрэн
  * баннер байгаа эсэх; байвал л баннерын мөр нэмнэ. `bannerAfter` — дуусах
- * мөчид гарах баннер (`heroAt`): нэр, null = үндсэн баннер, өгөөгүй бол
- * нэрлэхгүй. Улирлын баннер нь S4.
+ * мөчид гарах баннер (`heroAt`): «…» баннер гэсэн хэллэг, null = үндсэн
+ * баннер, өгөөгүй бол нэрлэхгүй.
  */
 export function studioTimeline(input: {
   draft: StudioDraft;
@@ -404,7 +404,7 @@ export function studioTimeline(input: {
         ? "Нүүр хуудасны баннер өмнөх рүүгээ буцна."
         : input.bannerAfter === null
           ? "Нүүр хуудсанд үндсэн баннер гарна."
-          : `Нүүр хуудсанд «${input.bannerAfter}» баннер гарна.`,
+          : `Нүүр хуудсанд ${input.bannerAfter} гарна.`,
     );
   }
 

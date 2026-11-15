@@ -1,5 +1,6 @@
 import { HERO_EVENT_PRIORITY, HERO_LIMITS } from "@/lib/constants";
 import {
+  canvasFromHero,
   heroCanvasComplete,
   type HeroCanvasDraft,
 } from "@/features/heroes/canvas-model";
@@ -27,22 +28,7 @@ export interface BannerState {
   skip: boolean;
 }
 
-export function canvasFromRow(r: HeroAdminRow): HeroCanvasDraft {
-  return {
-    eyebrow: r.eyebrow,
-    title: r.title,
-    description: r.description,
-    mobileDescription: r.mobileDescription ?? "",
-    primaryLabel: r.primaryLabel,
-    primaryTarget: r.primaryTarget,
-    secondaryLabel: r.secondaryLabel ?? "",
-    secondaryTarget: r.secondaryTarget,
-    desktopImage: r.desktopImage,
-    mobileImage: r.mobileImage,
-    imageAlt: r.imageAlt,
-    dark: r.dark,
-  };
-}
+export const canvasFromRow = canvasFromHero;
 
 /**
  * Эхний төлөв. `copy` — өөр арга хэмжээнээс хуулж буй: шинэ мөр, шинэ

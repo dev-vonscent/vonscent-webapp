@@ -3,9 +3,11 @@
  *
  *   pnpm db:test-heroes-dev      # зөвхөн .env.dev
  *
- * docs/campaigns/plan.md §7.2, §11, §12. Сценари бүр `begin … rollback`.
+ * docs/campaigns/plan.md §7.2, §11, §12; studio-ux.md §11 (0185 улирлын баннер).
+ * Сценари бүр `begin … rollback`.
  */
 import type { Client } from "pg";
+import { seasonHeroAt, type SeasonRowLike } from "../src/features/heroes/season";
 import { connectDb } from "./db";
 
 const url = process.env.DATABASE_URL;
@@ -289,6 +291,104 @@ async function main() {
     await setFlag(c, "hero_admin", false);
     const off = await c.query("select * from live_heroes()");
     check("туг хаалттай → хоосон", off.rowCount === 0);
+  });
+
+  await scenario(c, "10. Улирлын баннер (0185) — SQL ↔ TS seasonHeroAt", async () => {
+    // Дев санд жинхэнэ улирлын мөр байж болно — энэ транзакцид устгана.
+    await c.query("delete from heroes where season is not null");
+    const ids: Record<string, string> = {};
+    const add = async (season: string, md: string, active = true, images = true) => {
+      const { rows } = await c.query<{ id: string }>(
+        `insert into heroes (name, season, season_start_md, is_active, title, primary_label,
+                             primary_target, desktop_image, mobile_image)
+         values ($1, $1, $2, $3, 'Гарчиг', 'Үзэх', '{"type":"season","value":"winter"}',
+                 $4::jsonb, $5::jsonb) returning id`,
+        [season, md, active, images ? JSON.stringify(IMG.desktop) : null, images ? JSON.stringify(IMG.mobile) : null],
+      );
+      ids[season] = rows[0].id;
+      return rows[0].id;
+    };
+    const compare = async (label: string, rows: SeasonRowLike[], days: string[]) => {
+      for (const d of days) {
+        const t = Date.parse(`${d}T12:00:00+08:00`);
+        const sql = await c.query<{ id: string; starts_at: Date; ends_at: Date }>(
+          "select * from season_hero_at($1)",
+          [new Date(t).toISOString()],
+        );
+        const ts = seasonHeroAt(rows, t);
+        const a = sql.rows[0];
+        const same = !a
+          ? ts === null
+          : ts !== null &&
+            a.id === ts.row.id &&
+            a.starts_at.toISOString() === ts.startsAt &&
+            a.ends_at.toISOString() === ts.endsAt;
+        check(`${label} ${d}`, same, { sql: a, ts });
+      }
+    };
+    const days = ["2026-01-15", "2026-02-28", "2026-03-01", "2026-05-31", "2026-06-01", "2026-09-01", "2026-11-30", "2026-12-01", "2026-12-31"];
+    const rowsOf = (spec: [string, string, boolean, boolean][]): SeasonRowLike[] =>
+      spec.map(([season, md, active, images]) => ({
+        id: ids[season],
+        season: season as SeasonRowLike["season"],
+        seasonStartMd: md,
+        isActive: active,
+        desktopImage: images ? IMG.desktop : null,
+        mobileImage: images ? IMG.mobile : null,
+      }));
+
+    check("нэг ч улирал алга → хоосон", (await c.query("select * from season_hero_at(now())")).rowCount === 0);
+    await add("winter", "12-01");
+    await compare("ганц Өвөл", rowsOf([["winter", "12-01", true, true]]), days);
+    await add("autumn", "09-01");
+    await add("spring", "03-01", false, false); // зураггүй ноорог
+    await add("summer", "06-01");
+    const spec: [string, string, boolean, boolean][] = [
+      ["winter", "12-01", true, true],
+      ["autumn", "09-01", true, true],
+      ["spring", "03-01", false, false],
+      ["summer", "06-01", true, true],
+    ];
+    await compare("Хавар зураггүй", rowsOf(spec), days);
+    await c.query("update heroes set desktop_image = $1::jsonb, mobile_image = $2::jsonb, is_active = true where id = $3",
+      [JSON.stringify(IMG.desktop), JSON.stringify(IMG.mobile), ids.spring]);
+    await c.query("update heroes set season_start_md = '11-15' where id = $1", [ids.winter]);
+    spec[0][1] = "11-15";
+    spec[2][2] = true;
+    spec[2][3] = true;
+    await compare("4 улирал, Өвөл 11/15", rowsOf(spec), [...days, "2026-11-14", "2026-11-15"]);
+
+    // live_heroes: тусгай өдөр эхэнд, улирал ард.
+    const special = await addHero(c, { name: "special" });
+    const lh = await c.query<{ id: string }>("select id from live_heroes()");
+    check("тусгай өдөр эхэнд, улирал ард", lh.rows[0]?.id === special && lh.rows.length === 2, lh.rows);
+    await c.query("update heroes set is_active = false where id = $1", [special]);
+    const cur = await c.query<{ id: string }>("select id from season_hero_at(now())");
+    check("тусгай өдөргүй → live_hero = улирал", (await liveId(c)) === cur.rows[0]?.id);
+    const lr = await c.query<{ starts_at: Date; ends_at: Date }>("select starts_at, ends_at from live_heroes()");
+    check("улирлын мөрөнд тооцоолсон хугацаа", lr.rows[0]?.starts_at < new Date() && new Date() < lr.rows[0]?.ends_at, lr.rows[0]);
+
+    // Хязгаарлалт
+    const dup = await errorOf(c, `insert into heroes (name, season, season_start_md, title, primary_label, primary_target)
+      values ('x', 'winter', '01-10', 't', 'b', '{"type":"path","href":"/"}')`);
+    check("улирал давхардахгүй", /heroes_season_uniq/.test(dup?.message ?? ""), dup?.message);
+    await c.query("delete from heroes where id = $1", [ids.summer]);
+    const leap = await errorOf(c, `insert into heroes (name, season, season_start_md, title, primary_label, primary_target)
+      values ('x', 'summer', '02-29', 't', 'b', '{"type":"path","href":"/"}')`);
+    check("02-29 татгалзана", /heroes_season_start_md_valid/.test(leap?.message ?? ""), leap?.message);
+    const dated = await errorOf(c, `insert into heroes (name, season, season_start_md, starts_at, ends_at, title, primary_label, primary_target)
+      values ('x', 'summer', '06-01', now(), now() + interval '1 day', 't', 'b', '{"type":"path","href":"/"}')`);
+    check("улирлын мөр огноогүй", /heroes_season_solo/.test(dated?.message ?? ""), dated?.message);
+    const pair = await errorOf(c, `insert into heroes (name, season, title, primary_label, primary_target)
+      values ('x', 'summer', 't', 'b', '{"type":"path","href":"/"}')`);
+    check("улирал эхлэх өдөртэй хамт", /heroes_season_pair/.test(pair?.message ?? ""), pair?.message);
+    const four = await errorOf(c, `update heroes set product_ids = array[gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), gen_random_uuid()] where id = $1`, [ids.winter]);
+    check("үнэртэн ихдээ 3", /heroes_product_count/.test(four?.message ?? ""), four?.message);
+
+    await setFlag(c, "hero_admin", false);
+    check("туг хаалттай → live_heroes хоосон", (await c.query("select * from live_heroes()")).rowCount === 0);
+    const off = await errorOf(c, `update heroes set title = 'x' where id = $1`, [ids.winter]);
+    check("туг хаалттай → бичилт FEATURE_DISABLED", /FEATURE_DISABLED/.test(off?.message ?? ""), off?.message);
   });
 
   await c.end();

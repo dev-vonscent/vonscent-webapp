@@ -1,4 +1,5 @@
 import type { HomeCampaign } from "@/features/marketing/home-content";
+import { seasonHeroAt } from "./season";
 import type {
   HeroAdminRow,
   HeroDesktopImage,
@@ -216,6 +217,7 @@ function dayKey(t: number): string {
  * `t` мөчид дэлгүүрт гарах DB hero — `live_hero()`-ийн дүрэм: идэвхтэй,
  * зурагтай, хугацаандаа (холбоотой бол арга хэмжээ нь LIVE), товчны арга
  * хэмжээ LIVE (`heroTargetBlock`), priority их нь, дараа нь сүүлд эхэлсэн нь.
+ * Аль нь ч үгүй бол тэр мөчийн улирлын баннер (0185, `seasonHeroAt`).
  */
 export function heroAt(
   heroes: readonly HeroAdminRow[],
@@ -224,6 +226,7 @@ export function heroAt(
 ): HeroAdminRow | null {
   let best: { h: HeroAdminRow; start: number } | null = null;
   for (const h of heroes) {
+    if (h.season) continue;
     if (!h.isActive || !h.desktopImage || !h.mobileImage) continue;
     const p = heroPeriod(h, events);
     if (!p || !p.eventActive) continue;
@@ -238,7 +241,10 @@ export function heroAt(
     )
       best = { h, start };
   }
-  return best?.h ?? null;
+  if (best) return best.h;
+  const season = seasonHeroAt(heroes, t);
+  if (!season || heroTargetBlock(season.row, events, t)) return null;
+  return season.row;
 }
 
 /**

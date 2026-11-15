@@ -1,4 +1,4 @@
-import { HERO_LIMITS as L } from "@/lib/constants";
+import { HERO_LIMITS as L, type HeroSeason } from "@/lib/constants";
 import type { HeroTarget } from "./types";
 
 /**
@@ -56,5 +56,35 @@ export function defaultHeroCopy(event: {
     primaryTarget: { type: "event", slug: event.slug },
     secondaryLabel: "",
     secondaryTarget: null,
+  };
+}
+
+const SEASON_ADJ: Record<HeroSeason, string> = {
+  spring: "Хаврын",
+  summer: "Зуны",
+  autumn: "Намрын",
+  winter: "Өвлийн",
+};
+const SEASON_DATIVE: Record<HeroSeason, string> = {
+  spring: "Хаварт",
+  summer: "Зунд",
+  autumn: "Намарт",
+  winter: "Өвөлд",
+};
+
+/**
+ * Улирлын баннерын бэлэн текст (studio-ux.md D9) — одоогийн кодын улирлын
+ * баннерын хэлбэрээр. Гол товч тухайн улирлын үнэртэн рүү.
+ */
+export function defaultSeasonCopy(season: HeroSeason): HeroCopy {
+  return {
+    eyebrow: "Энэ улирлын сонголт",
+    title: `${SEASON_ADJ[season]} тансаг үнэртнүүд`,
+    description: `${SEASON_DATIVE[season]} тохирох үнэртнүүдийг бүтнээр нь авалгүй хямд өртгөөр туршаад үзээрэй.`,
+    mobileDescription: "Бүтнээр нь авалгүй хямд өртгөөр туршаарай.",
+    primaryLabel: `${SEASON_ADJ[season]} үнэртэн`,
+    primaryTarget: { type: "season", value: season },
+    secondaryLabel: "Бүх үнэртэн",
+    secondaryTarget: { type: "path", href: "/catalog" },
   };
 }

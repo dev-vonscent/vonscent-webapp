@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HERO_LIMITS as L } from "@/lib/constants";
-import { defaultHeroCopy, monthDay } from "./default-copy";
+import { heroInputSchema } from "@/lib/validators/hero";
+import { defaultHeroCopy, defaultSeasonCopy, monthDay } from "./default-copy";
 
 const base = {
   name: "Black Friday",
@@ -60,5 +61,25 @@ describe("defaultHeroCopy", () => {
     const c = defaultHeroCopy({ ...base, startsOn: "", endsOn: "" });
     expect(c.eyebrow).toBe("Black Friday");
     expect(c.description).toBe("Сонгосон үнэртнүүд 30% хүртэл хямдарлаа.");
+  });
+});
+
+describe("defaultSeasonCopy (D9)", () => {
+  it("Өвөл — одоогийн кодын баннертай ижил хэлбэр, улирлын холбоос", () => {
+    const c = defaultSeasonCopy("winter");
+    expect(c.title).toBe("Өвлийн тансаг үнэртнүүд");
+    expect(c.description.startsWith("Өвөлд тохирох")).toBe(true);
+    expect(c.primaryLabel).toBe("Өвлийн үнэртэн");
+    expect(c.primaryTarget).toEqual({ type: "season", value: "winter" });
+  });
+  it.each(["spring", "summer", "autumn", "winter"] as const)("%s хязгаарт багтана", (s) => {
+    const c = defaultSeasonCopy(s);
+    const r = heroInputSchema.safeParse({
+      ...c,
+      name: s,
+      season: s,
+      seasonStartMd: "03-01",
+    });
+    expect(r.success).toBe(true);
   });
 });

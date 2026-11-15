@@ -1,3 +1,5 @@
+import type { HeroSeason } from "@/lib/constants";
+
 /** Товчны холбоос (0182 `hero_target_valid`, plan §7.3). */
 export type HeroTarget =
   | { type: "event"; slug: string }
@@ -50,6 +52,12 @@ export interface HeroAdminRow
   desktopImage: HeroDesktopImage | null;
   mobileImage: HeroMobileImage | null;
   updatedAt: string;
+  /** Улирлын баннер (0185) — null бол арга хэмжээ / тусгай өдрийн. */
+  season: HeroSeason | null;
+  /** Улирлын эхлэх өдөр 'MM-DD' (УБ). */
+  seasonStartMd: string | null;
+  /** Зурган дээрх үнэртнүүд (ихдээ 3). */
+  productIds: string[];
 }
 
 /** Hero-той холбож болох арга хэмжээ (админы сонголт). */

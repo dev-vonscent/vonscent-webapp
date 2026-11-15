@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { HERO_LIMITS as L } from "@/lib/constants";
+import { HERO_LIMITS as L, HERO_SEASONS } from "@/lib/constants";
 import { isInternalPath } from "@/features/heroes/lib";
 import { SALE_EVENT_SLUG_RE } from "./sale-event";
 
@@ -44,6 +44,10 @@ const mobileImageSchema = z.object({
   width: z.number().int().positive(),
   height: z.number().int().positive(),
 });
+
+/** 'MM-DD', жил бүр байдаг өдөр (0185 `heroes_season_start_md_valid`). */
+export const SEASON_START_MD_RE =
+  /^((01|03|05|07|08|10|12)-(0[1-9]|[12][0-9]|3[01])|(04|06|09|11)-(0[1-9]|[12][0-9]|30)|02-(0[1-9]|1[0-9]|2[0-8]))$/u;
 
 const dateKey = z
   .string()
@@ -103,10 +107,25 @@ export const heroInputSchema = z
       .max(L.imageAlt, { message: `Зургийн тайлбар ${L.imageAlt} тэмдэгтээс ихгүй.` })
       .default(""),
     dark: z.boolean().default(false),
+    season: z.enum(HERO_SEASONS).nullable().default(null),
+    seasonStartMd: z
+      .string()
+      .regex(SEASON_START_MD_RE, { message: "Эхлэх өдөр буруу (2/29 болохгүй)." })
+      .nullable()
+      .default(null),
+    productIds: z.array(z.string().uuid()).max(3, { message: "Үнэртэн ихдээ 3." }).default([]),
   })
-  .refine((v) => v.saleEventId || (v.startsOn && v.endsOn), {
-    message: "Хугацаа эсвэл арга хэмжээ сонгоно уу.",
+  .refine((v) => v.saleEventId || v.season || (v.startsOn && v.endsOn), {
+    message: "Хугацаа, арга хэмжээ, улирлын аль нэгийг сонгоно уу.",
     path: ["startsOn"],
+  })
+  .refine((v) => !v.season === !v.seasonStartMd, {
+    message: "Улирлын эхлэх өдрийг сонгоно уу.",
+    path: ["seasonStartMd"],
+  })
+  .refine((v) => !v.season || (!v.saleEventId && !v.startsOn && !v.endsOn), {
+    message: "Улирлын баннер огноо, арга хэмжээгүй.",
+    path: ["season"],
   })
   .refine(
     (v) => v.saleEventId || !v.startsOn || !v.endsOn || v.endsOn >= v.startsOn,
