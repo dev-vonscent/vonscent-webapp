@@ -13,6 +13,7 @@ vi.mock("@/lib/rate-limit", () => ({ enforceRateLimit: async () => null }));
 vi.mock("@/lib/cache", () => ({ revalidatePublic: () => {} }));
 vi.mock("@/features/content/api", () => ({
   getShippingSettings: async () => ({ zones: [] }),
+  getDeliveryBlackoutDays: async () => [],
 }));
 vi.mock("@/lib/geo/zone", () => ({ isRemoteAddress: () => false }));
 vi.mock("@/lib/supabase/server", () => ({

@@ -6,7 +6,10 @@ import {
   stripDetail,
 } from "@/lib/validators/order";
 import { isRemoteAddress } from "@/lib/geo/zone";
-import { getShippingSettings } from "@/features/content/api";
+import {
+  getDeliveryBlackoutDays,
+  getShippingSettings,
+} from "@/features/content/api";
 import {
   BundleUnavailableError,
   computeSummary,
@@ -131,6 +134,17 @@ export async function POST(req: Request) {
     input.shipDetail = stripDetail(input.shipDetail);
   } else if (detailMissing(input.shipDetail)) {
     return NextResponse.json({ error: "DETAIL_REQUIRED" }, { status: 400 });
+  }
+
+  // Админы хаасан өдөр («Дотоод ажилтай») — checkout дээр идэвхгүй ч хуучин
+  // таб, ноорог эсвэл шууд хүсэлтээр ирж болох тул энд давтан шалгана.
+  // Нөөц барих, үнэ тооцохоос ӨМНӨ.
+  const blockedDays = new Set(await getDeliveryBlackoutDays());
+  if (blockedDays.has(clampDeliveryDay(input.deliverOn))) {
+    return NextResponse.json(
+      { error: "DELIVERY_DAY_BLOCKED" },
+      { status: 400 },
+    );
   }
 
   // Authoritative server-side pricing.
