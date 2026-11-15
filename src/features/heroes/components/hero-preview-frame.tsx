@@ -113,8 +113,10 @@ const EDIT_CSS = `
 [data-hero-editing] [data-hero-invalid]:not(:focus) {
   outline: calc(2px / var(--s)) solid var(--destructive);
 }
-[data-hero-editing] [data-hero-field][contenteditable]:hover::before,
-[data-hero-editing] [data-hero-field][contenteditable]:focus::before {
+/* Шошго зөвхөн hover дээр: focus үед талбарын дээрх мөрийг (гарчгийн дээрх
+   «Дээд мөр» г.м.) дарж байсан; засагдаж буй талбарын нэр + тоолуур нь
+   preview-ийн доор эх цонхонд харагдана. */
+[data-hero-editing] [data-hero-field][contenteditable]:not(:focus):hover::before {
   content: attr(data-hero-label);
   position: absolute; left: 0; bottom: 100%;
   margin-bottom: calc(6px / var(--s));
@@ -123,7 +125,7 @@ const EDIT_CSS = `
   background: var(--cta); color: var(--cta-foreground);
   font: 500 calc(11px / var(--s)) / 1.5 ui-sans-serif, system-ui, sans-serif;
   letter-spacing: normal; text-transform: none; white-space: nowrap;
-  pointer-events: none; opacity: 1;
+  pointer-events: none; opacity: 1; z-index: 1;
 }
 `;
 
@@ -146,6 +148,8 @@ export function HeroPreviewFrame() {
     text: string;
   } | null>(null);
   const ref = React.useRef<HTMLDivElement>(null);
+  /** Зураг ачааллаж буй — тэр хооронд hero-гийн цул дэвсгэр «зураг алга» мэт харагддаг байв. */
+  const [imageLoading, setImageLoading] = React.useState(false);
   const editRef = React.useRef(edit);
   const campaignRef = React.useRef(campaign);
   const frozenRef = React.useRef(frozen);
@@ -198,6 +202,28 @@ export function HeroPreviewFrame() {
     report();
     return () => ro.disconnect();
   }, [campaign]);
+
+  const imageSrc = campaign?.image.kind === "static" ? campaign.image.src : null;
+  React.useEffect(() => {
+    const root = ref.current;
+    if (!root || !imageSrc) return;
+    const img = root.querySelector<HTMLImageElement>("img");
+    if (!img || img.complete) {
+      setImageLoading(false);
+      return;
+    }
+    setImageLoading(true);
+    const done = (e: Event) => {
+      if (e.target instanceof HTMLImageElement) setImageLoading(false);
+    };
+    // `load` нь bubble хийдэггүй — capture-аар.
+    root.addEventListener("load", done, true);
+    root.addEventListener("error", done, true);
+    return () => {
+      root.removeEventListener("load", done, true);
+      root.removeEventListener("error", done, true);
+    };
+  }, [imageSrc]);
 
   // Талбаруудыг засагддаг болгох / буцаах — render бүрийн дараа.
   React.useEffect(() => {
@@ -344,10 +370,18 @@ export function HeroPreviewFrame() {
       ref={ref}
       data-hero-editing={edit ? "" : undefined}
       style={edit ? ({ "--s": edit.scale } as React.CSSProperties) : undefined}
-      className="bg-background p-4 md:px-8"
+      className="bg-background relative p-4 md:px-8"
     >
       {edit && <style>{EDIT_CSS}</style>}
       <CampaignHero hero={staticHero(shown, campaign.image)} />
+      {imageLoading && (
+        <div
+          role="status"
+          className="bg-muted text-muted-foreground absolute inset-4 flex items-center justify-center rounded-lg text-sm motion-safe:animate-pulse md:inset-x-8"
+        >
+          Зураг ачааллаж байна…
+        </div>
+      )}
     </div>
   );
 }

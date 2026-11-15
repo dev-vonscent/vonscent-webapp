@@ -3,6 +3,7 @@ import { HERO_PHOTO } from "@/features/marketing/home-content";
 import {
   canvasPreview,
   heroCanvasComplete,
+  heroCanvasMissing,
   viewFields,
   withHeroField,
   type HeroCanvasDraft,
@@ -87,5 +88,18 @@ describe("heroCanvasComplete", () => {
     expect(
       heroCanvasComplete(draft({ desktopImage: img, mobileImage: mob, title: "" })),
     ).toBe(false);
+  });
+});
+
+describe("heroCanvasMissing", () => {
+  it("дутуу зүйлсийг дарааллаар нэрлэнэ", () => {
+    expect(heroCanvasMissing(draft({ title: " " }))).toEqual([
+      "компьютерын зураг",
+      "утасны зураг",
+      "гарчиг",
+    ]);
+    const img = { base: "b", widths: [1600], height1600: 571 };
+    const mob = { src: "m", width: 1600, height: 1200 };
+    expect(heroCanvasMissing(draft({ desktopImage: img, mobileImage: mob }))).toEqual([]);
   });
 });

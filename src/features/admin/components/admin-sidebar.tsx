@@ -209,7 +209,7 @@ const GROUPS: NavGroup[] = [
       // Админаас бичдэг, хуваарьтай нүүрний hero (0182).
       {
         href: "/admin/heroes",
-        label: "Нүүрний hero",
+        label: "Нүүрний баннер",
         icon: GalleryHorizontal,
         flag: "hero_admin",
       },

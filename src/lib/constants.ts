@@ -830,9 +830,9 @@ export const FEATURE_FLAGS = {
       "Black Friday, Цагаан сар г.м. нэртэй, хугацаатай хямдрал: Админ → Маркетинг → Арга хэмжээ (/admin/sale-events, /api/admin/sale-events), каталогийн «?event=» шүүлтүүр, chip, зурвас, тоолуур, барааны картын badge, /sale/[slug] богино хаяг, минут тутмын /api/cron/sale-events. Үнэ variant_price()-д тооцоологдоно (0181) — sale_price-д бичигдэхгүй, гар хямдрал дарагдахгүй. Хаалттай үед үнэ, каталогт ямар ч нөлөөгүй, бичих RPC FEATURE_DISABLED.",
   },
   hero_admin: {
-    label: "Нүүрний hero (админ)",
+    label: "Нүүрний баннер (админ)",
     description:
-      "Нүүрний hero-гийн текст, товч, холбоос, зураг, хуваарийг админ бичнэ: Админ → Сайт → Нүүрний hero (/admin/heroes, /api/admin/heroes), арга хэмжээтэй холбох, 390/768/1440 урьдчилж харах (/hero-preview), live_hero() (0182). Хаалттай үед нүүр кодын hero-г (HOME_CAMPAIGNS) харуулна, бичилт FEATURE_DISABLED.",
+      "Нүүрний hero-гийн текст, товч, холбоос, зураг, хуваарийг админ бичнэ: Админ → Сайт → Нүүрний баннер (/admin/heroes, /api/admin/heroes), арга хэмжээтэй холбох, 390/768/1440 урьдчилж харах (/hero-preview), live_hero() (0182). Хаалттай үед нүүр кодын hero-г (HOME_CAMPAIGNS) харуулна, бичилт FEATURE_DISABLED.",
   },
   meta_capi: {
     label: "Meta Conversions API",
