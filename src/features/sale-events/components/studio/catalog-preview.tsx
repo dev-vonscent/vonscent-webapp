@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { Badge } from "@/components/ui/badge";
 import { EditableText } from "@/features/admin/components/editable-text";
 import {
   GENDER_LABEL,
@@ -12,6 +11,7 @@ import {
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { eventPctText } from "../../lib";
+import { SaleChip } from "../sale-badge";
 import { TICKER_BAR, TickerSegment, TickerTimer } from "../sale-event-ticker";
 import {
   PREVIEW_CARD_COUNT,
@@ -164,6 +164,7 @@ export function CatalogPreview(p: CatalogPreviewProps) {
               card={card}
               editable={i === 0}
               badgeLabel={p.badgeLabel}
+              tickerTheme={p.tickerTheme}
               disabled={p.disabled}
               onBadgeLabel={p.onBadgeLabel}
             />
@@ -198,10 +199,13 @@ function PreviewProductCard({
   card,
   editable,
   badgeLabel,
+  tickerTheme,
   disabled,
   onBadgeLabel,
 }: {
   card: PreviewCard;
+  /** Тэмдэг дээд зурвасны өнгөтэй (дэлгүүрийн `SaleChip`). */
+  tickerTheme: SaleEventTickerTheme;
   /** Тэмдгийг эхний картан дээр засна — бүх карт зэрэг солигдоно. */
   editable: boolean;
   badgeLabel: string;
@@ -209,9 +213,8 @@ function PreviewProductCard({
   onBadgeLabel: (value: string) => void;
 }) {
   const badge = previewBadge(badgeLabel, card.discounted);
-  // Дэлгүүрийн `SaleBadge`-тэй ижил: тэмдгийн ард «~10%» (засагдахгүй хэсэг).
+  // Дэлгүүрийн `SaleBadge`-тэй ижил (`SaleChip`): зурвасны өнгө, ард нь «~10%».
   const pct = eventPctText(card.maxPct);
-  const badgeClass = "bg-background/85! w-fit max-w-full gap-1 backdrop-blur-sm";
   return (
     <div className="flex min-w-0 flex-col">
       <div className="bg-secondary relative aspect-4/5 rounded-2xl">
@@ -228,7 +231,11 @@ function PreviewProductCard({
           {editable ? (
             <div className="flex items-center gap-1.5">
               <PreviewMarker n={4} />
-              <Badge variant="sale" className={cn(badgeClass, "min-w-0")}>
+              <SaleChip
+                theme={tickerTheme}
+                pct={pct}
+                className="max-w-full min-w-0"
+              >
                 <EditableText
                   value={badgeLabel}
                   onChange={onBadgeLabel}
@@ -239,18 +246,15 @@ function PreviewProductCard({
                   }
                   addLabel="+ Тэмдэг нэмэх"
                   disabled={disabled}
+                  className="outline-announce-chip"
                 />
-                {pct && (
-                  <span className="shrink-0 tabular-nums">{pct}</span>
-                )}
-              </Badge>
+              </SaleChip>
             </div>
           ) : (
             badge && (
-              <Badge variant="sale" className={badgeClass}>
+              <SaleChip theme={tickerTheme} pct={pct} className="max-w-full">
                 <span className="wrap-break-word">{badge}</span>
-                {pct && <span className="tabular-nums">{pct}</span>}
-              </Badge>
+              </SaleChip>
             )
           )}
         </div>

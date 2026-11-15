@@ -1,3 +1,7 @@
+import {
+  SALE_EVENT_TICKER_DEFAULT,
+  type SaleEventTickerTheme,
+} from "@/lib/constants";
 import type { LiveSaleEvent, SaleEventPhase } from "./types";
 
 /**
@@ -60,6 +64,21 @@ export function timerParts(
  */
 export function eventPctText(pct: number | null | undefined): string | null {
   return pct && pct > 0 ? `~${pct}%` : null;
+}
+
+/**
+ * productId → арга хэмжээний зурвасны өнгө (картын тэмдэг ижил өнгөтэй —
+ * клиент 2026-11-15). Хоёр арга хэмжээнд байвал эхнийх (`eventBadgeMap`-тай ижил).
+ */
+export function eventThemeMap(
+  events: readonly LiveSaleEvent[],
+): Record<string, SaleEventTickerTheme> {
+  const out: Record<string, SaleEventTickerTheme> = {};
+  for (const e of events) {
+    const theme = e.tickerTheme ?? SALE_EVENT_TICKER_DEFAULT;
+    for (const id of e.productIds) out[id] ??= theme;
+  }
+  return out;
 }
 
 export function eventBadgeMap(

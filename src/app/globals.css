@@ -300,6 +300,16 @@
   --announce-foreground: #ffffff;
   --announce-accent: #0e1b3b;
 }
+/* Барааны картын тэмдэг (SaleChip) — жижиг (12px) бичиг тул ≥4.5:1 хэрэгтэй.
+   Ихэнх хослолд зурвасынхтай ижил; хөхөд цагаан 3.45:1 тул navy (4.92:1). */
+[data-ticker] {
+  --announce-chip: var(--announce-foreground);
+  --announce-chip-accent: var(--announce-accent);
+}
+[data-ticker="blue"] {
+  --announce-chip: #0e1b3b;
+  --announce-chip-accent: #0e1b3b;
+}
 
 /* ── Pink ─────────────────────────────────────────────────────────────── */
 .pink {
@@ -407,6 +417,8 @@
   --color-announce: var(--announce);
   --color-announce-foreground: var(--announce-foreground);
   --color-announce-accent: var(--announce-accent);
+  --color-announce-chip: var(--announce-chip);
+  --color-announce-chip-accent: var(--announce-chip-accent);
   --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--input);

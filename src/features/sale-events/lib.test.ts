@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   eventBadgeMap,
   eventPctText,
+  eventThemeMap,
   formatTimer,
   formatEventPeriod,
   overlapConflicts,
@@ -113,5 +114,27 @@ describe("eventPctText", () => {
     expect(eventPctText(0)).toBeNull();
     expect(eventPctText(null)).toBeNull();
     expect(eventPctText(undefined)).toBeNull();
+  });
+});
+
+describe("eventThemeMap", () => {
+  const ev = (slug: string, ids: string[], tickerTheme: LiveSaleEvent["tickerTheme"]) =>
+    ({
+      slug,
+      name: slug,
+      badgeLabel: null,
+      headline: null,
+      description: null,
+      startsAt: "2026-11-01T00:00:00Z",
+      endsAt: "2026-12-01T00:00:00Z",
+      showCountdown: true,
+      productIds: ids,
+      tickerTheme,
+    }) satisfies LiveSaleEvent;
+
+  it("бараа → зурвасны өнгө; хоосон бол navy, эхнийх түрүүлнэ", () => {
+    expect(
+      eventThemeMap([ev("a", ["p1", "p2"], null), ev("b", ["p2", "p3"], "red")]),
+    ).toEqual({ p1: "navy", p2: "navy", p3: "red" });
   });
 });

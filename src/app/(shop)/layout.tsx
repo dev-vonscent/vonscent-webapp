@@ -11,7 +11,7 @@ import {
   getLiveEventPcts,
   getLiveSaleEvents,
 } from "@/features/sale-events/api";
-import { eventBadgeMap } from "@/features/sale-events/lib";
+import { eventBadgeMap, eventThemeMap } from "@/features/sale-events/lib";
 import { SaleEventsProvider } from "@/features/sale-events/components/sale-events-provider";
 import { SaleEventTicker } from "@/features/sale-events/components/sale-event-ticker";
 
@@ -48,6 +48,7 @@ export default async function ShopLayout({
       events={live.map((e) => ({ slug: e.slug, name: e.name }))}
       badges={eventBadgeMap(live)}
       pcts={pcts}
+      themes={eventThemeMap(live)}
     >
       <ScrollReset />
       {/* Хамгийн эхний фокус авах элемент байх ёстой тул толгойн ӨМНӨ. */}
