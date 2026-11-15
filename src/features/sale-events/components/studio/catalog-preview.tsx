@@ -11,6 +11,7 @@ import {
 } from "@/lib/constants";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { eventPctText } from "../../lib";
 import { TICKER_BAR, TickerSegment, TickerTimer } from "../sale-event-ticker";
 import {
   PREVIEW_CARD_COUNT,
@@ -208,7 +209,9 @@ function PreviewProductCard({
   onBadgeLabel: (value: string) => void;
 }) {
   const badge = previewBadge(badgeLabel, card.discounted);
-  const badgeClass = "bg-background/85! w-fit max-w-full backdrop-blur-sm";
+  // Дэлгүүрийн `SaleBadge`-тэй ижил: тэмдгийн ард «~10%» (засагдахгүй хэсэг).
+  const pct = eventPctText(card.maxPct);
+  const badgeClass = "bg-background/85! w-fit max-w-full gap-1 backdrop-blur-sm";
   return (
     <div className="flex min-w-0 flex-col">
       <div className="bg-secondary relative aspect-4/5 rounded-2xl">
@@ -237,12 +240,16 @@ function PreviewProductCard({
                   addLabel="+ Тэмдэг нэмэх"
                   disabled={disabled}
                 />
+                {pct && (
+                  <span className="shrink-0 tabular-nums">{pct}</span>
+                )}
               </Badge>
             </div>
           ) : (
             badge && (
               <Badge variant="sale" className={badgeClass}>
                 <span className="wrap-break-word">{badge}</span>
+                {pct && <span className="tabular-nums">{pct}</span>}
               </Badge>
             )
           )}

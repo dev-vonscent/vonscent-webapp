@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   eventBadgeMap,
+  eventPctText,
   formatTimer,
   formatEventPeriod,
   overlapConflicts,
@@ -103,5 +104,14 @@ describe("overlap", () => {
     expect(overlapMessage(overlapConflicts(detail))).toBe(
       "Энэ 1 бараа «Black Friday»-д (2026.11.23–11.30) аль хэдийн байна: PdM Layton.",
     );
+  });
+});
+
+describe("eventPctText", () => {
+  it("«~10%» — хувьгүй бол null", () => {
+    expect(eventPctText(10)).toBe("~10%");
+    expect(eventPctText(0)).toBeNull();
+    expect(eventPctText(null)).toBeNull();
+    expect(eventPctText(undefined)).toBeNull();
   });
 });

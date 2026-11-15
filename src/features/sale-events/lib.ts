@@ -53,6 +53,15 @@ export function timerParts(
  * «сонголт» арга хэмжээний бараан дээр худал «Хямдрал» гарахгүй. Нэг бараа
  * давхцсан хоёр идэвхтэй арга хэмжээнд орохгүй (0181 trigger) тул эхнийх нь л.
  */
+/**
+ * Картын тэмдгийн хувь: «~10%» — хэмжээ бүрийн хамгийн их хувь. Админ нэг л
+ * хэмжээнд хувь өгч болох тул «~» (картын эхлэх үнэ тэр хэмжээнийх биш байж
+ * болно; «хүртэл» утсан дээр багтдаггүй — клиент 2026-11-15).
+ */
+export function eventPctText(pct: number | null | undefined): string | null {
+  return pct && pct > 0 ? `~${pct}%` : null;
+}
+
 export function eventBadgeMap(
   events: readonly LiveSaleEvent[],
 ): Record<string, string> {

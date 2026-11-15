@@ -100,6 +100,40 @@ export async function getLiveSaleEvents(): Promise<LiveSaleEvent[]> {
   }
 }
 
+const fetchPcts = unstable_cache(
+  async (): Promise<Record<string, number>> => {
+    const supabase = createPublicClient();
+    if (!supabase) return {};
+    const { data, error } = await callRpc<
+      { product_id: string; ml: number; pct: number }[]
+    >(supabase, "live_event_discounts", {});
+    if (error) throw new Error(`live_event_discounts: ${error.message}`);
+    const out: Record<string, number> = {};
+    for (const r of data ?? []) {
+      out[r.product_id] = Math.max(out[r.product_id] ?? 0, r.pct);
+    }
+    return out;
+  },
+  ["live-event-pcts"],
+  { revalidate: 60, tags: [CACHE_TAG_CATALOG] },
+);
+
+/**
+ * Барааны картын «~10%»: LIVE арга хэмжээн дэх бараа бүрийн хамгийн их хувь
+ * (`live_event_discounts`, 0181 — зөвхөн live мөр, anon-д нээлттэй; товлосон
+ * хувь задрахгүй). Туг хаалттай / алдаа → хоосон.
+ */
+export async function getLiveEventPcts(): Promise<Record<string, number>> {
+  if (!isSupabaseConfigured) return {};
+  if (!(await isFeatureEnabled("sale_events"))) return {};
+  try {
+    return await fetchPcts();
+  } catch (err) {
+    Sentry.captureException(err);
+    return {};
+  }
+}
+
 const fetchPublic = unstable_cache(
   async (slug: string): Promise<SaleEventPublic | null> => {
     const supabase = createPublicClient();

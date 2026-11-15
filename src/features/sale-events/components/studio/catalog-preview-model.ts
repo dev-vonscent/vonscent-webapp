@@ -23,6 +23,8 @@ export interface PreviewCard {
   basePrice: number | null;
   /** Дор хаяж нэг хэмжээ хямдарсан — «Хямдрал» тэмдэг гарах эсэх. */
   discounted: boolean;
+  /** Хэмжээ бүрийн хамгийн их хүчинтэй хувь (тэмдгийн «~10%»); байхгүй бол null. */
+  maxPct: number | null;
 }
 
 /**
@@ -42,15 +44,15 @@ export function previewCards(
     let price: number | null = null;
     let basePrice: number | null = null;
     let discounted = false;
+    let maxPct: number | null = null;
     const sizes = Object.entries(p.prices)
       .map(([ml, base]) => [Number(ml), base] as const)
       .sort((a, b) => a[0] - b[0]);
     for (const [ml, base] of sizes) {
       const pct = item.pcts[ml];
-      const sale =
-        pct !== undefined && isValidPct(pct)
-          ? bulkSalePrice(base, Number(pct))
-          : base;
+      const valid = pct !== undefined && isValidPct(pct);
+      if (valid) maxPct = Math.max(maxPct ?? 0, Number(pct));
+      const sale = valid ? bulkSalePrice(base, Number(pct)) : base;
       if (sale < base) discounted = true;
       if (price === null || sale < price) {
         price = sale;
@@ -65,6 +67,7 @@ export function previewCards(
       price,
       basePrice,
       discounted,
+      maxPct,
     });
   }
   return out;

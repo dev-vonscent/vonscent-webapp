@@ -7,7 +7,10 @@ import { WishlistSync } from "@/features/wishlist/sync";
 import { ScrollReset } from "@/components/shared/scroll-reset";
 import { SkipLink } from "@/components/shared/skip-link";
 import { CatalogMenu } from "@/features/catalog/components/catalog-menu";
-import { getLiveSaleEvents } from "@/features/sale-events/api";
+import {
+  getLiveEventPcts,
+  getLiveSaleEvents,
+} from "@/features/sale-events/api";
 import { eventBadgeMap } from "@/features/sale-events/lib";
 import { SaleEventsProvider } from "@/features/sale-events/components/sale-events-provider";
 import { SaleEventTicker } from "@/features/sale-events/components/sale-event-ticker";
@@ -36,11 +39,15 @@ export default async function ShopLayout({
 }) {
   // Арга хэмжээ (0181): каталогийн chip, картын badge. Кэштэй (60с), туг
   // хаалттай / алдаатай үед хоосон — хуудсыг хэзээ ч унагахгүй.
-  const live = await getLiveSaleEvents();
+  const [live, pcts] = await Promise.all([
+    getLiveSaleEvents(),
+    getLiveEventPcts(),
+  ]);
   return (
     <SaleEventsProvider
       events={live.map((e) => ({ slug: e.slug, name: e.name }))}
       badges={eventBadgeMap(live)}
+      pcts={pcts}
     >
       <ScrollReset />
       {/* Хамгийн эхний фокус авах элемент байх ёстой тул толгойн ӨМНӨ. */}

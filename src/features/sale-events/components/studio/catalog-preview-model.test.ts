@@ -35,6 +35,16 @@ describe("previewCards", () => {
     expect(card).toMatchObject({ price: 8_800, basePrice: 22_000, discounted: true });
   });
 
+  it("тэмдгийн хувь — хэмжээ бүрийн хамгийн их", () => {
+    const [card] = previewCards(
+      [{ productId: "a", pcts: { 2: "10", 5: "25", 10: "abc" } }],
+      byId,
+    );
+    expect(card.maxPct).toBe(25);
+    const [none] = previewCards([{ productId: "a", pcts: {} }], byId);
+    expect(none.maxPct).toBeNull();
+  });
+
   it("хувьгүй бараа үнээрээ, хямдраагүй", () => {
     const [card] = previewCards([{ productId: "a", pcts: {} }], byId);
     expect(card).toMatchObject({ price: 10_000, basePrice: 10_000, discounted: false });
