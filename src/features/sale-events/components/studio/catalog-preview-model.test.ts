@@ -3,7 +3,7 @@ import type { SaleEventProduct } from "../../types";
 import {
   previewBadge,
   previewCards,
-  previewCountdown,
+  previewDuration,
 } from "./catalog-preview-model";
 
 const product = (
@@ -75,13 +75,13 @@ describe("previewBadge", () => {
   });
 });
 
-describe("previewCountdown", () => {
-  it("эхлэх мөчөөс дуусах өдрийн төгсгөл хүртэл", () => {
-    expect(previewCountdown("2026-11-23", "2026-11-30")).toBe("8 өдөр");
-    expect(previewCountdown("2026-11-23", "2026-11-23")).toBe("1 өдөр");
+describe("previewDuration", () => {
+  it("эхлэх мөчөөс дуусах өдрийн төгсгөл хүртэл (мс)", () => {
+    expect(previewDuration("2026-11-23", "2026-11-30")).toBe(8 * 86_400_000);
+    expect(previewDuration("2026-11-23", "2026-11-23")).toBe(86_400_000);
   });
   it("огноо дутуу эсвэл урвуу бол null", () => {
-    expect(previewCountdown("", "2026-11-30")).toBeNull();
-    expect(previewCountdown("2026-11-30", "2026-11-23")).toBeNull();
+    expect(previewDuration("", "2026-11-30")).toBeNull();
+    expect(previewDuration("2026-11-30", "2026-11-23")).toBeNull();
   });
 });

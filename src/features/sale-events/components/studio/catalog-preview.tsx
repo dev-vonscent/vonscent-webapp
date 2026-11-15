@@ -1,22 +1,17 @@
 "use client";
 
 import Image from "next/image";
-import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { EditableText } from "@/features/admin/components/editable-text";
 import {
   GENDER_LABEL,
   SALE_EVENT_DEFAULT_BADGE,
   SALE_EVENT_LIMITS as L,
+  type SaleEventTickerTheme,
 } from "@/lib/constants";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import {
-  SALE_EVENT_BANNER_DESCRIPTION,
-  SaleEventBannerView,
-  SaleEventCountdownLine,
-} from "../sale-event-banner-view";
+import { TICKER_BAR, TickerSegment, TickerTimer } from "../sale-event-ticker";
 import {
   PREVIEW_CARD_COUNT,
   previewBadge,
@@ -27,11 +22,23 @@ import {
 const CHIP = "rounded-sm px-3 py-2 text-center text-sm font-medium";
 
 /** Засагдах цэгийн дугаар — доорх тайлбарын жагсаалттай таарна. */
-export function PreviewMarker({ n }: { n: number }) {
+export function PreviewMarker({
+  n,
+  inverse = false,
+}: {
+  n: number;
+  /** Дээд зурвасын (`announce`) дэвсгэр дээр — урвуу өнгө. */
+  inverse?: boolean;
+}) {
   return (
     <span
       aria-hidden
-      className="bg-cta text-cta-foreground inline-flex size-5 shrink-0 items-center justify-center rounded-full font-sans text-[11px] leading-none font-semibold tracking-normal tabular-nums"
+      className={cn(
+        inverse
+          ? "bg-announce-foreground text-announce"
+          : "bg-cta text-cta-foreground",
+        "inline-flex size-5 shrink-0 items-center justify-center rounded-full font-sans text-[11px] leading-none font-semibold tracking-normal normal-case tabular-nums",
+      )}
     >
       {n}
     </span>
@@ -41,17 +48,17 @@ export function PreviewMarker({ n }: { n: number }) {
 export interface CatalogPreviewProps {
   name: string;
   headline: string;
-  description: string;
   badgeLabel: string;
   showCountdown: boolean;
-  /** «7 өдөр 4 цаг» — огноогүй бол null. */
-  countdownText: string | null;
+  /** Дээд зурвасын өнгө (`[data-ticker]`, globals.css). */
+  tickerTheme: SaleEventTickerTheme;
+  /** Эхлэх мөчид үлдэх хугацаа (мс) — огноогүй бол null (7 хоног харуулна). */
+  countdownMs: number | null;
   cards: PreviewCard[];
   nameInvalid?: boolean;
   disabled?: boolean;
   onName: (value: string) => void;
   onHeadline: (value: string) => void;
-  onDescription: (value: string) => void;
   onBadgeLabel: (value: string) => void;
   onShowCountdown: (value: boolean) => void;
   /** Бараа сонгоогүй үед ②-р алхам руу. */
@@ -59,143 +66,128 @@ export interface CatalogPreviewProps {
 }
 
 /**
- * Каталогийн хуудасны жижигрүүлсэн, жинхэнэ төрхтэй хэсэг (studio-ux.md D4,
- * §5.3): шүүлтүүрийн chip, арга хэмжээний зурвас, эхний 4 бараа. Зөвхөн
+ * Дэлгүүрийн жижигрүүлсэн, жинхэнэ төрхтэй хэсэг (studio-ux.md D4, §5.3):
+ * сайтын дээд гүйдэг зурвас, каталогийн шүүлтүүрийн chip, эхний 4 бараа. Зөвхөн
  * харуулах компонент — live өгөгдөл ачаалахгүй; дэлгүүрийн `Chip`,
- * `SaleEventBannerView`, `ProductCard`-ын класс, token-ыг дагана. Текст бүр
+ * `TickerSegment`, `ProductCard`-ын класс, token-ыг дагана. Текст бүр
  * байгаа газраа засагдана (`EditableText`).
  */
 export function CatalogPreview(p: CatalogPreviewProps) {
   const placeholders = Math.max(0, PREVIEW_CARD_COUNT - p.cards.length);
+  // Засах цэгийн outline, шошго `cta` дэвсгэр дээр харагдах ёстой.
+  const onBar = "outline-announce-foreground";
   return (
-    <div className="bg-background field-edge space-y-5 rounded-xl p-4 sm:p-6">
-      {/* ── Шүүлтүүр ─────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className={cn(CHIP, "bg-foreground text-background")}>Бүгд</span>
-        <span className={cn(CHIP, "bg-secondary")}>{GENDER_LABEL.male}</span>
-        <span className={cn(CHIP, "bg-secondary")}>{GENDER_LABEL.female}</span>
-        <span
-          className={cn(CHIP, "bg-secondary flex min-w-0 items-center gap-2")}
-        >
-          <PreviewMarker n={1} />
-          <EditableText
-            value={p.name}
-            onChange={p.onName}
-            label="Арга хэмжээний нэр"
-            maxLength={L.name}
-            addLabel="Нэр"
-            invalid={p.nameInvalid}
-            disabled={p.disabled}
-          />
-        </span>
+    <div className="bg-background shadow-lift rounded-3xl">
+      {/* ── Сайтын дээд гүйдэг зурвас (дэлгүүрт хөдөлнө, энд зогсонги) ── */}
+      <div
+        data-ticker={p.tickerTheme}
+        className={cn(
+          TICKER_BAR,
+          "h-auto min-h-12 overflow-visible rounded-t-3xl py-2.5",
+        )}
+      >
+        <TickerSegment
+          className="min-w-0 shrink flex-wrap gap-y-2 px-4 whitespace-normal sm:px-6"
+          title={
+            <span className="flex items-center gap-2">
+              <PreviewMarker n={1} inverse />
+              <EditableText
+                value={p.headline}
+                onChange={p.onHeadline}
+                label="Зурвасын гарчиг"
+                maxLength={L.headline}
+                fallback={p.name.trim() || "Арга хэмжээний нэр"}
+                disabled={p.disabled}
+                className={onBar}
+              />
+            </span>
+          }
+          countdown={
+            <span className="flex items-center gap-2">
+              <PreviewMarker n={2} inverse />
+              <button
+                type="button"
+                aria-pressed={p.showCountdown}
+                aria-label="Дуусах тоолуур харуулах"
+                title={
+                  p.showCountdown
+                    ? "Дарж тоолуурыг унтраана"
+                    : "Дарж тоолуурыг асаана"
+                }
+                disabled={p.disabled}
+                onClick={() => p.onShowCountdown(!p.showCountdown)}
+                className={cn(
+                  "rounded-xs uppercase outline-offset-4 hover:outline-1 focus-visible:outline-2 disabled:pointer-events-none",
+                  onBar,
+                  !p.showCountdown && "line-through opacity-50",
+                )}
+              >
+                <TickerTimer ms={p.countdownMs ?? 7 * 86_400_000} />
+              </button>
+            </span>
+          }
+        />
       </div>
 
-      {/* ── Зурвас ───────────────────────────────────────────────── */}
-      <SaleEventBannerView
-        title={
-          <span className="flex items-start gap-2">
-            <span className="flex h-lh items-center">
-              <PreviewMarker n={2} />
-            </span>
+      <div className="space-y-5 p-4 sm:p-8">
+        {/* ── Шүүлтүүр ─────────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={cn(CHIP, "bg-foreground text-background")}>
+            Бүгд
+          </span>
+          <span className={cn(CHIP, "bg-secondary")}>{GENDER_LABEL.male}</span>
+          <span className={cn(CHIP, "bg-secondary")}>
+            {GENDER_LABEL.female}
+          </span>
+          <span
+            className={cn(CHIP, "bg-secondary flex min-w-0 items-center gap-2")}
+          >
+            <PreviewMarker n={3} />
             <EditableText
-              value={p.headline}
-              onChange={p.onHeadline}
-              label="Гарчиг"
-              maxLength={L.headline}
-              fallback={p.name.trim() || "Арга хэмжээний нэр"}
+              value={p.name}
+              onChange={p.onName}
+              label="Арга хэмжээний нэр"
+              maxLength={L.name}
+              addLabel="Нэр"
+              invalid={p.nameInvalid}
               disabled={p.disabled}
             />
           </span>
-        }
-        action={
-          <Button
-            variant="ghost"
-            size="sm"
-            tabIndex={-1}
-            aria-hidden
-            className="pointer-events-none shrink-0 self-start"
-          >
-            <X />
-            Бүх каталог
-          </Button>
-        }
-      >
-        <div className={cn(SALE_EVENT_BANNER_DESCRIPTION, "flex items-start gap-2")}>
-          <span className="flex h-lh items-center">
-            <PreviewMarker n={3} />
-          </span>
-          <EditableText
-            block
-            className="min-w-0 flex-1"
-            value={p.description}
-            onChange={p.onDescription}
-            label="Тайлбар"
-            maxLength={L.description}
-            addLabel="+ Тайлбар нэмэх"
-            disabled={p.disabled}
-          />
         </div>
-        <div className="flex items-center gap-2">
-          <PreviewMarker n={4} />
-          <button
-            type="button"
-            aria-pressed={p.showCountdown}
-            aria-label="Дуусах тоолуур харуулах"
-            title={
-              p.showCountdown
-                ? "Дарж тоолуурыг унтраана"
-                : "Дарж тоолуурыг асаана"
-            }
-            disabled={p.disabled}
-            onClick={() => p.onShowCountdown(!p.showCountdown)}
-            className="outline-cta rounded-xs outline-offset-2 hover:outline-1 focus-visible:outline-2 disabled:pointer-events-none"
-          >
-            <SaleEventCountdownLine
-              as="span"
-              text={p.countdownText ?? "7 өдөр"}
-              className={cn(!p.showCountdown && "line-through opacity-50")}
-            />
-          </button>
-          {!p.showCountdown && (
-            <span className="text-muted-foreground text-xs">
-              Унтраалттай — харагдахгүй
-            </span>
-          )}
-        </div>
-      </SaleEventBannerView>
 
-      {/* ── Бараа ────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-4">
-        {p.cards.map((card, i) => (
-          <PreviewProductCard
-            key={card.id}
-            card={card}
-            editable={i === 0}
-            badgeLabel={p.badgeLabel}
-            disabled={p.disabled}
-            onBadgeLabel={p.onBadgeLabel}
-          />
-        ))}
-        {Array.from({ length: placeholders }, (_, i) => (
-          <div key={i} aria-hidden className="flex flex-col">
-            <div className="bg-secondary aspect-4/5 rounded-2xl" />
-            <div className="bg-secondary mt-3 h-3 w-1/2 rounded-xs" />
-            <div className="bg-secondary mt-2 h-4 w-3/4 rounded-xs" />
-          </div>
-        ))}
+        {/* ── Бараа ────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-4">
+          {p.cards.map((card, i) => (
+            <PreviewProductCard
+              key={card.id}
+              card={card}
+              editable={i === 0}
+              badgeLabel={p.badgeLabel}
+              disabled={p.disabled}
+              onBadgeLabel={p.onBadgeLabel}
+            />
+          ))}
+          {Array.from({ length: placeholders }, (_, i) => (
+            <div key={i} aria-hidden className="flex flex-col">
+              <div className="bg-secondary aspect-4/5 rounded-2xl" />
+              <div className="bg-secondary mt-3 h-3 w-1/2 rounded-xs" />
+              <div className="bg-secondary mt-2 h-4 w-3/4 rounded-xs" />
+            </div>
+          ))}
+        </div>
+        {p.cards.length === 0 && (
+          <p className="text-muted-foreground text-center text-sm">
+            <button
+              type="button"
+              className="text-foreground underline underline-offset-4"
+              onClick={p.onPickProducts}
+            >
+              Бараагаа ②-р алхамд сонгоно уу
+            </button>{" "}
+            — сонгосон эхний {PREVIEW_CARD_COUNT} бараа энд харагдана.
+          </p>
+        )}
       </div>
-      {p.cards.length === 0 && (
-        <p className="text-muted-foreground text-center text-sm">
-          <button
-            type="button"
-            className="text-foreground underline underline-offset-4"
-            onClick={p.onPickProducts}
-          >
-            Бараагаа ②-р алхамд сонгоно уу
-          </button>{" "}
-          — сонгосон эхний {PREVIEW_CARD_COUNT} бараа энд харагдана.
-        </p>
-      )}
     </div>
   );
 }
@@ -229,17 +221,19 @@ function PreviewProductCard({
             className="rounded-2xl object-cover"
           />
         )}
-        <div className="absolute top-2.5 inset-x-2.5 flex flex-col gap-1">
+        <div className="absolute inset-x-2.5 top-2.5 flex flex-col gap-1">
           {editable ? (
             <div className="flex items-center gap-1.5">
-              <PreviewMarker n={5} />
+              <PreviewMarker n={4} />
               <Badge variant="sale" className={cn(badgeClass, "min-w-0")}>
                 <EditableText
                   value={badgeLabel}
                   onChange={onBadgeLabel}
                   label="Барааны картын тэмдэг"
                   maxLength={L.badgeLabel}
-                  fallback={card.discounted ? SALE_EVENT_DEFAULT_BADGE : undefined}
+                  fallback={
+                    card.discounted ? SALE_EVENT_DEFAULT_BADGE : undefined
+                  }
                   addLabel="+ Тэмдэг нэмэх"
                   disabled={disabled}
                 />

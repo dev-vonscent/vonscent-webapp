@@ -56,6 +56,8 @@ export function toSaleEventRpc(input: SaleEventInput) {
       endsAt: dayEndIso(input.endsOn),
       isActive: input.isActive,
       showCountdown: input.showCountdown,
+      // "" → null (save_sale_event `nullif`).
+      tickerTheme: input.tickerTheme ?? "",
     },
     p_items: input.items.map((i) => ({ productId: i.productId, pcts: i.pcts })),
   };

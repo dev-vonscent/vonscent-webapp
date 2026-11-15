@@ -1,7 +1,6 @@
 import { dayEndIso, dayStartIso } from "@/features/admin/lib/date-range";
 import { SALE_EVENT_DEFAULT_BADGE } from "@/lib/constants";
 import { bulkSalePrice } from "@/lib/validators/sale";
-import { formatCountdown } from "../../lib";
 import type { SaleEventProduct } from "../../types";
 import { isValidPct, type StudioItem } from "./studio-model";
 
@@ -82,13 +81,14 @@ export function previewBadge(
   return badgeLabel.trim() || (discounted ? SALE_EVENT_DEFAULT_BADGE : null);
 }
 
-/** Тоолуур «эхлэх мөчид ингэж харагдана»: дуусах − эхлэх. Огноогүй бол null. */
-export function previewCountdown(
-  startsOn: string,
-  endsOn: string,
-): string | null {
+/**
+ * Тоолуур «эхлэх мөчид ингэж харагдана»: дуусах − эхлэх (мс). Огноо дутуу
+ * эсвэл урвуу бол null.
+ */
+export function previewDuration(startsOn: string, endsOn: string): number | null {
   const start = dayStartIso(startsOn);
   const end = dayEndIso(endsOn);
   if (!start || !end) return null;
-  return formatCountdown(Date.parse(end) - Date.parse(start));
+  const ms = Date.parse(end) - Date.parse(start);
+  return ms > 0 ? ms : null;
 }

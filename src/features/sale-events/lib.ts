@@ -17,23 +17,34 @@ export function saleEventPhase(
 export const SALE_EVENT_PHASE_LABEL: Record<SaleEventPhase, string> = {
   draft: "Ноорог",
   scheduled: "Товлосон",
-  live: "Явж байна",
+  live: "Идэвхтэй",
   ended: "Дууссан",
 };
 
 /**
- * Үлдсэн хугацаа: «2 өдөр 4 цаг», «3 цаг 12 мин», «45 мин». Хугацаа
- * дууссан бол null. Секунд харуулахгүй — минут тутам шинэчлэгдэнэ.
+ * Секундээр гүйх тоолуур: «2 өдөр 04:31:10», нэг өдрөөс бага бол «04:31:10».
+ * Дээш нь секунд хүртэл дугуйрна (0.2с үлдсэн ч «00:00:01»). Дууссан → null.
  */
-export function formatCountdown(ms: number): string | null {
+export function formatTimer(ms: number): string | null {
+  const t = timerParts(ms);
+  if (!t) return null;
+  const hms = `${t.hh}:${t.mm}:${t.ss}`;
+  return t.days > 0 ? `${t.days} өдөр ${hms}` : hms;
+}
+
+/** Тоолуурын хэсгүүд (зурвас тоо, нэгжийг тусад нь зурна). Дууссан → null. */
+export function timerParts(
+  ms: number,
+): { days: number; hh: string; mm: string; ss: string } | null {
   if (!(ms > 0)) return null;
-  const totalMin = Math.ceil(ms / 60_000);
-  const days = Math.floor(totalMin / 1440);
-  const hours = Math.floor((totalMin % 1440) / 60);
-  const mins = totalMin % 60;
-  if (days > 0) return hours > 0 ? `${days} өдөр ${hours} цаг` : `${days} өдөр`;
-  if (hours > 0) return mins > 0 ? `${hours} цаг ${mins} мин` : `${hours} цаг`;
-  return `${mins} мин`;
+  const total = Math.ceil(ms / 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    days: Math.floor(total / 86_400),
+    hh: pad(Math.floor((total % 86_400) / 3600)),
+    mm: pad(Math.floor((total % 3600) / 60)),
+    ss: pad(total % 60),
+  };
 }
 
 /**

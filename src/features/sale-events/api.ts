@@ -2,6 +2,10 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import * as Sentry from "@sentry/nextjs";
 import { CACHE_TAG_CATALOG } from "@/lib/cache-tags";
+import {
+  SALE_EVENT_TICKER_THEMES,
+  type SaleEventTickerTheme,
+} from "@/lib/constants";
 import { isSupabaseConfigured } from "@/lib/env";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { callRpc } from "@/lib/supabase/rpc";
@@ -38,6 +42,15 @@ interface LiveRow {
   ends_at: string;
   show_countdown: boolean;
   product_ids: string[] | null;
+  /** 0187-оос өмнөх санд байхгүй (undefined) — өгөгдмөл өнгө. */
+  ticker_theme?: string | null;
+}
+
+/** Сангийн утга → мэдэгдэх өнгө; бусад / хоосон → null (өгөгдмөл). */
+function tickerTheme(v: string | null | undefined): SaleEventTickerTheme | null {
+  return (SALE_EVENT_TICKER_THEMES as readonly string[]).includes(v ?? "")
+    ? (v as SaleEventTickerTheme)
+    : null;
 }
 
 const fetchLive = unstable_cache(
@@ -61,6 +74,7 @@ const fetchLive = unstable_cache(
       endsAt: r.ends_at,
       showCountdown: r.show_countdown,
       productIds: r.product_ids ?? [],
+      tickerTheme: tickerTheme(r.ticker_theme),
     }));
   },
   ["live-sale-events"],
@@ -155,6 +169,7 @@ interface AdminRow {
   ends_at: string;
   is_active: boolean;
   show_countdown: boolean;
+  ticker_theme: string | null;
   created_at: string;
   updated_at: string;
   sale_event_products:
@@ -167,7 +182,7 @@ interface AdminRow {
 }
 
 const ADMIN_SELECT = `id, slug, name, badge_label, headline, description, starts_at, ends_at,
-       is_active, show_countdown, created_at, updated_at,
+       is_active, show_countdown, ticker_theme, created_at, updated_at,
        sale_event_products ( product_id, sort_order,
          sale_event_discounts ( ml, pct ) )`;
 
@@ -183,6 +198,7 @@ function toAdminRow(r: AdminRow): SaleEventAdminRow {
     endsAt: r.ends_at,
     isActive: r.is_active,
     showCountdown: r.show_countdown,
+    tickerTheme: tickerTheme(r.ticker_theme),
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     items: [...(r.sale_event_products ?? [])]
@@ -250,7 +266,7 @@ export async function getSaleEventProductOptions(): Promise<
 > {
   const supabase = await createClient();
   if (!supabase) return [];
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("products")
     .select(
       "id, name, brand, gender, product_variants ( ml, price, is_active ), product_images ( url, sort_order, is_visible )",
@@ -258,6 +274,11 @@ export async function getSaleEventProductOptions(): Promise<
     .in("status", ["active", "coming_soon"])
     .order("brand")
     .order("name");
+  // Чимээгүй хоосон сонгогч «бараа алга» гэж төөрөгдүүлнэ — алдааны хуудас.
+  if (error) {
+    Sentry.captureException(new Error(`sale_event products: ${error.message}`));
+    throw new Error("Барааны жагсаалтыг уншиж чадсангүй.");
+  }
   return ((data as ProductRow[] | null) ?? []).map((r) => ({
     id: r.id,
     name: r.name,

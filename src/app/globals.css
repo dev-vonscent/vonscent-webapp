@@ -64,6 +64,9 @@
   --destructive: #f87171;
   --destructive-foreground: #450a0a;
   --success: #d4d4d4;
+  /* «Идэвхтэй» төлөв (арга хэмжээ) — монохром систем дэх цорын ганц
+     ногоон; зөвхөн PhaseBadge-д. */
+  --live: #4ade80;
   /* Warning is the one place the monochrome palette has to break: "энэ мөр
      анхаар" cannot be said in the same grey as "энэ мөр хэвийн". Amber is the
      only hue in the system besides destructive red, and it reads at 8.77:1 on
@@ -147,6 +150,7 @@
   --destructive: #c02626;
   --destructive-foreground: #ffffff;
   --success: #4b5563;
+  --live: #15803d;
   --warning: #8a5200; /* 6.12:1 on card */
 
   --border: transparent;
@@ -207,6 +211,7 @@
   --destructive: #c02626;
   --destructive-foreground: #ffffff;
   --success: #3b5578;
+  --live: #15803d;
   --warning: #8a5200; /* 6.01:1 on card */
 
   --border: transparent;
@@ -260,6 +265,42 @@
   background-color: var(--admin-page);
 }
 
+/* ── Дээд гүйдэг зурвас (SaleEventTicker) ──────────────────────────────────
+   Өнгө нь theme-ээс биш, арга хэмжээ бүрийн сонголтоос (0187 `ticker_theme`,
+   constants `SALE_EVENT_TICKER_THEMES`). Дурын өнгө биш, бэлэн хослол:
+   `--announce` дэвсгэр, `-foreground` гарчиг, `-accent` тоолуур. Бичиг том
+   (≥18px) тод тул хослол бүр ≥3:1 (WCAG large text). Цул өнгө, gradient-гүй. */
+[data-ticker="navy"] {
+  --announce: #0e1b3b;
+  --announce-foreground: #ffffff;
+  --announce-accent: #c9a96e;
+}
+[data-ticker="black"] {
+  --announce: #0a0a0a;
+  --announce-foreground: #ffffff;
+  --announce-accent: #c9a96e;
+}
+[data-ticker="gold"] {
+  --announce: #c9a96e;
+  --announce-foreground: #0e1b3b;
+  --announce-accent: #5b3a0a;
+}
+[data-ticker="red"] {
+  --announce: #b3121f;
+  --announce-foreground: #ffffff;
+  --announce-accent: #fde68a;
+}
+[data-ticker="ivory"] {
+  --announce: #f3ede2;
+  --announce-foreground: #0e1b3b;
+  --announce-accent: #b3121f;
+}
+[data-ticker="blue"] {
+  --announce: #6f86d9;
+  --announce-foreground: #ffffff;
+  --announce-accent: #0e1b3b;
+}
+
 /* ── Pink ─────────────────────────────────────────────────────────────── */
 .pink {
   --background: #fff5f8;
@@ -294,6 +335,7 @@
   --destructive: #b3213f;
   --destructive-foreground: #ffffff;
   --success: #7d4457;
+  --live: #15803d;
   --warning: #8a4a12; /* 5.92:1 on card */
 
   --border: transparent;
@@ -361,6 +403,10 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
+  --color-live: var(--live);
+  --color-announce: var(--announce);
+  --color-announce-foreground: var(--announce-foreground);
+  --color-announce-accent: var(--announce-accent);
   --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--input);
@@ -373,6 +419,8 @@
   --color-phone: #34c759;
 
   --font-sans: var(--font-sans);
+  /* Зөвхөн дээд гүйдэг зурвас — нарийссан тод том үсэг (Oswald, кирилл). */
+  --font-condensed: var(--font-condensed), var(--font-sans), sans-serif;
   /* single minimalist font everywhere — serif utilities resolve to sans */
   --font-serif: var(--font-sans);
 

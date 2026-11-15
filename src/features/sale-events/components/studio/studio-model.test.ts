@@ -38,6 +38,7 @@ const ROW: SaleEventAdminRow = {
   endsAt: "2026-11-30T16:00:00.000Z",
   isActive: true,
   showCountdown: true,
+  tickerTheme: "black",
   createdAt: "2026-11-01T00:00:00.000Z",
   updatedAt: "2026-11-01T00:00:00.000Z",
   items: [
@@ -76,6 +77,22 @@ describe("draftFromRow / draftToInput", () => {
     expect(parsed.success).toBe(true);
     expect(parsed.data?.items[0].pcts).toEqual({ "5": 20 });
     expect(parsed.data?.isActive).toBe(true);
+  });
+
+  it("зурвасын өнгө: мөр → ноорог → оролт хэвээр; хуучин мөр (null) → null", () => {
+    const d = draftFromRow(ROW);
+    expect(d.tickerTheme).toBe("black");
+    const parsed = saleEventInputSchema.safeParse(draftToInput(d, false));
+    expect(parsed.data?.tickerTheme).toBe("black");
+    const legacy = saleEventInputSchema.safeParse(
+      draftToInput(draftFromRow({ ...ROW, tickerTheme: null }), false),
+    );
+    expect(legacy.data?.tickerTheme).toBeNull();
+    // Бэлэн жагсаалтаас гадуурх утга орохгүй (дурын өнгө биш).
+    expect(
+      saleEventInputSchema.safeParse({ ...(draftToInput(d, false) as object), tickerTheme: "#ff0000" })
+        .success,
+    ).toBe(false);
   });
 
   it("буруу хувийг чимээгүй алгасахгүй — Zod барина", () => {
@@ -228,9 +245,10 @@ describe("studioTimeline (§5.5)", () => {
       "1 барааны үнэ 20–30% буурна.",
       "Хувьгүй 1 бараа үнээрээ үлдэж, жагсаалтад орно.",
       "Каталогт «Black Friday» шүүлтүүр, барааны карт дээр «Black Friday» тэмдэг гарна.",
+      "Сайтын дээд талд «Black Friday» гүйдэг зурвас гарна.",
     ]);
     expect(t[2].when).toBe("11/30 (Даваа) 23:59");
-    expect(t[2].lines).toEqual(["Үнэ буцна, шүүлтүүр, тэмдэг алга болно."]);
+    expect(t[2].lines).toEqual(["Үнэ буцна; зурвас, шүүлтүүр, тэмдэг алга болно."]);
   });
 
   it("баннер бэлэн бол эхлэх, дуусах хоёуланд мөр нэмэгдэнэ", () => {
@@ -271,8 +289,9 @@ describe("studioTimeline (§5.5)", () => {
     expect(t[1].lines).toEqual([
       "1 бараа арга хэмжээний жагсаалтад орно — үнэ өөрчлөгдөхгүй.",
       "Каталогт «Black Friday» шүүлтүүр гарна.",
+      "Сайтын дээд талд «Black Friday» гүйдэг зурвас гарна.",
     ]);
-    expect(t[2].lines).toEqual(["Шүүлтүүр алга болно."]);
+    expect(t[2].lines).toEqual(["Зурвас, шүүлтүүр алга болно."]);
   });
 
   it("тэмдэг хоосон, хувьтай → өгөгдмөл «Хямдрал»", () => {
@@ -281,7 +300,7 @@ describe("studioTimeline (§5.5)", () => {
       phase: "draft",
       bannerReady: false,
     });
-    expect(t[1].lines.at(-1)).toMatch(/«Хямдрал» тэмдэг/);
+    expect(t[1].lines.join(" ")).toMatch(/«Хямдрал» тэмдэг/);
   });
 
   it("явж буй: «одоо» эхлэх ба дуусахын хооронд; дууссан: төгсгөлд", () => {

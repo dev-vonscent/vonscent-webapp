@@ -1,19 +1,12 @@
 "use client";
 
-import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/format";
 import { useFilterQuery } from "@/features/catalog/components/use-filter-query";
-import { formatCountdown } from "../lib";
 import type { SaleEventState } from "../types";
-import {
-  SALE_EVENT_BANNER_DESCRIPTION,
-  SaleEventBannerView,
-  SaleEventCountdownLine,
-} from "./sale-event-banner-view";
+import { SaleEventBannerView } from "./sale-event-banner-view";
 
 export interface SaleEventBannerProps {
   slug: string;
@@ -30,8 +23,9 @@ export interface SaleEventBannerProps {
 }
 
 /**
- * Каталогийн `?event=slug` зурвас (plan §6.1–§6.3). Нэг газар, нэг UI:
- *   · live      — гарчиг, тайлбар, «Дуусахад 2 өдөр 4 цаг»
+ * Каталогийн `?event=slug` төлөвийн зурвас (plan §6.2–§6.3):
+ *   · live      — юу ч зурахгүй: гарчиг, тоолуур нь сайтын дээд гүйдэг
+ *                 зурваст (`SaleEventTicker`, клиент 2026-11-15)
  *   · scheduled — «2026.11.23-нд эхэлнэ» (хувь, жагсаалт байхгүй)
  *   · ended / олдохгүй — «Энэ урамшуулал дууссан» + одоо явж буйнууд
  * Хуучин холбоос (сошиал пост, `/sale/black-friday`) хоосон жагсаалт биш,
@@ -39,13 +33,10 @@ export interface SaleEventBannerProps {
  */
 export function SaleEventBanner(props: SaleEventBannerProps) {
   const { setSingle } = useFilterQuery();
+  if (props.state === "live") return null;
   const clear = () => setSingle("event", undefined);
   const title =
-    props.state === "live"
-      ? props.headline?.trim() || props.name
-      : props.state === "scheduled"
-        ? props.name
-        : "Энэ урамшуулал дууссан";
+    props.state === "scheduled" ? props.name : "Энэ урамшуулал дууссан";
 
   return (
     <SaleEventBannerView
@@ -58,16 +49,10 @@ export function SaleEventBanner(props: SaleEventBannerProps) {
           onClick={clear}
         >
           <X />
-          {props.state === "live" ? "Бүх каталог" : "Хаах"}
+          Хаах
         </Button>
       }
     >
-      {props.state === "live" && props.description && (
-        <p className={SALE_EVENT_BANNER_DESCRIPTION}>{props.description}</p>
-      )}
-      {props.state === "live" && props.showCountdown && props.endsAt && (
-        <Countdown endsAt={props.endsAt} />
-      )}
       {props.state === "scheduled" && props.startsAt && (
         <p className="text-muted-foreground text-sm">
           {formatDate(props.startsAt)}-нд эхэлнэ. Удахгүй уулзъя!
@@ -81,7 +66,7 @@ export function SaleEventBanner(props: SaleEventBannerProps) {
           {props.otherLive.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {props.otherLive.map((e) => (
-                <Button key={e.slug} asChild size="sm" variant="outline">
+                <Button key={e.slug} asChild size="sm" variant="secondary">
                   <Link href={`/catalog?event=${e.slug}`}>{e.name}</Link>
                 </Button>
               ))}
@@ -91,31 +76,4 @@ export function SaleEventBanner(props: SaleEventBannerProps) {
       )}
     </SaleEventBannerView>
   );
-}
-
-/**
- * «Дуусахад 2 өдөр 4 цаг». Hydration зөрөхгүйн тулд mount-ийн дараа л
- * гарна. 0 болоход хуудсыг серверээс шинэчилнэ — хуудсаа нээлттэй орхисон
- * хэрэглэгч хуучин үнэ, chip-тэй үлдэхгүй (plan §10).
- */
-function Countdown({ endsAt }: { endsAt: string }) {
-  const router = useRouter();
-  const end = Date.parse(endsAt);
-  const [now, setNow] = React.useState<number | null>(null);
-
-  React.useEffect(() => {
-    setNow(Date.now());
-    const id = window.setInterval(() => setNow(Date.now()), 30_000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  const left = now == null ? null : end - now;
-  const ended = left != null && left <= 0;
-  React.useEffect(() => {
-    if (ended) router.refresh();
-  }, [ended, router]);
-
-  const text = left == null ? null : formatCountdown(left);
-  if (!text) return null;
-  return <SaleEventCountdownLine text={text} />;
 }

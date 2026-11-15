@@ -1,4 +1,5 @@
 import type { Gender } from "@/db/types";
+import type { SaleEventTickerTheme } from "@/lib/constants";
 
 /** Одоо явж буй арга хэмжээ (0181 `live_sale_events()`) — дэлгүүрийн харагдац. */
 export interface LiveSaleEvent {
@@ -13,6 +14,8 @@ export interface LiveSaleEvent {
   endsAt: string;
   showCountdown: boolean;
   productIds: string[];
+  /** Дээд гүйдэг зурвасын өнгө (0187); null → өгөгдмөл. */
+  tickerTheme: SaleEventTickerTheme | null;
 }
 
 export type SaleEventState = "scheduled" | "live" | "ended";
@@ -41,6 +44,7 @@ export interface SaleEventAdminRow {
   endsAt: string;
   isActive: boolean;
   showCountdown: boolean;
+  tickerTheme: SaleEventTickerTheme | null;
   createdAt: string;
   updatedAt: string;
   items: { productId: string; pcts: Record<string, number> }[];

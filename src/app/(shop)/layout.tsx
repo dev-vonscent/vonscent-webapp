@@ -10,6 +10,7 @@ import { CatalogMenu } from "@/features/catalog/components/catalog-menu";
 import { getLiveSaleEvents } from "@/features/sale-events/api";
 import { eventBadgeMap } from "@/features/sale-events/lib";
 import { SaleEventsProvider } from "@/features/sale-events/components/sale-events-provider";
+import { SaleEventTicker } from "@/features/sale-events/components/sale-event-ticker";
 
 /**
  * The footer arrives through a parallel route slot rather than being rendered
@@ -44,6 +45,18 @@ export default async function ShopLayout({
       <ScrollReset />
       {/* Хамгийн эхний фокус авах элемент байх ёстой тул толгойн ӨМНӨ. */}
       <SkipLink />
+      {/* Явж буй арга хэмжээний гүйдэг зурвас — толгойн дээр, хуудастай хамт
+          гүйлгэгдэнэ (толгой нь өөрөө sticky). Туг хаалттай бол `live` хоосон. */}
+      <SaleEventTicker
+        events={live.map((e) => ({
+          slug: e.slug,
+          name: e.name,
+          headline: e.headline,
+          endsAt: e.endsAt,
+          showCountdown: e.showCountdown,
+          tickerTheme: e.tickerTheme,
+        }))}
+      />
       <SiteHeader
         menuSocial={
           <Suspense fallback={null}>

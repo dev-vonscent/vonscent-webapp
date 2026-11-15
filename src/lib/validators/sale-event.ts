@@ -3,6 +3,7 @@ import {
   ML_SIZES,
   SALE_EVENT_LIMITS as L,
   SALE_EVENT_MAX_PCT,
+  SALE_EVENT_TICKER_THEMES,
 } from "@/lib/constants";
 
 /** URL-ийн slug (`/sale/[slug]`, `?event=`) — 0181 check-тэй ижил. */
@@ -61,6 +62,8 @@ export const saleEventInputSchema = z
     endsOn: dateKey,
     isActive: z.boolean().default(false),
     showCountdown: z.boolean().default(true),
+    // Дээд зурвасын өнгө (0187); null → өгөгдмөл.
+    tickerTheme: z.enum(SALE_EVENT_TICKER_THEMES).nullable().default(null),
     items: z
       .array(saleEventItemSchema)
       .max(L.products, { message: `Ихдээ ${L.products} бараа.` })

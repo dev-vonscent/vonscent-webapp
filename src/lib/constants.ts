@@ -864,6 +864,30 @@ export const SALE_EVENT_MAX_PCT = 90;
 /** Badge хоосон үед картан дээр — одоогийн «Хямдрал» тэмдэг. */
 export const SALE_EVENT_DEFAULT_BADGE = "Хямдрал";
 
+/**
+ * Сайтын дээд гүйдэг зурвасын өнгө (0187 `sale_events.ticker_theme` check-тэй
+ * ижил). Өнгө нь globals.css-ийн `[data-ticker=…]` — дурын өнгө биш, бэлэн
+ * хослол тул бичиг үргэлж уншигдана. null → `navy`.
+ */
+export const SALE_EVENT_TICKER_THEMES = [
+  "navy",
+  "black",
+  "gold",
+  "red",
+  "ivory",
+  "blue",
+] as const;
+export type SaleEventTickerTheme = (typeof SALE_EVENT_TICKER_THEMES)[number];
+export const SALE_EVENT_TICKER_DEFAULT: SaleEventTickerTheme = "navy";
+export const SALE_EVENT_TICKER_LABEL: Record<SaleEventTickerTheme, string> = {
+  navy: "Navy",
+  black: "Хар",
+  gold: "Алт",
+  red: "Улаан",
+  ivory: "Цайвар",
+  blue: "Хөх",
+};
+
 /** Hero-гийн талбарын урт (0182 check-тэй ижил, plan §4.5). */
 export const HERO_LIMITS = {
   name: 60,

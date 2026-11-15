@@ -3,6 +3,7 @@ import {
   SALE_EVENT_LIMITS as L,
   SALE_EVENT_MAX_PCT,
   SITE,
+  type SaleEventTickerTheme,
 } from "@/lib/constants";
 import {
   dayEndIso,
@@ -37,6 +38,8 @@ export interface StudioDraft {
   startsOn: string;
   endsOn: string;
   showCountdown: boolean;
+  /** Дээд гүйдэг зурвасын өнгө; null → өгөгдмөл (navy). */
+  tickerTheme: SaleEventTickerTheme | null;
   items: StudioItem[];
 }
 
@@ -48,6 +51,9 @@ export const STUDIO_STEPS = [
   "review",
 ] as const;
 export type StudioStep = (typeof STUDIO_STEPS)[number];
+
+/** Гол үйлдлийн товч — хар theme-д `bg-primary` бараг харагддаггүй (CLAUDE.md). */
+export const STUDIO_CTA = "bg-cta text-cta-foreground hover:bg-cta/90";
 
 export const STUDIO_STEP_LABEL: Record<StudioStep, string> = {
   basics: "Үндсэн",
@@ -64,7 +70,7 @@ export const REVIEW_HINT_PUBLISHED = "Арга хэмжээний тойм — �
 export const STUDIO_STEP_HINT: Record<StudioStep, string> = {
   basics: "Арга хэмжээгээ нэрлээд хэзээ явахыг сонгоно.",
   products: "Аль бараа, аль хэмжээ хэдэн хувиар хямдрахыг сонгоно.",
-  catalog: "Каталогийн хуудсанд харагдах текстээ харагдац дээр нь засна — хоосон орхиж болно.",
+  catalog: "Сайтын дээд зурвас, каталогт харагдах текстээ харагдац дээр нь засна — хоосон орхиж болно.",
   banner: "Арга хэмжээний үеэр нүүр хуудсанд гарах баннер.",
   review: "Юу болохыг нэг уншаад нийтэлнэ.",
 };
@@ -92,6 +98,7 @@ export function emptyDraft(): StudioDraft {
     startsOn: "",
     endsOn: "",
     showCountdown: true,
+    tickerTheme: null,
     items: [],
   };
 }
@@ -111,6 +118,7 @@ export function draftFromRow(
     startsOn: opts.copy ? "" : isoToDay(r.startsAt),
     endsOn: opts.copy ? "" : isoEndToDay(r.endsAt),
     showCountdown: r.showCountdown,
+    tickerTheme: r.tickerTheme,
     items: r.items.map((i) => ({
       productId: i.productId,
       pcts: Object.fromEntries(
@@ -132,6 +140,7 @@ export function draftToInput(d: StudioDraft, isActive: boolean): unknown {
     endsOn: d.endsOn,
     isActive,
     showCountdown: d.showCountdown,
+    tickerTheme: d.tickerTheme,
     items: d.items.map((i) => ({
       productId: i.productId,
       pcts: Object.fromEntries(
@@ -338,7 +347,7 @@ export interface TimelineNode {
 const NOW_LINE: Record<SaleEventPhase, string> = {
   draft: "Ноорог — дэлгүүрт юу ч өөрчлөгдөхгүй.",
   scheduled: "Товлосон — эхлэх өдрөө хүлээж байна.",
-  live: "Явж байна — хямдрал дэлгүүрт үйлчилж байна.",
+  live: "Идэвхтэй — хямдрал дэлгүүрт үйлчилж байна.",
   ended: "Дууссан — үнэ, каталог өмнөх байдалдаа буцсан.",
 };
 
@@ -389,14 +398,17 @@ export function studioTimeline(input: {
       ? `Каталогт «${name}» шүүлтүүр, барааны карт дээр «${badge}» тэмдэг гарна.`
       : `Каталогт «${name}» шүүлтүүр гарна.`,
   );
+  start.push(
+    `Сайтын дээд талд «${d.headline.trim() || name}» гүйдэг зурвас гарна.`,
+  );
   if (bannerReady) start.push("Нүүр хуудасны баннер солигдоно.");
 
   const end = [
     r.withPct > 0
-      ? "Үнэ буцна, шүүлтүүр, тэмдэг алга болно."
+      ? "Үнэ буцна; зурвас, шүүлтүүр, тэмдэг алга болно."
       : badge
-        ? "Шүүлтүүр, тэмдэг алга болно."
-        : "Шүүлтүүр алга болно.",
+        ? "Зурвас, шүүлтүүр, тэмдэг алга болно."
+        : "Зурвас, шүүлтүүр алга болно.",
   ];
   if (bannerReady) {
     end.push(

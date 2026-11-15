@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   eventBadgeMap,
-  formatCountdown,
+  formatTimer,
   formatEventPeriod,
   overlapConflicts,
   overlapMessage,
@@ -27,18 +27,21 @@ describe("saleEventPhase", () => {
   });
 });
 
-describe("formatCountdown", () => {
-  it("өдөр/цаг/минут", () => {
-    expect(formatCountdown((2 * 24 + 4) * 3_600_000)).toBe("2 өдөр 4 цаг");
-    expect(formatCountdown(2 * 24 * 3_600_000)).toBe("2 өдөр");
-    expect(formatCountdown(3 * 3_600_000 + 12 * 60_000)).toBe("3 цаг 12 мин");
-    expect(formatCountdown(45 * 60_000)).toBe("45 мин");
-    // Минутын хэсэг дээш — «0 мин» гэж хэзээ ч гарахгүй.
-    expect(formatCountdown(10_000)).toBe("1 мин");
+describe("formatTimer", () => {
+  it("өдөр + цаг:мин:сек, нэг өдрөөс бага бол зөвхөн цаг:мин:сек", () => {
+    expect(formatTimer(((2 * 24 + 4) * 3600 + 31 * 60 + 10) * 1000)).toBe(
+      "2 өдөр 04:31:10",
+    );
+    expect(formatTimer(2 * 24 * 3_600_000)).toBe("2 өдөр 00:00:00");
+    expect(formatTimer((3 * 3600 + 12 * 60 + 5) * 1000)).toBe("03:12:05");
+  });
+  it("секунд хүртэл дээш дугуйрна", () => {
+    expect(formatTimer(200)).toBe("00:00:01");
+    expect(formatTimer(59_001)).toBe("00:01:00");
   });
   it("дууссан бол null", () => {
-    expect(formatCountdown(0)).toBeNull();
-    expect(formatCountdown(-5)).toBeNull();
+    expect(formatTimer(0)).toBeNull();
+    expect(formatTimer(-5)).toBeNull();
   });
 });
 
@@ -64,6 +67,7 @@ describe("eventBadgeMap", () => {
     endsAt: END,
     showCountdown: true,
     productIds: ["a", "b"],
+    tickerTheme: null,
     ...patch,
   });
   it("badge_label-тай арга хэмжээний гишүүд", () => {
