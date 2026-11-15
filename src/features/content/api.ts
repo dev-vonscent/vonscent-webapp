@@ -2,6 +2,10 @@ import "server-only";
 import { cache } from "react";
 import { createPublicClient } from "@/lib/supabase/public";
 import {
+  DELIVERY_BLACKOUT_KEY,
+  normalizeBlackout,
+} from "@/lib/delivery-blackout";
+import {
   FEATURED_LIMIT,
   POPUP_AUDIENCES,
   SHIPPING_ZONES,
@@ -227,6 +231,9 @@ export const getShippingSettings = () =>
 export const getLoyaltySettings = () => getSetting("loyalty", DEFAULT_LOYALTY);
 export const getStoreSettings = () => getSetting("store", DEFAULT_STORE);
 export const getGiftSettings = () => getSetting("gift", DEFAULT_GIFT);
+/** Админы хаасан хүргэлтийн өдрүүд ("yyyy-MM-dd", УБ). */
+export const getDeliveryBlackoutDays = async (): Promise<string[]> =>
+  normalizeBlackout((await fetchSettings())[DELIVERY_BLACKOUT_KEY]);
 
 /** A curated home rail with its products already resolved (todo.md B7). */
 export interface HomeSection {

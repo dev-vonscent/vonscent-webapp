@@ -8,6 +8,12 @@ import {
   couponSettingsError,
   couponSettingsSchema,
 } from "@/lib/validators/coupon";
+import {
+  DELIVERY_BLACKOUT_KEY,
+  deliveryBlackoutSchema,
+  normalizeBlackout,
+} from "@/lib/delivery-blackout";
+import { ubToday } from "@/lib/time";
 
 const schema = z.object({
   key: z.string().min(1),
@@ -42,6 +48,21 @@ export async function POST(req: Request) {
       );
     }
     value = coupons.data;
+  }
+  // Checkout болон захиалгын route энэ мөрийг уншина — буруу өдөр энд л
+  // буцаагдана. Өнгөрсөн өдрүүд хадгалахдаа автоматаар цэвэрлэгдэнэ.
+  if (parsed.data.key === DELIVERY_BLACKOUT_KEY) {
+    const blackout = deliveryBlackoutSchema.safeParse(value);
+    if (!blackout.success) {
+      return NextResponse.json(
+        { error: "Хүргэлтгүй өдрийн жагсаалт буруу байна." },
+        { status: 400 },
+      );
+    }
+    const today = ubToday();
+    value = {
+      days: normalizeBlackout(blackout.data).filter((d) => d > today),
+    };
   }
 
   const supabase = createAdminClient();
