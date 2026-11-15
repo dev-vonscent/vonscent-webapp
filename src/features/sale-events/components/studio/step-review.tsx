@@ -2,7 +2,15 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { AlertCircle, Check, CircleX, Copy, Info, Square } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  Check,
+  CircleX,
+  Copy,
+  Info,
+  Square,
+} from "lucide-react";
 import { dayEndIso } from "@/features/admin/lib/date-range";
 import { canvasPreview } from "@/features/heroes/canvas-model";
 import { HeroFrame } from "@/features/heroes/components/hero-frame";
@@ -21,6 +29,7 @@ import {
 } from "./studio-checklist";
 import {
   PUBLISH_LABEL,
+  STUDIO_CTA,
   publishAction,
   saleLink,
   shortDay,
@@ -104,86 +113,82 @@ export function StepReview({
     }
   }
 
+  const problems = checklist.filter((i) => i.level === "error").length;
+
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="max-w-3xl space-y-12">
       {published && (
-        <div
-          role="status"
-          className="bg-success/10 space-y-3 rounded-lg p-4 sm:p-5"
-        >
-          <p className="font-medium">
-            {published === "schedule"
-              ? `Товлогдлоо. ${shortDay(draft.startsOn)}-нд өөрөө эхэлнэ.`
-              : "Эхэллээ. Хямдрал одоо дэлгүүрт үйлчилж байна."}
-          </p>
-          <p className="text-muted-foreground text-sm break-all">
-            {link.display}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={copyLink}>
+        <div role="status" className="bg-success/10 space-y-4 rounded-3xl p-6">
+          <div className="flex items-center gap-3">
+            <span className="bg-success text-background inline-flex size-9 items-center justify-center rounded-full">
+              <Check className="size-5" strokeWidth={2.5} />
+            </span>
+            <p className="font-serif text-xl font-semibold">
+              {published === "schedule"
+                ? `Товлогдлоо. ${shortDay(draft.startsOn)}-нд өөрөө эхэлнэ.`
+                : "Эхэллээ. Хямдрал одоо дэлгүүрт үйлчилж байна."}
+            </p>
+          </div>
+          <div className="bg-background/60 flex flex-wrap items-center gap-2 rounded-xl py-2 pr-2 pl-4">
+            <span className="min-w-0 flex-1 basis-40 text-sm break-all">
+              {link.display}
+            </span>
+            <Button type="button" size="sm" className={STUDIO_CTA} onClick={copyLink}>
               <Copy />
               Холбоос хуулах
             </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/admin/sale-events">Жагсаалт руу</Link>
+          </div>
+          <Link
+            href="/admin/sale-events"
+            className="text-muted-foreground hover:text-foreground inline-block text-sm underline underline-offset-4"
+          >
+            Жагсаалт руу буцах
+          </Link>
+        </div>
+      )}
+
+      {mode === "auto" && !published && (
+        <div
+          className={cn(
+            "space-y-5 rounded-3xl p-6",
+            blocked ? "bg-destructive/10" : "bg-secondary/60",
+          )}
+        >
+          <div className="space-y-1">
+            <p className="font-serif text-xl font-semibold">
+              {blocked
+                ? `Нийтлэхийн өмнө ${problems} зүйл засна`
+                : "Нийтлэхэд бэлэн"}
+            </p>
+            <p className="text-muted-foreground text-sm text-pretty">
+              {blocked
+                ? "Доорх улаан мөрийн «Засах» дээр дарвал тухайн алхам руу очно."
+                : action === "schedule"
+                  ? `${shortDay(draft.startsOn)}-нд өөрөө эхэлнэ. Хүртэл нь засаж болно.`
+                  : "Нийтэлмэгц хямдрал дэлгүүрт шууд үйлчилнэ."}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <LoadingButton
+              type="button"
+              size="lg"
+              className={STUDIO_CTA}
+              loading={busy === "publish"}
+              disabled={blocked || busy !== null}
+              onClick={() => void studio.publish()}
+            >
+              {PUBLISH_LABEL[action]}
+            </LoadingButton>
+            <Button type="button" size="lg" variant="ghost" onClick={onLeave}>
+              Ноорог хэвээр үлдээх
             </Button>
           </div>
         </div>
       )}
 
-      <section className="space-y-3">
-        <h2 className="font-serif text-lg font-semibold">Юу болох вэ</h2>
-        <ol>
-          {timeline.map((node, i) => (
-            <li key={node.key} className="flex gap-3">
-              <div className="flex flex-col items-center">
-                <span
-                  aria-hidden
-                  className={cn(
-                    "mt-1.5 size-3 shrink-0 rounded-full",
-                    node.current
-                      ? "bg-cta ring-cta/30 ring-4"
-                      : "bg-muted-foreground/50",
-                  )}
-                />
-                {i < timeline.length - 1 && (
-                  <span
-                    aria-hidden
-                    className="bg-muted-foreground/30 mt-1.5 w-px flex-1"
-                  />
-                )}
-              </div>
-              <div className="min-w-0 pb-5">
-                <p
-                  className={cn(
-                    "text-sm font-medium tabular-nums",
-                    !node.current && "text-muted-foreground",
-                  )}
-                >
-                  {node.when}
-                </p>
-                {node.lines.map((line) => (
-                  <p key={line} className="text-sm text-pretty">
-                    {line}
-                  </p>
-                ))}
-                {node.image && (
-                  // eslint-disable-next-line @next/next/no-img-element -- storage URL, админы thumbnail
-                  <img
-                    src={node.image}
-                    alt=""
-                    className="mt-2 aspect-14/5 w-40 rounded-md object-cover"
-                  />
-                )}
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="space-y-3">
-        <h2 className="font-serif text-lg font-semibold">Шалгах зүйлс</h2>
-        <ul role="list" className="bg-card divide-border divide-y rounded-lg">
+      <section className="space-y-4">
+        <h3 className="font-serif text-xl font-semibold">Шалгах зүйлс</h3>
+        <ul role="list" className="space-y-1.5">
           {checklist.map((item) => (
             <ChecklistRow
               key={`${item.step}:${item.text}`}
@@ -195,16 +200,66 @@ export function StepReview({
         </ul>
       </section>
 
+      <section className="space-y-5">
+        <h3 className="font-serif text-xl font-semibold">Юу болох вэ</h3>
+        <ol>
+          {timeline.map((node, i) => (
+            <li key={node.key} className="flex gap-4">
+              <div className="flex flex-col items-center">
+                <span
+                  aria-hidden
+                  className={cn(
+                    "mt-1 size-3 shrink-0 rounded-full",
+                    node.current
+                      ? "bg-cta ring-cta/25 ring-4"
+                      : "bg-muted-foreground/40",
+                  )}
+                />
+                {i < timeline.length - 1 && (
+                  <span
+                    aria-hidden
+                    className="bg-secondary mt-2 w-0.5 flex-1 rounded-full"
+                  />
+                )}
+              </div>
+              <div className="min-w-0 space-y-1 pb-8">
+                <p
+                  className={cn(
+                    "text-sm font-semibold tabular-nums",
+                    !node.current && "text-muted-foreground",
+                  )}
+                >
+                  {node.when}
+                </p>
+                {node.lines.map((line) => (
+                  <p key={line} className="text-pretty">
+                    {line}
+                  </p>
+                ))}
+                {node.image && (
+                  // eslint-disable-next-line @next/next/no-img-element -- storage URL, админы thumbnail
+                  <img
+                    src={node.image}
+                    alt=""
+                    className="mt-3 aspect-14/5 w-48 rounded-xl object-cover"
+                  />
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+
       {studio.bannerEnabled && studio.banner.draft && !studio.banner.skip && (
-        <details className="group space-y-3">
-          <summary className="cursor-pointer text-sm font-medium select-none">
+        <details className="group">
+          <summary className="bg-secondary/50 hover:bg-secondary w-fit cursor-pointer rounded-xl px-4 py-3 text-sm font-medium select-none">
             Баннерыг бүх хэмжээгээр харах
           </summary>
-          <div className="mt-3 space-y-4">
+          <div className="mt-4 space-y-6">
             {ALL_SIZES.map((s) => (
-              <div key={s.width} className="space-y-1">
+              <div key={s.width} className="space-y-2">
                 <p className="text-muted-foreground text-xs">{s.label}</p>
-                <div className="bg-secondary rounded-md p-1">
+                <div className="bg-secondary/50 rounded-2xl p-2">
                   <HeroFrame
                     width={s.width}
                     title={`Баннер — ${s.label}`}
@@ -217,39 +272,20 @@ export function StepReview({
         </details>
       )}
 
-      {mode === "auto" && (
-        <div className="space-y-2">
-          {blocked && (
-            <p className="text-destructive text-sm" role="alert">
-              Улаанаар тэмдэглэсэн зүйлсийг зассаны дараа нийтэлнэ.
-            </p>
-          )}
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onLeave}>
-              Ноорог хэвээр үлдээх
-            </Button>
-            <LoadingButton
-              type="button"
-              loading={busy === "publish"}
-              disabled={blocked || busy !== null}
-              onClick={() => void studio.publish()}
-            >
-              {PUBLISH_LABEL[action]}
-            </LoadingButton>
-          </div>
-        </div>
-      )}
-
       {mode === "manual" && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-muted-foreground text-sm text-pretty">
-            {phase === "live"
-              ? "Зогсоовол үнэ яг одоо буцна. Арга хэмжээ түүхэнд үлдэнэ."
-              : "Зогсоовол ноорог руу буцна — дэлгүүрт юу ч өөрчлөгдөхгүй."}
-          </p>
+        <div className="bg-secondary/50 flex flex-wrap items-center justify-between gap-4 rounded-3xl p-6">
+          <div className="space-y-1">
+            <p className="font-medium">Арга хэмжээг зогсоох</p>
+            <p className="text-muted-foreground text-sm text-pretty">
+              {phase === "live"
+                ? "Үнэ яг одоо буцна. Арга хэмжээ түүхэнд үлдэнэ."
+                : "Ноорог руу буцна — дэлгүүрт юу ч өөрчлөгдөхгүй."}
+            </p>
+          </div>
           <LoadingButton
             type="button"
-            variant="outline"
+            variant="secondary"
+            className="text-destructive"
             loading={busy === "stop"}
             disabled={busy !== null}
             onClick={() => void studio.stop()}
@@ -273,25 +309,33 @@ function ChecklistRow({
   onGo: (step: StudioStep) => void;
 }) {
   const { icon: Icon, className, label } = LEVEL_ICON[item.level];
+  const isError = item.level === "error";
   return (
-    <li className="flex items-center gap-3 px-4 py-3">
+    <li
+      className={cn(
+        "flex items-center gap-3 rounded-xl py-2.5 pr-2 pl-4",
+        isError ? "bg-destructive/10" : "bg-secondary/40",
+      )}
+    >
       <Icon className={cn("size-4 shrink-0", className)} aria-hidden />
       <span className="sr-only">{label}:</span>
       <span
         className={cn(
           "min-w-0 flex-1 text-sm text-pretty",
-          item.level === "error" && "text-destructive",
+          isError && "text-destructive font-medium",
         )}
       >
         {item.text}
       </span>
       <Button
         type="button"
-        variant="ghost"
+        variant={isError ? "secondary" : "ghost"}
         size="sm"
+        className={cn("shrink-0", !isError && "text-muted-foreground")}
         onClick={() => onGo(item.step)}
       >
         {readOnly ? "Харах" : item.action}
+        <ArrowRight />
       </Button>
     </li>
   );

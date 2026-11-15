@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Search, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Check, Plus, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -27,11 +26,10 @@ import type { SaleEventProduct } from "../types";
 import type { StudioItem } from "./studio/studio-model";
 
 /**
- * Бараа + хувь (plan §9.1-2, studio-ux.md §5.2): одоогийн «Хямдрал» хуудасны
- * урсгалтай ижил — бараагаа шүүж сонгоод хэмжээ бүрд хувь өгч «Хэрэглэх»;
- * өөр бүлэгт өөр хувь өгч давтана. Баруун талд бараа бүрийн хувийг шууд
- * засна. Студийн ②-р алхам: ≥lg хоёр багана (зүүн — сонгогч, баруун —
- * сонгосон бараа), доош нь нэг.
+ * Бараа + хувь (plan §9.1-2, studio-ux.md §5.2). Зүүн — «Бараа нэмэх»: хайж
+ * сонгоод (хүсвэл хэмжээ бүрд хувь өгч) нэг товчоор нэмнэ; өөр бүлэгт өөр
+ * хувь өгч давтана. Баруун — «Хямдрах бараа»: бараа бүрийн хувийг шууд засна,
+ * шинэ үнэ дор нь харагдана. Утсан дээр сонгосон бараа эхэндээ.
  */
 export function EventItemsSection({
   items: members,
@@ -91,20 +89,28 @@ export function EventItemsSection({
     });
   }
 
-  /** Сонгосон бараануудыг нэмнэ / хувийг нь сольж бичнэ. */
-  function apply(withPcts: boolean) {
+  /**
+   * Сонгосон барааг нэмнэ. Хувь бичсэн бол сонгосон бүх бараанд (аль хэдийн
+   * нэмсэн ч) тэр хувийг сольж бичнэ; бичээгүй бол шинийг хувьгүй нэмж,
+   * нэмсэн барааны хувийг хөндөхгүй.
+   */
+  function apply() {
     const filled = Object.fromEntries(
       Object.entries(pcts).filter(([, v]) => v.trim() !== ""),
     ) as Record<number, string>;
+    const withPcts = Object.keys(filled).length > 0;
     const items = [...members];
     for (const id of selected) {
       const at = items.findIndex((i) => i.productId === id);
-      const next = { productId: id, pcts: withPcts ? { ...filled } : {} };
-      if (at >= 0) items[at] = next;
-      else items.push(next);
+      if (at >= 0) {
+        if (withPcts) items[at] = { productId: id, pcts: { ...filled } };
+      } else {
+        items.push({ productId: id, pcts: withPcts ? { ...filled } : {} });
+      }
     }
     onChange(items);
     setSelected(new Set());
+    setPcts({});
   }
 
   function setItemPct(productId: string, ml: number, value: string) {
@@ -125,166 +131,32 @@ export function EventItemsSection({
     ? `Хувь 1–${SALE_EVENT_MAX_PCT} бүхэл тоо.`
     : null;
 
+  const hasSelection = selected.size > 0;
+  // Хувьгүй нэмэхэд зөвхөн шинэ бараа нэмэгдэнэ (нэмсэний хувь хөндөгдөхгүй).
+  const newCount = [...selected].filter((id) => !memberIds.has(id)).length;
+  // «Бүгдэд» — бүх хэмжээ ижил үед тэр утгыг харуулна.
+  const firstPct = pcts[ML_SIZES[0]] ?? "";
+  const allPct = ML_SIZES.every((ml) => (pcts[ml] ?? "") === firstPct)
+    ? firstPct
+    : "";
+
   return (
-    <section className="grid items-start gap-6 lg:grid-cols-2">
-      {/* ── 1. Сонгох ──────────────────────────────────────────────── */}
-      <div className="bg-secondary/60 min-w-0 space-y-3 rounded-lg p-3">
-        <div>
-          <h3 className="text-sm font-semibold">Бараа сонгох</h3>
-          <p className="text-muted-foreground text-xs">
-            Бараагаа сонгоод хэмжээ бүрд хувь өгч «Хэрэглэх». Өөр бүлэгт өөр
-            хувь өгч давтана. Хоосон хэмжээ хямдрахгүй. Хувь нь үндсэн үнээс,
-            100₮-д дугуйрна.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-end gap-2">
-          {ML_SIZES.map((ml) => (
-            <label key={ml} className="space-y-1 text-xs">
-              <span className="text-muted-foreground block">{ml}ml (%)</span>
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={SALE_EVENT_MAX_PCT}
-                className="h-11 w-20 md:h-9"
-                placeholder="—"
-                value={pcts[ml] ?? ""}
-                onChange={(e) =>
-                  setPcts((p) => ({ ...p, [ml]: e.target.value }))
-                }
-              />
-            </label>
-          ))}
-          <label className="space-y-1 text-xs">
-            <span className="text-muted-foreground block">Бүгдэд</span>
-            <Input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={SALE_EVENT_MAX_PCT}
-              className="h-11 w-20 md:h-9"
-              placeholder="%"
-              onChange={(e) =>
-                setPcts(
-                  Object.fromEntries(
-                    ML_SIZES.map((ml) => [ml, e.target.value]),
-                  ),
-                )
-              }
-            />
-          </label>
-        </div>
-        {pctError && <p className="text-destructive text-xs">{pctError}</p>}
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            disabled={selected.size === 0 || pctValues.length === 0 || !!pctError}
-            onClick={() => apply(true)}
-          >
-            Сонгосон {selected.size} бараанд хэрэглэх
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={selected.size === 0}
-            onClick={() => apply(false)}
-          >
-            Хувьгүй нэмэх
-          </Button>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-0 flex-1 basis-48">
-            <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Брэнд / нэр"
-              className="pl-9"
-            />
-          </div>
-          <Select
-            value={gender}
-            onValueChange={(v) => setGender(v as Gender | "all")}
-          >
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Бүх хүйс</SelectItem>
-              {GENDERS.map((g) => (
-                <SelectItem key={g} value={g}>
-                  {GENDER_LABEL[g]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={brand} onValueChange={setBrand}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Бүх брэнд</SelectItem>
-              {brands.map((b) => (
-                <SelectItem key={b} value={b}>
-                  {b}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <ul
-          role="list"
-          className="bg-card divide-border max-h-72 divide-y overflow-y-auto lg:max-h-128 rounded-md"
-        >
-          <li className="flex items-center gap-3 px-3 py-2 text-xs">
-            <Checkbox
-              aria-label="Харагдаж буй бүх барааг сонгох"
-              checked={allVisibleSelected}
-              onCheckedChange={toggleAll}
-            />
-            <span className="text-muted-foreground">
-              Бүгд ({visible.length}) · {selected.size} сонгосон
+    <section className="grid items-start gap-x-10 gap-y-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      {/* ── Арга хэмжээний бараа ──────────────────────────────────── */}
+      <div className="min-w-0 space-y-4 lg:order-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <h3 className="font-serif text-xl font-semibold">
+            Хямдрах бараа{" "}
+            <span className="text-muted-foreground font-sans text-base font-normal tabular-nums">
+              {members.length}
             </span>
-          </li>
-          {visible.map((p) => (
-            <li key={p.id}>
-              <label className="flex cursor-pointer items-center gap-3 px-3 py-2 text-sm">
-                <Checkbox
-                  checked={selected.has(p.id)}
-                  onCheckedChange={() => toggle(p.id)}
-                />
-                <span className="min-w-0 flex-1 truncate">
-                  <span className="font-medium">{p.name}</span>{" "}
-                  <span className="text-muted-foreground text-xs">
-                    {p.brand}
-                  </span>
-                </span>
-                {memberIds.has(p.id) && (
-                  <Badge variant="secondary" className="shrink-0">
-                    Нэмсэн
-                  </Badge>
-                )}
-              </label>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* ── 2. Арга хэмжээний бараа ───────────────────────────────── */}
-      <div className="min-w-0 space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold">
-            Арга хэмжээнд ({members.length})
           </h3>
           {members.length > 0 && (
             <Button
               type="button"
               variant="ghost"
               size="sm"
+              className="text-muted-foreground"
               onClick={() => onChange([])}
             >
               Бүгдийг хасах
@@ -293,36 +165,46 @@ export function EventItemsSection({
         </div>
         {error && <p className="text-destructive text-sm">{error}</p>}
         {members.length === 0 ? (
-          <p className="text-muted-foreground bg-secondary/40 rounded-md p-4 text-center text-sm">
-            Жагсаалтаас бараа сонгож нэмнэ үү.
-          </p>
+          <div className="bg-secondary/50 text-muted-foreground rounded-2xl px-6 py-12 text-center text-sm text-pretty">
+            Одоохондоо хоосон.
+            <br />
+            <span className="lg:hidden">Доорх</span>
+            <span className="hidden lg:inline">Зүүн талын</span> жагсаалтаас
+            бараагаа сонгож нэмнэ үү.
+          </div>
         ) : (
-          <ul role="list" className="space-y-2">
+          <ul role="list" className="space-y-3">
             {members.map((item) => {
               const p = byId.get(item.productId);
               const conflict = conflictIds.has(item.productId);
+              const sizes = ML_SIZES.filter((ml) => p?.prices[ml] != null);
               return (
                 <li
                   key={item.productId}
                   className={cn(
-                    "bg-card space-y-2 rounded-md p-3",
-                    conflict && "ring-destructive ring-2",
+                    "space-y-4 rounded-2xl p-4",
+                    conflict ? "bg-destructive/10" : "bg-secondary/50",
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 text-sm">
-                      <span className="font-medium">
+                    <div className="min-w-0">
+                      <p className="text-muted-foreground truncate text-[11px] tracking-[0.15em] uppercase">
+                        {p?.brand ?? "—"}
+                      </p>
+                      <p className="truncate font-medium">
                         {p?.name ?? "Нуусан / устгасан бараа"}
-                      </span>{" "}
-                      <span className="text-muted-foreground text-xs">
-                        {p?.brand}
-                      </span>
+                      </p>
+                      {conflict && (
+                        <p className="text-destructive mt-1 text-xs">
+                          Өөр арга хэмжээнд давхацсан
+                        </p>
+                      )}
                     </div>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="size-8 shrink-0"
+                      className="text-muted-foreground -mt-1 -mr-1 size-9 shrink-0 rounded-full"
                       aria-label={`${p?.name ?? "Бараа"}-г хасах`}
                       onClick={() =>
                         onChange(
@@ -336,57 +218,45 @@ export function EventItemsSection({
                     </Button>
                   </div>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {ML_SIZES.filter((ml) => p?.prices[ml] != null).map(
-                      (ml) => {
-                        const base = p?.prices[ml] ?? 0;
-                        const raw = item.pcts[ml] ?? "";
-                        const n = Number(raw);
-                        const valid =
-                          raw.trim() !== "" &&
-                          Number.isInteger(n) &&
-                          n >= 1 &&
-                          n <= SALE_EVENT_MAX_PCT;
-                        return (
-                          <label key={ml} className="space-y-1 text-xs">
-                            <span className="text-muted-foreground flex items-center justify-between gap-1">
-                              <span>{ml}ml</span>
-                              <span className="tabular-nums">
-                                {valid ? (
-                                  <>
-                                    <span className="line-through">
-                                      {formatPrice(base)}
-                                    </span>{" "}
-                                    <span className="text-foreground font-medium">
-                                      {formatPrice(bulkSalePrice(base, n))}
-                                    </span>
-                                  </>
-                                ) : (
-                                  formatPrice(base)
-                                )}
+                    {sizes.map((ml) => {
+                      const base = p?.prices[ml] ?? 0;
+                      const raw = item.pcts[ml] ?? "";
+                      const n = Number(raw);
+                      const valid =
+                        raw.trim() !== "" &&
+                        Number.isInteger(n) &&
+                        n >= 1 &&
+                        n <= SALE_EVENT_MAX_PCT;
+                      return (
+                        <label key={ml} className="block space-y-1.5">
+                          <span className="text-muted-foreground block text-xs font-medium">
+                            {ml}ml
+                          </span>
+                          <PctInput
+                            value={raw}
+                            invalid={raw.trim() !== "" && !valid}
+                            aria-label={`${p?.name ?? ""} ${ml}ml хувь`}
+                            onChange={(v) => setItemPct(item.productId, ml, v)}
+                          />
+                          <span className="flex flex-col text-xs tabular-nums">
+                            {valid ? (
+                              <>
+                                <span className="font-medium">
+                                  {formatPrice(bulkSalePrice(base, n))}
+                                </span>
+                                <span className="text-muted-foreground line-through">
+                                  {formatPrice(base)}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground">
+                                {formatPrice(base)}
                               </span>
-                            </span>
-                            <Input
-                              type="number"
-                              inputMode="numeric"
-                              min={1}
-                              max={SALE_EVENT_MAX_PCT}
-                              placeholder="—"
-                              aria-label={`${p?.name ?? ""} ${ml}ml хувь`}
-                              className={cn(
-                                "h-11 md:h-9",
-                                raw.trim() !== "" &&
-                                  !valid &&
-                                  "field-edge-error",
-                              )}
-                              value={raw}
-                              onChange={(e) =>
-                                setItemPct(item.productId, ml, e.target.value)
-                              }
-                            />
-                          </label>
-                        );
-                      },
-                    )}
+                            )}
+                          </span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </li>
               );
@@ -394,6 +264,220 @@ export function EventItemsSection({
           </ul>
         )}
       </div>
+
+      {/* ── Бараа нэмэх ───────────────────────────────────────────── */}
+      <div className="min-w-0 space-y-4 lg:order-1">
+        <h3 className="font-serif text-xl font-semibold">Бараа нэмэх</h3>
+
+        <div className="space-y-2">
+          <div className="relative">
+            <Search className="text-muted-foreground absolute top-1/2 left-4 size-4 -translate-y-1/2" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Брэнд эсвэл нэрээр хайх"
+              className="h-12 rounded-xl pl-11"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Select
+              value={gender}
+              onValueChange={(v) => setGender(v as Gender | "all")}
+            >
+              <SelectTrigger className="h-11 rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Бүх хүйс</SelectItem>
+                {GENDERS.map((g) => (
+                  <SelectItem key={g} value={g}>
+                    {GENDER_LABEL[g]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={brand} onValueChange={setBrand}>
+              <SelectTrigger className="h-11 rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Бүх брэнд</SelectItem>
+                {brands.map((b) => (
+                  <SelectItem key={b} value={b}>
+                    {b}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="bg-secondary/50 overflow-hidden rounded-2xl">
+          <label className="text-muted-foreground flex cursor-pointer items-center gap-3 px-4 pt-3 pb-2 text-xs">
+            <Checkbox
+              aria-label="Харагдаж буй бүх барааг сонгох"
+              checked={allVisibleSelected}
+              onCheckedChange={toggleAll}
+            />
+            <span className="tabular-nums">
+              Бүгдийг сонгох · {visible.length} бараа
+            </span>
+          </label>
+          <ul
+            role="list"
+            className="max-h-80 overflow-y-auto px-1.5 pb-1.5 lg:max-h-112"
+          >
+            {visible.length === 0 && (
+              <li className="text-muted-foreground px-3 py-8 text-center text-sm">
+                Илэрц олдсонгүй
+              </li>
+            )}
+            {visible.map((p) => {
+              const isOn = selected.has(p.id);
+              return (
+                <li key={p.id}>
+                  <label
+                    className={cn(
+                      "flex cursor-pointer items-center gap-3 rounded-xl p-2.5 text-sm",
+                      isOn ? "bg-background" : "hover:bg-background/60",
+                    )}
+                  >
+                    <Checkbox
+                      checked={isOn}
+                      onCheckedChange={() => toggle(p.id)}
+                    />
+                    <span className="min-w-0 flex-1 truncate">
+                      <span className="font-medium">{p.name}</span>
+                      <span className="text-muted-foreground"> · {p.brand}</span>
+                    </span>
+                    {memberIds.has(p.id) && (
+                      <span className="text-muted-foreground inline-flex shrink-0 items-center gap-1 text-xs">
+                        <Check className="size-3.5" />
+                        Нэмсэн
+                      </span>
+                    )}
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        {hasSelection && (
+          <div className="bg-foreground text-background space-y-4 rounded-2xl p-4 sm:p-5">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="font-medium tabular-nums">
+                {selected.size} бараа сонгосон
+              </p>
+              <button
+                type="button"
+                className="text-sm opacity-70 hover:opacity-100"
+                onClick={() => setSelected(new Set())}
+              >
+                Цуцлах
+              </button>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm opacity-70">
+                Хямдралын хувь — хоосон хэмжээ хямдрахгүй
+              </p>
+              <div className="grid grid-cols-5 gap-2">
+                {ML_SIZES.map((ml) => (
+                  <label key={ml} className="block space-y-1">
+                    <span className="block text-xs opacity-70">{ml}ml</span>
+                    <PctInput
+                      tone="inverse"
+                      value={pcts[ml] ?? ""}
+                      onChange={(v) => setPcts((x) => ({ ...x, [ml]: v }))}
+                    />
+                  </label>
+                ))}
+                <label className="block space-y-1">
+                  <span className="block text-xs opacity-70">Бүгдэд</span>
+                  <PctInput
+                    tone="inverse"
+                    value={allPct}
+                    placeholder="%"
+                    onChange={(v) =>
+                      setPcts(Object.fromEntries(ML_SIZES.map((ml) => [ml, v])))
+                    }
+                  />
+                </label>
+              </div>
+              {pctError && (
+                <p className="text-background text-xs font-medium" role="alert">
+                  ⚠ {pctError}
+                </p>
+              )}
+            </div>
+            <Button
+              type="button"
+              size="lg"
+              variant="secondary"
+              className="w-full"
+              disabled={
+                !!pctError || (pctValues.length === 0 && newCount === 0)
+              }
+              onClick={apply}
+            >
+              <Plus />
+              {pctValues.length > 0
+                ? `${selected.size} бараанд хувь хэрэглэх`
+                : newCount === 0
+                  ? "Аль хэдийн нэмсэн — хувь бичнэ үү"
+                  : `${newCount} барааг хувьгүй нэмэх`}
+            </Button>
+          </div>
+        )}
+      </div>
     </section>
+  );
+}
+
+/** «%» дагавартай, хүрээгүй хувийн талбар. */
+function PctInput({
+  value,
+  onChange,
+  invalid,
+  placeholder = "—",
+  tone = "default",
+  "aria-label": ariaLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  invalid?: boolean;
+  placeholder?: string;
+  tone?: "default" | "inverse";
+  "aria-label"?: string;
+}) {
+  return (
+    <span className="relative block">
+      <Input
+        type="number"
+        inputMode="numeric"
+        min={1}
+        max={SALE_EVENT_MAX_PCT}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        aria-invalid={invalid || undefined}
+        className={cn(
+          "h-11 rounded-lg pr-7 tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+          tone === "inverse"
+            ? "bg-background/15 placeholder:text-background/50 text-background"
+            : "bg-background",
+        )}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-xs",
+          tone === "inverse" ? "text-background/60" : "text-muted-foreground",
+        )}
+      >
+        %
+      </span>
+    </span>
   );
 }

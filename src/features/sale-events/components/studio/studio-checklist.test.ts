@@ -28,6 +28,7 @@ function draft(over: Partial<StudioDraft> = {}): StudioDraft {
     startsOn: "2026-11-23",
     endsOn: "2026-11-30",
     showCountdown: true,
+    tickerTheme: null,
     items: [
       { productId: P1, pcts: { 5: "20" } },
       { productId: P2, pcts: { 5: "30" } },

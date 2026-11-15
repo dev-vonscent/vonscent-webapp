@@ -36,7 +36,7 @@ export function StepBasics({ studio }: { studio: EventStudio }) {
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-8">
+    <div className="max-w-2xl space-y-10">
       <Field
         label="Нэр"
         hint="Энэ нэр каталогийн шүүлтүүрт харагдана."
@@ -46,7 +46,7 @@ export function StepBasics({ studio }: { studio: EventStudio }) {
           value={draft.name}
           maxLength={L.name}
           placeholder="Жишээ: Black Friday, Цагаан сар"
-          className={cn("h-12 md:text-base", fieldErrorClass(errors.name))}
+          className={cn("h-14 rounded-xl px-4 text-lg md:text-lg", fieldErrorClass(errors.name))}
           onChange={(e) => studio.setName(e.target.value)}
         />
       </Field>
@@ -71,7 +71,7 @@ export function StepBasics({ studio }: { studio: EventStudio }) {
             />
           </Field>
         </div>
-        <p className="text-muted-foreground text-sm text-pretty">
+        <p className="text-muted-foreground pt-1 text-sm text-pretty">
           {sentence ??
             "Эхлэх өдрийн 00:00-оос дуусах өдрийн 23:59 хүртэл үргэлжилнэ (Улаанбаатарын цагаар)."}
         </p>
@@ -105,9 +105,10 @@ export function StepBasics({ studio }: { studio: EventStudio }) {
             </div>
           </Field>
         ) : (
-          <div className="bg-secondary flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md py-1.5 pr-1.5 pl-3">
-            <span className="text-muted-foreground min-w-0 flex-1 basis-40 text-sm break-all">
-              {link.display}
+          <div className="bg-secondary flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl py-2 pr-2 pl-4">
+            <span className="min-w-0 flex-1 basis-40 text-sm break-all">
+              <span className="text-muted-foreground">{SITE.domain}/sale/</span>
+              <span className="font-medium">{draft.slug || "…"}</span>
             </span>
             <Button
               type="button"

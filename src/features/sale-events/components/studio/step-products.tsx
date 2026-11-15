@@ -28,18 +28,21 @@ export function StepProducts({
   );
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <p className="text-sm font-medium tabular-nums">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="bg-secondary rounded-full px-3.5 py-1.5 text-sm font-medium tabular-nums">
           {itemsSummary(draft.items)}
-        </p>
-        <p className="text-muted-foreground text-sm text-pretty">
-          Хувь бичээгүй бараа үнээрээ үлдэж, зөвхөн энэ арга хэмжээний
-          жагсаалтад орно.
-        </p>
+        </span>
+        <span className="text-muted-foreground text-sm text-pretty">
+          Хувь бичээгүй бараа үнээрээ үлдэнэ. Хувь нь үндсэн үнээс, 100₮-д
+          дугуйрна.
+        </span>
       </div>
       {conflicts.length > 0 && (
-        <p className="text-destructive text-sm" role="alert">
+        <p
+          className="bg-destructive/10 text-destructive rounded-xl px-4 py-3 text-sm text-pretty"
+          role="alert"
+        >
           Улаанаар тэмдэглэсэн бараа хугацаа давхацсан өөр арга хэмжээнд байна —
           хасах эсвэл хугацааг өөрчилнө үү.
         </p>

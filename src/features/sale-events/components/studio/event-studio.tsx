@@ -3,11 +3,12 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Copy } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { useFeatureFlag } from "@/components/feature-flags";
 import { UB_TIMEZONE } from "@/lib/time";
+import { cn } from "@/lib/utils";
 import type { HeroAdminRow, HeroEventOption } from "@/features/heroes/types";
 import type { SaleEventAdminRow, SaleEventProduct } from "../../types";
 import { PhaseBadge } from "../phase-badge";
@@ -20,6 +21,7 @@ import { openingStep, stepStatus } from "./studio-checklist";
 import {
   PUBLISH_LABEL,
   REVIEW_HINT_PUBLISHED,
+  STUDIO_CTA,
   STUDIO_STEP_HINT,
   STUDIO_STEP_LABEL,
   parseStep,
@@ -79,7 +81,10 @@ export function EventStudio({
     now,
   });
   const { draft, phase, mode, checklist, busy, dirty } = studio;
-  const steps = React.useMemo(() => visibleSteps(bannerEnabled), [bannerEnabled]);
+  const steps = React.useMemo(
+    () => visibleSteps(bannerEnabled),
+    [bannerEnabled],
+  );
   const [step, setStep] = React.useState<StudioStep>(() =>
     openingStep({
       requested: parseStep(initialStep, steps),
@@ -108,98 +113,150 @@ export function EventStudio({
 
   const action = publishAction(draft.startsOn, studio.today);
 
+  const stepNo = index + 1;
+  // Алхмын алдаа / анхааруулга (checklist-ээс) — цэг, алхмын дээд мөр.
+  // Дууссан (зөвхөн уншигдах) арга хэмжээнд засах зүйл гэж байхгүй.
+  const issuesOf = (s: StudioStep) =>
+    phase === null || mode === "locked"
+      ? []
+      : checklist.filter(
+          (i) => i.step === s && (i.level === "error" || i.level === "warn"),
+        );
+  const stepIssues = step === "review" ? [] : issuesOf(step);
+  const note = (text: React.ReactNode) => (
+    <p className="bg-secondary text-muted-foreground rounded-xl px-4 py-3 text-sm text-pretty">
+      {text}
+    </p>
+  );
+
   return (
-    <div className="space-y-6">
+    // Студид талбарын хүрээ байхгүй — дүүргэлтээр л ялгана (алдаатай үед улаан хэвээр).
+    <div className="mx-auto max-w-5xl space-y-10 pb-16 [--input-edge:transparent]">
       {studio.confirmDialog}
 
-      <header className="bg-card field-edge sticky top-16 z-30 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg px-4 py-3 lg:top-2">
-        <Link
-          href={LIST_HREF}
-          onClick={(e) => {
-            if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
-            e.preventDefault();
-            void leave();
-          }}
-          className="text-muted-foreground hover:text-foreground inline-flex shrink-0 items-center gap-1.5 text-sm"
-        >
-          <ArrowLeft className="size-4" />
-          Арга хэмжээ
-        </Link>
-        <div className="flex min-w-0 flex-1 basis-48 items-center gap-2">
-          <h1 className="truncate font-serif text-xl font-semibold">
-            {draft.name.trim() || "Шинэ арга хэмжээ"}
-          </h1>
-          {phase && <PhaseBadge phase={phase} />}
+      {/* Дэвсгэр нь админы `main`-ийнхтэй ижил — тусдаа хайрцаг шиг харагдахгүй.
+          white/navy: цул `--admin-page` (globals.css); бусад theme: background +
+          `bg-muted/30` давхарга (main-ийнх шиг). */}
+      <header className="sticky top-16 isolate z-30 -mx-4 space-y-6 bg-(--admin-page,var(--background)) px-4 pt-2 pb-4 before:absolute before:inset-0 before:-z-10 before:bg-muted/30 in-[.navy]:before:hidden in-[.white]:before:hidden lg:top-0 lg:pt-6">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+          <Link
+            href={LIST_HREF}
+            aria-label="Арга хэмжээний жагсаалт руу буцах"
+            onClick={(e) => {
+              if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey)
+                return;
+              e.preventDefault();
+              void leave();
+            }}
+            className="bg-secondary text-muted-foreground hover:text-foreground inline-flex size-10 shrink-0 items-center justify-center rounded-full"
+          >
+            <ArrowLeft className="size-4" />
+          </Link>
+          <div className="min-w-0 flex-1 basis-48">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <h1 className="truncate font-serif text-2xl font-semibold tracking-tight">
+                {draft.name.trim() || "Шинэ арга хэмжээ"}
+              </h1>
+              {phase && <PhaseBadge phase={phase} />}
+            </div>
+            <SaveState studio={studio} />
+          </div>
+          {mode === "auto" && (
+            <LoadingButton
+              type="button"
+              className={STUDIO_CTA}
+              loading={busy === "publish"}
+              disabled={busy !== null}
+              onClick={() =>
+                step === "review" ? void studio.publish() : go("review")
+              }
+            >
+              {PUBLISH_LABEL[action]}
+            </LoadingButton>
+          )}
+          {mode === "manual" && (
+            <LoadingButton
+              type="button"
+              className={STUDIO_CTA}
+              loading={busy === "save"}
+              disabled={!dirty || busy !== null}
+              onClick={() => void studio.saveManual()}
+            >
+              Хадгалах
+            </LoadingButton>
+          )}
+          {mode === "locked" && studio.id && (
+            <Button asChild className={STUDIO_CTA}>
+              <Link href={`${LIST_HREF}/new?copy=${studio.id}`}>
+                <Copy />
+                Хуулж шинээр эхлүүлэх
+              </Link>
+            </Button>
+          )}
         </div>
-        <SaveState studio={studio} />
-        {mode === "auto" && (
-          <LoadingButton
-            type="button"
-            size="sm"
-            loading={busy === "publish"}
-            disabled={busy !== null}
-            onClick={() => (step === "review" ? void studio.publish() : go("review"))}
-          >
-            {PUBLISH_LABEL[action]}
-          </LoadingButton>
-        )}
-        {mode === "manual" && (
-          <LoadingButton
-            type="button"
-            size="sm"
-            loading={busy === "save"}
-            disabled={!dirty || busy !== null}
-            onClick={() => void studio.saveManual()}
-          >
-            Хадгалах
-          </LoadingButton>
-        )}
-        {mode === "locked" && studio.id && (
-          <Button asChild size="sm">
-            <Link href={`${LIST_HREF}/new?copy=${studio.id}`}>
-              <Copy />
-              Хуулж шинээр эхлүүлэх
-            </Link>
-          </Button>
-        )}
+
+        <StudioStepper
+          steps={steps}
+          current={step}
+          statusOf={(s) =>
+            mode === "locked" ? "done" : stepStatus(s, checklist, phase)
+          }
+          issuesOf={issuesOf}
+          locked={mode === "create"}
+          onSelect={go}
+        />
       </header>
 
-      <StudioStepper
-        steps={steps}
-        current={step}
-        statusOf={(s) => stepStatus(s, checklist, phase)}
-        locked={mode === "create"}
-        onSelect={go}
-      />
+      {mode === "locked" &&
+        note(
+          "Энэ арга хэмжээ дууссан тул засагдахгүй. Дахин явуулах бол «Хуулж шинээр эхлүүлэх»-ээр шинэ ноорог үүсгэнэ үү.",
+        )}
+      {mode === "create" &&
+        copyOf &&
+        note(
+          <>
+            «{copyOf.name}»-аас бараа, хувь, каталогийн текст
+            {copyBanner && bannerEnabled ? ", нүүрний баннер" : ""} хуулагдлаа.
+            Огноогоо сонгоод үргэлжлүүлнэ үү.
+          </>,
+        )}
 
-      {mode === "locked" && (
-        <p className="border-border bg-muted text-muted-foreground rounded-md border px-3 py-2 text-sm">
-          Энэ арга хэмжээ дууссан тул засагдахгүй. Дахин явуулах бол «Хуулж
-          шинээр эхлүүлэх»-ээр шинэ ноорог үүсгэнэ үү.
-        </p>
-      )}
-      {mode === "create" && copyOf && (
-        <p className="border-border bg-muted text-muted-foreground rounded-md border px-3 py-2 text-sm">
-          «{copyOf.name}»-аас бараа, хувь, каталогийн текст
-          {copyBanner && bannerEnabled ? ", нүүрний баннер" : ""} хуулагдлаа.
-          Огноогоо сонгоод үргэлжлүүлнэ үү.
-        </p>
-      )}
-
-      <section
-        aria-labelledby="studio-step-title"
-        className="bg-card space-y-6 rounded-xl p-4 sm:p-6"
-      >
-        <div className="space-y-1">
-          <h2 id="studio-step-title" className="font-serif text-xl font-semibold">
+      <section aria-labelledby="studio-step-title" className="space-y-8">
+        <div className="space-y-2">
+          <p className="text-muted-foreground text-xs font-medium tracking-[0.15em] uppercase tabular-nums">
+            Алхам {stepNo} / {steps.length}
+          </p>
+          <h2
+            id="studio-step-title"
+            className="font-serif text-3xl font-semibold tracking-tight text-balance"
+          >
             {STUDIO_STEP_LABEL[step]}
           </h2>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground max-w-2xl text-pretty">
             {step === "review" && mode !== "auto" && mode !== "create"
               ? REVIEW_HINT_PUBLISHED
               : STUDIO_STEP_HINT[step]}
           </p>
         </div>
+
+        {stepIssues.length > 0 && (
+          <ul role="list" className="space-y-1.5">
+            {stepIssues.map((x) => (
+              <li
+                key={x.text}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-medium",
+                  x.level === "error"
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-warning/10 text-warning",
+                )}
+              >
+                <AlertCircle className="size-4 shrink-0" aria-hidden />
+                {x.text}
+              </li>
+            ))}
+          </ul>
+        )}
 
         {step === "review" ? (
           <StepReview
@@ -231,44 +288,68 @@ export function EventStudio({
         )}
       </section>
 
-      <div className="flex items-center justify-between gap-3">
-        {prev ? (
-          <Button type="button" variant="ghost" onClick={() => go(prev)}>
-            <ArrowLeft />
-            Өмнөх
-          </Button>
-        ) : (
-          <span />
-        )}
-        {mode === "create" ? (
-          <LoadingButton
-            type="button"
-            loading={busy === "create"}
-            onClick={() => void studio.create()}
-          >
-            Үргэлжлүүлэх
-            <ArrowRight />
-          </LoadingButton>
-        ) : (
-          next && (
-            <Button type="button" variant="secondary" onClick={() => go(next)}>
+      {(prev || next || mode === "create") && (
+        <nav
+          aria-label="Алхам солих"
+          className="flex items-center justify-between gap-3 pt-4"
+        >
+          {prev ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="min-w-0 shrink px-3"
+              aria-label={`Өмнөх: ${STUDIO_STEP_LABEL[prev]}`}
+              onClick={() => go(prev)}
+            >
+              <ArrowLeft />
+              <span className="hidden sm:inline">
+                {STUDIO_STEP_LABEL[prev]}
+              </span>
+              <span className="sm:hidden">Өмнөх</span>
+            </Button>
+          ) : (
+            <span />
+          )}
+          {mode === "create" ? (
+            <LoadingButton
+              type="button"
+              size="lg"
+              className={STUDIO_CTA}
+              loading={busy === "create"}
+              onClick={() => void studio.create()}
+            >
               Үргэлжлүүлэх
               <ArrowRight />
-            </Button>
-          )
-        )}
-      </div>
+            </LoadingButton>
+          ) : (
+            next && (
+              <Button
+                type="button"
+                size="lg"
+                className={cn(STUDIO_CTA, "min-w-0 shrink px-5 sm:px-8")}
+                onClick={() => go(next)}
+              >
+                <span className="text-cta-foreground/70 hidden font-normal sm:inline">
+                  Дараах:
+                </span>
+                {STUDIO_STEP_LABEL[next]}
+                <ArrowRight />
+              </Button>
+            )
+          )}
+        </nav>
+      )}
 
       {mode === "manual" && dirty && (
         <div
           role="region"
           aria-label="Хадгалаагүй өөрчлөлт"
-          className="bg-card field-edge shadow-lift sticky bottom-4 z-30 flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3"
+          className="bg-foreground text-background shadow-lift sticky bottom-4 z-30 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-3"
         >
           <p className="text-sm font-medium">
             Хадгалаагүй өөрчлөлт
             {phase === "live" && (
-              <span className="text-muted-foreground font-normal">
+              <span className="font-normal opacity-70">
                 {" "}
                 · хадгалмагц дэлгүүрт шууд нөлөөлнө
               </span>
@@ -277,7 +358,8 @@ export function EventStudio({
           <div className="flex gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
+              className="hover:bg-background/10 hover:text-background"
               disabled={busy !== null}
               onClick={studio.revert}
             >
@@ -285,6 +367,7 @@ export function EventStudio({
             </Button>
             <LoadingButton
               type="button"
+              variant="secondary"
               loading={busy === "save"}
               disabled={busy !== null}
               onClick={() => void studio.saveManual()}
@@ -345,7 +428,7 @@ function SaveState({ studio }: { studio: EventStudio }) {
   }
   return (
     <p
-      className={`${tone} text-sm tabular-nums`}
+      className={`${tone} mt-0.5 text-sm tabular-nums`}
       role="status"
       aria-live="polite"
       title={status.kind === "error" ? status.message : undefined}
