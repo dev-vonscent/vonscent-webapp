@@ -11,6 +11,7 @@ import {
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { eventPctText } from "../../lib";
+import { eventChipClass } from "../event-filter-chip";
 import { SaleChip } from "../sale-badge";
 import { TICKER_BAR, TickerSegment, TickerTimer } from "../sale-event-ticker";
 import {
@@ -141,7 +142,12 @@ export function CatalogPreview(p: CatalogPreviewProps) {
             {GENDER_LABEL.female}
           </span>
           <span
-            className={cn(CHIP, "bg-secondary flex min-w-0 items-center gap-2")}
+            data-ticker={p.tickerTheme}
+            className={cn(
+              CHIP,
+              eventChipClass(false),
+              "flex min-w-0 items-center gap-2",
+            )}
           >
             <PreviewMarker n={3} />
             <EditableText

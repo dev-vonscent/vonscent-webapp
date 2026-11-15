@@ -11,6 +11,7 @@ import { GENDERS, GENDER_LABEL, SEASON_LABEL, SEASONS } from "@/lib/constants";
 import { useFilterQuery } from "./use-filter-query";
 import type { ScentFamilyOption } from "@/lib/types";
 import type { BrandLogos } from "@/features/products/components/brand-marquee";
+import { EventFilterChip } from "@/features/sale-events/components/event-filter-chip";
 import { useLiveSaleEvents } from "@/features/sale-events/components/sale-events-provider";
 
 const PRICE_STEP = 1000;
@@ -294,15 +295,16 @@ export function CatalogFilters({
                   хамаарахгүй. */}
               {!isBundle &&
                 liveEvents.map((e) => (
-                  <Chip
+                  <EventFilterChip
                     key={e.slug}
+                    theme={e.tickerTheme}
                     active={event === e.slug}
                     onClick={() =>
                       setSingle("event", event === e.slug ? undefined : e.slug)
                     }
                   >
                     {e.name}
-                  </Chip>
+                  </EventFilterChip>
                 ))}
             </div>
           </Group>

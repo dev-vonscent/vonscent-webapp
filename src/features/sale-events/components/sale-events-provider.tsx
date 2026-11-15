@@ -14,7 +14,12 @@ import type { SaleEventTickerTheme } from "@/lib/constants";
  */
 interface SaleEventsValue {
   /** Каталогийн «Таг» бүлгийн chip. */
-  events: readonly { slug: string; name: string }[];
+  events: readonly {
+    slug: string;
+    name: string;
+    /** Зурвасны өнгө — шүүлтүүрийн chip ижил өнгөтэй (`EventFilterChip`). */
+    tickerTheme: SaleEventTickerTheme;
+  }[];
   /** productId → картан дээрх тэмдэг (`badge_label`-тай арга хэмжээ л). */
   badges: Readonly<Record<string, string>>;
   /** productId → live арга хэмжээн дэх хамгийн их хувь (тэмдгийн «~10%»). */

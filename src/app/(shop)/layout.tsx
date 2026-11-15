@@ -12,6 +12,7 @@ import {
   getLiveSaleEvents,
 } from "@/features/sale-events/api";
 import { eventBadgeMap, eventThemeMap } from "@/features/sale-events/lib";
+import { SALE_EVENT_TICKER_DEFAULT } from "@/lib/constants";
 import { SaleEventsProvider } from "@/features/sale-events/components/sale-events-provider";
 import { SaleEventTicker } from "@/features/sale-events/components/sale-event-ticker";
 
@@ -45,7 +46,11 @@ export default async function ShopLayout({
   ]);
   return (
     <SaleEventsProvider
-      events={live.map((e) => ({ slug: e.slug, name: e.name }))}
+      events={live.map((e) => ({
+        slug: e.slug,
+        name: e.name,
+        tickerTheme: e.tickerTheme ?? SALE_EVENT_TICKER_DEFAULT,
+      }))}
       badges={eventBadgeMap(live)}
       pcts={pcts}
       themes={eventThemeMap(live)}

@@ -448,6 +448,7 @@
   --animate-fade-up: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-marquee: marquee 28s linear infinite;
   --animate-shimmer: shimmer 2.2s linear infinite;
+  --animate-chip-sweep: chip-sweep 4.5s ease-in-out 1s infinite;
   --animate-sheen: sheen-rotate 80s linear infinite;
   --animate-nudge-up: nudge-up 2s ease-in-out infinite;
   --animate-search-open: search-open 0.2s ease-out;
@@ -509,6 +510,18 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee {
     animation: none;
+  }
+}
+/* Арга хэмжээний шүүлтүүрийн chip (EventFilterChip): цайвар туяа зүүнээс
+   баруун тийш нэг гүйгээд түр зогсоно. Gradient биш — цул, хагас тунгалаг,
+   ташуу зурвас blur-тай (design.md). Transform-only; reduced-motion-д унтарна. */
+@keyframes chip-sweep {
+  0% {
+    transform: translateX(0) skewX(-20deg);
+  }
+  35%,
+  100% {
+    transform: translateX(560%) skewX(-20deg);
   }
 }
 @keyframes shimmer {
