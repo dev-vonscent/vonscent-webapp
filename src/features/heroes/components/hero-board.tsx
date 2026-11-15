@@ -1,31 +1,37 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
-import { ArrowUpRight, ImageOff, Plus } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronRight, ImageOff, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { formatEventPeriod } from "@/features/sale-events/lib";
-import { SEASON_LABEL, type HeroSeason } from "@/lib/constants";
+import { SEASON_LABEL } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import {
   nowAndNext,
   seasonCards,
   specialHeroes,
-  yearStrip,
   type SeasonCard,
 } from "../board-model";
-import { mdLabel } from "../season";
-import { monthDay } from "../default-copy";
+import { mdLong } from "../season";
 import type { HeroAdminRow, HeroEventOption } from "../types";
 
-const MONTHS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
+/** 'YYYY-MM-DD' → «11-р сарын 22». */
+function dayLong(day: string): string {
+  return day.length >= 10 ? mdLong(day.slice(5, 10)) : "";
+}
 
-/** Улирлын зурвасын өнгө — theme token (gradient үгүй). */
-const SEASON_TONE: Record<HeroSeason, string> = {
-  spring: "bg-success/15",
-  summer: "bg-warning/20",
-  autumn: "bg-destructive/10",
-  winter: "bg-primary/10",
-};
+/** Одоогийн баннерыг хаана засах вэ (арга хэмжээнийх → студийн ④). */
+function editHref(h: HeroAdminRow | null): string | null {
+  if (!h) return null;
+  if (h.season) return `/admin/heroes/season/${h.season}`;
+  if (h.saleEventId) return `/admin/sale-events/${h.saleEventId}?step=banner`;
+  return `/admin/heroes/${h.id}`;
+}
+
+/** Гол үйлдэл: хар theme-д `bg-primary` нь картаас ялгагдахгүй (CLAUDE.md). */
+const CTA = "bg-cta text-cta-foreground hover:bg-cta/90";
 
 function thumb(h: HeroAdminRow | null): string | null {
   return h?.desktopImage ? `${h.desktopImage.base}-1600.webp` : null;
@@ -67,8 +73,9 @@ const STATE_TEXT: Record<SeasonCard["state"], string> = {
 
 /**
  * «Нүүрний баннер» самбар (studio-ux.md §7): одоо юу гарч байгаа, улирлын 4
- * карт, жилийн хуваарь, тусгай өдрийн баннер. Арга хэмжээний баннер энд зөвхөн
- * хуваарь дээр — засвар нь студийн ④ (нэг баннерыг хоёр газраас засахгүй).
+ * карт, тусгай өдрийн баннер. Арга хэмжээний баннерыг энд засахгүй — «Одоо нүүр
+ * хуудсанд» картаас студийн ④ руу очно (нэг баннерыг хоёр газраас засахгүй).
+ * Жилийн хуваарийг клиентэд хэрэггүй тул хассан (2026-11-15).
  */
 export function HeroBoard({
   heroes,
@@ -81,10 +88,7 @@ export function HeroBoard({
 }) {
   const { current, next } = nowAndNext(heroes, events, now);
   const cards = seasonCards(heroes, events, now);
-  const year = Number(new Date(now + 8 * 3_600_000).toISOString().slice(0, 4));
-  const strip = yearStrip(heroes, events, year, now);
   const specials = specialHeroes(heroes);
-  const pct = (d: number) => `${(d / strip.days) * 100}%`;
 
   return (
     <div className="space-y-10">
@@ -97,27 +101,24 @@ export function HeroBoard({
         <h2 id="hb-now" className="font-serif text-lg font-semibold">
           Одоо нүүр хуудсанд
         </h2>
-        <div className="bg-card flex flex-col gap-4 rounded-lg p-4 sm:flex-row sm:items-center">
+        <CurrentCard href={editHref(current)}>
           <Thumb src={thumb(current)} className="w-full shrink-0 sm:w-64" />
-          <div className="min-w-0 space-y-1">
+          <div className="min-w-0 flex-1 space-y-1">
             <p className="font-medium">{heroLabel(current, events)}</p>
             {current && <p className="text-muted-foreground text-sm">{current.title}</p>}
             {next && (
               <p className="text-muted-foreground text-sm text-pretty">
-                Дараагийнх: {heroLabel(next.row, events)} — {monthDay(next.day)}-нд
+                Дараагийнх: {heroLabel(next.row, events)} — {dayLong(next.day)}-нд
               </p>
             )}
           </div>
-        </div>
+        </CurrentCard>
       </section>
 
       <section className="space-y-3" aria-labelledby="hb-seasons">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="hb-seasons" className="font-serif text-lg font-semibold">
-            Улирлын баннер
-          </h2>
-          <p className="text-muted-foreground text-sm">Улирал эхлэхэд өөрөө солигдоно.</p>
-        </div>
+        <h2 id="hb-seasons" className="font-serif text-lg font-semibold">
+          Улирлын баннер
+        </h2>
         <ul role="list" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {cards.map((c) => (
             <li key={c.season} className="bg-card flex flex-col gap-3 rounded-lg p-3">
@@ -126,7 +127,9 @@ export function HeroBoard({
                 <p className="font-medium">{SEASON_LABEL[c.season]}</p>
                 {c.state === "live" && <Badge variant="new">Одоо</Badge>}
               </div>
-              <p className="text-muted-foreground text-sm tabular-nums">{mdLabel(c.startMd)}-ээс</p>
+              <p className="text-muted-foreground text-sm tabular-nums">
+                Эхлэх өдөр: {mdLong(c.startMd)}
+              </p>
               <p
                 className={cn(
                   "text-sm text-pretty",
@@ -139,14 +142,19 @@ export function HeroBoard({
                   ? `«${c.over ?? "Өөр баннер"}» дуустал хүлээж байна`
                   : STATE_TEXT[c.state]}
               </p>
+              {/* Зураг дутуу — гол үйлдэл (`CTA`). Бусад нь `secondary`: border
+                  transparent тул `outline` нь энгийн текст шиг харагддаг байв. */}
               <Button
                 asChild
                 size="sm"
-                variant={c.state === "empty" || c.state === "incomplete" ? "default" : "outline"}
-                className="mt-auto self-start"
+                variant="secondary"
+                className={cn(
+                  "mt-auto self-start",
+                  (c.state === "empty" || c.state === "incomplete") && CTA,
+                )}
               >
                 <Link href={`/admin/heroes/season/${c.season}`}>
-                  {c.state === "empty" ? "Зураг бэлдэх" : "Засах"}
+                  {c.state === "empty" ? "Зураг бэлдэх" : c.state === "incomplete" ? "Дуусгах" : "Засах"}
                 </Link>
               </Button>
             </li>
@@ -154,102 +162,22 @@ export function HeroBoard({
         </ul>
       </section>
 
-      <section className="space-y-3" aria-labelledby="hb-year">
-        <h2 id="hb-year" className="font-serif text-lg font-semibold">
-          Жилийн хуваарь {year}
-        </h2>
-        <div className="bg-card overflow-x-auto rounded-lg p-4">
-          <div className="relative min-w-180 space-y-1.5">
-            <div className="relative h-8">
-              {strip.items.map((i) => {
-                const body = (
-                  <>
-                    <span className="truncate">{i.label}</span>
-                  </>
-                );
-                const cls = cn(
-                  "absolute top-0 flex h-8 items-center overflow-hidden rounded-sm px-1.5 text-xs font-medium",
-                  i.kind === "event"
-                    ? "bg-cta text-cta-foreground"
-                    : "bg-muted-foreground text-background",
-                );
-                const style = { left: pct(i.from), width: `max(${pct(i.to - i.from + 1)}, 0.5rem)` };
-                const title = `${i.label} · ${i.kind === "event" ? "арга хэмжээ" : "тусгай өдөр"}`;
-                return i.saleEventId ? (
-                  <Link
-                    key={i.id}
-                    href={`/admin/sale-events/${i.saleEventId}?step=banner`}
-                    className={cls}
-                    style={style}
-                    title={title}
-                  >
-                    {body}
-                  </Link>
-                ) : (
-                  <Link key={i.id} href={`/admin/heroes/${i.id}`} className={cls} style={style} title={title}>
-                    {body}
-                  </Link>
-                );
-              })}
-            </div>
-            <div className="relative h-8">
-              {strip.seasons.map((s) => (
-                <div
-                  key={s.from}
-                  className={cn(
-                    "absolute top-0 flex h-8 items-center overflow-hidden border-r border-background px-1.5 text-xs",
-                    s.season ? SEASON_TONE[s.season] : "bg-secondary text-muted-foreground",
-                  )}
-                  style={{ left: pct(s.from), width: pct(s.to - s.from + 1) }}
-                  title={s.season ? SEASON_LABEL[s.season] : "Үндсэн баннер"}
-                >
-                  <span className="truncate">{s.season ? SEASON_LABEL[s.season] : "Үндсэн"}</span>
-                </div>
-              ))}
-            </div>
-            <div className="text-muted-foreground relative h-4 text-[11px] tabular-nums">
-              {MONTHS.map((m, i) => (
-                <span
-                  key={m}
-                  className="absolute"
-                  style={{ left: pct(Math.round((i * strip.days) / 12)) }}
-                >
-                  {m}-р сар
-                </span>
-              ))}
-            </div>
-            {strip.today !== null && (
-              <span
-                aria-hidden
-                className="bg-foreground absolute top-0 h-17.5 w-0.5"
-                style={{ left: pct(strip.today) }}
-              />
-            )}
-          </div>
-        </div>
-        <p className="text-muted-foreground text-sm text-pretty">
-          Доор улирал, дээр нь арга хэмжээ (дарахад студи нээгдэнэ) ба тусгай өдрийн баннер — тэд
-          улирлаас дээгүүр гарна. Босоо зураас — өнөөдөр.
-        </p>
-      </section>
-
       <section className="space-y-3" aria-labelledby="hb-special">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="hb-special" className="font-serif text-lg font-semibold">
             Тусгай өдрийн баннер (хямдралгүй)
           </h2>
-          <Button asChild size="sm">
-            <Link href="/admin/heroes/new">
-              <Plus />
-              Нэмэх
-            </Link>
-          </Button>
+          {specials.length > 0 && <AddSpecial />}
         </div>
         {specials.length === 0 ? (
-          <p className="text-muted-foreground bg-card rounded-lg p-4 text-sm">
-            Тусгай өдрийн баннер алга. Жишээ: Halloween, Шинэ жил — тодорхой хэдэн өдөр улирлын
-            баннерын оронд гарна.
-          </p>
+          <EmptyState
+            surface="card"
+            size="sm"
+            icon={CalendarDays}
+            title="Тусгай өдрийн баннер алга"
+            description="Halloween, Шинэ жил г.м. — тодорхой хэдэн өдөр улирлын баннерын оронд гарна."
+            action={<AddSpecial />}
+          />
         ) : (
           <ul role="list" className="bg-card divide-border divide-y rounded-lg">
             {specials.map((h) => {
@@ -263,7 +191,7 @@ export function HeroBoard({
                   <Badge variant={ended ? "secondary" : h.isActive ? "new" : "outline"}>
                     {ended ? "Дууссан" : h.isActive ? "Нийтэлсэн" : "Ноорог"}
                   </Badge>
-                  <Button asChild size="sm" variant="ghost">
+                  <Button asChild size="sm" variant="secondary">
                     <Link href={`/admin/heroes/${h.id}`}>Засах</Link>
                   </Button>
                 </li>
@@ -275,10 +203,36 @@ export function HeroBoard({
           Арга хэмжээний баннер →{" "}
           <Link href="/admin/sale-events" className="text-foreground inline-flex items-center gap-0.5 underline underline-offset-4">
             Арга хэмжээ
-            <ArrowUpRight className="size-3.5" aria-hidden />
+            <ArrowRight className="size-3.5" aria-hidden />
           </Link>
         </p>
       </section>
     </div>
+  );
+}
+
+function AddSpecial() {
+  return (
+    <Button asChild size="sm" className={CTA}>
+      <Link href="/admin/heroes/new">
+        <Plus />
+        Нэмэх
+      </Link>
+    </Button>
+  );
+}
+
+/** «Одоо нүүр хуудсанд» карт — засах газар руу бүхэлдээ дарагдана. */
+function CurrentCard({ href, children }: { href: string | null; children: ReactNode }) {
+  const cls = "bg-card flex flex-col gap-4 rounded-lg p-4 sm:flex-row sm:items-center";
+  if (!href) return <div className={cls}>{children}</div>;
+  return (
+    <Link href={href} className={cn(cls, "group hover:bg-accent")}>
+      {children}
+      <span className="text-muted-foreground group-hover:text-foreground inline-flex shrink-0 items-center gap-1 text-sm font-medium">
+        Засах
+        <ChevronRight className="size-4" aria-hidden />
+      </span>
+    </Link>
   );
 }

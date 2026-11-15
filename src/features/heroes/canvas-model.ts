@@ -207,6 +207,19 @@ export function canvasPreview(
   return { campaign, placeholders, invalid, sample };
 }
 
+/**
+ * Баннер бүрэн болоход дутуу зүйлс — админд яг юу дутууг хэлнэ
+ * (шар анхааруулга, идэвхгүй товчны шалтгаан). Хоосон = бүрэн.
+ */
+export function heroCanvasMissing(d: HeroCanvasDraft): string[] {
+  const out: string[] = [];
+  if (!d.desktopImage) out.push("компьютерын зураг");
+  if (!d.mobileImage) out.push("утасны зураг");
+  if (!d.title.trim()) out.push("гарчиг");
+  if (!d.primaryLabel.trim()) out.push("гол товчны бичиг");
+  return out;
+}
+
 /** Баннер бүрэн (D6): хоёр зураг + гарчиг + гол товчны бичиг. */
 export function heroCanvasComplete(d: HeroCanvasDraft): boolean {
   return Boolean(

@@ -91,7 +91,7 @@ export function HeroImageSource({
                 disabled={Boolean(t.off)}
                 onClick={() => setSource(selected ? null : t.key)}
                 className={cn(
-                  "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-50",
+                  "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50",
                   selected
                     ? "bg-cta text-cta-foreground"
                     : "text-muted-foreground hover:text-foreground",

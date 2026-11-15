@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { HeroAdminRow } from "./types";
-import { nowAndNext, seasonCards, specialHeroes, yearStrip } from "./board-model";
+import { nowAndNext, seasonCards, specialHeroes } from "./board-model";
 
 const IMG = { base: "b", widths: [1600], height1600: 571 };
 const MOB = { src: "m", width: 1600, height: 1200 };
@@ -71,23 +71,6 @@ describe("seasonCards", () => {
 describe("specialHeroes", () => {
   it("зөвхөн арга хэмжээ, улиралгүй мөр", () => {
     expect(specialHeroes(heroes).map((h) => h.id)).toEqual(["hw"]);
-  });
-});
-
-describe("yearStrip", () => {
-  const strip = yearStrip(heroes, [ev], 2026, at("2026-11-15"));
-  it("улирлын хэсгүүд: 1/1–8/31 Өвөл (Хавар дутуу), 9/1-ээс Намар, 12/1-ээс Өвөл", () => {
-    expect(strip.days).toBe(365);
-    expect(strip.seasons.map((s) => s.season)).toEqual(["winter", "autumn", "winter"]);
-    expect(strip.seasons[1].from).toBe(243); // 9/1
-    expect(strip.seasons[2].from).toBe(334); // 12/1
-  });
-  it("арга хэмжээ, тусгай өдөр дээр нь; өнөөдөр", () => {
-    expect(strip.items.map((i) => [i.label, i.kind, i.from, i.to])).toEqual([
-      ["Halloween", "special", 298, 303],
-      ["Black Friday", "event", 326, 336],
-    ]);
-    expect(strip.today).toBe(318);
   });
 });
 

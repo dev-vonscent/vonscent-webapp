@@ -74,6 +74,12 @@ export function seasonHeroAt<T extends SeasonRowLike>(
   };
 }
 
+/** 'MM-DD' → «3-р сарын 1» (админы UI — «9-р сар» сонгогчтой ижил хэлбэр). */
+export function mdLong(md: string): string {
+  const [m, d] = md.split("-").map(Number);
+  return `${m}-р сарын ${d}`;
+}
+
 /** 'MM-DD' → «3/1». */
 export function mdLabel(md: string): string {
   const [m, d] = md.split("-").map(Number);

@@ -288,7 +288,7 @@ export function HeroAiPanel({
               aria-checked={theme === k}
               onClick={() => pickTheme(k)}
               className={cn(
-                "h-8 rounded-full px-3 text-[13px] font-medium",
+                "h-8 rounded-full px-3 text-sm font-medium",
                 theme === k
                   ? "bg-cta text-cta-foreground"
                   : "bg-secondary text-muted-foreground hover:text-foreground",
@@ -304,13 +304,13 @@ export function HeroAiPanel({
         label={
           theme === "custom" ? "Сэдвийн тайлбар" : "Нэмэлт тайлбар (заавал биш)"
         }
-        hint={`${extra.length}/${HERO_AI_LIMITS.extraMax} · Англиар бичвэл тогтвортой.`}
+        hint={`${extra.length}/${HERO_AI_LIMITS.extraMax} · Монголоор ч болно, англиар бичвэл үр дүн илүү тогтвортой.`}
       >
         <textarea
           rows={2}
           maxLength={HERO_AI_LIMITS.extraMax}
           value={extra}
-          placeholder="жишээ: more gold accents, softer light"
+          placeholder="жишээ: алтлаг өнгө их, зөөлөн гэрэл (more gold accents, softer light)"
           onChange={(e) => setExtra(e.target.value)}
           className="bg-secondary field-edge flex w-full rounded-md px-3 py-2 text-base md:text-sm"
         />
@@ -329,16 +329,25 @@ export function HeroAiPanel({
             болбол ашиглана.
           </InfoTip>
         </span>
-        <LoadingButton
-          type="button"
-          className="bg-cta text-cta-foreground hover:bg-cta/90"
-          loading={starting === "desktop"}
-          disabled={starting !== null || (theme === "custom" && !extra.trim())}
-          onClick={() => void startDesktop()}
-        >
-          <Sparkles />
-          Компьютерын зураг үүсгэх
-        </LoadingButton>
+        <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+          {/* Идэвхгүй товч шалтгаангүй байх ёсгүй. */}
+          {theme === "custom" && !extra.trim() && (
+            <p id="hero-ai-blocked" className="text-muted-foreground text-xs">
+              «Өөрөө бичих» сонгосон тул сэдвээ дээр тайлбарлана уу.
+            </p>
+          )}
+          <LoadingButton
+            type="button"
+            className="bg-cta text-cta-foreground hover:bg-cta/90"
+            loading={starting === "desktop"}
+            disabled={starting !== null || (theme === "custom" && !extra.trim())}
+            aria-describedby={theme === "custom" && !extra.trim() ? "hero-ai-blocked" : undefined}
+            onClick={() => void startDesktop()}
+          >
+            <Sparkles />
+            Компьютерын зураг үүсгэх
+          </LoadingButton>
+        </div>
       </div>
 
       {jobs.length > 0 && (

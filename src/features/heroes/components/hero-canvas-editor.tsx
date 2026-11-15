@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ArrowDown, ImageOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { ProductOption } from "@/features/admin/lib/product-option";
 import type { HeroThemeKey } from "@/lib/ai/hero-prompt";
@@ -25,6 +25,7 @@ import type { HeroAiResult } from "./hero-ai-panel";
 import { HeroFrame } from "./hero-frame";
 import { HeroImageSource } from "./hero-image-source";
 import { HeroLinkPicker } from "./hero-link-picker";
+import { toneWarning, useImageTone } from "../use-image-tone";
 
 const VIEW_WIDTH: Record<CanvasView, number> = { desktop: 1440, mobile: 390 };
 
@@ -59,7 +60,7 @@ function Segment<T extends string>({
             disabled={disabled}
             onClick={() => onChange(v)}
             className={cn(
-              "h-7 rounded-full px-3 text-[13px] font-medium disabled:opacity-60",
+              "h-7 rounded-full px-3 text-sm font-medium disabled:opacity-60",
               value === v
                 ? "bg-cta text-cta-foreground"
                 : "text-muted-foreground hover:text-foreground",
@@ -90,6 +91,7 @@ export function HeroCanvasEditor({
   defaultProducts,
   altPlaceholder,
   disabled = false,
+  showInvalid = true,
 }: {
   value: HeroCanvasDraft;
   onChange: (next: HeroCanvasDraft) => void;
@@ -102,6 +104,11 @@ export function HeroCanvasEditor({
   /** Зургийн тайлбар хоосон үед хадгалагдах өгөгдмөл. */
   altPlaceholder?: string;
   disabled?: boolean;
+  /**
+   * Заавал талбарын улаан алдааг харуулах эсэх. Шинэ баннерыг анх нээхэд
+   * хэрэглэгч юу ч хийгээгүй байхад улаан гаргахгүй — хадгалах гэж оролдсоны дараа.
+   */
+  showInvalid?: boolean;
 }) {
   const [view, setView] = React.useState<CanvasView>("desktop");
   const [focused, setFocused] = React.useState<HeroField | null>(null);
@@ -124,12 +131,18 @@ export function HeroCanvasEditor({
       max: HERO_FIELD_MAX,
       labels: HERO_FIELD_LABEL,
       placeholders: preview.placeholders,
-      invalid: preview.invalid,
+      invalid: showInvalid ? preview.invalid : [],
     };
-  }, [disabled, value, view, preview]);
+  }, [disabled, value, view, preview, showInvalid]);
 
   const sample =
     view === "desktop" ? preview.sample.desktop : preview.sample.mobile;
+  const shownImage = preview.campaign.image;
+  const tone = useImageTone(
+    !preview.sample.desktop && shownImage.kind === "static" ? shownImage.src : null,
+  );
+  const contrast = disabled ? null : toneWarning(tone, value.dark);
+  const imageMissing = !value.desktopImage || !value.mobileImage;
 
   function onImages(r: HeroAiResult) {
     let next = value;
@@ -151,6 +164,69 @@ export function HeroCanvasEditor({
 
   const focusedValue = focused ? heroFieldValue(value, focused) : "";
   const focusedMax = focused ? HERO_FIELD_MAX[focused] : 0;
+
+  const linksSection = (
+    <section className="space-y-2">
+      <h3 className="text-sm font-semibold">Товч дарахад хаашаа очих вэ</h3>
+      <div className="bg-card space-y-0.5 rounded-lg p-1">
+        <HeroLinkPicker
+          label={<ButtonLabel kind="Гол товч" text={value.primaryLabel} />}
+          value={value.primaryTarget}
+          options={linkOptions}
+          disabled={disabled}
+          highlighted={lastButton === "primary"}
+          onChange={(t) => onChange({ ...value, primaryTarget: t })}
+        />
+        {value.secondaryLabel.trim() && value.secondaryTarget && (
+          <HeroLinkPicker
+            label={
+              <ButtonLabel kind="Нэмэлт товч" text={value.secondaryLabel} />
+            }
+            value={value.secondaryTarget}
+            options={linkOptions}
+            disabled={disabled}
+            highlighted={lastButton === "secondary"}
+            onChange={(t) => onChange({ ...value, secondaryTarget: t })}
+            onRemove={() => onChange(withHeroField(value, "secondary", ""))}
+          />
+        )}
+      </div>
+    </section>
+  );
+  const imageSection = disabled ? null : (
+    <section id="hero-image" className="scroll-mt-36 space-y-3">
+      <h3 className="text-sm font-semibold">Зураг</h3>
+      <HeroImageSource
+        groupId={groupId}
+        heroId={heroId}
+        aiConfigured={aiConfigured}
+        desktopImage={value.desktopImage}
+        mobileImage={value.mobileImage}
+        defaultTheme={defaultTheme}
+        defaultProducts={defaultProducts}
+        onImages={onImages}
+      />
+      <details className="group text-sm">
+        <summary className="text-muted-foreground hover:text-foreground w-fit cursor-pointer select-none">
+          Зургийн тайлбар (SEO)
+        </summary>
+        <label className="mt-3 block space-y-1.5">
+          <span className="sr-only">Зургийн тайлбар</span>
+          <Input
+            value={value.imageAlt}
+            maxLength={HERO_LIMITS.imageAlt}
+            placeholder={altPlaceholder}
+            onChange={(e) =>
+              onChange({ ...value, imageAlt: e.target.value })
+            }
+          />
+          <span className="text-muted-foreground block text-xs">
+            Хараагүй хэрэглэгч, Google-д зориулсан тайлбар.
+          </span>
+        </label>
+      </details>
+    </section>
+  );
 
   return (
     <div className="space-y-6">
@@ -180,8 +256,37 @@ export function HeroCanvasEditor({
           />
         </div>
 
-        <div className="bg-card relative rounded-lg p-2">
-          <div className={cn(view === "mobile" && "mx-auto max-w-97.5")}>
+        <div className="bg-card relative space-y-2 rounded-lg p-2">
+          {/* Зураггүй үед жишээ зураг харагдана — «тавигдсан» гэж андуурахгүйн
+              тулд frame-ийн ДЭЭР тод мөр (жижиг badge хангалтгүй байв) ба
+              жишээ зураг саарал. */}
+          {sample && (
+            <div className="bg-secondary flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-3 py-2 text-sm">
+              <ImageOff className="text-muted-foreground size-4 shrink-0" aria-hidden />
+              <span className="min-w-0 flex-1 text-pretty">
+                <span className="font-medium">Жишээ зураг.</span>{" "}
+                <span className="text-muted-foreground">
+                  {view === "desktop" ? "Компьютерын" : "Утасны"} зураг алга — дэлгүүрт энэ
+                  зураг гарахгүй.
+                </span>
+              </span>
+              {!disabled && (
+                <a
+                  href="#hero-image"
+                  className="inline-flex items-center gap-1 font-medium underline underline-offset-4"
+                >
+                  Зураг нэмэх
+                  <ArrowDown className="size-3.5" aria-hidden />
+                </a>
+              )}
+            </div>
+          )}
+          <div
+            className={cn(
+              view === "mobile" && "mx-auto max-w-97.5",
+              sample && "grayscale",
+            )}
+          >
             <HeroFrame
               key={view}
               width={VIEW_WIDTH[view]}
@@ -201,35 +306,35 @@ export function HeroCanvasEditor({
               onTitleLines={view === "desktop" ? setTitleLines : undefined}
             />
           </div>
-          {sample && (
-            <span className="bg-background/90 text-foreground absolute top-4 right-4 rounded-full px-2.5 py-1 text-xs font-medium sm:top-5 sm:right-5">
-              Жишээ зураг
-            </span>
-          )}
         </div>
 
-        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 text-sm">
-          <p className="text-muted-foreground min-w-0 flex-1 text-pretty">
-            {disabled
-              ? "Дууссан тул засагдахгүй."
-              : view === "mobile"
-                ? "Текст дээр дарж засна. Утсанд тайлбар богино байг."
-                : "Текст дээр дарж засна."}
-          </p>
+        {/* Тоолуур тайлбарын ард шууд — баруун захад хол байхаар анзаарагддаггүй байв. */}
+        <p className="text-muted-foreground text-sm text-pretty">
+          {disabled
+            ? "Дууссан тул засагдахгүй."
+            : view === "mobile"
+              ? "Текст дээр дарж засна. Утсанд тайлбар богино байг."
+              : "Текст дээр дарж засна."}
           {focused && (
-            <p
+            <span
               className={cn(
-                "shrink-0 tabular-nums",
+                "ml-2 font-medium tabular-nums",
                 focusedValue.length >= focusedMax
                   ? "text-destructive"
-                  : "text-muted-foreground",
+                  : "text-foreground",
               )}
               aria-live="polite"
             >
               {HERO_FIELD_LABEL[focused]} · {focusedValue.length}/{focusedMax}
-            </p>
+            </span>
           )}
-        </div>
+        </p>
+        {contrast && (
+          <p className="text-warning flex items-start gap-1.5 text-sm text-pretty" role="status">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+            {contrast}
+          </p>
+        )}
         {view === "desktop" && titleLines > 2 && (
           <p
             className="text-warning flex items-center gap-1.5 text-sm"
@@ -239,7 +344,7 @@ export function HeroCanvasEditor({
             Гарчиг {titleLines} мөр болж байна — богиносгоно уу.
           </p>
         )}
-        {preview.invalid.length > 0 && (
+        {showInvalid && preview.invalid.length > 0 && (
           <p className="text-destructive text-sm" role="status">
             {preview.invalid.map((f) => HERO_FIELD_LABEL[f]).join(", ")} хоосон
             байна.
@@ -257,66 +362,17 @@ export function HeroCanvasEditor({
         )}
       </section>
 
-      <section className="space-y-2">
-        <h3 className="text-sm font-semibold">Товч дарахад хаашаа очих вэ</h3>
-        <div className="bg-card space-y-0.5 rounded-lg p-1">
-          <HeroLinkPicker
-            label={<ButtonLabel kind="Гол товч" text={value.primaryLabel} />}
-            value={value.primaryTarget}
-            options={linkOptions}
-            disabled={disabled}
-            highlighted={lastButton === "primary"}
-            onChange={(t) => onChange({ ...value, primaryTarget: t })}
-          />
-          {value.secondaryLabel.trim() && value.secondaryTarget && (
-            <HeroLinkPicker
-              label={
-                <ButtonLabel kind="Нэмэлт товч" text={value.secondaryLabel} />
-              }
-              value={value.secondaryTarget}
-              options={linkOptions}
-              disabled={disabled}
-              highlighted={lastButton === "secondary"}
-              onChange={(t) => onChange({ ...value, secondaryTarget: t })}
-              onRemove={() => onChange(withHeroField(value, "secondary", ""))}
-            />
-          )}
-        </div>
-      </section>
-
-      {!disabled && (
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold">Зураг</h3>
-          <HeroImageSource
-            groupId={groupId}
-            heroId={heroId}
-            aiConfigured={aiConfigured}
-            desktopImage={value.desktopImage}
-            mobileImage={value.mobileImage}
-            defaultTheme={defaultTheme}
-            defaultProducts={defaultProducts}
-            onImages={onImages}
-          />
-          <details className="group text-sm">
-            <summary className="text-muted-foreground hover:text-foreground w-fit cursor-pointer select-none">
-              Зургийн тайлбар (SEO)
-            </summary>
-            <label className="mt-3 block space-y-1.5">
-              <span className="sr-only">Зургийн тайлбар</span>
-              <Input
-                value={value.imageAlt}
-                maxLength={HERO_LIMITS.imageAlt}
-                placeholder={altPlaceholder}
-                onChange={(e) =>
-                  onChange({ ...value, imageAlt: e.target.value })
-                }
-              />
-              <span className="text-muted-foreground block text-xs">
-                Хараагүй хэрэглэгч, Google-д зориулсан тайлбар.
-              </span>
-            </label>
-          </details>
-        </section>
+      {/* Зураг дутуу бол хамгийн чухал ажил нь зураг — холбоосоос ДЭЭР. */}
+      {imageMissing ? (
+        <>
+          {imageSection}
+          {linksSection}
+        </>
+      ) : (
+        <>
+          {linksSection}
+          {imageSection}
+        </>
       )}
     </div>
   );

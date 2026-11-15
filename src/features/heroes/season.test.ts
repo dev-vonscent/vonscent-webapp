@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { HeroSeason } from "@/lib/constants";
-import { mdLabel, seasonBoundaryWithin, seasonHeroAt, type SeasonRowLike } from "./season";
+import { mdLabel, mdLong, seasonBoundaryWithin, seasonHeroAt, type SeasonRowLike } from "./season";
 
 const IMG = { base: "b", widths: [1600], height1600: 571 };
 const MOB = { src: "m", width: 1600, height: 1200 };
@@ -86,4 +86,5 @@ describe("seasonBoundaryWithin", () => {
 
 it("mdLabel", () => {
   expect(mdLabel("03-01")).toBe("3/1");
+  expect(mdLong("11-22")).toBe("11-р сарын 22");
 });

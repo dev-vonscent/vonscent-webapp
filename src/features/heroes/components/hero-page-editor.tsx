@@ -21,8 +21,9 @@ import { dayEndIso, dayStartIso } from "@/features/admin/lib/date-range";
 import { adminFetch } from "@/features/admin/lib/mutate";
 import { HERO_LIMITS, SEASON_LABEL } from "@/lib/constants";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import { heroInputSchema } from "@/lib/validators/hero";
-import { heroCanvasComplete } from "../canvas-model";
+import { heroCanvasMissing } from "../canvas-model";
 import { daysInMonth, heroPagePayload, toMd, type HeroPageDraft } from "../hero-page-model";
 import { targetOutsidePeriod } from "../lib";
 import { heroLinkOptions } from "../link-presets";
@@ -65,6 +66,11 @@ export function HeroPageEditor({
   const [id, setId] = React.useState(initialId);
   const [busy, setBusy] = React.useState<"save" | "publish" | "delete" | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  /**
+   * Хадгалах гэж оролдсон эсэх. Шинэ (хадгалагдаагүй) баннерт «Гарчиг хоосон»
+   * г.м. улаан алдааг анх нээхэд биш, оролдсоны дараа л харуулна.
+   */
+  const [attempted, setAttempted] = React.useState(false);
   const dirty = JSON.stringify(draft) !== baseline;
   const isSeason = draft.kind === "season";
 
@@ -97,6 +103,7 @@ export function HeroPageEditor({
   }, [draft, events]);
 
   async function save(publish: boolean) {
+    setAttempted(true);
     const payload = heroPagePayload(draft, { publish, productIds });
     const parsed = heroInputSchema.safeParse(payload);
     if (!parsed.success) {
@@ -191,29 +198,64 @@ export function HeroPageEditor({
       ? `${SEASON_LABEL[draft.season]} — улирлын баннер`
       : draft.name.trim() || "Тусгай өдрийн баннер";
   const [month, day] = draft.kind === "season" ? draft.startMd.split("-").map(Number) : [1, 1];
-  const complete = heroCanvasComplete(draft.canvas);
+  // Дутуу зүйлс: тусгай өдөрт нийтлэхэд нэр, хугацаа ч хэрэгтэй.
+  const missing = [
+    ...(draft.kind === "special" && !draft.name.trim() ? ["нэр"] : []),
+    ...(draft.kind === "special" && !draft.startsOn ? ["эхлэх өдөр"] : []),
+    ...(draft.kind === "special" && !draft.endsOn ? ["дуусах өдөр"] : []),
+    ...heroCanvasMissing(draft.canvas),
+  ];
+  const complete = missing.length === 0;
+  // Нийтлээгүй тусгай баннерыг дутуу үед нийтлэхгүй — шалтгаан нь доорх шар мөрөнд.
+  const publishBlocked = draft.kind === "special" && !published && !complete;
+  const status = dirty
+    ? "Хадгалаагүй өөрчлөлт"
+    : live
+      ? "Одоо нүүр хуудсанд"
+      : !complete
+        ? "Дутуу"
+        : id
+          ? "Хадгалагдсан"
+          : "Шинэ";
 
   return (
     <div className="space-y-6">
       {confirmDialog}
-      <header className="bg-card field-edge sticky top-16 z-30 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg px-4 py-3 lg:top-2">
+      {/* Утсанд нэг мөрөнд: буцах дүрс · богино гарчиг · төлөв · товч (өмнө нь
+          гарчиг «Намар — улирлын…» болж тасарч, товч доод мөрөнд унадаг байв). */}
+      <header className="bg-card field-edge sticky top-16 z-30 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg p-3 sm:gap-x-4 sm:px-4 lg:top-2">
         <Link
           href={BOARD}
           onClick={(e) => void leave(e)}
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm"
+          aria-label="Нүүрний баннер руу буцах"
+          className="text-muted-foreground hover:text-foreground -m-1 inline-flex items-center gap-1.5 p-1 text-sm"
         >
-          <ArrowLeft className="size-4" />
-          Нүүрний баннер
+          <ArrowLeft className="size-4" aria-hidden />
+          <span className="hidden sm:inline">Нүүрний баннер</span>
         </Link>
-        <h1 className="min-w-0 flex-1 basis-48 truncate font-serif text-xl font-semibold">{title}</h1>
-        <p className="text-muted-foreground text-sm">
-          {dirty ? "Хадгалаагүй өөрчлөлт" : live ? "Одоо нүүр хуудсанд" : id ? "Хадгалагдсан" : "Шинэ"}
+        <h1 className="min-w-0 flex-1 truncate font-serif text-xl font-semibold sm:basis-48">
+          {draft.kind === "season" ? (
+            <>
+              <span className="sm:hidden">{SEASON_LABEL[draft.season]}</span>
+              <span className="hidden sm:inline">{title}</span>
+            </>
+          ) : (
+            title
+          )}
+        </h1>
+        <p
+          className={cn(
+            "text-sm whitespace-nowrap",
+            status === "Дутуу" ? "text-warning" : "text-muted-foreground",
+          )}
+        >
+          {status}
         </p>
         {draft.kind === "special" && (
           <LoadingButton
             type="button"
             size="sm"
-            variant="outline"
+            variant="secondary"
             loading={busy === "save"}
             disabled={busy !== null || (!dirty && !published && id !== null)}
             onClick={() => void save(false)}
@@ -225,7 +267,9 @@ export function HeroPageEditor({
           type="button"
           size="sm"
           loading={busy === (isSeason ? "save" : "publish")}
-          disabled={busy !== null || (isSeason && !dirty && id !== null)}
+          disabled={busy !== null || (isSeason && !dirty && id !== null) || publishBlocked}
+          aria-describedby={!complete ? "hero-missing" : undefined}
+          className="bg-cta text-cta-foreground hover:bg-cta/90"
           onClick={() => void save(!isSeason)}
         >
           {isSeason ? "Хадгалах" : published ? "Хадгалах" : "Нийтлэх"}
@@ -314,11 +358,18 @@ export function HeroPageEditor({
         )}
 
         {!complete && (
-          <p className="text-warning flex items-start gap-1.5 text-sm text-pretty" role="status">
+          <p
+            id="hero-missing"
+            className="text-warning flex items-start gap-1.5 text-sm text-pretty"
+            role="status"
+          >
             <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
-            {isSeason
-              ? "Компьютер ба утасны зураг, гарчиг, товчны бичиг бүрэн болмогц нүүр хуудсанд гарна."
-              : "Нийтлэхийн өмнө компьютер ба утасны зураг оруулна уу."}
+            <span className="min-w-0 flex-1">
+              Дутуу: {missing.join(", ")}.{" "}
+              {isSeason
+                ? "Бүрэн болмогц нүүр хуудсанд гарна, тэр болтол өмнөх улирлынх үргэлжилнэ."
+                : "Бүрэн болмогц нийтэлж болно."}
+            </span>
           </p>
         )}
         {outside && (
@@ -338,6 +389,7 @@ export function HeroPageEditor({
           defaultTheme={draft.kind === "season" ? draft.season : "custom"}
           defaultProducts={[]}
           altPlaceholder={`Хоосон бол «${title} — нүүрний баннер»`}
+          showInvalid={attempted || id !== null}
         />
       </section>
 
