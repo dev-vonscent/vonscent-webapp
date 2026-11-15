@@ -391,6 +391,25 @@ async function main() {
     check("туг хаалттай → бичилт FEATURE_DISABLED", /FEATURE_DISABLED/.test(off?.message ?? ""), off?.message);
   });
 
+  await scenario(c, "11. Review-ийн засвар (0186)", async () => {
+    const ev = await addEvent(c, "hero-uniq");
+    await addHero(c, { event: ev });
+    const second = await errorOf(
+      c,
+      `insert into heroes (name, sale_event_id, priority, is_active, title, primary_label, primary_target)
+       values ('dup', $1, 10, false, 't', 'b', '{"type":"path","href":"/"}')`,
+      [ev],
+    );
+    check("нэг арга хэмжээнд хоёр баннер → heroes_sale_event_uniq", /heroes_sale_event_uniq/.test(second?.message ?? ""), second?.message);
+    const other = await addEvent(c, "hero-uniq-2");
+    check("өөр арга хэмжээнд баннер болно", Boolean(await addHero(c, { event: other })));
+    const priv = await c.query<{ anon: boolean; auth: boolean }>(
+      `select has_function_privilege('anon', 'season_hero_at(timestamptz)', 'execute') anon,
+              has_function_privilege('authenticated', 'season_hero_at(timestamptz)', 'execute') auth`,
+    );
+    check("season_hero_at — anon/authenticated дуудаж чадахгүй", !priv.rows[0].anon && !priv.rows[0].auth, priv.rows[0]);
+  });
+
   await c.end();
   console.log(failed ? `\n✖ ${failed} шалгалт унасан.` : "\n✅ Бүх шалгалт амжилттай.");
   process.exit(failed ? 1 : 0);

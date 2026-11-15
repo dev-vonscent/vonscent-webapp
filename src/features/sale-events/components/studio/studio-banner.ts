@@ -26,6 +26,11 @@ export interface BannerState {
   draft: HeroCanvasDraft | null;
   /** «Энэ арга хэмжээнд баннер хэрэггүй». */
   skip: boolean;
+  /**
+   * Зурагт орсон үнэртнүүд (`heroes.product_ids`, 0185). Студи засдаггүй —
+   * хадгалах бүрт мөрийнхийг буцааж явуулна, эс бөгөөс Zod-ын `[]` дарна.
+   */
+  productIds: string[];
 }
 
 export const canvasFromRow = canvasFromHero;
@@ -40,7 +45,7 @@ export function initialBannerState(input: {
   copy?: { fromSlug: string; toSlug: string };
 }): BannerState {
   const { row, newGroupId, copy } = input;
-  if (!row) return { id: null, groupId: newGroupId, draft: null, skip: false };
+  if (!row) return { id: null, groupId: newGroupId, draft: null, skip: false, productIds: [] };
   const draft = canvasFromRow(row);
   if (copy) {
     return {
@@ -52,10 +57,17 @@ export function initialBannerState(input: {
         secondaryTarget: rebindEventTarget(draft.secondaryTarget, [copy.fromSlug], copy.toSlug),
       },
       skip: !row.isActive,
+      productIds: row.productIds,
     };
   }
   // Идэвхгүй мөр = «баннер хэрэггүй» гэж унтраасан (D6 — устгахгүй).
-  return { id: row.id, groupId: row.id, draft, skip: !row.isActive && heroCanvasComplete(draft) };
+  return {
+    id: row.id,
+    groupId: row.id,
+    draft,
+    skip: !row.isActive && heroCanvasComplete(draft),
+    productIds: row.productIds,
+  };
 }
 
 /** Арга хэмжээний ③-ын хамгийн их хувь (бэлэн текстэд). */
@@ -126,6 +138,7 @@ export function bannerPayload(input: {
     mobileImage: d.mobileImage,
     imageAlt: d.imageAlt.trim() || defaultImageAlt(event.name),
     dark: d.dark,
+    productIds: s.productIds,
   };
 }
 

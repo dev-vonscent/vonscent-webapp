@@ -137,6 +137,12 @@ export function heroWriteError(message: string) {
       { status: 409 },
     );
   }
+  if (/heroes_sale_event_uniq/.test(message)) {
+    return NextResponse.json(
+      { error: "Энэ арга хэмжээнд баннер аль хэдийн байна — хуудсаа сэргээнэ үү." },
+      { status: 409 },
+    );
+  }
   if (/heroes_active_images/.test(message)) {
     return NextResponse.json(
       { error: "Нийтлэхийн өмнө desktop ба утасны зураг оруулна уу." },
@@ -175,11 +181,14 @@ export type HeroImageResult =
  * утас 4:3 → 1600 webp q85. `processImage`-ийн preset-үүд 1600-аар
  * хязгаарладаг тул өөрийн sharp алхам. Зам давтагдашгүй
  * (`hero/<groupId>/<uuid>-<w>.webp`) — CDN/Safari кэш (prompts/hero.md §4).
+ * AI ажлаас бол `gen-<jobId>-<8>` — аль ажлын зураг баннерт байгааг URL-аас
+ * нь танина (`generationIdOf`, schema-гүй).
  */
 export async function processHeroImage(
   bytes: ArrayBuffer | Buffer,
   kind: "desktop" | "mobile",
   groupId: string,
+  sourceJobId?: string,
 ): Promise<HeroImageResult> {
   const sharp = await sharpLib();
   const input = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
@@ -221,7 +230,9 @@ export async function processHeroImage(
     .stats();
   const suggestDark = (stats.channels[0]?.mean ?? 255) < 110;
 
-  const id = crypto.randomUUID();
+  const id = sourceJobId
+    ? `gen-${sourceJobId}-${crypto.randomUUID().slice(0, 8)}`
+    : crypto.randomUUID();
   if (kind === "desktop") {
     const d = HERO_IMAGE.desktop;
     const base = `hero/${groupId}/${id}`;

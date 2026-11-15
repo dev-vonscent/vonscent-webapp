@@ -7,7 +7,7 @@
  * Өвөл = өвлийн зураг, Намар = үндсэн (v4) зураг. Хавар, Зун хоосон — админ
  * «Нүүрний баннер» хуудаснаас AI-аар эсвэл зураг оруулж бэлдэнэ; хоосон улирлыг
  * өмнөх нь нөхнө. Аль хэдийн байгаа улирлыг алгасна (дахин ажиллуулж болно).
- * `hero_admin` туг хаалттай бол бичилт `FEATURE_DISABLED` — юу ч үүсэхгүй.
+ * `hero_admin` туг хаалттай бол эхэндээ зогсоно — storage-д ч юу ч оруулахгүй.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -56,6 +56,17 @@ async function upload(local: string, dest: string): Promise<string> {
 
 async function main() {
   console.log(`→ ${new URL(url!).host}`);
+  // Туг хаалттай санд (prod) storage-д ч юу ч хуримтлуулахгүй (CLAUDE.md).
+  const { data: flag, error: flagErr } = await sb
+    .from("feature_flags")
+    .select("enabled")
+    .eq("key", "hero_admin")
+    .maybeSingle();
+  if (flagErr) throw new Error(flagErr.message);
+  if (!flag?.enabled) {
+    console.log("• `hero_admin` туг хаалттай — юу ч хийсэнгүй.");
+    return;
+  }
   const { data: existing, error } = await sb
     .from("heroes")
     .select("season")
@@ -69,8 +80,10 @@ async function main() {
       continue;
     }
     const dir = `hero/season-${s.season}-seed`;
-    for (const w of WIDTHS) await upload(`${s.desktop}-${w}.webp`, `${dir}/desktop-${w}.webp`);
-    const first = await upload(`${s.desktop}-1600.webp`, `${dir}/desktop-1600.webp`);
+    const urls: string[] = [];
+    for (const w of WIDTHS)
+      urls.push(await upload(`${s.desktop}-${w}.webp`, `${dir}/desktop-${w}.webp`));
+    const first = urls[0]!; // WIDTHS[0] = 1600
     const mobile = await upload(s.mobile, `${dir}/mobile.webp`);
     const copy = defaultSeasonCopy(s.season);
     const { error: e } = await sb.from("heroes").insert({

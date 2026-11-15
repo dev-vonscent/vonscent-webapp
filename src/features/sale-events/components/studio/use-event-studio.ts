@@ -336,43 +336,41 @@ export function useEventStudio(input: {
   }, [mode, dirty, draft, banner, autosave]);
 
   // Хуудаснаас гарахад (sidebar-ийн холбоос г.м.) ноорогийн сүүлийн өөрчлөлтийг
-  // явуулна — хариуг хүлээхгүй. Хүчингүй ноорог сервер рүү очихгүй.
+  // явуулна. Autosave-ийн дараалалд орно: явж буй хадгалалт дуусч (шинэ
+  // баннерын id `live`-д орсны) дараа — давхар POST үүсэхгүй; арга хэмжээ →
+  // баннер дарааллаар — шинэ slug-ийг баннерын товч олно. Хүчингүй ноорог
+  // сервер рүү очихгүй.
   React.useEffect(
     () => () => {
-      const { draft: d, baseline: b, meta: m } = live.current;
-      if (!id || !m || m.isActive || JSON.stringify(d) === b) return;
-      const parsed = saleEventInputSchema.safeParse(draftToInput(d, false));
-      if (!parsed.success) return;
-      void adminFetch(`/api/admin/sale-events/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(parsed.data),
-        keepalive: true,
+      void enqueue(async () => {
+        const { draft: d, baseline: b, meta: m } = live.current;
+        if (!id || !m || m.isActive) return;
+        if (JSON.stringify(d) !== b) {
+          const parsed = saleEventInputSchema.safeParse(draftToInput(d, false));
+          if (!parsed.success) return;
+          const res = await adminFetch(`/api/admin/sale-events/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(parsed.data),
+            keepalive: true,
+          });
+          if (!res.ok) return;
+        }
+        if (!bannerEnabled) return;
+        const { banner: s, bannerSaved: saved, knownSlugs } = live.current;
+        const payload = bannerPayload({ state: s, event: d, eventId: id, knownSlugs });
+        if (!payload || json(payload) === saved) return;
+        const parsed = heroInputSchema.safeParse(payload);
+        if (!parsed.success) return;
+        await adminFetch(s.id ? `/api/admin/heroes/${s.id}` : "/api/admin/heroes", {
+          method: s.id ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(parsed.data),
+          keepalive: true,
+        });
       });
     },
-    [id],
-  );
-  React.useEffect(
-    () => () => {
-      const { draft: d, meta: m, banner: s, bannerSaved: saved } = live.current;
-      if (!id || !m || m.isActive || !bannerEnabled) return;
-      const payload = bannerPayload({
-        state: s,
-        event: d,
-        eventId: id,
-        knownSlugs: live.current.knownSlugs,
-      });
-      if (!payload || json(payload) === saved) return;
-      const parsed = heroInputSchema.safeParse(payload);
-      if (!parsed.success) return;
-      void adminFetch(s.id ? `/api/admin/heroes/${s.id}` : "/api/admin/heroes", {
-        method: s.id ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(parsed.data),
-        keepalive: true,
-      });
-    },
-    [id, bannerEnabled],
+    [id, bannerEnabled, enqueue],
   );
 
   // Хадгалаагүй өөрчлөлттэй таб хаах / сэргээх (D7).

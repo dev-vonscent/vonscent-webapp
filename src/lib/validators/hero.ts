@@ -141,14 +141,3 @@ export const heroInputSchema = z
   });
 
 export type HeroInput = z.infer<typeof heroInputSchema>;
-
-export function heroFieldErrors(
-  error: z.ZodError,
-): Partial<Record<keyof HeroInput, string>> {
-  const out: Partial<Record<keyof HeroInput, string>> = {};
-  for (const issue of error.issues) {
-    const key = issue.path[0] as keyof HeroInput | undefined;
-    if (key && !out[key]) out[key] = issue.message;
-  }
-  return out;
-}

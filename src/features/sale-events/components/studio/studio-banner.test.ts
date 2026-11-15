@@ -93,6 +93,14 @@ describe("bannerPayload", () => {
     expect(bannerPayload({ ...args, state: { ...s, skip: true } })?.isActive).toBe(false);
   });
 
+  it("мөрийн product_ids-ийг хадгалах бүрт буцааж явуулна (Zod-ын [] дарахгүй)", () => {
+    const ids = ["11111111-1111-4111-8111-111111111111"];
+    const s = initialBannerState({ row: row({ productIds: ids }), newGroupId: "g" });
+    const p = bannerPayload({ state: s, event: event(), eventId: EVENT_ID, knownSlugs: [] });
+    expect(p?.productIds).toEqual(ids);
+    expect(heroInputSchema.parse(p).productIds).toEqual(ids);
+  });
+
   it("холбоос өөрчлөгдөхөд энэ арга хэмжээ рүү заасан товч дагана (D5)", () => {
     const s = initialBannerState({
       row: row({

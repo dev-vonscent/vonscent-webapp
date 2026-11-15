@@ -133,7 +133,7 @@ begin
        at time zone 'Asia/Ulaanbaatar');
 end $$;
 
-revoke all on function season_hero_at(timestamptz) from public;
+revoke all on function season_hero_at(timestamptz) from public, anon, authenticated;
 grant execute on function season_hero_at(timestamptz) to service_role;
 
 comment on function season_hero_at(timestamptz) is
