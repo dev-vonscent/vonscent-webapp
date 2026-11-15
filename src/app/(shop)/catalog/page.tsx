@@ -138,21 +138,24 @@ export default async function CatalogPage({
   return (
     <FilterQueryProvider>
       <div className="mx-auto max-w-420 px-4 py-8 md:px-8">
-        <div className="mb-6">
-          <h1
-            data-page-title
-            className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl"
-          >
-            {filters.search ? `«${filters.search}» хайлтын үр дүн` : "Каталог"}
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {counts || "0 бараа"}
-          </p>
-        </div>
-
-        {/* Эрэмбэ desktop-д энд, утсан дээр удирдлагын мөрөнд. */}
-        <div className="hidden items-center justify-end py-2 lg:flex">
-          <CatalogSort />
+        {/* Эрэмбэ desktop-д гарчигтай нэг мөрөнд (тусдаа мөр нь гарчиг ба
+            шүүлтүүрийн хооронд ~100px хоосон зай үүсгэдэг байв), утсан дээр
+            удирдлагын мөрөнд. */}
+        <div className="mb-6 flex items-end justify-between gap-4">
+          <div className="min-w-0">
+            <h1
+              data-page-title
+              className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl"
+            >
+              {filters.search ? `«${filters.search}» хайлтын үр дүн` : "Каталог"}
+            </h1>
+            <p className="text-muted-foreground mt-1 text-sm">
+              {counts || "0 бараа"}
+            </p>
+          </div>
+          <div className="hidden shrink-0 lg:block">
+            <CatalogSort />
+          </div>
         </div>
 
         {/* Controls — mobile only (on desktop the search sits above the sidebar) */}
