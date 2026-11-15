@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { useFeatureFlag } from "@/components/feature-flags";
 import { UB_TIMEZONE } from "@/lib/time";
+import type { HeroAdminRow, HeroEventOption } from "@/features/heroes/types";
 import type { SaleEventAdminRow, SaleEventProduct } from "../../types";
 import { PhaseBadge } from "../phase-badge";
 import { StepBanner } from "./step-banner";
@@ -15,11 +16,7 @@ import { StepBasics } from "./step-basics";
 import { StepCatalog } from "./step-catalog";
 import { StepProducts } from "./step-products";
 import { StepReview } from "./step-review";
-import {
-  openingStep,
-  stepStatus,
-  type StudioBanner,
-} from "./studio-checklist";
+import { openingStep, stepStatus } from "./studio-checklist";
 import {
   PUBLISH_LABEL,
   REVIEW_HINT_PUBLISHED,
@@ -45,20 +42,42 @@ export function EventStudio({
   row,
   copyOf = null,
   products,
-  banner,
+  bannerRow = null,
+  copyBanner = null,
+  bannerOthers = 0,
+  heroes = [],
+  heroEvents = [],
+  aiConfigured = false,
   initialStep,
   now,
 }: {
   row: SaleEventAdminRow | null;
   copyOf?: SaleEventAdminRow | null;
   products: SaleEventProduct[];
-  banner: StudioBanner | null;
+  /** Энэ арга хэмжээний баннер (`heroes.sale_event_id`). */
+  bannerRow?: HeroAdminRow | null;
+  /** `?copy=` — хуулж буй арга хэмжээний баннер. */
+  copyBanner?: HeroAdminRow | null;
+  /** Хуучин өгөгдөлд энэ арга хэмжээнд холбоотой бусад баннер. */
+  bannerOthers?: number;
+  /** Бусад баннер, арга хэмжээ — ⑤-д «дуусахад аль баннер гарах» (heroAt). */
+  heroes?: HeroAdminRow[];
+  heroEvents?: HeroEventOption[];
+  /** AI зураг үүсгэх тохиргоотой эсэх (сервер). */
+  aiConfigured?: boolean;
   initialStep?: string;
   now: number;
 }) {
   const router = useRouter();
   const bannerEnabled = useFeatureFlag("hero_admin");
-  const studio = useEventStudio({ row, copyOf, banner, bannerEnabled, now });
+  const studio = useEventStudio({
+    row,
+    copyOf,
+    bannerRow,
+    copyBanner,
+    bannerEnabled,
+    now,
+  });
   const { draft, phase, mode, checklist, busy, dirty } = studio;
   const steps = React.useMemo(() => visibleSteps(bannerEnabled), [bannerEnabled]);
   const [step, setStep] = React.useState<StudioStep>(() =>
@@ -161,8 +180,9 @@ export function EventStudio({
       )}
       {mode === "create" && copyOf && (
         <p className="border-border bg-muted text-muted-foreground rounded-md border px-3 py-2 text-sm">
-          «{copyOf.name}»-аас бараа, хувь, каталогийн текст хуулагдлаа. Огноогоо
-          сонгоод үргэлжлүүлнэ үү.
+          «{copyOf.name}»-аас бараа, хувь, каталогийн текст
+          {copyBanner && bannerEnabled ? ", нүүрний баннер" : ""} хуулагдлаа.
+          Огноогоо сонгоод үргэлжлүүлнэ үү.
         </p>
       )}
 
@@ -182,7 +202,13 @@ export function EventStudio({
         </div>
 
         {step === "review" ? (
-          <StepReview studio={studio} onGo={go} onLeave={() => void leave()} />
+          <StepReview
+            studio={studio}
+            heroes={heroes}
+            heroEvents={heroEvents}
+            onGo={go}
+            onLeave={() => void leave()}
+          />
         ) : (
           // Дууссан арга хэмжээ уншихаар нээгдэнэ — бүх талбар идэвхгүй (F1).
           <fieldset disabled={mode === "locked"} className="min-w-0">
@@ -193,7 +219,14 @@ export function EventStudio({
             {step === "catalog" && (
               <StepCatalog studio={studio} products={products} onGo={go} />
             )}
-            {step === "banner" && <StepBanner studio={studio} />}
+            {step === "banner" && (
+              <StepBanner
+                studio={studio}
+                products={products}
+                others={bannerOthers}
+                aiConfigured={aiConfigured}
+              />
+            )}
           </fieldset>
         )}
       </section>

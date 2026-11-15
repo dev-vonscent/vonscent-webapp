@@ -98,6 +98,10 @@ export function studioChecklist(input: {
   banner?: StudioBanner | null;
   /** `hero_admin` туг — хаалттай бол баннерын мөр гарахгүй. */
   bannerEnabled?: boolean;
+  /** «Энэ арга хэмжээнд баннер хэрэггүй» (§5.4). */
+  bannerSkipped?: boolean;
+  /** Сүүлийн баннерын хадгалалтын алдаа (D7: арга хэмжээ хадгалагдсан). */
+  bannerError?: string | null;
 }): ChecklistItem[] {
   const { draft: d, today, conflicts = [], banner = null } = input;
   const out: ChecklistItem[] = [];
@@ -176,7 +180,22 @@ export function studioChecklist(input: {
 
   // ④ Нүүрний баннер
   if (input.bannerEnabled) {
-    if (!banner) {
+    if (input.bannerError) {
+      out.push({
+        step: "banner",
+        level: "warn",
+        text: `Нүүрний баннер хадгалагдсангүй — ${input.bannerError}`,
+        action: "Харах",
+      });
+    }
+    if (input.bannerSkipped) {
+      out.push({
+        step: "banner",
+        level: "ok",
+        text: "Нүүрний баннер хэрэггүй гэж сонгосон — нүүр хуудасны баннер солигдохгүй",
+        action: "Харах",
+      });
+    } else if (!banner) {
       out.push({
         step: "banner",
         level: "note",

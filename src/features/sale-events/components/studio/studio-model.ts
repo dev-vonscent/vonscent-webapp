@@ -331,6 +331,8 @@ export interface TimelineNode {
   lines: string[];
   /** Одоо хаана яваа — нэг л зангилаа. */
   current: boolean;
+  /** Баннерын жижиг зураг (эхлэх мөчид солигдох баннер). */
+  image?: string | null;
 }
 
 const NOW_LINE: Record<SaleEventPhase, string> = {
@@ -342,8 +344,9 @@ const NOW_LINE: Record<SaleEventPhase, string> = {
 
 /**
  * Хугацааны шугам. `bannerReady` — энэ арга хэмжээнд холбоотой, бүрэн
- * баннер байгаа эсэх; байвал л баннерын мөр нэмнэ (аль баннер руу буцахыг
- * нэрлэх нь S3/S4).
+ * баннер байгаа эсэх; байвал л баннерын мөр нэмнэ. `bannerAfter` — дуусах
+ * мөчид гарах баннер (`heroAt`): нэр, null = үндсэн баннер, өгөөгүй бол
+ * нэрлэхгүй. Улирлын баннер нь S4.
  */
 export function studioTimeline(input: {
   draft: StudioDraft;
@@ -355,6 +358,8 @@ export function studioTimeline(input: {
    * зогсоосон бол шугам жинхэнэ цагийг нь харуулна (23:59 биш).
    */
   endsAt?: string | null;
+  bannerThumb?: string | null;
+  bannerAfter?: string | null;
 }): TimelineNode[] {
   const { draft: d, bannerReady } = input;
   const phase = input.phase ?? "draft";
@@ -393,7 +398,15 @@ export function studioTimeline(input: {
         ? "Шүүлтүүр, тэмдэг алга болно."
         : "Шүүлтүүр алга болно.",
   ];
-  if (bannerReady) end.push("Нүүр хуудасны баннер өмнөх рүүгээ буцна.");
+  if (bannerReady) {
+    end.push(
+      input.bannerAfter === undefined
+        ? "Нүүр хуудасны баннер өмнөх рүүгээ буцна."
+        : input.bannerAfter === null
+          ? "Нүүр хуудсанд үндсэн баннер гарна."
+          : `Нүүр хуудсанд «${input.bannerAfter}» баннер гарна.`,
+    );
+  }
 
   const hasDates = periodSentence(d.startsOn, d.endsOn) !== null;
   const startNode: TimelineNode = {
@@ -401,6 +414,7 @@ export function studioTimeline(input: {
     when: hasDates ? `${dayWithWeekday(d.startsOn)} 00:00` : "Эхлэх өдөр",
     lines: start,
     current: false,
+    image: bannerReady ? (input.bannerThumb ?? null) : null,
   };
   const stoppedAt =
     phase === "ended" && hasDates ? stoppedClock(d.endsOn, input.endsAt) : null;

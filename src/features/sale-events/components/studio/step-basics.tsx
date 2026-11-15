@@ -137,6 +137,7 @@ export function StepBasics({ studio }: { studio: EventStudio }) {
         )}
         <p className="text-muted-foreground text-sm text-pretty">
           Сошиал пост, сторид энэ холбоосыг тавина.
+          {studio.bannerEnabled && " Баннерын товч автоматаар энд холбогдоно."}
         </p>
       </div>
     </div>

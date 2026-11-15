@@ -878,6 +878,29 @@ export const HERO_LIMITS = {
 } as const;
 
 /**
+ * Арга хэмжээний студид үүссэн баннерын эрэмбэ (studio-ux.md D6) — тусгай
+ * өдрийн баннераас (0) дээгүүр. Админд харагдахгүй.
+ */
+export const HERO_EVENT_PRIORITY = 10;
+
+/**
+ * Баннерын товчны «Дарахад хаашаа очих вэ?» сонголт (studio-ux.md D5). «Энэ
+ * арга хэмжээний бараанууд» нь slug-аас хамаарах тул сонгогч өөрөө нэмнэ;
+ * «Өөр хуудас…» нь дотоод хаягийн input. `flag` — тэр тугийн ард байгаа
+ * хуудас, туг хаалттай бол жагсаалтад гарахгүй.
+ */
+export const HERO_LINK_PRESETS = [
+  { key: "catalog", label: "Бүх каталог", target: { type: "path", href: "/catalog" } },
+  { key: "season-spring", label: "Хаврын үнэртэн", group: "season", target: { type: "season", value: "spring" } },
+  { key: "season-summer", label: "Зуны үнэртэн", group: "season", target: { type: "season", value: "summer" } },
+  { key: "season-autumn", label: "Намрын үнэртэн", group: "season", target: { type: "season", value: "autumn" } },
+  { key: "season-winter", label: "Өвлийн үнэртэн", group: "season", target: { type: "season", value: "winter" } },
+  { key: "new", label: "Шинэ бараа", target: { type: "catalog", query: "tags=new" } },
+  { key: "build", label: "Багц үүсгэх", target: { type: "path", href: "/collections/build" } },
+  { key: "gift-cards", label: "Бэлгийн карт", flag: "gift_cards", target: { type: "path", href: "/gift-cards" } },
+] as const;
+
+/**
  * Hero-гийн зургийн хэмжээ (prompts/hero.md, plan §7.6). Desktop эх 2.8:1
  * (3584×1280), утас 4:3 (2048×1536). Харьцаа ±2%.
  */

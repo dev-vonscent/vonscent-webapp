@@ -239,6 +239,32 @@ describe("studioTimeline (§5.5)", () => {
     expect(t[2].lines).toContain("Нүүр хуудасны баннер өмнөх рүүгээ буцна.");
   });
 
+  it("дуусахад гарах баннерыг нэрлэнэ; зураг эхлэх зангилаанд", () => {
+    const named = studioTimeline({
+      draft: draft(),
+      phase: "draft",
+      bannerReady: true,
+      bannerThumb: "/x.webp",
+      bannerAfter: "Halloween",
+    });
+    expect(named[1].image).toBe("/x.webp");
+    expect(named[2].lines).toContain("Нүүр хуудсанд «Halloween» баннер гарна.");
+    const fallback = studioTimeline({
+      draft: draft(),
+      phase: "draft",
+      bannerReady: true,
+      bannerAfter: null,
+    });
+    expect(fallback[2].lines).toContain("Нүүр хуудсанд үндсэн баннер гарна.");
+    const none = studioTimeline({
+      draft: draft(),
+      phase: "draft",
+      bannerReady: false,
+      bannerThumb: "/x.webp",
+    });
+    expect(none[1].image).toBeNull();
+  });
+
   it("хувьгүй «сонголт» арга хэмжээ: үнэ өөрчлөгдөхгүй, тэмдэггүй", () => {
     const d = draft({ badgeLabel: "", items: [{ productId: P1, pcts: {} }] });
     const t = studioTimeline({ draft: d, phase: null, bannerReady: false });

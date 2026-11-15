@@ -1,70 +1,120 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { bannerGaps } from "./studio-checklist";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useFeatureFlag } from "@/components/feature-flags";
+import type { ProductOption } from "@/features/admin/lib/product-option";
+import { HeroCanvasEditor } from "@/features/heroes/components/hero-canvas-editor";
+import { heroLinkOptions } from "@/features/heroes/link-presets";
+import { guessHeroTheme } from "@/features/heroes/theme-guess";
+import { HERO_AI_MAX_PRODUCTS } from "@/lib/ai/hero-prompt";
+import type { SaleEventProduct } from "../../types";
+import { effectiveCanvas } from "./studio-banner";
 import type { EventStudio } from "./use-event-studio";
 
 /**
- * ④ Нүүрний баннер — S1-ийн ТҮР хувилбар: баннерыг одоохондоо «Нүүрний
- * баннер» хуудсанд хийж, энэ арга хэмжээтэй холбоно. S3-д баннерыг эндээс,
- * текстийг нь баннер дээр нь засдаг болно (studio-ux.md §5.4, D3, D6).
+ * ④ Нүүрний баннер (studio-ux.md §5.4, D3, D6): баннерыг энд, текстийг нь
+ * баннер дээр нь засна. Хугацаа, нийтлэлт нь арга хэмжээнийх; тусдаа
+ * «Нийтлэх» байхгүй. Юу ч өөрчлөхгүй бол баннер үүсэхгүй.
  */
-export function StepBanner({ studio }: { studio: EventStudio }) {
-  const { banner } = studio;
-  const gaps = banner ? bannerGaps(banner) : [];
+export function StepBanner({
+  studio,
+  products,
+  others,
+  aiConfigured,
+}: {
+  studio: EventStudio;
+  products: SaleEventProduct[];
+  others: number;
+  aiConfigured: boolean;
+}) {
+  const { draft, banner, bannerError, mode } = studio;
+  const giftCards = useFeatureFlag("gift_cards");
+  const canvas = effectiveCanvas(banner, draft);
+  const linkOptions = React.useMemo(
+    () =>
+      heroLinkOptions({
+        eventSlug: draft.slug,
+        isEnabled: (flag) => flag === "gift_cards" && giftCards,
+      }),
+    [draft.slug, giftCards],
+  );
+  // AI-д урьдчилж: ②-т сонгосон эхний 3 үнэртэн (§5.4).
+  const defaultProducts = React.useMemo<ProductOption[]>(() => {
+    const byId = new Map(products.map((p) => [p.id, p]));
+    return draft.items
+      .map((i) => byId.get(i.productId))
+      .filter((p): p is SaleEventProduct => Boolean(p))
+      .slice(0, HERO_AI_MAX_PRODUCTS)
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        brand: p.brand,
+        isActive: true,
+        availableMl: 0,
+        priceByMl: p.prices,
+      }));
+  }, [draft.items, products]);
+  const locked = mode === "locked";
 
   return (
-    <div className="mx-auto max-w-xl space-y-5">
-      <div className="bg-secondary aspect-14/5 w-full overflow-hidden rounded-lg">
-        {banner?.thumb ? (
-          // eslint-disable-next-line @next/next/no-img-element -- storage URL, админы thumbnail
-          <img src={banner.thumb} alt="" className="size-full object-cover" />
-        ) : (
-          <div className="text-muted-foreground flex size-full items-center justify-center text-sm">
-            {banner ? "Компьютерын зураг алга" : "Баннергүй"}
-          </div>
-        )}
-      </div>
+    <div className="space-y-6">
+      {bannerError && (
+        <p className="text-destructive text-sm" role="alert">
+          Баннер хадгалагдсангүй — {bannerError} Арга хэмжээ өөрөө хадгалагдсан;
+          засаад дахин хадгална уу.
+        </p>
+      )}
+      {!banner.draft && !banner.skip && !locked && (
+        <p className="text-muted-foreground text-sm text-pretty">
+          Арга хэмжээний нэр, хугацаа, хувиас бэлэн текст бөглөгдсөн. Текст
+          дээр дарж засах эсвэл зураг сонгоход баннер хадгалагдана.
+        </p>
+      )}
 
-      {!banner ? (
-        <p className="text-sm text-pretty">
-          Энэ арга хэмжээнд баннер холбоогүй байна — нүүр хуудасны баннер
-          солигдохгүй. Баннер заавал биш.
-        </p>
-      ) : gaps.length > 0 ? (
-        <p className="text-warning text-sm text-pretty">
-          Баннер дутуу: {gaps.join(", ")}. Бүрэн болтол нүүр хуудсанд гарахгүй.
-        </p>
-      ) : !banner.isActive ? (
-        <p className="text-warning text-sm text-pretty">
-          Баннер идэвхгүй байна — нүүр хуудсанд гарахгүй.
+      {banner.skip ? (
+        <p className="bg-secondary rounded-lg p-4 text-sm text-pretty">
+          Энэ арга хэмжээнд баннер хэрэггүй — нүүр хуудасны баннер солигдохгүй.
+          {banner.id && " Хийсэн баннер устахгүй, буцааж асааж болно."}
         </p>
       ) : (
-        <p className="text-sm text-pretty">
-          Баннер бэлэн. Арга хэмжээ эхлэхэд нүүр хуудсанд гарч, дуусахад өөрөө
-          буцна.
-        </p>
+        <HeroCanvasEditor
+          value={canvas}
+          onChange={studio.setBanner}
+          linkOptions={linkOptions}
+          groupId={banner.groupId}
+          heroId={banner.id}
+          aiConfigured={aiConfigured}
+          defaultTheme={guessHeroTheme(draft.name, draft.startsOn)}
+          defaultProducts={defaultProducts}
+          altPlaceholder={`Хоосон бол «${draft.name.trim() || "Арга хэмжээ"} — нүүрний баннер»`}
+          disabled={locked}
+        />
       )}
-      {banner && banner.others > 0 && (
+
+      {others > 0 && (
         <p className="text-muted-foreground text-sm">
-          Энэ арга хэмжээнд өөр {banner.others} баннер холбоотой байна.
+          Энэ арга хэмжээнд өөр {others} баннер холбоотой байна —{" "}
+          <Link
+            href="/admin/heroes"
+            className="text-foreground underline underline-offset-4"
+          >
+            «Нүүрний баннер» хуудсанд
+          </Link>{" "}
+          харна уу.
         </p>
       )}
 
-      <div className="space-y-2">
-        <p className="text-muted-foreground text-sm text-pretty">
-          Баннерыг одоохондоо «Нүүрний баннер» хуудсанд үүсгэж, тэндээс энэ арга
-          хэмжээтэй холбоно. Хугацааг нь арга хэмжээнээс өөрөө авна.
-        </p>
-        <Button asChild variant="outline">
-          <Link href="/admin/heroes" target="_blank" rel="noreferrer">
-            «Нүүрний баннер» хуудас нээх
-            <ArrowUpRight />
-          </Link>
-        </Button>
-      </div>
+      {!locked && (
+        <label className="flex items-center gap-3 text-sm">
+          <Checkbox
+            checked={banner.skip}
+            onCheckedChange={(v) => studio.setBannerSkip(v === true, canvas)}
+          />
+          Энэ арга хэмжээнд баннер хэрэггүй
+        </label>
+      )}
     </div>
   );
 }

@@ -10,6 +10,9 @@ import {
 } from "@/features/admin/lib/date-range";
 import { adminFetch } from "@/features/admin/lib/mutate";
 import { toast } from "@/lib/toast";
+import { heroInputSchema } from "@/lib/validators/hero";
+import type { HeroCanvasDraft } from "@/features/heroes/canvas-model";
+import type { HeroAdminRow } from "@/features/heroes/types";
 import {
   saleEventFieldErrors,
   saleEventInputSchema,
@@ -18,10 +21,12 @@ import {
 import { saleEventPhase, type OverlapConflict } from "../../lib";
 import type { SaleEventAdminRow, SaleEventPhase } from "../../types";
 import {
-  hasBlocking,
-  studioChecklist,
-  type StudioBanner,
-} from "./studio-checklist";
+  bannerPayload,
+  bannerSummary,
+  initialBannerState,
+  type BannerState,
+} from "./studio-banner";
+import { hasBlocking, studioChecklist } from "./studio-checklist";
 import {
   draftFromRow,
   draftToInput,
@@ -55,6 +60,8 @@ type PersistResult =
   | { ok: true; id: string }
   | { ok: false; invalid: boolean; message: string };
 
+const json = (v: unknown) => (v == null ? "" : JSON.stringify(v));
+
 const AUTOSAVE_MS = 2000;
 
 /**
@@ -66,16 +73,22 @@ const AUTOSAVE_MS = 2000;
  *
  * Бүх бичилт нэг дараалалд (`enqueue`) орно: хоцорсон автомат хадгалалт
  * (`isActive: false`) нийтлэлтийн ДАРАА очиж буцааж ноорог болгохгүй.
+ *
+ * Баннер (④, D6): хадгалах дараалал **арга хэмжээ → баннер** (одоогийн хоёр
+ * route). Баннер унавал арга хэмжээ хадгалагдсан хэвээр, алдаа ④-т гарна.
  */
 export function useEventStudio(input: {
   row: SaleEventAdminRow | null;
   copyOf: SaleEventAdminRow | null;
-  banner: StudioBanner | null;
+  /** Энэ арга хэмжээний баннер (`heroes.sale_event_id`). */
+  bannerRow: HeroAdminRow | null;
+  /** Хуулж буй арга хэмжээний баннер — шинэ мөр болж хуулагдана. */
+  copyBanner: HeroAdminRow | null;
   bannerEnabled: boolean;
   /** Серверийн цаг — эхний render хоёр талд ижил төлөвтэй гарна. */
   now: number;
 }) {
-  const { row, copyOf, banner, bannerEnabled } = input;
+  const { row, copyOf, bannerEnabled } = input;
   const router = useRouter();
   const [confirm, confirmDialog] = useConfirm();
 
@@ -103,6 +116,39 @@ export function useEventStudio(input: {
   const [published, setPublished] = React.useState<PublishAction | null>(null);
   const [now, setNow] = React.useState(input.now);
 
+  // ── Баннер ──────────────────────────────────────────────────────────────
+  const [bannerInit] = React.useState<BannerState>(() =>
+    initialBannerState({
+      row: bannerEnabled ? (input.bannerRow ?? input.copyBanner) : null,
+      newGroupId: crypto.randomUUID(),
+      copy:
+        !input.bannerRow && input.copyBanner && copyOf
+          ? { fromSlug: copyOf.slug, toSlug: initial.slug }
+          : undefined,
+    }),
+  );
+  const [banner, setBannerState] = React.useState(bannerInit);
+  /** Сүүлд хадгалсан төлөв («Болих» үүн рүү). */
+  const [bannerBase, setBannerBase] = React.useState(bannerInit);
+  /** Сүүлд серверт очсон оролт — өөрчлөлт байгаа эсэхийг үүгээр. */
+  const [bannerSaved, setBannerSaved] = React.useState(() =>
+    row && input.bannerRow
+      ? json(
+          bannerPayload({
+            state: bannerInit,
+            event: initial,
+            eventId: row.id,
+            knownSlugs: [row.slug],
+          }),
+        )
+      : "",
+  );
+  const [bannerError, setBannerError] = React.useState<string | null>(null);
+  /** Энэ арга хэмжээний хадгалагдсан холбоосууд — товч тэднийг дагана (D5). */
+  const [knownSlugs, setKnownSlugs] = React.useState<string[]>(() =>
+    [row?.slug, copyOf?.slug].filter((x): x is string => Boolean(x)),
+  );
+
   // Төлөв цагаас хамаарна (товлосон → явж байна) — минут тутам шинэчилнэ.
   React.useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 60_000);
@@ -113,18 +159,41 @@ export function useEventStudio(input: {
   const phase: SaleEventPhase | null = meta ? saleEventPhase(meta, now) : null;
   const mode = saveMode(phase);
   const today = ubToday(new Date(now));
-  const dirty = JSON.stringify(draft) !== baseline;
+  const eventDirty = JSON.stringify(draft) !== baseline;
+  const bannerNext =
+    id && bannerEnabled
+      ? json(
+          bannerPayload({
+            state: banner,
+            event: draft,
+            eventId: id,
+            knownSlugs,
+          }),
+        )
+      : "";
+  const bannerDirty = bannerNext !== "" && bannerNext !== bannerSaved;
+  const dirty = eventDirty || bannerDirty;
 
+  const summary = React.useMemo(() => bannerSummary(banner), [banner]);
   const checklist = React.useMemo(
-    () => studioChecklist({ draft, today, conflicts, banner, bannerEnabled }),
-    [draft, today, conflicts, banner, bannerEnabled],
+    () =>
+      studioChecklist({
+        draft,
+        today,
+        conflicts,
+        banner: summary,
+        bannerEnabled,
+        bannerSkipped: banner.skip,
+        bannerError,
+      }),
+    [draft, today, conflicts, summary, bannerEnabled, banner.skip, bannerError],
   );
 
   // Асинхрон ажил (дараалал, timer, unmount) хамгийн сүүлийн утгыг ref-ээс уншина.
-  const live = React.useRef({ draft, baseline, meta });
+  const live = React.useRef({ draft, baseline, meta, banner, bannerSaved, knownSlugs });
   React.useEffect(() => {
-    live.current = { draft, baseline, meta };
-  }, [draft, baseline, meta]);
+    live.current = { draft, baseline, meta, banner, bannerSaved, knownSlugs };
+  }, [draft, baseline, meta, banner, bannerSaved, knownSlugs]);
 
   const chain = React.useRef<Promise<unknown>>(Promise.resolve());
   const enqueue = React.useCallback(<T,>(task: () => Promise<T>) => {
@@ -164,6 +233,11 @@ export function useEventStudio(input: {
       };
       // Дарааллын дараагийн ажил state-ийн render-ийг хүлээхгүй — ref-ийг шууд.
       live.current = { ...live.current, baseline: nextBaseline, meta: nextMeta };
+      if (!live.current.knownSlugs.includes(d.slug)) {
+        const slugs = [...live.current.knownSlugs, d.slug];
+        live.current = { ...live.current, knownSlugs: slugs };
+        setKnownSlugs(slugs);
+      }
       setBaseline(nextBaseline);
       setMeta(nextMeta);
       setConflicts([]);
@@ -174,23 +248,84 @@ export function useEventStudio(input: {
     [id],
   );
 
+  /**
+   * Баннерыг хадгална (арга хэмжээ хадгалагдсаны ДАРАА). Явуулах юм байхгүй
+   * эсвэл өөрчлөлтгүй бол ok. Алдаа нь ④-т ба checklist-д (D7).
+   */
+  const persistBanner = React.useCallback(
+    async (eventId: string): Promise<boolean> => {
+      if (!bannerEnabled) return true;
+      const { draft: d, banner: s, bannerSaved: saved } = live.current;
+      const payload = bannerPayload({
+        state: s,
+        event: d,
+        eventId,
+        knownSlugs: live.current.knownSlugs,
+      });
+      if (!payload || json(payload) === saved) return true;
+      const parsed = heroInputSchema.safeParse(payload);
+      if (!parsed.success) {
+        setBannerError(parsed.error.issues[0]?.message ?? "Баннераа шалгана уу.");
+        return false;
+      }
+      const res = await adminFetch<{ id?: string }>(
+        s.id ? `/api/admin/heroes/${s.id}` : "/api/admin/heroes",
+        {
+          method: s.id ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(parsed.data),
+        },
+      );
+      if (!res.ok) {
+        setBannerError(res.error);
+        return false;
+      }
+      const next: BannerState = { ...s, id: s.id ?? res.data.id ?? null };
+      const nextSaved = json(payload);
+      live.current = { ...live.current, banner: next, bannerSaved: nextSaved };
+      // Хадгалж байх хооронд хийсэн засварыг дарахгүй — зөвхөн id-г нэмнэ.
+      setBannerState((cur) => ({ ...cur, id: next.id }));
+      setBannerBase(next);
+      setBannerSaved(nextSaved);
+      setBannerError(null);
+      return true;
+    },
+    [bannerEnabled],
+  );
+
   /** Ноорогийн автомат хадгалалт. Өөрчлөлтгүй / ноорог биш бол юу ч хийхгүй. */
   const autosave = React.useCallback(
     () =>
       enqueue(async (): Promise<boolean> => {
-        const { draft: d, baseline: b, meta: m } = live.current;
+        const { draft: d, baseline: b, meta: m, banner: s, bannerSaved: saved } =
+          live.current;
         if (!id || !m || m.isActive) return true;
-        if (JSON.stringify(d) === b) return true;
+        const evDirty = JSON.stringify(d) !== b;
+        const bnPayload = bannerEnabled
+          ? json(
+              bannerPayload({
+                state: s,
+                event: d,
+                eventId: id,
+                knownSlugs: live.current.knownSlugs,
+              }),
+            )
+          : "";
+        const bnDirty = bnPayload !== "" && bnPayload !== saved;
+        if (!evDirty && !bnDirty) return true;
         setStatus({ kind: "saving" });
-        const r = await persist(d, false);
-        setStatus(
-          r.ok
-            ? { kind: "saved", at: Date.now() }
-            : { kind: r.invalid ? "invalid" : "error", message: r.message },
-        );
-        return r.ok;
+        if (evDirty) {
+          const r = await persist(d, false);
+          if (!r.ok) {
+            setStatus({ kind: r.invalid ? "invalid" : "error", message: r.message });
+            return false;
+          }
+        }
+        const bannerOk = await persistBanner(id);
+        setStatus({ kind: "saved", at: Date.now() });
+        return bannerOk;
       }),
-    [enqueue, id, persist],
+    [enqueue, id, persist, persistBanner, bannerEnabled],
   );
 
   // Засвар дууссанаас 2 секундийн дараа (D7).
@@ -198,7 +333,7 @@ export function useEventStudio(input: {
     if (mode !== "auto" || !dirty) return;
     const t = setTimeout(() => void autosave(), AUTOSAVE_MS);
     return () => clearTimeout(t);
-  }, [mode, dirty, draft, autosave]);
+  }, [mode, dirty, draft, banner, autosave]);
 
   // Хуудаснаас гарахад (sidebar-ийн холбоос г.м.) ноорогийн сүүлийн өөрчлөлтийг
   // явуулна — хариуг хүлээхгүй. Хүчингүй ноорог сервер рүү очихгүй.
@@ -216,6 +351,28 @@ export function useEventStudio(input: {
       });
     },
     [id],
+  );
+  React.useEffect(
+    () => () => {
+      const { draft: d, meta: m, banner: s, bannerSaved: saved } = live.current;
+      if (!id || !m || m.isActive || !bannerEnabled) return;
+      const payload = bannerPayload({
+        state: s,
+        event: d,
+        eventId: id,
+        knownSlugs: live.current.knownSlugs,
+      });
+      if (!payload || json(payload) === saved) return;
+      const parsed = heroInputSchema.safeParse(payload);
+      if (!parsed.success) return;
+      void adminFetch(s.id ? `/api/admin/heroes/${s.id}` : "/api/admin/heroes", {
+        method: s.id ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed.data),
+        keepalive: true,
+      });
+    },
+    [id, bannerEnabled],
   );
 
   // Хадгалаагүй өөрчлөлттэй таб хаах / сэргээх (D7).
@@ -257,9 +414,25 @@ export function useEventStudio(input: {
     setErrors((e) => ({ ...e, slug: undefined }));
   }
 
+  /** ④ canvas-ийн засвар — анхны засвараар баннер «үүснэ» (§6.2). */
+  function setBanner(next: HeroCanvasDraft) {
+    if (mode === "locked") return;
+    setBannerState((s) => ({ ...s, draft: next }));
+    setBannerError(null);
+  }
+
+  /** «Энэ арга хэмжээнд баннер хэрэггүй». */
+  function setBannerSkip(skip: boolean, current: HeroCanvasDraft) {
+    if (mode === "locked") return;
+    setBannerState((s) => ({ ...s, skip, draft: s.draft ?? (s.id ? current : null) }));
+    setBannerError(null);
+  }
+
   /** «Болих» — сүүлд хадгалсан утга руу буцна (товлосон / явж буй). */
   function revert() {
     setDraft(JSON.parse(baseline) as StudioDraft);
+    setBannerState(bannerBase);
+    setBannerError(null);
     setErrors({});
     setConflicts([]);
   }
@@ -275,6 +448,12 @@ export function useEventStudio(input: {
       if (!r.ok) {
         toast.error(r.message, "Үүсгэж чадсангүй");
         return;
+      }
+      // Хуулсан баннер — арга хэмжээний id-тай болсны дараа.
+      if (!(await enqueue(() => persistBanner(r.id)))) {
+        toast.error(
+          "Арга хэмжээ үүслээ, баннер хуулагдсангүй — ④-р алхамд дахин оролдоно уу.",
+        );
       }
       router.replace(`/admin/sale-events/${r.id}?step=products`);
     } finally {
@@ -307,17 +486,21 @@ export function useEventStudio(input: {
     setBusy("save");
     setStatus({ kind: "saving" });
     try {
-      const r = await enqueue(() => persist(live.current.draft, true));
-      if (!r.ok) {
-        setStatus({
-          kind: r.invalid ? "invalid" : "error",
-          message: r.message,
-        });
-        toast.error(r.message, "Хадгалагдсангүй");
-        return false;
+      if (eventDirty) {
+        const r = await enqueue(() => persist(live.current.draft, true));
+        if (!r.ok) {
+          setStatus({
+            kind: r.invalid ? "invalid" : "error",
+            message: r.message,
+          });
+          toast.error(r.message, "Хадгалагдсангүй");
+          return false;
+        }
       }
+      const bannerOk = id ? await enqueue(() => persistBanner(id)) : true;
       setStatus({ kind: "saved", at: Date.now() });
-      toast.success("Хадгалагдлаа.");
+      if (bannerOk) toast.success("Хадгалагдлаа.");
+      else toast.error("Арга хэмжээ хадгалагдсан, баннер хадгалагдсангүй — ④-р алхмыг харна уу.");
       return true;
     } finally {
       setBusy(null);
@@ -352,6 +535,9 @@ export function useEventStudio(input: {
         });
         toast.error(r.message, "Нийтлэгдсэнгүй");
         return false;
+      }
+      if (id && !(await enqueue(() => persistBanner(id)))) {
+        toast.error("Арга хэмжээ нийтлэгдсэн, баннер хадгалагдсангүй — ④-р алхмыг харна уу.");
       }
       setStatus({ kind: "saved", at: Date.now() });
       setPublished(action);
@@ -426,8 +612,13 @@ export function useEventStudio(input: {
     busy,
     published,
     banner,
+    bannerSummary: summary,
+    bannerError,
+    bannerEnabled,
     confirmDialog,
     patch,
+    setBanner,
+    setBannerSkip,
     setName,
     setSlug,
     revert,

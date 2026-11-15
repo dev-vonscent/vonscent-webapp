@@ -87,22 +87,34 @@ function HeroCopy({
       : "text-muted-foreground";
   return (
     <>
-      <p className={`${muted} text-xs font-medium sm:text-sm`}>
+      {/* `data-hero-field` — админы баннерын засвар (studio-ux.md §6.3)
+          текстийг олоход. Дэлгүүрт зан төлөв, төрх өөрчлөгдөхгүй. */}
+      <p
+        data-hero-field="eyebrow"
+        className={`${muted} text-xs font-medium sm:text-sm`}
+      >
         {campaign.eyebrow}
       </p>
       <h1
         id="home-hero-title"
+        data-hero-field="title"
         className={`text-[clamp(1.125rem,5.6vw,1.375rem)]/[1.15] font-bold tracking-tight text-balance sm:text-2xl md:text-3xl lg:text-[2.75rem]/[1.1] ${
           tone === "photo" ? (dark ? "text-white" : "text-neutral-950") : ""
         }`}
       >
         {campaign.title}
       </h1>
-      <p className={`${muted} hidden max-w-md text-base md:block`}>
+      <p
+        data-hero-field="description"
+        className={`${muted} hidden max-w-md text-base md:block`}
+      >
         {campaign.description}
       </p>
       {/* 380px-ээс нарийн утсан дээр 4:3 картанд гарчиг + товч л багтана. */}
-      <p className={`${muted} text-sm max-[380px]:hidden md:hidden`}>
+      <p
+        data-hero-field="mobileDescription"
+        className={`${muted} text-sm max-[380px]:hidden md:hidden`}
+      >
         {campaign.mobileDescription ?? campaign.description}
       </p>
       {/* Утсан дээрх гэрэл зурган hero-д товч картын зүүн доод буланд
@@ -123,7 +135,8 @@ function HeroCopy({
           }`}
         >
           <Link href={campaign.primary.href}>
-            {campaign.primary.label} <ArrowRight className="size-4" />
+            <span data-hero-field="primary">{campaign.primary.label}</span>{" "}
+            <ArrowRight className="size-4" />
           </Link>
         </Button>
         {campaign.secondary && (
@@ -139,7 +152,9 @@ function HeroCopy({
             }`}
           >
             <Link href={campaign.secondary.href}>
-              {campaign.secondary.label}
+              <span data-hero-field="secondary">
+                {campaign.secondary.label}
+              </span>
             </Link>
           </Button>
         )}

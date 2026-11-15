@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { adminFetch } from "@/features/admin/lib/mutate";
 import { useProductOptions } from "@/features/admin/hooks/use-product-options";
+import type { ProductOption } from "@/features/admin/lib/product-option";
 import { HERO_AI_LIMITS } from "@/lib/constants";
 import {
   HERO_AI_MAX_PRODUCTS,
@@ -47,20 +48,28 @@ export function HeroAiPanel({
   heroId,
   configured,
   onUse,
+  defaultTheme = "winter",
+  defaultProducts = [],
 }: {
   groupId: string;
   heroId: string | null;
   /** `OPENAI_API_KEY` тохируулсан эсэх (сервер). */
   configured: boolean;
   onUse: (r: HeroAiResult) => void;
+  /** Урьдчилж сонгох сэдэв (студи: арга хэмжээний нэрээс). */
+  defaultTheme?: HeroThemeKey;
+  /** Урьдчилж бөглөх үнэртэн (студи: ②-т сонгосон эхний 3). */
+  defaultProducts?: ProductOption[];
 }) {
-  const [theme, setTheme] = React.useState<HeroThemeKey>("winter");
+  const [theme, setTheme] = React.useState<HeroThemeKey>(defaultTheme);
   const [extra, setExtra] = React.useState("");
   const [fast, setFast] = React.useState(false);
   const [desktopRef, setDesktopRef] = React.useState<string | null>(null);
   // Hero-д оруулах үнэртэн (DB) — дараалал = зүүн / төв / баруун байрлал.
-  const [productIds, setProductIds] = React.useState<string[]>([]);
-  const products = useProductOptions([]);
+  const [productIds, setProductIds] = React.useState<string[]>(() =>
+    defaultProducts.slice(0, HERO_AI_MAX_PRODUCTS).map((p) => p.id),
+  );
+  const products = useProductOptions(defaultProducts);
   const [jobs, setJobs] = React.useState<HeroGenerationJob[]>([]);
   const [starting, setStarting] = React.useState<"desktop" | "mobile" | null>(
     null,

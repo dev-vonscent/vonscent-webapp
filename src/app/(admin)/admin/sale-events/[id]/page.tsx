@@ -1,13 +1,14 @@
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { isFeatureEnabled } from "@/lib/feature-flags";
-import { getHeroesAdmin } from "@/features/heroes/api";
+import { isImageGenConfigured } from "@/lib/env";
+import { getHeroEventOptions, getHeroesAdmin } from "@/features/heroes/api";
 import {
   getSaleEventAdmin,
   getSaleEventProductOptions,
 } from "@/features/sale-events/api";
 import { EventStudio } from "@/features/sale-events/components/studio/event-studio";
-import { studioBannerFor } from "@/features/sale-events/components/studio/studio-checklist";
+import { linkedBannerRow } from "@/features/sale-events/components/studio/studio-banner";
 
 export const dynamic = "force-dynamic";
 
@@ -29,20 +30,27 @@ export default async function SaleEventStudioPage({
   const id = z.string().uuid().safeParse((await params).id);
   if (!id.success) notFound();
 
-  const [row, products, heroes] = await Promise.all([
+  const heroAdmin = await isFeatureEnabled("hero_admin");
+  const [row, products, heroes, heroEvents] = await Promise.all([
     getSaleEventAdmin(id.data),
     getSaleEventProductOptions(),
-    (await isFeatureEnabled("hero_admin")) ? getHeroesAdmin() : [],
+    heroAdmin ? getHeroesAdmin() : [],
+    heroAdmin ? getHeroEventOptions() : [],
   ]);
   if (!row) notFound();
+  const linked = linkedBannerRow(heroes, row.id);
 
   return (
     // Зогсоох г.м. серверийн төлөв солигдоход студи шинэ мөрөөр дахин эхэлнэ.
     <EventStudio
-      key={`${row.id}:${row.updatedAt}:${row.isActive}:${row.endsAt}`}
+      key={`${row.id}:${row.updatedAt}:${row.isActive}:${row.endsAt}:${linked.row?.updatedAt ?? ""}`}
       row={row}
       products={products}
-      banner={studioBannerFor(heroes, row.id)}
+      bannerRow={linked.row}
+      bannerOthers={linked.others}
+      heroes={heroes}
+      heroEvents={heroEvents}
+      aiConfigured={isImageGenConfigured}
       initialStep={(await searchParams).step}
       // Хүсэлтийн цаг (force-dynamic) — төлөв эхний render-т хоёр талд ижил.
       now={new Date().getTime()}

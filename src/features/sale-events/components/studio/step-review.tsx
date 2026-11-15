@@ -1,7 +1,13 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { AlertCircle, Check, CircleX, Copy, Info, Square } from "lucide-react";
+import { dayEndIso } from "@/features/admin/lib/date-range";
+import { canvasPreview } from "@/features/heroes/canvas-model";
+import { HeroFrame } from "@/features/heroes/components/hero-frame";
+import { heroAt } from "@/features/heroes/lib";
+import type { HeroAdminRow, HeroEventOption } from "@/features/heroes/types";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { toast } from "@/lib/toast";
@@ -20,7 +26,14 @@ import {
   studioTimeline,
   type StudioStep,
 } from "./studio-model";
+import { effectiveCanvas } from "./studio-banner";
 import type { EventStudio } from "./use-event-studio";
+
+const ALL_SIZES = [
+  { width: 390, label: "Утас 390" },
+  { width: 768, label: "Таблет 768" },
+  { width: 1440, label: "Компьютер 1440" },
+] as const;
 
 const LEVEL_ICON: Record<
   ChecklistLevel,
@@ -38,21 +51,41 @@ const LEVEL_ICON: Record<
  */
 export function StepReview({
   studio,
+  heroes,
+  heroEvents,
   onGo,
   onLeave,
 }: {
   studio: EventStudio;
+  /** Бүх баннер, арга хэмжээ — дуусах мөчид аль нь гарахыг тооцоход. */
+  heroes: HeroAdminRow[];
+  heroEvents: HeroEventOption[];
   onGo: (step: StudioStep) => void;
   /** Жагсаалт руу (хадгалаагүй өөрчлөлтийг эцэг нь шалгана). */
   onLeave: () => void;
 }) {
   const { draft, phase, mode, checklist, busy, published, today } = studio;
+  const summary = studio.bannerSummary;
+  const ready = studio.bannerEnabled && bannerReady(summary);
+  // Дуусах мөчид (exclusive хил) энэ арга хэмжээний баннергүйгээр аль нь гарах вэ.
+  const bannerAfter = React.useMemo(() => {
+    const end = studio.endsAt && phase === "ended" ? studio.endsAt : dayEndIso(draft.endsOn);
+    if (!end) return undefined;
+    const others = heroes.filter((h) => h.saleEventId !== studio.id);
+    return heroAt(others, heroEvents, Date.parse(end) + 1)?.name ?? null;
+  }, [heroes, heroEvents, studio.id, studio.endsAt, phase, draft.endsOn]);
   const timeline = studioTimeline({
     draft,
     phase,
-    bannerReady: bannerReady(studio.banner),
+    bannerReady: ready,
     endsAt: studio.endsAt,
+    bannerThumb: summary?.thumb,
+    bannerAfter,
   });
+  const preview = React.useMemo(
+    () => canvasPreview(effectiveCanvas(studio.banner, draft), "view").campaign,
+    [studio.banner, draft],
+  );
   const action = publishAction(draft.startsOn, today);
   const blocked = hasBlocking(checklist);
   const link = saleLink(draft.slug);
@@ -129,6 +162,14 @@ export function StepReview({
                     {line}
                   </p>
                 ))}
+                {node.image && (
+                  // eslint-disable-next-line @next/next/no-img-element -- storage URL, админы thumbnail
+                  <img
+                    src={node.image}
+                    alt=""
+                    className="mt-2 aspect-14/5 w-40 rounded-md object-cover"
+                  />
+                )}
               </div>
             </li>
           ))}
@@ -148,6 +189,28 @@ export function StepReview({
           ))}
         </ul>
       </section>
+
+      {studio.bannerEnabled && studio.banner.draft && !studio.banner.skip && (
+        <details className="group space-y-3">
+          <summary className="cursor-pointer text-sm font-medium select-none">
+            Баннерыг бүх хэмжээгээр харах
+          </summary>
+          <div className="mt-3 space-y-4">
+            {ALL_SIZES.map((s) => (
+              <div key={s.width} className="space-y-1">
+                <p className="text-muted-foreground text-xs">{s.label}</p>
+                <div className="bg-secondary rounded-md p-1">
+                  <HeroFrame
+                    width={s.width}
+                    title={`Баннер — ${s.label}`}
+                    campaign={preview}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
 
       {mode === "auto" && (
         <div className="space-y-2">
