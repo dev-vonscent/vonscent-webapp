@@ -49,6 +49,12 @@ import {
   ubDayFromNow,
 } from "@/lib/time";
 import { isRemoteAddress, resolveZone, zoneKey } from "@/lib/geo/zone";
+import {
+  DELIVERY_BLACKOUT_KEY,
+  DELIVERY_BLACKOUT_LABEL,
+  firstOpenDay,
+  normalizeBlackout,
+} from "@/lib/delivery-blackout";
 import { khorooRequired } from "@/lib/geo/locations";
 import {
   composeDetail,
@@ -633,6 +639,43 @@ export default function CheckoutPage() {
     // Ноорогоос сэргээсэн өдрийг дарж бичихгүй.
     if (!getValues("deliverOn")) setValue("deliverOn", days[0]);
   }, [setValue, getValues]);
+
+  // Админы хаасан өдрүүд («Дотоод ажилтай») — сонгох боломжгүй, харин
+  // жагсаалтад үлдэнэ: өдөр алга болбол хэрэглэгч яагаад гэдгийг мэдэхгүй.
+  const [blockedDays, setBlockedDays] = React.useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  React.useEffect(() => {
+    const supabase = createClient();
+    if (!supabase) return;
+    let alive = true;
+    supabase
+      .from("settings")
+      .select("value")
+      .eq("key", DELIVERY_BLACKOUT_KEY)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!alive) return;
+        setBlockedDays(
+          new Set(
+            normalizeBlackout((data as { value?: unknown } | null)?.value),
+          ),
+        );
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const openDay = firstOpenDay(deliveryDays, blockedDays);
+  const allDaysBlocked = deliveryDays.length > 0 && openDay === null;
+  const chosenDay = watch("deliverOn");
+  // Сонгосон (эсвэл ноорогоос сэргэсэн) өдөр хаагдсан бол хамгийн ойрын
+  // нээлттэй өдөр рүү шилжүүлнэ. Нээлттэй өдөр сонгосон бол хөндөхгүй.
+  React.useEffect(() => {
+    if (!openDay) return;
+    if (!chosenDay || blockedDays.has(chosenDay))
+      setValue("deliverOn", openDay);
+  }, [chosenDay, blockedDays, openDay, setValue]);
 
   // Delivery zones + free-shipping threshold are admin-configurable (A10).
   React.useEffect(() => {
@@ -1312,13 +1355,15 @@ export default function CheckoutPage() {
                     ? "Хаягийн байр, орц, тоотоо оруулна уу."
                     : data.error === "ZONE_UNAVAILABLE"
                       ? "Сонгосон бүсэд хүргэлт хийх боломжгүй байна."
-                      : data.error === "LOGIN_REQUIRED"
-                        ? "Купон, V point ашиглахын тулд нэвтэрнэ үү."
-                        : // Ижил захиалга аль хэдийн боловсруулагдаж байна —
-                          // дахин дарвал давхар захиалга болох тул зогсооно.
-                          data.error === "ORDER_PENDING"
-                          ? "Таны захиалга боловсруулагдаж байна. Хэдэн секунд хүлээгээд «Захиалга хайх» хэсгээс шалгана уу."
-                          : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
+                      : data.error === "DELIVERY_DAY_BLOCKED"
+                        ? `Сонгосон өдөр ${DELIVERY_BLACKOUT_LABEL.toLowerCase()} тул хүргэлт хийгдэхгүй. Өөр өдөр сонгоно уу.`
+                        : data.error === "LOGIN_REQUIRED"
+                          ? "Купон, V point ашиглахын тулд нэвтэрнэ үү."
+                          : // Ижил захиалга аль хэдийн боловсруулагдаж байна —
+                            // дахин дарвал давхар захиалга болох тул зогсооно.
+                            data.error === "ORDER_PENDING"
+                            ? "Таны захиалга боловсруулагдаж байна. Хэдэн секунд хүлээгээд «Захиалга хайх» хэсгээс шалгана уу."
+                            : "Захиалга үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
         );
         return;
       }
@@ -1552,20 +1597,34 @@ export default function CheckoutPage() {
                 hint={`Сонгосон өдрийн ${DISPATCH_HOUR}:00–${DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ. Хүргүүлэхийг хүсэж буй цагийн хязгаараа нэмэлт тэмдэглэл хэсэгт бичиж үлдээнэ үү. Заасан цагийн дагуу хүргэхийг хичээх ба энэ нь амлалт биш юм.`}
               >
                 <Select
-                  value={watch("deliverOn") ?? deliveryDays[0]}
+                  value={chosenDay ?? openDay ?? deliveryDays[0]}
                   onValueChange={(v) => setValue("deliverOn", v)}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {deliveryDays.map((day) => (
-                      <SelectItem key={day} value={day}>
-                        {formatDeliveryDay(day)}
-                      </SelectItem>
-                    ))}
+                    {deliveryDays.map((day) => {
+                      const blocked = blockedDays.has(day);
+                      return (
+                        <SelectItem key={day} value={day} disabled={blocked}>
+                          {formatDeliveryDay(day)}
+                          {blocked && (
+                            <span className="text-muted-foreground">
+                              {` · ${DELIVERY_BLACKOUT_LABEL}`}
+                            </span>
+                          )}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
+                {allDaysBlocked && (
+                  <p className="text-destructive mt-1.5 text-xs">
+                    Ойрын {MAX_PREORDER_DAYS} хоногт дотоод ажилтай тул хүргэлт
+                    хийх боломжгүй байна. Дэлгэрэнгүйг утсаар лавлана уу.
+                  </p>
+                )}
               </Field>
             )}
 
@@ -1940,7 +1999,7 @@ export default function CheckoutPage() {
                 <p className="bg-secondary rounded-xl px-3 py-2.5 text-xs/relaxed">
                   <Clock className="mr-1 inline size-3.5 align-[-2px]" />
                   {`Захиалга ${formatDeliveryDay(
-                    watch("deliverOn") ?? deliveryDays[0] ?? "",
+                    chosenDay ?? openDay ?? deliveryDays[0] ?? "",
                   )} ${DISPATCH_HOUR}:00–${DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.`}
                 </p>
               )}

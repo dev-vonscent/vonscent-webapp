@@ -9,6 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SHIPPING_ZONES, type ShippingZoneConfig } from "@/lib/constants";
 import { ZoneEditor } from "@/features/admin/components/zone-editor";
+import { DeliveryBlackoutEditor } from "@/features/admin/components/delivery-blackout-editor";
+import {
+  DELIVERY_BLACKOUT_KEY,
+  DELIVERY_BLACKOUT_LABEL,
+  normalizeBlackout,
+} from "@/lib/delivery-blackout";
 import { createClient } from "@/lib/supabase/browser";
 import { saveSetting } from "@/features/admin/lib/mutate";
 import { toast } from "@/lib/toast";
@@ -31,6 +37,7 @@ export default function AdminSettingsPage() {
     customDiscountPct: 5,
     baseDefaultDiscountPct: 5,
   });
+  const [blackout, setBlackout] = React.useState<string[]>([]);
   const [imageGen, setImageGen] = React.useState({
     enabled: true,
     basePrompt: "",
@@ -52,8 +59,9 @@ export default function AdminSettingsPage() {
       collection: JSON.stringify(collection),
       imageGen: JSON.stringify(imageGen),
       shipping: JSON.stringify(zones),
+      blackout: JSON.stringify(blackout),
     }),
-    [store, collection, imageGen, zones],
+    [store, collection, imageGen, zones, blackout],
   );
   type SectionKey = keyof typeof snapshot;
   // Before the settings row has loaded there is nothing to compare against, so
@@ -106,6 +114,8 @@ export default function AdminSettingsPage() {
           }
           if (row.key === "collection" && v)
             setCollection((c) => ({ ...c, ...(v as object) }));
+          if (row.key === DELIVERY_BLACKOUT_KEY)
+            setBlackout(normalizeBlackout(v));
           if (row.key === "imageGen" && v)
             setImageGen((g) => ({ ...g, ...(v as object) }));
         }
@@ -254,6 +264,28 @@ export default function AdminSettingsPage() {
 
       {/* «Автомат купон» → «Урамшуулал» хуудасны «Автомат» таб руу шилжсэн:
           купонтой холбоотой бүх зүйл нэг дор (клиентийн хүсэлт). */}
+
+      {/* Хүргэлтгүй өдрүүд — ганцаараа ажилладаг тул завгүй өдрөө хаана. */}
+      <Saver
+        title="Хүргэлтгүй өдөр"
+        onSave={() =>
+          saveSetting(
+            DELIVERY_BLACKOUT_KEY,
+            { days: blackout },
+            "Хүргэлтгүй өдөр хадгалагдсангүй",
+          )
+        }
+        dirty={isDirty("blackout")}
+        onSaved={() => commit("blackout")}
+      >
+        <p className="text-muted-foreground text-xs">
+          Хүргэлт хийж чадахгүй өдрүүдээ товшиж сонгоно уу. Checkout дээр тэр
+          өдрүүд сонгогдохгүй болж «{DELIVERY_BLACKOUT_LABEL}» гэж харагдана.
+          Аль хэдийн тэр өдөр рүү өгсөн захиалгад нөлөөлөхгүй — тэдгээрийг
+          «Захиалга» хэсгээс шалгаарай.
+        </p>
+        <DeliveryBlackoutEditor value={blackout} onChange={setBlackout} />
+      </Saver>
 
       {/* Shipping */}
       <Saver
