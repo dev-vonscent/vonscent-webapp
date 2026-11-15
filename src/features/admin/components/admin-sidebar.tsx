@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Award,
   BadgePercent,
+  CalendarHeart,
   BellRing,
   BarChart3,
   Boxes,
@@ -17,6 +18,7 @@ import {
   FlaskConical,
   CreditCard,
   Gift,
+  GalleryHorizontal,
   Globe,
   Layers,
   LayoutDashboard,
@@ -136,13 +138,6 @@ const GROUPS: NavGroup[] = [
         flag: "extras_shop",
       },
       { href: "/admin/collections", label: "Багц", icon: Layers },
-      // Олон бараанд нэг дор хугацаатай хямдрал (0166).
-      {
-        href: "/admin/sales",
-        label: "Хямдрал",
-        icon: BadgePercent,
-        flag: "sale_page",
-      },
       { href: "/admin/brands", label: "Брэнд", icon: Crown },
       // Хэрэглэгчийн санал болгосон, манайд байхгүй үнэртэн (0137).
       {
@@ -159,6 +154,21 @@ const GROUPS: NavGroup[] = [
     title: "Маркетинг",
     icon: Megaphone,
     links: [
+      // Олон бараанд нэг дор хугацаатай хямдрал (0166).
+      {
+        href: "/admin/sales",
+        label: "Хямдрал",
+        icon: BadgePercent,
+        flag: "sale_page",
+      },
+      // Нэртэй, хугацаатай хямдрал — Black Friday г.м. (0181). «Хямдрал»-аас
+      // тусдаа туг, тусдаа route: бие даан нээгдэнэ.
+      {
+        href: "/admin/sale-events",
+        label: "Арга хэмжээ",
+        icon: CalendarHeart,
+        flag: "sale_events",
+      },
       { href: "/admin/promotions", label: "Урамшуулал", icon: TicketPercent },
       { href: "/admin/loyalty", label: "V point", icon: Award },
       // Сэтгэгдлийн хяналт (0162).
@@ -196,6 +206,13 @@ const GROUPS: NavGroup[] = [
     icon: Globe,
     links: [
       { href: "/admin/content", label: "Контент", icon: FileText },
+      // Админаас бичдэг, хуваарьтай нүүрний hero (0182).
+      {
+        href: "/admin/heroes",
+        label: "Нүүрний hero",
+        icon: GalleryHorizontal,
+        flag: "hero_admin",
+      },
       {
         href: "/admin/home-sections",
         label: "Нүүрийн хэсэг",

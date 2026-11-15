@@ -25,7 +25,7 @@ import {
   filterCatalogCollections,
   sortCatalogCollections,
 } from "./catalog-filter";
-import { memberPrices, discountRange } from "./pricing";
+import { bundlePriceBasis, memberPrices, discountRange } from "./pricing";
 import { topUpRandom } from "@/features/products/rail";
 import { DEFAULT_COLLECTION_SETTINGS } from "./types";
 import type {
@@ -120,6 +120,7 @@ function toMember(p: ProductDetail): CollectionMember {
       variantByMl[v.ml] = {
         variantId: v.id,
         price: v.price,
+        basePrice: v.basePrice,
         // Савны түгжээ (0095) орсон эсэх нь багцад ЧУХАЛ: эрэгтэй гишүүнтэй
         // багцын 10ml нь эрэгтэй 10ml сав дуусахад бүхэлдээ боломжгүй болно.
         inStock: v.sellable,
@@ -163,6 +164,8 @@ function build(
     settings.roundTo,
     mlDiscounts,
     mlPrices,
+    // Бэлэн багц үндсэн үнээр, хадгалсан custom хямдарсан үнээр (plan §5.3).
+    bundlePriceBasis(row.type),
   );
   const availableMls = complete
     ? prices.filter((p) => p.available).map((p) => p.ml)
@@ -355,6 +358,8 @@ export async function getCatalogCollections(
   filters: CatalogFilters,
 ): Promise<{ items: Collection[]; total: number }> {
   if (filters.kind === "perfume") return { items: [], total: 0 };
+  // Арга хэмжээ (0181) нь ус л — багц хамаарахгүй.
+  if (filters.event) return { items: [], total: 0 };
   const matched = sortCatalogCollections(
     filterCatalogCollections(await getBaseCollections(), {
       ...filters,

@@ -9,6 +9,10 @@
     {
       "path": "/api/cron/gift-cards",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/sale-events",
+      "schedule": "* * * * *"
     }
   ]
 }

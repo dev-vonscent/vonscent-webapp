@@ -3,7 +3,6 @@
 import * as React from "react";
 import Image from "next/image";
 import { ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
@@ -12,6 +11,8 @@ import { GENDERS, GENDER_LABEL, SEASON_LABEL, SEASONS } from "@/lib/constants";
 import { useFilterQuery } from "./use-filter-query";
 import type { ScentFamilyOption } from "@/lib/types";
 import type { BrandLogos } from "@/features/products/components/brand-marquee";
+import { EventFilterChip } from "@/features/sale-events/components/event-filter-chip";
+import { useLiveSaleEvents } from "@/features/sale-events/components/sale-events-provider";
 
 const PRICE_STEP = 1000;
 
@@ -40,14 +41,20 @@ const SINGLE_SEASONS = SEASONS.filter((s) => s !== "all");
 
 export function Group({
   title,
+  action,
   children,
 }: {
   title: string;
+  /** Гарчгийн мөрийн баруун талд (жишээ нь «Цэвэрлэх») — тусдаа мөр эзлэхгүй. */
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold">{title}</h3>
+      <div className="flex min-h-5 items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {action}
+      </div>
       {children}
     </div>
   );
@@ -151,6 +158,9 @@ export function CatalogFilters({
   }
 
   const featured = searchParams.get("featured") === "1";
+  // Одоо явж буй арга хэмжээ (0181) — дуусмагц chip өөрөө алга болно.
+  const liveEvents = useLiveSaleEvents();
+  const event = searchParams.get("event") ?? undefined;
 
   // Багцад брэнд / үнэрийн төрөл / улирал байхгүй (клиент, 2026-10-26) —
   // «Багц» дээр эдгээр бүлэг нуугдаж, шилжихэд сонголт нь цэвэрлэгдэнэ
@@ -166,6 +176,8 @@ export function CatalogFilters({
             brand: undefined,
             family: undefined,
             season: undefined,
+            // Арга хэмжээ = ус л (0181).
+            event: undefined,
           }
         : { kind: value },
     );
@@ -200,25 +212,31 @@ export function CatalogFilters({
     });
   }
 
+  const clear =
+    showClear && activeCount > 0 ? (
+      <button
+        type="button"
+        onClick={clearAll}
+        className="text-muted-foreground hover:text-foreground -my-1 rounded-sm p-1 text-xs font-medium underline-offset-4 hover:underline"
+      >
+        Цэвэрлэх ({activeCount})
+      </button>
+    ) : null;
+
   return (
     <div className="space-y-4">
       {/*
         No «Шүүлтүүр» heading: the chips say what this is, and on desktop the
         heading only pushed the filters down. The mobile sheet titles itself
         (and carries its own clear button next to the close button).
+        «Цэвэрлэх» нь эхний бүлгийн гарчгийн мөрөнд — тусдаа мөр нь хайлт ба
+        шүүлтүүрийн хооронд ~60px хоосон зай үүсгэдэг байв.
       */}
-      {showClear && activeCount > 0 && (
-        <div className="flex justify-end">
-          <Button variant="ghost" size="sm" onClick={clearAll}>
-            Цэвэрлэх ({activeCount})
-          </Button>
-        </div>
-      )}
 
       {/* Ус, багц хоёулаа нэг жагсаалтад холилддог — нэгийг нь л харах. */}
       {showKind && (
         <>
-          <Group title="Төрөл">
+          <Group title="Төрөл" action={clear}>
             <div className="grid grid-cols-3 gap-2">
               {KINDS.map((k) => (
                 <Chip
@@ -235,7 +253,7 @@ export function CatalogFilters({
         </>
       )}
 
-      <Group title="Хүйс">
+      <Group title="Хүйс" action={showKind ? null : clear}>
         <div className="grid grid-cols-3 gap-2">
           {GENDERS.map((g) => (
             <Chip
@@ -249,6 +267,50 @@ export function CatalogFilters({
         </div>
       </Group>
       <Separator />
+
+      {/* Таг (арга хэмжээ орно) хүйсийн доор — доош нь орхивол хэрэглэгч
+          гүйлгэхгүйгээр хардаггүй байв. */}
+      {showTags && (
+        <>
+          <Group title="Таг">
+            <div className="grid grid-cols-2 gap-2">
+              <Chip
+                active={featured}
+                onClick={() =>
+                  setSingle("featured", featured ? undefined : "1")
+                }
+              >
+                Онцлох
+              </Chip>
+              {TAGS.map((t) => (
+                <Chip
+                  key={t.value}
+                  active={values("tags").includes(t.value)}
+                  onClick={() => toggle("tags", t.value)}
+                >
+                  {t.label}
+                </Chip>
+              ))}
+              {/* Арга хэмжээ (Black Friday …) — нэг л сонгогдоно. Багцад
+                  хамаарахгүй. */}
+              {!isBundle &&
+                liveEvents.map((e) => (
+                  <EventFilterChip
+                    key={e.slug}
+                    theme={e.tickerTheme}
+                    active={event === e.slug}
+                    onClick={() =>
+                      setSingle("event", event === e.slug ? undefined : e.slug)
+                    }
+                  >
+                    {e.name}
+                  </EventFilterChip>
+                ))}
+            </div>
+          </Group>
+          <Separator />
+        </>
+      )}
 
       {!isBundle && (
         <>
@@ -296,33 +358,6 @@ export function CatalogFilters({
                   onClick={() => toggleSeason(s)}
                 >
                   {SEASON_LABEL[s]}
-                </Chip>
-              ))}
-            </div>
-          </Group>
-          <Separator />
-        </>
-      )}
-
-      {showTags && (
-        <>
-          <Group title="Таг">
-            <div className="grid grid-cols-2 gap-2">
-              <Chip
-                active={featured}
-                onClick={() =>
-                  setSingle("featured", featured ? undefined : "1")
-                }
-              >
-                Онцлох
-              </Chip>
-              {TAGS.map((t) => (
-                <Chip
-                  key={t.value}
-                  active={values("tags").includes(t.value)}
-                  onClick={() => toggle("tags", t.value)}
-                >
-                  {t.label}
                 </Chip>
               ))}
             </div>

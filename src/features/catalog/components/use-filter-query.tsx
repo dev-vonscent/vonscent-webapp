@@ -19,6 +19,8 @@ const FILTER_KEYS = [
   "season",
   "tags",
   "featured",
+  // Арга хэмжээ (`?event=black-friday`, 0181).
+  "event",
   "minPrice",
   "maxPrice",
   "q",

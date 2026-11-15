@@ -41,17 +41,13 @@ import { ProductCarousel } from "@/features/products/components/product-carousel
 import { TopCustomersSection } from "@/features/tiers/components/top-customers-section";
 import { PromoPopup } from "@/features/marketing/components/promo-popup";
 import { firstPopupImage } from "@/features/marketing/popup-schedule";
-import { liveCampaigns } from "@/features/marketing/home-content";
-import {
-  CampaignHero,
-  resolveHero,
-  resolveStaticHero,
-} from "@/features/marketing/components/home/campaign-hero";
+import { CampaignHero } from "@/features/marketing/components/home/campaign-hero";
+import { resolveHomeHero } from "@/features/marketing/hero-resolve";
+import { normalizePromoHref } from "@/features/heroes/lib";
 import { HomeShortcuts } from "@/features/marketing/components/home/home-shortcuts";
 import { IntentCards } from "@/features/marketing/components/home/intent-cards";
 import { ReviewsSection } from "@/features/marketing/components/home/reviews-section";
 import {
-  HeroSkeleton,
   CarouselSkeleton,
   MarqueeSkeleton,
   ReviewsSkeleton,
@@ -99,30 +95,32 @@ function sellableFirst<T extends { soldOut: boolean }>(list: T[]): T[] {
  * codebase but is no longer reachable from this page. Gender / season /
  * family / brand stay as catalog filters, not home sections.
  *
- * The page function is not async: each data block streams behind its own
- * `<Suspense>` with a skeleton of its own shape (no layout shift).
+ * Each data block streams behind its own `<Suspense>` with a skeleton of its
+ * own shape (no layout shift). The hero alone is awaited up front: it is the
+ * LCP, and a nested boundary is revealed late on a busy phone (see
+ * `resolveStaticHero`). Its DB read (`live_heroes`, 0184) is one cached RPC;
+ * any failure falls back to the code hero (plan §7.1, §7.5).
  */
-export default function HomePage() {
-  const staticHero = resolveStaticHero();
+export default async function HomePage() {
+  const hero = await resolveHomeHero();
   return (
     <>
       {/* An overlay with nothing to reserve, so it streams with no fallback. */}
       <Suspense fallback={null}>
-        <PromoSlot />
+        <PromoSlot
+          heroHrefs={[
+            hero.campaign.primary.href,
+            ...(hero.campaign.secondary ? [hero.campaign.secondary.href] : []),
+          ]}
+        />
       </Suspense>
       <Suspense fallback={null}>
         <SiteJsonLd />
       </Suspense>
 
       <div className="mx-auto max-w-420 space-y-8 px-4 pt-4 pb-10 sm:space-y-12 sm:pb-14 md:px-8 md:pt-8">
-        {/* LCP: статик hero өөрийн Suspense-гүй (resolveStaticHero-г үз). */}
-        {staticHero ? (
-          <CampaignHero hero={staticHero} />
-        ) : (
-          <Suspense fallback={<HeroSkeleton />}>
-            <HeroSlot />
-          </Suspense>
-        )}
+        {/* LCP: hero өөрийн Suspense-гүй (resolveStaticHero-г үз). */}
+        <CampaignHero hero={hero} />
         <HomeShortcuts />
 
         <Suspense fallback={<CarouselSkeleton action />}>
@@ -175,22 +173,22 @@ async function SiteJsonLd() {
  * same place as the live hero campaign is dropped — the visitor would see
  * the same promotion twice.
  */
-async function PromoSlot() {
+async function PromoSlot({ heroHrefs }: { heroHrefs: string[] }) {
   const raw = await getPopupSettings();
-  const heroHrefs = new Set(liveCampaigns().map((c) => c.primary.href));
+  // Шийдэгдсэн hero-гийн хоёр товчны холбоос (DB эсвэл кодын, plan §7.2).
+  // `/sale/x` ба `/catalog?event=x`, origin, query-ийн дараалал ялгаагүй.
+  const taken = new Set(heroHrefs.map(normalizePromoHref));
   const settings = {
     ...raw,
-    slides: raw.slides.filter((s) => !s.href || !heroHrefs.has(s.href)),
+    slides: raw.slides.filter(
+      (s) => !s.href || !taken.has(normalizePromoHref(s.href)),
+    ),
   };
   // Popup нээгдэхэд түүний зураг LCP болж болно — HTML parse хийх үед
   // JS-тэй зэрэг татаж эхэлнэ. Priority-г өсгөхгүй (hero-той өрсөлдөхгүй).
   const first = firstPopupImage(settings);
   if (first) preload(first, { as: "image" });
   return <PromoPopup settings={settings} />;
-}
-
-async function HeroSlot() {
-  return <CampaignHero hero={await resolveHero()} />;
 }
 
 /**

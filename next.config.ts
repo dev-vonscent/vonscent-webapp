@@ -83,7 +83,15 @@ const nextConfig: NextConfig = {
    * them into `@img/`; only the routes that actually touch sharp are listed,
    * since libvips is tens of megabytes per function.
    */
-  outputFileTracingIncludes: Object.fromEntries(
+  outputFileTracingIncludes: {
+    // AI hero-гийн reference (одоогийн hero-гийн мастер, prompts/hero.md §2) —
+    // lambda-д файлаар орж, storage-д нэг удаа хуулагдана (preview-ийн
+    // Vercel хамгаалалт өөрийн public файлыг HTTP-ээр татахыг хаадаг).
+    "/api/admin/heroes/generations": [
+      "./public/desktop.webp",
+      "./public/mobile.png",
+    ],
+    ...Object.fromEntries(
     [
       "/api/upload",
       "/api/admin/upload",
@@ -91,6 +99,8 @@ const nextConfig: NextConfig = {
       "/api/admin/products/[id]/images",
       "/api/admin/products/[id]/generate-image",
       "/api/admin/products/[id]/regenerate-image",
+      // Нүүрний hero (0182–0183): upload, AI мастерыг webp болгох.
+      "/api/admin/heroes",
       // OG cards re-encode WebP photos to JPEG (lib/og.tsx). Keys are matched
       // with picomatch `contains`, where `[slug]` would be a character class —
       // the bare segment name matches all three routes reliably.
@@ -107,7 +117,8 @@ const nextConfig: NextConfig = {
         "./node_modules/@img/sharp-libvips-linux-x64/**/*",
       ],
     ]),
-  ),
+    ),
+  },
   /**
    * Router cache — хуудас хооронд буцаж явахад дахин татахгүй (backlog H2).
    *

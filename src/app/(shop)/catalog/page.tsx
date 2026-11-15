@@ -24,6 +24,14 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { CATALOG_PAGE_SIZE } from "@/lib/constants";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { legacyExtrasHref } from "@/features/extras/lib/sections";
+import {
+  getLiveSaleEvents,
+  getSaleEventPublic,
+} from "@/features/sale-events/api";
+import {
+  SaleEventBanner,
+  type SaleEventBannerProps,
+} from "@/features/sale-events/components/sale-event-banner";
 
 /**
  * The route itself is dynamic — it reads `searchParams`, so a filtered view is
@@ -68,12 +76,19 @@ export default async function CatalogPage({
   if (params.tab === "extras" && (await isFeatureEnabled("extras_shop"))) {
     redirect(legacyExtrasHref(params));
   }
-  const filters = parseFilters(params);
+  const parsed = parseFilters(params);
+  // Арга хэмжээ (`?event=slug`, 0181): зөвхөн LIVE үед шүүнэ. Товлосон /
+  // дууссан / олдохгүй бол зурвас + БҮХ каталог (plan §6.2) — хуучин
+  // холбоос хоосон жагсаалт руу унахгүй. Туг хаалттай бол параметрийг
+  // огт үл тоомсорлоно.
+  const { filters, eventBanner } = await resolveEvent(parsed);
   // `page`-гүй шүүлтүүр: доош гүйлгэх жагсаалтын түлхүүр. Шүүлтүүр солигдоход
   // жагсаалт шинээр эхэлнэ.
   const query = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (k === "page" || v === undefined) continue;
+    // Идэвхгүй арга хэмжээ дараагийн хуудсыг (`/api/catalog`) хоосолохгүй.
+    if (k === "event" && !filters.event) continue;
     query.set(k, Array.isArray(v) ? v.join(",") : v);
   }
   // Багцууд устай нэг дүрмээр шүүгдэж, эрэмбээрээ холилдоно
@@ -123,21 +138,24 @@ export default async function CatalogPage({
   return (
     <FilterQueryProvider>
       <div className="mx-auto max-w-420 px-4 py-8 md:px-8">
-        <div className="mb-6">
-          <h1
-            data-page-title
-            className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl"
-          >
-            {filters.search ? `«${filters.search}» хайлтын үр дүн` : "Каталог"}
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {counts || "0 бараа"}
-          </p>
-        </div>
-
-        {/* Эрэмбэ desktop-д энд, утсан дээр удирдлагын мөрөнд. */}
-        <div className="hidden items-center justify-end py-2 lg:flex">
-          <CatalogSort />
+        {/* Эрэмбэ desktop-д гарчигтай нэг мөрөнд (тусдаа мөр нь гарчиг ба
+            шүүлтүүрийн хооронд ~100px хоосон зай үүсгэдэг байв), утсан дээр
+            удирдлагын мөрөнд. */}
+        <div className="mb-6 flex items-end justify-between gap-4">
+          <div className="min-w-0">
+            <h1
+              data-page-title
+              className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl"
+            >
+              {filters.search ? `«${filters.search}» хайлтын үр дүн` : "Каталог"}
+            </h1>
+            <p className="text-muted-foreground mt-1 text-sm">
+              {counts || "0 бараа"}
+            </p>
+          </div>
+          <div className="hidden shrink-0 lg:block">
+            <CatalogSort />
+          </div>
         </div>
 
         {/* Controls — mobile only (on desktop the search sits above the sidebar) */}
@@ -171,6 +189,7 @@ export default async function CatalogPage({
           93px of it, measured at 390px.
         */}
           <div className="min-w-0 flex-1">
+            {eventBanner && <SaleEventBanner {...eventBanner} />}
             <CatalogResults>
               {result.items.length === 0 && collections.length === 0 ? (
                 <EmptyState
@@ -216,4 +235,56 @@ export default async function CatalogPage({
       </div>
     </FilterQueryProvider>
   );
+}
+
+/**
+ * `?event=` → шүүлт ба зурвас. LIVE эсэхийг `live_sale_events` (каталогийн
+ * шүүлттэй ижил эх сурвалж) шийднэ; бусад төлвийг `sale_event_public`.
+ */
+async function resolveEvent(parsed: ReturnType<typeof parseFilters>): Promise<{
+  filters: ReturnType<typeof parseFilters>;
+  eventBanner: SaleEventBannerProps | null;
+}> {
+  const slug = parsed.event;
+  if (!slug || !(await isFeatureEnabled("sale_events"))) {
+    return { filters: { ...parsed, event: undefined }, eventBanner: null };
+  }
+  const [live, pub] = await Promise.all([
+    getLiveSaleEvents(),
+    getSaleEventPublic(slug),
+  ]);
+  const current = live.find((e) => e.slug === slug);
+  if (current) {
+    return {
+      filters: parsed,
+      eventBanner: {
+        slug,
+        state: "live",
+        name: current.name,
+        headline: current.headline,
+        description: current.description,
+        startsAt: current.startsAt,
+        endsAt: current.endsAt,
+        showCountdown: current.showCountdown,
+        otherLive: [],
+      },
+    };
+  }
+  // Эхлэх мөчийн кэшийн завсарт (≤1 мин, cron цэвэрлэнэ) `pub` нь live,
+  // жагсаалт хуучин байж болно — «эхэлнэ» гэж харуулна, «дууссан» биш.
+  const state = !pub ? "missing" : pub.state === "live" ? "scheduled" : pub.state;
+  return {
+    filters: { ...parsed, event: undefined },
+    eventBanner: {
+      slug,
+      state,
+      name: pub?.name ?? null,
+      headline: null,
+      description: null,
+      startsAt: pub?.startsAt ?? null,
+      endsAt: pub?.endsAt ?? null,
+      showCountdown: false,
+      otherLive: live.map((e) => ({ slug: e.slug, name: e.name })),
+    },
+  };
 }

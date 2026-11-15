@@ -1,4 +1,5 @@
 import type { CatalogFilters } from "@/lib/types";
+import { parseEventSlug } from "@/lib/validators/sale-event";
 import type { Gender, ScentFamily, Season, TagKind } from "@/db/types";
 import {
   DEFAULT_CATALOG_SORT,
@@ -77,6 +78,8 @@ export function parseFilters(params: Params): CatalogFilters {
     season: bundle ? [] : season,
     tags,
     featured: featured || undefined,
+    // Арга хэмжээ = ус (0181) — багцын жагсаалтад утгагүй.
+    event: bundle ? undefined : parseEventSlug(params.event),
     kind,
     ml,
     minPrice: num(params.minPrice),

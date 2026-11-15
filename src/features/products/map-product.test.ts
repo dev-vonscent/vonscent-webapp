@@ -146,3 +146,52 @@ describe("mapProduct — хугацаатай хямдрал (0166)", () => {
     );
   });
 });
+
+describe("mapProduct — SQL-ийн variant_price (0181, plan §5.2)", () => {
+  const withVp = (vp: number | null | undefined, extra = {}) =>
+    row({
+      product_variants: [
+        {
+          id: "v5",
+          ml: 5,
+          price: 30000,
+          sale_price: null,
+          sale_starts_at: null,
+          sale_ends_at: null,
+          is_active: true,
+          variant_price: vp,
+          ...extra,
+        },
+      ],
+    });
+
+  it("variant_price байвал түүгээр (арга хэмжээний үнэ)", () => {
+    const [v] = mapProduct(withVp(24000)).variants;
+    expect(v.price).toBe(24000);
+    expect(v.basePrice).toBe(30000);
+  });
+
+  it("TS дахин бодохгүй: гар хямдрал талбар үл тоомсорлогдоно", () => {
+    // sale_price нь 21,000 гэсэн ч SQL 24,000 гэж бодсон бол 24,000.
+    const [v] = mapProduct(withVp(24000, { sale_price: 21000 })).variants;
+    expect(v.price).toBe(24000);
+  });
+
+  it("variant_price байхгүй (seed, хуучин fixture) бол effectivePrice", () => {
+    const [v] = mapProduct(withVp(undefined, { sale_price: 21000 })).variants;
+    expect(v.price).toBe(21000);
+    const [w] = mapProduct(withVp(null)).variants;
+    expect(w.price).toBe(30000);
+  });
+
+  it("үндсэн үнээс давахгүй", () => {
+    const [v] = mapProduct(withVp(99999)).variants;
+    expect(v.price).toBe(30000);
+  });
+
+  it("«-аас» үнэ ба зураастай үнэ variant_price-аас", () => {
+    const p = mapProduct(withVp(24000));
+    expect(p.startingPrice).toBe(24000);
+    expect(p.startingBasePrice).toBe(30000);
+  });
+});

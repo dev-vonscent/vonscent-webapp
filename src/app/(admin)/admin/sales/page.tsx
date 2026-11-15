@@ -28,12 +28,13 @@ interface Row {
 }
 
 /**
- * Админ → Каталог → Хямдрал (0166, feature flag `sale_page`). Олон бараанд
+ * Админ → Маркетинг → Хямдрал (0166, feature flag `sale_page`). Олон бараанд
  * нэг дор хугацаатай хямдрал тавих / цуцлах. Нуусан бараа орохгүй — зөвхөн
  * дэлгүүрт харагдаж буй («Идэвхтэй», «Тун удахгүй») бараа.
  */
 export default async function AdminSalesPage() {
   if (!(await isFeatureEnabled("sale_page"))) notFound();
+  const eventsOn = await isFeatureEnabled("sale_events");
 
   let products: SaleProduct[] = [];
   const supabase = await createClient();
@@ -68,7 +69,11 @@ export default async function AdminSalesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Хямдрал"
-        description="Олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал тавина."
+        description={
+          eventsOn
+            ? "Олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал тавина. Нэрлэсэн, хугацаатай хямдралд (Black Friday г.м.) «Арга хэмжээ»-г ашиглана уу — энэ нь одоо байгаа хямдралыг дарахгүй."
+            : "Олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал тавина."
+        }
         count={
           products.filter((p) => p.variants.some((v) => v.salePrice != null))
             .length

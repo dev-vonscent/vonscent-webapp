@@ -33,3 +33,22 @@ describe("parseFilters — «Багц»", () => {
     ]);
   });
 });
+
+describe("parseFilters — арга хэмжээ (?event=, 0181)", () => {
+  it("slug хэлбэртэй утгыг авна", () => {
+    expect(parseFilters({ event: "black-friday" }).event).toBe("black-friday");
+  });
+
+  it("буруу хэлбэр / хоосон → undefined", () => {
+    expect(parseFilters({ event: "Black Friday" }).event).toBeUndefined();
+    expect(parseFilters({ event: "x" }).event).toBeUndefined();
+    expect(parseFilters({ event: "" }).event).toBeUndefined();
+    expect(parseFilters({}).event).toBeUndefined();
+  });
+
+  it("багц дээр хоосорно (арга хэмжээ = ус л)", () => {
+    expect(
+      parseFilters({ kind: "bundle", event: "black-friday" }).event,
+    ).toBeUndefined();
+  });
+});

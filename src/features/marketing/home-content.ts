@@ -47,7 +47,7 @@ export type HomeCampaignImage =
  * цайвар хана — текст тэнд сууна. Эх нь `public/desktop.webp` (3584×1280,
  * шууд 2.8:1 — prompts/hero-desktop.md), `mobile.png`.
  */
-const HERO_PHOTO: HomeCampaignImage = {
+export const HERO_PHOTO: HomeCampaignImage & { kind: "static" } = {
   kind: "static",
   src: "/hero-desktop-v4-1600.webp",
   width: 1600,

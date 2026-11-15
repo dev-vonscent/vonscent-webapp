@@ -3,14 +3,9 @@ import Link from "next/link";
 import { preload } from "react-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getBaseCollections } from "@/features/collections/api";
-import {
-  EVERGREEN_HERO,
-  liveCampaigns,
-  type HomeCampaign,
-} from "../../home-content";
+import type { HomeCampaign } from "../../home-content";
 
-interface HeroImage {
+export interface HeroImage {
   src: string;
   alt: string;
   position: string;
@@ -24,55 +19,16 @@ interface HeroImage {
   dark?: boolean;
 }
 
-interface ResolvedHero {
+export interface ResolvedHero {
   campaign: HomeCampaign;
   image: HeroImage;
 }
 
 /**
- * The first live campaign whose image actually resolves — a campaign that
- * points at a deleted/hidden bundle falls through to the next one, and in the
- * end to the evergreen hero, so the slot is never empty or broken.
+ * Статик зурагтай кампанит ажил → `CampaignHero`-д өгөх хэлбэр. Цэвэр функц:
+ * сервер (нүүр, `hero-resolve.ts`) ба client (админы урьдчилж харах) хоёулаа.
  */
-export async function resolveHero(now = new Date()): Promise<ResolvedHero> {
-  const candidates = [...liveCampaigns(now), EVERGREEN_HERO];
-  let collections: Awaited<ReturnType<typeof getBaseCollections>> | null = null;
-  for (const campaign of candidates) {
-    const img = campaign.image;
-    if (img.kind === "static") return staticHero(campaign, img);
-    collections ??= await getBaseCollections();
-    const found = collections.find((c) => c.slug === img.slug);
-    if (found?.image) {
-      return {
-        campaign,
-        image: {
-          src: found.image,
-          alt: img.alt,
-          position: img.position ?? "50% 50%",
-        },
-      };
-    }
-  }
-  // EVERGREEN_HERO is static, so the loop always returns — this satisfies TS.
-  throw new Error("unreachable: evergreen hero must be static");
-}
-
-/**
- * The hero without any data fetch, when the first candidate is a static
- * photo; `null` when it needs a bundle cover (then `resolveHero`).
- *
- * The page renders this hero outside its own `<Suspense>`: a nested boundary
- * is revealed by React's batched `$RC` (rAF + 300ms steps), which a busy
- * phone main thread pushes past hydration — Lighthouse mobile LCP was ~11s
- * with the image itself downloaded in 0.3s.
- */
-export function resolveStaticHero(now = new Date()): ResolvedHero | null {
-  const campaign = liveCampaigns(now)[0] ?? EVERGREEN_HERO;
-  const img = campaign.image;
-  return img.kind === "static" ? staticHero(campaign, img) : null;
-}
-
-function staticHero(
+export function staticHero(
   campaign: HomeCampaign,
   img: Extract<HomeCampaign["image"], { kind: "static" }>,
 ): ResolvedHero {
@@ -131,22 +87,34 @@ function HeroCopy({
       : "text-muted-foreground";
   return (
     <>
-      <p className={`${muted} text-xs font-medium sm:text-sm`}>
+      {/* `data-hero-field` — админы баннерын засвар (studio-ux.md §6.3)
+          текстийг олоход. Дэлгүүрт зан төлөв, төрх өөрчлөгдөхгүй. */}
+      <p
+        data-hero-field="eyebrow"
+        className={`${muted} text-xs font-medium sm:text-sm`}
+      >
         {campaign.eyebrow}
       </p>
       <h1
         id="home-hero-title"
+        data-hero-field="title"
         className={`text-[clamp(1.125rem,5.6vw,1.375rem)]/[1.15] font-bold tracking-tight text-balance sm:text-2xl md:text-3xl lg:text-[2.75rem]/[1.1] ${
           tone === "photo" ? (dark ? "text-white" : "text-neutral-950") : ""
         }`}
       >
         {campaign.title}
       </h1>
-      <p className={`${muted} hidden max-w-md text-base md:block`}>
+      <p
+        data-hero-field="description"
+        className={`${muted} hidden max-w-md text-base md:block`}
+      >
         {campaign.description}
       </p>
       {/* 380px-ээс нарийн утсан дээр 4:3 картанд гарчиг + товч л багтана. */}
-      <p className={`${muted} text-sm max-[380px]:hidden md:hidden`}>
+      <p
+        data-hero-field="mobileDescription"
+        className={`${muted} text-sm max-[380px]:hidden md:hidden`}
+      >
         {campaign.mobileDescription ?? campaign.description}
       </p>
       {/* Утсан дээрх гэрэл зурган hero-д товч картын зүүн доод буланд
@@ -167,7 +135,8 @@ function HeroCopy({
           }`}
         >
           <Link href={campaign.primary.href}>
-            {campaign.primary.label} <ArrowRight className="size-4" />
+            <span data-hero-field="primary">{campaign.primary.label}</span>{" "}
+            <ArrowRight className="size-4" />
           </Link>
         </Button>
         {campaign.secondary && (
@@ -183,7 +152,9 @@ function HeroCopy({
             }`}
           >
             <Link href={campaign.secondary.href}>
-              {campaign.secondary.label}
+              <span data-hero-field="secondary">
+                {campaign.secondary.label}
+              </span>
             </Link>
           </Button>
         )}

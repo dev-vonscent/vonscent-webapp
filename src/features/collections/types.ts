@@ -19,7 +19,18 @@ export interface CollectionMember {
    */
   variantByMl: Record<
     number,
-    { variantId: string; price: number; inStock: boolean }
+    {
+      variantId: string;
+      /** Бодитоор төлөх (хямдарсан) үнэ — угсарсан (custom) багц үүгээр. */
+      price: number;
+      /**
+       * Үндсэн үнэ (хямдралгүй). Бэлэн багц ҮҮГЭЭР бодогдоно — барааны
+       * хямдрал (гар, арга хэмжээ) нөлөөлөхгүй (Тайлан11.11.pptx сл.2,
+       * docs/campaigns/plan.md §5.3). Байхгүй бол `price`.
+       */
+      basePrice?: number;
+      inStock: boolean;
+    }
   >;
 }
 

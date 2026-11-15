@@ -822,7 +822,17 @@ export const FEATURE_FLAGS = {
   sale_page: {
     label: "Хямдрал",
     description:
-      "Админ → Каталог → Хямдрал (/admin/sales, /api/admin/sales): олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал тавих/цуцлах ба барааны үнийн хүснэгтэд эхлэх/дуусах хугацаа (0166: apply_bulk_sale, clear_bulk_sale). Хугацаа дуусмагц үнэ өөрөө энгийн болно. Багц хамаарахгүй, хэрэглэгчийн талд шинэ хуудас байхгүй.",
+      "Админ → Маркетинг → Хямдрал (/admin/sales, /api/admin/sales): олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал тавих/цуцлах ба барааны үнийн хүснэгтэд эхлэх/дуусах хугацаа (0166: apply_bulk_sale, clear_bulk_sale). Хугацаа дуусмагц үнэ өөрөө энгийн болно. Багц хамаарахгүй, хэрэглэгчийн талд шинэ хуудас байхгүй.",
+  },
+  sale_events: {
+    label: "Арга хэмжээ (хугацаат хямдрал)",
+    description:
+      "Black Friday, Цагаан сар г.м. нэртэй, хугацаатай хямдрал: Админ → Маркетинг → Арга хэмжээ (/admin/sale-events, /api/admin/sale-events), каталогийн «?event=» шүүлтүүр, chip, зурвас, тоолуур, барааны картын badge, /sale/[slug] богино хаяг, минут тутмын /api/cron/sale-events. Үнэ variant_price()-д тооцоологдоно (0181) — sale_price-д бичигдэхгүй, гар хямдрал дарагдахгүй. Хаалттай үед үнэ, каталогт ямар ч нөлөөгүй, бичих RPC FEATURE_DISABLED.",
+  },
+  hero_admin: {
+    label: "Нүүрний hero (админ)",
+    description:
+      "Нүүрний hero-гийн текст, товч, холбоос, зураг, хуваарийг админ бичнэ: Админ → Сайт → Нүүрний hero (/admin/heroes, /api/admin/heroes), арга хэмжээтэй холбох, 390/768/1440 урьдчилж харах (/hero-preview), live_hero() (0182). Хаалттай үед нүүр кодын hero-г (HOME_CAMPAIGNS) харуулна, бичилт FEATURE_DISABLED.",
   },
   meta_capi: {
     label: "Meta Conversions API",
@@ -835,6 +845,122 @@ export const FEATURE_FLAGS = {
       "100k/200k/300k/500k₮-ийн бэлгийн карт: /gift-cards (зочин харна, худалдан авахад нэвтрэлт), /gift/[token] хүлээн авагчийн хуудас, /account/gift-cards, кодыг V point болгох, имэйлээр илгээх; place_gift_card_order, mark_order_paid-ийн картын салаа, redeem_gift_card, хугацаа дуусгах cron (0179). Админ → Бэлгийн карт мөн тугаар хаагдана (gift-cards-plan). АНХААР: карт зарагдсаны дараа хаавал хүлээн авагч кодоо оруулж чадахгүй ч 1 жилийн хугацаа нь үргэлжлэн тоологдоно — нээгдсэний дараа хаахгүй байх.",
   },
 } as const satisfies Record<string, FeatureFlagMeta>;
+
+/** Арга хэмжээний талбарын урт (0181 check-тэй ижил). */
+export const SALE_EVENT_LIMITS = {
+  name: 60,
+  badgeLabel: 24,
+  headline: 80,
+  description: 200,
+  slugMin: 2,
+  slugMax: 60,
+  /** Нэг арга хэмжээнд хамгийн олон бараа — каталог ~100 бараатай. */
+  products: 500,
+} as const;
+
+/** Арга хэмжээний хувь (0181 `sale_event_discounts.pct` check). */
+export const SALE_EVENT_MAX_PCT = 90;
+
+/** Badge хоосон үед картан дээр — одоогийн «Хямдрал» тэмдэг. */
+export const SALE_EVENT_DEFAULT_BADGE = "Хямдрал";
+
+/**
+ * Сайтын дээд гүйдэг зурвасын өнгө (0187 `sale_events.ticker_theme` check-тэй
+ * ижил). Өнгө нь globals.css-ийн `[data-ticker=…]` — дурын өнгө биш, бэлэн
+ * хослол тул бичиг үргэлж уншигдана. null → `navy`.
+ */
+export const SALE_EVENT_TICKER_THEMES = [
+  "navy",
+  "black",
+  "gold",
+  "red",
+  "ivory",
+  "blue",
+] as const;
+export type SaleEventTickerTheme = (typeof SALE_EVENT_TICKER_THEMES)[number];
+export const SALE_EVENT_TICKER_DEFAULT: SaleEventTickerTheme = "navy";
+export const SALE_EVENT_TICKER_LABEL: Record<SaleEventTickerTheme, string> = {
+  navy: "Navy",
+  black: "Хар",
+  gold: "Алт",
+  red: "Улаан",
+  ivory: "Цайвар",
+  blue: "Хөх",
+};
+
+/** Hero-гийн талбарын урт (0182 check-тэй ижил, plan §4.5). */
+export const HERO_LIMITS = {
+  name: 60,
+  eyebrow: 40,
+  title: 48,
+  description: 140,
+  mobileDescription: 70,
+  buttonLabel: 22,
+  imageAlt: 200,
+  catalogQuery: 300,
+  path: 300,
+} as const;
+
+/** Улирлын баннер (0185) — `heroes.season`. */
+export const HERO_SEASONS = ["spring", "summer", "autumn", "winter"] as const;
+export type HeroSeason = (typeof HERO_SEASONS)[number];
+
+/**
+ * Улирлын баннерын өгөгдмөл эхлэх өдөр 'MM-DD' (УБ, studio-ux.md D9). Админ
+ * өөрчилж болно; дуусах өдөр байхгүй — дараагийн бэлэн улирал хүртэл.
+ */
+export const SEASON_HERO_STARTS: Record<HeroSeason, string> = {
+  spring: "03-01",
+  summer: "06-01",
+  autumn: "09-01",
+  winter: "12-01",
+};
+
+/**
+ * Арга хэмжээний студид үүссэн баннерын эрэмбэ (studio-ux.md D6) — тусгай
+ * өдрийн баннераас (0) дээгүүр. Админд харагдахгүй.
+ */
+export const HERO_EVENT_PRIORITY = 10;
+
+/**
+ * Баннерын товчны «Дарахад хаашаа очих вэ?» сонголт (studio-ux.md D5). «Энэ
+ * арга хэмжээний бараанууд» нь slug-аас хамаарах тул сонгогч өөрөө нэмнэ;
+ * «Өөр хуудас…» нь дотоод хаягийн input. `flag` — тэр тугийн ард байгаа
+ * хуудас, туг хаалттай бол жагсаалтад гарахгүй.
+ */
+export const HERO_LINK_PRESETS = [
+  { key: "catalog", label: "Бүх каталог", target: { type: "path", href: "/catalog" } },
+  { key: "season-spring", label: "Хаврын үнэртэн", group: "season", target: { type: "season", value: "spring" } },
+  { key: "season-summer", label: "Зуны үнэртэн", group: "season", target: { type: "season", value: "summer" } },
+  { key: "season-autumn", label: "Намрын үнэртэн", group: "season", target: { type: "season", value: "autumn" } },
+  { key: "season-winter", label: "Өвлийн үнэртэн", group: "season", target: { type: "season", value: "winter" } },
+  { key: "new", label: "Шинэ бараа", target: { type: "catalog", query: "tags=new" } },
+  { key: "build", label: "Багц үүсгэх", target: { type: "path", href: "/collections/build" } },
+  { key: "gift-cards", label: "Бэлгийн карт", flag: "gift_cards", target: { type: "path", href: "/gift-cards" } },
+] as const;
+
+/**
+ * Hero-гийн зургийн хэмжээ (prompts/hero.md, plan §7.6). Desktop эх 2.8:1
+ * (3584×1280), утас 4:3 (2048×1536). Харьцаа ±2%.
+ */
+export const HERO_IMAGE = {
+  desktop: { ratio: 2.8, minWidth: 2400, widths: [1600, 2400, 3200], quality: 80 },
+  // 1536 — AI-ийн «хурдан» хэмжээ (1536×1152) ч орно; том бол 1600 хүртэл.
+  mobile: { ratio: 4 / 3, minWidth: 1536, width: 1600, quality: 85 },
+  ratioTolerance: 0.02,
+} as const;
+
+/**
+ * AI hero зураг (0183, plan §8.3) — санамсаргүй зардлаас хамгаалах. Нэг hero-д
+ * зэрэг 2 ажил, бүх админд өдөрт 30. `generating` төлөвт `staleMinutes`-ээс
+ * удсан ажлыг (функц `maxDuration`-д тасарсан) амжилтгүй гэж үзнэ.
+ */
+export const HERO_AI_LIMITS = {
+  concurrentPerHero: 2,
+  perDay: 30,
+  staleMinutes: 6,
+  extraMax: 500,
+} as const;
 
 /** Бэлгийн картын дүн, ₮ (0179 check-тэй ижил). */
 export const GIFT_CARD_AMOUNTS = [100000, 200000, 300000, 500000] as const;

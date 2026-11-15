@@ -7,7 +7,11 @@ import {
   getCollectionSettings,
   getCollectionOrderInfo,
 } from "@/features/collections/api";
-import { bundlePrice, discountForMl } from "@/features/collections/pricing";
+import {
+  bundlePrice,
+  bundlePriceBasis,
+  discountForMl,
+} from "@/features/collections/pricing";
 import { resolveZone, zoneKey } from "@/lib/geo/zone";
 import type {
   CheckoutInput,
@@ -116,6 +120,8 @@ export async function priceCollectionLines(
     {
       product: (typeof products)[number];
       price: number;
+      /** Үндсэн үнэ — бэлэн багц үүгээр (plan §5.3). */
+      basePrice: number;
       ml: number;
       active: boolean;
     }
@@ -127,6 +133,7 @@ export async function priceCollectionLines(
       variantIndex.set(v.id, {
         product: p,
         price: v.price,
+        basePrice: v.basePrice,
         ml: v.ml,
         // Багцын гишүүн ч мөн адил: савгүй хэмжээ бүхий багц захиалагдахгүй.
         active: v.sellable,
@@ -188,9 +195,14 @@ export async function priceCollectionLines(
         continue;
     }
 
-    // Гишүүний `price` нь хямдарсан (бодитоор төлөх) үнэ — custom багц ч
-    // тиймээс хямдарсан үнээр бодогдоно (B5).
-    const memberSum = members.reduce((s, m) => s + m.price, 0);
+    // Бэлэн багц: гишүүний ҮНДСЭН үнээс — барааны хямдрал (гар, арга
+    // хэмжээ) нөлөөлөхгүй. Угсарсан багц: хямдарсан үнээс дахин хувь хасна
+    // (Тайлан11.11.pptx сл.2, plan §5.3). Харагдах үнэ (`memberPrices`) ба
+    // захиалгын `unit_price` нэг дүрмээр — эс бөгөөс зөрнө.
+    const basis = bundlePriceBasis(col.type);
+    const unitOf = (m: (typeof members)[number]) =>
+      basis === "base" ? m.basePrice : m.price;
+    const memberSum = members.reduce((s, m) => s + unitOf(m), 0);
     const total =
       fixedPrice != null
         ? fixedPrice
@@ -204,7 +216,7 @@ export async function priceCollectionLines(
       const unit = last
         ? Math.max(0, total - assigned)
         : memberSum > 0
-          ? Math.round((m.price / memberSum) * total)
+          ? Math.round((unitOf(m) / memberSum) * total)
           : 0;
       if (!last) assigned += unit;
       out.push({
@@ -268,7 +280,9 @@ export async function quoteBundleSizes(input: {
     BUNDLE_ML_SIZES.map(async (ml): Promise<BundleSizeQuote> => {
       const members = input.productIds.map((id) => {
         const v = byId.get(id)?.variants.find((x) => x.ml === ml);
-        return v ? { productId: id, variantId: v.id, price: v.price } : null;
+        // Бэлэн багцын «хэмнэлт» үндсэн үнээс (priceCollectionLines-тэй ижил).
+        const price = input.type === "base" ? v?.basePrice : v?.price;
+        return v ? { productId: id, variantId: v.id, price: price ?? v.price } : null;
       });
       const empty = {
         ml,

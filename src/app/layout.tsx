@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Oswald } from "next/font/google";
 import { SITE } from "@/lib/constants";
 import { Providers } from "@/components/providers";
 import {
@@ -17,6 +17,16 @@ const sans = Inter({
   subsets: ["latin", "cyrillic"],
   variable: "--font-sans",
   display: "swap",
+});
+
+// Зөвхөн арга хэмжээний дээд гүйдэг зурвас (SaleEventTicker). preload: false —
+// арга хэмжээгүй үед хэзээ ч татагдахгүй.
+const condensed = Oswald({
+  subsets: ["latin", "cyrillic", "cyrillic-ext"],
+  weight: "600",
+  variable: "--font-condensed",
+  display: "swap",
+  preload: false,
 });
 
 export const viewport: Viewport = {
@@ -69,7 +79,7 @@ export default async function RootLayout({
     <html
       lang="mn"
       suppressHydrationWarning
-      className={`black ${sans.variable} h-full`}
+      className={`black ${sans.variable} ${condensed.variable} h-full`}
     >
       <body className="flex min-h-full flex-col antialiased">
         <Script id="focus-method" strategy="beforeInteractive">
