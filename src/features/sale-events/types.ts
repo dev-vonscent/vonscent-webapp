@@ -52,6 +52,8 @@ export interface SaleEventProduct {
   name: string;
   brand: string;
   gender: Gender;
+  /** Дэлгүүрийн картын зураг — ③-ын жишээ харагдацад. */
+  image: string | null;
   /** Идэвхтэй, үнэтэй хэмжээнүүд — ml → үндсэн үнэ. */
   prices: Record<number, number>;
 }

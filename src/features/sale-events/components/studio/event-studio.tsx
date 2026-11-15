@@ -190,7 +190,9 @@ export function EventStudio({
             {step === "products" && (
               <StepProducts studio={studio} products={products} />
             )}
-            {step === "catalog" && <StepCatalog studio={studio} />}
+            {step === "catalog" && (
+              <StepCatalog studio={studio} products={products} onGo={go} />
+            )}
             {step === "banner" && <StepBanner studio={studio} />}
           </fieldset>
         )}

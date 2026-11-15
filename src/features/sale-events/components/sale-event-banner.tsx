@@ -3,12 +3,17 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Clock, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/format";
 import { useFilterQuery } from "@/features/catalog/components/use-filter-query";
 import { formatCountdown } from "../lib";
 import type { SaleEventState } from "../types";
+import {
+  SALE_EVENT_BANNER_DESCRIPTION,
+  SaleEventBannerView,
+  SaleEventCountdownLine,
+} from "./sale-event-banner-view";
 
 export interface SaleEventBannerProps {
   slug: string;
@@ -43,54 +48,48 @@ export function SaleEventBanner(props: SaleEventBannerProps) {
         : "Энэ урамшуулал дууссан";
 
   return (
-    <section
-      aria-label="Урамшуулал"
-      className="bg-secondary mb-6 flex flex-col gap-3 rounded-2xl p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5"
+    <SaleEventBannerView
+      title={title}
+      action={
+        <Button
+          variant="ghost"
+          size="sm"
+          className="shrink-0 self-start"
+          onClick={clear}
+        >
+          <X />
+          {props.state === "live" ? "Бүх каталог" : "Хаах"}
+        </Button>
+      }
     >
-      <div className="min-w-0 space-y-1">
-        <h2 className="font-serif text-lg font-semibold tracking-tight wrap-break-word sm:text-xl">
-          {title}
-        </h2>
-        {props.state === "live" && props.description && (
-          <p className="text-muted-foreground text-sm wrap-break-word">
-            {props.description}
-          </p>
-        )}
-        {props.state === "live" && props.showCountdown && props.endsAt && (
-          <Countdown endsAt={props.endsAt} />
-        )}
-        {props.state === "scheduled" && props.startsAt && (
+      {props.state === "live" && props.description && (
+        <p className={SALE_EVENT_BANNER_DESCRIPTION}>{props.description}</p>
+      )}
+      {props.state === "live" && props.showCountdown && props.endsAt && (
+        <Countdown endsAt={props.endsAt} />
+      )}
+      {props.state === "scheduled" && props.startsAt && (
+        <p className="text-muted-foreground text-sm">
+          {formatDate(props.startsAt)}-нд эхэлнэ. Удахгүй уулзъя!
+        </p>
+      )}
+      {(props.state === "ended" || props.state === "missing") && (
+        <div className="space-y-2">
           <p className="text-muted-foreground text-sm">
-            {formatDate(props.startsAt)}-нд эхэлнэ. Удахгүй уулзъя!
+            Доор бүх каталог харагдаж байна.
           </p>
-        )}
-        {(props.state === "ended" || props.state === "missing") && (
-          <div className="space-y-2">
-            <p className="text-muted-foreground text-sm">
-              Доор бүх каталог харагдаж байна.
-            </p>
-            {props.otherLive.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {props.otherLive.map((e) => (
-                  <Button key={e.slug} asChild size="sm" variant="outline">
-                    <Link href={`/catalog?event=${e.slug}`}>{e.name}</Link>
-                  </Button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="shrink-0 self-start"
-        onClick={clear}
-      >
-        <X />
-        {props.state === "live" ? "Бүх каталог" : "Хаах"}
-      </Button>
-    </section>
+          {props.otherLive.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {props.otherLive.map((e) => (
+                <Button key={e.slug} asChild size="sm" variant="outline">
+                  <Link href={`/catalog?event=${e.slug}`}>{e.name}</Link>
+                </Button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </SaleEventBannerView>
   );
 }
 
@@ -118,10 +117,5 @@ function Countdown({ endsAt }: { endsAt: string }) {
 
   const text = left == null ? null : formatCountdown(left);
   if (!text) return null;
-  return (
-    <p className="text-foreground flex items-center gap-1.5 text-sm font-medium tabular-nums">
-      <Clock className="size-4" aria-hidden />
-      Дуусахад {text}
-    </p>
-  );
+  return <SaleEventCountdownLine text={text} />;
 }

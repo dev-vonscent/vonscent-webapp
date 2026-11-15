@@ -238,6 +238,7 @@ interface ProductRow {
   brand: string;
   gender: SaleEventProduct["gender"];
   product_variants: { ml: number; price: number; is_active: boolean }[];
+  product_images: { url: string; sort_order: number; is_visible: boolean | null }[];
 }
 
 /**
@@ -251,7 +252,9 @@ export async function getSaleEventProductOptions(): Promise<
   if (!supabase) return [];
   const { data } = await supabase
     .from("products")
-    .select("id, name, brand, gender, product_variants ( ml, price, is_active )")
+    .select(
+      "id, name, brand, gender, product_variants ( ml, price, is_active ), product_images ( url, sort_order, is_visible )",
+    )
     .in("status", ["active", "coming_soon"])
     .order("brand")
     .order("name");
@@ -260,6 +263,11 @@ export async function getSaleEventProductOptions(): Promise<
     name: r.name,
     brand: r.brand,
     gender: r.gender,
+    // Дэлгүүрийн картын зураг: харагдахаар тэмдэглэсэн эхнийх (0049).
+    image:
+      [...r.product_images]
+        .filter((i) => i.is_visible !== false)
+        .sort((a, b) => a.sort_order - b.sort_order)[0]?.url ?? null,
     prices: Object.fromEntries(
       r.product_variants
         .filter((v) => v.is_active && v.price > 0)
