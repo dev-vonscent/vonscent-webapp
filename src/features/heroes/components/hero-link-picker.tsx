@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { HERO_LIMITS } from "@/lib/constants";
+import { Tooltip } from "@/components/shared/tooltip";
 import { cn } from "@/lib/utils";
 import { heroTargetHref, isInternalPath } from "../lib";
 import {
@@ -64,12 +65,12 @@ export function HeroLinkPicker({
   return (
     <div
       className={cn(
-        "space-y-2 rounded-md p-3",
-        highlighted ? "bg-secondary ring-cta ring-2" : "bg-secondary/60",
+        "space-y-2 rounded-md px-3 py-2",
+        highlighted && "bg-secondary ring-cta ring-2",
       )}
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <p className="min-w-0 flex-1 basis-40 text-sm font-medium">{label}</p>
+        <div className="min-w-0 flex-1 basis-40 text-sm">{label}</div>
         <Select
           value={showCustom ? CUSTOM_LINK_KEY : key}
           disabled={disabled}
@@ -87,7 +88,7 @@ export function HeroLinkPicker({
         >
           <SelectTrigger
             aria-label="Дарахад хаашаа очих вэ?"
-            className="bg-background w-full sm:w-72"
+            className="w-full sm:w-72"
           >
             <SelectValue />
           </SelectTrigger>
@@ -117,17 +118,23 @@ export function HeroLinkPicker({
             <SelectItem value={CUSTOM_LINK_KEY}>Өөр хуудас…</SelectItem>
           </SelectContent>
         </Select>
-        {onRemove && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={disabled}
-            onClick={onRemove}
-          >
-            <X />
-            Товчийг хасах
-          </Button>
+        {onRemove ? (
+          <Tooltip content="Товчийг хасах" align="end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground size-9 rounded-full"
+              aria-label="Товчийг хасах"
+              disabled={disabled}
+              onClick={onRemove}
+            >
+              <X />
+            </Button>
+          </Tooltip>
+        ) : (
+          // Мөрүүдийн сонгогч нэг шулуунд — хасах товчны зай.
+          <span aria-hidden className="hidden size-9 shrink-0 sm:block" />
         )}
       </div>
       {showCustom && (
@@ -139,7 +146,6 @@ export function HeroLinkPicker({
             placeholder="/catalog?tags=new"
             aria-label="Хуудасны хаяг"
             aria-invalid={hrefError ? true : undefined}
-            className="bg-background"
             onChange={(e) => {
               const next = e.target.value.trim();
               setHref(next);
@@ -152,7 +158,7 @@ export function HeroLinkPicker({
               hrefError ? "text-destructive" : "text-muted-foreground",
             )}
           >
-            {hrefError ?? "Сайтын аль ч хуудас — хаягийн «vonscent.mn»-ий дараах хэсэг."}
+            {hrefError ?? "«vonscent.mn»-ий дараах хэсэг, жишээ: /blog"}
           </p>
         </div>
       )}

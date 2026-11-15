@@ -62,17 +62,26 @@ export function StepBanner({
     <div className="space-y-6">
       {bannerError && (
         <p
-          className="bg-destructive/10 text-destructive rounded-xl px-4 py-3 text-sm"
+          className="bg-destructive/10 text-destructive rounded-lg px-4 py-2.5 text-sm"
           role="alert"
         >
           Баннер хадгалагдсангүй — {bannerError} Арга хэмжээ өөрөө хадгалагдсан;
           засаад дахин хадгална уу.
         </p>
       )}
+      {!locked && (
+        <label className="text-muted-foreground hover:text-foreground flex w-fit cursor-pointer items-center gap-2.5 text-sm">
+          <Checkbox
+            checked={banner.skip}
+            onCheckedChange={(v) => studio.setBannerSkip(v === true, canvas)}
+          />
+          Энэ арга хэмжээнд баннер хэрэггүй
+        </label>
+      )}
       {banner.skip ? (
-        <p className="bg-secondary/50 text-muted-foreground rounded-2xl px-6 py-12 text-center text-sm text-pretty">
-          Энэ арга хэмжээнд баннер хэрэггүй — нүүр хуудасны баннер солигдохгүй.
-          {banner.id && " Хийсэн баннер устахгүй, буцааж асааж болно."}
+        <p className="bg-card text-muted-foreground rounded-lg px-6 py-12 text-center text-sm text-pretty">
+          Нүүр хуудасны баннер солигдохгүй.
+          {banner.id && " Хийсэн баннер хадгалагдсан хэвээр."}
         </p>
       ) : (
         <HeroCanvasEditor
@@ -100,16 +109,6 @@ export function StepBanner({
           </Link>{" "}
           харна уу.
         </p>
-      )}
-
-      {!locked && (
-        <label className="bg-secondary/50 hover:bg-secondary flex w-fit cursor-pointer items-center gap-3 rounded-xl px-4 py-3 text-sm">
-          <Checkbox
-            checked={banner.skip}
-            onCheckedChange={(v) => studio.setBannerSkip(v === true, canvas)}
-          />
-          Энэ арга хэмжээнд баннер хэрэггүй
-        </label>
       )}
     </div>
   );

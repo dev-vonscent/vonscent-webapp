@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { InfoTip } from "@/components/shared/info-tip";
 import type { SaleEventProduct } from "../../types";
 import { EventItemsSection } from "../event-items-section";
 import { itemsSummary } from "./studio-model";
@@ -28,19 +29,10 @@ export function StepProducts({
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="bg-secondary rounded-full px-3.5 py-1.5 text-sm font-medium tabular-nums">
-          {itemsSummary(draft.items)}
-        </span>
-        <span className="text-muted-foreground text-sm text-pretty">
-          Сонгосон бараа бүр дор хаяж нэг хэмжээнд хямдрах ёстой. Хувь нь
-          үндсэн үнээс, 100₮-д дугуйрна.
-        </span>
-      </div>
+    <div className="space-y-4">
       {conflicts.length > 0 && (
         <p
-          className="bg-destructive/10 text-destructive rounded-xl px-4 py-3 text-sm text-pretty"
+          className="bg-destructive/10 text-destructive rounded-lg px-4 py-2.5 text-sm text-pretty"
           role="alert"
         >
           Улаанаар тэмдэглэсэн бараа хугацаа давхацсан өөр арга хэмжээнд байна —
@@ -53,6 +45,17 @@ export function StepProducts({
         byId={byId}
         conflictIds={conflictIds}
         error={errors.items}
+        summary={
+          <p className="flex items-center gap-1.5 text-sm">
+            <span className="font-medium tabular-nums">
+              {itemsSummary(draft.items)}
+            </span>
+            <InfoTip label="Үнэ хэрхэн бодогдох вэ">
+              Хувь нь үндсэн үнээс бодогдож, 100₮-д тоймлоно. Сонгосон бараа бүр
+              дор хаяж нэг хэмжээнд хямдрах ёстой.
+            </InfoTip>
+          </p>
+        }
         onChange={(items) => studio.patch({ items })}
       />
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { Tooltip } from "@/components/shared/tooltip";
 import { EditableText } from "@/features/admin/components/editable-text";
 import {
   GENDER_LABEL,
@@ -107,25 +108,28 @@ export function CatalogPreview(p: CatalogPreviewProps) {
           countdown={
             <span className="flex items-center gap-2">
               <PreviewMarker n={2} inverse />
-              <button
-                type="button"
-                aria-pressed={p.showCountdown}
-                aria-label="Дуусах тоолуур харуулах"
-                title={
+              <Tooltip
+                content={
                   p.showCountdown
-                    ? "Дарж тоолуурыг унтраана"
-                    : "Дарж тоолуурыг асаана"
+                    ? "Дарж тоолуурыг нуух"
+                    : "Дарж тоолуурыг харуулах"
                 }
-                disabled={p.disabled}
-                onClick={() => p.onShowCountdown(!p.showCountdown)}
-                className={cn(
-                  "rounded-xs uppercase outline-offset-4 hover:outline-1 focus-visible:outline-2 disabled:pointer-events-none",
-                  onBar,
-                  !p.showCountdown && "line-through opacity-50",
-                )}
               >
-                <TickerTimer ms={p.countdownMs ?? 7 * 86_400_000} />
-              </button>
+                <button
+                  type="button"
+                  aria-pressed={p.showCountdown}
+                  aria-label="Дуусах тоолуур харуулах"
+                  disabled={p.disabled}
+                  onClick={() => p.onShowCountdown(!p.showCountdown)}
+                  className={cn(
+                    "rounded-xs uppercase outline-offset-4 hover:outline-1 focus-visible:outline-2 disabled:pointer-events-none",
+                    onBar,
+                    !p.showCountdown && "line-through opacity-50",
+                  )}
+                >
+                  <TickerTimer ms={p.countdownMs ?? 7 * 86_400_000} />
+                </button>
+              </Tooltip>
             </span>
           }
         />

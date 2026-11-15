@@ -5,6 +5,7 @@ import { Check, Plus, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Tooltip } from "@/components/shared/tooltip";
 import {
   Select,
   SelectContent,
@@ -12,6 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   GENDERS,
   GENDER_LABEL,
@@ -25,11 +33,26 @@ import { bulkSalePrice } from "@/lib/validators/sale";
 import type { SaleEventProduct } from "../types";
 import type { StudioItem } from "./studio/studio-model";
 
+function validPct(raw: string): boolean {
+  const n = Number(raw);
+  return (
+    raw.trim() !== "" &&
+    Number.isInteger(n) &&
+    n >= 1 &&
+    n <= SALE_EVENT_MAX_PCT
+  );
+}
+
+/** Хүснэгтийн багана: бараа · 4 хэмжээ · хасах. */
+const GRID =
+  "grid grid-cols-[minmax(9rem,1fr)_repeat(4,minmax(5.75rem,7.5rem))_2.25rem] items-center gap-x-2";
+
 /**
- * Бараа + хувь (plan §9.1-2, studio-ux.md §5.2). Зүүн — «Бараа нэмэх»: хайж
- * сонгоод (хүсвэл хэмжээ бүрд хувь өгч) нэг товчоор нэмнэ; өөр бүлэгт өөр
- * хувь өгч давтана. Баруун — «Хямдрах бараа»: бараа бүрийн хувийг шууд засна,
- * шинэ үнэ дор нь харагдана. Утсан дээр сонгосон бараа эхэндээ.
+ * Бараа + хувь (plan §9.1-2, studio-ux.md §5.2). Хуудсан дээр зөвхөн
+ * хямдрах барааны нягт хүснэгт: мөр = бараа, багана = хэмжээ, нүд бүрт хувь,
+ * доор нь шинэ үнэ. Баганын толгойн «бүгдэд» талбар тэр хэмжээний бүх мөрийг
+ * нэг дор бөглөнө. Шинэ бараа — «Бараа нэмэх» sheet (хайх, шүүх, олноор сонгож
+ * хувьтай/хувьгүй нэмэх).
  */
 export function EventItemsSection({
   items: members,
@@ -37,6 +60,7 @@ export function EventItemsSection({
   byId,
   conflictIds,
   error,
+  summary,
   onChange,
 }: {
   items: StudioItem[];
@@ -44,6 +68,252 @@ export function EventItemsSection({
   byId: Map<string, SaleEventProduct>;
   conflictIds: Set<string>;
   error?: string;
+  /** Хүснэгтийн дээрх тойм («5 бараа сонгосон · хямдрал 10–30%»). */
+  summary?: React.ReactNode;
+  onChange: (items: StudioItem[]) => void;
+}) {
+  const [adding, setAdding] = React.useState(false);
+
+  function setItemPct(productId: string, ml: number, value: string) {
+    onChange(
+      members.map((i) =>
+        i.productId === productId
+          ? { ...i, pcts: { ...i.pcts, [ml]: value } }
+          : i,
+      ),
+    );
+  }
+
+  /** Баганын нийтлэг утга — бүх (тэр хэмжээтэй) мөр ижил бол түүнийг. */
+  function columnValue(ml: number): string {
+    const values = members
+      .filter((i) => byId.get(i.productId)?.prices[ml] != null)
+      .map((i) => i.pcts[ml] ?? "");
+    if (values.length === 0) return "";
+    return values.every((v) => v === values[0]) ? values[0] : "";
+  }
+
+  function setColumn(ml: number, value: string) {
+    onChange(
+      members.map((i) =>
+        byId.get(i.productId)?.prices[ml] != null
+          ? { ...i, pcts: { ...i.pcts, [ml]: value } }
+          : i,
+      ),
+    );
+  }
+
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-0 flex-1 basis-60">{summary}</div>
+        {members.length > 0 && (
+          <Button
+            type="button"
+            variant="ghost"
+            className="text-muted-foreground"
+            onClick={() => onChange([])}
+          >
+            Бүгдийг хасах
+          </Button>
+        )}
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => setAdding(true)}
+        >
+          <Plus />
+          Бараа нэмэх
+        </Button>
+      </div>
+
+      {error && <p className="text-destructive text-sm">{error}</p>}
+
+      {members.length === 0 ? (
+        <div className="bg-card flex flex-col items-center gap-3 rounded-lg px-6 py-12 text-center">
+          <p className="text-muted-foreground text-sm text-pretty">
+            Хямдрах бараа хараахан сонгоогүй байна.
+          </p>
+          <Button
+            type="button"
+            className="bg-cta text-cta-foreground hover:bg-cta/90"
+            onClick={() => setAdding(true)}
+          >
+            <Plus />
+            Бараа нэмэх
+          </Button>
+        </div>
+      ) : (
+        <div className="bg-card overflow-x-auto rounded-lg">
+          <div
+            role="table"
+            aria-label="Хямдрах бараа"
+            className="min-w-152 p-1.5"
+          >
+            <div
+              role="row"
+              className={cn(
+                GRID,
+                "text-muted-foreground bg-secondary/50 rounded-md px-2.5 py-2 text-xs",
+              )}
+            >
+              <span role="columnheader" className="font-medium">
+                Бараа <span className="tabular-nums">· {members.length}</span>
+              </span>
+              {ML_SIZES.map((ml) => (
+                <span role="columnheader" key={ml} className="space-y-1">
+                  <span className="block font-medium">{ml}ml</span>
+                  <Tooltip
+                    content={`${ml}ml-ийн бүх бараанд нэг дор хувь өгнө`}
+                    className="w-full"
+                  >
+                    <span className="block w-full">
+                      <PctInput
+                        size="sm"
+                        value={columnValue(ml)}
+                        placeholder="бүгд"
+                        aria-label={`${ml}ml — бүх бараанд хувь`}
+                        onChange={(v) => setColumn(ml, v)}
+                      />
+                    </span>
+                  </Tooltip>
+                </span>
+              ))}
+              <span role="columnheader" className="sr-only">
+                Хасах
+              </span>
+            </div>
+
+            <div role="rowgroup">
+              {members.map((item) => {
+                const p = byId.get(item.productId);
+                const conflict = conflictIds.has(item.productId);
+                const noPct = Object.values(item.pcts).every(
+                  (v) => v.trim() === "",
+                );
+                return (
+                  <div
+                    role="row"
+                    key={item.productId}
+                    className={cn(
+                      GRID,
+                      "rounded-md px-2.5 py-2",
+                      conflict ? "bg-destructive/10" : "hover:bg-secondary/40",
+                    )}
+                  >
+                    <div role="cell" className="min-w-0">
+                      <p className="text-muted-foreground truncate text-[11px] tracking-[0.12em] uppercase">
+                        {p?.brand ?? "—"}
+                      </p>
+                      <p className="truncate text-sm font-medium">
+                        {p?.name ?? "Нуусан / устгасан бараа"}
+                      </p>
+                      {(conflict || noPct) && (
+                        <p className="text-destructive truncate text-xs">
+                          {conflict
+                            ? "Өөр арга хэмжээнд давхацсан"
+                            : "Дор хаяж нэг хэмжээнд хувь бичнэ үү"}
+                        </p>
+                      )}
+                    </div>
+                    {ML_SIZES.map((ml) => {
+                      const base = p?.prices[ml];
+                      if (base == null) {
+                        return (
+                          <span
+                            role="cell"
+                            key={ml}
+                            className="text-muted-foreground/60 pl-3 text-sm"
+                            aria-label={`${ml}ml байхгүй`}
+                          >
+                            —
+                          </span>
+                        );
+                      }
+                      const raw = item.pcts[ml] ?? "";
+                      const valid = validPct(raw);
+                      return (
+                        <div role="cell" key={ml} className="space-y-1">
+                          <PctInput
+                            value={raw}
+                            invalid={raw.trim() !== "" && !valid}
+                            aria-label={`${p?.name ?? ""} ${ml}ml хувь`}
+                            onChange={(v) => setItemPct(item.productId, ml, v)}
+                          />
+                          <p className="truncate text-[11px] leading-tight tabular-nums">
+                            {valid ? (
+                              <>
+                                <span className="font-medium">
+                                  {formatPrice(
+                                    bulkSalePrice(base, Number(raw)),
+                                  )}
+                                </span>{" "}
+                                <span className="text-muted-foreground line-through">
+                                  {formatPrice(base)}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground">
+                                {formatPrice(base)}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      );
+                    })}
+                    <div role="cell">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground size-9 rounded-full"
+                        aria-label={`${p?.name ?? "Бараа"}-г хасах`}
+                        onClick={() =>
+                          onChange(
+                            members.filter(
+                              (i) => i.productId !== item.productId,
+                            ),
+                          )
+                        }
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <AddProductsSheet
+        open={adding}
+        onOpenChange={setAdding}
+        products={products}
+        members={members}
+        onChange={onChange}
+      />
+    </section>
+  );
+}
+
+/**
+ * «Бараа нэмэх» sheet: хайх, хүйс/брэндээр шүүх, олноор сонгоно. Хувь бичвэл
+ * сонгосон бүх бараанд (нэмсэн ч) тэр хувийг сольж бичнэ; бичээгүй бол
+ * шинийг хувьгүй нэмж, нэмсэн барааны хувийг хөндөхгүй.
+ */
+function AddProductsSheet({
+  open,
+  onOpenChange,
+  products,
+  members,
+  onChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  products: SaleEventProduct[];
+  members: StudioItem[];
   onChange: (items: StudioItem[]) => void;
 }) {
   const [q, setQ] = React.useState("");
@@ -89,11 +359,6 @@ export function EventItemsSection({
     });
   }
 
-  /**
-   * Сонгосон барааг нэмнэ. Хувь бичсэн бол сонгосон бүх бараанд (аль хэдийн
-   * нэмсэн ч) тэр хувийг сольж бичнэ; бичээгүй бол шинийг хувьгүй нэмж,
-   * нэмсэн барааны хувийг хөндөхгүй.
-   */
   function apply() {
     const filled = Object.fromEntries(
       Object.entries(pcts).filter(([, v]) => v.trim() !== ""),
@@ -111,181 +376,41 @@ export function EventItemsSection({
     onChange(items);
     setSelected(new Set());
     setPcts({});
-  }
-
-  function setItemPct(productId: string, ml: number, value: string) {
-    onChange(
-      members.map((i) =>
-        i.productId === productId
-          ? { ...i, pcts: { ...i.pcts, [ml]: value } }
-          : i,
-      ),
-    );
+    onOpenChange(false);
   }
 
   const pctValues = Object.values(pcts).filter((v) => v.trim() !== "");
-  const pctError = pctValues.some((v) => {
-    const n = Number(v);
-    return !Number.isInteger(n) || n < 1 || n > SALE_EVENT_MAX_PCT;
-  })
+  const pctError = pctValues.some((v) => !validPct(v))
     ? `Хувь 1–${SALE_EVENT_MAX_PCT} бүхэл тоо.`
     : null;
-
   const hasSelection = selected.size > 0;
-  // Хувьгүй нэмэхэд зөвхөн шинэ бараа нэмэгдэнэ (нэмсэний хувь хөндөгдөхгүй).
   const newCount = [...selected].filter((id) => !memberIds.has(id)).length;
-  // «Бүгдэд» — бүх хэмжээ ижил үед тэр утгыг харуулна.
   const firstPct = pcts[ML_SIZES[0]] ?? "";
   const allPct = ML_SIZES.every((ml) => (pcts[ml] ?? "") === firstPct)
     ? firstPct
     : "";
 
   return (
-    <section className="grid items-start gap-x-10 gap-y-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      {/* ── Арга хэмжээний бараа ──────────────────────────────────── */}
-      <div className="min-w-0 space-y-4 lg:order-2">
-        <div className="flex items-baseline justify-between gap-2">
-          <h3 className="font-serif text-xl font-semibold">
-            Хямдрах бараа{" "}
-            <span className="text-muted-foreground font-sans text-base font-normal tabular-nums">
-              {members.length}
-            </span>
-          </h3>
-          {members.length > 0 && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground"
-              onClick={() => onChange([])}
-            >
-              Бүгдийг хасах
-            </Button>
-          )}
-        </div>
-        {error && <p className="text-destructive text-sm">{error}</p>}
-        {members.length === 0 ? (
-          <div className="bg-secondary/50 text-muted-foreground rounded-2xl px-6 py-12 text-center text-sm text-pretty">
-            Одоохондоо хоосон.
-            <br />
-            <span className="lg:hidden">Доорх</span>
-            <span className="hidden lg:inline">Зүүн талын</span> жагсаалтаас
-            бараагаа сонгож нэмнэ үү.
-          </div>
-        ) : (
-          <ul role="list" className="space-y-3">
-            {members.map((item) => {
-              const p = byId.get(item.productId);
-              const conflict = conflictIds.has(item.productId);
-              const sizes = ML_SIZES.filter((ml) => p?.prices[ml] != null);
-              // Сонгосон бараа бүр дор хаяж нэг хэмжээнд хямдрах ёстой.
-              const noPct = Object.values(item.pcts).every(
-                (v) => v.trim() === "",
-              );
-              return (
-                <li
-                  key={item.productId}
-                  className={cn(
-                    "space-y-4 rounded-2xl p-4",
-                    conflict ? "bg-destructive/10" : "bg-secondary/50",
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-muted-foreground truncate text-[11px] tracking-[0.15em] uppercase">
-                        {p?.brand ?? "—"}
-                      </p>
-                      <p className="truncate font-medium">
-                        {p?.name ?? "Нуусан / устгасан бараа"}
-                      </p>
-                      {conflict && (
-                        <p className="text-destructive mt-1 text-xs">
-                          Өөр арга хэмжээнд давхацсан
-                        </p>
-                      )}
-                      {noPct && (
-                        <p className="text-destructive mt-1 text-xs">
-                          Дор хаяж нэг хэмжээнд хувь бичнэ үү
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground -mt-1 -mr-1 size-9 shrink-0 rounded-full"
-                      aria-label={`${p?.name ?? "Бараа"}-г хасах`}
-                      onClick={() =>
-                        onChange(
-                          members.filter(
-                            (i) => i.productId !== item.productId,
-                          ),
-                        )
-                      }
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {sizes.map((ml) => {
-                      const base = p?.prices[ml] ?? 0;
-                      const raw = item.pcts[ml] ?? "";
-                      const n = Number(raw);
-                      const valid =
-                        raw.trim() !== "" &&
-                        Number.isInteger(n) &&
-                        n >= 1 &&
-                        n <= SALE_EVENT_MAX_PCT;
-                      return (
-                        <label key={ml} className="block space-y-1.5">
-                          <span className="text-muted-foreground block text-xs font-medium">
-                            {ml}ml
-                          </span>
-                          <PctInput
-                            value={raw}
-                            invalid={raw.trim() !== "" && !valid}
-                            aria-label={`${p?.name ?? ""} ${ml}ml хувь`}
-                            onChange={(v) => setItemPct(item.productId, ml, v)}
-                          />
-                          <span className="flex flex-col text-xs tabular-nums">
-                            {valid ? (
-                              <>
-                                <span className="font-medium">
-                                  {formatPrice(bulkSalePrice(base, n))}
-                                </span>
-                                <span className="text-muted-foreground line-through">
-                                  {formatPrice(base)}
-                                </span>
-                              </>
-                            ) : (
-                              <span className="text-muted-foreground">
-                                {formatPrice(base)}
-                              </span>
-                            )}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full gap-0 p-0 [--input-edge:transparent] sm:max-w-lg"
+      >
+        <SheetHeader className="px-5 pt-5 pb-3">
+          <SheetTitle>Бараа нэмэх</SheetTitle>
+          <SheetDescription>
+            Сонгоод доор хувиа бичнэ. Хоосон хэмжээ хямдрахгүй.
+          </SheetDescription>
+        </SheetHeader>
 
-      {/* ── Бараа нэмэх ───────────────────────────────────────────── */}
-      <div className="min-w-0 space-y-4 lg:order-1">
-        <h3 className="font-serif text-xl font-semibold">Бараа нэмэх</h3>
-
-        <div className="space-y-2">
+        <div className="space-y-2 px-5 pb-3">
           <div className="relative">
-            <Search className="text-muted-foreground absolute top-1/2 left-4 size-4 -translate-y-1/2" />
+            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Брэнд эсвэл нэрээр хайх"
-              className="h-12 rounded-xl pl-11"
+              className="pl-9"
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -293,7 +418,7 @@ export function EventItemsSection({
               value={gender}
               onValueChange={(v) => setGender(v as Gender | "all")}
             >
-              <SelectTrigger className="h-11 rounded-xl">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -306,7 +431,7 @@ export function EventItemsSection({
               </SelectContent>
             </Select>
             <Select value={brand} onValueChange={setBrand}>
-              <SelectTrigger className="h-11 rounded-xl">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -321,142 +446,138 @@ export function EventItemsSection({
           </div>
         </div>
 
-        <div className="bg-secondary/50 overflow-hidden rounded-2xl">
-          <label className="text-muted-foreground flex cursor-pointer items-center gap-3 px-4 pt-3 pb-2 text-xs">
-            <Checkbox
-              aria-label="Харагдаж буй бүх барааг сонгох"
-              checked={allVisibleSelected}
-              onCheckedChange={toggleAll}
-            />
-            <span className="tabular-nums">
-              Бүгдийг сонгох · {visible.length} бараа
-            </span>
-          </label>
-          <ul
-            role="list"
-            className="max-h-80 overflow-y-auto px-1.5 pb-1.5 lg:max-h-112"
-          >
-            {visible.length === 0 && (
-              <li className="text-muted-foreground px-3 py-8 text-center text-sm">
-                Илэрц олдсонгүй
-              </li>
-            )}
-            {visible.map((p) => {
-              const isOn = selected.has(p.id);
-              return (
-                <li key={p.id}>
-                  <label
-                    className={cn(
-                      "flex cursor-pointer items-center gap-3 rounded-xl p-2.5 text-sm",
-                      isOn ? "bg-background" : "hover:bg-background/60",
-                    )}
-                  >
-                    <Checkbox
-                      checked={isOn}
-                      onCheckedChange={() => toggle(p.id)}
-                    />
-                    <span className="min-w-0 flex-1 truncate">
-                      <span className="font-medium">{p.name}</span>
-                      <span className="text-muted-foreground"> · {p.brand}</span>
+        <label className="text-muted-foreground flex cursor-pointer items-center gap-3 px-6 py-2 text-xs">
+          <Checkbox
+            aria-label="Харагдаж буй бүх барааг сонгох"
+            checked={allVisibleSelected}
+            onCheckedChange={toggleAll}
+          />
+          <span className="tabular-nums">
+            Бүгдийг сонгох · {visible.length} бараа
+          </span>
+        </label>
+        <ul role="list" className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+          {visible.length === 0 && (
+            <li className="text-muted-foreground px-3 py-8 text-center text-sm">
+              Илэрц олдсонгүй
+            </li>
+          )}
+          {visible.map((p) => {
+            const isOn = selected.has(p.id);
+            return (
+              <li key={p.id}>
+                <label
+                  className={cn(
+                    "flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm",
+                    isOn ? "bg-secondary" : "hover:bg-secondary/50",
+                  )}
+                >
+                  <Checkbox
+                    checked={isOn}
+                    onCheckedChange={() => toggle(p.id)}
+                  />
+                  <span className="min-w-0 flex-1 truncate">
+                    <span className="font-medium">{p.name}</span>
+                    <span className="text-muted-foreground"> · {p.brand}</span>
+                  </span>
+                  {memberIds.has(p.id) && (
+                    <span className="text-muted-foreground inline-flex shrink-0 items-center gap-1 text-xs">
+                      <Check className="size-3.5" />
+                      Нэмсэн
                     </span>
-                    {memberIds.has(p.id) && (
-                      <span className="text-muted-foreground inline-flex shrink-0 items-center gap-1 text-xs">
-                        <Check className="size-3.5" />
-                        Нэмсэн
-                      </span>
-                    )}
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+                  )}
+                </label>
+              </li>
+            );
+          })}
+        </ul>
 
-        {hasSelection && (
-          <div className="bg-foreground text-background space-y-4 rounded-2xl p-4 sm:p-5">
-            <div className="flex items-baseline justify-between gap-2">
-              <p className="font-medium tabular-nums">
-                {selected.size} бараа сонгосон
-              </p>
+        <div className="bg-secondary/50 space-y-3 px-5 py-4">
+          <div className="flex items-baseline justify-between gap-2 text-sm">
+            <p className="font-medium tabular-nums">
+              {hasSelection
+                ? `${selected.size} бараа сонгосон`
+                : "Бараа сонгоогүй"}
+            </p>
+            {hasSelection && (
               <button
                 type="button"
-                className="text-sm opacity-70 hover:opacity-100"
+                className="text-muted-foreground hover:text-foreground"
                 onClick={() => setSelected(new Set())}
               >
                 Цуцлах
               </button>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm opacity-70">
-                Хямдралын хувь — хоосон хэмжээ хямдрахгүй
-              </p>
-              <div className="grid grid-cols-5 gap-2">
-                {ML_SIZES.map((ml) => (
-                  <label key={ml} className="block space-y-1">
-                    <span className="block text-xs opacity-70">{ml}ml</span>
-                    <PctInput
-                      tone="inverse"
-                      value={pcts[ml] ?? ""}
-                      onChange={(v) => setPcts((x) => ({ ...x, [ml]: v }))}
-                    />
-                  </label>
-                ))}
-                <label className="block space-y-1">
-                  <span className="block text-xs opacity-70">Бүгдэд</span>
-                  <PctInput
-                    tone="inverse"
-                    value={allPct}
-                    placeholder="%"
-                    onChange={(v) =>
-                      setPcts(Object.fromEntries(ML_SIZES.map((ml) => [ml, v])))
-                    }
-                  />
-                </label>
-              </div>
-              {pctError && (
-                <p className="text-background text-xs font-medium" role="alert">
-                  ⚠ {pctError}
-                </p>
-              )}
-            </div>
-            <Button
-              type="button"
-              size="lg"
-              variant="secondary"
-              className="w-full"
-              disabled={
-                !!pctError || (pctValues.length === 0 && newCount === 0)
-              }
-              onClick={apply}
-            >
-              <Plus />
-              {pctValues.length > 0
+            )}
+          </div>
+          <div className="grid grid-cols-5 gap-2">
+            {ML_SIZES.map((ml) => (
+              <label key={ml} className="block space-y-1">
+                <span className="text-muted-foreground block text-xs">
+                  {ml}ml
+                </span>
+                <PctInput
+                  value={pcts[ml] ?? ""}
+                  onChange={(v) => setPcts((x) => ({ ...x, [ml]: v }))}
+                />
+              </label>
+            ))}
+            <label className="block space-y-1">
+              <span className="text-muted-foreground block text-xs">
+                Бүгдэд
+              </span>
+              <PctInput
+                value={allPct}
+                placeholder="%"
+                onChange={(v) =>
+                  setPcts(Object.fromEntries(ML_SIZES.map((ml) => [ml, v])))
+                }
+              />
+            </label>
+          </div>
+          {pctError && (
+            <p className="text-destructive text-xs font-medium" role="alert">
+              {pctError}
+            </p>
+          )}
+          <Button
+            type="button"
+            className="bg-cta text-cta-foreground hover:bg-cta/90 w-full"
+            disabled={
+              !hasSelection ||
+              !!pctError ||
+              (pctValues.length === 0 && newCount === 0)
+            }
+            onClick={apply}
+          >
+            <Plus />
+            {!hasSelection
+              ? "Бараа сонгоно уу"
+              : pctValues.length > 0
                 ? `${selected.size} бараанд хувь хэрэглэх`
                 : newCount === 0
                   ? "Аль хэдийн нэмсэн — хувь бичнэ үү"
                   : `${newCount} барааг хувьгүй нэмэх`}
-            </Button>
-          </div>
-        )}
-      </div>
-    </section>
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
-/** «%» дагавартай, хүрээгүй хувийн талбар. */
+/** «%» дагавартай хувийн талбар. */
 function PctInput({
   value,
   onChange,
   invalid,
   placeholder = "—",
-  tone = "default",
+  size = "default",
   "aria-label": ariaLabel,
 }: {
   value: string;
   onChange: (value: string) => void;
   invalid?: boolean;
   placeholder?: string;
-  tone?: "default" | "inverse";
+  size?: "default" | "sm";
   "aria-label"?: string;
 }) {
   return (
@@ -470,20 +591,16 @@ function PctInput({
         aria-label={ariaLabel}
         aria-invalid={invalid || undefined}
         className={cn(
-          "h-11 rounded-lg pr-7 tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
-          tone === "inverse"
-            ? "bg-background/15 placeholder:text-background/50 text-background"
-            : "bg-background",
+          "bg-background [appearance:textfield] pr-6 tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+          size === "sm" && "h-8 text-xs md:text-xs",
+          invalid && "field-edge-error",
         )}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
       <span
         aria-hidden
-        className={cn(
-          "pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-xs",
-          tone === "inverse" ? "text-background/60" : "text-muted-foreground",
-        )}
+        className="text-muted-foreground pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-xs"
       >
         %
       </span>
