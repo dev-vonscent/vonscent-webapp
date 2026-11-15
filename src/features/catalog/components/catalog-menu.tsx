@@ -40,14 +40,17 @@ export async function CatalogMenu() {
   );
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2.15fr)] gap-10">
+    // xl-ээс доош (768–1279px, iPad): гурван багана хажуу хажуудаа багтахгүй —
+    // хүйс/улирлын зураг жижгэрч, шошго тасардаг байсан. xl-ээс доош үнэрийн
+    // төрөл дээр нэг эгнээ (6 дүрс), зурагтай хоёр блок доор бүтэн өргөнөөр.
+    <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,2.15fr)] xl:gap-10">
       {families.length > 0 ? (
         <MenuColumn id="family" title="Үнэрийн төрөл">
           {/* 3×2 «дүрсний тавиур»: дүрс дээр, нэр доор нь — хажуугийн зурагтай
               картуудтай ижил босоо хэмнэлтэй. Дүрсүүд transparent PNG, дэвсгэргүй;
               hover-оор л нүд тодорч дүрс бага зэрэг өргөгдөнө. Админы шинээр
               нэмсэн төрөлд дүрс хараахан байхгүй байж болно. */}
-          <ul className="grid grid-cols-3 gap-2">
+          <ul className="grid grid-cols-6 gap-2 xl:grid-cols-3">
             {families.map((f) => (
               <li key={f.slug}>
                 <Link
@@ -67,7 +70,7 @@ export async function CatalogMenu() {
                         // анивчдаг байв — Next жижиг хувилбар өгнө. SVG-г
                         // `dangerouslyAllowSVG`-гүйгээр optimize хийхгүй.
                         unoptimized={f.iconUrl.endsWith(".svg")}
-                        className="size-14 object-contain will-change-transform transition-transform duration-300 ease-out group-hover:-translate-y-0.5 motion-reduce:transition-none"
+                        className="size-14 object-contain transition-transform duration-300 ease-out will-change-transform group-hover:-translate-y-0.5 motion-reduce:transition-none"
                       />
                     )}
                   </span>
@@ -89,7 +92,7 @@ export async function CatalogMenu() {
           өргөн дэлгэц дээр картууд хэт өргөсөж толгой тасардаг байсан).
           `self-start`: сунгавал auto мөрүүд илүү зайг хувааж, улирлын мөр
           хүйсийнхээс өндөр болно. */}
-      <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] grid-rows-[auto_auto] gap-x-10 self-start">
+      <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] grid-rows-[auto_auto] gap-x-6 self-start xl:gap-x-10">
         <MenuColumn
           id="gender"
           title="Хүйс"
