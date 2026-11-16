@@ -85,6 +85,12 @@ export function WishlistSync() {
 
 const EMPTY: string[] = [];
 
+/** Хүснэгт бүрийн FK-ийн эх хүснэгт. */
+const PARENT = {
+  wishlists: "products",
+  collection_wishlists: "collections",
+} as const;
+
 /**
  * Нэг хүснэгтийн merge + mirror: нэвтрэхэд remote ∪ local, дараа нь toggle
  * бүрийг DB руу. Mirror нь тухайн хэрэглэгчийн merge дуусах хүртэл унтраалттай
@@ -139,10 +145,22 @@ function useMirror({
       const missing = union.filter(
         (id) => UUID_RE.test(id) && !remote.includes(id),
       );
-      if (missing.length) {
+      if (!missing.length) return;
+      // Устгагдсан бараа/багцын id localStorage-д үлддэг (DB-ийн мөр нь
+      // cascade-аар устсан). Түүнийг дахин upsert хийвэл FK зөрчил → 409,
+      // нэвтэрсэн хэрэглэгчийн хуудас ачаалах бүрт консолд алдаа гардаг байв.
+      // Одоо байгаа (харагдах) мөрүүдийг л бичнэ; local жагсаалтыг хөндөхгүй —
+      // түр нуугдсан бараа буцаж гарвал хүслийн жагсаалтад хэвээр байна.
+      const { data: alive, error: aliveError } = await supabase
+        .from(PARENT[table])
+        .select("id")
+        .in("id", missing);
+      if (cancelled || aliveError) return;
+      const existing = (alive ?? []).map((r) => r.id as string);
+      if (existing.length) {
         await supabase
           .from(table)
-          .upsert(missing.map((id) => ({ user_id: userId, [column]: id })));
+          .upsert(existing.map((id) => ({ user_id: userId, [column]: id })));
       }
     })();
     return () => {
