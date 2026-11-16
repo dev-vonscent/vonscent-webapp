@@ -8,9 +8,8 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all paths except static assets, image optimizer and the Sentry
-     * tunnel (`tunnelRoute` in next.config.ts) — error events need no session.
+     * Match all paths except static assets and the image optimizer.
      */
-    "/((?!_next/static|_next/image|monitoring|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
