@@ -6,6 +6,10 @@
     {
       "path": "/api/cron/reconcile-payments",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/midnight-revalidate",
+      "schedule": "1,4 16 * * *"
     }
   ]
 }

@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAndMarkOrderPaid } from "@/lib/payments/confirm-order";
 import { isQpayMockMode } from "@/lib/payments/qpay";
 import { cancelOrderInvoice } from "@/lib/payments/cancel-invoice";
-import { env } from "@/lib/env";
+import { cronGuard } from "@/lib/cron-auth";
 
 /**
  * Цуцлахын өмнөх эцсийн төлбөрийн шалгалт.
@@ -47,24 +46,11 @@ const PRE_EXPIRY_MINUTES = 6;
 
 export const dynamic = "force-dynamic";
 
-function authorised(req: Request): boolean {
-  if (!env.cronSecret) return false;
-  const header = req.headers.get("authorization") ?? "";
-  const expected = `Bearer ${env.cronSecret}`;
-  // Урт нь зөрөх үед `timingSafeEqual` шидэлт хийдэг тул эхлээд шалгана.
-  if (header.length !== expected.length) return false;
-  return timingSafeEqual(Buffer.from(header), Buffer.from(expected));
-}
-
 export async function GET(req: Request) {
   // Нууц тавигдаагүй бол route нь ажиллахгүй. Нээлттэй орхих нь энэ endpoint-ыг
   // QPay рүү чиглэсэн хүчитгэгч болгоно.
-  if (!env.cronSecret) {
-    return NextResponse.json({ error: "CRON_NOT_CONFIGURED" }, { status: 503 });
-  }
-  if (!authorised(req)) {
-    return NextResponse.json({ error: "UNAUTHORISED" }, { status: 401 });
-  }
+  const denied = cronGuard(req);
+  if (denied) return denied;
   // Mock орчинд QPay гэж байхгүй — тулгах зүйл ч байхгүй.
   if (isQpayMockMode()) {
     return NextResponse.json({ ok: true, skipped: "MOCK_MODE" });
