@@ -24,8 +24,9 @@ test("product can be added to the cart and reaches checkout", async ({
   // .first() — the related-products carousel has quick-add buttons too.
   await page.getByRole("button", { name: /Сагсанд нэмэх/ }).first().click();
 
-  // The cart badge appears on the header trigger.
-  const cartButton = page.getByRole("button", { name: "Сагс", exact: true });
+  // The cart badge appears on the header trigger — its count is part of the
+  // accessible name («Сагс, 1»), so the visible number matches the label.
+  const cartButton = page.getByRole("button", { name: /^Сагс, \d+$/ });
   await expect(cartButton.first()).toBeVisible();
   await cartButton.first().click();
 
