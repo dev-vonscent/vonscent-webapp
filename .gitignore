@@ -71,3 +71,6 @@ vitest*.config.*.timestamp-*.mjs
 /Claude outputs/
 /scripts/blender/preview_*.png
 /scripts/blender/renders/
+
+# Локал Supabase CLI-ийн ажлын хавтас
+.local-supabase/
