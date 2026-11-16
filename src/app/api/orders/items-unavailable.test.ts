@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from "vitest";
 let rpcError: { message: string } | null = null;
 
 vi.mock("@/lib/rate-limit", () => ({ enforceRateLimit: async () => null }));
-vi.mock("@/lib/cache", () => ({ revalidatePublic: () => {} }));
+vi.mock("@/lib/cache", () => ({ revalidateStock: () => {} }));
 vi.mock("@/features/content/api", () => ({
   getShippingSettings: async () => ({ zones: [] }),
   getDeliveryBlackoutDays: async () => [],

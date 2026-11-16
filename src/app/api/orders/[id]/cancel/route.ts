@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidatePublic } from "@/lib/cache";
+import { revalidateStock } from "@/lib/cache";
 import { env, isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -126,6 +126,6 @@ export async function POST(
   // The customer gets their own copy on the email they registered (if any).
   await sendOrderCustomerEmail(id, "cancelled");
 
-  revalidatePublic();
+  revalidateStock();
   return NextResponse.json({ ok: true });
 }

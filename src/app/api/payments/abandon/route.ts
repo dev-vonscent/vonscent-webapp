@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { orderIdForToken } from "@/features/payment/api";
-import { revalidatePublic } from "@/lib/cache";
+import { revalidateStock } from "@/lib/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { callRpc } from "@/lib/supabase/rpc";
@@ -106,6 +106,6 @@ export async function POST(req: Request) {
 
   // Утсан дээр нээлттэй үлдсэн QR цуцлагдсан захиалгад мөнгө оруулахгүй.
   await cancelOrderInvoice(ref.id);
-  revalidatePublic();
+  revalidateStock();
   return NextResponse.json({ ok: true });
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidatePublic } from "@/lib/cache";
+import { revalidateStock } from "@/lib/cache";
 import {
   checkoutOrderSchema,
   detailMissing,
@@ -422,7 +422,7 @@ export async function POST(req: Request) {
     }
 
     // Stock moved — refresh cached product pages so sold-out states stay honest.
-    revalidatePublic();
+    revalidateStock();
 
     // Захиалгын дугаар ба төлбөрийн линкийг хэрэглэгч рүү. Зочны хувьд энэ нь
     // захиалгаа дахин олох цорын ганц шууд зам — `/pay/<token>`-оос гарчихвал
