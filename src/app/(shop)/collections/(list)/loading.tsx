@@ -7,6 +7,9 @@ import { SkeletonBlock } from "@/components/shared/skeletons";
  * зурж, шүүлтүүрийн мөрийг огт тооцдоггүй байсан тул ачаалал дуусмагц агуулга
  * үсэрдэг байв. Багц цөөхөн үед шүүлтүүр нь бүх өргөнд дээд мөр хэлбэртэй
  * байдаг учир энэ ганц хэлбэр утас, десктоп хоёуланд таарна.
+ *
+ * `(list)` бүлэгт: `collections/`-ийн түвшинд байхад `[slug]/layout.tsx`-ийг
+ * Suspense-ээр ороож, байхгүй багц 404 биш 200 буцаадаг байв.
  */
 export default function Loading() {
   return (
@@ -29,10 +32,7 @@ export default function Loading() {
         </div>
         <div className="grid w-full grid-cols-2 gap-2 lg:flex lg:w-auto">
           {Array.from({ length: 4 }).map((_, i) => (
-            <SkeletonBlock
-              key={i}
-              className="h-9 rounded-sm lg:w-24"
-            />
+            <SkeletonBlock key={i} className="h-9 rounded-sm lg:w-24" />
           ))}
         </div>
       </div>

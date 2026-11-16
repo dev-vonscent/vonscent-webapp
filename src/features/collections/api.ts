@@ -364,7 +364,11 @@ export async function getCollectionPriceBounds(): Promise<{
 }
 
 /** One active base collection by slug (null when missing / not sellable roster). */
-export async function getCollectionBySlug(
+/**
+ * Request-scoped (`cache`): багцын layout (404 шалгалт), `generateMetadata`,
+ * хуудас гурвуулаа нэг хүсэлтэд дуудна — сан руу нэг л удаа.
+ */
+export const getCollectionBySlug = cache(async function getCollectionBySlug(
   slug: string,
 ): Promise<Collection | null> {
   if (!isSupabaseConfigured) return null;
@@ -384,7 +388,7 @@ export async function getCollectionBySlug(
 
   const row = data as unknown as DbCollection;
   return build(row, await membersById([row]), settings);
-}
+});
 
 /** The signed-in user's saved custom collections (owner-scoped via RLS). */
 export async function getMyCollections(): Promise<Collection[]> {
