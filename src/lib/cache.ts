@@ -20,6 +20,26 @@ export function revalidatePublic() {
 }
 
 /**
+ * Захиалга үүсэх / цуцлагдах / төлбөрөөс татгалзах нь зөвхөн нөөц, үлдэгдлийг
+ * (дууссан эсэх) өөрчилдөг. `revalidatePublic()` нь `revalidatePath("/",
+ * "layout")`-ээр блог, FAQ, about зэрэг БҮХ хуудсыг цэвэрлэж, захиалга бүрт
+ * сайт бүхэлдээ дахин бичигддэг байсан — энэ нь зөвхөн үлдэгдэл харуулдаг
+ * газрыг цэвэрлэнэ:
+ *  - `CACHE_TAG_CATALOG` — каталогийн хайлт, «Тун удахгүй», facet, савны
+ *    түгжээ (products/api.ts, bottle-stock.ts) ба тэдгээрийг уншсан хуудсууд;
+ *  - нүүр (rail-ийн дууссан эсэх, эрэмбэ), барааны хуудас бүр (дууссан хэмжээ,
+ *    төстэй ус), багцын жагсаалт ба хуудас (гишүүн усны үлдэгдэл).
+ * `/catalog`, `/collections/build` нь dynamic — өгөгдөл нь tag-аар цэвэрлэгдэнэ.
+ */
+export function revalidateStock() {
+  revalidateTag(CACHE_TAG_CATALOG, "max");
+  revalidatePath("/");
+  revalidatePath("/products/[slug]", "page");
+  revalidatePath("/collections");
+  revalidatePath("/collections/[slug]", "page");
+}
+
+/**
  * Purge only what a review write actually changes: the product page (list +
  * rating), the catalog (rating stars on cards) and the home page (its recent
  * reviews strip). Deliberately *not* `revalidatePublic()` — a single customer

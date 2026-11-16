@@ -1,10 +1,19 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["icn1"],
+  "ignoreCommand": "bash scripts/vercel-ignore-build.sh",
   "crons": [
     {
       "path": "/api/cron/reconcile-payments",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/midnight-revalidate",
+      "schedule": "1,4 16 * * *"
+    },
+    {
+      "path": "/api/cron/expired-reserves-revalidate",
+      "schedule": "2-59/5 * * * *"
     }
   ]
 }

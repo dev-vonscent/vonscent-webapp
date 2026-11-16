@@ -19,7 +19,11 @@ export const collectionItem = (collection: Collection): RailItem => ({
   collection,
 });
 
-/** Fisher–Yates, оролтыг өөрчлөхгүй. `random` нь тестэд зориулагдсан. */
+/**
+ * Fisher–Yates, оролтыг өөрчлөхгүй. Сервер дээр (ISR) `random`-д
+ * `dailyRandom()` (`@/lib/seeded-random`) дамжуул — `Math.random` бол
+ * дахин үүсгэлт бүрт HTML өөрчлөгдөж кэш дахин бичигдэнэ.
+ */
 export function shuffle<T>(xs: readonly T[], random = Math.random): T[] {
   const out = [...xs];
   for (let i = out.length - 1; i > 0; i--) {
