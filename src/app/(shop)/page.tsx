@@ -220,6 +220,8 @@ async function BestSellersSection() {
       <ProductCarousel
         items={scatterCollections(rail.products, rail.collections)}
         prefer={["hot"]}
+        // Hero-гийн дараах эхний rail — утсан дээр эхний дэлгэцэнд орж LCP болдог.
+        eagerCount={4}
       />
     </section>
   );

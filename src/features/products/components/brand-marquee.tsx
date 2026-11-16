@@ -47,13 +47,19 @@ function BrandLink({
         // (monogram over text) is height-limited and rendered a quarter of the
         // width Burberry gets. A squarer box splits the difference — stacked
         // marks grow, wordmarks give up a little length.
-        <span className="relative h-10 w-32 sm:h-12 sm:w-40">
+        //
+        // Not `fill`: in dev, next/image checks the parent's computed
+        // `position` the moment the image loads. These eager SVGs often load
+        // before the stylesheet applies, so the check saw `static` and warned
+        // for every logo. Fixed width/height + `size-full` fills the same box
+        // without that check.
+        <span className="h-10 w-32 sm:h-12 sm:w-40">
           <Image
             src={logo}
             alt={brand}
-            fill
+            width={160}
+            height={48}
             unoptimized
-            sizes="160px"
             // Lazy loading is wrong for a track that scrolls itself. The
             // browser only fetches an image once it intersects the viewport,
             // and everything past the visible window is clipped by the
@@ -66,7 +72,7 @@ function BrandLink({
             // <head> ahead of the hero (LCP). "low" skips that preload; the
             // logos still start downloading with the page, just after it.
             fetchPriority="low"
-            className="brand-logo object-contain"
+            className="brand-logo size-full object-contain"
           />
         </span>
       ) : (
@@ -133,7 +139,12 @@ function Track({
         style={{ animationDuration: `${half.length * SECONDS_PER_LOGO}s` }}
       >
         {loop.map((b, i) => (
-          <BrandLink key={i} brand={b} logos={logos} hidden={i >= half.length} />
+          <BrandLink
+            key={i}
+            brand={b}
+            logos={logos}
+            hidden={i >= half.length}
+          />
         ))}
       </div>
     </div>
