@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
-import { CACHE_TAG_CATALOG } from "@/lib/cache-tags";
+import { CACHE_TAG_CATALOG, CACHE_TAG_STOCK } from "@/lib/cache-tags";
 import { BOTTLE_IMAGE_URL_RE, NEW_PRODUCTS_COUNT } from "@/lib/constants";
 import * as Sentry from "@sentry/nextjs";
 import type {
@@ -526,7 +526,10 @@ const catalogSearch = unstable_cache(
     return data;
   },
   ["catalog-search"],
-  { revalidate: CATALOG_REVALIDATE, tags: [CACHE_TAG_CATALOG] },
+  {
+    revalidate: CATALOG_REVALIDATE,
+    tags: [CACHE_TAG_CATALOG, CACHE_TAG_STOCK],
+  },
 );
 
 /**
@@ -987,7 +990,7 @@ const fetchFacetsUncached = async (): Promise<{
 const fetchFacets = cache(
   unstable_cache(fetchFacetsUncached, ["catalog-facets"], {
     revalidate: CATALOG_REVALIDATE,
-    tags: [CACHE_TAG_CATALOG],
+    tags: [CACHE_TAG_CATALOG, CACHE_TAG_STOCK],
   }),
 );
 

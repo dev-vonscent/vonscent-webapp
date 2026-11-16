@@ -1,5 +1,9 @@
 import { revalidatePath, revalidateTag } from "next/cache";
-import { CACHE_TAG_CATALOG, CACHE_TAG_TAXONOMY } from "./cache-tags";
+import {
+  CACHE_TAG_CATALOG,
+  CACHE_TAG_STOCK,
+  CACHE_TAG_TAXONOMY,
+} from "./cache-tags";
 
 /**
  * Purge every cached public page (ISR). Admin mutation routes call this after
@@ -20,23 +24,61 @@ export function revalidatePublic() {
 }
 
 /**
+ * Захиалгын нөлөөлсөн хүрээ — `stockScopeForOrder()` (src/lib/orders/stock-scope.ts)
+ * захиалгын мөрүүдээс бүрдүүлнэ.
+ */
+export interface StockScope {
+  productSlugs?: string[];
+  collectionSlugs?: string[];
+}
+
+/**
  * Захиалга үүсэх / цуцлагдах / төлбөрөөс татгалзах нь зөвхөн нөөц, үлдэгдлийг
  * (дууссан эсэх) өөрчилдөг. `revalidatePublic()` нь `revalidatePath("/",
  * "layout")`-ээр блог, FAQ, about зэрэг БҮХ хуудсыг цэвэрлэж, захиалга бүрт
  * сайт бүхэлдээ дахин бичигддэг байсан — энэ нь зөвхөн үлдэгдэл харуулдаг
- * газрыг цэвэрлэнэ:
- *  - `CACHE_TAG_CATALOG` — каталогийн хайлт, «Тун удахгүй», facet, савны
- *    түгжээ (products/api.ts, bottle-stock.ts) ба тэдгээрийг уншсан хуудсууд;
- *  - нүүр (rail-ийн дууссан эсэх, эрэмбэ), барааны хуудас бүр (дууссан хэмжээ,
- *    төстэй ус), багцын жагсаалт ба хуудас (гишүүн усны үлдэгдэл).
- * `/catalog`, `/collections/build` нь dynamic — өгөгдөл нь tag-аар цэвэрлэгдэнэ.
+ * газрыг цэвэрлэнэ.
+ *
+ * Үргэлж:
+ *  - `CACHE_TAG_STOCK` — каталогийн хайлт, facet (үлдэгдэлтэй кэш) ба
+ *    тэдгээрийг уншсан хуудсууд (нүүрний rail, «Дууссан»);
+ *  - нүүр (`/`).
+ *
+ * `scope` өгвөл (захиалга, цуцлалт, abandon) зөвхөн тэр захиалгын барааны
+ * хуудсууд ба тэдгээрийг агуулсан багцын хуудсууд. Өгөөгүй бол (cron —
+ * аль захиалга чөлөөлөгдсөнийг мэдэхгүй) өмнөх өргөн хүрээ: `CACHE_TAG_CATALOG`,
+ * барааны ба багцын хуудас бүр.
+ *
+ * Scope-той үед `CACHE_TAG_CATALOG`-ийг САНААТАЙ цэвэрлэхгүй: савны түгжээ
+ * (`getBottleLocks`) энэ tag-тай бөгөөд барааны хуудас бүр түүнийг уншдаг тул
+ * Next тэр tag-ийг хуудас бүрийн ISR бичилтэд наадаг — цэвэрлэвэл бүх барааны
+ * хуудас дахин бичигдэж, нарийсгалт утгаа алдана. Энэ tag-ийн үлдсэн кэш
+ * (түгжээ, «Тун удахгүй») захиалгаар өөрчлөгддөггүй.
+ *
+ * Бусад барааны хуудасны «Төстэй ус» дахь дууссан тэмдэг хамгийн ихдээ ISR-ийн
+ * хугацаагаар (1 цаг) хоцорно — checkout үлдэгдлийг серверт дахин шалгадаг.
  */
-export function revalidateStock() {
-  revalidateTag(CACHE_TAG_CATALOG, "max");
+export function revalidateStock(scope?: StockScope) {
+  revalidateTag(CACHE_TAG_STOCK, "max");
   revalidatePath("/");
-  revalidatePath("/products/[slug]", "page");
-  revalidatePath("/collections");
-  revalidatePath("/collections/[slug]", "page");
+
+  if (!scope) {
+    revalidateTag(CACHE_TAG_CATALOG, "max");
+    revalidatePath("/products/[slug]", "page");
+    revalidatePath("/collections");
+    revalidatePath("/collections/[slug]", "page");
+    return;
+  }
+
+  for (const slug of new Set(scope.productSlugs ?? [])) {
+    revalidatePath(`/products/${slug}`);
+  }
+  const collections = new Set(scope.collectionSlugs ?? []);
+  if (collections.size > 0) {
+    // Жагсаалтын карт гишүүн усны үлдэгдлээр «дууссан» болдог.
+    revalidatePath("/collections");
+    for (const slug of collections) revalidatePath(`/collections/${slug}`);
+  }
 }
 
 /**

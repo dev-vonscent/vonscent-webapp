@@ -22,7 +22,12 @@ vi.mock("@/lib/time", async (orig) => ({
 }));
 // Цуцлалт зөвхөн үлдэгдлийг өөрчилнө — бүх сайтыг (revalidatePublic) биш.
 vi.mock("@/lib/cache", () => ({
-  revalidateStock: () => revalidateStock(),
+  revalidateStock: (...args: unknown[]) => revalidateStock(...args),
+}));
+// Зөвхөн энэ захиалгын бараа/багцын хуудсууд (stock-scope.test.ts).
+const scope = { productSlugs: ["p-1"], collectionSlugs: [] };
+vi.mock("@/lib/orders/stock-scope", () => ({
+  stockScopeForOrder: async () => scope,
 }));
 vi.mock("@/lib/payments/cancel-invoice", () => ({
   cancelOrderInvoice: async () => {},
@@ -91,6 +96,7 @@ describe("POST /api/orders/[id]/cancel", () => {
     expect(callRpc).toHaveBeenCalledOnce();
     expect(sendEmail).toHaveBeenCalledOnce();
     expect(revalidateStock).toHaveBeenCalledOnce();
+    expect(revalidateStock).toHaveBeenCalledWith(scope);
   });
 
   it("refuses a paid order, touching nothing", async () => {
