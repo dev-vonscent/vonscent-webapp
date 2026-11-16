@@ -125,7 +125,7 @@ export async function SiteFooter() {
           </div>
         </div>
 
-        <p className="text-muted-foreground/70 mt-4 text-xs sm:mt-6">
+        <p className="text-muted-foreground mt-4 text-xs sm:mt-6">
           © {new Date().getFullYear()} {SITE.name}. Бүх эрх хуулиар
           хамгаалагдсан.
         </p>

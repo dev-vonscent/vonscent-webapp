@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useRoutePathname } from "@/lib/route-pathname";
 import { ArrowLeft, ChevronDown, Heart } from "lucide-react";
 import { Logo } from "./logo";
 import { MobileMenu } from "./mobile-menu";
@@ -123,7 +124,7 @@ export function SiteHeader({
    */
   menus?: Partial<Record<StoreMenuKey, React.ReactNode>>;
 }) {
-  const pathname = usePathname();
+  const pathname = useRoutePathname();
   const router = useRouter();
   const isHome = pathname === "/";
   const pageTitleVisible = usePageTitleVisible(pathname);

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRoutePathname } from "@/lib/route-pathname";
 import {
   Home,
   LayoutGrid,
@@ -47,7 +47,7 @@ const RIGHT = [
 ] as const;
 
 export function BottomNav() {
-  const pathname = usePathname();
+  const pathname = useRoutePathname();
   const wishCount = useWishlist(selectWishCount);
   // Хуудасны үйлдлийн зурвас доод ирмэгийг эзэлсэн үед цэс замаа тавьж өгнө
   // (`useClaimBottomBar`). Унтраахын оронд гулсаж буух нь хаашаа явсныг

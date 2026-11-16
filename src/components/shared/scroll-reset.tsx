@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
+import { useRoutePathname } from "@/lib/route-pathname";
 
 /** Хуудас бүрийн сүүлийн гүйлгэлт — URL (path + query) түлхүүртэй. */
 const STORAGE_KEY = "vs-scroll-positions";
@@ -48,7 +48,7 @@ function writePositions(positions: Record<string, number>) {
  * tall enough to hold it.
  */
 export function ScrollReset() {
-  const pathname = usePathname();
+  const pathname = useRoutePathname();
   const first = React.useRef(true);
   /** Pathname a back/forward is heading to — the reset effect skips it once. */
   const poppedTo = React.useRef<string | null>(null);
