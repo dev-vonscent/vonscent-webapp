@@ -1,12 +1,12 @@
 import type { CartCollection } from "@/features/cart/store";
-import type { Collection, CollectionPriceAtMl } from "./types";
+import type { CollectionCardData, CollectionPriceAtMl } from "./types";
 
 /**
  * Багцыг нэг хэмжээгээр сагсны мөр болгоно — багцын хуудас ба нүүрний
  * хурдан нэмэх цонх хоёулаа үүнийг ашиглана, сагсанд ижил мөр очно.
  */
 export function toCartCollection(
-  collection: Collection,
+  collection: CollectionCardData,
   priceRow: CollectionPriceAtMl,
 ): Omit<CartCollection, "key" | "qty"> {
   const { ml } = priceRow;

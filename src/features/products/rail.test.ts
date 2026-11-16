@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  collectionItem,
   fillRail,
   interleave,
   mixCatalog,
@@ -170,5 +171,24 @@ describe("scatterCollections", () => {
       "collection",
       "collection",
     ]);
+  });
+});
+
+describe("collectionItem", () => {
+  it("тайлбарыг хасна — card уншдаггүй, RSC-д хоёр удаа бичигддэг", () => {
+    const full = {
+      id: "c1",
+      name: "Багц",
+      description: "<p>урт тайлбар</p>",
+      usageDescription: "<p>хэрэглээ</p>",
+    } as Collection;
+    const it = collectionItem(full);
+    expect(it.kind).toBe("collection");
+    const col = it.kind === "collection" ? it.collection : null;
+    expect(col).toEqual({ id: "c1", name: "Багц" });
+    expect(col).not.toHaveProperty("description");
+    expect(col).not.toHaveProperty("usageDescription");
+    // Эх объект хөндөгдөхгүй — багцын хуудас ижил объектыг ашиглаж болно.
+    expect(full.description).toBe("<p>урт тайлбар</p>");
   });
 });

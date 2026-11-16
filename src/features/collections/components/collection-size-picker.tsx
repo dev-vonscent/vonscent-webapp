@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { TRIAL_SIZE_ML } from "@/lib/constants";
 import { bestValueOf } from "@/features/products/best-value";
-import type { Collection } from "../types";
+import type { CollectionCardData } from "../types";
 
 /**
  * Багцын хэмжээ сонгогч — «2ml ×4», «Хамгийн ашигтай», «Туршиж үзэх», ₮/ml.
@@ -19,7 +19,7 @@ export function CollectionSizePicker({
   onChange,
   labelId,
 }: {
-  collection: Collection;
+  collection: CollectionCardData;
   ml: number;
   onChange: (ml: number) => void;
   /** «Хэмжээ сонгох» гарчгийн id — radiogroup-ийн нэр. */

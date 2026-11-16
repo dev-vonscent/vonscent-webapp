@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/format";
 import { GENDER_LABEL } from "@/lib/constants";
-import type { Collection } from "../types";
+import type { CollectionCardData } from "../types";
 import { formatDiscountRange } from "@/features/collections/pricing";
 import { GenderBadge } from "@/features/products/components/gender-badge";
 import { WishlistButton } from "@/features/wishlist/components/wishlist-button";
@@ -23,7 +23,7 @@ export function CollectionCard({
   variant = "overlay",
   prefer,
 }: {
-  collection: Collection;
+  collection: CollectionCardData;
   /** `rail` — нүүрний rail-д барааны card-тай ижил: мэдээлэл зурагны доор. */
   variant?: "overlay" | "rail";
   /** `rail` variant: харж буй жагсаалтын төлөв түрүүлнэ (`cardStatus`). */
@@ -111,7 +111,7 @@ function RailCollectionCard({
   collection,
   prefer,
 }: {
-  collection: Collection;
+  collection: CollectionCardData;
   prefer?: CardStatus[];
 }) {
   const start = collection.startingPrice;
