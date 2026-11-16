@@ -23,6 +23,7 @@ import {
   mixRandom,
   scatterCollections,
 } from "@/features/products/rail";
+import { dailyRandom } from "@/lib/seeded-random";
 import {
   HOT_RAIL_COLLECTIONS,
   NEW_COLLECTIONS_COUNT,
@@ -89,6 +90,10 @@ function sellableFirst<T extends { soldOut: boolean }>(list: T[]): T[] {
 }
 
 /**
+ * «Санамсаргүй» холилт бүхэн `dailyRandom` (УБ-ын өдрийн seed) — `Math.random`
+ * биш: ISR-ийн дахин үүсгэлт бүрт HTML өөрчлөгдөж Vercel кэшэд бүтэн хуудсыг
+ * дахин бичихээс сэргийлнэ. Холилт өдөрт нэг удаа солигдоно.
+ *
  * Home — storefront order (2026-10 refresh):
  *   campaign hero → shortcuts → Эрэлттэй → quiz / bundle cards → admin
  *   curated blocks → Шинээр ирсэн → Брэндээр → Тун удахгүй →
@@ -219,7 +224,11 @@ async function BestSellersSection() {
         href="/catalog?tags=hot"
       />
       <ProductCarousel
-        items={scatterCollections(rail.products, rail.collections)}
+        items={scatterCollections(
+          rail.products,
+          rail.collections,
+          dailyRandom("home-hot"),
+        )}
         prefer={["hot"]}
       />
     </section>
@@ -252,7 +261,11 @@ async function CuratedSections() {
               <ProductCarousel items={s.items} prefer={prefer} />
             ) : s.collections.length > 0 ? (
               <ProductCarousel
-                items={mixRandom(s.products, s.collections)}
+                items={mixRandom(
+                  s.products,
+                  s.collections,
+                  dailyRandom(`home-section:${s.id}`),
+                )}
                 prefer={prefer}
               />
             ) : (
@@ -304,7 +317,11 @@ async function NewArrivalsSection() {
     RAIL_SIZE,
     NEW_COLLECTIONS_COUNT,
   );
-  const items = scatterCollections(rail.products, rail.collections);
+  const items = scatterCollections(
+    rail.products,
+    rail.collections,
+    dailyRandom("home-new"),
+  );
   if (items.length < 4) return null;
   return (
     <section>

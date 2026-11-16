@@ -27,6 +27,7 @@ import {
   productItem,
   type RailItem,
 } from "@/features/products/rail";
+import { dailyRandom } from "@/lib/seeded-random";
 
 /**
  * Content / settings data access (admin A8 + A10). Settings live in the
@@ -282,7 +283,7 @@ async function getFeaturedRail(
       getFeaturedProducts(fallbackLimit),
       getFeaturedCollections(),
     ]);
-    return mixRandom(products, collections);
+    return mixRandom(products, collections, dailyRandom("home-featured"));
   }
 
   type Row = { id: string; featured_at: string | null };

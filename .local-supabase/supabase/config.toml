@@ -1,0 +1,32 @@
+# Supabase local dev config (Supabase CLI).
+project_id = "vonscent"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+# Hosted төслүүд (prod + preview) PostgreSQL 17 дээр ажилладаг. Энд 15 байсан
+# нь зөрүү үүсгэж байв: `supabase db dump` нь pg_dump 15-ийг татаад серверийн
+# 17-той таарахгүй гэж татгалздаг, мөн local dev prod-оос өөр хувилбар дээр
+# ажиллана. Hosted хувилбараа сольвол энийг хамт солино.
+major_version = 17
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth/callback"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
