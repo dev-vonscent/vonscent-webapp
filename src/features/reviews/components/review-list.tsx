@@ -4,7 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import { Stars } from "@/components/shared/stars";
 import { LoadingButton } from "@/components/shared/loading-button";
-import { formatTimeAgo } from "@/lib/format";
+import { RelativeTime } from "@/components/shared/relative-time";
 import { REVIEWS_PAGE_SIZE } from "@/lib/constants";
 import {
   targetParam,
@@ -71,7 +71,7 @@ function ReviewCard({
                 {review.authorName}
               </p>
               <p className="text-muted-foreground mt-0.5 text-xs">
-                {formatTimeAgo(review.createdAt)}
+                <RelativeTime value={review.createdAt} />
                 {edited && " · засварласан"}
               </p>
             </div>
