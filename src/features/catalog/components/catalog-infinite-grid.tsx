@@ -12,6 +12,12 @@ import type { Collection } from "@/features/collections/types";
 import type { CardStatus } from "@/features/products/card-status";
 import type { CatalogFilters, CatalogResult } from "@/lib/types";
 
+/**
+ * Эхний мөрний (утсан дээр 2, lg дээр 4) зураг LCP болдог тул lazy биш татна.
+ * Үлдсэн нь lazy хэвээр — бүгдийг eager болговол LCP-тэй сүлжээгээр өрсөлдөнө.
+ */
+const EAGER_CARDS = 4;
+
 /** Дараагийн хуудасны дугаар, эсвэл бүгд ачаалагдсан бол `undefined`. */
 export function nextCatalogPage(last: CatalogResult): number | undefined {
   return last.page * last.perPage < last.total ? last.page + 1 : undefined;
@@ -142,9 +148,14 @@ export function CatalogInfiniteGrid({
         <ProductGrid
           items={mixCatalog(items, collections, sort, nextPage === undefined)}
           prefer={prefer}
+          eagerCount={EAGER_CARDS}
         />
       ) : (
-        <ProductGrid products={items} prefer={prefer} />
+        <ProductGrid
+          products={items}
+          prefer={prefer}
+          eagerCount={EAGER_CARDS}
+        />
       )}
 
       {isFetchingNextPage && (

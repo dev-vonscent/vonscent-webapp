@@ -16,11 +16,14 @@ export function ProductCarousel({
   products = [],
   items,
   prefer,
+  eagerCount = 0,
 }: {
   products?: (ProductListItem & { matchPct?: number })[];
   items?: RailItem[];
   /** Rail-ийн төлөв («Онцлох» хэсэгт «Онцлох») card дээр түрүүлнэ. */
   prefer?: CardStatus[];
+  /** Эхний N нүдний зургийг lazy биш татна (эхний дэлгэцний LCP). */
+  eagerCount?: number;
 }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "start",
@@ -70,13 +73,17 @@ export function ProductCarousel({
       <div ref={emblaRef} className="-mx-4 overflow-hidden sm:mx-0">
         <div className={cn(RAIL_TRACK, "px-4 sm:px-0")}>
           {items
-            ? items.map((it) => (
+            ? items.map((it, i) => (
                 <div
                   key={`${it.kind}-${it.kind === "product" ? it.product.id : it.collection.id}`}
                   className={SLIDE_WIDTH}
                 >
                   {it.kind === "product" ? (
-                    <ProductCard product={it.product} prefer={prefer} />
+                    <ProductCard
+                      product={it.product}
+                      prefer={prefer}
+                      eager={i < eagerCount}
+                    />
                   ) : (
                     <CollectionCard
                       collection={it.collection}
@@ -86,10 +93,11 @@ export function ProductCarousel({
                   )}
                 </div>
               ))
-            : products.map((p) => (
+            : products.map((p, i) => (
                 <div key={p.id} className={SLIDE_WIDTH}>
                   <ProductCard
                     product={p}
+                    eager={i < eagerCount}
                     matchPct={p.matchPct}
                     prefer={prefer}
                   />

@@ -14,12 +14,18 @@ export function ProductCard({
   product,
   matchPct,
   prefer,
+  eager,
 }: {
   product: ProductListItem;
   /** Quiz match percentage — shows a corner badge when set (3b). */
   matchPct?: number;
   /** Харж буй жагсаалтын төлөв түрүүлнэ (`cardStatus`). */
   prefer?: CardStatus[];
+  /**
+   * Эхний дэлгэцэнд харагдах карт (grid/rail-ийн эхний хэдэн нүд) — зураг нь
+   * LCP болдог тул lazy биш, шууд татна.
+   */
+  eager?: boolean;
 }) {
   const status = cardStatus(product, prefer);
   // «Тун удахгүй» (0125): «Дууссан» биш — ирэхийг хүлээж буй ус. Нүүрний
@@ -41,6 +47,7 @@ export function ProductCard({
             src={product.image.url}
             alt={product.image.alt || product.name}
             fill
+            loading={eager ? "eager" : undefined}
             sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 280px"
             className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           />
@@ -111,4 +118,3 @@ export function ProductCard({
     </div>
   );
 }
-
