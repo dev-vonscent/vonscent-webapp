@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRoutePathname } from "@/lib/route-pathname";
 import {
   ArrowRight,
   Gift,
@@ -95,7 +95,7 @@ export function MobileMenu({
   /** Сошиал холбоосууд — server slot (social-links.tsx), өөрийн гарчигтай хэсэг. */
   social?: React.ReactNode;
 }) {
-  const pathname = usePathname();
+  const pathname = useRoutePathname();
   const [askSignOut, signOutDialog] = useSignOutConfirm();
   const isStaff = useIsStaff();
   const { profile, loading, configured } = useProfileSummary();

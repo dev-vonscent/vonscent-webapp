@@ -142,7 +142,8 @@ export function CartSheet({
             !label && "[&_svg]:size-5",
             triggerClassName,
           )}
-          aria-label="Сагс"
+          // Харагдах тоо нэрэнд багтах ёстой (axe: label-content-name-mismatch).
+          aria-label={mounted && count > 0 ? `Сагс, ${count}` : "Сагс"}
         >
           <ShoppingCart className="size-5" />
           {label && <span className={labelClassName}>{label}</span>}

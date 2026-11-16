@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
+import { useRoutePathname } from "@/lib/route-pathname";
 import { useTheme } from "next-themes";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import {
@@ -96,7 +96,7 @@ function usePrefersReducedMotion() {
 }
 
 export function ChatWidget({ links }: { links: ContactLink[] }) {
-  const pathname = usePathname();
+  const pathname = useRoutePathname();
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const buttonRef = React.useRef<HTMLButtonElement>(null);

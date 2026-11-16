@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { SegmentedTabs } from "@/components/shared/segmented-tabs";
 import { LEADERBOARD_PERIODS, type LeaderboardPeriod } from "../lib";
 import type { Leaderboard, LeaderboardEntry, Leaderboards } from "../types";
-import { TierFrame } from "./tier-frame";
+import { TierFrame, tierFrameSlot } from "./tier-frame";
 
 function initialOf(name: string | null | undefined) {
   return (name?.trim() || "V").charAt(0).toUpperCase();
@@ -335,6 +335,8 @@ function PodiumPerson({
     <div className="flex w-full min-w-0 flex-col items-center gap-1.5">
       <TierFrame
         tier={entry.tier}
+        // className-ийн `--avatar`-тай таарна: winner 56/72px, бусад 44/56px.
+        imageSizes={`(min-width: 640px) ${tierFrameSlot(winner ? 72 : 56, entry.tier).width}px, ${tierFrameSlot(winner ? 56 : 44, entry.tier).width}px`}
         className={
           winner
             ? "[--avatar:56px] sm:[--avatar:72px]"

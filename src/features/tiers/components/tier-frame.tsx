@@ -122,12 +122,18 @@ export function TierFrame({
   tier,
   className,
   avatarSize,
+  imageSizes,
   badge,
   children,
 }: {
   tier: UserTierKey;
   /** Аватарын хэмжээ, px — өгвөл `--avatar`-ыг дарна (className-ээс хялбар). */
   avatarSize?: number;
+  /**
+   * Хүрээний зургийн `sizes` — аватарыг CSS-ээр (`--avatar`) өгсөн үед
+   * эцэг нь өөрөө тооцоолж өгнө (`tierFrameSlot`). Өгөөгүй бол `avatarSize`-аас.
+   */
+  imageSizes?: string;
   /**
    * Аватарын хэмжээг `[--avatar:88px]` маягаар өгнө (эцэг элементээс ч
    * удамшина; анхдагч 96px). Хүрээ нь түвшнээс хамаарч түүнээс том.
@@ -183,7 +189,14 @@ export function TierFrame({
         alt=""
         aria-hidden
         fill
-        sizes="(min-width: 640px) 240px, 180px"
+        // Хүрээний өргөн = аватар / (2r); мэдэгдэж байвал яг тэр өргөнөөр
+        // (Top 3-ын 76px хүрээнд 384px зураг татдаг байв).
+        sizes={
+          imageSizes ??
+          (avatarSize != null
+            ? `${Math.ceil(avatarSize / (2 * frame.r))}px`
+            : "(min-width: 640px) 240px, 180px")
+        }
         className="pointer-events-none object-contain select-none"
       />
       {/* Ойлт: зөвхөн хүрээний дүрсэн дээгүүр (маск = зураг өөрөө). */}
