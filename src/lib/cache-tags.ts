@@ -21,3 +21,5 @@ export const CACHE_TAG_FEATURE_FLAGS = "feature-flags";
  * Эдгээр кэш хоёр tag-тай тул админы бичилт (`CACHE_TAG_CATALOG`) ч хүрнэ.
  */
 export const CACHE_TAG_STOCK = "stock";
+/** Нүүрний «Шилдэг худалдан авагчид» (0143) — `getPublicLeaderboards`. */
+export const CACHE_TAG_LEADERBOARD = "leaderboard";

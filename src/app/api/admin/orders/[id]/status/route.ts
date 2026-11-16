@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
 import { verifyAndMarkOrderPaid } from "@/lib/payments/confirm-order";
+import { revalidateLeaderboard } from "@/lib/cache";
 import { cancelOrderInvoice } from "@/lib/payments/cancel-invoice";
 import { ORDER_STATUSES, type OrderStatus } from "@/lib/constants";
 import { refundBreakdown } from "@/lib/refund";
@@ -114,6 +115,8 @@ export async function POST(
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    // `confirm-order.ts`-ийн `commit()`-тэй адил — топ худалдан авагчид.
+    revalidateLeaderboard();
     // e.g. a bank transfer the admin just verified — same notice as QPay.
     // Урамшууллын купоныг `orders_reward_coupon` trigger өөрөө үүсгэсэн
     // байна (mark_order_paid-ийн UPDATE дотор) — имэйл түүнийг уншина.

@@ -10,6 +10,7 @@ vi.mock("next/cache", () => ({
 const { revalidatePublic, revalidateStock } = await import("./cache");
 const {
   CACHE_TAG_CATALOG,
+  CACHE_TAG_LEADERBOARD,
   CACHE_TAG_STOCK,
   CACHE_TAG_TAXONOMY,
 } = await import("./cache-tags");
@@ -26,6 +27,7 @@ describe("revalidateStock — scope-гүй (cron)", () => {
     revalidateStock();
     expect(revalidateTag.mock.calls).toEqual([
       [CACHE_TAG_STOCK, "max"],
+      [CACHE_TAG_LEADERBOARD, "max"],
       [CACHE_TAG_CATALOG, "max"],
     ]);
     expect(revalidatePath.mock.calls).toEqual([
@@ -47,13 +49,14 @@ describe("revalidateStock — scope-гүй (cron)", () => {
 });
 
 describe("revalidateStock — scope-той (захиалга)", () => {
-  it("зөвхөн тэр захиалгын бараа, багц + нүүр ба үлдэгдлийн tag", () => {
+  it("зөвхөн тэр захиалгын бараа, багц + нүүр, үлдэгдэл ба leaderboard tag", () => {
     revalidateStock({
       productSlugs: ["a", "b", "a"],
       collectionSlugs: ["set-1"],
     });
     expect(revalidateTag.mock.calls).toEqual([
       [CACHE_TAG_STOCK, "max"],
+      [CACHE_TAG_LEADERBOARD, "max"],
     ]);
     expect(revalidatePath.mock.calls).toEqual([
       ["/"],

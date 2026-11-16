@@ -1,6 +1,7 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import {
   CACHE_TAG_CATALOG,
+  CACHE_TAG_LEADERBOARD,
   CACHE_TAG_STOCK,
   CACHE_TAG_TAXONOMY,
 } from "./cache-tags";
@@ -42,6 +43,7 @@ export interface StockScope {
  * Үргэлж:
  *  - `CACHE_TAG_STOCK` — каталогийн хайлт, facet (үлдэгдэлтэй кэш) ба
  *    тэдгээрийг уншсан хуудсууд (нүүрний rail, «Дууссан»);
+ *  - `CACHE_TAG_LEADERBOARD` — нүүрний топ худалдан авагчид;
  *  - нүүр (`/`).
  *
  * `scope` өгвөл (захиалга, цуцлалт, abandon) зөвхөн тэр захиалгын барааны
@@ -60,6 +62,7 @@ export interface StockScope {
  */
 export function revalidateStock(scope?: StockScope) {
   revalidateTag(CACHE_TAG_STOCK, "max");
+  revalidateTag(CACHE_TAG_LEADERBOARD, "max");
   revalidatePath("/");
 
   if (!scope) {
@@ -79,6 +82,16 @@ export function revalidateStock(scope?: StockScope) {
     revalidatePath("/collections");
     for (const slug of collections) revalidatePath(`/collections/${slug}`);
   }
+}
+
+/**
+ * Төлбөр батлагдах үед — нүүрний «Шилдэг худалдан авагчид» зөвхөн ТӨЛӨГДСӨН
+ * захиалгыг тоолдог (0143), захиалга үүсэх нь биш. Зөвхөн энэ tag: үлдэгдэл
+ * захиалга үүсэхэд аль хэдийн нөөцлөгдсөн тул төлбөр түүнийг өөрчлөхгүй.
+ * Tag нь нүүрний ISR бичилтэд наалддаг тул нүүр дахин үүснэ.
+ */
+export function revalidateLeaderboard() {
+  revalidateTag(CACHE_TAG_LEADERBOARD, "max");
 }
 
 /**
