@@ -988,15 +988,13 @@ export default function CheckoutPage() {
   /** Тоймын эцсийн дүн — сервер шинэ дүн хэлсэн бол түүгээр. */
   const shownTotal = serverQuote?.totals.total ?? total;
   /**
-   * Энэ захиалгаас хуримтлагдах оноо. Сан нь купоны дараах барааны дүнгээс
-   * бодох тул оноогоор төлсөн хэсэг үүнийг бууруулахгүй (lib/loyalty.ts).
+   * Энэ захиалгаас хуримтлагдах оноо. Суурь нь QPay-ээр төлөх дүн (`total`:
+   * хүргэлттэй, купон ба V point хассан) — сан (`mark_order_paid`, 0189)-тай
+   * ижил. Хаяг оруулаагүй үед хүргэлт 0 тул тоо хаяг орсны дараа өсч болно.
    */
   const pointsEarned = myTier
-    ? pointsAtTierRate(
-        Math.max(subtotal - discount, 0),
-        tierByKey(myTier.tier).rate,
-      )
-    : pointsEarnedFor(Math.max(subtotal - discount, 0), loyaltyRules);
+    ? pointsAtTierRate(total, tierByKey(myTier.tier).rate)
+    : pointsEarnedFor(total, loyaltyRules);
 
   const contactName = watch("contactName") ?? "";
   const contactPhone = watch("contactPhone") ?? "";

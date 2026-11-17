@@ -111,7 +111,8 @@ export default function AdminLoyaltyPage() {
                   <p className="text-sm font-medium">Оноо хуримтлуулах хувь</p>
                   <p className="text-muted-foreground text-xs">
                     Хэрэглэгчийн түвшин асаалттай тул оноо түвшнээс хамаарч
-                    купоны дараах барааны дүнгийн (хүргэлтгүй) {TIER_RATE_RANGE}
+                    QPay-ээр төлсөн дүнгийн (хүргэлттэй, купон ба V point
+                    хассан) {TIER_RATE_RANGE}
                     -иар бодогдоно. Түвшин нь өмнөх захиалгуудын нийт дүнгээр
                     тогтоно.
                   </p>

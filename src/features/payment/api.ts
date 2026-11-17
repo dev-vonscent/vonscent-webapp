@@ -11,6 +11,7 @@ import { pointsAtTierRate, tierForSpend } from "@/features/tiers/lib";
 import {
   parseLoyaltyRules,
   pointsEarnedFor,
+  rewardBaseOf,
   reviewPointsOf,
 } from "@/lib/loyalty";
 import { getOrderGiftCard } from "@/features/gift-cards/server";
@@ -143,7 +144,12 @@ async function loyaltyFor(
     .eq("key", "loyalty")
     .maybeSingle();
   const value = (data as { value?: unknown } | null)?.value;
-  const base = Math.max(order.subtotal - order.discount, 0);
+  // Оноо QPay-ээр төлсөн дүнгээс (`orders.total`, 0189).
+  const base = rewardBaseOf(order.total);
+  // Түвшний зарцуулалт (`user_lifetime_spend`) нь купоны дараах барааны
+  // дүнгээр хэвээр — «энэ захиалгын ӨМНӨХ» нийт дүнг олохдоо ижил суурийг
+  // хасна.
+  const spend = Math.max(order.subtotal - order.discount, 0);
   // Туг асаалттай бол сан түвшний хувиар бодно (0143) — «энэ захиалгын
   // ӨМНӨХ» нийт дүнгээр: төлөгдсөн бол өөрийг нь хасна.
   if (await isFeatureEnabled("user_tiers")) {
@@ -156,7 +162,7 @@ async function loyaltyFor(
         order.payment_status === "paid" &&
         order.status !== "cancelled" &&
         order.order_type === "goods";
-      const before = Math.max(lifetime - (counted ? base : 0), 0);
+      const before = Math.max(lifetime - (counted ? spend : 0), 0);
       return {
         pointsEarned: pointsAtTierRate(base, tierForSpend(before).rate),
         reviewPoints:
