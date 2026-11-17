@@ -12,10 +12,6 @@
       "schedule": "*/15 * * * *"
     },
     {
-      "path": "/api/cron/sale-events",
-      "schedule": "* * * * *"
-    },
-    {
       "path": "/api/cron/midnight-revalidate",
       "schedule": "1,4 16 * * *"
     },

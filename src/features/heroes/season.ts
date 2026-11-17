@@ -87,7 +87,7 @@ export function mdLabel(md: string): string {
 }
 
 /**
- * Cron (`/api/cron/sale-events`): бэлэн улирлын аль нэг нь `now`-оос өмнөх
+ * Cron (`/api/cron/midnight-revalidate`): бэлэн улирлын аль нэг нь `now`-оос өмнөх
  * `windowMs` дотор эхэлсэн бол true — нийтийн кэшийг цэвэрлэнэ (жилд ~4 удаа).
  */
 export function seasonBoundaryWithin(

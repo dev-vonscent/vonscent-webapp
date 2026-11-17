@@ -28,8 +28,8 @@ import type {
  * security definer RPC-ээр: товлосон арга хэмжээний хувь задрахгүй.
  *
  * Кэш: 60с + `CACHE_TAG_CATALOG` (админ бичилт `revalidatePublic()`-аар
- * цэвэрлэнэ). Эхлэх/дуусах мөч бичилтгүй тул минут тутмын cron
- * (`/api/cron/sale-events`) тэр мөчид мөн цэвэрлэнэ (plan §10).
+ * цэвэрлэнэ). Эхлэх/дуусах мөч бичилтгүй бөгөөд үргэлж УБ 00:00 тул шөнийн
+ * cron (`/api/cron/midnight-revalidate`) тэр мөчид цэвэрлэнэ (plan §10).
  */
 
 interface LiveRow {

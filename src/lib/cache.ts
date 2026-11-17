@@ -1,6 +1,7 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import {
   CACHE_TAG_CATALOG,
+  CACHE_TAG_HERO,
   CACHE_TAG_LEADERBOARD,
   CACHE_TAG_STOCK,
   CACHE_TAG_TAXONOMY,
@@ -92,6 +93,14 @@ export function revalidateStock(scope?: StockScope) {
  */
 export function revalidateLeaderboard() {
   revalidateTag(CACHE_TAG_LEADERBOARD, "max");
+}
+
+/**
+ * Нүүрний hero-гийн хугацаа / улирлын хил (шөнийн cron) — hero-гийн кэш ба
+ * түүнийг уншсан нүүр. Админы бичилт `revalidatePublic()`-ээр (catalog tag).
+ */
+export function revalidateHero() {
+  revalidateTag(CACHE_TAG_HERO, "max");
 }
 
 /**
