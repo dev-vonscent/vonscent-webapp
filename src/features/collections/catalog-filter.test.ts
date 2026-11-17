@@ -18,7 +18,9 @@ const m = (over: Partial<CollectionMember> = {}) =>
 const c = (over: Partial<Collection> = {}) =>
   ({
     id: "c1",
+    type: "base",
     name: "GENTLEMAN",
+    discountRange: { min: 0, max: 0 },
     gender: "male",
     tags: [],
     isFeatured: false,
@@ -84,14 +86,29 @@ describe("filterCatalogCollections", () => {
     expect(filterCatalogCollections([c()], { ml: [5] })).toHaveLength(1);
   });
 
-  it("таг: «Хямдрал» багцад хамаарахгүй", () => {
+  it("таг: «Хямдрал» — хувьтай бэлэн багц л (task 8.1)", () => {
     const hot = c({ tags: ["hot"] });
     expect(filterCatalogCollections([hot], { tags: ["hot"] })).toHaveLength(1);
     expect(filterCatalogCollections([hot], { tags: ["new"] })).toHaveLength(0);
+    // Хувьгүй (0%) багц «Хямдрал»-д орохгүй.
     expect(filterCatalogCollections([hot], { tags: ["sale"] })).toHaveLength(0);
     expect(
       filterCatalogCollections([hot], { tags: ["sale", "hot"] }),
     ).toHaveLength(1);
+    // 5% бэлэн багц — орно.
+    const five = c({ id: "c5", discountRange: { min: 5, max: 5 } });
+    expect(
+      ids(filterCatalogCollections([five, hot], { tags: ["sale"] })),
+    ).toEqual(["c5"]);
+    // Хадгалсан угсарсан багц (custom) — орохгүй.
+    const custom = c({
+      id: "cc",
+      type: "custom",
+      discountRange: { min: 5, max: 5 },
+    });
+    expect(filterCatalogCollections([custom], { tags: ["sale"] })).toHaveLength(
+      0,
+    );
   });
 
   it("онцлох, хайлт (багцын болон гишүүний нэр)", () => {

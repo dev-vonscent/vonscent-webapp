@@ -9,8 +9,10 @@ import type { Collection, CollectionCardData } from "./types";
  * - Хүйс: багцын хүйс (`gender` нь `expandGenders`-ээр өргөссөн байх ёстой).
  * - Брэнд / үнэрийн төрөл / улирал: багцад эдгээр байхгүй гэж үзнэ (клиент,
  *   2026-10-26) — аль нэгийг нь сонговол багц гарахгүй, зөвхөн ус.
- * - Таг: автомат «Эрэлттэй»/«Шинэ»; «Хямдрал» багцад хамаарахгүй
- *   (клиент, 2026-09-30) — зөвхөн «Хямдрал» сонговол багц гарахгүй.
+ * - Таг: автомат «Эрэлттэй»/«Шинэ». «Хямдрал»: хямдралын хувь > 0 бүхий
+ *   БЭЛЭН багц (task 8.1, клиент 2026-11-17 — 2026-09-30-ны «багц
+ *   хамаарахгүй» шийдвэр цуцлагдсан). Нүүрний «Хямдралтай» rail (2.1)
+ *   үүнийг ашигладаггүй — тэнд багц орохгүй хэвээр.
  * - Үнэ: картанд харагддаг «-өөс» үнээр (ус ч `startingPrice`-аараа);
  *   дууссан багц `catalogPrice`-аар.
  * - Хэмжээ: тэр хэмжээгээр бүтэн багц авч болох бол.
@@ -26,7 +28,9 @@ export function filterCatalogCollections(
     if (f.brand?.length || f.family?.length || f.season?.length) return false;
     if (
       f.tags?.length &&
-      !f.tags.some((t) => t !== "sale" && c.tags.includes(t))
+      !f.tags.some((t) =>
+        t === "sale" ? isDiscountedBundle(c) : c.tags.includes(t),
+      )
     )
       return false;
     if (f.featured && !c.isFeatured) return false;
@@ -43,6 +47,16 @@ export function filterCatalogCollections(
     }
     return true;
   });
+}
+
+/**
+ * «Хямдрал» шүүлтүүрт орох багц: бэлэн багц, худалдаж авч болох хэмжээний
+ * аль нэг нь хувьтай (`discountRange` нь боломжтой хэмжээгээр бодогддог).
+ */
+export function isDiscountedBundle(
+  c: Pick<Collection, "type" | "discountRange">,
+): boolean {
+  return c.type === "base" && c.discountRange.max > 0;
 }
 
 /**
