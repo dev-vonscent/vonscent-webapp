@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
 import {
   SaleManager,
+  isOnSale,
   type SaleProduct,
 } from "@/features/admin/components/sale-manager";
 import type { Gender } from "@/db/types";
@@ -65,6 +66,9 @@ export default async function AdminSalesPage() {
     }));
   }
 
+  // Дууссан хямдралыг тоолохгүй (16.1). Хүсэлтийн цаг (force-dynamic) —
+  // `Date.now()`-г lint хориглодог.
+  const now = new Date().getTime();
   return (
     <div className="space-y-6">
       <PageHeader
@@ -74,10 +78,7 @@ export default async function AdminSalesPage() {
             ? "Олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал тавина. Нэрлэсэн, хугацаатай хямдралд (Black Friday г.м.) «Арга хэмжээ»-г ашиглана уу — энэ нь одоо байгаа хямдралыг дарахгүй."
             : "Олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал тавина."
         }
-        count={
-          products.filter((p) => p.variants.some((v) => v.salePrice != null))
-            .length
-        }
+        count={products.filter((p) => isOnSale(p, now)).length}
       />
       <SaleManager products={products} />
     </div>

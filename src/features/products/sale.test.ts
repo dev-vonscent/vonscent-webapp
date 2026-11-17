@@ -3,6 +3,7 @@ import {
   effectivePrice,
   isSaleActive,
   roundSalePrice,
+  salePhase,
   variantSaleColumns,
 } from "./sale";
 
@@ -64,5 +65,23 @@ describe("variantSaleColumns", () => {
         saleEndsAt: null,
       }).sale_price,
     ).toBe(10600);
+  });
+});
+
+describe("salePhase", () => {
+  it("хямдралгүй бол null", () => {
+    expect(salePhase({ price: 30000, sale_price: null }, now)).toBeNull();
+    expect(salePhase({ price: 30000, sale_price: 30000 }, now)).toBeNull();
+  });
+
+  it("хүчинтэй / эхлээгүй / дууссан", () => {
+    expect(salePhase(base, now)).toBe("active");
+    expect(
+      salePhase({ ...base, sale_starts_at: "2026-10-28T00:00:00Z" }, now),
+    ).toBe("scheduled");
+    // 16.1: дууссан хямдралын sale_price санд үлддэг — «хямдралтай» биш.
+    expect(
+      salePhase({ ...base, sale_ends_at: "2026-10-27T12:00:00Z" }, now),
+    ).toBe("ended");
   });
 });

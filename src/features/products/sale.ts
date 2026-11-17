@@ -21,6 +21,25 @@ export function isSaleActive(v: SaleFields, now: Date = new Date()): boolean {
   return true;
 }
 
+export type SalePhase = "active" | "scheduled" | "ended";
+
+/**
+ * Хэмжээний хямдралын төлөв (админы харагдац). `sale_price` мөр хугацаа
+ * дууссаны дараа ч САНД ҮЛДДЭГ (0166 — дахин хугацаа тавихад) тул
+ * «хямдралтай эсэх»-ийг `sale_price != null`-ээр биш, үүгээр шийднэ.
+ * Хямдралгүй (эсвэл үндсэн үнээс багагүй) бол null.
+ */
+export function salePhase(
+  v: SaleFields,
+  now: Date = new Date(),
+): SalePhase | null {
+  if (v.sale_price == null || v.sale_price >= v.price) return null;
+  if (isSaleActive(v, now)) return "active";
+  if (v.sale_starts_at && new Date(v.sale_starts_at).getTime() > now.getTime())
+    return "scheduled";
+  return "ended";
+}
+
 /** Бодитоор төлөх үнэ — SQL-ийн `variant_price()`. */
 export function effectivePrice(v: SaleFields, now: Date = new Date()): number {
   return isSaleActive(v, now) ? (v.sale_price as number) : v.price;
