@@ -1,7 +1,6 @@
 import "server-only";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
-import * as Sentry from "@sentry/nextjs";
 import type { ExtraInventoryMode, VialStyle } from "@/db/types";
 import {
   CACHE_TAG_CATALOG,
@@ -152,22 +151,14 @@ function sortExtras(rows: ShopExtraListItem[]): ShopExtraListItem[] {
 
 /** Нийтэлсэн бүх нэмэлт бараа — дарааллаар (ангилал → sort → шинэ). */
 export async function getShopExtras(): Promise<ShopExtraListItem[]> {
-  try {
-    return sortExtras((await fetchCatalog()).map(toCard));
-  } catch (err) {
-    Sentry.captureException(err);
-    return [];
-  }
+  // Шидэнэ (#284): `[]` бол «нэмэлт бараа алга» хуудас ISR-д нэг цаг үлдэнэ.
+  // DEMO горимд `fetchCatalogUncached` өөрөө `[]` буцаана.
+  return sortExtras((await fetchCatalog()).map(toCard));
 }
 
 /** `getShopExtras`-тай ижил, cross-sell-д (`fetchCatalogCrossSell`-ийг үз). */
 async function getCrossSellExtras(): Promise<ShopExtraListItem[]> {
-  try {
-    return sortExtras((await fetchCatalogCrossSell()).map(toCard));
-  } catch (err) {
-    Sentry.captureException(err);
-    return [];
-  }
+  return sortExtras((await fetchCatalogCrossSell()).map(toCard));
 }
 
 interface DetailRow {
@@ -211,10 +202,8 @@ export const getShopExtra = cache(async function getShopExtra(
     "extra_detail",
     { p_slug: slug },
   );
-  if (error) {
-    Sentry.captureException(new Error(`extra_detail: ${error.message}`));
-    return null;
-  }
+  // Алдаа ≠ «байхгүй»: null нь layout-д notFound() болж 404 кэшлэгдэнэ.
+  if (error) throw new Error(`extra_detail failed: ${error.message}`);
   if (!data) return null;
   const card = toCard(data.card);
   return {
@@ -310,17 +299,13 @@ const fetchBottleFacets = unstable_cache(
 
 /** Шил бүрийн эх үнэртний хүйс / үнэрийн төрөл / улирал (0176), id-аар. */
 export async function getBottleFacets(): Promise<Map<string, BottleFacets>> {
-  try {
-    return new Map(
-      (await fetchBottleFacets()).map((r) => [
-        r.id,
-        { gender: r.gender, families: r.scent_families, seasons: r.seasons },
-      ]),
-    );
-  } catch (err) {
-    Sentry.captureException(err);
-    return new Map();
-  }
+  // Шидэнэ (#284): хоосон Map бол шилний шүүлт ISR-д нэг цаг ажиллахгүй.
+  return new Map(
+    (await fetchBottleFacets()).map((r) => [
+      r.id,
+      { gender: r.gender, families: r.scent_families, seasons: r.seasons },
+    ]),
+  );
 }
 
 /**
@@ -337,10 +322,8 @@ export async function getBottlesFor(
     callRpc<string[]>(supabase, "extras_bottles_for", { p_product: productId }),
     getCrossSellExtras(),
   ]);
-  if (error) {
-    Sentry.captureException(new Error(`extras_bottles_for: ${error.message}`));
-    return [];
-  }
+  // Шидэнэ (#284): `[]` бол «Энэ үнэрийн шил» барааны хуудаснаас алга болно.
+  if (error) throw new Error(`extras_bottles_for failed: ${error.message}`);
   const ids = new Set(data ?? []);
   const order = (e: ShopExtraListItem) =>
     BOTTLE_TABS.indexOf(bottleKind(e.categorySlug, e.mode) ?? "empty");

@@ -13,11 +13,7 @@ import {
   SHIPPING_ZONES,
   type PopupAudience,
 } from "@/lib/constants";
-import {
-  getFeaturedProducts,
-  getProductsByIds,
-  getProductsByTag,
-} from "@/features/products/api";
+import { getProductsByIds, getProductsByTag } from "@/features/products/api";
 import type { HomeSectionRow } from "@/db/types";
 import type { ProductListItem } from "@/lib/types";
 import type { CollectionCardData } from "@/features/collections/types";
@@ -25,11 +21,9 @@ import { getFeaturedCollections } from "@/features/collections/api";
 import type { CardStatus } from "@/features/products/card-status";
 import {
   collectionItem,
-  mixRandom,
   productItem,
   type RailItem,
 } from "@/features/products/rail";
-import { dailyRandom } from "@/lib/seeded-random";
 
 /**
  * Content / settings data access (admin A8 + A10). Settings live in the
@@ -161,7 +155,10 @@ export const DEFAULT_STORE: StoreSettings = {
 const fetchSettings = cache(async (): Promise<Record<string, unknown>> => {
   const supabase = createPublicClient();
   if (!supabase) return {};
-  const { data } = await supabase.from("settings").select("key, value");
+  const { data, error } = await supabase.from("settings").select("key, value");
+  // Шидэнэ (#284): өгөгдмөл тохиргоо (холбоо барих, хүргэлтийн бүс, popup)
+  // ISR-д болон checkout-ын тооцоонд «зөв» мэт орох ёсгүй.
+  if (error) throw new Error(`settings failed: ${error.message}`);
   const out: Record<string, unknown> = {};
   for (const row of (data as { key: string; value: unknown }[] | null) ?? []) {
     out[row.key] = row.value;
@@ -262,13 +259,9 @@ export interface HomeSection {
  * «Онцлох» — ус, багц нийлээд хамгийн сүүлд онцлох болгосон FEATURED_LIMIT
  * зүйл, шинэ нь эхэндээ (0144). 13 дахийг онцлох болгоход хамгийн эртнийх нь
  * DB-д автоматаар хасагддаг; одоо илүү байвал (0144-ийн өмнөх) энд тасална.
- *
- * `featured_at` уншиж чадахгүй бол (0144 хэрэгжээгүй) хуучин дүрэм: онцлох
- * ус + бүх онцлох багц санамсаргүй холилдоно.
  */
 async function getFeaturedRail(
   supabase: NonNullable<ReturnType<typeof createPublicClient>>,
-  fallbackLimit: number,
 ): Promise<RailItem[]> {
   const [{ data: pRows, error: pErr }, { data: cRows, error: cErr }] =
     await Promise.all([
@@ -282,13 +275,10 @@ async function getFeaturedRail(
         .eq("is_featured", true)
         .eq("type", "base"),
     ]);
-  if (pErr || cErr) {
-    const [products, collections] = await Promise.all([
-      getFeaturedProducts(fallbackLimit),
-      getFeaturedCollections(),
-    ]);
-    return mixRandom(products, collections, dailyRandom("home-featured"));
-  }
+  // Шидэнэ (#284): өмнө нь энд 0144-өөс өмнөх сангийн нөөц дүрэм рүү
+  // шилждэг байв — түр зуурын алдаа өөр эрэмбийг нүүрэнд нэг цаг үлдээнэ.
+  const failed = pErr ?? cErr;
+  if (failed) throw new Error(`featured rail failed: ${failed.message}`);
 
   type Row = { id: string; featured_at: string | null };
   const ranked = [
@@ -332,11 +322,13 @@ export async function getHomeSections(): Promise<HomeSection[]> {
   const supabase = createPublicClient();
   if (!supabase) return [];
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("home_sections")
     .select("*, home_section_products ( product_id, sort_order )")
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
+  // Шидэнэ (#284): `[]` бол хэсэггүй нүүр ISR-д нэг цаг үлдэнэ.
+  if (error) throw new Error(`home_sections failed: ${error.message}`);
 
   const rows =
     (data as unknown as
@@ -364,7 +356,7 @@ export async function getHomeSections(): Promise<HomeSection[]> {
       if (row.tag !== "sale") status = row.tag;
     } else if (row.kind === "featured") {
       status = "featured";
-      items = await getFeaturedRail(supabase, row.max_items);
+      items = await getFeaturedRail(supabase);
       products = items.flatMap((it) =>
         it.kind === "product" ? [it.product] : [],
       );

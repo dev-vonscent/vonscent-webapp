@@ -80,17 +80,15 @@ const fetchLiveHeroes = unstable_cache(
   { revalidate: 3600, tags: [CACHE_TAG_CATALOG, CACHE_TAG_HERO] },
 );
 
-/** Одоо гарах DB hero, эсвэл null (→ кодын hero). Хэзээ ч шидэхгүй. */
+/**
+ * Одоо гарах DB hero, эсвэл null (→ кодын hero). Алдааг ШИДНЭ (#284):
+ * null бол кампанит ажлын hero-гийн оронд кодын hero ISR-д нэг цаг үлдэнэ.
+ */
 export async function getLiveHero(): Promise<LiveHero | null> {
   if (!isSupabaseConfigured) return null;
   if (!(await isFeatureEnabled("hero_admin"))) return null;
-  try {
-    // Кэш 60с хоцорч болно — дууссаныг алгасаж дараагийнхыг авна.
-    return pickLiveHero(await fetchLiveHeroes(), Date.now());
-  } catch (err) {
-    Sentry.captureException(err);
-    return null;
-  }
+  // Кэш 60с хоцорч болно — дууссаныг алгасаж дараагийнхыг авна.
+  return pickLiveHero(await fetchLiveHeroes(), Date.now());
 }
 
 // ── Админ ─────────────────────────────────────────────────────────────────
