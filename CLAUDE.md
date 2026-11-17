@@ -27,7 +27,14 @@ Migration нь **dev → prod** гэсэн нэг чиглэлд урсана
 (`pnpm db:migrate-dev` → шалгах → `pnpm db:migrate-prod`); prod дээр гараар
 schema засахыг хориглоно. Дэлгэрэнгүй: README «Migration workflow».
 
-PR-аас өмнө: `pnpm typecheck` + `pnpm lint` + `pnpm test` цэвэр байх ёстой.
+**Preview:** Vercel-ийн Supabase env зөвхөн `dev` branch-д тохируулагдсан тул бусад
+branch-ийн preview DEMO горимд (seed өгөгдөл) ажиллана. Бодит (dev сан) өгөгдлөөр
+тестлэх бол локал (`pnpm build && pnpm start`) эсвэл `dev`-ийн preview.
+
+PR-аас өмнө: `pnpm typecheck` + `pnpm lint` + `pnpm test` + `pnpm build` цэвэр байх ёстой;
+UI-д нөлөөлөх бол `pnpm test:e2e`. Unit тест эх файлынхаа хажууд (`*.test.ts(x)`,
+ганцыг нь: `pnpm test <зам>`), e2e нь `e2e/*.spec.ts`. e2e тугийн утгаас болж хачин
+унавал эхлээд `.next/cache`-ийг устгаад дахин build хий (өмнөх build-ийн туг кэшлэгддэг).
 
 ## Архитектур (дэлгэрэнгүй: docs/spec/development.md)
 
@@ -46,7 +53,8 @@ PR-аас өмнө: `pnpm typecheck` + `pnpm lint` + `pnpm test` цэвэр ба
 - Inventory: эх савны ml дээр **reserve / commit / release** загвар, oversell хориотой.
 - Roles: guest / customer / courier / operator / super_admin — `(admin)` бүлэг middleware + handler дотор давхар шалгалттай.
 - Утасны баталгаажуулалт verify.mn MO-SMS (Supabase phone auth биш).
-- Cron: Supabase pg_cron (оноо нээх, reserve timeout, төлөв авто шилжилт).
+- Cron: DB-ийн ажил (оноо нээх, reserve timeout, төлөв авто шилжилт) → Supabase pg_cron;
+  кэш цэвэрлэх, гадны API → Vercel cron (`vercel.json`, доорх «Vercel-ийн зардал»).
 
 ## Шинэ feature → prod (feature flag)
 
@@ -106,17 +114,17 @@ PR-аас өмнө: `pnpm typecheck` + `pnpm lint` + `pnpm test` цэвэр ба
 - Mobile-first responsive, dark mode-д бэлэн (next-themes).
 - Themed scrollbar нь `html` дээр өгөгдмөл, бүх гүйдэг элементэд удамшина — элемент
   бүрт класс нэмэхгүй. Нуух шаардлагатай ховор тохиолдолд л `no-scrollbar` (design.md §6.1).
-- **Сонгогдсон chip/tab-д `transition-colors` хэрэглэхгүй**, хэрэв сонголт нь URL
-  солиж серверийн render өдөөдөг бол (шүүлт, хугацааны chip г.м.). Өнгөний transition
-  main thread дээр явдаг тул render давхцахад хуучин chip хагас гэрэлтсэн чигээрээ
-  гацаж «анивчина» (тайлангийн хугацааны chip — Playwright-аар frame бүрээр баталсан).
-  Сонгогдсон төлөвт `bg-cta text-cta-foreground`: хар theme-д `bg-primary` нь
-  `bg-secondary`-оос бараг ялгагдахгүй. Үлдсэн газрууд (`FilterChip`,
-  `products-toolbar` chip, `calendar`) — анзаарагдвал засна.
+- Сонгогдсон chip/tab-д (URL солиж серверийн render өдөөдөг бол) `transition-colors` бүү
+  хэрэглэ; сонгогдсон төлөвт `bg-cta text-cta-foreground` (design.md §7.1).
 
 ## Git
 
-- `main` = production, PR-аар л орно. Feature: `feat/<name>`, fix: `fix/<name>`. Conventional Commits.
+- `main` = production, `dev` = интеграц (клиент dev-ийн preview дээр туршина). Хоёулаа PR-аар л орно.
+- Branch: `feat/`, `fix/`, `perf/`, `chore/`, `docs/` + `<name>`. Conventional Commits.
+- Feature/fix PR → **Squash and merge**. main ↔ dev нэгтгэл (`chore/sync-main-to-dev-*`) болон
+  dev → main release → **Create a merge commit** (squash хийвэл түүхийн холбоо алдагдаж
+  дараагийн нэгтгэлд conflict давтагдана).
+- main руу яаралтай засвар: `origin/main`-аас салгаж PR → main, дараа нь main-ийг dev руу нэгтгэ.
 
 ## Баримт (хэрэгтэй үедээ л унш)
 
