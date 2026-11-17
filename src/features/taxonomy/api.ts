@@ -81,8 +81,9 @@ const fetchScentFamiliesUncached = async (): Promise<ScentFamilyOption[]> => {
     .select("slug, label, icon_url, sort_order, is_active, created_at")
     .order("sort_order", { ascending: true });
 
-  if (error || !data) return DEMO_FAMILIES;
-  return (data as unknown as DbScentFamily[]).map((r) => ({
+  // Шидэнэ: DEMO жагсаалт prod-ийн кэшэнд үлдэх ёсгүй.
+  if (error) throw new Error(`scent_families failed: ${error.message}`);
+  return ((data ?? []) as unknown as DbScentFamily[]).map((r) => ({
     slug: r.slug,
     label: r.label,
     iconUrl: r.icon_url,
@@ -159,11 +160,12 @@ const fetchBrandsUncached = async (): Promise<BrandOption[]> => {
   if (!isSupabaseConfigured) return [];
   const supabase = createPublicClient();
   if (!supabase) return [];
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("brands")
     .select("id, slug, name, logo_url, sort_order, is_active")
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
+  if (error) throw new Error(`brands failed: ${error.message}`);
   return ((data as DbBrand[] | null) ?? []).map((r) => ({
     id: r.id,
     slug: r.slug,
@@ -247,10 +249,9 @@ const fetchConcentrationsUncached = async (): Promise<
     .select("id, code, label, sort_order, is_active")
     .order("sort_order", { ascending: true })
     .order("code", { ascending: true });
-  // A database that has not run 0085 yet would otherwise leave the product
-  // form with an unfillable dropdown.
-  if (error || !data) return DEMO_CONCENTRATIONS;
-  return (data as DbConcentration[]).map((r) => ({
+  // Шидэнэ: DEMO жагсаалт prod-ийн кэшэнд үлдэх ёсгүй.
+  if (error) throw new Error(`concentrations failed: ${error.message}`);
+  return ((data ?? []) as DbConcentration[]).map((r) => ({
     id: r.id,
     code: r.code,
     label: r.label ?? "",
