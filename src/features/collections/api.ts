@@ -28,7 +28,7 @@ import {
   filterCatalogCollections,
   sortCatalogCollections,
 } from "./catalog-filter";
-import { bundlePriceBasis, memberPrices, discountRange } from "./pricing";
+import { memberPrices, discountRange } from "./pricing";
 import { topUpRandom } from "@/features/products/rail";
 import { dailyRandom } from "@/lib/seeded-random";
 import { DEFAULT_COLLECTION_SETTINGS } from "./types";
@@ -159,8 +159,6 @@ function build(
     discountPct,
     settings.roundTo,
     mlDiscounts,
-    // Бэлэн багц үндсэн үнээр, хадгалсан custom хямдарсан үнээр (plan §5.3).
-    bundlePriceBasis(row.type),
   );
   const availableMls = complete
     ? prices.filter((p) => p.available).map((p) => p.ml)

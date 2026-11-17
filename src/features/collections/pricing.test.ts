@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   roundTo,
   bundlePrice,
-  bundlePriceBasis,
   memberPrices,
+  memberUnitPrice,
   discountForMl,
   discountRange,
   formatDiscountRange,
@@ -201,7 +201,7 @@ describe("formatDiscountRange", () => {
   });
 });
 
-describe("memberPrices — үнийн суурь (plan §5.3, Тайлан11.11 сл.2)", () => {
+describe("memberPrices — үнийн суурь: ҮНДСЭН үнэ (plan §5.3, task 8.2)", () => {
   // Гишүүн бүр 5ml: үндсэн 40,000; эхнийх нь арга хэмжээгээр 32,000.
   const withBase = (price: number, basePrice: number): CollectionMember => ({
     ...member({ 5: price }),
@@ -211,29 +211,34 @@ describe("memberPrices — үнийн суурь (plan §5.3, Тайлан11.11 
   });
   const members = [withBase(32000, 40000), withBase(40000, 40000)];
 
-  it("бэлэн багц (base) — үндсэн үнээс, хямдрал дамжихгүй", () => {
-    const at5 = memberPrices(members, 10, 100, {}, "base").find(
-      (p) => p.ml === 5,
-    )!;
+  it("бэлэн ба угсарсан багц — үндсэн үнийн нийлбэрээс, хямдрал дамжихгүй", () => {
+    const at5 = memberPrices(members, 10, 100).find((p) => p.ml === 5)!;
+    // (40,000 + 40,000) × 0.9 = 72,000 — өмнөх B5 «давхарлах» дүрмээр
+    // (32,000 + 40,000) × 0.9 = 64,800 болдог байсан.
     expect(at5.memberSum).toBe(80000);
     expect(at5.price).toBe(72000);
   });
 
-  it("угсарсан багц (effective) — хямдарсан үнээс давхарлана", () => {
-    const at5 = memberPrices(members, 10, 100).find((p) => p.ml === 5)!;
-    expect(at5.memberSum).toBe(72000);
-    expect(at5.price).toBe(64800);
-  });
-
   it("basePrice байхгүй (хуучин өгөгдөл) бол price", () => {
-    const at5 = memberPrices([member({ 5: 30000 })], 10, 100, {}, "base").find(
+    const at5 = memberPrices([member({ 5: 30000 })], 10, 100).find(
       (p) => p.ml === 5,
     )!;
     expect(at5.memberSum).toBe(30000);
   });
 
-  it("bundlePriceBasis: base → base, custom → effective", () => {
-    expect(bundlePriceBasis("base")).toBe("base");
-    expect(bundlePriceBasis("custom")).toBe("effective");
+  it("override нь суурь хувийг орлоно, нэмэгдэхгүй (16.7-д өргөтгөх загвар)", () => {
+    // 100,000₮, суурь 5% → 95,000₮; хэмжээний хувь 10% → 90,000₮.
+    const one = [withBase(50000, 50000), withBase(50000, 50000)];
+    expect(memberPrices(one, 5, 100).find((p) => p.ml === 5)!.price).toBe(
+      95000,
+    );
+    expect(
+      memberPrices(one, 5, 100, { 5: 10 }).find((p) => p.ml === 5)!.price,
+    ).toBe(90000);
+  });
+
+  it("memberUnitPrice: үргэлж үндсэн үнэ", () => {
+    expect(memberUnitPrice({ price: 32000, basePrice: 40000 })).toBe(40000);
+    expect(memberUnitPrice({ price: 30000 })).toBe(30000);
   });
 });

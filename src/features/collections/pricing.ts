@@ -38,46 +38,47 @@ export function bundlePrice(
 }
 
 /**
- * Багцын гишүүний аль үнээс бодох вэ (Тайлан11.11.pptx слайд 2, plan §5.3):
- *   · `base` — бэлэн багц: «өөрөө нэг бүтээгдэхүүн, үнэ тогтмол». Гишүүний
- *     ҮНДСЭН үнийн нийлбэр − багцын хувь; барааны хямдрал нөлөөлөхгүй.
- *   · `effective` — хэрэглэгчийн угсарсан багц: хямдарсан үнийн нийлбэрээс
- *     дахин багцын хувь (давхарлана, backlog B5).
+ * Багцын гишүүний нэг хэмжээний үнэ — ҮРГЭЛЖ ҮНДСЭН үнэ.
+ *
+ * Бэлэн багц (Тайлан11.11 сл.2, plan §5.3) ба хэрэглэгчийн угсарсан багц
+ * (task 8.2, клиентийн шийдвэр 2026-11-17) хоёулаа гишүүдийн ҮНДСЭН үнийн
+ * нийлбэрээс багцын хувийг хасна. Гишүүн бараа түр хямдарсан (гар хямдрал,
+ * арга хэмжээ) ч багцын үнэ өөрчлөгдөхгүй, хямдрал давхарлахгүй.
+ *
+ * ⚠ Өмнөх B5 шийдвэр («угсарсан багц хямдарсан үнээс дахин хувь хасна —
+ * давхарлана») ЦУЦЛАГДСАН. `basePrice` байхгүй (хуучин өгөгдөл) бол `price`.
  */
-export type BundlePriceBasis = "base" | "effective";
-
-/** Багцын төрлөөс үнийн суурь — бэлэн (`base`) багц үндсэн үнээр. */
-export function bundlePriceBasis(type: "base" | "custom"): BundlePriceBasis {
-  return type === "base" ? "base" : "effective";
-}
-
-/** Гишүүний нэг хэмжээний үнэ — сонгосон суурийн дагуу. */
-export function memberUnitPrice(
-  v: { price: number; basePrice?: number },
-  basis: BundlePriceBasis,
-): number {
-  return basis === "base" ? (v.basePrice ?? v.price) : v.price;
+export function memberUnitPrice(v: {
+  price: number;
+  basePrice?: number;
+}): number {
+  return v.basePrice ?? v.price;
 }
 
 /**
  * Compute the bundle price for every ml the shop sells. A size is `available`
  * only when *every* member has an active, in-stock variant of it (§3.2).
+ *
+ * Хувь нь `discountForMl(ml, default, overrides)`-оор шийдэгдэнэ — override
+ * нь суурь хувийг ОРЛОНО (нэмэгдэхгүй). Task 16.7 (багцыг арга хэмжээнд
+ * оруулах) үүнийг өргөтгөхдөө арга хэмжээний хэмжээ бүрийн хувийг
+ * `overrides`-ийн дээр давхарлаж (`{ ...mlDiscounts, ...eventPcts }`)
+ * дамжуулахад хангалттай: «100,000₮, суурь 5% → Black Friday 10% =
+ * 90,000₮» гэсэн дүрэм яг ингэж гарна.
  */
 export function memberPrices(
   members: CollectionMember[],
   defaultDiscountPct: number,
   step = 100,
   overrides: MlDiscounts = {},
-  basis: BundlePriceBasis = "effective",
 ): CollectionPriceAtMl[] {
   return BUNDLE_ML_SIZES.map((ml) => {
     const rows = members.map((m) => m.variantByMl[ml]);
     const available =
       members.length > 0 && rows.every((r) => r != null && r.inStock);
-    // `effective`: БОДИТООР төлөх (хямдарсан) үнэ — угсарсан багц (B5).
-    // `base`: бэлэн багц үндсэн үнээр — хямдрал дамжихгүй (plan §5.3).
+    // Гишүүдийн ҮНДСЭН үнийн нийлбэр — хямдрал дамжихгүй (task 8.1, 8.2).
     const memberSum = rows.reduce(
-      (sum, r) => sum + (r ? memberUnitPrice(r, basis) : 0),
+      (sum, r) => sum + (r ? memberUnitPrice(r) : 0),
       0,
     );
     // «Тогтмол үнэ» (0054, B6) хасагдсан (task 17, 2026-11-17): бэлэн багц

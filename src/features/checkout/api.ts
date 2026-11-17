@@ -9,8 +9,8 @@ import {
 } from "@/features/collections/api";
 import {
   bundlePrice,
-  bundlePriceBasis,
   discountForMl,
+  memberUnitPrice,
 } from "@/features/collections/pricing";
 import { resolveZone, zoneKey } from "@/lib/geo/zone";
 import type {
@@ -190,13 +190,11 @@ export async function priceCollectionLines(
         continue;
     }
 
-    // Бэлэн багц: гишүүний ҮНДСЭН үнээс — барааны хямдрал (гар, арга
-    // хэмжээ) нөлөөлөхгүй. Угсарсан багц: хямдарсан үнээс дахин хувь хасна
-    // (Тайлан11.11.pptx сл.2, plan §5.3). Харагдах үнэ (`memberPrices`) ба
+    // Бэлэн ба угсарсан багц хоёулаа гишүүний ҮНДСЭН үнээс — барааны
+    // хямдрал (гар, арга хэмжээ) нөлөөлөхгүй (plan §5.3, task 8.2; B5
+    // «давхарлах» шийдвэр цуцлагдсан). Харагдах үнэ (`memberPrices`) ба
     // захиалгын `unit_price` нэг дүрмээр — эс бөгөөс зөрнө.
-    const basis = bundlePriceBasis(col.type);
-    const unitOf = (m: (typeof members)[number]) =>
-      basis === "base" ? m.basePrice : m.price;
+    const unitOf = (m: (typeof members)[number]) => memberUnitPrice(m);
     const memberSum = members.reduce((s, m) => s + unitOf(m), 0);
     // «Тогтмол үнэ» (0054) тооцоонд орохгүй (task 17) — багц үргэлж
     // гишүүдийн нийлбэрээс хувиар.
@@ -274,10 +272,9 @@ export async function quoteBundleSizes(input: {
     BUNDLE_ML_SIZES.map(async (ml): Promise<BundleSizeQuote> => {
       const members = input.productIds.map((id) => {
         const v = byId.get(id)?.variants.find((x) => x.ml === ml);
-        // Бэлэн багцын «хэмнэлт» үндсэн үнээс (priceCollectionLines-тэй ижил).
-        const price = input.type === "base" ? v?.basePrice : v?.price;
+        // «Хэмнэлт» үндсэн үнээс (priceCollectionLines-тэй ижил, task 8.2).
         return v
-          ? { productId: id, variantId: v.id, price: price ?? v.price }
+          ? { productId: id, variantId: v.id, price: memberUnitPrice(v) }
           : null;
       });
       const empty = {
