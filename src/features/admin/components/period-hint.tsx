@@ -26,10 +26,11 @@ export function PeriodHint({
   const text = periodSentence(startsOn, endsOn, { today }) ?? fallback;
   if (!text) return null;
   return (
-    <p
-      className={cn("text-muted-foreground text-xs text-pretty", className)}
-      aria-live="polite"
-    >
+    // `aria-live` ЗОРИУД байхгүй: Radix-ийн `hideOthers` live region-тэй
+    // элементийг aria-hidden болгодоггүй тул drawer дотор байхад огнооны
+    // dialog нээгдэхэд drawer a11y-д харагдсаар үлддэг байв (e2e
+    // admin-coupon-create «дуусах огноо сонгогч»).
+    <p className={cn("text-muted-foreground text-xs text-pretty", className)}>
       {text}
     </p>
   );
