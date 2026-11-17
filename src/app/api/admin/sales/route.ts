@@ -15,6 +15,19 @@ async function guard() {
       response: NextResponse.json({ error: "NOT_FOUND" }, { status: 404 }),
     };
   }
+  // Нэртэй хямдрал (0188) нээлттэй үед хуучин нэргүй бичилт хаалттай —
+  // хуучин таб нээлттэй үлдсэн ч «Нэргүй» мөр шинээр хуримтлагдахгүй.
+  if (await isFeatureEnabled("named_sales")) {
+    return {
+      response: NextResponse.json(
+        {
+          error:
+            "Хямдрал одоо нэртэй болсон. Хуудсаа сэргээгээд «Шинэ хямдрал»-аар үүсгэнэ үү.",
+        },
+        { status: 409 },
+      ),
+    };
+  }
   if (!isSupabaseConfigured)
     return { response: NextResponse.json({ demo: true }) };
   const staff = await getStaffUser();

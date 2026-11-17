@@ -17,6 +17,7 @@ import { LoadingButton } from "@/components/shared/loading-button";
 import { useConfirm } from "@/components/shared/confirm-dialog";
 import { useFeatureFlag } from "@/components/feature-flags";
 import { DatePicker } from "@/features/admin/components/date-picker";
+import { PeriodHint } from "@/features/admin/components/period-hint";
 import { dayEndIso, dayStartIso } from "@/features/admin/lib/date-range";
 import { adminFetch } from "@/features/admin/lib/mutate";
 import { HERO_LIMITS, SEASON_LABEL } from "@/lib/constants";
@@ -339,14 +340,14 @@ export function HeroPageEditor({
                 }
               />
             </Field>
-            <Field label="Эхлэх өдөр" hint="00:00-оос">
+            <Field label="Эхлэх өдөр">
               <DatePicker
                 value={draft.startsOn}
                 clearable={false}
                 onChange={(v) => setDraft((d) => (d.kind === "special" ? { ...d, startsOn: v } : d))}
               />
             </Field>
-            <Field label="Дуусах өдөр" hint="23:59 хүртэл">
+            <Field label="Дуусах өдөр">
               <DatePicker
                 value={draft.endsOn}
                 clearable={false}
@@ -354,6 +355,12 @@ export function HeroPageEditor({
                 onChange={(v) => setDraft((d) => (d.kind === "special" ? { ...d, endsOn: v } : d))}
               />
             </Field>
+            <PeriodHint
+              className="sm:col-span-3"
+              startsOn={draft.startsOn}
+              endsOn={draft.endsOn}
+              fallback="Эхлэх өдрийн 00:00-оос дуусах өдрийн 23:59 хүртэл, Улаанбаатарын цагаар."
+            />
           </div>
         )}
 

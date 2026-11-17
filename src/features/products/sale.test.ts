@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   effectivePrice,
+  isOnSale,
+  productSalePhase,
   isSaleActive,
   roundSalePrice,
+  saleLinkPatch,
+  salePhase,
   variantSaleColumns,
 } from "./sale";
 
@@ -64,5 +68,97 @@ describe("variantSaleColumns", () => {
         saleEndsAt: null,
       }).sale_price,
     ).toBe(10600);
+  });
+});
+
+describe("salePhase", () => {
+  it("хямдралгүй бол null", () => {
+    expect(salePhase({ price: 30000, sale_price: null }, now)).toBeNull();
+    expect(salePhase({ price: 30000, sale_price: 30000 }, now)).toBeNull();
+  });
+
+  it("хүчинтэй / эхлээгүй / дууссан", () => {
+    expect(salePhase(base, now)).toBe("active");
+    expect(
+      salePhase({ ...base, sale_starts_at: "2026-10-28T00:00:00Z" }, now),
+    ).toBe("scheduled");
+    // 16.1: дууссан хямдралын sale_price санд үлддэг — «хямдралтай» биш.
+    expect(
+      salePhase({ ...base, sale_ends_at: "2026-10-27T12:00:00Z" }, now),
+    ).toBe("ended");
+  });
+});
+
+describe("saleLinkPatch (0188)", () => {
+  const prev = {
+    sale_price: 27000,
+    sale_starts_at: null,
+    sale_ends_at: "2026-11-21T16:00:00+00:00",
+    sale_id: "s1",
+  };
+
+  it("өөрчлөөгүй бол хямдралд хэвээр (ISO хэлбэр өөр ч ижил мөч)", () => {
+    expect(
+      saleLinkPatch(prev, {
+        ...prev,
+        sale_ends_at: "2026-11-21T16:00:00.000Z",
+      }),
+    ).toEqual({});
+  });
+
+  it("үнэ эсвэл хугацааг гараар өөрчилбөл салгана", () => {
+    expect(saleLinkPatch(prev, { ...prev, sale_price: 25000 })).toEqual({
+      sale_id: null,
+    });
+    expect(
+      saleLinkPatch(prev, { ...prev, sale_ends_at: "2026-11-25T16:00:00Z" }),
+    ).toEqual({ sale_id: null });
+    expect(
+      saleLinkPatch(prev, {
+        sale_price: null,
+        sale_starts_at: null,
+        sale_ends_at: null,
+      }),
+    ).toEqual({ sale_id: null });
+  });
+
+  it("хямдралгүй / шинэ хэмжээ → юу ч үгүй", () => {
+    expect(saleLinkPatch(undefined, prev)).toEqual({});
+    expect(
+      saleLinkPatch({ ...prev, sale_id: null }, { ...prev, sale_price: 1 }),
+    ).toEqual({});
+  });
+});
+
+describe("isOnSale / productSalePhase (16.1)", () => {
+  const v = (
+    extra: Partial<{
+      salePrice: number | null;
+      saleStartsAt: string | null;
+      saleEndsAt: string | null;
+    }>,
+  ) => ({
+    price: 30000,
+    salePrice: 25000,
+    saleStartsAt: null,
+    saleEndsAt: null,
+    ...extra,
+  });
+  const t = now.getTime();
+
+  it("дууссан хямдрал «хямдралтай» биш", () => {
+    const ended = { variants: [v({ saleEndsAt: "2026-10-27T12:00:00Z" })] };
+    expect(productSalePhase(ended, t)).toBe("ended");
+    expect(isOnSale(ended, t)).toBe(false);
+  });
+
+  it("аль нэг хэмжээ хүчинтэй / эхлээгүй бол хямдралтай", () => {
+    expect(isOnSale({ variants: [v({}), v({ salePrice: null })] }, t)).toBe(
+      true,
+    );
+    expect(
+      isOnSale({ variants: [v({ saleStartsAt: "2026-10-28T00:00:00Z" })] }, t),
+    ).toBe(true);
+    expect(isOnSale({ variants: [v({ salePrice: null })] }, t)).toBe(false);
   });
 });

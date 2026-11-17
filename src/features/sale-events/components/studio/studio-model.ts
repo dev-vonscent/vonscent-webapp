@@ -1,3 +1,4 @@
+import { periodSentence as sharedPeriodSentence } from "@/features/admin/lib/period";
 import {
   SALE_EVENT_DEFAULT_BADGE,
   SALE_EVENT_LIMITS as L,
@@ -294,38 +295,16 @@ function keyDate(key: string): Date {
   return new Date(Date.UTC(y, m - 1, d, 12));
 }
 
-/** «23-ны», «1-ний» — тооны дуудлагын эгшиг зохицол (нэг, дөрөв, ес → -ний). */
-export function dayGenitive(day: number): string {
-  const last = day % 10;
-  const soft = day % 10 !== 0 && (last === 1 || last === 4 || last === 9);
-  return `${day}-${soft ? "ний" : "ны"}`;
-}
-
-/** Хоёр өдрийг оролцуулаад хэд хоног. */
-export function daysInclusive(startsOn: string, endsOn: string): number {
-  return (
-    Math.round(
-      (keyDate(endsOn).getTime() - keyDate(startsOn).getTime()) / 86_400_000,
-    ) + 1
-  );
-}
+export { dayGenitive, daysInclusive } from "@/features/admin/lib/period";
 
 /**
  * «11-р сарын 23-ны 00:00-оос 11-р сарын 30-ны 23:59 хүртэл — 8 хоног
- * (Улаанбаатарын цагаар)». Огноо дутуу / буруу дараалалтай бол null.
+ * (Улаанбаатарын цагаар)». Арга хэмжээнд хоёр өдөр хоёулаа заавал тул дутуу /
+ * буруу дараалалтай бол null. Бие нь админы дундын `periodSentence` (task 7).
  */
 export function periodSentence(startsOn: string, endsOn: string): string | null {
-  if (!DAY_RE.test(startsOn) || !DAY_RE.test(endsOn) || endsOn < startsOn) {
-    return null;
-  }
-  const part = (key: string) => {
-    const [, m, d] = key.split("-").map(Number);
-    return `${m}-р сарын ${dayGenitive(d)}`;
-  };
-  return `${part(startsOn)} 00:00-оос ${part(endsOn)} 23:59 хүртэл — ${daysInclusive(
-    startsOn,
-    endsOn,
-  )} хоног (Улаанбаатарын цагаар)`;
+  if (!DAY_RE.test(startsOn) || !DAY_RE.test(endsOn)) return null;
+  return sharedPeriodSentence(startsOn, endsOn);
 }
 
 const WEEKDAYS = ["Ням", "Даваа", "Мягмар", "Лхагва", "Пүрэв", "Баасан", "Бямба"];

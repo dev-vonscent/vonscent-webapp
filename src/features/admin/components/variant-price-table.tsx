@@ -12,8 +12,9 @@ import { useFeatureFlag } from "@/components/feature-flags";
 import { ML_SIZES } from "@/lib/constants";
 import { formatPrice } from "@/lib/format";
 import { unpricedActiveSizes } from "@/lib/validators/product";
-import { roundSalePrice } from "@/features/products/sale";
+import { effectivePrice, roundSalePrice } from "@/features/products/sale";
 import { DatePicker } from "@/features/admin/components/date-picker";
+import { PeriodHint } from "@/features/admin/components/period-hint";
 import {
   dayEndIso,
   dayStartIso,
@@ -163,8 +164,13 @@ export function VariantPriceTable({
                   : undefined;
               // ₮/1мл нь БОДИТООР төлөх үнээр бодогдоно — тэгэхгүй бол
               // хямдралтай хэмжээ хямд болсон нь энэ баганад харагдахгүй.
-              const charged =
-                v.salePrice && v.salePrice > 0 ? v.salePrice : v.price;
+              // Дууссан / эхлээгүй хямдралыг тооцохгүй (16.1).
+              const charged = effectivePrice({
+                price: v.price,
+                sale_price: v.salePrice && v.salePrice > 0 ? v.salePrice : null,
+                sale_starts_at: v.saleStartsAt,
+                sale_ends_at: v.saleEndsAt,
+              });
               const showPeriod = periodOn && Boolean(v.salePrice);
               const periodError = badPeriod.has(v.ml)
                 ? "Дуусах хугацаа эхлэхээс хойш байх ёстой."
@@ -291,6 +297,13 @@ export function VariantPriceTable({
                           </span>
                         </div>
                         <FieldError id={`${id}-period`} message={periodError} />
+                        {!periodError && (
+                          <PeriodHint
+                            className="mt-1"
+                            startsOn={isoToDay(v.saleStartsAt)}
+                            endsOn={isoEndToDay(v.saleEndsAt)}
+                          />
+                        )}
                       </td>
                     </tr>
                   )}

@@ -93,7 +93,9 @@ export default async function AdminOrderDetail({
     : { ...refundBreakdown(order.total), shipping: 0 };
 
   return (
-    <div className="space-y-6">
+    // pb-20: баруун доод буланд тогтмол «Тэмдэглэл» товч сүүлчийн мөрийг
+    // таглахгүй.
+    <div className="space-y-6 pb-20">
       <BackLink
         href="/admin/orders"
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
@@ -401,19 +403,15 @@ export default async function AdminOrderDetail({
               )}
             </CardContent>
           </Card>
-
-          <Card>
-            <CardContent className="space-y-3 p-5">
-              <h2 className="font-medium">Админы тэмдэглэл</h2>
-              <OrderAdminNote
-                orderId={order.id}
-                initial={adminNote?.note ?? ""}
-                updatedAt={adminNote?.updated_at ?? null}
-              />
-            </CardContent>
-          </Card>
         </div>
       </div>
+
+      {/* Dialog + дэлгэцэд тогтмол trigger (task 13). */}
+      <OrderAdminNote
+        orderId={order.id}
+        initial={adminNote?.note ?? ""}
+        updatedAt={adminNote?.updated_at ?? null}
+      />
     </div>
   );
 }

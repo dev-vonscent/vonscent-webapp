@@ -31,6 +31,9 @@ export default defineConfig({
       // Next-ийн image optimizer-ийг унтраана (next.config.ts `images.unoptimized`).
       // Build-ийн үед уншдаг тул энд тавина — `pnpm build` ч энэ env-тэй ажиллана.
       E2E_UNOPTIMIZED_IMAGES: "1",
+      // Prod-ын тугийн төлөв (сангүй демо горимд л уншигдана,
+      // src/lib/feature-flags.ts `demoFlagRows`). Бусад туг хаалттай.
+      DEMO_FEATURE_FLAGS: "sale_page",
     },
   },
 });

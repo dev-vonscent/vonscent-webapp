@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { DatePicker } from "@/features/admin/components/date-picker";
+import { PeriodHint } from "@/features/admin/components/period-hint";
+import { dayLastSecondIso, ubToday } from "@/features/admin/lib/date-range";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { LoadingButton } from "@/components/shared/loading-button";
@@ -475,7 +477,9 @@ export function CouponCreateForm({
             ? Number(form.maxUsesPerUser)
             : null,
           userId: personal ? (owner?.id ?? null) : null,
-          endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null,
+          // Сонгосон өдрийн 23:59:59 УБ (task 7). Өмнө нь UTC шөнө дунд =
+          // УБ 08:00 болж, «16» гэвэл 16-ны 08:00-д дуусдаг байв.
+          endsAt: dayLastSecondIso(form.endsAt),
           isActive: true,
         }),
       });
@@ -598,11 +602,18 @@ export function CouponCreateForm({
               Купон ямагт нэвтэрсэн хэрэглэгчид л ажиллана.
             </p>
           </Field>
-          <Field label="Дуусах огноо" hint="Хоосон бол хугацаагүй.">
+          <Field label="Дуусах огноо">
             <DatePicker
               value={form.endsAt}
               placeholder="Хугацаагүй"
+              min={ubToday()}
               onChange={(v) => set("endsAt", v)}
+            />
+            <PeriodHint
+              startsOn=""
+              endsOn={form.endsAt}
+              today={ubToday()}
+              fallback="Хоосон бол хугацаагүй."
             />
           </Field>
         </form>

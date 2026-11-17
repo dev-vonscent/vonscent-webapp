@@ -20,6 +20,20 @@ import { isFeatureFlag } from "@/lib/validators/feature-flag";
  */
 
 /**
+ * ЗӨВХӨН демо горимд (сан тохируулагдаагүй) — `DEMO_FEATURE_FLAGS=a,b`.
+ * E2E (playwright.config.ts) prod-ын тугийн төлөвийг давтахад хэрэглэнэ
+ * (жишээ: `sale_page` нээлттэй, `named_sales` хаалттай). Сантай орчинд
+ * (dev, prod) энэ функц хэзээ ч дуудагдахгүй — туг ганцхан сангаас.
+ */
+function demoFlagRows(): { key: string; since: string }[] {
+  return (process.env.DEMO_FEATURE_FLAGS ?? "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean)
+    .map((key) => ({ key, since: "1970-01-01T00:00:00.000Z" }));
+}
+
+/**
  * Асаалттай түлхүүрүүд. Алдааг ДОТОР нь барихгүй — `unstable_cache` нь
  * шидэгдсэн алдааг кэшлэдэггүй тул түр зуурын алдаа «бүгд унтраалттай»
  * гэсэн хариуг кэшэнд гацаахгүй.
@@ -30,7 +44,7 @@ import { isFeatureFlag } from "@/lib/validators/feature-flag";
 const fetchEnabledKeys = unstable_cache(
   async (): Promise<{ key: string; since: string }[]> => {
     const supabase = createAdminClient();
-    if (!supabase) return [];
+    if (!supabase) return demoFlagRows();
     const { data, error } = await supabase
       .from("feature_flags")
       .select("key, updated_at")

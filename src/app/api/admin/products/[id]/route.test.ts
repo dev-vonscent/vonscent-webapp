@@ -10,6 +10,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 let currentStatus: "hidden" | "coming_soon" | "active" = "active";
 let productError: { message: string } | null = null;
 let variantError: { message: string } | null = null;
+/** Сангийн одоогийн хэмжээнүүд (нэртэй хямдралаас салгах шалгалт, 0188). */
+let storedVariants: Record<string, unknown>[] = [];
 /** Мөр огт байхгүй (буруу id). */
 let missing = false;
 /** Харагдах зургийн тоо (`hasVisibleImage`). */
@@ -72,6 +74,9 @@ vi.mock("@/lib/supabase/admin", () => ({
       if (table === "products") return productsTable();
       if (table === "product_variants") {
         return {
+          select: () => ({
+            eq: async () => ({ data: storedVariants, error: null }),
+          }),
           upsert: async (row: unknown) => {
             variantUpserts.push(row);
             return { error: variantError };
@@ -127,6 +132,7 @@ beforeEach(() => {
   currentStatus = "active";
   productError = null;
   variantError = null;
+  storedVariants = [];
   missing = false;
   imageCount = 1;
   inventoryRows = [{ product_id: "p1" }];
@@ -208,6 +214,41 @@ describe("PATCH /api/admin/products/[id] — хэмжээний үнэ", () => {
     const res = await patch({ variants: VARIANTS });
     expect(res.status).toBe(200);
     expect(variantUpserts).toHaveLength(2);
+  });
+});
+
+describe("PATCH /api/admin/products/[id] — нэртэй хямдралаас салгах (0188)", () => {
+  const sale = {
+    sale_price: 27000,
+    sale_starts_at: null,
+    sale_ends_at: "2026-11-21T16:00:00+00:00",
+    sale_id: "s1",
+  };
+
+  it("хямдралыг гараар өөрчилсөн хэмжээ л салж, бусад нь хэвээр", async () => {
+    storedVariants = [
+      { ml: 5, ...sale },
+      { ml: 10, ...sale, sale_price: 50000 },
+    ];
+    const res = await patch({
+      variants: [
+        // 5ml: өөрчлөөгүй (ISO хэлбэр өөр ч ижил мөч).
+        {
+          ml: 5,
+          price: 30000,
+          salePrice: 27000,
+          saleStartsAt: null,
+          saleEndsAt: "2026-11-21T16:00:00.000Z",
+          active: true,
+        },
+        // 10ml: хямдралыг цуцалсан.
+        { ml: 10, price: 55000, salePrice: null, active: true },
+      ],
+    });
+    expect(res.status).toBe(200);
+    const [five, ten] = variantUpserts as Record<string, unknown>[];
+    expect(five).not.toHaveProperty("sale_id");
+    expect(ten).toMatchObject({ sale_price: null, sale_id: null });
   });
 });
 

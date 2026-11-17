@@ -17,7 +17,11 @@ import {
   hasVisibleImage,
   statusConflict,
 } from "@/features/admin/lib/product-status";
-import { variantSaleColumns } from "@/features/products/sale";
+import {
+  saleLinkPatch,
+  variantSaleColumns,
+  type StoredSaleColumns,
+} from "@/features/products/sale";
 
 async function guard() {
   if (!isSupabaseConfigured) return { demo: true as const };
@@ -158,13 +162,27 @@ export async function PATCH(
   // price above never moves them. Upsert so a size the product didn't have
   // yet (e.g. the 2ml sample tier on an older product) can be added here.
   if (input.variants !== undefined) {
+    // Нэртэй хямдралаас салгах (0188): хямдралын баганыг гараар өөрчилсөн
+    // хэмжээ л. Уншилт бүтэлгүйтвэл (0188-аас өмнөх сан) салгахгүй — хадгалалт
+    // үргэлжилнэ.
+    const { data: stored } = await supabase
+      .from("product_variants")
+      .select("ml, sale_price, sale_starts_at, sale_ends_at, sale_id")
+      .eq("product_id", id);
+    const prevByMl = new Map(
+      ((stored as (StoredSaleColumns & { ml: number })[] | null) ?? []).map(
+        (r) => [r.ml, r],
+      ),
+    );
     for (const v of input.variants) {
+      const sale = variantSaleColumns(v);
       const { error } = await supabase.from("product_variants").upsert(
         {
           product_id: id,
           ml: v.ml,
           price: v.price,
-          ...variantSaleColumns(v),
+          ...sale,
+          ...saleLinkPatch(prevByMl.get(v.ml), sale),
           is_active: v.active,
         },
         { onConflict: "product_id,ml" },
