@@ -84,7 +84,9 @@ export function SaleEditor({
     Object.fromEntries(
       ML_SIZES.map((ml) => [
         String(ml),
-        initial.pcts[String(ml)] != null ? String(initial.pcts[String(ml)]) : "",
+        initial.pcts[String(ml)] != null
+          ? String(initial.pcts[String(ml)])
+          : "",
       ]),
     ),
   );
@@ -214,7 +216,9 @@ export function SaleEditor({
       // 16.3: хадгалах зуур өөр админ барааг авсан бол мөрийг улаанаар.
       const list = res.data?.conflicts ?? [];
       if (list.length) {
-        setConflicts(Object.fromEntries(list.map((c) => [c.productId, c.sale])));
+        setConflicts(
+          Object.fromEntries(list.map((c) => [c.productId, c.sale])),
+        );
       }
       toast.error(res.error, "Хямдрал хадгалагдсангүй");
       return;
@@ -301,7 +305,11 @@ export function SaleEditor({
 
       {/* ── Нэр, хувь, хугацаа ─────────────────────────────────────────── */}
       <section className="bg-card space-y-4 rounded-lg p-4">
-        <Field label="Хямдралын нэр" error={err(errors.name)} className="max-w-md">
+        <Field
+          label="Хямдралын нэр"
+          error={err(errors.name)}
+          className="max-w-md"
+        >
           <Input
             value={name}
             maxLength={NAMED_SALE_NAME_MAX}
@@ -368,12 +376,22 @@ export function SaleEditor({
                 onChange={setStartsOn}
               />
             </Field>
-            <Field label="Дуусах өдөр" className="w-56" error={err(errors.endsOn)}>
+            <Field
+              label="Дуусах өдөр"
+              className="w-56"
+              error={err(errors.endsOn)}
+            >
               <DatePicker
                 value={endsOn}
                 placeholder="Огноо сонгох"
                 clearable={false}
-                min={isNew ? (startsOn && startsOn > today ? startsOn : today) : startsOn || undefined}
+                min={
+                  isNew
+                    ? startsOn && startsOn > today
+                      ? startsOn
+                      : today
+                    : startsOn || undefined
+                }
                 onChange={setEndsOn}
               />
             </Field>
@@ -400,7 +418,10 @@ export function SaleEditor({
               className="w-56 pl-9"
             />
           </div>
-          <Select value={gender} onValueChange={(v) => setGender(v as Gender | "all")}>
+          <Select
+            value={gender}
+            onValueChange={(v) => setGender(v as Gender | "all")}
+          >
             <SelectTrigger className="w-36" aria-label="Хүйс">
               <SelectValue />
             </SelectTrigger>
@@ -485,7 +506,9 @@ export function SaleEditor({
                 // Өөр хямдралд байгаа, сонгоогүй бараа — харагдах ч сонгогдохгүй.
                 const disabled = Boolean(owner) && !isSelected;
                 const flagged =
-                  showErrors && isSelected && (bareIds.has(p.id) || Boolean(conflicts[p.id]));
+                  showErrors &&
+                  isSelected &&
+                  (bareIds.has(p.id) || Boolean(conflicts[p.id]));
                 return (
                   <tr
                     key={p.id}
@@ -513,7 +536,9 @@ export function SaleEditor({
                           <span
                             className={cn(
                               "ml-1.5 text-xs font-normal",
-                              conflicts[p.id] ? "text-destructive" : "text-muted-foreground",
+                              conflicts[p.id]
+                                ? "text-destructive"
+                                : "text-muted-foreground",
                             )}
                           >
                             — «{owner}»
@@ -529,10 +554,14 @@ export function SaleEditor({
                         {p.variants
                           .filter((v) => v.isActive && v.price > 0)
                           .map((v) => {
-                            const pct = isSelected ? pcts[String(v.ml)] : undefined;
+                            const pct = isSelected
+                              ? pcts[String(v.ml)]
+                              : undefined;
                             return (
                               <span key={v.ml}>
-                                <span className="text-muted-foreground">{v.ml}ml </span>
+                                <span className="text-muted-foreground">
+                                  {v.ml}ml{" "}
+                                </span>
                                 {pct ? (
                                   <>
                                     <span className="text-muted-foreground line-through">
@@ -558,22 +587,43 @@ export function SaleEditor({
         </div>
       </section>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <LoadingButton loading={saving} onClick={save}>
-          {isNew ? "Хямдрал үүсгэх" : "Хадгалах"}
-        </LoadingButton>
-        {!isNew && !isUnnamed && initial.phase === "active" && (
-          <Button variant="outline" onClick={endNow}>
-            <Square className="size-4" />
-            Одоо дуусгах
-          </Button>
+      {/* Доод action bar — бараа олон (88+) тул жагсаалтын төгсгөлд биш,
+          дэлгэцэд наалдаж үргэлж харагдана (арга хэмжээний студитэй ижил хэв
+          маяг, event-studio.tsx). */}
+      <div
+        role="toolbar"
+        aria-label="Хямдралын үйлдэл"
+        className="bg-card/85 shadow-lift sticky bottom-4 z-30 flex flex-wrap items-center gap-2 rounded-2xl p-2 backdrop-blur"
+      >
+        <span className="text-muted-foreground px-2 text-sm tabular-nums">
+          {selected.size} бараа сонгосон
+        </span>
+        {showErrors && hasError && (
+          <span className="text-destructive px-2 text-sm">
+            Алдаатай талбар байна
+          </span>
         )}
-        {!isNew && !isUnnamed && (
-          <Button variant="ghost" className="text-destructive" onClick={remove}>
-            <Trash2 className="size-4" />
-            Устгах
-          </Button>
-        )}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {!isNew && !isUnnamed && initial.phase === "active" && (
+            <Button variant="outline" onClick={endNow}>
+              <Square className="size-4" />
+              Одоо дуусгах
+            </Button>
+          )}
+          {!isNew && !isUnnamed && (
+            <Button
+              variant="ghost"
+              className="text-destructive"
+              onClick={remove}
+            >
+              <Trash2 className="size-4" />
+              Устгах
+            </Button>
+          )}
+          <LoadingButton loading={saving} onClick={save}>
+            {isNew ? "Хямдрал үүсгэх" : "Хадгалах"}
+          </LoadingButton>
+        </div>
       </div>
     </div>
   );
