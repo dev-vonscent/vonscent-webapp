@@ -73,3 +73,38 @@ export function variantSaleColumns(v: {
     sale_ends_at: on ? v.saleEndsAt : null,
   };
 }
+
+/** Сангийн одоогийн мөр — `saleLinkPatch`-ийн харьцуулалтад. */
+export interface StoredSaleColumns {
+  sale_price: number | null;
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
+  sale_id?: string | null;
+}
+
+/** Ижил мөч уу — null/undefined хоёулаа «хугацаагүй». */
+const sameInstant = (a?: string | null, b?: string | null) =>
+  a == null || b == null
+    ? (a ?? null) === (b ?? null)
+    : Date.parse(a) === Date.parse(b);
+
+/**
+ * Нэртэй хямдрал (0188): хэмжээний хямдралыг барааны засвараас ГАРААР
+ * өөрчилбөл тэр хэмжээ хямдралаасаа салж (`sale_id = null`) «Нэргүй»
+ * болно — эс бөгөөс хямдралын жагсаалт админы бичээгүй үнэ/хугацааг өөрийнх
+ * мэт харуулна. Өөрчлөөгүй бол юу ч буцаахгүй (upsert `sale_id`-д хүрэхгүй).
+ */
+export function saleLinkPatch(
+  prev: StoredSaleColumns | undefined,
+  next: Pick<
+    StoredSaleColumns,
+    "sale_price" | "sale_starts_at" | "sale_ends_at"
+  >,
+): { sale_id: null } | Record<string, never> {
+  if (!prev?.sale_id) return {};
+  const changed =
+    prev.sale_price !== next.sale_price ||
+    !sameInstant(prev.sale_starts_at, next.sale_starts_at) ||
+    !sameInstant(prev.sale_ends_at, next.sale_ends_at);
+  return changed ? { sale_id: null } : {};
+}

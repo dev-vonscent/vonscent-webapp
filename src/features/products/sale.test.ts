@@ -3,6 +3,7 @@ import {
   effectivePrice,
   isSaleActive,
   roundSalePrice,
+  saleLinkPatch,
   salePhase,
   variantSaleColumns,
 } from "./sale";
@@ -83,5 +84,46 @@ describe("salePhase", () => {
     expect(
       salePhase({ ...base, sale_ends_at: "2026-10-27T12:00:00Z" }, now),
     ).toBe("ended");
+  });
+});
+
+describe("saleLinkPatch (0188)", () => {
+  const prev = {
+    sale_price: 27000,
+    sale_starts_at: null,
+    sale_ends_at: "2026-11-21T16:00:00+00:00",
+    sale_id: "s1",
+  };
+
+  it("өөрчлөөгүй бол хямдралд хэвээр (ISO хэлбэр өөр ч ижил мөч)", () => {
+    expect(
+      saleLinkPatch(prev, {
+        ...prev,
+        sale_ends_at: "2026-11-21T16:00:00.000Z",
+      }),
+    ).toEqual({});
+  });
+
+  it("үнэ эсвэл хугацааг гараар өөрчилбөл салгана", () => {
+    expect(saleLinkPatch(prev, { ...prev, sale_price: 25000 })).toEqual({
+      sale_id: null,
+    });
+    expect(
+      saleLinkPatch(prev, { ...prev, sale_ends_at: "2026-11-25T16:00:00Z" }),
+    ).toEqual({ sale_id: null });
+    expect(
+      saleLinkPatch(prev, {
+        sale_price: null,
+        sale_starts_at: null,
+        sale_ends_at: null,
+      }),
+    ).toEqual({ sale_id: null });
+  });
+
+  it("хямдралгүй / шинэ хэмжээ → юу ч үгүй", () => {
+    expect(saleLinkPatch(undefined, prev)).toEqual({});
+    expect(
+      saleLinkPatch({ ...prev, sale_id: null }, { ...prev, sale_price: 1 }),
+    ).toEqual({});
   });
 });
