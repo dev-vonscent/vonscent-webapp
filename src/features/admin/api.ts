@@ -66,10 +66,7 @@ import {
 import { collectionIdsOf } from "@/lib/orders/bundle-lines";
 import { getBaseCollections } from "@/features/collections/api";
 import { grandPrizeState } from "@/features/lucky-wheel/prize-state";
-import type {
-  GrandPrizeState,
-  MissTip,
-} from "@/features/lucky-wheel/types";
+import type { GrandPrizeState, MissTip } from "@/features/lucky-wheel/types";
 import { GRAND_BUNDLE_ML } from "@/lib/constants";
 import { effectivePrice } from "@/features/products/sale";
 
@@ -876,6 +873,7 @@ export async function getProductOptions({
       is_active: boolean;
       available_ml: number;
       price_by_ml: Record<string, number> | null;
+      base_price_by_ml?: Record<string, number> | null;
     }[]
   >(supabase, "admin_product_options", {
     p_terms: !ids && q?.trim() ? searchTerms(q) : null,
@@ -900,6 +898,11 @@ export async function getProductOptions({
         Number(ml),
         Number(price),
       ]),
+    ),
+    basePriceByMl: Object.fromEntries(
+      Object.entries(r.base_price_by_ml ?? r.price_by_ml ?? {}).map(
+        ([ml, price]) => [Number(ml), Number(price)],
+      ),
     ),
   }));
 }

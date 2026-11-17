@@ -91,15 +91,6 @@ function toMlDiscounts(row: DbCollection): Record<number, number> {
   return out;
 }
 
-/** Хэмжээ бүрийн тогтмол үнэ (0054) — байгаа мөр нь хувийг гүйцээж дарна. */
-function toMlPrices(row: DbCollection): Record<number, number> {
-  const out: Record<number, number> = {};
-  for (const d of row.collection_ml_discounts ?? []) {
-    if (d.price != null) out[d.ml] = Number(d.price);
-  }
-  return out;
-}
-
 export const getCollectionSettings = cache(
   async (): Promise<CollectionSettings> => {
     if (!isSupabaseConfigured) return DEFAULT_COLLECTION_SETTINGS;
@@ -163,13 +154,11 @@ function build(
   const complete = members.length === items.length && members.length > 0;
   const discountPct = Number(row.discount_pct);
   const mlDiscounts = toMlDiscounts(row);
-  const mlPrices = toMlPrices(row);
   const prices = memberPrices(
     members,
     discountPct,
     settings.roundTo,
     mlDiscounts,
-    mlPrices,
     // Бэлэн багц үндсэн үнээр, хадгалсан custom хямдарсан үнээр (plan §5.3).
     bundlePriceBasis(row.type),
   );
@@ -193,7 +182,6 @@ function build(
     ratingCount: row.rating_count ?? 0,
     discountPct,
     mlDiscounts,
-    mlPrices,
     discountRange: discountRange(prices, availableMls),
     tags: (row.collection_tags ?? [])
       .map((t) => t.tags?.kind)
@@ -462,8 +450,6 @@ export async function getCollectionOrderInfo(id: string): Promise<{
   discountPct: number;
   /** Per-size overrides (0051) — the ordered ml is priced from these. */
   mlDiscounts: Record<number, number>;
-  /** Тогтмол үнэтэй хэмжээнүүд (0054) — байвал хувийн тооцоог бүрэн орлоно. */
-  mlPrices: Record<number, number>;
   /** Product ids of the collection's roster — the order must match it. */
   memberProductIds: string[];
 } | null> {
@@ -473,7 +459,7 @@ export async function getCollectionOrderInfo(id: string): Promise<{
   const { data } = await supabase
     .from("collections")
     .select(
-      "name, discount_pct, collection_items ( product_id ), collection_ml_discounts ( ml, discount_pct, price )",
+      "name, discount_pct, collection_items ( product_id ), collection_ml_discounts ( ml, discount_pct )",
     )
     .eq("id", id)
     .eq("is_active", true)
@@ -487,21 +473,17 @@ export async function getCollectionOrderInfo(id: string): Promise<{
       | {
           ml: number;
           discount_pct: number | string | null;
-          price: number | null;
         }[]
       | null;
   };
   const mlDiscounts: Record<number, number> = {};
-  const mlPrices: Record<number, number> = {};
   for (const d of row.collection_ml_discounts ?? []) {
     if (d.discount_pct != null) mlDiscounts[d.ml] = Number(d.discount_pct);
-    if (d.price != null) mlPrices[d.ml] = Number(d.price);
   }
   return {
     name: row.name,
     discountPct: Number(row.discount_pct),
     mlDiscounts,
-    mlPrices,
     memberProductIds: (row.collection_items ?? []).map((i) => i.product_id),
   };
 }

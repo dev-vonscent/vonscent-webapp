@@ -14,16 +14,6 @@ export function roundTo(value: number, step: number): number {
  */
 export type MlDiscounts = Record<number, number>;
 
-/**
- * Хэмжээ бүрийн ТОГТМОЛ үнэ (0054, backlog B6), ml-ээр түлхүүрлэсэн.
- *
- * Багцын үнэ өмнө нь гишүүдийн үнийн нийлбэрээс хувь хасаж амьдаар бодогддог
- * байсан тул гишүүн барааны хямдрал багцын үнийг чимээгүйхэн өөрчилдөг байв.
- * Тогтмол үнэ өгсөн хэмжээнд тэр тооцоо огт хийгдэхгүй: админы бичсэн үнэ нь
- * эцсийн үнэ, гишүүдийн нийлбэр нь зөвхөн «хэмнэлт»-ийг харуулахад үлдэнэ.
- */
-export type MlPrices = Record<number, number>;
-
 /** The discount that applies at one size: the override, else the default. */
 export function discountForMl(
   ml: number,
@@ -78,7 +68,6 @@ export function memberPrices(
   defaultDiscountPct: number,
   step = 100,
   overrides: MlDiscounts = {},
-  fixedPrices: MlPrices = {},
   basis: BundlePriceBasis = "effective",
 ): CollectionPriceAtMl[] {
   return BUNDLE_ML_SIZES.map((ml) => {
@@ -91,21 +80,20 @@ export function memberPrices(
       (sum, r) => sum + (r ? memberUnitPrice(r, basis) : 0),
       0,
     );
-    const hasFixedPrice = Number.isFinite(fixedPrices[ml]);
+    // «Тогтмол үнэ» (0054, B6) хасагдсан (task 17, 2026-11-17): бэлэн багц
+    // гишүүдийн ҮНДСЭН үнээр бодогддог тул гишүүний хямдрал багцын үнийг
+    // хөдөлгөхгүй — тогтмол үнийн шалтгаан алга. Багана (`price`) санд
+    // үлдсэн ч тооцоонд орохгүй.
     const nominalPct = discountForMl(ml, defaultDiscountPct, overrides);
-    const price = hasFixedPrice
-      ? Math.max(0, fixedPrices[ml] as number)
-      : bundlePrice(memberSum, nominalPct, step);
-    // Харуулах хувь нь ҮРГЭЛЖ бодит үнээс гарна. Тогтмол үнэтэй хэмжээнд
-    // админы бичсэн хувь нь худал болох тул түүнийг давтаж болохгүй.
+    const price = bundlePrice(memberSum, nominalPct, step);
+    // Харуулах хувь нь бодит үнээс (100₮-т тэгшлэсний дараах).
     const discountPct =
       memberSum > 0
         ? Math.max(0, Math.round(((memberSum - price) / memberSum) * 100))
         : 0;
     // Зар сурталчилгаанд ашиглах хувь: admin-ий амласан хувь өөрөө, ₮-т
     // тэгшлэхээс гарах 1пп-ийн зөрүүгүйгээр (`nominalDiscountPct`, types.ts).
-    // Тогтмол үнэтэй хэмжээнд амлалт байхгүй тул бодит хувиараа орлуулна.
-    const nominalDiscountPct = hasFixedPrice ? discountPct : nominalPct;
+    const nominalDiscountPct = nominalPct;
     return {
       ml,
       memberSum,

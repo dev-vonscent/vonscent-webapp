@@ -40,7 +40,6 @@ vi.mock("@/features/collections/api", () => ({
     name: "Бэлэн багц",
     discountPct: 10,
     mlDiscounts: {},
-    mlPrices: {},
     memberProductIds: ["A", "B"],
   })),
 }));

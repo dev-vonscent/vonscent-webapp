@@ -162,9 +162,6 @@ export async function priceCollectionLines(
     if (members.some((m) => !m.active || m.ml !== col.ml)) continue;
 
     let discountPct = settings.customDiscountPct;
-    // Preset багцын тогтмол үнэ (0054, B6) — байвал гишүүдийн нийлбэрээс
-    // хамаарахгүй эцсийн үнэ.
-    let fixedPrice: number | null = null;
     let name = "Миний багц";
     if (col.type === "base" && col.collectionId) {
       const info = await getCollectionOrderInfo(col.collectionId);
@@ -183,8 +180,6 @@ export async function priceCollectionLines(
       // than 2ml (0051), so taking the bundle default here would charge the
       // wrong total for every overridden size.
       discountPct = discountForMl(col.ml, info.discountPct, info.mlDiscounts);
-      const fixed = info.mlPrices[col.ml];
-      fixedPrice = Number.isFinite(fixed) ? Math.max(0, fixed) : null;
       name = info.name;
     } else {
       // Custom bundles obey the shop-wide builder rules even when the payload
@@ -203,10 +198,9 @@ export async function priceCollectionLines(
     const unitOf = (m: (typeof members)[number]) =>
       basis === "base" ? m.basePrice : m.price;
     const memberSum = members.reduce((s, m) => s + unitOf(m), 0);
-    const total =
-      fixedPrice != null
-        ? fixedPrice
-        : bundlePrice(memberSum, discountPct, settings.roundTo);
+    // «Тогтмол үнэ» (0054) тооцоонд орохгүй (task 17) — багц үргэлж
+    // гишүүдийн нийлбэрээс хувиар.
+    const total = bundlePrice(memberSum, discountPct, settings.roundTo);
 
     // Spread the discounted total across members; the last line absorbs the
     // rounding remainder so the parts sum exactly to `total`.
@@ -282,7 +276,9 @@ export async function quoteBundleSizes(input: {
         const v = byId.get(id)?.variants.find((x) => x.ml === ml);
         // Бэлэн багцын «хэмнэлт» үндсэн үнээс (priceCollectionLines-тэй ижил).
         const price = input.type === "base" ? v?.basePrice : v?.price;
-        return v ? { productId: id, variantId: v.id, price: price ?? v.price } : null;
+        return v
+          ? { productId: id, variantId: v.id, price: price ?? v.price }
+          : null;
       });
       const empty = {
         ml,
