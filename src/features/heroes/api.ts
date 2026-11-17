@@ -20,7 +20,7 @@ import type {
 /**
  * Нүүрний hero (0182, feature flag `hero_admin`) — дэлгүүрийн уншилт.
  *
- * Нэг жижиг RPC (`live_heroes`), 60с кэш + `CACHE_TAG_CATALOG` (админ бичилт
+ * Нэг жижиг RPC (`live_heroes`), 1 цагийн кэш + `CACHE_TAG_CATALOG` (админ бичилт
  * `revalidatePublic()`; эхлэх/дуусах, улирлын хилийг шөнийн
  * `/api/cron/midnight-revalidate` → `revalidateHero()`).
  * Нүүр хуудас үүнийг Suspense-гүй хүлээнэ (LCP, plan §7.5) — тиймээс кэш
@@ -77,7 +77,7 @@ const fetchLiveHeroes = unstable_cache(
     }));
   },
   ["live-heroes"],
-  { revalidate: 60, tags: [CACHE_TAG_CATALOG, CACHE_TAG_HERO] },
+  { revalidate: 3600, tags: [CACHE_TAG_CATALOG, CACHE_TAG_HERO] },
 );
 
 /** Одоо гарах DB hero, эсвэл null (→ кодын hero). Хэзээ ч шидэхгүй. */

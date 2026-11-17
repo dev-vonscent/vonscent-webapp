@@ -27,7 +27,7 @@ import type {
  * `variant_price()`-ээс (plan §5.2). Хүснэгтүүд staff-only RLS-тэй тул зөвхөн
  * security definer RPC-ээр: товлосон арга хэмжээний хувь задрахгүй.
  *
- * Кэш: 60с + `CACHE_TAG_CATALOG` (админ бичилт `revalidatePublic()`-аар
+ * Кэш: 1 цаг + `CACHE_TAG_CATALOG` (админ бичилт `revalidatePublic()`-аар
  * цэвэрлэнэ). Эхлэх/дуусах мөч бичилтгүй бөгөөд үргэлж УБ 00:00 тул шөнийн
  * cron (`/api/cron/midnight-revalidate`) тэр мөчид цэвэрлэнэ (plan §10).
  */
@@ -78,7 +78,7 @@ const fetchLive = unstable_cache(
     }));
   },
   ["live-sale-events"],
-  { revalidate: 60, tags: [CACHE_TAG_CATALOG] },
+  { revalidate: 3600, tags: [CACHE_TAG_CATALOG] },
 );
 
 /**
@@ -115,7 +115,7 @@ const fetchPcts = unstable_cache(
     return out;
   },
   ["live-event-pcts"],
-  { revalidate: 60, tags: [CACHE_TAG_CATALOG] },
+  { revalidate: 3600, tags: [CACHE_TAG_CATALOG] },
 );
 
 /**
@@ -160,7 +160,7 @@ const fetchPublic = unstable_cache(
       : null;
   },
   ["sale-event-public"],
-  { revalidate: 60, tags: [CACHE_TAG_CATALOG] },
+  { revalidate: 3600, tags: [CACHE_TAG_CATALOG] },
 );
 
 /**
