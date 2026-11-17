@@ -4,10 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/shared/page-header";
 import {
   SaleManager,
-  isOnSale,
   type SaleProduct,
 } from "@/features/admin/components/sale-manager";
 import type { Gender } from "@/db/types";
+import { isOnSale } from "@/features/products/sale";
+import { SEED_PRODUCTS } from "@/features/products/seed";
 import { SaleList } from "@/features/sales/components/sale-list";
 import { summarizeSales } from "@/features/sales/lib";
 import { getNamedSalesData } from "@/features/sales/server";
@@ -53,7 +54,23 @@ export default async function AdminSalesPage() {
 
   let products: SaleProduct[] = [];
   const supabase = await createClient();
-  if (supabase) {
+  if (!supabase) {
+    // Демо горим (e2e): seed каталог — «sale» тагтай seed 10% хямдралтай.
+    products = SEED_PRODUCTS.map((p) => ({
+      id: p.id,
+      name: p.name,
+      brand: p.brand,
+      gender: p.gender,
+      variants: p.variants.map((v) => ({
+        ml: v.ml,
+        price: v.basePrice,
+        salePrice: v.price < v.basePrice ? v.price : null,
+        saleStartsAt: null,
+        saleEndsAt: null,
+        isActive: v.isActive,
+      })),
+    }));
+  } else {
     const { data } = await supabase
       .from("products")
       .select(

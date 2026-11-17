@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   effectivePrice,
+  isOnSale,
+  productSalePhase,
   isSaleActive,
   roundSalePrice,
   saleLinkPatch,
@@ -125,5 +127,38 @@ describe("saleLinkPatch (0188)", () => {
     expect(
       saleLinkPatch({ ...prev, sale_id: null }, { ...prev, sale_price: 1 }),
     ).toEqual({});
+  });
+});
+
+describe("isOnSale / productSalePhase (16.1)", () => {
+  const v = (
+    extra: Partial<{
+      salePrice: number | null;
+      saleStartsAt: string | null;
+      saleEndsAt: string | null;
+    }>,
+  ) => ({
+    price: 30000,
+    salePrice: 25000,
+    saleStartsAt: null,
+    saleEndsAt: null,
+    ...extra,
+  });
+  const t = now.getTime();
+
+  it("дууссан хямдрал «хямдралтай» биш", () => {
+    const ended = { variants: [v({ saleEndsAt: "2026-10-27T12:00:00Z" })] };
+    expect(productSalePhase(ended, t)).toBe("ended");
+    expect(isOnSale(ended, t)).toBe(false);
+  });
+
+  it("аль нэг хэмжээ хүчинтэй / эхлээгүй бол хямдралтай", () => {
+    expect(isOnSale({ variants: [v({}), v({ salePrice: null })] }, t)).toBe(
+      true,
+    );
+    expect(
+      isOnSale({ variants: [v({ saleStartsAt: "2026-10-28T00:00:00Z" })] }, t),
+    ).toBe(true);
+    expect(isOnSale({ variants: [v({ salePrice: null })] }, t)).toBe(false);
   });
 });

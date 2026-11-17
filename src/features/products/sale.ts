@@ -40,6 +40,57 @@ export function salePhase(
   return "ended";
 }
 
+/** Админы (camelCase) хэмжээний хямдралын талбарууд. */
+export interface SaleVariantFields {
+  price: number;
+  salePrice: number | null;
+  saleStartsAt: string | null;
+  saleEndsAt: string | null;
+}
+
+/** Хэмжээний хямдралын төлөв — `salePhase`-ийн админы (camelCase) хэлбэр. */
+export function variantPhase(
+  v: SaleVariantFields,
+  now: number,
+): SalePhase | null {
+  return salePhase(
+    {
+      price: v.price,
+      sale_price: v.salePrice,
+      sale_starts_at: v.saleStartsAt,
+      sale_ends_at: v.saleEndsAt,
+    },
+    new Date(now),
+  );
+}
+
+/**
+ * Барааны хямдралын төлөв — аль нэг хэмжээ хүчинтэй бол «Хүчинтэй».
+ * Дууссан хямдралын `sale_price` санд үлддэг тул (16.1) зөвхөн
+ * `salePrice != null`-ээр «хямдралтай» гэж үзэхгүй.
+ */
+export function productSalePhase(
+  p: { variants: SaleVariantFields[] },
+  now: number,
+): SalePhase | null {
+  const phases = p.variants.map((v) => variantPhase(v, now));
+  if (phases.includes("active")) return "active";
+  if (phases.includes("scheduled")) return "scheduled";
+  return phases.includes("ended") ? "ended" : null;
+}
+
+/**
+ * Одоо эсвэл удахгүй хямдралтай (дууссаныг тооцохгүй). Энд — `"use client"`
+ * компонентод биш — байх ёстой: server хуудас (`/admin/sales`) дууддаг.
+ */
+export function isOnSale(
+  p: { variants: SaleVariantFields[] },
+  now: number,
+): boolean {
+  const phase = productSalePhase(p, now);
+  return phase === "active" || phase === "scheduled";
+}
+
 /** Бодитоор төлөх үнэ — SQL-ийн `variant_price()`. */
 export function effectivePrice(v: SaleFields, now: Date = new Date()): number {
   return isSaleActive(v, now) ? (v.sale_price as number) : v.price;

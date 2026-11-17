@@ -25,7 +25,12 @@ import {
   dayStartIso,
   ubToday,
 } from "@/features/admin/lib/date-range";
-import { salePhase, type SalePhase } from "@/features/products/sale";
+import {
+  isOnSale,
+  productSalePhase,
+  variantPhase,
+  type SalePhase,
+} from "@/features/products/sale";
 import { GENDERS, GENDER_LABEL, ML_SIZES } from "@/lib/constants";
 import type { Gender } from "@/db/types";
 import { formatDateTime, formatPrice } from "@/lib/format";
@@ -55,33 +60,6 @@ const PHASE_LABEL: Record<SalePhase, string> = {
   ended: "Дууссан",
 };
 
-const row = (v: SaleVariant) => ({
-  price: v.price,
-  sale_price: v.salePrice,
-  sale_starts_at: v.saleStartsAt,
-  sale_ends_at: v.saleEndsAt,
-});
-
-/** Хэмжээний хямдралын төлөв — `salePhase`-ийн админы хэлбэр. */
-export function variantPhase(v: SaleVariant, now: number): SalePhase | null {
-  return salePhase(row(v), new Date(now));
-}
-
-/**
- * Барааны хямдралын төлөв — аль нэг хэмжээ хүчинтэй бол «Хүчинтэй».
- * Дууссан хямдралын `sale_price` санд үлддэг тул (16.1) зөвхөн
- * `salePrice != null`-ээр «хямдралтай» гэж үзэхгүй.
- */
-export function productSalePhase(
-  p: Pick<SaleProduct, "variants">,
-  now: number,
-): SalePhase | null {
-  const phases = p.variants.map((v) => variantPhase(v, now));
-  if (phases.includes("active")) return "active";
-  if (phases.includes("scheduled")) return "scheduled";
-  return phases.includes("ended") ? "ended" : null;
-}
-
 /** Хугацааны текст — хэмжээнүүд ижил хугацаатай байх нь хэвийн тул эхнийхээр. */
 function periodOf(p: SaleProduct): string {
   const v = p.variants.find((x) => x.salePrice != null);
@@ -92,12 +70,6 @@ function periodOf(p: SaleProduct): string {
     : "";
   const to = v.saleEndsAt ? formatDateTime(v.saleEndsAt).slice(0, 16) : "…";
   return from ? `${from} → ${to}` : `${to} хүртэл`;
-}
-
-/** Одоо эсвэл удахгүй хямдралтай (дууссаныг тооцохгүй). */
-export function isOnSale(p: Pick<SaleProduct, "variants">, now: number) {
-  const phase = productSalePhase(p, now);
-  return phase === "active" || phase === "scheduled";
 }
 
 type Filter = "all" | "on_sale" | "no_sale";
