@@ -37,8 +37,12 @@ import { isFeatureEnabled } from "@/lib/feature-flags";
 import { formatPrice } from "@/lib/format";
 import { pageMetadata } from "@/lib/seo";
 
-/** ISR — үнэртний хуудастай ижил (cookie-гүй client, revalidatePublic). */
-export const revalidate = 60;
+/**
+ * ISR 1 цаг — үнэртний хуудастай ижил (cookie-гүй client). Захиалга энэ
+ * slug-ийг `stockScopeForOrder()`-ээр цэвэрлэнэ, админы бичилт
+ * `revalidatePublic()`.
+ */
+export const revalidate = 3600;
 
 export async function generateStaticParams() {
   return [];

@@ -112,6 +112,18 @@ export interface Collection {
   createdAt: string;
 }
 
+/**
+ * Card / rail-д очих багц — тайлбаргүй. Card, хурдан нэмэх цонх, сагсны мөр
+ * тайлбарыг уншдаггүй, харин client component руу дамжих бүх prop RSC-д
+ * (`.rsc` + HTML дотор inline) хоёр удаа бичигддэг: багц бүрийн ~1 KB
+ * тайлбар нүүрний ISR бичилт бүрийг томруулж байсан. Төрлөөр хасаж байгаа
+ * нь card дараа нь тайлбар уншвал compile алдаа өгөхийн тулд.
+ */
+export type CollectionCardData = Omit<
+  Collection,
+  "description" | "usageDescription"
+>;
+
 /** A product offered in the custom-bundle builder, with price/stock per ml.
  * Carries the catalog filter/sort fields so the builder can reuse the catalog
  * filters (brand, gender, family, season, tags, price). */

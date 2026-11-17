@@ -10,6 +10,7 @@ let user: { id: string } | null = { id: "u1" };
 let order: Record<string, unknown> | null = null;
 const callRpc = vi.fn();
 const sendEmail = vi.fn();
+const revalidateStock = vi.fn();
 
 vi.mock("@/lib/env", () => ({
   isSupabaseConfigured: true,
@@ -19,7 +20,15 @@ vi.mock("@/lib/time", async (orig) => ({
   ...(await orig<typeof import("@/lib/time")>()),
   isOrderEditable: () => true,
 }));
-vi.mock("@/lib/cache", () => ({ revalidatePublic: () => {} }));
+// Цуцлалт зөвхөн үлдэгдлийг өөрчилнө — бүх сайтыг (revalidatePublic) биш.
+vi.mock("@/lib/cache", () => ({
+  revalidateStock: (...args: unknown[]) => revalidateStock(...args),
+}));
+// Зөвхөн энэ захиалгын бараа/багцын хуудсууд (stock-scope.test.ts).
+const scope = { productSlugs: ["p-1"], collectionSlugs: [] };
+vi.mock("@/lib/orders/stock-scope", () => ({
+  stockScopeForOrder: async () => scope,
+}));
 vi.mock("@/lib/payments/cancel-invoice", () => ({
   cancelOrderInvoice: async () => {},
 }));
@@ -77,6 +86,7 @@ beforeEach(() => {
   };
   callRpc.mockReset().mockResolvedValue({ data: null, error: null });
   sendEmail.mockReset().mockResolvedValue(undefined);
+  revalidateStock.mockReset();
 });
 
 describe("POST /api/orders/[id]/cancel", () => {
@@ -85,6 +95,8 @@ describe("POST /api/orders/[id]/cancel", () => {
     expect(res.status).toBe(200);
     expect(callRpc).toHaveBeenCalledOnce();
     expect(sendEmail).toHaveBeenCalledOnce();
+    expect(revalidateStock).toHaveBeenCalledOnce();
+    expect(revalidateStock).toHaveBeenCalledWith(scope);
   });
 
   it("refuses a paid order, touching nothing", async () => {
@@ -93,6 +105,7 @@ describe("POST /api/orders/[id]/cancel", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error: "PAID_NOT_CANCELLABLE" });
     expect(callRpc).not.toHaveBeenCalled();
+    expect(revalidateStock).not.toHaveBeenCalled();
     expect(sendEmail).not.toHaveBeenCalled();
   });
 

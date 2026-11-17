@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
-import { CACHE_TAG_CATALOG } from "@/lib/cache-tags";
+import { CACHE_TAG_CATALOG, CACHE_TAG_STOCK } from "@/lib/cache-tags";
 import { BOTTLE_IMAGE_URL_RE, NEW_PRODUCTS_COUNT } from "@/lib/constants";
 import * as Sentry from "@sentry/nextjs";
 import type {
@@ -517,8 +517,17 @@ function orNull<T>(list: T[] | undefined): T[] | null {
  * writes purge the tag rather than waiting the window out.
  *
  * Errors are rethrown, not returned: a thrown error isn't cached, so a blip
- * doesn't pin an empty catalogue in place for a minute.
+ * doesn't pin an empty catalogue in place for the whole cache window.
  */
+/**
+ * `CACHE_TAG_CATALOG`-тай кэшүүдийн хугацаа (сек). Үнэ, үлдэгдэл агуулдаг ч
+ * хугацаа дуусахыг хүлээдэггүй: админы бичилт (revalidatePublic), захиалга
+ * (revalidateStock), хямдралын хил (`/api/cron/midnight-revalidate`) tag-аар
+ * шууд цэвэрлэнэ. Нүүр эдгээрийг уншдаг тул энэ хугацаа нүүрний ISR-ийн дээд
+ * хязгаар болно — 60 байвал нүүр 1 минут тутам дахин бичигдэнэ.
+ */
+const CATALOG_REVALIDATE = 3600;
+
 const catalogSearch = unstable_cache(
   async (params: Record<string, unknown>): Promise<CatalogRow[]> => {
     const supabase = createPublicClient();
@@ -534,7 +543,10 @@ const catalogSearch = unstable_cache(
     return data;
   },
   ["catalog-search"],
-  { revalidate: 60, tags: [CACHE_TAG_CATALOG] },
+  {
+    revalidate: CATALOG_REVALIDATE,
+    tags: [CACHE_TAG_CATALOG, CACHE_TAG_STOCK],
+  },
 );
 
 /**
@@ -868,7 +880,7 @@ const fetchComingSoon = unstable_cache(
     );
   },
   ["coming-soon"],
-  { revalidate: 60, tags: [CACHE_TAG_CATALOG] },
+  { revalidate: CATALOG_REVALIDATE, tags: [CACHE_TAG_CATALOG] },
 );
 
 export async function getComingSoonProducts(
@@ -1005,8 +1017,8 @@ const fetchFacetsUncached = async (): Promise<{
 
 const fetchFacets = cache(
   unstable_cache(fetchFacetsUncached, ["catalog-facets"], {
-    revalidate: 300,
-    tags: [CACHE_TAG_CATALOG],
+    revalidate: CATALOG_REVALIDATE,
+    tags: [CACHE_TAG_CATALOG, CACHE_TAG_STOCK],
   }),
 );
 

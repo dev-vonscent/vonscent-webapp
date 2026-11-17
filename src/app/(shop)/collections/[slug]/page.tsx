@@ -28,7 +28,11 @@ import type { ProductImage } from "@/lib/types";
 import { GENDER_LABEL } from "@/lib/constants";
 import { formatDiscountRange } from "@/features/collections/pricing";
 
-export const revalidate = 60;
+/**
+ * ISR — admin writes, orders (revalidateStock) and the sale-boundary cron
+ * purge it; хямдралын хилийг `/api/cron/midnight-revalidate` барина.
+ */
+export const revalidate = 3600;
 
 export async function generateStaticParams() {
   return [];

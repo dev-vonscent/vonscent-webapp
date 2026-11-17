@@ -47,10 +47,14 @@ import { DeliveryReturnsText } from "@/components/shared/delivery-returns-text";
 
 /**
  * ISR: public data comes from the cookie-less client, so the page is
- * cacheable. Admin writes purge it via revalidatePublic(); this window
- * is just the safety net for writes that bypass the admin API.
+ * cacheable. Nothing waits out this hour:
+ *  - admin writes purge it via revalidatePublic();
+ *  - orders / cancellations purge stock via revalidateStock();
+ *  - timed sales (0166) flip at UB midnight — хямдралын хилийг
+ *    `/api/cron/midnight-revalidate` барина.
+ * The window is only the safety net for writes that bypass the app.
  */
-export const revalidate = 60;
+export const revalidate = 3600;
 
 // No prebuilt slugs — each page is generated on first visit, then served from
 // the ISR cache. Without this, a dynamic segment renders on every request.

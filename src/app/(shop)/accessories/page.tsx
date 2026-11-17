@@ -7,7 +7,12 @@ import { getShopExtras } from "@/features/extras/api";
 import { AccessoriesCatalog } from "@/features/extras/components/accessories-catalog";
 import { extraSection } from "@/features/extras/lib/sections";
 
-export const revalidate = 60;
+/**
+ * ISR 1 цаг — main-ий дүрэм (#279). Хүлээхгүй: үлдэгдэл `stock` tag-аар
+ * (захиалга бүр), админы бичилт `revalidatePublic()`, арга хэмжээний хил
+ * шөнийн cron. Хугацаа нь апп-аас гадуурх бичилтийн хамгаалалт л.
+ */
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   ...pageMetadata("/accessories"),

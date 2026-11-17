@@ -1,5 +1,8 @@
 import type { CatalogFilters, ProductListItem } from "@/lib/types";
-import type { Collection } from "@/features/collections/types";
+import type {
+  Collection,
+  CollectionCardData,
+} from "@/features/collections/types";
 import { catalogPrice } from "@/features/collections/catalog-filter";
 
 /**
@@ -8,18 +11,32 @@ import { catalogPrice } from "@/features/collections/catalog-filter";
  */
 export type RailItem =
   | { kind: "product"; product: ProductListItem }
-  | { kind: "collection"; collection: Collection };
+  | { kind: "collection"; collection: CollectionCardData };
 
 export const productItem = (product: ProductListItem): RailItem => ({
   kind: "product",
   product,
 });
-export const collectionItem = (collection: Collection): RailItem => ({
+export const collectionItem = (
+  collection: CollectionCardData,
+): RailItem => ({
   kind: "collection",
-  collection,
+  collection: toCardData(collection),
 });
 
-/** Fisher–Yates, оролтыг өөрчлөхгүй. `random` нь тестэд зориулагдсан. */
+/** Тайлбарыг хасна — `CollectionCardData`-г үз. */
+export function toCardData(c: CollectionCardData): CollectionCardData {
+  const rest: Partial<Collection> = { ...(c as Collection) };
+  delete rest.description;
+  delete rest.usageDescription;
+  return rest as CollectionCardData;
+}
+
+/**
+ * Fisher–Yates, оролтыг өөрчлөхгүй. Сервер дээр (ISR) `random`-д
+ * `dailyRandom()` (`@/lib/seeded-random`) дамжуул — `Math.random` бол
+ * дахин үүсгэлт бүрт HTML өөрчлөгдөж кэш дахин бичигдэнэ.
+ */
 export function shuffle<T>(xs: readonly T[], random = Math.random): T[] {
   const out = [...xs];
   for (let i = out.length - 1; i > 0; i--) {
@@ -35,10 +52,10 @@ export function shuffle<T>(xs: readonly T[], random = Math.random): T[] {
  */
 export function fillRail(
   products: readonly ProductListItem[],
-  collections: readonly Collection[],
+  collections: readonly CollectionCardData[],
   size: number,
   maxCollections: number,
-): { products: ProductListItem[]; collections: Collection[] } {
+): { products: ProductListItem[]; collections: CollectionCardData[] } {
   const picked = collections.slice(0, Math.min(maxCollections, size));
   return {
     products: products.slice(0, size - picked.length),
@@ -52,7 +69,7 @@ export function fillRail(
  */
 export function interleave(
   products: readonly ProductListItem[],
-  collections: readonly Collection[],
+  collections: readonly CollectionCardData[],
 ): RailItem[] {
   const out: RailItem[] = [];
   for (let i = 0; i < Math.max(products.length, collections.length); i++) {
@@ -94,7 +111,7 @@ const LEAD_COLLECTION_MAX = 3;
  */
 export function scatterCollections(
   products: readonly ProductListItem[],
-  collections: readonly Collection[],
+  collections: readonly CollectionCardData[],
   random = Math.random,
 ): RailItem[] {
   if (!products.length || !collections.length) {
@@ -122,7 +139,7 @@ export function scatterCollections(
 /** Ус, багцыг санамсаргүй дарааллаар холино. */
 export function mixRandom(
   products: readonly ProductListItem[],
-  collections: readonly Collection[],
+  collections: readonly CollectionCardData[],
   random = Math.random,
 ): RailItem[] {
   return shuffle(
@@ -163,7 +180,7 @@ const name = (it: RailItem) =>
  */
 export function mixCatalog(
   products: readonly ProductListItem[],
-  collections: readonly Collection[],
+  collections: readonly CollectionCardData[],
   sort: CatalogSort,
   complete: boolean,
 ): RailItem[] {

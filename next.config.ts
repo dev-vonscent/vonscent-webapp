@@ -173,13 +173,40 @@ const nextConfig: NextConfig = {
 
 // Source-map upload runs only when SENTRY_AUTH_TOKEN + org/project env are set
 // (CI/Vercel); local builds skip it silently.
-export default withSentryConfig(nextConfig, {
+//
+// `tunnelRoute` байхгүй (санаатай): browser-ийн event бүр cache-гүй function
+// дуудлага болж (7 хоногт ~40K) Vercel-ийн зардал нэмдэг байсан. Хариуд нь
+// ad-blocker-тай хэрэглэгчийн client алдаа `*.ingest.sentry.io` руу хүрэхгүй
+// байж болно — серверийн алдаа (route, RSC, cron) үүнд хамаарахгүй.
+const sentryConfig = withSentryConfig(nextConfig, {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   silent: true,
   telemetry: false,
-  // Adblocker-ууд `*.ingest.sentry.io` руу явах хүсэлтийг хаадаг тул (prod дээр
-  // `ERR_BLOCKED_BY_CLIENT`) browser-ийн event-үүдийг өөрийн домэйноор дамжуулна.
-  // Middleware matcher энэ замыг алгасдаг (src/middleware.ts).
-  tunnelRoute: "/monitoring",
 });
+
+/**
+ * Sentry-ийн trace meta tag-ийг ISR хуудаснаас хасна.
+ *
+ * `withSentryConfig` нь Next-ийн `experimental.clientTraceMetadata`-д
+ * `baggage`, `sentry-trace`-г нөхцөлгүй нэмдэг (унтраах option байхгүй,
+ * @sentry/nextjs 10.x). Next тэдгээрийг render бүрт `<head>`-д санамсаргүй
+ * trace id-тай `<meta>` болгож бичдэг тул ISR-ийн HTML дахин үүсгэлт бүрт
+ * өөр гарч, ижил агуулга Vercel кэшэд дахин бичигддэг.
+ *
+ * Алдагдах зүйл: browser-ийн pageload trace серверийн trace-тэй холбогдохгүй
+ * (distributed tracing). Алдаа барих (`captureException`, `onRequestError`)
+ * болон тус тусын tracing хэвээр.
+ */
+const SENTRY_TRACE_META = new Set(["baggage", "sentry-trace"]);
+const traceMetadata = (
+  sentryConfig.experimental?.clientTraceMetadata ?? []
+).filter((key) => !SENTRY_TRACE_META.has(key));
+
+export default {
+  ...sentryConfig,
+  experimental: {
+    ...sentryConfig.experimental,
+    clientTraceMetadata: traceMetadata.length ? traceMetadata : undefined,
+  },
+} satisfies NextConfig;

@@ -10,7 +10,12 @@ import { extraSection } from "@/features/extras/lib/sections";
 import { FilterQueryProvider } from "@/features/catalog/components/use-filter-query";
 
 /** Tab, шүүлт, эрэмбэ нь client дээр (`BottlesCatalog`) — жагсаалт л cache-тэй. */
-export const revalidate = 60;
+/**
+ * ISR 1 цаг — main-ий дүрэм (#279). Хүлээхгүй: үлдэгдэл `stock` tag-аар
+ * (захиалга бүр), админы бичилт `revalidatePublic()`, арга хэмжээний хил
+ * шөнийн cron. Хугацаа нь апп-аас гадуурх бичилтийн хамгаалалт л.
+ */
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   ...pageMetadata("/bottles"),

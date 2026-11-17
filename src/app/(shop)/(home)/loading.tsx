@@ -13,6 +13,10 @@ import { HomeSkeleton } from "@/components/shared/skeletons";
  * page now streams — its shell paints immediately and each rail arrives under
  * its own Suspense skeleton — so this boundary only covers the RSC round-trip,
  * and drawing the shape that is coming beats a spinning circle.
+ *
+ * `(home)` бүлэгт байгаа нь санаатай: `(shop)`-ийн түвшинд байхад бүх
+ * дэлгүүрийн маршрутыг Suspense-ээр ороож, тэдгээрийн `notFound()` 404 биш
+ * 200 буцаадаг байв (`(shop)/[...rest]/page.tsx`-ийг үз).
  */
 export default function Loading() {
   return <HomeSkeleton />;

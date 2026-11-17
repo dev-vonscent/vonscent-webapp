@@ -1,5 +1,6 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
+import { CACHE_TAG_LEADERBOARD } from "@/lib/cache-tags";
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { TIER_LEADERBOARD_SIZE, type UserTierKey } from "@/lib/constants";
@@ -123,8 +124,11 @@ async function getLeaderboards(
 }
 
 /**
- * Нүүр хуудасны топ 3 — хэн ч харна (нэр, зураг, дүнтэй). 5 минут кэшлэнэ
- * (нүүр хуудас ISR; хүсэлт бүрд 3 RPC явуулахгүй). Алдаа кэшлэгдэхгүй.
+ * Нүүр хуудасны топ 3 — хэн ч харна (нэр, зураг, дүнтэй). Алдаа кэшлэгдэхгүй.
+ *
+ * 1 цаг: энэ хугацаа нүүрний ISR-ийн дээд хязгаар болдог (300 байхад нүүр
+ * 5 минут тутам дахин бичигддэг байсан). Хүлээхгүй — `revalidateStock()`
+ * (захиалга, цуцлалт, cron) `CACHE_TAG_LEADERBOARD`-ийг цэвэрлэнэ.
  */
 export const getPublicLeaderboards = unstable_cache(
   async (): Promise<Leaderboards | null> => {
@@ -133,7 +137,7 @@ export const getPublicLeaderboards = unstable_cache(
     return getLeaderboards(admin, null);
   },
   ["tier-public-leaderboards"],
-  { revalidate: 300 },
+  { revalidate: 3600, tags: [CACHE_TAG_LEADERBOARD] },
 );
 
 export async function getTierSummary(
