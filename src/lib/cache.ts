@@ -32,6 +32,8 @@ export function revalidatePublic() {
 export interface StockScope {
   productSlugs?: string[];
   collectionSlugs?: string[];
+  /** Нэмэлт бараа (`/extras/[slug]`). */
+  extraSlugs?: string[];
 }
 
 /**
@@ -42,15 +44,17 @@ export interface StockScope {
  * газрыг цэвэрлэнэ.
  *
  * Үргэлж:
- *  - `CACHE_TAG_STOCK` — каталогийн хайлт, facet (үлдэгдэлтэй кэш) ба
- *    тэдгээрийг уншсан хуудсууд (нүүрний rail, «Дууссан»);
+ *  - `CACHE_TAG_STOCK` — каталогийн хайлт, facet, багцын жагсаалт, нэмэлт
+ *    барааны жагсаалт (үлдэгдэлтэй кэш) ба тэдгээрийг уншсан хуудсууд
+ *    (нүүрний rail, «Дууссан», `/collections`, `/bottles`, `/accessories`);
  *  - `CACHE_TAG_LEADERBOARD` — нүүрний топ худалдан авагчид;
  *  - нүүр (`/`).
  *
- * `scope` өгвөл (захиалга, цуцлалт, abandon) зөвхөн тэр захиалгын барааны
- * хуудсууд ба тэдгээрийг агуулсан багцын хуудсууд. Өгөөгүй бол (cron —
- * аль захиалга чөлөөлөгдсөнийг мэдэхгүй) өмнөх өргөн хүрээ: `CACHE_TAG_CATALOG`,
- * барааны ба багцын хуудас бүр.
+ * `scope` өгвөл (захиалга, цуцлалт, abandon) зөвхөн тэр захиалгын барааны,
+ * тэдгээрийг агуулсан багцын, нэмэлт барааны хуудсууд. Өгөөгүй бол (cron —
+ * аль захиалга чөлөөлөгдсөнийг мэдэхгүй; савны хил, `stockScopeForOrder`-ийг
+ * үз) өргөн хүрээ: `CACHE_TAG_CATALOG`, барааны, багцын, нэмэлт барааны
+ * хуудас бүр.
  *
  * Scope-той үед `CACHE_TAG_CATALOG`-ийг САНААТАЙ цэвэрлэхгүй: савны түгжээ
  * (`getBottleLocks`) энэ tag-тай бөгөөд барааны хуудас бүр түүнийг уншдаг тул
@@ -71,6 +75,7 @@ export function revalidateStock(scope?: StockScope) {
     revalidatePath("/products/[slug]", "page");
     revalidatePath("/collections");
     revalidatePath("/collections/[slug]", "page");
+    revalidatePath("/extras/[slug]", "page");
     return;
   }
 
@@ -82,6 +87,9 @@ export function revalidateStock(scope?: StockScope) {
     // Жагсаалтын карт гишүүн усны үлдэгдлээр «дууссан» болдог.
     revalidatePath("/collections");
     for (const slug of collections) revalidatePath(`/collections/${slug}`);
+  }
+  for (const slug of new Set(scope.extraSlugs ?? [])) {
+    revalidatePath(`/extras/${slug}`);
   }
 }
 

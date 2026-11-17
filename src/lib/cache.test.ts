@@ -35,6 +35,7 @@ describe("revalidateStock — scope-гүй (cron)", () => {
       ["/products/[slug]", "page"],
       ["/collections"],
       ["/collections/[slug]", "page"],
+      ["/extras/[slug]", "page"],
     ]);
   });
 
@@ -93,5 +94,16 @@ describe("revalidatePublic", () => {
   it("админы бичилт бүх сайтыг цэвэрлэсээр", () => {
     revalidatePublic();
     expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
+  });
+});
+
+describe("revalidateStock — нэмэлт бараа", () => {
+  it("захиалсан нэмэлт барааны хуудас (`/extras/[slug]`)", () => {
+    revalidateStock({
+      productSlugs: ["p"],
+      extraSlugs: ["gift-box", "gift-box"],
+    });
+    expect(paths()).toEqual(["/", "/products/p", "/extras/gift-box"]);
+    expect(revalidatePath).not.toHaveBeenCalledWith("/extras/[slug]", "page");
   });
 });

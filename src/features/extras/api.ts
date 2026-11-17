@@ -2,7 +2,11 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import * as Sentry from "@sentry/nextjs";
 import type { ExtraInventoryMode, VialStyle } from "@/db/types";
-import { CACHE_TAG_CATALOG, CACHE_TAG_FEATURE_FLAGS } from "@/lib/cache-tags";
+import {
+  CACHE_TAG_CATALOG,
+  CACHE_TAG_FEATURE_FLAGS,
+  CACHE_TAG_STOCK,
+} from "@/lib/cache-tags";
 import { createPublicClient } from "@/lib/supabase/public";
 import { callRpc } from "@/lib/supabase/rpc";
 import { vialName } from "@/lib/vials";
@@ -92,34 +96,73 @@ function toCard(r: CatalogRow): ShopExtraListItem {
   };
 }
 
-const fetchCatalog = unstable_cache(
-  async (): Promise<CatalogRow[]> => {
-    const supabase = createPublicClient();
-    if (!supabase) return [];
-    const { data, error } = await callRpc<CatalogRow[]>(
-      supabase,
-      "extras_catalog",
-      {},
-    );
-    if (error) throw new Error(`extras_catalog failed: ${error.message}`);
-    return data ?? [];
-  },
-  ["extras-catalog"],
-  // Захиалга нөөцийг хөдөлгөхөд `revalidatePublic()` catalog tag-ийг цэвэрлэнэ.
-  { revalidate: 60, tags: [CACHE_TAG_CATALOG, CACHE_TAG_FEATURE_FLAGS] },
+async function fetchCatalogUncached(): Promise<CatalogRow[]> {
+  const supabase = createPublicClient();
+  if (!supabase) return [];
+  const { data, error } = await callRpc<CatalogRow[]>(
+    supabase,
+    "extras_catalog",
+    {},
+  );
+  if (error) throw new Error(`extras_catalog failed: ${error.message}`);
+  return data ?? [];
+}
+
+/**
+ * Жагсаалт (дууссан эсэх, үлдэгдэл) — `/bottles`, `/accessories`, нүүр.
+ *
+ * `CACHE_TAG_STOCK`: захиалга бүр (`revalidateStock()`) цэвэрлэнэ — нэмэлт
+ * барааны захиалга ч, үнэртний захиалга ч (савны нөөц, 0152). Админы бичилт
+ * `catalog`-оор. Хугацаа нь зөвхөн хамгаалалт (апп-аас гадуурх бичилт).
+ */
+const fetchCatalog = unstable_cache(fetchCatalogUncached, ["extras-catalog"], {
+  revalidate: 3600,
+  tags: [CACHE_TAG_CATALOG, CACHE_TAG_FEATURE_FLAGS, CACHE_TAG_STOCK],
+});
+
+/**
+ * Ижил жагсаалт, `stock` tag-ГҮЙ — үнэртний хуудас бүрийн cross-sell
+ * («Бэлэглэх бол», «Энэ үнэрийн шил») ба `/extras/[slug]`-д.
+ *
+ * Тусдаа байгаа нь санаатай: unstable_cache-ийн tag нь уншсан хуудасны ISR
+ * бичилтэд наалддаг тул `fetchCatalog`-ийг эндээс уншвал барааны хуудас БҮР
+ * `stock`-той болж, захиалга бүрт бүгд дахин бичигдэнэ (#280-ийн нарийсгалыг
+ * алдана). Эдгээр хуудас `stockScopeForOrder()`-ийн path-аар (захиалсан
+ * бараа, нэмэлт бараа, түүний үнэртэн) шинэчлэгдэнэ — Next path-ийн implicit
+ * tag нь энэ кэшийг ч тэр хуудсанд хуучирсан гэж үзнэ. Бусад хуудасны
+ * cross-sell-ийн «дууссан» тэмдэг ≤1 цаг хоцорч болно; сагс, checkout
+ * үлдэгдлийг серверт дахин шалгадаг.
+ */
+const fetchCatalogCrossSell = unstable_cache(
+  fetchCatalogUncached,
+  ["extras-catalog-cross-sell"],
+  { revalidate: 3600, tags: [CACHE_TAG_CATALOG, CACHE_TAG_FEATURE_FLAGS] },
 );
+
+function sortExtras(rows: ShopExtraListItem[]): ShopExtraListItem[] {
+  return rows.sort(
+    (a, b) =>
+      a.categorySort - b.categorySort ||
+      Number(a.soldOut) - Number(b.soldOut) ||
+      a.sort - b.sort ||
+      b.createdAt.localeCompare(a.createdAt),
+  );
+}
 
 /** Нийтэлсэн бүх нэмэлт бараа — дарааллаар (ангилал → sort → шинэ). */
 export async function getShopExtras(): Promise<ShopExtraListItem[]> {
   try {
-    const rows = (await fetchCatalog()).map(toCard);
-    return rows.sort(
-      (a, b) =>
-        a.categorySort - b.categorySort ||
-        Number(a.soldOut) - Number(b.soldOut) ||
-        a.sort - b.sort ||
-        b.createdAt.localeCompare(a.createdAt),
-    );
+    return sortExtras((await fetchCatalog()).map(toCard));
+  } catch (err) {
+    Sentry.captureException(err);
+    return [];
+  }
+}
+
+/** `getShopExtras`-тай ижил, cross-sell-д (`fetchCatalogCrossSell`-ийг үз). */
+async function getCrossSellExtras(): Promise<ShopExtraListItem[]> {
+  try {
+    return sortExtras((await fetchCatalogCrossSell()).map(toCard));
   } catch (err) {
     Sentry.captureException(err);
     return [];
@@ -219,11 +262,16 @@ export async function getShopExtra(
  * Үнэртний хуудасны «Бэлэглэх бол» — зарагдаж буй бүх бэлгийн сав
  * (хайрцаг, цаасан уут, даавуун уут), админы дарааллаар. Хувилбар хэрэгтэй
  * тул дэлгэрэнгүйгээр (цөөн тул зэрэг уншина).
+ *
+ * `live`: ISR-гүй дуудагч (`/api/extras` — сагсны бэлгийн сонголт) `stock`
+ * tag-тай жагсаалтыг уншина — захиалга бүрт шинэчлэгдэнэ. Хуудас (ISR)
+ * өгөгдмөлөөр cross-sell кэшийг (`fetchCatalogCrossSell`-ийг үз).
  */
-export async function getGiftOffers(): Promise<ShopExtraDetail[]> {
-  const gifts = (await getShopExtras()).filter(
-    (e) => e.categorySlug === "gift-box" && !e.soldOut,
-  );
+export async function getGiftOffers({
+  live = false,
+}: { live?: boolean } = {}): Promise<ShopExtraDetail[]> {
+  const list = live ? await getShopExtras() : await getCrossSellExtras();
+  const gifts = list.filter((e) => e.categorySlug === "gift-box" && !e.soldOut);
   const details = await Promise.all(gifts.map((g) => getShopExtra(g.slug)));
   return details.filter((d): d is ShopExtraDetail => d != null);
 }
@@ -251,7 +299,8 @@ const fetchBottleFacets = unstable_cache(
     return data ?? [];
   },
   ["extras-bottle-facets"],
-  { revalidate: 60, tags: [CACHE_TAG_CATALOG, CACHE_TAG_FEATURE_FLAGS] },
+  // Эх үнэртний шинж — үлдэгдэлгүй; админы бичилт `catalog`-оор.
+  { revalidate: 3600, tags: [CACHE_TAG_CATALOG, CACHE_TAG_FEATURE_FLAGS] },
 );
 
 /** Шил бүрийн эх үнэртний хүйс / үнэрийн төрөл / улирал (0176), id-аар. */
@@ -281,7 +330,7 @@ export async function getBottlesFor(
   if (!supabase) return [];
   const [{ data, error }, all] = await Promise.all([
     callRpc<string[]>(supabase, "extras_bottles_for", { p_product: productId }),
-    getShopExtras(),
+    getCrossSellExtras(),
   ]);
   if (error) {
     Sentry.captureException(new Error(`extras_bottles_for: ${error.message}`));

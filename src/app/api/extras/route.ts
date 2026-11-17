@@ -26,7 +26,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   if (url.searchParams.get("gifts") === "1") {
     return NextResponse.json(
-      { gifts: await getGiftOffers() },
+      { gifts: await getGiftOffers({ live: true }) },
       { headers: { "Cache-Control": "public, max-age=60" } },
     );
   }

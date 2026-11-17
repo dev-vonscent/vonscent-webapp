@@ -2,7 +2,11 @@ import "server-only";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import * as Sentry from "@sentry/nextjs";
-import { CACHE_TAG_CATALOG, CACHE_TAG_FEATURE_FLAGS } from "@/lib/cache-tags";
+import {
+  CACHE_TAG_CATALOG,
+  CACHE_TAG_FEATURE_FLAGS,
+  CACHE_TAG_STOCK,
+} from "@/lib/cache-tags";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
   HOT_COLLECTIONS_COUNT,
@@ -244,9 +248,10 @@ export const getBaseCollections = cache(async (): Promise<Collection[]> => {
  * Хуудас бүр (каталог, нүүр) энийг уншдаг бөгөөд 3–4 дараалсан round-trip
  * (багц → гишүүд → савны түгжээ → таг) — React `cache()` ганцаараа нэг
  * хүсэлтийн дотор л хадгалдаг тул каталог нээх бүрт ~0.6с зарцуулдаг байв.
- * `catalogSearch`-тэй ижил цонх, tag: захиалга, админы засвар
- * `revalidatePublic()`-оор цэвэрлэнэ. Алдаа ШИДНЭ — хоосон жагсаалт cache-д
- * үлдэж 60с «багц алга» болохгүйн тулд.
+ * `catalogSearch`-тэй ижил цонх, tag: гишүүн усны үлдэгдэл тул `stock` —
+ * захиалга бүр (`revalidateStock()`), админы засвар `catalog`-оор
+ * (`revalidatePublic()`). Алдаа ШИДНЭ — хоосон жагсаалт cache-д үлдэж
+ * «багц алга» болохгүйн тулд.
  */
 const fetchBaseCollections = unstable_cache(
   async (): Promise<Collection[]> => {
@@ -284,7 +289,10 @@ const fetchBaseCollections = unstable_cache(
     });
   },
   ["base-collections"],
-  { revalidate: 60, tags: [CACHE_TAG_CATALOG, CACHE_TAG_FEATURE_FLAGS] },
+  {
+    revalidate: 3600,
+    tags: [CACHE_TAG_CATALOG, CACHE_TAG_FEATURE_FLAGS, CACHE_TAG_STOCK],
+  },
 );
 
 /** Идэвхтэй багцын id-ууд, шинэ нь эхэндээ. */
