@@ -368,7 +368,7 @@ export function SaleEditor({
         </div>
 
         <div className="space-y-1.5">
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-wrap items-start gap-3">
             <Field label="Эхлэх өдөр" className="w-56">
               <DatePicker
                 value={startsOn}
