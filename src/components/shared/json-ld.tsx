@@ -10,15 +10,27 @@ import type { BlogPost } from "@/features/blog/seed";
 
 type Json = Record<string, unknown>;
 
-export function JsonLd({ data }: { data: Json | Json[] }) {
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{
-        __html: JSON.stringify(data).replace(/</gu, "\\u003c"),
-      }}
-    />
+/**
+ * One serialized `<script>` body per entity. An array is split rather than
+ * emitted as a top-level JSON array: Google reads either, but third-party
+ * scripts injected by in-app browsers / extensions often assume each ld+json
+ * block is a single object and do `JSON.parse(text)["@context"].toLowerCase()`
+ * — on an array that throws (Sentry JAVASCRIPT-NEXTJS-H).
+ */
+export function jsonLdScripts(data: Json | Json[]): string[] {
+  return (Array.isArray(data) ? data : [data]).map((entity) =>
+    JSON.stringify(entity).replace(/</gu, "\\u003c"),
   );
+}
+
+export function JsonLd({ data }: { data: Json | Json[] }) {
+  return jsonLdScripts(data).map((html, i) => (
+    <script
+      key={i}
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  ));
 }
 
 /**

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SITE } from "@/lib/constants";
-import { breadcrumbJsonLd } from "./json-ld";
+import { breadcrumbJsonLd, jsonLdScripts } from "./json-ld";
 
 type Item = { position: number; name: string; item?: string };
 
@@ -28,5 +28,32 @@ describe("breadcrumbJsonLd", () => {
 
   it("numbers positions from 1", () => {
     expect(items.map((i) => i.position)).toEqual([1, 2, 3, 4]);
+  });
+});
+
+describe("jsonLdScripts", () => {
+  it("emits one object per script so no block is a top-level array", () => {
+    const out = jsonLdScripts([
+      { "@context": "https://schema.org", "@type": "Product" },
+      { "@context": "https://schema.org", "@type": "BreadcrumbList" },
+    ]);
+    expect(out).toHaveLength(2);
+    for (const body of out) {
+      const parsed = JSON.parse(body) as Record<string, unknown>;
+      expect(Array.isArray(parsed)).toBe(false);
+      expect(parsed["@context"]).toBe("https://schema.org");
+    }
+  });
+
+  it("wraps a single object", () => {
+    expect(jsonLdScripts({ "@type": "FAQPage" })).toEqual([
+      '{"@type":"FAQPage"}',
+    ]);
+  });
+
+  it("escapes `<` so a string can't close the script tag", () => {
+    const [body] = jsonLdScripts({ name: "</script><b>" });
+    expect(body).not.toContain("<");
+    expect(JSON.parse(body!)).toEqual({ name: "</script><b>" });
   });
 });

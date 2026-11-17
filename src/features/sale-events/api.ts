@@ -82,22 +82,18 @@ const fetchLive = unstable_cache(
 );
 
 /**
- * Одоо явж буй арга хэмжээнүүд. Туг хаалттай / demo / алдаа → хоосон
- * (дэлгүүр хэзээ ч унахгүй, зүгээр л chip, badge гарахгүй).
+ * Одоо явж буй арга хэмжээнүүд. Туг хаалттай / demo → хоосон. Алдааг
+ * ШИДНЭ (#284): `[]` бол хямдралын chip, badge-гүй хуудас ISR-д нэг цаг
+ * үлдэнэ; шидвэл ISR өмнөх зөв хуудсаа үлдээнэ.
  */
 export async function getLiveSaleEvents(): Promise<LiveSaleEvent[]> {
   if (!isSupabaseConfigured) return [];
   if (!(await isFeatureEnabled("sale_events"))) return [];
-  try {
-    // Кэш 60с хүртэл хоцорч болно — дууссаныг энд дахин шүүнэ.
-    const now = Date.now();
-    return (await fetchLive()).filter(
-      (e) => Date.parse(e.startsAt) <= now && now < Date.parse(e.endsAt),
-    );
-  } catch (err) {
-    Sentry.captureException(err);
-    return [];
-  }
+  // Кэш 60с хүртэл хоцорч болно — дууссаныг энд дахин шүүнэ.
+  const now = Date.now();
+  return (await fetchLive()).filter(
+    (e) => Date.parse(e.startsAt) <= now && now < Date.parse(e.endsAt),
+  );
 }
 
 const fetchPcts = unstable_cache(
@@ -121,17 +117,12 @@ const fetchPcts = unstable_cache(
 /**
  * Барааны картын «~10%»: LIVE арга хэмжээн дэх бараа бүрийн хамгийн их хувь
  * (`live_event_discounts`, 0181 — зөвхөн live мөр, anon-д нээлттэй; товлосон
- * хувь задрахгүй). Туг хаалттай / алдаа → хоосон.
+ * хувь задрахгүй). Туг хаалттай → хоосон; алдааг шиднэ (#284).
  */
 export async function getLiveEventPcts(): Promise<Record<string, number>> {
   if (!isSupabaseConfigured) return {};
   if (!(await isFeatureEnabled("sale_events"))) return {};
-  try {
-    return await fetchPcts();
-  } catch (err) {
-    Sentry.captureException(err);
-    return {};
-  }
+  return fetchPcts();
 }
 
 const fetchPublic = unstable_cache(
@@ -165,29 +156,24 @@ const fetchPublic = unstable_cache(
 
 /**
  * `?event=slug`-ийн төлөв (тизер «11/23-нд эхэлнэ», «дууссан»). Олдохгүй /
- * ноорог → null. Төлвийг кэшийн хоцрогдлоос үл хамааран одоогийн цагаар
- * дахин тооцно.
+ * ноорог → null; алдааг шиднэ (#284). Төлвийг кэшийн хоцрогдлоос үл
+ * хамааран одоогийн цагаар дахин тооцно.
  */
 export async function getSaleEventPublic(
   slug: string,
 ): Promise<SaleEventPublic | null> {
   if (!isSupabaseConfigured || !SALE_EVENT_SLUG_RE.test(slug)) return null;
   if (!(await isFeatureEnabled("sale_events"))) return null;
-  try {
-    const e = await fetchPublic(slug);
-    if (!e) return null;
-    const now = Date.now();
-    const state: SaleEventState =
-      now < Date.parse(e.startsAt)
-        ? "scheduled"
-        : now < Date.parse(e.endsAt)
-          ? "live"
-          : "ended";
-    return { ...e, state };
-  } catch (err) {
-    Sentry.captureException(err);
-    return null;
-  }
+  const e = await fetchPublic(slug);
+  if (!e) return null;
+  const now = Date.now();
+  const state: SaleEventState =
+    now < Date.parse(e.startsAt)
+      ? "scheduled"
+      : now < Date.parse(e.endsAt)
+        ? "live"
+        : "ended";
+  return { ...e, state };
 }
 
 // ── Админ ─────────────────────────────────────────────────────────────────

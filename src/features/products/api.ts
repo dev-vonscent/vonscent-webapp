@@ -3,7 +3,6 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAG_CATALOG, CACHE_TAG_STOCK } from "@/lib/cache-tags";
 import { BOTTLE_IMAGE_URL_RE, NEW_PRODUCTS_COUNT } from "@/lib/constants";
-import * as Sentry from "@sentry/nextjs";
 import type {
   CatalogFilters,
   CatalogResult,
@@ -32,6 +31,12 @@ import { getLiveSaleEvents } from "@/features/sale-events/api";
  *
  * Reads live data from Supabase. When Supabase isn't configured it falls back
  * to the seed catalogue so the project still runs in demo mode.
+ *
+ * Supabase тохируулагдсан үед уншилтын алдааг ШИДНЭ — хоосон жагсаалт, `null`,
+ * seed/санах ойн зам руу шилжихгүй. Эдгээр нь ISR хуудсанд (3600с) болон
+ * `unstable_cache`-д «зөв» хариу мэт хадгалагдаж, түр зуурын DB алдаа нэг цагийн
+ * турш хоосон каталог / 404 болж харагдана. Шидвэл Next нь кэшлэхгүй, ISR өмнөх
+ * зөв хуудсаа үлдээнэ. Санах ойн зам зөвхөн DEMO горимд (env хоосон).
  */
 
 // ── DB row shapes (supabase client is untyped here; we map explicitly) ──────
@@ -260,9 +265,9 @@ export const fetchProducts = cache(async (): Promise<ProductDetail[]> => {
     .select(SELECT)
     .eq("is_active", true);
 
-  if (error || !data) return [];
+  if (error) throw new Error(`products failed: ${error.message}`);
   const locks = await getBottleLocks();
-  const products = (data as unknown as DbProduct[]).map((r) =>
+  const products = ((data ?? []) as unknown as DbProduct[]).map((r) =>
     mapProduct(r, locks),
   );
   await attachCustomTags(supabase, products);
@@ -355,7 +360,9 @@ const fetchProductBy = cache(
         ? base.in("status", ["active", "coming_soon"])
         : base.eq("is_active", true)
     ).maybeSingle();
-    if (error || !data) return null;
+    // Алдаа ≠ «байхгүй»: null нь хуудсанд notFound() болж 404 кэшлэгдэнэ.
+    if (error) throw new Error(`product by ${column} failed: ${error.message}`);
+    if (!data) return null;
 
     const product = mapProduct(
       data as unknown as DbProduct,
@@ -584,42 +591,39 @@ export async function getCatalog(
   if (filters.kind === "bundle") return { items: [], total: 0, page, perPage };
 
   if (isSupabaseConfigured) {
-    try {
-      const data = await catalogSearch({
-        p_terms: filters.search ? searchTerms(filters.search) : null,
-        p_ids: orNull(filters.ids),
-        p_brands: orNull(filters.brand),
-        p_genders: orNull(filters.gender),
-        p_families: orNull(filters.family),
-        p_seasons: orNull(filters.season),
-        p_tags: orNull(filters.tags),
-        p_featured: filters.featured ? true : null,
-        p_mls: orNull(filters.ml),
-        p_min_price: filters.minPrice ?? null,
-        p_max_price: filters.maxPrice ?? null,
-        p_sort: sort,
-        p_page: page,
-        p_per_page: perPage,
-        // 0181-ээс өмнөх сан дээр параметр байхгүй — зөвхөн хэрэгтэй үед.
-        ...(filters.event ? { p_event: filters.event } : {}),
-      });
-      return {
-        items: data.map(fromCatalogRow),
-        // `total` нь мөр болгонд давтагдаж ирдэг; илэрцгүй бол 0.
-        total: data[0] ? Number(data[0].total) : 0,
-        page,
-        perPage,
-      };
-    } catch (err) {
-      Sentry.captureException(err);
-    }
+    // Алдаа шидэгдэнэ (дээрх тайлбар): санах ойн зам руу бүү шилж.
+    const data = await catalogSearch({
+      p_terms: filters.search ? searchTerms(filters.search) : null,
+      p_ids: orNull(filters.ids),
+      p_brands: orNull(filters.brand),
+      p_genders: orNull(filters.gender),
+      p_families: orNull(filters.family),
+      p_seasons: orNull(filters.season),
+      p_tags: orNull(filters.tags),
+      p_featured: filters.featured ? true : null,
+      p_mls: orNull(filters.ml),
+      p_min_price: filters.minPrice ?? null,
+      p_max_price: filters.maxPrice ?? null,
+      p_sort: sort,
+      p_page: page,
+      p_per_page: perPage,
+      // 0181-ээс өмнөх сан дээр параметр байхгүй — зөвхөн хэрэгтэй үед.
+      ...(filters.event ? { p_event: filters.event } : {}),
+    });
+    return {
+      items: data.map(fromCatalogRow),
+      // `total` нь мөр болгонд давтагдаж ирдэг; илэрцгүй бол 0.
+      total: data[0] ? Number(data[0].total) : 0,
+      page,
+      perPage,
+    };
   }
 
   return memoryCatalog(filters);
 }
 
 /**
- * Санах ойн зам — seed каталог (demo) ба RPC унасан үеийн нөөц. Дүрмүүд нь
+ * Санах ойн зам — зөвхөн seed каталог (DEMO горим). Дүрмүүд нь
  * `catalog_search()`-тэй нэг мөр байх ёстой.
  */
 async function memoryCatalog(filters: CatalogFilters): Promise<CatalogResult> {
@@ -734,12 +738,13 @@ export async function getProductDetailsByIds(
   ids: string[],
   {
     includeComingSoon = false,
-    strict = false,
+    strict = true,
   }: {
     /** Хүслийн жагсаалт л (0125) — сагс, багц, захиалга энэ сонголтгүй. */
     includeComingSoon?: boolean;
     /**
-     * Хэсэг (chunk) бүтэлгүйтвэл ШИДНЭ. Сагс хариунд ирээгүй мөрийг
+     * Хэсэг (chunk) бүтэлгүйтвэл ШИДНЭ (өгөгдмөл — багцын гишүүд ISR-д
+     * дутуу кэшлэгдэхгүй). Сагс хариунд ирээгүй мөрийг
      * «хаагдсан» гэж үздэг тул DB-ийн алдаа «бүх бараа алга» болж харагдах
      * ёсгүй (`/api/products`).
      */
@@ -797,8 +802,8 @@ const ID_CHUNK = 100;
  *
  * Оноо нь `related_products()` дотор SQL дээр бодогдоно (0059) — өмнө нь энэ
  * нь бүх каталогийг санах ойд ачаалж гүйдэг байсан бөгөөд дэлгэрэнгүй хуудсыг
- * дангаараа удаашруулж байв (backlog H2). RPC унасан үед доорх санах ойн зам
- * нөөцөд үлдэнэ — дүрэм нь SQL-тэй мөр мөрөөрөө ижил.
+ * дангаараа удаашруулж байв (backlog H2). Доорх санах ойн зам зөвхөн DEMO
+ * горимд — дүрэм нь SQL-тэй мөр мөрөөрөө ижил. RPC унавал шидэнэ.
  */
 export async function getRelated(
   slug: string,
@@ -811,15 +816,13 @@ export async function getRelated(
       "related_products",
       { p_slug: slug, p_limit: limit },
     );
-    if (!error && data) return data.map(fromCatalogRow);
-    Sentry.captureException(
-      new Error(`related_products failed: ${error?.message ?? "no rows"}`),
-    );
+    if (error) throw new Error(`related_products failed: ${error.message}`);
+    return (data ?? []).map(fromCatalogRow);
   }
   return memoryRelated(slug, limit);
 }
 
-/** Санах ойн зам — seed каталог (demo) ба RPC унасан үеийн нөөц. */
+/** Санах ойн зам — зөвхөн seed каталог (DEMO горим). */
 async function memoryRelated(
   slug: string,
   limit: number,
@@ -889,13 +892,8 @@ export async function getComingSoonProducts(
   if (!isSupabaseConfigured) {
     return SEED_COMING_SOON.slice(0, limit).map(toListItem);
   }
-  try {
-    return await fetchComingSoon(limit);
-  } catch (err) {
-    // Нүүрний нэмэлт хэсэг — унавал хэсэг л алга болно, хуудас биш.
-    Sentry.captureException(err);
-    return [];
-  }
+  // Шидэнэ: `[]` буцаавал хэсэггүй нүүр нэг цагийн турш ISR-д үлдэнэ.
+  return fetchComingSoon(limit);
 }
 
 /**
@@ -950,9 +948,10 @@ export async function getProductsByTag(
 export async function getBestSellers(limit = 8): Promise<ProductListItem[]> {
   const supabase = createPublicClient();
   if (supabase) {
-    const { data } = await supabase.rpc("top_seller_products", {
+    const { data, error } = await supabase.rpc("top_seller_products", {
       p_limit: limit * 3,
     });
+    if (error) throw new Error(`top_seller_products failed: ${error.message}`);
     const ranked =
       (data as { product_id: string; sold_qty: number }[] | null) ?? [];
     if (ranked.length > 0) {
@@ -967,6 +966,7 @@ export async function getBestSellers(limit = 8): Promise<ProductListItem[]> {
       if (items.length > 0) return items;
     }
   }
+  // Борлуулалт хараахан байхгүй (эсвэл DEMO) — `hot` таг ижил багцыг заана.
   return getProductsByTag("hot", limit);
 }
 
@@ -997,14 +997,14 @@ const fetchFacetsUncached = async (): Promise<{
     const { data, error } = await callRpc<
       { brands: string[]; min_price: number; max_price: number }[]
     >(supabase, "catalog_facets", {});
+    // `unstable_cache` дотор: шидэхгүй бол хоосон брэнд / 0₮ муж кэшлэгдэнэ.
+    if (error) throw new Error(`catalog_facets failed: ${error.message}`);
     const row = data?.[0];
-    if (!error && row) {
-      return {
-        brands: row.brands ?? [],
-        min: row.min_price ?? 0,
-        max: row.max_price ?? 0,
-      };
-    }
+    return {
+      brands: row?.brands ?? [],
+      min: row?.min_price ?? 0,
+      max: row?.max_price ?? 0,
+    };
   }
   const all = await fetchProducts();
   const prices = all.map((p) => p.startingPrice).filter((n) => n > 0);
