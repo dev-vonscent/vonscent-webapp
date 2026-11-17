@@ -1,4 +1,5 @@
 import "server-only";
+import { parseSaleBreakdown } from "@/lib/orders/price-breakdown";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getProductsByIds } from "@/features/products/api";
@@ -36,6 +37,8 @@ interface OrderRow {
   user_id: string | null;
   subtotal: number;
   gross_subtotal: number | null;
+  /** 0189 — арга хэмжээ / хямдралын мөрүүд; хуучин захиалгад null. */
+  sale_breakdown?: unknown;
   coupon_code: string | null;
   shipping_fee: number;
   discount: number;
@@ -70,7 +73,7 @@ interface ItemRow {
 }
 
 const SELECT =
-  "id, order_no, user_id, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, status, payment_method, payment_status, deliver_on, checkout_snapshot, omitted_gifts, order_type";
+  "id, order_no, user_id, subtotal, gross_subtotal, sale_breakdown, coupon_code, shipping_fee, discount, loyalty_used, total, status, payment_method, payment_status, deliver_on, checkout_snapshot, omitted_gifts, order_type";
 
 const ITEM_SELECT =
   "product_id, product_name, brand, ml, qty, unit_price, list_price, line_total, is_sample, collection_name, line_kind, variant_label, image_url";
@@ -226,6 +229,7 @@ export async function getPaymentByToken(
     })),
     subtotal: order.subtotal,
     grossSubtotal: order.gross_subtotal,
+    saleBreakdown: parseSaleBreakdown(order.sale_breakdown),
     couponCode: order.coupon_code,
     shippingFee: order.shipping_fee,
     discount: order.discount,

@@ -226,6 +226,10 @@ export interface OrderRow {
    * `gross_subtotal − subtotal` нь багцын хямдрал. Хуучин захиалгад null.
    */
   gross_subtotal: number | null;
+  /** Арга хэмжээ + гар хямдралын нийт дүн (0189). Хуучин захиалгад null. */
+  sale_discount: number | null;
+  /** [{label, amount}] — задаргааны хямдралын мөрүүд (0189). */
+  sale_breakdown: { label: string; amount: number }[] | null;
   shipping_fee: number;
   discount: number;
   loyalty_used: number;
@@ -336,8 +340,15 @@ interface OrderItemBase {
   /** Үнэртэнд брэнд, нэмэлт бараанд ангиллын нэр (0146). */
   brand: string;
   unit_price: number;
-  /** Хямдраагүй нэгж үнэ (0097). Багцын гишүүнд л unit_price-аас их. */
+  /**
+   * Багцын хямдралын өмнөх нэгж үнэ (0097). Багцын гишүүнд үндсэн үнэ (0189),
+   * бусад мөрөнд unit_price-тэй тэнцүү.
+   */
   list_price: number | null;
+  /** Үндсэн нэгж үнэ (0189). Хуучин захиалгад null. */
+  base_price: number | null;
+  /** Хямдралын эх сурвалж: арга хэмжээний нэр эсвэл «Хямдрал» (0189). */
+  sale_label: string | null;
   qty: number;
   is_sample: boolean;
   line_total: number;

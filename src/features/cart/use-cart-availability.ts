@@ -194,7 +194,11 @@ export function useCartAvailability({
               sellable: v.sellable,
               reason: v.unavailableReason,
             });
-            prices[v.id] = { price: v.price, basePrice: v.basePrice };
+            prices[v.id] = {
+              price: v.price,
+              basePrice: v.basePrice,
+              saleLabel: v.saleLabel ?? null,
+            };
           }
         }
         setByVariant(map);

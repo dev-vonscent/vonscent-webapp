@@ -1,3 +1,4 @@
+import type { SaleRow } from "@/lib/orders/price-breakdown";
 import type { PaymentLine } from "@/features/payment/types";
 import type { OrderStatus } from "@/lib/constants";
 import type { PaymentStatusValue } from "@/lib/constants";
@@ -19,6 +20,8 @@ export interface OrderStatusView {
   subtotal: number;
   /** Багцын хямдралын өмнөх барааны дүн (0097). Хуучин захиалгад null. */
   grossSubtotal: number | null;
+  /** Арга хэмжээ / хямдралын мөрүүд (0189). Хуучин захиалгад null. */
+  saleBreakdown?: SaleRow[] | null;
   couponCode: string | null;
   shippingFee: number;
   discount: number;

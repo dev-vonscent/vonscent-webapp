@@ -66,6 +66,7 @@ export function CartSizeSelect({
           ml: v.ml,
           unitPrice: v.price,
           basePrice: v.basePrice,
+          saleLabel: v.saleLabel ?? null,
           sellable: v.sellable,
           reason: v.unavailableReason,
         }));

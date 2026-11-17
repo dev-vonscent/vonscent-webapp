@@ -58,6 +58,11 @@ interface DbVariant {
    * (demo seed, хуучин fixture) `effectivePrice` нөөц.
    */
   variant_price?: number | null;
+  /**
+   * Одоогийн үнийг тогтоож буй арга хэмжээний нэр — `variant_sale_label()`
+   * computed column (0189). Гар хямдрал эсвэл хямдралгүй бол null.
+   */
+  variant_sale_label?: string | null;
 }
 interface DbImage {
   url: string;
@@ -120,7 +125,7 @@ const SELECT = `
   rating_avg, rating_count, is_featured, created_at, launched_at,
   status, coming_soon_note,
   product_images ( url, alt, sort_order, is_visible ),
-  product_variants ( id, ml, price, sale_price, sale_starts_at, sale_ends_at, is_active, variant_price ),
+  product_variants ( id, ml, price, sale_price, sale_starts_at, sale_ends_at, is_active, variant_price, variant_sale_label ),
   inventory ( on_hand_ml, reserved_ml, is_sold_out ),
   product_tags ( tags ( slug, kind ) )
 `;
@@ -181,6 +186,9 @@ export function mapProduct(
         // төгөлдөр болно; үндсэн үнэ нь зөвхөн зураастай харагдана.
         price: variantPrice(v),
         basePrice: v.price,
+        // Задаргааны мөрийн нэр (0189). Хямдралгүй бол утгагүй.
+        saleLabel:
+          variantPrice(v) < v.price ? (v.variant_sale_label ?? null) : null,
         isActive,
         inStock,
         bottleLocked,

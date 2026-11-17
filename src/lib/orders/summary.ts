@@ -1,4 +1,9 @@
 import { formatPrice } from "@/lib/format";
+import {
+  parseSaleBreakdown,
+  saleTotalOf,
+  type SaleRow,
+} from "@/lib/orders/price-breakdown";
 
 /**
  * Захиалгын тооцооны мөрүүд — нэг эх сурвалж.
@@ -9,9 +14,13 @@ import { formatPrice } from "@/lib/format";
  * харуулах) тэдний алинд нь ч хүрээгүй. Одооноос мөр бүр эндээс гарна;
  * дэлгэц бүр зөвхөн ХЭРХЭН зурахаа мэднэ.
  *
- * Дараалал нь мөнгө хөдөлсний дараалал: үндсэн үнэ → хасагдах нь (багц,
- * купон, оноо) → нэмэгдэх хүргэлт. «Нийт төлөх» энд БАЙХГҮЙ — тэр нь дэлгэц
- * бүрт өөр жинтэй (том тоо, зураас) тул байрандаа үлдэнэ.
+ * Дараалал нь мөнгө хөдөлсний дараалал (task 10, клиентийн шийдвэр
+ * 2026-11-17): Үндсэн үнийн нийлбэр → − Багцын хямдрал → − Арга хэмжээ /
+ * Хямдрал → − Купон → − V point → + Хүргэлт. Купон нь хямдралын ДАРААХ
+ * дүнгээс бодогддог (`validate_coupon`) тул арга хэмжээг купоноос өмнө
+ * харуулна — эс бөгөөс мөрүүд тоогоор зөв уншигдахгүй. «Нийт төлөх» энд
+ * БАЙХГҮЙ — тэр нь дэлгэц бүрт өөр жинтэй (том тоо, зураас) тул байрандаа
+ * үлдэнэ.
  */
 export interface OrderSummarySource {
   /** Багцын хямдралын ДАРААХ барааны дүн — `orders.subtotal`. */
@@ -21,6 +30,11 @@ export interface OrderSummarySource {
    * тэр үед багцын хямдралыг мэдэх аргагүй тул ганц «Барааны дүн» мөр гарна.
    */
   grossSubtotal: number | null;
+  /**
+   * Арга хэмжээ / гар хямдралын мөрүүд (0189 `orders.sale_breakdown`).
+   * Хуучин захиалгад null — тэр үед хямдрал мөрийн үнэд шингэсэн хэвээр.
+   */
+  saleBreakdown?: SaleRow[] | null;
   /** Зөвхөн купоны хөнгөлөлт — `orders.discount`. */
   discount: number;
   couponCode?: string | null;
@@ -43,22 +57,40 @@ export function bundleSavingsOf(o: OrderSummarySource): number {
   return Math.max(o.grossSubtotal - o.subtotal, 0);
 }
 
-export function orderSummaryRows(o: OrderSummarySource): OrderSummaryRow[] {
+export function orderSummaryRows(
+  o: OrderSummarySource,
+  opts: { shipping?: boolean } = {},
+): OrderSummaryRow[] {
   const bundle = bundleSavingsOf(o);
+  const sales = o.saleBreakdown ?? [];
+  const sale = saleTotalOf(sales);
   const rows: OrderSummaryRow[] = [];
 
-  if (bundle > 0) {
+  if (bundle > 0 || sale > 0) {
+    // Үндсэн үнийн нийлбэр = багцын өмнөх дүн (`gross_subtotal`, хямдарсан
+    // мөрийн үнээр) + хямдрал.
     rows.push({
       label: "Нийт үндсэн үнэ",
-      value: formatPrice(o.grossSubtotal as number),
+      value: formatPrice((o.grossSubtotal ?? o.subtotal) + sale),
     });
+  } else {
+    rows.push({ label: "Барааны дүн", value: formatPrice(o.subtotal) });
+  }
+
+  if (bundle > 0) {
     rows.push({
       label: "Багцын хямдрал",
       value: `−${formatPrice(bundle)}`,
       credit: true,
     });
-  } else {
-    rows.push({ label: "Барааны дүн", value: formatPrice(o.subtotal) });
+  }
+
+  for (const r of sales) {
+    rows.push({
+      label: r.label,
+      value: `−${formatPrice(r.amount)}`,
+      credit: true,
+    });
   }
 
   if (o.discount > 0) {
@@ -72,7 +104,9 @@ export function orderSummaryRows(o: OrderSummarySource): OrderSummaryRow[] {
   // Хасалт хоёр ба түүнээс дээш удаа хийгдсэн үед «эцсийн барааны дүн» хаана
   // тогтсоныг нэг мөрөөр хэлнэ — эс тэгвээс хүргэлт, оноо хоёр юун дээр
   // нэмэгдэж/хасагдаж байгаа нь тодорхойгүй.
-  if (bundle > 0 && o.discount > 0) {
+  const deductions =
+    (bundle > 0 ? 1 : 0) + sales.length + (o.discount > 0 ? 1 : 0);
+  if (deductions >= 2) {
     rows.push({
       label: "Хямдарсан үнэ",
       value: formatPrice(Math.max(o.subtotal - o.discount, 0)),
@@ -88,10 +122,12 @@ export function orderSummaryRows(o: OrderSummarySource): OrderSummaryRow[] {
     });
   }
 
-  rows.push({
-    label: "Хүргэлт",
-    value: o.shippingFee === 0 ? "Үнэгүй" : `+${formatPrice(o.shippingFee)}`,
-  });
+  if (opts.shipping !== false) {
+    rows.push({
+      label: "Хүргэлт",
+      value: o.shippingFee === 0 ? "Үнэгүй" : `+${formatPrice(o.shippingFee)}`,
+    });
+  }
 
   return rows;
 }
@@ -105,6 +141,8 @@ export function orderSummaryRows(o: OrderSummarySource): OrderSummaryRow[] {
 export function summarySource(o: {
   subtotal: number;
   gross_subtotal: number | null;
+  /** 0189 — хуучин захиалга, эсвэл баганыг уншаагүй query-д байхгүй. */
+  sale_breakdown?: unknown;
   discount: number;
   coupon_code?: string | null;
   loyalty_used: number;
@@ -113,6 +151,7 @@ export function summarySource(o: {
   return {
     subtotal: o.subtotal,
     grossSubtotal: o.gross_subtotal,
+    saleBreakdown: parseSaleBreakdown(o.sale_breakdown),
     discount: o.discount,
     couponCode: o.coupon_code ?? null,
     loyaltyUsed: o.loyalty_used,
