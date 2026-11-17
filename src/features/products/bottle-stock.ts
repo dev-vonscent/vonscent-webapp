@@ -54,10 +54,8 @@ export function isBottleLocked(
 /**
  * ХААЛТТАЙ хослолууд ба чөлөөлсөн мөрүүд.
  *
- * Хоёулаа ТУСДАА хүсэлтээр явж байгаа нь санаатай (audit R2): барааны үндсэн
- * `SELECT`-д `bottle_override` багана нэмбэл 0095 ажиллаагүй сан дээр каталог
- * БҮХЭЛДЭЭ уншигдахгүй болно. Энд унах нь зөвхөн түгжээг алдана — дэлгүүр
- * хоосорохгүй.
+ * Хоёулаа ТУСДАА хүсэлтээр явна (audit R2). Алдааг шиднэ — `unstable_cache`
+ * шидэгдсэн алдааг кэшлэдэггүй.
  *
  * `unstable_cache` — хуудас бүрт дахин уншихгүй. Админ унтраалга дарахад
  * `revalidatePublic()` нь `CACHE_TAG_CATALOG`-ийг цэвэрлэж, дэлгүүр шууд
@@ -78,9 +76,11 @@ const fetchLockState = unstable_cache(
         .eq("bottle_override", true),
     ]);
 
+    // Шидэнэ: энэ кэш `revalidate`-гүй (зөвхөн tag) тул «түгжээгүй» гэсэн
+    // хариу дараагийн админы өөрчлөлт хүртэл гацаж, хаалттай савыг зарна.
+    const failed = lockedRes.error ?? exemptRes.error;
+    if (failed) throw new Error(`bottle locks failed: ${failed.message}`);
     return {
-      // 0095-аас өмнөх сан дээр хүснэгт/багана байхгүй — тэр үед юу ч
-      // хаагаагүй гэж үзнэ.
       locked: ((lockedRes.data as { gender: Gender; ml: number }[] | null) ?? [])
         .map((r) => bottleKey(r.gender, r.ml)),
       exempt: ((exemptRes.data as { id: string }[] | null) ?? []).map(

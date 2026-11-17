@@ -99,11 +99,13 @@ export const getCollectionSettings = cache(
     if (!isSupabaseConfigured) return DEFAULT_COLLECTION_SETTINGS;
     const supabase = createPublicClient();
     if (!supabase) return DEFAULT_COLLECTION_SETTINGS;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("settings")
       .select("value")
       .eq("key", "collection")
       .maybeSingle();
+    // Шидэнэ: өгөгдмөл хөнгөлөлтөөр үнэлсэн багц ISR-д кэшлэгдэх ёсгүй.
+    if (error) throw new Error(`collection settings failed: ${error.message}`);
     return {
       ...DEFAULT_COLLECTION_SETTINGS,
       ...((data?.value as Partial<CollectionSettings>) ?? {}),
@@ -241,7 +243,8 @@ export const getBaseCollections = cache(async (): Promise<Collection[]> => {
     newestCollectionIds(),
     bestSellerCollectionIds(),
   ]);
-  if (error || !data) return [];
+  if (error) throw new Error(`base collections failed: ${error.message}`);
+  if (!data) return [];
 
   const rows = data as unknown as DbCollection[];
   const productById = await membersById(rows);
@@ -262,12 +265,13 @@ export const getBaseCollections = cache(async (): Promise<Collection[]> => {
 const newestCollectionIds = cache(async (): Promise<string[]> => {
   const supabase = createPublicClient();
   if (!supabase) return [];
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("collections")
     .select("id")
     .eq("type", "base")
     .eq("is_active", true)
     .order("created_at", { ascending: false });
+  if (error) throw new Error(`newest collections failed: ${error.message}`);
   return ((data as { id: string }[] | null) ?? []).map((r) => r.id);
 });
 
@@ -275,9 +279,10 @@ const newestCollectionIds = cache(async (): Promise<string[]> => {
 const bestSellerCollectionIds = cache(async (): Promise<string[]> => {
   const supabase = createPublicClient();
   if (!supabase) return [];
-  const { data } = await supabase.rpc("top_seller_collections", {
+  const { data, error } = await supabase.rpc("top_seller_collections", {
     p_limit: 50,
   });
+  if (error) throw new Error(`top_seller_collections failed: ${error.message}`);
   return ((data as { collection_id: string }[] | null) ?? []).map(
     (r) => r.collection_id,
   );
@@ -384,7 +389,9 @@ export const getCollectionBySlug = cache(async function getCollectionBySlug(
       .maybeSingle(),
     getCollectionSettings(),
   ]);
-  if (error || !data) return null;
+  // Алдаа ≠ «байхгүй»: null нь notFound() болж 404 кэшлэгдэнэ.
+  if (error) throw new Error(`collection by slug failed: ${error.message}`);
+  if (!data) return null;
 
   const row = data as unknown as DbCollection;
   return build(row, await membersById([row]), settings);
