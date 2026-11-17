@@ -337,6 +337,18 @@ export function dayEndIso(day: string): string | null {
   return ubIsoEnd(day ? endOfDayLocal(day) : undefined) ?? null;
 }
 
+/**
+ * Дуусах өдрийн СҮҮЛЧИЙН секунд (23:59:59 УБ) — INCLUSIVE хилтэй багананд
+ * (`coupons.ends_at`: SQL `now() > ends_at` бол дууссан). Кампанит купон
+ * (0136) ч ийм хэлбэрээр хадгалдаг тул хэрэглэгчид харагдах огноо
+ * (`formatDate`) нь сонгосон өдөр хэвээр — `dayEndIso` (дараагийн 00:00)
+ * бол нэг өдрөөр хойш харагдана. `isoEndToDay` хоёуланг нь уншина.
+ */
+export function dayLastSecondIso(day: string): string | null {
+  const end = dayEndIso(day);
+  return end ? new Date(Date.parse(end) - 1000).toISOString() : null;
+}
+
 /** `dayStartIso`-ийн урвуу: ISO → `YYYY-MM-DD` (УБ). Хоосон бол "". */
 export function isoToDay(iso: string | null | undefined): string {
   if (!iso) return "";

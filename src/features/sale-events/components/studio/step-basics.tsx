@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/features/admin/components/date-picker";
 import { SALE_EVENT_LIMITS as L, SITE } from "@/lib/constants";
 import { toast } from "@/lib/toast";
-import { periodSentence, saleLink } from "./studio-model";
+import { saleLink } from "./studio-model";
+import { PeriodHint } from "@/features/admin/components/period-hint";
 import type { EventStudio } from "./use-event-studio";
 
 /**
@@ -20,7 +21,6 @@ export function StepBasics({ studio }: { studio: EventStudio }) {
   const { draft, errors, today, phase } = studio;
   const [editingLink, setEditingLink] = React.useState(false);
   const link = saleLink(draft.slug);
-  const sentence = periodSentence(draft.startsOn, draft.endsOn);
   const isPublished = phase === "scheduled" || phase === "live";
   // Алдаатай холбоосыг засахын тулд талбар нь нээлттэй байх ёстой.
   const linkOpen = editingLink || Boolean(errors.slug);
@@ -70,9 +70,11 @@ export function StepBasics({ studio }: { studio: EventStudio }) {
             />
           </Field>
         </div>
-        <p className="text-muted-foreground text-xs text-pretty">
-          {sentence ?? "00:00-оос 23:59 хүртэл, Улаанбаатарын цагаар."}
-        </p>
+        <PeriodHint
+          startsOn={draft.startsOn}
+          endsOn={draft.endsOn}
+          fallback="00:00-оос 23:59 хүртэл, Улаанбаатарын цагаар."
+        />
       </div>
 
       <div className="space-y-2">

@@ -24,6 +24,7 @@ import { LoadingButton } from "@/components/shared/loading-button";
 import { PageHeader } from "@/components/shared/page-header";
 import { useConfirm } from "@/components/shared/confirm-dialog";
 import { DatePicker } from "@/features/admin/components/date-picker";
+import { PeriodHint } from "@/features/admin/components/period-hint";
 import { FormDrawer } from "@/features/admin/components/form-drawer";
 import { adminFetch, mutate, mutateJson } from "@/features/admin/lib/mutate";
 import { CouponTicket } from "@/features/account/components/coupon-ticket";
@@ -490,22 +491,14 @@ function CampaignForm({
           <section className="space-y-3">
             <h3 className="text-sm font-semibold">Хугацаа</h3>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field
-                label="Эхлэх өдөр"
-                hint="00:00:00-оос"
-                error={errors.startsOn}
-              >
+              <Field label="Эхлэх өдөр" error={errors.startsOn}>
                 <DatePicker
                   value={draft.startsOn}
                   clearable={false}
                   onChange={(v) => set("startsOn", v)}
                 />
               </Field>
-              <Field
-                label="Дуусах өдөр"
-                hint="23:59:59 хүртэл"
-                error={errors.endsOn}
-              >
+              <Field label="Дуусах өдөр" error={errors.endsOn}>
                 <DatePicker
                   value={draft.endsOn}
                   clearable={false}
@@ -513,6 +506,7 @@ function CampaignForm({
                 />
               </Field>
             </div>
+            <PeriodHint startsOn={draft.startsOn} endsOn={draft.endsOn} />
           </section>
 
           <section className="space-y-3">

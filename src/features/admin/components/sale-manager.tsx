@@ -18,6 +18,7 @@ import { LoadingButton } from "@/components/shared/loading-button";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { mutateJson } from "@/features/admin/lib/mutate";
 import { DatePicker } from "@/features/admin/components/date-picker";
+import { PeriodHint } from "@/features/admin/components/period-hint";
 import { Field } from "@/components/ui/field";
 import {
   dayEndIso,
@@ -302,8 +303,15 @@ export function SaleManager({ products }: { products: SaleProduct[] }) {
             Сонгосон {selected.size} бараанд тавих
           </LoadingButton>
         </div>
-        {(pctError || periodError) && (
+        {pctError || periodError ? (
           <p className="text-destructive text-sm">{pctError ?? periodError}</p>
+        ) : (
+          <PeriodHint
+            startsOn={startsAt}
+            endsOn={endsAt}
+            today={ubToday()}
+            fallback="Эхлэх өдрийн 00:00-оос дуусах өдрийн 23:59 хүртэл, Улаанбаатарын цагаар."
+          />
         )}
       </section>
 
