@@ -8,6 +8,9 @@ import {
   type SaleProduct,
 } from "@/features/admin/components/sale-manager";
 import type { Gender } from "@/db/types";
+import { SaleList } from "@/features/sales/components/sale-list";
+import { summarizeSales } from "@/features/sales/lib";
+import { getNamedSalesData } from "@/features/sales/server";
 
 export const dynamic = "force-dynamic";
 
@@ -29,12 +32,23 @@ interface Row {
 }
 
 /**
- * Админ → Маркетинг → Хямдрал (0166, feature flag `sale_page`). Олон бараанд
+ * Админ → Маркетинг → Хямдрал (0166, feature flag `sale_page`; `named_sales`
+ * нээлттэй бол нэртэй хямдралын жагсаалт, 0188). Олон бараанд
  * нэг дор хугацаатай хямдрал тавих / цуцлах. Нуусан бараа орохгүй — зөвхөн
  * дэлгүүрт харагдаж буй («Идэвхтэй», «Тун удахгүй») бараа.
  */
 export default async function AdminSalesPage() {
   if (!(await isFeatureEnabled("sale_page"))) notFound();
+
+  // Нэртэй хямдрал (16.3, туг `named_sales`): жагсаалт + тусдаа шинэ/засах
+  // хуудас. Хаалттай үед доорх хуучин нэг хуудасны менежер хэвээр.
+  if (await isFeatureEnabled("named_sales")) {
+    const { sales, products: rows } = await getNamedSalesData();
+    return (
+      <SaleList rows={summarizeSales(sales, rows, new Date().getTime())} />
+    );
+  }
+
   const eventsOn = await isFeatureEnabled("sale_events");
 
   let products: SaleProduct[] = [];
