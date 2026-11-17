@@ -18,6 +18,7 @@ const NOT_FOUND = [
   "/catalog/zzz",
   "/products/zzz-no-such-product",
   "/collections/zzz-no-such-set",
+  "/extras/zzz-no-such-extra",
   // Нуугдсан (CONTENT_PAGES_HIDDEN).
   "/about",
   "/blog",

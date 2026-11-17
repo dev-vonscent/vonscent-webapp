@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import * as Sentry from "@sentry/nextjs";
 import type { ExtraInventoryMode, VialStyle } from "@/db/types";
@@ -196,7 +197,11 @@ interface DetailRow {
   }[];
 }
 
-export async function getShopExtra(
+/**
+ * Нэг нэмэлт бараа (`extra_detail`). Request-scoped (`cache`): layout (404
+ * шалгалт), `generateMetadata`, хуудас гурав нэг хүсэлтэд — нэг RPC.
+ */
+export const getShopExtra = cache(async function getShopExtra(
   slug: string,
 ): Promise<ShopExtraDetail | null> {
   const supabase = createPublicClient();
@@ -256,7 +261,7 @@ export async function getShopExtra(
       : null,
     updatedAt: data.card.updated_at,
   };
-}
+});
 
 /**
  * Үнэртний хуудасны «Бэлэглэх бол» — зарагдаж буй бүх бэлгийн сав
