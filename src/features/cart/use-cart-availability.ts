@@ -6,6 +6,7 @@ import { cartMlFor } from "./budget";
 import { maxUnits } from "@/features/products/sellable";
 import { toast } from "@/lib/toast";
 import type { ProductDetail } from "@/lib/types";
+import type { LiveVariantPrice } from "./live-prices";
 
 /**
  * Сагсан дахь мөрүүд ӨНӨӨДӨР зарагдах эсэх.
@@ -97,6 +98,80 @@ export function useCartAvailability({
   /** `byVariant` аль `idKey`-ийн хариу вэ — хуучин хариугаар шинэ мөрийг шүүхгүй. */
   const [checkedKey, setCheckedKey] = React.useState<string | null>(null);
 
+  const applyPrices = useCart((s) => s.applyLivePrices);
+  /** Үнэ өөрчлөгдсөнийг НЭГ мэдэгдлээр, нэг зүйлийг давтахгүй. */
+  const announcedPrices = React.useRef("");
+  const announcePrices = React.useCallback(
+    (changed: string[]) => {
+      if (changed.length === 0) return;
+      const signature = changed.join("|");
+      if (announcedPrices.current === signature) return;
+      announcedPrices.current = signature;
+      toast(
+        `Үнэ өөрчлөгдсөн тул шинэчиллээ: ${changed.join(", ")}.`,
+        buyNow ? "Захиалга шинэчлэгдлээ" : "Сагс шинэчлэгдлээ",
+      );
+    },
+    [buyNow],
+  );
+
+  /**
+   * Багцын үнэ — гишүүдийн үнэ, багцын хувь, тэгшлэлтээс хамаардаг тул
+   * клиент дээр дахин бодохгүй: захиалгатай ЯГ ИЖИЛ замаар
+   * (`/api/collections/quote` → `priceCollectionLines`) асууна. Багц тус
+   * бүрт нэг хүсэлт, зөвхөн сагс нээгдэх / бүрэлдэхүүн өөрчлөгдөхөд.
+   */
+  const bundleKey = React.useMemo(
+    () => collections.map((c) => c.key).join(","),
+    [collections],
+  );
+  const collectionsRef = React.useRef(collections);
+  React.useEffect(() => {
+    collectionsRef.current = collections;
+  });
+  React.useEffect(() => {
+    if (!bundleKey || !enabled) return;
+    let cancelled = false;
+    const cols = collectionsRef.current;
+    Promise.all(
+      cols.map(async (c) => {
+        const res = await fetch("/api/collections/quote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            collectionId: c.collectionId,
+            type: c.type,
+            productIds: c.members.map((m) => m.productId),
+          }),
+        });
+        if (!res.ok) return null;
+        const data = (await res.json()) as {
+          sizes?: {
+            ml: number;
+            available: boolean;
+            price: number;
+            discountPct: number;
+            members: { variantId: string; price: number }[];
+          }[];
+        };
+        const size = data.sizes?.find((s) => s.ml === c.ml && s.available);
+        return size ? ([c.key, size] as const) : null;
+      }),
+    )
+      .then((rows) => {
+        if (cancelled) return;
+        const live = Object.fromEntries(
+          rows.filter((r): r is NonNullable<typeof r> => r != null),
+        );
+        announcePrices(applyPrices({ collections: live }));
+      })
+      // Сүлжээ унасан бол хуучин үнэ үлдэнэ — сервер checkout дээр барина.
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [bundleKey, enabled, applyPrices, announcePrices]);
+
   React.useEffect(() => {
     if (!idKey || !enabled) {
       setByVariant(null);
@@ -111,6 +186,7 @@ export function useCartAvailability({
         if (cancelled || !data?.items) return;
         const map = new Map<string, LineStatus>();
         const ml = new Map<string, number>();
+        const prices: Record<string, LiveVariantPrice> = {};
         for (const p of data.items as ProductDetail[]) {
           ml.set(p.id, p.soldOut ? 0 : p.availableMl);
           for (const v of p.variants) {
@@ -118,11 +194,15 @@ export function useCartAvailability({
               sellable: v.sellable,
               reason: v.unavailableReason,
             });
+            prices[v.id] = { price: v.price, basePrice: v.basePrice };
           }
         }
         setByVariant(map);
         setStock(ml);
         setCheckedKey(idKey);
+        // Сагсанд нэмсэн мөчийн үнэ хуучирсан байж болно (хямдрал дууссан) —
+        // ижил хариунаас одоогийн үнээр шинэчилнэ, нэмэлт хүсэлтгүй.
+        announcePrices(applyPrices({ variants: prices }));
       })
       // Сүлжээ унасан бол сагсыг хаахгүй — сервер тал нь checkout дээр
       // хамгаална.
@@ -130,7 +210,7 @@ export function useCartAvailability({
     return () => {
       cancelled = true;
     };
-  }, [idKey, enabled]);
+  }, [idKey, enabled, applyPrices, announcePrices]);
 
   /**
    * Мэдээлэл ирээгүй (сүлжээ/сервер унасан, эсвэл одоогийн id-уудын хариу

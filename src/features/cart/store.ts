@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ExtraInventoryMode } from "@/db/types";
+import { applyLivePrices, type LivePrices } from "./live-prices";
 
 export interface CartItem {
   /** Stable line key: the variant id. */
@@ -13,7 +14,19 @@ export interface CartItem {
   brand: string;
   variantId: string;
   ml: number;
+  /** Бодитоор төлөх нэгж үнэ (хямдралтай бол хямдарсан). */
   unitPrice: number;
+  /**
+   * Үндсэн үнэ — задаргааны «Нийт үндсэн үнэ» ба хямдралын мөрөнд. Хуучин
+   * сагсанд байхгүй: тэр үед `unitPrice`-тэй тэнцүү гэж үзнэ, сагс нээгдэхэд
+   * `applyLivePrices` нөхнө.
+   */
+  basePrice?: number;
+  /**
+   * Арга хэмжээний нэр (`Black Friday`), гар хямдрал бол null. Задаргаанд
+   * хямдралыг эх сурвалжаар нь бүлэглэнэ.
+   */
+  saleLabel?: string | null;
   qty: number;
   image: string | null;
 }
@@ -51,6 +64,9 @@ export interface CartVariant {
   variantId: string;
   ml: number;
   unitPrice: number;
+  /** Шинэ хэмжээний үндсэн үнэ — байхгүй бол `unitPrice` гэж үзнэ. */
+  basePrice?: number;
+  saleLabel?: string | null;
 }
 
 /**
@@ -245,6 +261,11 @@ interface CartState {
   setExtraSelected: (key: string, selected: boolean) => void;
   /** Сервер шинэ үнэ хэлсэн (EXTRA_PRICE_CHANGED) — сагс, «Захиалах» мөр хоёулаа. */
   setExtraPrices: (prices: Record<string, number>) => void;
+  /**
+   * Сагсны мөрүүдийг ОДООГИЙН үнээр шинэчилнэ (хямдрал дууссан г.м.).
+   * Төлөх үнэ нь өөрчлөгдсөн мөрүүдийн нэрийг буцаана.
+   */
+  applyLivePrices: (live: LivePrices) => string[];
 }
 
 /** Үлдэгдэлтэй шил (эх шил) — ганц ширхэг. */
@@ -273,6 +294,21 @@ function collectionKey(c: Omit<CartCollection, "key" | "qty">): string {
  * зөвхөн доод хязгаар үйлчилнэ — сүлжээ унасан үед сагсыг буруу түгжихээс
  * серверийн шалгалт руу оруулах нь дээр.
  */
+/**
+ * Мөрийн хэмжээг солих. Өөр хэмжээ рүү шилжвэл хуучин хэмжээний үндсэн үнэ,
+ * хямдралын шошго дагаж үлдэх ёсгүй — шинэ хэмжээнийхээр (мэдэгдэхгүй бол
+ * хоосон; сагс нээгдэхэд `applyLivePrices` нөхнө).
+ */
+function swapVariant<T extends CartItem>(line: T, variant: CartVariant): T {
+  if (variant.variantId === line.variantId) return { ...line, ...variant };
+  return {
+    ...line,
+    ...variant,
+    basePrice: variant.basePrice,
+    saleLabel: variant.saleLabel ?? null,
+  };
+}
+
 function clampQty(qty: number, max?: number): number {
   const capped = max != null && Number.isFinite(max) ? Math.min(qty, max) : qty;
   return Math.max(1, capped);
@@ -280,7 +316,7 @@ function clampQty(qty: number, max?: number): number {
 
 export const useCart = create<CartState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       items: [],
       collections: [],
       extras: [],
@@ -393,6 +429,22 @@ export const useCart = create<CartState>()(
                   ),
                 ),
         })),
+      applyLivePrices: (live) => {
+        const next = applyLivePrices(get(), live);
+        const state = get();
+        if (
+          next.items !== state.items ||
+          next.collections !== state.collections ||
+          next.buyNow !== state.buyNow
+        ) {
+          set({
+            items: next.items,
+            collections: next.collections,
+            buyNow: next.buyNow,
+          });
+        }
+        return next.changed;
+      },
       add: (item, qty = 1) =>
         set((state) => {
           const key = item.variantId;
@@ -487,8 +539,7 @@ export const useCart = create<CartState>()(
               .map((i, n) =>
                 n === index
                   ? {
-                      ...i,
-                      ...variant,
+                      ...swapVariant(i, variant),
                       key: nextKey,
                       qty: i.qty + (dupe >= 0 ? state.items[dupe].qty : 0),
                     }
@@ -554,7 +605,7 @@ export const useCart = create<CartState>()(
           return {
             buyNow: {
               kind: "item",
-              item: { ...b.item, ...variant, key: variant.variantId },
+              item: { ...swapVariant(b.item, variant), key: variant.variantId },
             },
           };
         }),
@@ -594,8 +645,7 @@ export const useCart = create<CartState>()(
               .map((i, n) =>
                 n === index
                   ? {
-                      ...i,
-                      ...variant,
+                      ...swapVariant(i, variant),
                       key: nextKey,
                       qty:
                         clampQty(qty) + (dupe >= 0 ? state.items[dupe].qty : 0),
@@ -647,8 +697,7 @@ export const useCart = create<CartState>()(
               buyNow: {
                 kind: "item",
                 item: {
-                  ...b.item,
-                  ...edit.variant,
+                  ...swapVariant(b.item, edit.variant),
                   key: edit.variant.variantId,
                   qty: clampQty(edit.qty),
                 },

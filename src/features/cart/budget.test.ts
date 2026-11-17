@@ -20,7 +20,9 @@ describe("cartMlByProduct", () => {
   });
 
   it("тоо ширхэг үржигдэнэ", () => {
-    expect(cartMlFor("p1", { items: [{ productId: "p1", ml: 10, qty: 2 }] })).toBe(20);
+    expect(
+      cartMlFor("p1", { items: [{ productId: "p1", ml: 10, qty: 2 }] }),
+    ).toBe(20);
   });
 
   it("багцын гишүүн бүр багцын ml × багцын тоогоор тоологдоно", () => {

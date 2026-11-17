@@ -65,6 +65,7 @@ export function CartSizeSelect({
           variantId: v.id,
           ml: v.ml,
           unitPrice: v.price,
+          basePrice: v.basePrice,
           sellable: v.sellable,
           reason: v.unavailableReason,
         }));

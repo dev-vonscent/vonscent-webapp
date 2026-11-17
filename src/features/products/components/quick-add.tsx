@@ -96,6 +96,7 @@ export function QuickAdd({
         variantId: selected.id,
         ml: selected.ml,
         unitPrice: selected.price,
+        basePrice: selected.basePrice,
         image: detail.image?.url ?? null,
       },
       qty,

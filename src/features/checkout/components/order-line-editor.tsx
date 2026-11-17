@@ -93,7 +93,7 @@ interface Loaded {
   /** Дан ус: ml → variant. */
   variants?: Map<
     number,
-    { variantId: string; price: number; sellable: boolean }
+    { variantId: string; price: number; basePrice: number; sellable: boolean }
   >;
   /** Багц: ml → серверийн үнэлгээ. */
   quotes?: Map<number, BundleSizeQuote>;
@@ -240,7 +240,12 @@ function EditorBody({
               ml: line.ml,
               unitPrice: target.line.unitPrice,
             }
-          : v && { variantId: v.variantId, ml, unitPrice: v.price };
+          : v && {
+              variantId: v.variantId,
+              ml,
+              unitPrice: v.price,
+              basePrice: v.basePrice,
+            };
       if (!variant) return;
       const edit = { variant, qty };
       if (buyNow) editBuyNow(edit);
@@ -542,7 +547,7 @@ async function loadItem(productId: string): Promise<Loaded> {
   if (!product) throw new Error("missing");
   const variants = new Map<
     number,
-    { variantId: string; price: number; sellable: boolean }
+    { variantId: string; price: number; basePrice: number; sellable: boolean }
   >();
   const options: SizeOption[] = product.variants
     .filter((v) => v.isActive)
@@ -551,6 +556,7 @@ async function loadItem(productId: string): Promise<Loaded> {
       variants.set(v.ml, {
         variantId: v.id,
         price: v.price,
+        basePrice: v.basePrice,
         sellable: v.sellable,
       });
       return {
