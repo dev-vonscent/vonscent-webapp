@@ -19,10 +19,7 @@ import {
 import { mutateJson } from "@/features/admin/lib/mutate";
 import { toast } from "@/lib/toast";
 import { formatPrice } from "@/lib/format";
-import type {
-  GrandBundleChoice,
-  WheelSettings,
-} from "@/features/admin/api";
+import type { GrandBundleChoice, WheelSettings } from "@/features/admin/api";
 
 /** Radix Select has no empty value — this stands for «no bundle». */
 const NONE = "none";
@@ -249,7 +246,7 @@ export function MissTipsDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Хоосон дээр гарах зөвлөгөө"
-      description="Шагнал таараагүй үед «Энэ удаад шагнал таарсангүй»-н доор эдгээрээс нэгийг санамсаргүйгээр харуулна."
+      description="Шагнал таараагүй үед «Энэ удаад шагнал таарсангүй»-н доор эдгээрээс нэгийг санамсаргүйгээр харуулна. Оноог тоогоор бүү бич: {profilePoints} — мэдээлэл бөглөсний, {reviewPoints} — сэтгэгдлийн урамшуулал (V point тохиргооны одоогийн утгаар солигдоно)."
       className="sm:max-w-xl"
     >
       <div className="space-y-4">
@@ -269,7 +266,9 @@ export function MissTipsDialog({
                   size="icon"
                   className="hover:text-destructive shrink-0"
                   aria-label="Зөвлөгөө хасах"
-                  onClick={() => setTips((all) => all.filter((_, j) => j !== i))}
+                  onClick={() =>
+                    setTips((all) => all.filter((_, j) => j !== i))
+                  }
                 >
                   <Trash2 className="size-4" />
                 </Button>

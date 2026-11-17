@@ -934,14 +934,51 @@ export const HERO_EVENT_PRIORITY = 10;
  * хуудас, туг хаалттай бол жагсаалтад гарахгүй.
  */
 export const HERO_LINK_PRESETS = [
-  { key: "catalog", label: "Бүх каталог", target: { type: "path", href: "/catalog" } },
-  { key: "season-spring", label: "Хаврын үнэртэн", group: "season", target: { type: "season", value: "spring" } },
-  { key: "season-summer", label: "Зуны үнэртэн", group: "season", target: { type: "season", value: "summer" } },
-  { key: "season-autumn", label: "Намрын үнэртэн", group: "season", target: { type: "season", value: "autumn" } },
-  { key: "season-winter", label: "Өвлийн үнэртэн", group: "season", target: { type: "season", value: "winter" } },
-  { key: "new", label: "Шинэ бараа", target: { type: "catalog", query: "tags=new" } },
-  { key: "build", label: "Багц үүсгэх", target: { type: "path", href: "/collections/build" } },
-  { key: "gift-cards", label: "Бэлгийн карт", flag: "gift_cards", target: { type: "path", href: "/gift-cards" } },
+  {
+    key: "catalog",
+    label: "Бүх каталог",
+    target: { type: "path", href: "/catalog" },
+  },
+  {
+    key: "season-spring",
+    label: "Хаврын үнэртэн",
+    group: "season",
+    target: { type: "season", value: "spring" },
+  },
+  {
+    key: "season-summer",
+    label: "Зуны үнэртэн",
+    group: "season",
+    target: { type: "season", value: "summer" },
+  },
+  {
+    key: "season-autumn",
+    label: "Намрын үнэртэн",
+    group: "season",
+    target: { type: "season", value: "autumn" },
+  },
+  {
+    key: "season-winter",
+    label: "Өвлийн үнэртэн",
+    group: "season",
+    target: { type: "season", value: "winter" },
+  },
+  {
+    key: "new",
+    label: "Шинэ бараа",
+    target: { type: "catalog", query: "tags=new" },
+  },
+  {
+    key: "build",
+    label: "Багц үүсгэх",
+    target: { type: "path", href: "/collections/build" },
+  },
+  {
+    key: "gift-cards",
+    label: "Бэлгийн карт",
+    flag: "gift_cards",
+    target: { type: "path", href: "/gift-cards" },
+  },
 ] as const;
 
 /**
@@ -949,7 +986,12 @@ export const HERO_LINK_PRESETS = [
  * (3584×1280), утас 4:3 (2048×1536). Харьцаа ±2%.
  */
 export const HERO_IMAGE = {
-  desktop: { ratio: 2.8, minWidth: 2400, widths: [1600, 2400, 3200], quality: 80 },
+  desktop: {
+    ratio: 2.8,
+    minWidth: 2400,
+    widths: [1600, 2400, 3200],
+    quality: 80,
+  },
   // 1536 — AI-ийн «хурдан» хэмжээ (1536×1152) ч орно; том бол 1600 хүртэл.
   mobile: { ratio: 4 / 3, minWidth: 1536, width: 1600, quality: 85 },
   ratioTolerance: 0.02,
@@ -1082,8 +1124,12 @@ export const PROFILE_JOB_OPTIONS = [
 export const PROFILE_FAVORITE_PERFUMES_MAX = 3;
 export const PROFILE_PERFUME_NAME_MAX = 80;
 export const PROFILE_SCENT_PREFS_MAX = 10;
-/** `settings.loyalty.profilePoints` байхгүй үеийн утга (0163-ийн seed). */
-export const DEFAULT_PROFILE_POINTS = 500;
+/**
+ * `settings.loyalty.profilePoints` байхгүй үеийн утга. 0163-ийн seed 500
+ * байсан; клиент 1,000 болгосон (task 8.4, 2026-11-17). Бодит утга нь
+ * тохиргоонд — Админ → V point → «Мэдээлэл бөглөсний урамшуулал».
+ */
+export const DEFAULT_PROFILE_POINTS = 1000;
 
 /**
  * Хар «тайзтай» хуудсууд: агуулга нь бүх темд хар (`.force-black`), тиймээс

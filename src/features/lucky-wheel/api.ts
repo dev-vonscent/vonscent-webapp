@@ -1,4 +1,6 @@
 import "server-only";
+import { profilePointsOf, reviewPointsOf } from "@/lib/loyalty";
+import { fillTipTokens } from "./tip-tokens";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -146,18 +148,34 @@ async function readMissTips(
 ): Promise<MissTip[]> {
   const { data } = await supabase
     .from("settings")
-    .select("value")
-    .eq("key", "spin")
-    .maybeSingle();
-  const raw = (data?.value as { missTips?: unknown } | null)?.missTips;
+    .select("key, value")
+    .in("key", ["spin", "loyalty"]);
+  const valueOf = (key: string) =>
+    (data ?? []).find((r: { key: string }) => r.key === key)?.value as
+      | Record<string, unknown>
+      | undefined;
+  const raw = valueOf("spin")?.missTips;
   if (!Array.isArray(raw)) return [];
-  return raw.filter(
-    (t): t is MissTip =>
-      !!t &&
-      typeof t.title === "string" &&
-      typeof t.body === "string" &&
-      t.body.trim() !== "",
-  );
+  // `{profilePoints}` / `{reviewPoints}` → тохиргооны одоогийн утга (8.4):
+  // тоог текстэд шууд бичвэл тохиргоо өөрчлөгдөхөд хуучирна.
+  const loyalty = valueOf("loyalty");
+  const values = {
+    profilePoints: profilePointsOf(loyalty),
+    reviewPoints: reviewPointsOf(loyalty),
+  };
+  return raw
+    .filter(
+      (t): t is MissTip =>
+        !!t &&
+        typeof t.title === "string" &&
+        typeof t.body === "string" &&
+        t.body.trim() !== "",
+    )
+    .map((t) => ({
+      ...t,
+      title: fillTipTokens(t.title, values),
+      body: fillTipTokens(t.body, values),
+    }));
 }
 
 /**
