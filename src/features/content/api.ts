@@ -18,7 +18,7 @@ import {
 } from "@/features/products/api";
 import type { HomeSectionRow } from "@/db/types";
 import type { ProductListItem } from "@/lib/types";
-import type { Collection } from "@/features/collections/types";
+import type { CollectionCardData } from "@/features/collections/types";
 import { getFeaturedCollections } from "@/features/collections/api";
 import type { CardStatus } from "@/features/products/card-status";
 import {
@@ -244,7 +244,7 @@ export interface HomeSection {
   href: string;
   products: ProductListItem[];
   /** Зөвхөн 'featured' хэсэгт — «Онцлох» тэмдэгтэй багцууд, усуудтай холилдоно. */
-  collections: Collection[];
+  collections: CollectionCardData[];
   /** Хэсгийн төлөв — card бүр үүнийг харуулна («Онцлох» дотор «Онцлох»). */
   status: CardStatus | null;
   /**
@@ -345,7 +345,7 @@ export async function getHomeSections(): Promise<HomeSection[]> {
   const sections: HomeSection[] = [];
   for (const row of rows) {
     let products: ProductListItem[];
-    let collections: Collection[] = [];
+    let collections: CollectionCardData[] = [];
     let status: CardStatus | null = null;
     let items: RailItem[] | undefined;
     if (row.kind === "tag" && row.tag) {

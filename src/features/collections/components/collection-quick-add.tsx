@@ -17,7 +17,7 @@ import { useCart } from "@/features/cart/store";
 import { trackAddToCart } from "@/lib/analytics";
 import { toCartCollection } from "../to-cart";
 import { CollectionSizePicker } from "./collection-size-picker";
-import type { Collection } from "../types";
+import type { CollectionCardData } from "../types";
 
 /**
  * Нүүрний rail дахь багцын «Сагсанд нэмэх» — барааны `QuickAdd`-ийн ихэр.
@@ -29,7 +29,7 @@ export function CollectionQuickAdd({
   collection,
   className,
 }: {
-  collection: Collection;
+  collection: CollectionCardData;
   className?: string;
 }) {
   const [open, setOpen] = React.useState(false);
