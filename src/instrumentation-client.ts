@@ -27,12 +27,23 @@ Sentry.init({
     // уншдаггүй; массивыг салгаснаар (json-ld.tsx) ихэнх нь арилах ёстой,
     // үлдсэн нь гадных. JAVASCRIPT-NEXTJS-H
     /evaluating 'r\["@context"\]\.toLowerCase'/,
+    // supabase-js `AuthError`-ийн constructor `this.__isAuthError = true`
+    // онооход объект өргөтгөх боломжгүй — `Error`-ийг дарж бичсэн орчин
+    // (event: Council Bluffs дата төв, timezone `Etc/Unknown`, өмнө нь React
+    // #418 hydration — DOM өөрчилдөг bot). Манай код юу ч freeze хийдэггүй.
+    // JAVASCRIPT-NEXTJS-M
+    /Cannot add property __isAuthError, object is not extensible/,
   ],
   // Browser extension-ий файлаас гарсан алдаа (stack-ийн эхний frame).
   denyUrls: [
     /^chrome-extension:\/\//,
     /^moz-extension:\/\//,
     /^safari-(web-)?extension:\/\//,
+    // Facebook-ийн Android in-app browser (FB4A)-ийн inject хийдэг script.
+    // Stack-ийн цорын ганц frame нь `app://browser_declutter`; мессеж
+    // («Unexpected end of input») ерөнхий тул ignoreErrors биш энд.
+    // JAVASCRIPT-NEXTJS-8
+    /browser_declutter/,
   ],
 });
 
