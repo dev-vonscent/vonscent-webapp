@@ -22,21 +22,21 @@ describe("namedSaleGate", () => {
   it("named_sales хаалттай → 404 (staff шалгахаас өмнө)", async () => {
     flags.mockImplementation(async (k) => k === "sale_page");
     const g = await namedSaleGate();
-    expect("response" in g && g.response.status).toBe(404);
+    expect("response" in g && g.response?.status).toBe(404);
     expect(getStaffUser).not.toHaveBeenCalled();
   });
 
   it("sale_page хаалттай → 404", async () => {
     flags.mockImplementation(async (k) => k === "named_sales");
     const g = await namedSaleGate();
-    expect("response" in g && g.response.status).toBe(404);
+    expect("response" in g && g.response?.status).toBe(404);
   });
 
   it("staff биш → 403", async () => {
     flags.mockResolvedValue(true);
     vi.mocked(getStaffUser).mockResolvedValue(null);
     const g = await namedSaleGate();
-    expect("response" in g && g.response.status).toBe(403);
+    expect("response" in g && g.response?.status).toBe(403);
   });
 });
 
