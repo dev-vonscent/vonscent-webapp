@@ -1,5 +1,5 @@
 import type { CartCollection } from "@/features/cart/store";
-import type { Collection, CollectionPriceAtMl } from "./types";
+import type { CollectionCardData, CollectionPriceAtMl } from "./types";
 import { bundlePriceBasis, memberUnitPrice } from "./pricing";
 
 /**
@@ -7,7 +7,7 @@ import { bundlePriceBasis, memberUnitPrice } from "./pricing";
  * хурдан нэмэх цонх хоёулаа үүнийг ашиглана, сагсанд ижил мөр очно.
  */
 export function toCartCollection(
-  collection: Collection,
+  collection: CollectionCardData,
   priceRow: CollectionPriceAtMl,
 ): Omit<CartCollection, "key" | "qty"> {
   const { ml } = priceRow;

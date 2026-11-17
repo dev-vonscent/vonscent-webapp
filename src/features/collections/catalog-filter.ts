@@ -1,6 +1,6 @@
 import { matchesSearch } from "@/lib/search";
 import type { CatalogFilters } from "@/lib/types";
-import type { Collection } from "./types";
+import type { Collection, CollectionCardData } from "./types";
 
 /**
  * Каталогийн шүүлтүүрийг багцад үйлчлүүлнэ — ус, багц нэг дүрмээр шүүгдэнэ
@@ -50,7 +50,7 @@ export function filterCatalogCollections(
  * хамгийн бага хэмжээний үнэ (ус ч дууссан үедээ идэвхтэй хэмжээний үнээр
  * эрэмбэлэгддэг, 0058 `catalog_facets`).
  */
-export function catalogPrice(c: Collection): number {
+export function catalogPrice(c: CollectionCardData): number {
   if (c.startingPrice > 0) return c.startingPrice;
   const prices = c.prices.map((p) => p.price).filter((p) => p > 0);
   return prices.length ? Math.min(...prices) : 0;

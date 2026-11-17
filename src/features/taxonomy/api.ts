@@ -93,13 +93,21 @@ const fetchScentFamiliesUncached = async (): Promise<ScentFamilyOption[]> => {
 };
 
 /**
+ * Taxonomy-ийн кэшийн хугацаа (сек). Админы бичилт tag-аар шууд цэвэрлэдэг
+ * тул урт байж болно. Shop layout (`CatalogMenu`) үүнийг уншдаг тул
+ * `unstable_cache`-ийн хугацаа нь БҮХ shop хуудсын ISR-ийн дээд хязгаар
+ * болно — 300 байхад 3600-тай хуудас ч 5 минут тутам дахин бичигддэг.
+ */
+const TAXONOMY_REVALIDATE = 3600;
+
+/**
  * The taxonomy changes when an admin edits it, not when a shopper filters, so
  * it is held across requests as well as within one — the catalog page used to
  * re-query it on every chip click. Admin writes purge it by tag.
  */
 export const fetchScentFamilies = cache(
   unstable_cache(fetchScentFamiliesUncached, ["scent-families"], {
-    revalidate: 300,
+    revalidate: TAXONOMY_REVALIDATE,
     tags: [CACHE_TAG_TAXONOMY],
   }),
 );
@@ -168,7 +176,7 @@ const fetchBrandsUncached = async (): Promise<BrandOption[]> => {
 
 export const fetchBrands = cache(
   unstable_cache(fetchBrandsUncached, ["brands"], {
-    revalidate: 300,
+    revalidate: TAXONOMY_REVALIDATE,
     tags: [CACHE_TAG_TAXONOMY],
   }),
 );
@@ -253,7 +261,7 @@ const fetchConcentrationsUncached = async (): Promise<
 
 export const fetchConcentrations = cache(
   unstable_cache(fetchConcentrationsUncached, ["concentrations"], {
-    revalidate: 300,
+    revalidate: TAXONOMY_REVALIDATE,
     tags: [CACHE_TAG_TAXONOMY],
   }),
 );

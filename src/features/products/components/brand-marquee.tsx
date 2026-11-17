@@ -100,6 +100,16 @@ function BrandLink({
 const SECONDS_PER_LOGO = 4;
 
 /**
+ * Хагас бүр мөрөөс өргөн байх доод тоо. Мөр нь `max-w-420` контейнерт
+ * багтдаг тул 2560px дэлгэцэд ч ≈1616px. Лого 160px + gap 40px = 200px, харин
+ * логогүй брэндийн нэр («DIOR») ≈65px + 40px ≈ 105px — хамгийн нарийн
+ * тохиолдолд ч 16 × 105 > 1616. Үүнээс богино мөр өөрийгөө давхарлана (өмнөх
+ * шиг). 1920/2560px дээр Playwright-оор шалгасан: мөчлөгийн аль ч цэгт хоёр
+ * захад хоосон зай гарахгүй.
+ */
+const MIN_ITEMS_PER_HALF = 16;
+
+/**
  * Гүйлгэх мөр. Мөр бүр өөрөө хэвтээ scroll-той — гараараа гүйлгэж бүх брэндийг
  * үзэх боломжтой (утсан дээр анимацийг хүлээх шаардлагагүй). Хүрч/хулганаар
  * барьж байх үед `paused` — салангуут дахин урсана.
@@ -117,9 +127,11 @@ function Track({
   paused: boolean;
   onScroll: () => void;
 }) {
-  // 2× the items per half guarantees the half is wider than the viewport, and
-  // the half is duplicated so -50% loops seamlessly.
-  const half = [...items, ...items];
+  // The half must be wider than the viewport, and it is duplicated so -50%
+  // loops seamlessly. A short row doubles itself to get there; a long one
+  // already does (see MIN_ITEMS_PER_HALF), and doubling it anyway
+  // only fed the ISR HTML another copy of every logo — four per brand.
+  const half = items.length >= MIN_ITEMS_PER_HALF ? items : [...items, ...items];
   const loop = [...half, ...half];
   return (
     <div

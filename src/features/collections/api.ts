@@ -27,6 +27,7 @@ import {
 } from "./catalog-filter";
 import { bundlePriceBasis, memberPrices, discountRange } from "./pricing";
 import { topUpRandom } from "@/features/products/rail";
+import { dailyRandom } from "@/lib/seeded-random";
 import { DEFAULT_COLLECTION_SETTINGS } from "./types";
 import type {
   BuilderProduct,
@@ -339,14 +340,19 @@ export async function getNewestCollections(
 /**
  * Нүүрний «Эрэлттэй» rail-ийн багцууд: хамгийн их зарагдсан нь эхэлж,
  * `count`-д хүрэхгүй бол зарагдаж байгаа бусад багцаас санамсаргүй нөхнө.
+ * Нөхөлт өдрийн seed-тэй (`dailyRandom`) — ISR-ийн дахин үүсгэлт бүрт өөр
+ * багц гарахгүй; pool-ийг id-аар эрэмбэлж, ижил нэртэй багцын DB дараалал
+ * ч нөлөөлөхгүй.
  */
 export async function getHotRailCollections(
   count: number,
 ): Promise<Collection[]> {
   if (!isSupabaseConfigured) return [];
   const ranked = await pickInOrder(await bestSellerCollectionIds(), count);
-  const pool = (await getBaseCollections()).filter((c) => !c.soldOut);
-  return topUpRandom(ranked, pool, count);
+  const pool = (await getBaseCollections())
+    .filter((c) => !c.soldOut)
+    .sort((a, b) => a.id.localeCompare(b.id));
+  return topUpRandom(ranked, pool, count, dailyRandom("home-hot-collections"));
 }
 
 /**
@@ -389,7 +395,11 @@ export async function getCollectionPriceBounds(): Promise<{
 }
 
 /** One active base collection by slug (null when missing / not sellable roster). */
-export async function getCollectionBySlug(
+/**
+ * Request-scoped (`cache`): багцын layout (404 шалгалт), `generateMetadata`,
+ * хуудас гурвуулаа нэг хүсэлтэд дуудна — сан руу нэг л удаа.
+ */
+export const getCollectionBySlug = cache(async function getCollectionBySlug(
   slug: string,
 ): Promise<Collection | null> {
   if (!isSupabaseConfigured) return null;
@@ -409,7 +419,7 @@ export async function getCollectionBySlug(
 
   const row = data as unknown as DbCollection;
   return build(row, await membersById([row]), settings);
-}
+});
 
 /** The signed-in user's saved custom collections (owner-scoped via RLS). */
 export async function getMyCollections(): Promise<Collection[]> {
@@ -534,11 +544,11 @@ export async function getBuilderProducts(
               // `inStock` нь «энэ хэмжээг одоо авч болох уу» — үлдэгдэл ба
               // савны түгжээ (0095) хоёуланг агуулна (RPC-тэй ижил).
               {
-                  variantId: v.id,
-                  price: v.price,
-                  basePrice: v.basePrice,
-                  inStock: v.sellable,
-                },
+                variantId: v.id,
+                price: v.price,
+                basePrice: v.basePrice,
+                inStock: v.sellable,
+              },
             ]),
         ),
       });

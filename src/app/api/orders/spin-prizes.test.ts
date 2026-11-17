@@ -11,7 +11,7 @@ let user: { id: string } | null = { id: "u1" };
 const rpc = vi.fn();
 
 vi.mock("@/lib/rate-limit", () => ({ enforceRateLimit: async () => null }));
-vi.mock("@/lib/cache", () => ({ revalidatePublic: () => {} }));
+vi.mock("@/lib/cache", () => ({ revalidateStock: () => {} }));
 vi.mock("@/features/content/api", () => ({
   getShippingSettings: async () => ({ zones: [] }),
   getDeliveryBlackoutDays: async () => [],

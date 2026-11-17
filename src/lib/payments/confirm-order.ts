@@ -16,6 +16,7 @@ import { deliveryDayOf, formatDeliveryDay } from "@/lib/time";
 import { env } from "@/lib/env";
 import { orderSummaryRows, summarySource } from "@/lib/orders/summary";
 import { reportPurchase } from "@/lib/meta/capi";
+import { revalidateLeaderboard } from "@/lib/cache";
 
 /**
  * Committing a payment.
@@ -140,6 +141,9 @@ async function commit(
     return { ok: false, error: "COMMIT_FAILED" };
   }
 
+  // Топ худалдан авагчид төлөгдсөн захиалгаар тоологдоно — нүүрийн самбар
+  // дараагийн захиалга хүртэл хоцрохгүй.
+  revalidateLeaderboard();
   // Админы Telegram дохио ЗӨВХӨН энд — төлбөр бодитоор орж, захиалга
   // баталгаажсаны дараа. Захиалга үүсэх мөчид (`api/orders`) юу ч явахгүй.
   await notifyPaid(supabase, order);

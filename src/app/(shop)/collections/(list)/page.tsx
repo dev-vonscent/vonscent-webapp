@@ -12,8 +12,12 @@ import { BuildRoutePanel } from "@/features/collections/components/build-route-p
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 
-/** ISR — collections are public data (see product/catalog pages). */
-export const revalidate = 60;
+/**
+ * ISR — collections are public data. Admin writes, orders (revalidateStock)
+ * and the sale-boundary cron purge it; хямдралын хилийг
+ * `/api/cron/midnight-revalidate` барина.
+ */
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   ...pageMetadata("/collections", { title: "Багц" }),
