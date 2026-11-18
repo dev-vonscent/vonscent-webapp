@@ -320,3 +320,55 @@ export function cardSalePrice(
     ? { ml: disc.ml, price: disc.price, basePrice: disc.basePrice }
     : null;
 }
+
+// ── Каталогийн картын арга хэмжээний chip (нарийн/өргөн) ─────────────────────
+
+/**
+ * Chip-ийн бүтэн, уншигчид зориулсан тайлбар: «Black Friday, 30% хүртэл
+ * хямдралтай». `pct` нь харагдах хувь («~30%», «25%», «10–30%», «−10%
+ * хүртэл»): «~» → «хүртэл», «−» тэмдгийг хасна. Хувьгүй бол зөвхөн нэр.
+ */
+export function saleChipAriaLabel(name: string, pct: string | null): string {
+  if (!pct) return name;
+  let p = pct.replace(/^[−-]/, "").trim();
+  if (p.startsWith("~")) p = `${p.slice(1)} хүртэл`;
+  return `${name}, ${p} хямдралтай`;
+}
+
+/**
+ * Chip-ийн бичгийн (Inter 12px semibold) тэмдэгтийн ойролцоо өргөн, px —
+ * бодит хэмжилтээс бага зэрэг дээш: «Black Friday» 70.8px, «Цагаан сарын
+ * хямдрал» 139px, «~20%» 35.4px.
+ */
+function chipCharPx(ch: string): number {
+  if (ch === " ") return 3.5;
+  if (ch === "%") return 11;
+  if (/[0-9~−–-]/.test(ch)) return 8;
+  if (/[A-Z]/.test(ch)) return 7.8;
+  if (/[\x21-\x7e]/.test(ch)) return 6.2;
+  return 7.2; // кирилл г.м.
+}
+
+/** Бичгийн ойролцоо өргөн (px) — `chipCharPx`-ийн нийлбэр. */
+export function saleChipTextPx(text: string): number {
+  let w = 0;
+  for (const ch of text) w += chipCharPx(ch);
+  return w;
+}
+
+/** px-2.5 ×2 + border ×2 + 4px нөөц. */
+const CHIP_CHROME_PX = 26;
+/** Нэр, хувийн хоорондох gap-1. */
+const CHIP_GAP_PX = 4;
+
+/**
+ * «<Нэр> <хувь>» бүтэн chip-д хэрэгтэй хамгийн бага өргөн (px) — бичгийн
+ * дээш тоймлосон тооцоо. Карт үүнийг container query-ийн босго болгоно
+ * (JS хэмжилтгүй — SSR/hydration зөрөхгүй). `name` null бол зөвхөн хувь.
+ */
+export function saleChipFullWidthPx(name: string | null, pct: string): number {
+  const text =
+    (name == null ? 0 : saleChipTextPx(name) + CHIP_GAP_PX) +
+    saleChipTextPx(pct);
+  return Math.ceil(text + CHIP_CHROME_PX);
+}

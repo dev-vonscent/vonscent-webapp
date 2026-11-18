@@ -82,7 +82,7 @@ describe("ProductCard — «Хямдралтай» chip + хувь (2.3, 2.4)", 
     expect(screen.getByText("~30%")).toBeTruthy();
   });
 
-  it("chip icon-уудын зайгаар хязгаарлагдана: нэр таслагдана, хувь үргэлж (5)", () => {
+  it("chip icon-уудын зайгаар хязгаарлагдана, «…» truncate үгүй (5)", () => {
     render(
       <ProductCard
         product={item({
@@ -91,13 +91,15 @@ describe("ProductCard — «Хямдралтай» chip + хувь (2.3, 2.4)", 
         })}
       />,
     );
-    const name = screen.getByText("Хямдралтай");
-    expect(name.className).toContain("truncate");
     const pct = screen.getByText("~30%");
     expect(pct.className).toContain("shrink-0");
     const chip = pct.parentElement!;
     expect(chip.className).toContain("max-w-full");
-    expect(chip.parentElement!.className).toContain("right-12");
+    expect(chip.innerHTML).not.toContain("truncate");
+    const row = chip.parentElement!;
+    expect(row.className).toContain("right-12");
+    // Арга хэмжээний chip-ийн нарийн/өргөн шийдвэрийн container.
+    expect(row.className).toContain("@container/chip");
   });
 
   it("хямдралгүй бараанд chip гарахгүй", () => {

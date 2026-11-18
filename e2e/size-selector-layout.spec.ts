@@ -154,3 +154,42 @@ test("sale marker does not overlap the heading (bundle, 320px)", async ({
   await page.goto(BUNDLE.path);
   await expectNoMarkerOverlap(page);
 });
+
+/**
+ * Каталогийн картын хямдралын chip (375px): «Black…» гэх мэт таслагдсан
+ * текстгүй, хувь бүтэн, зүрх/сагсны icon-той давхцахгүй. Арга хэмжээний
+ * chip (dev сан) нарийн картанд зөвхөн хувь, aria-label бүтэн.
+ */
+test("375px catalog: card sale chip shows the full percentage, no «…»", async ({
+  page,
+}) => {
+  await page.setViewportSize(MOBILE);
+  await page.goto(`/catalog?q=${QUICK.search}`);
+  const chip = page.locator("[data-sale-chip]").first();
+  await expect(chip).toBeVisible();
+  const text = (await chip.innerText()).trim();
+  expect(text).not.toContain("…");
+  expect(text).toMatch(/[~−]?\d+(–\d+)?%( хүртэл)?$/);
+
+  const pct = chip.locator("span", { hasText: /%/ }).last();
+  const c = (await chip.boundingBox())!;
+  const p = (await pct.boundingBox())!;
+  // Хувь chip дотроо бүтэн (тасраагүй).
+  expect(p.x).toBeGreaterThanOrEqual(c.x - 0.5);
+  expect(p.x + p.width).toBeLessThanOrEqual(c.x + c.width + 0.5);
+  const sw = await pct.evaluate((el) => el.scrollWidth - el.clientWidth);
+  expect(sw).toBeLessThanOrEqual(0);
+
+  // Зүрхний товчтой давхцахгүй.
+  const card = chip.locator("xpath=ancestor::div[contains(@class,'group')][1]");
+  const heart = card.getByRole("button").first();
+  const h = (await heart.boundingBox())!;
+  expect(c.x + c.width).toBeLessThanOrEqual(h.x);
+
+  const label = await chip.getAttribute("aria-label");
+  if (label) {
+    // Арга хэмжээний chip: нэр харагдахгүй, тайлбар бүтэн.
+    expect(text).toMatch(/^[~−]?\d/);
+    expect(label).toMatch(/^.+, \d+(–\d+)?% (хүртэл )?хямдралтай$/);
+  }
+});

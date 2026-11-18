@@ -19,7 +19,10 @@ const bundle = {
   event: { slug: "black-friday", name: "Black Friday", pcts: { 5: 10 } },
 };
 
-function renderBadge(flags: FeatureFlag[]) {
+function renderBadge(
+  flags: FeatureFlag[],
+  surface: "card" | "detail" = "detail",
+) {
   return render(
     <FeatureFlagsProvider enabled={flags}>
       <SaleEventsProvider
@@ -29,7 +32,7 @@ function renderBadge(flags: FeatureFlag[]) {
         themes={{}}
         bundleEventSlugs={["black-friday"]}
       >
-        <CollectionSaleBadge collection={bundle} surface="detail" />
+        <CollectionSaleBadge collection={bundle} surface={surface} />
       </SaleEventsProvider>
     </FeatureFlagsProvider>,
   );
@@ -48,5 +51,25 @@ describe("CollectionSaleBadge — багцын дэлгэрэнгүй", () => {
     const badge = screen.getByText("−10%", { exact: false });
     // Дэлгэрэнгүйн хуучин төрх — картын цагаан дэвсгэргүй.
     expect(badge.className).not.toContain("bg-background/85");
+  });
+});
+
+describe("CollectionSaleBadge — каталогийн карт (нарийн/өргөн)", () => {
+  it("нарийн үед зөвхөн «−10%», өргөн үед нэр; aria-label бүтэн", () => {
+    const { container } = renderBadge(
+      ["sale_events", "sale_event_bundles"],
+      "card",
+    );
+    const name = container.querySelector<HTMLElement>("[data-chip-name]")!;
+    expect(name.className).toMatch(/(^|\s)hidden(\s|$)/);
+    expect(name.className).toMatch(/@min-\[\d+px\]\/chip:inline/);
+    expect(
+      screen.getByRole("img", { name: "Black Friday, 10% хямдралтай" }),
+    ).toBeTruthy();
+  });
+
+  it("дэлгэрэнгүйн зураг дээр нэр үргэлж харагдана", () => {
+    const { container } = renderBadge(["sale_events", "sale_event_bundles"]);
+    expect(container.querySelector("[data-chip-name]")).toBeNull();
   });
 });

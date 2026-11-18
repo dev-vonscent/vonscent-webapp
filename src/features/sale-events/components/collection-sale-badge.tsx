@@ -36,7 +36,16 @@ export function CollectionSaleBadge({
       : undefined;
   if (live) {
     return (
-      <SaleChip theme={live.tickerTheme} pct={`−${range}`}>
+      <SaleChip
+        theme={live.tickerTheme}
+        pct={`−${range}`}
+        pctShort={
+          collection.discountRange.min !== collection.discountRange.max
+            ? `~${collection.discountRange.max}%`
+            : undefined
+        }
+        fit={surface === "card"}
+      >
         {live.badgeLabel?.trim() || SALE_EVENT_DEFAULT_BADGE}
       </SaleChip>
     );

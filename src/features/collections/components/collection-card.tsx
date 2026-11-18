@@ -55,7 +55,7 @@ export function CollectionCard({
         )}
 
         {/* Badges */}
-        <div className="absolute inset-x-2.5 top-2.5 flex flex-col items-start gap-1">
+        <div className="@container/chip absolute inset-x-2.5 top-2.5 flex flex-col items-start gap-1">
           <CollectionSaleBadge collection={collection} />
         </div>
 
@@ -144,8 +144,9 @@ function RailCollectionCard({
           />
         )}
         {/* Барааны card шиг: нэг төлөв + хөнгөлөлт — хамгийн ихдээ хоёр. */}
-        {/* right-12: зүрхний icon-ы зай — chip доогуур нь орж тасрахгүй. */}
-        <div className="absolute top-2.5 right-12 left-2.5 flex flex-col items-start gap-1">
+        {/* right-12: зүрхний icon-ы зай — chip доогуур нь орохгүй.
+            `@container/chip`: нарийн үед арга хэмжээний chip зөвхөн хувь. */}
+        <div className="@container/chip absolute top-2.5 right-12 left-2.5 flex flex-col items-start gap-1">
           {status && (
             <Badge
               variant="outline"

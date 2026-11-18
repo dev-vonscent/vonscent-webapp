@@ -7,6 +7,8 @@ import {
   saleEndsAt,
   salePct,
   salePctText,
+  saleChipAriaLabel,
+  saleChipFullWidthPx,
   summarizeSale,
   productSalePhase,
   isSaleActive,
@@ -451,5 +453,37 @@ describe("cardSalePrice (task 2.5)", () => {
     expect(
       cardSalePrice([size(2, 12000, 12000, false), size(5, 21300, 25000)]),
     ).toBeNull();
+  });
+});
+
+describe("saleChipAriaLabel — картын chip-ийн бүтэн тайлбар", () => {
+  it("«~30%» → «30% хүртэл»", () => {
+    expect(saleChipAriaLabel("Black Friday", "~30%")).toBe(
+      "Black Friday, 30% хүртэл хямдралтай",
+    );
+  });
+  it("тогтмол хувь, хүрээ", () => {
+    expect(saleChipAriaLabel("Black Friday", "25%")).toBe(
+      "Black Friday, 25% хямдралтай",
+    );
+    expect(saleChipAriaLabel("Black Friday", "10–30%")).toBe(
+      "Black Friday, 10–30% хямдралтай",
+    );
+  });
+  it("багцын «−10% хүртэл» — хасах тэмдэггүй", () => {
+    expect(saleChipAriaLabel("Black Friday", "−10% хүртэл")).toBe(
+      "Black Friday, 10% хүртэл хямдралтай",
+    );
+  });
+  it("хувьгүй бол зөвхөн нэр", () => {
+    expect(saleChipAriaLabel("Black Friday", null)).toBe("Black Friday");
+  });
+});
+
+describe("saleChipFullWidthPx", () => {
+  it("урт нэр илүү өргөн шаардана", () => {
+    expect(saleChipFullWidthPx("Black Friday", "~30%")).toBeGreaterThan(
+      saleChipFullWidthPx("BF", "~30%"),
+    );
   });
 });
