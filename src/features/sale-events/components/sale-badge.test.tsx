@@ -45,25 +45,6 @@ describe("SaleChip fit — каталогийн карт (нарийн/өргө�
     expect(nameSpan(container)!.className.trim()).toBe("hidden");
   });
 
-  it("маш нарийн үед урт хувь «−10% хүртэл» → богино «~10%»", () => {
-    const { container } = render(
-      <SaleChip theme="navy" pct="−10% хүртэл" pctShort="~10%" fit>
-        Black Friday
-      </SaleChip>,
-    );
-    const long = container.querySelector<HTMLElement>("[data-chip-pct]")!;
-    const short = container.querySelector<HTMLElement>(
-      "[data-chip-pct-short]",
-    )!;
-    expect(long.className).toMatch(/(^|\s)hidden(\s|$)/);
-    expect(long.className).toMatch(/@min-\[(\d+)px\]\/chip:inline/);
-    const at = long.className.match(/@min-\[(\d+)px\]/)![1];
-    expect(short.className).toContain(`@min-[${at}px]/chip:hidden`);
-    expect(
-      screen.getByRole("img", { name: "Black Friday, 10% хүртэл хямдралтай" }),
-    ).toBeTruthy();
-  });
-
   it("aria-label үргэлж бүтэн", () => {
     render(
       <SaleChip theme="navy" pct="~30%" fit>

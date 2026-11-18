@@ -14,14 +14,26 @@ const events = [
   },
 ];
 
+const ev = (pcts: Record<number, number>) => ({
+  slug: "black-friday",
+  name: "Black Friday",
+  pcts,
+});
+const sizes = [2, 5, 10, 20].map((ml) => ({ ml, available: true }));
+
+/** Суурь 5%, event бүх хэмжээнд 10% — server-ийн `discountRange` 10%. */
 const bundle = {
   discountRange: { min: 10, max: 10 },
-  event: { slug: "black-friday", name: "Black Friday", pcts: { 5: 10 } },
+  discountPct: 5,
+  mlDiscounts: {},
+  prices: sizes,
+  event: ev({ 2: 10, 5: 10, 10: 10, 20: 10 }),
 };
 
 function renderBadge(
   flags: FeatureFlag[],
   surface: "card" | "detail" = "detail",
+  collection: typeof bundle = bundle,
 ) {
   return render(
     <FeatureFlagsProvider enabled={flags}>
@@ -32,17 +44,16 @@ function renderBadge(
         themes={{}}
         bundleEventSlugs={["black-friday"]}
       >
-        <CollectionSaleBadge collection={bundle} surface={surface} />
+        <CollectionSaleBadge collection={collection} surface={surface} />
       </SaleEventsProvider>
     </FeatureFlagsProvider>,
   );
 }
 
 describe("CollectionSaleBadge — багцын дэлгэрэнгүй", () => {
-  it("арга хэмжээнд орсон бол «Black Friday −10%»", () => {
+  it("арга хэмжээнд орсон бол «Black Friday 10%» (барааны 2.4 формат)", () => {
     const { container } = renderBadge(["sale_events", "sale_event_bundles"]);
-    expect(container.textContent).toContain("Black Friday");
-    expect(container.textContent).toContain("−10%");
+    expect(container.textContent).toBe("Black Friday10%");
   });
 
   it("туг sale_event_bundles хаалттай → өмнөх «−10%» тэмдэг хэвээр", () => {
@@ -66,6 +77,59 @@ describe("CollectionSaleBadge — каталогийн карт (нарийн/ө
     expect(
       screen.getByRole("img", { name: "Black Friday, 10% хямдралтай" }),
     ).toBeTruthy();
+  });
+
+  const ON: FeatureFlag[] = ["sale_events", "sale_event_bundles"];
+  const pctOf = (c: HTMLElement) =>
+    c.querySelector("[data-chip-pct]")?.textContent ?? null;
+
+  it("(1) event бүх хэмжээнд 10% → «10%»", () => {
+    const { container } = renderBadge(ON, "card");
+    expect(pctOf(container)).toBe("10%");
+  });
+
+  it("(2) event 2/5ml-д 10%, 10/20ml суурь 5% → «~10%», aria бүтэн", () => {
+    const { container } = renderBadge(ON, "card", {
+      ...bundle,
+      discountRange: { min: 5, max: 10 },
+      event: ev({ 2: 10, 5: 10 }),
+    });
+    expect(pctOf(container)).toBe("~10%");
+    expect(
+      screen.getByRole("img", {
+        name: "Black Friday, 10% хүртэл хямдралтай",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("(3) event хэмжээ бүрт 10%/15% → «10–15%» (барааны 2.4 дүрэм)", () => {
+    const { container } = renderBadge(ON, "card", {
+      ...bundle,
+      discountRange: { min: 10, max: 15 },
+      event: ev({ 2: 10, 5: 10, 10: 15, 20: 15 }),
+    });
+    expect(pctOf(container)).toBe("10–15%");
+  });
+
+  it("(4) event-гүй → өмнөх «−5%»", () => {
+    const { container } = renderBadge(ON, "card", {
+      ...bundle,
+      discountRange: { min: 5, max: 5 },
+      event: null as never,
+    });
+    expect(container.querySelector("[data-sale-chip]")).toBeNull();
+    expect(container.textContent).toBe("−5%");
+  });
+
+  it("(5) event хувь ≤ суурь → event chip үгүй, суурь «−15%»", () => {
+    const { container } = renderBadge(ON, "card", {
+      ...bundle,
+      discountPct: 15,
+      discountRange: { min: 15, max: 15 },
+      event: ev({ 2: 10, 5: 15, 10: 10, 20: 10 }),
+    });
+    expect(container.querySelector("[data-sale-chip]")).toBeNull();
+    expect(container.textContent).toBe("−15%");
   });
 
   it("дэлгэрэнгүйн зураг дээр нэр үргэлж харагдана", () => {

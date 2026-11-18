@@ -203,7 +203,17 @@ export interface SaleSummary {
 export function summarizeSale(
   sizes: readonly { basePrice: number; price: number }[],
 ): Omit<SaleSummary, "endsAt"> | null {
-  const pcts = sizes.map((s) => salePct(s.basePrice, s.price));
+  return summarizePcts(sizes.map((s) => salePct(s.basePrice, s.price)));
+}
+
+/**
+ * Хэмжээ бүрийн хямдралын хувиас (0 = хямдралгүй) товч — `summarizeSale`
+ * ба бэлэн багцын арга хэмжээний chip (`bundleEventSale`) хоёулаа үүгээр,
+ * `salePctText`-ийн нэг дүрэм. Нэг ч хэмжээ хямдралгүй бол null.
+ */
+export function summarizePcts(
+  pcts: readonly number[],
+): Omit<SaleSummary, "endsAt"> | null {
   const on = pcts.filter((p) => p > 0);
   if (!on.length) return null;
   return {
@@ -364,11 +374,9 @@ const CHIP_GAP_PX = 4;
 /**
  * «<Нэр> <хувь>» бүтэн chip-д хэрэгтэй хамгийн бага өргөн (px) — бичгийн
  * дээш тоймлосон тооцоо. Карт үүнийг container query-ийн босго болгоно
- * (JS хэмжилтгүй — SSR/hydration зөрөхгүй). `name` null бол зөвхөн хувь.
+ * (JS хэмжилтгүй — SSR/hydration зөрөхгүй).
  */
-export function saleChipFullWidthPx(name: string | null, pct: string): number {
-  const text =
-    (name == null ? 0 : saleChipTextPx(name) + CHIP_GAP_PX) +
-    saleChipTextPx(pct);
+export function saleChipFullWidthPx(name: string, pct: string): number {
+  const text = saleChipTextPx(name) + CHIP_GAP_PX + saleChipTextPx(pct);
   return Math.ceil(text + CHIP_CHROME_PX);
 }

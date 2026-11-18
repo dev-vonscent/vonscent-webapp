@@ -1,4 +1,5 @@
 import { BUNDLE_ML_SIZES } from "@/lib/constants";
+import { summarizePcts, type SaleSummary } from "@/features/products/sale";
 import type {
   CollectionEvent,
   CollectionMember,
@@ -282,4 +283,33 @@ export function bundleCardPrice(
       (typeof avail)[number] | null
     >((a, b) => (a == null || b.ml < a.ml ? b : a), null);
   return ev ? { ml: ev.ml, price: ev.price, memberSum: ev.memberSum } : null;
+}
+
+/**
+ * Бэлэн багцын арга хэмжээний chip-ийн товч (16.7) — барааны 2.4-ийн
+ * `summarizePcts` → `salePctText` дүрмээр («10%», «10–15%», «~10%»).
+ *
+ * Хэмжээ бүрийн хувь: `event.pcts[ml]` (0190 `live_event_collection_discounts`)
+ * нь тэр хэмжээний суурь хувиас (`discountForMl` — анхдагч 5% эсвэл
+ * `collection_ml_discounts`) ИХ бол event-ийн хувь, эс бөгөөс 0 —
+ * `withEventPcts`-ийн greatest-ээр event үйлчлэхгүй. Суурь хувь өөрөө
+ * «хямдралгүй» гэж тооцогдоно (зөвхөн event-ийн хувь харьцуулагдана).
+ * Зарагдах хэмжээнүүд (`prices`) дээр, `available`-аар — `discountRange`-тэй
+ * ижил: зарагдах хэмжээ байхгүй бол бүгд. Event хаана ч үйлчлэхгүй бол null.
+ */
+export function bundleEventSale(c: {
+  event?: Pick<CollectionEvent, "pcts"> | null;
+  prices: readonly Pick<CollectionPriceAtMl, "ml" | "available">[];
+  discountPct: number;
+  mlDiscounts: MlDiscounts;
+}): Omit<SaleSummary, "endsAt"> | null {
+  if (!c.event) return null;
+  const avail = c.prices.filter((p) => p.available);
+  const scope = avail.length ? avail : c.prices;
+  const pcts = scope.map((p) => {
+    const ev = c.event!.pcts[p.ml];
+    const base = discountForMl(p.ml, c.discountPct, c.mlDiscounts);
+    return Number.isFinite(ev) && ev > base ? ev : 0;
+  });
+  return summarizePcts(pcts);
 }
