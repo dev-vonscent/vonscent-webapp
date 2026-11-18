@@ -346,6 +346,34 @@ export function pctSpan(r: DiscountRange): string | null {
   return r.min === r.max ? `${r.max}%` : `${r.min}–${r.max}%`;
 }
 
+/**
+ * Бараа + бэлэн багц (16.7): «5 бараа, 3 багц». Багцгүй бол «5 бараа».
+ * `genitive` — «5 бараа, 3 багцын» / «5 барааны» (өгүүлбэр дотор).
+ */
+export function scopeLabel(
+  products: number,
+  bundles: number,
+  genitive = false,
+): string {
+  if (bundles > 0) {
+    const head = products > 0 ? `${products} бараа, ` : "";
+    return `${head}${bundles} ${genitive ? "багцын" : "багц"}`;
+  }
+  return `${products} ${genitive ? "барааны" : "бараа"}`;
+}
+
+/**
+ * Жагсаалтын мөр (16.7): «5 бараа, 3 багц · хямдрал 10–30%» — хувийн хүрээнд
+ * багцын event хувь ч орно.
+ */
+export function eventScopeSummary(
+  items: readonly { pcts: Record<string | number, string | number> }[],
+  bundles: readonly { pcts: Record<string | number, string | number> }[],
+): string {
+  const span = pctSpan(discountRange([...items, ...bundles]));
+  return `${scopeLabel(items.length, bundles.length)} · ${span ? `хямдрал ${span}` : "хувьгүй"}`;
+}
+
 /** ②-ын дээрх тойм: «12 бараа сонгосон · хямдрал 20–30%». */
 export function itemsSummary(items: StudioDraft["items"]): string {
   const r = discountRange(items);
@@ -371,12 +399,23 @@ export { dayGenitive, daysInclusive } from "@/features/admin/lib/period";
  * (Улаанбаатарын цагаар)». Арга хэмжээнд хоёр өдөр хоёулаа заавал тул дутуу /
  * буруу дараалалтай бол null. Бие нь админы дундын `periodSentence` (task 7).
  */
-export function periodSentence(startsOn: string, endsOn: string): string | null {
+export function periodSentence(
+  startsOn: string,
+  endsOn: string,
+): string | null {
   if (!DAY_RE.test(startsOn) || !DAY_RE.test(endsOn)) return null;
   return sharedPeriodSentence(startsOn, endsOn);
 }
 
-const WEEKDAYS = ["Ням", "Даваа", "Мягмар", "Лхагва", "Пүрэв", "Баасан", "Бямба"];
+const WEEKDAYS = [
+  "Ням",
+  "Даваа",
+  "Мягмар",
+  "Лхагва",
+  "Пүрэв",
+  "Баасан",
+  "Бямба",
+];
 
 /** «11/23». */
 export function shortDay(key: string): string {
@@ -441,24 +480,30 @@ export function studioTimeline(input: {
   endsAt?: string | null;
   bannerThumb?: string | null;
   bannerAfter?: string | null;
+  /** Бэлэн багцууд (16.7) — туг `sale_event_bundles` нээлттэй үед л. */
+  bundles?: readonly { pcts: Record<string | number, string> }[];
 }): TimelineNode[] {
   const { draft: d, bannerReady } = input;
   const phase = input.phase ?? "draft";
   const r = discountRange(d.items);
-  const span = pctSpan(r);
+  // Бэлэн багц (16.7) — туг хаалттай бол `collections` хоосон.
+  const rb = discountRange(input.bundles ?? []);
+  const span = pctSpan(discountRange([...d.items, ...(input.bundles ?? [])]));
   const name = d.name.trim() || "Арга хэмжээ";
   const badge =
     d.badgeLabel.trim() || (r.withPct > 0 ? SALE_EVENT_DEFAULT_BADGE : "");
 
   const start: string[] = [];
-  if (r.count === 0) {
+  if (r.count === 0 && rb.count === 0) {
     start.push("Бараа сонгоогүй байна.");
-  } else if (r.withPct === 0) {
+  } else if (r.withPct === 0 && rb.withPct === 0) {
     start.push(
       `${r.count} бараа арга хэмжээний жагсаалтад орно — үнэ өөрчлөгдөхгүй.`,
     );
   } else {
-    start.push(`${r.withPct} барааны үнэ ${span} буурна.`);
+    start.push(
+      `${scopeLabel(r.withPct, rb.withPct, true)} үнэ ${span} буурна.`,
+    );
     if (r.count > r.withPct) {
       start.push(
         `Хувьгүй ${r.count - r.withPct} бараа үнээрээ үлдэж, жагсаалтад орно.`,

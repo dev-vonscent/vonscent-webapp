@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { saleEventInputSchema } from "@/lib/validators/sale-event";
 import type { SaleEventAdminRow } from "../../types";
 import {
+  eventScopeSummary,
+  scopeLabel,
   dayGenitive,
   dayWithWeekday,
   daysInclusive,
@@ -91,8 +93,10 @@ describe("draftFromRow / draftToInput", () => {
     expect(legacy.data?.tickerTheme).toBeNull();
     // Бэлэн жагсаалтаас гадуурх утга орохгүй (дурын өнгө биш).
     expect(
-      saleEventInputSchema.safeParse({ ...(draftToInput(d, false) as object), tickerTheme: "#ff0000" })
-        .success,
+      saleEventInputSchema.safeParse({
+        ...(draftToInput(d, false) as object),
+        tickerTheme: "#ff0000",
+      }).success,
     ).toBe(false);
   });
 
@@ -256,7 +260,11 @@ describe("огноо", () => {
 
 describe("studioTimeline (§5.5)", () => {
   it("ноорог: одоо → эхлэх → дуусах; хувь, шүүлтүүр, тэмдэг", () => {
-    const t = studioTimeline({ draft: draft(), phase: "draft", bannerReady: false });
+    const t = studioTimeline({
+      draft: draft(),
+      phase: "draft",
+      bannerReady: false,
+    });
     expect(t.map((n) => n.key)).toEqual(["now", "start", "end"]);
     expect(t[0].current).toBe(true);
     expect(t[0].lines[0]).toMatch(/Ноорог/);
@@ -268,11 +276,27 @@ describe("studioTimeline (§5.5)", () => {
       "Сайтын дээд талд «Black Friday» гүйдэг зурвас гарна.",
     ]);
     expect(t[2].when).toBe("11/30 (Даваа) 23:59");
-    expect(t[2].lines).toEqual(["Үнэ буцна; зурвас, шүүлтүүр, тэмдэг алга болно."]);
+    expect(t[2].lines).toEqual([
+      "Үнэ буцна; зурвас, шүүлтүүр, тэмдэг алга болно.",
+    ]);
+  });
+
+  it("бэлэн багц (16.7): «N бараа, M багцын үнэ … буурна», хувь багцынхыг ч хамарна", () => {
+    const t = studioTimeline({
+      draft: draft(),
+      phase: "draft",
+      bannerReady: false,
+      bundles: [{ pcts: { 10: "10" } }, { pcts: { 5: "5", 10: "" } }],
+    });
+    expect(t[1].lines[0]).toBe("1 бараа, 2 багцын үнэ 5–30% буурна.");
   });
 
   it("баннер бэлэн бол эхлэх, дуусах хоёуланд мөр нэмэгдэнэ", () => {
-    const t = studioTimeline({ draft: draft(), phase: "scheduled", bannerReady: true });
+    const t = studioTimeline({
+      draft: draft(),
+      phase: "scheduled",
+      bannerReady: true,
+    });
     expect(t[1].lines).toContain("Нүүр хуудасны баннер солигдоно.");
     expect(t[2].lines).toContain("Нүүр хуудасны баннер өмнөх рүүгээ буцна.");
   });
@@ -324,10 +348,18 @@ describe("studioTimeline (§5.5)", () => {
   });
 
   it("явж буй: «одоо» эхлэх ба дуусахын хооронд; дууссан: төгсгөлд", () => {
-    const live = studioTimeline({ draft: draft(), phase: "live", bannerReady: false });
+    const live = studioTimeline({
+      draft: draft(),
+      phase: "live",
+      bannerReady: false,
+    });
     expect(live.map((n) => n.key)).toEqual(["start", "now", "end"]);
     expect(live.filter((n) => n.current)).toHaveLength(1);
-    const ended = studioTimeline({ draft: draft(), phase: "ended", bannerReady: false });
+    const ended = studioTimeline({
+      draft: draft(),
+      phase: "ended",
+      bannerReady: false,
+    });
     expect(ended.map((n) => n.key)).toEqual(["start", "end", "now"]);
   });
 
@@ -357,5 +389,27 @@ describe("studioTimeline (§5.5)", () => {
     });
     expect(t[1].when).toBe("Эхлэх өдөр");
     expect(t[2].when).toBe("Дуусах өдөр");
+  });
+});
+
+describe("scopeLabel / eventScopeSummary (16.7)", () => {
+  it("багцгүй бол зөвхөн бараа", () => {
+    expect(scopeLabel(5, 0)).toBe("5 бараа");
+    expect(scopeLabel(5, 0, true)).toBe("5 барааны");
+    expect(eventScopeSummary([{ pcts: { 5: 10 } }], [])).toBe(
+      "1 бараа · хямдрал 10%",
+    );
+  });
+
+  it("багц тоологдож, хувийн хүрээнд орно", () => {
+    expect(scopeLabel(5, 3)).toBe("5 бараа, 3 багц");
+    expect(scopeLabel(5, 3, true)).toBe("5 бараа, 3 багцын");
+    expect(scopeLabel(0, 3)).toBe("3 багц");
+    expect(
+      eventScopeSummary(
+        [{ pcts: { 5: 10 } }, { pcts: { 10: 30 } }],
+        [{ pcts: { 10: 5 } }],
+      ),
+    ).toBe("2 бараа, 1 багц · хямдрал 5–30%");
   });
 });
