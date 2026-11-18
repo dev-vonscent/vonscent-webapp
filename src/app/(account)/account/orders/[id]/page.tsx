@@ -50,6 +50,12 @@ import type {
   OrderStatusHistoryRow,
 } from "@/db/types";
 import { orderLineMeta } from "@/lib/order-lines";
+import {
+  buildOrderLines,
+  bundleTitle,
+  collectionIdsOf,
+  lineBase,
+} from "@/lib/orders/order-lines";
 
 export default async function OrderDetailPage({
   params,
@@ -126,6 +132,22 @@ export default async function OrderDetailPage({
   const items = (itemData as OrderItemRow[] | null) ?? [];
   const history = (historyData as OrderStatusHistoryRow[] | null) ?? [];
 
+  // Багцаар захиалсныг багцаар нь (task 11), админтай ижил дараалал (12).
+  // Бэлэн/угсарсан ялгаа энд харагдацад нөлөөлөхгүй ч бүлэглэх түлхүүрт
+  // хэрэгтэй.
+  const collectionIds = collectionIdsOf(items);
+  const { data: baseData } = collectionIds.length
+    ? await supabase
+        .from("collections")
+        .select("id")
+        .in("id", collectionIds)
+        .eq("type", "base")
+    : { data: [] };
+  const lines = buildOrderLines(
+    items,
+    new Set(((baseData as { id: string }[] | null) ?? []).map((c) => c.id)),
+  );
+
   // Resolve slugs/images for the reorder action. Дахин захиалах нь зөвхөн
   // амжилттай хүргэгдсэн захиалгад, бэлгийн мөргүйгээр — бэлэг сар бүр
   // өөрчлөгддөг тул дахин захиалахад тэр сарынх нь бэлэг ирэхгүй.
@@ -178,10 +200,7 @@ export default async function OrderDetailPage({
     const moderated = await isFeatureEnabled("review_moderation");
     const bought = items.filter(
       (i) =>
-        i.line_kind === "perfume" &&
-        i.product_id &&
-        !i.is_gift &&
-        !i.is_sample,
+        i.line_kind === "perfume" && i.product_id && !i.is_gift && !i.is_sample,
     );
     const purchased = [
       ...new Set(
@@ -364,29 +383,56 @@ export default async function OrderDetailPage({
           {/* Items */}
           <Card>
             <CardContent className="divide-border divide-y p-0">
-              {items.map((i) => (
-                <div
-                  key={i.id}
-                  className="flex justify-between gap-3 p-4 text-sm"
-                >
-                  <span>
-                    {i.line_kind === "extra"
-                      ? `${i.product_name} · ${orderLineMeta(i)}`
-                      : `${i.brand} ${i.product_name} · ${orderLineMeta(i)}`}
-                    {/* «Sample» БИШ: 2ml бол энэ дэлгүүрт энгийн төлбөртэй
-                        хэмжээ. `is_sample` нь сар бүрийн 1мл бэлгийн дээжийг
-                        л тэмдэглэдэг. Админы хуудсанд аль хэдийн «Бэлэг». */}
-                    {i.is_sample && (
-                      <Badge variant="secondary" className="ml-2">
-                        Бэлэг
-                      </Badge>
-                    )}
-                  </span>
-                  <span className="font-medium">
-                    {formatPrice((i.list_price ?? i.unit_price) * i.qty)}
-                  </span>
-                </div>
-              ))}
+              {/* Үнэ нь ҮНДСЭН үнэ (`list_price × qty`), багцынх гишүүдийн
+                  нийлбэр — хямдрал «Дүн» задаргаанд тусдаа мөр тул мөрүүдийн
+                  нийлбэр «Барааны дүн»-тэй таарна. */}
+              {lines.map((l) =>
+                l.kind === "bundle" ? (
+                  <div key={l.key} className="space-y-1.5 p-4 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <span>
+                        {bundleTitle(l)} · {l.ml}ml × {l.qty}
+                        {l.gift && (
+                          <Badge variant="secondary" className="ml-2">
+                            Бэлэг
+                          </Badge>
+                        )}
+                      </span>
+                      <span className="font-medium">{formatPrice(l.base)}</span>
+                    </div>
+                    {/* Сагсны багцтай ижил: «• Брэнд — Нэр». */}
+                    <ul className="text-muted-foreground space-y-0.5 text-xs">
+                      {l.members.map((m) => (
+                        <li key={m.id}>
+                          • {m.brand} — {m.product_name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div
+                    key={l.item.id}
+                    className="flex justify-between gap-3 p-4 text-sm"
+                  >
+                    <span>
+                      {l.item.line_kind === "extra"
+                        ? `${l.item.product_name} · ${orderLineMeta(l.item)}`
+                        : `${l.item.brand} ${l.item.product_name} · ${orderLineMeta(l.item)}`}
+                      {/* «Sample» БИШ: 2ml бол энэ дэлгүүрт энгийн төлбөртэй
+                          хэмжээ. `is_sample` нь сар бүрийн 1мл бэлгийн дээжийг
+                          л тэмдэглэдэг. Админы хуудсанд аль хэдийн «Бэлэг». */}
+                      {l.item.is_sample && (
+                        <Badge variant="secondary" className="ml-2">
+                          Бэлэг
+                        </Badge>
+                      )}
+                    </span>
+                    <span className="font-medium">
+                      {formatPrice(lineBase(l.item))}
+                    </span>
+                  </div>
+                ),
+              )}
             </CardContent>
           </Card>
 
