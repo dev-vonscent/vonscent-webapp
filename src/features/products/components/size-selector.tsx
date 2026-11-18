@@ -154,7 +154,7 @@ export function SizeSelector({
                 className={cn(
                   // Багцын «тус бүр 300 цацалт» 4 баганад багтахгүй —
                   // «тус бүр» / «300 цацалт» гэж хоёр мөрөнд орно.
-                  "text-center text-xs leading-tight text-balance",
+                  "text-center text-xs/tight text-balance",
                   active ? "text-cta-foreground/75" : "text-muted-foreground",
                 )}
               >

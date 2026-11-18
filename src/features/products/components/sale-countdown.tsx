@@ -95,7 +95,7 @@ function Boxes({ endsAt, className }: { endsAt: string; className?: string }) {
           >
             <span
               className={cn(
-                "block h-8 text-2xl leading-8 font-semibold tabular-nums",
+                "block h-8 text-2xl/8 font-semibold tabular-nums",
                 urgent ? "text-destructive" : "text-foreground",
               )}
             >

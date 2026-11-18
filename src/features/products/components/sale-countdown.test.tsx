@@ -182,7 +182,7 @@ describe("SaleCountdown variant=boxes (дэлгэрэнгүй)", () => {
     expect(timer.getAttribute("aria-label")).toBe(
       "Хямдрал дуусахад 7 өдөр 16:45:32",
     );
-    const nums = [...timer.querySelectorAll(".text-2xl")].map(
+    const nums = [...timer.querySelectorAll('[class*="text-2xl"]')].map(
       (n) => n.textContent,
     );
     expect(nums).toEqual(["7", "16", "45", "32"]);
