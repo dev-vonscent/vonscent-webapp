@@ -141,7 +141,10 @@ export function SizeSelector({
               data-sale={o.salePct > 0 || undefined}
               onClick={() => o.selectable && onChange(o.id)}
               className={cn(
-                "relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-2",
+                // justify-start: нарийн өргөнд (quick-add, 320px) «300 цацалт»
+                // 2 мөр болоход ч хэмжээний гарчиг бүх картад нэг шугамд;
+                // grid-ийн stretch-ээр картууд ижил өндөр.
+                "relative flex min-h-14 min-w-0 flex-col items-center justify-start gap-0.5 rounded-lg px-1 py-2",
                 !o.selectable
                   ? "bg-secondary/40 text-muted-foreground cursor-not-allowed opacity-60"
                   : active

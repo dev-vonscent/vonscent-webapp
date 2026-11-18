@@ -126,6 +126,14 @@ describe("ProductPurchase", () => {
     );
   });
 
+  it("size cards align their label to the top (same line when one wraps)", () => {
+    render(<ProductPurchase product={product(SIZES)} />);
+    for (const r of screen.getAllByRole("radio")) {
+      expect(r.className).toContain("justify-start");
+      expect(r.className).not.toContain("justify-center");
+    }
+  });
+
   it("marks discounted sizes on the card", () => {
     render(
       <ProductPurchase
