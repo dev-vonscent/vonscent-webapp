@@ -55,3 +55,35 @@ describe("ProductCard — «Тун удахгүй» (0125)", () => {
     expect(screen.getByRole("button", { name: "quick-add" })).toBeTruthy();
   });
 });
+
+describe("ProductCard — «Хямдралтай» chip + хувь (2.3, 2.4)", () => {
+  it("бүх хэмжээ өөр хувьтай → «Хямдралтай 10–30%»", () => {
+    render(
+      <ProductCard
+        product={item({
+          tags: ["sale"],
+          sale: { minPct: 10, maxPct: 30, allSizes: true },
+        })}
+      />,
+    );
+    expect(screen.getByText("Хямдралтай")).toBeTruthy();
+    expect(screen.getByText("10–30%")).toBeTruthy();
+  });
+
+  it("аль нэг хэмжээ хямдралгүй → «~30%»", () => {
+    render(
+      <ProductCard
+        product={item({
+          tags: ["sale"],
+          sale: { minPct: 10, maxPct: 30, allSizes: false },
+        })}
+      />,
+    );
+    expect(screen.getByText("~30%")).toBeTruthy();
+  });
+
+  it("хямдралгүй бараанд chip гарахгүй", () => {
+    render(<ProductCard product={item()} />);
+    expect(screen.queryByText("Хямдралтай")).toBeNull();
+  });
+});

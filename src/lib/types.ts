@@ -6,6 +6,7 @@ import type {
   Sillage,
   TagKind,
 } from "@/db/types";
+import type { SaleSummary } from "@/features/products/sale";
 
 /** A priced decant size for a product. */
 export interface Variant {
@@ -103,6 +104,11 @@ export interface ProductListItem {
    * газрууд «Дууссан»-ы оронд «Тун удахгүй» гэж бичнэ.
    */
   comingSoon?: boolean;
+  /**
+   * Хямдралын товч (task 2.2, 2.4) — `sale` тагтай бараанд л. Картын
+   * «Хямдралтай 10–30%» ба тоолуур. Server тооцоолно (`getCatalog`).
+   */
+  sale?: SaleSummary;
 }
 
 /** Full product detail page payload. */

@@ -16,19 +16,26 @@ import {
 
 /**
  * Барааны картын хямдралын тэмдэг. Live арга хэмжээнд (0181) байвал түүний
- * `badge_label` («Black Friday»), эс бөгөөс одоогийн «Хямдрал» (автомат
- * `sale` таг, 0103). Арга хэмжээний хувьтай бол ард нь «~10%» (хамгийн их
- * хувь — `eventPctText`). Арга хэмжээний бараа нь тэр арга хэмжээний дээд
+ * `badge_label` («Black Friday»), эс бөгөөс «Хямдралтай» (автомат `sale`
+ * таг, 0103). Ард нь хувь: `salePct` өгвөл тэр (гар хямдрал + арга хэмжээ,
+ * `salePctText` — task 2.4), эс бөгөөс арга хэмжээний «~10%»
+ * (`eventPctText`). Арга хэмжээний бараа нь тэр арга хэмжээний дээд
  * зурвасны өнгөтэй (`SaleChip`).
  */
 export function SaleBadge({
   productId,
   onSale,
+  salePct,
   surface = "image",
 }: {
   productId: string;
   /** `product.tags.includes("sale")`. */
   onSale: boolean;
+  /**
+   * Server-ийн тооцоолсон хувь («10%», «10–30%», «~30%») —
+   * `salePctText(product.sale)`. undefined бол арга хэмжээний хувь.
+   */
+  salePct?: string | null;
   /**
    * `image` — картын зураг дээр (цагаан хагас тунгалаг дэвсгэр); `page` —
    * барааны хуудасны тагуудын мөрөнд (бусад тагтай ижил өнгөт дэвсгэр).
@@ -36,9 +43,11 @@ export function SaleBadge({
   surface?: "image" | "page";
 }) {
   const event = useSaleEventBadge(productId);
-  const pct = eventPctText(useSaleEventPct(productId));
+  const eventPct = eventPctText(useSaleEventPct(productId));
+  const pct = salePct === undefined ? eventPct : salePct;
   const theme = useSaleEventTheme(productId);
-  const label = event ?? (onSale || pct ? SALE_EVENT_DEFAULT_BADGE : null);
+  const label =
+    event ?? (onSale || eventPct ? SALE_EVENT_DEFAULT_BADGE : null);
   if (!label) return null;
   return (
     <SaleChip theme={theme} pct={pct} surface={surface}>

@@ -23,8 +23,15 @@ import {
   NO_BOTTLE_LOCKS,
   type BottleLockState,
 } from "./bottle-stock";
-import { effectivePrice } from "./sale";
+import {
+  earliestEnd,
+  effectivePrice,
+  saleEndsAt,
+  summarizeSale,
+  type SaleSummary,
+} from "./sale";
 import { getLiveSaleEvents } from "@/features/sale-events/api";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 
 /**
  * Product data access (development.md §3 — features domain api).
@@ -135,7 +142,12 @@ const SELECT = `
  * бөгөөс гар хямдралын толь (`effectivePrice`) — demo seed ба хуучин тестийн
  * fixture-д. Үндсэн үнээс давахгүй.
  */
-function variantPrice(v: DbVariant): number {
+function variantPrice(
+  v: Pick<
+    DbVariant,
+    "price" | "sale_price" | "sale_starts_at" | "sale_ends_at" | "variant_price"
+  >,
+): number {
   return typeof v.variant_price === "number"
     ? Math.min(v.variant_price, v.price)
     : effectivePrice(v);
@@ -401,7 +413,22 @@ function toListItem(p: ProductDetail): ProductListItem {
     ratingCount: p.ratingCount,
     createdAt: p.createdAt,
     ...(p.comingSoon && { comingSoon: true }),
+    ...saleOf(p),
   };
+}
+
+/**
+ * Санах ойн зам (DEMO): хувийг хэмжээнүүдээс шууд. Дуусах мөч seed-д
+ * хэрэггүй — тоолуур гарахгүй.
+ */
+function saleOf(p: ProductDetail): { sale?: SaleSummary } {
+  if (!p.tags.includes("sale")) return {};
+  const sale = summarizeSale(
+    p.variants
+      .filter((v) => v.isActive)
+      .map((v) => ({ basePrice: v.basePrice, price: v.price })),
+  );
+  return sale ? { sale } : {};
 }
 
 const DEFAULT_PER_PAGE = 12;
@@ -564,6 +591,112 @@ const catalogSearch = unstable_cache(
   },
 );
 
+// ── Хямдралын товч: картын хувь, тоолуур (task 2.2, 2.4) ──────────────────
+
+type SaleVariantRow = Pick<
+  DbVariant,
+  | "ml"
+  | "price"
+  | "sale_price"
+  | "sale_starts_at"
+  | "sale_ends_at"
+  | "is_active"
+  | "variant_price"
+>;
+
+/**
+ * `sale` тагтай (гар хямдрал эсвэл арга хэмжээ — `variant_sale_active`, 0181)
+ * идэвхтэй барааны хэмжээнүүд. Нэг query, бүх хямдралтай бараанд нэг кэш —
+ * каталогийн хуудас бүрт дахин асуухгүй.
+ *
+ * Tag нь зөвхөн `catalog`: хямдрал бичих (админ) → `revalidatePublic()`,
+ * хугацааны хил (УБ 00:00) → `/api/cron/midnight-revalidate` (гар хямдралд
+ * `revalidateStock()` — scope-гүй тул `catalog`-ийг ч цэвэрлэнэ, арга
+ * хэмжээнд `revalidatePublic()`). Захиалга үүнийг өөрчлөхгүй тул `stock`
+ * хэрэггүй. Алдааг шиднэ — хоосон кэшлэгдэхгүй (#284).
+ */
+const fetchSaleRows = unstable_cache(
+  async (): Promise<{ id: string; variants: SaleVariantRow[] }[]> => {
+    const supabase = createPublicClient();
+    if (!supabase) throw new Error("sale rows: no supabase client");
+    const { data, error } = await supabase
+      .from("products")
+      .select(
+        "id, product_variants ( ml, price, sale_price, sale_starts_at, sale_ends_at, is_active, variant_price ), product_tags!inner ( tags!inner ( kind ) )",
+      )
+      .eq("is_active", true)
+      .eq("product_tags.tags.kind", "sale");
+    if (error) throw new Error(`sale rows failed: ${error.message}`);
+    return (
+      (data as unknown as
+        | { id: string; product_variants: SaleVariantRow[] }[]
+        | null) ?? []
+    ).map((r) => ({ id: r.id, variants: r.product_variants ?? [] }));
+  },
+  ["sale-rows"],
+  { revalidate: CATALOG_REVALIDATE, tags: [CACHE_TAG_CATALOG] },
+);
+
+/**
+ * productId → хямдралын товч. Хувь нь идэвхтэй хэмжээнүүдийн `variant_price`-
+ * аас (`summarizeSale`), дуусах мөч нь хэмжээ бүрийн одоогийн хямдралын эх
+ * үүсвэрээс (`saleEndsAt`) хамгийн ойр нь. Дуусах мөч зөвхөн туг
+ * `sale_display` нээлттэй үед — хаалттай бол HTML-д огт орохгүй.
+ *
+ * Гаралт нь зөвхөн сангийн утгаас (ISO огноо, хувь) — `Date.now()`-оос
+ * хамаарсан текст биш тул ISR-ийн дахин үүсгэлт бүрт HTML өөрчлөгдөхгүй.
+ */
+export const getSaleSummaries = cache(
+  async (): Promise<ReadonlyMap<string, SaleSummary>> => {
+    const out = new Map<string, SaleSummary>();
+    if (!isSupabaseConfigured) return out;
+    const [rows, events, showEnds] = await Promise.all([
+      fetchSaleRows(),
+      getLiveSaleEvents(),
+      isFeatureEnabled("sale_display"),
+    ]);
+    // Бараа давхцсан хоёр LIVE арга хэмжээнд орохгүй (0181 trigger) — ойрыг нь.
+    const eventEnds = new Map<string, string>();
+    for (const e of events) {
+      for (const id of e.productIds) {
+        eventEnds.set(id, earliestEnd([eventEnds.get(id), e.endsAt]) as string);
+      }
+    }
+    const now = new Date();
+    for (const row of rows) {
+      const active = row.variants.filter((v) => v.is_active);
+      const summary = summarizeSale(
+        active.map((v) => ({ basePrice: v.price, price: variantPrice(v) })),
+      );
+      if (!summary) continue;
+      out.set(
+        row.id,
+        showEnds
+          ? {
+              ...summary,
+              endsAt: earliestEnd(
+                active.map((v) =>
+                  saleEndsAt(v, eventEnds.get(row.id) ?? null, now),
+                ),
+              ),
+            }
+          : summary,
+      );
+    }
+    return out;
+  },
+);
+
+/** `sale` тагтай мөрүүдэд товчийг наана; тийм мөр байхгүй бол асуухгүй. */
+async function withSale(items: ProductListItem[]): Promise<ProductListItem[]> {
+  if (!items.some((p) => p.tags.includes("sale"))) return items;
+  const sales = await getSaleSummaries();
+  return items.map((p) => {
+    const sale = p.tags.includes("sale") ? sales.get(p.id) : undefined;
+    return sale ? { ...p, sale } : p;
+  });
+}
+
 /**
  * A gender filter also answers with unisex scents.
  *
@@ -619,7 +752,7 @@ export async function getCatalog(
       ...(filters.event ? { p_event: filters.event } : {}),
     });
     return {
-      items: data.map(fromCatalogRow),
+      items: await withSale(data.map(fromCatalogRow)),
       // `total` нь мөр болгонд давтагдаж ирдэг; илэрцгүй бол 0.
       total: data[0] ? Number(data[0].total) : 0,
       page,

@@ -9,6 +9,7 @@ import { GenderBadge } from "./gender-badge";
 import { SaleBadge } from "@/features/sale-events/components/sale-badge";
 
 import { CARD_STATUS_LABEL, cardStatus, type CardStatus } from "../card-status";
+import { salePctText } from "../sale";
 
 export function ProductCard({
   product,
@@ -66,6 +67,7 @@ export function ProductCard({
           <SaleBadge
             productId={product.id}
             onSale={product.tags.includes("sale")}
+            salePct={product.sale ? salePctText(product.sale) : undefined}
           />
         </div>
         {matchPct !== undefined && (
