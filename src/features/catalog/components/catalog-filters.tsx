@@ -107,6 +107,7 @@ export function CatalogFilters({
   showClear = true,
   showKind = true,
   showTags = true,
+  showSale = true,
 }: {
   brands: string[];
   /**
@@ -131,6 +132,11 @@ export function CatalogFilters({
    * «Үнэртний шил» хуудсанд шил өөрөө тэр тэмдэглэгээгүй тул нуугдана.
    */
   showTags?: boolean;
+  /**
+   * Хямдралын шүүлт (арга хэмжээний chip, «Хямдралтай»). «Багц үүсгэх»-д
+   * нуугдана: угсарсан багц үндсэн үнээр бодогддог (8.2).
+   */
+  showSale?: boolean;
 }) {
   const {
     values,
@@ -286,7 +292,7 @@ export function CatalogFilters({
               {/* Арга хэмжээ (Black Friday …) — тагуудын ХАМГИЙН ЭХЭНД, хоёр
                   тагийн өргөнтэй бүтэн мөр (task 6). Нэг л сонгогдоно.
                   «Багц» таб дээр зөвхөн бэлэн багцтай арга хэмжээ (16.7). */}
-              {(isBundle ? bundleEvents : liveEvents).map((e) => (
+              {(showSale ? (isBundle ? bundleEvents : liveEvents) : []).map((e) => (
                 <EventFilterChip
                   key={e.slug}
                   theme={e.tickerTheme}
@@ -307,7 +313,7 @@ export function CatalogFilters({
               >
                 Онцлох
               </Chip>
-              {TAGS.map((t) => (
+              {TAGS.filter((t) => showSale || t.value !== "sale").map((t) => (
                 <Chip
                   key={t.value}
                   active={values("tags").includes(t.value)}

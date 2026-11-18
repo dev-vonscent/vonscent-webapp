@@ -21,12 +21,14 @@ export function CatalogFilterSheet({
   priceBounds,
   families,
   showKind,
+  showSale,
 }: {
   brands: string[];
   brandLogos: BrandLogos;
   priceBounds: { min: number; max: number };
   families: ScentFamilyOption[];
   showKind?: boolean;
+  showSale?: boolean;
 }) {
   return (
     <FilterSheet>
@@ -37,6 +39,7 @@ export function CatalogFilterSheet({
         families={families}
         showClear={false}
         showKind={showKind}
+        showSale={showSale}
       />
     </FilterSheet>
   );

@@ -12,7 +12,7 @@ import { DEFAULT_CATALOG_SORT } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useFilterQuery } from "./use-filter-query";
 
-const OPTIONS: { value: string; label: string }[] = [
+export const CATALOG_SORT_OPTIONS: { value: string; label: string }[] = [
   { value: "recommended", label: "Санал болгох" },
   { value: "name", label: "Нэрээр (А-Я)" },
   { value: "new", label: "Шинэ эхэндээ" },
@@ -25,7 +25,7 @@ const OPTIONS: { value: string; label: string }[] = [
 export function CatalogSort({
   iconOnly = false,
   className,
-  options = OPTIONS,
+  options = CATALOG_SORT_OPTIONS,
 }: {
   iconOnly?: boolean;
   className?: string;
