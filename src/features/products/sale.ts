@@ -219,9 +219,7 @@ export function salePctText(
 ): string | null {
   if (!s || !(s.maxPct > 0)) return null;
   if (!s.allSizes) return `~${s.maxPct}%`;
-  return s.minPct === s.maxPct
-    ? `${s.maxPct}%`
-    : `${s.minPct}–${s.maxPct}%`;
+  return s.minPct === s.maxPct ? `${s.maxPct}%` : `${s.minPct}–${s.maxPct}%`;
 }
 
 /**

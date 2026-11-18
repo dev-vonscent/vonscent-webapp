@@ -217,7 +217,10 @@ describe("collectionItem", () => {
 
 describe("sortSaleRail (2.1)", () => {
   const sp = (id: string, maxPct: number, endsAt: string | null) =>
-    ({ id, sale: { minPct: maxPct, maxPct, allSizes: true, endsAt } }) as ProductListItem;
+    ({
+      id,
+      sale: { minPct: maxPct, maxPct, allSizes: true, endsAt },
+    }) as ProductListItem;
   const ids = (xs: { id: string }[]) => xs.map((x) => x.id);
 
   it("дуусах мөч ойр → хувь их → хугацаагүй нь ард", () => {

@@ -46,8 +46,7 @@ export function SaleBadge({
   const eventPct = eventPctText(useSaleEventPct(productId));
   const pct = salePct === undefined ? eventPct : salePct;
   const theme = useSaleEventTheme(productId);
-  const label =
-    event ?? (onSale || eventPct ? SALE_EVENT_DEFAULT_BADGE : null);
+  const label = event ?? (onSale || eventPct ? SALE_EVENT_DEFAULT_BADGE : null);
   if (!label) return null;
   return (
     <SaleChip theme={theme} pct={pct} surface={surface}>

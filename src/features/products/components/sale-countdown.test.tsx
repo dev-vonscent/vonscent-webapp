@@ -12,7 +12,10 @@ const ENDS = new Date(
   NOW + ((7 * 24 + 16) * 3600 + 45 * 60 + 32) * 1000,
 ).toISOString();
 
-function withFlags(node: React.ReactNode, enabled: FeatureFlag[] = ["sale_display"]) {
+function withFlags(
+  node: React.ReactNode,
+  enabled: FeatureFlag[] = ["sale_display"],
+) {
   return <FeatureFlagsProvider enabled={enabled}>{node}</FeatureFlagsProvider>;
 }
 
@@ -38,15 +41,11 @@ describe("SaleCountdown (2.2)", () => {
     await act(async () => {
       await Promise.resolve();
     });
-    expect(screen.getByRole("timer").textContent).toContain(
-      "7 өдөр 16:45:32",
-    );
+    expect(screen.getByRole("timer").textContent).toContain("7 өдөр 16:45:32");
     await act(async () => {
       vi.advanceTimersByTime(1000);
     });
-    expect(screen.getByRole("timer").textContent).toContain(
-      "7 өдөр 16:45:31",
-    );
+    expect(screen.getByRole("timer").textContent).toContain("7 өдөр 16:45:31");
   });
 
   it("олон тоолуур НЭГ setInterval хуваалцана", async () => {

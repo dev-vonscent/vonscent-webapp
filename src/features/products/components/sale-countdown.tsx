@@ -30,7 +30,13 @@ export function SaleCountdown({
   return <Ticking endsAt={endsAt} className={className} />;
 }
 
-function Ticking({ endsAt, className }: { endsAt: string; className?: string }) {
+function Ticking({
+  endsAt,
+  className,
+}: {
+  endsAt: string;
+  className?: string;
+}) {
   const now = useNowTick();
   const end = Date.parse(endsAt);
   if (!Number.isFinite(end)) return null;

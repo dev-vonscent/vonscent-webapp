@@ -30,11 +30,7 @@ import {
 } from "@/features/products/rail";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { dailyRandom } from "@/lib/seeded-random";
-import {
-  HOT_RAIL_COLLECTIONS,
-  SALE_RAIL_POOL,
-  SITE,
-} from "@/lib/constants";
+import { HOT_RAIL_COLLECTIONS, SALE_RAIL_POOL, SITE } from "@/lib/constants";
 import {
   JsonLd,
   homePageJsonLd,
