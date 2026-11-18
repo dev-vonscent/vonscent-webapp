@@ -65,6 +65,7 @@ export function SizeSelector({
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
   const selected = options.find((o) => o.id === value) ?? null;
   const hint = sizeHint(options, selected);
+  const hasMarker = options.some((o) => o.salePct > 0);
   // Өндрийн хэмжүүр: энэ хуудасны бүх сонгож болох хэмжээний текст.
   const allHints = [
     ...new Set(
@@ -115,7 +116,14 @@ export function SizeSelector({
         role="radiogroup"
         aria-labelledby={labelId}
         onKeyDown={onKeyDown}
-        className="grid grid-cols-4 gap-2"
+        data-marked={hasMarker || undefined}
+        className={cn(
+          "grid grid-cols-4 gap-2",
+          // Тэмдэг картын дээд ирмэгээс 20px гадагш гардаг; гарчгийн доорх
+          // 12px зай дээр 10px нэмж гарчигтай хэзээ ч давхцахгүй. Тэмдэггүй
+          // бараанд нэмэлт зай үгүй.
+          hasMarker && "pt-2.5",
+        )}
       >
         {options.map((o, i) => {
           const active = o.id === value;
@@ -282,7 +290,7 @@ function SaleMarker({ pct, shape }: { pct: number; shape: "burst" | "pill" }) {
     <span
       aria-hidden
       data-marker="burst"
-      className="absolute -top-5 -right-2 flex h-7 w-12 items-center justify-center"
+      className="absolute -top-5 -right-1.5 flex h-7 w-12 items-center justify-center"
     >
       <svg
         viewBox="0 0 100 60"

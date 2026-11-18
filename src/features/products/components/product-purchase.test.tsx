@@ -347,3 +347,28 @@ describe("SizeSelector sale marker shapes", () => {
     expect(pill?.className).toContain("bg-sale");
   });
 });
+
+describe("SizeSelector — тэмдгийн дээд зай (4)", () => {
+  it("тэмдэгтэй үед radiogroup дээр зай, тэмдэггүй бол үгүй", async () => {
+    const { SizeSelector } = await import("./size-selector");
+    const { productSizeOptions } = await import("../size-options");
+    const marked = productSizeOptions([
+      variant(2, 10000, { basePrice: 12000 }),
+      variant(5, 25000),
+    ]);
+    const { unmount } = render(
+      <SizeSelector
+        options={marked}
+        value={marked[0].id}
+        onChange={() => {}}
+      />,
+    );
+    expect(screen.getByRole("radiogroup").className).toContain("pt-2.5");
+    unmount();
+    const plain = productSizeOptions([variant(2, 12000), variant(5, 25000)]);
+    render(
+      <SizeSelector options={plain} value={plain[0].id} onChange={() => {}} />,
+    );
+    expect(screen.getByRole("radiogroup").className).not.toContain("pt-");
+  });
+});
