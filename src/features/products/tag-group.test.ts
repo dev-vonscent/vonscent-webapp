@@ -45,8 +45,8 @@ describe("matchesTagGroup — «Таг» бүлэг дотроо OR (0194)", () 
   });
 
   it("featured: false нь «тааралгүй» — бусад гишүүнийг өргөтгөхгүй", () => {
-    expect(matchesTagGroup({ featured: false, tags: ["new"] }, row([], true))).toBe(
-      false,
-    );
+    expect(
+      matchesTagGroup({ featured: false, tags: ["new"] }, row([], true)),
+    ).toBe(false);
   });
 });

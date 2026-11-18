@@ -412,7 +412,7 @@ function BuilderInner({
           priceBounds={priceBounds}
           families={families}
           showKind={false}
-            showSale={false}
+          showSale={false}
         />
         <CatalogSort iconOnly options={BUILDER_SORT_OPTIONS} />
         <CatalogSearch

@@ -1,7 +1,10 @@
 import type { CatalogFilters } from "@/lib/types";
 
 /** Каталогийн «Таг» бүлгийн шүүлтүүр — `tags`, `featured`, `event`. */
-export type TagGroupFilters = Pick<CatalogFilters, "tags" | "featured" | "event">;
+export type TagGroupFilters = Pick<
+  CatalogFilters,
+  "tags" | "featured" | "event"
+>;
 
 /** Нэг мөр (бараа/багц) бүлгийн гишүүн бүрт таарах эсэх. */
 export interface TagGroupMatch {
@@ -19,10 +22,7 @@ export interface TagGroupMatch {
  *
  * SQL-ийн толь: `catalog_search` (0194) — хоёулаа зэрэг өөрчлөгдөх ёстой.
  */
-export function matchesTagGroup(
-  f: TagGroupFilters,
-  m: TagGroupMatch,
-): boolean {
+export function matchesTagGroup(f: TagGroupFilters, m: TagGroupMatch): boolean {
   const tags = f.tags ?? [];
   const event = f.event || null;
   if (!tags.length && !f.featured && !event) return true;

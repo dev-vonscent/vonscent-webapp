@@ -292,19 +292,21 @@ export function CatalogFilters({
               {/* Арга хэмжээ (Black Friday …) — тагуудын ХАМГИЙН ЭХЭНД, хоёр
                   тагийн өргөнтэй бүтэн мөр (task 6). Нэг л сонгогдоно.
                   «Багц» таб дээр зөвхөн бэлэн багцтай арга хэмжээ (16.7). */}
-              {(showSale ? (isBundle ? bundleEvents : liveEvents) : []).map((e) => (
-                <EventFilterChip
-                  key={e.slug}
-                  theme={e.tickerTheme}
-                  active={event === e.slug}
-                  onClick={() =>
-                    setSingle("event", event === e.slug ? undefined : e.slug)
-                  }
-                  className="col-span-2"
-                >
-                  {e.name}
-                </EventFilterChip>
-              ))}
+              {(showSale ? (isBundle ? bundleEvents : liveEvents) : []).map(
+                (e) => (
+                  <EventFilterChip
+                    key={e.slug}
+                    theme={e.tickerTheme}
+                    active={event === e.slug}
+                    onClick={() =>
+                      setSingle("event", event === e.slug ? undefined : e.slug)
+                    }
+                    className="col-span-2"
+                  >
+                    {e.name}
+                  </EventFilterChip>
+                ),
+              )}
               <Chip
                 active={featured}
                 onClick={() =>

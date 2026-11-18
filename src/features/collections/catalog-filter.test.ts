@@ -203,7 +203,11 @@ describe("арга хэмжээнд орсон багц (16.7)", () => {
 
 describe("«Таг» бүлэг дотроо OR, бусад бүлэгтэй AND (0194)", () => {
   const bf = { slug: "black-friday", name: "Black Friday", pcts: { 10: 10 } };
-  const inEvent = c({ id: "bf", event: bf, discountRange: { min: 10, max: 10 } });
+  const inEvent = c({
+    id: "bf",
+    event: bf,
+    discountRange: { min: 10, max: 10 },
+  });
   const sale = c({ id: "sale", discountRange: { min: 5, max: 5 } });
   const featured = c({ id: "feat", isFeatured: true });
   const fresh = c({ id: "new", tags: ["new"] });
@@ -213,7 +217,12 @@ describe("«Таг» бүлэг дотроо OR, бусад бүлэгтэй AND
 
   it("Хямдралтай + арга хэмжээ = бүх хямдралтай (event-ийнх ч)", () => {
     expect(
-      ids(filterCatalogCollections(all, { tags: ["sale"], event: "black-friday" })),
+      ids(
+        filterCatalogCollections(all, {
+          tags: ["sale"],
+          event: "black-friday",
+        }),
+      ),
     ).toEqual(["bf", "sale"]);
   });
 
@@ -225,7 +234,9 @@ describe("«Таг» бүлэг дотроо OR, бусад бүлэгтэй AND
 
   it("арга хэмжээ + Эрэлттэй", () => {
     expect(
-      ids(filterCatalogCollections(all, { event: "black-friday", tags: ["hot"] })),
+      ids(
+        filterCatalogCollections(all, { event: "black-friday", tags: ["hot"] }),
+      ),
     ).toEqual(["bf", "hot"]);
   });
 
