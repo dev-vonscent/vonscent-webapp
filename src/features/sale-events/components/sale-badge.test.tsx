@@ -121,5 +121,7 @@ describe("SaleBadge — fit зөвхөн арга хэмжээний карты�
     const { container } = renderBadge("image", false);
     expect(nameSpan(container)).toBeNull();
     expect(container.textContent).toBe("Хямдралтай~30%");
+    // Нарийн картанд нэр таслагдана, хувь бүтэн.
+    expect(screen.getByText("Хямдралтай").className).toContain("truncate");
   });
 });

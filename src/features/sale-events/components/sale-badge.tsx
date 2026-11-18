@@ -160,7 +160,9 @@ export function SaleChip({
           {children}
         </span>
       ) : (
-        children
+        // Арга хэмжээгүй «Хямдралтай ~25%» (клиент 2026-11-18): нарийн
+        // картанд нэр таслагдаж, хувь ҮРГЭЛЖ бүтэн — icon руу халихгүй.
+        <span className="min-w-0 truncate">{children}</span>
       )}
       {pct &&
         (fitOn && pctShort ? (
