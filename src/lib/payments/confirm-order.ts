@@ -7,7 +7,7 @@ import { readInvoice } from "@/lib/payments/invoice";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
 import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
-import { collectionIdsOf, groupBundleLines } from "@/lib/orders/bundle-lines";
+import { buildOrderLines, collectionIdsOf } from "@/lib/orders/order-lines";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
 import { deliverGiftCardOrder } from "@/features/gift-cards/email";
 import { formatMl, formatPrice } from "@/lib/format";
@@ -214,10 +214,12 @@ async function notifyPaid(
   const { data: itemData } = await supabase
     .from("order_items")
     .select(
-      "product_name, brand, ml, qty, unit_price, list_price, is_gift, collection_id, collection_name, line_kind, variant_label, spin_id",
+      "id, line_no, product_name, brand, ml, qty, unit_price, list_price, is_gift, collection_id, collection_name, line_kind, variant_label, spin_id",
     )
     .eq("order_id", order.id);
   const items = (itemData ?? []) as {
+    id: string;
+    line_no: number | null;
     product_name: string;
     brand: string | null;
     ml: number | null;
@@ -234,7 +236,7 @@ async function notifyPaid(
   }[];
 
   // Бэлэн багц нэг мөр болно («Gentleman багц · 5ml × 1»); хэрэглэгчийн
-  // угсарсан багц задгай хэвээр (`groupBundleLines`).
+  // угсарсан багц задгай хэвээр.
   const collectionIds = collectionIdsOf(items);
   const { data: baseRows } = collectionIds.length
     ? await supabase
@@ -250,7 +252,14 @@ async function notifyPaid(
   // Мөр бүр ҮНДСЭН үнээрээ — pay хуудастай адил (`features/payment/api.ts`).
   // `line_total` нь багцын хямдралыг мөр бүрт хувааж тараасан тул бутархай
   // мэт дүн гардаг байв; хямдрал нь доорх задаргаанд ганц мөр болж гарна. 0097-оос өмнөх мөрөнд `list_price` алга.
-  const itemList = groupBundleLines(items, baseIds)
+  // Дараалал захиалгын дэлгэрэнгүйтэй ижил (`buildOrderLines`); формат нь
+  // хуучнаараа — угсарсан багц, хүрдний шагналын гишүүд задгай мөрөөр.
+  const itemList = buildOrderLines(items, baseIds)
+    .flatMap((l) =>
+      l.kind === "bundle" && (l.type === "custom" || l.gift)
+        ? l.members.map((item) => ({ kind: "item" as const, item }))
+        : [l],
+    )
     .map((l) => {
       if (l.kind === "bundle") {
         return `• ${tgEscape(l.name)} багц ${formatMl(l.ml)} × ${l.qty} — ${formatPrice(l.base)}`;
