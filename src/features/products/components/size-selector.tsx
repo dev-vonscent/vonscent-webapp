@@ -152,7 +152,9 @@ export function SizeSelector({
               </span>
               <span
                 className={cn(
-                  "text-xs whitespace-nowrap",
+                  // Багцын «тус бүр 300 цацалт» 4 баганад багтахгүй —
+                  // «тус бүр» / «300 цацалт» гэж хоёр мөрөнд орно.
+                  "text-center text-xs leading-tight text-balance",
                   active ? "text-cta-foreground/75" : "text-muted-foreground",
                 )}
               >
@@ -205,11 +207,14 @@ function SizeHintRow({
   );
 }
 
-/** 12 хошуут starburst (viewBox 0–100): гадна 50, дотор 43 радиус. */
-const BURST_POINTS = Array.from({ length: 24 }, (_, i) => {
-  const r = i % 2 === 0 ? 50 : 43;
-  const a = (Math.PI * i) / 12 - Math.PI / 2;
-  return `${(50 + r * Math.cos(a)).toFixed(2)},${(50 + r * Math.sin(a)).toFixed(2)}`;
+/**
+ * 14 хошуут зууван starburst (viewBox 100×60): «−30%» шиг 4 тэмдэгт
+ * дотроо багтана, өндөр нь намхан тул картын хэмжээний шошгыг хаахгүй.
+ */
+const BURST_POINTS = Array.from({ length: 28 }, (_, i) => {
+  const r = i % 2 === 0 ? 1 : 0.84;
+  const a = (Math.PI * i) / 14 - Math.PI / 2;
+  return `${(50 + 50 * r * Math.cos(a)).toFixed(2)},${(30 + 30 * r * Math.sin(a)).toFixed(2)}`;
 }).join(" ");
 
 /**
@@ -234,9 +239,13 @@ function SaleMarker({ pct, shape }: { pct: number; shape: "burst" | "pill" }) {
     <span
       aria-hidden
       data-marker="burst"
-      className="absolute -top-3 -right-2.5 flex size-10 items-center justify-center"
+      className="absolute -top-5 -right-2 flex h-7 w-12 items-center justify-center"
     >
-      <svg viewBox="0 0 100 100" className="text-destructive absolute inset-0">
+      <svg
+        viewBox="0 0 100 60"
+        preserveAspectRatio="none"
+        className="text-destructive absolute inset-0 size-full"
+      >
         <polygon points={BURST_POINTS} fill="currentColor" />
       </svg>
       <span className="text-destructive-foreground relative text-[11px] leading-none font-bold tracking-tight tabular-nums">

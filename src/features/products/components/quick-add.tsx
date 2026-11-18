@@ -190,9 +190,10 @@ export function QuickAdd({
           </div>
         )}
 
-        {/* Quantity + add */}
-        <div className="flex items-center gap-3">
-          <div className="bg-secondary flex items-center rounded-md">
+        {/* Quantity + add. Утсан дээр товч тоо ширхэгийн ДООР бүтэн өргөнөөр:
+            «Сагсанд нэмэх · 159,600₮» нэг мөрөнд stepper-тэй багтахгүй. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="bg-secondary flex items-center self-start rounded-md sm:self-auto">
             <button
               type="button"
               className="hover:text-foreground px-3 py-2"
@@ -215,7 +216,7 @@ export function QuickAdd({
 
           <Button
             size="lg"
-            className="flex-1"
+            className="w-full sm:w-auto sm:flex-1"
             disabled={
               !detail ||
               !selected ||
