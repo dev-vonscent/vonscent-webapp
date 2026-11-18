@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  bundleCardPrice,
   roundTo,
   bundlePrice,
   memberPrices,
@@ -362,5 +363,39 @@ describe("багцын тоолуурын мөч — priceWithBundleEvent + bund
     expect(bundleSaleEndsAt({ event })).toBeNull();
     // Тэнцүү хувь ч мөн адил.
     expect(priceWithBundleEvent(members, 10, {}, 100, low).event).toBeNull();
+  });
+});
+
+describe("bundleCardPrice (task 2.5)", () => {
+  const row = (
+    ml: number,
+    price: number,
+    eventSaving?: number,
+    available = true,
+  ) => ({
+    ml,
+    price,
+    memberSum: price + 5000,
+    available,
+    ...(eventSaving ? { eventSaving } : {}),
+  });
+
+  it("event зөвхөн 10ml-д → 10ml-ийн үнэ + гишүүдийн нийлбэр", () => {
+    expect(
+      bundleCardPrice([row(2, 40000), row(5, 90000), row(10, 120000, 6000)]),
+    ).toEqual({ ml: 10, price: 120000, memberSum: 125000 });
+  });
+
+  it("хамгийн хямд хэмжээ event-тэй эсвэл event байхгүй → null", () => {
+    expect(
+      bundleCardPrice([row(2, 40000, 2000), row(5, 90000, 4000)]),
+    ).toBeNull();
+    expect(bundleCardPrice([row(2, 40000), row(5, 90000)])).toBeNull();
+  });
+
+  it("дууссан хэмжээг тооцохгүй", () => {
+    expect(
+      bundleCardPrice([row(2, 40000), row(5, 90000, 4000, false)]),
+    ).toBeNull();
   });
 });

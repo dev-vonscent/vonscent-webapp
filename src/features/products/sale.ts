@@ -189,6 +189,11 @@ export interface SaleSummary {
    * Туг `sale_display` хаалттай үед server огт өгөхгүй (undefined).
    */
   endsAt?: string | null;
+  /**
+   * Картын үнийн хэмжээ (2.5) — серверийн дотоод дамжуулалт; `withSale`
+   * үүнийг `ProductListItem.cardPrice` руу салгана.
+   */
+  card?: CardSalePrice | null;
 }
 
 /**
@@ -274,4 +279,44 @@ export function earliestEnd(
     if (best == null || t < Date.parse(best)) best = e;
   }
   return best;
+}
+
+/** Картын үнэ (task 2.5) — аль хэмжээний үнийг, ямар хуучин үнэтэй харуулах. */
+export interface CardSalePrice {
+  ml: number;
+  price: number;
+  basePrice: number;
+}
+
+/**
+ * Картын үнийн хэмжээ (task 2.5, клиентийн сонголт A). Карт ердөө хамгийн
+ * хямд ЗАРАГДАХ хэмжээний үнийг харуулдаг (`startingPrice`). Тэр хэмжээ
+ * хямдраагүй ч өөр зарагдах хэмжээ хямдарсан бол chip «Хямдралтай ~30%»
+ * байхад хямдраагүй үнэ харагдаж төөрөгдүүлдэг байв — тэр үед хямдарсан
+ * хэмжээнүүдээс ХАМГИЙН ЖИЖГИЙН хямдарсан + үндсэн үнийг, хэмжээтэй нь
+ * (`5ml · 21,300₮ ~~25,000₮~~`) буцаана. Бусад үед null — карт одоогийнхоороо.
+ *
+ * Эрэмбэ/шүүлт нь `startingPrice`-аар (хамгийн бага үнэ) хэвээр.
+ */
+export function cardSalePrice(
+  sizes: readonly {
+    ml: number;
+    price: number;
+    basePrice: number;
+    sellable: boolean;
+  }[],
+): CardSalePrice | null {
+  const sell = sizes.filter((s) => s.sellable);
+  if (!sell.length) return null;
+  // `mapProduct`-ийн `startingPrice`-тай ижил сонголт.
+  const cheapest = sell.reduce((a, b) => (a.price <= b.price ? a : b));
+  if (cheapest.price < cheapest.basePrice) return null;
+  const disc = sell
+    .filter((s) => s.price < s.basePrice)
+    .reduce<
+      (typeof sell)[number] | null
+    >((a, b) => (a == null || b.ml < a.ml ? b : a), null);
+  return disc
+    ? { ml: disc.ml, price: disc.price, basePrice: disc.basePrice }
+    : null;
 }

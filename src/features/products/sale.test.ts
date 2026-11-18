@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cardSalePrice,
   earliestEnd,
   effectivePrice,
   isOnSale,
@@ -401,5 +402,54 @@ describe("earliestEnd", () => {
       earliestEnd(["2026-10-31T16:00:00Z", "2026-11-21T16:00:00Z"], t),
     ).toBe("2026-11-21T16:00:00Z");
     expect(earliestEnd(["2026-10-31T16:00:00Z"], t)).toBeNull();
+  });
+});
+
+describe("cardSalePrice (task 2.5)", () => {
+  const size = (
+    ml: number,
+    price: number,
+    basePrice = price,
+    sellable = true,
+  ) => ({
+    ml,
+    price,
+    basePrice,
+    sellable,
+  });
+
+  it("2ml хямдраагүй, 5ml/10ml хямдарсан → хамгийн жижиг хямдарсан нь (5ml)", () => {
+    expect(
+      cardSalePrice([
+        size(2, 12000),
+        size(5, 21300, 25000),
+        size(10, 40000, 45000),
+        size(20, 80000),
+      ]),
+    ).toEqual({ ml: 5, price: 21300, basePrice: 25000 });
+  });
+
+  it("2ml хямдарсан → null (одоогийнх)", () => {
+    expect(
+      cardSalePrice([size(2, 10800, 12000), size(5, 21300, 25000)]),
+    ).toBeNull();
+  });
+
+  it("нэг ч хэмжээ хямдраагүй → null", () => {
+    expect(cardSalePrice([size(2, 12000), size(5, 25000)])).toBeNull();
+  });
+
+  it("дууссан хямдарсан хэмжээг алгасна; 2ml дууссан бол хамгийн хямд зарагдахаас эхэлнэ", () => {
+    expect(
+      cardSalePrice([
+        size(2, 12000),
+        size(5, 21300, 25000, false),
+        size(10, 40000, 45000),
+      ]),
+    ).toEqual({ ml: 10, price: 40000, basePrice: 45000 });
+    // 2ml дууссан, 5ml (хамгийн хямд зарагдах) хямдарсан → одоогийнх.
+    expect(
+      cardSalePrice([size(2, 12000, 12000, false), size(5, 21300, 25000)]),
+    ).toBeNull();
   });
 });

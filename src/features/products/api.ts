@@ -24,8 +24,10 @@ import {
   type BottleLockState,
 } from "./bottle-stock";
 import {
+  cardSalePrice,
   earliestEnd,
   effectivePrice,
+  type CardSalePrice,
   saleEndsAt,
   summarizeSale,
   type SaleSummary,
@@ -450,14 +452,19 @@ function toListItem(p: ProductDetail): ProductListItem {
  * Санах ойн зам (DEMO): хувийг хэмжээнүүдээс шууд. Дуусах мөч seed-д
  * хэрэггүй — тоолуур гарахгүй.
  */
-function saleOf(p: ProductDetail): { sale?: SaleSummary } {
+function saleOf(p: ProductDetail): {
+  sale?: SaleSummary;
+  cardPrice?: CardSalePrice;
+} {
   if (!p.tags.includes("sale")) return {};
   const sale = summarizeSale(
     p.variants
       .filter((v) => v.isActive)
       .map((v) => ({ basePrice: v.basePrice, price: v.price })),
   );
-  return sale ? { sale } : {};
+  if (!sale) return {};
+  const card = cardSalePrice(p.variants);
+  return card ? { sale, cardPrice: card } : { sale };
 }
 
 const DEFAULT_PER_PAGE = 12;
@@ -631,6 +638,7 @@ const catalogSearch = unstable_cache(
 
 type SaleVariantRow = Pick<
   DbVariant,
+  | "id"
   | "ml"
   | "price"
   | "sale_price"
@@ -646,33 +654,69 @@ type SaleVariantRow = Pick<
  * идэвхтэй барааны хэмжээнүүд. Нэг query, бүх хямдралтай бараанд нэг кэш —
  * каталогийн хуудас бүрт дахин асуухгүй.
  *
- * Tag нь зөвхөн `catalog`: хямдрал бичих (админ) → `revalidatePublic()`,
- * хугацааны хил (УБ 00:00) → `/api/cron/midnight-revalidate` (гар хямдралд
+ * Tag: `catalog` — хямдрал бичих (админ) → `revalidatePublic()`, хугацааны
+ * хил (УБ 00:00) → `/api/cron/midnight-revalidate` (гар хямдралд
  * `revalidateStock()` — scope-гүй тул `catalog`-ийг ч цэвэрлэнэ, арга
- * хэмжээнд `revalidatePublic()`). Захиалга үүнийг өөрчлөхгүй тул `stock`
- * хэрэггүй. Алдааг шиднэ — хоосон кэшлэгдэхгүй (#284).
+ * хэмжээнд `revalidatePublic()`). `stock` — картын үнийн хэмжээ (2.5) аль
+ * хэмжээ зарагдахаас хамаарна; `catalog_search` ч мөн адил хоёр tag-тай.
+ * Алдааг шиднэ — хоосон кэшлэгдэхгүй (#284).
  */
+interface SaleRow {
+  id: string;
+  gender: ProductListItem["gender"];
+  inventory: DbInventory | DbInventory[] | null;
+  variants: SaleVariantRow[];
+}
 const fetchSaleRows = unstable_cache(
-  async (): Promise<{ id: string; variants: SaleVariantRow[] }[]> => {
+  async (): Promise<SaleRow[]> => {
     const supabase = createPublicClient();
     if (!supabase) throw new Error("sale rows: no supabase client");
     const { data, error } = await supabase
       .from("products")
       .select(
-        "id, product_variants ( ml, price, sale_price, sale_starts_at, sale_ends_at, is_active, variant_price, variant_sale_label ), product_tags!inner ( tags!inner ( kind ) )",
+        "id, gender, inventory ( on_hand_ml, reserved_ml, is_sold_out ), product_variants ( id, ml, price, sale_price, sale_starts_at, sale_ends_at, is_active, variant_price, variant_sale_label ), product_tags!inner ( tags!inner ( kind ) )",
       )
       .eq("is_active", true)
       .eq("product_tags.tags.kind", "sale");
     if (error) throw new Error(`sale rows failed: ${error.message}`);
     return (
       (data as unknown as
-        | { id: string; product_variants: SaleVariantRow[] }[]
+        | (Omit<SaleRow, "variants"> & { product_variants: SaleVariantRow[] })[]
         | null) ?? []
-    ).map((r) => ({ id: r.id, variants: r.product_variants ?? [] }));
+    ).map((r) => ({
+      id: r.id,
+      gender: r.gender,
+      inventory: r.inventory,
+      variants: r.product_variants ?? [],
+    }));
   },
-  ["sale-rows"],
-  { revalidate: CATALOG_REVALIDATE, tags: [CACHE_TAG_CATALOG] },
+  ["sale-rows-v2"],
+  {
+    revalidate: CATALOG_REVALIDATE,
+    tags: [CACHE_TAG_CATALOG, CACHE_TAG_STOCK],
+  },
 );
+
+/**
+ * Картын үнийн хэмжээ (2.5) — `mapProduct`-ийн зарагдах дүрмээр (идэвхтэй,
+ * сав түгжээгүй, эх савны ml хүрэлцэнэ).
+ */
+function saleRowCardPrice(row: SaleRow, locks: BottleLockState) {
+  const inv = Array.isArray(row.inventory) ? row.inventory[0] : row.inventory;
+  const availableMl = inv ? inv.on_hand_ml - inv.reserved_ml : 0;
+  return cardSalePrice(
+    row.variants.map((v) => ({
+      ml: v.ml,
+      price: variantPrice(v),
+      basePrice: v.price,
+      sellable:
+        v.is_active &&
+        !inv?.is_sold_out &&
+        availableMl >= v.ml &&
+        !isBottleLocked(locks, row.gender, v.ml, v.id),
+    })),
+  );
+}
 
 /**
  * productId → хямдралын товч. Хувь нь идэвхтэй хэмжээнүүдийн `variant_price`-
@@ -687,10 +731,11 @@ export const getSaleSummaries = cache(
   async (): Promise<ReadonlyMap<string, SaleSummary>> => {
     const out = new Map<string, SaleSummary>();
     if (!isSupabaseConfigured) return out;
-    const [rows, events, showEnds] = await Promise.all([
+    const [rows, events, showEnds, locks] = await Promise.all([
       fetchSaleRows(),
       getLiveSaleEvents(),
       isFeatureEnabled("sale_display"),
+      getBottleLocks(),
     ]);
     // Бараа давхцсан хоёр LIVE арга хэмжээнд орохгүй (0181 trigger) — ойрыг нь.
     const eventEnds = new Map<string, string>();
@@ -706,11 +751,13 @@ export const getSaleSummaries = cache(
         active.map((v) => ({ basePrice: v.price, price: variantPrice(v) })),
       );
       if (!summary) continue;
+      const card = saleRowCardPrice(row, locks);
+      const base = card ? { ...summary, card } : summary;
       out.set(
         row.id,
         showEnds
           ? {
-              ...summary,
+              ...base,
               // Өнгөрсөн мөч (хоцорсон кэш) алгасагдана — «ойр» болохгүй.
               endsAt: earliestEnd(
                 active.map((v) =>
@@ -719,7 +766,7 @@ export const getSaleSummaries = cache(
                 now.getTime(),
               ),
             }
-          : summary,
+          : base,
       );
     }
     return out;
@@ -731,8 +778,11 @@ async function withSale(items: ProductListItem[]): Promise<ProductListItem[]> {
   if (!items.some((p) => p.tags.includes("sale"))) return items;
   const sales = await getSaleSummaries();
   return items.map((p) => {
-    const sale = p.tags.includes("sale") ? sales.get(p.id) : undefined;
-    return sale ? { ...p, sale } : p;
+    const found = p.tags.includes("sale") ? sales.get(p.id) : undefined;
+    if (!found) return p;
+    // Картын үнийн хэмжээ (2.5) нь тусдаа талбар — товчоос салгана.
+    const { card, ...sale } = found;
+    return card ? { ...p, sale, cardPrice: card } : { ...p, sale };
   });
 }
 

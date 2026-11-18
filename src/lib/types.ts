@@ -6,7 +6,7 @@ import type {
   Sillage,
   TagKind,
 } from "@/db/types";
-import type { SaleSummary } from "@/features/products/sale";
+import type { CardSalePrice, SaleSummary } from "@/features/products/sale";
 
 /** A priced decant size for a product. */
 export interface Variant {
@@ -117,6 +117,12 @@ export interface ProductListItem {
    * «Хямдралтай 10–30%» ба тоолуур. Server тооцоолно (`getCatalog`).
    */
   sale?: SaleSummary;
+  /**
+   * Картын үнийн орлох хэмжээ (task 2.5, `cardSalePrice`): хамгийн хямд
+   * зарагдах хэмжээ хямдраагүй ч өөр хэмжээ хямдарсан үед л. Байхгүй бол
+   * карт `startingPrice`-ийг харуулна.
+   */
+  cardPrice?: CardSalePrice;
 }
 
 /** Full product detail page payload. */

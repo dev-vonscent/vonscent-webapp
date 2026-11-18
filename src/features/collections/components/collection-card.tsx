@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/format";
+import { bundleCardPrice } from "../pricing";
 import { GENDER_LABEL } from "@/lib/constants";
 import type { CollectionCardData } from "../types";
 import { GenderBadge } from "@/features/products/components/gender-badge";
@@ -34,6 +35,8 @@ export function CollectionCard({
     return <RailCollectionCard collection={collection} prefer={prefer} />;
   const start = collection.startingPrice;
   const startMl = collection.availableMls[0];
+  // 2.5: event зөвхөн том хэмжээнд хэмнэлт өгсөн бол тэр хэмжээний үнэ.
+  const card = bundleCardPrice(collection.prices);
 
   return (
     <div className="group flex flex-col">
@@ -75,10 +78,15 @@ export function CollectionCard({
           {!collection.soldOut && start > 0 && (
             <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
               <span className="text-sm leading-none font-semibold tracking-tight text-white sm:text-base">
-                {formatPrice(start)}-өөс
+                {card ? formatPrice(card.price) : `${formatPrice(start)}-өөс`}
               </span>
+              {card && (
+                <span className="text-xs leading-none text-white/75 line-through sm:text-sm">
+                  {formatPrice(card.memberSum)}
+                </span>
+              )}
               <span className="text-xs leading-none text-white/75 sm:text-sm">
-                {collection.members.length} × {startMl}ml
+                {collection.members.length} × {card ? card.ml : startMl}ml
               </span>
             </span>
           )}
@@ -115,6 +123,8 @@ function RailCollectionCard({
 }) {
   const start = collection.startingPrice;
   const startMl = collection.availableMls[0];
+  // 2.5: event зөвхөн том хэмжээнд хэмнэлт өгсөн бол тэр хэмжээний үнэ.
+  const card = bundleCardPrice(collection.prices);
   const href = `/collections/${collection.slug}`;
   const status = cardStatus(collection, prefer);
 
@@ -178,10 +188,18 @@ function RailCollectionCard({
         {/* «-өөс» ба «4 × 2ml» — тэр дүн хамгийн бага хэмжээний бүтэн багцын
             үнэ гэдгийг хэлнэ. */}
         {!collection.soldOut && start > 0 && (
-          <span className="text-foreground/70 mt-1.5 flex items-baseline gap-1.5 text-sm font-semibold tracking-tight">
-            {formatPrice(start)}-өөс
+          <span
+            data-testid="card-price"
+            className="text-foreground/70 mt-1.5 flex flex-wrap items-baseline gap-x-1.5 text-sm font-semibold tracking-tight"
+          >
+            {card ? formatPrice(card.price) : `${formatPrice(start)}-өөс`}
+            {card && (
+              <span className="text-muted-foreground text-xs font-normal line-through">
+                {formatPrice(card.memberSum)}
+              </span>
+            )}
             <span className="text-muted-foreground text-xs font-normal">
-              {collection.members.length} × {startMl}ml
+              {collection.members.length} × {card ? card.ml : startMl}ml
             </span>
           </span>
         )}

@@ -108,15 +108,7 @@ export function ProductCard({
         >
           {product.name}
         </Link>
-        <span className="text-foreground/70 mt-1.5 flex items-baseline gap-1.5 text-sm font-semibold tracking-tight">
-          {formatPrice(product.startingPrice)}
-          {/* Зөвхөн үндсэн үнэ (зураастай) — хувь харуулахгүй (backlog B4). */}
-          {product.startingBasePrice > product.startingPrice && (
-            <span className="text-muted-foreground text-xs font-normal line-through">
-              {formatPrice(product.startingBasePrice)}
-            </span>
-          )}
-        </span>
+        <CardPrice product={product} />
         {/* Хямдрал дуусах тоолуур (2.2, туг `sale_display`) — хугацаагүй
             хямдрал, дууссан бараанд гарахгүй. */}
         {!product.soldOut && (
@@ -124,5 +116,43 @@ export function ProductCard({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Картын үнэ. Хамгийн хямд зарагдах хэмжээ хямдраагүй ч өөр хэмжээ
+ * хямдарсан бол (task 2.5, `cardPrice`) тэр хамгийн жижиг хямдарсан
+ * хэмжээний үнэ + зураастай үндсэн үнийг ХЭМЖЭЭТЭЙ нь: «5ml · 21,300₮
+ * ~~25,000₮~~». Эс бөгөөс өмнөх шиг хамгийн бага үнэ.
+ */
+export function CardPrice({
+  product,
+}: {
+  product: Pick<
+    ProductListItem,
+    "startingPrice" | "startingBasePrice" | "cardPrice"
+  >;
+}) {
+  const card = product.cardPrice;
+  const price = card ? card.price : product.startingPrice;
+  const base = card ? card.basePrice : product.startingBasePrice;
+  return (
+    <span
+      data-testid="card-price"
+      className="text-foreground/70 mt-1.5 flex flex-wrap items-baseline gap-x-1.5 text-sm font-semibold tracking-tight"
+    >
+      {card && (
+        <span className="text-muted-foreground text-xs font-normal">
+          {card.ml}ml ·
+        </span>
+      )}
+      {formatPrice(price)}
+      {/* Зөвхөн үндсэн үнэ (зураастай) — хувь нь chip дээр. */}
+      {base > price && (
+        <span className="text-muted-foreground text-xs font-normal line-through">
+          {formatPrice(base)}
+        </span>
+      )}
+    </span>
   );
 }
