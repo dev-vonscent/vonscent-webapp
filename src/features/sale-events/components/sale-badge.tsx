@@ -79,14 +79,16 @@ export function SaleChip({
       variant="sale"
       data-ticker={theme ?? undefined}
       className={cn(
-        "w-fit gap-1",
+        // max-w-full: картын зүрх/сагсны icon-уудын зайгаар хязгаарлагдсан
+        // контейнерт багтана — нэр нь таслагдаж, хувь ҮРГЭЛЖ харагдана.
+        "w-fit max-w-full min-w-0 gap-1",
         theme
           ? "bg-announce! text-announce-chip! font-semibold"
           : surface === "image" && "bg-background/85! backdrop-blur-sm",
         className,
       )}
     >
-      {children}
+      <span className="min-w-0 truncate">{children}</span>
       {pct && (
         <span
           className={cn(

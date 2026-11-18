@@ -54,7 +54,9 @@ export function ProductCard({
             className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           />
         )}
-        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
+        {/* right-12: баруун дээд буланд зүрх/сагсны icon (size-8 + 10px) —
+            «Black Friday ~30%» chip доогуур нь орж тасрахгүй. */}
+        <div className="absolute top-2.5 right-12 left-2.5 flex flex-col items-start gap-1">
           {/* Нэг төлөв + хямдрал — хамгийн ихдээ хоёр badge. */}
           {statusLabel && (
             <Badge

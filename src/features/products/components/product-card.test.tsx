@@ -82,6 +82,24 @@ describe("ProductCard — «Хямдралтай» chip + хувь (2.3, 2.4)", 
     expect(screen.getByText("~30%")).toBeTruthy();
   });
 
+  it("chip icon-уудын зайгаар хязгаарлагдана: нэр таслагдана, хувь үргэлж (5)", () => {
+    render(
+      <ProductCard
+        product={item({
+          tags: ["sale"],
+          sale: { minPct: 10, maxPct: 30, allSizes: false },
+        })}
+      />,
+    );
+    const name = screen.getByText("Хямдралтай");
+    expect(name.className).toContain("truncate");
+    const pct = screen.getByText("~30%");
+    expect(pct.className).toContain("shrink-0");
+    const chip = pct.parentElement!;
+    expect(chip.className).toContain("max-w-full");
+    expect(chip.parentElement!.className).toContain("right-12");
+  });
+
   it("хямдралгүй бараанд chip гарахгүй", () => {
     render(<ProductCard product={item()} />);
     expect(screen.queryByText("Хямдралтай")).toBeNull();
