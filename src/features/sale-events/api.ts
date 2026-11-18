@@ -56,9 +56,7 @@ interface LiveRow {
 }
 
 /** Сангийн утга → мэдэгдэх өнгө; бусад / хоосон → null (өгөгдмөл). */
-function tickerTheme(
-  v: string | null | undefined,
-): SaleEventTickerTheme | null {
+function tickerTheme(v: string | null | undefined): SaleEventTickerTheme | null {
   return (SALE_EVENT_TICKER_THEMES as readonly string[]).includes(v ?? "")
     ? (v as SaleEventTickerTheme)
     : null;
@@ -306,11 +304,7 @@ interface ProductRow {
   brand: string;
   gender: SaleEventProduct["gender"];
   product_variants: { ml: number; price: number; is_active: boolean }[];
-  product_images: {
-    url: string;
-    sort_order: number;
-    is_visible: boolean | null;
-  }[];
+  product_images: { url: string; sort_order: number; is_visible: boolean | null }[];
 }
 
 /**

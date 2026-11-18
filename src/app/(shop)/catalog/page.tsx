@@ -165,9 +165,7 @@ export default async function CatalogPage({
               data-page-title
               className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl"
             >
-              {filters.search
-                ? `«${filters.search}» хайлтын үр дүн`
-                : "Каталог"}
+              {filters.search ? `«${filters.search}» хайлтын үр дүн` : "Каталог"}
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
               {counts || "0 бараа"}
@@ -292,11 +290,7 @@ async function resolveEvent(parsed: ReturnType<typeof parseFilters>): Promise<{
   }
   // Эхлэх мөчийн кэшийн завсарт (≤1 мин, cron цэвэрлэнэ) `pub` нь live,
   // жагсаалт хуучин байж болно — «эхэлнэ» гэж харуулна, «дууссан» биш.
-  const state = !pub
-    ? "missing"
-    : pub.state === "live"
-      ? "scheduled"
-      : pub.state;
+  const state = !pub ? "missing" : pub.state === "live" ? "scheduled" : pub.state;
   return {
     filters: { ...parsed, event: undefined },
     eventBanner: {

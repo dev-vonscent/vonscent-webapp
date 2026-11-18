@@ -85,9 +85,7 @@ export function useSaleEventPct(productId: string): number | null {
 }
 
 /** Энэ бараа live арга хэмжээнд байвал тэр арга хэмжээний зурвасны өнгө. */
-export function useSaleEventTheme(
-  productId: string,
-): SaleEventTickerTheme | null {
+export function useSaleEventTheme(productId: string): SaleEventTickerTheme | null {
   return useValue().themes[productId] ?? null;
 }
 

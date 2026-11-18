@@ -371,23 +371,12 @@ export { dayGenitive, daysInclusive } from "@/features/admin/lib/period";
  * (Улаанбаатарын цагаар)». Арга хэмжээнд хоёр өдөр хоёулаа заавал тул дутуу /
  * буруу дараалалтай бол null. Бие нь админы дундын `periodSentence` (task 7).
  */
-export function periodSentence(
-  startsOn: string,
-  endsOn: string,
-): string | null {
+export function periodSentence(startsOn: string, endsOn: string): string | null {
   if (!DAY_RE.test(startsOn) || !DAY_RE.test(endsOn)) return null;
   return sharedPeriodSentence(startsOn, endsOn);
 }
 
-const WEEKDAYS = [
-  "Ням",
-  "Даваа",
-  "Мягмар",
-  "Лхагва",
-  "Пүрэв",
-  "Баасан",
-  "Бямба",
-];
+const WEEKDAYS = ["Ням", "Даваа", "Мягмар", "Лхагва", "Пүрэв", "Баасан", "Бямба"];
 
 /** «11/23». */
 export function shortDay(key: string): string {
