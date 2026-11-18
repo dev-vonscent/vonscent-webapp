@@ -59,8 +59,23 @@ export interface CollectionPriceAtMl {
   nominalDiscountPct: number;
   /** memberSum − price. */
   saved: number;
+  /**
+   * LIVE арга хэмжээний НЭМЭЛТ хэмнэлт (16.7): суурь хувиар бодсон үнэ −
+   * `price`. `saved`-ийн нэг хэсэг; задаргаанд «<Event нэр>» мөр болно.
+   * Event-гүй / туг хаалттай бол байхгүй.
+   */
+  eventSaving?: number;
   /** Every member has an active, in-stock variant at this ml. */
   available: boolean;
+}
+
+/** Багцын LIVE арга хэмжээ (16.7, 0190 `live_event_collection_discounts`). */
+export interface CollectionEvent {
+  slug: string;
+  /** Хэрэглэгчид харагдах нэр — задаргааны мөр. */
+  name: string;
+  /** ml → event-ийн хувь (суурь хувийг орлоно, greatest). */
+  pcts: Record<number, number>;
 }
 
 /** A base or saved-custom collection resolved with live member data. */
@@ -104,6 +119,11 @@ export interface Collection {
   /** True once no ml is fully in stock / any member is inactive. */
   soldOut: boolean;
   createdAt: string;
+  /**
+   * LIVE арга хэмжээ, аль нэг хэмжээнд хэмнэлт өгч байвал (16.7) — каталогийн
+   * `?event=`, badge. Туг хаалттай / event-гүй бол null эсвэл байхгүй.
+   */
+  event?: CollectionEvent | null;
 }
 
 /**
