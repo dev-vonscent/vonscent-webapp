@@ -298,6 +298,8 @@ export function CollectionBrowser({
                   theme={e.tickerTheme}
                   active={event === e.slug}
                   onClick={() => setEvent(event === e.slug ? null : e.slug)}
+                  // Утсан дээр мөрийг бүтэн дүүргэнэ (олон бол тэнцүү хуваана).
+                  className="flex-1 sm:flex-none"
                 >
                   {e.name}
                 </EventFilterChip>
