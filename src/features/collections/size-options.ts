@@ -28,7 +28,8 @@ export function bundleSizeOptions(
       note: p.available ? null : complete ? "Дууссан" : "Байхгүй",
       selectable: p.available || complete,
       buyable: p.available,
-      onSale: (p.eventSaving ?? 0) > 0,
+      // Үнийн хэсэгтэй ижил: админы амласан хувь (event үед event-ийн).
+      salePct: (p.eventSaving ?? 0) > 0 ? p.nominalDiscountPct : 0,
       sprays: spraysText(p.ml, true),
       price: p.price,
       totalMl: p.ml * Math.max(count, 1),

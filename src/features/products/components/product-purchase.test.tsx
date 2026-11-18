@@ -108,8 +108,12 @@ describe("ProductPurchase", () => {
         ])}
       />,
     );
-    const five = screen.getByRole("radio", { name: "5ml — хямдралтай" });
+    const five = screen.getByRole("radio", { name: "5ml — 15% хямдралтай" });
     expect(five.getAttribute("data-sale")).toBe("true");
+    // Бодит хувь starburst дотор.
+    const burst = five.querySelector("[data-marker=burst]");
+    expect(burst?.textContent).toBe("−15%");
+    expect(burst?.querySelector("svg polygon")).not.toBeNull();
     expect(
       screen.getByRole("radio", { name: "2ml" }).getAttribute("data-sale"),
     ).toBeNull();
@@ -240,5 +244,26 @@ describe("ProductPurchase", () => {
       "Үлдэгдэл хомс",
     );
     expect(screen.getByText("6")).toBeTruthy();
+  });
+});
+
+describe("SizeSelector sale marker shapes", () => {
+  it("pill хувилбар ч бодит хувьтай", async () => {
+    const { SizeSelector } = await import("./size-selector");
+    const { productSizeOptions } = await import("../size-options");
+    const opts = productSizeOptions([
+      variant(2, 12000),
+      variant(5, 21300, { basePrice: 25000 }),
+    ]);
+    render(
+      <SizeSelector
+        options={opts}
+        value={opts[0].id}
+        onChange={() => {}}
+        saleMarker="pill"
+      />,
+    );
+    const five = screen.getByRole("radio", { name: "5ml — 15% хямдралтай" });
+    expect(five.querySelector("[data-marker=pill]")?.textContent).toBe("−15%");
   });
 });

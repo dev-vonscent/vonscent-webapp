@@ -128,7 +128,11 @@ describe("CollectionDetail size buttons", () => {
     const ENDS = new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString();
     const prices = [
       price(2, 38000, true, { memberSum: 40000 }),
-      price(5, 81000, true, { memberSum: 90000, eventSaving: 4500 }),
+      price(5, 81000, true, {
+        memberSum: 90000,
+        eventSaving: 4500,
+        nominalDiscountPct: 10,
+      }),
       ...PRICES.slice(2),
     ];
     const c = collection(prices, {
@@ -147,7 +151,9 @@ describe("CollectionDetail size buttons", () => {
         </FeatureFlagsProvider>,
       );
       expect(screen.queryByRole("timer")).toBeNull();
-      const five = screen.getByRole("radio", { name: "5ml ×4 — хямдралтай" });
+      const five = screen.getByRole("radio", {
+        name: "5ml ×4 — 10% хямдралтай",
+      });
       await userEvent.click(five);
       expect(screen.getByRole("timer")).toBeTruthy();
       await userEvent.click(screen.getByRole("radio", { name: "2ml ×4" }));
@@ -161,7 +167,7 @@ describe("CollectionDetail size buttons", () => {
         </FeatureFlagsProvider>,
       );
       await userEvent.click(
-        screen.getByRole("radio", { name: "5ml ×4 — хямдралтай" }),
+        screen.getByRole("radio", { name: "5ml ×4 — 10% хямдралтай" }),
       );
       expect(screen.queryByRole("timer")).toBeNull();
     });

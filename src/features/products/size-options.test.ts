@@ -113,7 +113,7 @@ describe("size options (task 15, 4, 2.6)", () => {
       v(2),
       v(5, { price: 21000, basePrice: 25000 }),
     ]);
-    expect(opts.map((o) => o.onSale)).toEqual([false, true]);
+    expect(opts.map((o) => o.salePct)).toEqual([0, 16]);
   });
 
   it("анхдагч: зарагдах хамгийн эхний хэмжээ, дууссаныг алгасна", () => {

@@ -32,8 +32,11 @@ export interface SizeOption {
   selectable: boolean;
   /** Өнөөдөр худалдан авч болох уу. */
   buyable: boolean;
-  /** Энэ хэмжээ хямдралтай эсэх — карт дээрх тэмдэг (2.6). */
-  onSale: boolean;
+  /**
+   * Энэ хэмжээний хямдралын хувь (0 = хямдралгүй) — карт дээрх «−15%»
+   * тэмдэг (2.6). Үнийн хэсгийн хувьтай ижил эх үүсвэр.
+   */
+  salePct: number;
   /** «75 цацалт», багцад «тус бүр 75 цацалт». */
   sprays: string;
   /** Одоогийн бодит үнэ (₮) — 1ml-ийн үнийн харьцуулалтад. */
@@ -125,7 +128,7 @@ export function productSizeOptions(
           : "Дууссан",
     selectable: v.isActive,
     buyable: v.sellable,
-    onSale: v.isActive && salePct(v.basePrice, v.price) > 0,
+    salePct: v.isActive ? salePct(v.basePrice, v.price) : 0,
     sprays: spraysText(v.ml),
     price: v.price,
     totalMl: v.ml,

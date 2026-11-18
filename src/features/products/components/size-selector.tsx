@@ -34,9 +34,9 @@ const NAV_KEYS = [
  * - Дууссан / савгүй хэмжээ СОНГОГДОНО (task 4): үнэ нь дээр харагдана,
  *   худалдан авах товчийг дуудагч идэвхгүй болгоно. Зөвхөн «Зарахгүй»
  *   (админы хаасан, багцад бүрэн бус) сонгогдохгүй.
- * - Хямдралтай хэмжээ (2.6): картын баруун дээд буланд «%» тэмдэг —
- *   `destructive` token-ий жижиг дугуй, картын ГАДНА ирмэг дээр тул сонгогдсон
- *   (`bg-cta`) ч, сонгогдоогүй ч ижил харагдана.
+ * - Хямдралтай хэмжээ (2.6): картын баруун дээд буланд бодит хувь «−15%» —
+ *   `destructive` token-ий жижиг starburst (эсвэл pill), картын ирмэгээс
+ *   гарсан тул сонгогдсон (`bg-cta`) ч, сонгогдоогүй ч ижил харагдана.
  * - «Туршиж үзэх» / «Хамгийн ашигтай» тэмдэг картаас авагдаж, сонгогчийн
  *   ДООР нэг мөр болсон (`SIZE_HINTS`).
  * - radiogroup: сум / Home / End товчоор нүүж сонгоно, фокус бүлэгт ганц
@@ -49,11 +49,14 @@ export function SizeSelector({
   value,
   onChange,
   heading = "Хэмжээ сонгох",
+  saleMarker = "burst",
 }: {
   options: readonly SizeOption[];
   value: string;
   onChange: (id: string) => void;
   heading?: string;
+  /** Хямдралын тэмдгийн хэлбэр (2.6): `burst` анхдагч, `pill` нөөц. */
+  saleMarker?: "burst" | "pill";
 }) {
   const labelId = React.useId();
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
@@ -116,10 +119,14 @@ export function SizeSelector({
               aria-checked={active}
               aria-disabled={o.selectable ? undefined : true}
               tabIndex={o.id === tabStop ? 0 : -1}
-              aria-label={[o.label, o.note, o.onSale ? "хямдралтай" : null]
+              aria-label={[
+                o.label,
+                o.note,
+                o.salePct > 0 ? `${o.salePct}% хямдралтай` : null,
+              ]
                 .filter(Boolean)
                 .join(" — ")}
-              data-sale={o.onSale || undefined}
+              data-sale={o.salePct > 0 || undefined}
               onClick={() => o.selectable && onChange(o.id)}
               className={cn(
                 "relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-2",
@@ -130,13 +137,8 @@ export function SizeSelector({
                     : "bg-secondary hover:bg-accent",
               )}
             >
-              {o.onSale && (
-                <span
-                  aria-hidden
-                  className="bg-destructive text-destructive-foreground absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full text-[11px] leading-none font-bold"
-                >
-                  %
-                </span>
+              {o.salePct > 0 && (
+                <SaleMarker pct={o.salePct} shape={saleMarker} />
               )}
               {/* Зураас зөвхөн хэмжээн дээр: «Дууссан» гэдэг үгийг
                   зурвал уншигдахгүй. */}
@@ -200,5 +202,46 @@ function SizeHintRow({
       )}
       <span>{hint?.text}</span>
     </p>
+  );
+}
+
+/** 12 хошуут starburst (viewBox 0–100): гадна 50, дотор 43 радиус. */
+const BURST_POINTS = Array.from({ length: 24 }, (_, i) => {
+  const r = i % 2 === 0 ? 50 : 43;
+  const a = (Math.PI * i) / 12 - Math.PI / 2;
+  return `${(50 + r * Math.cos(a)).toFixed(2)},${(50 + r * Math.sin(a)).toFixed(2)}`;
+}).join(" ");
+
+/**
+ * Картын хямдралын тэмдэг «−15%» (2.6). Өнгө нь `destructive` /
+ * `destructive-foreground` token — theme бүрт contrast-аа хадгална (black
+ * theme-д цайвар улаан дээр бараан тоо). Дэлгэц уншигчид картын aria-label
+ * «15% хямдралтай» хэлнэ — энд aria-hidden.
+ */
+function SaleMarker({ pct, shape }: { pct: number; shape: "burst" | "pill" }) {
+  if (shape === "pill") {
+    return (
+      <span
+        aria-hidden
+        data-marker="pill"
+        className="bg-destructive text-destructive-foreground absolute -top-2 -right-1.5 rounded-full px-1.5 py-0.5 text-[11px] leading-none font-bold tabular-nums"
+      >
+        −{pct}%
+      </span>
+    );
+  }
+  return (
+    <span
+      aria-hidden
+      data-marker="burst"
+      className="absolute -top-3 -right-2.5 flex size-10 items-center justify-center"
+    >
+      <svg viewBox="0 0 100 100" className="text-destructive absolute inset-0">
+        <polygon points={BURST_POINTS} fill="currentColor" />
+      </svg>
+      <span className="text-destructive-foreground relative text-[11px] leading-none font-bold tracking-tight tabular-nums">
+        −{pct}%
+      </span>
+    </span>
   );
 }
