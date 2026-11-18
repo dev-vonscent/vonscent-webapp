@@ -53,7 +53,9 @@ export interface SizeOption {
  * «тус бүр 75 цацалт» (үнэртэн бүрт).
  */
 export function spraysText(ml: number, each = false): string {
-  return `${each ? "тус бүр " : ""}${ml * SPRAYS_PER_ML} цацалт`;
+  // «тус бүр» салгагдахгүй зай (U+00A0) — нарийн картад «тус / бүр 30»
+  // гэж хуваагдахгүй.
+  return `${each ? "тус\u00a0бүр " : ""}${ml * SPRAYS_PER_ML} цацалт`;
 }
 
 /**

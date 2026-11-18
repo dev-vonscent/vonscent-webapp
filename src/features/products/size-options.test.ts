@@ -29,7 +29,7 @@ describe("size options (task 15, 4, 2.6)", () => {
     expect(spraysText(2)).toBe("30 цацалт");
     expect(spraysText(5)).toBe("75 цацалт");
     expect(spraysText(20)).toBe("300 цацалт");
-    expect(spraysText(5, true)).toBe("тус бүр 75 цацалт");
+    expect(spraysText(5, true)).toBe("тус\u00a0бүр 75 цацалт");
   });
 
   it("хэмжээ бүрийн доорх зөвлөмж (SIZE_HINTS)", () => {
