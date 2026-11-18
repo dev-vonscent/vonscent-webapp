@@ -67,10 +67,10 @@ describe("CollectionDetail size buttons", () => {
     price(20, 240000, false),
   ];
 
-  it("card: one scent's size × the scent count and ≈ sprays, no price", () => {
+  it("card: one scent's size × the scent count and sprays, no price", () => {
     render(<CollectionDetail collection={collection(PRICES)} />);
     const tenMl = screen.getByRole("radio", { name: "10ml ×4" });
-    expect(tenMl.textContent).toBe("10ml ×4≈ 150 цацалт");
+    expect(tenMl.textContent).toBe("10ml ×4тус бүр 150 цацалт");
     expect(tenMl.textContent).not.toMatch(/₮/);
   });
 

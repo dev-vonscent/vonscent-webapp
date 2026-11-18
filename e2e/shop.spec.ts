@@ -63,7 +63,7 @@ test("product size selector: price follows the size, sold-out size is selectable
   // Анхдагч: зарагдах хамгийн эхний хэмжээ; карт дээр үнэгүй, цацалттай.
   const five = group.getByRole("radio", { name: "5ml" });
   await expect(five).toHaveAttribute("aria-checked", "true");
-  await expect(five).toContainText("≈ 75 цацалт");
+  await expect(five).toContainText("75 цацалт");
   await expect(five).not.toContainText("₮");
   await expect(price).toContainText("40,800₮");
   await expect(hint).toHaveText("Халаасанд багтахуйц");

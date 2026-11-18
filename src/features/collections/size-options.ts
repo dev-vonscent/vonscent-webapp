@@ -1,10 +1,10 @@
-import type { SizeOption } from "@/features/products/size-options";
+import { spraysText, type SizeOption } from "@/features/products/size-options";
 import { bundleSaleEndsAt } from "./pricing";
 import type { CollectionCardData, CollectionPriceAtMl } from "./types";
 
 /**
  * Бэлэн багцын хэмжээнүүд → нэгдсэн хэмжээ сонгогчийн карт (task 15).
- * Карт дээр «5ml ×4» + нэг үнэртний «≈ 75 цацалт».
+ * Карт дээр «5ml ×4» + «тус бүр 75 цацалт».
  *
  * - Бүх гишүүнд энэ хэмжээ БАЙГАА ч аль нэг нь дууссан → «Дууссан», СОНГОГДОНО
  *   (task 4 — үнэ нь бүрэн, дээр харагдана; товч идэвхгүй).
@@ -29,6 +29,7 @@ export function bundleSizeOptions(
       selectable: p.available || complete,
       buyable: p.available,
       onSale: (p.eventSaving ?? 0) > 0,
+      sprays: spraysText(p.ml, true),
       price: p.price,
       totalMl: p.ml * Math.max(count, 1),
     };

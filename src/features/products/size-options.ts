@@ -21,7 +21,7 @@ export interface SizeOption {
   label: string;
   /**
    * Цацалтын тооны ОРОНД гарах төлөв («Дууссан», «Түр байхгүй»,
-   * «Зарахгүй»). null бол зарагдаж байна → «≈ 75 цацалт».
+   * «Зарахгүй»). null бол зарагдаж байна → `sprays`.
    */
   note: string | null;
   /**
@@ -34,15 +34,20 @@ export interface SizeOption {
   buyable: boolean;
   /** Энэ хэмжээ хямдралтай эсэх — карт дээрх тэмдэг (2.6). */
   onSale: boolean;
+  /** «75 цацалт», багцад «тус бүр 75 цацалт». */
+  sprays: string;
   /** Одоогийн бодит үнэ (₮) — 1ml-ийн үнийн харьцуулалтад. */
   price: number;
   /** Нийт ml (усанд = `ml`, багцад `ml × гишүүдийн тоо`). */
   totalMl: number;
 }
 
-/** «≈ 75 цацалт» — нэг үнэртний ml-ээс (`SPRAYS_PER_ML`). */
-export function spraysText(ml: number): string {
-  return `≈ ${ml * SPRAYS_PER_ML} цацалт`;
+/**
+ * «75 цацалт» — нэг үнэртний ml-ээс (`SPRAYS_PER_ML`). Багцад
+ * «тус бүр 75 цацалт» (үнэртэн бүрт).
+ */
+export function spraysText(ml: number, each = false): string {
+  return `${each ? "тус бүр " : ""}${ml * SPRAYS_PER_ML} цацалт`;
 }
 
 /**
@@ -109,6 +114,7 @@ export function productSizeOptions(
     selectable: v.isActive,
     buyable: v.sellable,
     onSale: v.isActive && salePct(v.basePrice, v.price) > 0,
+    sprays: spraysText(v.ml),
     price: v.price,
     totalMl: v.ml,
   }));

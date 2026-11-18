@@ -60,10 +60,10 @@ beforeEach(() => {
 });
 
 describe("ProductPurchase", () => {
-  it("card shows only the size and ≈ sprays — no price, no ₮/ml", () => {
+  it("card shows only the size and sprays — no price, no ₮/ml", () => {
     render(<ProductPurchase product={product(SIZES)} />);
     const five = screen.getByRole("radio", { name: "5ml" });
-    expect(five.textContent).toBe("5ml≈ 75 цацалт");
+    expect(five.textContent).toBe("5ml75 цацалт");
     expect(five.textContent).not.toMatch(/₮/);
   });
 

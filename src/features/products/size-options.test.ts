@@ -24,9 +24,10 @@ function v(ml: number, over: Partial<Variant> = {}): Variant {
 
 describe("size options (task 15, 4, 2.6)", () => {
   it("цацалт = ml × SPRAYS_PER_ML", () => {
-    expect(spraysText(2)).toBe("≈ 30 цацалт");
-    expect(spraysText(5)).toBe("≈ 75 цацалт");
-    expect(spraysText(20)).toBe("≈ 300 цацалт");
+    expect(spraysText(2)).toBe("30 цацалт");
+    expect(spraysText(5)).toBe("75 цацалт");
+    expect(spraysText(20)).toBe("300 цацалт");
+    expect(spraysText(5, true)).toBe("тус бүр 75 цацалт");
   });
 
   it("хэмжээ бүрийн доорх зөвлөмж (SIZE_HINTS)", () => {

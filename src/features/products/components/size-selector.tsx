@@ -2,11 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import {
-  sizeHint,
-  spraysText,
-  type SizeOption,
-} from "@/features/products/size-options";
+import { sizeHint, type SizeOption } from "@/features/products/size-options";
 
 const NAV_KEYS = [
   "ArrowRight",
@@ -21,7 +17,7 @@ const NAV_KEYS = [
  * Хэмжээ сонгогч (task 15, 4, 2.6) — барааны дэлгэрэнгүй, бэлэн багцын
  * хуудас, хоёр quick-add бүгд ЭНЭ нэг компонент.
  *
- * - Карт дээр зөвхөн хэмжээ + «≈ 75 цацалт» (эсвэл төлөв: «Дууссан»,
+ * - Карт дээр зөвхөн хэмжээ + «75 цацалт» (эсвэл төлөв: «Дууссан»,
  *   «Түр байхгүй», «Зарахгүй»). Үнэ нь дээрх `SizePrice`-д.
  * - Дууссан / савгүй хэмжээ СОНГОГДОНО (task 4): үнэ нь дээр харагдана,
  *   худалдан авах товчийг дуудагч идэвхгүй болгоно. Зөвхөн «Зарахгүй»
@@ -96,7 +92,7 @@ export function SizeSelector({
       >
         {options.map((o, i) => {
           const active = o.id === value;
-          const status = o.note ?? spraysText(o.ml);
+          const status = o.note ?? o.sprays;
           return (
             <button
               key={o.id}
