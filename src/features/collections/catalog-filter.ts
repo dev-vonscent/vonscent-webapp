@@ -17,6 +17,8 @@ import type { Collection, CollectionCardData } from "./types";
  *   дууссан багц `catalogPrice`-аар.
  * - Хэмжээ: тэр хэмжээгээр бүтэн багц авч болох бол.
  * - Хайлт: багцын нэр, гишүүдийн нэр, брэнд.
+ * - Арга хэмжээ (`?event=`): тэр LIVE арга хэмжээнд орсон бэлэн багц (16.7);
+ *   туг хаалттай бол `event` байхгүй → багц гарахгүй (өмнөх зан төлөв).
  * Дууссан багц ч усны адил гарна («Түр байхгүй»), эрэмбэд ард нь.
  */
 export function filterCatalogCollections(
@@ -24,6 +26,8 @@ export function filterCatalogCollections(
   f: CatalogFilters,
 ): Collection[] {
   return all.filter((c) => {
+    // Арга хэмжээ (16.7): LIVE event-д орсон багц л (`Collection.event`).
+    if (f.event && c.event?.slug !== f.event) return false;
     if (f.gender?.length && !f.gender.includes(c.gender)) return false;
     if (f.brand?.length || f.family?.length || f.season?.length) return false;
     if (

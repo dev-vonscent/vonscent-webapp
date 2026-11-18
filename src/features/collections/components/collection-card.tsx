@@ -4,10 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/format";
 import { GENDER_LABEL } from "@/lib/constants";
 import type { CollectionCardData } from "../types";
-import { formatDiscountRange } from "@/features/collections/pricing";
 import { GenderBadge } from "@/features/products/components/gender-badge";
 import { WishlistButton } from "@/features/wishlist/components/wishlist-button";
 import { CollectionQuickAdd } from "./collection-quick-add";
+import { CollectionSaleBadge } from "@/features/sale-events/components/collection-sale-badge";
 
 import {
   CARD_STATUS_LABEL,
@@ -52,14 +52,7 @@ export function CollectionCard({
 
         {/* Badges */}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
-          {collection.discountRange.max > 0 && (
-            <Badge
-              variant="sale"
-              className="bg-background/85! w-fit backdrop-blur-sm"
-            >
-              −{formatDiscountRange(collection.discountRange)}
-            </Badge>
-          )}
+          <CollectionSaleBadge collection={collection} />
         </div>
 
         {/* Мэдээлэл зурагны доод хэсэгт, доороос дээш бүдгэрэх хар
@@ -144,14 +137,7 @@ function RailCollectionCard({
               {CARD_STATUS_LABEL[status]}
             </Badge>
           )}
-          {collection.discountRange.max > 0 && (
-            <Badge
-              variant="sale"
-              className="bg-background/85! w-fit backdrop-blur-sm"
-            >
-              −{formatDiscountRange(collection.discountRange)}
-            </Badge>
-          )}
+          <CollectionSaleBadge collection={collection} />
         </div>
         {collection.soldOut && (
           <div className="bg-background/70 absolute inset-0 flex items-center justify-center">

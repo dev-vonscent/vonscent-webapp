@@ -19,6 +19,8 @@ interface SaleEventsValue {
     name: string;
     /** Зурвасны өнгө — шүүлтүүрийн chip ижил өнгөтэй (`EventFilterChip`). */
     tickerTheme: SaleEventTickerTheme;
+    /** Картан дээрх тэмдэг (0181 `badge_label`) — багцын картад (16.7). */
+    badgeLabel?: string | null;
   }[];
   /** productId → картан дээрх тэмдэг (`badge_label`-тай арга хэмжээ л). */
   badges: Readonly<Record<string, string>>;

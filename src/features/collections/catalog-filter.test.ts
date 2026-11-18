@@ -145,3 +145,41 @@ describe("sortCatalogCollections", () => {
     ]);
   });
 });
+
+describe("арга хэмжээнд орсон багц (16.7)", () => {
+  const bf = { slug: "black-friday", name: "Black Friday", pcts: { 10: 10 } };
+  const inEvent = c({
+    id: "bf",
+    event: bf,
+    discountRange: { min: 10, max: 10 },
+  });
+  const plain = c({ id: "plain", discountRange: { min: 5, max: 5 } });
+  const noDiscount = c({ id: "none" });
+
+  it("?event= → зөвхөн тэр LIVE event-ийн багц", () => {
+    expect(
+      ids(
+        filterCatalogCollections([inEvent, plain], { event: "black-friday" }),
+      ),
+    ).toEqual(["bf"]);
+    expect(
+      filterCatalogCollections([inEvent], { event: "tsagaan-sar" }),
+    ).toHaveLength(0);
+  });
+
+  it("туг хаалттай (`event` байхгүй) → ?event= дээр багц гарахгүй (өмнөх шиг)", () => {
+    expect(
+      filterCatalogCollections([plain, noDiscount], { event: "black-friday" }),
+    ).toHaveLength(0);
+  });
+
+  it("«Хямдралтай» шүүлтүүрт event-ийн багц гарна", () => {
+    expect(
+      ids(
+        filterCatalogCollections([inEvent, plain, noDiscount], {
+          tags: ["sale"],
+        }),
+      ),
+    ).toEqual(["bf", "plain"]);
+  });
+});

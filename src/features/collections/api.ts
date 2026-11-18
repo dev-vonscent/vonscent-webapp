@@ -468,8 +468,9 @@ export async function getCatalogCollections(
   filters: CatalogFilters,
 ): Promise<{ items: Collection[]; total: number }> {
   if (filters.kind === "perfume") return { items: [], total: 0 };
-  // Арга хэмжээ (0181) нь ус л — багц хамаарахгүй.
-  if (filters.event) return { items: [], total: 0 };
+  // Арга хэмжээ (`?event=`): зөвхөн тэр LIVE арга хэмжээнд орсон бэлэн багц
+  // (16.7). Туг `sale_event_bundles` хаалттай бол `event` хэзээ ч бөглөгдөхгүй
+  // → өмнөх шигээ хоосон (`filterCatalogCollections`).
   const matched = sortCatalogCollections(
     filterCatalogCollections(await getBaseCollections(), {
       ...filters,

@@ -50,6 +50,7 @@ export default async function ShopLayout({
         slug: e.slug,
         name: e.name,
         tickerTheme: e.tickerTheme ?? SALE_EVENT_TICKER_DEFAULT,
+        badgeLabel: e.badgeLabel,
       }))}
       badges={eventBadgeMap(live)}
       pcts={pcts}
