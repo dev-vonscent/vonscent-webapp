@@ -18,6 +18,7 @@ import {
   defaultSizeId,
   productSizeOptions,
 } from "@/features/products/size-options";
+import { cardSalePrice } from "@/features/products/sale";
 import { SizeSelector } from "@/features/products/components/size-selector";
 import { SizePrice } from "@/features/products/components/size-price";
 import { AddToCartLabel } from "@/features/products/components/add-to-cart-label";
@@ -33,10 +34,17 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   // Сонгож болох ч худалдан авах боломжгүй хэмжээ байгаа эсэх (task 4).
   const hasUnbuyable =
     !product.soldOut && sizeOptions.some((o) => o.selectable && !o.buyable);
-  // Зарагдаж буй хамгийн эхний (жижиг) хэмжээ — дууссан хэмжээ анхдагч
-  // болохгүй (requirement_fb.md §"ml-ийн үнэ", task 4).
+  // Анхдагч хэмжээ = каталогийн картын / quick-add-ийн хэмжээ (2.5):
+  // хямдарсан хамгийн жижиг хэмжээ (`cardSalePrice`), эс бөгөөс зарагдаж буй
+  // хамгийн жижиг. Дууссан хэмжээ анхдагч болохгүй (requirement_fb.md
+  // §"ml-ийн үнэ", task 4). Зөвхөн props-оос — ISR-ийн render тогтмол.
   const [variantId, setVariantId] = React.useState(() =>
-    defaultSizeId(sizeOptions),
+    defaultSizeId(
+      sizeOptions,
+      product.tags.includes("sale")
+        ? cardSalePrice(product.variants)?.ml
+        : undefined,
+    ),
   );
   const [qty, setQty] = React.useState(1);
   const [added, setAdded] = React.useState(false);
