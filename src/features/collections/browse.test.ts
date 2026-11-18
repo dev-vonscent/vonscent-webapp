@@ -101,3 +101,13 @@ describe("filterByEvent — арга хэмжээний chip", () => {
     expect(ids(filterByEvent(list, null, ["black-friday"]))).toHaveLength(3);
   });
 });
+
+describe("COLLECTION_SORTS", () => {
+  it("«Хямдрал: их → бага» нь «Онцлох эхэндээ»-гийн дараа (2-т)", async () => {
+    const { COLLECTION_SORTS } = await import("./browse");
+    expect(COLLECTION_SORTS.map((s) => s.value).slice(0, 2)).toEqual([
+      "featured",
+      "discount",
+    ]);
+  });
+});

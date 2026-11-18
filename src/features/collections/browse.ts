@@ -15,10 +15,10 @@ export type CollectionSort =
 
 export const COLLECTION_SORTS: { value: CollectionSort; label: string }[] = [
   { value: "featured", label: "Онцлох эхэндээ" },
+  // Каталогийн 2.7-той ижил нэр, ижил логик (хувиар) — «Онцлох»-ийн дараа.
+  { value: "discount", label: "Хямдрал: их → бага" },
   { value: "price_asc", label: "Үнэ: бага → их" },
   { value: "price_desc", label: "Үнэ: их → бага" },
-  // Каталогийн 2.7-той ижил нэр, ижил логик (хувиар).
-  { value: "discount", label: "Хямдрал: их → бага" },
 ];
 
 /**
