@@ -50,7 +50,7 @@ export function SizeSelector({
   const labelId = React.useId();
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
   const selected = options.find((o) => o.id === value) ?? null;
-  const hint = sizeHint(selected?.ml);
+  const hint = sizeHint(options, selected);
   // Фокусын ганц зогсоол: сонгогдсон карт, эс бөгөөс сонгож болох эхнийх.
   const tabStop =
     selected?.selectable === true

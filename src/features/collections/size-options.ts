@@ -29,6 +29,8 @@ export function bundleSizeOptions(
       selectable: p.available || complete,
       buyable: p.available,
       onSale: (p.eventSaving ?? 0) > 0,
+      price: p.price,
+      totalMl: p.ml * Math.max(count, 1),
     };
   });
 }

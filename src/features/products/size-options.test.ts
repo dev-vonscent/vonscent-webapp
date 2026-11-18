@@ -30,12 +30,49 @@ describe("size options (task 15, 4, 2.6)", () => {
   });
 
   it("хэмжээ бүрийн доорх зөвлөмж (SIZE_HINTS)", () => {
-    expect(sizeHint(2)).toBe("Туршиж үзэхэд тохиромжтой");
-    expect(sizeHint(5)).toBe("Халаасанд багтахуйц");
-    expect(sizeHint(10)).toBe("Авч явахад тохиромжтой");
-    expect(sizeHint(20)).toBe("Хамгийн хэмнэлттэй сонголт");
-    expect(sizeHint(7)).toBeNull();
-    expect(sizeHint(null)).toBeNull();
+    // 1ml-ийн үнэ: 6000 / 5000 / 4500 / 4000 — 20ml хамгийн хямд.
+    const opts = productSizeOptions([
+      v(2, { price: 12000, basePrice: 12000 }),
+      v(5, { price: 25000, basePrice: 25000 }),
+      v(10, { price: 45000, basePrice: 45000 }),
+      v(20, { price: 80000, basePrice: 80000 }),
+    ]);
+    const hint = (i: number) => sizeHint(opts, opts[i]);
+    expect(hint(0)).toBe("Туршиж үзэхэд тохиромжтой");
+    expect(hint(1)).toBe("Халаасанд багтахуйц");
+    expect(hint(2)).toBe("Авч явахад тохиромжтой");
+    expect(hint(3)).toBe("Хамгийн хэмнэлттэй сонголт");
+    expect(sizeHint(opts, null)).toBeNull();
+  });
+
+  it("20ml-ийн 1ml-ийн үнэ хамгийн бага биш бол «Хамгийн том хэмжээ»", () => {
+    // 10ml хямдарч 1ml нь 3,800₮ < 20ml-ийн 4,000₮.
+    const opts = productSizeOptions([
+      v(2, { price: 12000, basePrice: 12000 }),
+      v(10, { price: 38000, basePrice: 45000 }),
+      v(20, { price: 80000, basePrice: 80000 }),
+    ]);
+    expect(sizeHint(opts, opts[2])).toBe("Хамгийн том хэмжээ");
+    // Тэнцүү бол хэмнэлттэй хэвээр.
+    const tie = productSizeOptions([
+      v(10, { price: 40000, basePrice: 40000 }),
+      v(20, { price: 80000, basePrice: 80000 }),
+    ]);
+    expect(sizeHint(tie, tie[1])).toBe("Хамгийн хэмнэлттэй сонголт");
+  });
+
+  it("«Зарахгүй» хэмжээ харьцуулалтад орохгүй, дууссан нь орно", () => {
+    const cheap10 = { price: 30000, basePrice: 30000 };
+    const off = productSizeOptions([
+      v(10, { ...cheap10, isActive: false, sellable: false }),
+      v(20, { price: 80000, basePrice: 80000 }),
+    ]);
+    expect(sizeHint(off, off[1])).toBe("Хамгийн хэмнэлттэй сонголт");
+    const sold = productSizeOptions([
+      v(10, { ...cheap10, inStock: false, sellable: false }),
+      v(20, { price: 80000, basePrice: 80000 }),
+    ]);
+    expect(sizeHint(sold, sold[1])).toBe("Хамгийн том хэмжээ");
   });
 
   it("дууссан хэмжээ сонгогдоно, зарахгүй нь үгүй", () => {
