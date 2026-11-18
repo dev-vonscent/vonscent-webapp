@@ -96,7 +96,14 @@ describe("ProductPurchase", () => {
     const hint = screen.getByTestId("size-hint");
     expect(hint.getAttribute("data-kind")).toBe("pocket");
     expect(hint.querySelector("svg")).not.toBeNull();
-    expect(hint.className).toContain("bg-muted");
+    // Дарагддаггүй мэдээлэл: дэвсгэргүй, cursor/hover үгүй, өнгөт icon.
+    expect(hint.getAttribute("data-look")).toBe("plain");
+    expect(hint.className).not.toContain("bg-");
+    expect(hint.className).toContain("cursor-default");
+    expect(hint.className).not.toContain("hover:");
+    expect(hint.querySelector("svg")?.getAttribute("class")).toContain(
+      "text-gold-strong",
+    );
   });
 
   it("marks discounted sizes on the card", () => {

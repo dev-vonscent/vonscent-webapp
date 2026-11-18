@@ -50,6 +50,7 @@ export function SizeSelector({
   onChange,
   heading = "Хэмжээ сонгох",
   saleMarker = "burst",
+  hintLook = "plain",
 }: {
   options: readonly SizeOption[];
   value: string;
@@ -57,6 +58,8 @@ export function SizeSelector({
   heading?: string;
   /** Хямдралын тэмдгийн хэлбэр (2.6): `burst` анхдагч, `pill` нөөц. */
   saleMarker?: "burst" | "pill";
+  /** Зөвлөмжийн мөрийн харагдац: `plain` анхдагч, `bordered` нөөц. */
+  hintLook?: "plain" | "bordered";
 }) {
   const labelId = React.useId();
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
@@ -166,7 +169,7 @@ export function SizeSelector({
       </div>
       {/* Нэг тогтсон газар — сонгосон хэмжээгээр icon + текст солигдоно.
           Өндөр нь тогтмол (хоосон үед ч) — layout үсрэхгүй. */}
-      <SizeHintRow hint={hint} />
+      <SizeHintRow hint={hint} look={hintLook} />
     </div>
   );
 }
@@ -180,13 +183,19 @@ const HINT_ICON: Record<SizeHintKind, LucideIcon> = {
 };
 
 /**
- * Хэмжээний зөвлөмж (task 15): `bg-muted` зөөлөн дэвсгэртэй нэг мөр, хэмжээнд
- * тохирох icon. `transition-colors` үгүй — сонголтоор шууд солигдоно.
+ * Хэмжээний зөвлөмж (task 15) — дарагддаггүй МЭДЭЭЛЭЛ: хэмжээний картуудтай
+ * адил дэвсгэр өгвөл бас нэг товч мэт харагддаг байв. Дэвсгэргүй, cursor /
+ * hover үгүй. `plain` (анхдагч) — зөвхөн icon + текст; `bordered` — нимгэн
+ * хүрээтэй. Icon `gold-strong` (theme-ийн өнгөт accent: navy/pink-д өнгөтэй,
+ * монохром black/white-д foreground), текст `foreground/80`.
+ * `transition-colors` үгүй — сонголтоор шууд солигдоно.
  */
 function SizeHintRow({
   hint,
+  look,
 }: {
   hint: { text: string; kind: SizeHintKind } | null;
+  look: "plain" | "bordered";
 }) {
   const Icon = hint ? HINT_ICON[hint.kind] : null;
   return (
@@ -194,13 +203,17 @@ function SizeHintRow({
       aria-live="polite"
       data-testid="size-hint"
       data-kind={hint?.kind}
+      data-look={look}
       className={cn(
-        "flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium",
-        hint ? "bg-muted text-foreground" : "invisible",
+        "text-foreground/80 flex min-h-10 cursor-default items-center gap-2 text-sm font-medium",
+        look === "bordered"
+          ? "ring-foreground/15 rounded-lg px-3 py-2 ring-1 ring-inset"
+          : "px-0.5 py-2",
+        !hint && "invisible",
       )}
     >
       {Icon && (
-        <Icon aria-hidden className="text-muted-foreground size-4 shrink-0" />
+        <Icon aria-hidden className="text-gold-strong size-4 shrink-0" />
       )}
       <span>{hint?.text}</span>
     </p>
