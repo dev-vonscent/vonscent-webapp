@@ -23,6 +23,12 @@ export interface Variant {
    * crossed-out figure the storefront shows.
    */
   basePrice: number;
+  /**
+   * Энэ үнийг тогтоож буй арга хэмжээний нэр (`Black Friday`, 0189). Гар
+   * хямдрал эсвэл хямдралгүй бол null — задаргаанд гар хямдрал «Хямдрал»
+   * гэж нэгтгэгдэнэ. Нэртэй хямдралын нэр энд ХЭЗЭЭ Ч ирэхгүй.
+   */
+  saleLabel?: string | null;
   isActive: boolean;
   /**
    * Can this size actually be filled from the remaining source ml?

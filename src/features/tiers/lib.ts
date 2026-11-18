@@ -53,8 +53,9 @@ export function tierProgress(spend: number): TierProgress {
  * `floor(v_base * v_rate / 100)`-ийн хуулбар (lib/loyalty.ts-ийн
  * `pointsEarnedFor`-ийн туг асаалттай үеийн хувилбар).
  */
-export function pointsAtTierRate(goodsAfterDiscount: number, rate: number) {
-  const base = Math.max(Math.round(goodsAfterDiscount), 0);
+export function pointsAtTierRate(paidTotal: number, rate: number) {
+  // Суурь = QPay-ээр төлсөн дүн (`orders.total`, 0189).
+  const base = Math.max(Math.round(paidTotal), 0);
   return Math.floor((base * rate) / 100);
 }
 

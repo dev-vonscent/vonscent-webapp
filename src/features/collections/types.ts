@@ -42,16 +42,15 @@ export interface CollectionPriceAtMl {
   /** Эцсийн үнэ: тогтмол үнэ, эсвэл нийлбэрээс хувь хассан дүн. */
   price: number;
   /**
-   * Бодит хэмнэлтийн хувь (`memberSum` → `price`). Админы бичсэн хувь биш —
-   * тогтмол үнэтэй хэмжээнд тэр хувь худал болно. Нэг ТОДОРХОЙ хэмжээг
+   * Бодит хэмнэлтийн хувь (`memberSum` → `price`, 100₮-т тэгшлэсний дараах).
+   * Нэг ТОДОРХОЙ хэмжээг
    * харуулах газарт (сагс, дэлгэрэнгүй хуудас) үүнийг ашигла.
    */
   discountPct: number;
   /**
    * Зар сурталчилгааны (badge) хувь: admin-ий амласан ХУВЬ өөрөө
    * (`discountForMl`-ийн үр дүн), ₮-т 100-д тэгшлэхээс гарах ойролцоо
-   * зөрүүг жинхэнэ ялгаа мэт үзүүлэхгүйн тулд. Тогтмол үнэтэй хэмжээнд
-   * (`MlPrices`) ийм амлалт байхгүй тул `discountPct`-тай адил.
+   * зөрүүг жинхэнэ ялгаа мэт үзүүлэхгүйн тулд.
    *
    * Хэд хэдэн хэмжээг НЭГ дор харьцуулах газарт (`discountRange`) үүнийг
    * ашигла — эс бөгөөс 100₮-т тэгшлэхэд гарах 1пп-ийн зөрүү бодит ялгаа мэт
@@ -82,11 +81,6 @@ export interface Collection {
   discountPct: number;
   /** Per-size overrides, keyed by ml (0051). Empty when the default rules all. */
   mlDiscounts: Record<number, number>;
-  /**
-   * Хэмжээ бүрийн тогтмол үнэ (0054, B6). Тухайн хэмжээ энд байвал хувийн
-   * тооцоо огт хийгдэхгүй — админы бичсэн үнэ нь эцсийн үнэ.
-   */
-  mlPrices: Record<number, number>;
   /** Span of the discounts actually on offer — «5-10%» on a card. */
   discountRange: { min: number; max: number };
   /** Customer-facing badges, shared with products. */

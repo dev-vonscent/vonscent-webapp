@@ -36,6 +36,8 @@ export function wishlistCartLines(
         variantId: v.id,
         ml: v.ml,
         unitPrice: v.price,
+        basePrice: v.basePrice,
+        saleLabel: v.saleLabel ?? null,
         image: p.image?.url ?? null,
       },
     ];

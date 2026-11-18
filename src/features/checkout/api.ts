@@ -9,8 +9,8 @@ import {
 } from "@/features/collections/api";
 import {
   bundlePrice,
-  bundlePriceBasis,
   discountForMl,
+  memberUnitPrice,
 } from "@/features/collections/pricing";
 import { resolveZone, zoneKey } from "@/lib/geo/zone";
 import type {
@@ -162,9 +162,6 @@ export async function priceCollectionLines(
     if (members.some((m) => !m.active || m.ml !== col.ml)) continue;
 
     let discountPct = settings.customDiscountPct;
-    // Preset багцын тогтмол үнэ (0054, B6) — байвал гишүүдийн нийлбэрээс
-    // хамаарахгүй эцсийн үнэ.
-    let fixedPrice: number | null = null;
     let name = "Миний багц";
     if (col.type === "base" && col.collectionId) {
       const info = await getCollectionOrderInfo(col.collectionId);
@@ -183,8 +180,6 @@ export async function priceCollectionLines(
       // than 2ml (0051), so taking the bundle default here would charge the
       // wrong total for every overridden size.
       discountPct = discountForMl(col.ml, info.discountPct, info.mlDiscounts);
-      const fixed = info.mlPrices[col.ml];
-      fixedPrice = Number.isFinite(fixed) ? Math.max(0, fixed) : null;
       name = info.name;
     } else {
       // Custom bundles obey the shop-wide builder rules even when the payload
@@ -195,18 +190,15 @@ export async function priceCollectionLines(
         continue;
     }
 
-    // Бэлэн багц: гишүүний ҮНДСЭН үнээс — барааны хямдрал (гар, арга
-    // хэмжээ) нөлөөлөхгүй. Угсарсан багц: хямдарсан үнээс дахин хувь хасна
-    // (Тайлан11.11.pptx сл.2, plan §5.3). Харагдах үнэ (`memberPrices`) ба
+    // Бэлэн ба угсарсан багц хоёулаа гишүүний ҮНДСЭН үнээс — барааны
+    // хямдрал (гар, арга хэмжээ) нөлөөлөхгүй (plan §5.3, task 8.2; B5
+    // «давхарлах» шийдвэр цуцлагдсан). Харагдах үнэ (`memberPrices`) ба
     // захиалгын `unit_price` нэг дүрмээр — эс бөгөөс зөрнө.
-    const basis = bundlePriceBasis(col.type);
-    const unitOf = (m: (typeof members)[number]) =>
-      basis === "base" ? m.basePrice : m.price;
+    const unitOf = (m: (typeof members)[number]) => memberUnitPrice(m);
     const memberSum = members.reduce((s, m) => s + unitOf(m), 0);
-    const total =
-      fixedPrice != null
-        ? fixedPrice
-        : bundlePrice(memberSum, discountPct, settings.roundTo);
+    // «Тогтмол үнэ» (0054) тооцоонд орохгүй (task 17) — багц үргэлж
+    // гишүүдийн нийлбэрээс хувиар.
+    const total = bundlePrice(memberSum, discountPct, settings.roundTo);
 
     // Spread the discounted total across members; the last line absorbs the
     // rounding remainder so the parts sum exactly to `total`.
@@ -280,9 +272,10 @@ export async function quoteBundleSizes(input: {
     BUNDLE_ML_SIZES.map(async (ml): Promise<BundleSizeQuote> => {
       const members = input.productIds.map((id) => {
         const v = byId.get(id)?.variants.find((x) => x.ml === ml);
-        // Бэлэн багцын «хэмнэлт» үндсэн үнээс (priceCollectionLines-тэй ижил).
-        const price = input.type === "base" ? v?.basePrice : v?.price;
-        return v ? { productId: id, variantId: v.id, price: price ?? v.price } : null;
+        // «Хэмнэлт» үндсэн үнээс (priceCollectionLines-тэй ижил, task 8.2).
+        return v
+          ? { productId: id, variantId: v.id, price: memberUnitPrice(v) }
+          : null;
       });
       const empty = {
         ml,

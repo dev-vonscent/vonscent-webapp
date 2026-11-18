@@ -487,3 +487,26 @@ describe("засах dialog-ийн хадгалалт", () => {
     ]);
   });
 });
+
+describe("applyLivePrices (D7)", () => {
+  beforeEach(() => useCart.getState().clear());
+
+  it("хямдрал дууссан мөрийг одоогийн үнээр шинэчилж, нэрийг нь буцаана", () => {
+    useCart.getState().add({ ...line("a", 15_300), basePrice: 18_000 }, 2);
+    const changed = useCart.getState().applyLivePrices({
+      variants: { a: { price: 18_000, basePrice: 18_000 } },
+    });
+    expect(changed).toEqual(["N a 5ml"]);
+    expect(selectCheckoutSubtotal(useCart.getState())).toBe(36_000);
+  });
+
+  it("өөр хэмжээ рүү шилжихэд хуучин хэмжээний үндсэн үнэ дагахгүй", () => {
+    useCart.getState().add({ ...line("a", 15_300), basePrice: 18_000 });
+    useCart
+      .getState()
+      .setVariant("a", { variantId: "b", ml: 10, unitPrice: 60_000 });
+    const item = useCart.getState().items[0];
+    expect(item.basePrice).toBeUndefined();
+    expect(item.saleLabel).toBeNull();
+  });
+});

@@ -124,6 +124,8 @@ import { createClient } from "@/lib/supabase/browser";
 import type { AddressRow } from "@/db/types";
 import { useMyTier } from "@/features/tiers/use-tier";
 import { pointsAtTierRate, tierByKey } from "@/features/tiers/lib";
+import { orderSummaryRows } from "@/lib/orders/summary";
+import { saleBreakdownOf } from "@/lib/orders/price-breakdown";
 
 interface ShippingSettingsShape {
   zones: {
@@ -970,10 +972,12 @@ export default function CheckoutPage() {
   // Сагс, купон өөрчлөгдөхөд дээд хязгаар буурч болно — бичсэн дүнг ямагт
   // түүнд хумина, эс тэгвээс хуудас сервер хүлээж авахгүй дүн харуулна.
   const loyaltyApplied = Math.min(loyaltyWanted, maxLoyalty);
-  /** Багцын хэмнэлт — үндсэн үнийн нийлбэр ба багцын үнийн зөрүү. */
-  const bundleSavings = Math.max(grossSubtotal - subtotal, 0);
-  /** Барааны дүнгээс хасагдсан бүх хямдрал (багц + купон) — оноо энд ороогүй. */
-  const totalSavings = bundleSavings + discount;
+  /**
+   * Арга хэмжээ / гар хямдралын мөрүүд (task 10). Мөрийн үнэ нь аль хэдийн
+   * хямдарсан тул дүнд нөлөөлөхгүй — зөвхөн задаргаанд «яагаад» гэдгийг
+   * хэлнэ. Сагс нээгдэхэд `applyLivePrices` үндсэн үнэ, шошгыг шинэчилнэ.
+   */
+  const saleBreakdown = React.useMemo(() => saleBreakdownOf(items), [items]);
   /** Хямдралын дараах барааны дүн: хүргэлт, оноо хоёрын өмнөх суурь. */
   const goodsAfterDiscount = Math.max(subtotal - discount, 0);
   const total = Math.max(goodsAfterDiscount + shippingFee - loyaltyApplied, 0);
@@ -984,15 +988,13 @@ export default function CheckoutPage() {
   /** Тоймын эцсийн дүн — сервер шинэ дүн хэлсэн бол түүгээр. */
   const shownTotal = serverQuote?.totals.total ?? total;
   /**
-   * Энэ захиалгаас хуримтлагдах оноо. Сан нь купоны дараах барааны дүнгээс
-   * бодох тул оноогоор төлсөн хэсэг үүнийг бууруулахгүй (lib/loyalty.ts).
+   * Энэ захиалгаас хуримтлагдах оноо. Суурь нь QPay-ээр төлөх дүн (`total`:
+   * хүргэлттэй, купон ба V point хассан) — сан (`mark_order_paid`, 0189)-тай
+   * ижил. Хаяг оруулаагүй үед хүргэлт 0 тул тоо хаяг орсны дараа өсч болно.
    */
   const pointsEarned = myTier
-    ? pointsAtTierRate(
-        Math.max(subtotal - discount, 0),
-        tierByKey(myTier.tier).rate,
-      )
-    : pointsEarnedFor(Math.max(subtotal - discount, 0), loyaltyRules);
+    ? pointsAtTierRate(total, tierByKey(myTier.tier).rate)
+    : pointsEarnedFor(total, loyaltyRules);
 
   const contactName = watch("contactName") ?? "";
   const contactPhone = watch("contactPhone") ?? "";
@@ -2129,42 +2131,24 @@ export default function CheckoutPage() {
                   дээр 8,000₮ гэсэн тоо нэмэгдэж байна уу, хасагдаж байна уу
                   гэдэг зөвхөн шошгоноос таамаглагддаг байсан. */}
               <div className="space-y-2.5">
-                {/* Мөр бүр үндсэн үнээрээ бичигдсэн тул эхний дүн нь тэдгээрийн
-                    ЯГ нийлбэр байх ёстой — хямдрал нь дараагийн мөрөнд гарна. */}
-                <SummaryRow
-                  label="Нийт үндсэн үнэ"
-                  value={formatPrice(grossSubtotal)}
-                />
-                {bundleSavings > 0 && (
-                  <SummaryRow
-                    label="Багцын хямдрал"
-                    value={`−${formatPrice(bundleSavings)}`}
-                    credit
-                  />
-                )}
-                {discount > 0 && (
-                  <SummaryRow
-                    label={
-                      coupon?.code ? `Купон · ${coupon.code}` : "Хөнгөлөлт"
-                    }
-                    value={`−${formatPrice(discount)}`}
-                    credit
-                  />
-                )}
-                {totalSavings > 0 && (
-                  <SummaryRow
-                    label="Хямдарсан үнэ"
-                    value={formatPrice(goodsAfterDiscount)}
-                    strong
-                  />
-                )}
-                {loyaltyApplied > 0 && (
-                  <SummaryRow
-                    label="V point"
-                    value={`−${formatPrice(loyaltyApplied)}`}
-                    credit
-                  />
-                )}
+                {/* Захиалгын баримттай НЭГ эх сурвалж (`orderSummaryRows`):
+                    Үндсэн үнийн нийлбэр → багц → арга хэмжээ / хямдрал →
+                    купон → V point. Хүргэлтийг доор өөрөө зурна (бүс,
+                    «Хаягаас хамаарна»). */}
+                {orderSummaryRows(
+                  {
+                    subtotal,
+                    grossSubtotal,
+                    saleBreakdown,
+                    discount,
+                    couponCode: coupon?.code ?? null,
+                    loyaltyUsed: loyaltyApplied,
+                    shippingFee,
+                  },
+                  { shipping: false },
+                ).map((row) => (
+                  <SummaryRow key={row.label} {...row} />
+                ))}
                 {/* Бэлэг нь тоймд ил мөр болж байж л «захиалгад юу орсон бэ»
                     гэдгийн хэсэг болно — эс тэгвээс хуудасны дунд сонгоод
                     мартчихдаг, хасагдсаныг нь ч мэдэхгүй өнгөрдөг. */}

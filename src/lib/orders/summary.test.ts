@@ -71,3 +71,108 @@ describe("orderSummaryRows", () => {
     expect(bundleSavingsOf(base)).toBe(0);
   });
 });
+
+/**
+ * Задаргааны мөрүүдийн тэмдэгтэй нийлбэр — «Хямдарсан үнэ» (дэд дүн)-гээс
+ * бусад нь. Эцсийн дүнтэй ЯГ таарах ёстой (task 10, шийдвэр 1).
+ */
+function signedSum(rows: ReturnType<typeof orderSummaryRows>): number {
+  return rows
+    .filter((r) => !r.strong)
+    .reduce((sum, r) => {
+      const n = Number(r.value.replace(/[^\d]/g, "")) || 0;
+      return r.credit ? sum - n : sum + n;
+    }, 0);
+}
+
+describe("orderSummaryRows — арга хэмжээ (0189)", () => {
+  /**
+   * Тайлангийн §1 жишээ: A 100,000₮ → Black Friday 80,000₮; бэлэн багц
+   * гишүүдийн үндсэн нийлбэр 200,000₮ − 5% = 190,000₮; купон 10%; V point
+   * 10,000₮; хүргэлт 7,000₮. Купон хямдралын ДАРААХ дүнгээс (validate_coupon:
+   * floor(270,000 × 10 / 100) = 27,000₮) → QPay 240,000₮.
+   */
+  const subtotal = 80_000 + 190_000;
+  const coupon = Math.floor((subtotal * 10) / 100);
+  const example = {
+    subtotal,
+    grossSubtotal: 80_000 + 200_000,
+    saleBreakdown: [{ label: "Black Friday", amount: 20_000 }],
+    discount: coupon,
+    couponCode: "VS10",
+    loyaltyUsed: 10_000,
+    shippingFee: 7_000,
+  };
+  const total = subtotal - coupon - 10_000 + 7_000;
+
+  it("§1 жишээ: мөр бүр ба дараалал", () => {
+    expect(coupon).toBe(27_000);
+    expect(total).toBe(240_000);
+    expect(orderSummaryRows(example).map((r) => [r.label, r.value])).toEqual([
+      ["Нийт үндсэн үнэ", "300,000₮"],
+      ["Багцын хямдрал", "−10,000₮"],
+      ["Black Friday", "−20,000₮"],
+      ["Купон · VS10", "−27,000₮"],
+      ["Хямдарсан үнэ", "243,000₮"],
+      ["V point", "−10,000₮"],
+      ["Хүргэлт", "+7,000₮"],
+    ]);
+    expect(signedSum(orderSummaryRows(example))).toBe(total);
+  });
+
+  it("хувийн купон + арга хэмжээ: мөрүүдийн нийлбэр = эцсийн дүн", () => {
+    // 2 × 45,000₮ (үндсэн 50,000₮, «Цагаан сар» −10%) + гар хямдрал 30,000→27,000.
+    const sub = 2 * 45_000 + 27_000;
+    const pct = Math.floor((sub * 15) / 100); // 15% купон
+    const o = {
+      subtotal: sub,
+      grossSubtotal: sub,
+      saleBreakdown: [
+        { label: "Цагаан сар", amount: 10_000 },
+        { label: "Хямдрал", amount: 3_000 },
+      ],
+      discount: pct,
+      couponCode: "P15",
+      loyaltyUsed: 0,
+      shippingFee: 8_000,
+    };
+    const rows = orderSummaryRows(o);
+    expect(rows[0]).toMatchObject({ value: "130,000₮" });
+    expect(rows.map((r) => r.label)).toEqual([
+      "Нийт үндсэн үнэ",
+      "Цагаан сар",
+      "Хямдрал",
+      "Купон · P15",
+      "Хямдарсан үнэ",
+      "Хүргэлт",
+    ]);
+    expect(signedSum(rows)).toBe(sub - pct + 8_000);
+  });
+
+  it("мөнгөн купон + арга хэмжээ: мөрүүдийн нийлбэр = эцсийн дүн", () => {
+    const o = {
+      subtotal: 80_000,
+      grossSubtotal: 80_000,
+      saleBreakdown: [{ label: "Black Friday", amount: 20_000 }],
+      discount: 5_000,
+      couponCode: "VW5K",
+      loyaltyUsed: 3_000,
+      shippingFee: 7_000,
+    };
+    const rows = orderSummaryRows(o);
+    expect(rows[0]).toMatchObject({ value: "100,000₮" });
+    expect(signedSum(rows)).toBe(80_000 - 5_000 - 3_000 + 7_000);
+  });
+
+  it("хуучин захиалга (sale_breakdown = null) өмнөх шигээ", () => {
+    expect(
+      labels({ ...base, saleBreakdown: null, grossSubtotal: 100_000 }),
+    ).toEqual(["Барааны дүн", "Хүргэлт"]);
+  });
+
+  it("хүргэлтийн мөрийг орхиж болно (checkout өөрөө зурна)", () => {
+    expect(
+      orderSummaryRows(base, { shipping: false }).map((r) => r.label),
+    ).toEqual(["Барааны дүн"]);
+  });
+});

@@ -4,7 +4,6 @@ import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { BadgePercent, Check, Plus, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -25,7 +24,7 @@ import { CatalogSort } from "@/features/catalog/components/catalog-sort";
 import { CatalogSearch } from "@/features/catalog/components/catalog-search";
 import { CatalogPagination } from "@/features/catalog/components/catalog-pagination";
 import { FilterQueryProvider } from "@/features/catalog/components/use-filter-query";
-import { bundlePrice } from "../pricing";
+import { bundlePrice, memberUnitPrice } from "../pricing";
 import type { BuilderProduct, CollectionSettings } from "../types";
 import type { ScentFamilyOption } from "@/lib/types";
 import type { BrandLogos } from "@/features/products/components/brand-marquee";
@@ -78,8 +77,11 @@ function BuilderInner({
   const unavailableSelected = selected.filter(
     (p) => !p.variantByMl[ml]?.inStock,
   );
+  // Гишүүдийн ҮНДСЭН үнийн нийлбэр (task 8.2): угсарсан багц хямдарсан
+  // үнээс бүтэхгүй — хямдрал давхарлахгүй, захиалгын тооцоотой ижил.
   const memberSum = availableSelected.reduce(
-    (sum, p) => sum + (p.variantByMl[ml]?.price ?? 0),
+    (sum, p) =>
+      sum + (p.variantByMl[ml] ? memberUnitPrice(p.variantByMl[ml]) : 0),
     0,
   );
   /**
@@ -145,7 +147,7 @@ function BuilderInner({
         name: p.name,
         brand: p.brand,
         image: p.image?.url ?? null,
-        price: p.variantByMl[ml].price,
+        price: memberUnitPrice(p.variantByMl[ml]),
       })),
       unitPrice: price,
     });
@@ -444,12 +446,8 @@ function BuilderInner({
               {grid.map((p) => {
                 const variant = p.variantByMl[ml];
                 const stock = Boolean(variant?.inStock);
-                // Хямдрал хэмжээ тус бүрд — 5ml хямдарсан ус 2ml-ийн жагсаалтад
-                // «Хямдрал» гэж худал бичигдэхгүй.
-                const onSale =
-                  stock &&
-                  variant?.basePrice != null &&
-                  variant.basePrice > variant.price;
+                // Зөвхөн ҮНДСЭН үнэ (task 8.2): багц хямдарсан үнээс
+                // угсрагддаггүй тул «Хямдрал» тэмдэг, зураастай үнэ харуулахгүй.
                 const on = ids.includes(p.productId);
                 // Can't add something the chosen size can't fill; an already-
                 // picked one stays removable.
@@ -483,15 +481,6 @@ function BuilderInner({
                         <span className="bg-background/85 text-muted-foreground absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-medium backdrop-blur">
                           {ml}ml-д байхгүй
                         </span>
-                      )}
-                      {/* Барааны card-тай ижил badge (`ProductCard`). */}
-                      {onSale && (
-                        <Badge
-                          variant="sale"
-                          className="bg-background/85! absolute top-2 left-2 w-fit backdrop-blur-sm"
-                        >
-                          Хямдрал
-                        </Badge>
                       )}
                       <button
                         onClick={() => toggle(p)}
@@ -529,14 +518,9 @@ function BuilderInner({
                             : "text-muted-foreground",
                         )}
                       >
-                        {stock
-                          ? formatPrice(variant?.price ?? 0)
+                        {stock && variant
+                          ? formatPrice(memberUnitPrice(variant))
                           : `${ml}ml-д байхгүй`}
-                        {onSale && (
-                          <span className="text-muted-foreground text-[11px] font-normal line-through">
-                            {formatPrice(variant.basePrice as number)}
-                          </span>
-                        )}
                       </span>
                     </div>
                   </div>

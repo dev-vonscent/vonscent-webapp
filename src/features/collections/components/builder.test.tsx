@@ -44,7 +44,10 @@ vi.mock("@/features/catalog/components/catalog-pagination", () => ({
   CatalogPagination: () => null,
 }));
 
-function product(id: string, over: Partial<BuilderProduct> = {}): BuilderProduct {
+function product(
+  id: string,
+  over: Partial<BuilderProduct> = {},
+): BuilderProduct {
   return {
     productId: id,
     slug: id,

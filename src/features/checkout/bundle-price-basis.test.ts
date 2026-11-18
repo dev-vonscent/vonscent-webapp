@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * Багцын үнийн суурь (Тайлан11.11.pptx слайд 2, docs/campaigns/plan.md §5.3):
- * бэлэн багц гишүүний ҮНДСЭН үнээс (барааны хямдрал нөлөөлөхгүй), угсарсан
- * багц хямдарсан үнээс дахин хувь хасна. `priceCollectionLines` нь
+ * Багцын үнийн суурь (Тайлан11.11.pptx слайд 2, docs/campaigns/plan.md §5.3,
+ * task 8.2): бэлэн ба угсарсан багц хоёулаа гишүүний ҮНДСЭН үнээс —
+ * барааны хямдрал нөлөөлөхгүй (B5 «давхарлах» шийдвэр цуцлагдсан). `priceCollectionLines` нь
  * захиалгын `unit_price`-ийг бодох мөнгөний зам — харагдах үнэ
  * (`memberPrices`)-тэй нэг дүрэмтэй байх ёстой.
  */
@@ -40,7 +40,6 @@ vi.mock("@/features/collections/api", () => ({
     name: "Бэлэн багц",
     discountPct: 10,
     mlDiscounts: {},
-    mlPrices: {},
     memberProductIds: ["A", "B"],
   })),
 }));
@@ -71,7 +70,7 @@ describe("priceCollectionLines — бэлэн ба угсарсан багц (pl
     expect(lines.map((l) => l.unitPrice)).toEqual([36000, 54000]);
   });
 
-  it("угсарсан багц: хямдарсан үнийн нийлбэр − 10% (давхарлана)", async () => {
+  it("угсарсан багц: үндсэн үнийн нийлбэр − 10% (хямдрал давхарлахгүй)", async () => {
     const { lines } = await priceCollectionLines([
       {
         collectionId: null,
@@ -81,7 +80,9 @@ describe("priceCollectionLines — бэлэн ба угсарсан багц (pl
         memberVariantIds: ["va", "vb"],
       },
     ]);
-    // (32,000 + 60,000) × 0.9 = 82,800.
-    expect(sum(lines)).toBe(82800);
+    // (40,000 + 60,000) × 0.9 = 90,000 — A-гийн −20% дамжихгүй (8.2).
+    // Өмнө нь (32,000 + 60,000) × 0.9 = 82,800 болдог байв.
+    expect(sum(lines)).toBe(90000);
+    expect(lines.map((l) => l.unitPrice)).toEqual([36000, 54000]);
   });
 });

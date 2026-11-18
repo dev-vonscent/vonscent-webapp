@@ -1,3 +1,4 @@
+import type { SaleRow } from "@/lib/orders/price-breakdown";
 import type { QpayDeeplink } from "@/lib/payments/qpay-types";
 import type { PaymentMethod } from "@/db/types";
 
@@ -44,6 +45,8 @@ export interface PaymentView {
   subtotal: number;
   /** Багцын хямдралын өмнөх барааны дүн. Хуучин захиалгад null (0097). */
   grossSubtotal: number | null;
+  /** Арга хэмжээ / хямдралын мөрүүд (0189). Хуучин захиалгад null. */
+  saleBreakdown?: SaleRow[] | null;
   /** Хэрэглэсэн купоны код — тооцооны мөрийн шошгонд гарна. */
   couponCode: string | null;
   shippingFee: number;

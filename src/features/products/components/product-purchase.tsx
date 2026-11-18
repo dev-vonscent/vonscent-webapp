@@ -111,6 +111,8 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
       variantId: selected.id,
       ml: selected.ml,
       unitPrice,
+      basePrice: selected.basePrice,
+      saleLabel: selected.saleLabel ?? null,
       image: product.image?.url ?? null,
     };
     // «Бэлэглэх бол»-д сонгосон боодол үнэртэнтэй хамт — аль ч замаар.
