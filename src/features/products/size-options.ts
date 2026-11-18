@@ -66,6 +66,16 @@ export function isCheapestPerMl(
     .every((o) => target.price * o.totalMl <= o.price * target.totalMl);
 }
 
+/** Зөвлөмжийн мөрийн icon-ийн төрөл — UI (`SizeHintRow`) icon-оо сонгоно. */
+export type SizeHintKind = "trial" | "pocket" | "travel" | "value" | "largest";
+
+const HINT_KIND: Record<MlSize, SizeHintKind> = {
+  2: "trial",
+  5: "pocket",
+  10: "travel",
+  20: "value",
+};
+
 /**
  * Сонгосон хэмжээний доорх нэг мөр (`SIZE_HINTS`). 20ml «Хамгийн
  * хэмнэлттэй сонголт» нь 1ml-ийн үнэ нь үнэхээр хамгийн бага үед л; үгүй
@@ -74,13 +84,15 @@ export function isCheapestPerMl(
 export function sizeHint(
   options: readonly SizeOption[],
   selected: SizeOption | null | undefined,
-): string | null {
+): { text: string; kind: SizeHintKind } | null {
   if (!selected) return null;
-  const text = SIZE_HINTS[selected.ml as MlSize] ?? null;
-  if (selected.ml === 20 && !isCheapestPerMl(options, selected)) {
-    return SIZE_HINT_LARGEST;
+  const ml = selected.ml as MlSize;
+  const text = SIZE_HINTS[ml];
+  if (!text) return null;
+  if (ml === 20 && !isCheapestPerMl(options, selected)) {
+    return { text: SIZE_HINT_LARGEST, kind: "largest" };
   }
-  return text;
+  return { text, kind: HINT_KIND[ml] };
 }
 
 /**

@@ -92,6 +92,10 @@ describe("ProductPurchase", () => {
     expect(screen.getByTestId("size-hint").textContent).toBe(
       "Халаасанд багтахуйц",
     );
+    const hint = screen.getByTestId("size-hint");
+    expect(hint.getAttribute("data-kind")).toBe("pocket");
+    expect(hint.querySelector("svg")).not.toBeNull();
+    expect(hint.className).toContain("bg-muted");
   });
 
   it("marks discounted sizes on the card", () => {

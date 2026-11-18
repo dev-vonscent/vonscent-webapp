@@ -38,12 +38,18 @@ describe("size options (task 15, 4, 2.6)", () => {
       v(10, { price: 45000, basePrice: 45000 }),
       v(20, { price: 80000, basePrice: 80000 }),
     ]);
-    const hint = (i: number) => sizeHint(opts, opts[i]);
+    const hint = (i: number) => sizeHint(opts, opts[i])?.text;
     expect(hint(0)).toBe("Туршиж үзэхэд тохиромжтой");
     expect(hint(1)).toBe("Халаасанд багтахуйц");
     expect(hint(2)).toBe("Авч явахад тохиромжтой");
     expect(hint(3)).toBe("Хамгийн хэмнэлттэй сонголт");
     expect(sizeHint(opts, null)).toBeNull();
+    expect(opts.map((o) => sizeHint(opts, o)?.kind)).toEqual([
+      "trial",
+      "pocket",
+      "travel",
+      "value",
+    ]);
   });
 
   it("20ml-ийн 1ml-ийн үнэ хамгийн бага биш бол «Хамгийн том хэмжээ»", () => {
@@ -53,13 +59,16 @@ describe("size options (task 15, 4, 2.6)", () => {
       v(10, { price: 38000, basePrice: 45000 }),
       v(20, { price: 80000, basePrice: 80000 }),
     ]);
-    expect(sizeHint(opts, opts[2])).toBe("Хамгийн том хэмжээ");
+    expect(sizeHint(opts, opts[2])).toEqual({
+      text: "Хамгийн том хэмжээ",
+      kind: "largest",
+    });
     // Тэнцүү бол хэмнэлттэй хэвээр.
     const tie = productSizeOptions([
       v(10, { price: 40000, basePrice: 40000 }),
       v(20, { price: 80000, basePrice: 80000 }),
     ]);
-    expect(sizeHint(tie, tie[1])).toBe("Хамгийн хэмнэлттэй сонголт");
+    expect(sizeHint(tie, tie[1])?.text).toBe("Хамгийн хэмнэлттэй сонголт");
   });
 
   it("«Зарахгүй» хэмжээ харьцуулалтад орохгүй, дууссан нь орно", () => {
@@ -68,12 +77,12 @@ describe("size options (task 15, 4, 2.6)", () => {
       v(10, { ...cheap10, isActive: false, sellable: false }),
       v(20, { price: 80000, basePrice: 80000 }),
     ]);
-    expect(sizeHint(off, off[1])).toBe("Хамгийн хэмнэлттэй сонголт");
+    expect(sizeHint(off, off[1])?.text).toBe("Хамгийн хэмнэлттэй сонголт");
     const sold = productSizeOptions([
       v(10, { ...cheap10, inStock: false, sellable: false }),
       v(20, { price: 80000, basePrice: 80000 }),
     ]);
-    expect(sizeHint(sold, sold[1])).toBe("Хамгийн том хэмжээ");
+    expect(sizeHint(sold, sold[1])?.text).toBe("Хамгийн том хэмжээ");
   });
 
   it("дууссан хэмжээ сонгогдоно, зарахгүй нь үгүй", () => {

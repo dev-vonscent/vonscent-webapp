@@ -2,7 +2,19 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { sizeHint, type SizeOption } from "@/features/products/size-options";
+import {
+  Luggage,
+  Maximize2,
+  PiggyBank,
+  Pocket,
+  TestTube,
+  type LucideIcon,
+} from "lucide-react";
+import {
+  sizeHint,
+  type SizeHintKind,
+  type SizeOption,
+} from "@/features/products/size-options";
 
 const NAV_KEYS = [
   "ArrowRight",
@@ -148,14 +160,45 @@ export function SizeSelector({
           );
         })}
       </div>
-      {/* Нэг тогтсон газар — сонгосон хэмжээгээр текст солигдоно. */}
-      <p
-        className="text-muted-foreground min-h-4 text-xs"
-        aria-live="polite"
-        data-testid="size-hint"
-      >
-        {hint}
-      </p>
+      {/* Нэг тогтсон газар — сонгосон хэмжээгээр icon + текст солигдоно.
+          Өндөр нь тогтмол (хоосон үед ч) — layout үсрэхгүй. */}
+      <SizeHintRow hint={hint} />
     </div>
+  );
+}
+
+const HINT_ICON: Record<SizeHintKind, LucideIcon> = {
+  trial: TestTube,
+  pocket: Pocket,
+  travel: Luggage,
+  value: PiggyBank,
+  largest: Maximize2,
+};
+
+/**
+ * Хэмжээний зөвлөмж (task 15): `bg-muted` зөөлөн дэвсгэртэй нэг мөр, хэмжээнд
+ * тохирох icon. `transition-colors` үгүй — сонголтоор шууд солигдоно.
+ */
+function SizeHintRow({
+  hint,
+}: {
+  hint: { text: string; kind: SizeHintKind } | null;
+}) {
+  const Icon = hint ? HINT_ICON[hint.kind] : null;
+  return (
+    <p
+      aria-live="polite"
+      data-testid="size-hint"
+      data-kind={hint?.kind}
+      className={cn(
+        "flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium",
+        hint ? "bg-muted text-foreground" : "invisible",
+      )}
+    >
+      {Icon && (
+        <Icon aria-hidden className="text-muted-foreground size-4 shrink-0" />
+      )}
+      <span>{hint?.text}</span>
+    </p>
   );
 }
