@@ -138,3 +138,53 @@ describe("sendOrderCustomerEmail — recipient", () => {
     expect(subjects[2]).toContain("цуцлагдлаа");
   });
 });
+
+describe("orderEmailItems — VS-2247", () => {
+  it("дан (ml ↑) → багц (гишүүдтэй) → бэлэг, нийлбэр = «Нийт үндсэн үнэ»", async () => {
+    const { orderEmailItems } = await import("./order-email-items");
+    const { renderEmail } =
+      await vi.importActual<typeof import("@/lib/email/layout")>(
+        "@/lib/email/layout",
+      );
+    const { VS2247_ITEMS, VS2247_NIGHT_OUT, VS2247_BASE_TOTAL } =
+      await import("@/lib/orders/vs2247.fixture");
+    const items = orderEmailItems(
+      VS2247_ITEMS.map((i) => ({ ...i })),
+      new Set([VS2247_NIGHT_OUT]),
+    );
+    expect(items.map((i) => `${i.name} | ${i.meta} | ${i.amount}`)).toEqual([
+      "Byredo — Blanche | 2ml × 1 | 34,000₮",
+      "Creed — Aventus | 5ml × 1 | 79,000₮",
+      "Burberry — Goddess EDP | 10ml × 1 | 78,000₮",
+      "Tom Ford — Oud Wood | 20ml × 1 | 256,000₮",
+      "NIGHT OUT багц | 2ml × 1 | 69,000₮",
+      "NIGHT OUT багц | 10ml × 1 | 260,000₮",
+      "Bvlgari — Glacial Essence | 1ml × 1 | Бэлэг",
+      "Dior — Homme intense | 1ml × 1 | Бэлэг",
+      "Giorgio Armani — My Way | 1ml × 1 | Бэлэг",
+    ]);
+    expect(items[4].members).toEqual([
+      "Rabanne — Invictus Victory elixir",
+      "Viktor&Rolf — Spicebomb Extreme",
+      "Versace — Eros Flame",
+      "Dior — Homme intense",
+    ]);
+    const sum = items.reduce(
+      (n, i) => n + (Number(i.amount.replace(/[^\d]/g, "")) || 0),
+      0,
+    );
+    expect(sum).toBe(VS2247_BASE_TOTAL);
+
+    // Text хувилбар — гишүүд «  - …» мөрөөр, бэлэг доор.
+    const { text } = renderEmail({
+      preheader: "VS-2247",
+      heading: "Захиалга баталгаажлаа",
+      paragraphs: [],
+      items,
+    });
+    expect(text).toContain(
+      "· NIGHT OUT багц — 2ml × 1: 69,000₮\n  - Rabanne — Invictus Victory elixir\n  - Viktor&Rolf — Spicebomb Extreme",
+    );
+    expect(text.indexOf("Бэлэг")).toBeGreaterThan(text.indexOf("260,000₮"));
+  });
+});
