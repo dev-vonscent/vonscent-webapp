@@ -88,6 +88,7 @@ describe("ProductPurchase", () => {
     expect(head()).toContain("21,300₮");
     expect(head()).toContain("25,000₮");
     expect(head()).toContain("−15%");
+    expect(screen.getByTestId("size-price-pct").className).toContain("bg-sale");
     expect(head()).toContain("/ 5ml");
     expect(screen.getByTestId("size-hint").textContent).toBe(
       "Халаасанд багтахуйц",
@@ -114,6 +115,13 @@ describe("ProductPurchase", () => {
     const burst = five.querySelector("[data-marker=burst]");
     expect(burst?.textContent).toBe("−15%");
     expect(burst?.querySelector("svg polygon")).not.toBeNull();
+    // Бүх theme-д ижил `sale` token.
+    expect(burst?.querySelector("svg")?.getAttribute("class")).toContain(
+      "text-sale",
+    );
+    expect(burst?.querySelector("span")?.className).toContain(
+      "text-sale-foreground",
+    );
     expect(
       screen.getByRole("radio", { name: "2ml" }).getAttribute("data-sale"),
     ).toBeNull();
@@ -264,6 +272,8 @@ describe("SizeSelector sale marker shapes", () => {
       />,
     );
     const five = screen.getByRole("radio", { name: "5ml — 15% хямдралтай" });
-    expect(five.querySelector("[data-marker=pill]")?.textContent).toBe("−15%");
+    const pill = five.querySelector("[data-marker=pill]");
+    expect(pill?.textContent).toBe("−15%");
+    expect(pill?.className).toContain("bg-sale");
   });
 });

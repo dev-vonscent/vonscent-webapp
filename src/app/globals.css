@@ -63,6 +63,11 @@
   /* destructive must stay legible as text on black — not a gray surface */
   --destructive: #f87171;
   --destructive-foreground: #450a0a;
+  /* Хямдралын тэмдэг («−15%», тоолуур ≤24ц): БҮХ theme-д ижил — бараан улаан
+     дэвсгэр + цагаан тоо (6.5:1). Theme-ийн class-ууд дахин тодорхойлохгүй тул
+     :root-оос удамшина. destructive-аас тусдаа (тэр нь theme бүрт өөр). */
+  --sale: #b91c1c;
+  --sale-foreground: #ffffff;
   --success: #d4d4d4;
   /* «Идэвхтэй» төлөв (арга хэмжээ) — монохром систем дэх цорын ганц
      ногоон; зөвхөн PhaseBadge-д. */
@@ -412,6 +417,8 @@
   --shadow-gold: var(--shadow-gold);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-sale: var(--sale);
+  --color-sale-foreground: var(--sale-foreground);
   --color-success: var(--success);
   --color-live: var(--live);
   --color-announce: var(--announce);

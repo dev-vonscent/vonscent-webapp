@@ -35,7 +35,7 @@ const NAV_KEYS = [
  *   худалдан авах товчийг дуудагч идэвхгүй болгоно. Зөвхөн «Зарахгүй»
  *   (админы хаасан, багцад бүрэн бус) сонгогдохгүй.
  * - Хямдралтай хэмжээ (2.6): картын баруун дээд буланд бодит хувь «−15%» —
- *   `destructive` token-ий жижиг starburst (эсвэл pill), картын ирмэгээс
+ *   `sale` token-ий жижиг starburst (эсвэл pill), картын ирмэгээс
  *   гарсан тул сонгогдсон (`bg-cta`) ч, сонгогдоогүй ч ижил харагдана.
  * - «Туршиж үзэх» / «Хамгийн ашигтай» тэмдэг картаас авагдаж, сонгогчийн
  *   ДООР нэг мөр болсон (`SIZE_HINTS`).
@@ -218,9 +218,9 @@ const BURST_POINTS = Array.from({ length: 28 }, (_, i) => {
 }).join(" ");
 
 /**
- * Картын хямдралын тэмдэг «−15%» (2.6). Өнгө нь `destructive` /
- * `destructive-foreground` token — theme бүрт contrast-аа хадгална (black
- * theme-д цайвар улаан дээр бараан тоо). Дэлгэц уншигчид картын aria-label
+ * Картын хямдралын тэмдэг «−15%» (2.6). Өнгө нь `sale` / `sale-foreground`
+ * token — БҮХ theme-д ижил бараан улаан + цагаан тоо (6.5:1). Дэлгэц
+ * уншигчид картын aria-label
  * «15% хямдралтай» хэлнэ — энд aria-hidden.
  */
 function SaleMarker({ pct, shape }: { pct: number; shape: "burst" | "pill" }) {
@@ -229,7 +229,7 @@ function SaleMarker({ pct, shape }: { pct: number; shape: "burst" | "pill" }) {
       <span
         aria-hidden
         data-marker="pill"
-        className="bg-destructive text-destructive-foreground absolute -top-2 -right-1.5 rounded-full px-1.5 py-0.5 text-[11px] leading-none font-bold tabular-nums"
+        className="bg-sale text-sale-foreground absolute -top-2 -right-1.5 rounded-full px-1.5 py-0.5 text-[11px] leading-none font-bold tabular-nums"
       >
         −{pct}%
       </span>
@@ -244,11 +244,11 @@ function SaleMarker({ pct, shape }: { pct: number; shape: "burst" | "pill" }) {
       <svg
         viewBox="0 0 100 60"
         preserveAspectRatio="none"
-        className="text-destructive absolute inset-0 size-full"
+        className="text-sale absolute inset-0 size-full"
       >
         <polygon points={BURST_POINTS} fill="currentColor" />
       </svg>
-      <span className="text-destructive-foreground relative text-[11px] leading-none font-bold tracking-tight tabular-nums">
+      <span className="text-sale-foreground relative text-[11px] leading-none font-bold tracking-tight tabular-nums">
         −{pct}%
       </span>
     </span>

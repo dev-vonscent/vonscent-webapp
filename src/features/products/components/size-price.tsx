@@ -71,9 +71,13 @@ export function SizePrice({
             >
               {formatPrice(basePrice)}
             </span>
+            {/* `sale` token — бүх theme-д ижил. Бараан улаан нь хар
+                дэвсгэр дээр текст болж уншигдахгүй (3:1) тул цагаан тоотой
+                жижиг pill (6.5:1). */}
             <span
+              data-testid="size-price-pct"
               className={cn(
-                "text-destructive font-semibold tabular-nums",
+                "bg-sale text-sale-foreground self-center rounded-full px-1.5 py-0.5 leading-none font-semibold tabular-nums",
                 lg ? "text-sm" : "text-xs",
               )}
             >
