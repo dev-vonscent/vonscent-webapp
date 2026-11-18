@@ -33,6 +33,8 @@ import {
   type StudioStep,
 } from "./studio-model";
 import { StudioStepper } from "./studio-stepper";
+import { bundlesStepBlock } from "./studio-bundles";
+import type { SaleEventBundleOption } from "../../bundles";
 import { useEventStudio, type EventStudio } from "./use-event-studio";
 
 const LIST_HREF = "/admin/sale-events";
@@ -55,6 +57,8 @@ export function EventStudio({
   aiConfigured = false,
   initialStep,
   now,
+  bundleOptions = [],
+  bundleStep = 100,
 }: {
   row: SaleEventAdminRow | null;
   copyOf?: SaleEventAdminRow | null;
@@ -72,15 +76,22 @@ export function EventStudio({
   aiConfigured?: boolean;
   initialStep?: string;
   now: number;
+  /** Бэлэн багц (16.7) — туг хаалттай бол сервер хоосон өгнө. */
+  bundleOptions?: SaleEventBundleOption[];
+  /** Багцын үнийн тэгшлэл (`settings.collection.roundTo`). */
+  bundleStep?: number;
 }) {
   const router = useRouter();
   const bannerEnabled = useFeatureFlag("hero_admin");
+  const bundlesEnabled = useFeatureFlag("sale_event_bundles");
   const studio = useEventStudio({
     row,
     copyOf,
     bannerRow,
     copyBanner,
     bannerEnabled,
+    bundleOptions,
+    bundlesEnabled,
     now,
   });
   const { draft, phase, mode, checklist, busy, dirty, published } = studio;
@@ -104,7 +115,10 @@ export function EventStudio({
   // (сонгосон бараа бүр хямдрах ёстой). Нийтэлсэн арга хэмжээг Zod хамгаална.
   const productsBlock =
     mode === "auto" && step === "products"
-      ? productsStepBlock(draft.items)
+      ? draft.items.length === 0 && (draft.collections?.length ?? 0) > 0
+        ? bundlesStepBlock(studio.bundleState)
+        : (productsStepBlock(draft.items) ??
+          bundlesStepBlock(studio.bundleState))
       : null;
 
   function go(to: StudioStep) {
@@ -263,7 +277,11 @@ export function EventStudio({
           <fieldset disabled={mode === "locked"} className="min-w-0">
             {step === "basics" && <StepBasics studio={studio} />}
             {step === "products" && (
-              <StepProducts studio={studio} products={products} />
+              <StepProducts
+                studio={studio}
+                products={products}
+                bundleStep={bundleStep}
+              />
             )}
             {step === "catalog" && (
               <StepCatalog studio={studio} products={products} onGo={go} />

@@ -104,6 +104,16 @@ export function studioChecklist(input: {
   bannerError?: string | null;
   /** Баннерын текст дэх хугацаатай таарахгүй огноо (`staleBannerDates`). */
   bannerStaleDates?: readonly string[];
+  /**
+   * Бэлэн багц (16.7) — туг нээлттэй үед л. `issues`: багц бүрийн асуудал
+   * (16.5 хувьгүй, суурь хувиас бага), `locked`: давхцсан нийтэлсэн event-д
+   * орсон багц (16.3).
+   */
+  bundles?: {
+    count: number;
+    issues: readonly { name: string; issue: string }[];
+    locked: readonly { name: string; event: string }[];
+  } | null;
 }): ChecklistItem[] {
   const { draft: d, today, conflicts = [], banner = null } = input;
   const out: ChecklistItem[] = [];
@@ -136,7 +146,10 @@ export function studioChecklist(input: {
 
   // ② Бараа, хямдрал
   const r = discountRange(d.items);
-  if (r.count === 0) {
+  const bundles = input.bundles ?? null;
+  if (r.count === 0 && (bundles?.count ?? 0) > 0) {
+    // Зөвхөн багцтай арга хэмжээ — барааны мөр шаардахгүй.
+  } else if (r.count === 0) {
     out.push({
       step: "products",
       level: "error",
@@ -168,6 +181,32 @@ export function studioChecklist(input: {
       text: `${r.count} бараа, ${span ? `хямдрал ${span}` : "хувьгүй"}`,
       action: "Засах",
     });
+  }
+  if (bundles && bundles.count > 0) {
+    for (const b of bundles.issues) {
+      out.push({
+        step: "products",
+        level: "error",
+        text: `«${b.name}» багц: ${b.issue}`,
+        action: "Засах",
+      });
+    }
+    for (const b of bundles.locked) {
+      out.push({
+        step: "products",
+        level: "error",
+        text: `«${b.name}» багц «${b.event}» арга хэмжээтэй давхцаж байна`,
+        action: "Засах",
+      });
+    }
+    if (!bundles.issues.length && !bundles.locked.length) {
+      out.push({
+        step: "products",
+        level: "ok",
+        text: `${bundles.count} бэлэн багц`,
+        action: "Засах",
+      });
+    }
   }
   const byEvent = new Map<string, number>();
   for (const c of conflicts) {

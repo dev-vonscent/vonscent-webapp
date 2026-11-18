@@ -7,6 +7,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { SaleEventInput } from "@/lib/validators/sale-event";
 import { dayEndIso, dayStartIso } from "@/features/admin/lib/date-range";
 import { overlapConflicts, overlapMessage, type OverlapConflict } from "./lib";
+import { bundlePctLowError } from "./api";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Админы арга хэмжээний route бүрийн хаалга (plan §12): туг (404) → staff
@@ -40,6 +42,44 @@ export async function saleEventAdminGate() {
   return { supabase, staff } as const;
 }
 
+/** `EVENT_BUNDLE_OVERLAP`-ийн detail → «Багц — «Арга хэмжээ»» жагсаалт. */
+export function bundleOverlapNames(
+  details: string | null | undefined,
+): string[] {
+  try {
+    const rows = JSON.parse(details ?? "[]") as {
+      collection?: string;
+      event?: string;
+    }[];
+    return [
+      ...new Set(
+        rows
+          .filter((r) => r.collection && r.event)
+          .map((r) => `${r.collection} — «${r.event}»`),
+      ),
+    ];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 16.7 — багцын бичилтийн хаалга. Туг хаалттай үед `collections` ирвэл 404
+ * (UI нуугдсан ч шууд хүсэлт санд юу ч бичихгүй; SQL ч FEATURE_DISABLED).
+ * Нээлттэй бол event хувь > одоогийн хувь (`bundlePctLowError`).
+ */
+export async function saleEventBundleGate(
+  supabase: SupabaseClient,
+  input: SaleEventInput,
+): Promise<NextResponse | null> {
+  if (input.collections === undefined) return null;
+  if (!(await isFeatureEnabled("sale_event_bundles"))) {
+    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  }
+  const low = await bundlePctLowError(supabase, input.collections);
+  return low ? NextResponse.json({ error: low }, { status: 400 }) : null;
+}
+
 /**
  * Маягт → `save_sale_event(p_data, p_items)`. Өдрүүд УБ-ийн хил:
  * эхлэх өдрийн 00:00, дуусах өдрийн ДАРААХ 00:00 (exclusive, 0181).
@@ -58,6 +98,15 @@ export function toSaleEventRpc(input: SaleEventInput) {
       showCountdown: input.showCountdown,
       // "" → null (save_sale_event `nullif`).
       tickerTheme: input.tickerTheme ?? "",
+      // 16.7: түлхүүр байхгүй бол SQL багцын мөрийг хөндөхгүй.
+      ...(input.collections !== undefined
+        ? {
+            collections: input.collections.map((c) => ({
+              collectionId: c.collectionId,
+              pcts: c.pcts,
+            })),
+          }
+        : {}),
     },
     p_items: input.items.map((i) => ({ productId: i.productId, pcts: i.pcts })),
   };
@@ -77,6 +126,38 @@ export function saleEventWriteError(error: {
     return NextResponse.json(
       { error: overlapMessage(conflicts), conflicts },
       { status: 409 },
+    );
+  }
+  if (/EVENT_BUNDLE_OVERLAP/.test(error.message)) {
+    const names = bundleOverlapNames(error.details);
+    return NextResponse.json(
+      {
+        error: names.length
+          ? `Багц хугацаа давхцсан өөр арга хэмжээнд байна: ${names.join(", ")}.`
+          : "Багц хугацаа давхцсан өөр арга хэмжээнд байна.",
+      },
+      { status: 409 },
+    );
+  }
+  if (/BUNDLE_NO_PCT/.test(error.message)) {
+    return NextResponse.json(
+      { error: "Сонгосон багц бүр дор хаяж нэг хэмжээнд хувьтай байна." },
+      { status: 400 },
+    );
+  }
+  if (/BUNDLE_PCT_LOW/.test(error.message)) {
+    return NextResponse.json(
+      {
+        error:
+          "Багцын хувь одоогийн хувиас их байх ёстой — хуудсаа сэргээгээд дахин шалгана уу.",
+      },
+      { status: 400 },
+    );
+  }
+  if (/BUNDLE_NOT_FOUND|BUNDLE_INVALID/.test(error.message)) {
+    return NextResponse.json(
+      { error: "Багц олдсонгүй — хуудсаа сэргээнэ үү." },
+      { status: 400 },
     );
   }
   if (error.code === "23505" || /duplicate key/i.test(error.message)) {

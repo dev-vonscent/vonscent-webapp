@@ -38,6 +38,22 @@ export const saleEventItemSchema = z.object({
 export type SaleEventItem = z.infer<typeof saleEventItemSchema>;
 
 /**
+ * Арга хэмжээнд орсон бэлэн багц (16.7, туг `sale_event_bundles`) — хэмжээ
+ * бүрийн event хувь. 16.5: 4 хэмжээ бүгд хувьгүй бол хадгалахгүй (ноорогт
+ * ч — SQL `BUNDLE_NO_PCT` мөн адил). «Одоогийн хувиас их» шалгалтыг суурь
+ * хувь мэдэх route (`bundlePctLowMessage`) ба SQL хийнэ.
+ */
+export const saleEventBundleSchema = z.object({
+  collectionId: z.string().uuid(),
+  pcts: saleEventItemSchema.shape.pcts.refine(
+    (p) => Object.keys(p).length > 0,
+    { message: "Сонгосон багц бүр дор хаяж нэг хэмжээнд хувьтай байна." },
+  ),
+});
+
+export type SaleEventBundle = z.infer<typeof saleEventBundleSchema>;
+
+/**
  * Арга хэмжээ үүсгэх / засах (Админ → Арга хэмжээ, 0181). Хугацаа нь УБ-ийн
  * өдрөөр: эхлэх өдрийн 00:00 — дуусах өдрийн төгсгөл (route `dayStartIso` /
  * `dayEndIso`-оор хувиргана; `ends_at` exclusive). Гишүүд бүрэн солигдоно.
@@ -68,6 +84,11 @@ export const saleEventInputSchema = z
       .array(saleEventItemSchema)
       .max(L.products, { message: `Ихдээ ${L.products} бараа.` })
       .default([]),
+    // Түлхүүр ирээгүй (туг хаалттай / хуучин клиент) → багцын мөр хөндөгдөхгүй.
+    collections: z
+      .array(saleEventBundleSchema)
+      .max(L.products, { message: `Ихдээ ${L.products} багц.` })
+      .optional(),
   })
   .refine((v) => v.endsOn >= v.startsOn, {
     message: "Дуусах өдөр эхлэхээс өмнө байж болохгүй.",
@@ -77,10 +98,20 @@ export const saleEventInputSchema = z
     (v) => new Set(v.items.map((i) => i.productId)).size === v.items.length,
     { message: "Нэг бараа хоёр удаа орсон байна.", path: ["items"] },
   )
-  .refine((v) => !v.isActive || v.items.length > 0, {
-    message: "Нийтлэхийн өмнө дор хаяж нэг бараа сонгоно уу.",
-    path: ["items"],
-  })
+  .refine(
+    (v) =>
+      !v.collections ||
+      new Set(v.collections.map((c) => c.collectionId)).size ===
+        v.collections.length,
+    { message: "Нэг багц хоёр удаа орсон байна.", path: ["collections"] },
+  )
+  .refine(
+    (v) => !v.isActive || v.items.length + (v.collections?.length ?? 0) > 0,
+    {
+      message: "Нийтлэхийн өмнө дор хаяж нэг бараа сонгоно уу.",
+      path: ["items"],
+    },
+  )
   // Сонгосон бараа бүр дор хаяж нэг хэмжээнд хямдрах ёстой (клиент,
   // 2026-11-15). Ноорогт (autosave) зөвшөөрнө — хувиа дараа нь бичнэ.
   .refine(

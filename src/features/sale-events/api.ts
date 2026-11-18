@@ -2,10 +2,18 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import * as Sentry from "@sentry/nextjs";
 import { CACHE_TAG_CATALOG } from "@/lib/cache-tags";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  ML_SIZES,
   SALE_EVENT_TICKER_THEMES,
   type SaleEventTickerTheme,
 } from "@/lib/constants";
+import { discountForMl } from "@/features/collections/pricing";
+import {
+  bundlePctLowMessage,
+  filledPcts,
+  type SaleEventBundleOption,
+} from "./bundles";
 import { isSupabaseConfigured } from "@/lib/env";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { callRpc } from "@/lib/supabase/rpc";
@@ -47,7 +55,9 @@ interface LiveRow {
 }
 
 /** Сангийн утга → мэдэгдэх өнгө; бусад / хоосон → null (өгөгдмөл). */
-function tickerTheme(v: string | null | undefined): SaleEventTickerTheme | null {
+function tickerTheme(
+  v: string | null | undefined,
+): SaleEventTickerTheme | null {
   return (SALE_EVENT_TICKER_THEMES as readonly string[]).includes(v ?? "")
     ? (v as SaleEventTickerTheme)
     : null;
@@ -199,12 +209,22 @@ interface AdminRow {
         sale_event_discounts: { ml: number; pct: number }[] | null;
       }[]
     | null;
+  /** 0190 — туг хаалттай ч уншина (staff RLS); бичих нь тугаар. */
+  sale_event_collections?:
+    | {
+        collection_id: string;
+        sort_order: number;
+        sale_event_collection_discounts: { ml: number; pct: number }[] | null;
+      }[]
+    | null;
 }
 
 const ADMIN_SELECT = `id, slug, name, badge_label, headline, description, starts_at, ends_at,
        is_active, show_countdown, ticker_theme, created_at, updated_at,
        sale_event_products ( product_id, sort_order,
-         sale_event_discounts ( ml, pct ) )`;
+         sale_event_discounts ( ml, pct ) ),
+       sale_event_collections ( collection_id, sort_order,
+         sale_event_collection_discounts ( ml, pct ) )`;
 
 function toAdminRow(r: AdminRow): SaleEventAdminRow {
   return {
@@ -227,6 +247,17 @@ function toAdminRow(r: AdminRow): SaleEventAdminRow {
         productId: p.product_id,
         pcts: Object.fromEntries(
           (p.sale_event_discounts ?? []).map((d) => [String(d.ml), d.pct]),
+        ),
+      })),
+    collections: [...(r.sale_event_collections ?? [])]
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((c) => ({
+        collectionId: c.collection_id,
+        pcts: Object.fromEntries(
+          (c.sale_event_collection_discounts ?? []).map((d) => [
+            String(d.ml),
+            d.pct,
+          ]),
         ),
       })),
   };
@@ -274,7 +305,11 @@ interface ProductRow {
   brand: string;
   gender: SaleEventProduct["gender"];
   product_variants: { ml: number; price: number; is_active: boolean }[];
-  product_images: { url: string; sort_order: number; is_visible: boolean | null }[];
+  product_images: {
+    url: string;
+    sort_order: number;
+    is_visible: boolean | null;
+  }[];
 }
 
 /**
@@ -315,4 +350,158 @@ export async function getSaleEventProductOptions(): Promise<
         .map((v) => [v.ml, v.price]),
     ),
   }));
+}
+
+interface BundleRow {
+  id: string;
+  name: string;
+  image_url: string | null;
+  discount_pct: number | string;
+  collection_ml_discounts: {
+    ml: number;
+    discount_pct: number | string | null;
+  }[];
+  collection_items: {
+    products: {
+      product_variants: { ml: number; price: number; is_active: boolean }[];
+      product_images: {
+        url: string;
+        sort_order: number;
+        is_visible: boolean | null;
+      }[];
+    } | null;
+  }[];
+  sale_event_collections: {
+    event_id: string;
+    sale_events: {
+      name: string;
+      is_active: boolean;
+      starts_at: string;
+      ends_at: string;
+    } | null;
+  }[];
+}
+
+/**
+ * Студийн бэлэн багцын сонгогч (16.7, туг `sale_event_bundles`) — идэвхтэй
+ * бэлэн багцууд, хэмжээ бүрийн ОДООГИЙН хувь, гишүүдийн үндсэн үнийн
+ * нийлбэр (урьдчилж харах), багцыг агуулсан бусад арга хэмжээ (16.3).
+ * Session client (staff RLS, 0190).
+ */
+export async function getSaleEventBundleOptions(): Promise<
+  SaleEventBundleOption[]
+> {
+  const supabase = await createClient();
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("collections")
+    .select(
+      `id, name, image_url, discount_pct,
+       collection_ml_discounts ( ml, discount_pct ),
+       collection_items ( products ( product_variants ( ml, price, is_active ),
+         product_images ( url, sort_order, is_visible ) ) ),
+       sale_event_collections ( event_id,
+         sale_events ( name, is_active, starts_at, ends_at ) )`,
+    )
+    .eq("type", "base")
+    .eq("is_active", true)
+    .order("name");
+  if (error) {
+    Sentry.captureException(new Error(`sale_event bundles: ${error.message}`));
+    throw new Error("Багцын жагсаалтыг уншиж чадсангүй.");
+  }
+  return ((data as unknown as BundleRow[] | null) ?? []).map((r) => {
+    const own = new Map(
+      r.collection_ml_discounts
+        .filter((d) => d.discount_pct != null)
+        .map((d) => [d.ml, Number(d.discount_pct)]),
+    );
+    const basePcts: Record<number, number> = {};
+    const memberSums: Record<number, number> = {};
+    const members = r.collection_items.map((i) => i.products);
+    for (const ml of ML_SIZES) {
+      basePcts[ml] = discountForMl(
+        ml,
+        Number(r.discount_pct),
+        Object.fromEntries(own),
+      );
+      const prices = members.map(
+        (p) =>
+          p?.product_variants.find((v) => v.ml === ml && v.is_active)?.price,
+      );
+      if (members.length > 0 && prices.every((x) => x != null)) {
+        memberSums[ml] = prices.reduce((s, x) => s + (x ?? 0), 0);
+      }
+    }
+    const firstImage = members[0]?.product_images
+      ? [...members[0].product_images]
+          .filter((i) => i.is_visible !== false)
+          .sort((a, b) => a.sort_order - b.sort_order)[0]?.url
+      : null;
+    return {
+      id: r.id,
+      name: r.name,
+      image: r.image_url ?? firstImage ?? null,
+      basePcts,
+      memberSums,
+      events: r.sale_event_collections
+        .filter((e) => e.sale_events)
+        .map((e) => ({
+          eventId: e.event_id,
+          name: e.sale_events!.name,
+          isActive: e.sale_events!.is_active,
+          startsAt: e.sale_events!.starts_at,
+          endsAt: e.sale_events!.ends_at,
+        })),
+    };
+  });
+}
+
+/**
+ * Route-ийн шалгалт (16.7): event хувь > багцын одоогийн хувь. Service
+ * client — суурь хувийг сангаас. Анхны зөрчлийн монгол мессеж, эс бөгөөс null.
+ */
+export async function bundlePctLowError(
+  supabase: SupabaseClient,
+  bundles: readonly { collectionId: string; pcts: Record<string, number> }[],
+): Promise<string | null> {
+  if (!bundles.length) return null;
+  const { data, error } = await supabase
+    .from("collections")
+    .select(
+      "id, name, discount_pct, collection_ml_discounts ( ml, discount_pct )",
+    )
+    .in(
+      "id",
+      bundles.map((b) => b.collectionId),
+    );
+  if (error) throw new Error(`bundle base pcts: ${error.message}`);
+  const rows = (data ?? []) as unknown as {
+    id: string;
+    name: string;
+    discount_pct: number | string;
+    collection_ml_discounts: {
+      ml: number;
+      discount_pct: number | string | null;
+    }[];
+  }[];
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  for (const b of bundles) {
+    const r = byId.get(b.collectionId);
+    if (!r) return "Багц олдсонгүй — хуудсаа сэргээнэ үү.";
+    const own = Object.fromEntries(
+      r.collection_ml_discounts
+        .filter((d) => d.discount_pct != null)
+        .map((d) => [d.ml, Number(d.discount_pct)]),
+    );
+    const basePcts = Object.fromEntries(
+      ML_SIZES.map((ml) => [
+        ml,
+        discountForMl(ml, Number(r.discount_pct), own),
+      ]),
+    );
+    const msg = bundlePctLowMessage(r.name, filledPcts(b.pcts), basePcts);
+    if (msg) return msg;
+  }
+  return null;
 }

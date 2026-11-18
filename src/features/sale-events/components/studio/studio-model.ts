@@ -13,6 +13,7 @@ import {
 } from "@/features/admin/lib/date-range";
 import { UB_TIMEZONE } from "@/lib/time";
 import { slugify } from "@/features/collections/slug";
+import type { StudioBundle } from "../../bundles";
 import type { SaleEventAdminRow, SaleEventPhase } from "../../types";
 
 /**
@@ -42,6 +43,11 @@ export interface StudioDraft {
   /** Дээд гүйдэг зурвасын өнгө; null → өгөгдмөл (navy). */
   tickerTheme: SaleEventTickerTheme | null;
   items: StudioItem[];
+  /**
+   * Бэлэн багц (16.7, туг `sale_event_bundles`). Туг хаалттай бол серверт
+   * илгээгдэхгүй (`draftToInput`) → санд хадгалсан багц хөндөгдөхгүй.
+   */
+  collections?: StudioBundle[];
 }
 
 export const STUDIO_STEPS = [
@@ -101,6 +107,7 @@ export function emptyDraft(): StudioDraft {
     showCountdown: true,
     tickerTheme: null,
     items: [],
+    collections: [],
   };
 }
 
@@ -126,11 +133,34 @@ export function draftFromRow(
         Object.entries(i.pcts).map(([ml, pct]) => [Number(ml), String(pct)]),
       ),
     })),
+    collections: (r.collections ?? []).map((c) => ({
+      collectionId: c.collectionId,
+      pcts: Object.fromEntries(
+        Object.entries(c.pcts).map(([ml, pct]) => [Number(ml), String(pct)]),
+      ),
+    })),
   };
 }
 
-/** Ноорог → `saleEventInputSchema`-ийн оролт (шалгалтыг Zod хийнэ). */
-export function draftToInput(d: StudioDraft, isActive: boolean): unknown {
+/** Мөр утга → тоо (хоосныг хасна; буруу утгыг Zod барина). */
+function pctsToInput(pcts: Record<number, string>): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(pcts)
+      .filter(([, v]) => v.trim() !== "")
+      .map(([ml, v]) => [ml, Number(v)]),
+  );
+}
+
+/**
+ * Ноорог → `saleEventInputSchema`-ийн оролт (шалгалтыг Zod хийнэ).
+ * `bundles` = туг `sale_event_bundles` — хаалттай бол `collections` түлхүүр
+ * огт явахгүй (SQL багцын мөрийг хөндөхгүй, FEATURE_DISABLED гарахгүй).
+ */
+export function draftToInput(
+  d: StudioDraft,
+  isActive: boolean,
+  opts: { bundles?: boolean } = {},
+): unknown {
   return {
     name: d.name,
     slug: d.slug,
@@ -151,6 +181,14 @@ export function draftToInput(d: StudioDraft, isActive: boolean): unknown {
           .map(([ml, v]) => [ml, Number(v)]),
       ),
     })),
+    ...(opts.bundles
+      ? {
+          collections: (d.collections ?? []).map((c) => ({
+            collectionId: c.collectionId,
+            pcts: pctsToInput(c.pcts),
+          })),
+        }
+      : {}),
   };
 }
 
@@ -302,12 +340,23 @@ export { dayGenitive, daysInclusive } from "@/features/admin/lib/period";
  * (Улаанбаатарын цагаар)». Арга хэмжээнд хоёр өдөр хоёулаа заавал тул дутуу /
  * буруу дараалалтай бол null. Бие нь админы дундын `periodSentence` (task 7).
  */
-export function periodSentence(startsOn: string, endsOn: string): string | null {
+export function periodSentence(
+  startsOn: string,
+  endsOn: string,
+): string | null {
   if (!DAY_RE.test(startsOn) || !DAY_RE.test(endsOn)) return null;
   return sharedPeriodSentence(startsOn, endsOn);
 }
 
-const WEEKDAYS = ["Ням", "Даваа", "Мягмар", "Лхагва", "Пүрэв", "Баасан", "Бямба"];
+const WEEKDAYS = [
+  "Ням",
+  "Даваа",
+  "Мягмар",
+  "Лхагва",
+  "Пүрэв",
+  "Баасан",
+  "Бямба",
+];
 
 /** «11/23». */
 export function shortDay(key: string): string {

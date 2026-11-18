@@ -5,8 +5,10 @@ import { isImageGenConfigured } from "@/lib/env";
 import { getHeroEventOptions, getHeroesAdmin } from "@/features/heroes/api";
 import {
   getSaleEventAdmin,
+  getSaleEventBundleOptions,
   getSaleEventProductOptions,
 } from "@/features/sale-events/api";
+import { getCollectionSettings } from "@/features/collections/api";
 import { EventStudio } from "@/features/sale-events/components/studio/event-studio";
 import { linkedBannerRow } from "@/features/sale-events/components/studio/studio-banner";
 
@@ -27,16 +29,24 @@ export default async function SaleEventStudioPage({
 }) {
   if (!(await isFeatureEnabled("sale_events"))) notFound();
 
-  const id = z.string().uuid().safeParse((await params).id);
+  const id = z
+    .string()
+    .uuid()
+    .safeParse((await params).id);
   if (!id.success) notFound();
 
   const heroAdmin = await isFeatureEnabled("hero_admin");
-  const [row, products, heroes, heroEvents] = await Promise.all([
-    getSaleEventAdmin(id.data),
-    getSaleEventProductOptions(),
-    heroAdmin ? getHeroesAdmin() : [],
-    heroAdmin ? getHeroEventOptions() : [],
-  ]);
+  // 16.7 — туг хаалттай бол багцын сонгогч огт уншигдахгүй.
+  const bundlesOn = await isFeatureEnabled("sale_event_bundles");
+  const [row, products, heroes, heroEvents, bundleOptions, collectionSettings] =
+    await Promise.all([
+      getSaleEventAdmin(id.data),
+      getSaleEventProductOptions(),
+      heroAdmin ? getHeroesAdmin() : [],
+      heroAdmin ? getHeroEventOptions() : [],
+      bundlesOn ? getSaleEventBundleOptions() : [],
+      bundlesOn ? getCollectionSettings() : null,
+    ]);
   if (!row) notFound();
   const linked = linkedBannerRow(heroes, row.id);
 
@@ -46,6 +56,8 @@ export default async function SaleEventStudioPage({
       key={`${row.id}:${row.updatedAt}:${row.isActive}:${row.endsAt}:${linked.row?.updatedAt ?? ""}`}
       row={row}
       products={products}
+      bundleOptions={bundleOptions}
+      bundleStep={collectionSettings?.roundTo ?? 100}
       bannerRow={linked.row}
       bannerOthers={linked.others}
       heroes={heroes}
