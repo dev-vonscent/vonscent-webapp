@@ -117,7 +117,9 @@ export function SizePrice({
             key={sizeLabel ?? ""}
             endsAt={ends}
             variant="pill"
-            className="self-center"
+            // sm+: үнийн бүлэг зүүнд, тоолуур баруун захад (space-between).
+            // Утсан дээр доод мөрөнд зүүн тийш хэвээр.
+            className="self-center sm:ml-auto"
           />
         )}
       </div>
