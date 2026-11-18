@@ -6,10 +6,12 @@ import {
   mixCatalog,
   mixRandom,
   scatterCollections,
+  sortSaleRail,
   shuffle,
   topUpRandom,
 } from "./rail";
 import type { ProductListItem } from "@/lib/types";
+import { seededRandom } from "@/lib/seeded-random";
 import type { Collection } from "@/features/collections/types";
 
 const p = (id: string) => ({ id }) as ProductListItem;
@@ -190,5 +192,42 @@ describe("collectionItem", () => {
     expect(col).not.toHaveProperty("usageDescription");
     // Эх объект хөндөгдөхгүй — багцын хуудас ижил объектыг ашиглаж болно.
     expect(full.description).toBe("<p>урт тайлбар</p>");
+  });
+});
+
+describe("sortSaleRail (2.1)", () => {
+  const sp = (id: string, maxPct: number, endsAt: string | null) =>
+    ({ id, sale: { minPct: maxPct, maxPct, allSizes: true, endsAt } }) as ProductListItem;
+  const ids = (xs: { id: string }[]) => xs.map((x) => x.id);
+
+  it("дуусах мөч ойр → хувь их → хугацаагүй нь ард", () => {
+    const list = [
+      sp("none-50", 50, null),
+      sp("d30-10", 10, "2026-11-30T16:00:00Z"),
+      sp("d20-10", 10, "2026-11-20T16:00:00Z"),
+      sp("d30-25", 25, "2026-11-30T16:00:00Z"),
+      sp("none-5", 5, null),
+    ];
+    expect(ids(sortSaleRail(list, seededRandom("x")))).toEqual([
+      "d20-10",
+      "d30-25",
+      "d30-10",
+      "none-50",
+      "none-5",
+    ]);
+  });
+
+  it("бүгд ижил бол seed-ээр холино — ижил seed ижил дараалал, оролт хөндөгдөхгүй", () => {
+    const list = Array.from({ length: 8 }, (_, i) =>
+      sp(`p${i}`, 10, "2026-11-30T16:00:00Z"),
+    );
+    const a = ids(sortSaleRail(list, seededRandom("2026-11-18:home-sale")));
+    const b = ids(sortSaleRail(list, seededRandom("2026-11-18:home-sale")));
+    const c2 = ids(sortSaleRail(list, seededRandom("2026-11-19:home-sale")));
+    expect(a).toEqual(b);
+    expect(a).not.toEqual(c2);
+    expect([...a].sort()).toEqual(ids(list).sort());
+    expect(ids(list)).toEqual(ids(list).slice());
+    expect(list[0].id).toBe("p0");
   });
 });

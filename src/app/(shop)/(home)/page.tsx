@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import {
   getBestSellers,
   getBrands,
+  getCatalog,
   getComingSoonProducts,
   getNewArrivals,
 } from "@/features/products/api";
@@ -23,11 +24,14 @@ import {
   fillRail,
   mixRandom,
   scatterCollections,
+  sortSaleRail,
 } from "@/features/products/rail";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 import { dailyRandom } from "@/lib/seeded-random";
 import {
   HOT_RAIL_COLLECTIONS,
   NEW_COLLECTIONS_COUNT,
+  SALE_RAIL_POOL,
   SITE,
 } from "@/lib/constants";
 import {
@@ -137,6 +141,11 @@ export default async function HomePage() {
         </Suspense>
 
         <IntentCards />
+
+        {/* Туг хаалттай бол юу ч гаргахгүй (fallback ч үгүй). */}
+        <Suspense fallback={null}>
+          <SaleSection />
+        </Suspense>
 
         <Suspense fallback={<CarouselSkeleton action />}>
           <CuratedSections />
@@ -317,6 +326,44 @@ async function BrandsSection() {
         brands={brands}
         logos={Object.fromEntries(brandLogos.map((b) => [b.name, b.logoUrl]))}
       />
+    </section>
+  );
+}
+
+/**
+ * «Хямдралтай» (task 2.1, туг `sale_display`) — зөвхөн хямдралтай ДАН ус
+ * (бэлэн багц орохгүй; `getCatalog` ус л буцаана). Дуусах мөч ойр → хувь
+ * их → ижил бол өдрийн seed-ээр (`sortSaleRail`); хугацаагүй нь ард, дууссан
+ * ус хамгийн ард (`sellableFirst`). «Бүгдийг үзэх» → каталог «Бүгд» +
+ * «Хямдралтай» таг (багц ч орно, сонгосон эрэмбээр).
+ *
+ * Өгөгдөл: `catalog_search` (кэш, tag `catalog`/`stock`) + хямдралын товч
+ * (`getSaleSummaries`, tag `catalog`) — шинэ кэш/cron үгүй. Хил (УБ 00:00)
+ * дээр шөнийн cron цэвэрлэнэ.
+ */
+async function SaleSection() {
+  if (!(await isFeatureEnabled("sale_display"))) return null;
+  const { items } = await getCatalog({
+    tags: ["sale"],
+    sort: "new",
+    perPage: SALE_RAIL_POOL,
+  });
+  const products = sellableFirst(
+    sortSaleRail(
+      items.filter((p) => p.sale),
+      dailyRandom("home-sale"),
+    ),
+  ).slice(0, RAIL_SIZE);
+  if (products.length === 0) return null;
+  return (
+    <section aria-labelledby="home-sale-title">
+      <SectionHeading
+        id="home-sale-title"
+        compact
+        title="Хямдралтай"
+        href="/catalog?tags=sale"
+      />
+      <ProductCarousel products={products} />
     </section>
   );
 }
