@@ -66,14 +66,14 @@ test("product size selector: price follows the size, sold-out size is selectable
   await expect(five).toContainText("75 цацалт");
   await expect(five).not.toContainText("₮");
   await expect(price).toContainText("40,800₮");
-  await expect(hint).toHaveText("Халаасанд багтахуйц");
+  await expect(hint).toHaveText("Цүнхэнд багтах, өдөр бүрийн хэмжээ");
 
   // Дууссан хэмжээ сонгогдоно — үнэ нь дээр, товч идэвхгүй «Дууссан».
   const ten = group.getByRole("radio", { name: "10ml — Дууссан" });
   await ten.click();
   await expect(ten).toHaveAttribute("aria-checked", "true");
   await expect(price).toContainText("68,900₮");
-  await expect(hint).toHaveText("Авч явахад тохиромжтой");
+  await expect(hint).toHaveText("Аялалд, онгоцонд ч зөвшөөрөгдөнө");
   await expect(page.getByRole("button", { name: "Дууссан" })).toBeDisabled();
   // .first() — хуудсан доторх товч (доод зурвас, carousel-ийн quick-add бусад).
   await expect(

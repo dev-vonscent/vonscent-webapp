@@ -31,6 +31,7 @@ export function bundleSizeOptions(
       // Үнийн хэсэгтэй ижил: админы амласан хувь (event үед event-ийн).
       salePct: (p.eventSaving ?? 0) > 0 ? p.nominalDiscountPct : 0,
       sprays: spraysText(p.ml, true),
+      each: true,
       price: p.price,
       totalMl: p.ml * Math.max(count, 1),
     };

@@ -81,7 +81,7 @@ describe("ProductPurchase", () => {
     expect(head()).toContain("12,000₮");
     expect(head()).not.toMatch(/−\d+%/);
     expect(screen.getByTestId("size-hint").textContent).toBe(
-      "Туршиж үзэхэд тохиромжтой",
+      "30 цацалт, эрсдэлгүй туршилт",
     );
 
     await userEvent.click(screen.getByRole("radio", { name: /^5ml/ }));
@@ -91,7 +91,7 @@ describe("ProductPurchase", () => {
     expect(screen.getByTestId("size-price-pct").className).toContain("bg-sale");
     expect(head()).toContain("/ 5ml");
     expect(screen.getByTestId("size-hint").textContent).toBe(
-      "Халаасанд багтахуйц",
+      "Цүнхэнд багтах, өдөр бүрийн хэмжээ",
     );
     const hint = screen.getByTestId("size-hint");
     expect(hint.getAttribute("data-kind")).toBe("pocket");

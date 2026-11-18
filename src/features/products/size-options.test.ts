@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { SPRAYS_PER_ML } from "@/lib/constants";
+import { bundleSizeOptions } from "@/features/collections/size-options";
 import type { Variant } from "@/lib/types";
 import {
   defaultSizeId,
@@ -39,10 +41,10 @@ describe("size options (task 15, 4, 2.6)", () => {
       v(20, { price: 80000, basePrice: 80000 }),
     ]);
     const hint = (i: number) => sizeHint(opts, opts[i])?.text;
-    expect(hint(0)).toBe("Туршиж үзэхэд тохиромжтой");
-    expect(hint(1)).toBe("Халаасанд багтахуйц");
-    expect(hint(2)).toBe("Авч явахад тохиромжтой");
-    expect(hint(3)).toBe("Хамгийн хэмнэлттэй сонголт");
+    expect(hint(0)).toBe("30 цацалт, эрсдэлгүй туршилт");
+    expect(hint(1)).toBe("Цүнхэнд багтах, өдөр бүрийн хэмжээ");
+    expect(hint(2)).toBe("Аялалд, онгоцонд ч зөвшөөрөгдөнө");
+    expect(hint(3)).toBe("Дуртай үнэртнээ хамгийн хямдаар, удаан хэрэглэ");
     expect(sizeHint(opts, null)).toBeNull();
     expect(opts.map((o) => sizeHint(opts, o)?.kind)).toEqual([
       "trial",
@@ -52,7 +54,7 @@ describe("size options (task 15, 4, 2.6)", () => {
     ]);
   });
 
-  it("20ml-ийн 1ml-ийн үнэ хамгийн бага биш бол «Хамгийн том хэмжээ»", () => {
+  it("20ml-ийн 1ml-ийн үнэ хамгийн бага биш бол «Дуртай үнэртнээ удаан хэрэглэ»", () => {
     // 10ml хямдарч 1ml нь 3,800₮ < 20ml-ийн 4,000₮.
     const opts = productSizeOptions([
       v(2, { price: 12000, basePrice: 12000 }),
@@ -60,7 +62,7 @@ describe("size options (task 15, 4, 2.6)", () => {
       v(20, { price: 80000, basePrice: 80000 }),
     ]);
     expect(sizeHint(opts, opts[2])).toEqual({
-      text: "Хамгийн том хэмжээ",
+      text: "Дуртай үнэртнээ удаан хэрэглэ",
       kind: "largest",
     });
     // Тэнцүү бол хэмнэлттэй хэвээр.
@@ -68,7 +70,9 @@ describe("size options (task 15, 4, 2.6)", () => {
       v(10, { price: 40000, basePrice: 40000 }),
       v(20, { price: 80000, basePrice: 80000 }),
     ]);
-    expect(sizeHint(tie, tie[1])?.text).toBe("Хамгийн хэмнэлттэй сонголт");
+    expect(sizeHint(tie, tie[1])?.text).toBe(
+      "Дуртай үнэртнээ хамгийн хямдаар, удаан хэрэглэ",
+    );
   });
 
   it("«Зарахгүй» хэмжээ харьцуулалтад орохгүй, дууссан нь орно", () => {
@@ -77,12 +81,14 @@ describe("size options (task 15, 4, 2.6)", () => {
       v(10, { ...cheap10, isActive: false, sellable: false }),
       v(20, { price: 80000, basePrice: 80000 }),
     ]);
-    expect(sizeHint(off, off[1])?.text).toBe("Хамгийн хэмнэлттэй сонголт");
+    expect(sizeHint(off, off[1])?.text).toBe(
+      "Дуртай үнэртнээ хамгийн хямдаар, удаан хэрэглэ",
+    );
     const sold = productSizeOptions([
       v(10, { ...cheap10, inStock: false, sellable: false }),
       v(20, { price: 80000, basePrice: 80000 }),
     ]);
-    expect(sizeHint(sold, sold[1])?.text).toBe("Хамгийн том хэмжээ");
+    expect(sizeHint(sold, sold[1])?.text).toBe("Дуртай үнэртнээ удаан хэрэглэ");
   });
 
   it("дууссан хэмжээ сонгогдоно, зарахгүй нь үгүй", () => {
@@ -134,5 +140,40 @@ describe("size options (task 15, 4, 2.6)", () => {
         ]),
       ),
     ).toBe("v5");
+  });
+
+  it("2ml-ийн цацалт SPRAYS_PER_ML-ээс, картын тоотой ижил", () => {
+    const opts = productSizeOptions([v(2)]);
+    const n = 2 * SPRAYS_PER_ML;
+    expect(sizeHint(opts, opts[0])?.text).toBe(
+      `${n} цацалт, эрсдэлгүй туршилт`,
+    );
+    expect(opts[0].sprays).toBe(`${n} цацалт`);
+  });
+
+  it("багцын 2ml — «Үнэртэн тус бүр N цацалт», бусад нь ижил", () => {
+    const row = { variantId: "x", price: 1, inStock: true };
+    const members = ["a", "b"].map((id) => ({
+      productId: id,
+      variantByMl: { 2: row, 5: row },
+    }));
+    const opts = bundleSizeOptions({
+      members,
+      prices: [2, 5].map((ml) => ({
+        ml,
+        price: ml * 1000,
+        memberSum: ml * 1000,
+        discountPct: 0,
+        nominalDiscountPct: 0,
+        saved: 0,
+        available: true,
+      })),
+    } as unknown as Parameters<typeof bundleSizeOptions>[0]);
+    expect(sizeHint(opts, opts[0])?.text).toBe(
+      `Үнэртэн тус бүр ${2 * SPRAYS_PER_ML} цацалт, эрсдэлгүй туршилт`,
+    );
+    expect(sizeHint(opts, opts[1])?.text).toBe(
+      "Цүнхэнд багтах, өдөр бүрийн хэмжээ",
+    );
   });
 });

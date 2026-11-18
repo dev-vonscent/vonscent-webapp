@@ -1,5 +1,6 @@
 import {
   SIZE_HINT_LARGEST,
+  SIZE_HINT_TRIAL_BUNDLE,
   SIZE_HINTS,
   SPRAYS_PER_ML,
   type MlSize,
@@ -39,6 +40,8 @@ export interface SizeOption {
   salePct: number;
   /** «75 цацалт», багцад «тус бүр 75 цацалт». */
   sprays: string;
+  /** Багц — цацалт үнэртэн тус бүрийнх (2ml-ийн зөвлөмжийн текст). */
+  each: boolean;
   /** Одоогийн бодит үнэ (₮) — 1ml-ийн үнийн харьцуулалтад. */
   price: number;
   /** Нийт ml (усанд = `ml`, багцад `ml × гишүүдийн тоо`). */
@@ -80,9 +83,10 @@ const HINT_KIND: Record<MlSize, SizeHintKind> = {
 };
 
 /**
- * Сонгосон хэмжээний доорх нэг мөр (`SIZE_HINTS`). 20ml «Хамгийн
- * хэмнэлттэй сонголт» нь 1ml-ийн үнэ нь үнэхээр хамгийн бага үед л; үгүй
- * бол «Хамгийн том хэмжээ». Жагсаалтад байхгүй хэмжээ → null.
+ * Сонгосон хэмжээний доорх нэг мөр (`SIZE_HINTS`). `{sprays}` нь картын
+ * цацалтын тоотой ижил томьёо. 20ml-ийн «хамгийн хямдаар» нь 1ml-ийн үнэ нь
+ * үнэхээр хамгийн бага үед л; үгүй бол `SIZE_HINT_LARGEST`. Багцын 2ml —
+ * `SIZE_HINT_TRIAL_BUNDLE`. Жагсаалтад байхгүй хэмжээ → null.
  */
 export function sizeHint(
   options: readonly SizeOption[],
@@ -90,11 +94,13 @@ export function sizeHint(
 ): { text: string; kind: SizeHintKind } | null {
   if (!selected) return null;
   const ml = selected.ml as MlSize;
-  const text = SIZE_HINTS[ml];
-  if (!text) return null;
+  const template =
+    ml === 2 && selected.each ? SIZE_HINT_TRIAL_BUNDLE : SIZE_HINTS[ml];
+  if (!template) return null;
   if (ml === 20 && !isCheapestPerMl(options, selected)) {
     return { text: SIZE_HINT_LARGEST, kind: "largest" };
   }
+  const text = template.replace("{sprays}", String(ml * SPRAYS_PER_ML));
   return { text, kind: HINT_KIND[ml] };
 }
 
@@ -130,6 +136,7 @@ export function productSizeOptions(
     buyable: v.sellable,
     salePct: v.isActive ? salePct(v.basePrice, v.price) : 0,
     sprays: spraysText(v.ml),
+    each: false,
     price: v.price,
     totalMl: v.ml,
   }));
