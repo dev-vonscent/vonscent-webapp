@@ -266,7 +266,11 @@ export function useEventStudio(input: {
   const persist = React.useCallback(
     async (d: StudioDraft, isActive: boolean): Promise<PersistResult> => {
       const parsed = saleEventInputSchema.safeParse(
-        draftToInput(d, isActive, { bundles: bundlesEnabled }),
+        draftToInput(d, isActive, {
+          bundles: bundlesEnabled,
+          // 0191: хадгалсан төлөвтэй харьцуулж зөвхөн ИЛЭРХИЙ хасалтыг явуулна.
+          base: id ? (JSON.parse(live.current.baseline) as StudioDraft) : null,
+        }),
       );
       if (!parsed.success) {
         setErrors(saleEventFieldErrors(parsed.error));
@@ -424,7 +428,10 @@ export function useEventStudio(input: {
         if (!id || !m || m.isActive) return;
         if (JSON.stringify(d) !== b) {
           const parsed = saleEventInputSchema.safeParse(
-            draftToInput(d, false, { bundles: bundlesEnabled }),
+            draftToInput(d, false, {
+              bundles: bundlesEnabled,
+              base: JSON.parse(b) as StudioDraft,
+            }),
           );
           if (!parsed.success) return;
           const res = await adminFetch(`/api/admin/sale-events/${id}`, {

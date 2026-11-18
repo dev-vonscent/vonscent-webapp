@@ -151,17 +151,48 @@ function pctsToInput(pcts: Record<number, string>): Record<string, number> {
   );
 }
 
+/** `base`-д байсан ч `next`-д байхгүй id — админы ИЛЭРХИЙ хассан нь. */
+function removedIds(
+  base: readonly string[],
+  next: readonly string[],
+): string[] {
+  const keep = new Set(next);
+  return base.filter((id) => !keep.has(id));
+}
+
 /**
  * Ноорог → `saleEventInputSchema`-ийн оролт (шалгалтыг Zod хийнэ).
  * `bundles` = туг `sale_event_bundles` — хаалттай бол `collections` түлхүүр
  * огт явахгүй (SQL багцын мөрийг хөндөхгүй, FEATURE_DISABLED гарахгүй).
+ *
+ * `base` — сүүлд хадгалсан (эсвэл ачаалсан) ноорог. Өгвөл сервер merge
+ * горимоор хадгална (0191): зөвхөн `base`-д байгаад одоо хасагдсан id
+ * (`removedProductIds` / `removedCollectionIds`) устана, бусад нь хэвээр —
+ * хуучин snapshot-оос хадгалахад админы хараагүй мөр чимээгүй устахгүй.
  */
 export function draftToInput(
   d: StudioDraft,
   isActive: boolean,
-  opts: { bundles?: boolean } = {},
+  opts: { bundles?: boolean; base?: StudioDraft | null } = {},
 ): unknown {
+  const base = opts.base ?? null;
   return {
+    ...(base
+      ? {
+          removedProductIds: removedIds(
+            base.items.map((i) => i.productId),
+            d.items.map((i) => i.productId),
+          ),
+          ...(opts.bundles
+            ? {
+                removedCollectionIds: removedIds(
+                  (base.collections ?? []).map((c) => c.collectionId),
+                  (d.collections ?? []).map((c) => c.collectionId),
+                ),
+              }
+            : {}),
+        }
+      : {}),
     name: d.name,
     slug: d.slug,
     badgeLabel: d.badgeLabel,

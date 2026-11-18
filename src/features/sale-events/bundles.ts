@@ -8,9 +8,24 @@ import { bundlePrice } from "@/features/collections/pricing";
  */
 
 /** Студийн сонгогчийн нэг багц (хуудас серверээс өгнө). */
+/**
+ * Одоо худалдаж авч болох эсэх (SQL `collection_sellable`, 0191): дууссан /
+ * идэвхгүй багцыг ШИНЭЭР нэмэхгүй; аль хэдийн event-д байгаа бол үлдэнэ.
+ */
+export type BundleStatus = "available" | "sold_out" | "inactive";
+
+export const BUNDLE_STATUS_LABEL: Record<
+  Exclude<BundleStatus, "available">,
+  string
+> = {
+  sold_out: "Дууссан",
+  inactive: "Идэвхгүй",
+};
+
 export interface SaleEventBundleOption {
   id: string;
   name: string;
+  status: BundleStatus;
   image: string | null;
   /** ml → багцын ОДООГИЙН (суурь) хувь — `discountForMl`. */
   basePcts: Record<number, number>;

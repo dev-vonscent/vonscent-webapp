@@ -16,6 +16,7 @@ import { ML_SIZES } from "@/lib/constants";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
+  BUNDLE_STATUS_LABEL,
   bundleIssue,
   bundleLock,
   bundleSizePreview,
@@ -140,8 +141,17 @@ export function EventBundlesSection({
                     )}
                   >
                     <div role="cell" className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {o?.name ?? "Нуусан / устгасан багц"}
+                      <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
+                        <span className="truncate">
+                          {o?.name ?? "Нуусан / устгасан багц"}
+                        </span>
+                        {/* Event-д орсны дараа дууссан / идэвхгүй болсон —
+                            хадгалахад хэвээр үлдэнэ, хасах нь админы шийдвэр. */}
+                        {o && o.status !== "available" && (
+                          <span className="bg-secondary text-muted-foreground shrink-0 rounded-sm px-1.5 py-0.5 text-[11px] font-normal">
+                            {BUNDLE_STATUS_LABEL[o.status]}
+                          </span>
+                        )}
                       </p>
                       {(locked || issue) && (
                         <p className="text-destructive text-xs text-pretty">
@@ -292,8 +302,8 @@ function AddBundlesSheet({
         <SheetHeader className="px-5 pt-5 pb-3">
           <SheetTitle>Багц нэмэх</SheetTitle>
           <SheetDescription>
-            Нэмсний дараа хэмжээ бүрт хувиа бичнэ. Өөр арга хэмжээнд орсон багц
-            сонгогдохгүй.
+            Нэмсний дараа хэмжээ бүрт хувиа бичнэ. Өөр арга хэмжээнд орсон,
+            дууссан эсвэл идэвхгүй багц сонгогдохгүй.
           </SheetDescription>
         </SheetHeader>
         <div className="px-5 pb-3">
@@ -316,7 +326,11 @@ function AddBundlesSheet({
           {visible.map((o) => {
             const isMember = memberIds.has(o.id);
             const { locked, drafts } = lockOf(o);
-            const disabled = Boolean(locked) && !isMember;
+            // Дууссан / идэвхгүй багцыг шинээр нэмэхгүй (SQL BUNDLE_UNAVAILABLE).
+            const unavailable =
+              o.status !== "available" ? BUNDLE_STATUS_LABEL[o.status] : null;
+            const disabled =
+              (Boolean(locked) || Boolean(unavailable)) && !isMember;
             const isOn = selected.has(o.id);
             return (
               <li key={o.id}>
@@ -342,6 +356,11 @@ function AddBundlesSheet({
                         <span className="font-normal"> — «{locked.name}»</span>
                       )}
                     </span>
+                    {unavailable && (
+                      <span className="text-muted-foreground block truncate text-xs">
+                        {unavailable}
+                      </span>
+                    )}
                     {drafts.length > 0 && !locked && (
                       <span className="text-muted-foreground block truncate text-xs">
                         ноорог: {drafts.join(", ")}

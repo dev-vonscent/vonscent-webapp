@@ -71,13 +71,22 @@ describe("bannerPayload", () => {
   it("эхлээгүй / мөргүй «хэрэггүй» бол юу ч явуулахгүй", () => {
     const args = { event: event(), eventId: EVENT_ID, knownSlugs: [] };
     expect(bannerPayload({ ...args, state: fresh() })).toBeNull();
-    const skipped = { ...fresh(), draft: effectiveCanvas(fresh(), event()), skip: true };
+    const skipped = {
+      ...fresh(),
+      draft: effectiveCanvas(fresh(), event()),
+      skip: true,
+    };
     expect(bannerPayload({ ...args, state: skipped })).toBeNull();
   });
 
   it("зураггүй бол идэвхгүй ноорог; схемд хүчинтэй", () => {
     const s = { ...fresh(), draft: effectiveCanvas(fresh(), event()) };
-    const p = bannerPayload({ state: s, event: event(), eventId: EVENT_ID, knownSlugs: [] });
+    const p = bannerPayload({
+      state: s,
+      event: event(),
+      eventId: EVENT_ID,
+      knownSlugs: [],
+    });
     expect(p).toMatchObject({
       saleEventId: EVENT_ID,
       priority: HERO_EVENT_PRIORITY,
@@ -92,13 +101,23 @@ describe("bannerPayload", () => {
     const s = initialBannerState({ row: row(), newGroupId: "g" });
     const args = { event: event(), eventId: EVENT_ID, knownSlugs: [] };
     expect(bannerPayload({ ...args, state: s })?.isActive).toBe(true);
-    expect(bannerPayload({ ...args, state: { ...s, skip: true } })?.isActive).toBe(false);
+    expect(
+      bannerPayload({ ...args, state: { ...s, skip: true } })?.isActive,
+    ).toBe(false);
   });
 
   it("мөрийн product_ids-ийг хадгалах бүрт буцааж явуулна (Zod-ын [] дарахгүй)", () => {
     const ids = ["11111111-1111-4111-8111-111111111111"];
-    const s = initialBannerState({ row: row({ productIds: ids }), newGroupId: "g" });
-    const p = bannerPayload({ state: s, event: event(), eventId: EVENT_ID, knownSlugs: [] });
+    const s = initialBannerState({
+      row: row({ productIds: ids }),
+      newGroupId: "g",
+    });
+    const p = bannerPayload({
+      state: s,
+      event: event(),
+      eventId: EVENT_ID,
+      knownSlugs: [],
+    });
     expect(p?.productIds).toEqual(ids);
     expect(heroInputSchema.parse(p).productIds).toEqual(ids);
   });
@@ -131,13 +150,22 @@ describe("initialBannerState", () => {
     });
     expect(s.id).toBeNull();
     expect(s.groupId).toBe("new-g");
-    expect(s.draft?.primaryTarget).toEqual({ type: "event", slug: "black-friday-2027" });
+    expect(s.draft?.primaryTarget).toEqual({
+      type: "event",
+      slug: "black-friday-2027",
+    });
   });
 
   it("бүрэн атлаа идэвхгүй мөр = «хэрэггүй»; дутуу идэвхгүй нь хэрэггүй биш", () => {
-    expect(initialBannerState({ row: row({ isActive: false }), newGroupId: "g" }).skip).toBe(true);
     expect(
-      initialBannerState({ row: row({ isActive: false, mobileImage: null }), newGroupId: "g" }).skip,
+      initialBannerState({ row: row({ isActive: false }), newGroupId: "g" })
+        .skip,
+    ).toBe(true);
+    expect(
+      initialBannerState({
+        row: row({ isActive: false, mobileImage: null }),
+        newGroupId: "g",
+      }).skip,
     ).toBe(false);
   });
 });
@@ -145,7 +173,10 @@ describe("initialBannerState", () => {
 describe("checklist + баннер", () => {
   const base = { draft: event(), today: "2026-11-15", bannerEnabled: true };
   it("утасны зураг дутуу → улбар", () => {
-    const s = initialBannerState({ row: row({ mobileImage: null }), newGroupId: "g" });
+    const s = initialBannerState({
+      row: row({ mobileImage: null }),
+      newGroupId: "g",
+    });
     const item = studioChecklist({ ...base, banner: bannerSummary(s) }).find(
       (i) => i.step === "banner",
     );
@@ -177,7 +208,9 @@ describe("баннерын текст арга хэмжээг дагах", () =>
     });
     const d = syncBannerCopy(base, prev, next);
     expect(d.eyebrow).toBe("Black Friday · 11/23–12/2");
-    expect(d.description).toBe("Сонгосон үнэртнүүд 40% хүртэл хямдарлаа. 12/2 хүртэл.");
+    expect(d.description).toBe(
+      "Сонгосон үнэртнүүд 40% хүртэл хямдарлаа. 12/2 хүртэл.",
+    );
     expect(d.mobileDescription).toBe("40% хүртэл хямдрал");
   });
 
@@ -192,10 +225,16 @@ describe("баннерын текст арга хэмжээг дагах", () =>
   });
 
   it("хугацаатай таарахгүй огноог олно", () => {
-    const d = { ...base, eyebrow: "Black Friday · 11/23–11/24", description: "" };
+    const d = {
+      ...base,
+      eyebrow: "Black Friday · 11/23–11/24",
+      description: "",
+    };
     expect(staleBannerDates(d, prev)).toEqual(["11/24"]);
     expect(staleBannerDates(base, prev)).toEqual([]);
-    expect(staleBannerDates({ ...base, title: "1/0 биш, 13/5 ч биш" }, prev)).toEqual([]);
+    expect(
+      staleBannerDates({ ...base, title: "1/0 биш, 13/5 ч биш" }, prev),
+    ).toEqual([]);
   });
 
   it("checklist-д анхааруулга", () => {

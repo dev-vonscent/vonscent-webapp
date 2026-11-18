@@ -36,7 +36,11 @@ export async function PUT(req: Request, { params }: Ctx) {
     );
   }
 
-  const bundleBlock = await saleEventBundleGate(gate.supabase, parsed.data);
+  const bundleBlock = await saleEventBundleGate(
+    gate.supabase,
+    parsed.data,
+    id.data,
+  );
   if (bundleBlock) return bundleBlock;
 
   const { error } = await gate.supabase.rpc("save_sale_event", {

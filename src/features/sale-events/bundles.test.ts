@@ -18,6 +18,7 @@ const option = (
 ): SaleEventBundleOption => ({
   id: "c1",
   name: "Өвлийн багц",
+  status: "available",
   image: null,
   basePcts: { 2: 5, 5: 5, 10: 5, 20: 15 },
   memberSums: { 2: 20000, 5: 50000, 10: 100000, 20: 180000 },
@@ -221,5 +222,74 @@ describe("draftToInput + Zod — туг", () => {
   it("зөвхөн багцтай арга хэмжээг нийтэлж болно", () => {
     const input = draftToInput(d, true, { bundles: true });
     expect(saleEventInputSchema.safeParse(input).success).toBe(true);
+  });
+});
+
+describe("merge горим (0191) — чимээгүй хасалт байхгүй", () => {
+  const LN = "6f1c2b9e-4b2a-4e0f-9a51-3c2d1e0f9a11";
+  const OFFICE = "7a2c3d4e-5f60-4a1b-8c9d-0e1f2a3b4c5d";
+  const P1 = "8b3d4e5f-6071-4b2c-9d0e-1f2a3b4c5d6e";
+  const base = {
+    ...emptyDraft(),
+    name: "Black Friday",
+    slug: "black-friday",
+    startsOn: "2026-11-28",
+    endsOn: "2026-11-30",
+    items: [{ productId: P1, pcts: { 10: "20" } }],
+    collections: [{ collectionId: LN, pcts: { 10: "10" } }],
+  };
+
+  it("админ өөр багц нэмэхэд хасалт хоосон — LADIES NIGHT илгээгдээгүй ч устахгүй", () => {
+    const next = {
+      ...base,
+      collections: [
+        ...base.collections,
+        { collectionId: OFFICE, pcts: { 10: "12" } },
+      ],
+    };
+    const input = draftToInput(next, true, { bundles: true, base }) as {
+      removedCollectionIds: string[];
+      removedProductIds: string[];
+    };
+    expect(input.removedCollectionIds).toEqual([]);
+    expect(input.removedProductIds).toEqual([]);
+    expect(saleEventInputSchema.safeParse(input).success).toBe(true);
+  });
+
+  it("хуучин snapshot (LN-гүй) -оос хадгалахад LN хасалтад орохгүй", () => {
+    const stale = { ...base, collections: [] };
+    const next = {
+      ...stale,
+      collections: [{ collectionId: OFFICE, pcts: { 10: "12" } }],
+    };
+    const input = draftToInput(next, true, {
+      bundles: true,
+      base: stale,
+    }) as { removedCollectionIds: string[] };
+    expect(input.removedCollectionIds).toEqual([]);
+  });
+
+  it("админ өөрөө хассан багц / бараа л хасалтад орно", () => {
+    const next = { ...base, items: [], collections: [] };
+    const input = draftToInput(next, true, { bundles: true, base }) as {
+      removedCollectionIds: string[];
+      removedProductIds: string[];
+    };
+    expect(input.removedCollectionIds).toEqual([LN]);
+    expect(input.removedProductIds).toEqual([P1]);
+  });
+
+  it("туг хаалттай → багцын хасалт ч явахгүй", () => {
+    const input = draftToInput(base, true, { base }) as Record<string, unknown>;
+    expect("removedCollectionIds" in input).toBe(false);
+    expect(input.removedProductIds).toEqual([]);
+  });
+
+  it("шинэ арга хэмжээ (base-гүй) → хуучин бүрэн солих зан төлөв", () => {
+    const input = draftToInput(base, false, { bundles: true }) as Record<
+      string,
+      unknown
+    >;
+    expect("removedProductIds" in input).toBe(false);
   });
 });

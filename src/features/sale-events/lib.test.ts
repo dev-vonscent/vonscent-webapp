@@ -118,7 +118,11 @@ describe("eventPctText", () => {
 });
 
 describe("eventThemeMap", () => {
-  const ev = (slug: string, ids: string[], tickerTheme: LiveSaleEvent["tickerTheme"]) =>
+  const ev = (
+    slug: string,
+    ids: string[],
+    tickerTheme: LiveSaleEvent["tickerTheme"],
+  ) =>
     ({
       slug,
       name: slug,
@@ -134,7 +138,10 @@ describe("eventThemeMap", () => {
 
   it("бараа → зурвасны өнгө; хоосон бол navy, эхнийх түрүүлнэ", () => {
     expect(
-      eventThemeMap([ev("a", ["p1", "p2"], null), ev("b", ["p2", "p3"], "red")]),
+      eventThemeMap([
+        ev("a", ["p1", "p2"], null),
+        ev("b", ["p2", "p3"], "red"),
+      ]),
     ).toEqual({ p1: "navy", p2: "navy", p3: "red" });
   });
 });

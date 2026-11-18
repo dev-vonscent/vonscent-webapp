@@ -19,6 +19,7 @@ import { isFeatureEnabled } from "@/lib/feature-flags";
 import { callRpc } from "@/lib/supabase/rpc";
 import { createPublicClient } from "@/lib/supabase/public";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { SALE_EVENT_SLUG_RE } from "@/lib/validators/sale-event";
 import type {
   LiveSaleEvent,
@@ -355,6 +356,7 @@ export async function getSaleEventProductOptions(): Promise<
 interface BundleRow {
   id: string;
   name: string;
+  is_active: boolean;
   image_url: string | null;
   discount_pct: number | string;
   collection_ml_discounts: {
@@ -396,7 +398,7 @@ export async function getSaleEventBundleOptions(): Promise<
   const { data, error } = await supabase
     .from("collections")
     .select(
-      `id, name, image_url, discount_pct,
+      `id, name, is_active, image_url, discount_pct,
        collection_ml_discounts ( ml, discount_pct ),
        collection_items ( products ( product_variants ( ml, price, is_active ),
          product_images ( url, sort_order, is_visible ) ) ),
@@ -404,13 +406,19 @@ export async function getSaleEventBundleOptions(): Promise<
          sale_events ( name, is_active, starts_at, ends_at ) )`,
     )
     .eq("type", "base")
-    .eq("is_active", true)
+    // Идэвхгүй багц ч орно: аль хэдийн event-д байгаа бол «Идэвхгүй»
+    // тэмдэгтэй сонгогдсон хэвээр харагдана (шинээр нэмэхэд disabled).
+    .order("is_active", { ascending: false })
     .order("name");
   if (error) {
     Sentry.captureException(new Error(`sale_event bundles: ${error.message}`));
     throw new Error("Багцын жагсаалтыг уншиж чадсангүй.");
   }
-  return ((data as unknown as BundleRow[] | null) ?? []).map((r) => {
+  const rows = (data as unknown as BundleRow[] | null) ?? [];
+  const sellable = await sellableCollections(
+    rows.filter((r) => r.is_active).map((r) => r.id),
+  );
+  return rows.map((r) => {
     const own = new Map(
       r.collection_ml_discounts
         .filter((d) => d.discount_pct != null)
@@ -441,6 +449,11 @@ export async function getSaleEventBundleOptions(): Promise<
     return {
       id: r.id,
       name: r.name,
+      status: !r.is_active
+        ? ("inactive" as const)
+        : sellable.has(r.id)
+          ? ("available" as const)
+          : ("sold_out" as const),
       image: r.image_url ?? firstImage ?? null,
       basePcts,
       memberSums,
@@ -504,4 +517,67 @@ export async function bundlePctLowError(
     if (msg) return msg;
   }
   return null;
+}
+
+/**
+ * Одоо худалдаж авч болох багцууд — SQL `collection_sellable` (0191), сангийн
+ * `save_sale_event`-ийн `BUNDLE_UNAVAILABLE`-тай ЯГ ижил дүрэм. Service
+ * role (функц нь зөвхөн service_role-д); дуудагч staff-аар хамгаалагдсан.
+ */
+async function sellableCollections(
+  ids: readonly string[],
+): Promise<Set<string>> {
+  const admin = createAdminClient();
+  if (!admin || !ids.length) return new Set();
+  const results = await Promise.all(
+    ids.map(async (id) => {
+      const { data, error } = await admin.rpc("collection_sellable", {
+        p_collection: id,
+      });
+      if (error) throw new Error(`collection_sellable: ${error.message}`);
+      return data === true ? id : null;
+    }),
+  );
+  return new Set(results.filter((x): x is string => x != null));
+}
+
+/**
+ * Route-ийн шалгалт (0191): ШИНЭЭР нэмэгдэж буй багц (энэ event-д хараахан
+ * байхгүй) идэвхтэй, зарагдаж байх ёстой. Аль хэдийн байгаа багц дууссан ч
+ * хадгалагдана. Зөрчил бол монгол мессеж, эс бөгөөс null.
+ */
+export async function newBundleUnavailableError(
+  supabase: SupabaseClient,
+  collectionIds: readonly string[],
+  eventId: string | null,
+): Promise<string | null> {
+  if (!collectionIds.length) return null;
+  let existing = new Set<string>();
+  if (eventId) {
+    const { data, error } = await supabase
+      .from("sale_event_collections")
+      .select("collection_id")
+      .eq("event_id", eventId);
+    if (error) throw new Error(`sale_event_collections: ${error.message}`);
+    existing = new Set(
+      ((data as { collection_id: string }[] | null) ?? []).map(
+        (r) => r.collection_id,
+      ),
+    );
+  }
+  const fresh = collectionIds.filter((id) => !existing.has(id));
+  if (!fresh.length) return null;
+  const [{ data, error }, sellable] = await Promise.all([
+    supabase.from("collections").select("id, name, is_active").in("id", fresh),
+    sellableCollections(fresh),
+  ]);
+  if (error) throw new Error(`collections: ${error.message}`);
+  const bad = (
+    (data as { id: string; name: string; is_active: boolean }[] | null) ?? []
+  )
+    .filter((c) => !sellable.has(c.id))
+    .map((c) => `«${c.name}» (${c.is_active ? "дууссан" : "идэвхгүй"})`);
+  return bad.length
+    ? `Дууссан эсвэл идэвхгүй багцыг шинээр нэмэх боломжгүй: ${bad.join(", ")}.`
+    : null;
 }

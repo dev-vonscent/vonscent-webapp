@@ -25,5 +25,7 @@ export function PhaseBadge({ phase }: { phase: SaleEventPhase }) {
       </Badge>
     );
   }
-  return <Badge variant={VARIANT[phase]}>{SALE_EVENT_PHASE_LABEL[phase]}</Badge>;
+  return (
+    <Badge variant={VARIANT[phase]}>{SALE_EVENT_PHASE_LABEL[phase]}</Badge>
+  );
 }

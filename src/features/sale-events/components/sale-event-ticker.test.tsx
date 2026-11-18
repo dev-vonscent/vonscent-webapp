@@ -7,11 +7,15 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 const { SaleEventTicker } = await import("./sale-event-ticker");
 
 const NOW = Date.parse("2026-11-20T10:00:00Z");
-const event = (over: Partial<Parameters<typeof SaleEventTicker>[0]["events"][number]> = {}) => ({
+const event = (
+  over: Partial<Parameters<typeof SaleEventTicker>[0]["events"][number]> = {},
+) => ({
   slug: "black-friday",
   name: "Black Friday",
   headline: "Black Friday ~30%",
-  endsAt: new Date(NOW + (2 * 86_400 + 4 * 3600 + 31 * 60 + 10) * 1000).toISOString(),
+  endsAt: new Date(
+    NOW + (2 * 86_400 + 4 * 3600 + 31 * 60 + 10) * 1000,
+  ).toISOString(),
   showCountdown: true,
   tickerTheme: null as "navy" | "red" | null,
   ...over,
@@ -26,10 +30,18 @@ describe("SaleEventTicker", () => {
   afterEach(() => vi.useRealTimers());
 
   it("өнгө: арга хэмжээнийх эсвэл өгөгдмөл navy", () => {
-    const { container, rerender } = render(<SaleEventTicker events={[event()]} />);
-    expect(container.querySelector("[role=region]")).toHaveAttribute("data-ticker", "navy");
+    const { container, rerender } = render(
+      <SaleEventTicker events={[event()]} />,
+    );
+    expect(container.querySelector("[role=region]")).toHaveAttribute(
+      "data-ticker",
+      "navy",
+    );
     rerender(<SaleEventTicker events={[event({ tickerTheme: "red" })]} />);
-    expect(container.querySelector("[role=region]")).toHaveAttribute("data-ticker", "red");
+    expect(container.querySelector("[role=region]")).toHaveAttribute(
+      "data-ticker",
+      "red",
+    );
     expect(screen.getByRole("link")).toHaveAttribute("data-ticker", "red");
   });
 
@@ -52,7 +64,9 @@ describe("SaleEventTicker", () => {
 
   it("гарчиг хоосон бол нэр; тоолуур унтраалттай бол цаг гарахгүй", () => {
     render(
-      <SaleEventTicker events={[event({ headline: " ", showCountdown: false })]} />,
+      <SaleEventTicker
+        events={[event({ headline: " ", showCountdown: false })]}
+      />,
     );
     const link = screen.getByRole("link");
     expect(link).toHaveTextContent("Black Friday");

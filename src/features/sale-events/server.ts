@@ -7,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { SaleEventInput } from "@/lib/validators/sale-event";
 import { dayEndIso, dayStartIso } from "@/features/admin/lib/date-range";
 import { overlapConflicts, overlapMessage, type OverlapConflict } from "./lib";
-import { bundlePctLowError } from "./api";
+import { bundlePctLowError, newBundleUnavailableError } from "./api";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
@@ -42,6 +42,30 @@ export async function saleEventAdminGate() {
   return { supabase, staff } as const;
 }
 
+/** `BUNDLE_UNAVAILABLE`-ийн detail → «X» дууссан / идэвхгүй мессеж. */
+export function bundleUnavailableMessage(
+  details: string | null | undefined,
+): string {
+  try {
+    const rows = JSON.parse(details ?? "[]") as {
+      collection?: string;
+      reason?: string;
+    }[];
+    const names = rows
+      .filter((r) => r.collection)
+      .map(
+        (r) =>
+          `«${r.collection}» (${r.reason === "inactive" ? "идэвхгүй" : "дууссан"})`,
+      );
+    if (names.length) {
+      return `Дууссан эсвэл идэвхгүй багцыг шинээр нэмэх боломжгүй: ${names.join(", ")}.`;
+    }
+  } catch {
+    // доорх ерөнхий мессеж
+  }
+  return "Дууссан эсвэл идэвхгүй багцыг шинээр нэмэх боломжгүй.";
+}
+
 /** `EVENT_BUNDLE_OVERLAP`-ийн detail → «Багц — «Арга хэмжээ»» жагсаалт. */
 export function bundleOverlapNames(
   details: string | null | undefined,
@@ -71,10 +95,24 @@ export function bundleOverlapNames(
 export async function saleEventBundleGate(
   supabase: SupabaseClient,
   input: SaleEventInput,
+  eventId: string | null = null,
 ): Promise<NextResponse | null> {
-  if (input.collections === undefined) return null;
+  if (input.collections === undefined) {
+    // Багцгүй хүсэлт багцын хасалт дагуулахгүй.
+    return input.removedCollectionIds?.length
+      ? NextResponse.json({ error: "Буруу хүсэлт." }, { status: 400 })
+      : null;
+  }
   if (!(await isFeatureEnabled("sale_event_bundles"))) {
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  }
+  const unavailable = await newBundleUnavailableError(
+    supabase,
+    input.collections.map((c) => c.collectionId),
+    eventId,
+  );
+  if (unavailable) {
+    return NextResponse.json({ error: unavailable }, { status: 400 });
   }
   const low = await bundlePctLowError(supabase, input.collections);
   return low ? NextResponse.json({ error: low }, { status: 400 }) : null;
@@ -98,6 +136,14 @@ export function toSaleEventRpc(input: SaleEventInput) {
       showCountdown: input.showCountdown,
       // "" → null (save_sale_event `nullif`).
       tickerTheme: input.tickerTheme ?? "",
+      // 0191: merge горим — зөвхөн админы хассан id устана.
+      ...(input.removedProductIds !== undefined
+        ? { removedProductIds: input.removedProductIds }
+        : {}),
+      ...(input.collections !== undefined &&
+      input.removedCollectionIds !== undefined
+        ? { removedCollectionIds: input.removedCollectionIds }
+        : {}),
       // 16.7: түлхүүр байхгүй бол SQL багцын мөрийг хөндөхгүй.
       ...(input.collections !== undefined
         ? {
@@ -137,6 +183,12 @@ export function saleEventWriteError(error: {
           : "Багц хугацаа давхцсан өөр арга хэмжээнд байна.",
       },
       { status: 409 },
+    );
+  }
+  if (/BUNDLE_UNAVAILABLE/.test(error.message)) {
+    return NextResponse.json(
+      { error: bundleUnavailableMessage(error.details) },
+      { status: 400 },
     );
   }
   if (/BUNDLE_NO_PCT/.test(error.message)) {

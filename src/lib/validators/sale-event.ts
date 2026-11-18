@@ -84,6 +84,9 @@ export const saleEventInputSchema = z
       .array(saleEventItemSchema)
       .max(L.products, { message: `Ихдээ ${L.products} бараа.` })
       .default([]),
+    // Merge горим (0191): зөвхөн эдгээр id устана; түлхүүргүй бол бүрэн солино.
+    removedProductIds: z.array(z.string().uuid()).max(L.products).optional(),
+    removedCollectionIds: z.array(z.string().uuid()).max(L.products).optional(),
     // Түлхүүр ирээгүй (туг хаалттай / хуучин клиент) → багцын мөр хөндөгдөхгүй.
     collections: z
       .array(saleEventBundleSchema)
