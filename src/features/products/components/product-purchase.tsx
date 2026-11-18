@@ -30,6 +30,9 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   const activeVariants = product.variants.filter((v) => v.isActive);
   // Хэмжээний картууд (task 15) — бүх хэмжээ, «Зарахгүй» нь сонгогдохгүй.
   const sizeOptions = productSizeOptions(product.variants);
+  // Сонгож болох ч худалдан авах боломжгүй хэмжээ байгаа эсэх (task 4).
+  const hasUnbuyable =
+    !product.soldOut && sizeOptions.some((o) => o.selectable && !o.buyable);
   // Зарагдаж буй хамгийн эхний (жижиг) хэмжээ — дууссан хэмжээ анхдагч
   // болохгүй (requirement_fb.md §"ml-ийн үнэ", task 4).
   const [variantId, setVariantId] = React.useState(() =>
@@ -199,11 +202,18 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           value={variantId}
           onChange={setVariantId}
         />
-        {selectedOut && (
-          <p className="text-muted-foreground text-xs">
-            {selectedBottleLocked
-              ? "Энэ хэмжээний сав түр дууссан байна. Өөр хэмжээ сонгоно уу."
-              : "Энэ хэмжээ түр дууссан байна. Өөр хэмжээ сонгоно уу."}
+        {/* Дууссан хэмжээ сонгож болох бараанд энэ мөрийн өндөр (2 мөр —
+            утсан дээр текст ороож болно) үргэлж хадгалагдана: дууссан
+            хэмжээ сонгоход «Захиалах» / «Сагсанд нэмэх» доошлохгүй. */}
+        {(selectedOut || hasUnbuyable) && (
+          <p
+            data-testid="size-out-note"
+            className="text-muted-foreground min-h-8 text-xs sm:min-h-4"
+          >
+            {selectedOut &&
+              (selectedBottleLocked
+                ? "Энэ хэмжээний сав түр дууссан байна. Өөр хэмжээ сонгоно уу."
+                : "Энэ хэмжээ түр дууссан байна. Өөр хэмжээ сонгоно уу.")}
           </p>
         )}
         {!soldOut && selected?.sellable && maxQty < 1 && (

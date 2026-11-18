@@ -177,11 +177,18 @@ describe("ProductPurchase", () => {
     expect(
       screen.getByRole("radio", { name: "2ml" }).getAttribute("aria-checked"),
     ).toBe("true");
+    // Дууссан хэмжээтэй бараанд тайлбарын мөрийн өндөр урьдчилан хадгалагдана.
+    const note = screen.getByTestId("size-out-note");
+    expect(note.textContent).toBe("");
+    expect(note.className).toContain("min-h-8");
     const twenty = screen.getByRole("radio", { name: "20ml — Дууссан" });
     expect(twenty.textContent).toBe("20ml" + "Дууссан");
     await userEvent.click(twenty);
     expect(twenty.getAttribute("aria-checked")).toBe("true");
     expect(screen.getByTestId("size-price").textContent).toContain("80,000₮");
+    expect(screen.getByTestId("size-out-note").textContent).toContain(
+      "түр дууссан",
+    );
     const buy = screen.getByRole("button", { name: "Дууссан" });
     expect((buy as HTMLButtonElement).disabled).toBe(true);
     // Хуудсан доторх товч (доод наалддаг зурвас нь энэ үед харагдахгүй).
