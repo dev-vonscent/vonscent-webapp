@@ -88,10 +88,7 @@ export function previewBadge(
  * Тоолуур «эхлэх мөчид ингэж харагдана»: дуусах − эхлэх (мс). Огноо дутуу
  * эсвэл урвуу бол null.
  */
-export function previewDuration(
-  startsOn: string,
-  endsOn: string,
-): number | null {
+export function previewDuration(startsOn: string, endsOn: string): number | null {
   const start = dayStartIso(startsOn);
   const end = dayEndIso(endsOn);
   if (!start || !end) return null;

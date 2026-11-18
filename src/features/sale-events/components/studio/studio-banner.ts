@@ -4,11 +4,7 @@ import {
   heroCanvasComplete,
   type HeroCanvasDraft,
 } from "@/features/heroes/canvas-model";
-import {
-  defaultHeroCopy,
-  monthDay,
-  type HeroCopy,
-} from "@/features/heroes/default-copy";
+import { defaultHeroCopy, monthDay, type HeroCopy } from "@/features/heroes/default-copy";
 import { rebindEventTarget } from "@/features/heroes/link-presets";
 import type { HeroAdminRow } from "@/features/heroes/types";
 import type { StudioBanner } from "./studio-checklist";
@@ -49,14 +45,7 @@ export function initialBannerState(input: {
   copy?: { fromSlug: string; toSlug: string };
 }): BannerState {
   const { row, newGroupId, copy } = input;
-  if (!row)
-    return {
-      id: null,
-      groupId: newGroupId,
-      draft: null,
-      skip: false,
-      productIds: [],
-    };
+  if (!row) return { id: null, groupId: newGroupId, draft: null, skip: false, productIds: [] };
   const draft = canvasFromRow(row);
   if (copy) {
     return {
@@ -64,16 +53,8 @@ export function initialBannerState(input: {
       groupId: newGroupId,
       draft: {
         ...draft,
-        primaryTarget: rebindEventTarget(
-          draft.primaryTarget,
-          [copy.fromSlug],
-          copy.toSlug,
-        ),
-        secondaryTarget: rebindEventTarget(
-          draft.secondaryTarget,
-          [copy.fromSlug],
-          copy.toSlug,
-        ),
+        primaryTarget: rebindEventTarget(draft.primaryTarget, [copy.fromSlug], copy.toSlug),
+        secondaryTarget: rebindEventTarget(draft.secondaryTarget, [copy.fromSlug], copy.toSlug),
       },
       skip: !row.isActive,
       productIds: row.productIds,
@@ -138,17 +119,10 @@ export function syncBannerCopy(
  * Баннерын текст дэх «11/14» хэлбэрийн огноо арга хэмжээний эхлэх / дуусах
  * өдөртэй таарахгүй бол тэдгээрийг буцаана (хуучирсан текст — checklist warn).
  */
-export function staleBannerDates(
-  d: HeroCanvasDraft,
-  event: StudioDraft,
-): string[] {
-  const ok = new Set(
-    [monthDay(event.startsOn), monthDay(event.endsOn)].filter(Boolean),
-  );
+export function staleBannerDates(d: HeroCanvasDraft, event: StudioDraft): string[] {
+  const ok = new Set([monthDay(event.startsOn), monthDay(event.endsOn)].filter(Boolean));
   if (ok.size === 0) return [];
-  const text = [d.eyebrow, d.title, d.description, d.mobileDescription].join(
-    " ",
-  );
+  const text = [d.eyebrow, d.title, d.description, d.mobileDescription].join(" ");
   const out: string[] = [];
   for (const m of text.matchAll(/(?<!\d)(\d{1,2})\/(\d{1,2})(?!\d)/gu)) {
     const month = Number(m[1]);
@@ -161,10 +135,7 @@ export function staleBannerDates(
 }
 
 /** Canvas-д харагдах утга: админы засвар эсвэл арга хэмжээнээс бэлэн текст. */
-export function effectiveCanvas(
-  s: BannerState,
-  event: StudioDraft,
-): HeroCanvasDraft {
+export function effectiveCanvas(s: BannerState, event: StudioDraft): HeroCanvasDraft {
   if (s.draft) return s.draft;
   return {
     ...eventCopy(event),
@@ -176,10 +147,7 @@ export function effectiveCanvas(
 }
 
 export function defaultImageAlt(eventName: string): string {
-  return `${eventName.trim() || "Арга хэмжээ"} — нүүрний баннер`.slice(
-    0,
-    HERO_LIMITS.imageAlt,
-  );
+  return `${eventName.trim() || "Арга хэмжээ"} — нүүрний баннер`.slice(0, HERO_LIMITS.imageAlt);
 }
 
 /**

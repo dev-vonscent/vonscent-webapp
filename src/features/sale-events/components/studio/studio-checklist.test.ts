@@ -72,10 +72,7 @@ describe("studioChecklist", () => {
   });
 
   it("бараагүй → улаан", () => {
-    const items = studioChecklist({
-      draft: draft({ items: [] }),
-      today: TODAY,
-    });
+    const items = studioChecklist({ draft: draft({ items: [] }), today: TODAY });
     expect(levels(items, "products")).toEqual(["error"]);
     expect(hasBlocking(items)).toBe(true);
   });
@@ -86,20 +83,12 @@ describe("studioChecklist", () => {
       today: TODAY,
     });
     expect(levels(items, "products")).toEqual(["error"]);
-    expect(items.find((i) => i.step === "products")?.text).toMatch(
-      /1 барааны хувь буруу/,
-    );
+    expect(items.find((i) => i.step === "products")?.text).toMatch(/1 барааны хувь буруу/);
   });
 
   it("хугацаа буруу → улаан: дутуу, урвуу, өнгөрсөн", () => {
-    const missing = studioChecklist({
-      draft: draft({ endsOn: "" }),
-      today: TODAY,
-    });
-    expect(missing[0]).toMatchObject({
-      level: "error",
-      text: "Хугацаа сонгоогүй",
-    });
+    const missing = studioChecklist({ draft: draft({ endsOn: "" }), today: TODAY });
+    expect(missing[0]).toMatchObject({ level: "error", text: "Хугацаа сонгоогүй" });
     const reversed = studioChecklist({
       draft: draft({ startsOn: "2026-11-30", endsOn: "2026-11-23" }),
       today: TODAY,
@@ -159,11 +148,7 @@ describe("studioChecklist", () => {
   });
 
   it("баннергүй → тэмдэглэл; бэлэн → ногоон; идэвхгүй → улбар", () => {
-    const none = studioChecklist({
-      draft: draft(),
-      today: TODAY,
-      bannerEnabled: true,
-    });
+    const none = studioChecklist({ draft: draft(), today: TODAY, bannerEnabled: true });
     expect(none.at(-1)).toMatchObject({ step: "banner", level: "note" });
     const ready = studioChecklist({
       draft: draft(),
@@ -182,11 +167,7 @@ describe("studioChecklist", () => {
   });
 
   it("hero_admin хаалттай → баннерын мөр байхгүй", () => {
-    const items = studioChecklist({
-      draft: draft(),
-      today: TODAY,
-      banner: BANNER,
-    });
+    const items = studioChecklist({ draft: draft(), today: TODAY, banner: BANNER });
     expect(items.some((i) => i.step === "banner")).toBe(false);
   });
 
@@ -211,12 +192,7 @@ describe("баннер", () => {
         hasTitle: false,
         hasPrimaryLabel: false,
       }),
-    ).toEqual([
-      "компьютерын зураг",
-      "утасны зураг",
-      "гарчиг",
-      "гол товчны бичиг",
-    ]);
+    ).toEqual(["компьютерын зураг", "утасны зураг", "гарчиг", "гол товчны бичиг"]);
     expect(bannerGaps(BANNER)).toEqual([]);
   });
 
@@ -228,11 +204,7 @@ describe("баннер", () => {
   });
 
   it("арга хэмжээний хамгийн сүүлд шинэчлэгдсэн мөр; бусдыг тоолно", () => {
-    const hero = (
-      id: string,
-      saleEventId: string | null,
-      updatedAt: string,
-    ) => ({
+    const hero = (id: string, saleEventId: string | null, updatedAt: string) => ({
       id,
       saleEventId,
       title: "T",
@@ -302,10 +274,7 @@ describe("stepStatus (D2)", () => {
 describe("openingStep (D2)", () => {
   const steps = visibleSteps(true);
   const full = studioChecklist({ draft: draft(), today: TODAY });
-  const noItems = studioChecklist({
-    draft: draft({ items: [] }),
-    today: TODAY,
-  });
+  const noItems = studioChecklist({ draft: draft({ items: [] }), today: TODAY });
 
   it("шинэ → ① (URL-ийн алхмыг үл тооно)", () => {
     expect(
@@ -315,12 +284,7 @@ describe("openingStep (D2)", () => {
 
   it("URL-д алхам байвал тэр", () => {
     expect(
-      openingStep({
-        requested: "products",
-        phase: "draft",
-        items: full,
-        steps,
-      }),
+      openingStep({ requested: "products", phase: "draft", items: full, steps }),
     ).toBe("products");
   });
 

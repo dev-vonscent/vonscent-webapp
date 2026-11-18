@@ -32,11 +32,7 @@ describe("previewCards", () => {
   it("хувьтай хэмжээний үнийг бууруулж, хамгийн багыг эхлэх үнэ болгоно", () => {
     const [card] = previewCards([{ productId: "a", pcts: { 5: "60" } }], byId);
     // 5ml: 22,000 − 60% = 8,800 < 2ml-ийн 10,000.
-    expect(card).toMatchObject({
-      price: 8_800,
-      basePrice: 22_000,
-      discounted: true,
-    });
+    expect(card).toMatchObject({ price: 8_800, basePrice: 22_000, discounted: true });
   });
 
   it("тэмдгийн хувь — хэмжээ бүрийн хамгийн их", () => {
@@ -51,11 +47,7 @@ describe("previewCards", () => {
 
   it("хувьгүй бараа үнээрээ, хямдраагүй", () => {
     const [card] = previewCards([{ productId: "a", pcts: {} }], byId);
-    expect(card).toMatchObject({
-      price: 10_000,
-      basePrice: 10_000,
-      discounted: false,
-    });
+    expect(card).toMatchObject({ price: 10_000, basePrice: 10_000, discounted: false });
   });
 
   it("буруу / хоосон хувийг тооцохгүй", () => {
@@ -68,11 +60,7 @@ describe("previewCards", () => {
 
   it("үнэгүй бараанд үнэ null", () => {
     const [card] = previewCards([{ productId: "c", pcts: { 2: "20" } }], byId);
-    expect(card).toMatchObject({
-      price: null,
-      basePrice: null,
-      discounted: false,
-    });
+    expect(card).toMatchObject({ price: null, basePrice: null, discounted: false });
   });
 
   it("эхний 4-ийг авна; олдохгүй барааг алгасна", () => {

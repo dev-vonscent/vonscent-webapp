@@ -207,11 +207,7 @@ function EventCard({
           <div className="bg-muted text-muted-foreground hidden aspect-14/5 w-40 shrink-0 items-center justify-center overflow-hidden rounded-md text-xs sm:flex">
             {banner?.thumb ? (
               // eslint-disable-next-line @next/next/no-img-element -- жижиг thumbnail, storage URL
-              <img
-                src={banner.thumb}
-                alt=""
-                className="size-full object-cover"
-              />
+              <img src={banner.thumb} alt="" className="size-full object-cover" />
             ) : (
               "Баннергүй"
             )}

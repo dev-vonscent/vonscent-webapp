@@ -91,10 +91,8 @@ describe("draftFromRow / draftToInput", () => {
     expect(legacy.data?.tickerTheme).toBeNull();
     // Бэлэн жагсаалтаас гадуурх утга орохгүй (дурын өнгө биш).
     expect(
-      saleEventInputSchema.safeParse({
-        ...(draftToInput(d, false) as object),
-        tickerTheme: "#ff0000",
-      }).success,
+      saleEventInputSchema.safeParse({ ...(draftToInput(d, false) as object), tickerTheme: "#ff0000" })
+        .success,
     ).toBe(false);
   });
 
@@ -258,11 +256,7 @@ describe("огноо", () => {
 
 describe("studioTimeline (§5.5)", () => {
   it("ноорог: одоо → эхлэх → дуусах; хувь, шүүлтүүр, тэмдэг", () => {
-    const t = studioTimeline({
-      draft: draft(),
-      phase: "draft",
-      bannerReady: false,
-    });
+    const t = studioTimeline({ draft: draft(), phase: "draft", bannerReady: false });
     expect(t.map((n) => n.key)).toEqual(["now", "start", "end"]);
     expect(t[0].current).toBe(true);
     expect(t[0].lines[0]).toMatch(/Ноорог/);
@@ -274,17 +268,11 @@ describe("studioTimeline (§5.5)", () => {
       "Сайтын дээд талд «Black Friday» гүйдэг зурвас гарна.",
     ]);
     expect(t[2].when).toBe("11/30 (Даваа) 23:59");
-    expect(t[2].lines).toEqual([
-      "Үнэ буцна; зурвас, шүүлтүүр, тэмдэг алга болно.",
-    ]);
+    expect(t[2].lines).toEqual(["Үнэ буцна; зурвас, шүүлтүүр, тэмдэг алга болно."]);
   });
 
   it("баннер бэлэн бол эхлэх, дуусах хоёуланд мөр нэмэгдэнэ", () => {
-    const t = studioTimeline({
-      draft: draft(),
-      phase: "scheduled",
-      bannerReady: true,
-    });
+    const t = studioTimeline({ draft: draft(), phase: "scheduled", bannerReady: true });
     expect(t[1].lines).toContain("Нүүр хуудасны баннер солигдоно.");
     expect(t[2].lines).toContain("Нүүр хуудасны баннер өмнөх рүүгээ буцна.");
   });
@@ -336,18 +324,10 @@ describe("studioTimeline (§5.5)", () => {
   });
 
   it("явж буй: «одоо» эхлэх ба дуусахын хооронд; дууссан: төгсгөлд", () => {
-    const live = studioTimeline({
-      draft: draft(),
-      phase: "live",
-      bannerReady: false,
-    });
+    const live = studioTimeline({ draft: draft(), phase: "live", bannerReady: false });
     expect(live.map((n) => n.key)).toEqual(["start", "now", "end"]);
     expect(live.filter((n) => n.current)).toHaveLength(1);
-    const ended = studioTimeline({
-      draft: draft(),
-      phase: "ended",
-      bannerReady: false,
-    });
+    const ended = studioTimeline({ draft: draft(), phase: "ended", bannerReady: false });
     expect(ended.map((n) => n.key)).toEqual(["start", "end", "now"]);
   });
 
