@@ -33,6 +33,7 @@ import {
   type SaleSummary,
 } from "./sale";
 import { getLiveSaleEvents } from "@/features/sale-events/api";
+import { matchesTagGroup } from "./tag-group";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 
 /**
@@ -887,7 +888,18 @@ async function memoryCatalog(filters: CatalogFilters): Promise<CatalogResult> {
     : null;
   let items = all.filter((p) => {
     if (idSet && !idSet.has(p.id)) return false;
-    if (eventIds && !eventIds.has(p.id)) return false;
+    // «Таг» бүлэг (арга хэмжээ, Онцлох, таг) — дотроо OR (0194).
+    if (
+      !matchesTagGroup(
+        { tags, featured, event },
+        {
+          tag: (t) => p.tags.includes(t),
+          featured: p.isFeatured,
+          event: () => eventIds?.has(p.id) ?? false,
+        },
+      )
+    )
+      return false;
     if (brand?.length && !brand.includes(p.brand)) return false;
     if (gender?.length && !gender.includes(p.gender)) return false;
     // Multi-value tags: a product matches when it carries *any* of the picked
@@ -900,8 +912,6 @@ async function memoryCatalog(filters: CatalogFilters): Promise<CatalogResult> {
       !(p.seasons.includes("all") || season.some((s) => p.seasons.includes(s)))
     )
       return false;
-    if (tags?.length && !tags.some((t) => p.tags.includes(t))) return false;
-    if (featured && !p.isFeatured) return false;
     // "ml боломж" means sizes you can actually order right now.
     if (
       ml?.length &&
