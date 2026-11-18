@@ -89,3 +89,70 @@ describe("SaleCountdown (2.2)", () => {
     expect(b.innerHTML).toBe("");
   });
 });
+
+describe("SaleCountdown — өнгө (24 цагийн босго)", () => {
+  async function mount(msLeft: number) {
+    render(
+      withFlags(
+        <SaleCountdown endsAt={new Date(NOW + msLeft).toISOString()} />,
+      ),
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
+  const H = 3600 * 1000;
+
+  it("> 24ц → саармаг (muted)", async () => {
+    await mount(3 * 24 * H);
+    const el = screen.getByRole("timer");
+    expect(el.className).toContain("text-muted-foreground");
+    expect(el.className).not.toContain("text-destructive");
+  });
+
+  it("≤ 24ц → улаан (destructive)", async () => {
+    await mount(24 * H);
+    const el = screen.getByRole("timer");
+    expect(el.className).toContain("text-destructive");
+    expect(el.className).not.toContain("text-muted-foreground");
+  });
+
+  it("босго давахад нэг tick-д улаан болно, 0-д нуугдана", async () => {
+    await mount(24 * H + 1000);
+    expect(screen.getByRole("timer").className).toContain(
+      "text-muted-foreground",
+    );
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(screen.getByRole("timer").className).toContain("text-destructive");
+    await act(async () => {
+      vi.advanceTimersByTime(24 * H);
+    });
+    expect(screen.queryByRole("timer")).toBeNull();
+  });
+
+  it("SSR HTML-д улаан төлөв гарахгүй", () => {
+    const html = renderToString(
+      withFlags(<SaleCountdown endsAt={new Date(NOW + H).toISOString()} />),
+    );
+    expect(html).not.toMatch(/text-destructive|data-urgent/);
+  });
+
+  it("бараан зурган дээрх цагаан хувилбар хэвээр", async () => {
+    render(
+      withFlags(
+        <SaleCountdown
+          endsAt={new Date(NOW + H).toISOString()}
+          className="text-white"
+        />,
+      ),
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const el = screen.getByRole("timer");
+    expect(el.className).toContain("text-white");
+    expect(el.className).not.toContain("text-destructive");
+  });
+});

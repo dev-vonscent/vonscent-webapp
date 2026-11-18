@@ -174,6 +174,13 @@ export const HOT_RAIL_COLLECTIONS = 3;
 export const SALE_RAIL_POOL = 200;
 
 /**
+ * Хямдралын тоолуур (task 2.2) энэ хугацаанаас бага үлдсэн үед л улаан
+ * (`text-destructive`); түүнээс өмнө саармаг (`text-muted-foreground`) — олон
+ * карт зэрэг улаанаар гүйж алдааны мессеж шиг харагдахгүй.
+ */
+export const SALE_COUNTDOWN_URGENT_MS = 24 * 60 * 60 * 1000;
+
+/**
  * «Онцлох» — ус, багц нийлээд хамгийн ихдээ ийм тоо (0144_featured_rolling).
  * Хэтэрвэл хамгийн эрт онцлох болсон нь DB-д автоматаар хасагдана — SQL-ийн
  * `offset 12`-тэй ижил байх ёстой.
