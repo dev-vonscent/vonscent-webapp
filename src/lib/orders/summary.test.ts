@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { bundleSavingsOf, orderSummaryRows } from "./summary";
+import { formatPrice } from "@/lib/format";
 
 const base = {
   subtotal: 100_000,
@@ -174,5 +175,49 @@ describe("orderSummaryRows — арга хэмжээ (0189)", () => {
     expect(
       orderSummaryRows(base, { shipping: false }).map((r) => r.label),
     ).toEqual(["Барааны дүн"]);
+  });
+});
+
+describe("§5 жишээ — арга хэмжээнд орсон багц (16.7)", () => {
+  it("туг нээлттэй: 100,000 → −5,000 багц → −5,000 Black Friday → −9,000 купон → −5,000 V point → +6,000", () => {
+    const rows = orderSummaryRows({
+      subtotal: 90000,
+      grossSubtotal: 95000,
+      saleBreakdown: [{ label: "Black Friday", amount: 5000 }],
+      discount: 9000,
+      couponCode: "BF10",
+      loyaltyUsed: 5000,
+      shippingFee: 6000,
+    });
+    expect(rows.map((r) => [r.label, r.value])).toEqual([
+      ["Нийт үндсэн үнэ", formatPrice(100000)],
+      ["Багцын хямдрал", `−${formatPrice(5000)}`],
+      ["Black Friday", `−${formatPrice(5000)}`],
+      ["Купон · BF10", `−${formatPrice(9000)}`],
+      ["Хямдарсан үнэ", formatPrice(81000)],
+      ["V point", `−${formatPrice(5000)}`],
+      ["Хүргэлт", `+${formatPrice(6000)}`],
+    ]);
+  });
+
+  it("туг хаалттай: өмнөх шиг — Black Friday мөргүй, купон 9,500", () => {
+    const rows = orderSummaryRows({
+      subtotal: 95000,
+      grossSubtotal: 100000,
+      saleBreakdown: [],
+      discount: 9500,
+      couponCode: "BF10",
+      loyaltyUsed: 5000,
+      shippingFee: 6000,
+    });
+    expect(rows.map((r) => r.label)).toEqual([
+      "Нийт үндсэн үнэ",
+      "Багцын хямдрал",
+      "Купон · BF10",
+      "Хямдарсан үнэ",
+      "V point",
+      "Хүргэлт",
+    ]);
+    expect(rows[3].value).toBe(formatPrice(85500));
   });
 });

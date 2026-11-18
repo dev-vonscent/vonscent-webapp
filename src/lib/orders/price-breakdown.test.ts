@@ -43,3 +43,22 @@ describe("saleBreakdownOf", () => {
     ).toEqual([{ label: "Black Friday", amount: 13_700 }]);
   });
 });
+
+describe("арга хэмжээнд орсон бэлэн багц (16.7) — checkout-ийн задаргаа", () => {
+  it("багцын event хэсэг барааны ижил event-ийн мөртэй нийлнэ (SQL-тэй ижил)", () => {
+    // Дан бараа 25,000 → Black Friday 20,000; багц 90,000 (event хэсэг 5,000).
+    const rows = saleBreakdownOf([
+      { unitPrice: 20000, basePrice: 25000, qty: 1, saleLabel: "Black Friday" },
+      { unitPrice: 90000, basePrice: 95000, qty: 1, saleLabel: "Black Friday" },
+    ]);
+    expect(rows).toEqual([{ label: "Black Friday", amount: 10000 }]);
+  });
+
+  it("event-гүй багц (saleAmount 0) задаргаанд орохгүй", () => {
+    expect(
+      saleBreakdownOf([
+        { unitPrice: 95000, basePrice: 95000, qty: 2, saleLabel: null },
+      ]),
+    ).toEqual([]);
+  });
+});

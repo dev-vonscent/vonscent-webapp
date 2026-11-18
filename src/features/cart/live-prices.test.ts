@@ -144,3 +144,68 @@ describe("applyLivePrices", () => {
     expect(res.collections).toBe(state.collections);
   });
 });
+
+describe("арга хэмжээнд орсон багц сагсанд (16.7, D7)", () => {
+  // Гишүүд 40,000 + 60,000 = 100,000₮; суурь 5% → 95,000; Black Friday 10% → 90,000.
+  const members = [
+    { variantId: "m1", price: 40_000 },
+    { variantId: "m2", price: 60_000 },
+  ];
+  const inEvent = bundle({
+    unitPrice: 90_000,
+    discountPct: 10,
+    saleLabel: "Black Friday",
+    saleAmount: 5_000,
+  });
+
+  it("event дууссаны дараа сагс нээхэд 95,000 руу буцаж, шошго арилна", () => {
+    const { collections, changed } = applyLivePrices(
+      { items: [], collections: [inEvent], buyNow: null },
+      {
+        collections: {
+          "b1:5": {
+            price: 95_000,
+            discountPct: 5,
+            members,
+            saleLabel: null,
+            saleAmount: 0,
+          },
+        },
+      },
+    );
+    expect(collections[0]).toMatchObject({
+      unitPrice: 95_000,
+      discountPct: 5,
+      saleLabel: null,
+      saleAmount: 0,
+    });
+    expect(changed).toEqual(["CLEAN GIRL 5ml"]);
+  });
+
+  it("event эхэлсний дараа сагс нээхэд 90,000 + «Black Friday» 5,000", () => {
+    const next = repriceCollection(bundle(), {
+      price: 90_000,
+      discountPct: 10,
+      members,
+      saleLabel: "Black Friday",
+      saleAmount: 5_000,
+    });
+    expect(next).toMatchObject({
+      unitPrice: 90_000,
+      saleLabel: "Black Friday",
+      saleAmount: 5_000,
+    });
+  });
+
+  it("өөрчлөлтгүй бол ижил лавлагаа", () => {
+    expect(
+      repriceCollection(inEvent, {
+        price: 90_000,
+        discountPct: 10,
+        members,
+        saleLabel: "Black Friday",
+        saleAmount: 5_000,
+      }),
+    ).toBe(inEvent);
+  });
+});
