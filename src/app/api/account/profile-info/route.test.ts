@@ -165,8 +165,8 @@ describe("GET /api/account/profile-info", () => {
     const body = await (await get()).json();
     expect(body.gender).toBeNull();
     expect(body.reward.claimedPoints).toBe(500);
-    // Тохиргоо байхгүй бол 0163-ийн seed.
-    expect(body.reward.points).toBe(500);
+    // Тохиргоо байхгүй бол анхдагч (task 8.4: 500 → 1,000).
+    expect(body.reward.points).toBe(1000);
   });
 });
 
