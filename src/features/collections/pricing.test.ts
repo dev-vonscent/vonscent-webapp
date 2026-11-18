@@ -9,6 +9,7 @@ import {
   formatDiscountRange,
   withEventPcts,
   bundleEventSaving,
+  spreadBundleTotal,
 } from "./pricing";
 import type { CollectionMember } from "./types";
 
@@ -303,5 +304,18 @@ describe("арга хэмжээнд орсон багц (task 16.7)", () => {
     expect(bundlePrice(123400, 5, 100)).toBe(117200);
     expect(bundlePrice(123400, 10, 100)).toBe(111100);
     expect(bundleEventSaving(123400, 5, 111100, 100)).toBe(6100);
+  });
+});
+
+describe("spreadBundleTotal — гишүүдийн unit_price", () => {
+  it("4 × 25,000, багц 90,000 → 22,500 бүр, нийлбэр яг 90,000", () => {
+    expect(spreadBundleTotal([25000, 25000, 25000, 25000], 90000)).toEqual([
+      22500, 22500, 22500, 22500,
+    ]);
+  });
+  it("тэгшлэлтийн үлдэгдлийг сүүлийн гишүүн авна", () => {
+    const u = spreadBundleTotal([30000, 33000, 40100], 98000);
+    expect(u.reduce((s, x) => s + x, 0)).toBe(98000);
+    expect(u).toEqual([28516, 31368, 38116]);
   });
 });

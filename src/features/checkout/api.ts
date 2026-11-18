@@ -12,6 +12,7 @@ import {
   bundlePrice,
   discountForMl,
   memberUnitPrice,
+  spreadBundleTotal,
   withEventPcts,
 } from "@/features/collections/pricing";
 import { resolveZone, zoneKey } from "@/lib/geo/zone";
@@ -232,15 +233,9 @@ export async function priceCollectionLines(
 
     // Spread the discounted total across members; the last line absorbs the
     // rounding remainder so the parts sum exactly to `total`.
-    let assigned = 0;
+    const units = spreadBundleTotal(members.map(unitOf), total);
     members.forEach((m, i) => {
-      const last = i === members.length - 1;
-      const unit = last
-        ? Math.max(0, total - assigned)
-        : memberSum > 0
-          ? Math.round((unitOf(m) / memberSum) * total)
-          : 0;
-      if (!last) assigned += unit;
+      const unit = units[i];
       out.push({
         productId: m.product.id,
         variantId: m.variantId,

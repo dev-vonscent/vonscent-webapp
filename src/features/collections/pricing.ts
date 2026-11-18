@@ -67,6 +67,26 @@ export function bundleEventSaving(
 }
 
 /**
+ * Багцын эцсийн үнийг гишүүдэд үндсэн үнийн жингээр хуваарилна; сүүлийн
+ * гишүүн тэгшлэлтийн үлдэгдлийг авч нийлбэр нь яг `total` болно.
+ * `priceCollectionLines`-ийн `unit_price` — SQL задаргаа (0190) ба
+ * integration тест (scripts/test-event-bundles.ts) ижил дүрмээр.
+ */
+export function spreadBundleTotal(
+  memberUnits: readonly number[],
+  total: number,
+): number[] {
+  const memberSum = memberUnits.reduce((s, u) => s + u, 0);
+  let assigned = 0;
+  return memberUnits.map((u, i) => {
+    if (i === memberUnits.length - 1) return Math.max(0, total - assigned);
+    const unit = memberSum > 0 ? Math.round((u / memberSum) * total) : 0;
+    assigned += unit;
+    return unit;
+  });
+}
+
+/**
  * Bundle price at a given member sum: apply the % discount, then round.
  * Discount is % only (client decision §14.7).
  */
