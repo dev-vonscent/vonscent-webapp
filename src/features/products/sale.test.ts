@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  earliestEnd,
   effectivePrice,
   isOnSale,
+  saleEndsAt,
+  salePct,
+  salePctText,
+  summarizeSale,
   productSalePhase,
   isSaleActive,
   roundSalePrice,
@@ -160,5 +165,159 @@ describe("isOnSale / productSalePhase (16.1)", () => {
       isOnSale({ variants: [v({ saleStartsAt: "2026-10-28T00:00:00Z" })] }, t),
     ).toBe(true);
     expect(isOnSale({ variants: [v({ salePrice: null })] }, t)).toBe(false);
+  });
+});
+
+describe("salePct", () => {
+  it("бүхэл хувь, хямдралгүй бол 0", () => {
+    expect(salePct(30000, 27000)).toBe(10);
+    expect(salePct(30000, 30000)).toBe(0);
+    expect(salePct(30000, 31000)).toBe(0);
+    expect(salePct(0, 0)).toBe(0);
+  });
+  it("маш бага зөрүү ч 1% — «0%» гэж гарахгүй", () => {
+    expect(salePct(100000, 99900)).toBe(1);
+  });
+  it("тоймлолт: 12.5% → 13%", () => {
+    expect(salePct(16000, 14000)).toBe(13);
+  });
+});
+
+describe("summarizeSale + salePctText (2.4)", () => {
+  const size = (basePrice: number, price: number) => ({ basePrice, price });
+
+  it("бүх хэмжээ ижил хувь → «10%»", () => {
+    const s = summarizeSale([
+      size(10000, 9000),
+      size(20000, 18000),
+      size(30000, 27000),
+      size(50000, 45000),
+    ]);
+    expect(s).toEqual({ minPct: 10, maxPct: 10, allSizes: true });
+    expect(salePctText(s)).toBe("10%");
+  });
+
+  it("бүх хэмжээ хямдралтай, хувь өөр → «10–30%»", () => {
+    const s = summarizeSale([
+      size(10000, 9000),
+      size(20000, 16000),
+      size(30000, 21000),
+    ]);
+    expect(salePctText(s)).toBe("10–30%");
+  });
+
+  it("аль нэг хэмжээ хямдралгүй → «~30%»", () => {
+    const s = summarizeSale([
+      size(10000, 10000),
+      size(20000, 18000),
+      size(30000, 21000),
+    ]);
+    expect(s).toEqual({ minPct: 10, maxPct: 30, allSizes: false });
+    expect(salePctText(s)).toBe("~30%");
+  });
+
+  it("ганц хэмжээ хямдралтай, бусад нь үгүй → «~10%»", () => {
+    expect(
+      salePctText(summarizeSale([size(10000, 9000), size(20000, 20000)])),
+    ).toBe("~10%");
+  });
+
+  it("хямдралгүй бол null", () => {
+    expect(summarizeSale([size(10000, 10000)])).toBeNull();
+    expect(summarizeSale([])).toBeNull();
+    expect(salePctText(null)).toBeNull();
+    expect(salePctText(undefined)).toBeNull();
+  });
+});
+
+describe("saleEndsAt", () => {
+  const ev = "2026-11-30T16:00:00Z";
+  const manualEnd = "2026-11-20T16:00:00Z";
+
+  it("бодит үнэ = гар хямдрал → гар хямдралын дуусах мөч", () => {
+    expect(
+      saleEndsAt(
+        {
+          price: 30000,
+          sale_price: 27000,
+          sale_ends_at: manualEnd,
+          variant_price: 27000,
+        },
+        ev,
+        now,
+      ),
+    ).toBe(manualEnd);
+  });
+
+  it("арга хэмжээ илүү хямд → арга хэмжээний дуусах мөч", () => {
+    expect(
+      saleEndsAt(
+        {
+          price: 30000,
+          sale_price: 27000,
+          sale_ends_at: manualEnd,
+          variant_price: 24000,
+        },
+        ev,
+        now,
+      ),
+    ).toBe(ev);
+  });
+
+  it("сангийн цаг ба серверийн цаг зөрсөн ч variant_price-ийг дагана", () => {
+    // `now`-аар бол гар хямдрал дууссан, гэхдээ сан хүчинтэй гэж бодсон.
+    expect(
+      saleEndsAt(
+        {
+          price: 30000,
+          sale_price: 27000,
+          sale_ends_at: "2026-10-01T00:00:00Z",
+          variant_price: 27000,
+        },
+        null,
+        now,
+      ),
+    ).toBe("2026-10-01T00:00:00Z");
+  });
+
+  it("хугацаагүй гар хямдрал → null; хямдралгүй → undefined", () => {
+    expect(
+      saleEndsAt(
+        { price: 30000, sale_price: 27000, variant_price: 27000 },
+        ev,
+        now,
+      ),
+    ).toBeNull();
+    expect(
+      saleEndsAt(
+        { price: 30000, sale_price: null, variant_price: 30000 },
+        ev,
+        now,
+      ),
+    ).toBeUndefined();
+  });
+
+  it("variant_price байхгүй (demo) → isSaleActive", () => {
+    expect(
+      saleEndsAt(
+        { price: 30000, sale_price: 27000, sale_ends_at: manualEnd },
+        null,
+        now,
+      ),
+    ).toBe(manualEnd);
+  });
+});
+
+describe("earliestEnd", () => {
+  it("хамгийн ойрыг, хоосныг алгасаж", () => {
+    expect(
+      earliestEnd([
+        null,
+        "2026-11-30T16:00:00Z",
+        undefined,
+        "2026-11-20T16:00:00Z",
+      ]),
+    ).toBe("2026-11-20T16:00:00Z");
+    expect(earliestEnd([null, undefined])).toBeNull();
   });
 });
