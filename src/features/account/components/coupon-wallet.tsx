@@ -140,31 +140,27 @@ export function CouponWallet() {
 }
 
 const RULES = [
-  { icon: TicketCheck, text: "Нэг захиалгад нэг купон ашиглана." },
-  {
-    icon: Share2,
-    text: "Купоноо бусдад дамжуулж ашиглуулж болно — хувийн купон ч гэсэн кодыг нь мэдэж байгаа хэн ч ашиглах боломжтой.",
-  },
+  { icon: TicketCheck, text: "Нэг захиалгад нэг купон ашиглана" },
+  { icon: Share2, text: "Купоноо бусдад ашиглуулж болно" },
 ] as const;
 
-/** Купоны хоёр дүрэм — бүх таб дээр, жагсаалтын дээр (task 14). */
+/**
+ * Купоны хоёр дүрэм — нэг авсаархан хайрцагт 2 мөр, бүх таб дээр жагсаалтын
+ * дээр (task 14). Жагсаалтаас илүү зай эзлэхгүй.
+ */
 function CouponRules() {
   return (
     <ul
       aria-label="Купоны дүрэм"
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-6"
+      className="bg-muted text-foreground flex flex-col gap-1.5 rounded-lg px-3 py-2.5 text-sm"
     >
       {RULES.map(({ icon: Icon, text }) => (
-        <li
-          key={text}
-          className="bg-secondary text-secondary-foreground flex items-start gap-3 rounded-xl p-4"
-        >
-          <span className="bg-cta text-cta-foreground grid size-9 shrink-0 place-items-center rounded-full">
-            <Icon className="size-4.5" aria-hidden />
-          </span>
-          <p className="self-center text-sm/relaxed font-medium sm:text-base/relaxed">
-            {text}
-          </p>
+        <li key={text} className="flex items-start gap-2">
+          <Icon
+            className="text-muted-foreground mt-0.5 size-4 shrink-0"
+            aria-hidden
+          />
+          <span>{text}</span>
         </li>
       ))}
     </ul>
