@@ -106,6 +106,26 @@ describe("ProductPurchase", () => {
     );
   });
 
+  it("hint row height is fixed by the longest hint of the page (all texts as invisible sizers)", async () => {
+    render(<ProductPurchase product={product(SIZES)} />);
+    const box = screen.getByTestId("size-hint-box");
+    const sizers = [...box.querySelectorAll("[aria-hidden=true].invisible")];
+    expect(sizers.map((n) => n.textContent)).toEqual([
+      "30 цацалт, эрсдэлгүй туршилт",
+      "Цүнхэнд багтах, өдөр бүрийн хэмжээ",
+      "Аялалд, онгоцонд ч зөвшөөрөгдөнө",
+      "Дуртай үнэртнээ хамгийн хямдаар, удаан хэрэглэ",
+    ]);
+    // Харагдах мөр нь сонгосон хэмжээнийх л, бусад нь зөвхөн өндрийн хэмжүүр.
+    expect(screen.getByTestId("size-hint").textContent).toBe(
+      "30 цацалт, эрсдэлгүй туршилт",
+    );
+    await userEvent.click(screen.getByRole("radio", { name: "20ml" }));
+    expect(box.querySelectorAll("[aria-hidden=true].invisible")).toHaveLength(
+      4,
+    );
+  });
+
   it("marks discounted sizes on the card", () => {
     render(
       <ProductPurchase

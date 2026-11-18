@@ -65,6 +65,15 @@ export function SizeSelector({
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
   const selected = options.find((o) => o.id === value) ?? null;
   const hint = sizeHint(options, selected);
+  // Өндрийн хэмжүүр: энэ хуудасны бүх сонгож болох хэмжээний текст.
+  const allHints = [
+    ...new Set(
+      options
+        .filter((o) => o.selectable)
+        .map((o) => sizeHint(options, o)?.text)
+        .filter((t): t is string => Boolean(t)),
+    ),
+  ];
   // Фокусын ганц зогсоол: сонгогдсон карт, эс бөгөөс сонгож болох эхнийх.
   const tabStop =
     selected?.selectable === true
@@ -169,7 +178,7 @@ export function SizeSelector({
       </div>
       {/* Нэг тогтсон газар — сонгосон хэмжээгээр icon + текст солигдоно.
           Өндөр нь тогтмол (хоосон үед ч) — layout үсрэхгүй. */}
-      <SizeHintRow hint={hint} look={hintLook} />
+      <SizeHintRow hint={hint} sizers={allHints} look={hintLook} />
     </div>
   );
 }
@@ -192,31 +201,49 @@ const HINT_ICON: Record<SizeHintKind, LucideIcon> = {
  */
 function SizeHintRow({
   hint,
+  sizers,
   look,
 }: {
   hint: { text: string; kind: SizeHintKind } | null;
+  /** Бүх хэмжээний текст — мөрийн өндөр хамгийн уртаар тогтмол. */
+  sizers: readonly string[];
   look: "plain" | "bordered";
 }) {
   const Icon = hint ? HINT_ICON[hint.kind] : null;
+  const box = cn(
+    "col-start-1 row-start-1 flex min-h-10 items-center gap-2 text-sm font-medium",
+    look === "bordered"
+      ? "ring-foreground/15 rounded-lg px-3 py-2 ring-1 ring-inset"
+      : "px-0.5 py-2",
+  );
   return (
-    <p
-      aria-live="polite"
-      data-testid="size-hint"
-      data-kind={hint?.kind}
-      data-look={look}
-      className={cn(
-        "text-foreground/80 flex min-h-10 cursor-default items-center gap-2 text-sm font-medium",
-        look === "bordered"
-          ? "ring-foreground/15 rounded-lg px-3 py-2 ring-1 ring-inset"
-          : "px-0.5 py-2",
-        !hint && "invisible",
-      )}
-    >
-      {Icon && (
-        <Icon aria-hidden className="text-gold-strong size-4 shrink-0" />
-      )}
-      <span>{hint?.text}</span>
-    </p>
+    // Бүх текстийг нэг grid нүдэнд үл үзэгдэх байдлаар давхарлана — өндөр нь
+    // хамгийн урт текстийнх (утсан дээр 2 мөр, desktop-д багтвал 1 мөр).
+    // Хэмжээ солиход доорх «Захиалах» / «Сагсанд нэмэх» хөдлөхгүй; таслахгүй.
+    <div className="grid" data-testid="size-hint-box">
+      {sizers.map((t) => (
+        <span key={t} aria-hidden className={cn(box, "invisible")}>
+          <span className="size-4 shrink-0" />
+          <span>{t}</span>
+        </span>
+      ))}
+      <p
+        aria-live="polite"
+        data-testid="size-hint"
+        data-kind={hint?.kind}
+        data-look={look}
+        className={cn(
+          box,
+          "text-foreground/80 cursor-default",
+          !hint && "invisible",
+        )}
+      >
+        {Icon && (
+          <Icon aria-hidden className="text-gold-strong size-4 shrink-0" />
+        )}
+        <span>{hint?.text}</span>
+      </p>
+    </div>
   );
 }
 
