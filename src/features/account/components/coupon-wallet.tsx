@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Ticket } from "lucide-react";
+import { Share2, Ticket, TicketCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SegmentedTabs } from "@/components/shared/segmented-tabs";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -84,6 +84,10 @@ export function CouponWallet() {
         onChange={setTab}
       />
 
+      {/* Жагсаалтын ДЭЭР — купон олон үед доор нь харагдахгүй байсан (task
+          14). Купонгүй үед EmptyState хангалттай. */}
+      {coupons.length > 0 && <CouponRules />}
+
       {isPending ? (
         <ul
           className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-6"
@@ -131,13 +135,39 @@ export function CouponWallet() {
           ))}
         </ul>
       )}
-
-      {tab === "active" && rows.length > 0 && (
-        <p className="text-muted-foreground text-xs/relaxed">
-          Нэг захиалгад нэг купон.
-        </p>
-      )}
     </div>
+  );
+}
+
+const RULES = [
+  { icon: TicketCheck, text: "Нэг захиалгад нэг купон ашиглана." },
+  {
+    icon: Share2,
+    text: "Купоноо бусдад дамжуулж ашиглуулж болно — хувийн купон ч гэсэн кодыг нь мэдэж байгаа хэн ч ашиглах боломжтой.",
+  },
+] as const;
+
+/** Купоны хоёр дүрэм — бүх таб дээр, жагсаалтын дээр (task 14). */
+function CouponRules() {
+  return (
+    <ul
+      aria-label="Купоны дүрэм"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-6"
+    >
+      {RULES.map(({ icon: Icon, text }) => (
+        <li
+          key={text}
+          className="bg-secondary text-secondary-foreground flex items-start gap-3 rounded-xl p-4"
+        >
+          <span className="bg-cta text-cta-foreground grid size-9 shrink-0 place-items-center rounded-full">
+            <Icon className="size-4.5" aria-hidden />
+          </span>
+          <p className="self-center text-sm/relaxed font-medium sm:text-base/relaxed">
+            {text}
+          </p>
+        </li>
+      ))}
+    </ul>
   );
 }
 
