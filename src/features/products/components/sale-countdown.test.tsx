@@ -8,9 +8,8 @@ import { SaleCountdown } from "./sale-countdown";
 
 const NOW = Date.parse("2026-11-18T03:00:00Z");
 // 7 өдөр 16:45:32 дараа.
-const ENDS = new Date(
-  NOW + ((7 * 24 + 16) * 3600 + 45 * 60 + 32) * 1000,
-).toISOString();
+const ENDS_MS = ((7 * 24 + 16) * 3600 + 45 * 60 + 32) * 1000;
+const ENDS = new Date(NOW + ENDS_MS).toISOString();
 
 function withFlags(
   node: React.ReactNode,
@@ -154,5 +153,53 @@ describe("SaleCountdown — өнгө (24 цагийн босго)", () => {
     const el = screen.getByRole("timer");
     expect(el.className).toContain("text-white");
     expect(el.className).not.toContain("text-destructive");
+  });
+});
+
+describe("SaleCountdown variant=boxes (дэлгэрэнгүй)", () => {
+  const H = 3600 * 1000;
+  const boxes = (msLeft: number) =>
+    withFlags(
+      <SaleCountdown
+        variant="boxes"
+        endsAt={new Date(NOW + msLeft).toISOString()}
+      />,
+    );
+
+  it("SSR-д тоо гарахгүй, бүтэц нь invisible (өндөр тогтмол)", () => {
+    const html = renderToString(boxes(3 * 24 * H));
+    expect(html).toMatch(/invisible/);
+    expect(html).toContain("Хямдрал дуусахад");
+    expect(html).not.toMatch(/>\d+</);
+  });
+
+  it("өдөр/цаг/мин/сек тусдаа хайрцагт, > 24ц хайрцаг bg-muted", async () => {
+    render(boxes(ENDS_MS));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const timer = screen.getByRole("timer");
+    expect(timer.getAttribute("aria-label")).toBe(
+      "Хямдрал дуусахад 7 өдөр 16:45:32",
+    );
+    const nums = [...timer.querySelectorAll(".text-2xl")].map(
+      (n) => n.textContent,
+    );
+    expect(nums).toEqual(["7", "16", "45", "32"]);
+    expect(timer.textContent).toContain("өдөр");
+    expect(timer.textContent).toContain("сек");
+    expect(timer.querySelector(".bg-muted")).not.toBeNull();
+    expect(timer.querySelector(".bg-destructive\\/10")).toBeNull();
+  });
+
+  it("≤ 24ц → бүхэлдээ destructive", async () => {
+    render(boxes(5 * H));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const timer = screen.getByRole("timer");
+    expect(timer.getAttribute("data-urgent")).toBe("true");
+    expect(timer.querySelector(".bg-muted")).toBeNull();
+    expect(timer.querySelectorAll(".bg-destructive\\/10")).toHaveLength(4);
   });
 });

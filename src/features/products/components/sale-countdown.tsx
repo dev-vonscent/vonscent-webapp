@@ -3,7 +3,7 @@
 import { Clock } from "lucide-react";
 import { useFeatureFlag } from "@/components/feature-flags";
 import { useNowTick } from "@/components/shared/use-now-tick";
-import { formatTimer } from "@/features/sale-events/lib";
+import { formatTimer, timerParts } from "@/features/sale-events/lib";
 import { SALE_COUNTDOWN_URGENT_MS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -25,13 +25,95 @@ import { cn } from "@/lib/utils";
 export function SaleCountdown({
   endsAt,
   className,
+  variant = "inline",
 }: {
   endsAt: string | null | undefined;
   className?: string;
+  /**
+   * `inline` — каталогийн карт, quick-add (нэг мөр); `boxes` — барааны /
+   * багцын дэлгэрэнгүй (гарчиг + өдөр/цаг/мин/сек тусдаа хайрцаг).
+   */
+  variant?: "inline" | "boxes";
 }) {
   const on = useFeatureFlag("sale_display");
   if (!on || !endsAt) return null;
-  return <Ticking endsAt={endsAt} className={className} />;
+  return variant === "boxes" ? (
+    <Boxes endsAt={endsAt} className={className} />
+  ) : (
+    <Ticking endsAt={endsAt} className={className} />
+  );
+}
+
+const BOX_UNITS = [
+  { key: "days", label: "өдөр" },
+  { key: "hh", label: "цаг" },
+  { key: "mm", label: "мин" },
+  { key: "ss", label: "сек" },
+] as const;
+
+/**
+ * Дэлгэрэнгүйн том тоолуур. Дүрэм нь `Ticking`-тэй ижил (client-only,
+ * дундын tick, 0 болоход нуугдана). SSR/hydration-д бүтэц нь бүтнээрээ
+ * `invisible` — тоо HTML-д орохгүй, өндөр нь урьдчилан тогтмол.
+ * > 24ц: хайрцаг `bg-muted`, тоо `text-foreground`, гарчиг/icon улаан;
+ * ≤ 24ц: бүхэлдээ `destructive`.
+ */
+function Boxes({ endsAt, className }: { endsAt: string; className?: string }) {
+  const now = useNowTick();
+  const end = Date.parse(endsAt);
+  if (!Number.isFinite(end)) return null;
+  const left = now == null ? null : end - now;
+  const parts = left == null ? null : timerParts(left);
+  if (now != null && parts == null) return null;
+  const urgent = left != null && left <= SALE_COUNTDOWN_URGENT_MS;
+  return (
+    <div
+      role="timer"
+      aria-hidden={parts == null}
+      aria-label={
+        parts == null
+          ? undefined
+          : `Хямдрал дуусахад ${parts.days} өдөр ${parts.hh}:${parts.mm}:${parts.ss}`
+      }
+      data-urgent={urgent || undefined}
+      className={cn("space-y-2", parts == null && "invisible", className)}
+    >
+      <p className="text-destructive flex items-center gap-1.5 text-sm font-medium">
+        <Clock className="size-4 shrink-0" aria-hidden />
+        Хямдрал дуусахад
+      </p>
+      {/* aria-hidden — секунд тутмын өөрчлөлт уншигдахгүй; утгыг timer-ийн
+          aria-label өгнө. */}
+      <div className="grid max-w-80 grid-cols-4 gap-2" aria-hidden>
+        {BOX_UNITS.map((u) => (
+          <div
+            key={u.key}
+            className={cn(
+              "flex flex-col items-center rounded-lg px-1 py-2",
+              urgent ? "bg-destructive/10" : "bg-muted",
+            )}
+          >
+            <span
+              className={cn(
+                "block h-8 text-2xl leading-8 font-semibold tabular-nums",
+                urgent ? "text-destructive" : "text-foreground",
+              )}
+            >
+              {parts ? String(parts[u.key]) : " "}
+            </span>
+            <span
+              className={cn(
+                "text-xs",
+                urgent ? "text-destructive" : "text-muted-foreground",
+              )}
+            >
+              {u.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function Ticking({

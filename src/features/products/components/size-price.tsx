@@ -89,7 +89,12 @@ export function SizePrice({
           </span>
         )}
       </p>
-      <SaleCountdown endsAt={pct > 0 ? endsAt : null} />
+      {/* Дэлгэрэнгүйд том хайрцагтай, quick-add-д нэг мөр. */}
+      <SaleCountdown
+        endsAt={pct > 0 ? endsAt : null}
+        variant={lg ? "boxes" : "inline"}
+        className={lg ? "pt-2" : undefined}
+      />
     </div>
   );
 }
