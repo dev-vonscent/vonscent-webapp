@@ -384,14 +384,43 @@ const fetchProductBy = cache(
     if (error) throw new Error(`product by ${column} failed: ${error.message}`);
     if (!data) return null;
 
-    const product = mapProduct(
-      data as unknown as DbProduct,
-      await getBottleLocks(),
-    );
-    await attachCustomTags(supabase, [product]);
+    const row = data as unknown as DbProduct;
+    const product = mapProduct(row, await getBottleLocks());
+    await Promise.all([
+      attachCustomTags(supabase, [product]),
+      attachSaleEnds(product, row.product_variants),
+    ]);
     return product;
   },
 );
+
+/**
+ * Барааны дэлгэрэнгүй (task 2.6): хэмжээ бүрийн хямдрал дуусах мөч —
+ * сонгосон хэмжээний тоолуур. Дүрэм нь каталогийн картынхтай ижил
+ * (`saleEndsAt`: арга хэмжээ давамгайлна, дууссан/эхлээгүй `sale_price`
+ * хэзээ ч эх үүсвэр биш). Зөвхөн сангийн ISO мөч — `Date.now()`-оос
+ * хамаарсан текст биш тул ISR HTML тогтмол. Туг `sale_display` хаалттай
+ * бол юу ч нэмэхгүй (HTML-д огт орохгүй). Алдааг шиднэ (#284).
+ */
+async function attachSaleEnds(
+  product: ProductDetail,
+  rows: readonly DbVariant[],
+): Promise<void> {
+  if (!product.variants.some((v) => v.price < v.basePrice)) return;
+  if (!(await isFeatureEnabled("sale_display"))) return;
+  const events = await getLiveSaleEvents();
+  const eventEnd = earliestEnd(
+    events
+      .filter((e) => e.productIds.includes(product.id))
+      .map((e) => e.endsAt),
+  );
+  const now = new Date();
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  product.variants = product.variants.map((v) => {
+    const r = byId.get(v.id);
+    return r ? { ...v, saleEndsAt: saleEndsAt(r, eventEnd, now) ?? null } : v;
+  });
+}
 
 function toListItem(p: ProductDetail): ProductListItem {
   return {
@@ -802,8 +831,8 @@ async function memoryCatalog(filters: CatalogFilters): Promise<CatalogResult> {
   // Арга хэмжээ (0181): LIVE гишүүд — `catalog_search`-ийн `p_event`-тэй ижил.
   const eventIds = event
     ? new Set(
-        (await getLiveSaleEvents()).find((e) => e.slug === event)
-          ?.productIds ?? [],
+        (await getLiveSaleEvents()).find((e) => e.slug === event)?.productIds ??
+          [],
       )
     : null;
   let items = all.filter((p) => {
