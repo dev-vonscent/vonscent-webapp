@@ -7,6 +7,10 @@ import { useRouter } from "next/navigation";
 import { Check, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/format";
+import { useFeatureFlag } from "@/components/feature-flags";
+import { defaultSizeId } from "@/features/products/size-options";
+import { SizeSelector } from "@/features/products/components/size-selector";
+import { SizePrice } from "@/features/products/components/size-price";
 import { useCart } from "@/features/cart/store";
 import {
   MobileBuyBar,
@@ -15,13 +19,17 @@ import {
 import { trackAddToCart } from "@/lib/analytics";
 import type { Collection } from "../types";
 import { toCartCollection } from "../to-cart";
-import { CollectionSizePicker } from "./collection-size-picker";
+import { bundleSizeOptions, bundleSizeSaleEndsAt } from "../size-options";
 
 export function CollectionDetail({ collection }: { collection: Collection }) {
-  const firstMl = collection.availableMls[0];
-  const [ml, setMl] = React.useState<number>(
-    firstMl ?? collection.prices[0]?.ml,
+  const sizeOptions = bundleSizeOptions(collection);
+  // Зарагдаж буй хамгийн эхний хэмжээ — дууссан нь анхдагч болохгүй.
+  const [ml, setMl] = React.useState<number>(() =>
+    Number(defaultSizeId(sizeOptions)),
   );
+  // Арга хэмжээний тоолуур туг `sale_event_bundles`-ийн ард (server ч
+  // хаалттай үед `event` өгөхгүй — энд давхар хаана).
+  const bundlesOn = useFeatureFlag("sale_event_bundles");
   const [added, setAdded] = React.useState(false);
 
   const addCollection = useCart((s) => s.addCollection);
@@ -95,42 +103,24 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
 
   return (
     <div className="space-y-6">
-      {/* Live price — updates with ml selection. */}
-      <div className="space-y-1" aria-live="polite">
-        <span className="font-serif text-3xl font-semibold">
-          {formatPrice(priceRow?.price ?? 0)}
-        </span>
-        {priceRow && priceRow.saved > 0 && (
-          <p className="text-muted-foreground text-sm text-pretty">
-            Тусад нь авбал{" "}
-            <span className="line-through">
-              {formatPrice(priceRow.memberSum)}
-            </span>{" "}
-            — багцаар{" "}
-            <span className="text-gold-strong font-medium">
-              {formatPrice(priceRow.saved)} хэмнэнэ
-            </span>
-          </p>
-        )}
-      </div>
+      {/* Сонгосон хэмжээний үнэ (task 15): багцын үнэ, гишүүдийн үндсэн
+          үнийн нийлбэр зураастай, багцын хувь, арга хэмжээ ЭНЭ хэмжээнд
+          хэмнэлт өгч байвал дуусах тоолуур. */}
+      <SizePrice
+        price={priceRow?.price ?? 0}
+        basePrice={priceRow?.memberSum ?? 0}
+        pct={priceRow?.nominalDiscountPct}
+        sizeLabel={
+          priceRow ? `${collection.members.length} × ${priceRow.ml}ml` : null
+        }
+        endsAt={bundlesOn ? bundleSizeSaleEndsAt(collection, priceRow) : null}
+      />
 
-      {/* ml segment */}
-      <div className="space-y-3">
-        <p id="bundle-size-label" className="text-sm font-medium">
-          Хэмжээ сонгох
-        </p>
-        {/*
-          Дөрвүүлээ нэг мөрөнд: хоёр мөр болмогц сүүлчийн хэмжээ (хамгийн
-          үнэтэй нь) доод хөвдөг цэсний доогуур орж, эхний дэлгэцэнд огт
-          харагдахгүй байсан.
-        */}
-        <CollectionSizePicker
-          collection={collection}
-          ml={ml}
-          onChange={setMl}
-          labelId="bundle-size-label"
-        />
-      </div>
+      <SizeSelector
+        options={sizeOptions}
+        value={String(ml)}
+        onChange={(id) => setMl(Number(id))}
+      />
 
       {/* Members */}
       <div className="space-y-3">
@@ -177,7 +167,7 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
           disabled={!available}
           onClick={onBuyNow}
         >
-          {available ? "Захиалах" : "Түр байхгүй"}
+          {available ? "Захиалах" : "Дууссан"}
         </Button>
 
         {/* `outline` нь хүрээгүй системд ghost-оос ялгарахгүй тул энэ товч

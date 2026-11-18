@@ -4,9 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Minus, Plus, ShoppingCart, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
-import { TRIAL_SIZE_ML } from "@/lib/constants";
 import { toast } from "@/lib/toast";
 import {
   MobileBuyBar,
@@ -16,8 +14,12 @@ import { useCart } from "@/features/cart/store";
 import { useGiftPicks } from "@/features/extras/gift-picks";
 import { cartMlFor } from "@/features/cart/budget";
 import { maxUnits } from "@/features/products/sellable";
-import { bestValueOf } from "@/features/products/best-value";
-import { SizeHeading } from "@/features/products/components/size-heading";
+import {
+  defaultSizeId,
+  productSizeOptions,
+} from "@/features/products/size-options";
+import { SizeSelector } from "@/features/products/components/size-selector";
+import { SizePrice } from "@/features/products/components/size-price";
 import { trackAddToCart } from "@/lib/analytics";
 import type { ProductDetail } from "@/lib/types";
 
@@ -25,10 +27,12 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   // Худалдаж болох хэмжээнүүд — сонголт, «хамгийн ашигтай», үнийн тооцоо
   // бүгд эднээс уншина.
   const activeVariants = product.variants.filter((v) => v.isActive);
-  // Preselect the cheapest size that is actually in stock, so the headline
-  // price is one the customer can buy (requirement_fb.md §"ml-ийн үнэ").
-  const [variantId, setVariantId] = React.useState(
-    (activeVariants.find((v) => v.sellable) ?? activeVariants[0])?.id ?? "",
+  // Хэмжээний картууд (task 15) — бүх хэмжээ, «Зарахгүй» нь сонгогдохгүй.
+  const sizeOptions = productSizeOptions(product.variants);
+  // Зарагдаж буй хамгийн эхний (жижиг) хэмжээ — дууссан хэмжээ анхдагч
+  // болохгүй (requirement_fb.md §"ml-ийн үнэ", task 4).
+  const [variantId, setVariantId] = React.useState(() =>
+    defaultSizeId(sizeOptions),
   );
   const [qty, setQty] = React.useState(1);
   const [added, setAdded] = React.useState(false);
@@ -62,10 +66,6 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
 
   const selected = activeVariants.find((v) => v.id === variantId) ?? null;
   const unitPrice = selected?.price ?? 0;
-  // Хямдрал нь хэмжээ тус бүрийнх, бас БОДИТ (0054): `price` нь төлөх дүн,
-  // `basePrice` нь зураастай харагдах үндсэн үнэ. Хувь харуулахгүй (B4).
-  const basePrice = selected?.basePrice ?? 0;
-  const originalPrice = basePrice > unitPrice ? basePrice : null;
   const soldOut = product.soldOut;
   // The whole product may still be sellable while this particular size is not.
   const selectedOut = !soldOut && selected != null && !selected.sellable;
@@ -86,9 +86,6 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   React.useEffect(() => {
     setQty((q) => (maxQty >= 1 ? Math.min(q, maxQty) : 1));
   }, [maxQty]);
-  // «Хамгийн ашигтай» — зарах бүх хэмжээнээс, нөөцөөс үл хамааран
-  // (best-value.ts): 20ml дуусахад тэмдэг 10ml руу үсэрдэг байв.
-  const bestValue = bestValueOf(activeVariants);
 
   // Зурвас гарах цорын ганц нөхцөл — доод цэсэнд мэдэгдэх нэхэмжлэл ч үүнээс
   // уншина, ингэснээр хоёулаа хэзээ ч зөрөхгүй.
@@ -174,138 +171,29 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
 
   return (
     <div className="space-y-6">
-      {/* Live price — updates with ml selection (requirement.md §3) */}
-      <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
-        <span className="font-serif text-3xl font-semibold">
-          {formatPrice(unitPrice)}
-        </span>
-        {originalPrice && originalPrice > unitPrice && (
-          <span className="text-muted-foreground pb-1 text-base line-through">
-            {formatPrice(originalPrice)}
-          </span>
-        )}
-        {selected && (
-          <span className="text-muted-foreground pb-1 text-sm">
-            / {selected.ml}ml
-          </span>
-        )}
-      </div>
+      {/* Сонгосон хэмжээний үнэ — хэмжээ солиход дагана (task 15, 2.6).
+          Дууссан хэмжээ сонгосон ч үнэ нь харагдана (task 4). */}
+      <SizePrice
+        price={unitPrice}
+        basePrice={selected?.basePrice ?? 0}
+        sizeLabel={selected ? `${selected.ml}ml` : null}
+        endsAt={selected?.saleEndsAt}
+      />
 
       <div className="space-y-3">
-        <SizeHeading ml={selected?.ml} />
         {/*
           Хэмжээ бүр ХАРАГДАНА — «Зарна»-г авсан нь жагсаалтаас алга болдог
-          байлаа. Тэгэхээр 5ml-г түр хаасан бараа 2 / 10 / 20 гэсэн цоорхойтой
-          эгнээ үзүүлээд, худалдан авагч тэр хэмжээ огт байдаггүй гэж ойлгодог
-          байв. Одоо гурван төлөв тодорхой:
-            · зарагдаж буй  — сонгоно
-            · түр дууссан   — идэвхгүй, зураастай, «Дууссан» (үлдэгдэл дуусахад)
-            · зарахгүй      — идэвхгүй, «Зарахгүй» (админ өөрөө хаасан)
-          Зарахгүй хэмжээн дээр үнэ ХАРУУЛАХГҮЙ: зарахгүй зүйлийн үнэ нь
-          худалдан авах боломжтой мэт ойлголт өгнө.
+          байлаа (2 / 10 / 20 гэсэн цоорхойтой эгнээ). Төлөв:
+            · зарагдаж буй  — «≈ 75 цацалт»
+            · дууссан / сав түр байхгүй — СОНГОГДОНО, үнэ дээр харагдана,
+              худалдан авах товч идэвхгүй (task 4)
+            · зарахгүй      — сонгогдохгүй (админ өөрөө хаасан)
         */}
-        {/* Хэмжээ хаалттай жагсаалт (ML_SIZES = 4) — утсан дээр ч нэг мөрөнд
-            багтаахын тулд тэнцүү 4 багана; flex-wrap үед 20ml доош унадаг байв. */}
-        <div className="grid grid-cols-4 gap-2">
-          {product.variants.map((v, i, all) => {
-            const active = v.id === variantId;
-            const isBestValue = bestValue != null && v.id === bestValue.id;
-            // 2ml нь sample БИШ — энгийн хэмжээ (CLAUDE.md); шошго нь зөвхөн
-            // «эхлээд бага хэмжээгээр туршаад үз» гэсэн санал.
-            const isTrial = v.ml === TRIAL_SIZE_ML && v.isActive;
-            const sellable = v.sellable;
-            // Савны түгжээ нь «бидэнд энэ өнгийн сав дууслаа» гэсэн ТҮР зуурын
-            // төлөв — үлдэгдэл дуусахаас өөр үг хэрэглэнэ, ингэснээр
-            // хэрэглэгч эргэж ирэхээ мэднэ.
-            const bottle = v.unavailableReason === "bottle";
-            // Шошго нь утсан дээр товчноосоо өргөн — захын баганад дэлгэцээс
-            // гарч хажуу тийш scroll үүсгэхгүйн тулд дотогш нь наана.
-            const badgePos =
-              i === 0
-                ? "left-0"
-                : i === all.length - 1
-                  ? "right-0"
-                  : "left-1/2 -translate-x-1/2";
-            return (
-              <button
-                key={v.id}
-                onClick={() => setVariantId(v.id)}
-                disabled={!sellable}
-                aria-pressed={sellable ? active : undefined}
-                aria-label={
-                  sellable
-                    ? `${v.ml}ml`
-                    : bottle
-                      ? `${v.ml}ml — түр байхгүй`
-                      : v.isActive
-                        ? `${v.ml}ml — дууссан`
-                        : `${v.ml}ml — зарахгүй`
-                }
-                className={cn(
-                  "relative flex min-h-11 min-w-0 flex-col items-center justify-center rounded-lg px-1 py-2 transition-colors",
-                  !v.isActive
-                    ? "bg-secondary/40 text-muted-foreground cursor-not-allowed opacity-60"
-                    : !sellable
-                      ? "bg-secondary/50 text-muted-foreground cursor-not-allowed opacity-50"
-                      : active
-                        ? "bg-secondary ring-foreground ring-2"
-                        : "bg-secondary hover:bg-accent",
-                )}
-              >
-                {isBestValue ? (
-                  <span
-                    className={cn(
-                      "bg-foreground text-background absolute -top-2 rounded-full px-1.5 py-px text-[9px] font-semibold whitespace-nowrap",
-                      badgePos,
-                    )}
-                  >
-                    Хамгийн ашигтай
-                  </span>
-                ) : (
-                  isTrial && (
-                    <span
-                      className={cn(
-                        "bg-card text-foreground absolute -top-2 rounded-full px-1.5 py-px text-[9px] font-semibold whitespace-nowrap shadow-sm",
-                        badgePos,
-                      )}
-                    >
-                      Туршиж үзэх
-                    </span>
-                  )
-                )}
-                {/* Зураас зөвхөн хэмжээн дээр: доорх «Дууссан» / «Түр
-                    байхгүй» / «Зарахгүй» гэсэн үгийг зурвал уншигдахгүй. */}
-                <span
-                  className={cn(
-                    "text-sm font-semibold",
-                    !sellable && "line-through",
-                  )}
-                >
-                  {v.ml}ml
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {!v.isActive
-                    ? "Зарахгүй"
-                    : bottle
-                      ? "Түр байхгүй"
-                      : v.inStock
-                        ? formatPrice(v.price)
-                        : "Дууссан"}
-                </span>
-                {sellable && v.basePrice > v.price && (
-                  <span className="text-muted-foreground text-[10px] line-through">
-                    {formatPrice(v.basePrice)}
-                  </span>
-                )}
-                {sellable && (
-                  <span className="text-muted-foreground text-[10px]">
-                    {formatPrice(Math.round(v.price / v.ml))}/ml
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        <SizeSelector
+          options={sizeOptions}
+          value={variantId}
+          onChange={setVariantId}
+        />
         {selectedOut && (
           <p className="text-muted-foreground text-xs">
             {selectedBottleLocked
@@ -361,7 +249,9 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
             {soldOut
               ? "Дууссан"
               : selectedOut
-                ? `${selected?.ml}ml дууссан`
+                ? selectedBottleLocked
+                  ? "Түр байхгүй"
+                  : "Дууссан"
                 : "Захиалах"}
           </Button>
         </div>

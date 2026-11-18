@@ -10,13 +10,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
 import { trackAddToCart } from "@/lib/analytics";
 import { toCartCollection } from "../to-cart";
-import { CollectionSizePicker } from "./collection-size-picker";
+import { useFeatureFlag } from "@/components/feature-flags";
+import { defaultSizeId } from "@/features/products/size-options";
+import { SizeSelector } from "@/features/products/components/size-selector";
+import { SizePrice } from "@/features/products/components/size-price";
+import { bundleSizeOptions, bundleSizeSaleEndsAt } from "../size-options";
 import type { CollectionCardData } from "../types";
 
 /**
@@ -33,9 +35,10 @@ export function CollectionQuickAdd({
   className?: string;
 }) {
   const [open, setOpen] = React.useState(false);
-  const [ml, setMl] = React.useState(collection.availableMls[0] ?? 0);
+  const sizeOptions = bundleSizeOptions(collection);
+  const [ml, setMl] = React.useState(() => Number(defaultSizeId(sizeOptions)));
   const [added, setAdded] = React.useState(false);
-  const labelId = React.useId();
+  const bundlesOn = useFeatureFlag("sale_event_bundles");
   const addCollection = useCart((s) => s.addCollection);
 
   const priceRow = collection.prices.find((p) => p.ml === ml) ?? null;
@@ -86,16 +89,6 @@ export function CollectionQuickAdd({
                 className="object-cover"
               />
             )}
-            {/* Сонгосон хэмжээний хөнгөлөлт — хэмжээ солиход дагаж өөрчлөгдөнө
-                (0051: хэмжээ бүр өөр хувьтай байж болно). */}
-            {priceRow && priceRow.nominalDiscountPct > 0 && (
-              <Badge
-                variant="sale"
-                className="bg-background/85! absolute top-2.5 left-2.5 w-fit backdrop-blur-sm"
-              >
-                −{priceRow.nominalDiscountPct}%
-              </Badge>
-            )}
           </div>
           <div>
             <p className="text-muted-foreground text-[11px] tracking-[0.15em] uppercase">
@@ -108,35 +101,31 @@ export function CollectionQuickAdd({
             <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
               {collection.members.map((m) => m.name).join(" · ")}
             </p>
-            <p className="mt-1 font-semibold tracking-tight">
-              {formatPrice(priceRow?.price ?? collection.startingPrice)}
-              {priceRow && priceRow.memberSum > priceRow.price && (
-                <span className="text-muted-foreground ml-1.5 text-xs font-normal line-through">
-                  {formatPrice(priceRow.memberSum)}
-                </span>
-              )}
-              {priceRow && (
-                <span className="text-muted-foreground ml-1 text-xs font-normal">
-                  / {collection.members.length} × {priceRow.ml}ml
-                </span>
-              )}
-            </p>
+            {/* Хувь нь энд (task 15) — зураг дээрх «−5%» тэмдэг хасагдсан. */}
+            <div className="mt-1">
+              <SizePrice
+                size="sm"
+                price={priceRow?.price ?? collection.startingPrice}
+                basePrice={priceRow?.memberSum ?? 0}
+                pct={priceRow?.nominalDiscountPct}
+                sizeLabel={
+                  priceRow
+                    ? `${collection.members.length} × ${priceRow.ml}ml`
+                    : null
+                }
+                endsAt={
+                  bundlesOn ? bundleSizeSaleEndsAt(collection, priceRow) : null
+                }
+              />
+            </div>
           </div>
         </div>
 
-        {/* Багцын хуудсынх шиг: «×4», «Хамгийн ашигтай», «Туршиж үзэх»,
-            ₮/ml. space-y-3 — дээд талын шошго гарчигт наалдахгүй. */}
-        <div className="space-y-3">
-          <p id={labelId} className="text-sm font-medium">
-            Хэмжээ сонгох
-          </p>
-          <CollectionSizePicker
-            collection={collection}
-            ml={ml}
-            onChange={setMl}
-            labelId={labelId}
-          />
-        </div>
+        <SizeSelector
+          options={sizeOptions}
+          value={String(ml)}
+          onChange={(id) => setMl(Number(id))}
+        />
 
         <Button
           size="lg"

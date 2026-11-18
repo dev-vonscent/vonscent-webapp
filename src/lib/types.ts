@@ -56,6 +56,14 @@ export interface Variant {
    * `inactive` → админ зориуд хаасан (ихэвчлэн UI-д огт харуулахгүй).
    */
   unavailableReason: null | "inactive" | "stock" | "bottle";
+  /**
+   * Энэ хэмжээний одоогийн хямдрал дуусах мөч (ISO, exclusive) — барааны
+   * дэлгэрэнгүйн тоолуур (task 2.6). `saleEndsAt()`-ийн дүрмээр (арга
+   * хэмжээ давамгайлна, дууссан/эхлээгүй `sale_price` эх үүсвэр биш).
+   * Хямдралгүй / хугацаагүй бол null; туг `sale_display` хаалттай эсвэл
+   * каталогийн жагсаалтад байхгүй (undefined).
+   */
+  saleEndsAt?: string | null;
 }
 
 export interface ProductImage {
