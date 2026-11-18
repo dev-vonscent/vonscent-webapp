@@ -58,7 +58,7 @@ export async function getOrderStatusByToken(
   const order = data as OrderRow | null;
   if (!order) return null;
 
-  const [lines, { data: historyData }] = await Promise.all([
+  const [{ lines, entries }, { data: historyData }] = await Promise.all([
     paymentLines(supabase, order.id),
     supabase
       .from("order_status_history")
@@ -90,6 +90,7 @@ export async function getOrderStatusByToken(
     createdAt: order.created_at,
     deliverOn: order.deliver_on,
     lines,
+    entries,
     subtotal: order.subtotal,
     grossSubtotal: order.gross_subtotal,
     saleBreakdown: parseSaleBreakdown(order.sale_breakdown),

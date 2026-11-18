@@ -25,6 +25,32 @@ describe("renderEmail", () => {
     expect(text).not.toContain("<");
   });
 
+  it("багцын гишүүдийг нэрийн доор (html: <br>, text: «  - …»)", () => {
+    const { html, text } = renderEmail({
+      ...base,
+      items: [
+        {
+          name: "NIGHT OUT багц",
+          meta: "2ml × 1",
+          amount: "69,000₮",
+          members: [
+            "Rabanne — Invictus Victory elixir",
+            "Versace — Eros <Flame>",
+          ],
+        },
+      ],
+    });
+    expect(html).toContain(
+      "• Rabanne — Invictus Victory elixir<br>• Versace — Eros &lt;Flame&gt;",
+    );
+    expect(html).toMatch(
+      /font-size:13px;line-height:1.6;color:#[0-9a-f]+">• Rabanne/i,
+    );
+    expect(text).toContain(
+      "· NIGHT OUT багц — 2ml × 1: 69,000₮\n  - Rabanne — Invictus Victory elixir\n  - Versace — Eros <Flame>",
+    );
+  });
+
   it("escapes user-supplied content", () => {
     const { html } = renderEmail({
       ...base,
@@ -67,9 +93,15 @@ describe("renderEmail", () => {
       },
       code: { label: "Бэлгийн код", value: "VON-7K4P-Q9XM" },
       steps: { title: "Хэрхэн ашиглах вэ", items: ["Дарна", "Бүртгүүлнэ"] },
-      qr: { src: "https://vonscent.mn/qr.png", alt: "QR", caption: "Утсаар уншуул" },
+      qr: {
+        src: "https://vonscent.mn/qr.png",
+        alt: "QR",
+        caption: "Утсаар уншуул",
+      },
     });
-    expect(doc.html).toContain('src="https://vonscent.mn/api/gift-cards/t/image"');
+    expect(doc.html).toContain(
+      'src="https://vonscent.mn/api/gift-cards/t/image"',
+    );
     expect(doc.html).toContain("VON-7K4P-Q9XM");
     expect(doc.html).toContain("Утсаар уншуул");
     expect(doc.text).toContain("Бэлгийн код: VON-7K4P-Q9XM");

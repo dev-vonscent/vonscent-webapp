@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Ticket } from "lucide-react";
+import { Share2, Ticket, TicketCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SegmentedTabs } from "@/components/shared/segmented-tabs";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -84,6 +84,10 @@ export function CouponWallet() {
         onChange={setTab}
       />
 
+      {/* Жагсаалтын ДЭЭР — купон олон үед доор нь харагдахгүй байсан (task
+          14). Купонгүй үед EmptyState хангалттай. */}
+      {coupons.length > 0 && <CouponRules />}
+
       {isPending ? (
         <ul
           className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-6"
@@ -131,13 +135,35 @@ export function CouponWallet() {
           ))}
         </ul>
       )}
-
-      {tab === "active" && rows.length > 0 && (
-        <p className="text-muted-foreground text-xs/relaxed">
-          Нэг захиалгад нэг купон.
-        </p>
-      )}
     </div>
+  );
+}
+
+const RULES = [
+  { icon: TicketCheck, text: "Нэг захиалгад нэг купон ашиглана" },
+  { icon: Share2, text: "Купоноо бусдад ашиглуулж болно" },
+] as const;
+
+/**
+ * Купоны хоёр дүрэм — нэг авсаархан хайрцагт 2 мөр, бүх таб дээр жагсаалтын
+ * дээр (task 14). Жагсаалтаас илүү зай эзлэхгүй.
+ */
+function CouponRules() {
+  return (
+    <ul
+      aria-label="Купоны дүрэм"
+      className="bg-muted text-foreground flex flex-col gap-1.5 rounded-lg px-3 py-2.5 text-sm"
+    >
+      {RULES.map(({ icon: Icon, text }) => (
+        <li key={text} className="flex items-start gap-2">
+          <Icon
+            className="text-muted-foreground mt-0.5 size-4 shrink-0"
+            aria-hidden
+          />
+          <span>{text}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

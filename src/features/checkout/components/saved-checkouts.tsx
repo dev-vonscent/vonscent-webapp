@@ -126,7 +126,9 @@ function SavedCard({
   const count = lines.reduce((n, l) => n + l.qty, 0);
   const thumbs = lines.slice(0, 4);
   const extra = lines.length - thumbs.length;
-  const first = lines[0];
+  // Нэр/хэмжээ зөвхөн бараа цөөн (≤ 2) үед — олон үед зураг ба «+N»
+  // хангалттай, текст нь утсан дээр тасардаг байв («Миний захиалга»-тай ижил).
+  const first = lines.length <= 2 ? lines[0] : undefined;
 
   return (
     <Card className="overflow-hidden">
@@ -140,11 +142,12 @@ function SavedCard({
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-2">
+        {/* 4 зураг + «+N» 320px дээр багтахаар утсан дээр 44px. */}
+        <div className="mt-4 flex items-center gap-1.5 sm:gap-2">
           {thumbs.map((l) => (
             <div
               key={l.key}
-              className="bg-secondary relative size-14 shrink-0 overflow-hidden rounded-xl"
+              className="bg-secondary relative size-11 shrink-0 overflow-hidden rounded-lg sm:size-14"
             >
               {l.image ? (
                 <Image
@@ -162,7 +165,7 @@ function SavedCard({
             </div>
           ))}
           {extra > 0 && (
-            <div className="bg-secondary text-muted-foreground flex size-14 shrink-0 items-center justify-center rounded-xl text-sm font-medium">
+            <div className="bg-secondary text-muted-foreground flex size-11 shrink-0 items-center justify-center rounded-lg text-sm font-medium sm:size-14">
               +{extra}
             </div>
           )}

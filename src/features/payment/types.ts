@@ -18,14 +18,41 @@ export interface PaymentLine {
   qty: number;
   /** Төлсөн дүн — багцын гишүүнд хямдарсан. */
   lineTotal: number;
-  /** Хямдраагүй дүн (list_price × qty). Тоймд ЭНЭ нь харагдана — 0097. */
+  /**
+   * Үндсэн дүн (`lineBase`: хямдралтай дан мөрөнд base_price, бусад нь
+   * list_price × qty). Тоймд ЭНЭ нь харагдана — нийлбэр «Нийт үндсэн үнэ».
+   */
   baseTotal: number;
   /** 1мл бэлгийн дээж (0₮ мөр). */
   isSample: boolean;
+  /** Бэлэг — сарын 1ml дээж эсвэл хүрдний шагнал (0₮). */
+  isGift: boolean;
   /** Багцын нэр, багцын гишүүн мөр бол. */
   collectionName: string | null;
   image: string | null;
 }
+
+/**
+ * Тоймын нэг мөр — «Миний захиалга»-тай ижил `buildOrderLines`-ийн дараалал
+ * ба бүлэглэлт: дан (ml ↑) → нэмэлт → багц (ml ↑) → бэлэг.
+ */
+export type PaymentEntry =
+  | { kind: "item"; key: string; line: PaymentLine }
+  | {
+      kind: "bundle";
+      key: string;
+      /** «NIGHT OUT багц», «Миний багц». */
+      title: string;
+      ml: number;
+      qty: number;
+      /** Гишүүдийн үндсэн үнийн нийлбэр. */
+      baseTotal: number;
+      /** Хүрдний шагнал болсон багц. */
+      isGift: boolean;
+      /** Багцын зураг, эс бөгөөс эхний гишүүнийх. */
+      image: string | null;
+      members: { brand: string; name: string }[];
+    };
 
 /** Everything `/pay/[token]` renders, resolved server-side from the token. */
 export interface PaymentView {
@@ -37,6 +64,8 @@ export interface PaymentView {
    * хэдэн төгрөг гэдгийг төлөгч хүн харах ёстой.
    */
   lines: PaymentLine[];
+  /** Тоймд харагдах мөрүүд (бүлэглэсэн, эрэмбэлсэн). */
+  entries: PaymentEntry[];
   /**
    * Захиалах мөчид ороогүй бэлгийн дээж (0149) — сангаас тул reload хийсэн ч
    * ижил. Нэр нь «Брэнд Нэр».

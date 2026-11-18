@@ -364,6 +364,8 @@ interface OrderItemBase {
   vial_state: OrderItemStockState | null;
   /** Азын хүрдний гранд шагналын мөр (0165) — 2мл, 0₮. */
   spin_id?: string | null;
+  /** place_order-ийн дараалал (0149). 0149-өөс өмнөх мөрөнд null. */
+  line_no?: number | null;
 }
 
 /** Нөөцийн төлөв: reserved → committed (хүргэгдэх) | released (0146). */

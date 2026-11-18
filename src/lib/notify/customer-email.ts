@@ -8,7 +8,8 @@ import {
 } from "@/lib/email";
 import { env } from "@/lib/env";
 import { formatPrice } from "@/lib/format";
-import { isExtraLine, orderLineMeta } from "@/lib/order-lines";
+import { loadBundleInfo } from "@/lib/orders/bundle-info";
+import { orderEmailItems, type OrderEmailRow } from "./order-email-items";
 import { orderSummaryRows, summarySource } from "@/lib/orders/summary";
 import { RESERVE_TIMEOUT_MINUTES } from "@/lib/constants";
 import {
@@ -37,8 +38,34 @@ export async function sendOrderCustomerEmail(
   orderId: string,
   kind: "placed" | "paid" | "cancelled",
 ): Promise<void> {
+  const mail = await buildOrderCustomerEmail(orderId, kind);
+  if (!mail) return;
+  await sendEmail({
+    ...mail,
+    // Sent from no-reply@, which receives nothing — a customer who hits Reply
+    // reaches the store rather than the void.
+    replyTo: STORE_INBOX,
+  });
+}
+
+/**
+ * Захиалгын имэйлийг бэлдэнэ (илгээхгүй) — `sendOrderCustomerEmail` ба
+ * урьдчилан харах script (`scripts/preview-order-email.ts`). `recipient`-ийг
+ * өгвөл хүлээн авагчийг сангаас хайхгүй.
+ */
+export async function buildOrderCustomerEmail(
+  orderId: string,
+  kind: "placed" | "paid" | "cancelled",
+  opts: { recipient?: { email: string; unsubscribeUrl?: string } } = {},
+): Promise<{
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+  headers?: Record<string, string>;
+} | null> {
   const supabase = createAdminClient();
-  if (!supabase) return;
+  if (!supabase) return null;
 
   const { data } = await supabase
     .from("orders")
@@ -67,13 +94,13 @@ export async function sendOrderCustomerEmail(
     status: string;
     order_type: string;
   } | null;
-  if (!order) return;
+  if (!order) return null;
   // Бэлгийн картын захиалга (0179) өөрийн имэйлтэй — хүргэлт, нөөцийн тухай
   // энэ текстүүд түүнд хамаарахгүй (`features/gift-cards/email.ts`).
-  if (order.order_type === "gift_card") return;
+  if (order.order_type === "gift_card") return null;
 
-  const recipient = await resolveRecipient(supabase, order);
-  if (!recipient) return;
+  const recipient = opts.recipient ?? (await resolveRecipient(supabase, order));
+  if (!recipient) return null;
 
   // Урамшууллын купон — `orders_reward_coupon` trigger (0025/0041) нь
   // төлбөр баталгаажих мөчид үүсгэчихсэн байдаг. Үүсгэх нь бүрэн ажиллаж
@@ -168,7 +195,7 @@ export async function sendOrderCustomerEmail(
           };
 
   const { html, text } = renderEmail(doc);
-  await sendEmail({
+  return {
     to: recipient.email,
     subject:
       kind === "placed"
@@ -178,9 +205,6 @@ export async function sendOrderCustomerEmail(
           : `Захиалга цуцлагдлаа — ${order.order_no}`,
     text,
     html,
-    // Sent from no-reply@, which receives nothing — a customer who hits Reply
-    // reaches the store rather than the void.
-    replyTo: STORE_INBOX,
     // Зөвхөн бүртгэлийн имэйл дээр: зочны гүйлгээний имэйлд unsubscribe
     // гэсэн ойлголт байхгүй (жагсаалтад ороогүй).
     headers: unsubscribeUrl
@@ -189,7 +213,7 @@ export async function sendOrderCustomerEmail(
           "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
         }
       : undefined,
-  });
+  };
 }
 
 /**
@@ -259,35 +283,13 @@ async function loadItems(
   const { data } = await supabase
     .from("order_items")
     .select(
-      "product_name, brand, ml, qty, unit_price, list_price, line_total, line_kind, variant_label",
+      "id, line_no, product_name, brand, ml, qty, unit_price, list_price, base_price, sale_label, line_kind, variant_label, is_gift, is_sample, spin_id, collection_id, collection_name",
     )
     .eq("order_id", orderId);
-  const rows = data as
-    | {
-        product_name: string;
-        brand: string;
-        ml: number | null;
-        qty: number;
-        unit_price: number;
-        list_price: number | null;
-        line_total: number;
-        line_kind: "perfume" | "extra";
-        variant_label: string | null;
-      }[]
-    | null;
+  const rows = data as OrderEmailRow[] | null;
   if (!rows?.length) return undefined;
-
-  return rows.map((r) => ({
-    // Нэмэлт барааны `brand` нь ангиллын нэр — нэрийн өмнө давхардуулахгүй.
-    name: isExtraLine(r)
-      ? r.product_name
-      : r.brand
-        ? `${r.brand} — ${r.product_name}`
-        : r.product_name,
-    meta: orderLineMeta(r),
-    // Үндсэн үнээр — багцын хямдрал тоймд тусдаа мөр болно (0097).
-    amount: formatPrice((r.list_price ?? r.unit_price) * r.qty),
-  }));
+  const { baseIds } = await loadBundleInfo(supabase, rows);
+  return orderEmailItems(rows, baseIds);
 }
 
 function summaryLines(order: {

@@ -13,8 +13,10 @@ export type EmailItem = {
   name: string;
   /** Жижиг тайлбар мөр — хэмжээ, тоо ширхэг гэх мэт */
   meta?: string;
-  /** Мөрийн дүн, форматлагдсан текст */
+  /** Мөрийн дүн, форматлагдсан текст (бэлэгт «Бэлэг») */
   amount: string;
+  /** Багцын гишүүд — нэрийн доор тус бүр шинэ мөрөнд («Rabanne — Invictus») */
+  members?: string[];
 };
 
 export type EmailLine = {
@@ -43,7 +45,13 @@ export type EmailDoc = {
    * Гарчгийн дээрх том зураг (бэлгийн карт). Hosted https URL — data URI-г
    * Gmail/Outlook хаадаг. `href` өгвөл зураг өөрөө линк.
    */
-  hero?: { src: string; alt: string; width: number; height: number; href?: string };
+  hero?: {
+    src: string;
+    alt: string;
+    width: number;
+    height: number;
+    href?: string;
+  };
   /** CTA-ийн доорх том, хуулахад хялбар код (бэлгийн код). */
   code?: { label: string; value: string };
   /** Дугаартай алхмууд — «Хэрхэн ашиглах вэ». */
@@ -100,6 +108,11 @@ function renderHtml(doc: EmailDoc): string {
             `line-height:1.5;color:${C.text}">${escapeHtml(it.name)}` +
             (it.meta
               ? `<br><span style="font-size:13px;color:${C.muted}">${escapeHtml(it.meta)}</span>`
+              : "") +
+            (it.members?.length
+              ? `<br><span style="font-size:13px;line-height:1.6;color:${C.muted}">` +
+                it.members.map((m) => `• ${escapeHtml(m)}`).join("<br>") +
+                `</span>`
               : "") +
             `</td>` +
             `<td align="right" style="padding:10px 0;border-top:1px solid ${C.rule};` +
@@ -260,6 +273,7 @@ function renderText(doc: EmailDoc): string {
   if (doc.items?.length) {
     for (const it of doc.items) {
       parts.push(`· ${it.name}${it.meta ? ` — ${it.meta}` : ""}: ${it.amount}`);
+      for (const m of it.members ?? []) parts.push(`  - ${m}`);
     }
     parts.push("");
   }

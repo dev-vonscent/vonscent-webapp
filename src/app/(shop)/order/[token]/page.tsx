@@ -135,48 +135,76 @@ export default async function OrderStatusPage({
 
       <Card>
         <CardContent className="divide-border divide-y p-0">
-          {order.lines.map((l, i) => (
-            <div key={i} className="flex items-center gap-3 p-4 text-sm">
-              <div className="bg-muted relative size-12 shrink-0 overflow-hidden rounded-xl">
-                {l.image ? (
-                  <Image
-                    src={l.image}
-                    alt={l.name}
-                    fill
-                    sizes="48px"
-                    className="object-cover"
-                  />
+          {/* «Миний захиалга»-тай ижил дараалал ба бүлэглэлт
+              (`buildOrderLines`): дан (ml ↑) → нэмэлт → багц → бэлэг. */}
+          {order.entries.map((entry) => {
+            const bundle = entry.kind === "bundle";
+            const image = bundle ? entry.image : entry.line.image;
+            const name = bundle
+              ? entry.title
+              : entry.line.isExtra
+                ? entry.line.name
+                : `${entry.line.brand} ${entry.line.name}`;
+            const gift = bundle ? entry.isGift : entry.line.isGift;
+            return (
+              <div
+                key={entry.key}
+                className={cn(
+                  "flex gap-3 p-4 text-sm",
+                  bundle ? "items-start" : "items-center",
+                )}
+              >
+                <div className="bg-muted relative size-12 shrink-0 overflow-hidden rounded-xl">
+                  {image ? (
+                    <Image
+                      src={image}
+                      alt={name}
+                      fill
+                      sizes="48px"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-full items-center justify-center">
+                      <Package className="text-muted-foreground size-5" />
+                    </span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate">{name}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {bundle
+                      ? `${entry.ml}ml × ${entry.qty}`
+                      : orderLineMeta({
+                          line_kind: entry.line.isExtra ? "extra" : "perfume",
+                          ml: entry.line.ml,
+                          qty: entry.line.qty,
+                          variant_label: entry.line.variantLabel,
+                        })}
+                  </p>
+                  {bundle && (
+                    <ul className="text-muted-foreground mt-1 space-y-0.5 text-xs">
+                      {entry.members.map((m, i) => (
+                        <li key={`${m.brand}-${m.name}-${i}`}>
+                          • {m.brand} — {m.name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {gift ? (
+                  <Badge variant="secondary" className="shrink-0">
+                    Бэлэг
+                  </Badge>
                 ) : (
-                  <span className="flex h-full items-center justify-center">
-                    <Package className="text-muted-foreground size-5" />
+                  <span className="shrink-0 font-medium tabular-nums">
+                    {formatPrice(
+                      bundle ? entry.baseTotal : entry.line.baseTotal,
+                    )}
                   </span>
                 )}
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate">
-                  {l.isExtra ? l.name : `${l.brand} ${l.name}`}
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  {orderLineMeta({
-                    line_kind: l.isExtra ? "extra" : "perfume",
-                    ml: l.ml,
-                    qty: l.qty,
-                    variant_label: l.variantLabel,
-                  })}
-                  {l.collectionName ? ` · ${l.collectionName}` : ""}
-                </p>
-              </div>
-              {l.isSample ? (
-                <Badge variant="secondary" className="shrink-0">
-                  Бэлэг
-                </Badge>
-              ) : (
-                <span className="shrink-0 font-medium tabular-nums">
-                  {formatPrice(l.baseTotal)}
-                </span>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
 

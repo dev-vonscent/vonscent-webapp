@@ -7,7 +7,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getOrderDetail } from "@/features/admin/api";
 import { getStaffUser } from "@/lib/auth/guard";
-import { groupBundleLines } from "@/lib/orders/bundle-lines";
+import {
+  buildOrderLines,
+  bundleTitle,
+  lineBase,
+} from "@/lib/orders/order-lines";
 import { formatPrice, formatDateTime } from "@/lib/format";
 import {
   orderSummaryRows,
@@ -32,6 +36,7 @@ import {
   refundBreakdown,
 } from "@/lib/refund";
 import { cn } from "@/lib/utils";
+import type { OrderItemRow, VialRow } from "@/db/types";
 import { orderLineTitle, vialLabel } from "@/lib/order-lines";
 
 export default async function AdminOrderDetail({
@@ -131,37 +136,35 @@ export default async function AdminOrderDetail({
         <div className="space-y-6">
           <Card>
             <CardContent className="[&>div:nth-child(even)]:bg-secondary/60 p-0">
-              {/* Бэлэн багц нэг мөр («GENTLEMAN багц · 5ml × 1»), гишүүд нь
-                  дарж нээхэд; хэрэглэгчийн угсарсан багц задгай. */}
-              {groupBundleLines(items, new Set(baseCollectionIds)).map((l) =>
+              {/* Дараалал: дан (ml ↑) → нэмэлт → багц (ml ↑) → бэлэг
+                  (`buildOrderLines`, хэрэглэгчийн хуудастай ижил). Бэлэн
+                  багцын гишүүд эвхмэл — админ бүрэлдэхүүнийг нь мэднэ;
+                  угсарсан багцынх захиалга бүрд өөр тул шууд харагдана. */}
+              {buildOrderLines(items, new Set(baseCollectionIds)).map((l) =>
                 l.kind === "bundle" ? (
-                  <div
-                    key={l.members[0].id}
-                    className="space-y-1.5 p-4 text-sm"
-                  >
+                  <div key={l.key} className="space-y-1.5 p-4 text-sm">
                     <div className="flex justify-between gap-3">
                       <span>
-                        <LineNo n={++lineNo} />
-                        {l.name} багц · {l.ml}ml × {l.qty}
+                        {!l.gift && <LineNo n={++lineNo} />}
+                        {bundleTitle(l)} · {l.ml}ml × {l.qty}
+                        {l.gift && (
+                          <Badge variant="secondary" className="ml-2">
+                            Бэлэг
+                          </Badge>
+                        )}
                       </span>
                       <span className="font-medium">{formatPrice(l.base)}</span>
                     </div>
-                    <details className="text-muted-foreground text-xs">
-                      <summary className="cursor-pointer">
-                        Бүрэлдэхүүн ({l.members.length})
-                      </summary>
-                      <ul className="mt-1 space-y-0.5 pl-4">
-                        {l.members.map((m) => (
-                          <li key={m.id}>
-                            {m.brand} {orderLineTitle(m)}
-                            {m.vial_id && vials.get(m.vial_id)
-                              ? ` · ${vialLabel(vials.get(m.vial_id)!)}`
-                              : ""}{" "}
-                            × {m.qty}
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
+                    {l.type === "base" ? (
+                      <details className="text-muted-foreground text-xs">
+                        <summary className="cursor-pointer">
+                          Бүрэлдэхүүн ({l.members.length})
+                        </summary>
+                        <BundleMembers members={l.members} vials={vials} />
+                      </details>
+                    ) : (
+                      <BundleMembers members={l.members} vials={vials} />
+                    )}
                   </div>
                 ) : (
                   <div
@@ -200,9 +203,7 @@ export default async function AdminOrderDetail({
                       )}
                     </span>
                     <span className="font-medium">
-                      {formatPrice(
-                        (l.item.list_price ?? l.item.unit_price) * l.item.qty,
-                      )}
+                      {formatPrice(lineBase(l.item))}
                     </span>
                   </div>
                 ),
@@ -426,6 +427,29 @@ function Row({ label, value, credit, strong }: OrderSummaryRow) {
         {value}
       </span>
     </div>
+  );
+}
+
+/** Багцын гишүүд — «Creed Aventus · 5ml · Хар сав × 1». */
+function BundleMembers({
+  members,
+  vials,
+}: {
+  members: OrderItemRow[];
+  vials: Map<string, Pick<VialRow, "style" | "ml">>;
+}) {
+  return (
+    <ul className="text-muted-foreground mt-1 space-y-0.5 pl-4 text-xs">
+      {members.map((m) => {
+        const vial = m.vial_id ? vials.get(m.vial_id) : undefined;
+        return (
+          <li key={m.id}>
+            {m.brand} {orderLineTitle(m)}
+            {vial ? ` · ${vialLabel(vial)}` : ""} × {m.qty}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

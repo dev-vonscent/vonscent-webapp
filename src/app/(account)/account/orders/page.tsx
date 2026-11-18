@@ -421,20 +421,26 @@ function OrderCard({
     isGiftCard && o.payment_status === "paid"
       ? "/account/gift-cards"
       : `/account/orders/${o.id}`;
-  const StatusIcon = isGiftCard && o.status === "delivered" ? Gift : STATUS_ICON[o.status];
+  const StatusIcon =
+    isGiftCard && o.status === "delivered" ? Gift : STATUS_ICON[o.status];
   const statusLabel =
-    isGiftCard && o.status === "delivered" ? "Идэвхжсэн" : ORDER_STATUS_LABEL[o.status];
+    isGiftCard && o.status === "delivered"
+      ? "Идэвхжсэн"
+      : ORDER_STATUS_LABEL[o.status];
   const items = o.order_items ?? [];
   const itemCount = items.reduce((n, i) => n + (i.qty ?? 0), 0);
   const thumbs = items.slice(0, 4);
   const extraCount = items.length - thumbs.length;
+  // Нэр/хэмжээ зөвхөн бараа цөөн (≤ 2) үед — олон үед зураг ба «+N»
+  // хангалттай, текст нь утсан дээр тасардаг байв.
+  const showName = items.length > 0 && items.length <= 2;
   // Нэмэлт барааны `brand` нь ангиллын нэр (0146) — нэрийн өмнө тавихгүй.
-  const firstName = items[0]
+  const firstName = showName
     ? isExtraLine(items[0]) || isGiftCard
       ? items[0].product_name
       : `${items[0].brand} ${items[0].product_name}`
     : "";
-  const firstVariant = items[0] ? orderLineVariant(items[0]) : "";
+  const firstVariant = showName ? orderLineVariant(items[0]) : "";
   // `pay_token` байхгүй (демо/хуучин мөр) бол төлөх зам ч байхгүй.
   const awaitingPayment = isAwaitingPayment(o);
   // Сэтгэгдлийн урилга (0117) — төлөгдсөн, явж буй/хүргэгдсэн захиалгад.
@@ -485,9 +491,10 @@ function OrderCard({
             </div>
           </div>
 
-          {/* Item thumbnails */}
+          {/* Item thumbnails — 4 зураг + «+N» 320px дээр багтахаар утсан дээр
+              44px. Нэр нь зөвхөн цөөн бараатай үед (`showName`). */}
           {thumbs.length > 0 && (
-            <div className="mt-4 flex items-center gap-2">
+            <div className="mt-4 flex items-center gap-1.5 sm:gap-2">
               {thumbs.map((i, idx) => {
                 const url =
                   i.image_url ??
@@ -495,7 +502,7 @@ function OrderCard({
                 return (
                   <div
                     key={idx}
-                    className="border-border bg-secondary relative size-14 shrink-0 overflow-hidden rounded-xl border"
+                    className="border-border bg-secondary relative size-11 shrink-0 overflow-hidden rounded-lg border sm:size-14"
                   >
                     {url ? (
                       <Image
@@ -514,7 +521,7 @@ function OrderCard({
                 );
               })}
               {extraCount > 0 && (
-                <div className="border-border bg-secondary text-muted-foreground flex size-14 shrink-0 items-center justify-center rounded-xl border border-dashed text-sm font-medium">
+                <div className="border-border bg-secondary text-muted-foreground flex size-11 shrink-0 items-center justify-center rounded-lg border border-dashed text-sm font-medium sm:size-14">
                   +{extraCount}
                 </div>
               )}
@@ -583,7 +590,9 @@ function OrderCard({
               href={href}
               className="text-muted-foreground group-hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
             >
-              {isGiftCard && o.payment_status === "paid" ? "Карт харах" : "Дэлгэрэнгүй"}
+              {isGiftCard && o.payment_status === "paid"
+                ? "Карт харах"
+                : "Дэлгэрэнгүй"}
               <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
           )}

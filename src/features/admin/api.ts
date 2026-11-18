@@ -63,7 +63,7 @@ import {
   NO_BOTTLE_LOCKS,
   type BottleLockState,
 } from "@/features/products/bottle-stock";
-import { collectionIdsOf } from "@/lib/orders/bundle-lines";
+import { collectionIdsOf } from "@/lib/orders/order-lines";
 import { getBaseCollections } from "@/features/collections/api";
 import { grandPrizeState } from "@/features/lucky-wheel/prize-state";
 import type { GrandPrizeState, MissTip } from "@/features/lucky-wheel/types";
