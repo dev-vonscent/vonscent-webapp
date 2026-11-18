@@ -125,6 +125,13 @@ export interface CartCollection {
   /** Discounted bundle price. */
   unitPrice: number;
   qty: number;
+  /**
+   * LIVE арга хэмжээний нэр (16.7) — багц event-д орсон бол задаргааны
+   * «<Event нэр>» мөр. Event-гүй / туг хаалттай / хуучин сагс бол байхгүй.
+   */
+  saleLabel?: string | null;
+  /** Event-ийн нэмэлт хэмнэлт, 1 ширхэг (₮) — «Багцын хямдрал»-аас тусдаа. */
+  saleAmount?: number;
 }
 
 /**
@@ -950,10 +957,18 @@ export const collectionBasePrice = (c: CartCollection) =>
   c.members.reduce((sum, m) => sum + m.price, 0);
 
 /** Төлбөрийн хуудасны хямдралгүй дүн (багц бүр задарсан үнээрээ). */
+/**
+ * Багцын «хямдралын өмнөх» дүн — задаргааны `gross_subtotal`-тай ижил (0190):
+ * гишүүдийн үндсэн нийлбэр − event-ийн хэсэг. Ингэснээр gross − subtotal нь
+ * зөвхөн суурь «Багцын хямдрал», event-ийн хэсэг тусдаа мөр.
+ */
+export const collectionGrossPrice = (c: CartCollection) =>
+  collectionBasePrice(c) - (c.saleAmount ?? 0);
+
 export const selectCheckoutGross = (s: CartState) =>
   selectCheckoutItems(s).reduce((sum, i) => sum + i.unitPrice * i.qty, 0) +
   selectCheckoutCollections(s).reduce(
-    (sum, c) => sum + collectionBasePrice(c) * c.qty,
+    (sum, c) => sum + collectionGrossPrice(c) * c.qty,
     0,
   ) +
   selectCheckoutExtras(s).reduce((sum, e) => sum + e.unitPrice * e.qty, 0);

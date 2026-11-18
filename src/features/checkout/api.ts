@@ -8,9 +8,12 @@ import {
   getCollectionOrderInfo,
 } from "@/features/collections/api";
 import {
+  bundleEventSaving,
   bundlePrice,
   discountForMl,
   memberUnitPrice,
+  spreadBundleTotal,
+  withEventPcts,
 } from "@/features/collections/pricing";
 import { resolveZone, zoneKey } from "@/lib/geo/zone";
 import type {
@@ -32,6 +35,17 @@ export interface PricedLine {
   collectionId?: string | null;
   collectionName?: string;
   isGift?: boolean;
+}
+
+/**
+ * Үнэлэгдсэн багц бүрийн арга хэмжээний хэсэг (16.7) — задаргааны
+ * «<Event нэр>» мөр. Event-гүй бол null. `priceCollectionLines`-ийн
+ * `bundleEvents`-ийн дараалал нь үнэлэгдсэн багцуудын дараалал.
+ */
+export interface BundleEventPart {
+  label: string;
+  /** 1 ширхэгт ногдох нэмэлт хэмнэлт, ₮. */
+  saving: number;
 }
 
 export interface OrderSummary {
@@ -108,9 +122,12 @@ export async function priceCollectionLines(
 ): Promise<{
   lines: PricedLine[];
   pricedBundles: number;
+  /** Үнэлэгдсэн багц бүрийн event хэсэг (16.7), null = event-гүй. */
+  bundleEvents: (BundleEventPart | null)[];
   stock: StockMap;
 }> {
-  if (!cols.length) return { lines: [], pricedBundles: 0, stock: new Map() };
+  if (!cols.length)
+    return { lines: [], pricedBundles: 0, bundleEvents: [], stock: new Map() };
   const [products, settings] = await Promise.all([
     fetchProducts(),
     getCollectionSettings(),
@@ -142,6 +159,7 @@ export async function priceCollectionLines(
   }
 
   const out: PricedLine[] = [];
+  const bundleEvents: (BundleEventPart | null)[] = [];
   let pricedBundles = 0;
   for (const col of cols) {
     // A bundle prices over the sizes the shop sells.
@@ -162,6 +180,9 @@ export async function priceCollectionLines(
     if (members.some((m) => !m.active || m.ml !== col.ml)) continue;
 
     let discountPct = settings.customDiscountPct;
+    /** Event-гүй үеийн хувь — задаргааны «Багцын хямдрал» хэсэг. */
+    let basePct = discountPct;
+    let eventName: string | null = null;
     let name = "Миний багц";
     if (col.type === "base" && col.collectionId) {
       const info = await getCollectionOrderInfo(col.collectionId);
@@ -179,7 +200,17 @@ export async function priceCollectionLines(
       // Priced at the size actually ordered: a bundle may discount 20ml harder
       // than 2ml (0051), so taking the bundle default here would charge the
       // wrong total for every overridden size.
-      discountPct = discountForMl(col.ml, info.discountPct, info.mlDiscounts);
+      basePct = discountForMl(col.ml, info.discountPct, info.mlDiscounts);
+      // 16.7: LIVE арга хэмжээний хувь суурийг ОРЛОНО, greatest хамгаалалттай.
+      // Туг хаалттай бол `info.event` null → `discountPct === basePct`.
+      discountPct = info.event
+        ? discountForMl(
+            col.ml,
+            info.discountPct,
+            withEventPcts(info.discountPct, info.mlDiscounts, info.event.pcts),
+          )
+        : basePct;
+      eventName = info.event?.name ?? null;
       name = info.name;
     } else {
       // Custom bundles obey the shop-wide builder rules even when the payload
@@ -202,15 +233,9 @@ export async function priceCollectionLines(
 
     // Spread the discounted total across members; the last line absorbs the
     // rounding remainder so the parts sum exactly to `total`.
-    let assigned = 0;
+    const units = spreadBundleTotal(members.map(unitOf), total);
     members.forEach((m, i) => {
-      const last = i === members.length - 1;
-      const unit = last
-        ? Math.max(0, total - assigned)
-        : memberSum > 0
-          ? Math.round((unitOf(m) / memberSum) * total)
-          : 0;
-      if (!last) assigned += unit;
+      const unit = units[i];
       out.push({
         productId: m.product.id,
         variantId: m.variantId,
@@ -226,9 +251,15 @@ export async function priceCollectionLines(
       });
     });
 
+    const saving = eventName
+      ? bundleEventSaving(memberSum, basePct, total, settings.roundTo)
+      : 0;
+    bundleEvents.push(
+      eventName && saving > 0 ? { label: eventName, saving } : null,
+    );
     pricedBundles += 1;
   }
-  return { lines: out, pricedBundles, stock };
+  return { lines: out, pricedBundles, bundleEvents, stock };
 }
 
 /** Багцын нэг хэмжээний үнэ — захиалгын үеийн тооцоотой яг ижил. */
@@ -241,6 +272,10 @@ export interface BundleSizeQuote {
   /** Гишүүдийн үнийн нийлбэр (хямдралын өмнөх). */
   memberSum: number;
   discountPct: number;
+  /** Арга хэмжээний нэр (16.7), event-гүй бол null. */
+  saleLabel: string | null;
+  /** Event-ийн нэмэлт хэмнэлт, 1 ширхэг (₮). */
+  saleAmount: number;
   /** Тухайн хэмжээний гишүүн variant-ууд, багцын гишүүдийн дарааллаар. */
   members: { productId: string; variantId: string; price: number }[];
 }
@@ -283,11 +318,13 @@ export async function quoteBundleSizes(input: {
         price: 0,
         memberSum: 0,
         discountPct: 0,
+        saleLabel: null,
+        saleAmount: 0,
         members: [],
       };
       if (members.some((m) => m == null)) return empty;
       const resolved = members as NonNullable<(typeof members)[number]>[];
-      const { lines } = await priceCollectionLines([
+      const { lines, bundleEvents } = await priceCollectionLines([
         {
           collectionId: input.collectionId,
           type: input.type,
@@ -308,6 +345,8 @@ export async function quoteBundleSizes(input: {
           memberSum > 0
             ? Math.max(0, Math.round(((memberSum - price) / memberSum) * 100))
             : 0,
+        saleLabel: bundleEvents[0]?.label ?? null,
+        saleAmount: bundleEvents[0]?.saving ?? 0,
         members: resolved,
       };
     }),

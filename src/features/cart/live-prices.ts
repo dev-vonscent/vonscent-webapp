@@ -27,6 +27,10 @@ export interface LiveBundlePrice {
   price: number;
   discountPct: number;
   members: { variantId: string; price: number }[];
+  /** LIVE арга хэмжээний нэр (16.7); event-гүй бол null. */
+  saleLabel?: string | null;
+  /** Event-ийн нэмэлт хэмнэлт, 1 ширхэг (₮). */
+  saleAmount?: number;
 }
 
 export interface LivePrices {
@@ -70,16 +74,23 @@ export function repriceCollection(
   const membersChanged = c.members.some(
     (m) => m.price !== priceOf.get(m.variantId),
   );
+  const saleLabel = live.saleLabel ?? null;
+  const saleAmount = live.saleAmount ?? 0;
   if (
     !membersChanged &&
     c.unitPrice === live.price &&
-    c.discountPct === live.discountPct
+    c.discountPct === live.discountPct &&
+    (c.saleLabel ?? null) === saleLabel &&
+    (c.saleAmount ?? 0) === saleAmount
   )
     return c;
   return {
     ...c,
     unitPrice: live.price,
     discountPct: live.discountPct,
+    // Event дуусахад (D7) хэмнэлт ч, шошго ч арилна.
+    saleLabel,
+    saleAmount,
     members: membersChanged
       ? c.members.map((m) => ({ ...m, price: priceOf.get(m.variantId)! }))
       : c.members,

@@ -48,6 +48,8 @@ export interface SaleEventAdminRow {
   createdAt: string;
   updatedAt: string;
   items: { productId: string; pcts: Record<string, number> }[];
+  /** Бэлэн багцууд (16.7, 0190). */
+  collections?: { collectionId: string; pcts: Record<string, number> }[];
 }
 
 /** Студийн сонгогчийн нэг бараа (хуудас серверээс өгнө). */

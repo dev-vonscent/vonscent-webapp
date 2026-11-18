@@ -152,6 +152,8 @@ export function useCartAvailability({
             price: number;
             discountPct: number;
             members: { variantId: string; price: number }[];
+            saleLabel?: string | null;
+            saleAmount?: number;
           }[];
         };
         const size = data.sizes?.find((s) => s.ml === c.ml && s.available);

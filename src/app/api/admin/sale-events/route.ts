@@ -3,6 +3,7 @@ import { revalidatePublic } from "@/lib/cache";
 import { saleEventInputSchema } from "@/lib/validators/sale-event";
 import {
   saleEventAdminGate,
+  saleEventBundleGate,
   saleEventWriteError,
   toSaleEventRpc,
 } from "@/features/sale-events/server";
@@ -23,6 +24,9 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+
+  const bundleBlock = await saleEventBundleGate(gate.supabase, parsed.data);
+  if (bundleBlock) return bundleBlock;
 
   const { data, error } = await gate.supabase.rpc("save_sale_event", {
     p_id: null,

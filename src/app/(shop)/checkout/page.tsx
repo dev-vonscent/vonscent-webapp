@@ -977,7 +977,21 @@ export default function CheckoutPage() {
    * хямдарсан тул дүнд нөлөөлөхгүй — зөвхөн задаргаанд «яагаад» гэдгийг
    * хэлнэ. Сагс нээгдэхэд `applyLivePrices` үндсэн үнэ, шошгыг шинэчилнэ.
    */
-  const saleBreakdown = React.useMemo(() => saleBreakdownOf(items), [items]);
+  const saleBreakdown = React.useMemo(
+    () =>
+      saleBreakdownOf([
+        ...items,
+        // 16.7: event-д орсон бэлэн багцын нэмэлт хэсэг — барааны ижил
+        // event-ийн мөртэй нийлнэ (SQL `order_bundle_event_rows`-тэй ижил).
+        ...collections.map((c) => ({
+          unitPrice: c.unitPrice,
+          basePrice: c.unitPrice + (c.saleAmount ?? 0),
+          qty: c.qty,
+          saleLabel: c.saleLabel ?? null,
+        })),
+      ]),
+    [items, collections],
+  );
   /** Хямдралын дараах барааны дүн: хүргэлт, оноо хоёрын өмнөх суурь. */
   const goodsAfterDiscount = Math.max(subtotal - discount, 0);
   const total = Math.max(goodsAfterDiscount + shippingFee - loyaltyApplied, 0);

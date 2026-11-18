@@ -37,5 +37,9 @@ export function toCartCollection(
       };
     }),
     unitPrice: priceRow.price,
+    // 16.7: LIVE арга хэмжээний хэсэг — задаргааны «<Event нэр>» мөр.
+    ...(priceRow.eventSaving && collection.event
+      ? { saleLabel: collection.event.name, saleAmount: priceRow.eventSaving }
+      : {}),
   };
 }

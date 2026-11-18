@@ -13,6 +13,7 @@ import {
 } from "@/features/admin/lib/date-range";
 import { UB_TIMEZONE } from "@/lib/time";
 import { slugify } from "@/features/collections/slug";
+import type { StudioBundle } from "../../bundles";
 import type { SaleEventAdminRow, SaleEventPhase } from "../../types";
 
 /**
@@ -42,6 +43,11 @@ export interface StudioDraft {
   /** Дээд гүйдэг зурвасын өнгө; null → өгөгдмөл (navy). */
   tickerTheme: SaleEventTickerTheme | null;
   items: StudioItem[];
+  /**
+   * Бэлэн багц (16.7, туг `sale_event_bundles`). Туг хаалттай бол серверт
+   * илгээгдэхгүй (`draftToInput`) → санд хадгалсан багц хөндөгдөхгүй.
+   */
+  collections?: StudioBundle[];
 }
 
 export const STUDIO_STEPS = [
@@ -101,6 +107,7 @@ export function emptyDraft(): StudioDraft {
     showCountdown: true,
     tickerTheme: null,
     items: [],
+    collections: [],
   };
 }
 
@@ -126,12 +133,66 @@ export function draftFromRow(
         Object.entries(i.pcts).map(([ml, pct]) => [Number(ml), String(pct)]),
       ),
     })),
+    collections: (r.collections ?? []).map((c) => ({
+      collectionId: c.collectionId,
+      pcts: Object.fromEntries(
+        Object.entries(c.pcts).map(([ml, pct]) => [Number(ml), String(pct)]),
+      ),
+    })),
   };
 }
 
-/** Ноорог → `saleEventInputSchema`-ийн оролт (шалгалтыг Zod хийнэ). */
-export function draftToInput(d: StudioDraft, isActive: boolean): unknown {
+/** Мөр утга → тоо (хоосныг хасна; буруу утгыг Zod барина). */
+function pctsToInput(pcts: Record<number, string>): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(pcts)
+      .filter(([, v]) => v.trim() !== "")
+      .map(([ml, v]) => [ml, Number(v)]),
+  );
+}
+
+/** `base`-д байсан ч `next`-д байхгүй id — админы ИЛЭРХИЙ хассан нь. */
+function removedIds(
+  base: readonly string[],
+  next: readonly string[],
+): string[] {
+  const keep = new Set(next);
+  return base.filter((id) => !keep.has(id));
+}
+
+/**
+ * Ноорог → `saleEventInputSchema`-ийн оролт (шалгалтыг Zod хийнэ).
+ * `bundles` = туг `sale_event_bundles` — хаалттай бол `collections` түлхүүр
+ * огт явахгүй (SQL багцын мөрийг хөндөхгүй, FEATURE_DISABLED гарахгүй).
+ *
+ * `base` — сүүлд хадгалсан (эсвэл ачаалсан) ноорог. Өгвөл сервер merge
+ * горимоор хадгална (0191): зөвхөн `base`-д байгаад одоо хасагдсан id
+ * (`removedProductIds` / `removedCollectionIds`) устана, бусад нь хэвээр —
+ * хуучин snapshot-оос хадгалахад админы хараагүй мөр чимээгүй устахгүй.
+ */
+export function draftToInput(
+  d: StudioDraft,
+  isActive: boolean,
+  opts: { bundles?: boolean; base?: StudioDraft | null } = {},
+): unknown {
+  const base = opts.base ?? null;
   return {
+    ...(base
+      ? {
+          removedProductIds: removedIds(
+            base.items.map((i) => i.productId),
+            d.items.map((i) => i.productId),
+          ),
+          ...(opts.bundles
+            ? {
+                removedCollectionIds: removedIds(
+                  (base.collections ?? []).map((c) => c.collectionId),
+                  (d.collections ?? []).map((c) => c.collectionId),
+                ),
+              }
+            : {}),
+        }
+      : {}),
     name: d.name,
     slug: d.slug,
     badgeLabel: d.badgeLabel,
@@ -151,6 +212,14 @@ export function draftToInput(d: StudioDraft, isActive: boolean): unknown {
           .map(([ml, v]) => [ml, Number(v)]),
       ),
     })),
+    ...(opts.bundles
+      ? {
+          collections: (d.collections ?? []).map((c) => ({
+            collectionId: c.collectionId,
+            pcts: pctsToInput(c.pcts),
+          })),
+        }
+      : {}),
   };
 }
 

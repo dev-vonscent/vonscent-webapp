@@ -25,6 +25,68 @@ export function discountForMl(
 }
 
 /**
+ * Арга хэмжээний хувь (task 16.7, 0190): багцын хэмжээ бүрийн LIVE event
+ * хувь, ml → %. Туг хаалттай / event-гүй бол хоосон.
+ */
+export type EventPcts = Record<number, number>;
+
+/**
+ * Event-ийн хувийг суурь хувийн ОРОНД тавина (нэмэгдэхгүй), гэхдээ
+ * `greatest(суурь, event)` — суурь хувийг админ дараа нь өсгөсөн ч арга
+ * хэмжээний үеэр багц хэзээ ч үнэтэй болохгүй. Буцаасан map нь
+ * `memberPrices`/`discountForMl`-ийн `overrides` болно.
+ *
+ * Жишээ: суурь 5%, Black Friday 10% → 10%; суурь 15%, event 10% → 15%.
+ */
+export function withEventPcts(
+  defaultPct: number,
+  overrides: MlDiscounts = {},
+  eventPcts: EventPcts = {},
+): MlDiscounts {
+  const out: MlDiscounts = { ...overrides };
+  for (const [key, pct] of Object.entries(eventPcts)) {
+    const ml = Number(key);
+    if (!Number.isFinite(pct)) continue;
+    out[ml] = Math.max(discountForMl(ml, defaultPct, overrides), pct);
+  }
+  return out;
+}
+
+/**
+ * Event-ийн нэмэлт хэмнэлт (₮, 1 ширхэг): суурь хувиар бодсон үнэ − бодит
+ * үнэ. SQL `order_bundle_event_rows` (0190)-тэй ижил томьёо — задаргаанд
+ * «Багцын хямдрал» (суурь хэсэг) ба «<Event нэр>» (энэ) мөр болж хуваагдана.
+ */
+export function bundleEventSaving(
+  memberSum: number,
+  basePct: number,
+  price: number,
+  step = 100,
+): number {
+  return Math.max(0, bundlePrice(memberSum, basePct, step) - price);
+}
+
+/**
+ * Багцын эцсийн үнийг гишүүдэд үндсэн үнийн жингээр хуваарилна; сүүлийн
+ * гишүүн тэгшлэлтийн үлдэгдлийг авч нийлбэр нь яг `total` болно.
+ * `priceCollectionLines`-ийн `unit_price` — SQL задаргаа (0190) ба
+ * integration тест (scripts/test-event-bundles.ts) ижил дүрмээр.
+ */
+export function spreadBundleTotal(
+  memberUnits: readonly number[],
+  total: number,
+): number[] {
+  const memberSum = memberUnits.reduce((s, u) => s + u, 0);
+  let assigned = 0;
+  return memberUnits.map((u, i) => {
+    if (i === memberUnits.length - 1) return Math.max(0, total - assigned);
+    const unit = memberSum > 0 ? Math.round((u / memberSum) * total) : 0;
+    assigned += unit;
+    return unit;
+  });
+}
+
+/**
  * Bundle price at a given member sum: apply the % discount, then round.
  * Discount is % only (client decision §14.7).
  */
@@ -60,11 +122,9 @@ export function memberUnitPrice(v: {
  * only when *every* member has an active, in-stock variant of it (§3.2).
  *
  * Хувь нь `discountForMl(ml, default, overrides)`-оор шийдэгдэнэ — override
- * нь суурь хувийг ОРЛОНО (нэмэгдэхгүй). Task 16.7 (багцыг арга хэмжээнд
- * оруулах) үүнийг өргөтгөхдөө арга хэмжээний хэмжээ бүрийн хувийг
- * `overrides`-ийн дээр давхарлаж (`{ ...mlDiscounts, ...eventPcts }`)
- * дамжуулахад хангалттай: «100,000₮, суурь 5% → Black Friday 10% =
- * 90,000₮» гэсэн дүрэм яг ингэж гарна.
+ * нь суурь хувийг ОРЛОНО (нэмэгдэхгүй). Арга хэмжээнд орсон багц (16.7)
+ * `withEventPcts(default, mlDiscounts, eventPcts)`-ийг `overrides` болгон
+ * дамжуулна: «100,000₮, суурь 5% → Black Friday 10% = 90,000₮».
  */
 export function memberPrices(
   members: CollectionMember[],

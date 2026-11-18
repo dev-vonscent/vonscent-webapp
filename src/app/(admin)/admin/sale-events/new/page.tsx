@@ -5,8 +5,10 @@ import { isImageGenConfigured } from "@/lib/env";
 import { getHeroesAdmin } from "@/features/heroes/api";
 import {
   getSaleEventAdmin,
+  getSaleEventBundleOptions,
   getSaleEventProductOptions,
 } from "@/features/sale-events/api";
+import { getCollectionSettings } from "@/features/collections/api";
 import { EventStudio } from "@/features/sale-events/components/studio/event-studio";
 import { linkedBannerRow } from "@/features/sale-events/components/studio/studio-banner";
 
@@ -25,13 +27,21 @@ export default async function NewSaleEventPage({
 }) {
   if (!(await isFeatureEnabled("sale_events"))) notFound();
 
-  const copyId = z.string().uuid().safeParse((await searchParams).copy);
+  const copyId = z
+    .string()
+    .uuid()
+    .safeParse((await searchParams).copy);
   const heroAdmin = copyId.success && (await isFeatureEnabled("hero_admin"));
-  const [products, copyOf, heroes] = await Promise.all([
-    getSaleEventProductOptions(),
-    copyId.success ? getSaleEventAdmin(copyId.data) : null,
-    heroAdmin ? getHeroesAdmin() : [],
-  ]);
+  // 16.7 — туг хаалттай бол багцын сонгогч огт уншигдахгүй.
+  const bundlesOn = await isFeatureEnabled("sale_event_bundles");
+  const [products, copyOf, heroes, bundleOptions, collectionSettings] =
+    await Promise.all([
+      getSaleEventProductOptions(),
+      copyId.success ? getSaleEventAdmin(copyId.data) : null,
+      heroAdmin ? getHeroesAdmin() : [],
+      bundlesOn ? getSaleEventBundleOptions() : [],
+      bundlesOn ? getCollectionSettings() : null,
+    ]);
 
   return (
     <EventStudio
@@ -39,6 +49,8 @@ export default async function NewSaleEventPage({
       row={null}
       copyOf={copyOf}
       products={products}
+      bundleOptions={bundleOptions}
+      bundleStep={collectionSettings?.roundTo ?? 100}
       // Хуулахад баннер ч хуулагдана (studio-ux.md §10 S3).
       copyBanner={copyOf ? linkedBannerRow(heroes, copyOf.id).row : null}
       aiConfigured={isImageGenConfigured}

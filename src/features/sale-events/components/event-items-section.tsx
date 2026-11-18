@@ -565,7 +565,7 @@ function AddProductsSheet({
 }
 
 /** «%» дагавартай хувийн талбар. */
-function PctInput({
+export function PctInput({
   value,
   onChange,
   invalid,

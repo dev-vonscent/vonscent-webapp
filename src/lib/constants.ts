@@ -834,6 +834,11 @@ export const FEATURE_FLAGS = {
     description:
       "Black Friday, Цагаан сар г.м. нэртэй, хугацаатай хямдрал: Админ → Маркетинг → Арга хэмжээ (/admin/sale-events, /api/admin/sale-events), каталогийн «?event=» шүүлтүүр, chip, зурвас, тоолуур, барааны картын badge, /sale/[slug] богино хаяг, шөнийн /api/cron/midnight-revalidate (хил нь УБ 00:00). Үнэ variant_price()-д тооцоологдоно (0181) — sale_price-д бичигдэхгүй, гар хямдрал дарагдахгүй. Хаалттай үед үнэ, каталогт ямар ч нөлөөгүй, бичих RPC FEATURE_DISABLED.",
   },
+  sale_event_bundles: {
+    label: "Арга хэмжээнд бэлэн багц",
+    description:
+      "Арга хэмжээний студид (/admin/sale-events) бэлэн багц сонгож хэмжээ бүрт хувь бичих (task 16.7). Event-ийн хувь багцын суурь хувийг орлоно (greatest — хэзээ ч үнэтэй болохгүй), дуусахад өөрөө буцна (0190 live_event_collection_discounts). Каталогийн «?event=», chip, badge-д багц гарна; захиалгын задаргаанд «Багцын хямдрал» + «<Event нэр>» мөр. «Арга хэмжээ» (sale_events) тугтай хамт асаана. Хаалттай үед багцын үнэ, каталог, захиалга өмнөх шигээ, багцын бичилт FEATURE_DISABLED.",
+  },
   hero_admin: {
     label: "Нүүрний баннер (админ)",
     description:

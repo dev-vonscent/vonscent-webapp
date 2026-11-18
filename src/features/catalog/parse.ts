@@ -26,8 +26,17 @@ const SORTS = [
   "popular",
 ] as const;
 
-/** Parse Next.js searchParams into typed catalog filters. */
-export function parseFilters(params: Params): CatalogFilters {
+/**
+ * Parse Next.js searchParams into typed catalog filters.
+ *
+ * `bundleEvents` — туг `sale_events` + `sale_event_bundles` нээлттэй (16.7):
+ * «Багц» таб дээр ч `?event=` хадгалагдаж тэр арга хэмжээний багцыг шүүнэ.
+ * Хаалттай (өгөгдмөл) бол өмнөх шигээ «Багц» дээр хаягдана.
+ */
+export function parseFilters(
+  params: Params,
+  opts: { bundleEvents?: boolean } = {},
+): CatalogFilters {
   const gender = list(params.gender).filter((g): g is Gender =>
     (GENDERS as readonly string[]).includes(g),
   );
@@ -78,8 +87,9 @@ export function parseFilters(params: Params): CatalogFilters {
     season: bundle ? [] : season,
     tags,
     featured: featured || undefined,
-    // Арга хэмжээ = ус (0181) — багцын жагсаалтад утгагүй.
-    event: bundle ? undefined : parseEventSlug(params.event),
+    // Арга хэмжээ: «Багц» таб дээр зөвхөн туг нээлттэй үед (16.7).
+    event:
+      bundle && !opts.bundleEvents ? undefined : parseEventSlug(params.event),
     kind,
     ml,
     minPrice: num(params.minPrice),

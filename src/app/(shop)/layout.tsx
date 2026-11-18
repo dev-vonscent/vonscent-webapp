@@ -14,6 +14,7 @@ import {
 import { eventBadgeMap, eventThemeMap } from "@/features/sale-events/lib";
 import { SALE_EVENT_TICKER_DEFAULT } from "@/lib/constants";
 import { SaleEventsProvider } from "@/features/sale-events/components/sale-events-provider";
+import { getLiveBundleEvents } from "@/features/collections/api";
 import { SaleEventTicker } from "@/features/sale-events/components/sale-event-ticker";
 
 /**
@@ -40,9 +41,12 @@ export default async function ShopLayout({
 }) {
   // Арга хэмжээ (0181): каталогийн chip, картын badge. Кэштэй (60с), туг
   // хаалттай / алдаатай үед хоосон — хуудсыг хэзээ ч унагахгүй.
-  const [live, pcts] = await Promise.all([
+  // 16.7: бэлэн багцтай арга хэмжээ («Багц» табын chip) — `catalog` tag,
+  // 3600с кэш (`getLiveBundleEvents`); туг хаалттай бол хоосон.
+  const [live, pcts, bundleEvents] = await Promise.all([
     getLiveSaleEvents(),
     getLiveEventPcts(),
+    getLiveBundleEvents(),
   ]);
   return (
     <SaleEventsProvider
@@ -50,10 +54,12 @@ export default async function ShopLayout({
         slug: e.slug,
         name: e.name,
         tickerTheme: e.tickerTheme ?? SALE_EVENT_TICKER_DEFAULT,
+        badgeLabel: e.badgeLabel,
       }))}
       badges={eventBadgeMap(live)}
       pcts={pcts}
       themes={eventThemeMap(live)}
+      bundleEventSlugs={bundleEventSlugsOf(bundleEvents)}
     >
       <ScrollReset />
       {/* Хамгийн эхний фокус авах элемент байх ёстой тул толгойн ӨМНӨ. */}
@@ -105,4 +111,11 @@ export default async function ShopLayout({
       <WelcomeGiftDialog />
     </SaleEventsProvider>
   );
+}
+
+/** collectionId → event map → давхардалгүй, эрэмбэлсэн slug-ууд (тогтмол render). */
+function bundleEventSlugsOf(
+  events: Record<string, { slug: string }>,
+): string[] {
+  return [...new Set(Object.values(events).map((e) => e.slug))].sort();
 }

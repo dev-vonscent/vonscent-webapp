@@ -29,6 +29,10 @@ import {
   type BannerState,
 } from "./studio-banner";
 import { hasBlocking, studioChecklist } from "./studio-checklist";
+import { bundleChecklistState } from "./studio-bundles";
+import type { SaleEventBundleOption } from "../../bundles";
+
+const EMPTY_BUNDLES: readonly SaleEventBundleOption[] = [];
 import {
   draftFromRow,
   draftToInput,
@@ -87,12 +91,33 @@ export function useEventStudio(input: {
   /** Хуулж буй арга хэмжээний баннер — шинэ мөр болж хуулагдана. */
   copyBanner: HeroAdminRow | null;
   bannerEnabled: boolean;
+  /** Бэлэн багц (16.7) — туг `sale_event_bundles`; хаалттай бол хоосон. */
+  bundleOptions?: readonly SaleEventBundleOption[];
+  bundlesEnabled?: boolean;
   /** Серверийн цаг — эхний render хоёр талд ижил төлөвтэй гарна. */
   now: number;
 }) {
   const { row, copyOf, bannerEnabled } = input;
+  const bundlesEnabled = input.bundlesEnabled ?? false;
+  const bundleOptions = input.bundleOptions ?? EMPTY_BUNDLES;
   const router = useRouter();
   const [confirm, confirmDialog] = useConfirm();
+  /**
+   * Амжилттай бичилтийн дараа client router cache-ийг цэвэрлэнэ
+   * (`staleTimes.dynamic`, back/forward) — студи ба жагсаалт дараагийн
+   * нээлтэд хуучин мөр харуулахгүй (PR #289, «LADIES NIGHT»). Студи өөрөө
+   * дахин эхлэхгүй: хуудасны `key` нь зөвхөн `row.id`, төлөв нь локал.
+   */
+  const routerRef = React.useRef(router);
+  React.useEffect(() => {
+    routerRef.current = router;
+  }, [router]);
+  // Тогтвортой лавлагаа: unmount-ийн хадгалалтын effect router-ийн
+  // объект солигдоход дахин ажиллахгүй.
+  const refreshAfterWrite = React.useCallback(
+    () => routerRef.current.refresh(),
+    [],
+  );
 
   const [initial] = React.useState<StudioDraft>(() =>
     row
@@ -184,9 +209,20 @@ export function useEventStudio(input: {
         : [],
     [bannerEnabled, banner.draft, banner.skip, draft],
   );
+  const bundleState = React.useMemo(
+    () =>
+      bundlesEnabled
+        ? bundleChecklistState(draft, bundleOptions, {
+            eventId: row?.id ?? null,
+            now,
+          })
+        : null,
+    [bundlesEnabled, draft, bundleOptions, row?.id, now],
+  );
   const checklist = React.useMemo(
     () =>
       studioChecklist({
+        bundles: bundleState,
         draft,
         today,
         conflicts,
@@ -196,7 +232,7 @@ export function useEventStudio(input: {
         bannerError,
         bannerStaleDates: staleDates,
       }),
-    [draft, today, conflicts, summary, bannerEnabled, banner.skip, bannerError, staleDates],
+    [draft, today, conflicts, summary, bannerEnabled, banner.skip, bannerError, staleDates, bundleState],
   );
 
   // Нэр, огноо, хувь солигдоход баннерын бэлэн текст (админ хөндөөгүй
@@ -228,7 +264,13 @@ export function useEventStudio(input: {
 
   const persist = React.useCallback(
     async (d: StudioDraft, isActive: boolean): Promise<PersistResult> => {
-      const parsed = saleEventInputSchema.safeParse(draftToInput(d, isActive));
+      const parsed = saleEventInputSchema.safeParse(
+        draftToInput(d, isActive, {
+          bundles: bundlesEnabled,
+          // 0191: хадгалсан төлөвтэй харьцуулж зөвхөн ИЛЭРХИЙ хасалтыг явуулна.
+          base: id ? (JSON.parse(live.current.baseline) as StudioDraft) : null,
+        }),
+      );
       if (!parsed.success) {
         setErrors(saleEventFieldErrors(parsed.error));
         return {
@@ -269,7 +311,7 @@ export function useEventStudio(input: {
       setNow(Date.now());
       return { ok: true, id: res.data.id ?? id ?? "" };
     },
-    [id],
+    [id, bundlesEnabled],
   );
 
   /**
@@ -347,9 +389,10 @@ export function useEventStudio(input: {
         }
         const bannerOk = await persistBanner(id);
         setStatus({ kind: "saved", at: Date.now() });
+        refreshAfterWrite();
         return bannerOk;
       }),
-    [enqueue, id, persist, persistBanner, bannerEnabled],
+    [enqueue, id, persist, persistBanner, bannerEnabled, refreshAfterWrite],
   );
 
   // Засвар дууссанаас 2 секундийн дараа (D7).
@@ -370,7 +413,12 @@ export function useEventStudio(input: {
         const { draft: d, baseline: b, meta: m } = live.current;
         if (!id || !m || m.isActive) return;
         if (JSON.stringify(d) !== b) {
-          const parsed = saleEventInputSchema.safeParse(draftToInput(d, false));
+          const parsed = saleEventInputSchema.safeParse(
+            draftToInput(d, false, {
+              bundles: bundlesEnabled,
+              base: JSON.parse(b) as StudioDraft,
+            }),
+          );
           if (!parsed.success) return;
           const res = await adminFetch(`/api/admin/sale-events/${id}`, {
             method: "PUT",
@@ -379,6 +427,7 @@ export function useEventStudio(input: {
             keepalive: true,
           });
           if (!res.ok) return;
+          refreshAfterWrite();
         }
         if (!bannerEnabled) return;
         const { banner: s, bannerSaved: saved, knownSlugs } = live.current;
@@ -394,7 +443,7 @@ export function useEventStudio(input: {
         });
       });
     },
-    [id, bannerEnabled, enqueue],
+    [id, bannerEnabled, enqueue, bundlesEnabled, refreshAfterWrite],
   );
 
   // Хадгалаагүй өөрчлөлттэй таб хаах / сэргээх (D7).
@@ -527,6 +576,7 @@ export function useEventStudio(input: {
           "Арга хэмжээ үүслээ, баннер хуулагдсангүй — ④-р алхамд дахин оролдоно уу.",
         );
       }
+      refreshAfterWrite();
       router.replace(`/admin/sale-events/${r.id}?step=products`);
     } finally {
       setBusy(null);
@@ -571,6 +621,7 @@ export function useEventStudio(input: {
       }
       const bannerOk = id ? await enqueue(() => persistBanner(id)) : true;
       setStatus({ kind: "saved", at: Date.now() });
+      refreshAfterWrite();
       if (bannerOk) toast.success("Хадгалагдлаа.");
       else toast.error("Арга хэмжээ хадгалагдсан, баннер хадгалагдсангүй — ④-р алхмыг харна уу.");
       return true;
@@ -613,6 +664,7 @@ export function useEventStudio(input: {
       }
       setStatus({ kind: "saved", at: Date.now() });
       setPublished(action);
+      refreshAfterWrite();
       return true;
     } finally {
       setBusy(null);
@@ -646,8 +698,25 @@ export function useEventStudio(input: {
         return;
       }
       toast.success(`«${name}» зогслоо.`);
-      // Серверийн шинэ мөрөөр студи дахин эхэлнэ (хуудас `key`-ээр солино).
-      router.refresh();
+      // `stop_sale_event`-ийн дүрмийг локалаар: явж буй → яг одоо дуусна,
+      // товлосон → ноорог руу. Хуудасны `key` (row.id) солигдохгүй тул
+      // студийн төлөв ингэж шинэчлэгдэнэ.
+      const stoppedAt = Date.now();
+      if (meta) {
+        const next: Meta =
+          phase === "live"
+            ? {
+                ...meta,
+                endsAt: new Date(
+                  Math.max(stoppedAt, Date.parse(meta.startsAt) + 1000),
+                ).toISOString(),
+              }
+            : { ...meta, isActive: false };
+        live.current = { ...live.current, meta: next };
+        setMeta(next);
+      }
+      setNow(stoppedAt);
+      refreshAfterWrite();
     } finally {
       setBusy(null);
     }
@@ -677,9 +746,13 @@ export function useEventStudio(input: {
     phase,
     mode,
     today,
+    now,
     dirty,
     errors,
     conflicts,
+    bundleState,
+    bundleOptions,
+    bundlesEnabled,
     checklist,
     status,
     busy,
