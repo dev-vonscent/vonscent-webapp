@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { Check, ChevronDown, QrCode, RefreshCw, XCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { formatPrice } from "@/lib/format";
@@ -457,7 +458,7 @@ function OrderRecap({ view }: { view: PaymentView }) {
    */
   const collapsible = !useMediaQuery("(min-width: 768px)", false);
   const count = view.lines.reduce((n, l) => n + l.qty, 0);
-  if (view.lines.length === 0) return null;
+  if (view.entries.length === 0) return null;
   const Head = collapsible ? "button" : "div";
   return (
     <div className="bg-card mt-6 rounded-2xl p-4 md:p-5">
@@ -499,57 +500,82 @@ function OrderRecap({ view }: { view: PaymentView }) {
             харагдахгүй (globals.css → бүх border тунгалаг). Мөр хоорондын
             зай нь өөрөө хангалттай тусгаарлагч; жинхэнэ зураас хэрэгтэй
             ганц газар бол тооцооны блокийн дээд тал — тэнд `gold-rule`. */}
+        {/* «Миний захиалга»-тай ижил дараалал ба бүлэглэлт (`buildOrderLines`):
+            дан (ml ↑) → нэмэлт → багц → бэлэг. Мөрийн дүн нь үндсэн үнэ —
+            хямдрал доорх тооцоонд тусдаа мөр (нийлбэр = «Нийт үндсэн үнэ»). */}
         <ul className="mt-3">
-          {view.lines.map((line, i) => (
-            <li
-              key={`${line.name}-${line.ml ?? line.variantLabel}-${i}`}
-              className="flex items-center gap-3 py-2.5"
-            >
-              <div className="relative size-11 shrink-0">
-                <div className="bg-muted relative size-full overflow-hidden rounded-lg">
-                  {line.image && (
-                    <Image
-                      src={line.image}
-                      alt={line.name}
-                      fill
-                      sizes="44px"
-                      className="object-cover"
-                    />
+          {view.entries.map((entry) => {
+            const bundle = entry.kind === "bundle";
+            const image = bundle ? entry.image : entry.line.image;
+            const qty = bundle ? entry.qty : entry.line.qty;
+            const gift = bundle ? entry.isGift : entry.line.isGift;
+            const total = bundle ? entry.baseTotal : entry.line.baseTotal;
+            const name = bundle ? entry.title : entry.line.name;
+            return (
+              <li
+                key={entry.key}
+                className={cn(
+                  "flex gap-3 py-2.5",
+                  bundle ? "items-start" : "items-center",
+                )}
+              >
+                <div className="relative size-11 shrink-0">
+                  <div className="bg-muted relative size-full overflow-hidden rounded-lg">
+                    {image && (
+                      <Image
+                        src={image}
+                        alt={name}
+                        fill
+                        sizes="44px"
+                        className="object-cover"
+                      />
+                    )}
+                  </div>
+                  {qty > 1 && (
+                    <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">
+                      {qty}
+                    </span>
                   )}
                 </div>
-                {line.qty > 1 && (
-                  <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">
-                    {line.qty}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm/tight font-medium">{name}</p>
+                  <p className="text-muted-foreground truncate text-xs">
+                    {bundle
+                      ? `${entry.ml}ml × ${entry.qty}`
+                      : [
+                          // Нэмэлт барааны `brand` нь ангиллын нэр (0146).
+                          entry.line.brand,
+                          entry.line.isExtra
+                            ? entry.line.variantLabel || null
+                            : entry.line.ml != null
+                              ? `${entry.line.ml}ml`
+                              : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                  </p>
+                  {bundle && (
+                    <ul className="text-muted-foreground mt-1 space-y-0.5 text-xs">
+                      {entry.members.map((m, i) => (
+                        <li key={`${m.brand}-${m.name}-${i}`}>
+                          • {m.brand} — {m.name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {gift ? (
+                  <Badge variant="secondary" className="shrink-0">
+                    Бэлэг
+                  </Badge>
+                ) : (
+                  <span className="text-sm font-medium tabular-nums">
+                    {formatPrice(total)}
                   </span>
                 )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm/tight font-medium">
-                  {line.name}
-                </p>
-                <p className="text-muted-foreground truncate text-xs">
-                  {[
-                    // Нэмэлт барааны `brand` нь ангиллын нэр (0146).
-                    line.brand,
-                    line.isExtra
-                      ? line.variantLabel || null
-                      : line.ml != null
-                        ? `${line.ml}ml`
-                        : null,
-                    line.collectionName ?? null,
-                    line.isSample ? "бэлэг" : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              </div>
-              {/* Үндсэн үнэ — багцын хямдрал нь мөр бүрт тараагдахын оронд
-                  доорх тооцоонд ганц мөр болж гарна (0097). */}
-              <span className="text-sm font-medium tabular-nums">
-                {formatPrice(line.baseTotal)}
-              </span>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
         {/* Захиалах мөчид ороогүй бэлэг (0149) — сангаас, reload хийсэн ч. */}
         {view.omittedGifts.length > 0 && (
@@ -1148,8 +1174,8 @@ function GiftCardPaidState({
               <strong className="text-foreground font-medium tabular-nums">
                 +{view.pointsEarned.toLocaleString("mn-MN")} V point
               </strong>{" "}
-              хуримтлагдлаа — карт ашиглагдмагц эсвэл 7 хоногийн дараа
-              зарцуулах боломжтой болно.
+              хуримтлагдлаа — карт ашиглагдмагц эсвэл 7 хоногийн дараа зарцуулах
+              боломжтой болно.
             </p>
           </>
         )}

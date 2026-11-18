@@ -1,5 +1,5 @@
 import type { SaleRow } from "@/lib/orders/price-breakdown";
-import type { PaymentLine } from "@/features/payment/types";
+import type { PaymentEntry, PaymentLine } from "@/features/payment/types";
 import type { OrderStatus } from "@/lib/constants";
 import type { PaymentStatusValue } from "@/lib/constants";
 
@@ -17,6 +17,8 @@ export interface OrderStatusView {
   createdAt: string;
   deliverOn: string | null;
   lines: PaymentLine[];
+  /** Харагдах мөрүүд — `/pay/[token]`-тай ижил (`paymentLines`). */
+  entries: PaymentEntry[];
   subtotal: number;
   /** Багцын хямдралын өмнөх барааны дүн (0097). Хуучин захиалгад null. */
   grossSubtotal: number | null;

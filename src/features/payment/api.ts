@@ -15,7 +15,9 @@ import {
   reviewPointsOf,
 } from "@/lib/loyalty";
 import { getOrderGiftCard } from "@/features/gift-cards/server";
-import type { PaymentLine, PaymentView } from "./types";
+import type { PaymentEntry, PaymentLine, PaymentView } from "./types";
+import { loadBundleInfo } from "@/lib/orders/bundle-info";
+import { buildPaymentRecap, type PaymentItemRow } from "./recap";
 import type { PaymentMethod } from "@/db/types";
 
 /**
@@ -57,30 +59,18 @@ interface OrderRow {
   order_type: "goods" | "gift_card";
 }
 
-interface ItemRow {
-  product_id: string | null;
-  product_name: string;
-  brand: string;
-  ml: number | null;
-  qty: number;
-  unit_price: number;
-  list_price: number | null;
-  line_total: number;
-  is_sample: boolean;
-  collection_name: string | null;
-  line_kind: "perfume" | "extra" | "gift_card";
-  variant_label: string | null;
-  image_url: string | null;
-}
-
 const SELECT =
   "id, order_no, user_id, subtotal, gross_subtotal, sale_breakdown, coupon_code, shipping_fee, discount, loyalty_used, total, status, payment_method, payment_status, deliver_on, checkout_snapshot, omitted_gifts, order_type";
 
 const ITEM_SELECT =
-  "product_id, product_name, brand, ml, qty, unit_price, list_price, line_total, is_sample, collection_name, line_kind, variant_label, image_url";
+  "id, line_no, product_id, product_name, brand, ml, qty, unit_price, list_price, line_total, is_sample, is_gift, spin_id, base_price, sale_label, collection_id, collection_name, line_kind, variant_label, image_url";
 
 /**
  * The order's lines, with a product image where the product still exists.
+ *
+ * `lines` — задгай мөрүүд (Purchase analytics), `entries` — тоймд харагдах
+ * мөрүүд: «Миний захиалга»-тай ижил `buildOrderLines` (дан ml ↑ → нэмэлт →
+ * багц → бэлэг), багц нэг мөр.
  *
  * Exported because `/order/[token]` (features/order-lookup) renders the same
  * lines under the same privacy rule — one reader, one shape.
@@ -88,41 +78,24 @@ const ITEM_SELECT =
 export async function paymentLines(
   supabase: NonNullable<ReturnType<typeof createAdminClient>>,
   orderId: string,
-): Promise<PaymentLine[]> {
+): Promise<{ lines: PaymentLine[]; entries: PaymentEntry[] }> {
   const { data } = await supabase
     .from("order_items")
     .select(ITEM_SELECT)
     .eq("order_id", orderId);
-  const rows = (data as ItemRow[] | null) ?? [];
-  if (rows.length === 0) return [];
+  const rows = (data as PaymentItemRow[] | null) ?? [];
+  if (rows.length === 0) return { lines: [], entries: [] };
 
   // Зураг нь `products`-д байгаа — order_items дээр хуулагддаггүй. Бараа
   // хожим устсан бол мөр зурагггүй л харагдана (нэр, дүн нь захиалга дээрээ).
   const ids = [...new Set(rows.map((r) => r.product_id).filter(Boolean))];
-  const products = ids.length ? await getProductsByIds(ids as string[]) : [];
+  const [products, bundles] = await Promise.all([
+    ids.length ? getProductsByIds(ids as string[]) : Promise.resolve([]),
+    loadBundleInfo(supabase, rows),
+  ]);
   const imageById = new Map(products.map((p) => [p.id, p.image?.url ?? null]));
 
-  return rows.map((r) => ({
-    productId: r.product_id,
-    name: r.product_name,
-    brand: r.brand,
-    ml: r.ml,
-    // Бэлгийн карт (0179) ч ml-гүй, загварын нэрээр — нэмэлт бараатай ижил.
-    variantLabel: r.line_kind !== "perfume" ? (r.variant_label ?? "") : null,
-    isExtra: r.line_kind !== "perfume",
-    qty: r.qty,
-    lineTotal: r.line_total,
-    // Мөр нь үндсэн үнээрээ бичигдэнэ — багцын хямдрал доор тусдаа мөр
-    // болж гарах тул. 0097-оос өмнөх захиалгад `list_price` алга: тэр үед
-    // хямдарсан дүн нь өөрөө цорын ганц мэдэгдэж буй үнэ.
-    baseTotal: (r.list_price ?? r.unit_price) * r.qty,
-    isSample: r.is_sample,
-    collectionName: r.collection_name,
-    // Нэмэлт бараа зарсан мөчийн зурагтай (0146); үнэртэн барааныхаа зургийг.
-    image:
-      r.image_url ??
-      (r.product_id ? (imageById.get(r.product_id) ?? null) : null),
-  }));
+  return buildPaymentRecap(rows, bundles, imageById);
 }
 
 /**
@@ -193,7 +166,7 @@ export async function getPaymentByToken(
 
   const paid = order.payment_status === "paid";
   const cancelled = order.status === "cancelled";
-  const lines = await paymentLines(supabase, order.id);
+  const { lines, entries } = await paymentLines(supabase, order.id);
   const omitted = order.omitted_gifts ?? [];
   const giftNames = omitted.length
     ? new Map(
@@ -229,6 +202,7 @@ export async function getPaymentByToken(
     orderNo: order.order_no,
     total: order.total,
     lines,
+    entries,
     omittedGifts: omitted.map((g) => ({
       name: giftNames.get(g.product_id) ?? "Бэлгийн дээж",
       reason: g.reason,
