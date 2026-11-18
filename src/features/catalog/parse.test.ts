@@ -46,9 +46,31 @@ describe("parseFilters — арга хэмжээ (?event=, 0181)", () => {
     expect(parseFilters({}).event).toBeUndefined();
   });
 
-  it("багц дээр хоосорно (арга хэмжээ = ус л)", () => {
+  it("багц дээр хоосорно — туг хаалттай (өгөгдмөл) үед өмнөх шиг", () => {
     expect(
       parseFilters({ kind: "bundle", event: "black-friday" }).event,
     ).toBeUndefined();
+    expect(
+      parseFilters(
+        { kind: "bundle", event: "black-friday" },
+        { bundleEvents: false },
+      ).event,
+    ).toBeUndefined();
+  });
+
+  it("туг sale_event_bundles нээлттэй → «Багц» таб дээр ч хадгалагдана (16.7)", () => {
+    expect(
+      parseFilters(
+        { kind: "bundle", event: "black-friday" },
+        { bundleEvents: true },
+      ).event,
+    ).toBe("black-friday");
+    // Бусад «Багц»-ийн дүрэм хэвээр (брэнд хоосорно).
+    expect(
+      parseFilters(
+        { kind: "bundle", event: "black-friday", brand: "Dior" },
+        { bundleEvents: true },
+      ).brand,
+    ).toEqual([]);
   });
 });

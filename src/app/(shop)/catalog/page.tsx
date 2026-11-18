@@ -8,6 +8,7 @@ import { getActiveBrands, getScentFamilies } from "@/features/taxonomy/api";
 import {
   getCatalogCollections,
   getCollectionPriceBounds,
+  getLiveBundleEvents,
 } from "@/features/collections/api";
 import { parseFilters } from "@/features/catalog/parse";
 import { catalogCanonical } from "@/features/catalog/canonical";
@@ -76,12 +77,29 @@ export default async function CatalogPage({
   if (params.tab === "extras" && (await isFeatureEnabled("extras_shop"))) {
     redirect(legacyExtrasHref(params));
   }
-  const parsed = parseFilters(params);
+  // 16.7: «Багц» таб дээр `?event=` — хоёр туг хоёулаа нээлттэй үед л.
+  const [eventsOn, bundleEventsOn] = await Promise.all([
+    isFeatureEnabled("sale_events"),
+    isFeatureEnabled("sale_event_bundles"),
+  ]);
+  const parsed = parseFilters(params, {
+    bundleEvents: eventsOn && bundleEventsOn,
+  });
   // Арга хэмжээ (`?event=slug`, 0181): зөвхөн LIVE үед шүүнэ. Товлосон /
   // дууссан / олдохгүй бол зурвас + БҮХ каталог (plan §6.2) — хуучин
   // холбоос хоосон жагсаалт руу унахгүй. Туг хаалттай бол параметрийг
   // огт үл тоомсорлоно.
-  const { filters, eventBanner } = await resolveEvent(parsed);
+  const resolved = await resolveEvent(parsed);
+  const { eventBanner } = resolved;
+  let { filters } = resolved;
+  // «Багц» таб: багцгүй арга хэмжээний `?event=` (гараар бичсэн холбоос) chip-гүй
+  // хоосон жагсаалт болохгүй — параметрийг хаяна (16.7).
+  if (filters.kind === "bundle" && filters.event) {
+    const bundleEvents = await getLiveBundleEvents();
+    if (!Object.values(bundleEvents).some((e) => e.slug === filters.event)) {
+      filters = { ...filters, event: undefined };
+    }
+  }
   // `page`-гүй шүүлтүүр: доош гүйлгэх жагсаалтын түлхүүр. Шүүлтүүр солигдоход
   // жагсаалт шинээр эхэлнэ.
   const query = new URLSearchParams();
@@ -147,7 +165,9 @@ export default async function CatalogPage({
               data-page-title
               className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl"
             >
-              {filters.search ? `«${filters.search}» хайлтын үр дүн` : "Каталог"}
+              {filters.search
+                ? `«${filters.search}» хайлтын үр дүн`
+                : "Каталог"}
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
               {counts || "0 бараа"}
@@ -272,7 +292,11 @@ async function resolveEvent(parsed: ReturnType<typeof parseFilters>): Promise<{
   }
   // Эхлэх мөчийн кэшийн завсарт (≤1 мин, cron цэвэрлэнэ) `pub` нь live,
   // жагсаалт хуучин байж болно — «эхэлнэ» гэж харуулна, «дууссан» биш.
-  const state = !pub ? "missing" : pub.state === "live" ? "scheduled" : pub.state;
+  const state = !pub
+    ? "missing"
+    : pub.state === "live"
+      ? "scheduled"
+      : pub.state;
   return {
     filters: { ...parsed, event: undefined },
     eventBanner: {

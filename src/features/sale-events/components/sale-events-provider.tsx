@@ -28,9 +28,20 @@ interface SaleEventsValue {
   pcts: Readonly<Record<string, number>>;
   /** productId → арга хэмжээний зурвасны өнгө (тэмдэг ижил өнгөтэй). */
   themes: Readonly<Record<string, SaleEventTickerTheme>>;
+  /**
+   * Бэлэн багцтай LIVE арга хэмжээний slug-ууд (16.7) — каталогийн «Багц»
+   * таб дээр зөвхөн эдгээрийн chip. Туг хаалттай бол хоосон.
+   */
+  bundleEventSlugs?: readonly string[];
 }
 
-const EMPTY: SaleEventsValue = { events: [], badges: {}, pcts: {}, themes: {} };
+const EMPTY: SaleEventsValue = {
+  events: [],
+  badges: {},
+  pcts: {},
+  themes: {},
+  bundleEventSlugs: [],
+};
 const SaleEventsContext = React.createContext<SaleEventsValue>(EMPTY);
 
 export function SaleEventsProvider({
@@ -38,11 +49,12 @@ export function SaleEventsProvider({
   badges,
   pcts,
   themes,
+  bundleEventSlugs = EMPTY.bundleEventSlugs,
   children,
 }: SaleEventsValue & { children: React.ReactNode }) {
   const value = React.useMemo(
-    () => ({ events, badges, pcts, themes }),
-    [events, badges, pcts, themes],
+    () => ({ events, badges, pcts, themes, bundleEventSlugs }),
+    [events, badges, pcts, themes, bundleEventSlugs],
   );
   return (
     <SaleEventsContext.Provider value={value}>
@@ -77,4 +89,18 @@ export function useSaleEventTheme(
   productId: string,
 ): SaleEventTickerTheme | null {
   return useValue().themes[productId] ?? null;
+}
+
+/**
+ * «Багц» таб дээр харуулах арга хэмжээний chip (16.7): бэлэн багцтай LIVE
+ * арга хэмжээ, туг `sale_event_bundles` нээлттэй үед л.
+ */
+export function useBundleSaleEvents() {
+  const bundlesOn = useFeatureFlag("sale_event_bundles");
+  const { events, bundleEventSlugs = [] } = useValue();
+  return React.useMemo(
+    () =>
+      bundlesOn ? events.filter((e) => bundleEventSlugs.includes(e.slug)) : [],
+    [bundlesOn, events, bundleEventSlugs],
+  );
 }

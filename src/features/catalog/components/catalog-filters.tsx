@@ -12,7 +12,10 @@ import { useFilterQuery } from "./use-filter-query";
 import type { ScentFamilyOption } from "@/lib/types";
 import type { BrandLogos } from "@/features/products/components/brand-marquee";
 import { EventFilterChip } from "@/features/sale-events/components/event-filter-chip";
-import { useLiveSaleEvents } from "@/features/sale-events/components/sale-events-provider";
+import {
+  useBundleSaleEvents,
+  useLiveSaleEvents,
+} from "@/features/sale-events/components/sale-events-provider";
 
 const PRICE_STEP = 1000;
 
@@ -160,6 +163,8 @@ export function CatalogFilters({
   const featured = searchParams.get("featured") === "1";
   // Одоо явж буй арга хэмжээ (0181) — дуусмагц chip өөрөө алга болно.
   const liveEvents = useLiveSaleEvents();
+  // «Багц» таб: бэлэн багцтай арга хэмжээ л (16.7; туг хаалттай бол хоосон).
+  const bundleEvents = useBundleSaleEvents();
   const event = searchParams.get("event") ?? undefined;
 
   // Багцад брэнд / үнэрийн төрөл / улирал байхгүй (клиент, 2026-10-26) —
@@ -176,8 +181,12 @@ export function CatalogFilters({
             brand: undefined,
             family: undefined,
             season: undefined,
-            // Арга хэмжээ = ус л (0181).
-            event: undefined,
+            // Арга хэмжээ: тэр event-д багц байвал хадгална (16.7), эс бөгөөс
+            // хаягдана — туг хаалттай үед өмнөх шигээ үргэлж хаягдана.
+            event:
+              event && bundleEvents.some((e) => e.slug === event)
+                ? event
+                : undefined,
           }
         : { kind: value },
     );
@@ -291,21 +300,20 @@ export function CatalogFilters({
                   {t.label}
                 </Chip>
               ))}
-              {/* Арга хэмжээ (Black Friday …) — нэг л сонгогдоно. Багцад
-                  хамаарахгүй. */}
-              {!isBundle &&
-                liveEvents.map((e) => (
-                  <EventFilterChip
-                    key={e.slug}
-                    theme={e.tickerTheme}
-                    active={event === e.slug}
-                    onClick={() =>
-                      setSingle("event", event === e.slug ? undefined : e.slug)
-                    }
-                  >
-                    {e.name}
-                  </EventFilterChip>
-                ))}
+              {/* Арга хэмжээ (Black Friday …) — нэг л сонгогдоно. «Багц»
+                  таб дээр зөвхөн бэлэн багцтай арга хэмжээ (16.7). */}
+              {(isBundle ? bundleEvents : liveEvents).map((e) => (
+                <EventFilterChip
+                  key={e.slug}
+                  theme={e.tickerTheme}
+                  active={event === e.slug}
+                  onClick={() =>
+                    setSingle("event", event === e.slug ? undefined : e.slug)
+                  }
+                >
+                  {e.name}
+                </EventFilterChip>
+              ))}
             </div>
           </Group>
           <Separator />
