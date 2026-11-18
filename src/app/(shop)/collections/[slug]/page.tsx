@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
 import {
   Accordion,
   AccordionContent,
@@ -21,12 +20,12 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { getCollectionBySlug } from "@/features/collections/api";
+import { CollectionSaleBadge } from "@/features/sale-events/components/collection-sale-badge";
 import { CollectionDetail } from "@/features/collections/components/collection-detail";
 import { ProductGallery } from "@/features/products/components/product-gallery";
 import { TrackViewItem } from "@/features/products/components/track-view-item";
 import type { ProductImage } from "@/lib/types";
 import { GENDER_LABEL } from "@/lib/constants";
-import { formatDiscountRange } from "@/features/collections/pricing";
 
 /**
  * ISR — admin writes, orders (revalidateStock) and the sale-boundary cron
@@ -109,11 +108,10 @@ export default async function CollectionPage({
               <div className="border-border bg-muted aspect-square rounded-2xl border" />
             )}
             <div className="pointer-events-none absolute top-3 left-3 flex flex-col gap-1.5">
-              {collection.discountRange.max > 0 && (
-                <Badge variant="sale" className="w-fit backdrop-blur-sm">
-                  −{formatDiscountRange(collection.discountRange)}
-                </Badge>
-              )}
+              {/* Арга хэмжээнд орсон бол каталогийн картын адил «Black
+                  Friday −10%» (event-ийн өнгө, туг sale_event_bundles);
+                  эс бөгөөс өмнөх «−5%». */}
+              <CollectionSaleBadge collection={collection} surface="detail" />
             </div>
           </div>
         </div>

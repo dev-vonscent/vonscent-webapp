@@ -17,8 +17,14 @@ import { useLiveSaleEvents } from "./sale-events-provider";
  */
 export function CollectionSaleBadge({
   collection,
+  surface = "card",
 }: {
   collection: Pick<CollectionCardData, "discountRange" | "event">;
+  /**
+   * `card` — каталогийн карт; `detail` — багцын дэлгэрэнгүйн зураг дээр
+   * (арга хэмжээгүй үед өмнөх «−5%» тэмдгийн төрх яг хэвээрээ).
+   */
+  surface?: "card" | "detail";
 }) {
   const bundlesOn = useFeatureFlag("sale_event_bundles");
   const events = useLiveSaleEvents();
@@ -36,7 +42,14 @@ export function CollectionSaleBadge({
     );
   }
   return (
-    <Badge variant="sale" className="bg-background/85! w-fit backdrop-blur-sm">
+    <Badge
+      variant="sale"
+      className={
+        surface === "detail"
+          ? "w-fit backdrop-blur-sm"
+          : "bg-background/85! w-fit backdrop-blur-sm"
+      }
+    >
       −{range}
     </Badge>
   );
