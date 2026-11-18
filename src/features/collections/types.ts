@@ -76,6 +76,11 @@ export interface CollectionEvent {
   name: string;
   /** ml → event-ийн хувь (суурь хувийг орлоно, greatest). */
   pcts: Record<number, number>;
+  /**
+   * Арга хэмжээ дуусах мөч (ISO, exclusive) — картын тоолуур (task 2.2).
+   * Туг `sale_display` хаалттай бол server өгөхгүй.
+   */
+  endsAt?: string;
 }
 
 /** A base or saved-custom collection resolved with live member data. */

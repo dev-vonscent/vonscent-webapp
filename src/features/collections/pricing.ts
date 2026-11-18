@@ -1,5 +1,9 @@
 import { BUNDLE_ML_SIZES } from "@/lib/constants";
-import type { CollectionMember, CollectionPriceAtMl } from "./types";
+import type {
+  CollectionEvent,
+  CollectionMember,
+  CollectionPriceAtMl,
+} from "./types";
 
 /** Round to the nearest `step` (₮). step ≤ 1 rounds to the nearest whole ₮. */
 export function roundTo(value: number, step: number): number {
@@ -207,4 +211,49 @@ export function formatDiscountRange({
 }): string {
   if (max <= 0) return "";
   return min === max ? `${max}%` : `${max}% хүртэл`;
+}
+
+/**
+ * Багцын хэмжээ бүрийн үнэ + LIVE арга хэмжээ (16.7). Event-ийн хувь суурь
+ * хувийг орлоно (`withEventPcts`, greatest); хэмжээ бүрийн нэмэлт хэмнэлт
+ * `eventSaving`. Event нь ядаж нэг хэмжээнд хэмнэлт өгч байвал л буцна —
+ * event хувь ≤ суурь хувь бол үйлчлэхгүй тул null (тэмдэг, тоолуур гарахгүй).
+ */
+export function priceWithBundleEvent(
+  members: CollectionMember[],
+  defaultPct: number,
+  mlDiscounts: MlDiscounts,
+  step: number,
+  event: CollectionEvent | null,
+): { prices: CollectionPriceAtMl[]; event: CollectionEvent | null } {
+  const prices = memberPrices(
+    members,
+    defaultPct,
+    step,
+    event ? withEventPcts(defaultPct, mlDiscounts, event.pcts) : mlDiscounts,
+  ).map((p) => {
+    if (!event) return p;
+    const eventSaving = bundleEventSaving(
+      p.memberSum,
+      discountForMl(p.ml, defaultPct, mlDiscounts),
+      p.price,
+      step,
+    );
+    return eventSaving > 0 ? { ...p, eventSaving } : p;
+  });
+  return {
+    prices,
+    event: event && prices.some((p) => p.eventSaving) ? event : null,
+  };
+}
+
+/**
+ * Багцын картын хямдрал дуусах мөч (task 2.2): ЗӨВХӨН хэмнэлт өгч буй LIVE
+ * арга хэмжээнийх. Суурь хувь (анхдагч 5%, `collection_ml_discounts`)
+ * хугацаагүй тул null.
+ */
+export function bundleSaleEndsAt(c: {
+  event?: Pick<CollectionEvent, "endsAt"> | null;
+}): string | null {
+  return c.event?.endsAt ?? null;
 }

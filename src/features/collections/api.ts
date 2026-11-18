@@ -28,13 +28,7 @@ import {
   filterCatalogCollections,
   sortCatalogCollections,
 } from "./catalog-filter";
-import {
-  memberPrices,
-  discountRange,
-  discountForMl,
-  withEventPcts,
-  bundleEventSaving,
-} from "./pricing";
+import { discountRange, priceWithBundleEvent } from "./pricing";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { getLiveSaleEvents } from "@/features/sale-events/api";
 import { topUpRandom } from "@/features/products/rail";
@@ -166,21 +160,13 @@ function build(
   const mlDiscounts = toMlDiscounts(row);
   // 16.7: LIVE арга хэмжээний хувь суурь хувийг ОРЛОНО (greatest) — туг
   // хаалттай / event-гүй бол `event` null → өмнөх шигээ.
-  const prices = memberPrices(
+  const { prices, event: liveEvent } = priceWithBundleEvent(
     members,
     discountPct,
+    mlDiscounts,
     settings.roundTo,
-    event ? withEventPcts(discountPct, mlDiscounts, event.pcts) : mlDiscounts,
-  ).map((p) => {
-    if (!event) return p;
-    const eventSaving = bundleEventSaving(
-      p.memberSum,
-      discountForMl(p.ml, discountPct, mlDiscounts),
-      p.price,
-      settings.roundTo,
-    );
-    return eventSaving > 0 ? { ...p, eventSaving } : p;
-  });
+    event,
+  );
   const availableMls = complete
     ? prices.filter((p) => p.available).map((p) => p.ml)
     : [];
@@ -218,7 +204,7 @@ function build(
     soldOut: availableMls.length === 0,
     createdAt: row.created_at,
     // Хэмнэлт өгч буй хэмжээ байвал л — суурь хувь нь илүү бол event-гүй.
-    event: event && prices.some((p) => p.eventSaving) ? event : null,
+    event: liveEvent,
   };
 }
 
@@ -289,12 +275,21 @@ export async function getLiveBundleEvents(): Promise<
   Record<string, CollectionEvent>
 > {
   if (!(await bundleEventsEnabled())) return {};
-  const [rows, live] = await Promise.all([
+  const [rows, live, showEnds] = await Promise.all([
     fetchLiveBundleRows(),
     getLiveSaleEvents(),
+    isFeatureEnabled("sale_display"),
   ]);
-  const liveSlugs = new Set(live.map((e) => e.slug));
-  return toBundleEvents(rows.filter((r) => liveSlugs.has(r.event_slug)));
+  const endsBySlug = new Map(live.map((e) => [e.slug, e.endsAt]));
+  const events = toBundleEvents(
+    rows.filter((r) => endsBySlug.has(r.event_slug)),
+  );
+  // Картын тоолуур (task 2.2): дуусах мөч нь `live_sale_events`-ээс (ижил
+  // кэш, `catalog` tag). Туг хаалттай бол HTML-д огт орохгүй.
+  if (showEnds) {
+    for (const e of Object.values(events)) e.endsAt = endsBySlug.get(e.slug);
+  }
+  return events;
 }
 
 /** Захиалгын мөчийн (кэшгүй) нэг багцын event — `priceCollectionLines`. */

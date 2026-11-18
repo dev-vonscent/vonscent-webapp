@@ -10,6 +10,8 @@ import {
   withEventPcts,
   bundleEventSaving,
   spreadBundleTotal,
+  priceWithBundleEvent,
+  bundleSaleEndsAt,
 } from "./pricing";
 import type { CollectionMember } from "./types";
 
@@ -323,5 +325,42 @@ describe("spreadBundleTotal — гишүүдийн unit_price", () => {
     const u = spreadBundleTotal([30000, 33000, 40100], 98000);
     expect(u.reduce((s, x) => s + x, 0)).toBe(98000);
     expect(u).toEqual([28516, 31368, 38116]);
+  });
+});
+
+describe("багцын тоолуурын мөч — priceWithBundleEvent + bundleSaleEndsAt (2.2)", () => {
+  const members = [
+    member({ 5: 40000, 10: 70000 }),
+    member({ 5: 60000, 10: 90000 }),
+  ];
+  const bf = {
+    slug: "black-friday",
+    name: "Black Friday",
+    pcts: { 5: 10, 10: 10 },
+    endsAt: "2026-11-21T16:00:00Z",
+  };
+
+  it("event-д орсон (хувь > суурь) багц → event-ийн дуусах мөч", () => {
+    const { prices, event } = priceWithBundleEvent(members, 5, {}, 100, bf);
+    expect(prices.find((p) => p.ml === 5)?.price).toBe(90000);
+    expect(event).toBe(bf);
+    expect(bundleSaleEndsAt({ event })).toBe("2026-11-21T16:00:00Z");
+  });
+
+  it("зөвхөн суурь хувьтай (event-гүй) багц → хугацаагүй", () => {
+    const { prices, event } = priceWithBundleEvent(members, 5, {}, 100, null);
+    expect(prices.find((p) => p.ml === 5)?.price).toBe(95000);
+    expect(event).toBeNull();
+    expect(bundleSaleEndsAt({ event })).toBeNull();
+  });
+
+  it("event хувь ≤ суурь хувь (greatest — үйлчлэхгүй) → хугацаагүй", () => {
+    const low = { ...bf, pcts: { 5: 10, 10: 10 } };
+    const { prices, event } = priceWithBundleEvent(members, 15, {}, 100, low);
+    expect(prices.find((p) => p.ml === 5)?.price).toBe(85000);
+    expect(event).toBeNull();
+    expect(bundleSaleEndsAt({ event })).toBeNull();
+    // Тэнцүү хувь ч мөн адил.
+    expect(priceWithBundleEvent(members, 10, {}, 100, low).event).toBeNull();
   });
 });
