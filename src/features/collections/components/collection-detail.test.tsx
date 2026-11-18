@@ -70,7 +70,7 @@ describe("CollectionDetail size buttons", () => {
   it("card: one scent's size × the scent count and sprays, no price", () => {
     render(<CollectionDetail collection={collection(PRICES)} />);
     const tenMl = screen.getByRole("radio", { name: "10ml ×4" });
-    expect(tenMl.textContent).toBe("10ml ×4тус\u00a0бүр 150 цацалт");
+    expect(tenMl.textContent).toBe("10ml ×4тус бүр150 цацалт.");
     expect(tenMl.textContent).not.toMatch(/₮/);
   });
 

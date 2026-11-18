@@ -34,9 +34,14 @@ function variant(
   } as Variant;
 }
 
-function product(variants: Variant[], availableMl = 100): ProductDetail {
+function product(
+  variants: Variant[],
+  availableMl = 100,
+  tags: string[] = [],
+): ProductDetail {
   return {
     id: "p1",
+    tags,
     slug: "aventus",
     name: "Aventus",
     brand: "Creed",
@@ -60,10 +65,30 @@ beforeEach(() => {
 });
 
 describe("ProductPurchase", () => {
+  it("анхдагч хэмжээ = картын хэмжээ: 2ml хямдралгүй, 5ml хямдралтай → 5ml (2.5)", () => {
+    const sale = [
+      variant(2, 12_000),
+      variant(5, 25_500, { basePrice: 30_000 }),
+      variant(10, 50_000),
+    ];
+    render(<ProductPurchase product={product(sale, 100, ["sale"])} />);
+    expect(
+      screen.getByRole("radio", { name: /^5ml/ }).getAttribute("aria-checked"),
+    ).toBe("true");
+  });
+
+  it("хямдралгүй бол хамгийн жижиг зарагдах хэмжээ", () => {
+    render(<ProductPurchase product={product(SIZES)} />);
+    expect(
+      screen.getByRole("radio", { name: /^2ml/ }).getAttribute("aria-checked"),
+    ).toBe("true");
+  });
+
   it("card shows only the size and sprays — no price, no ₮/ml", () => {
     render(<ProductPurchase product={product(SIZES)} />);
     const five = screen.getByRole("radio", { name: "5ml" });
-    expect(five.textContent).toBe("5ml75 цацалт");
+    // «цацалт» / «цац.» хоёулаа DOM-д — картын өргөнөөр CSS сонгоно (G).
+    expect(five.textContent).toBe("5ml75 цацалт.");
     expect(five.textContent).not.toMatch(/₮/);
   });
 

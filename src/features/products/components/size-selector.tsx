@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { SPRAYS_PER_ML } from "@/lib/constants";
 import {
   Luggage,
   Maximize2,
@@ -127,7 +128,6 @@ export function SizeSelector({
       >
         {options.map((o, i) => {
           const active = o.id === value;
-          const status = o.note ?? o.sprays;
           return (
             <button
               key={o.id}
@@ -152,7 +152,8 @@ export function SizeSelector({
                 // justify-start: нарийн өргөнд (quick-add, 320px) «300 цацалт»
                 // 2 мөр болоход ч хэмжээний гарчиг бүх картад нэг шугамд;
                 // grid-ийн stretch-ээр картууд ижил өндөр.
-                "relative flex min-h-14 min-w-0 flex-col items-center justify-start gap-0.5 rounded-lg px-1 py-2",
+                // `@container`: цацалтын мөр картын өргөнөөр бүтэн/товч (доор).
+                "@container relative flex min-h-14 min-w-0 flex-col items-center justify-start gap-0.5 rounded-lg px-0.5 py-2",
                 !o.selectable
                   ? "bg-secondary/40 text-muted-foreground cursor-not-allowed opacity-60"
                   : active
@@ -175,13 +176,11 @@ export function SizeSelector({
               </span>
               <span
                 className={cn(
-                  // Багцын «тус бүр 300 цацалт» 4 баганад багтахгүй —
-                  // «тус бүр» / «300 цацалт» гэж хоёр мөрөнд орно.
                   "text-center text-xs/tight text-balance",
                   active ? "text-cta-foreground/75" : "text-muted-foreground",
                 )}
               >
-                {status}
+                {o.note ?? <Sprays ml={o.ml} each={o.each} />}
               </span>
             </button>
           );
@@ -303,5 +302,24 @@ function SaleMarker({ pct, shape }: { pct: number; shape: "burst" | "pill" }) {
         −{pct}%
       </span>
     </span>
+  );
+}
+
+/**
+ * Картын цацалтын мөр — үргэлж НЭГ мөр, бүх карт ижил өндөр (dev QA, G).
+ * «300 цацалт» (12px-д ~66px) нь 320px-ийн quick-add-ийн картад (~54px)
+ * багтахгүй тул картын өргөн (`@container`) хүрэхгүй үед л «300 цац.».
+ * Багцын «тус бүр» тусдаа мөрөнд (бүх картад адил 2 мөр).
+ */
+function Sprays({ ml, each }: { ml: number; each: boolean }) {
+  return (
+    <>
+      {each && <span className="block">тус бүр</span>}
+      <span className="whitespace-nowrap">
+        {ml * SPRAYS_PER_ML} цац
+        <span className="hidden @min-[4.15rem]:inline">алт</span>
+        <span className="@min-[4.15rem]:hidden">.</span>
+      </span>
+    </>
   );
 }
