@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { ShoppingCart, Minus, Plus, Check } from "lucide-react";
+import { ShoppingCart, Minus, Plus } from "lucide-react";
 import {
   Dialog,
   DialogTrigger,
@@ -23,6 +23,7 @@ import {
 } from "@/features/products/size-options";
 import { SizeSelector } from "@/features/products/components/size-selector";
 import { SizePrice } from "@/features/products/components/size-price";
+import { AddToCartLabel } from "@/features/products/components/add-to-cart-label";
 
 export function QuickAdd({
   product,
@@ -225,9 +226,7 @@ export function QuickAdd({
             onClick={onAdd}
           >
             {added ? (
-              <>
-                <Check className="size-4" /> Нэмэгдлээ
-              </>
+              <AddToCartLabel qty={qty} unitPrice={0} added />
             ) : soldOut ? (
               "Дууссан"
             ) : selected && !selected.sellable ? (
@@ -237,9 +236,11 @@ export function QuickAdd({
                 "Дууссан"
               )
             ) : (
-              <>
-                <ShoppingCart className="size-4" /> Сагслах
-              </>
+              <AddToCartLabel
+                qty={qty}
+                unitPrice={selected?.price ?? 0}
+                added={false}
+              />
             )}
           </Button>
         </div>

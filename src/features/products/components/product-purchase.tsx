@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Minus, Plus, ShoppingCart, Check } from "lucide-react";
+import { Minus, Plus, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/format";
 import { toast } from "@/lib/toast";
@@ -20,6 +20,7 @@ import {
 } from "@/features/products/size-options";
 import { SizeSelector } from "@/features/products/components/size-selector";
 import { SizePrice } from "@/features/products/components/size-price";
+import { AddToCartLabel } from "@/features/products/components/add-to-cart-label";
 import { trackAddToCart } from "@/lib/analytics";
 import type { ProductDetail } from "@/lib/types";
 
@@ -265,29 +266,13 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           disabled={buyDisabled}
           onClick={onAdd}
         >
-          {added ? (
-            <>
-              <Check className="size-4" /> Нэмэгдлээ
-            </>
-          ) : (
-            <>
-              <ShoppingCart className="size-4" /> Сагсанд нэмэх
-            </>
-          )}
+          {/* Дээрх том үнэ нь нэгжийн үнэ; тоо ≥ 2 үед нийт дүн энд. */}
+          <AddToCartLabel
+            qty={buyDisabled ? 1 : qty}
+            unitPrice={unitPrice}
+            added={added}
+          />
         </Button>
-
-        {/* Дээрх том үнэ нь нэгжийн үнэ хэвээр үлдэнэ — тэр нь «/ Nml» ба
-            ₮/ml харьцуулалттай холбоотой лавлах дүн. Тоо ширхэг 1-ээс олон
-            болсон үед төлөх дүнг энд, дарах мөчид нь харуулна (сагс,
-            төлбөрийн хуудасны мөр ч ижил `unitPrice × qty` уншина). */}
-        {qty > 1 && !buyDisabled && (
-          <p className="text-muted-foreground text-sm" aria-live="polite">
-            {qty} ш × {formatPrice(unitPrice)} ={" "}
-            <span className="text-foreground font-semibold tabular-nums">
-              {formatPrice(unitPrice * qty)}
-            </span>
-          </p>
-        )}
       </div>
 
       {/* Availability + delivery promise right where the buying decision

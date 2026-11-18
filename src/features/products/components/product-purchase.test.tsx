@@ -209,6 +209,19 @@ describe("ProductPurchase", () => {
     expect(screen.queryByRole("timer")).toBeNull();
   });
 
+  it("qty ≥ 2 → total inside «Сагсанд нэмэх», no separate sum line; «Захиалах» stays plain", async () => {
+    render(<ProductPurchase product={product(SIZES)} />);
+    const cart = () =>
+      screen.getAllByRole("button", { name: /Сагсанд нэмэх/ })[0];
+    expect(cart().textContent).toBe("Сагсанд нэмэх");
+    await userEvent.click(screen.getByRole("button", { name: "Нэмэх" }));
+    expect(cart().textContent).toBe("Сагсанд нэмэх · 24,000₮");
+    expect(screen.queryByText(/ш ×/)).toBeNull();
+    expect(
+      screen.getAllByRole("button", { name: "Захиалах" })[0].textContent,
+    ).toBe("Захиалах");
+  });
+
   it("warns «Үлдэгдэл хомс» when + is pressed at the stock limit", async () => {
     // 12ml үлдэгдэл, 2ml сонгосон → 6 ширхэг хүртэл.
     render(<ProductPurchase product={product(SIZES, 12)} />);
