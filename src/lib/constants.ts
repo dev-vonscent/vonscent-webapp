@@ -871,8 +871,8 @@ export const SALE_EVENT_LIMITS = {
 /** Арга хэмжээний хувь (0181 `sale_event_discounts.pct` check). */
 export const SALE_EVENT_MAX_PCT = 90;
 
-/** Badge хоосон үед картан дээр — одоогийн «Хямдрал» тэмдэг. */
-export const SALE_EVENT_DEFAULT_BADGE = "Хямдрал";
+/** Badge хоосон үед картан дээр — «Хямдралтай» тэмдэг (task 2.3). */
+export const SALE_EVENT_DEFAULT_BADGE = "Хямдралтай";
 
 /**
  * Сайтын дээд гүйдэг зурвасын өнгө (0187 `sale_events.ticker_theme` check-тэй

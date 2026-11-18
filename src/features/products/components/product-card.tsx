@@ -62,7 +62,7 @@ export function ProductCard({
               {statusLabel}
             </Badge>
           )}
-          {/* «Black Friday» (арга хэмжээ, 0181) эсвэл «Хямдрал». */}
+          {/* «Black Friday» (арга хэмжээ, 0181) эсвэл «Хямдралтай». */}
           <SaleBadge
             productId={product.id}
             onSale={product.tags.includes("sale")}

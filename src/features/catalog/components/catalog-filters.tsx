@@ -36,7 +36,7 @@ const KINDS: { value: string | undefined; label: string }[] = [
 const TAGS: { value: string; label: string }[] = [
   { value: "new", label: "Шинэ" },
   { value: "hot", label: "Эрэлттэй" },
-  { value: "sale", label: "Хямдрал" },
+  { value: "sale", label: "Хямдралтай" },
 ];
 
 /** «Бүх улирал» тусдаа явна — доорх дөрөв нь дан улирлын сонголт. */
