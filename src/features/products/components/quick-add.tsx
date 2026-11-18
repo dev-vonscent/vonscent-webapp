@@ -167,6 +167,11 @@ export function QuickAdd({
                 }
                 sizeLabel={selected ? `${selected.ml}ml` : null}
                 endsAt={selected?.saleEndsAt}
+                reserve={
+                  detail?.variants.some(
+                    (v) => v.isActive && v.price < v.basePrice && v.saleEndsAt,
+                  ) ?? false
+                }
               />
             </div>
           </div>

@@ -49,7 +49,8 @@ export function SizePrice({
   size?: "lg" | "sm";
   /**
    * Энэ бараа/багцын аль нэг хэмжээ дуусах хугацаатай хямдралтай эсэх —
-   * `lg` үед утсан дээр үнийн мөрийн 2 мөрийн өндрийг хадгална (туг
+   * `lg` үед утсан дээр үнийн мөрийн 2 мөрийн өндрийг, `sm` (quick-add) үед
+   * тоолуурын мөрийг хадгална (туг
    * `sale_display` нээлттэй үед л — хаалттай бол pill гарахгүй).
    */
   reserve?: boolean;
@@ -123,8 +124,17 @@ export function SizePrice({
           />
         )}
       </div>
-      {/* quick-add: нэг мөрийн жижиг хувилбар хэвээр. */}
-      {!lg && <SaleCountdown endsAt={ends} />}
+      {/* quick-add: нэг мөрийн жижиг хувилбар. `reserve` үед мөрийн өндөр
+          (16px) үргэлж хадгалагдана — хямдралтай хэмжээ сонгоход цонх
+          хөдлөхгүй. */}
+      {!lg &&
+        (reserve && showEnds ? (
+          <div className="min-h-4" data-testid="size-price-countdown-slot">
+            <SaleCountdown endsAt={ends} />
+          </div>
+        ) : (
+          <SaleCountdown endsAt={ends} />
+        ))}
     </div>
   );
 }

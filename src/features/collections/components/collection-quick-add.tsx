@@ -116,6 +116,12 @@ export function CollectionQuickAdd({
                 endsAt={
                   bundlesOn ? bundleSizeSaleEndsAt(collection, priceRow) : null
                 }
+                reserve={
+                  bundlesOn &&
+                  collection.prices.some((p) =>
+                    bundleSizeSaleEndsAt(collection, p),
+                  )
+                }
               />
             </div>
           </div>
