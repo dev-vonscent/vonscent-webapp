@@ -97,10 +97,14 @@ function sellableFirst<T extends { soldOut: boolean }>(list: T[]): T[] {
  * биш: ISR-ийн дахин үүсгэлт бүрт HTML өөрчлөгдөж Vercel кэшэд бүтэн хуудсыг
  * дахин бичихээс сэргийлнэ. Холилт өдөрт нэг удаа солигдоно.
  *
- * Home — storefront order (2026-10 refresh):
- *   campaign hero → shortcuts → Эрэлттэй → quiz / bundle cards → admin
- *   curated blocks → Шинээр ирсэн → Брэндээр → Тун удахгүй →
+ * Home — storefront order (task 3, 2026-11): rail-ууд Эрэлттэй →
+ * Хямдралтай → Шинээр ирсэн → Онцлох (админы хэсгүүд):
+ *   campaign hero → shortcuts → Эрэлттэй → quiz / bundle cards →
+ *   Хямдралтай (туг `sale_display`) → Шинээр ирсэн → admin curated blocks
+ *   («Онцлох» г.м., админы дарааллаар) → Брэндээр → Тун удахгүй →
  *   reviews → (footer, parallel slot).
+ * Эрэлттэй / Хямдралтай / Шинээр ирсэн нь кодын хэсэг (`home_sections`-д
+ * бүртгэлгүй); санд зөвхөн админы хэсгүүдийн хоорондын дараалал хадгалагдана.
  *
  * No 3D runtime is imported here: the old DecantPlayground stays in the
  * codebase but is no longer reachable from this page. Gender / season /
@@ -146,11 +150,11 @@ export default async function HomePage() {
         </Suspense>
 
         <Suspense fallback={<CarouselSkeleton action />}>
-          <CuratedSections />
+          <NewArrivalsSection />
         </Suspense>
 
         <Suspense fallback={<CarouselSkeleton action />}>
-          <NewArrivalsSection />
+          <CuratedSections />
         </Suspense>
 
         <Suspense fallback={<MarqueeSkeleton />}>
