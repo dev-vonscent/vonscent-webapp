@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   getBuilderProducts,
   getCollectionSettings,
@@ -25,7 +26,14 @@ export default async function BuildPage({
 }) {
   // Шүүлт, хайлт, хуудас нь URL-д — каталогийн хуудастай ижил (refresh,
   // «буцах», хуваалцсан холбоос бүгд ажиллана).
-  const filters = parseFilters(await searchParams);
+  const params = await searchParams;
+  // Хямдралаар шүүх/эрэмбэлэх энд байхгүй (угсарсан багц үндсэн үнээр, 8.2):
+  // хуучин `?tags=sale` / `?event=` / `?sort=discount` холбоосыг анхдагч руу.
+  const cleaned = withoutSaleParams(params);
+  if (cleaned != null) {
+    redirect(cleaned ? `/collections/build?${cleaned}` : "/collections/build");
+  }
+  const filters = parseFilters(params);
   const [page, settings, brands, brandRows, priceBounds, families] =
     await Promise.all([
       getBuilderProducts(filters),
@@ -84,4 +92,30 @@ export default async function BuildPage({
       />
     </div>
   );
+}
+
+/**
+ * Хямдралын параметргүй query string; хасах зүйлгүй бол null.
+ */
+function withoutSaleParams(
+  params: Record<string, string | string[] | undefined>,
+): string | null {
+  const out = new URLSearchParams();
+  let changed = false;
+  for (const [k, raw] of Object.entries(params)) {
+    if (raw === undefined) continue;
+    const v = Array.isArray(raw) ? raw.join(",") : raw;
+    if (k === "event" || (k === "sort" && v === "discount")) {
+      changed = true;
+      continue;
+    }
+    if (k === "tags") {
+      const tags = v.split(",").filter((t) => t && t !== "sale");
+      if (tags.length !== v.split(",").filter(Boolean).length) changed = true;
+      if (tags.length) out.set(k, tags.join(","));
+      continue;
+    }
+    out.set(k, v);
+  }
+  return changed ? out.toString() : null;
 }

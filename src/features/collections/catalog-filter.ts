@@ -1,4 +1,5 @@
 import { matchesSearch } from "@/lib/search";
+import { matchesTagGroup } from "@/features/products/tag-group";
 import type { CatalogFilters } from "@/lib/types";
 import type { Collection, CollectionCardData } from "./types";
 
@@ -9,6 +10,7 @@ import type { Collection, CollectionCardData } from "./types";
  * - Хүйс: багцын хүйс (`gender` нь `expandGenders`-ээр өргөссөн байх ёстой).
  * - Брэнд / үнэрийн төрөл / улирал: багцад эдгээр байхгүй гэж үзнэ (клиент,
  *   2026-10-26) — аль нэгийг нь сонговол багц гарахгүй, зөвхөн ус.
+ * - «Таг» бүлэг (арга хэмжээ, Онцлох, таг) дотроо OR (`matchesTagGroup`).
  * - Таг: автомат «Эрэлттэй»/«Шинэ». «Хямдрал»: хямдралын хувь > 0 бүхий
  *   БЭЛЭН багц (task 8.1, клиент 2026-11-17 — 2026-09-30-ны «багц
  *   хамаарахгүй» шийдвэр цуцлагдсан). Нүүрний «Хямдралтай» rail (2.1)
@@ -26,18 +28,18 @@ export function filterCatalogCollections(
   f: CatalogFilters,
 ): Collection[] {
   return all.filter((c) => {
-    // Арга хэмжээ (16.7): LIVE event-д орсон багц л (`Collection.event`).
-    if (f.event && c.event?.slug !== f.event) return false;
-    if (f.gender?.length && !f.gender.includes(c.gender)) return false;
-    if (f.brand?.length || f.family?.length || f.season?.length) return false;
+    // «Таг» бүлэг — дотроо OR (0194, `catalog_search`-тэй ижил). Арга
+    // хэмжээ (16.7): LIVE event-д орсон багц (`Collection.event`).
     if (
-      f.tags?.length &&
-      !f.tags.some((t) =>
-        t === "sale" ? isDiscountedBundle(c) : c.tags.includes(t),
-      )
+      !matchesTagGroup(f, {
+        tag: (t) => (t === "sale" ? isDiscountedBundle(c) : c.tags.includes(t)),
+        featured: c.isFeatured,
+        event: (slug) => c.event?.slug === slug,
+      })
     )
       return false;
-    if (f.featured && !c.isFeatured) return false;
+    if (f.gender?.length && !f.gender.includes(c.gender)) return false;
+    if (f.brand?.length || f.family?.length || f.season?.length) return false;
     if (f.ml?.length && !c.availableMls.some((ml) => f.ml!.includes(ml)))
       return false;
     if (f.minPrice != null && catalogPrice(c) < f.minPrice) return false;

@@ -200,3 +200,62 @@ describe("арга хэмжээнд орсон багц (16.7)", () => {
     ).toEqual(["bf", "plain"]);
   });
 });
+
+describe("«Таг» бүлэг дотроо OR, бусад бүлэгтэй AND (0194)", () => {
+  const bf = { slug: "black-friday", name: "Black Friday", pcts: { 10: 10 } };
+  const inEvent = c({
+    id: "bf",
+    event: bf,
+    discountRange: { min: 10, max: 10 },
+  });
+  const sale = c({ id: "sale", discountRange: { min: 5, max: 5 } });
+  const featured = c({ id: "feat", isFeatured: true });
+  const fresh = c({ id: "new", tags: ["new"] });
+  const hot = c({ id: "hot", tags: ["hot"], gender: "female" });
+  const plain = c({ id: "plain" });
+  const all = [inEvent, sale, featured, fresh, hot, plain];
+
+  it("Хямдралтай + арга хэмжээ = бүх хямдралтай (event-ийнх ч)", () => {
+    expect(
+      ids(
+        filterCatalogCollections(all, {
+          tags: ["sale"],
+          event: "black-friday",
+        }),
+      ),
+    ).toEqual(["bf", "sale"]);
+  });
+
+  it("Онцлох + Шинэ = аль нэгэнд орсон", () => {
+    expect(
+      ids(filterCatalogCollections(all, { featured: true, tags: ["new"] })),
+    ).toEqual(["feat", "new"]);
+  });
+
+  it("арга хэмжээ + Эрэлттэй", () => {
+    expect(
+      ids(
+        filterCatalogCollections(all, { event: "black-friday", tags: ["hot"] }),
+      ),
+    ).toEqual(["bf", "hot"]);
+  });
+
+  it("хүйс, хайлттай AND хэвээр", () => {
+    expect(
+      ids(
+        filterCatalogCollections(all, {
+          event: "black-friday",
+          tags: ["hot"],
+          gender: ["female"],
+        }),
+      ),
+    ).toEqual(["hot"]);
+    expect(
+      filterCatalogCollections(all, {
+        featured: true,
+        tags: ["new"],
+        search: "baccarat",
+      }),
+    ).toHaveLength(0);
+  });
+});

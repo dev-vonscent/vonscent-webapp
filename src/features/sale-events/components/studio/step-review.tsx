@@ -39,6 +39,7 @@ import {
   pctSpan,
   publishAction,
   saleLink,
+  scopeLabel,
   shortDay,
   studioTimeline,
   type StudioStep,
@@ -97,8 +98,11 @@ export function StepReview({
       ? `«${SEASON_LABEL[h.season]}» улирлын баннер`
       : `«${h.name}» баннер`;
   }, [heroes, heroEvents, studio.id, studio.endsAt, phase, draft.endsOn]);
+  // Бэлэн багц (16.7) — туг `sale_event_bundles` хаалттай бол хоосон.
+  const bundles = studio.bundlesEnabled ? (draft.collections ?? []) : [];
   const timeline = studioTimeline({
     draft,
+    bundles,
     phase,
     bannerReady: ready,
     endsAt: studio.endsAt,
@@ -126,8 +130,12 @@ export function StepReview({
   const issues = checklist.filter((i) => i.level !== "ok");
   const locked = mode === "locked";
   const range = discountRange(draft.items);
-  const span = pctSpan(range);
+  const bundleRange = discountRange(bundles);
+  const span = pctSpan(discountRange([...draft.items, ...bundles]));
   const byId = new Map(products.map((p) => [p.id, p]));
+  const bundleById = new Map(studio.bundleOptions.map((o) => [o.id, o]));
+  const scopeCount = range.count + bundleRange.count;
+  const scopeNoPct = range.noPct + bundleRange.noPct;
   const days =
     draft.startsOn && draft.endsOn && draft.endsOn >= draft.startsOn
       ? daysInclusive(draft.startsOn, draft.endsOn)
@@ -240,12 +248,20 @@ export function StepReview({
           locked={locked}
           onGo={onGo}
           value={
-            range.count === 0
+            scopeCount === 0
               ? "Сонгоогүй"
-              : `${range.count} бараа${span ? ` · ${span} хямдрал` : ""}`
+              : `${scopeLabel(range.count, bundleRange.count)}${span ? ` · ${span} хямдрал` : ""}`
           }
-          sub={range.noPct > 0 ? `${range.noPct} бараа хувьгүй` : undefined}
-          danger={range.count === 0 || range.noPct > 0 || range.invalid > 0}
+          sub={
+            scopeNoPct > 0
+              ? `${scopeLabel(range.noPct, bundleRange.noPct)} хувьгүй`
+              : undefined
+          }
+          danger={
+            range.count === 0 ||
+            scopeNoPct > 0 ||
+            range.invalid + bundleRange.invalid > 0
+          }
         />
         <Fact
           label="Холбоос"
@@ -331,36 +347,44 @@ export function StepReview({
           <ul role="list" className="space-y-0.5 px-2 pb-2">
             {draft.items.map((item) => {
               const p = byId.get(item.productId);
-              const parts = ML_SIZES.filter((ml) =>
-                isValidPct(item.pcts[ml] ?? ""),
-              ).map((ml) => `${ml}ml −${item.pcts[ml]}%`);
               return (
-                <li
+                <PctRow
                   key={item.productId}
-                  className="odd:bg-secondary/40 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 rounded-md px-2 py-1.5 text-sm"
-                >
-                  <span className="min-w-0 truncate">
-                    <span className="font-medium">
-                      {p?.name ?? "Нуусан бараа"}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {" "}
-                      · {p?.brand ?? "—"}
-                    </span>
-                  </span>
-                  <span
-                    className={cn(
-                      "text-xs tabular-nums",
-                      parts.length
-                        ? "text-muted-foreground"
-                        : "text-destructive",
-                    )}
-                  >
-                    {parts.length ? parts.join(" · ") : "Хувьгүй"}
-                  </span>
-                </li>
+                  name={p?.name ?? "Нуусан бараа"}
+                  sub={p?.brand ?? "—"}
+                  pcts={item.pcts}
+                />
               );
             })}
+          </ul>
+        </details>
+      )}
+
+      {bundles.length > 0 && (
+        <details
+          className="group bg-card rounded-lg"
+          open={bundles.length <= 8}
+        >
+          <summary className="flex cursor-pointer items-center justify-between gap-2 px-4 py-3 text-sm font-semibold select-none">
+            <span>
+              Хямдрах багц{" "}
+              <span className="text-muted-foreground font-normal tabular-nums">
+                {bundles.length}
+              </span>
+            </span>
+            <ChevronDown className="text-muted-foreground size-4 transition-transform group-open:rotate-180" />
+          </summary>
+          <ul role="list" className="space-y-0.5 px-2 pb-2">
+            {bundles.map((b) => (
+              <PctRow
+                key={b.collectionId}
+                name={
+                  bundleById.get(b.collectionId)?.name ??
+                  "Нуусан / устгасан багц"
+                }
+                pcts={b.pcts}
+              />
+            ))}
           </ul>
         </details>
       )}
@@ -558,5 +582,36 @@ function Fact({
         </Button>
       )}
     </div>
+  );
+}
+
+/** «Хямдрах бараа / багц»-ын мөр: нэр · хэмжээ бүрийн хувь. */
+function PctRow({
+  name,
+  sub,
+  pcts,
+}: {
+  name: string;
+  sub?: string;
+  pcts: Record<number, string>;
+}) {
+  const parts = ML_SIZES.filter((ml) => isValidPct(pcts[ml] ?? "")).map(
+    (ml) => `${ml}ml −${pcts[ml]}%`,
+  );
+  return (
+    <li className="odd:bg-secondary/40 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 rounded-md px-2 py-1.5 text-sm">
+      <span className="min-w-0 truncate">
+        <span className="font-medium">{name}</span>
+        {sub && <span className="text-muted-foreground"> · {sub}</span>}
+      </span>
+      <span
+        className={cn(
+          "text-xs tabular-nums",
+          parts.length ? "text-muted-foreground" : "text-destructive",
+        )}
+      >
+        {parts.length ? parts.join(" · ") : "Хувьгүй"}
+      </span>
+    </li>
   );
 }

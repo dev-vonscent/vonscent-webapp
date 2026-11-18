@@ -20,7 +20,10 @@ import { useCart } from "@/features/cart/store";
 import { trackAddToCart } from "@/lib/analytics";
 import { CatalogFilters } from "@/features/catalog/components/catalog-filters";
 import { CatalogFilterSheet } from "@/features/catalog/components/catalog-filter-sheet";
-import { CatalogSort } from "@/features/catalog/components/catalog-sort";
+import {
+  CATALOG_SORT_OPTIONS,
+  CatalogSort,
+} from "@/features/catalog/components/catalog-sort";
 import { CatalogSearch } from "@/features/catalog/components/catalog-search";
 import { CatalogPagination } from "@/features/catalog/components/catalog-pagination";
 import { FilterQueryProvider } from "@/features/catalog/components/use-filter-query";
@@ -28,6 +31,14 @@ import { bundlePrice, memberUnitPrice } from "../pricing";
 import type { BuilderProduct, CollectionSettings } from "../types";
 import type { ScentFamilyOption } from "@/lib/types";
 import type { BrandLogos } from "@/features/products/components/brand-marquee";
+
+/**
+ * «Хямдрал: их → бага» байхгүй — угсарсан багц үндсэн үнээр бодогддог (8.2),
+ * бараа ч үндсэн үнээр харагдана.
+ */
+const BUILDER_SORT_OPTIONS = CATALOG_SORT_OPTIONS.filter(
+  (o) => o.value !== "discount",
+);
 
 function BuilderInner({
   products,
@@ -401,8 +412,9 @@ function BuilderInner({
           priceBounds={priceBounds}
           families={families}
           showKind={false}
+          showSale={false}
         />
-        <CatalogSort iconOnly />
+        <CatalogSort iconOnly options={BUILDER_SORT_OPTIONS} />
         <CatalogSearch
           className="flex-1"
           placeholder={BUILDER_SEARCH_PLACEHOLDER}
@@ -422,6 +434,7 @@ function BuilderInner({
             priceBounds={priceBounds}
             families={families}
             showKind={false}
+            showSale={false}
           />
         </aside>
 
@@ -434,7 +447,7 @@ function BuilderInner({
         <div className="min-w-0 flex-1">
           {tray}
           <div className="mb-4 hidden items-center justify-end lg:flex">
-            <CatalogSort />
+            <CatalogSort options={BUILDER_SORT_OPTIONS} />
           </div>
 
           {grid.length === 0 ? (

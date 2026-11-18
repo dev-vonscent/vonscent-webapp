@@ -39,7 +39,7 @@ import {
   studioChecklist,
   type StudioBanner,
 } from "./studio/studio-checklist";
-import { discountRange, draftFromRow, pctSpan } from "./studio/studio-model";
+import { draftFromRow, eventScopeSummary } from "./studio/studio-model";
 
 const NEW_HREF = "/admin/sale-events/new";
 
@@ -61,6 +61,8 @@ export function SaleEventList({
 }) {
   const router = useRouter();
   const bannerEnabled = useFeatureFlag("hero_admin");
+  // Бэлэн багц (16.7) — туг хаалттай бол тоолохгүй.
+  const bundlesEnabled = useFeatureFlag("sale_event_bundles");
   const [confirm, confirmDialog] = useConfirm();
   const [busyId, setBusyId] = React.useState<string | null>(null);
   // Төлөв цагаас хамаарна — серверийн рендерт биш, хөтөч дээр тооцно.
@@ -154,6 +156,7 @@ export function SaleEventList({
                 now={now}
                 banner={banners[e.id] ?? null}
                 bannerEnabled={bannerEnabled}
+                bundlesEnabled={bundlesEnabled}
                 busy={busyId === e.id}
                 onStop={(phase) => stop(e, phase)}
                 onRemove={() => remove(e)}
@@ -171,6 +174,7 @@ function EventCard({
   now,
   banner,
   bannerEnabled,
+  bundlesEnabled,
   busy,
   onStop,
   onRemove,
@@ -179,13 +183,16 @@ function EventCard({
   now: number | null;
   banner: StudioBanner | null;
   bannerEnabled: boolean;
+  bundlesEnabled: boolean;
   busy: boolean;
   onStop: (phase: SaleEventPhase) => void;
   onRemove: () => void;
 }) {
   const phase = now == null ? null : saleEventPhase(e, now);
-  const range = discountRange(e.items);
-  const span = pctSpan(range);
+  const scope = eventScopeSummary(
+    e.items,
+    bundlesEnabled ? (e.collections ?? []) : [],
+  );
   // Дутуу зүйл — нэг мөр (§4.1). Дууссанд хамаагүй.
   const problem =
     now == null || phase === "ended"
@@ -207,7 +214,11 @@ function EventCard({
           <div className="bg-muted text-muted-foreground hidden aspect-14/5 w-40 shrink-0 items-center justify-center overflow-hidden rounded-md text-xs sm:flex">
             {banner?.thumb ? (
               // eslint-disable-next-line @next/next/no-img-element -- жижиг thumbnail, storage URL
-              <img src={banner.thumb} alt="" className="size-full object-cover" />
+              <img
+                src={banner.thumb}
+                alt=""
+                className="size-full object-cover"
+              />
             ) : (
               "Баннергүй"
             )}
@@ -233,7 +244,7 @@ function EventCard({
             </span>
             <span className="inline-flex items-center gap-1 tabular-nums">
               <Package className="size-3.5" />
-              {e.items.length} бараа · {span ? `хямдрал ${span}` : "хувьгүй"}
+              {scope}
             </span>
           </p>
           {problem && (

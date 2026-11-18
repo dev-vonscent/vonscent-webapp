@@ -30,7 +30,8 @@ export function SaleList({ rows }: { rows: SaleSummary[] }) {
     <div className="space-y-6">
       <PageHeader
         title="Хямдрал"
-        count={rows.filter((r) => r.phase !== "ended").length}
+        // Доорх жагсаалттай таарна — дууссан, «Нэргүй» мөр ч тоологдоно.
+        count={rows.length}
         description="Олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал. Бараа нэг зэрэг зөвхөн нэг дуусаагүй хямдралд орно. Нэрлэсэн арга хэмжээнд (Black Friday г.м. — каталогийн шүүлтүүр, зурвастай) «Арга хэмжээ»-г ашиглана уу."
         actions={rows.length > 0 && create}
       />
