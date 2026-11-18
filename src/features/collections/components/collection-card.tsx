@@ -55,7 +55,7 @@ export function CollectionCard({
         )}
 
         {/* Badges */}
-        <div className="absolute top-2.5 right-2.5 left-2.5 flex flex-col items-start gap-1">
+        <div className="absolute inset-x-2.5 top-2.5 flex flex-col items-start gap-1">
           <CollectionSaleBadge collection={collection} />
         </div>
 

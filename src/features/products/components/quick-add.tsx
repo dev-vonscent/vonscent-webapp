@@ -62,7 +62,7 @@ export function QuickAdd({
     return () => {
       cancelled = true;
     };
-  }, [open, detail, product.slug]);
+  }, [open, detail, product.slug, product.cardPrice?.ml]);
 
   const activeVariants = detail?.variants.filter((v) => v.isActive) ?? [];
   const selected = activeVariants.find((v) => v.id === variantId) ?? null;
