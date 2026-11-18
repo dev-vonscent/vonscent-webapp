@@ -122,7 +122,7 @@ export function OrderReviewPrompt({
           <p className="text-muted-foreground text-sm">
             Бараагаа хэрэглэж үзээд сэтгэгдлээ бичээд
             {reward
-              ? `${reward} (ус, багц бүрт нэг удаа)`
+              ? `${reward} (үнэртэн, багц бүрт нэг удаа)`
               : " бусдад туслаарай"}
             .
           </p>
