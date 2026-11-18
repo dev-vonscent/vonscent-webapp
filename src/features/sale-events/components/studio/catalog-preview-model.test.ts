@@ -79,8 +79,8 @@ describe("previewBadge", () => {
   it("арга хэмжээний тэмдэг түрүүлнэ", () => {
     expect(previewBadge(" Black Friday ", false)).toBe("Black Friday");
   });
-  it("хоосон бол зөвхөн хямдарсан бараанд «Хямдрал»", () => {
-    expect(previewBadge("", true)).toBe("Хямдрал");
+  it("хоосон бол зөвхөн хямдарсан бараанд «Хямдралтай»", () => {
+    expect(previewBadge("", true)).toBe("Хямдралтай");
     expect(previewBadge("  ", false)).toBeNull();
   });
 });

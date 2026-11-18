@@ -8,6 +8,7 @@ import { GenderBadge } from "@/features/products/components/gender-badge";
 import { WishlistButton } from "@/features/wishlist/components/wishlist-button";
 import { CollectionQuickAdd } from "./collection-quick-add";
 import { CollectionSaleBadge } from "@/features/sale-events/components/collection-sale-badge";
+import { CollectionSaleCountdown } from "@/features/sale-events/components/collection-sale-countdown";
 
 import {
   CARD_STATUS_LABEL,
@@ -81,6 +82,11 @@ export function CollectionCard({
               </span>
             </span>
           )}
+          {/* Арга хэмжээний тоолуур (2.2) — бараан дэвсгэр дээр цагаан. */}
+          <CollectionSaleCountdown
+            collection={collection}
+            className="text-white"
+          />
         </div>
 
         {collection.soldOut && (
@@ -179,6 +185,8 @@ function RailCollectionCard({
             </span>
           </span>
         )}
+        {/* Барааны card-тай ижил байрлал (2.2). */}
+        <CollectionSaleCountdown collection={collection} className="mt-0.5" />
       </div>
     </div>
   );

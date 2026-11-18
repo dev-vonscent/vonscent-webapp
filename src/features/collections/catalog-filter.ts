@@ -95,6 +95,14 @@ export function sortCatalogCollections(
       return copy.sort((a, b) => catalogPrice(b) - catalogPrice(a));
     case "name":
       return copy.sort((a, b) => a.name.localeCompare(b.name));
+    case "discount":
+      // Багцын хувиар (`discountRange.max`) — ус барааны хамгийн их хувиар.
+      return copy.sort(
+        (a, b) =>
+          b.discountRange.max - a.discountRange.max ||
+          byStock(a, b) ||
+          newest(a, b),
+      );
     case "popular":
       return copy.sort(
         (a, b) =>

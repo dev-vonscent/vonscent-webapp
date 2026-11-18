@@ -19,16 +19,17 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { CollectionGrid } from "./collection-grid";
 import type { Collection } from "../types";
 import type { Gender } from "@/db/types";
+import {
+  COLLECTION_SORTS,
+  filterByEvent,
+  parseCollectionSort,
+  sortCollections,
+  type CollectionSort,
+} from "../browse";
+import { EventFilterChip } from "@/features/sale-events/components/event-filter-chip";
+import { useBundleSaleEvents } from "@/features/sale-events/components/sale-events-provider";
 
 type GenderFilter = "all" | Gender;
-type Sort = "featured" | "price_asc" | "price_desc" | "saved";
-
-const SORTS: { value: Sort; label: string }[] = [
-  { value: "featured", label: "Онцлох эхэндээ" },
-  { value: "price_asc", label: "Үнэ: бага → их" },
-  { value: "price_desc", label: "Үнэ: их → бага" },
-  { value: "saved", label: "Хэмнэлт: их → бага" },
-];
 
 /**
  * Хэдэн багцаас хойш хайлтын талбар гарах вэ.
@@ -187,15 +188,20 @@ export function CollectionBrowser({
     const g = params.get("gender");
     return GENDERS.includes(g as Gender) ? (g as Gender) : "all";
   });
-  const [sort, setSort] = React.useState<Sort>(() => {
-    const v = params.get("sort");
-    return SORTS.some((o) => o.value === v) ? (v as Sort) : "featured";
-  });
-
-  const savedOf = React.useCallback((c: Collection) => {
-    const row = c.prices.find((p) => p.ml === c.availableMls[0]);
-    return row?.saved ?? 0;
-  }, []);
+  // Хуучин `sort=saved` (₮-ээр) → «Хямдрал: их → бага» (хувиар).
+  const [sort, setSort] = React.useState<CollectionSort>(() =>
+    parseCollectionSort(params.get("sort")),
+  );
+  // LIVE, бэлэн багцтай арга хэмжээ (16.7) — каталогийн «Багц» табын chip-тэй
+  // ижил өгөгдөл. Туг `sale_event_bundles` хаалттай бол хоосон → chip үгүй.
+  const bundleEvents = useBundleSaleEvents();
+  const liveSlugs = React.useMemo(
+    () => bundleEvents.map((e) => e.slug),
+    [bundleEvents],
+  );
+  const [event, setEvent] = React.useState<string | null>(() =>
+    params.get("event"),
+  );
 
   const shown = React.useMemo(() => {
     // Хяналт харагдахгүй үед URL-ын шүүлт ч хэрэглэгдэхгүй — хэрэглэгчийн
@@ -205,7 +211,7 @@ export function CollectionBrowser({
         (a, b) => Number(b.isFeatured) - Number(a.isFeatured),
       );
     }
-    const list = collections.filter((c) => {
+    const list = filterByEvent(collections, event, liveSlugs).filter((c) => {
       if (!matchesGender(c.gender, gender)) return false;
       if (
         showSearch &&
@@ -215,25 +221,24 @@ export function CollectionBrowser({
         return false;
       return true;
     });
-    return list.sort((a, b) => {
-      switch (sort) {
-        case "price_asc":
-          return a.startingPrice - b.startingPrice;
-        case "price_desc":
-          return b.startingPrice - a.startingPrice;
-        case "saved":
-          return savedOf(b) - savedOf(a);
-        default:
-          return Number(b.isFeatured) - Number(a.isFeatured);
-      }
-    });
-  }, [collections, q, gender, sort, savedOf, showControls, showSearch]);
+    return sortCollections(list, sort);
+  }, [
+    collections,
+    q,
+    gender,
+    sort,
+    event,
+    liveSlugs,
+    showControls,
+    showSearch,
+  ]);
 
   React.useEffect(() => {
     const next = new URLSearchParams();
     if (q) next.set("q", q);
     if (gender !== "all") next.set("gender", gender);
     if (sort !== "featured") next.set("sort", sort);
+    if (event) next.set("event", event);
     const qs = next.toString();
     if (qs === params.toString()) return;
     // Бичих бүрд биш — бичиж дуусахад. Слайдер чирэхэд ч мөн адил.
@@ -241,20 +246,21 @@ export function CollectionBrowser({
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     }, 300);
     return () => clearTimeout(t);
-  }, [q, gender, sort, params, pathname, router]);
+  }, [q, gender, sort, event, params, pathname, router]);
 
   function clearAll() {
     setQ("");
     setGender("all");
+    setEvent(null);
   }
 
   const sortSelect = (
-    <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
+    <Select value={sort} onValueChange={(v) => setSort(v as CollectionSort)}>
       <SelectTrigger className="w-auto shrink-0">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {SORTS.map((s) => (
+        {COLLECTION_SORTS.map((s) => (
           <SelectItem key={s.value} value={s.value}>
             {s.label}
           </SelectItem>
@@ -281,6 +287,25 @@ export function CollectionBrowser({
             onChange={setGender}
             className="w-full sm:w-auto"
           />
+          {/* LIVE арга хэмжээ (Black Friday …) — бэлэн багцтай үед л. Нэг л
+              сонгогдоно; каталогийн «Багц» табын chip-тэй ижил төрх. Утсан
+              дээр тусдаа мөр — хайлт, эрэмбийн мөрийг шахахгүй. */}
+          {bundleEvents.length > 0 && (
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+              {bundleEvents.map((e) => (
+                <EventFilterChip
+                  key={e.slug}
+                  theme={e.tickerTheme}
+                  active={event === e.slug}
+                  onClick={() => setEvent(event === e.slug ? null : e.slug)}
+                  // Утсан дээр мөрийг бүтэн дүүргэнэ (олон бол тэнцүү хуваана).
+                  className="flex-1 sm:flex-none"
+                >
+                  {e.name}
+                </EventFilterChip>
+              ))}
+            </div>
+          )}
           <div className="ms-auto flex flex-1 items-center justify-end gap-2 sm:flex-none">
             {showSearch && (
               <SearchInput

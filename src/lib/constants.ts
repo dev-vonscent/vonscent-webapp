@@ -167,6 +167,20 @@ export const HOT_COLLECTIONS_COUNT = 6;
 export const HOT_RAIL_COLLECTIONS = 3;
 
 /**
+ * Нүүрний «Хямдралтай» rail (task 2.1) — эрэмбэлэхээс өмнө уншиж авах
+ * хямдралтай усны дээд тоо (rail өөрөө 12). Дуусах мөчөөр эрэмбэлдэг тул
+ * бүгдийг нь авах ёстой; каталог ~100 ус.
+ */
+export const SALE_RAIL_POOL = 200;
+
+/**
+ * Хямдралын тоолуур (task 2.2) энэ хугацаанаас бага үлдсэн үед л улаан
+ * (`text-destructive`); түүнээс өмнө саармаг (`text-muted-foreground`) — олон
+ * карт зэрэг улаанаар гүйж алдааны мессеж шиг харагдахгүй.
+ */
+export const SALE_COUNTDOWN_URGENT_MS = 24 * 60 * 60 * 1000;
+
+/**
  * «Онцлох» — ус, багц нийлээд хамгийн ихдээ ийм тоо (0144_featured_rolling).
  * Хэтэрвэл хамгийн эрт онцлох болсон нь DB-д автоматаар хасагдана — SQL-ийн
  * `offset 12`-тэй ижил байх ёстой.
@@ -849,6 +863,11 @@ export const FEATURE_FLAGS = {
     description:
       "Төлбөр баталгаажих мөчид (QPay болон гараар баталсан) Purchase event-ийг серверээс Meta руу илгээнэ — browser pixel-ийн алдагдсан худалдан авалтыг нөхнө (lib/meta/capi.ts). Захиалга үүсэхэд _fbp/_fbc cookie, IP, user agent-ийг захиалга дээр хадгална (0171). Утас, имэйлийг SHA-256 hash хийж явуулна. META_CAPI_ACCESS_TOKEN env шаардлагатай.",
   },
+  sale_display: {
+    label: "Хямдралын харагдац (rail, тоолуур)",
+    description:
+      "Нүүрний «Хямдралтай» rail (Эрэлттэй-н дараа; зөвхөн хямдралтай дан бараа, дуусах хугацаа ойр → хувь их) ба барааны картын хямдрал дуусах тоолуур «7 өдөр 16:45:32» (task 2.1, 2.2). Тоолуур зөвхөн браузер дээр гүйнэ. Хаалттай үед нүүр, каталог өмнөх шигээ (rail, тоолуур байхгүй). Өгөгдөл хуримтлуулдаггүй.",
+  },
   gift_cards: {
     label: "Бэлгийн карт",
     description:
@@ -871,8 +890,8 @@ export const SALE_EVENT_LIMITS = {
 /** Арга хэмжээний хувь (0181 `sale_event_discounts.pct` check). */
 export const SALE_EVENT_MAX_PCT = 90;
 
-/** Badge хоосон үед картан дээр — одоогийн «Хямдрал» тэмдэг. */
-export const SALE_EVENT_DEFAULT_BADGE = "Хямдрал";
+/** Badge хоосон үед картан дээр — «Хямдралтай» тэмдэг (task 2.3). */
+export const SALE_EVENT_DEFAULT_BADGE = "Хямдралтай";
 
 /**
  * Сайтын дээд гүйдэг зурвасын өнгө (0187 `sale_events.ticker_theme` check-тэй

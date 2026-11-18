@@ -146,6 +146,23 @@ describe("sortCatalogCollections", () => {
   });
 });
 
+describe("sortCatalogCollections — хямдрал их → бага (2.7)", () => {
+  it("багцын хувиар, тэнцвэл дууссан нь ард", () => {
+    const cs = [
+      c({ id: "none", discountRange: { min: 0, max: 0 } }),
+      c({ id: "five", discountRange: { min: 5, max: 5 } }),
+      c({ id: "ten-out", discountRange: { min: 5, max: 10 }, soldOut: true }),
+      c({ id: "ten", discountRange: { min: 10, max: 10 } }),
+    ];
+    expect(ids(sortCatalogCollections(cs, "discount"))).toEqual([
+      "ten",
+      "ten-out",
+      "five",
+      "none",
+    ]);
+  });
+});
+
 describe("арга хэмжээнд орсон багц (16.7)", () => {
   const bf = { slug: "black-friday", name: "Black Friday", pcts: { 10: 10 } };
   const inEvent = c({

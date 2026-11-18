@@ -16,7 +16,7 @@ const COLUMNS = [
       { href: "/catalog?featured=1", label: "Онцлох" },
       { href: "/catalog?tags=new&sort=new", label: "Шинэ" },
       { href: "/catalog?tags=hot", label: "Эрэлттэй" },
-      { href: "/catalog?tags=sale", label: "Хямдрал" },
+      { href: "/catalog?tags=sale", label: "Хямдралтай" },
     ],
   },
   {

@@ -36,7 +36,7 @@ const KINDS: { value: string | undefined; label: string }[] = [
 const TAGS: { value: string; label: string }[] = [
   { value: "new", label: "Шинэ" },
   { value: "hot", label: "Эрэлттэй" },
-  { value: "sale", label: "Хямдрал" },
+  { value: "sale", label: "Хямдралтай" },
 ];
 
 /** «Бүх улирал» тусдаа явна — доорх дөрөв нь дан улирлын сонголт. */
@@ -283,6 +283,22 @@ export function CatalogFilters({
         <>
           <Group title="Таг">
             <div className="grid grid-cols-2 gap-2">
+              {/* Арга хэмжээ (Black Friday …) — тагуудын ХАМГИЙН ЭХЭНД, хоёр
+                  тагийн өргөнтэй бүтэн мөр (task 6). Нэг л сонгогдоно.
+                  «Багц» таб дээр зөвхөн бэлэн багцтай арга хэмжээ (16.7). */}
+              {(isBundle ? bundleEvents : liveEvents).map((e) => (
+                <EventFilterChip
+                  key={e.slug}
+                  theme={e.tickerTheme}
+                  active={event === e.slug}
+                  onClick={() =>
+                    setSingle("event", event === e.slug ? undefined : e.slug)
+                  }
+                  className="col-span-2"
+                >
+                  {e.name}
+                </EventFilterChip>
+              ))}
               <Chip
                 active={featured}
                 onClick={() =>
@@ -299,20 +315,6 @@ export function CatalogFilters({
                 >
                   {t.label}
                 </Chip>
-              ))}
-              {/* Арга хэмжээ (Black Friday …) — нэг л сонгогдоно. «Багц»
-                  таб дээр зөвхөн бэлэн багцтай арга хэмжээ (16.7). */}
-              {(isBundle ? bundleEvents : liveEvents).map((e) => (
-                <EventFilterChip
-                  key={e.slug}
-                  theme={e.tickerTheme}
-                  active={event === e.slug}
-                  onClick={() =>
-                    setSingle("event", event === e.slug ? undefined : e.slug)
-                  }
-                >
-                  {e.name}
-                </EventFilterChip>
               ))}
             </div>
           </Group>

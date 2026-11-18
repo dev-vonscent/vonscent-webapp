@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import {
   getBestSellers,
   getBrands,
+  getCatalog,
   getComingSoonProducts,
   getNewArrivals,
 } from "@/features/products/api";
@@ -22,14 +23,14 @@ import {
 import {
   fillRail,
   mixRandom,
+  newestRail,
   scatterCollections,
+  sortSaleRail,
+  type RailItem,
 } from "@/features/products/rail";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 import { dailyRandom } from "@/lib/seeded-random";
-import {
-  HOT_RAIL_COLLECTIONS,
-  NEW_COLLECTIONS_COUNT,
-  SITE,
-} from "@/lib/constants";
+import { HOT_RAIL_COLLECTIONS, SALE_RAIL_POOL, SITE } from "@/lib/constants";
 import {
   JsonLd,
   homePageJsonLd,
@@ -78,9 +79,6 @@ const RAIL_SIZE = 12;
  * lists, so each list is fetched once per render.
  */
 const hotProducts = cache(() => getBestSellers(RAIL_SIZE));
-const newProducts = cache(async () =>
-  sellableFirst(await getNewArrivals(RAIL_SIZE)),
-);
 
 /**
  * Stable: orderable products keep their order and come first, sold-out ones
@@ -95,10 +93,14 @@ function sellableFirst<T extends { soldOut: boolean }>(list: T[]): T[] {
  * биш: ISR-ийн дахин үүсгэлт бүрт HTML өөрчлөгдөж Vercel кэшэд бүтэн хуудсыг
  * дахин бичихээс сэргийлнэ. Холилт өдөрт нэг удаа солигдоно.
  *
- * Home — storefront order (2026-10 refresh):
- *   campaign hero → shortcuts → Эрэлттэй → quiz / bundle cards → admin
- *   curated blocks → Шинээр ирсэн → Брэндээр → Тун удахгүй →
+ * Home — storefront order (task 3, 2026-11): rail-ууд Эрэлттэй →
+ * Хямдралтай → Шинээр ирсэн → Онцлох (админы хэсгүүд):
+ *   campaign hero → shortcuts → Эрэлттэй → quiz / bundle cards →
+ *   Хямдралтай (туг `sale_display`) → Шинээр ирсэн → admin curated blocks
+ *   («Онцлох» г.м., админы дарааллаар) → Брэндээр → Тун удахгүй →
  *   reviews → (footer, parallel slot).
+ * Эрэлттэй / Хямдралтай / Шинээр ирсэн нь кодын хэсэг (`home_sections`-д
+ * бүртгэлгүй); санд зөвхөн админы хэсгүүдийн хоорондын дараалал хадгалагдана.
  *
  * No 3D runtime is imported here: the old DecantPlayground stays in the
  * codebase but is no longer reachable from this page. Gender / season /
@@ -138,12 +140,17 @@ export default async function HomePage() {
 
         <IntentCards />
 
-        <Suspense fallback={<CarouselSkeleton action />}>
-          <CuratedSections />
+        {/* Туг хаалттай бол юу ч гаргахгүй (fallback ч үгүй). */}
+        <Suspense fallback={null}>
+          <SaleSection />
         </Suspense>
 
         <Suspense fallback={<CarouselSkeleton action />}>
           <NewArrivalsSection />
+        </Suspense>
+
+        <Suspense fallback={<CarouselSkeleton action />}>
+          <CuratedSections />
         </Suspense>
 
         <Suspense fallback={<MarqueeSkeleton />}>
@@ -322,27 +329,56 @@ async function BrandsSection() {
 }
 
 /**
- * Шинээр ирсэн = 9 ус + 3 багц (клиент, 2026-10). Ус үүссэн дарааллаараа
- * (шинэ нь) эхнээсээ, дууссан нь ардаа; хамгийн сүүлийн 3 багц усны дунд
- * санамсаргүй байранд — «Эрэлттэй»-тэй ижил дүрмээр (`scatterCollections`).
- * Багц дутвал ус нөхнө. Нэг мөр дүүрэхгүй бол нуугдана.
+ * «Хямдралтай» (task 2.1, туг `sale_display`) — зөвхөн хямдралтай ДАН ус
+ * (бэлэн багц орохгүй; `getCatalog` ус л буцаана). Дуусах мөч ойр → хувь
+ * их → ижил бол өдрийн seed-ээр (`sortSaleRail`); хугацаагүй нь ард, дууссан
+ * ус хамгийн ард (`sellableFirst`). «Бүгдийг үзэх» → каталог «Бүгд» +
+ * «Хямдралтай» таг (багц ч орно, сонгосон эрэмбээр).
+ *
+ * Өгөгдөл: `catalog_search` (кэш, tag `catalog`/`stock`) + хямдралын товч
+ * (`getSaleSummaries`, tag `catalog`) — шинэ кэш/cron үгүй. Хил (УБ 00:00)
+ * дээр шөнийн cron цэвэрлэнэ.
+ */
+async function SaleSection() {
+  if (!(await isFeatureEnabled("sale_display"))) return null;
+  const { items } = await getCatalog({
+    tags: ["sale"],
+    sort: "new",
+    perPage: SALE_RAIL_POOL,
+  });
+  const products = sellableFirst(
+    sortSaleRail(
+      items.filter((p) => p.sale),
+      dailyRandom("home-sale"),
+    ),
+  ).slice(0, RAIL_SIZE);
+  if (products.length === 0) return null;
+  return (
+    <section aria-labelledby="home-sale-title">
+      <SectionHeading
+        id="home-sale-title"
+        compact
+        title="Хямдралтай"
+        href="/catalog?tags=sale"
+      />
+      <ProductCarousel products={products} />
+    </section>
+  );
+}
+
+/**
+ * Шинээр ирсэн (task 1): ус, бэлэн багц холилдож үүссэн огноогоор буурах
+ * (шинэ нь эхэнд), хамгийн ихдээ 12 — 13 дахь нь автоматаар гарна
+ * (`newestRail`). Ус нь «Шинэ» тагтай хамгийн сүүлийн 12, багц нь зарагдаж
+ * буй хамгийн сүүлийн 12 — нийлүүлээд огноогоор тасална. Дууссан ус тэр 12
+ * дотроо ардаа. Нэг мөр дүүрэхгүй бол нуугдана.
  */
 async function NewArrivalsSection() {
   const [products, collections] = await Promise.all([
-    newProducts(),
-    getNewestCollections(NEW_COLLECTIONS_COUNT),
+    getNewArrivals(RAIL_SIZE),
+    getNewestCollections(RAIL_SIZE),
   ]);
-  const rail = fillRail(
-    products,
-    collections,
-    RAIL_SIZE,
-    NEW_COLLECTIONS_COUNT,
-  );
-  const items = scatterCollections(
-    rail.products,
-    rail.collections,
-    dailyRandom("home-new"),
-  );
+  const items = soldOutLast(newestRail(products, collections, RAIL_SIZE));
   if (items.length < 4) return null;
   return (
     <section>
@@ -354,6 +390,12 @@ async function NewArrivalsSection() {
       <ProductCarousel items={items} prefer={["new"]} />
     </section>
   );
+}
+
+/** `sellableFirst`-ийн rail хэлбэр — багц энд аль хэдийн зарагдаж буй. */
+function soldOutLast(items: RailItem[]): RailItem[] {
+  const out = (it: RailItem) => it.kind === "product" && it.product.soldOut;
+  return [...items.filter((it) => !out(it)), ...items.filter(out)];
 }
 
 /**

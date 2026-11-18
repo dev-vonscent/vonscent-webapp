@@ -74,3 +74,10 @@ describe("parseFilters — арга хэмжээ (?event=, 0181)", () => {
     ).toEqual([]);
   });
 });
+
+describe("parseFilters — sort «Хямдрал: их → бага» (2.7)", () => {
+  it("discount-ийг хүлээн авна, мэдэгдэхгүй утга → өгөгдмөл", () => {
+    expect(parseFilters({ sort: "discount" }).sort).toBe("discount");
+    expect(parseFilters({ sort: "nope" }).sort).not.toBe("nope");
+  });
+});

@@ -159,6 +159,8 @@ function sortKey(sort: CatalogSort) {
       return (a: RailItem, b: RailItem) => price(b) - price(a);
     case "name":
       return (a: RailItem, b: RailItem) => name(a).localeCompare(name(b));
+    case "discount":
+      return (a: RailItem, b: RailItem) => discount(b) - discount(a);
     default:
       return null;
   }
@@ -167,11 +169,16 @@ const price = (it: RailItem) =>
   it.kind === "product"
     ? it.product.startingPrice
     : catalogPrice(it.collection);
+/** Ус: хамгийн их хувь (`sale.maxPct`); багц: багцын хувь (2.7). */
+const discount = (it: RailItem) =>
+  it.kind === "product"
+    ? (it.product.sale?.maxPct ?? 0)
+    : it.collection.discountRange.max;
 const name = (it: RailItem) =>
   it.kind === "product" ? it.product.name : it.collection.name;
 
 /**
- * Каталогийн холимог жагсаалт. Үнэ/нэрээр эрэмбэлсэн бол багц бүр
+ * Каталогийн холимог жагсаалт. Үнэ/нэр/хямдралаар эрэмбэлсэн бол багц бүр
  * эрэмбэн дэх байрандаа орно; ачаалагдаагүй хуудас үлдсэн үед (`complete`
  * false) сүүлийн усны цаана орох багцууд дараагийн хуудсыг хүлээнэ —
  * эс бөгөөс 24 дэх усны дараа үнэтэй багц гараад, дараагийн хуудсанд
@@ -202,4 +209,50 @@ export function mixCatalog(
     else out.push(cs[j++]);
   }
   return out;
+}
+
+/**
+ * «Хямдралтай» rail-ийн эрэмбэ (task 2.1):
+ *  1. хямдрал дуусах мөч ойр нь эхэнд — хугацаагүй нь бүгдийн ард;
+ *  2. ижил бол хувь (`maxPct`) их нь эхэнд;
+ *  3. бүгд ижил бол санамсаргүй — сервер дээр `dailyRandom()` дамжуул (ISR).
+ * Өнгөрсөн дуусах мөч (хоцорсон өгөгдөл) хэзээ ч «ойр» биш — хугацаагүйтэй
+ * адил ард. Оролтыг өөрчлөхгүй.
+ */
+export function sortSaleRail<
+  T extends { sale?: { maxPct: number; endsAt?: string | null } },
+>(items: readonly T[], random = Math.random, now = Date.now()): T[] {
+  const end = (x: T) => {
+    const t = x.sale?.endsAt ? Date.parse(x.sale.endsAt) : NaN;
+    return Number.isFinite(t) && t > now ? t : Number.POSITIVE_INFINITY;
+  };
+  const pct = (x: T) => x.sale?.maxPct ?? 0;
+  // Эхлээд холиод тогтвортой эрэмбэлнэ — тэнцсэн нь холилтын дарааллаараа.
+  return shuffle(items, random).sort((a, b) => {
+    const ea = end(a);
+    const eb = end(b);
+    if (ea !== eb) return ea < eb ? -1 : 1;
+    return pct(b) - pct(a);
+  });
+}
+
+/**
+ * «Шинээр ирсэн» rail (task 1): ус, бэлэн багц холилдож, үүссэн огноогоор
+ * буурах (шинэ нь эхэнд), хамгийн ихдээ `size`. 13 дахь нь автоматаар гарна.
+ * Огноо тэнцвэл ус түрүүлнэ (тогтвортой).
+ */
+export function newestRail(
+  products: readonly ProductListItem[],
+  collections: readonly CollectionCardData[],
+  size: number,
+): RailItem[] {
+  const at = (it: RailItem) =>
+    Date.parse(
+      it.kind === "product" ? it.product.createdAt : it.collection.createdAt,
+    ) || 0;
+  return [...products.map(productItem), ...collections.map(collectionItem)]
+    .map((it, i) => ({ it, i }))
+    .sort((a, b) => at(b.it) - at(a.it) || a.i - b.i)
+    .slice(0, size)
+    .map(({ it }) => it);
 }

@@ -83,7 +83,7 @@ export async function generateMetadata({
 const TAG_LABEL: Record<string, string> = {
   new: "Шинэ",
   hot: "Эрэлттэй",
-  sale: "Хямдрал",
+  sale: "Хямдралтай",
 };
 
 export default async function ProductPage({

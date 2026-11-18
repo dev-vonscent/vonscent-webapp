@@ -314,13 +314,13 @@ describe("studioTimeline (§5.5)", () => {
     expect(t[2].lines).toEqual(["Зурвас, шүүлтүүр алга болно."]);
   });
 
-  it("тэмдэг хоосон, хувьтай → өгөгдмөл «Хямдрал»", () => {
+  it("тэмдэг хоосон, хувьтай → өгөгдмөл «Хямдралтай»", () => {
     const t = studioTimeline({
       draft: draft({ badgeLabel: "" }),
       phase: "draft",
       bannerReady: false,
     });
-    expect(t[1].lines.join(" ")).toMatch(/«Хямдрал» тэмдэг/);
+    expect(t[1].lines.join(" ")).toMatch(/«Хямдралтай» тэмдэг/);
   });
 
   it("явж буй: «одоо» эхлэх ба дуусахын хооронд; дууссан: төгсгөлд", () => {

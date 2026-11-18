@@ -159,3 +159,119 @@ export function saleLinkPatch(
     !sameInstant(prev.sale_ends_at, next.sale_ends_at);
   return changed ? { sale_id: null } : {};
 }
+
+// ── Дэлгүүрийн харагдац: хувь, дуусах хугацаа (task 2.2, 2.4) ───────────────
+
+/**
+ * Нэг хэмжээний хямдралын хувь (бүхэл, 0 = хямдралгүй). `price` нь бодит үнэ
+ * (`variant_price` — гар хямдрал + арга хэмжээ). Маш бага зөрүү ч «1%» болно —
+ * хямдралтай хэмжээ «0%» гэж харагдахгүй. SQL-ийн толь: `catalog_items.
+ * sale_max_pct` (0192) — хоёулаа зэрэг өөрчлөгдөх ёстой.
+ */
+export function salePct(basePrice: number, price: number): number {
+  if (!(basePrice > 0) || !(price < basePrice)) return 0;
+  return Math.max(1, Math.round(((basePrice - price) / basePrice) * 100));
+}
+
+/**
+ * Барааны картын хямдралын товч (task 2.4). Server-ээс тооцоолж
+ * `ProductListItem.sale`-д ирнэ.
+ */
+export interface SaleSummary {
+  /** Хямдралтай хэмжээнүүдийн хамгийн бага хувь. */
+  minPct: number;
+  /** Хамгийн их хувь — «Хямдрал их → бага» эрэмбэ (2.7) мөн үүгээр. */
+  maxPct: number;
+  /** Идэвхтэй хэмжээ БҮГД хямдралтай эсэх («~» тэмдэг). */
+  allSizes: boolean;
+  /**
+   * Хамгийн ойр дуусах хямдралын мөч (ISO, exclusive) — хугацаагүй бол null.
+   * Туг `sale_display` хаалттай үед server огт өгөхгүй (undefined).
+   */
+  endsAt?: string | null;
+}
+
+/**
+ * Идэвхтэй хэмжээнүүдээс (үндсэн/бодит үнэ) товч. Нэг ч хэмжээ хямдралгүй
+ * бол null.
+ */
+export function summarizeSale(
+  sizes: readonly { basePrice: number; price: number }[],
+): Omit<SaleSummary, "endsAt"> | null {
+  const pcts = sizes.map((s) => salePct(s.basePrice, s.price));
+  const on = pcts.filter((p) => p > 0);
+  if (!on.length) return null;
+  return {
+    minPct: Math.min(...on),
+    maxPct: Math.max(...on),
+    allSizes: on.length === pcts.length,
+  };
+}
+
+/**
+ * Chip-ийн ард гарах хувь (task 2.4):
+ *  - бүх хэмжээ ижил хувьтай → «10%»;
+ *  - бүх хэмжээ хямдралтай, хувь өөр → «10–30%»;
+ *  - аль нэг хэмжээ хямдралгүй → «~30%» (хамгийн их хувь хүртэл).
+ */
+export function salePctText(
+  s: Pick<SaleSummary, "minPct" | "maxPct" | "allSizes"> | null | undefined,
+): string | null {
+  if (!s || !(s.maxPct > 0)) return null;
+  if (!s.allSizes) return `~${s.maxPct}%`;
+  return s.minPct === s.maxPct ? `${s.maxPct}%` : `${s.minPct}–${s.maxPct}%`;
+}
+
+/**
+ * Одоогийн хямдарсан үнэ хэзээ дуусах вэ (ISO, exclusive). Хямдралгүй бол
+ * undefined, хугацаагүй бол null.
+ *
+ * Эх үүсвэр — SQL-ийн дүрмээр:
+ *  - `variant_sale_label` (0189) нь бодит үнийг тогтоож буй LIVE арга
+ *    хэмжээний нэр. Гар хямдрал ба арга хэмжээ ИЖИЛ үнэ гаргавал SQL арга
+ *    хэмжээг сонгодог (label = event) — энд ч тэгнэ: `eventEndsAt`.
+ *  - label null бол гар хямдрал — гэхдээ ЗӨВХӨН хүчинтэй үед
+ *    (`isSaleActive`: эхэлсэн, дуусаагүй). Дууссан/эхлээгүй `sale_price` санд
+ *    үлддэг (0166) тул хэзээ ч эх үүсвэр, дуусах мөч болохгүй.
+ *  - label мэдэгдэхгүй (demo seed) бол хүчинтэй гар хямдрал үнэтэйгээ
+ *    тэнцвэл гар хямдрал, эс бөгөөс арга хэмжээ.
+ */
+export function saleEndsAt(
+  v: SaleFields & {
+    variant_price?: number | null;
+    variant_sale_label?: string | null;
+  },
+  eventEndsAt: string | null,
+  now: Date = new Date(),
+): string | null | undefined {
+  const price =
+    typeof v.variant_price === "number"
+      ? Math.min(v.variant_price, v.price)
+      : effectivePrice(v, now);
+  if (price >= v.price) return undefined;
+  if (v.variant_sale_label) return eventEndsAt;
+  const manualOn = isSaleActive(v, now) && v.sale_price === price;
+  if (v.variant_sale_label === null) {
+    // SQL: арга хэмжээ биш → гар хямдрал; хүчингүй бол хугацаа мэдэгдэхгүй.
+    return manualOn ? (v.sale_ends_at ?? null) : null;
+  }
+  return manualOn ? (v.sale_ends_at ?? null) : eventEndsAt;
+}
+
+/**
+ * Хамгийн ойр мөч (null/undefined алгасна); байхгүй бол null. `now` өгвөл
+ * өнгөрсөн мөчийг алгасна — хоцорсон кэшийн дууссан хугацаа «ойр» болохгүй.
+ */
+export function earliestEnd(
+  ends: readonly (string | null | undefined)[],
+  now?: number,
+): string | null {
+  let best: string | null = null;
+  for (const e of ends) {
+    if (!e) continue;
+    const t = Date.parse(e);
+    if (!Number.isFinite(t) || (now != null && t <= now)) continue;
+    if (best == null || t < Date.parse(best)) best = e;
+  }
+  return best;
+}
