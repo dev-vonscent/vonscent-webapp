@@ -189,6 +189,11 @@ export interface SaleSummary {
    * Туг `sale_display` хаалттай үед server огт өгөхгүй (undefined).
    */
   endsAt?: string | null;
+  /**
+   * Картын үнийн хэмжээ (2.5) — серверийн дотоод дамжуулалт; `withSale`
+   * үүнийг `ProductListItem.cardPrice` руу салгана.
+   */
+  card?: CardSalePrice | null;
 }
 
 /**
@@ -198,7 +203,17 @@ export interface SaleSummary {
 export function summarizeSale(
   sizes: readonly { basePrice: number; price: number }[],
 ): Omit<SaleSummary, "endsAt"> | null {
-  const pcts = sizes.map((s) => salePct(s.basePrice, s.price));
+  return summarizePcts(sizes.map((s) => salePct(s.basePrice, s.price)));
+}
+
+/**
+ * Хэмжээ бүрийн хямдралын хувиас (0 = хямдралгүй) товч — `summarizeSale`
+ * ба бэлэн багцын арга хэмжээний chip (`bundleEventSale`) хоёулаа үүгээр,
+ * `salePctText`-ийн нэг дүрэм. Нэг ч хэмжээ хямдралгүй бол null.
+ */
+export function summarizePcts(
+  pcts: readonly number[],
+): Omit<SaleSummary, "endsAt"> | null {
   const on = pcts.filter((p) => p > 0);
   if (!on.length) return null;
   return {
@@ -274,4 +289,94 @@ export function earliestEnd(
     if (best == null || t < Date.parse(best)) best = e;
   }
   return best;
+}
+
+/** Картын үнэ (task 2.5) — аль хэмжээний үнийг, ямар хуучин үнэтэй харуулах. */
+export interface CardSalePrice {
+  ml: number;
+  price: number;
+  basePrice: number;
+}
+
+/**
+ * Картын үнийн хэмжээ (task 2.5, клиентийн сонголт A). Карт ердөө хамгийн
+ * хямд ЗАРАГДАХ хэмжээний үнийг харуулдаг (`startingPrice`). Тэр хэмжээ
+ * хямдраагүй ч өөр зарагдах хэмжээ хямдарсан бол chip «Хямдралтай ~30%»
+ * байхад хямдраагүй үнэ харагдаж төөрөгдүүлдэг байв — тэр үед хямдарсан
+ * хэмжээнүүдээс ХАМГИЙН ЖИЖГИЙН хямдарсан + үндсэн үнийг, хэмжээтэй нь
+ * (`5ml · 21,300₮ ~~25,000₮~~`) буцаана. Бусад үед null — карт одоогийнхоороо.
+ *
+ * Эрэмбэ/шүүлт нь `startingPrice`-аар (хамгийн бага үнэ) хэвээр.
+ */
+export function cardSalePrice(
+  sizes: readonly {
+    ml: number;
+    price: number;
+    basePrice: number;
+    sellable: boolean;
+  }[],
+): CardSalePrice | null {
+  const sell = sizes.filter((s) => s.sellable);
+  if (!sell.length) return null;
+  // `mapProduct`-ийн `startingPrice`-тай ижил сонголт.
+  const cheapest = sell.reduce((a, b) => (a.price <= b.price ? a : b));
+  if (cheapest.price < cheapest.basePrice) return null;
+  const disc = sell
+    .filter((s) => s.price < s.basePrice)
+    .reduce<
+      (typeof sell)[number] | null
+    >((a, b) => (a == null || b.ml < a.ml ? b : a), null);
+  return disc
+    ? { ml: disc.ml, price: disc.price, basePrice: disc.basePrice }
+    : null;
+}
+
+// ── Каталогийн картын арга хэмжээний chip (нарийн/өргөн) ─────────────────────
+
+/**
+ * Chip-ийн бүтэн, уншигчид зориулсан тайлбар: «Black Friday, 30% хүртэл
+ * хямдралтай». `pct` нь харагдах хувь («~30%», «25%», «10–30%», «−10%
+ * хүртэл»): «~» → «хүртэл», «−» тэмдгийг хасна. Хувьгүй бол зөвхөн нэр.
+ */
+export function saleChipAriaLabel(name: string, pct: string | null): string {
+  if (!pct) return name;
+  let p = pct.replace(/^[−-]/, "").trim();
+  if (p.startsWith("~")) p = `${p.slice(1)} хүртэл`;
+  return `${name}, ${p} хямдралтай`;
+}
+
+/**
+ * Chip-ийн бичгийн (Inter 12px semibold) тэмдэгтийн ойролцоо өргөн, px —
+ * бодит хэмжилтээс бага зэрэг дээш: «Black Friday» 70.8px, «Цагаан сарын
+ * хямдрал» 139px, «~20%» 35.4px.
+ */
+function chipCharPx(ch: string): number {
+  if (ch === " ") return 3.5;
+  if (ch === "%") return 11;
+  if (/[0-9~−–-]/.test(ch)) return 8;
+  if (/[A-Z]/.test(ch)) return 7.8;
+  if (/[\x21-\x7e]/.test(ch)) return 6.2;
+  return 7.2; // кирилл г.м.
+}
+
+/** Бичгийн ойролцоо өргөн (px) — `chipCharPx`-ийн нийлбэр. */
+export function saleChipTextPx(text: string): number {
+  let w = 0;
+  for (const ch of text) w += chipCharPx(ch);
+  return w;
+}
+
+/** px-2.5 ×2 + border ×2 + 4px нөөц. */
+const CHIP_CHROME_PX = 26;
+/** Нэр, хувийн хоорондох gap-1. */
+const CHIP_GAP_PX = 4;
+
+/**
+ * «<Нэр> <хувь>» бүтэн chip-д хэрэгтэй хамгийн бага өргөн (px) — бичгийн
+ * дээш тоймлосон тооцоо. Карт үүнийг container query-ийн босго болгоно
+ * (JS хэмжилтгүй — SSR/hydration зөрөхгүй).
+ */
+export function saleChipFullWidthPx(name: string, pct: string): number {
+  const text = saleChipTextPx(name) + CHIP_GAP_PX + saleChipTextPx(pct);
+  return Math.ceil(text + CHIP_CHROME_PX);
 }

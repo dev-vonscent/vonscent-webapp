@@ -3,7 +3,7 @@
 import { Clock } from "lucide-react";
 import { useFeatureFlag } from "@/components/feature-flags";
 import { useNowTick } from "@/components/shared/use-now-tick";
-import { formatTimer } from "@/features/sale-events/lib";
+import { formatTimer, timerParts } from "@/features/sale-events/lib";
 import { SALE_COUNTDOWN_URGENT_MS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -25,13 +25,91 @@ import { cn } from "@/lib/utils";
 export function SaleCountdown({
   endsAt,
   className,
+  variant = "inline",
 }: {
   endsAt: string | null | undefined;
   className?: string;
+  /**
+   * `inline` — каталогийн карт, quick-add (нэг мөр); `pill` — барааны /
+   * багцын дэлгэрэнгүйн үнийн мөрийн төгсгөлд.
+   */
+  variant?: "inline" | "pill";
 }) {
   const on = useFeatureFlag("sale_display");
   if (!on || !endsAt) return null;
-  return <Ticking endsAt={endsAt} className={className} />;
+  return variant === "pill" ? (
+    <Pill endsAt={endsAt} className={className} />
+  ) : (
+    <Ticking endsAt={endsAt} className={className} />
+  );
+}
+
+/**
+ * Тоолуурын aria-label: «Хямдрал дуусахад 3 өдөр 11 цаг», нэг өдрөөс бага
+ * бол «11 цаг 39 мин», нэг цагаас бага бол «39 мин» — секунд тутам
+ * өөрчлөгдөхгүй.
+ */
+export function countdownLabel(parts: {
+  days: number;
+  hh: string;
+  mm: string;
+}): string {
+  const h = Number(parts.hh);
+  const m = Number(parts.mm);
+  const rest =
+    parts.days > 0
+      ? `${parts.days} өдөр ${h} цаг`
+      : h > 0
+        ? `${h} цаг ${m} мин`
+        : `${m} мин`;
+  return `Хямдрал дуусахад ${rest}`;
+}
+
+/**
+ * Дэлгэрэнгүйн үнийн мөрийн төгсгөлд жижиг pill «⏱ 3 өдөр 11:39:18».
+ * Гарчиггүй — утга нь aria-label-д. Дүрэм нь `Ticking`-тэй ижил (client-only,
+ * дундын tick, 0 болоход нуугдана); SSR-д `invisible` хоосон бүрхүүл.
+ * > 24ц: `bg-muted`, тоо `text-foreground`, icon `text-sale`; ≤ 24ц: бүхэлдээ
+ * `bg-sale text-sale-foreground`. Өнгө солигдоход transition үгүй; зөвхөн
+ * гарч ирэх (opacity/transform) ба icon-ы хөдөлгөөн, `motion-safe:`.
+ */
+function Pill({ endsAt, className }: { endsAt: string; className?: string }) {
+  const now = useNowTick();
+  const end = Date.parse(endsAt);
+  if (!Number.isFinite(end)) return null;
+  const left = now == null ? null : end - now;
+  const parts = left == null ? null : timerParts(left);
+  if (now != null && parts == null) return null;
+  const urgent = left != null && left <= SALE_COUNTDOWN_URGENT_MS;
+  const text =
+    parts == null
+      ? null
+      : `${parts.days > 0 ? `${parts.days} өдөр ` : ""}${parts.hh}:${parts.mm}:${parts.ss}`;
+  return (
+    <span
+      role="timer"
+      aria-live="off"
+      aria-hidden={parts == null}
+      aria-label={parts == null ? undefined : countdownLabel(parts)}
+      data-urgent={urgent || undefined}
+      data-variant="pill"
+      className={cn(
+        "motion-safe:animate-sale-pill-in inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-sm font-medium whitespace-nowrap tabular-nums",
+        urgent ? "bg-sale text-sale-foreground" : "bg-muted text-foreground",
+        parts == null && "invisible",
+        className,
+      )}
+    >
+      <Clock
+        aria-hidden
+        className={cn(
+          "motion-safe:animate-sale-clock size-3.5 shrink-0",
+          !urgent && "text-sale",
+        )}
+      />
+      <span aria-hidden>{text ?? " "}</span>
+    </span>
+  );
 }
 
 function Ticking({

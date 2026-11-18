@@ -6,7 +6,7 @@ vi.mock("./quick-add", () => ({
   QuickAdd: () => <button type="button">quick-add</button>,
 }));
 
-import { ProductCard } from "./product-card";
+import { CardPrice, ProductCard } from "./product-card";
 
 function item(over: Partial<ProductListItem> = {}): ProductListItem {
   return {
@@ -82,8 +82,55 @@ describe("ProductCard — «Хямдралтай» chip + хувь (2.3, 2.4)", 
     expect(screen.getByText("~30%")).toBeTruthy();
   });
 
+  it("гар хямдралын chip icon-уудын зайгаар хязгаарлагдана: нэр таслагдана, хувь үргэлж (5)", () => {
+    render(
+      <ProductCard
+        product={item({
+          tags: ["sale"],
+          sale: { minPct: 10, maxPct: 30, allSizes: false },
+        })}
+      />,
+    );
+    const pct = screen.getByText("~30%");
+    expect(pct.className).toContain("shrink-0");
+    const chip = pct.parentElement!;
+    expect(chip.className).toContain("max-w-full");
+    // Арга хэмжээгүй chip-д truncate хэвээр (клиент 2026-11-18).
+    expect(screen.getByText("Хямдралтай").className).toContain("truncate");
+    const row = chip.parentElement!;
+    expect(row.className).toContain("right-12");
+    // Арга хэмжээний chip-ийн нарийн/өргөн шийдвэрийн container.
+    expect(row.className).toContain("@container/chip");
+  });
+
   it("хямдралгүй бараанд chip гарахгүй", () => {
     render(<ProductCard product={item()} />);
     expect(screen.queryByText("Хямдралтай")).toBeNull();
+  });
+});
+
+describe("CardPrice (task 2.5)", () => {
+  it("cardPrice байвал «5ml · хямдарсан ~~үндсэн~~»", () => {
+    render(
+      <CardPrice
+        product={{
+          startingPrice: 12000,
+          startingBasePrice: 12000,
+          cardPrice: { ml: 5, price: 21300, basePrice: 25000 },
+        }}
+      />,
+    );
+    const el = screen.getByTestId("card-price");
+    expect(el.textContent).toBe("5ml ·21,300₮25,000₮");
+    expect(screen.getByText("25,000₮").className).toContain("line-through");
+  });
+
+  it("cardPrice байхгүй бол хамгийн бага үнэ", () => {
+    render(
+      <CardPrice
+        product={{ startingPrice: 12000, startingBasePrice: 12000 }}
+      />,
+    );
+    expect(screen.getByTestId("card-price").textContent).toBe("12,000₮");
   });
 });

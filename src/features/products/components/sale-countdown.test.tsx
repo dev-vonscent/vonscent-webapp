@@ -8,9 +8,8 @@ import { SaleCountdown } from "./sale-countdown";
 
 const NOW = Date.parse("2026-11-18T03:00:00Z");
 // 7 өдөр 16:45:32 дараа.
-const ENDS = new Date(
-  NOW + ((7 * 24 + 16) * 3600 + 45 * 60 + 32) * 1000,
-).toISOString();
+const ENDS_MS = ((7 * 24 + 16) * 3600 + 45 * 60 + 32) * 1000;
+const ENDS = new Date(NOW + ENDS_MS).toISOString();
 
 function withFlags(
   node: React.ReactNode,
@@ -154,5 +153,71 @@ describe("SaleCountdown — өнгө (24 цагийн босго)", () => {
     const el = screen.getByRole("timer");
     expect(el.className).toContain("text-white");
     expect(el.className).not.toContain("text-destructive");
+  });
+});
+
+describe("SaleCountdown variant=pill (дэлгэрэнгүйн үнийн мөр)", () => {
+  const H = 3600 * 1000;
+  const pill = (msLeft: number) =>
+    withFlags(
+      <SaleCountdown
+        variant="pill"
+        endsAt={new Date(NOW + msLeft).toISOString()}
+      />,
+    );
+  async function mount(msLeft: number) {
+    render(pill(msLeft));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    return screen.getByRole("timer");
+  }
+
+  it("SSR-д тоо гарахгүй, хоосон invisible бүрхүүл; гарчиггүй", () => {
+    const html = renderToString(pill(3 * 24 * H));
+    expect(html).toMatch(/invisible/);
+    expect(html).not.toMatch(/\d\d:\d\d/);
+    expect(html).not.toContain("Хямдрал дуусахад");
+  });
+
+  it("«7 өдөр 16:45:32», aria-label «Хямдрал дуусахад 7 өдөр 16 цаг»", async () => {
+    const t = await mount(ENDS_MS);
+    expect(t.textContent).toContain("7 өдөр 16:45:32");
+    expect(t.getAttribute("aria-label")).toBe("Хямдрал дуусахад 7 өдөр 16 цаг");
+    expect(t.getAttribute("aria-live")).toBe("off");
+    expect(t.className).toContain("rounded-full");
+  });
+
+  it("> 24ц → bg-muted, тоо foreground, icon sale", async () => {
+    const t = await mount(3 * 24 * H);
+    expect(t.className).toContain("bg-muted");
+    expect(t.className).toContain("text-foreground");
+    expect(t.className).not.toContain("bg-sale");
+    expect(t.querySelector("svg")?.getAttribute("class")).toContain(
+      "text-sale",
+    );
+  });
+
+  it("≤ 24ц → бүхэлдээ bg-sale text-sale-foreground", async () => {
+    const t = await mount(5 * H);
+    expect(t.getAttribute("data-urgent")).toBe("true");
+    expect(t.className).toContain("bg-sale");
+    expect(t.className).toContain("text-sale-foreground");
+    expect(t.className).not.toContain("bg-muted");
+    expect(t.getAttribute("aria-label")).toBe("Хямдрал дуусахад 5 цаг 0 мин");
+  });
+
+  it("анимэйшн зөвхөн motion-safe (prefers-reduced-motion үед үгүй), transition-colors үгүй", async () => {
+    const t = await mount(3 * 24 * H);
+    const classes = [
+      ...t.className.split(" "),
+      ...(t.querySelector("svg")?.getAttribute("class") ?? "").split(" "),
+    ];
+    const anim = classes.filter((c) => c.includes("animate-"));
+    expect(anim).toEqual([
+      "motion-safe:animate-sale-pill-in",
+      "motion-safe:animate-sale-clock",
+    ]);
+    expect(classes.some((c) => c.includes("transition"))).toBe(false);
   });
 });

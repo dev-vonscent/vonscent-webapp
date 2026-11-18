@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  cardSalePrice,
   earliestEnd,
   effectivePrice,
   isOnSale,
   saleEndsAt,
   salePct,
   salePctText,
+  saleChipAriaLabel,
+  saleChipFullWidthPx,
   summarizeSale,
   productSalePhase,
   isSaleActive,
@@ -401,5 +404,86 @@ describe("earliestEnd", () => {
       earliestEnd(["2026-10-31T16:00:00Z", "2026-11-21T16:00:00Z"], t),
     ).toBe("2026-11-21T16:00:00Z");
     expect(earliestEnd(["2026-10-31T16:00:00Z"], t)).toBeNull();
+  });
+});
+
+describe("cardSalePrice (task 2.5)", () => {
+  const size = (
+    ml: number,
+    price: number,
+    basePrice = price,
+    sellable = true,
+  ) => ({
+    ml,
+    price,
+    basePrice,
+    sellable,
+  });
+
+  it("2ml хямдраагүй, 5ml/10ml хямдарсан → хамгийн жижиг хямдарсан нь (5ml)", () => {
+    expect(
+      cardSalePrice([
+        size(2, 12000),
+        size(5, 21300, 25000),
+        size(10, 40000, 45000),
+        size(20, 80000),
+      ]),
+    ).toEqual({ ml: 5, price: 21300, basePrice: 25000 });
+  });
+
+  it("2ml хямдарсан → null (одоогийнх)", () => {
+    expect(
+      cardSalePrice([size(2, 10800, 12000), size(5, 21300, 25000)]),
+    ).toBeNull();
+  });
+
+  it("нэг ч хэмжээ хямдраагүй → null", () => {
+    expect(cardSalePrice([size(2, 12000), size(5, 25000)])).toBeNull();
+  });
+
+  it("дууссан хямдарсан хэмжээг алгасна; 2ml дууссан бол хамгийн хямд зарагдахаас эхэлнэ", () => {
+    expect(
+      cardSalePrice([
+        size(2, 12000),
+        size(5, 21300, 25000, false),
+        size(10, 40000, 45000),
+      ]),
+    ).toEqual({ ml: 10, price: 40000, basePrice: 45000 });
+    // 2ml дууссан, 5ml (хамгийн хямд зарагдах) хямдарсан → одоогийнх.
+    expect(
+      cardSalePrice([size(2, 12000, 12000, false), size(5, 21300, 25000)]),
+    ).toBeNull();
+  });
+});
+
+describe("saleChipAriaLabel — картын chip-ийн бүтэн тайлбар", () => {
+  it("«~30%» → «30% хүртэл»", () => {
+    expect(saleChipAriaLabel("Black Friday", "~30%")).toBe(
+      "Black Friday, 30% хүртэл хямдралтай",
+    );
+  });
+  it("тогтмол хувь, хүрээ", () => {
+    expect(saleChipAriaLabel("Black Friday", "25%")).toBe(
+      "Black Friday, 25% хямдралтай",
+    );
+    expect(saleChipAriaLabel("Black Friday", "10–30%")).toBe(
+      "Black Friday, 10–30% хямдралтай",
+    );
+  });
+  it("багцын «−10% хүртэл» — хасах тэмдэггүй", () => {
+    expect(saleChipAriaLabel("Black Friday", "−10% хүртэл")).toBe(
+      "Black Friday, 10% хүртэл хямдралтай",
+    );
+  });
+  it("хувьгүй бол зөвхөн нэр", () => {
+    expect(saleChipAriaLabel("Black Friday", null)).toBe("Black Friday");
+  });
+});
+
+describe("saleChipFullWidthPx", () => {
+  it("урт нэр илүү өргөн шаардана", () => {
+    expect(saleChipFullWidthPx("Black Friday", "~30%")).toBeGreaterThan(
+      saleChipFullWidthPx("BF", "~30%"),
+    );
   });
 });

@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
+import { salePctText } from "@/features/products/sale";
 import {
+  bundleEventSale,
+  bundleCardPrice,
   roundTo,
   bundlePrice,
   memberPrices,
@@ -362,5 +365,82 @@ describe("багцын тоолуурын мөч — priceWithBundleEvent + bund
     expect(bundleSaleEndsAt({ event })).toBeNull();
     // Тэнцүү хувь ч мөн адил.
     expect(priceWithBundleEvent(members, 10, {}, 100, low).event).toBeNull();
+  });
+});
+
+describe("bundleCardPrice (task 2.5)", () => {
+  const row = (
+    ml: number,
+    price: number,
+    eventSaving?: number,
+    available = true,
+  ) => ({
+    ml,
+    price,
+    memberSum: price + 5000,
+    available,
+    ...(eventSaving ? { eventSaving } : {}),
+  });
+
+  it("event зөвхөн 10ml-д → 10ml-ийн үнэ + гишүүдийн нийлбэр", () => {
+    expect(
+      bundleCardPrice([row(2, 40000), row(5, 90000), row(10, 120000, 6000)]),
+    ).toEqual({ ml: 10, price: 120000, memberSum: 125000 });
+  });
+
+  it("хамгийн хямд хэмжээ event-тэй эсвэл event байхгүй → null", () => {
+    expect(
+      bundleCardPrice([row(2, 40000, 2000), row(5, 90000, 4000)]),
+    ).toBeNull();
+    expect(bundleCardPrice([row(2, 40000), row(5, 90000)])).toBeNull();
+  });
+
+  it("дууссан хэмжээг тооцохгүй", () => {
+    expect(
+      bundleCardPrice([row(2, 40000), row(5, 90000, 4000, false)]),
+    ).toBeNull();
+  });
+});
+
+describe("bundleEventSale — багцын event chip-ийн хувь (2.4 дүрэм)", () => {
+  const prices = [2, 5, 10, 20].map((ml) => ({ ml, available: true }));
+  const base = { prices, discountPct: 5, mlDiscounts: {} };
+
+  it("event бүх хэмжээнд 10% → «10%»", () => {
+    const s = bundleEventSale({
+      ...base,
+      event: { pcts: { 2: 10, 5: 10, 10: 10, 20: 10 } },
+    });
+    expect(salePctText(s)).toBe("10%");
+  });
+
+  it("суурь 5% нь хямдралгүйд тооцогдоно → «~10%»", () => {
+    const s = bundleEventSale({ ...base, event: { pcts: { 2: 10, 5: 10 } } });
+    expect(salePctText(s)).toBe("~10%");
+  });
+
+  it("хэмжээний суурь хувь (mlDiscounts) event-ээс их бол тэр хэмжээ хямдралгүй", () => {
+    const s = bundleEventSale({
+      ...base,
+      mlDiscounts: { 20: 12 },
+      event: { pcts: { 2: 10, 5: 10, 10: 10, 20: 10 } },
+    });
+    expect(salePctText(s)).toBe("~10%");
+  });
+
+  it("зарагдахгүй хэмжээг тооцохгүй", () => {
+    const s = bundleEventSale({
+      ...base,
+      prices: prices.map((p) => ({ ...p, available: p.ml !== 20 })),
+      event: { pcts: { 2: 10, 5: 10, 10: 10, 20: 30 } },
+    });
+    expect(salePctText(s)).toBe("10%");
+  });
+
+  it("event хувь ≤ суурь, эсвэл event-гүй → null", () => {
+    expect(
+      bundleEventSale({ ...base, event: { pcts: { 2: 5, 5: 4 } } }),
+    ).toBeNull();
+    expect(bundleEventSale({ ...base, event: null })).toBeNull();
   });
 });

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { ShoppingCart, Minus, Plus, Check } from "lucide-react";
+import { ShoppingCart, Minus, Plus } from "lucide-react";
 import {
   Dialog,
   DialogTrigger,
@@ -12,13 +12,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
 import { cartMlFor } from "@/features/cart/budget";
 import { maxUnits } from "@/features/products/sellable";
 import { trackAddToCart } from "@/lib/analytics";
 import type { ProductDetail, ProductListItem } from "@/lib/types";
-import { SizeHeading } from "@/features/products/components/size-heading";
+import {
+  defaultSizeId,
+  productSizeOptions,
+} from "@/features/products/size-options";
+import { SizeSelector } from "@/features/products/components/size-selector";
+import { SizePrice } from "@/features/products/components/size-price";
+import { AddToCartLabel } from "@/features/products/components/add-to-cart-label";
 
 export function QuickAdd({
   product,
@@ -49,15 +54,15 @@ export function QuickAdd({
         setDetail(d);
         // Худалдаж БОЛОХ эхний хэмжээ — дууссан/савгүй хэмжээг урьдчилж
         // сонговол хэрэглэгч идэвхгүй товчтой үлдэнэ.
-        const first =
-          d.variants.find((v) => v.sellable) ??
-          d.variants.find((v) => v.isActive);
-        setVariantId(first?.id ?? "");
+        // Карт өөр хэмжээний үнэ харуулж байвал (2.5) тэр хэмжээгээр.
+        setVariantId(
+          defaultSizeId(productSizeOptions(d.variants), product.cardPrice?.ml),
+        );
       });
     return () => {
       cancelled = true;
     };
-  }, [open, detail, product.slug]);
+  }, [open, detail, product.slug, product.cardPrice?.ml]);
 
   const activeVariants = detail?.variants.filter((v) => v.isActive) ?? [];
   const selected = activeVariants.find((v) => v.id === variantId) ?? null;
@@ -154,94 +159,49 @@ export function QuickAdd({
             <p className="font-serif text-base/tight font-medium">
               {product.name}
             </p>
-            <p className="mt-1 font-semibold tracking-tight">
-              {selected
-                ? formatPrice(selected.price)
-                : formatPrice(product.startingPrice)}
-              {/* Үндсэн үнэ зураастай — хувьгүй (backlog B4). */}
-              {(selected
-                ? selected.basePrice > selected.price
-                : product.startingBasePrice > product.startingPrice) && (
-                <span className="text-muted-foreground ml-1.5 text-xs font-normal line-through">
-                  {formatPrice(
-                    selected ? selected.basePrice : product.startingBasePrice,
-                  )}
-                </span>
-              )}
-              {selected && (
-                <span className="text-muted-foreground ml-1 text-xs font-normal">
-                  / {selected.ml}ml
-                </span>
-              )}
-            </p>
+            {/* Дэлгэрэнгүй хуудасных шиг үнийн хэсэг (task 15) — сонгосон
+                хэмжээгээр; ачаалж дуустал «эхлэх» үнэ. */}
+            <div className="mt-1">
+              <SizePrice
+                size="sm"
+                price={selected ? selected.price : product.startingPrice}
+                basePrice={
+                  selected ? selected.basePrice : product.startingBasePrice
+                }
+                sizeLabel={selected ? `${selected.ml}ml` : null}
+                endsAt={selected?.saleEndsAt}
+                reserve={
+                  detail?.variants.some(
+                    (v) => v.isActive && v.price < v.basePrice && v.saleEndsAt,
+                  ) ?? false
+                }
+              />
+            </div>
           </div>
         </div>
 
-        {/* Size options */}
-        <div className="space-y-2">
-          <SizeHeading ml={selected?.ml} />
-          {/* Барааны хуудасных шиг тэнцүү 4 багана (ML_SIZES = 4): flex-wrap
-              үед «Түр байхгүй» шошготой товч өргөсөж 20ml доош унаад цонхыг
-              нэг мөрөөр өндөрсгөдөг байв. */}
-          {detail ? (
-            <div className="grid grid-cols-4 gap-2">
-              {activeVariants.map((v) => {
-                const active = v.id === variantId;
-                // «Түр байхгүй» = савны түгжээ (0095), «Дууссан» = эх савны
-                // үлдэгдэл. Хоёулаа сонгогдохгүй.
-                const label =
-                  v.unavailableReason === "bottle"
-                    ? "Түр байхгүй"
-                    : v.sellable
-                      ? formatPrice(v.price)
-                      : "Дууссан";
-                return (
-                  <button
-                    key={v.id}
-                    type="button"
-                    disabled={!v.sellable}
-                    aria-pressed={v.sellable ? active : undefined}
-                    onClick={() => setVariantId(v.id)}
-                    className={cn(
-                      "flex min-h-11 min-w-0 flex-col items-center justify-center rounded-lg px-1 py-2 transition-colors",
-                      !v.sellable
-                        ? "bg-secondary/50 text-muted-foreground cursor-not-allowed opacity-50"
-                        : active
-                          ? // Багцын сонголттой ижил — эргэсэн цул өнгө. Бүдэг
-                            // `foreground/30` нь цайвар загварт саарал болж,
-                            // сонгогдоогүйгээс бараг ялгарахгүй байв.
-                            "bg-foreground text-background"
-                          : "bg-secondary hover:bg-accent",
-                    )}
-                  >
-                    <span className="text-sm font-semibold">{v.ml}ml</span>
-                    <span
-                      className={cn(
-                        "text-xs",
-                        active && v.sellable
-                          ? "text-background/75"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
+        {detail ? (
+          <SizeSelector
+            options={productSizeOptions(detail.variants)}
+            value={variantId}
+            onChange={setVariantId}
+          />
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm font-medium">Хэмжээ сонгох</p>
             <div className="grid grid-cols-4 gap-2">
               <Skeleton className="h-14 rounded-lg" />
               <Skeleton className="h-14 rounded-lg" />
               <Skeleton className="h-14 rounded-lg" />
               <Skeleton className="h-14 rounded-lg" />
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Quantity + add */}
-        <div className="flex items-center gap-3">
-          <div className="bg-secondary flex items-center rounded-md">
+        {/* Quantity + add. Утсан дээр товч тоо ширхэгийн ДООР бүтэн өргөнөөр:
+            «Сагсанд нэмэх · 159,600₮» нэг мөрөнд stepper-тэй багтахгүй. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="bg-secondary flex items-center self-start rounded-md sm:self-auto">
             <button
               type="button"
               className="hover:text-foreground px-3 py-2"
@@ -264,7 +224,7 @@ export function QuickAdd({
 
           <Button
             size="lg"
-            className="flex-1"
+            className="w-full sm:w-auto sm:flex-1"
             disabled={
               !detail ||
               !selected ||
@@ -275,9 +235,7 @@ export function QuickAdd({
             onClick={onAdd}
           >
             {added ? (
-              <>
-                <Check className="size-4" /> Нэмэгдлээ
-              </>
+              <AddToCartLabel qty={qty} unitPrice={0} added />
             ) : soldOut ? (
               "Дууссан"
             ) : selected && !selected.sellable ? (
@@ -287,9 +245,11 @@ export function QuickAdd({
                 "Дууссан"
               )
             ) : (
-              <>
-                <ShoppingCart className="size-4" /> Сагслах
-              </>
+              <AddToCartLabel
+                qty={qty}
+                unitPrice={selected?.price ?? 0}
+                added={false}
+              />
             )}
           </Button>
         </div>
