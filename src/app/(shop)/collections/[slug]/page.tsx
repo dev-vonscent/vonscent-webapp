@@ -8,7 +8,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { DeliveryReturnsText } from "@/components/shared/delivery-returns-text";
+import {
+  DeliveryText,
+  ReturnsText,
+} from "@/components/shared/delivery-returns-text";
 import { ReviewSection } from "@/features/reviews/components/review-section";
 import { WishlistButton } from "@/features/wishlist/components/wishlist-button";
 import {
@@ -145,7 +148,7 @@ export default async function CollectionPage({
           {/* Дан усных шиг accordion (клиент, 2026-09 UG; 0106). Тайлбар нь
               өмнө нь хэмжээний доор эвхэгддэг догол мөр байсан — одоо
               «Дэлгэрэнгүй тайлбар». Хоосон хэсэг нээгдэхгүй, харин
-              «Хүргэлт ба буцаалт» нь бүх барааны нийтлэг текст тул үргэлж. */}
+              «Хүргэлт», «Буцаалт» нь бүх барааны нийтлэг текст тул үргэлж. */}
           <Accordion
             type="single"
             collapsible
@@ -167,10 +170,17 @@ export default async function CollectionPage({
                 </AccordionContent>
               </AccordionItem>
             )}
+            {/* «Хүргэлт» ба «Буцаалт» тусдаа (task 5). */}
             <AccordionItem value="ship">
-              <AccordionTrigger>Хүргэлт ба буцаалт</AccordionTrigger>
+              <AccordionTrigger>Хүргэлт</AccordionTrigger>
               <AccordionContent>
-                <DeliveryReturnsText />
+                <DeliveryText />
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="returns">
+              <AccordionTrigger>Буцаалт</AccordionTrigger>
+              <AccordionContent>
+                <ReturnsText />
               </AccordionContent>
             </AccordionItem>
           </Accordion>

@@ -43,7 +43,10 @@ import {
   RELATED_SECTION_ID,
   SEASON_LABEL,
 } from "@/lib/constants";
-import { DeliveryReturnsText } from "@/components/shared/delivery-returns-text";
+import {
+  DeliveryText,
+  ReturnsText,
+} from "@/components/shared/delivery-returns-text";
 
 /**
  * ISR: public data comes from the cookie-less client, so the page is
@@ -285,10 +288,17 @@ export default async function ProductPage({
                 </dl>
               </AccordionContent>
             </AccordionItem>
+            {/* «Хүргэлт» ба «Буцаалт» тусдаа (task 5). */}
             <AccordionItem value="ship">
-              <AccordionTrigger>Хүргэлт ба буцаалт</AccordionTrigger>
+              <AccordionTrigger>Хүргэлт</AccordionTrigger>
               <AccordionContent>
-                <DeliveryReturnsText />
+                <DeliveryText />
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="returns">
+              <AccordionTrigger>Буцаалт</AccordionTrigger>
+              <AccordionContent>
+                <ReturnsText />
               </AccordionContent>
             </AccordionItem>
           </Accordion>
