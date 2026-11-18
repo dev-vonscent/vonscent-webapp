@@ -265,7 +265,9 @@ describe("арга хэмжээнд орсон багц (task 16.7)", () => {
     expect(priceAt(5, o).price).toBe(90000);
     // Задаргаа: «Багцын хямдрал» 5,000 + «Black Friday» 5,000.
     expect(bundleEventSaving(100000, 5, 90000, 100)).toBe(5000);
-    expect(100000 - 90000 - bundleEventSaving(100000, 5, 90000, 100)).toBe(5000);
+    expect(100000 - 90000 - bundleEventSaving(100000, 5, 90000, 100)).toBe(
+      5000,
+    );
   });
 
   it("greatest хамгаалалт: суурь 15% / event 10% → 15% хэвээр (үнэтэй болохгүй)", () => {
@@ -289,8 +291,12 @@ describe("арга хэмжээнд орсон багц (task 16.7)", () => {
   it("гишүүн үнэртэн мөн event-д орсон ч давхар хямдрахгүй (үндсэн үнээс)", () => {
     // Гишүүн бүр event-ээр 40,000 болсон — багц үндсэн 100,000-аас бодно.
     const discounted = [at10(40000, 50000), at10(40000, 50000)];
-    const p = memberPrices(discounted, 5, 100, withEventPcts(5, {}, { 10: 10 }))
-      .find((x) => x.ml === 10)!;
+    const p = memberPrices(
+      discounted,
+      5,
+      100,
+      withEventPcts(5, {}, { 10: 10 }),
+    ).find((x) => x.ml === 10)!;
     expect(p.memberSum).toBe(100000);
     expect(p.price).toBe(90000); // 72,000 биш (80,000 × 0.9)
   });

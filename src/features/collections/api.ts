@@ -256,7 +256,8 @@ async function readLiveBundleRows(): Promise<LiveBundleRow[]> {
     {},
   );
   // Шиднэ (#284): хоосон хариу кэшлэгдвэл event-ийн үнэ нэг цаг алга болно.
-  if (error) throw new Error(`live_event_collection_discounts: ${error.message}`);
+  if (error)
+    throw new Error(`live_event_collection_discounts: ${error.message}`);
   return data ?? [];
 }
 
@@ -524,12 +525,7 @@ export const getCollectionBySlug = cache(async function getCollectionBySlug(
   if (!data) return null;
 
   const row = data as unknown as DbCollection;
-  return build(
-    row,
-    await membersById([row]),
-    settings,
-    events[row.id] ?? null,
-  );
+  return build(row, await membersById([row]), settings, events[row.id] ?? null);
 });
 
 /** The signed-in user's saved custom collections (owner-scoped via RLS). */
