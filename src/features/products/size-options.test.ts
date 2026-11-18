@@ -176,4 +176,16 @@ describe("size options (task 15, 4, 2.6)", () => {
       "Цүнхэнд багтах, өдөр бүрийн хэмжээ",
     );
   });
+
+  it("quick-add: картын үнийн хэмжээ (2.5) анхдагч, зарагдахгүй бол ердийн дүрэм", () => {
+    const opts = productSizeOptions([
+      v(2),
+      v(5, { price: 21300, basePrice: 25000 }),
+      v(10, { inStock: false, sellable: false, unavailableReason: "stock" }),
+    ]);
+    expect(defaultSizeId(opts, 5)).toBe("v5");
+    expect(defaultSizeId(opts, 10)).toBe("v2");
+    expect(defaultSizeId(opts, null)).toBe("v2");
+    expect(defaultSizeId(opts)).toBe("v2");
+  });
 });

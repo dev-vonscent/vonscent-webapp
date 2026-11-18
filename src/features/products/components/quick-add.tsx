@@ -54,7 +54,10 @@ export function QuickAdd({
         setDetail(d);
         // Худалдаж БОЛОХ эхний хэмжээ — дууссан/савгүй хэмжээг урьдчилж
         // сонговол хэрэглэгч идэвхгүй товчтой үлдэнэ.
-        setVariantId(defaultSizeId(productSizeOptions(d.variants)));
+        // Карт өөр хэмжээний үнэ харуулж байвал (2.5) тэр хэмжээгээр.
+        setVariantId(
+          defaultSizeId(productSizeOptions(d.variants), product.cardPrice?.ml),
+        );
       });
     return () => {
       cancelled = true;

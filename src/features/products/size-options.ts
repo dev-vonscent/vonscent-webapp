@@ -148,10 +148,24 @@ export function productSizeOptions(
  * Анхдагч сонголт: зарагдаж буй ХАМГИЙН ЭХНИЙ (жижиг) хэмжээ; нэг ч
  * зарагдахгүй бол сонгож болох эхнийх. Дууссан хэмжээг урьдчилж сонговол
  * хэрэглэгч идэвхгүй товчтой үлдэнэ.
+ *
+ * `preferMl`: каталогийн карт 2.5-ын дүрмээр өөр хэмжээний үнэ харуулж байвал
+ * («5ml · 29,800₮») quick-add тэр хэмжээгээр нээгдэнэ — картын ба цонхны үнэ
+ * зөрөхгүй. Тэр хэмжээ зарагдахгүй бол ердийн дүрэм.
  */
-export function defaultSizeId(options: readonly SizeOption[]): string {
+export function defaultSizeId(
+  options: readonly SizeOption[],
+  preferMl?: number | null,
+): string {
+  const preferred =
+    preferMl != null
+      ? options.find((o) => o.ml === preferMl && o.buyable)
+      : undefined;
   return (
-    (options.find((o) => o.buyable) ?? options.find((o) => o.selectable))?.id ??
-    ""
+    (
+      preferred ??
+      options.find((o) => o.buyable) ??
+      options.find((o) => o.selectable)
+    )?.id ?? ""
   );
 }

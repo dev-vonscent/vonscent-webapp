@@ -19,6 +19,7 @@ import { defaultSizeId } from "@/features/products/size-options";
 import { SizeSelector } from "@/features/products/components/size-selector";
 import { SizePrice } from "@/features/products/components/size-price";
 import { bundleSizeOptions, bundleSizeSaleEndsAt } from "../size-options";
+import { bundleCardPrice } from "../pricing";
 import type { CollectionCardData } from "../types";
 
 /**
@@ -36,7 +37,10 @@ export function CollectionQuickAdd({
 }) {
   const [open, setOpen] = React.useState(false);
   const sizeOptions = bundleSizeOptions(collection);
-  const [ml, setMl] = React.useState(() => Number(defaultSizeId(sizeOptions)));
+  // Карт event-ийн хэмжээний үнэ харуулж байвал (2.5) тэр хэмжээгээр.
+  const [ml, setMl] = React.useState(() =>
+    Number(defaultSizeId(sizeOptions, bundleCardPrice(collection.prices)?.ml)),
+  );
   const [added, setAdded] = React.useState(false);
   const bundlesOn = useFeatureFlag("sale_event_bundles");
   const addCollection = useCart((s) => s.addCollection);
