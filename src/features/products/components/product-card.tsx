@@ -7,6 +7,7 @@ import { WishlistButton } from "@/features/wishlist/components/wishlist-button";
 import { QuickAdd } from "./quick-add";
 import { GenderBadge } from "./gender-badge";
 import { SaleBadge } from "@/features/sale-events/components/sale-badge";
+import { SaleCountdown } from "./sale-countdown";
 
 import { CARD_STATUS_LABEL, cardStatus, type CardStatus } from "../card-status";
 import { salePctText } from "../sale";
@@ -116,6 +117,11 @@ export function ProductCard({
             </span>
           )}
         </span>
+        {/* Хямдрал дуусах тоолуур (2.2, туг `sale_display`) — хугацаагүй
+            хямдрал, дууссан бараанд гарахгүй. */}
+        {!product.soldOut && (
+          <SaleCountdown endsAt={product.sale?.endsAt} className="mt-0.5" />
+        )}
       </div>
     </div>
   );
