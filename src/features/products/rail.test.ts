@@ -90,6 +90,25 @@ describe("mixCatalog", () => {
     expect(out.map(key)).toEqual(["p1", "c1", "p2"]);
   });
 
+  it("хямдрал их → бага: ус (хамгийн их хувь), багц (багцын хувь) холилдоно (2.7)", () => {
+    const sp = (id: string, maxPct: number) =>
+      ({
+        id,
+        name: id,
+        sale: { minPct: maxPct, maxPct, allSizes: true },
+      }) as ProductListItem;
+    const sc = (id: string, max: number) =>
+      ({ id, name: id, discountRange: { min: max, max } }) as Collection;
+    const plain = { id: "p0", name: "p0" } as ProductListItem;
+    const out = mixCatalog(
+      [sp("p30", 30), sp("p10", 10), plain],
+      [sc("c20", 20), sc("c5", 5), sc("c0", 0)],
+      "discount",
+      true,
+    );
+    expect(out.map(key)).toEqual(["p30", "c20", "p10", "c5", "p0", "c0"]);
+  });
+
   it("бусад эрэмбэд ээлжилнэ", () => {
     const out = mixCatalog(
       [pp("p1", 1), pp("p2", 1)],

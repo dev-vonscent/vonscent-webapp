@@ -159,6 +159,8 @@ function sortKey(sort: CatalogSort) {
       return (a: RailItem, b: RailItem) => price(b) - price(a);
     case "name":
       return (a: RailItem, b: RailItem) => name(a).localeCompare(name(b));
+    case "discount":
+      return (a: RailItem, b: RailItem) => discount(b) - discount(a);
     default:
       return null;
   }
@@ -167,11 +169,16 @@ const price = (it: RailItem) =>
   it.kind === "product"
     ? it.product.startingPrice
     : catalogPrice(it.collection);
+/** Ус: хамгийн их хувь (`sale.maxPct`); багц: багцын хувь (2.7). */
+const discount = (it: RailItem) =>
+  it.kind === "product"
+    ? (it.product.sale?.maxPct ?? 0)
+    : it.collection.discountRange.max;
 const name = (it: RailItem) =>
   it.kind === "product" ? it.product.name : it.collection.name;
 
 /**
- * Каталогийн холимог жагсаалт. Үнэ/нэрээр эрэмбэлсэн бол багц бүр
+ * Каталогийн холимог жагсаалт. Үнэ/нэр/хямдралаар эрэмбэлсэн бол багц бүр
  * эрэмбэн дэх байрандаа орно; ачаалагдаагүй хуудас үлдсэн үед (`complete`
  * false) сүүлийн усны цаана орох багцууд дараагийн хуудсыг хүлээнэ —
  * эс бөгөөс 24 дэх усны дараа үнэтэй багц гараад, дараагийн хуудсанд

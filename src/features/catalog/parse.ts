@@ -24,6 +24,7 @@ const SORTS = [
   "price_desc",
   "name",
   "popular",
+  "discount",
 ] as const;
 
 /**

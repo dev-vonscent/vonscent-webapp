@@ -222,6 +222,8 @@ export interface CatalogFilters {
     | "price_desc"
     | "name"
     | "popular"
+    /** «Хямдрал: их → бага» (task 2.7) — барааны хамгийн их хувиар. */
+    | "discount"
     | "featured";
   page?: number;
   perPage?: number;

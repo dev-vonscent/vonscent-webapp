@@ -445,6 +445,13 @@ function sortProducts(
       return copy.sort((a, b) => b.startingPrice - a.startingPrice);
     case "name":
       return copy.sort((a, b) => a.name.localeCompare(b.name));
+    case "discount":
+      // `catalog_search`-ийн толь (0193): хамгийн их хувь, дараа нь шинэ нь.
+      return copy.sort(
+        (a, b) =>
+          (saleOf(b).sale?.maxPct ?? 0) - (saleOf(a).sale?.maxPct ?? 0) ||
+          b.createdAt.localeCompare(a.createdAt),
+      );
     case "popular":
       // Борлуулалтын тоо энд байхгүй (SQL нь `top_seller_products()`-оор
       // эрэмбэлнэ, 0115) — борлуулалтаар тавигддаг `hot` таг нь хамгийн ойр.

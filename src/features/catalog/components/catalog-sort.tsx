@@ -19,6 +19,7 @@ const OPTIONS: { value: string; label: string }[] = [
   { value: "popular", label: "Эрэлттэй" },
   { value: "price_asc", label: "Үнэ: бага → их" },
   { value: "price_desc", label: "Үнэ: их → бага" },
+  { value: "discount", label: "Хямдрал: их → бага" },
 ];
 
 export function CatalogSort({
