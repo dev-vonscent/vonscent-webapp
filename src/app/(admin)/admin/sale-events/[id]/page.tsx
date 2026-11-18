@@ -51,9 +51,11 @@ export default async function SaleEventStudioPage({
   const linked = linkedBannerRow(heroes, row.id);
 
   return (
-    // Зогсоох г.м. серверийн төлөв солигдоход студи шинэ мөрөөр дахин эхэлнэ.
+    // `key` нь зөвхөн id: хадгалалт бүрийн дараах `router.refresh()` (PR #289)
+    // студийг дахин эхлүүлж бичиж буй засвар, нийтэлсэн төлвийг арилгахгүй.
+    // Зогсоох г.м. серверийн төлвийг hook өөрөө локалаар шинэчилнэ.
     <EventStudio
-      key={`${row.id}:${row.updatedAt}:${row.isActive}:${row.endsAt}:${linked.row?.updatedAt ?? ""}`}
+      key={row.id}
       row={row}
       products={products}
       bundleOptions={bundleOptions}

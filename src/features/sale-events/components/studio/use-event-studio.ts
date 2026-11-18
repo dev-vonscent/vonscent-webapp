@@ -102,6 +102,22 @@ export function useEventStudio(input: {
   const bundleOptions = input.bundleOptions ?? EMPTY_BUNDLES;
   const router = useRouter();
   const [confirm, confirmDialog] = useConfirm();
+  /**
+   * Амжилттай бичилтийн дараа client router cache-ийг цэвэрлэнэ
+   * (`staleTimes.dynamic`, back/forward) — студи ба жагсаалт дараагийн
+   * нээлтэд хуучин мөр харуулахгүй (PR #289, «LADIES NIGHT»). Студи өөрөө
+   * дахин эхлэхгүй: хуудасны `key` нь зөвхөн `row.id`, төлөв нь локал.
+   */
+  const routerRef = React.useRef(router);
+  React.useEffect(() => {
+    routerRef.current = router;
+  }, [router]);
+  // Тогтвортой лавлагаа: unmount-ийн хадгалалтын effect router-ийн
+  // объект солигдоход дахин ажиллахгүй.
+  const refreshAfterWrite = React.useCallback(
+    () => routerRef.current.refresh(),
+    [],
+  );
 
   const [initial] = React.useState<StudioDraft>(() =>
     row
@@ -373,9 +389,10 @@ export function useEventStudio(input: {
         }
         const bannerOk = await persistBanner(id);
         setStatus({ kind: "saved", at: Date.now() });
+        refreshAfterWrite();
         return bannerOk;
       }),
-    [enqueue, id, persist, persistBanner, bannerEnabled],
+    [enqueue, id, persist, persistBanner, bannerEnabled, refreshAfterWrite],
   );
 
   // Засвар дууссанаас 2 секундийн дараа (D7).
@@ -410,6 +427,7 @@ export function useEventStudio(input: {
             keepalive: true,
           });
           if (!res.ok) return;
+          refreshAfterWrite();
         }
         if (!bannerEnabled) return;
         const { banner: s, bannerSaved: saved, knownSlugs } = live.current;
@@ -425,7 +443,7 @@ export function useEventStudio(input: {
         });
       });
     },
-    [id, bannerEnabled, enqueue, bundlesEnabled],
+    [id, bannerEnabled, enqueue, bundlesEnabled, refreshAfterWrite],
   );
 
   // Хадгалаагүй өөрчлөлттэй таб хаах / сэргээх (D7).
@@ -558,6 +576,7 @@ export function useEventStudio(input: {
           "Арга хэмжээ үүслээ, баннер хуулагдсангүй — ④-р алхамд дахин оролдоно уу.",
         );
       }
+      refreshAfterWrite();
       router.replace(`/admin/sale-events/${r.id}?step=products`);
     } finally {
       setBusy(null);
@@ -602,6 +621,7 @@ export function useEventStudio(input: {
       }
       const bannerOk = id ? await enqueue(() => persistBanner(id)) : true;
       setStatus({ kind: "saved", at: Date.now() });
+      refreshAfterWrite();
       if (bannerOk) toast.success("Хадгалагдлаа.");
       else toast.error("Арга хэмжээ хадгалагдсан, баннер хадгалагдсангүй — ④-р алхмыг харна уу.");
       return true;
@@ -644,6 +664,7 @@ export function useEventStudio(input: {
       }
       setStatus({ kind: "saved", at: Date.now() });
       setPublished(action);
+      refreshAfterWrite();
       return true;
     } finally {
       setBusy(null);
@@ -677,8 +698,25 @@ export function useEventStudio(input: {
         return;
       }
       toast.success(`«${name}» зогслоо.`);
-      // Серверийн шинэ мөрөөр студи дахин эхэлнэ (хуудас `key`-ээр солино).
-      router.refresh();
+      // `stop_sale_event`-ийн дүрмийг локалаар: явж буй → яг одоо дуусна,
+      // товлосон → ноорог руу. Хуудасны `key` (row.id) солигдохгүй тул
+      // студийн төлөв ингэж шинэчлэгдэнэ.
+      const stoppedAt = Date.now();
+      if (meta) {
+        const next: Meta =
+          phase === "live"
+            ? {
+                ...meta,
+                endsAt: new Date(
+                  Math.max(stoppedAt, Date.parse(meta.startsAt) + 1000),
+                ).toISOString(),
+              }
+            : { ...meta, isActive: false };
+        live.current = { ...live.current, meta: next };
+        setMeta(next);
+      }
+      setNow(stoppedAt);
+      refreshAfterWrite();
     } finally {
       setBusy(null);
     }
