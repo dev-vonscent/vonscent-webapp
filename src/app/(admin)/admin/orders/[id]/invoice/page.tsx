@@ -8,7 +8,12 @@ import {
 } from "@/lib/orders/summary";
 import { PrintButton } from "@/features/admin/components/print-button";
 import { orderLineTitle, orderLineVariant } from "@/lib/order-lines";
-import { buildOrderLines, flattenOrderLines } from "@/lib/orders/order-lines";
+import {
+  buildOrderLines,
+  flattenOrderLines,
+  lineBase,
+  lineUnitBase,
+} from "@/lib/orders/order-lines";
 
 export default async function InvoicePage({
   params,
@@ -71,11 +76,9 @@ export default async function InvoicePage({
               {/* Үндсэн үнээр — багцын хямдрал доорх тоймд ганц мөр болно,
                   ингэснээр баганын нийлбэр «Нийт үндсэн үнэ»-тэй таарна. */}
               <td className="py-2 text-right">
-                {formatPrice(i.list_price ?? i.unit_price)}
+                {formatPrice(lineUnitBase(i))}
               </td>
-              <td className="py-2 text-right">
-                {formatPrice((i.list_price ?? i.unit_price) * i.qty)}
-              </td>
+              <td className="py-2 text-right">{formatPrice(lineBase(i))}</td>
             </tr>
           ))}
         </tbody>

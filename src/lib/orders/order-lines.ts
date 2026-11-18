@@ -21,7 +21,7 @@
  *     захиалгад нэр + ml.
  *   · Хүрдний шагнал болох бүтэн багц (бэлэг) — тусдаа, бэлгийн хэсэгт.
  *
- * Мөрийн үнэ нь ҮНДСЭН үнэ (`list_price × qty`), багцынх гишүүдийнхээ
+ * Мөрийн үнэ нь ҮНДСЭН үнэ (`lineUnitBase × qty`), багцынх гишүүдийнхээ
  * нийлбэр — хямдрал нь «Дүн» задаргаанд тусдаа мөр тул мөрүүдийн нийлбэр
  * = «Барааны дүн» (`gross_subtotal`). Мөнгөн тооцоо энд өөрчлөгдөхгүй.
  */
@@ -35,6 +35,10 @@ export interface OrderLineInput {
   qty: number;
   unit_price: number;
   list_price: number | null;
+  /** Үндсэн нэгж үнэ (0189). 0189-өөс өмнөх мөрөнд null. */
+  base_price?: number | null;
+  /** Дан барааны хямдралын эх сурвалж — event-ийн нэр эсвэл «Хямдрал» (0189). */
+  sale_label?: string | null;
   is_gift: boolean;
   is_sample?: boolean;
   collection_id: string | null;
@@ -59,7 +63,7 @@ export interface BundleLine<T extends OrderLineInput> {
   ml: number;
   /** Хэдэн багц — гишүүдийн qty (бүгд ижил). */
   qty: number;
-  /** Хямдралгүй нийт үнэ — гишүүдийн `list_price × qty` нийлбэр. */
+  /** Хямдралгүй нийт үнэ — гишүүдийн `lineBase` нийлбэр. */
   base: number;
   members: T[];
 }
@@ -69,10 +73,44 @@ export type OrderLine<T extends OrderLineInput> =
   | BundleLine<T>;
 
 /** Мөрийн үндсэн дүн — «Барааны дүн»-д ордог утга. */
-export function lineBase(
-  i: Pick<OrderLineInput, "list_price" | "unit_price" | "qty">,
+/**
+ * Мөрийн ҮНДСЭН нэгж үнэ — «Нийт үндсэн үнэ»-д ордог утга.
+ *
+ * Хямдралтай дан мөрөнд (`sale_label`, 0189) `list_price` нь хямдарсан үнэ —
+ * хямдрал нь «Дүн»-д event/«Хямдрал» мөрөөр дахин хасагддаг тул мөрөнд
+ * `base_price`-ийг харуулна (summary.ts: «Нийт үндсэн үнэ» = gross_subtotal +
+ * sale_breakdown). Багцын гишүүнд `list_price` аль хэдийн үндсэн үнэ (0189),
+ * багцын event (0190) нь gross_subtotal-аас хасагддаг тул хөндөхгүй.
+ * 0189-өөс өмнөх мөрөнд `base_price` null — `list_price ?? unit_price`.
+ */
+export function lineUnitBase(
+  i: Pick<
+    OrderLineInput,
+    | "list_price"
+    | "unit_price"
+    | "base_price"
+    | "sale_label"
+    | "collection_name"
+  >,
 ): number {
-  return (i.list_price ?? i.unit_price) * i.qty;
+  if (i.sale_label != null && i.collection_name == null && i.base_price != null)
+    return i.base_price;
+  return i.list_price ?? i.unit_price;
+}
+
+/** Мөрийн үндсэн дүн — `lineUnitBase × qty`. */
+export function lineBase(
+  i: Pick<
+    OrderLineInput,
+    | "list_price"
+    | "unit_price"
+    | "base_price"
+    | "sale_label"
+    | "collection_name"
+    | "qty"
+  >,
+): number {
+  return lineUnitBase(i) * i.qty;
 }
 
 /** Мөрийн харагдах дүн (дан мөр эсвэл бүтэн багц). */

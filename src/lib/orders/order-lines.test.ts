@@ -4,6 +4,7 @@ import {
   bundleTitle,
   flattenOrderLines,
   lineBase,
+  lineUnitBase,
   orderLineAmount,
   type OrderLine,
   type OrderLineInput,
@@ -426,5 +427,148 @@ describe("buildOrderLines", () => {
       }),
     ];
     expect(buildOrderLines(items, base)[0]).toMatchObject({ base: 40000 });
+  });
+});
+
+// VS-2247 (dev): дан 4 (Goddess нь Black Friday −20%), NIGHT OUT 2ml + 10ml
+// (bundle event), бэлэг 3. gross_subtotal 756 900 + Black Friday 19 100 =
+// «Нийт үндсэн үнэ» 776 000.
+describe("үндсэн үнэ — хямдралтай дан мөр (base_price)", () => {
+  const base = new Set(["night-out"]);
+  const solo = (n: number, name: string, ml: number, price: number) =>
+    line({
+      line_no: n,
+      product_name: name,
+      ml,
+      unit_price: price,
+      list_price: price,
+      base_price: price,
+    });
+  const night = (
+    n: number,
+    name: string,
+    ml: number,
+    unit: number,
+    list: number,
+  ) =>
+    line({
+      line_no: n,
+      product_name: name,
+      ml,
+      unit_price: unit,
+      list_price: list,
+      base_price: list,
+      collection_id: "night-out",
+      collection_name: "NIGHT OUT",
+    });
+  const gift = (n: number, name: string) =>
+    line({
+      line_no: n,
+      product_name: name,
+      ml: 1,
+      unit_price: 0,
+      list_price: 0,
+      is_gift: true,
+      is_sample: true,
+    });
+  const goddess = line({
+    line_no: 3,
+    product_name: "Goddess EDP",
+    brand: "Burberry",
+    ml: 10,
+    unit_price: 62400,
+    list_price: 62400,
+    base_price: 78000,
+    sale_label: "Black Friday",
+  });
+  const vs2247 = [
+    solo(1, "Oud Wood", 20, 256000),
+    solo(2, "Aventus", 5, 79000),
+    goddess,
+    solo(4, "Blanche", 2, 34000),
+    night(5, "Invictus", 2, 15300, 17000),
+    night(6, "Spicebomb", 2, 16200, 18000),
+    night(7, "Eros Flame", 2, 12600, 14000),
+    night(8, "Homme intense", 2, 18000, 20000),
+    night(9, "Invictus", 10, 59850, 63000),
+    night(10, "Spicebomb", 10, 65550, 69000),
+    night(11, "Eros Flame", 10, 47500, 50000),
+    night(12, "Homme intense", 10, 74100, 78000),
+    gift(13, "Glacial"),
+    gift(14, "Homme"),
+    gift(15, "My Way"),
+  ];
+
+  it("VS-2247: Goddess 78 000, NIGHT OUT 69 000 / 260 000, нийлбэр 776 000", () => {
+    const lines = buildOrderLines(vs2247, base);
+    const amounts = Object.fromEntries(
+      lines.map((l) => [
+        l.kind === "bundle" ? `${l.name} ${l.ml}` : l.item.product_name,
+        orderLineAmount(l),
+      ]),
+    );
+    expect(amounts).toMatchObject({
+      "Goddess EDP": 78000,
+      "NIGHT OUT 2": 69000,
+      "NIGHT OUT 10": 260000,
+    });
+    const grossSubtotal = 756900;
+    const saleBreakdown = 19100;
+    expect(sum(lines.map(orderLineAmount))).toBe(grossSubtotal + saleBreakdown);
+    expect(lineUnitBase(goddess)).toBe(78000);
+  });
+
+  it("гар хямдрал («Хямдрал») ч үндсэн үнээр", () => {
+    const manual = line({
+      ml: 5,
+      qty: 2,
+      unit_price: 30000,
+      list_price: 30000,
+      base_price: 40000,
+      sale_label: "Хямдрал",
+    });
+    expect(lineBase(manual)).toBe(80000);
+  });
+
+  it("base_price null хуучин мөр — list_price ?? unit_price хэвээр", () => {
+    expect(
+      lineBase(
+        line({
+          ml: 5,
+          unit_price: 30000,
+          list_price: 35000,
+          base_price: null,
+          sale_label: null,
+        }),
+      ),
+    ).toBe(35000);
+    expect(
+      lineBase(
+        line({ ml: 5, unit_price: 30000, list_price: null, base_price: null }),
+      ),
+    ).toBe(30000);
+    // sale_label-гүй (хямдралгүй) мөрөнд base_price хэрэглэгдэхгүй.
+    expect(
+      lineBase(
+        line({
+          ml: 5,
+          unit_price: 30000,
+          list_price: 30000,
+          base_price: 40000,
+        }),
+      ),
+    ).toBe(30000);
+  });
+
+  it("багцын гишүүнд sale_label байсан ч list_price (0190-ийн тооцоо хөндөгдөхгүй)", () => {
+    const member = line({
+      collection_id: "night-out",
+      collection_name: "NIGHT OUT",
+      unit_price: 15300,
+      list_price: 17000,
+      base_price: 20000,
+      sale_label: "Black Friday",
+    });
+    expect(lineBase(member)).toBe(17000);
   });
 });

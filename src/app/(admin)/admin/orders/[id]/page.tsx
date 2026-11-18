@@ -7,7 +7,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getOrderDetail } from "@/features/admin/api";
 import { getStaffUser } from "@/lib/auth/guard";
-import { buildOrderLines, bundleTitle } from "@/lib/orders/order-lines";
+import {
+  buildOrderLines,
+  bundleTitle,
+  lineBase,
+} from "@/lib/orders/order-lines";
 import { formatPrice, formatDateTime } from "@/lib/format";
 import {
   orderSummaryRows,
@@ -199,9 +203,7 @@ export default async function AdminOrderDetail({
                       )}
                     </span>
                     <span className="font-medium">
-                      {formatPrice(
-                        (l.item.list_price ?? l.item.unit_price) * l.item.qty,
-                      )}
+                      {formatPrice(lineBase(l.item))}
                     </span>
                   </div>
                 ),
