@@ -23,14 +23,15 @@ import {
 import {
   fillRail,
   mixRandom,
+  newestRail,
   scatterCollections,
   sortSaleRail,
+  type RailItem,
 } from "@/features/products/rail";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { dailyRandom } from "@/lib/seeded-random";
 import {
   HOT_RAIL_COLLECTIONS,
-  NEW_COLLECTIONS_COUNT,
   SALE_RAIL_POOL,
   SITE,
 } from "@/lib/constants";
@@ -82,9 +83,6 @@ const RAIL_SIZE = 12;
  * lists, so each list is fetched once per render.
  */
 const hotProducts = cache(() => getBestSellers(RAIL_SIZE));
-const newProducts = cache(async () =>
-  sellableFirst(await getNewArrivals(RAIL_SIZE)),
-);
 
 /**
  * Stable: orderable products keep their order and come first, sold-out ones
@@ -369,27 +367,18 @@ async function SaleSection() {
 }
 
 /**
- * Шинээр ирсэн = 9 ус + 3 багц (клиент, 2026-10). Ус үүссэн дарааллаараа
- * (шинэ нь) эхнээсээ, дууссан нь ардаа; хамгийн сүүлийн 3 багц усны дунд
- * санамсаргүй байранд — «Эрэлттэй»-тэй ижил дүрмээр (`scatterCollections`).
- * Багц дутвал ус нөхнө. Нэг мөр дүүрэхгүй бол нуугдана.
+ * Шинээр ирсэн (task 1): ус, бэлэн багц холилдож үүссэн огноогоор буурах
+ * (шинэ нь эхэнд), хамгийн ихдээ 12 — 13 дахь нь автоматаар гарна
+ * (`newestRail`). Ус нь «Шинэ» тагтай хамгийн сүүлийн 12, багц нь зарагдаж
+ * буй хамгийн сүүлийн 12 — нийлүүлээд огноогоор тасална. Дууссан ус тэр 12
+ * дотроо ардаа. Нэг мөр дүүрэхгүй бол нуугдана.
  */
 async function NewArrivalsSection() {
   const [products, collections] = await Promise.all([
-    newProducts(),
-    getNewestCollections(NEW_COLLECTIONS_COUNT),
+    getNewArrivals(RAIL_SIZE),
+    getNewestCollections(RAIL_SIZE),
   ]);
-  const rail = fillRail(
-    products,
-    collections,
-    RAIL_SIZE,
-    NEW_COLLECTIONS_COUNT,
-  );
-  const items = scatterCollections(
-    rail.products,
-    rail.collections,
-    dailyRandom("home-new"),
-  );
+  const items = soldOutLast(newestRail(products, collections, RAIL_SIZE));
   if (items.length < 4) return null;
   return (
     <section>
@@ -401,6 +390,12 @@ async function NewArrivalsSection() {
       <ProductCarousel items={items} prefer={["new"]} />
     </section>
   );
+}
+
+/** `sellableFirst`-ийн rail хэлбэр — багц энд аль хэдийн зарагдаж буй. */
+function soldOutLast(items: RailItem[]): RailItem[] {
+  const out = (it: RailItem) => it.kind === "product" && it.product.soldOut;
+  return [...items.filter((it) => !out(it)), ...items.filter(out)];
 }
 
 /**

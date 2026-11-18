@@ -5,6 +5,7 @@ import {
   interleave,
   mixCatalog,
   mixRandom,
+  newestRail,
   scatterCollections,
   sortSaleRail,
   shuffle,
@@ -229,5 +230,40 @@ describe("sortSaleRail (2.1)", () => {
     expect([...a].sort()).toEqual(ids(list).sort());
     expect(ids(list)).toEqual(ids(list).slice());
     expect(list[0].id).toBe("p0");
+  });
+});
+
+describe("newestRail (1)", () => {
+  const np = (id: string, createdAt: string) =>
+    ({ id, createdAt }) as ProductListItem;
+  const nc = (id: string, createdAt: string) =>
+    ({ id, createdAt }) as Collection;
+  const key = (it: ReturnType<typeof newestRail>[number]) =>
+    it.kind === "product" ? it.product.id : it.collection.id;
+
+  it("ус, багц холилдож шинэ нь эхэнд, хамгийн ихдээ size", () => {
+    const rail = newestRail(
+      [
+        np("p-old", "2026-10-01T00:00:00Z"),
+        np("p-new", "2026-11-15T00:00:00Z"),
+        np("p-mid", "2026-11-01T00:00:00Z"),
+      ],
+      [
+        nc("c-newest", "2026-11-17T00:00:00Z"),
+        nc("c-mid", "2026-11-05T00:00:00Z"),
+      ],
+      4,
+    );
+    expect(rail.map(key)).toEqual(["c-newest", "p-new", "c-mid", "p-mid"]);
+  });
+
+  it("13 дахь нь гарна", () => {
+    const products = Array.from({ length: 13 }, (_, i) =>
+      np(`p${i}`, new Date(Date.UTC(2026, 10, 1 + i)).toISOString()),
+    );
+    const rail = newestRail(products, [], 12);
+    expect(rail).toHaveLength(12);
+    expect(rail.map(key)).not.toContain("p0");
+    expect(key(rail[0])).toBe("p12");
   });
 });

@@ -227,3 +227,24 @@ export function sortSaleRail<
     return pct(b) - pct(a);
   });
 }
+
+/**
+ * «Шинээр ирсэн» rail (task 1): ус, бэлэн багц холилдож, үүссэн огноогоор
+ * буурах (шинэ нь эхэнд), хамгийн ихдээ `size`. 13 дахь нь автоматаар гарна.
+ * Огноо тэнцвэл ус түрүүлнэ (тогтвортой).
+ */
+export function newestRail(
+  products: readonly ProductListItem[],
+  collections: readonly CollectionCardData[],
+  size: number,
+): RailItem[] {
+  const at = (it: RailItem) =>
+    Date.parse(
+      it.kind === "product" ? it.product.createdAt : it.collection.createdAt,
+    ) || 0;
+  return [...products.map(productItem), ...collections.map(collectionItem)]
+    .map((it, i) => ({ it, i }))
+    .sort((a, b) => at(b.it) - at(a.it) || a.i - b.i)
+    .slice(0, size)
+    .map(({ it }) => it);
+}
