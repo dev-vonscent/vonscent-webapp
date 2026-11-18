@@ -12,7 +12,16 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { DeliveryReturnsText } from "@/components/shared/delivery-returns-text";
+import {
+  DeliveryText,
+  ReturnsText,
+} from "@/components/shared/delivery-returns-text";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { JsonLd, breadcrumbJsonLd } from "@/components/shared/json-ld";
 import {
   ExtraGallery,
@@ -313,12 +322,22 @@ export default async function ExtraPage({
               </div>
             )}
 
-            <div>
-              <h2 className="mb-3 font-serif text-xl font-semibold">Хүргэлт</h2>
-              <p className="text-muted-foreground text-sm/relaxed">
-                <DeliveryReturnsText />
-              </p>
-            </div>
+            {/* «Хүргэлт» ба «Буцаалт» тусдаа — дан ус, багцын хуудастай
+                ижил accordion (task 5). */}
+            <Accordion type="single" collapsible>
+              <AccordionItem value="ship">
+                <AccordionTrigger>Хүргэлт</AccordionTrigger>
+                <AccordionContent>
+                  <DeliveryText />
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="returns">
+                <AccordionTrigger>Буцаалт</AccordionTrigger>
+                <AccordionContent>
+                  <ReturnsText />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
         </div>
       </VariantImageProvider>
