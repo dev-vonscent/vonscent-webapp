@@ -7,7 +7,11 @@ import { readInvoice } from "@/lib/payments/invoice";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callRpc } from "@/lib/supabase/rpc";
 import { notifyAdmin, tgEscape } from "@/lib/notify/telegram";
-import { buildOrderLines, collectionIdsOf } from "@/lib/orders/order-lines";
+import {
+  buildOrderLines,
+  collectionIdsOf,
+  lineBase,
+} from "@/lib/orders/order-lines";
 import { sendOrderCustomerEmail } from "@/lib/notify/customer-email";
 import { deliverGiftCardOrder } from "@/features/gift-cards/email";
 import { formatMl, formatPrice } from "@/lib/format";
@@ -162,6 +166,67 @@ async function commit(
   return { ok: true };
 }
 
+/** Telegram-ийн `order_items` мөр. */
+type TelegramItemRow = {
+  id: string;
+  line_no: number | null;
+  product_name: string;
+  brand: string | null;
+  ml: number | null;
+  qty: number;
+  unit_price: number;
+  list_price: number | null;
+  base_price: number | null;
+  sale_label: string | null;
+  is_gift: boolean;
+  collection_id: string | null;
+  collection_name: string | null;
+  line_kind: "perfume" | "extra";
+  variant_label: string | null;
+  /** Азын хүрдний гранд шагналын мөр (0165). */
+  spin_id: string | null;
+};
+
+/** Ажилтны Telegram мэдэгдлийн барааны жагсаалт. Exported for tests. */
+export function telegramItemList(
+  items: readonly TelegramItemRow[],
+  baseIds: ReadonlySet<string>,
+): string {
+  // Мөр бүр ҮНДСЭН үнээрээ — pay хуудастай адил (`features/payment/api.ts`).
+  // `line_total` нь багцын хямдралыг мөр бүрт хувааж тараасан тул бутархай
+  // мэт дүн гардаг байв; хямдрал нь доорх задаргаанд ганц мөр болж гарна. 0097-оос өмнөх мөрөнд `list_price` алга.
+  // Дараалал захиалгын дэлгэрэнгүйтэй ижил (`buildOrderLines`); формат нь
+  // хуучнаараа — угсарсан багц, хүрдний шагналын гишүүд задгай мөрөөр.
+  return buildOrderLines(items, baseIds)
+    .flatMap((l) =>
+      l.kind === "bundle" && (l.type === "custom" || l.gift)
+        ? l.members.map((item) => ({ kind: "item" as const, item }))
+        : [l],
+    )
+    .map((l) => {
+      if (l.kind === "bundle") {
+        return `• ${tgEscape(l.name)} багц ${formatMl(l.ml)} × ${l.qty} — ${formatPrice(l.base)}`;
+      }
+      const i = l.item;
+      // Хямдралтай дан мөрөнд base_price — арга хэмжээ задаргаанд тусдаа.
+      const base = lineBase(i);
+      // Нэмэлт бараа (0146): `brand` нь ангиллын нэр — «Нэмэлт» шошго нь
+      // савлагчид энэ мөрийг декант биш гэж шууд хэлнэ.
+      if (isExtraLine(i)) {
+        return `• Нэмэлт: ${tgEscape(orderLineTitle(i))} × ${i.qty} — ${formatPrice(base)}`;
+      }
+      const name = i.brand ? `${i.brand} — ${i.product_name}` : i.product_name;
+      const bundle = i.collection_name
+        ? ` · ${tgEscape(i.collection_name)}`
+        : "";
+      return (
+        `• ${tgEscape(name)} ${orderLineMeta(i)}${bundle}` +
+        (i.spin_id ? " 🏆" : i.is_gift ? " 🎁" : ` — ${formatPrice(base)}`)
+      );
+    })
+    .join("\n");
+}
+
 /**
  * Төлбөр баталгаажсаны Telegram дохио — захиалсан барааны мэдээлэлтэйгээ.
  *
@@ -214,26 +279,10 @@ async function notifyPaid(
   const { data: itemData } = await supabase
     .from("order_items")
     .select(
-      "id, line_no, product_name, brand, ml, qty, unit_price, list_price, is_gift, collection_id, collection_name, line_kind, variant_label, spin_id",
+      "id, line_no, product_name, brand, ml, qty, unit_price, list_price, base_price, sale_label, is_gift, collection_id, collection_name, line_kind, variant_label, spin_id",
     )
     .eq("order_id", order.id);
-  const items = (itemData ?? []) as {
-    id: string;
-    line_no: number | null;
-    product_name: string;
-    brand: string | null;
-    ml: number | null;
-    qty: number;
-    unit_price: number;
-    list_price: number | null;
-    is_gift: boolean;
-    collection_id: string | null;
-    collection_name: string | null;
-    line_kind: "perfume" | "extra";
-    variant_label: string | null;
-    /** Азын хүрдний гранд шагналын мөр (0165). */
-    spin_id: string | null;
-  }[];
+  const items = (itemData ?? []) as TelegramItemRow[];
 
   // Бэлэн багц нэг мөр болно («Gentleman багц · 5ml × 1»); хэрэглэгчийн
   // угсарсан багц задгай хэвээр.
@@ -249,38 +298,7 @@ async function notifyPaid(
     ((baseRows as { id: string }[] | null) ?? []).map((r) => r.id),
   );
 
-  // Мөр бүр ҮНДСЭН үнээрээ — pay хуудастай адил (`features/payment/api.ts`).
-  // `line_total` нь багцын хямдралыг мөр бүрт хувааж тараасан тул бутархай
-  // мэт дүн гардаг байв; хямдрал нь доорх задаргаанд ганц мөр болж гарна. 0097-оос өмнөх мөрөнд `list_price` алга.
-  // Дараалал захиалгын дэлгэрэнгүйтэй ижил (`buildOrderLines`); формат нь
-  // хуучнаараа — угсарсан багц, хүрдний шагналын гишүүд задгай мөрөөр.
-  const itemList = buildOrderLines(items, baseIds)
-    .flatMap((l) =>
-      l.kind === "bundle" && (l.type === "custom" || l.gift)
-        ? l.members.map((item) => ({ kind: "item" as const, item }))
-        : [l],
-    )
-    .map((l) => {
-      if (l.kind === "bundle") {
-        return `• ${tgEscape(l.name)} багц ${formatMl(l.ml)} × ${l.qty} — ${formatPrice(l.base)}`;
-      }
-      const i = l.item;
-      const base = (i.list_price ?? i.unit_price) * i.qty;
-      // Нэмэлт бараа (0146): `brand` нь ангиллын нэр — «Нэмэлт» шошго нь
-      // савлагчид энэ мөрийг декант биш гэж шууд хэлнэ.
-      if (isExtraLine(i)) {
-        return `• Нэмэлт: ${tgEscape(orderLineTitle(i))} × ${i.qty} — ${formatPrice(base)}`;
-      }
-      const name = i.brand ? `${i.brand} — ${i.product_name}` : i.product_name;
-      const bundle = i.collection_name
-        ? ` · ${tgEscape(i.collection_name)}`
-        : "";
-      return (
-        `• ${tgEscape(name)} ${orderLineMeta(i)}${bundle}` +
-        (i.spin_id ? " 🏆" : i.is_gift ? " 🎁" : ` — ${formatPrice(base)}`)
-      );
-    })
-    .join("\n");
+  const itemList = telegramItemList(items, baseIds);
 
   const address = [row.ship_city, row.ship_district, row.ship_detail]
     .filter(Boolean)

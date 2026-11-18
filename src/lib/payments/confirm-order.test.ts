@@ -54,9 +54,8 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }));
 
-const { markOrderPaid, verifyAndMarkOrderPaid } = await import(
-  "./confirm-order"
-);
+const { markOrderPaid, verifyAndMarkOrderPaid } =
+  await import("./confirm-order");
 const { CACHE_TAG_LEADERBOARD } = await import("@/lib/cache-tags");
 
 beforeEach(() => {
@@ -98,7 +97,11 @@ describe("төлбөр батлагдахад leaderboard", () => {
   });
 
   it("төлөгдөөгүй эсвэл commit унасан бол цэвэрлэхгүй", async () => {
-    checkPayment.mockResolvedValueOnce({ paid: false, paidAmount: 0, rows: [] });
+    checkPayment.mockResolvedValueOnce({
+      paid: false,
+      paidAmount: 0,
+      rows: [],
+    });
     expect(await verifyAndMarkOrderPaid("o1")).toEqual({
       ok: false,
       error: "NOT_PAID",
@@ -110,5 +113,28 @@ describe("төлбөр батлагдахад leaderboard", () => {
       error: "COMMIT_FAILED",
     });
     expect(revalidateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("telegramItemList — VS-2247", () => {
+  it("хямдралтай дан бараа үндсэн үнээр, бусад формат хэвээр", async () => {
+    const { telegramItemList } = await import("./confirm-order");
+    const { VS2247_ITEMS, VS2247_NIGHT_OUT } =
+      await import("@/lib/orders/vs2247.fixture");
+    const text = telegramItemList(
+      VS2247_ITEMS.map((i) => ({ ...i })),
+      new Set([VS2247_NIGHT_OUT]),
+    );
+    expect(text.split("\n")).toEqual([
+      "• Byredo — Blanche 2ml × 1 — 34,000₮",
+      "• Creed — Aventus 5ml × 1 — 79,000₮",
+      "• Burberry — Goddess EDP 10ml × 1 — 78,000₮",
+      "• Tom Ford — Oud Wood 20ml × 1 — 256,000₮",
+      "• NIGHT OUT багц 2ml × 1 — 69,000₮",
+      "• NIGHT OUT багц 10ml × 1 — 260,000₮",
+      "• Bvlgari — Glacial Essence 1ml × 1 🎁",
+      "• Dior — Homme intense 1ml × 1 🎁",
+      "• Giorgio Armani — My Way 1ml × 1 🎁",
+    ]);
   });
 });
