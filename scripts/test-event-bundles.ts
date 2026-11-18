@@ -341,6 +341,57 @@ async function fullOrder(c: Client, f: Fixture, eventPct: number | null) {
   };
 }
 
+/** Ижил гишүүдтэй нэмэлт бэлэн багц (транзакц дотор). */
+async function extraCollection(
+  c: Client,
+  f: Fixture,
+  name: string,
+  active = true,
+) {
+  const col = await c.query<{ id: string }>(
+    `insert into collections (slug, type, name, discount_pct, is_active)
+     values ('test-event-bundle-' || substr(md5(random()::text), 1, 8), 'base', $1, 5, $2)
+     returning id`,
+    [name, active],
+  );
+  await c.query(
+    `insert into collection_items (collection_id, product_id, sort_order)
+     select $1, x, o from unnest($2::uuid[]) with ordinality t(x, o)`,
+    [col.rows[0].id, f.members.map((m) => m.product)],
+  );
+  return col.rows[0].id;
+}
+
+/** `save_sale_event`-ийг дурын p_data-тай (id-тай засвар). */
+function saveRaw(
+  c: Client,
+  id: string | null,
+  data: Record<string, unknown>,
+  items: unknown[] = [],
+) {
+  return errorOf(c, "select save_sale_event($1, $2::jsonb, $3::jsonb, null)", [
+    id,
+    JSON.stringify({
+      slug: "test-eb-merge",
+      name: "Black Friday",
+      startsAt: new Date(Date.now() - 86400e3).toISOString(),
+      endsAt: new Date(Date.now() + 86400e3).toISOString(),
+      isActive: true,
+      showCountdown: true,
+      ...data,
+    }),
+    JSON.stringify(items),
+  ]);
+}
+
+async function eventCollections(c: Client, eventId: string) {
+  const r = await c.query<{ collection_id: string }>(
+    "select collection_id from sale_event_collections where event_id = $1",
+    [eventId],
+  );
+  return new Set(r.rows.map((x) => x.collection_id));
+}
+
 async function main() {
   const c = await connectDb(url!);
 
@@ -737,6 +788,185 @@ async function main() {
           o.sale_breakdown.length === 0 &&
           o.gross_subtotal === 100000,
         o,
+      );
+    },
+  );
+
+  await scenario(
+    c,
+    "8. 0191: дууссан багцтай event-д өөр багц нэмж хадгалах → дууссан багц ҮЛДЭНЭ",
+    { bundles: true },
+    async () => {
+      const f = await fixture(c);
+      const ln = f.collection; // «LADIES NIGHT» — event-д орсны дараа дуусна
+      const office = await extraCollection(c, f, "OFFICE");
+      const ev = await saveEvent(c, f, { pcts: { [ML]: 10 } });
+      // Гишүүн дууслаа → багц бүх хэмжээгээр зарагдахгүй.
+      await c.query(
+        "update inventory set is_sold_out = true where product_id = $1",
+        [f.members[0].product],
+      );
+      const sell = await c.query<{ ln: boolean; of: boolean }>(
+        "select collection_sellable($1) as ln, collection_sellable($2) as of",
+        [ln, office],
+      );
+      check(
+        "collection_sellable: дууссан = false",
+        sell.rows[0].ln === false && sell.rows[0].of === false,
+        sell.rows[0],
+      );
+      await c.query(
+        "update inventory set is_sold_out = false where product_id = $1",
+        [f.members[0].product],
+      );
+      // OFFICE-ийг зарагдаж буй болгож, LN-ийг дан дууссан болгохын тулд LN-д нэмэлт гишүүн.
+      const extra = await c.query<{ id: string }>(
+        `
+      select p.id from products p join inventory i on i.product_id = p.id
+       where p.is_active and i.is_sold_out and not (p.id = any($1::uuid[])) limit 1`,
+        [f.members.map((m) => m.product)],
+      );
+      if (!extra.rows[0]) throw new Error("dev санд дууссан бараа хэрэгтэй");
+      await c.query(
+        "insert into collection_items (collection_id, product_id, sort_order) values ($1, $2, 9)",
+        [ln, extra.rows[0].id],
+      );
+      const s2 = await c.query<{ ln: boolean; of: boolean }>(
+        "select collection_sellable($1) as ln, collection_sellable($2) as of",
+        [ln, office],
+      );
+      check(
+        "LN дууссан, OFFICE зарагдаж байна",
+        s2.rows[0].ln === false && s2.rows[0].of === true,
+        s2.rows[0],
+      );
+
+      // Хуучин snapshot (LN-гүй) -оос OFFICE нэмж хадгалах — merge горим.
+      const err = await saveRaw(c, ev, {
+        collections: [{ collectionId: office, pcts: { [ML]: 12 } }],
+        removedCollectionIds: [],
+        removedProductIds: [],
+      });
+      check("хадгалагдлаа", err === null, err?.message);
+      const after = await eventCollections(c, ev);
+      check(
+        "LN үлдсэн + OFFICE нэмэгдсэн",
+        after.has(ln) && after.has(office),
+        [...after],
+      );
+      // LN-ийг илгээж (дууссан, аль хэдийн гишүүн) хадгалах → татгалзахгүй.
+      const keep = await saveRaw(c, ev, {
+        collections: [
+          { collectionId: ln, pcts: { [ML]: 10 } },
+          { collectionId: office, pcts: { [ML]: 12 } },
+        ],
+        removedCollectionIds: [],
+        removedProductIds: [],
+      });
+      check(
+        "дууссан хуучин гишүүнийг илгээхэд BUNDLE_UNAVAILABLE гарахгүй",
+        keep === null,
+        keep?.message,
+      );
+      // Админ өөрөө хасвал л устана.
+      const rm = await saveRaw(c, ev, {
+        collections: [{ collectionId: office, pcts: { [ML]: 12 } }],
+        removedCollectionIds: [ln],
+        removedProductIds: [],
+      });
+      const final = await eventCollections(c, ev);
+      check(
+        "removedCollectionIds-аар л хасагдана",
+        rm === null && !final.has(ln) && final.has(office),
+        [...final],
+      );
+    },
+  );
+
+  await scenario(
+    c,
+    "9. 0191: дууссан / идэвхгүй багцыг ШИНЭЭР нэмэх → BUNDLE_UNAVAILABLE",
+    { bundles: true },
+    async () => {
+      const f = await fixture(c);
+      const inactive = await extraCollection(c, f, "Идэвхгүй багц", false);
+      await c.query(
+        "update inventory set is_sold_out = true where product_id = $1",
+        [f.members[0].product],
+      );
+      const sold = await saveRaw(c, null, {
+        slug: "test-eb-sold",
+        collections: [{ collectionId: f.collection, pcts: { [ML]: 10 } }],
+      });
+      check(
+        "дууссан → BUNDLE_UNAVAILABLE (sold_out)",
+        /BUNDLE_UNAVAILABLE/.test(sold?.message ?? "") &&
+          /sold_out/.test(sold?.detail ?? ""),
+        { m: sold?.message, d: sold?.detail },
+      );
+      await c.query(
+        "update inventory set is_sold_out = false where product_id = $1",
+        [f.members[0].product],
+      );
+      const ina = await saveRaw(c, null, {
+        slug: "test-eb-inactive",
+        collections: [{ collectionId: inactive, pcts: { [ML]: 10 } }],
+      });
+      check(
+        "идэвхгүй → BUNDLE_UNAVAILABLE (inactive)",
+        /BUNDLE_UNAVAILABLE/.test(ina?.message ?? "") &&
+          /inactive/.test(ina?.detail ?? ""),
+        { m: ina?.message, d: ina?.detail },
+      );
+      const n = await c.query<{ n: number }>(
+        "select count(*)::int n from sale_events where slug in ('test-eb-sold','test-eb-inactive')",
+      );
+      check("санд юу ч үлдээгүй", n.rows[0].n === 0, n.rows[0]);
+    },
+  );
+
+  await scenario(
+    c,
+    "10. 0191: бараа — хуучин snapshot-оос хадгалахад хараагүй бараа устахгүй",
+    { bundles: true },
+    async () => {
+      const f = await fixture(c);
+      const [a, b] = f.members;
+      const ev = await saveEvent(c, f, {
+        pcts: { [ML]: 10 },
+        collections: false,
+        items: [{ productId: a.product, pcts: { [ML]: 20 } }],
+      });
+      // Өөр tab-аас b нэмэгдсэн, энэ client a-г л мэднэ.
+      await saveRaw(c, ev, { removedProductIds: [] }, [
+        { productId: a.product, pcts: { [ML]: 20 } },
+        { productId: b.product, pcts: { [ML]: 15 } },
+      ]);
+      await saveRaw(c, ev, { removedProductIds: [] }, [
+        { productId: a.product, pcts: { [ML]: 25 } },
+      ]);
+      const rows = await c.query<{ product_id: string; pct: number }>(
+        "select product_id, pct from sale_event_discounts where event_id = $1 and ml = $2",
+        [ev, ML],
+      );
+      const by = Object.fromEntries(
+        rows.rows.map((r) => [r.product_id, r.pct]),
+      );
+      check(
+        "b үлдсэн (15%), a шинэчлэгдсэн (25%)",
+        by[b.product] === 15 && by[a.product] === 25,
+        by,
+      );
+      // Хуучин клиент (түлхүүргүй) — өмнөх бүрэн солих зан төлөв хэвээр.
+      await saveRaw(c, ev, {}, [{ productId: a.product, pcts: { [ML]: 25 } }]);
+      const old = await c.query(
+        "select 1 from sale_event_products where event_id = $1 and product_id = $2",
+        [ev, b.product],
+      );
+      check(
+        "түлхүүргүй бол бүрэн солино (хуучин клиент)",
+        old.rows.length === 0,
+        old.rows,
       );
     },
   );
