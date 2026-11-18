@@ -179,6 +179,10 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
         basePrice={selected?.basePrice ?? 0}
         sizeLabel={selected ? `${selected.ml}ml` : null}
         endsAt={selected?.saleEndsAt}
+        // Аль нэг хэмжээнд тоолуур гарч болох бол утсан дээр 2 мөр хадгална.
+        reserve={product.variants.some(
+          (v) => v.isActive && v.price < v.basePrice && v.saleEndsAt,
+        )}
       />
 
       <div className="space-y-3">

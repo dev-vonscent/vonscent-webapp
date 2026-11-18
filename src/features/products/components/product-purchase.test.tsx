@@ -220,6 +220,41 @@ describe("ProductPurchase", () => {
     expect(screen.queryByRole("timer")).toBeNull();
   });
 
+  it("price row keeps the same reserved height for every size of a sale product; none for a product without sale", async () => {
+    const ends = new Date(Date.now() + 2 * 24 * 3600 * 1000).toISOString();
+    const { unmount } = render(
+      <FeatureFlagsProvider enabled={["sale_display"]}>
+        <ProductPurchase
+          product={product([
+            variant(2, 12000),
+            variant(5, 21300, { basePrice: 25000, saleEndsAt: ends }),
+            ...SIZES.slice(2),
+          ])}
+        />
+      </FeatureFlagsProvider>,
+    );
+    const row = () => screen.getByTestId("size-price").className;
+    const at2 = row();
+    expect(at2).toContain("max-sm:min-h-16");
+    await userEvent.click(screen.getByRole("radio", { name: /^5ml/ }));
+    // Pill үнийн мөрөн дотор, мөрийн class (өндөр) өөрчлөгдөхгүй.
+    expect(
+      screen.getByTestId("size-price").querySelector("[role=timer]"),
+    ).not.toBeNull();
+    expect(row()).toBe(at2);
+    await userEvent.click(screen.getByRole("radio", { name: "2ml" }));
+    expect(screen.queryByRole("timer")).toBeNull();
+    expect(row()).toBe(at2);
+    unmount();
+
+    render(
+      <FeatureFlagsProvider enabled={["sale_display"]}>
+        <ProductPurchase product={product(SIZES)} />
+      </FeatureFlagsProvider>,
+    );
+    expect(row()).not.toContain("min-h");
+  });
+
   it("no countdown when sale_display is off", async () => {
     const ends = new Date(Date.now() + 2 * 24 * 3600 * 1000).toISOString();
     render(

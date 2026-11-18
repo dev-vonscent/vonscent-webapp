@@ -114,6 +114,10 @@ export function CollectionDetail({ collection }: { collection: Collection }) {
           priceRow ? `${collection.members.length} × ${priceRow.ml}ml` : null
         }
         endsAt={bundlesOn ? bundleSizeSaleEndsAt(collection, priceRow) : null}
+        reserve={
+          bundlesOn &&
+          collection.prices.some((p) => bundleSizeSaleEndsAt(collection, p))
+        }
       />
 
       <SizeSelector

@@ -156,50 +156,68 @@ describe("SaleCountdown — өнгө (24 цагийн босго)", () => {
   });
 });
 
-describe("SaleCountdown variant=boxes (дэлгэрэнгүй)", () => {
+describe("SaleCountdown variant=pill (дэлгэрэнгүйн үнийн мөр)", () => {
   const H = 3600 * 1000;
-  const boxes = (msLeft: number) =>
+  const pill = (msLeft: number) =>
     withFlags(
       <SaleCountdown
-        variant="boxes"
+        variant="pill"
         endsAt={new Date(NOW + msLeft).toISOString()}
       />,
     );
+  async function mount(msLeft: number) {
+    render(pill(msLeft));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    return screen.getByRole("timer");
+  }
 
-  it("SSR-д тоо гарахгүй, бүтэц нь invisible (өндөр тогтмол)", () => {
-    const html = renderToString(boxes(3 * 24 * H));
+  it("SSR-д тоо гарахгүй, хоосон invisible бүрхүүл; гарчиггүй", () => {
+    const html = renderToString(pill(3 * 24 * H));
     expect(html).toMatch(/invisible/);
-    expect(html).toContain("Хямдрал дуусахад");
-    expect(html).not.toMatch(/>\d+</);
+    expect(html).not.toMatch(/\d\d:\d\d/);
+    expect(html).not.toContain("Хямдрал дуусахад");
   });
 
-  it("өдөр/цаг/мин/сек тусдаа хайрцагт, > 24ц хайрцаг bg-muted", async () => {
-    render(boxes(ENDS_MS));
-    await act(async () => {
-      await Promise.resolve();
-    });
-    const timer = screen.getByRole("timer");
-    expect(timer.getAttribute("aria-label")).toBe(
-      "Хямдрал дуусахад 7 өдөр 16:45:32",
-    );
-    const nums = [...timer.querySelectorAll('[class*="text-2xl"]')].map(
-      (n) => n.textContent,
-    );
-    expect(nums).toEqual(["7", "16", "45", "32"]);
-    expect(timer.textContent).toContain("өдөр");
-    expect(timer.textContent).toContain("сек");
-    expect(timer.querySelector(".bg-muted")).not.toBeNull();
-    expect(timer.querySelector(".bg-destructive\\/10")).toBeNull();
+  it("«7 өдөр 16:45:32», aria-label «Хямдрал дуусахад 7 өдөр 16 цаг»", async () => {
+    const t = await mount(ENDS_MS);
+    expect(t.textContent).toContain("7 өдөр 16:45:32");
+    expect(t.getAttribute("aria-label")).toBe("Хямдрал дуусахад 7 өдөр 16 цаг");
+    expect(t.getAttribute("aria-live")).toBe("off");
+    expect(t.className).toContain("rounded-full");
   });
 
-  it("≤ 24ц → бүхэлдээ destructive", async () => {
-    render(boxes(5 * H));
-    await act(async () => {
-      await Promise.resolve();
-    });
-    const timer = screen.getByRole("timer");
-    expect(timer.getAttribute("data-urgent")).toBe("true");
-    expect(timer.querySelector(".bg-muted")).toBeNull();
-    expect(timer.querySelectorAll(".bg-destructive\\/10")).toHaveLength(4);
+  it("> 24ц → bg-muted, тоо foreground, icon sale", async () => {
+    const t = await mount(3 * 24 * H);
+    expect(t.className).toContain("bg-muted");
+    expect(t.className).toContain("text-foreground");
+    expect(t.className).not.toContain("bg-sale");
+    expect(t.querySelector("svg")?.getAttribute("class")).toContain(
+      "text-sale",
+    );
+  });
+
+  it("≤ 24ц → бүхэлдээ bg-sale text-sale-foreground", async () => {
+    const t = await mount(5 * H);
+    expect(t.getAttribute("data-urgent")).toBe("true");
+    expect(t.className).toContain("bg-sale");
+    expect(t.className).toContain("text-sale-foreground");
+    expect(t.className).not.toContain("bg-muted");
+    expect(t.getAttribute("aria-label")).toBe("Хямдрал дуусахад 5 цаг 0 мин");
+  });
+
+  it("анимэйшн зөвхөн motion-safe (prefers-reduced-motion үед үгүй), transition-colors үгүй", async () => {
+    const t = await mount(3 * 24 * H);
+    const classes = [
+      ...t.className.split(" "),
+      ...(t.querySelector("svg")?.getAttribute("class") ?? "").split(" "),
+    ];
+    const anim = classes.filter((c) => c.includes("animate-"));
+    expect(anim).toEqual([
+      "motion-safe:animate-sale-pill-in",
+      "motion-safe:animate-sale-clock",
+    ]);
+    expect(classes.some((c) => c.includes("transition"))).toBe(false);
   });
 });

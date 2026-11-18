@@ -459,6 +459,31 @@
   --animate-sheen: sheen-rotate 80s linear infinite;
   --animate-nudge-up: nudge-up 2s ease-in-out infinite;
   --animate-search-open: search-open 0.2s ease-out;
+  /* Үнийн мөрийн тоолуурын pill: гарч ирэх (opacity + 4px), цагны icon-ы
+     секунд тутмын зөөлөн хөдөлгөөн. Зөвхөн `motion-safe:`-ээр хэрэглэнэ. */
+  --animate-sale-pill-in: sale-pill-in 0.2s ease-out both;
+  --animate-sale-clock: sale-clock 1s ease-in-out infinite;
+}
+
+@keyframes sale-pill-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes sale-clock {
+  0%,
+  30%,
+  100% {
+    transform: rotate(0deg);
+  }
+  12% {
+    transform: rotate(14deg);
+  }
 }
 
 @keyframes accordion-down {
