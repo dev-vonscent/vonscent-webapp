@@ -93,7 +93,10 @@ test("375px quick-add: selector and «Сагсанд нэмэх» do not move", 
   const dialog = page.getByRole("dialog");
   const group = sizeGroup(dialog);
   await expect(group).toBeVisible();
-  const cart = dialog.getByRole("button", { name: /Сагсанд нэмэх/ });
+  // Дууссан хэмжээн дээр товч «Дууссан» / «Түр байхгүй» нэртэй болно.
+  const cart = dialog.getByRole("button", {
+    name: /Сагсанд нэмэх|Дууссан|Түр байхгүй/,
+  });
   await pickAll(group, QUICK.sizes, async () => [
     await y(group),
     await y(cart),
