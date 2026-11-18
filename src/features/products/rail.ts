@@ -216,14 +216,15 @@ export function mixCatalog(
  *  1. хямдрал дуусах мөч ойр нь эхэнд — хугацаагүй нь бүгдийн ард;
  *  2. ижил бол хувь (`maxPct`) их нь эхэнд;
  *  3. бүгд ижил бол санамсаргүй — сервер дээр `dailyRandom()` дамжуул (ISR).
- * Оролтыг өөрчлөхгүй.
+ * Өнгөрсөн дуусах мөч (хоцорсон өгөгдөл) хэзээ ч «ойр» биш — хугацаагүйтэй
+ * адил ард. Оролтыг өөрчлөхгүй.
  */
 export function sortSaleRail<
   T extends { sale?: { maxPct: number; endsAt?: string | null } },
->(items: readonly T[], random = Math.random): T[] {
+>(items: readonly T[], random = Math.random, now = Date.now()): T[] {
   const end = (x: T) => {
     const t = x.sale?.endsAt ? Date.parse(x.sale.endsAt) : NaN;
-    return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY;
+    return Number.isFinite(t) && t > now ? t : Number.POSITIVE_INFINITY;
   };
   const pct = (x: T) => x.sale?.maxPct ?? 0;
   // Эхлээд холиод тогтвортой эрэмбэлнэ — тэнцсэн нь холилтын дарааллаараа.

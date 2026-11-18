@@ -231,12 +231,27 @@ describe("sortSaleRail (2.1)", () => {
       sp("d30-25", 25, "2026-11-30T16:00:00Z"),
       sp("none-5", 5, null),
     ];
-    expect(ids(sortSaleRail(list, seededRandom("x")))).toEqual([
+    const now = Date.parse("2026-11-18T00:00:00Z");
+    expect(ids(sortSaleRail(list, seededRandom("x"), now))).toEqual([
       "d20-10",
       "d30-25",
       "d30-10",
       "none-50",
       "none-5",
+    ]);
+  });
+
+  it("өнгөрсөн дуусах мөч хэзээ ч «ойр» биш — хугацаагүйтэй адил ард", () => {
+    const now = Date.parse("2026-11-18T00:00:00Z");
+    const list = [
+      sp("stale-10", 10, "2026-10-31T16:00:00Z"),
+      sp("bf-10", 10, "2026-11-21T16:00:00Z"),
+      sp("none-50", 50, null),
+    ];
+    expect(ids(sortSaleRail(list, seededRandom("x"), now))).toEqual([
+      "bf-10",
+      "none-50",
+      "stale-10",
     ]);
   });
 

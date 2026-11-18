@@ -233,6 +233,8 @@ describe("summarizeSale + salePctText (2.4)", () => {
 describe("saleEndsAt", () => {
   const ev = "2026-11-30T16:00:00Z";
   const manualEnd = "2026-11-20T16:00:00Z";
+  // 10/31-нд дууссан гар хямдралын дараах өдөр (dev-ийн Polo EST.97).
+  const nov = new Date("2026-11-18T00:00:00Z");
 
   it("бодит үнэ = гар хямдрал → гар хямдралын дуусах мөч", () => {
     expect(
@@ -264,20 +266,92 @@ describe("saleEndsAt", () => {
     ).toBe(ev);
   });
 
-  it("сангийн цаг ба серверийн цаг зөрсөн ч variant_price-ийг дагана", () => {
-    // `now`-аар бол гар хямдрал дууссан, гэхдээ сан хүчинтэй гэж бодсон.
+  it("(1) дууссан гар хямдрал + LIVE арга хэмжээ ИЖИЛ үнэ → арга хэмжээний мөч (Polo EST.97, PR #290)", () => {
+    const polo = {
+      price: 15000,
+      sale_price: 13500,
+      sale_ends_at: "2026-10-31T16:00:00Z", // `now`-оос өмнө — дууссан
+      variant_price: 13500, // BF 10%
+    };
+    // SQL label (0189) — арга хэмжээ.
+    expect(
+      saleEndsAt({ ...polo, variant_sale_label: "Black Friday" }, ev, nov),
+    ).toBe(ev);
+    // Label мэдэгдэхгүй ч дууссан гар хямдралыг сонгохгүй.
+    expect(saleEndsAt(polo, ev, nov)).toBe(ev);
+  });
+
+  it("(2) хүчинтэй хугацаагүй гар хямдрал + арга хэмжээ → SQL-ийн дүрмээр", () => {
+    const v = { price: 30000, sale_price: 24000, sale_ends_at: null };
+    // Гар хямдрал хямд → label null → гар хямдрал, хугацаагүй.
+    expect(
+      saleEndsAt(
+        { ...v, variant_price: 24000, variant_sale_label: null },
+        ev,
+        now,
+      ),
+    ).toBeNull();
+    // Ижил үнэ → SQL арга хэмжээг сонгоно (label) → арга хэмжээний мөч.
+    expect(
+      saleEndsAt(
+        { ...v, variant_price: 24000, variant_sale_label: "Black Friday" },
+        ev,
+        now,
+      ),
+    ).toBe(ev);
+    // Арга хэмжээ хямд → арга хэмжээ.
+    expect(
+      saleEndsAt(
+        { ...v, variant_price: 21000, variant_sale_label: "Black Friday" },
+        ev,
+        now,
+      ),
+    ).toBe(ev);
+  });
+
+  it("(3) зөвхөн дууссан sale_price → хямдралгүй", () => {
+    expect(
+      saleEndsAt(
+        {
+          price: 15000,
+          sale_price: 13500,
+          sale_ends_at: "2026-10-31T16:00:00Z",
+          variant_price: 15000,
+          variant_sale_label: null,
+        },
+        null,
+        nov,
+      ),
+    ).toBeUndefined();
+    // Demo (variant_price-гүй) ч мөн адил.
+    expect(
+      saleEndsAt(
+        {
+          price: 15000,
+          sale_price: 13500,
+          sale_ends_at: "2026-10-31T16:00:00Z",
+        },
+        null,
+        nov,
+      ),
+    ).toBeUndefined();
+  });
+
+  it("эхлээгүй гар хямдрал label-гүй ирвэл хугацааг авахгүй", () => {
     expect(
       saleEndsAt(
         {
           price: 30000,
           sale_price: 27000,
-          sale_ends_at: "2026-10-01T00:00:00Z",
+          sale_starts_at: "2026-11-01T00:00:00Z",
+          sale_ends_at: manualEnd,
           variant_price: 27000,
+          variant_sale_label: null,
         },
         null,
         now,
       ),
-    ).toBe("2026-10-01T00:00:00Z");
+    ).toBeNull();
   });
 
   it("хугацаагүй гар хямдрал → null; хямдралгүй → undefined", () => {
@@ -319,5 +393,13 @@ describe("earliestEnd", () => {
       ]),
     ).toBe("2026-11-20T16:00:00Z");
     expect(earliestEnd([null, undefined])).toBeNull();
+  });
+
+  it("now өгвөл өнгөрсөн мөчийг алгасна", () => {
+    const t = Date.parse("2026-11-18T00:00:00Z");
+    expect(
+      earliestEnd(["2026-10-31T16:00:00Z", "2026-11-21T16:00:00Z"], t),
+    ).toBe("2026-11-21T16:00:00Z");
+    expect(earliestEnd(["2026-10-31T16:00:00Z"], t)).toBeNull();
   });
 });

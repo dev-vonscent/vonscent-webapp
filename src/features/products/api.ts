@@ -609,6 +609,7 @@ type SaleVariantRow = Pick<
   | "sale_ends_at"
   | "is_active"
   | "variant_price"
+  | "variant_sale_label"
 >;
 
 /**
@@ -629,7 +630,7 @@ const fetchSaleRows = unstable_cache(
     const { data, error } = await supabase
       .from("products")
       .select(
-        "id, product_variants ( ml, price, sale_price, sale_starts_at, sale_ends_at, is_active, variant_price ), product_tags!inner ( tags!inner ( kind ) )",
+        "id, product_variants ( ml, price, sale_price, sale_starts_at, sale_ends_at, is_active, variant_price, variant_sale_label ), product_tags!inner ( tags!inner ( kind ) )",
       )
       .eq("is_active", true)
       .eq("product_tags.tags.kind", "sale");
@@ -681,10 +682,12 @@ export const getSaleSummaries = cache(
         showEnds
           ? {
               ...summary,
+              // Өнгөрсөн мөч (хоцорсон кэш) алгасагдана — «ойр» болохгүй.
               endsAt: earliestEnd(
                 active.map((v) =>
                   saleEndsAt(v, eventEnds.get(row.id) ?? null, now),
                 ),
+                now.getTime(),
               ),
             }
           : summary,

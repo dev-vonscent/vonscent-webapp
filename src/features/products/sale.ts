@@ -226,14 +226,21 @@ export function salePctText(
  * Одоогийн хямдарсан үнэ хэзээ дуусах вэ (ISO, exclusive). Хямдралгүй бол
  * undefined, хугацаагүй бол null.
  *
- * Эх үүсвэрийг ЦАГААР биш `variant_price`-ийн утгаар тогтооно (сервер ба
- * сангийн цаг зөрж болно): бодит үнэ нь гар хямдралын үнэ бол гар
- * хямдралын `sale_ends_at`, эс бөгөөс арга хэмжээний `ends_at`
- * (`eventEndsAt` — тухайн барааг агуулсан LIVE арга хэмжээ). `variant_price`
- * байхгүй (demo seed) бол `isSaleActive`-ээр.
+ * Эх үүсвэр — SQL-ийн дүрмээр:
+ *  - `variant_sale_label` (0189) нь бодит үнийг тогтоож буй LIVE арга
+ *    хэмжээний нэр. Гар хямдрал ба арга хэмжээ ИЖИЛ үнэ гаргавал SQL арга
+ *    хэмжээг сонгодог (label = event) — энд ч тэгнэ: `eventEndsAt`.
+ *  - label null бол гар хямдрал — гэхдээ ЗӨВХӨН хүчинтэй үед
+ *    (`isSaleActive`: эхэлсэн, дуусаагүй). Дууссан/эхлээгүй `sale_price` санд
+ *    үлддэг (0166) тул хэзээ ч эх үүсвэр, дуусах мөч болохгүй.
+ *  - label мэдэгдэхгүй (demo seed) бол хүчинтэй гар хямдрал үнэтэйгээ
+ *    тэнцвэл гар хямдрал, эс бөгөөс арга хэмжээ.
  */
 export function saleEndsAt(
-  v: SaleFields & { variant_price?: number | null },
+  v: SaleFields & {
+    variant_price?: number | null;
+    variant_sale_label?: string | null;
+  },
   eventEndsAt: string | null,
   now: Date = new Date(),
 ): string | null | undefined {
@@ -242,20 +249,29 @@ export function saleEndsAt(
       ? Math.min(v.variant_price, v.price)
       : effectivePrice(v, now);
   if (price >= v.price) return undefined;
-  const manual =
-    typeof v.variant_price === "number"
-      ? v.sale_price != null && v.sale_price === price
-      : isSaleActive(v, now);
-  return manual ? (v.sale_ends_at ?? null) : eventEndsAt;
+  if (v.variant_sale_label) return eventEndsAt;
+  const manualOn = isSaleActive(v, now) && v.sale_price === price;
+  if (v.variant_sale_label === null) {
+    // SQL: арга хэмжээ биш → гар хямдрал; хүчингүй бол хугацаа мэдэгдэхгүй.
+    return manualOn ? (v.sale_ends_at ?? null) : null;
+  }
+  return manualOn ? (v.sale_ends_at ?? null) : eventEndsAt;
 }
 
-/** Хамгийн ойр мөч (null/undefined алгасна); байхгүй бол null. */
+/**
+ * Хамгийн ойр мөч (null/undefined алгасна); байхгүй бол null. `now` өгвөл
+ * өнгөрсөн мөчийг алгасна — хоцорсон кэшийн дууссан хугацаа «ойр» болохгүй.
+ */
 export function earliestEnd(
   ends: readonly (string | null | undefined)[],
+  now?: number,
 ): string | null {
   let best: string | null = null;
   for (const e of ends) {
-    if (e && (best == null || Date.parse(e) < Date.parse(best))) best = e;
+    if (!e) continue;
+    const t = Date.parse(e);
+    if (!Number.isFinite(t) || (now != null && t <= now)) continue;
+    if (best == null || t < Date.parse(best)) best = e;
   }
   return best;
 }
