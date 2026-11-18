@@ -288,9 +288,10 @@ export function CollectionBrowser({
             className="w-full sm:w-auto"
           />
           {/* LIVE арга хэмжээ (Black Friday …) — бэлэн багцтай үед л. Нэг л
-              сонгогдоно; каталогийн «Багц» табын chip-тэй ижил төрх. */}
+              сонгогдоно; каталогийн «Багц» табын chip-тэй ижил төрх. Утсан
+              дээр тусдаа мөр — хайлт, эрэмбийн мөрийг шахахгүй. */}
           {bundleEvents.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto">
               {bundleEvents.map((e) => (
                 <EventFilterChip
                   key={e.slug}
