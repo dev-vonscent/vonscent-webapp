@@ -70,7 +70,7 @@ describe("CollectionDetail size buttons", () => {
   it("card: one scent's size × the scent count and sprays, no price", () => {
     render(<CollectionDetail collection={collection(PRICES)} />);
     const tenMl = screen.getByRole("radio", { name: "10ml ×4" });
-    expect(tenMl.textContent).toBe("10ml ×4тус бүр150 цацалт.");
+    expect(tenMl.textContent).toBe("10ml ×4600 цацалт.");
     expect(tenMl.textContent).not.toMatch(/₮/);
   });
 
@@ -103,7 +103,7 @@ describe("CollectionDetail size buttons", () => {
   it("hint under the selector follows the selected size", async () => {
     render(<CollectionDetail collection={collection(PRICES)} />);
     expect(screen.getByTestId("size-hint").textContent).toBe(
-      "Үнэртэн тус бүр 30 цацалт, эрсдэлгүй туршилт",
+      "Нийт 120 цацалт, эрсдэлгүй туршилт",
     );
     await userEvent.click(screen.getByRole("radio", { name: "10ml ×4" }));
     expect(screen.getByTestId("size-hint").textContent).toBe(

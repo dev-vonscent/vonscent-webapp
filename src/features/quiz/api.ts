@@ -1,5 +1,5 @@
 import "server-only";
-import { fetchProducts } from "@/features/products/api";
+import { fetchProducts, withSale } from "@/features/products/api";
 import { scoreQuizMatches, type QuizResult } from "./score";
 import type { QuizAnswers } from "./questions";
 
@@ -8,5 +8,7 @@ export async function getQuizMatches(
   answers: QuizAnswers,
 ): Promise<QuizResult> {
   const all = await fetchProducts();
-  return scoreQuizMatches(all, answers);
+  const result = scoreQuizMatches(all, answers);
+  // fetchProducts нь хямдралын товчгүй — картын тууз/үнэд хэрэгтэй.
+  return { ...result, items: await withSale(result.items) };
 }

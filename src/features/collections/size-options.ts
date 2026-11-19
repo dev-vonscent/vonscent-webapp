@@ -4,7 +4,7 @@ import type { CollectionCardData, CollectionPriceAtMl } from "./types";
 
 /**
  * Бэлэн багцын хэмжээнүүд → нэгдсэн хэмжээ сонгогчийн карт (task 15).
- * Карт дээр «5ml ×4» + «тус бүр 75 цацалт».
+ * Карт дээр «5ml ×4» + нийт «300 цацалт» (ml × гишүүдийн тоо).
  *
  * - Бүх гишүүнд энэ хэмжээ БАЙГАА ч аль нэг нь дууссан → «Дууссан», СОНГОГДОНО
  *   (task 4 — үнэ нь бүрэн, дээр харагдана; товч идэвхгүй).
@@ -30,7 +30,7 @@ export function bundleSizeOptions(
       buyable: p.available,
       // Үнийн хэсэгтэй ижил: админы амласан хувь (event үед event-ийн).
       salePct: (p.eventSaving ?? 0) > 0 ? p.nominalDiscountPct : 0,
-      sprays: spraysText(p.ml, true),
+      sprays: spraysText(p.ml * Math.max(count, 1)),
       each: true,
       price: p.price,
       totalMl: p.ml * Math.max(count, 1),

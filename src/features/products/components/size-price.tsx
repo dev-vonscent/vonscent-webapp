@@ -60,35 +60,73 @@ export function SizePrice({
     price < basePrice ? (pctOverride ?? salePct(basePrice, price)) : 0;
   const lg = size === "lg";
   const ends = pct > 0 ? endsAt : null;
-  return (
-    <div className={lg ? undefined : "space-y-1"}>
+  // Дэлгэрэнгүй (lg): үнэ нь хуудасны гол тоо — том, нягт; хэмнэлт (хувь +
+  // зураастай үнэ) түүний хажууд нэг блок болж бэхэлнэ, хэмжээ доор нь.
+  // Тоолуур sm+ үед баруун захад, утсан дээр доод мөрөнд.
+  if (lg) {
+    return (
       <div
         aria-live="polite"
         data-testid="size-price"
         className={cn(
-          "flex flex-wrap items-baseline gap-x-2 gap-y-1",
-          // 2 мөр: text-3xl (36px) + gap 4px + pill (24px).
-          lg && reserve && showEnds && "max-sm:min-h-16",
+          "flex flex-wrap items-center gap-x-4 gap-y-3",
+          // 2 мөр: үнэ (32px) + gap 12px + pill (24px).
+          reserve && showEnds && "max-sm:min-h-17",
         )}
       >
-        <span
-          className={cn(
-            "tabular-nums",
-            lg
-              ? "font-serif text-3xl font-semibold"
-              : "font-semibold tracking-tight",
+        <div className="flex items-stretch gap-3">
+          <span className="font-serif text-[2rem]/none font-semibold tracking-tight tabular-nums sm:text-4xl/none">
+            {formatPrice(price)}
+          </span>
+          {(pct > 0 || sizeLabel) && (
+            <span className="flex flex-col justify-between gap-1 py-0.5">
+              {pct > 0 && (
+                <span className="flex items-center gap-2">
+                  {/* `sale` token — бүх theme-д ижил, цагаан тоотой (6.5:1). */}
+                  <span
+                    data-testid="size-price-pct"
+                    className="bg-sale text-sale-foreground rounded-full px-2 py-0.5 text-sm/none font-semibold tabular-nums"
+                  >
+                    −{pct}%
+                  </span>
+                  <span className="text-muted-foreground text-sm/none tabular-nums line-through">
+                    {formatPrice(basePrice)}
+                  </span>
+                </span>
+              )}
+              {sizeLabel && (
+                <span className="text-muted-foreground mt-auto text-sm/none">
+                  / {sizeLabel}
+                </span>
+              )}
+            </span>
           )}
-        >
+        </div>
+        {/* Хэмжээ солигдох бүрт дахин mount — гарч ирэх анимэйшн. */}
+        <SaleCountdown
+          key={sizeLabel ?? ""}
+          endsAt={ends}
+          variant="pill"
+          className="sm:ml-auto"
+        />
+      </div>
+    );
+  }
+
+  // quick-add (sm): нэг мөрийн жижиг хувилбар.
+  return (
+    <div className="space-y-1">
+      <div
+        aria-live="polite"
+        data-testid="size-price"
+        className="flex flex-wrap items-baseline gap-x-2 gap-y-1"
+      >
+        <span className="font-semibold tracking-tight tabular-nums">
           {formatPrice(price)}
         </span>
         {pct > 0 && (
           <>
-            <span
-              className={cn(
-                "text-muted-foreground tabular-nums line-through",
-                lg ? "text-base" : "text-xs",
-              )}
-            >
+            <span className="text-muted-foreground text-xs tabular-nums line-through">
               {formatPrice(basePrice)}
             </span>
             {/* `sale` token — бүх theme-д ижил. Бараан улаан нь хар
@@ -96,45 +134,25 @@ export function SizePrice({
                 жижиг pill (6.5:1). */}
             <span
               data-testid="size-price-pct"
-              className={cn(
-                "bg-sale text-sale-foreground self-center rounded-full px-1.5 py-0.5 leading-none font-semibold tabular-nums",
-                lg ? "text-sm" : "text-xs",
-              )}
+              className="bg-sale text-sale-foreground self-center rounded-full px-1.5 py-0.5 text-xs leading-none font-semibold tabular-nums"
             >
               −{pct}%
             </span>
           </>
         )}
         {sizeLabel && (
-          <span
-            className={cn("text-muted-foreground", lg ? "text-sm" : "text-xs")}
-          >
-            / {sizeLabel}
-          </span>
-        )}
-        {/* Хэмжээ солигдох бүрт дахин mount — гарч ирэх анимэйшн. */}
-        {lg && (
-          <SaleCountdown
-            key={sizeLabel ?? ""}
-            endsAt={ends}
-            variant="pill"
-            // sm+: үнийн бүлэг зүүнд, тоолуур баруун захад (space-between).
-            // Утсан дээр доод мөрөнд зүүн тийш хэвээр.
-            className="self-center sm:ml-auto"
-          />
+          <span className="text-muted-foreground text-xs">/ {sizeLabel}</span>
         )}
       </div>
-      {/* quick-add: нэг мөрийн жижиг хувилбар. `reserve` үед мөрийн өндөр
-          (16px) үргэлж хадгалагдана — хямдралтай хэмжээ сонгоход цонх
-          хөдлөхгүй. */}
-      {!lg &&
-        (reserve && showEnds ? (
-          <div className="min-h-4" data-testid="size-price-countdown-slot">
-            <SaleCountdown endsAt={ends} />
-          </div>
-        ) : (
+      {/* `reserve` үед мөрийн өндөр (16px) үргэлж хадгалагдана — хямдралтай
+          хэмжээ сонгоход цонх хөдлөхгүй. */}
+      {reserve && showEnds ? (
+        <div className="min-h-4" data-testid="size-price-countdown-slot">
           <SaleCountdown endsAt={ends} />
-        ))}
+        </div>
+      ) : (
+        <SaleCountdown endsAt={ends} />
+      )}
     </div>
   );
 }

@@ -142,10 +142,14 @@ export default async function ProductPage({
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="grid grid-cols-1 gap-0 sm:gap-10 lg:grid-cols-2 lg:items-start">
+      <div className="grid grid-cols-1 gap-0 max-sm:block sm:gap-10 lg:grid-cols-2 lg:items-start">
         {/* Left: gallery sticks below the header while the right column scrolls,
             and releases when the grid ends (i.e. the related section appears). */}
-        <div className="lg:sticky lg:top-(--header-offset) lg:self-start lg:transition-[top] lg:duration-300 lg:ease-out">
+        {/* Утсан дээр зураг байрандаа (sticky top-0) үлдэж, доорх самбар
+            түүний дээгүүр гулсаж гарна. Grid item-ийн sticky нь өөрийн
+            мөрөөсөө гарахгүй тул < sm үед grid биш block (`max-sm:block`) —
+            тэгвэл зураг бүх grid-ийн туршид наалдана. */}
+        <div className="max-sm:sticky max-sm:top-0 lg:sticky lg:top-(--header-offset) lg:self-start lg:transition-[top] lg:duration-300 lg:ease-out">
           <ProductGallery images={product.images} name={product.name} />
         </div>
 
@@ -181,7 +185,8 @@ export default async function ProductPage({
                 <GenderBadge gender={product.gender} />
               </div>
               <div className="flex items-start justify-between gap-3">
-                <h1 className="font-serif text-3xl font-semibold tracking-tight">
+                {/* Нэр үнээс (SizePrice lg, 32/36px) жижиг — нүд эхлээд үнэ дээр. */}
+                <h1 className="font-serif text-2xl font-semibold tracking-tight">
                   {product.name}
                 </h1>
                 <WishlistButton
