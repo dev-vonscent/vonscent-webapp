@@ -9,7 +9,7 @@ import { GenderBadge } from "@/features/products/components/gender-badge";
 import { WishlistButton } from "@/features/wishlist/components/wishlist-button";
 import { CollectionQuickAdd } from "./collection-quick-add";
 import { CollectionSaleBadge } from "@/features/sale-events/components/collection-sale-badge";
-import { CollectionSaleCountdown } from "@/features/sale-events/components/collection-sale-countdown";
+import { CollectionSaleBand } from "@/features/sale-events/components/collection-sale-countdown";
 
 import {
   CARD_STATUS_LABEL,
@@ -42,7 +42,7 @@ export function CollectionCard({
     <div className="group flex flex-col">
       <Link
         href={`/collections/${collection.slug}`}
-        className="group-hover:shadow-lift bg-muted relative block aspect-4/5 overflow-hidden rounded-2xl transition-all duration-300 active:scale-[0.99]"
+        className="group-hover:shadow-lift bg-muted relative isolate block aspect-4/5 overflow-hidden rounded-2xl transition-all duration-300 active:scale-[0.99]"
       >
         {collection.image && (
           <Image
@@ -66,35 +66,36 @@ export function CollectionCard({
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-black/75 via-black/30 to-transparent" />
         {/* Card нь барааны card шиг нарийн (утсан дээр 2 багана) тул нэр,
             үнэ хоёр хажуу биш, дээрээс доош давхарлана. */}
-        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 p-3 sm:p-4">
-          <span className="text-[11px] leading-none tracking-[0.15em] text-white/75 uppercase sm:text-xs">
-            {GENDER_LABEL[collection.gender]}
-          </span>
-          <span className="block truncate font-serif text-base/tight font-medium text-white sm:text-xl/tight">
-            {collection.name}
-          </span>
-          {/* «109,300₮» дангаараа «2ml нь 109,300₮» гэж уншигдана — хажуух
-              хэсэг нь тэр дүн юуны үнэ болохыг хэлнэ (үнэртний тоо × хэмжээ). */}
-          {!collection.soldOut && start > 0 && (
-            <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-              <span className="text-sm leading-none font-semibold tracking-tight text-white sm:text-base">
-                {card ? formatPrice(card.price) : `${formatPrice(start)}-өөс`}
-              </span>
-              {card && (
-                <span className="text-xs leading-none text-white/75 line-through sm:text-sm">
-                  {formatPrice(card.memberSum)}
-                </span>
-              )}
-              <span className="text-xs leading-none text-white/75 sm:text-sm">
-                {collection.members.length} × {card ? card.ml : startMl}ml
-              </span>
+        <div className="absolute inset-x-0 bottom-0 flex flex-col">
+          <div className="flex flex-col gap-1.5 p-3 sm:p-4">
+            <span className="text-[11px] leading-none tracking-[0.15em] text-white/75 uppercase sm:text-xs">
+              {GENDER_LABEL[collection.gender]}
             </span>
-          )}
-          {/* Арга хэмжээний тоолуур (2.2) — бараан дэвсгэр дээр цагаан. */}
-          <CollectionSaleCountdown
-            collection={collection}
-            className="text-white"
-          />
+            <span className="block truncate font-serif text-base/tight font-medium text-white sm:text-xl/tight">
+              {collection.name}
+            </span>
+            {/* «109,300₮» дангаараа «2ml нь 109,300₮» гэж уншигдана — хажуух
+              хэсэг нь тэр дүн юуны үнэ болохыг хэлнэ (үнэртний тоо × хэмжээ). */}
+            {!collection.soldOut && start > 0 && (
+              <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                <span className="text-sm leading-none font-semibold tracking-tight text-white sm:text-base">
+                  {card ? formatPrice(card.price) : `${formatPrice(start)}-өөс`}
+                </span>
+                {card && (
+                  <span className="text-xs leading-none text-white/75 line-through sm:text-sm">
+                    {formatPrice(card.memberSum)}
+                  </span>
+                )}
+                <span className="text-xs leading-none text-white/75 sm:text-sm">
+                  {collection.members.length} × {card ? card.ml : startMl}ml
+                </span>
+              </span>
+            )}
+          </div>
+          {/* Арга хэмжээний тоолуур (2.2) — барааны карттай ижил тууз, энд
+              текстийн доор урсгал дотор (absolute биш) тул нэр/үнийг
+              халхлахгүй. */}
+          <CollectionSaleBand collection={collection} className="static" />
         </div>
 
         {collection.soldOut && (
@@ -132,7 +133,7 @@ function RailCollectionCard({
     <div className="group relative flex flex-col">
       <Link
         href={href}
-        className="group-hover:shadow-lift bg-muted relative aspect-4/5 overflow-hidden rounded-2xl transition-all duration-300 [-webkit-touch-callout:none]"
+        className="group-hover:shadow-lift bg-muted relative isolate aspect-4/5 overflow-hidden rounded-2xl transition-all duration-300 [-webkit-touch-callout:none]"
       >
         {collection.image && (
           <Image
@@ -146,7 +147,9 @@ function RailCollectionCard({
         {/* Барааны card шиг: нэг төлөв + хөнгөлөлт — хамгийн ихдээ хоёр. */}
         {/* right-12: зүрхний icon-ы зай — chip доогуур нь орохгүй.
             `@container/chip`: нарийн үед арга хэмжээний chip зөвхөн хувь. */}
-        <div className="@container/chip absolute top-2.5 right-12 left-2.5 flex flex-col items-start gap-1">
+        {/* `[data-ticker]` = арга хэмжээний chip (SaleChip) — байвал үргэлж
+            хамгийн дээр, «Шинэ» г.м. төлөвийн тэмдгээс өмнө. */}
+        <div className="@container/chip absolute top-2.5 right-12 left-2.5 flex flex-col items-start gap-1 *:data-ticker:order-first">
           {status && (
             <Badge
               variant="outline"
@@ -157,6 +160,8 @@ function RailCollectionCard({
           )}
           <CollectionSaleBadge collection={collection} />
         </div>
+        {/* Барааны карттай ижил тууз (2.2). */}
+        <CollectionSaleBand collection={collection} />
         {collection.soldOut && (
           <div className="bg-background/70 absolute inset-0 flex items-center justify-center">
             <span className="bg-card rounded-full px-3 py-1 text-xs font-medium tracking-wide uppercase">
@@ -205,8 +210,6 @@ function RailCollectionCard({
             </span>
           </span>
         )}
-        {/* Барааны card-тай ижил байрлал (2.2). */}
-        <CollectionSaleCountdown collection={collection} className="mt-0.5" />
       </div>
     </div>
   );

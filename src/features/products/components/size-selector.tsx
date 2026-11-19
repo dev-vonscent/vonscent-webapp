@@ -180,7 +180,7 @@ export function SizeSelector({
                   active ? "text-cta-foreground/75" : "text-muted-foreground",
                 )}
               >
-                {o.note ?? <Sprays ml={o.ml} each={o.each} />}
+                {o.note ?? <Sprays ml={o.totalMl} />}
               </span>
             </button>
           );
@@ -309,12 +309,11 @@ function SaleMarker({ pct, shape }: { pct: number; shape: "burst" | "pill" }) {
  * Картын цацалтын мөр — үргэлж НЭГ мөр, бүх карт ижил өндөр (dev QA, G).
  * «300 цацалт» (12px-д ~66px) нь 320px-ийн quick-add-ийн картад (~54px)
  * багтахгүй тул картын өргөн (`@container`) хүрэхгүй үед л «300 цац.».
- * Багцын «тус бүр» тусдаа мөрөнд (бүх картад адил 2 мөр).
+ * Багцад нийт тоо (`totalMl`, «5ml ×4» → «300 цацалт») — нэг мөр.
  */
-function Sprays({ ml, each }: { ml: number; each: boolean }) {
+function Sprays({ ml }: { ml: number }) {
   return (
     <>
-      {each && <span className="block">тус бүр</span>}
       <span className="whitespace-nowrap">
         {ml * SPRAYS_PER_ML} цац
         <span className="hidden @min-[4.15rem]:inline">алт</span>

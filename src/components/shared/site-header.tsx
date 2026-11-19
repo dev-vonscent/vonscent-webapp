@@ -71,6 +71,9 @@ function getTitle(pathname: string): string {
   // `in`, not truthiness: an exact "" means "no title" (the wheel's stage),
   // not "unknown page — fall back to the brand name".
   if (pathname in TITLES) return TITLES[pathname];
+  // Багцын дэлгэрэнгүй — барааны хуудас шиг full-bleed зураг, гарчиггүй.
+  // («/collections/build» дээрх exact match-аар түрүүлж барина.)
+  if (/^\/collections\/[^/]+$/.test(pathname)) return "";
   const match = Object.keys(TITLES)
     .filter((k) => pathname.startsWith(`${k}/`))
     .sort((a, b) => b.length - a.length)[0];

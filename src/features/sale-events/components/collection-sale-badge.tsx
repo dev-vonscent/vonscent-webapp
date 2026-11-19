@@ -26,8 +26,10 @@ export function CollectionSaleBadge({
   collection: Pick<CollectionCardData, "discountRange" | "event"> &
     Parameters<typeof bundleEventSale>[0];
   /**
-   * `card` — каталогийн карт; `detail` — багцын дэлгэрэнгүйн зураг дээр
-   * (арга хэмжээгүй үед өмнөх «−5%» тэмдгийн төрх яг хэвээрээ).
+   * `card` — каталогийн карт; `detail` — багцын дэлгэрэнгүйн нэрийн дээрх
+   * мөр (барааны хуудасны `SaleBadge surface="page"`-тэй ижил байрлал). Энд
+   * ЗӨВХӨН арга хэмжээний chip — суурь «−5%» нь үнийн мөрөнд аль хэдийн
+   * гардаг тул давхардуулахгүй.
    */
   surface?: "card" | "detail";
 }) {
@@ -49,15 +51,9 @@ export function CollectionSaleBadge({
       </SaleChip>
     );
   }
+  if (surface === "detail") return null;
   return (
-    <Badge
-      variant="sale"
-      className={
-        surface === "detail"
-          ? "w-fit backdrop-blur-sm"
-          : "bg-background/85! w-fit backdrop-blur-sm"
-      }
-    >
+    <Badge variant="sale" className="bg-background/85! w-fit backdrop-blur-sm">
       −{range}
     </Badge>
   );

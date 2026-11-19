@@ -295,7 +295,7 @@ describe("ProductPurchase", () => {
     );
     const row = () => screen.getByTestId("size-price").className;
     const at2 = row();
-    expect(at2).toContain("max-sm:min-h-16");
+    expect(at2).toContain("max-sm:min-h-17");
     await userEvent.click(screen.getByRole("radio", { name: /^5ml/ }));
     // Pill үнийн мөрөн дотор, мөрийн class (өндөр) өөрчлөгдөхгүй.
     expect(

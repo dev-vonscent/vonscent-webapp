@@ -38,9 +38,9 @@ export interface SizeOption {
    * тэмдэг (2.6). Үнийн хэсгийн хувьтай ижил эх үүсвэр.
    */
   salePct: number;
-  /** «75 цацалт», багцад «тус бүр 75 цацалт». */
+  /** «75 цацалт», багцад нийт (ml × гишүүдийн тоо): «5ml ×4» → «300 цацалт». */
   sprays: string;
-  /** Багц — цацалт үнэртэн тус бүрийнх (2ml-ийн зөвлөмжийн текст). */
+  /** Багц эсэх (2ml-ийн зөвлөмжийн текст). */
   each: boolean;
   /** Одоогийн бодит үнэ (₮) — 1ml-ийн үнийн харьцуулалтад. */
   price: number;
@@ -49,13 +49,12 @@ export interface SizeOption {
 }
 
 /**
- * «75 цацалт» — нэг үнэртний ml-ээс (`SPRAYS_PER_ML`). Багцад
- * «тус бүр 75 цацалт» (үнэртэн бүрт).
+ * «75 цацалт» — ml-ээс (`SPRAYS_PER_ML`). Багцад нийт ml-ийг өгнө
+ * (`ml × гишүүдийн тоо`) — «тус бүр» гэсэн нэмэлт мөр карт дээр хэт их зай
+ * эзэлдэг байв.
  */
-export function spraysText(ml: number, each = false): string {
-  // «тус бүр» салгагдахгүй зай (U+00A0) — нарийн картад «тус / бүр 30»
-  // гэж хуваагдахгүй.
-  return `${each ? "тус\u00a0бүр " : ""}${ml * SPRAYS_PER_ML} цацалт`;
+export function spraysText(ml: number): string {
+  return `${ml * SPRAYS_PER_ML} цацалт`;
 }
 
 /**
@@ -86,7 +85,7 @@ const HINT_KIND: Record<MlSize, SizeHintKind> = {
 
 /**
  * Сонгосон хэмжээний доорх нэг мөр (`SIZE_HINTS`). `{sprays}` нь картын
- * цацалтын тоотой ижил томьёо. 20ml-ийн «хамгийн хямдаар» нь 1ml-ийн үнэ нь
+ * цацалтын тоотой ижил (багцад нийт). 20ml-ийн «хамгийн хямдаар» нь 1ml-ийн үнэ нь
  * үнэхээр хамгийн бага үед л; үгүй бол `SIZE_HINT_LARGEST`. Багцын 2ml —
  * `SIZE_HINT_TRIAL_BUNDLE`. Жагсаалтад байхгүй хэмжээ → null.
  */
@@ -102,7 +101,11 @@ export function sizeHint(
   if (ml === 20 && !isCheapestPerMl(options, selected)) {
     return { text: SIZE_HINT_LARGEST, kind: "largest" };
   }
-  const text = template.replace("{sprays}", String(ml * SPRAYS_PER_ML));
+  // Багцад нийт (`totalMl` = ml × гишүүд); усанд totalMl = ml.
+  const text = template.replace(
+    "{sprays}",
+    String(selected.totalMl * SPRAYS_PER_ML),
+  );
   return { text, kind: HINT_KIND[ml] };
 }
 

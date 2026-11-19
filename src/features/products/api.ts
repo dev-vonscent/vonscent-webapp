@@ -774,8 +774,14 @@ export const getSaleSummaries = cache(
   },
 );
 
-/** `sale` тагтай мөрүүдэд товчийг наана; тийм мөр байхгүй бол асуухгүй. */
-async function withSale(items: ProductListItem[]): Promise<ProductListItem[]> {
+/**
+ * `sale` тагтай мөрүүдэд товчийг наана; тийм мөр байхгүй бол асуухгүй.
+ * Каталогоос гадна quiz-ийн үр дүн (`/api/quiz`) ч ашиглана — картын
+ * хямдралын тууз (`endsAt`), хэмжээтэй үнэ (`cardPrice`) тэнд ч гарна.
+ */
+export async function withSale<T extends ProductListItem>(
+  items: T[],
+): Promise<T[]> {
   if (!items.some((p) => p.tags.includes("sale"))) return items;
   const sales = await getSaleSummaries();
   return items.map((p) => {

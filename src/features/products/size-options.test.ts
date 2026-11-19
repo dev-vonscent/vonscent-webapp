@@ -29,7 +29,6 @@ describe("size options (task 15, 4, 2.6)", () => {
     expect(spraysText(2)).toBe("30 цацалт");
     expect(spraysText(5)).toBe("75 цацалт");
     expect(spraysText(20)).toBe("300 цацалт");
-    expect(spraysText(5, true)).toBe("тус\u00a0бүр 75 цацалт");
   });
 
   it("хэмжээ бүрийн доорх зөвлөмж (SIZE_HINTS)", () => {
@@ -151,7 +150,7 @@ describe("size options (task 15, 4, 2.6)", () => {
     expect(opts[0].sprays).toBe(`${n} цацалт`);
   });
 
-  it("багцын 2ml — «Үнэртэн тус бүр N цацалт», бусад нь ижил", () => {
+  it("багцын 2ml — «Нийт N цацалт» (ml × гишүүд), бусад нь ижил", () => {
     const row = { variantId: "x", price: 1, inStock: true };
     const members = ["a", "b"].map((id) => ({
       productId: id,
@@ -170,7 +169,7 @@ describe("size options (task 15, 4, 2.6)", () => {
       })),
     } as unknown as Parameters<typeof bundleSizeOptions>[0]);
     expect(sizeHint(opts, opts[0])?.text).toBe(
-      `Үнэртэн тус бүр ${2 * SPRAYS_PER_ML} цацалт, эрсдэлгүй туршилт`,
+      `Нийт ${2 * 2 * SPRAYS_PER_ML} цацалт, эрсдэлгүй туршилт`,
     );
     expect(sizeHint(opts, opts[1])?.text).toBe(
       "Цүнхэнд багтах, өдөр бүрийн хэмжээ",

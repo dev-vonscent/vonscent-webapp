@@ -56,12 +56,9 @@ describe("CollectionSaleBadge — багцын дэлгэрэнгүй", () => {
     expect(container.textContent).toBe("Black Friday10%");
   });
 
-  it("туг sale_event_bundles хаалттай → өмнөх «−10%» тэмдэг хэвээр", () => {
+  it("туг sale_event_bundles хаалттай → юу ч үгүй (суурь хувь үнийн мөрөнд)", () => {
     const { container } = renderBadge(["sale_events"]);
-    expect(container.textContent).not.toContain("Black Friday");
-    const badge = screen.getByText("−10%", { exact: false });
-    // Дэлгэрэнгүйн хуучин төрх — картын цагаан дэвсгэргүй.
-    expect(badge.className).not.toContain("bg-background/85");
+    expect(container.textContent).toBe("");
   });
 });
 

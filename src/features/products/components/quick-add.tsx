@@ -24,6 +24,13 @@ import {
 import { SizeSelector } from "@/features/products/components/size-selector";
 import { SizePrice } from "@/features/products/components/size-price";
 import { AddToCartLabel } from "@/features/products/components/add-to-cart-label";
+import {
+  QUICK_ADD_CONTENT,
+  QUICK_ADD_FOOTER,
+  QUICK_ADD_HEADER,
+  QUICK_ADD_THUMB,
+  QUICK_ADD_THUMB_SIZES,
+} from "@/features/products/components/quick-add-layout";
 
 export function QuickAdd({
   product,
@@ -136,39 +143,42 @@ export function QuickAdd({
         </button>
       </DialogTrigger>
 
-      <DialogContent className="gap-3 p-4 sm:gap-4 sm:p-6">
+      <DialogContent className={QUICK_ADD_CONTENT}>
         <DialogTitle className="sr-only">Сагсанд нэмэх</DialogTitle>
 
-        {/* Product summary */}
-        <div className="space-y-3">
-          <div className="bg-muted relative aspect-4/3 w-full overflow-hidden rounded-xl">
+        {/* Product summary — зураг зүүнд жижиг, мэдээлэл баруунд. */}
+        <div className={QUICK_ADD_HEADER}>
+          <div className={QUICK_ADD_THUMB}>
             {product.image && (
               <Image
                 src={product.image.url}
                 alt={product.image.alt || product.name}
                 fill
-                sizes="(max-width: 480px) 90vw, 420px"
+                sizes={QUICK_ADD_THUMB_SIZES}
                 className="object-cover"
               />
             )}
           </div>
-          <div>
-            <p className="text-muted-foreground text-[11px] tracking-[0.15em] uppercase">
+          <div className="min-w-0">
+            {/* pr-9: баруун дээд «Хаах» товчны (size-8) доогуур орохгүй. */}
+            <p className="text-muted-foreground truncate pr-9 text-[11px] tracking-[0.15em] uppercase">
               {product.brand}
             </p>
-            <p className="font-serif text-base/tight font-medium">
+            <p className="mt-1 pr-9 font-serif text-lg/tight font-medium">
               {product.name}
             </p>
             {/* Дэлгэрэнгүй хуудасных шиг үнийн хэсэг (task 15) — сонгосон
                 хэмжээгээр; ачаалж дуустал «эхлэх» үнэ. */}
-            <div className="mt-1">
+            <div className="mt-3">
               <SizePrice
                 size="sm"
                 price={selected ? selected.price : product.startingPrice}
                 basePrice={
                   selected ? selected.basePrice : product.startingBasePrice
                 }
-                sizeLabel={selected ? `${selected.ml}ml` : null}
+                // «/ 5ml» хасав — сонгосон хэмжээ доорх сонгогч дээр тодорно;
+                // нарийн баганад урт үнэтэй үед доод мөрөнд унадаг байв.
+                sizeLabel={null}
                 endsAt={selected?.saleEndsAt}
                 reserve={
                   detail?.variants.some(
@@ -198,22 +208,27 @@ export function QuickAdd({
           </div>
         )}
 
-        {/* Quantity + add. Утсан дээр товч тоо ширхэгийн ДООР бүтэн өргөнөөр:
-            «Сагсанд нэмэх · 159,600₮» нэг мөрөнд stepper-тэй багтахгүй. */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="bg-secondary flex items-center self-start rounded-md sm:self-auto">
+        {/* Quantity + add — нэг мөрөнд (утсан дээр ч). Товчны өргөн нь
+            текстээрээ (basis-auto): «Сагсанд нэмэх · 159,600₮» багтахгүй
+            үед л доод мөрөнд бүтэн өргөнөөр шилжинэ (flex-wrap). */}
+        <div
+          className={cn(QUICK_ADD_FOOTER, "flex flex-wrap items-center gap-2")}
+        >
+          <div className="bg-secondary flex h-12 items-center rounded-lg">
             <button
               type="button"
-              className="hover:text-foreground px-3 py-2"
+              className="hover:text-foreground flex h-full items-center px-3"
               onClick={() => setQty((q) => Math.max(1, q - 1))}
               aria-label="Хасах"
             >
               <Minus className="size-4" />
             </button>
-            <span className="w-10 text-center text-sm">{qty}</span>
+            <span className="w-8 text-center text-sm font-medium tabular-nums">
+              {qty}
+            </span>
             <button
               type="button"
-              className="hover:text-foreground px-3 py-2 disabled:opacity-40"
+              className="hover:text-foreground flex h-full items-center px-3 disabled:opacity-40"
               onClick={() => setQty((q) => Math.min(q + 1, maxQty))}
               disabled={qty >= maxQty}
               aria-label="Нэмэх"
@@ -224,7 +239,7 @@ export function QuickAdd({
 
           <Button
             size="lg"
-            className="w-full sm:w-auto sm:flex-1"
+            className="grow basis-auto px-4"
             disabled={
               !detail ||
               !selected ||
