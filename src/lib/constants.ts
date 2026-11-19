@@ -1145,6 +1145,19 @@ export const PROFILE_GENDER_LABEL: Record<ProfileGender, string> = {
   male: "Эрэгтэй",
   other: "Бусад",
 };
+/**
+ * Сэтгэгдлийн зохиогчийн насны ангилал (0198 `review_author_age_group`-тэй
+ * таарах ёстой): доод хил орно, дээд хил орохгүй; 13-аас доош бол харуулахгүй.
+ */
+export const REVIEW_AGE_GROUPS = [
+  "13-18",
+  "18-25",
+  "25-30",
+  "30-40",
+  "40-50",
+  "50+",
+] as const;
+export type ReviewAgeGroup = (typeof REVIEW_AGE_GROUPS)[number];
 export const PROFILE_NAME_MAX = 80;
 export const PROFILE_JOB_MAX = 80;
 /**
@@ -1168,8 +1181,8 @@ export const PROFILE_FAVORITE_PERFUMES_MAX = 3;
 export const PROFILE_PERFUME_NAME_MAX = 80;
 export const PROFILE_SCENT_PREFS_MAX = 10;
 /**
- * `settings.loyalty.profilePoints` байхгүй үеийн утга. 0163-ийн seed 500
- * байсан; клиент 1,000 болгосон (task 8.4, 2026-11-17). Бодит утга нь
+ * `settings.loyalty.profilePoints` байхгүй үеийн утга. 0163-ийн seed 500,
+ * 0195 санд 1,000 болгосон (task 8.4, 2026-11-17). Бодит утга нь
  * тохиргоонд — Админ → V point → «Мэдээлэл бөглөсний урамшуулал».
  */
 export const DEFAULT_PROFILE_POINTS = 1000;

@@ -2,10 +2,8 @@
 
 import * as React from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { motion } from "motion/react";
 import {
-  ArrowLeft,
   ArrowRight,
   Briefcase,
   Cake,
@@ -32,6 +30,7 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import {
   ageOn,
+  showProgressCard,
   formatBirthday,
   isFieldFilled,
   nextMissingField,
@@ -40,6 +39,7 @@ import {
 } from "../lib";
 import type { ProfileInfo } from "../types";
 import { useClaimProfileReward, useProfileInfo } from "../use-profile-info";
+import { AccountPageHeader } from "@/features/account/components/account-page-header";
 import { FIELD_TITLE, FieldEditor } from "./field-editors";
 
 const FIELD_ICON: Record<ProfileInfoField, LucideIcon> = {
@@ -122,18 +122,7 @@ export function ProfileInfoPage({
 
   return (
     <div className="space-y-8">
-      {/* Mobile: the site header shows back + "Миний мэдээлэл" instead. */}
-      <header className="hidden space-y-1 md:block">
-        <Link
-          href="/account"
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
-        >
-          <ArrowLeft className="size-4" /> Профайл
-        </Link>
-        <h1 className="font-serif text-2xl font-semibold sm:text-3xl">
-          Миний мэдээлэл
-        </h1>
-      </header>
+      <AccountPageHeader title="Миний мэдээлэл" />
 
       {isPending ? (
         <div className="space-y-4">
@@ -148,7 +137,12 @@ export function ProfileInfoPage({
         />
       ) : (
         <>
-          <ProgressCard info={data} onContinue={setEditing} />
+          {/* Бүрэн бөглөсөн, авах урамшуулалгүй болсон үед бүрдлийн card
+              хэрэггүй. Урамшуулал хүлээгдэж буй бол card үлдэнэ — олголт
+              түүн дотор автоматаар явагддаг. */}
+          {showProgressCard(data) && (
+            <ProgressCard info={data} onContinue={setEditing} />
+          )}
           {GROUPS.map((group) => (
             <section key={group.title} className="space-y-2">
               <GroupHeading
@@ -218,15 +212,10 @@ function ProgressCard({
       className="bg-card space-y-4 rounded-3xl p-5 sm:p-6"
     >
       <div className="flex items-end justify-between gap-4">
-        <div className="space-y-1">
-          <p className="text-muted-foreground text-xs font-medium tracking-[0.2em] uppercase">
-            Мэдээллийн бүрдэл
-          </p>
-          <p className="font-serif text-3xl font-semibold tabular-nums">
-            {done}
-            <span className="text-muted-foreground text-xl">/{total}</span>
-          </p>
-        </div>
+        <p className="font-serif text-3xl font-semibold tabular-nums">
+          {done}
+          <span className="text-muted-foreground text-xl">/{total}</span>
+        </p>
         <p className="text-muted-foreground pb-1 text-sm tabular-nums">
           {Math.round(ratio * 100)}%
         </p>
@@ -248,13 +237,9 @@ function ProgressCard({
         />
       </div>
 
-      {claimedPoints !== null ? (
-        <RewardLine icon={Check} tone="success">
-          Мэдээллээ бүрэн оруулсны{" "}
-          <strong className="tabular-nums">{claimedPoints} V point</strong>{" "}
-          авсан. Баярлалаа!
-        </RewardLine>
-      ) : claimable ? (
+      {/* Бүрэн + авсан үед card харагдахгүй (`showProgressCard`), тиймээс
+          «авсан» мөр хэрэггүй — дутуу бол бөглөөгүй үеийн текст. */}
+      {claimable ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <RewardLine icon={Gift} tone="gold">
             Бүх мэдээлэл бүрэн боллоо!
@@ -276,10 +261,11 @@ function ProgressCard({
             {points} V point авах
           </Button>
         </div>
-      ) : points > 0 ? (
+      ) : points > 0 && claimedPoints === null ? (
         <RewardLine icon={Gift} tone="gold">
           Бүх мэдээллээ оруулаад{" "}
-          <strong className="tabular-nums">{points} V point</strong> аваарай.
+          <strong className="tabular-nums">{points} V point</strong>, verified
+          тэмдэг аваарай.
           {total - done > 0 && (
             <span className="text-muted-foreground">
               {" "}
@@ -289,7 +275,8 @@ function ProgressCard({
         </RewardLine>
       ) : (
         <p className="text-muted-foreground text-sm">
-          Мэдээллээ бүрэн оруулбал танд илүү тохирох үнэртэн санал болгоно.
+          Мэдээллээ бүрэн оруулбал verified тэмдэг авч, танд илүү тохирох
+          үнэртэн санал болгоно.
         </p>
       )}
 

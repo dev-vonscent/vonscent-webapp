@@ -8,6 +8,8 @@ import { getRecentReviews } from "@/features/reviews/api";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { HOME_FEATURED_REVIEWS_MAX } from "@/lib/constants";
 import { TierAvatar } from "@/features/tiers/components/tier-avatar";
+import { VerifiedBadge } from "@/features/profile-info/components/verified-badge";
+import { ReviewAuthorChips } from "@/features/reviews/components/review-author-chips";
 
 /**
  * Real, published reviews only (`public_reviews`, non-empty text; with
@@ -17,7 +19,10 @@ import { TierAvatar } from "@/features/tiers/components/tier-avatar";
  */
 export async function ReviewsSection() {
   // Туг `review_moderation` (0162): админы сонгосон (`is_featured`) сэтгэгдэл.
-  const featuredOnly = await isFeatureEnabled("review_moderation");
+  const [featuredOnly, profileInfoOn] = await Promise.all([
+    isFeatureEnabled("review_moderation"),
+    isFeatureEnabled("profile_info"),
+  ]);
   const reviews = (
     await getRecentReviews(featuredOnly ? HOME_FEATURED_REVIEWS_MAX : 3, {
       featuredOnly,
@@ -67,11 +72,18 @@ export async function ReviewsSection() {
                     <span className="truncate text-sm font-medium">
                       {r.authorName}
                     </span>
-                    <BadgeCheck
-                      className="text-gold-strong size-3.5 shrink-0"
-                      aria-label="Баталгаажсан худалдан авагч"
-                    />
+                    {/* Туг асаалттай: зөвхөн мэдээллээ бүрэн бөглөсөн зохиогч
+                        (0196). Хаалттай: хуучнаараа бүгдэд. */}
+                    {profileInfoOn ? (
+                      r.authorVerified && <VerifiedBadge className="size-3.5" />
+                    ) : (
+                      <BadgeCheck
+                        className="text-gold-strong size-3.5 shrink-0"
+                        aria-label="Баталгаажсан худалдан авагч"
+                      />
+                    )}
                   </span>
+                  <ReviewAuthorChips review={r} className="my-1" />
                   <span className="text-muted-foreground block truncate text-xs">
                     {r.productName ? (
                       <Link

@@ -1,6 +1,10 @@
 import "server-only";
 import { createPublicClient } from "@/lib/supabase/public";
-import { REVIEWS_PAGE_SIZE } from "@/lib/constants";
+import {
+  PROFILE_GENDERS,
+  REVIEW_AGE_GROUPS,
+  REVIEWS_PAGE_SIZE,
+} from "@/lib/constants";
 import { getTiersForUsers } from "@/features/tiers/server";
 import {
   targetColumn,
@@ -33,6 +37,9 @@ interface PublicReviewRow {
   updated_at: string;
   author_name: string | null;
   author_avatar: string | null;
+  author_verified?: boolean | null;
+  author_gender?: string | null;
+  author_age_group?: string | null;
   product_name?: string | null;
   product_slug?: string | null;
   product_brand?: string | null;
@@ -40,10 +47,20 @@ interface PublicReviewRow {
 }
 
 const REVIEW_COLUMNS =
-  "id, product_id, user_id, rating, body, created_at, updated_at, author_name, author_avatar";
+  "id, product_id, user_id, rating, body, created_at, updated_at, author_name, author_avatar, author_verified, author_gender, author_age_group";
 
 /** Shown when the reviewer never set a display name. */
 const ANONYMOUS_AUTHOR = "Хэрэглэгч";
+
+/** Хаалттай жагсаалтын утга эсэх — үгүй бол null. */
+function oneOf<T extends string>(
+  list: readonly T[],
+  value: string | null | undefined,
+): T | null {
+  return (list as readonly string[]).includes(value ?? "")
+    ? (value as T)
+    : null;
+}
 
 function mapReview(r: PublicReviewRow): Review {
   return {
@@ -56,6 +73,9 @@ function mapReview(r: PublicReviewRow): Review {
     updatedAt: r.updated_at,
     authorName: r.author_name ?? ANONYMOUS_AUTHOR,
     authorAvatar: r.author_avatar ?? null,
+    authorVerified: Boolean(r.author_verified),
+    authorGender: oneOf(PROFILE_GENDERS, r.author_gender),
+    authorAgeGroup: oneOf(REVIEW_AGE_GROUPS, r.author_age_group),
   };
 }
 

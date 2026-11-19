@@ -21,6 +21,8 @@ const REASON_LABEL: Record<string, string> = {
   review: "Сэтгэгдлийн урамшуулал",
   profile: "Мэдээлэл бөглөсний урамшуулал",
   gift_card: "Бэлгийн карт",
+  spin: "Хүрднээс хожсон",
+  spin_cost: "Хүрд эргүүлсэн",
 };
 
 function formatDate(iso: string) {
@@ -119,7 +121,9 @@ export default function LoyaltyHistoryPage() {
           className="bg-secondary hover:bg-secondary/70 flex items-center gap-3 rounded-xl px-4 py-3 text-sm"
         >
           <Gift className="size-5 shrink-0" aria-hidden="true" />
-          <span className="flex-1">Бэлгийн код ирсэн үү? Энд оруулж оноо болгоно.</span>
+          <span className="flex-1">
+            Бэлгийн код ирсэн үү? Энд оруулж оноо болгоно.
+          </span>
           <span aria-hidden="true">→</span>
         </Link>
       )}

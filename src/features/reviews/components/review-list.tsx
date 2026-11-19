@@ -12,6 +12,8 @@ import {
   type ReviewTarget,
 } from "@/features/reviews/types";
 import { DeleteReviewButton } from "./delete-review-button";
+import { ReviewAuthorChips } from "./review-author-chips";
+import { VerifiedBadge } from "@/features/profile-info/components/verified-badge";
 import { TierAvatar } from "@/features/tiers/components/tier-avatar";
 import type { UserTierKey } from "@/lib/constants";
 
@@ -67,10 +69,14 @@ function ReviewCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="truncate text-sm/tight font-semibold">
-                {review.authorName}
+              <p className="flex min-w-0 items-center gap-1 text-sm/tight font-semibold">
+                <span className="truncate">{review.authorName}</span>
+                {review.authorVerified && (
+                  <VerifiedBadge className="size-3.5" />
+                )}
               </p>
-              <p className="text-muted-foreground mt-0.5 text-xs">
+              <ReviewAuthorChips review={review} className="mt-1" />
+              <p className="text-muted-foreground mt-1 text-xs">
                 <RelativeTime value={review.createdAt} />
                 {edited && " · засварласан"}
               </p>
