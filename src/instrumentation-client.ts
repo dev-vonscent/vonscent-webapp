@@ -33,6 +33,14 @@ Sentry.init({
     // #418 hydration — DOM өөрчилдөг bot). Манай код юу ч freeze хийдэггүй.
     // JAVASCRIPT-NEXTJS-M
     /Cannot add property __isAuthError, object is not extensible/,
+    // Browser-ийн анхааруулга: ResizeObserver-ийн callback нэг frame дотор
+    // хэмжээ дахин өөрчилбөл үлдсэн мэдэгдлийг дараагийн frame руу хойшлуулж
+    // window `error` event цацдаг — exception биш, UI эвдэрдэггүй (spec-ийн
+    // дагуу). Embla болон top-customers-ийн useStickyMinHeight гэх мэт.
+    // Chrome/Edge хуучин хувилбарын текст + шинэ текст хоёулаа.
+    // JAVASCRIPT-NEXTJS-R
+    /ResizeObserver loop limit exceeded/,
+    /ResizeObserver loop completed with undelivered notifications/,
   ],
   // Browser extension-ий файлаас гарсан алдаа (stack-ийн эхний frame).
   denyUrls: [
