@@ -65,6 +65,15 @@ export function profileCompletion(info: ProfileInfo): ProfileCompletion {
   return { done, total, ratio: done / total, complete: done === total };
 }
 
+/**
+ * «Мэдээллийн бүрдэл» card харагдах эсэх: дутуу бол, эсвэл бүрэн боловч
+ * урамшуулал хараахан олгогдоогүй бол (олголт card дотор явагдана).
+ */
+export function showProgressCard(info: ProfileInfo): boolean {
+  if (!profileCompletion(info).complete) return true;
+  return info.reward.points > 0 && info.reward.claimedPoints === null;
+}
+
 /** `1995-03-14` → «1995 оны 3-р сарын 14». */
 export function formatBirthday(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
