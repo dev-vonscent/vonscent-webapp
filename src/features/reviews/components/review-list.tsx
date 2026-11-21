@@ -57,7 +57,6 @@ function ReviewCard({
   review: Review;
   onDeleted: (id: string) => void;
 }) {
-  const edited = review.updatedAt > review.createdAt;
   return (
     <article className="py-5 first:pt-0">
       <div className="flex items-start gap-3">
@@ -78,7 +77,6 @@ function ReviewCard({
               <ReviewAuthorChips review={review} className="mt-1" />
               <p className="text-muted-foreground mt-1 text-xs">
                 <RelativeTime value={review.createdAt} />
-                {edited && " · засварласан"}
               </p>
             </div>
             <DeleteReviewButton
