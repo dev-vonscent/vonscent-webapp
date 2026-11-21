@@ -20,7 +20,11 @@ import { useConfirm } from "@/components/shared/confirm-dialog";
 import { BackLink } from "@/features/admin/components/back-link";
 import { DatePicker } from "@/features/admin/components/date-picker";
 import { PeriodHint } from "@/features/admin/components/period-hint";
-import { ubToday } from "@/features/admin/lib/date-range";
+import {
+  dayEndIso,
+  dayStartIso,
+  ubToday,
+} from "@/features/admin/lib/date-range";
 import { adminFetch, mutateJson } from "@/features/admin/lib/mutate";
 import { PhaseBadge } from "@/features/sale-events/components/phase-badge";
 import type { SalePhase } from "@/features/products/sale";
@@ -36,8 +40,10 @@ import {
 import type { Gender } from "@/db/types";
 import {
   UNNAMED_SALE_ID,
+  eventBlocks,
   productsWithoutDiscount,
   validPcts,
+  type EventSpan,
   type SalePcts,
   type SaleProductRow,
 } from "../lib";
@@ -63,16 +69,23 @@ type Filter = "all" | "selected" | "free";
  * байгааг хэлнэ (16.3); засахад нэр, хугацаа (сунгах), бараа, хувь өөрчлөгдөнө,
  * явж буйг одоо дуусгана (16.4); бараа бүрт дор хаяж нэг хэмжээ хямдрах ёстой
  * (16.5). Сервер (`save_sale`) бүгдийг дахин шалгана.
+ *
+ * Хугацаа давхцсан арга хэмжээнд орсон бараа ч мөн адил сонгогдохгүй
+ * (0200, клиентийн засвар 2026-11-21 сл.10) — хугацааг өөрчлөхөд шууд
+ * дахин бодогдоно; аль хэдийн сонгосон бол улаанаар, хадгалахгүй.
  */
 export function SaleEditor({
   initial,
   products,
   busy,
+  eventSpans = {},
 }: {
   initial: SaleEditorInitial;
   products: SaleProductRow[];
   /** productId → тэр барааг эзэмшиж буй өөр (дуусаагүй) хямдралын нэр. */
   busy: Record<string, string>;
+  /** productId → идэвхтэй, дуусаагүй арга хэмжээнүүд (туг `sale_events`). */
+  eventSpans?: Record<string, EventSpan[]>;
 }) {
   const router = useRouter();
   const [confirm, confirmDialog] = useConfirm();
@@ -106,10 +119,21 @@ export function SaleEditor({
 
   const today = ubToday();
   const pcts = validPcts(pctRaw, BULK_SALE_MAX_PCT);
-  const blockedBy = React.useMemo(
-    () => ({ ...busy, ...conflicts }),
-    [busy, conflicts],
+  const eventBlocked = React.useMemo(
+    () =>
+      eventBlocks(eventSpans, {
+        startsAt: startsOn ? dayStartIso(startsOn) : null,
+        endsAt: endsOn ? dayEndIso(endsOn) : null,
+      }),
+    [eventSpans, startsOn, endsOn],
   );
+  const blockedBy = React.useMemo(
+    () => ({ ...busy, ...eventBlocked, ...conflicts }),
+    [busy, eventBlocked, conflicts],
+  );
+  /** Сонгосон ч хадгалж болохгүй (сервер буцаасан / хугацаа давхцсан). */
+  const isClash = (id: string) =>
+    Boolean(conflicts[id]) || Boolean(eventBlocked[id]);
 
   const brands = React.useMemo(
     () => [...new Set(products.map((p) => p.brand))].sort(),
@@ -155,8 +179,8 @@ export function SaleEditor({
           ? `Эдгээр бараа 4 хэмжээ бүгд хямдралгүй үлдэнэ (хувь өгсөн хэмжээ нь зарагддаггүй): ${bare
               .map((p) => p.name)
               .join(", ")}. Хувь нэмэх эсвэл барааг хасна уу.`
-          : Object.keys(conflicts).some((id) => selected.has(id))
-            ? "Улаанаар тэмдэглэсэн бараа өөр хямдралд орсон байна — хасна уу."
+          : [...selected].some(isClash)
+            ? "Улаанаар тэмдэглэсэн бараа өөр хямдрал эсвэл хугацаа давхцсан арга хэмжээнд орсон байна — хасах эсвэл хугацааг өөрчилнө үү."
             : undefined,
   };
   const hasError = Object.values(errors).some(Boolean);
@@ -505,10 +529,11 @@ export function SaleEditor({
                 const isSelected = selected.has(p.id);
                 // Өөр хямдралд байгаа, сонгоогүй бараа — харагдах ч сонгогдохгүй.
                 const disabled = Boolean(owner) && !isSelected;
+                const clash = isSelected && isClash(p.id);
                 const flagged =
-                  showErrors &&
-                  isSelected &&
-                  (bareIds.has(p.id) || Boolean(conflicts[p.id]));
+                  (showErrors && isSelected && bareIds.has(p.id)) ||
+                  // Хугацаа давхцал — хадгалахаас өмнө ч шууд харагдана.
+                  clash;
                 return (
                   <tr
                     key={p.id}
@@ -536,7 +561,7 @@ export function SaleEditor({
                           <span
                             className={cn(
                               "ml-1.5 text-xs font-normal",
-                              conflicts[p.id]
+                              clash
                                 ? "text-destructive"
                                 : "text-muted-foreground",
                             )}

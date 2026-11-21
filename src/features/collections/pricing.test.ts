@@ -368,37 +368,42 @@ describe("багцын тоолуурын мөч — priceWithBundleEvent + bund
   });
 });
 
-describe("bundleCardPrice (task 2.5)", () => {
-  const row = (
-    ml: number,
-    price: number,
-    eventSaving?: number,
-    available = true,
-  ) => ({
-    ml,
-    price,
-    memberSum: price + 5000,
-    available,
-    ...(eventSaving ? { eventSaving } : {}),
+describe("bundleCardPrice (task 2.5, сл.4–6)", () => {
+  const row = (ml: number, pct: number, available = true) => {
+    const memberSum = ml * 10_000;
+    return {
+      ml,
+      memberSum,
+      price: Math.round(memberSum * (1 - pct / 100)),
+      nominalDiscountPct: pct,
+      available,
+    };
+  };
+
+  it("хамгийн их хувьтай хэмжээ (суурь 5%, event 10ml-д 10%) → 10ml", () => {
+    expect(bundleCardPrice([row(2, 5), row(5, 5), row(10, 10)])).toEqual({
+      ml: 10,
+      price: 90_000,
+      memberSum: 100_000,
+      pct: 10,
+    });
   });
 
-  it("event зөвхөн 10ml-д → 10ml-ийн үнэ + гишүүдийн нийлбэр", () => {
-    expect(
-      bundleCardPrice([row(2, 40000), row(5, 90000), row(10, 120000, 6000)]),
-    ).toEqual({ ml: 10, price: 120000, memberSum: 125000 });
+  it("хувь тэнцвэл жижиг хэмжээ (энгийн 5% багц → 2ml)", () => {
+    expect(bundleCardPrice([row(5, 5), row(2, 5)])).toMatchObject({
+      ml: 2,
+      pct: 5,
+    });
   });
 
-  it("хамгийн хямд хэмжээ event-тэй эсвэл event байхгүй → null", () => {
-    expect(
-      bundleCardPrice([row(2, 40000, 2000), row(5, 90000, 4000)]),
-    ).toBeNull();
-    expect(bundleCardPrice([row(2, 40000), row(5, 90000)])).toBeNull();
+  it("хямдралгүй (0%) багц → null", () => {
+    expect(bundleCardPrice([row(2, 0), row(5, 0)])).toBeNull();
   });
 
   it("дууссан хэмжээг тооцохгүй", () => {
-    expect(
-      bundleCardPrice([row(2, 40000), row(5, 90000, 4000, false)]),
-    ).toBeNull();
+    expect(bundleCardPrice([row(2, 5), row(5, 20, false)])).toMatchObject({
+      ml: 2,
+    });
   });
 });
 

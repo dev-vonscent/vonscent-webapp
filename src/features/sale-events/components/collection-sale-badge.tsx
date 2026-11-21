@@ -1,13 +1,12 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { useFeatureFlag } from "@/components/feature-flags";
 import { SALE_EVENT_DEFAULT_BADGE } from "@/lib/constants";
 import {
   bundleEventSale,
   formatDiscountRange,
 } from "@/features/collections/pricing";
-import { salePctText } from "@/features/products/sale";
+import { salePctText, summarizePcts } from "@/features/products/sale";
 import type { CollectionCardData } from "@/features/collections/types";
 import { SaleChip } from "./sale-badge";
 import { useLiveSaleEvents } from "./sale-events-provider";
@@ -52,9 +51,26 @@ export function CollectionSaleBadge({
     );
   }
   if (surface === "detail") return null;
+  // Энгийн (суурь) багцын хямдрал — барааны картын «Хямдралтай 10%»-тай
+  // ижил chip (клиентийн засвар 2026-11-21 сл.6). Хувь нь `salePctText`
+  // дүрмээр (бүх хэмжээ ижил → «5%», ялгаатай → «5–10%»).
   return (
-    <Badge variant="sale" className="bg-background/85! w-fit backdrop-blur-sm">
-      −{range}
-    </Badge>
+    <SaleChip theme={null} pct={baseSalePct(collection) ?? range} fit>
+      {SALE_EVENT_DEFAULT_BADGE}
+    </SaleChip>
   );
+}
+
+/**
+ * Суурь багцын хувь (зарагдах хэмжээнүүдийн `nominalDiscountPct`) →
+ * «5%» / «5–10%» / «~10%». `prices` байхгүй бол null (`discountRange` руу).
+ */
+function baseSalePct(c: {
+  prices?: readonly { nominalDiscountPct?: number; available: boolean }[];
+}): string | null {
+  const rows = c.prices ?? [];
+  const sell = rows.filter((p) => p.available);
+  const use = sell.length ? sell : rows;
+  if (!use.length) return null;
+  return salePctText(summarizePcts(use.map((p) => p.nominalDiscountPct ?? 0)));
 }

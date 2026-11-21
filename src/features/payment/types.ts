@@ -78,6 +78,8 @@ export interface PaymentView {
   saleBreakdown?: SaleRow[] | null;
   /** Хэрэглэсэн купоны код — тооцооны мөрийн шошгонд гарна. */
   couponCode: string | null;
+  /** Хувийн купоны хувь (0199) — «Купон (10%)». */
+  couponPct?: number | null;
   shippingFee: number;
   discount: number;
   loyaltyUsed: number;

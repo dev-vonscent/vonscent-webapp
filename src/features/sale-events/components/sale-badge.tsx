@@ -30,9 +30,17 @@ export function SaleBadge({
   productId,
   onSale,
   salePct,
+  byEvent,
   surface = "image",
 }: {
   productId: string;
+  /**
+   * `SaleSummary.byEvent`: false бол үнийг гар хямдрал тогтоож байна —
+   * бараа арга хэмжээнд бүртгэлтэй ч арга хэмжээний нэр, өнгө, хувь
+   * ХЭРЭГЛЭХГҮЙ (клиентийн засвар 2026-11-21 сл.10, шийдвэр A).
+   * undefined бол өмнөх шиг гишүүнчлэлээр.
+   */
+  byEvent?: boolean;
   /** `product.tags.includes("sale")`. */
   onSale: boolean;
   /**
@@ -46,10 +54,14 @@ export function SaleBadge({
    */
   surface?: "image" | "page";
 }) {
-  const event = useSaleEventBadge(productId);
-  const eventPct = eventPctText(useSaleEventPct(productId));
+  const manualOnly = byEvent === false;
+  const eventBadge = useSaleEventBadge(productId);
+  const eventPctRaw = eventPctText(useSaleEventPct(productId));
+  const eventTheme = useSaleEventTheme(productId);
+  const event = manualOnly ? null : eventBadge;
+  const eventPct = manualOnly ? null : eventPctRaw;
+  const theme = manualOnly ? null : eventTheme;
   const pct = salePct === undefined ? eventPct : salePct;
-  const theme = useSaleEventTheme(productId);
   const label = event ?? (onSale || eventPct ? SALE_EVENT_DEFAULT_BADGE : null);
   if (!label) return null;
   return (
@@ -57,7 +69,10 @@ export function SaleBadge({
       theme={theme}
       pct={pct}
       surface={surface}
-      fit={!!event && surface === "image"}
+      // Каталогийн картад гурван төрөл (арга хэмжээ, гар хямдрал, багц) нэг
+      // дүрэмтэй: нэр бүтэн багтвал «Хямдралтай 20%», эс бөгөөс зөвхөн «20%»
+      // — «Хямдралт…» таслалтгүй (клиент 2026-11-21).
+      fit={surface === "image"}
     >
       {label}
     </SaleChip>
@@ -97,7 +112,7 @@ function fitStep(need: number) {
  * globals.css; бичиг ≥4.5:1), эс бөгөөс одоогийн цагаан хагас тунгалаг +
  * улаан бичиг. «~10%» нь accent өнгөөр.
  *
- * `fit` (каталогийн карт, арга хэмжээний chip): бүтэн «Black Friday ~30%»
+ * `fit` (каталогийн карт, бүх төрлийн chip): бүтэн «Black Friday ~30%»
  * багтах үед л нэр харагдана, эс бөгөөс ЗӨВХӨН хувь — таслагдсан үг
  * («Black…») гарахгүй. Шийдвэр нь CSS container query (`@container/chip`
  * картын тэмдгийн мөр дээр) — JS хэмжилтгүй тул SSR/hydration зөрөхгүй.
@@ -151,8 +166,8 @@ export function SaleChip({
           {children}
         </span>
       ) : (
-        // Арга хэмжээгүй «Хямдралтай ~25%» (клиент 2026-11-18): нарийн
-        // картанд нэр таслагдаж, хувь ҮРГЭЛЖ бүтэн — icon руу халихгүй.
+        // `fit`-гүй газар (барааны хуудас): нэр таслагдаж болох ч хувь
+        // ҮРГЭЛЖ бүтэн — icon руу халихгүй.
         <span className="min-w-0 truncate">{children}</span>
       )}
       {pct && (

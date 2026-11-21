@@ -116,13 +116,17 @@ describe("багцын quick-add анхдагч хэмжээ (6)", () => {
       startingPrice: prices[0].price,
     }) as unknown as Collection;
 
-  it("event зөвхөн 10ml-д → карт 10ml-ийн үнэ, quick-add 10ml", async () => {
+  it("хамгийн их хувь 10ml-д → карт 10ml-ийн үнэ, quick-add 10ml", async () => {
     render(
       <CollectionQuickAdd
         collection={collection([
           price(2, 40000),
           price(5, 90000),
-          price(10, 120000, { eventSaving: 6000, nominalDiscountPct: 10 }),
+          price(10, 120000, {
+            memberSum: 133400,
+            eventSaving: 6000,
+            nominalDiscountPct: 10,
+          }),
         ])}
       />,
     );
@@ -136,7 +140,7 @@ describe("багцын quick-add анхдагч хэмжээ (6)", () => {
     ).toBe("true");
   });
 
-  it("event-гүй бол эхний хэмжээ", async () => {
+  it("хямдралгүй бол эхний хэмжээ", async () => {
     render(
       <CollectionQuickAdd
         collection={collection([price(2, 40000), price(5, 90000)])}

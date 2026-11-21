@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { eventSaleConflictResponse } from "@/features/sales/event-conflict";
 import { revalidatePublic } from "@/lib/cache";
 import { productEditSchema } from "@/lib/validators/product";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -191,6 +192,16 @@ export async function PATCH(
       // зарагдсаар байна. Өмнөх хэмжээнүүд бичигдсэн байж болно — бүхэлд нь
       // transaction-д оруулах нь тусдаа ажил (PLAN «Шийдвэрүүд»).
       if (error) {
+        // 0200: хугацаа давхцсан арга хэмжээнд орсон бараанд гар хямдрал.
+        // Барааны талбар, өмнөх хэмжээнүүд аль хэдийн бичигдсэн (давталт
+        // transaction-гүй) — кэшийг цэвэрлээд админд хэлнэ.
+        const eventConflict = eventSaleConflictResponse(error, {
+          suffix: ` Барааны мэдээлэл ба ${v.ml}ml-ээс өмнөх хэмжээ хадгалагдсан; ${v.ml}ml болон түүнээс хойших хэмжээ хадгалагдаагүй.`,
+        });
+        if (eventConflict) {
+          revalidatePublic();
+          return eventConflict;
+        }
         return NextResponse.json(
           { error: "VARIANT_UPDATE_FAILED", ml: v.ml },
           { status: 500 },

@@ -10,9 +10,9 @@ import type { CollectionCardData, CollectionPriceAtMl } from "./types";
  *   (task 4 — үнэ нь бүрэн, дээр харагдана; товч идэвхгүй).
  * - Аль нэг гишүүнд энэ хэмжээ огт байхгүй (зарахгүй) → «Байхгүй»,
  *   сонгогдохгүй: үнэ нь дутуу нийлбэр болох тул харуулах ёсгүй.
- * - Хямдралын тэмдэг (2.6) зөвхөн арга хэмжээ ЭНЭ хэмжээнд нэмэлт хэмнэлт
- *   өгч байвал (`eventSaving`). Суурь багцын хувь бүх хэмжээнд байнга
- *   байдаг тул тэмдэглэвэл бүгд тэмдэгтэй болж утгаа алдана.
+ * - Хямдралын тэмдэг (2.6): тухайн хэмжээний хувь (`nominalDiscountPct`) —
+ *   суурь багцын хувь ч (клиентийн засвар 2026-11-21 сл.7: энгийн
+ *   хямдралын үед ч хэмжээ бүрт), арга хэмжээний үед event-ийн хувь.
  */
 export function bundleSizeOptions(
   collection: Pick<CollectionCardData, "members" | "prices">,
@@ -29,7 +29,7 @@ export function bundleSizeOptions(
       selectable: p.available || complete,
       buyable: p.available,
       // Үнийн хэсэгтэй ижил: админы амласан хувь (event үед event-ийн).
-      salePct: (p.eventSaving ?? 0) > 0 ? p.nominalDiscountPct : 0,
+      salePct: p.price < p.memberSum ? p.nominalDiscountPct : 0,
       sprays: spraysText(p.ml * Math.max(count, 1)),
       each: true,
       price: p.price,

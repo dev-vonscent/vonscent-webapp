@@ -159,8 +159,9 @@ test("sale marker does not overlap the heading (bundle, 320px)", async ({
  * Каталогийн картын хямдралын chip (375px): хувь бүтэн, зүрх/сагсны
  * icon-той давхцахгүй. Арга хэмжээний chip (dev сан, E2E_DEV=1) нарийн
  * картанд зөвхөн хувь — «Black…» гэх мэт таслагдсан текстгүй, aria-label
- * бүтэн. DEMO-гийн гар хямдрал «Хямдралтай» нэр нь таслагдаж болно
- * (клиент 2026-11-18), хувь нь бүтэн.
+ * бүтэн. Гар хямдрал / багцын «Хямдралтай» chip ч ижил дүрэмтэй
+ * (клиент 2026-11-21): нэр бүтэн багтахгүй бол зөвхөн хувь, aria-label нь
+ * «30% хүртэл хямдралтай» («Хямдралтай, …» гэж давтахгүй).
  */
 test("375px catalog: card sale chip shows the full percentage, no «…»", async ({
   page,
@@ -190,7 +191,7 @@ test("375px catalog: card sale chip shows the full percentage, no «…»", asyn
 
   const label = await chip.getAttribute("aria-label");
   if (label) {
-    // Арга хэмжээний chip: нэр харагдахгүй, тайлбар бүтэн.
+    // Нарийн chip (арга хэмжээ, гар хямдрал): нэр харагдахгүй, тайлбар бүтэн.
     expect(text).toMatch(/^[~−]?\d/);
     // Харагдах ямар ч хэсэг CSS-ээр таслагдаагүй («…» үгүй).
     const clipped = await chip.evaluate((el) =>
@@ -200,6 +201,6 @@ test("375px catalog: card sale chip shows the full percentage, no «…»", asyn
       ),
     );
     expect(clipped).toBe(false);
-    expect(label).toMatch(/^.+, \d+(–\d+)?% (хүртэл )?хямдралтай$/);
+    expect(label).toMatch(/^(.+, )?\d+(–\d+)?% (хүртэл )?хямдралтай$/);
   }
 });

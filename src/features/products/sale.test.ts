@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cardSalePrice,
+  saleByEvent,
   earliestEnd,
   effectivePrice,
   isOnSale,
@@ -420,7 +421,7 @@ describe("cardSalePrice (task 2.5)", () => {
     sellable,
   });
 
-  it("2ml хямдраагүй, 5ml/10ml хямдарсан → хамгийн жижиг хямдарсан нь (5ml)", () => {
+  it("2ml хямдраагүй, 5ml (15%) / 10ml (11%) хямдарсан → хамгийн их хувьтай нь (5ml)", () => {
     expect(
       cardSalePrice([
         size(2, 12000),
@@ -431,10 +432,17 @@ describe("cardSalePrice (task 2.5)", () => {
     ).toEqual({ ml: 5, price: 21300, basePrice: 25000 });
   });
 
-  it("2ml хямдарсан → null (одоогийнх)", () => {
+  it("хамгийн их хувь нь хамгийн хямд биш байсан ч тэр хэмжээ (сл.5)", () => {
+    // 2ml 10%, 10ml 20% → 10ml (үнэ нь өндөр ч хувь нь их).
     expect(
-      cardSalePrice([size(2, 10800, 12000), size(5, 21300, 25000)]),
-    ).toBeNull();
+      cardSalePrice([size(2, 10800, 12000), size(10, 36000, 45000)]),
+    ).toEqual({ ml: 10, price: 36000, basePrice: 45000 });
+  });
+
+  it("хувь тэнцвэл жижиг хэмжээ", () => {
+    expect(
+      cardSalePrice([size(5, 22500, 25000), size(2, 10800, 12000)]),
+    ).toEqual({ ml: 2, price: 10800, basePrice: 12000 });
   });
 
   it("нэг ч хэмжээ хямдраагүй → null", () => {
@@ -449,10 +457,10 @@ describe("cardSalePrice (task 2.5)", () => {
         size(10, 40000, 45000),
       ]),
     ).toEqual({ ml: 10, price: 40000, basePrice: 45000 });
-    // 2ml дууссан, 5ml (хамгийн хямд зарагдах) хямдарсан → одоогийнх.
+    // Хамгийн их хувьтай (2ml, 25%) дууссан → дараагийн их хувьтай зарагдах.
     expect(
-      cardSalePrice([size(2, 12000, 12000, false), size(5, 21300, 25000)]),
-    ).toBeNull();
+      cardSalePrice([size(2, 9000, 12000, false), size(5, 21300, 25000)]),
+    ).toEqual({ ml: 5, price: 21300, basePrice: 25000 });
   });
 });
 
@@ -485,5 +493,25 @@ describe("saleChipFullWidthPx", () => {
     expect(saleChipFullWidthPx("Black Friday", "~30%")).toBeGreaterThan(
       saleChipFullWidthPx("BF", "~30%"),
     );
+  });
+});
+
+describe("saleByEvent (сл.10 A)", () => {
+  const size = (price: number, label: string | null, active = true) => ({
+    active,
+    basePrice: 10000,
+    price,
+    label,
+  });
+  it("арга хэмжээ аль нэг хэмжээний үнийг тогтоовол true", () => {
+    expect(saleByEvent([size(7000, null), size(8000, "Black Friday")])).toBe(
+      true,
+    );
+  });
+  it("бүх хямдрал гар хямдралынх бол false (гишүүнчлэлээс үл хамаарна)", () => {
+    expect(saleByEvent([size(7000, null), size(10000, null)])).toBe(false);
+  });
+  it("идэвхгүй хэмжээг тооцохгүй", () => {
+    expect(saleByEvent([size(8000, "Black Friday", false)])).toBe(false);
   });
 });

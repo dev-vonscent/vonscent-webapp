@@ -25,6 +25,7 @@ import {
 } from "./bottle-stock";
 import {
   cardSalePrice,
+  saleByEvent,
   earliestEnd,
   effectivePrice,
   type CardSalePrice,
@@ -458,12 +459,23 @@ function saleOf(p: ProductDetail): {
   cardPrice?: CardSalePrice;
 } {
   if (!p.tags.includes("sale")) return {};
-  const sale = summarizeSale(
+  const summary = summarizeSale(
     p.variants
       .filter((v) => v.isActive)
       .map((v) => ({ basePrice: v.basePrice, price: v.price })),
   );
-  if (!sale) return {};
+  if (!summary) return {};
+  const sale = {
+    ...summary,
+    byEvent: saleByEvent(
+      p.variants.map((v) => ({
+        active: v.isActive,
+        basePrice: v.basePrice,
+        price: v.price,
+        label: v.saleLabel,
+      })),
+    ),
+  };
   const card = cardSalePrice(p.variants);
   return card ? { sale, cardPrice: card } : { sale };
 }
@@ -753,7 +765,17 @@ export const getSaleSummaries = cache(
       );
       if (!summary) continue;
       const card = saleRowCardPrice(row, locks);
-      const base = card ? { ...summary, card } : summary;
+      const byEvent = saleByEvent(
+        active.map((v) => ({
+          active: true,
+          basePrice: v.price,
+          price: variantPrice(v),
+          label: v.variant_sale_label,
+        })),
+      );
+      const base = card
+        ? { ...summary, byEvent, card }
+        : { ...summary, byEvent };
       out.set(
         row.id,
         showEnds

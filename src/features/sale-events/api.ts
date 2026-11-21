@@ -25,6 +25,7 @@ import type {
   LiveSaleEvent,
   SaleEventAdminRow,
   SaleEventProduct,
+  ManualSaleSpan,
   SaleEventPublic,
   SaleEventState,
 } from "./types";
@@ -303,7 +304,16 @@ interface ProductRow {
   name: string;
   brand: string;
   gender: SaleEventProduct["gender"];
-  product_variants: { ml: number; price: number; is_active: boolean }[];
+  product_variants: {
+    ml: number;
+    price: number;
+    is_active: boolean;
+    sale_price: number | null;
+    sale_starts_at: string | null;
+    sale_ends_at: string | null;
+    /** many-to-one — PostgREST объект буцаана (төрөл нь массив гэж үздэг). */
+    sales: { name: string } | { name: string }[] | null;
+  }[];
   product_images: { url: string; sort_order: number; is_visible: boolean | null }[];
 }
 
@@ -316,10 +326,12 @@ export async function getSaleEventProductOptions(): Promise<
 > {
   const supabase = await createClient();
   if (!supabase) return [];
+  // Admin хуудас (force-dynamic) — хүсэлтийн цаг.
+  const now = new Date().getTime();
   const { data, error } = await supabase
     .from("products")
     .select(
-      "id, name, brand, gender, product_variants ( ml, price, is_active ), product_images ( url, sort_order, is_visible )",
+      "id, name, brand, gender, product_variants ( ml, price, is_active, sale_price, sale_starts_at, sale_ends_at, sales ( name ) ), product_images ( url, sort_order, is_visible )",
     )
     .in("status", ["active", "coming_soon"])
     .order("brand")
@@ -329,7 +341,7 @@ export async function getSaleEventProductOptions(): Promise<
     Sentry.captureException(new Error(`sale_event products: ${error.message}`));
     throw new Error("Барааны жагсаалтыг уншиж чадсангүй.");
   }
-  return ((data as ProductRow[] | null) ?? []).map((r) => ({
+  return ((data as unknown as ProductRow[] | null) ?? []).map((r) => ({
     id: r.id,
     name: r.name,
     brand: r.brand,
@@ -344,7 +356,33 @@ export async function getSaleEventProductOptions(): Promise<
         .filter((v) => v.is_active && v.price > 0)
         .map((v) => [v.ml, v.price]),
     ),
+    manualSales: openManualSales(r.product_variants, now),
   }));
+}
+
+/**
+ * Дуусаагүй гар хямдралууд (нэр + хугацаагаар давхардалгүй) — 0200
+ * `sale_event_check_manual_overlap`-тай ижил: идэвхтэй хэмжээ, `sale_price < price`,
+ * `sale_ends_at` хоосон эсвэл ирээдүйд.
+ */
+export function openManualSales(
+  variants: ProductRow["product_variants"],
+  now: number,
+): ManualSaleSpan[] {
+  const out = new Map<string, ManualSaleSpan>();
+  for (const v of variants) {
+    if (!v.is_active) continue;
+    if (v.sale_price == null || !(v.sale_price < v.price)) continue;
+    if (v.sale_ends_at && Date.parse(v.sale_ends_at) <= now) continue;
+    const span = {
+      name:
+        (Array.isArray(v.sales) ? v.sales[0]?.name : v.sales?.name) ?? "Нэргүй",
+      startsAt: v.sale_starts_at,
+      endsAt: v.sale_ends_at,
+    };
+    out.set(`${span.name}|${span.startsAt}|${span.endsAt}`, span);
+  }
+  return [...out.values()];
 }
 
 interface BundleRow {

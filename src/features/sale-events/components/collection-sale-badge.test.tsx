@@ -19,7 +19,8 @@ const ev = (pcts: Record<number, number>) => ({
   name: "Black Friday",
   pcts,
 });
-const sizes = [2, 5, 10, 20].map((ml) => ({ ml, available: true }));
+const sizes: { ml: number; available: boolean; nominalDiscountPct?: number }[] =
+  [2, 5, 10, 20].map((ml) => ({ ml, available: true }));
 
 /** Суурь 5%, event бүх хэмжээнд 10% — server-ийн `discountRange` 10%. */
 const bundle = {
@@ -108,25 +109,43 @@ describe("CollectionSaleBadge — каталогийн карт (нарийн/ө
     expect(pctOf(container)).toBe("10–15%");
   });
 
-  it("(4) event-гүй → өмнөх «−5%»", () => {
+  it("(4) event-гүй → барааных шиг «Хямдралтай 5%» (сл.6)", () => {
     const { container } = renderBadge(ON, "card", {
       ...bundle,
       discountRange: { min: 5, max: 5 },
       event: null as never,
     });
-    expect(container.querySelector("[data-sale-chip]")).toBeNull();
-    expect(container.textContent).toBe("−5%");
+    const chip = container.querySelector("[data-sale-chip]");
+    expect(chip).not.toBeNull();
+    expect(chip?.hasAttribute("data-ticker")).toBe(false);
+    expect(container.textContent).toBe("Хямдралтай5%");
   });
 
-  it("(5) event хувь ≤ суурь → event chip үгүй, суурь «−15%»", () => {
+  it("хэмжээ бүрийн суурь хувь өөр → «5–10%»", () => {
+    const { container } = renderBadge(ON, "card", {
+      ...bundle,
+      discountRange: { min: 5, max: 10 },
+      event: null as never,
+      prices: [2, 5, 10, 20].map((ml) => ({
+        ml,
+        available: true,
+        nominalDiscountPct: ml >= 10 ? 10 : 5,
+      })),
+    });
+    expect(container.textContent).toBe("Хямдралтай5–10%");
+  });
+
+  it("(5) event хувь ≤ суурь → event chip үгүй, суурь «Хямдралтай 15%»", () => {
     const { container } = renderBadge(ON, "card", {
       ...bundle,
       discountPct: 15,
       discountRange: { min: 15, max: 15 },
       event: ev({ 2: 10, 5: 15, 10: 10, 20: 10 }),
     });
-    expect(container.querySelector("[data-sale-chip]")).toBeNull();
-    expect(container.textContent).toBe("−15%");
+    expect(
+      container.querySelector("[data-sale-chip]")?.hasAttribute("data-ticker"),
+    ).toBe(false);
+    expect(container.textContent).toBe("Хямдралтай15%");
   });
 
   it("дэлгэрэнгүйн зураг дээр нэр үргэлж харагдана", () => {

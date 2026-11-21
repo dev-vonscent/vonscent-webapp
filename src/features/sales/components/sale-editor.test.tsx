@@ -68,3 +68,63 @@ describe("SaleEditor — доод action bar", () => {
     }
   });
 });
+
+describe("SaleEditor — арга хэмжээтэй давхцал (0200, сл.10)", () => {
+  const spans = {
+    p5: [
+      {
+        name: "Black Friday",
+        startsAt: "2026-10-31T16:00:00Z",
+        endsAt: "2026-11-06T16:00:00Z",
+      },
+    ],
+  };
+
+  it("хугацаа давхцвал бараа сонгогдохгүй, аль арга хэмжээнд байгааг хэлнэ", () => {
+    render(
+      <SaleEditor
+        initial={{ ...base, startsOn: "2026-10-25", endsOn: "2026-11-11" }}
+        products={products}
+        busy={{}}
+        eventSpans={spans}
+      />,
+    );
+    expect(
+      screen.getByRole("checkbox", { name: "Бараа 5 сонгох" }),
+    ).toBeDisabled();
+    expect(screen.getByText("— «Black Friday»")).toBeInTheDocument();
+  });
+
+  it("арга хэмжээ дууссаны дараах хугацаа → чөлөөтэй", () => {
+    render(
+      <SaleEditor
+        initial={{ ...base, startsOn: "2026-11-07", endsOn: "2026-11-11" }}
+        products={products}
+        busy={{}}
+        eventSpans={spans}
+      />,
+    );
+    expect(
+      screen.getByRole("checkbox", { name: "Бараа 5 сонгох" }),
+    ).not.toBeDisabled();
+  });
+
+  it("аль хэдийн сонгосон бараа давхцвал улаан + хадгалахгүй алдаа", () => {
+    render(
+      <SaleEditor
+        initial={{
+          ...base,
+          productIds: ["p5"],
+          startsOn: "2026-10-25",
+          endsOn: "2026-11-11",
+        }}
+        products={products}
+        busy={{}}
+        eventSpans={spans}
+      />,
+    );
+    expect(screen.getByText("— «Black Friday»").className).toContain(
+      "text-destructive",
+    );
+  });
+});

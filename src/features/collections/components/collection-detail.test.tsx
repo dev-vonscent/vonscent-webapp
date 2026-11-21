@@ -150,14 +150,19 @@ describe("CollectionDetail size buttons", () => {
           <CollectionDetail collection={c} />
         </FeatureFlagsProvider>,
       );
-      expect(screen.queryByRole("timer")).toBeNull();
+      // Анхдагч = хамгийн их хувьтай хэмжээ (картын үнэ, сл.5) → 5ml.
       const five = screen.getByRole("radio", {
         name: "5ml ×4 — 10% хямдралтай",
       });
+      expect(five.getAttribute("aria-checked")).toBe("true");
+      expect(await screen.findByRole("timer")).toBeTruthy();
+      // Суурь 5% ч тэмдэглэгдэнэ (сл.7), гэхдээ хугацаагүй → тоолуургүй.
+      await userEvent.click(
+        screen.getByRole("radio", { name: "2ml ×4 — 5% хямдралтай" }),
+      );
+      expect(screen.queryByRole("timer")).toBeNull();
       await userEvent.click(five);
       expect(screen.getByRole("timer")).toBeTruthy();
-      await userEvent.click(screen.getByRole("radio", { name: "2ml ×4" }));
-      expect(screen.queryByRole("timer")).toBeNull();
     });
 
     it("flag sale_event_bundles off → no countdown", async () => {

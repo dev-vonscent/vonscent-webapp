@@ -1,5 +1,5 @@
 import { isFeatureEnabled } from "@/lib/feature-flags";
-import { getBottlesFor, getGiftOffers } from "@/features/extras/api";
+import { getBottlesFor } from "@/features/extras/api";
 import { ProductExtras } from "@/features/extras/components/product-extras";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
@@ -38,6 +38,11 @@ import { getScentFamilyLabels } from "@/features/taxonomy/api";
 import { ReviewSection } from "@/features/reviews/components/review-section";
 import { GenderBadge } from "@/features/products/components/gender-badge";
 import { SaleBadge } from "@/features/sale-events/components/sale-badge";
+import {
+  saleByEvent,
+  salePctText,
+  summarizeSale,
+} from "@/features/products/sale";
 import {
   GENDER_LABEL,
   RELATED_SECTION_ID,
@@ -99,13 +104,19 @@ export default async function ProductPage({
   if (!product) notFound();
 
   const extrasOn = await isFeatureEnabled("extras_shop");
-  const [related, familyLabelMap, gifts, bottles] = await Promise.all([
+  const [related, familyLabelMap, bottles] = await Promise.all([
     getRelated(slug),
     getScentFamilyLabels(),
-    // Нэмэлт бараа (0151) — туг хаалттай бол огт асуухгүй.
-    extrasOn ? getGiftOffers() : Promise.resolve([]),
+    // Нэмэлт бараа (0151) — туг хаалттай бол огт асуухгүй. Бэлгийн боодол
+    // зөвхөн төлбөрийн хуудсанд (клиентийн засвар 2026-11-21 сл.2).
     extrasOn ? getBottlesFor(product.id) : Promise.resolve([]),
   ]);
+  // Хямдралын chip (сл.10 A): үнийг арга хэмжээ тогтоож байгаа эсэх.
+  const activeSizes = product.variants.filter((v) => v.isActive);
+  const pageSale = summarizeSale(activeSizes);
+  const pageByEvent = saleByEvent(
+    activeSizes.map((v) => ({ ...v, active: true, label: v.saleLabel })),
+  );
   // A family the admin deleted still shows as its slug rather than vanishing.
   const familyLabels = product.scentFamilies.map((f) => familyLabelMap[f] ?? f);
 
@@ -172,6 +183,11 @@ export default async function ProductPage({
                 <SaleBadge
                   productId={product.id}
                   onSale={product.tags.includes("sale")}
+                  byEvent={pageByEvent}
+                  // Гар хямдрал (сл.10 A): арга хэмжээний хувь биш, бодит хувь.
+                  salePct={
+                    pageByEvent ? undefined : salePctText(pageSale) || undefined
+                  }
                   surface="page"
                 />
                 {product.tags
@@ -201,12 +217,8 @@ export default async function ProductPage({
             ) : (
               <ProductPurchase product={product} />
             )}
-            {/* «Энэ үнэрийн шил» нь удахгүй ирэх үнэртэнд ч (хоосон шил) —
-                бэлгийн сав л декант захиалгатай хамт. */}
-            <ProductExtras
-              gifts={product.comingSoon ? [] : gifts}
-              bottles={bottles}
-            />
+            {/* «Энэ үнэрийн шил» нь удахгүй ирэх үнэртэнд ч (хоосон шил). */}
+            <ProductExtras bottles={bottles} />
             <TrackViewItem
               id={product.id}
               name={product.name}

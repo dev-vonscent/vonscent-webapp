@@ -2156,6 +2156,7 @@ export default function CheckoutPage() {
                     saleBreakdown,
                     discount,
                     couponCode: coupon?.code ?? null,
+                    couponPct: coupon?.pct ?? null,
                     loyaltyUsed: loyaltyApplied,
                     shippingFee,
                   },

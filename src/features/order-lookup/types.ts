@@ -25,6 +25,8 @@ export interface OrderStatusView {
   /** Арга хэмжээ / хямдралын мөрүүд (0189). Хуучин захиалгад null. */
   saleBreakdown?: SaleRow[] | null;
   couponCode: string | null;
+  /** Хувийн купоны хувь (0199). */
+  couponPct?: number | null;
   shippingFee: number;
   discount: number;
   loyaltyUsed: number;

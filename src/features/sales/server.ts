@@ -7,7 +7,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { NamedSaleInput } from "@/lib/validators/sale";
 import { dayEndIso, dayStartIso } from "@/features/admin/lib/date-range";
-import type { SalePcts, SaleProductRow, SaleRecord } from "./lib";
+import type { EventSpan, SalePcts, SaleProductRow, SaleRecord } from "./lib";
+import { eventSaleConflictResponse } from "./event-conflict";
 import type { Gender } from "@/db/types";
 
 /** Хоёр туг хоёулаа: «Хямдрал» хуудас (0166) + нэртэй хямдрал (0188). */
@@ -81,7 +82,11 @@ function parseDetail<T>(detail: string | null | undefined): T[] {
 export function namedSaleWriteError(error: {
   message: string;
   details?: string | null;
+  hint?: string | null;
 }) {
+  // 0200: хугацаа давхцсан арга хэмжээнд орсон бараа (бараагаар хориглоно).
+  const eventConflict = eventSaleConflictResponse(error);
+  if (eventConflict) return eventConflict;
   const m = error.message;
   if (/SALE_CONFLICT/.test(m)) {
     const conflicts = parseDetail<{ productId: string; sale: string }>(
@@ -162,10 +167,11 @@ interface SaleRow {
 export async function getNamedSalesData(): Promise<{
   sales: SaleRecord[];
   products: SaleProductRow[];
+  eventSpans: Record<string, EventSpan[]>;
 }> {
   const supabase = await createClient();
-  if (!supabase) return { sales: [], products: [] };
-  const [salesRes, productsRes] = await Promise.all([
+  if (!supabase) return { sales: [], products: [], eventSpans: {} };
+  const [salesRes, productsRes, eventSpans] = await Promise.all([
     supabase
       .from("sales")
       .select("id, name, pcts, starts_at, ends_at")
@@ -178,6 +184,7 @@ export async function getNamedSalesData(): Promise<{
       .in("status", ["active", "coming_soon"])
       .order("brand")
       .order("name"),
+    getEventSpans(supabase),
   ]);
   if (salesRes.error) throw new Error(salesRes.error.message);
   if (productsRes.error) throw new Error(productsRes.error.message);
@@ -208,5 +215,41 @@ export async function getNamedSalesData(): Promise<{
         })),
     }),
   );
-  return { sales, products };
+  return { sales, products, eventSpans };
+}
+
+/**
+ * productId → идэвхтэй, дуусаагүй арга хэмжээнүүд (0200, сл.10): гар
+ * хямдралын засварлагч хугацаа давхцсан барааг сонгуулахгүй. Туг
+ * `sale_events` хаалттай бол арга хэмжээ үнэд нөлөөлдөггүй — хоосон (SQL ч
+ * шалгахгүй). Алдааг ШИДНЭ — хоосон бол бараа «чөлөөтэй» мэт харагдана.
+ */
+async function getEventSpans(
+  supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>,
+): Promise<Record<string, EventSpan[]>> {
+  if (!(await isFeatureEnabled("sale_events"))) return {};
+  const { data, error } = await supabase
+    .from("sale_events")
+    .select("name, starts_at, ends_at, sale_event_products ( product_id )")
+    .eq("is_active", true)
+    .gt("ends_at", new Date().toISOString());
+  if (error) throw new Error(error.message);
+  const out: Record<string, EventSpan[]> = {};
+  for (const e of (data as EventSpanRow[] | null) ?? []) {
+    for (const { product_id } of e.sale_event_products ?? []) {
+      (out[product_id] ??= []).push({
+        name: e.name,
+        startsAt: e.starts_at,
+        endsAt: e.ends_at,
+      });
+    }
+  }
+  return out;
+}
+
+interface EventSpanRow {
+  name: string;
+  starts_at: string;
+  ends_at: string;
+  sale_event_products: { product_id: string }[] | null;
 }

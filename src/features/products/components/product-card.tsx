@@ -77,13 +77,18 @@ export function ProductCard({
             productId={product.id}
             onSale={product.tags.includes("sale")}
             salePct={product.sale ? salePctText(product.sale) : undefined}
+            byEvent={product.sale?.byEvent}
           />
         </div>
         {/* Хямдрал дуусах тоолуур (2.2, туг `sale_display`) — зургийн ёроолд
             тууз; булангийг энэ Link-ийн overflow-hidden тайрна. Хугацаагүй
             хямдрал, дууссан бараанд гарахгүй. */}
         {hasBand && (
-          <CardSaleBand productId={product.id} endsAt={product.sale?.endsAt} />
+          <CardSaleBand
+            productId={product.id}
+            endsAt={product.sale?.endsAt}
+            byEvent={product.sale?.byEvent}
+          />
         )}
         {matchPct !== undefined && (
           <span
@@ -135,10 +140,9 @@ export function ProductCard({
 }
 
 /**
- * Картын үнэ. Хамгийн хямд зарагдах хэмжээ хямдраагүй ч өөр хэмжээ
- * хямдарсан бол (task 2.5, `cardPrice`) тэр хамгийн жижиг хямдарсан
- * хэмжээний үнэ + зураастай үндсэн үнийг ХЭМЖЭЭТЭЙ нь: «5ml · 21,300₮
- * ~~25,000₮~~». Эс бөгөөс өмнөх шиг хамгийн бага үнэ.
+ * Картын үнэ. Хямдарсан хэмжээ байвал хамгийн их хувьтай хэмжээний
+ * (`cardPrice`, task 2.5) үнэ + зураастай үндсэн үнэ, хэмжээгүйгээр
+ * (клиентийн засвар 2026-11-21 сл.4); эс бөгөөс хамгийн бага үнэ.
  */
 export function CardPrice({
   product,
@@ -156,11 +160,6 @@ export function CardPrice({
       data-testid="card-price"
       className="text-foreground/70 mt-1.5 flex flex-wrap items-baseline gap-x-1.5 text-sm font-semibold tracking-tight"
     >
-      {card && (
-        <span className="text-muted-foreground text-xs font-normal">
-          {card.ml}ml ·
-        </span>
-      )}
       {formatPrice(price)}
       {/* Зөвхөн үндсэн үнэ (зураастай) — хувь нь chip дээр. */}
       {base > price && (

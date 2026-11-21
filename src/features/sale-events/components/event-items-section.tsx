@@ -59,6 +59,7 @@ export function EventItemsSection({
   products,
   byId,
   conflictIds,
+  blockedBy,
   error,
   summary,
   onChange,
@@ -67,6 +68,11 @@ export function EventItemsSection({
   products: SaleEventProduct[];
   byId: Map<string, SaleEventProduct>;
   conflictIds: Set<string>;
+  /**
+   * productId → хугацаа давхцсан гар хямдралын нэр (0200) — «Бараа нэмэх»-д
+   * сонгогдохгүй.
+   */
+  blockedBy?: ReadonlyMap<string, string>;
   error?: string;
   /** Хүснэгтийн дээрх тойм («5 бараа сонгосон · хямдрал 10–30%»). */
   summary?: React.ReactNode;
@@ -292,6 +298,7 @@ export function EventItemsSection({
         onOpenChange={setAdding}
         products={products}
         members={members}
+        blockedBy={blockedBy}
         onChange={onChange}
       />
     </section>
@@ -308,12 +315,14 @@ function AddProductsSheet({
   onOpenChange,
   products,
   members,
+  blockedBy,
   onChange,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   products: SaleEventProduct[];
   members: StudioItem[];
+  blockedBy?: ReadonlyMap<string, string>;
   onChange: (items: StudioItem[]) => void;
 }) {
   const [q, setQ] = React.useState("");
@@ -336,8 +345,12 @@ function AddProductsSheet({
         (!term || `${p.brand} ${p.name}`.toLowerCase().includes(term)),
     );
   }, [products, q, gender, brand]);
+  // Гар хямдралтай (хугацаа давхцсан), нэмээгүй бараа — сонгогдохгүй.
+  const isBlocked = (id: string) =>
+    Boolean(blockedBy?.has(id)) && !memberIds.has(id);
+  const selectable = visible.filter((p) => !isBlocked(p.id));
   const allVisibleSelected =
-    visible.length > 0 && visible.every((p) => selected.has(p.id));
+    selectable.length > 0 && selectable.every((p) => selected.has(p.id));
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -351,7 +364,7 @@ function AddProductsSheet({
   function toggleAll() {
     setSelected((prev) => {
       const next = new Set(prev);
-      for (const p of visible) {
+      for (const p of selectable) {
         if (allVisibleSelected) next.delete(p.id);
         else next.add(p.id);
       }
@@ -464,21 +477,34 @@ function AddProductsSheet({
           )}
           {visible.map((p) => {
             const isOn = selected.has(p.id);
+            const blocked = isBlocked(p.id);
             return (
               <li key={p.id}>
                 <label
+                  aria-disabled={blocked || undefined}
                   className={cn(
-                    "flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm",
-                    isOn ? "bg-secondary" : "hover:bg-secondary/50",
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm",
+                    blocked
+                      ? "text-muted-foreground"
+                      : isOn
+                        ? "bg-secondary cursor-pointer"
+                        : "hover:bg-secondary/50 cursor-pointer",
                   )}
                 >
                   <Checkbox
                     checked={isOn}
+                    disabled={blocked}
                     onCheckedChange={() => toggle(p.id)}
                   />
                   <span className="min-w-0 flex-1 truncate">
                     <span className="font-medium">{p.name}</span>
                     <span className="text-muted-foreground"> · {p.brand}</span>
+                    {blocked && (
+                      <span className="text-xs">
+                        {" "}
+                        — «{blockedBy?.get(p.id)}» хямдралд
+                      </span>
+                    )}
                   </span>
                   {memberIds.has(p.id) && (
                     <span className="text-muted-foreground inline-flex shrink-0 items-center gap-1 text-xs">

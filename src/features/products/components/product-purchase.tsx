@@ -11,7 +11,6 @@ import {
   useScrolledPast,
 } from "@/components/shared/mobile-buy-bar";
 import { useCart } from "@/features/cart/store";
-import { useGiftPicks } from "@/features/extras/gift-picks";
 import { cartMlFor } from "@/features/cart/budget";
 import { maxUnits } from "@/features/products/sellable";
 import {
@@ -35,7 +34,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
   const hasUnbuyable =
     !product.soldOut && sizeOptions.some((o) => o.selectable && !o.buyable);
   // Анхдагч хэмжээ = каталогийн картын / quick-add-ийн хэмжээ (2.5):
-  // хямдарсан хамгийн жижиг хэмжээ (`cardSalePrice`), эс бөгөөс зарагдаж буй
+  // хамгийн их хувьтай хямдарсан хэмжээ (`cardSalePrice`), эс бөгөөс зарагдаж буй
   // хамгийн жижиг. Дууссан хэмжээ анхдагч болохгүй (requirement_fb.md
   // §"ml-ийн үнэ", task 4). Зөвхөн props-оос — ISR-ийн render тогтмол.
   const [variantId, setVariantId] = React.useState(() =>
@@ -51,7 +50,6 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
 
   const add = useCart((s) => s.add);
   const startBuyNow = useCart((s) => s.startBuyNow);
-  const addExtra = useCart((s) => s.addExtra);
   const router = useRouter();
 
   // Mobile sticky buy bar (1e): appears once the in-page CTA has been scrolled
@@ -124,14 +122,10 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
       saleLabel: selected.saleLabel ?? null,
       image: product.image?.url ?? null,
     };
-    // «Бэлэглэх бол»-д сонгосон боодол үнэртэнтэй хамт — аль ч замаар.
-    const gifts = useGiftPicks.getState().picks;
-    if (mode === "buy-now") startBuyNow(line, qty, gifts);
-    else {
-      add(line, qty);
-      // Нэг захиалга — нэг боодол: сагсанд байвал тоо нь нэмэгдэхгүй (max 1).
-      for (const g of gifts) addExtra(g, 1, 1);
-    }
+    // Бэлгийн боодол зөвхөн төлбөрийн хуудсанд сонгогдоно (клиентийн
+    // засвар 2026-11-21 сл.2) — энд зөвхөн үнэртэн.
+    if (mode === "buy-now") startBuyNow(line, qty);
+    else add(line, qty);
     trackAddToCart({
       id: product.id,
       name: `${product.name} ${selected.ml}ml`,

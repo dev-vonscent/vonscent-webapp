@@ -31,6 +31,7 @@ export function SaleBand({
     <div data-ticker={theme || undefined} className="contents">
       <SaleCountdown
         endsAt={endsAt}
+        label={false}
         className={cn(
           "absolute inset-x-0 bottom-0 h-7 justify-center",
           theme
@@ -47,10 +48,13 @@ export function SaleBand({
 export function CardSaleBand({
   productId,
   endsAt,
+  byEvent,
 }: {
   productId: string;
   endsAt: string | null | undefined;
+  /** `SaleSummary.byEvent` — false бол гар хямдрал: энгийн `--sale` өнгө. */
+  byEvent?: boolean;
 }) {
   const theme = useSaleEventTheme(productId);
-  return <SaleBand endsAt={endsAt} theme={theme} />;
+  return <SaleBand endsAt={endsAt} theme={byEvent === false ? null : theme} />;
 }

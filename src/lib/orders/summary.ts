@@ -15,8 +15,9 @@ import {
  * дэлгэц бүр зөвхөн ХЭРХЭН зурахаа мэднэ.
  *
  * Дараалал нь мөнгө хөдөлсний дараалал (task 10, клиентийн шийдвэр
- * 2026-11-17): Үндсэн үнийн нийлбэр → − Багцын хямдрал → − Арга хэмжээ /
- * Хямдрал → − Купон → − V point → + Хүргэлт. Купон нь хямдралын ДАРААХ
+ * 2026-11-17; засвар 2026-11-21 сл.8): Үндсэн үнийн нийлбэр → − Багцын
+ * хямдрал → − Арга хэмжээ / Хямдрал → = Нийт барааны үнэ → − Купон (10%)
+ * → − V point → + Хүргэлт. Купон нь хямдралын ДАРААХ
  * дүнгээс бодогддог (`validate_coupon`) тул арга хэмжээг купоноос өмнө
  * харуулна — эс бөгөөс мөрүүд тоогоор зөв уншигдахгүй. «Нийт төлөх» энд
  * БАЙХГҮЙ — тэр нь дэлгэц бүрт өөр жинтэй (том тоо, зураас) тул байрандаа
@@ -38,6 +39,11 @@ export interface OrderSummarySource {
   /** Зөвхөн купоны хөнгөлөлт — `orders.discount`. */
   discount: number;
   couponCode?: string | null;
+  /**
+   * Хувийн купоны хувь (0199 `orders.coupon_pct`) — байвал «Купон (10%)»,
+   * эс бөгөөс (мөнгөн купон, хуучин захиалга) «Купон · КОД».
+   */
+  couponPct?: number | null;
   loyaltyUsed: number;
   shippingFee: number;
 }
@@ -93,24 +99,22 @@ export function orderSummaryRows(
     });
   }
 
-  if (o.discount > 0) {
+  // Хямдралын (багц, арга хэмжээ, гар хямдрал) дараах барааны дүн — купон
+  // энэ дүнгээс бодогдоно (`validate_coupon`) тул купоноос ӨМНӨ (клиентийн
+  // засвар 2026-11-21 сл.8, хуучин нэр нь «Хямдарсан үнэ», купоны дараа).
+  if (bundle > 0 || sale > 0) {
     rows.push({
-      label: o.couponCode ? `Купон · ${o.couponCode}` : "Хөнгөлөлт",
-      value: `−${formatPrice(o.discount)}`,
-      credit: true,
+      label: "Нийт барааны үнэ",
+      value: formatPrice(o.subtotal),
+      strong: true,
     });
   }
 
-  // Хасалт хоёр ба түүнээс дээш удаа хийгдсэн үед «эцсийн барааны дүн» хаана
-  // тогтсоныг нэг мөрөөр хэлнэ — эс тэгвээс хүргэлт, оноо хоёр юун дээр
-  // нэмэгдэж/хасагдаж байгаа нь тодорхойгүй.
-  const deductions =
-    (bundle > 0 ? 1 : 0) + sales.length + (o.discount > 0 ? 1 : 0);
-  if (deductions >= 2) {
+  if (o.discount > 0) {
     rows.push({
-      label: "Хямдарсан үнэ",
-      value: formatPrice(Math.max(o.subtotal - o.discount, 0)),
-      strong: true,
+      label: couponLabel(o),
+      value: `−${formatPrice(o.discount)}`,
+      credit: true,
     });
   }
 
@@ -133,6 +137,23 @@ export function orderSummaryRows(
 }
 
 /**
+ * «Купон (10%)» → «Купон · КОД» → «Хөнгөлөлт». Хувь нь зөвхөн хөнгөлөлт
+ * «Нийт барааны үнэ»-ийн яг тэр хувь байх үед — дээд хязгаартай
+ * (`max_discount`) купон таслагдсан бол «10%» нь тоотой таарахгүй тул кодоор.
+ */
+function couponLabel(o: OrderSummarySource): string {
+  const pct = o.couponPct;
+  if (
+    pct != null &&
+    pct > 0 &&
+    o.discount >= Math.floor((o.subtotal * pct) / 100)
+  ) {
+    return `Купон (${pct}%)`;
+  }
+  return o.couponCode ? `Купон · ${o.couponCode}` : "Хөнгөлөлт";
+}
+
+/**
  * `orders` мөрийг (snake_case) тоймын эх өгөгдөл болгон хөрвүүлэх.
  *
  * Админ, бүртгэл, нэхэмжлэх, и-мэйл дөрөв нь DB мөрийг шууд уншдаг тул энэ
@@ -145,6 +166,8 @@ export function summarySource(o: {
   sale_breakdown?: unknown;
   discount: number;
   coupon_code?: string | null;
+  /** 0199 — query уншаагүй / хуучин бол байхгүй. */
+  coupon_pct?: number | null;
   loyalty_used: number;
   shipping_fee: number;
 }): OrderSummarySource {
@@ -154,6 +177,7 @@ export function summarySource(o: {
     saleBreakdown: parseSaleBreakdown(o.sale_breakdown),
     discount: o.discount,
     couponCode: o.coupon_code ?? null,
+    couponPct: o.coupon_pct ?? null,
     loyaltyUsed: o.loyalty_used,
     shippingFee: o.shipping_fee,
   };
