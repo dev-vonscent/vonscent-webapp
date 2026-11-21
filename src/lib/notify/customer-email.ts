@@ -70,7 +70,7 @@ export async function buildOrderCustomerEmail(
   const { data } = await supabase
     .from("orders")
     .select(
-      "order_no, subtotal, gross_subtotal, sale_breakdown, coupon_code, shipping_fee, discount, loyalty_used, total, user_id, payment_status, created_at, deliver_on, contact_email, pay_token, status, order_type",
+      "order_no, subtotal, gross_subtotal, sale_breakdown, coupon_code, coupon_pct, shipping_fee, discount, loyalty_used, total, user_id, payment_status, created_at, deliver_on, contact_email, pay_token, status, order_type",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -81,6 +81,7 @@ export async function buildOrderCustomerEmail(
     /** 0189 — арга хэмжээ / хямдралын мөрүүд; хуучин захиалгад null. */
     sale_breakdown?: unknown;
     coupon_code: string | null;
+    coupon_pct?: number | null;
     shipping_fee: number;
     discount: number;
     loyalty_used: number;
@@ -298,6 +299,7 @@ function summaryLines(order: {
   /** 0189 — арга хэмжээ / хямдралын мөрүүд; хуучин захиалгад null. */
   sale_breakdown?: unknown;
   coupon_code?: string | null;
+  coupon_pct?: number | null;
   shipping_fee: number;
   discount: number;
   loyalty_used: number;

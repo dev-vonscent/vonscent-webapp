@@ -296,3 +296,35 @@ export function formatPcts(pcts: SalePcts): string {
   );
   return parts.length ? parts.join(" · ") : "Хувьгүй";
 }
+
+/**
+ * Барааны хугацаа давхцаж болох арга хэмжээ (0200): идэвхтэй, дуусаагүй.
+ * `startsAt`/`endsAt` — ISO, төгсгөл exclusive.
+ */
+export interface EventSpan {
+  name: string;
+  startsAt: string;
+  endsAt: string;
+}
+
+/**
+ * Гар хямдралын хугацаатай давхцсан арга хэмжээнд орсон бараа → арга
+ * хэмжээний нэр (клиентийн засвар 2026-11-21 сл.10, БАРААГААР). SQL
+ * `sale_manual_event_conflicts`-тэй ижил дүрэм: хоосон эхлэл = -∞, хоосон
+ * төгсгөл = +∞ (огноо сонгоогүй үед дуусаагүй бүх арга хэмжээ түгжинэ).
+ */
+export function eventBlocks(
+  spans: Readonly<Record<string, readonly EventSpan[]>>,
+  period: { startsAt: string | null; endsAt: string | null },
+): Record<string, string> {
+  const from = period.startsAt ? Date.parse(period.startsAt) : -Infinity;
+  const to = period.endsAt ? Date.parse(period.endsAt) : Infinity;
+  const out: Record<string, string> = {};
+  for (const [productId, list] of Object.entries(spans)) {
+    const hit = list.find(
+      (e) => Date.parse(e.startsAt) < to && from < Date.parse(e.endsAt),
+    );
+    if (hit) out[productId] = hit.name;
+  }
+  return out;
+}

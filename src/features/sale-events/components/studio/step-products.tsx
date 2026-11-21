@@ -5,6 +5,7 @@ import { InfoTip } from "@/components/shared/info-tip";
 import type { SaleEventProduct } from "../../types";
 import { EventItemsSection } from "../event-items-section";
 import { EventBundlesSection } from "../event-bundles-section";
+import { manualSaleBlocks } from "../../lib";
 import { draftPeriod } from "./studio-bundles";
 import { itemsSummary } from "./studio-model";
 import type { EventStudio } from "./use-event-studio";
@@ -33,20 +34,32 @@ export function StepProducts({
     () => new Map(products.map((p) => [p.id, p])),
     [products],
   );
+  // 0200: хугацаа давхцсан гар хямдралтай бараа — сонгуулахгүй; аль хэдийн
+  // нэмсэн бол (огноо өөрчилсөн) улаанаар.
+  const manualBlocked = React.useMemo(
+    () => manualSaleBlocks(products, period),
+    [products, period],
+  );
   const conflictIds = React.useMemo(
-    () => new Set(conflicts.map((c) => c.productId)),
-    [conflicts],
+    () =>
+      new Set([
+        ...conflicts.map((c) => c.productId),
+        ...draft.items
+          .map((i) => i.productId)
+          .filter((id) => manualBlocked.has(id)),
+      ]),
+    [conflicts, draft.items, manualBlocked],
   );
 
   return (
     <div className="space-y-4">
-      {conflicts.length > 0 && (
+      {conflictIds.size > 0 && (
         <p
           className="bg-destructive/10 text-destructive rounded-lg px-4 py-2.5 text-sm text-pretty"
           role="alert"
         >
-          Улаанаар тэмдэглэсэн бараа хугацаа давхацсан өөр арга хэмжээнд байна —
-          хасах эсвэл хугацааг өөрчилнө үү.
+          Улаанаар тэмдэглэсэн бараа хугацаа давхацсан өөр арга хэмжээ эсвэл
+          гар хямдралд байна — хасах эсвэл хугацааг өөрчилнө үү.
         </p>
       )}
       <EventItemsSection
@@ -54,6 +67,7 @@ export function StepProducts({
         products={products}
         byId={byId}
         conflictIds={conflictIds}
+        blockedBy={manualBlocked}
         error={errors.items}
         summary={
           <p className="flex items-center gap-1.5 text-sm">

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   UNNAMED_SALE_ID,
   busyProducts,
+  eventBlocks,
   derivePcts,
   formatPcts,
   formatSalePeriod,
@@ -133,5 +134,48 @@ describe("formatSalePeriod / formatPcts", () => {
   it("хэмжээний дарааллаар", () => {
     expect(formatPcts({ "10": 15, "2": 10 })).toBe("2ml 10% · 10ml 15%");
     expect(formatPcts({})).toBe("Хувьгүй");
+  });
+});
+
+describe("eventBlocks — арга хэмжээтэй давхцал (0200, сл.10)", () => {
+  // Black Friday 11/1–11/6 (УБ), exclusive төгсгөл.
+  const bf = {
+    name: "Black Friday",
+    startsAt: "2026-10-31T16:00:00Z",
+    endsAt: "2026-11-06T16:00:00Z",
+  };
+  const spans = { creed: [bf], other: [] };
+
+  it("клиентийн жишээ: гар 10/25–11/11 ↔ BF 11/1–11/6 → Creed түгжигдэнэ", () => {
+    expect(
+      eventBlocks(spans, {
+        startsAt: "2026-10-24T16:00:00Z",
+        endsAt: "2026-11-11T16:00:00Z",
+      }),
+    ).toEqual({ creed: "Black Friday" });
+  });
+
+  it("арга хэмжээ дууссаны дараа эхэлбэл чөлөөтэй (төгсгөл exclusive)", () => {
+    expect(
+      eventBlocks(spans, {
+        startsAt: "2026-11-06T16:00:00Z",
+        endsAt: "2026-11-11T16:00:00Z",
+      }),
+    ).toEqual({});
+  });
+
+  it("арга хэмжээ эхлэхээс өмнө дуусвал чөлөөтэй", () => {
+    expect(
+      eventBlocks(spans, {
+        startsAt: "2026-10-24T16:00:00Z",
+        endsAt: "2026-10-31T16:00:00Z",
+      }),
+    ).toEqual({});
+  });
+
+  it("огноо сонгоогүй бол дуусаагүй бүх арга хэмжээ түгжинэ", () => {
+    expect(eventBlocks(spans, { startsAt: null, endsAt: null })).toEqual({
+      creed: "Black Friday",
+    });
   });
 });

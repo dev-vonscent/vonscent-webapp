@@ -51,6 +51,21 @@ describe("namedSaleWriteError", () => {
     expect(body.conflicts).toEqual([{ productId: "p1", sale: "Март 8" }]);
   });
 
+  it("0200: арга хэмжээтэй давхцал (hint EVENT) → 409 + арга хэмжээний нэр", async () => {
+    const res = namedSaleWriteError({
+      message: "SALE_CONFLICT",
+      hint: "EVENT",
+      details: JSON.stringify([{ productId: "p1", sale: "Black Friday" }]),
+    });
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as {
+      error: string;
+      conflicts: unknown[];
+    };
+    expect(body.conflicts).toEqual([{ productId: "p1", sale: "Black Friday" }]);
+    expect(body.error).toContain("арга хэмжээнд («Black Friday»)");
+  });
+
   it("PRODUCT_WITHOUT_DISCOUNT → 400 + бараа (16.5)", async () => {
     const res = namedSaleWriteError({
       message: "PRODUCT_WITHOUT_DISCOUNT",

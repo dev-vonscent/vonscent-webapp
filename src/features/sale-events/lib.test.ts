@@ -5,6 +5,8 @@ import {
   eventThemeMap,
   formatTimer,
   formatEventPeriod,
+  manualOverlapMessage,
+  manualSaleBlocks,
   overlapConflicts,
   overlapMessage,
   saleEventPhase,
@@ -136,5 +138,75 @@ describe("eventThemeMap", () => {
     expect(
       eventThemeMap([ev("a", ["p1", "p2"], null), ev("b", ["p2", "p3"], "red")]),
     ).toEqual({ p1: "navy", p2: "navy", p3: "red" });
+  });
+});
+
+describe("manualSaleBlocks — гар хямдралтай давхцал (0200, сл.10)", () => {
+  const products = [
+    {
+      id: "creed",
+      manualSales: [
+        {
+          name: "Намар",
+          startsAt: "2026-10-24T16:00:00Z",
+          endsAt: "2026-11-11T16:00:00Z",
+        },
+      ],
+    },
+    { id: "free", manualSales: [] },
+    // Хугацаагүй (хуучин «Нэргүй») хямдрал — үргэлж давхцана.
+    {
+      id: "open",
+      manualSales: [{ name: "Нэргүй", startsAt: null, endsAt: null }],
+    },
+  ];
+
+  it("BF 11/1–11/6 → хугацаа давхцсан бараа + хугацаагүй хямдрал", () => {
+    const m = manualSaleBlocks(products, {
+      startsAt: "2026-10-31T16:00:00Z",
+      endsAt: "2026-11-06T16:00:00Z",
+    });
+    expect(Object.fromEntries(m)).toEqual({ creed: "Намар", open: "Нэргүй" });
+  });
+
+  it("гар хямдрал дууссаны дараах арга хэмжээ → зөвхөн хугацаагүй нь", () => {
+    const m = manualSaleBlocks(products, {
+      startsAt: "2026-11-11T16:00:00Z",
+      endsAt: "2026-11-20T16:00:00Z",
+    });
+    expect([...m.keys()]).toEqual(["open"]);
+  });
+});
+
+describe("manualOverlapMessage", () => {
+  it("гар хямдралаар бүлэглэж, давхардсан барааг нэг удаа", () => {
+    const c = {
+      productId: "p1",
+      product: "Aventus",
+      brand: "Creed",
+      event: "Намар",
+      startsAt: "2026-10-24T16:00:00Z",
+      endsAt: "2026-11-11T16:00:00Z",
+    };
+    const msg = manualOverlapMessage([c, c]);
+    expect(msg).toContain(
+      "Энэ 1 бараа «Намар» гар хямдралд (2026.10.25–11.11) байна: Creed Aventus.",
+    );
+    expect(msg).toContain("зэрэг орохгүй");
+  });
+
+  it("хугацаагүй төгсгөл («infinity») → «-аас хойш»", () => {
+    expect(
+      manualOverlapMessage([
+        {
+          productId: "p1",
+          product: "Aventus",
+          brand: "Creed",
+          event: "Нэргүй",
+          startsAt: "2026-10-24T16:00:00Z",
+          endsAt: "infinity",
+        },
+      ]),
+    ).toContain("«Нэргүй» гар хямдралд (2026.10.25-аас хойш)");
   });
 });

@@ -10,9 +10,16 @@ export const metadata = { title: "Шинэ хямдрал" };
 /** Админ → Хямдрал → Шинэ (16.3, туг `sale_page` + `named_sales`). */
 export default async function NewSalePage() {
   if (!(await namedSalesEnabled())) notFound();
-  const { sales, products } = await getNamedSalesData();
+  const { sales, products, eventSpans } = await getNamedSalesData();
   // Хүсэлтийн цаг (force-dynamic) — `Date.now()`-г lint хориглодог.
   const data = editorInitial(null, sales, products, new Date().getTime());
   if (!data) notFound();
-  return <SaleEditor initial={data.initial} busy={data.busy} products={products} />;
+  return (
+    <SaleEditor
+      initial={data.initial}
+      busy={data.busy}
+      eventSpans={eventSpans}
+      products={products}
+    />
+  );
 }

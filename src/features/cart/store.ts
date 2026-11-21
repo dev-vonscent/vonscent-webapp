@@ -96,6 +96,8 @@ export interface CollectionEdit {
 export interface AppliedCoupon {
   code: string;
   discount: number;
+  /** Хувийн купоны хувь — тооцооны «Купон (10%)» мөр. Мөнгөн купонд null. */
+  pct?: number | null;
 }
 
 /** One member line inside a bundle sitting in the cart. */

@@ -33,6 +33,7 @@ interface OrderRow {
   /** 0189 — арга хэмжээ / хямдралын мөрүүд; хуучин захиалгад null. */
   sale_breakdown?: unknown;
   coupon_code: string | null;
+  coupon_pct?: number | null;
   shipping_fee: number;
   discount: number;
   loyalty_used: number;
@@ -41,7 +42,7 @@ interface OrderRow {
 }
 
 const SELECT =
-  "id, order_no, status, payment_status, created_at, deliver_on, subtotal, gross_subtotal, sale_breakdown, coupon_code, shipping_fee, discount, loyalty_used, total, pay_token";
+  "id, order_no, status, payment_status, created_at, deliver_on, subtotal, gross_subtotal, sale_breakdown, coupon_code, coupon_pct, shipping_fee, discount, loyalty_used, total, pay_token";
 
 export async function getOrderStatusByToken(
   token: string,
@@ -95,6 +96,7 @@ export async function getOrderStatusByToken(
     grossSubtotal: order.gross_subtotal,
     saleBreakdown: parseSaleBreakdown(order.sale_breakdown),
     couponCode: order.coupon_code,
+    couponPct: order.coupon_pct ?? null,
     shippingFee: order.shipping_fee,
     discount: order.discount,
     loyaltyUsed: order.loyalty_used,

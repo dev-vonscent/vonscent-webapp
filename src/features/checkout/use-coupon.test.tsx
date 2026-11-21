@@ -37,7 +37,7 @@ describe("useCoupon", () => {
   it("stores the code and discount the server returns", async () => {
     mockFetch((url) =>
       url.includes("validate")
-        ? { valid: true, code: "SALE10", discount: 3000 }
+        ? { valid: true, code: "SALE10", discount: 3000, pct: 10 }
         : { coupons: [] },
     );
 
@@ -48,6 +48,7 @@ describe("useCoupon", () => {
       expect(useCart.getState().coupon).toEqual({
         code: "SALE10",
         discount: 3000,
+        pct: 10,
       }),
     );
   });
@@ -249,6 +250,8 @@ describe("useCoupon · autoPickBest", () => {
             valid: true,
             code: body.code,
             discount: OFFERS.find((o) => o.code === body.code)?.discount ?? 0,
+            // Хувийн купон — `/api/coupons/validate` хувийг буцаана (0199).
+            pct: OFFERS.find((o) => o.code === body.code)?.value ?? null,
           }
         : { coupons: OFFERS },
     );
@@ -263,6 +266,8 @@ describe("useCoupon · autoPickBest", () => {
       expect(useCart.getState().coupon).toEqual({
         code: "BIG",
         discount: 24420,
+        // Хувийн купон — тооцооны «Купон (5%)» мөрөнд.
+        pct: 5,
       }),
     );
     expect(result.current.autoApplied).toBe(true);

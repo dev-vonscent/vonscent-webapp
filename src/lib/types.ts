@@ -118,9 +118,9 @@ export interface ProductListItem {
    */
   sale?: SaleSummary;
   /**
-   * Картын үнийн орлох хэмжээ (task 2.5, `cardSalePrice`): хамгийн хямд
-   * зарагдах хэмжээ хямдраагүй ч өөр хэмжээ хямдарсан үед л. Байхгүй бол
-   * карт `startingPrice`-ийг харуулна.
+   * Картын үнийн хэмжээ (task 2.5, `cardSalePrice`): хямдарсан хэмжээ
+   * байвал хамгийн их хувьтай нь. Байхгүй бол карт `startingPrice`-ийг
+   * харуулна.
    */
   cardPrice?: CardSalePrice;
 }

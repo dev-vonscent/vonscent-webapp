@@ -246,7 +246,7 @@ async function notifyPaid(
   const { data } = await supabase
     .from("orders")
     .select(
-      "contact_name, contact_phone, ship_city, ship_district, ship_detail, note, payment_method, subtotal, gross_subtotal, sale_breakdown, coupon_code, shipping_fee, discount, loyalty_used, total, deliver_on, created_at, order_type",
+      "contact_name, contact_phone, ship_city, ship_district, ship_detail, note, payment_method, subtotal, gross_subtotal, sale_breakdown, coupon_code, coupon_pct, shipping_fee, discount, loyalty_used, total, deliver_on, created_at, order_type",
     )
     .eq("id", order.id)
     .maybeSingle();
@@ -263,6 +263,7 @@ async function notifyPaid(
     /** 0189 — арга хэмжээ / хямдралын мөрүүд; хуучин захиалгад null. */
     sale_breakdown?: unknown;
     coupon_code: string | null;
+    coupon_pct?: number | null;
     shipping_fee: number;
     discount: number;
     loyalty_used: number;

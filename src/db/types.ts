@@ -235,6 +235,8 @@ export interface OrderRow {
   loyalty_used: number;
   total: number;
   coupon_code: string | null;
+  /** Хувийн купоны хувь, захиалга үүсэх үеийн (0199). fixed / купонгүй бол null. */
+  coupon_pct?: number | null;
   /** "yyyy-MM-dd" (UB) the customer picked at checkout — 0052_order_deliver_on. */
   deliver_on: string | null;
   reserve_expires_at: string | null;

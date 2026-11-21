@@ -34,8 +34,7 @@ export function CollectionCard({
   if (variant === "rail")
     return <RailCollectionCard collection={collection} prefer={prefer} />;
   const start = collection.startingPrice;
-  const startMl = collection.availableMls[0];
-  // 2.5: event зөвхөн том хэмжээнд хэмнэлт өгсөн бол тэр хэмжээний үнэ.
+  // 2.5: хамгийн их хувьтай хэмжээний үнэ (хэмжээг бичихгүй).
   const card = bundleCardPrice(collection.prices);
 
   return (
@@ -74,21 +73,18 @@ export function CollectionCard({
             <span className="block truncate font-serif text-base/tight font-medium text-white sm:text-xl/tight">
               {collection.name}
             </span>
-            {/* «109,300₮» дангаараа «2ml нь 109,300₮» гэж уншигдана — хажуух
-              хэсэг нь тэр дүн юуны үнэ болохыг хэлнэ (үнэртний тоо × хэмжээ). */}
+            {/* Хямдарсан үнэ + зураастай үндсэн үнэ — «-өөс», «4 × 2ml»
+              байхгүй (клиентийн засвар 2026-11-21 сл.4). */}
             {!collection.soldOut && start > 0 && (
               <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                 <span className="text-sm leading-none font-semibold tracking-tight text-white sm:text-base">
-                  {card ? formatPrice(card.price) : `${formatPrice(start)}-өөс`}
+                  {formatPrice(card ? card.price : start)}
                 </span>
                 {card && (
                   <span className="text-xs leading-none text-white/75 line-through sm:text-sm">
                     {formatPrice(card.memberSum)}
                   </span>
                 )}
-                <span className="text-xs leading-none text-white/75 sm:text-sm">
-                  {collection.members.length} × {card ? card.ml : startMl}ml
-                </span>
               </span>
             )}
           </div>
@@ -123,8 +119,7 @@ function RailCollectionCard({
   prefer?: CardStatus[];
 }) {
   const start = collection.startingPrice;
-  const startMl = collection.availableMls[0];
-  // 2.5: event зөвхөн том хэмжээнд хэмнэлт өгсөн бол тэр хэмжээний үнэ.
+  // 2.5: хамгийн их хувьтай хэмжээний үнэ (хэмжээг бичихгүй).
   const card = bundleCardPrice(collection.prices);
   const href = `/collections/${collection.slug}`;
   const status = cardStatus(collection, prefer);
@@ -192,22 +187,18 @@ function RailCollectionCard({
         >
           {collection.name}
         </Link>
-        {/* «-өөс» ба «4 × 2ml» — тэр дүн хамгийн бага хэмжээний бүтэн багцын
-            үнэ гэдгийг хэлнэ. */}
+        {/* Барааны карттай ижил формат (клиентийн засвар 2026-11-21 сл.4). */}
         {!collection.soldOut && start > 0 && (
           <span
             data-testid="card-price"
             className="text-foreground/70 mt-1.5 flex flex-wrap items-baseline gap-x-1.5 text-sm font-semibold tracking-tight"
           >
-            {card ? formatPrice(card.price) : `${formatPrice(start)}-өөс`}
+            {formatPrice(card ? card.price : start)}
             {card && (
               <span className="text-muted-foreground text-xs font-normal line-through">
                 {formatPrice(card.memberSum)}
               </span>
             )}
-            <span className="text-muted-foreground text-xs font-normal">
-              {collection.members.length} × {card ? card.ml : startMl}ml
-            </span>
           </span>
         )}
       </div>

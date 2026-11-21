@@ -18,6 +18,8 @@ interface CouponResult {
   reason?: string;
   code?: string;
   minSubtotal?: number;
+  type?: "percent" | "fixed";
+  value?: number;
 }
 
 const REASON_MN: Record<string, string> = {
@@ -89,6 +91,8 @@ export async function POST(req: Request) {
     valid: data.valid,
     discount: data.discount ?? 0,
     code: data.code,
+    // Тооцооны «Купон (10%)» мөр — мөнгөн купонд null.
+    pct: data.valid && data.type === "percent" ? (data.value ?? null) : null,
     reason: data.valid ? undefined : data.reason,
     minSubtotal: data.minSubtotal,
     message: data.valid

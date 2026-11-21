@@ -44,7 +44,7 @@ describe("orderSummaryRows", () => {
     expect(rows[1]).toMatchObject({ label: "Купон · VS10", value: "−5,000₮" });
   });
 
-  it("багц + купон хоёулаа байхад «Хямдарсан үнэ» дэд дүн нэмэгдэнэ", () => {
+  it("багцын хямдралын дараа «Нийт барааны үнэ» купоноос ӨМНӨ (сл.8)", () => {
     const rows = orderSummaryRows({
       ...base,
       grossSubtotal: 120_000,
@@ -55,11 +55,39 @@ describe("orderSummaryRows", () => {
     ).toEqual([
       "Нийт үндсэн үнэ",
       "Багцын хямдрал",
+      "Нийт барааны үнэ",
       "Хөнгөлөлт",
-      "Хямдарсан үнэ",
       "Хүргэлт",
     ]);
-    expect(rows[3]).toMatchObject({ value: "95,000₮", strong: true });
+    // Купон энэ дүнгээс бодогдоно — купоны дараах дүн биш.
+    expect(rows[2]).toMatchObject({ value: "100,000₮", strong: true });
+  });
+
+  it("хувийн купон «Купон (10%)», мөнгөн купон «Купон · КОД»", () => {
+    const pct = orderSummaryRows({
+      ...base,
+      discount: 10_000,
+      couponCode: "VS10",
+      couponPct: 10,
+    });
+    expect(pct[1]).toMatchObject({ label: "Купон (10%)", value: "−10,000₮" });
+    const fixed = orderSummaryRows({
+      ...base,
+      discount: 5_000,
+      couponCode: "VW5K",
+      couponPct: null,
+    });
+    expect(fixed[1]).toMatchObject({ label: "Купон · VW5K" });
+    // Дээд хязгаартай (max_discount) 10% купон таслагдсан → хувь тоотой
+    // таарахгүй тул кодоор.
+    const capped = orderSummaryRows({
+      ...base,
+      subtotal: 500_000,
+      discount: 20_000,
+      couponCode: "VS10",
+      couponPct: 10,
+    });
+    expect(capped[1]).toMatchObject({ label: "Купон · VS10" });
   });
 
   it("үнэгүй хүргэлт «Үнэгүй» гэж бичигдэнэ", () => {
@@ -74,7 +102,7 @@ describe("orderSummaryRows", () => {
 });
 
 /**
- * Задаргааны мөрүүдийн тэмдэгтэй нийлбэр — «Хямдарсан үнэ» (дэд дүн)-гээс
+ * Задаргааны мөрүүдийн тэмдэгтэй нийлбэр — «Нийт барааны үнэ» (дэд дүн)-гээс
  * бусад нь. Эцсийн дүнтэй ЯГ таарах ёстой (task 10, шийдвэр 1).
  */
 function signedSum(rows: ReturnType<typeof orderSummaryRows>): number {
@@ -113,8 +141,8 @@ describe("orderSummaryRows — арга хэмжээ (0189)", () => {
       ["Нийт үндсэн үнэ", "300,000₮"],
       ["Багцын хямдрал", "−10,000₮"],
       ["Black Friday", "−20,000₮"],
+      ["Нийт барааны үнэ", "270,000₮"],
       ["Купон · VS10", "−27,000₮"],
-      ["Хямдарсан үнэ", "243,000₮"],
       ["V point", "−10,000₮"],
       ["Хүргэлт", "+7,000₮"],
     ]);
@@ -143,8 +171,8 @@ describe("orderSummaryRows — арга хэмжээ (0189)", () => {
       "Нийт үндсэн үнэ",
       "Цагаан сар",
       "Хямдрал",
+      "Нийт барааны үнэ",
       "Купон · P15",
-      "Хямдарсан үнэ",
       "Хүргэлт",
     ]);
     expect(signedSum(rows)).toBe(sub - pct + 8_000);
@@ -193,8 +221,8 @@ describe("§5 жишээ — арга хэмжээнд орсон багц (16.7
       ["Нийт үндсэн үнэ", formatPrice(100000)],
       ["Багцын хямдрал", `−${formatPrice(5000)}`],
       ["Black Friday", `−${formatPrice(5000)}`],
+      ["Нийт барааны үнэ", formatPrice(90000)],
       ["Купон · BF10", `−${formatPrice(9000)}`],
-      ["Хямдарсан үнэ", formatPrice(81000)],
       ["V point", `−${formatPrice(5000)}`],
       ["Хүргэлт", `+${formatPrice(6000)}`],
     ]);
@@ -213,11 +241,11 @@ describe("§5 жишээ — арга хэмжээнд орсон багц (16.7
     expect(rows.map((r) => r.label)).toEqual([
       "Нийт үндсэн үнэ",
       "Багцын хямдрал",
+      "Нийт барааны үнэ",
       "Купон · BF10",
-      "Хямдарсан үнэ",
       "V point",
       "Хүргэлт",
     ]);
-    expect(rows[3].value).toBe(formatPrice(85500));
+    expect(rows[2].value).toBe(formatPrice(95000));
   });
 });

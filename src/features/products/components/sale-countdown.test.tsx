@@ -47,6 +47,27 @@ describe("SaleCountdown (2.2)", () => {
     expect(screen.getByRole("timer").textContent).toContain("7 өдөр 16:45:31");
   });
 
+  it("тооны өмнө «Хямдрал дуусахад» шошго (сл.3)", async () => {
+    render(withFlags(<SaleCountdown endsAt={ENDS} />));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByRole("timer").textContent).toBe(
+      "Хямдрал дуусахад 7 өдөр 16:45:32",
+    );
+    expect(screen.getByText("Хямдрал дуусахад").className).not.toContain(
+      "sr-only",
+    );
+  });
+
+  it("картын тууз (label=false): шошго зөвхөн уншигчид", async () => {
+    render(withFlags(<SaleCountdown endsAt={ENDS} label={false} />));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByText("Хямдрал дуусахад").className).toContain("sr-only");
+  });
+
   it("олон тоолуур НЭГ setInterval хуваалцана", async () => {
     const spy = vi.spyOn(globalThis, "setInterval");
     render(
@@ -173,11 +194,15 @@ describe("SaleCountdown variant=pill (дэлгэрэнгүйн үнийн мөр
     return screen.getByRole("timer");
   }
 
-  it("SSR-д тоо гарахгүй, хоосон invisible бүрхүүл; гарчиггүй", () => {
+  it("SSR-д тоо гарахгүй, хоосон invisible бүрхүүл (шошго нь тогтмол)", () => {
     const html = renderToString(pill(3 * 24 * H));
     expect(html).toMatch(/invisible/);
     expect(html).not.toMatch(/\d\d:\d\d/);
-    expect(html).not.toContain("Хямдрал дуусахад");
+  });
+
+  it("тооны өмнө «Хямдрал дуусахад» шошго (сл.3)", async () => {
+    const t = await mount(ENDS_MS);
+    expect(t.textContent).toContain("Хямдрал дуусахад7 өдөр 16:45:32");
   });
 
   it("«7 өдөр 16:45:32», aria-label «Хямдрал дуусахад 7 өдөр 16 цаг»", async () => {

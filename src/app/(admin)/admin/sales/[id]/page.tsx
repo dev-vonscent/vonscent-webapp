@@ -18,7 +18,7 @@ export default async function EditSalePage({
 }) {
   if (!(await namedSalesEnabled())) notFound();
   const { id } = await params;
-  const { sales, products } = await getNamedSalesData();
+  const { sales, products, eventSpans } = await getNamedSalesData();
   const data = editorInitial(id, sales, products, new Date().getTime());
   if (!data) notFound();
   return (
@@ -26,6 +26,7 @@ export default async function EditSalePage({
       key={id}
       initial={data.initial}
       busy={data.busy}
+      eventSpans={eventSpans}
       products={products}
     />
   );

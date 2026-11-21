@@ -280,10 +280,12 @@
   --announce-foreground: #ffffff;
   --announce-accent: #c9a96e;
 }
+/* Хар–улаан–цагаан (клиентийн засвар 2026-11-21 сл.7: шар → улаан).
+   #ef4444 нь #0a0a0a дээр ≈5:1 — жижиг chip-ийн бичигт ч хүрэлцэнэ. */
 [data-ticker="black"] {
   --announce: #0a0a0a;
   --announce-foreground: #ffffff;
-  --announce-accent: #c9a96e;
+  --announce-accent: #ef4444;
 }
 [data-ticker="gold"] {
   --announce: #c9a96e;

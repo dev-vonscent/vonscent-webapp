@@ -26,9 +26,16 @@ export function SaleCountdown({
   endsAt,
   className,
   variant = "inline",
+  label = true,
 }: {
   endsAt: string | null | undefined;
   className?: string;
+  /**
+   * Тооны өмнөх «Хямдрал дуусахад» шошго (клиентийн засвар 2026-11-21
+   * сл.3). Картын тууз (`SaleBand`) дээр `false` — карт дээр текст хэрэггүй,
+   * зөвхөн цаг + тоо (уншигчид sr-only шошго хэвээр).
+   */
+  label?: boolean;
   /**
    * `inline` — каталогийн карт, quick-add (нэг мөр); `pill` — барааны /
    * багцын дэлгэрэнгүйн үнийн мөрийн төгсгөлд.
@@ -40,7 +47,7 @@ export function SaleCountdown({
   return variant === "pill" ? (
     <Pill endsAt={endsAt} className={className} />
   ) : (
-    <Ticking endsAt={endsAt} className={className} />
+    <Ticking endsAt={endsAt} className={className} label={label} />
   );
 }
 
@@ -107,6 +114,8 @@ function Pill({ endsAt, className }: { endsAt: string; className?: string }) {
           !urgent && "text-sale",
         )}
       />
+      {/* Тоо юуны хугацаа болохыг хэлнэ (клиентийн засвар 2026-11-21 сл.3). */}
+      <span aria-hidden>Хямдрал дуусахад</span>
       <span aria-hidden>{text ?? " "}</span>
     </span>
   );
@@ -115,9 +124,11 @@ function Pill({ endsAt, className }: { endsAt: string; className?: string }) {
 function Ticking({
   endsAt,
   className,
+  label = true,
 }: {
   endsAt: string;
   className?: string;
+  label?: boolean;
 }) {
   const now = useNowTick();
   const end = Date.parse(endsAt);
@@ -135,14 +146,16 @@ function Ticking({
       // transition-colors үгүй — босго давахад өнгө шууд солигдоно.
       // `className` сүүлд: бараан зурган дээрх цагаан хувилбар давамгайлна.
       className={cn(
-        "flex items-center gap-1 text-xs font-medium tabular-nums",
+        "flex items-center gap-1 text-xs font-medium whitespace-nowrap tabular-nums",
         urgent ? "text-destructive" : "text-muted-foreground",
         text == null && "invisible",
         className,
       )}
     >
       <Clock className="size-3.5 shrink-0" aria-hidden />
-      <span className="sr-only">Хямдрал дуусахад </span>
+      {/* Тоо юуны хугацаа болохыг хэлнэ (клиентийн засвар 2026-11-21 сл.3);
+          картын тууз дээр зөвхөн уншигчид. */}
+      <span className={label ? undefined : "sr-only"}>Хямдрал дуусахад </span>
       {/* SSR-д хоосон — зайг ижил өндөртэй тэмдэгтээр барина. */}
       <span>{text ?? " "}</span>
     </span>

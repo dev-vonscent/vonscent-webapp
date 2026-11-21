@@ -82,7 +82,7 @@ describe("ProductCard — «Хямдралтай» chip + хувь (2.3, 2.4)", 
     expect(screen.getByText("~30%")).toBeTruthy();
   });
 
-  it("гар хямдралын chip icon-уудын зайгаар хязгаарлагдана: нэр таслагдана, хувь үргэлж (5)", () => {
+  it("гар хямдралын chip: нэр бүтэн багтвал л, эс бөгөөс зөвхөн хувь (5, 2026-11-21)", () => {
     render(
       <ProductCard
         product={item({
@@ -95,8 +95,12 @@ describe("ProductCard — «Хямдралтай» chip + хувь (2.3, 2.4)", 
     expect(pct.className).toContain("shrink-0");
     const chip = pct.parentElement!;
     expect(chip.className).toContain("max-w-full");
-    // Арга хэмжээгүй chip-д truncate хэвээр (клиент 2026-11-18).
-    expect(screen.getByText("Хямдралтай").className).toContain("truncate");
+    // Арга хэмжээний chip-тэй ижил: «Хямдралт…» таслалт үгүй — нэр нь
+    // container query-гээр бүтэн эсвэл огт үгүй.
+    const name = screen.getByText("Хямдралтай");
+    expect(name.className).not.toContain("truncate");
+    expect(name.hasAttribute("data-chip-name")).toBe(true);
+    expect(name.className).toMatch(/hidden @min-\[\d+px\]\/chip:inline/);
     const row = chip.parentElement!;
     expect(row.className).toContain("right-12");
     // Арга хэмжээний chip-ийн нарийн/өргөн шийдвэрийн container.
@@ -110,7 +114,7 @@ describe("ProductCard — «Хямдралтай» chip + хувь (2.3, 2.4)", 
 });
 
 describe("CardPrice (task 2.5)", () => {
-  it("cardPrice байвал «5ml · хямдарсан ~~үндсэн~~»", () => {
+  it("cardPrice байвал хэмжээгүй «хямдарсан ~~үндсэн~~» (сл.4)", () => {
     render(
       <CardPrice
         product={{
@@ -121,7 +125,7 @@ describe("CardPrice (task 2.5)", () => {
       />,
     );
     const el = screen.getByTestId("card-price");
-    expect(el.textContent).toBe("5ml ·21,300₮25,000₮");
+    expect(el.textContent).toBe("21,300₮25,000₮");
     expect(screen.getByText("25,000₮").className).toContain("line-through");
   });
 

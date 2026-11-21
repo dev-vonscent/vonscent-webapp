@@ -20,12 +20,14 @@ import { trackAddToCart } from "@/lib/analytics";
 import type { Collection } from "../types";
 import { toCartCollection } from "../to-cart";
 import { bundleSizeOptions, bundleSizeSaleEndsAt } from "../size-options";
+import { bundleCardPrice } from "../pricing";
 
 export function CollectionDetail({ collection }: { collection: Collection }) {
   const sizeOptions = bundleSizeOptions(collection);
-  // Зарагдаж буй хамгийн эхний хэмжээ — дууссан нь анхдагч болохгүй.
+  // Картын үнийн хэмжээ (хамгийн их хувьтай, `bundleCardPrice`), эс бөгөөс
+  // зарагдаж буй хамгийн эхний хэмжээ — дууссан нь анхдагч болохгүй.
   const [ml, setMl] = React.useState<number>(() =>
-    Number(defaultSizeId(sizeOptions)),
+    Number(defaultSizeId(sizeOptions, bundleCardPrice(collection.prices)?.ml)),
   );
   // Арга хэмжээний тоолуур туг `sale_event_bundles`-ийн ард (server ч
   // хаалттай үед `event` өгөхгүй — энд давхар хаана).

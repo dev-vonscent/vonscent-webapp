@@ -1,62 +1,24 @@
 "use client";
 
-import * as React from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { formatPrice } from "@/lib/format";
-import { useGiftPicks } from "../gift-picks";
 import { BOTTLE_KIND, bottleKind } from "../lib/bottle-kind";
 import { bottleSizeText } from "../lib/display";
-import type { ShopExtraCard, ShopExtraDetail } from "../types";
-import { GiftTile, giftLine, giftOffers, type GiftOffer } from "./gift-tile";
+import type { ShopExtraCard } from "../types";
 
 /**
- * Үнэртний хуудасны нэмэлт бараа (extras-shop-plan §9, §19.4):
- *   · «Шилээр нь авах» — тухайн үнэртний бүтэн / үлдэгдэлтэй / хоосон шил
- *     (шилний хуудасны «Грамаар авах»-ын эсрэг тал).
- *     Утсан дээр шилийг олох хамгийн богино зам: «Sauvage» хайсан хүн
- *     «Үнэртний шил» хуудсанд дахин хайхгүй.
- *   · «Бэлэглэх бол» — бүх бэлгийн сав (хайрцаг, уут) сонголтоор. Сонголт нь
- *     сагсанд шууд биш: «Сагсанд нэмэх» / «Захиалах» дарахад үнэртэнтэй
- *     хамт 1 ширхэгээр явна (`useGiftPicks`).
- * Туг хаалттай үед сервер юу ч дамжуулахгүй тул энэ хэсэг гарахгүй.
+ * Үнэртний хуудасны нэмэлт бараа (extras-shop-plan §9): «Шилээр нь авах» —
+ * тухайн үнэртний бүтэн / үлдэгдэлтэй / хоосон шил (шилний хуудасны
+ * «Грамаар авах»-ын эсрэг тал). Утсан дээр шилийг олох хамгийн богино зам.
+ *
+ * Бэлгийн боодол энд БАЙХГҮЙ — зөвхөн төлбөрийн хуудсанд (`CheckoutGiftWrap`,
+ * клиентийн засвар 2026-11-21 сл.2): хоёр газар сонгох нь ялгаатай мэт
+ * харагдаж байв. Туг хаалттай үед сервер юу ч дамжуулахгүй.
  */
-export function ProductExtras({
-  gifts,
-  bottles,
-}: {
-  gifts: ShopExtraDetail[];
-  bottles: ShopExtraCard[];
-}) {
-  const forSale = bottles.filter((b) => !b.soldOut);
-  const offers = giftOffers(gifts);
-  // Өөр хуудас руу гарахад сонголт дагаж явахгүй.
-  const reset = useGiftPicks((s) => s.reset);
-  React.useEffect(() => reset, [reset]);
-  if (forSale.length === 0 && offers.length === 0) return null;
-
+export function ProductExtras({ bottles }: { bottles: ShopExtraCard[] }) {
   return (
-    <div className="space-y-5">
-      <BottleList
-        id="product-bottles"
-        title="Шилээр нь авах"
-        bottles={bottles}
-      />
-      {offers.length > 0 && (
-        <section aria-labelledby="product-gifts" className="space-y-1.5">
-          <h2 id="product-gifts" className={EYEBROW}>
-            Бэлэглэх бол
-          </h2>
-          <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-            {offers.map((o) => (
-              <li key={o.gift.card.id}>
-                <GiftOption offer={o} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-    </div>
+    <BottleList id="product-bottles" title="Шилээр нь авах" bottles={bottles} />
   );
 }
 
@@ -93,20 +55,6 @@ export function BottleList({
 
 const EYEBROW =
   "text-muted-foreground text-xs font-medium tracking-wide uppercase";
-
-/** Нэг бэлгийн сав — сонголт нь `useGiftPicks`-д (сагсанд шууд биш). */
-function GiftOption({ offer }: { offer: GiftOffer }) {
-  const id = offer.gift.card.id;
-  const selected = useGiftPicks((s) => s.picks.some((p) => p.extraId === id));
-  const toggle = useGiftPicks((s) => s.toggle);
-  return (
-    <GiftTile
-      offer={offer}
-      selected={selected}
-      onToggle={() => toggle(giftLine(offer))}
-    />
-  );
-}
 
 /**
  * Нэг шил — төрөл нь гол үг («Бүтэн шил»), доор нь хэмжээ. Төрөл бүр ганц

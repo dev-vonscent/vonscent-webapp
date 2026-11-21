@@ -62,4 +62,15 @@ export interface SaleEventProduct {
   image: string | null;
   /** Идэвхтэй, үнэтэй хэмжээнүүд — ml → үндсэн үнэ. */
   prices: Record<number, number>;
+  /**
+   * Дуусаагүй гар хямдрал (0200, сл.10): хугацаа давхцвал энэ барааг арга
+   * хэмжээнд сонгуулахгүй. `startsAt`/`endsAt` null = хязгааргүй.
+   */
+  manualSales?: ManualSaleSpan[];
+}
+
+export interface ManualSaleSpan {
+  name: string;
+  startsAt: string | null;
+  endsAt: string | null;
 }

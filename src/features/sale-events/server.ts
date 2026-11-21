@@ -6,7 +6,12 @@ import { isFeatureEnabled } from "@/lib/feature-flags";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SaleEventInput } from "@/lib/validators/sale-event";
 import { dayEndIso, dayStartIso } from "@/features/admin/lib/date-range";
-import { overlapConflicts, overlapMessage, type OverlapConflict } from "./lib";
+import {
+  manualOverlapMessage,
+  overlapConflicts,
+  overlapMessage,
+  type OverlapConflict,
+} from "./lib";
 import { bundlePctLowError, newBundleUnavailableError } from "./api";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -167,6 +172,14 @@ export function saleEventWriteError(error: {
   details?: string | null;
   code?: string;
 }) {
+  // 0200: гар хямдралтай давхцал — `EVENT_OVERLAP`-оос ӨМНӨ (нэр нь агуулна).
+  if (/EVENT_MANUAL_OVERLAP/.test(error.message)) {
+    const conflicts: OverlapConflict[] = overlapConflicts(error.details);
+    return NextResponse.json(
+      { error: manualOverlapMessage(conflicts), conflicts },
+      { status: 409 },
+    );
+  }
   if (/EVENT_OVERLAP/.test(error.message)) {
     const conflicts: OverlapConflict[] = overlapConflicts(error.details);
     return NextResponse.json(

@@ -260,29 +260,34 @@ export function bundleSaleEndsAt(c: {
 }
 
 /**
- * Багцын картын үнийн хэмжээ (task 2.5, барааны `cardSalePrice`-ийн ихэр).
- * Карт хамгийн хямд авах боломжтой хэмжээний үнийг «-өөс» харуулдаг. Тэр
- * хэмжээнд арга хэмжээ хэмнэлт өгөөгүй ч өөр хэмжээнд өгсөн бол (badge
- * «Black Friday −10%» байхад) хэмнэлттэй хамгийн жижиг хэмжээний үнэ +
- * зураастай гишүүдийн нийлбэрийг хэмжээтэй нь. Бусад үед null —
- * одоогийнхоороо (суурь хувь бүх хэмжээнд байнга тул хамааралгүй).
+ * Багцын картын үнийн хэмжээ (task 2.5, барааны `cardSalePrice`-ийн ихэр;
+ * клиентийн засвар 2026-11-21 сл.4–6). Авах боломжтой хэмжээнүүдээс
+ * ХАМГИЙН ИХ ХУВЬТАЙ (`nominalDiscountPct` — суурь багцын хувь ч, арга
+ * хэмжээний хувь ч) хэмжээний үнэ + зураастай гишүүдийн нийлбэр; хувь
+ * тэнцвэл жижиг хэмжээ. Карт хэмжээг бичихгүй — дэлгэрэнгүй / quick-add тэр
+ * хэмжээгээр нээгдэнэ. Хямдралгүй (0%) багц бол null — карт хамгийн бага
+ * үнийг (`startingPrice`) зураасгүй харуулна.
  */
 export function bundleCardPrice(
   prices: readonly Pick<
     CollectionPriceAtMl,
-    "ml" | "price" | "memberSum" | "available" | "eventSaving"
+    "ml" | "price" | "memberSum" | "available" | "nominalDiscountPct"
   >[],
-): { ml: number; price: number; memberSum: number } | null {
-  const avail = prices.filter((p) => p.available);
-  if (!avail.length) return null;
-  const cheapest = avail.reduce((a, b) => (a.price <= b.price ? a : b));
-  if ((cheapest.eventSaving ?? 0) > 0) return null;
-  const ev = avail
-    .filter((p) => (p.eventSaving ?? 0) > 0)
-    .reduce<
-      (typeof avail)[number] | null
-    >((a, b) => (a == null || b.ml < a.ml ? b : a), null);
-  return ev ? { ml: ev.ml, price: ev.price, memberSum: ev.memberSum } : null;
+): { ml: number; price: number; memberSum: number; pct: number } | null {
+  let best: {
+    ml: number;
+    price: number;
+    memberSum: number;
+    pct: number;
+  } | null = null;
+  for (const p of prices) {
+    if (!p.available || !(p.price < p.memberSum)) continue;
+    const pct = p.nominalDiscountPct;
+    if (!(pct > 0)) continue;
+    if (best == null || pct > best.pct || (pct === best.pct && p.ml < best.ml))
+      best = { ml: p.ml, price: p.price, memberSum: p.memberSum, pct };
+  }
+  return best;
 }
 
 /**

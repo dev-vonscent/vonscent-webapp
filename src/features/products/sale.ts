@@ -1,3 +1,5 @@
+import { SALE_EVENT_DEFAULT_BADGE } from "@/lib/constants";
+
 /**
  * Хэмжээний хямдрал яг одоо хүчинтэй эсэх (0166). SQL-ийн
  * `variant_sale_active()`-ийн толь — хоёулаа зэрэг өөрчлөгдөх ёстой.
@@ -190,6 +192,14 @@ export interface SaleSummary {
    */
   endsAt?: string | null;
   /**
+   * Одоогийн хямдарсан үнийн аль нэгийг АРГА ХЭМЖЭЭ тогтоож байгаа эсэх
+   * (`variant_sale_label`, 0189). false бол бүх хямдрал гар хямдралынх —
+   * бараа арга хэмжээнд бүртгэлтэй байсан ч chip «Хямдралтай», өнгө нь
+   * энгийн (клиентийн засвар 2026-11-21 сл.10, шийдвэр A). undefined
+   * (хуучин кэш) бол өмнөх зан — арга хэмжээний гишүүнчлэлээр.
+   */
+  byEvent?: boolean;
+  /**
    * Картын үнийн хэмжээ (2.5) — серверийн дотоод дамжуулалт; `withSale`
    * үүнийг `ProductListItem.cardPrice` руу салгана.
    */
@@ -299,12 +309,12 @@ export interface CardSalePrice {
 }
 
 /**
- * Картын үнийн хэмжээ (task 2.5, клиентийн сонголт A). Карт ердөө хамгийн
- * хямд ЗАРАГДАХ хэмжээний үнийг харуулдаг (`startingPrice`). Тэр хэмжээ
- * хямдраагүй ч өөр зарагдах хэмжээ хямдарсан бол chip «Хямдралтай ~30%»
- * байхад хямдраагүй үнэ харагдаж төөрөгдүүлдэг байв — тэр үед хямдарсан
- * хэмжээнүүдээс ХАМГИЙН ЖИЖГИЙН хямдарсан + үндсэн үнийг, хэмжээтэй нь
- * (`5ml · 21,300₮ ~~25,000₮~~`) буцаана. Бусад үед null — карт одоогийнхоороо.
+ * Картын үнийн хэмжээ (task 2.5; клиентийн засвар 2026-11-21 сл.4–5).
+ * Зарагдах хэмжээнүүдээс аль нэг нь хямдарсан бол ХАМГИЙН ИХ ХУВЬТАЙ
+ * хэмжээний хямдарсан + үндсэн үнэ (хувь тэнцвэл жижиг хэмжээ). Карт
+ * хэмжээг бичихгүй — дэлгэрэнгүй / quick-add тэр хэмжээгээр нээгдэж
+ * (`defaultSizeId`-ийн `preferMl`) картын үнэ сонгогдсон хэмжээтэй таарна.
+ * Хямдралгүй бол null — карт хамгийн бага үнийг (`startingPrice`) харуулна.
  *
  * Эрэмбэ/шүүлт нь `startingPrice`-аар (хамгийн бага үнэ) хэвээр.
  */
@@ -316,18 +326,21 @@ export function cardSalePrice(
     sellable: boolean;
   }[],
 ): CardSalePrice | null {
-  const sell = sizes.filter((s) => s.sellable);
-  if (!sell.length) return null;
-  // `mapProduct`-ийн `startingPrice`-тай ижил сонголт.
-  const cheapest = sell.reduce((a, b) => (a.price <= b.price ? a : b));
-  if (cheapest.price < cheapest.basePrice) return null;
-  const disc = sell
-    .filter((s) => s.price < s.basePrice)
-    .reduce<
-      (typeof sell)[number] | null
-    >((a, b) => (a == null || b.ml < a.ml ? b : a), null);
-  return disc
-    ? { ml: disc.ml, price: disc.price, basePrice: disc.basePrice }
+  let best: {
+    ml: number;
+    price: number;
+    basePrice: number;
+    pct: number;
+  } | null = null;
+  for (const s of sizes) {
+    if (!s.sellable) continue;
+    const pct = salePct(s.basePrice, s.price);
+    if (pct <= 0) continue;
+    if (best == null || pct > best.pct || (pct === best.pct && s.ml < best.ml))
+      best = { ml: s.ml, price: s.price, basePrice: s.basePrice, pct };
+  }
+  return best
+    ? { ml: best.ml, price: best.price, basePrice: best.basePrice }
     : null;
 }
 
@@ -342,6 +355,8 @@ export function saleChipAriaLabel(name: string, pct: string | null): string {
   if (!pct) return name;
   let p = pct.replace(/^[−-]/, "").trim();
   if (p.startsWith("~")) p = `${p.slice(1)} хүртэл`;
+  // Гар хямдрал / багц: «Хямдралтай, 20% хямдралтай» гэж давтахгүй.
+  if (name === SALE_EVENT_DEFAULT_BADGE) return `${p} хямдралтай`;
   return `${name}, ${p} хямдралтай`;
 }
 
@@ -379,4 +394,20 @@ const CHIP_GAP_PX = 4;
 export function saleChipFullWidthPx(name: string, pct: string): number {
   const text = saleChipTextPx(name) + CHIP_GAP_PX + saleChipTextPx(pct);
   return Math.ceil(text + CHIP_CHROME_PX);
+}
+
+/**
+ * Хямдарсан хэмжээнүүдийн аль нэгийн үнийг арга хэмжээ тогтоож байгаа эсэх
+ * (`SaleSummary.byEvent`). `label` — `variant_sale_label` (арга хэмжээний нэр,
+ * гар хямдрал бол null).
+ */
+export function saleByEvent(
+  sizes: readonly {
+    active: boolean;
+    basePrice: number;
+    price: number;
+    label: string | null | undefined;
+  }[],
+): boolean {
+  return sizes.some((s) => s.active && s.price < s.basePrice && !!s.label);
 }

@@ -5,6 +5,7 @@ import { getStaffUser } from "@/lib/auth/guard";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bulkSaleSchema, clearSaleSchema } from "@/lib/validators/sale";
+import { eventSaleConflictResponse } from "@/features/sales/event-conflict";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
     p_starts: startsAt,
     p_ends: endsAt,
   });
-  if (error) return failed();
+  if (error) return eventSaleConflictResponse(error) ?? failed();
   revalidatePublic();
   return NextResponse.json({ updated: data as number });
 }
