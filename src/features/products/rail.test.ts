@@ -5,11 +5,14 @@ import {
   interleave,
   mixCatalog,
   mixRandom,
+  newestRail,
   scatterCollections,
+  sortSaleRail,
   shuffle,
   topUpRandom,
 } from "./rail";
 import type { ProductListItem } from "@/lib/types";
+import { seededRandom } from "@/lib/seeded-random";
 import type { Collection } from "@/features/collections/types";
 
 const p = (id: string) => ({ id }) as ProductListItem;
@@ -85,6 +88,25 @@ describe("mixCatalog", () => {
       false,
     );
     expect(out.map(key)).toEqual(["p1", "c1", "p2"]);
+  });
+
+  it("хямдрал их → бага: ус (хамгийн их хувь), багц (багцын хувь) холилдоно (2.7)", () => {
+    const sp = (id: string, maxPct: number) =>
+      ({
+        id,
+        name: id,
+        sale: { minPct: maxPct, maxPct, allSizes: true },
+      }) as ProductListItem;
+    const sc = (id: string, max: number) =>
+      ({ id, name: id, discountRange: { min: max, max } }) as Collection;
+    const plain = { id: "p0", name: "p0" } as ProductListItem;
+    const out = mixCatalog(
+      [sp("p30", 30), sp("p10", 10), plain],
+      [sc("c20", 20), sc("c5", 5), sc("c0", 0)],
+      "discount",
+      true,
+    );
+    expect(out.map(key)).toEqual(["p30", "c20", "p10", "c5", "p0", "c0"]);
   });
 
   it("бусад эрэмбэд ээлжилнэ", () => {
@@ -190,5 +212,95 @@ describe("collectionItem", () => {
     expect(col).not.toHaveProperty("usageDescription");
     // Эх объект хөндөгдөхгүй — багцын хуудас ижил объектыг ашиглаж болно.
     expect(full.description).toBe("<p>урт тайлбар</p>");
+  });
+});
+
+describe("sortSaleRail (2.1)", () => {
+  const sp = (id: string, maxPct: number, endsAt: string | null) =>
+    ({
+      id,
+      sale: { minPct: maxPct, maxPct, allSizes: true, endsAt },
+    }) as ProductListItem;
+  const ids = (xs: { id: string }[]) => xs.map((x) => x.id);
+
+  it("дуусах мөч ойр → хувь их → хугацаагүй нь ард", () => {
+    const list = [
+      sp("none-50", 50, null),
+      sp("d30-10", 10, "2026-11-30T16:00:00Z"),
+      sp("d20-10", 10, "2026-11-20T16:00:00Z"),
+      sp("d30-25", 25, "2026-11-30T16:00:00Z"),
+      sp("none-5", 5, null),
+    ];
+    const now = Date.parse("2026-11-18T00:00:00Z");
+    expect(ids(sortSaleRail(list, seededRandom("x"), now))).toEqual([
+      "d20-10",
+      "d30-25",
+      "d30-10",
+      "none-50",
+      "none-5",
+    ]);
+  });
+
+  it("өнгөрсөн дуусах мөч хэзээ ч «ойр» биш — хугацаагүйтэй адил ард", () => {
+    const now = Date.parse("2026-11-18T00:00:00Z");
+    const list = [
+      sp("stale-10", 10, "2026-10-31T16:00:00Z"),
+      sp("bf-10", 10, "2026-11-21T16:00:00Z"),
+      sp("none-50", 50, null),
+    ];
+    expect(ids(sortSaleRail(list, seededRandom("x"), now))).toEqual([
+      "bf-10",
+      "none-50",
+      "stale-10",
+    ]);
+  });
+
+  it("бүгд ижил бол seed-ээр холино — ижил seed ижил дараалал, оролт хөндөгдөхгүй", () => {
+    const list = Array.from({ length: 8 }, (_, i) =>
+      sp(`p${i}`, 10, "2026-11-30T16:00:00Z"),
+    );
+    const a = ids(sortSaleRail(list, seededRandom("2026-11-18:home-sale")));
+    const b = ids(sortSaleRail(list, seededRandom("2026-11-18:home-sale")));
+    const c2 = ids(sortSaleRail(list, seededRandom("2026-11-19:home-sale")));
+    expect(a).toEqual(b);
+    expect(a).not.toEqual(c2);
+    expect([...a].sort()).toEqual(ids(list).sort());
+    expect(ids(list)).toEqual(ids(list).slice());
+    expect(list[0].id).toBe("p0");
+  });
+});
+
+describe("newestRail (1)", () => {
+  const np = (id: string, createdAt: string) =>
+    ({ id, createdAt }) as ProductListItem;
+  const nc = (id: string, createdAt: string) =>
+    ({ id, createdAt }) as Collection;
+  const key = (it: ReturnType<typeof newestRail>[number]) =>
+    it.kind === "product" ? it.product.id : it.collection.id;
+
+  it("ус, багц холилдож шинэ нь эхэнд, хамгийн ихдээ size", () => {
+    const rail = newestRail(
+      [
+        np("p-old", "2026-10-01T00:00:00Z"),
+        np("p-new", "2026-11-15T00:00:00Z"),
+        np("p-mid", "2026-11-01T00:00:00Z"),
+      ],
+      [
+        nc("c-newest", "2026-11-17T00:00:00Z"),
+        nc("c-mid", "2026-11-05T00:00:00Z"),
+      ],
+      4,
+    );
+    expect(rail.map(key)).toEqual(["c-newest", "p-new", "c-mid", "p-mid"]);
+  });
+
+  it("13 дахь нь гарна", () => {
+    const products = Array.from({ length: 13 }, (_, i) =>
+      np(`p${i}`, new Date(Date.UTC(2026, 10, 1 + i)).toISOString()),
+    );
+    const rail = newestRail(products, [], 12);
+    expect(rail).toHaveLength(12);
+    expect(rail.map(key)).not.toContain("p0");
+    expect(key(rail[0])).toBe("p12");
   });
 });

@@ -9,20 +9,24 @@ export function ProductGrid({
   products = [],
   items,
   prefer,
+  eagerCount = 0,
 }: {
   products?: ProductListItem[];
   items?: RailItem[];
   /** Харж буй жагсаалтын төлөв card дээр түрүүлнэ (`cardStatus`). */
   prefer?: CardStatus[];
+  /** Эхний N нүдний зургийг lazy биш татна (эхний дэлгэцний LCP). */
+  eagerCount?: number;
 }) {
   return (
     <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
       {items
-        ? items.map((it) =>
+        ? items.map((it, i) =>
             it.kind === "product" ? (
               <ProductCard
                 key={`product-${it.product.id}`}
                 product={it.product}
+                eager={i < eagerCount}
                 prefer={prefer}
               />
             ) : (
@@ -34,8 +38,13 @@ export function ProductGrid({
               />
             ),
           )
-        : products.map((p) => (
-            <ProductCard key={p.id} product={p} prefer={prefer} />
+        : products.map((p, i) => (
+            <ProductCard
+              key={p.id}
+              product={p}
+              prefer={prefer}
+              eager={i < eagerCount}
+            />
           ))}
     </div>
   );

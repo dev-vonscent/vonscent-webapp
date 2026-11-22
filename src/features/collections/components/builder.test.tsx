@@ -36,6 +36,7 @@ vi.mock("@/features/catalog/components/catalog-filter-sheet", () => ({
 }));
 vi.mock("@/features/catalog/components/catalog-sort", () => ({
   CatalogSort: () => null,
+  CATALOG_SORT_OPTIONS: [],
 }));
 vi.mock("@/features/catalog/components/catalog-search", () => ({
   CatalogSearch: () => null,
@@ -44,7 +45,10 @@ vi.mock("@/features/catalog/components/catalog-pagination", () => ({
   CatalogPagination: () => null,
 }));
 
-function product(id: string, over: Partial<BuilderProduct> = {}): BuilderProduct {
+function product(
+  id: string,
+  over: Partial<BuilderProduct> = {},
+): BuilderProduct {
   return {
     productId: id,
     slug: id,

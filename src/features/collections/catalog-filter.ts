@@ -1,4 +1,5 @@
 import { matchesSearch } from "@/lib/search";
+import { matchesTagGroup } from "@/features/products/tag-group";
 import type { CatalogFilters } from "@/lib/types";
 import type { Collection, CollectionCardData } from "./types";
 
@@ -9,12 +10,17 @@ import type { Collection, CollectionCardData } from "./types";
  * - Хүйс: багцын хүйс (`gender` нь `expandGenders`-ээр өргөссөн байх ёстой).
  * - Брэнд / үнэрийн төрөл / улирал: багцад эдгээр байхгүй гэж үзнэ (клиент,
  *   2026-10-26) — аль нэгийг нь сонговол багц гарахгүй, зөвхөн ус.
- * - Таг: автомат «Эрэлттэй»/«Шинэ»; «Хямдрал» багцад хамаарахгүй
- *   (клиент, 2026-09-30) — зөвхөн «Хямдрал» сонговол багц гарахгүй.
+ * - «Таг» бүлэг (арга хэмжээ, Онцлох, таг) дотроо OR (`matchesTagGroup`).
+ * - Таг: автомат «Эрэлттэй»/«Шинэ». «Хямдрал»: хямдралын хувь > 0 бүхий
+ *   БЭЛЭН багц (task 8.1, клиент 2026-11-17 — 2026-09-30-ны «багц
+ *   хамаарахгүй» шийдвэр цуцлагдсан). Нүүрний «Хямдралтай» rail (2.1)
+ *   үүнийг ашигладаггүй — тэнд багц орохгүй хэвээр.
  * - Үнэ: картанд харагддаг «-өөс» үнээр (ус ч `startingPrice`-аараа);
  *   дууссан багц `catalogPrice`-аар.
  * - Хэмжээ: тэр хэмжээгээр бүтэн багц авч болох бол.
  * - Хайлт: багцын нэр, гишүүдийн нэр, брэнд.
+ * - Арга хэмжээ (`?event=`): тэр LIVE арга хэмжээнд орсон бэлэн багц (16.7);
+ *   туг хаалттай бол `event` байхгүй → багц гарахгүй (өмнөх зан төлөв).
  * Дууссан багц ч усны адил гарна («Түр байхгүй»), эрэмбэд ард нь.
  */
 export function filterCatalogCollections(
@@ -22,14 +28,18 @@ export function filterCatalogCollections(
   f: CatalogFilters,
 ): Collection[] {
   return all.filter((c) => {
-    if (f.gender?.length && !f.gender.includes(c.gender)) return false;
-    if (f.brand?.length || f.family?.length || f.season?.length) return false;
+    // «Таг» бүлэг — дотроо OR (0194, `catalog_search`-тэй ижил). Арга
+    // хэмжээ (16.7): LIVE event-д орсон багц (`Collection.event`).
     if (
-      f.tags?.length &&
-      !f.tags.some((t) => t !== "sale" && c.tags.includes(t))
+      !matchesTagGroup(f, {
+        tag: (t) => (t === "sale" ? isDiscountedBundle(c) : c.tags.includes(t)),
+        featured: c.isFeatured,
+        event: (slug) => c.event?.slug === slug,
+      })
     )
       return false;
-    if (f.featured && !c.isFeatured) return false;
+    if (f.gender?.length && !f.gender.includes(c.gender)) return false;
+    if (f.brand?.length || f.family?.length || f.season?.length) return false;
     if (f.ml?.length && !c.availableMls.some((ml) => f.ml!.includes(ml)))
       return false;
     if (f.minPrice != null && catalogPrice(c) < f.minPrice) return false;
@@ -43,6 +53,16 @@ export function filterCatalogCollections(
     }
     return true;
   });
+}
+
+/**
+ * «Хямдрал» шүүлтүүрт орох багц: бэлэн багц, худалдаж авч болох хэмжээний
+ * аль нэг нь хувьтай (`discountRange` нь боломжтой хэмжээгээр бодогддог).
+ */
+export function isDiscountedBundle(
+  c: Pick<Collection, "type" | "discountRange">,
+): boolean {
+  return c.type === "base" && c.discountRange.max > 0;
 }
 
 /**
@@ -77,6 +97,14 @@ export function sortCatalogCollections(
       return copy.sort((a, b) => catalogPrice(b) - catalogPrice(a));
     case "name":
       return copy.sort((a, b) => a.name.localeCompare(b.name));
+    case "discount":
+      // Багцын хувиар (`discountRange.max`) — ус барааны хамгийн их хувиар.
+      return copy.sort(
+        (a, b) =>
+          b.discountRange.max - a.discountRange.max ||
+          byStock(a, b) ||
+          newest(a, b),
+      );
     case "popular":
       return copy.sort(
         (a, b) =>

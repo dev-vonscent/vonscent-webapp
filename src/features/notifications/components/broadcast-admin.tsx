@@ -42,6 +42,7 @@ import { LoadingButton } from "@/components/shared/loading-button";
 import { PageHeader } from "@/components/shared/page-header";
 import { useConfirm } from "@/components/shared/confirm-dialog";
 import { DatePicker } from "@/features/admin/components/date-picker";
+import { momentSentence } from "@/features/admin/lib/period";
 import { FormDrawer } from "@/features/admin/components/form-drawer";
 import { IconUpload } from "@/features/admin/components/icon-upload";
 import { PickerPopup } from "@/features/admin/components/customer-picker";
@@ -826,6 +827,13 @@ function BroadcastForm({
                     </SelectContent>
                   </Select>
                 </Field>
+                {/* task 7: хэзээ илгээгдэхийг огноо + цагаар нь. */}
+                {momentSentence(draft.day, draft.time) && (
+                  <p className="text-muted-foreground text-xs text-pretty sm:col-span-2">
+                    {momentSentence(draft.day, draft.time)} илгээгдэнэ (±5
+                    минут).
+                  </p>
+                )}
               </div>
             )}
           </section>

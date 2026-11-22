@@ -23,3 +23,6 @@ export const CACHE_TAG_FEATURE_FLAGS = "feature-flags";
 export const CACHE_TAG_STOCK = "stock";
 /** Нүүрний «Шилдэг худалдан авагчид» (0143) — `getPublicLeaderboards`. */
 export const CACHE_TAG_LEADERBOARD = "leaderboard";
+/** Нүүрний hero (0182, 0185) — `fetchLiveHeroes`. Хугацаа/улирлын хил дээр
+ * `revalidateHero()` зөвхөн үүнийг (tag нь нүүрний ISR бичилтэд наалдана). */
+export const CACHE_TAG_HERO = "hero";

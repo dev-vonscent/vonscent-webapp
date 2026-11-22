@@ -7,8 +7,9 @@ import { DEFAULT_PROFILE_POINTS } from "@/lib/constants";
  * зөвхөн төлбөр батлагдсаны дараа бичигддэг. Энд байгаа нь түүнийг ДАВТАН
  * бодож байгаа юм биш — захиалга өгөхийн ӨМНӨ «энэ худалдан авалтаас хэд
  * цуглах вэ» гэдгийг харуулах цорын ганц зорилготой. Тиймээс томьёо нь SQL-тэй
- * үсэг үсгээрээ таарах ёстой: суурь нь купоны дараах БАРААНЫ дүн (хүргэлт
- * ороогүй), оноогоор төлсөн хэсгийг хасахгүй.
+ * үсэг үсгээрээ таарах ёстой: суурь нь QPay-ээр БОДИТООР төлөх дүн
+ * (`orders.total` — хүргэлттэй, купон ба V point хассан; 0189, task 8.4).
+ * V point (бэлгийн картынх ч) бэлэн мөнгө биш тул суурьт орохгүй.
  */
 
 export interface LoyaltyRules {
@@ -42,18 +43,25 @@ export function parseLoyaltyRules(value: unknown): LoyaltyRules {
 }
 
 /**
- * Купоны дараах барааны дүнгээс хуримтлагдах оноо.
+ * Оноо, автомат купон, хүрдний эрхийн суурь — QPay-ээр төлсөн дүн
+ * (`orders.total`). `mark_order_paid` / `grant_reward_coupon` /
+ * `grant_order_spins` (0189)-тэй ижил.
+ */
+export function rewardBaseOf(paidTotal: number): number {
+  return Math.max(Math.round(paidTotal), 0);
+}
+
+/**
+ * QPay-ээр төлсөн дүнгээс (`rewardBaseOf`) хуримтлагдах оноо.
  *
  * `mark_order_paid`-ийн `floor(v_base / earnPer) * earnPoints`-ийн яг хуулбар.
- * Хүргэлтийн төлбөр суурьт ОРОХГҮЙ, оноогоор төлсөн хэсэг нь суурийг
- * БУУРУУЛАХГҮЙ — хоёулаа сангийн одоогийн зан төлөв.
  */
 export function pointsEarnedFor(
-  goodsAfterDiscount: number,
+  paidTotal: number,
   rules: LoyaltyRules,
 ): number {
   if (rules.earnPer <= 0) return 0;
-  const base = Math.max(Math.round(goodsAfterDiscount), 0);
+  const base = rewardBaseOf(paidTotal);
   return Math.floor(base / rules.earnPer) * rules.earnPoints;
 }
 

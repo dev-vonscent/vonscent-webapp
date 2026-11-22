@@ -4,7 +4,6 @@ import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { BadgePercent, Check, Plus, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -21,14 +20,25 @@ import { useCart } from "@/features/cart/store";
 import { trackAddToCart } from "@/lib/analytics";
 import { CatalogFilters } from "@/features/catalog/components/catalog-filters";
 import { CatalogFilterSheet } from "@/features/catalog/components/catalog-filter-sheet";
-import { CatalogSort } from "@/features/catalog/components/catalog-sort";
+import {
+  CATALOG_SORT_OPTIONS,
+  CatalogSort,
+} from "@/features/catalog/components/catalog-sort";
 import { CatalogSearch } from "@/features/catalog/components/catalog-search";
 import { CatalogPagination } from "@/features/catalog/components/catalog-pagination";
 import { FilterQueryProvider } from "@/features/catalog/components/use-filter-query";
-import { bundlePrice } from "../pricing";
+import { bundlePrice, memberUnitPrice } from "../pricing";
 import type { BuilderProduct, CollectionSettings } from "../types";
 import type { ScentFamilyOption } from "@/lib/types";
 import type { BrandLogos } from "@/features/products/components/brand-marquee";
+
+/**
+ * «Хямдрал: их → бага» байхгүй — угсарсан багц үндсэн үнээр бодогддог (8.2),
+ * бараа ч үндсэн үнээр харагдана.
+ */
+const BUILDER_SORT_OPTIONS = CATALOG_SORT_OPTIONS.filter(
+  (o) => o.value !== "discount",
+);
 
 function BuilderInner({
   products,
@@ -78,8 +88,11 @@ function BuilderInner({
   const unavailableSelected = selected.filter(
     (p) => !p.variantByMl[ml]?.inStock,
   );
+  // Гишүүдийн ҮНДСЭН үнийн нийлбэр (task 8.2): угсарсан багц хямдарсан
+  // үнээс бүтэхгүй — хямдрал давхарлахгүй, захиалгын тооцоотой ижил.
   const memberSum = availableSelected.reduce(
-    (sum, p) => sum + (p.variantByMl[ml]?.price ?? 0),
+    (sum, p) =>
+      sum + (p.variantByMl[ml] ? memberUnitPrice(p.variantByMl[ml]) : 0),
     0,
   );
   /**
@@ -145,7 +158,7 @@ function BuilderInner({
         name: p.name,
         brand: p.brand,
         image: p.image?.url ?? null,
-        price: p.variantByMl[ml].price,
+        price: memberUnitPrice(p.variantByMl[ml]),
       })),
       unitPrice: price,
     });
@@ -399,8 +412,9 @@ function BuilderInner({
           priceBounds={priceBounds}
           families={families}
           showKind={false}
+          showSale={false}
         />
-        <CatalogSort iconOnly />
+        <CatalogSort iconOnly options={BUILDER_SORT_OPTIONS} />
         <CatalogSearch
           className="flex-1"
           placeholder={BUILDER_SEARCH_PLACEHOLDER}
@@ -420,6 +434,7 @@ function BuilderInner({
             priceBounds={priceBounds}
             families={families}
             showKind={false}
+            showSale={false}
           />
         </aside>
 
@@ -432,7 +447,7 @@ function BuilderInner({
         <div className="min-w-0 flex-1">
           {tray}
           <div className="mb-4 hidden items-center justify-end lg:flex">
-            <CatalogSort />
+            <CatalogSort options={BUILDER_SORT_OPTIONS} />
           </div>
 
           {grid.length === 0 ? (
@@ -444,12 +459,8 @@ function BuilderInner({
               {grid.map((p) => {
                 const variant = p.variantByMl[ml];
                 const stock = Boolean(variant?.inStock);
-                // Хямдрал хэмжээ тус бүрд — 5ml хямдарсан ус 2ml-ийн жагсаалтад
-                // «Хямдрал» гэж худал бичигдэхгүй.
-                const onSale =
-                  stock &&
-                  variant?.basePrice != null &&
-                  variant.basePrice > variant.price;
+                // Зөвхөн ҮНДСЭН үнэ (task 8.2): багц хямдарсан үнээс
+                // угсрагддаггүй тул «Хямдрал» тэмдэг, зураастай үнэ харуулахгүй.
                 const on = ids.includes(p.productId);
                 // Can't add something the chosen size can't fill; an already-
                 // picked one stays removable.
@@ -483,15 +494,6 @@ function BuilderInner({
                         <span className="bg-background/85 text-muted-foreground absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-medium backdrop-blur">
                           {ml}ml-д байхгүй
                         </span>
-                      )}
-                      {/* Барааны card-тай ижил badge (`ProductCard`). */}
-                      {onSale && (
-                        <Badge
-                          variant="sale"
-                          className="bg-background/85! absolute top-2 left-2 w-fit backdrop-blur-sm"
-                        >
-                          Хямдрал
-                        </Badge>
                       )}
                       <button
                         onClick={() => toggle(p)}
@@ -529,14 +531,9 @@ function BuilderInner({
                             : "text-muted-foreground",
                         )}
                       >
-                        {stock
-                          ? formatPrice(variant?.price ?? 0)
+                        {stock && variant
+                          ? formatPrice(memberUnitPrice(variant))
                           : `${ml}ml-д байхгүй`}
-                        {onSale && (
-                          <span className="text-muted-foreground text-[11px] font-normal line-through">
-                            {formatPrice(variant.basePrice as number)}
-                          </span>
-                        )}
                       </span>
                     </div>
                   </div>

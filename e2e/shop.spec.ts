@@ -22,10 +22,14 @@ test("product can be added to the cart and reaches checkout", async ({
   await expect(page.getByText("Sauvage").first()).toBeVisible();
 
   // .first() — the related-products carousel has quick-add buttons too.
-  await page.getByRole("button", { name: /Сагсанд нэмэх/ }).first().click();
+  await page
+    .getByRole("button", { name: /Сагсанд нэмэх/ })
+    .first()
+    .click();
 
-  // The cart badge appears on the header trigger.
-  const cartButton = page.getByRole("button", { name: "Сагс", exact: true });
+  // The cart badge appears on the header trigger — its count is part of the
+  // accessible name («Сагс, 1»), so the visible number matches the label.
+  const cartButton = page.getByRole("button", { name: /^Сагс, \d+$/ });
   await expect(cartButton.first()).toBeVisible();
   await cartButton.first().click();
 
@@ -45,4 +49,41 @@ test("FAQ fuzzy search filters questions", async ({ page }) => {
   await expect(input).toBeVisible();
   await input.fill("байхгүйзүйлбайхгүйээ");
   await expect(page.getByText(/илэрц олдсонгүй/)).toBeVisible();
+});
+
+test("product size selector: price follows the size, sold-out size is selectable but not buyable", async ({
+  page,
+}) => {
+  // Seed: 8ml үлдэгдэл → 5ml зарагдана, 10/20ml дууссан.
+  await page.goto("/products/acqua-di-parma-colonia");
+  const group = page.getByRole("radiogroup", { name: "Хэмжээ сонгох" });
+  const price = page.getByTestId("size-price");
+  const hint = page.getByTestId("size-hint");
+
+  // Анхдагч: зарагдах хамгийн эхний хэмжээ; карт дээр үнэгүй, цацалттай.
+  const five = group.getByRole("radio", { name: "5ml" });
+  await expect(five).toHaveAttribute("aria-checked", "true");
+  await expect(five).toContainText("75 цацалт");
+  await expect(five).not.toContainText("₮");
+  await expect(price).toContainText("40,800₮");
+  await expect(hint).toHaveText("Цүнхэнд багтах, өдөр бүрийн хэмжээ");
+
+  // Дууссан хэмжээ сонгогдоно — үнэ нь дээр, товч идэвхгүй «Дууссан».
+  const ten = group.getByRole("radio", { name: "10ml — Дууссан" });
+  await ten.click();
+  await expect(ten).toHaveAttribute("aria-checked", "true");
+  await expect(price).toContainText("68,900₮");
+  await expect(hint).toHaveText("Аялалд, онгоцонд ч зөвшөөрөгдөнө");
+  await expect(page.getByRole("button", { name: "Дууссан" })).toBeDisabled();
+  // .first() — хуудсан доторх товч (доод зурвас, carousel-ийн quick-add бусад).
+  await expect(
+    page.getByRole("button", { name: /Сагсанд нэмэх/ }).first(),
+  ).toBeDisabled();
+
+  // Гараар: сумаар буцаж 5ml → худалдан авах товч идэвхжинэ.
+  await ten.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(five).toHaveAttribute("aria-checked", "true");
+  await expect(five).toBeFocused();
+  await expect(page.getByRole("button", { name: "Захиалах" })).toBeEnabled();
 });

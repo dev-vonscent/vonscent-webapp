@@ -1,4 +1,6 @@
 import type {
+  ProfileGender,
+  ReviewAgeGroup,
   ReviewRejectReason,
   ReviewStatus,
   UserTierKey,
@@ -43,6 +45,14 @@ export interface Review {
   authorAvatar: string | null;
   /** Зохиогчийн түвшин — хүрээнд (feature flag `user_tiers`); хаалттай бол null. */
   authorTier?: UserTierKey | null;
+  /**
+   * «Миний мэдээлэл»-ийг бүрэн бөглөсөн зохиогч — verified тэмдэг (0196,
+   * туг `profile_info`; хаалттай бол false).
+   */
+  authorVerified?: boolean;
+  /** Нэрийн доорх chip (0198, туг `profile_info`; хаалттай/хоосон бол null). */
+  authorGender?: ProfileGender | null;
+  authorAgeGroup?: ReviewAgeGroup | null;
 }
 
 export interface RecentReview extends Review {

@@ -19,9 +19,13 @@ const FILTER_KEYS = [
   "season",
   "tags",
   "featured",
+  // Арга хэмжээ (`?event=black-friday`, 0181).
+  "event",
   "minPrice",
   "maxPrice",
   "q",
+  // «Үнэртний шил» (`/bottles`). Tab (`type`) нь шүүлтүүр биш — тоолохгүй.
+  "stock",
 ];
 
 /** Helpers to read/update multi-value catalog filter params in the URL. */

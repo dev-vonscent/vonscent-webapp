@@ -12,6 +12,7 @@ import {
   LogOut,
   Pencil,
   Ticket,
+  Gift,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,9 @@ import type { ProductListItem } from "@/lib/types";
 import { useFeatureFlag } from "@/components/feature-flags";
 import { useMyTier } from "@/features/tiers/use-tier";
 import { ProfileInfoEntryCard } from "@/features/profile-info/components/profile-info-entry-card";
+import { VerifiedBadge } from "@/features/profile-info/components/verified-badge";
+import { profileCompletion } from "@/features/profile-info/lib";
+import { useProfileInfo } from "@/features/profile-info/use-profile-info";
 import { tierByKey } from "@/features/tiers/lib";
 import {
   TierBadge,
@@ -42,6 +46,13 @@ export default function ProfilePage() {
   const tiersOn = useFeatureFlag("user_tiers");
   // Асаалттай үед засвар «Миний мэдээлэл» хуудсанд шилжинэ (0163).
   const profileInfoOn = useFeatureFlag("profile_info");
+  const giftCardsOn = useFeatureFlag("gift_cards");
+  // Туг асаалттай үед тэмдэг = мэдээлэл бүрэн (V point-ын нөхцөлтэй адил);
+  // хаалттай үед хуучнаараа утас баталгаажсан эсэх.
+  const { data: profileInfo } = useProfileInfo();
+  const profileComplete = profileInfo
+    ? profileCompletion(profileInfo).complete
+    : false;
   const { data: tierSummary } = useMyTier();
   const tier = tierSummary ? tierByKey(tierSummary.tier) : null;
   const [askSignOut, signOutDialog] = useSignOutConfirm();
@@ -211,12 +222,16 @@ export default function ProfilePage() {
             {/* Баталгаажсан тэмдэг нэрийн ард — урт нэр тасарсан ч харагдана. */}
             <h1 className="flex min-w-0 items-center gap-1.5 font-serif text-2xl font-semibold sm:text-3xl">
               <span className="truncate">{fullName || "vonscent гишүүн"}</span>
-              {phoneVerified && (
-                <BadgeCheck
-                  aria-label="Утас баталгаажсан"
-                  className="fill-foreground text-background size-5 shrink-0 sm:size-6"
-                />
-              )}
+              {profileInfoOn
+                ? profileComplete && (
+                    <VerifiedBadge className="size-5 sm:size-6" />
+                  )
+                : phoneVerified && (
+                    <BadgeCheck
+                      aria-label="Утас баталгаажсан"
+                      className="fill-foreground text-background size-5 shrink-0 sm:size-6"
+                    />
+                  )}
             </h1>
             {subline && (
               <p className="text-muted-foreground truncate text-sm tabular-nums">
@@ -280,7 +295,7 @@ export default function ProfilePage() {
 
       {/* Settings rows */}
       <div className="space-y-2">
-        {/* Миний мэдээлэл → Түвшин → Купон → Азын хүрд → Нэвтрэх код:
+        {/* Миний мэдээлэл → Түвшин → Купон → Бэлгийн карт → Азын хүрд → Нэвтрэх код:
             хувийн мэдээллээс урамшуулал руу, тохиргоо хамгийн сүүлд. */}
         {configured && profileInfoOn && <ProfileInfoEntryCard />}
 
@@ -311,6 +326,17 @@ export default function ProfilePage() {
           >
             <IconCircle icon={Ticket} />
             <span className="font-medium">Миний купон</span>
+            <ChevronRight className="text-muted-foreground ml-auto size-4" />
+          </Link>
+        )}
+
+        {configured && giftCardsOn && (
+          <Link
+            href="/account/gift-cards"
+            className="bg-card hover:bg-accent flex w-full items-center gap-4 rounded-xl p-4 text-left transition-colors"
+          >
+            <IconCircle icon={Gift} />
+            <span className="font-medium">Бэлгийн карт</span>
             <ChevronRight className="text-muted-foreground ml-auto size-4" />
           </Link>
         )}

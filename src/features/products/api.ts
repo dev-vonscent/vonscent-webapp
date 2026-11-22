@@ -23,7 +23,19 @@ import {
   NO_BOTTLE_LOCKS,
   type BottleLockState,
 } from "./bottle-stock";
-import { isSaleActive } from "./sale";
+import {
+  cardSalePrice,
+  saleByEvent,
+  earliestEnd,
+  effectivePrice,
+  type CardSalePrice,
+  saleEndsAt,
+  summarizeSale,
+  type SaleSummary,
+} from "./sale";
+import { getLiveSaleEvents } from "@/features/sale-events/api";
+import { matchesTagGroup } from "./tag-group";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 
 /**
  * Product data access (development.md §3 — features domain api).
@@ -50,6 +62,18 @@ interface DbVariant {
   sale_starts_at: string | null;
   sale_ends_at: string | null;
   is_active: boolean;
+  /**
+   * SQL-ийн бодсон бодит үнэ — `variant_price()` computed column (0181).
+   * Гар хямдрал (0166) ба арга хэмжээ (0181) хоёуланг агуулна. TS тал үнийг
+   * ДАХИН бодохгүй (plan §5.2): энэ нь багцын мөнгөний зам. Байхгүй бол
+   * (demo seed, хуучин fixture) `effectivePrice` нөөц.
+   */
+  variant_price?: number | null;
+  /**
+   * Одоогийн үнийг тогтоож буй арга хэмжээний нэр — `variant_sale_label()`
+   * computed column (0189). Гар хямдрал эсвэл хямдралгүй бол null.
+   */
+  variant_sale_label?: string | null;
 }
 interface DbImage {
   url: string;
@@ -112,10 +136,26 @@ const SELECT = `
   rating_avg, rating_count, is_featured, created_at, launched_at,
   status, coming_soon_note,
   product_images ( url, alt, sort_order, is_visible ),
-  product_variants ( id, ml, price, sale_price, sale_starts_at, sale_ends_at, is_active ),
+  product_variants ( id, ml, price, sale_price, sale_starts_at, sale_ends_at, is_active, variant_price, variant_sale_label ),
   inventory ( on_hand_ml, reserved_ml, is_sold_out ),
   product_tags ( tags ( slug, kind ) )
 `;
+
+/**
+ * Бодит үнэ: SQL-ийн `variant_price` (гар хямдрал + арга хэмжээ, 0181), эс
+ * бөгөөс гар хямдралын толь (`effectivePrice`) — demo seed ба хуучин тестийн
+ * fixture-д. Үндсэн үнээс давахгүй.
+ */
+function variantPrice(
+  v: Pick<
+    DbVariant,
+    "price" | "sale_price" | "sale_starts_at" | "sale_ends_at" | "variant_price"
+  >,
+): number {
+  return typeof v.variant_price === "number"
+    ? Math.min(v.variant_price, v.price)
+    : effectivePrice(v);
+}
 
 /** DB мөр → дэлгүүрийн хэлбэр. Тестэд export хийсэн (map-product.test.ts). */
 export function mapProduct(
@@ -154,16 +194,17 @@ export function mapProduct(
       const bottleLocked = isBottleLocked(locks, row.gender, v.ml, v.id);
       const isActive = v.is_active;
       const inStock = !comingSoon && !inv?.is_sold_out && availableMl >= v.ml;
-      // Хугацаатай хямдрал (0166): эхлээгүй / дууссан бол үндсэн үнэ.
-      const onSale = isSaleActive(v);
       return {
         id: v.id,
         ml: v.ml,
-        // Хямдарсан үнэ байвал БОДИТООР төлөх дүн нь тэр (0054). Сагс, захиалга,
-        // тайлан бүгд `price`-аар явдаг тул хямдрал энэ нэг мөрөөр бүх урсгалд
-        // хүчин төгөлдөр болно; үндсэн үнэ нь зөвхөн зураастай харагдана.
-        price: onSale ? (v.sale_price as number) : v.price,
+        // БОДИТООР төлөх дүн (0054). Сагс, захиалга, багц, тайлан бүгд
+        // `price`-аар явдаг тул хямдрал энэ нэг мөрөөр бүх урсгалд хүчин
+        // төгөлдөр болно; үндсэн үнэ нь зөвхөн зураастай харагдана.
+        price: variantPrice(v),
         basePrice: v.price,
+        // Задаргааны мөрийн нэр (0189). Хямдралгүй бол утгагүй.
+        saleLabel:
+          variantPrice(v) < v.price ? (v.variant_sale_label ?? null) : null,
         isActive,
         inStock,
         bottleLocked,
@@ -347,14 +388,43 @@ const fetchProductBy = cache(
     if (error) throw new Error(`product by ${column} failed: ${error.message}`);
     if (!data) return null;
 
-    const product = mapProduct(
-      data as unknown as DbProduct,
-      await getBottleLocks(),
-    );
-    await attachCustomTags(supabase, [product]);
+    const row = data as unknown as DbProduct;
+    const product = mapProduct(row, await getBottleLocks());
+    await Promise.all([
+      attachCustomTags(supabase, [product]),
+      attachSaleEnds(product, row.product_variants),
+    ]);
     return product;
   },
 );
+
+/**
+ * Барааны дэлгэрэнгүй (task 2.6): хэмжээ бүрийн хямдрал дуусах мөч —
+ * сонгосон хэмжээний тоолуур. Дүрэм нь каталогийн картынхтай ижил
+ * (`saleEndsAt`: арга хэмжээ давамгайлна, дууссан/эхлээгүй `sale_price`
+ * хэзээ ч эх үүсвэр биш). Зөвхөн сангийн ISO мөч — `Date.now()`-оос
+ * хамаарсан текст биш тул ISR HTML тогтмол. Туг `sale_display` хаалттай
+ * бол юу ч нэмэхгүй (HTML-д огт орохгүй). Алдааг шиднэ (#284).
+ */
+async function attachSaleEnds(
+  product: ProductDetail,
+  rows: readonly DbVariant[],
+): Promise<void> {
+  if (!product.variants.some((v) => v.price < v.basePrice)) return;
+  if (!(await isFeatureEnabled("sale_display"))) return;
+  const events = await getLiveSaleEvents();
+  const eventEnd = earliestEnd(
+    events
+      .filter((e) => e.productIds.includes(product.id))
+      .map((e) => e.endsAt),
+  );
+  const now = new Date();
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  product.variants = product.variants.map((v) => {
+    const r = byId.get(v.id);
+    return r ? { ...v, saleEndsAt: saleEndsAt(r, eventEnd, now) ?? null } : v;
+  });
+}
 
 function toListItem(p: ProductDetail): ProductListItem {
   return {
@@ -376,7 +446,38 @@ function toListItem(p: ProductDetail): ProductListItem {
     ratingCount: p.ratingCount,
     createdAt: p.createdAt,
     ...(p.comingSoon && { comingSoon: true }),
+    ...saleOf(p),
   };
+}
+
+/**
+ * Санах ойн зам (DEMO): хувийг хэмжээнүүдээс шууд. Дуусах мөч seed-д
+ * хэрэггүй — тоолуур гарахгүй.
+ */
+function saleOf(p: ProductDetail): {
+  sale?: SaleSummary;
+  cardPrice?: CardSalePrice;
+} {
+  if (!p.tags.includes("sale")) return {};
+  const summary = summarizeSale(
+    p.variants
+      .filter((v) => v.isActive)
+      .map((v) => ({ basePrice: v.basePrice, price: v.price })),
+  );
+  if (!summary) return {};
+  const sale = {
+    ...summary,
+    byEvent: saleByEvent(
+      p.variants.map((v) => ({
+        active: v.isActive,
+        basePrice: v.basePrice,
+        price: v.price,
+        label: v.saleLabel,
+      })),
+    ),
+  };
+  const card = cardSalePrice(p.variants);
+  return card ? { sale, cardPrice: card } : { sale };
 }
 
 const DEFAULT_PER_PAGE = 12;
@@ -393,6 +494,13 @@ function sortProducts(
       return copy.sort((a, b) => b.startingPrice - a.startingPrice);
     case "name":
       return copy.sort((a, b) => a.name.localeCompare(b.name));
+    case "discount":
+      // `catalog_search`-ийн толь (0193): хамгийн их хувь, дараа нь шинэ нь.
+      return copy.sort(
+        (a, b) =>
+          (saleOf(b).sale?.maxPct ?? 0) - (saleOf(a).sale?.maxPct ?? 0) ||
+          b.createdAt.localeCompare(a.createdAt),
+      );
     case "popular":
       // Борлуулалтын тоо энд байхгүй (SQL нь `top_seller_products()`-оор
       // эрэмбэлнэ, 0115) — борлуулалтаар тавигддаг `hot` таг нь хамгийн ойр.
@@ -539,6 +647,174 @@ const catalogSearch = unstable_cache(
   },
 );
 
+// ── Хямдралын товч: картын хувь, тоолуур (task 2.2, 2.4) ──────────────────
+
+type SaleVariantRow = Pick<
+  DbVariant,
+  | "id"
+  | "ml"
+  | "price"
+  | "sale_price"
+  | "sale_starts_at"
+  | "sale_ends_at"
+  | "is_active"
+  | "variant_price"
+  | "variant_sale_label"
+>;
+
+/**
+ * `sale` тагтай (гар хямдрал эсвэл арга хэмжээ — `variant_sale_active`, 0181)
+ * идэвхтэй барааны хэмжээнүүд. Нэг query, бүх хямдралтай бараанд нэг кэш —
+ * каталогийн хуудас бүрт дахин асуухгүй.
+ *
+ * Tag: `catalog` — хямдрал бичих (админ) → `revalidatePublic()`, хугацааны
+ * хил (УБ 00:00) → `/api/cron/midnight-revalidate` (гар хямдралд
+ * `revalidateStock()` — scope-гүй тул `catalog`-ийг ч цэвэрлэнэ, арга
+ * хэмжээнд `revalidatePublic()`). `stock` — картын үнийн хэмжээ (2.5) аль
+ * хэмжээ зарагдахаас хамаарна; `catalog_search` ч мөн адил хоёр tag-тай.
+ * Алдааг шиднэ — хоосон кэшлэгдэхгүй (#284).
+ */
+interface SaleRow {
+  id: string;
+  gender: ProductListItem["gender"];
+  inventory: DbInventory | DbInventory[] | null;
+  variants: SaleVariantRow[];
+}
+const fetchSaleRows = unstable_cache(
+  async (): Promise<SaleRow[]> => {
+    const supabase = createPublicClient();
+    if (!supabase) throw new Error("sale rows: no supabase client");
+    const { data, error } = await supabase
+      .from("products")
+      .select(
+        "id, gender, inventory ( on_hand_ml, reserved_ml, is_sold_out ), product_variants ( id, ml, price, sale_price, sale_starts_at, sale_ends_at, is_active, variant_price, variant_sale_label ), product_tags!inner ( tags!inner ( kind ) )",
+      )
+      .eq("is_active", true)
+      .eq("product_tags.tags.kind", "sale");
+    if (error) throw new Error(`sale rows failed: ${error.message}`);
+    return (
+      (data as unknown as
+        | (Omit<SaleRow, "variants"> & { product_variants: SaleVariantRow[] })[]
+        | null) ?? []
+    ).map((r) => ({
+      id: r.id,
+      gender: r.gender,
+      inventory: r.inventory,
+      variants: r.product_variants ?? [],
+    }));
+  },
+  ["sale-rows-v2"],
+  {
+    revalidate: CATALOG_REVALIDATE,
+    tags: [CACHE_TAG_CATALOG, CACHE_TAG_STOCK],
+  },
+);
+
+/**
+ * Картын үнийн хэмжээ (2.5) — `mapProduct`-ийн зарагдах дүрмээр (идэвхтэй,
+ * сав түгжээгүй, эх савны ml хүрэлцэнэ).
+ */
+function saleRowCardPrice(row: SaleRow, locks: BottleLockState) {
+  const inv = Array.isArray(row.inventory) ? row.inventory[0] : row.inventory;
+  const availableMl = inv ? inv.on_hand_ml - inv.reserved_ml : 0;
+  return cardSalePrice(
+    row.variants.map((v) => ({
+      ml: v.ml,
+      price: variantPrice(v),
+      basePrice: v.price,
+      sellable:
+        v.is_active &&
+        !inv?.is_sold_out &&
+        availableMl >= v.ml &&
+        !isBottleLocked(locks, row.gender, v.ml, v.id),
+    })),
+  );
+}
+
+/**
+ * productId → хямдралын товч. Хувь нь идэвхтэй хэмжээнүүдийн `variant_price`-
+ * аас (`summarizeSale`), дуусах мөч нь хэмжээ бүрийн одоогийн хямдралын эх
+ * үүсвэрээс (`saleEndsAt`) хамгийн ойр нь. Дуусах мөч зөвхөн туг
+ * `sale_display` нээлттэй үед — хаалттай бол HTML-д огт орохгүй.
+ *
+ * Гаралт нь зөвхөн сангийн утгаас (ISO огноо, хувь) — `Date.now()`-оос
+ * хамаарсан текст биш тул ISR-ийн дахин үүсгэлт бүрт HTML өөрчлөгдөхгүй.
+ */
+export const getSaleSummaries = cache(
+  async (): Promise<ReadonlyMap<string, SaleSummary>> => {
+    const out = new Map<string, SaleSummary>();
+    if (!isSupabaseConfigured) return out;
+    const [rows, events, showEnds, locks] = await Promise.all([
+      fetchSaleRows(),
+      getLiveSaleEvents(),
+      isFeatureEnabled("sale_display"),
+      getBottleLocks(),
+    ]);
+    // Бараа давхцсан хоёр LIVE арга хэмжээнд орохгүй (0181 trigger) — ойрыг нь.
+    const eventEnds = new Map<string, string>();
+    for (const e of events) {
+      for (const id of e.productIds) {
+        eventEnds.set(id, earliestEnd([eventEnds.get(id), e.endsAt]) as string);
+      }
+    }
+    const now = new Date();
+    for (const row of rows) {
+      const active = row.variants.filter((v) => v.is_active);
+      const summary = summarizeSale(
+        active.map((v) => ({ basePrice: v.price, price: variantPrice(v) })),
+      );
+      if (!summary) continue;
+      const card = saleRowCardPrice(row, locks);
+      const byEvent = saleByEvent(
+        active.map((v) => ({
+          active: true,
+          basePrice: v.price,
+          price: variantPrice(v),
+          label: v.variant_sale_label,
+        })),
+      );
+      const base = card
+        ? { ...summary, byEvent, card }
+        : { ...summary, byEvent };
+      out.set(
+        row.id,
+        showEnds
+          ? {
+              ...base,
+              // Өнгөрсөн мөч (хоцорсон кэш) алгасагдана — «ойр» болохгүй.
+              endsAt: earliestEnd(
+                active.map((v) =>
+                  saleEndsAt(v, eventEnds.get(row.id) ?? null, now),
+                ),
+                now.getTime(),
+              ),
+            }
+          : base,
+      );
+    }
+    return out;
+  },
+);
+
+/**
+ * `sale` тагтай мөрүүдэд товчийг наана; тийм мөр байхгүй бол асуухгүй.
+ * Каталогоос гадна quiz-ийн үр дүн (`/api/quiz`) ч ашиглана — картын
+ * хямдралын тууз (`endsAt`), хэмжээтэй үнэ (`cardPrice`) тэнд ч гарна.
+ */
+export async function withSale<T extends ProductListItem>(
+  items: T[],
+): Promise<T[]> {
+  if (!items.some((p) => p.tags.includes("sale"))) return items;
+  const sales = await getSaleSummaries();
+  return items.map((p) => {
+    const found = p.tags.includes("sale") ? sales.get(p.id) : undefined;
+    if (!found) return p;
+    // Картын үнийн хэмжээ (2.5) нь тусдаа талбар — товчоос салгана.
+    const { card, ...sale } = found;
+    return card ? { ...p, sale, cardPrice: card } : { ...p, sale };
+  });
+}
+
 /**
  * A gender filter also answers with unisex scents.
  *
@@ -590,9 +866,11 @@ export async function getCatalog(
       p_sort: sort,
       p_page: page,
       p_per_page: perPage,
+      // 0181-ээс өмнөх сан дээр параметр байхгүй — зөвхөн хэрэгтэй үед.
+      ...(filters.event ? { p_event: filters.event } : {}),
     });
     return {
-      items: data.map(fromCatalogRow),
+      items: await withSale(data.map(fromCatalogRow)),
       // `total` нь мөр болгонд давтагдаж ирдэг; илэрцгүй бол 0.
       total: data[0] ? Number(data[0].total) : 0,
       page,
@@ -623,13 +901,33 @@ async function memoryCatalog(filters: CatalogFilters): Promise<CatalogResult> {
     sort = "new",
     page = 1,
     perPage = DEFAULT_PER_PAGE,
+    event,
   } = filters;
 
   const all = await fetchProducts();
 
   const idSet = ids?.length ? new Set(ids) : null;
+  // Арга хэмжээ (0181): LIVE гишүүд — `catalog_search`-ийн `p_event`-тэй ижил.
+  const eventIds = event
+    ? new Set(
+        (await getLiveSaleEvents()).find((e) => e.slug === event)?.productIds ??
+          [],
+      )
+    : null;
   let items = all.filter((p) => {
     if (idSet && !idSet.has(p.id)) return false;
+    // «Таг» бүлэг (арга хэмжээ, Онцлох, таг) — дотроо OR (0194).
+    if (
+      !matchesTagGroup(
+        { tags, featured, event },
+        {
+          tag: (t) => p.tags.includes(t),
+          featured: p.isFeatured,
+          event: () => eventIds?.has(p.id) ?? false,
+        },
+      )
+    )
+      return false;
     if (brand?.length && !brand.includes(p.brand)) return false;
     if (gender?.length && !gender.includes(p.gender)) return false;
     // Multi-value tags: a product matches when it carries *any* of the picked
@@ -642,8 +940,6 @@ async function memoryCatalog(filters: CatalogFilters): Promise<CatalogResult> {
       !(p.seasons.includes("all") || season.some((s) => p.seasons.includes(s)))
     )
       return false;
-    if (tags?.length && !tags.some((t) => p.tags.includes(t))) return false;
-    if (featured && !p.isFeatured) return false;
     // "ml боломж" means sizes you can actually order right now.
     if (
       ml?.length &&

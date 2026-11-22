@@ -10,13 +10,23 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { formatPrice } from "@/lib/format";
 import { useCart } from "@/features/cart/store";
 import { trackAddToCart } from "@/lib/analytics";
 import { toCartCollection } from "../to-cart";
-import { CollectionSizePicker } from "./collection-size-picker";
+import { useFeatureFlag } from "@/components/feature-flags";
+import { defaultSizeId } from "@/features/products/size-options";
+import { SizeSelector } from "@/features/products/components/size-selector";
+import { SizePrice } from "@/features/products/components/size-price";
+import {
+  QUICK_ADD_CONTENT,
+  QUICK_ADD_FOOTER,
+  QUICK_ADD_HEADER,
+  QUICK_ADD_THUMB,
+  QUICK_ADD_THUMB_SIZES,
+} from "@/features/products/components/quick-add-layout";
+import { bundleSizeOptions, bundleSizeSaleEndsAt } from "../size-options";
+import { bundleCardPrice } from "../pricing";
 import type { CollectionCardData } from "../types";
 
 /**
@@ -33,9 +43,13 @@ export function CollectionQuickAdd({
   className?: string;
 }) {
   const [open, setOpen] = React.useState(false);
-  const [ml, setMl] = React.useState(collection.availableMls[0] ?? 0);
+  const sizeOptions = bundleSizeOptions(collection);
+  // Карт event-ийн хэмжээний үнэ харуулж байвал (2.5) тэр хэмжээгээр.
+  const [ml, setMl] = React.useState(() =>
+    Number(defaultSizeId(sizeOptions, bundleCardPrice(collection.prices)?.ml)),
+  );
   const [added, setAdded] = React.useState(false);
-  const labelId = React.useId();
+  const bundlesOn = useFeatureFlag("sale_event_bundles");
   const addCollection = useCart((s) => s.addCollection);
 
   const priceRow = collection.prices.find((p) => p.ml === ml) ?? null;
@@ -72,90 +86,100 @@ export function CollectionQuickAdd({
         </button>
       </DialogTrigger>
 
-      <DialogContent className="gap-3 p-4 sm:gap-4 sm:p-6">
+      <DialogContent className={QUICK_ADD_CONTENT}>
         <DialogTitle className="sr-only">Сагсанд нэмэх</DialogTitle>
 
-        <div className="space-y-3">
-          <div className="bg-muted relative aspect-4/3 w-full overflow-hidden rounded-xl">
-            {collection.image && (
-              <Image
-                src={collection.image}
-                alt={collection.name}
-                fill
-                sizes="(max-width: 480px) 90vw, 420px"
-                className="object-cover"
-              />
-            )}
-            {/* Сонгосон хэмжээний хөнгөлөлт — хэмжээ солиход дагаж өөрчлөгдөнө
-                (0051: хэмжээ бүр өөр хувьтай байж болно). */}
-            {priceRow && priceRow.nominalDiscountPct > 0 && (
-              <Badge
-                variant="sale"
-                className="bg-background/85! absolute top-2.5 left-2.5 w-fit backdrop-blur-sm"
+        {/* Зураг зүүнд жижиг, мэдээлэл баруунд (барааны quick-add-тай ижил). */}
+        <div className="flex flex-col gap-3">
+          <div className={QUICK_ADD_HEADER}>
+            <div className={QUICK_ADD_THUMB}>
+              {collection.image && (
+                <Image
+                  src={collection.image}
+                  alt={collection.name}
+                  fill
+                  sizes={QUICK_ADD_THUMB_SIZES}
+                  className="object-cover"
+                />
+              )}
+            </div>
+            <div className="min-w-0">
+              {/* pr-9: баруун дээд «Хаах» товчны (size-8) доогуур орохгүй. */}
+              <p className="text-muted-foreground truncate pr-9 text-[11px] tracking-[0.15em] uppercase">
+                Багц · {collection.members.length} үнэртэн
+              </p>
+              <p className="mt-1 pr-9 font-serif text-lg/tight font-medium">
+                {collection.name}
+              </p>
+              {/* Хувь нь энд (task 15) — зураг дээрх «−5%» тэмдэг хасагдсан. */}
+              <div className="mt-3">
+                <SizePrice
+                  size="sm"
+                  price={priceRow?.price ?? collection.startingPrice}
+                  basePrice={priceRow?.memberSum ?? 0}
+                  pct={priceRow?.nominalDiscountPct}
+                  // «/ 4 × 20ml» хасав: нарийн баганад урт үнэтэй үед доод
+                  // мөрөнд унадаг; сонгосон хэмжээ доорх сонгогч дээр тодорно.
+                  sizeLabel={null}
+                  endsAt={
+                    bundlesOn
+                      ? bundleSizeSaleEndsAt(collection, priceRow)
+                      : null
+                  }
+                  reserve={
+                    bundlesOn &&
+                    collection.prices.some((p) =>
+                      bundleSizeSaleEndsAt(collection, p),
+                    )
+                  }
+                />
+              </div>
+            </div>
+          </div>
+          {/* Гишүүд — юу авч байгаагаа цонхноосоо гаралгүй харна (жижиг
+            зурган дээр савыг таних боломжгүй). Бүтэн өргөнөөр outlined chip:
+            дарагддаггүй мэдээлэл тул дэвсгэргүй, зөвхөн нимгэн хүрээ. */}
+          <ul
+            aria-label="Багцад орсон үнэртэн"
+            className="flex flex-wrap gap-1.5"
+          >
+            {collection.members.map((m) => (
+              <li
+                key={m.productId}
+                className="ring-foreground/15 text-foreground/80 rounded-full px-2.5 py-1 text-xs ring-1 ring-inset"
               >
-                −{priceRow.nominalDiscountPct}%
-              </Badge>
+                {m.name}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <SizeSelector
+          options={sizeOptions}
+          value={String(ml)}
+          onChange={(id) => setMl(Number(id))}
+        />
+
+        <div className={QUICK_ADD_FOOTER}>
+          <Button
+            size="lg"
+            className="w-full"
+            disabled={!priceRow || !available}
+            onClick={onAdd}
+          >
+            {added ? (
+              <>
+                <Check className="size-4" /> Нэмэгдлээ
+              </>
+            ) : !available ? (
+              "Дууссан"
+            ) : (
+              <>
+                <ShoppingCart className="size-4" /> Сагслах
+              </>
             )}
-          </div>
-          <div>
-            <p className="text-muted-foreground text-[11px] tracking-[0.15em] uppercase">
-              Багц · {collection.members.length} үнэртэн
-            </p>
-            <p className="font-serif text-base/tight font-medium">
-              {collection.name}
-            </p>
-            {/* Гишүүд — юу авч байгаагаа цонхноосоо гаралгүй харна. */}
-            <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
-              {collection.members.map((m) => m.name).join(" · ")}
-            </p>
-            <p className="mt-1 font-semibold tracking-tight">
-              {formatPrice(priceRow?.price ?? collection.startingPrice)}
-              {priceRow && priceRow.memberSum > priceRow.price && (
-                <span className="text-muted-foreground ml-1.5 text-xs font-normal line-through">
-                  {formatPrice(priceRow.memberSum)}
-                </span>
-              )}
-              {priceRow && (
-                <span className="text-muted-foreground ml-1 text-xs font-normal">
-                  / {collection.members.length} × {priceRow.ml}ml
-                </span>
-              )}
-            </p>
-          </div>
+          </Button>
         </div>
-
-        {/* Багцын хуудсынх шиг: «×4», «Хамгийн ашигтай», «Туршиж үзэх»,
-            ₮/ml. space-y-3 — дээд талын шошго гарчигт наалдахгүй. */}
-        <div className="space-y-3">
-          <p id={labelId} className="text-sm font-medium">
-            Хэмжээ сонгох
-          </p>
-          <CollectionSizePicker
-            collection={collection}
-            ml={ml}
-            onChange={setMl}
-            labelId={labelId}
-          />
-        </div>
-
-        <Button
-          size="lg"
-          className="w-full"
-          disabled={!priceRow || !available}
-          onClick={onAdd}
-        >
-          {added ? (
-            <>
-              <Check className="size-4" /> Нэмэгдлээ
-            </>
-          ) : !available ? (
-            "Дууссан"
-          ) : (
-            <>
-              <ShoppingCart className="size-4" /> Сагслах
-            </>
-          )}
-        </Button>
       </DialogContent>
     </Dialog>
   );

@@ -24,10 +24,13 @@ export function SignOutForm({
   ref,
   className,
   children,
+  next,
 }: {
   ref?: React.Ref<HTMLFormElement>;
   className?: string;
   children?: React.ReactNode;
+  /** Гарсны дараа очих зам (өгөгдмөл: нүүр). */
+  next?: string;
 }) {
   return (
     <form
@@ -37,6 +40,7 @@ export function SignOutForm({
       className={className}
       hidden={!children}
     >
+      {next && <input type="hidden" name="next" value={next} />}
       {children}
     </form>
   );

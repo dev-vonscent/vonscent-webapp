@@ -15,6 +15,8 @@ export function Stars({
   return (
     <div
       className={cn("flex items-center gap-0.5", className)}
+      // `role="img"`-гүй div-д aria-label хориотой (axe: aria-prohibited-attr).
+      role="img"
       aria-label={`${rating} / 5`}
     >
       {[1, 2, 3, 4, 5].map((n) => (

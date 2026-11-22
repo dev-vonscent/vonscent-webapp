@@ -14,6 +14,12 @@ export interface ProductOption {
   availableMl: number;
   /** ml → бодитоор төлөгдөх үнэ; зөвхөн идэвхтэй хэмжээ (0054). */
   priceByMl: Record<number, number>;
+  /**
+   * ml → ҮНДСЭН үнэ (0189). Бэлэн багцын «Нийлбэр» үүгээр — гишүүний
+   * хямдрал багцын үнэд нөлөөлөхгүй (task 17). Хуучин RPC-д байхгүй бол
+   * `priceByMl`-ээр орлоно.
+   */
+  basePriceByMl?: Record<number, number>;
 }
 
 /** Нэг сонгогчид нэг удаад хэдэн мөр харуулах вэ. */

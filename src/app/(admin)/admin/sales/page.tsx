@@ -7,6 +7,11 @@ import {
   type SaleProduct,
 } from "@/features/admin/components/sale-manager";
 import type { Gender } from "@/db/types";
+import { isOnSale } from "@/features/products/sale";
+import { SEED_PRODUCTS } from "@/features/products/seed";
+import { SaleList } from "@/features/sales/components/sale-list";
+import { summarizeSales } from "@/features/sales/lib";
+import { getNamedSalesData } from "@/features/sales/server";
 
 export const dynamic = "force-dynamic";
 
@@ -28,16 +33,44 @@ interface Row {
 }
 
 /**
- * Админ → Каталог → Хямдрал (0166, feature flag `sale_page`). Олон бараанд
+ * Админ → Маркетинг → Хямдрал (0166, feature flag `sale_page`; `named_sales`
+ * нээлттэй бол нэртэй хямдралын жагсаалт, 0188). Олон бараанд
  * нэг дор хугацаатай хямдрал тавих / цуцлах. Нуусан бараа орохгүй — зөвхөн
  * дэлгүүрт харагдаж буй («Идэвхтэй», «Тун удахгүй») бараа.
  */
 export default async function AdminSalesPage() {
   if (!(await isFeatureEnabled("sale_page"))) notFound();
 
+  // Нэртэй хямдрал (16.3, туг `named_sales`): жагсаалт + тусдаа шинэ/засах
+  // хуудас. Хаалттай үед доорх хуучин нэг хуудасны менежер хэвээр.
+  if (await isFeatureEnabled("named_sales")) {
+    const { sales, products: rows } = await getNamedSalesData();
+    return (
+      <SaleList rows={summarizeSales(sales, rows, new Date().getTime())} />
+    );
+  }
+
+  const eventsOn = await isFeatureEnabled("sale_events");
+
   let products: SaleProduct[] = [];
   const supabase = await createClient();
-  if (supabase) {
+  if (!supabase) {
+    // Демо горим (e2e): seed каталог — «sale» тагтай seed 10% хямдралтай.
+    products = SEED_PRODUCTS.map((p) => ({
+      id: p.id,
+      name: p.name,
+      brand: p.brand,
+      gender: p.gender,
+      variants: p.variants.map((v) => ({
+        ml: v.ml,
+        price: v.basePrice,
+        salePrice: v.price < v.basePrice ? v.price : null,
+        saleStartsAt: null,
+        saleEndsAt: null,
+        isActive: v.isActive,
+      })),
+    }));
+  } else {
     const { data } = await supabase
       .from("products")
       .select(
@@ -64,15 +97,19 @@ export default async function AdminSalesPage() {
     }));
   }
 
+  // Дууссан хямдралыг тоолохгүй (16.1). Хүсэлтийн цаг (force-dynamic) —
+  // `Date.now()`-г lint хориглодог.
+  const now = new Date().getTime();
   return (
     <div className="space-y-6">
       <PageHeader
         title="Хямдрал"
-        description="Олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал тавина."
-        count={
-          products.filter((p) => p.variants.some((v) => v.salePrice != null))
-            .length
+        description={
+          eventsOn
+            ? "Олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал тавина. Нэрлэсэн, хугацаатай хямдралд (Black Friday г.м.) «Арга хэмжээ»-г ашиглана уу — энэ нь одоо байгаа хямдралыг дарахгүй."
+            : "Олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал тавина."
         }
+        count={products.filter((p) => isOnSale(p, now)).length}
       />
       <SaleManager products={products} />
     </div>

@@ -1,3 +1,6 @@
+import { isFeatureEnabled } from "@/lib/feature-flags";
+import { getBottlesFor } from "@/features/extras/api";
+import { ProductExtras } from "@/features/extras/components/product-extras";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
@@ -17,6 +20,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { NoteColumn } from "@/features/products/components/note-column";
 import { ProductGallery } from "@/features/products/components/product-gallery";
 import { ProductPurchase } from "@/features/products/components/product-purchase";
 import { ComingSoonPurchase } from "@/features/products/components/coming-soon-purchase";
@@ -33,12 +37,21 @@ import {
 import { getScentFamilyLabels } from "@/features/taxonomy/api";
 import { ReviewSection } from "@/features/reviews/components/review-section";
 import { GenderBadge } from "@/features/products/components/gender-badge";
+import { SaleBadge } from "@/features/sale-events/components/sale-badge";
+import {
+  saleByEvent,
+  salePctText,
+  summarizeSale,
+} from "@/features/products/sale";
 import {
   GENDER_LABEL,
   RELATED_SECTION_ID,
   SEASON_LABEL,
 } from "@/lib/constants";
-import { DeliveryReturnsText } from "@/components/shared/delivery-returns-text";
+import {
+  DeliveryText,
+  ReturnsText,
+} from "@/components/shared/delivery-returns-text";
 
 /**
  * ISR: public data comes from the cookie-less client, so the page is
@@ -78,20 +91,8 @@ export async function generateMetadata({
 const TAG_LABEL: Record<string, string> = {
   new: "Шинэ",
   hot: "Эрэлттэй",
-  sale: "Хямдрал",
+  sale: "Хямдралтай",
 };
-
-function NoteColumn({ title, notes }: { title: string; notes: string[] }) {
-  if (!notes.length) return null;
-  return (
-    <div>
-      <p className="text-muted-foreground mb-1 text-xs font-semibold tracking-wide uppercase">
-        {title}
-      </p>
-      <p className="text-sm">{notes.join(", ")}</p>
-    </div>
-  );
-}
 
 export default async function ProductPage({
   params,
@@ -102,10 +103,20 @@ export default async function ProductPage({
   const product = await getProductPageBySlug(slug);
   if (!product) notFound();
 
-  const [related, familyLabelMap] = await Promise.all([
+  const extrasOn = await isFeatureEnabled("extras_shop");
+  const [related, familyLabelMap, bottles] = await Promise.all([
     getRelated(slug),
     getScentFamilyLabels(),
+    // Нэмэлт бараа (0151) — туг хаалттай бол огт асуухгүй. Бэлгийн боодол
+    // зөвхөн төлбөрийн хуудсанд (клиентийн засвар 2026-11-21 сл.2).
+    extrasOn ? getBottlesFor(product.id) : Promise.resolve([]),
   ]);
+  // Хямдралын chip (сл.10 A): үнийг арга хэмжээ тогтоож байгаа эсэх.
+  const activeSizes = product.variants.filter((v) => v.isActive);
+  const pageSale = summarizeSale(activeSizes);
+  const pageByEvent = saleByEvent(
+    activeSizes.map((v) => ({ ...v, active: true, label: v.saleLabel })),
+  );
   // A family the admin deleted still shows as its slug rather than vanishing.
   const familyLabels = product.scentFamilies.map((f) => familyLabelMap[f] ?? f);
 
@@ -142,10 +153,14 @@ export default async function ProductPage({
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="grid grid-cols-1 gap-0 sm:gap-10 lg:grid-cols-2 lg:items-start">
+      <div className="grid grid-cols-1 gap-0 max-sm:block sm:gap-10 lg:grid-cols-2 lg:items-start">
         {/* Left: gallery sticks below the header while the right column scrolls,
             and releases when the grid ends (i.e. the related section appears). */}
-        <div className="lg:sticky lg:top-(--header-offset) lg:self-start lg:transition-[top] lg:duration-300 lg:ease-out">
+        {/* Утсан дээр зураг байрандаа (sticky top-0) үлдэж, доорх самбар
+            түүний дээгүүр гулсаж гарна. Grid item-ийн sticky нь өөрийн
+            мөрөөсөө гарахгүй тул < sm үед grid биш block (`max-sm:block`) —
+            тэгвэл зураг бүх grid-ийн туршид наалдана. */}
+        <div className="max-sm:sticky max-sm:top-0 lg:sticky lg:top-(--header-offset) lg:self-start lg:transition-[top] lg:duration-300 lg:ease-out">
           <ProductGallery images={product.images} name={product.name} />
         </div>
 
@@ -163,16 +178,31 @@ export default async function ProductPage({
                 {product.comingSoon && (
                   <Badge variant="gold">Тун удахгүй</Badge>
                 )}
-                {product.tags.map((t) => (
-                  <Badge key={t} variant={t}>
-                    {TAG_LABEL[t]}
-                  </Badge>
-                ))}
+                {/* Хямдрал: арга хэмжээнд байвал түүний тэмдэг + «~10%»,
+                    зурвасны өнгөтэй (картын `SaleBadge`-тэй ижил дүрэм). */}
+                <SaleBadge
+                  productId={product.id}
+                  onSale={product.tags.includes("sale")}
+                  byEvent={pageByEvent}
+                  // Гар хямдрал (сл.10 A): арга хэмжээний хувь биш, бодит хувь.
+                  salePct={
+                    pageByEvent ? undefined : salePctText(pageSale) || undefined
+                  }
+                  surface="page"
+                />
+                {product.tags
+                  .filter((t) => t !== "sale")
+                  .map((t) => (
+                    <Badge key={t} variant={t}>
+                      {TAG_LABEL[t]}
+                    </Badge>
+                  ))}
                 {/* Хүйс — тагуудын хажууд нэг мөрөнд (backlog C1). */}
                 <GenderBadge gender={product.gender} />
               </div>
               <div className="flex items-start justify-between gap-3">
-                <h1 className="font-serif text-3xl font-semibold tracking-tight">
+                {/* Нэр үнээс (SizePrice lg, 32/36px) жижиг — нүд эхлээд үнэ дээр. */}
+                <h1 className="font-serif text-2xl font-semibold tracking-tight">
                   {product.name}
                 </h1>
                 <WishlistButton
@@ -187,6 +217,8 @@ export default async function ProductPage({
             ) : (
               <ProductPurchase product={product} />
             )}
+            {/* «Энэ үнэрийн шил» нь удахгүй ирэх үнэртэнд ч (хоосон шил). */}
+            <ProductExtras bottles={bottles} />
             <TrackViewItem
               id={product.id}
               name={product.name}
@@ -273,10 +305,17 @@ export default async function ProductPage({
                 </dl>
               </AccordionContent>
             </AccordionItem>
+            {/* «Хүргэлт» ба «Буцаалт» тусдаа (task 5). */}
             <AccordionItem value="ship">
-              <AccordionTrigger>Хүргэлт ба буцаалт</AccordionTrigger>
+              <AccordionTrigger>Хүргэлт</AccordionTrigger>
               <AccordionContent>
-                <DeliveryReturnsText />
+                <DeliveryText />
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="returns">
+              <AccordionTrigger>Буцаалт</AccordionTrigger>
+              <AccordionContent>
+                <ReturnsText />
               </AccordionContent>
             </AccordionItem>
           </Accordion>

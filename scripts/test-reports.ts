@@ -546,7 +546,8 @@ async function main() {
       const id = await placeOrder(a, {
         user: ctx.customer,
         lines: [{ p, ml: 10 }],
-        loyalty: 999_999,
+        // Боломжтой оноогоо бүгдийг (0144: үлдэгдлээс их бол LOYALTY_CHANGED).
+        loyalty: 200_000,
         createdAt: "2031-01-12T12:00:00",
       });
       await pay(a, id);
@@ -923,7 +924,8 @@ async function main() {
         [p.id],
       );
       await a.query(
-        "update restock_log set created_at = $2 where product_id = $1",
+        // purchased_on (0156) — тайлан худалдан авалтыг авсан өдрөөр (УБ) шүүнэ.
+        "update restock_log set created_at = $2, purchased_on = ($2::timestamptz at time zone 'Asia/Ulaanbaatar')::date where product_id = $1",
         [p.id, at("2031-01-06T10:00:00")],
       );
       const id = await placeOrder(a, {
@@ -983,7 +985,8 @@ async function main() {
       p.id,
     ]);
     await a.query(
-      "update restock_log set created_at = $2 where product_id = $1",
+      // purchased_on (0156) — тайлан худалдан авалтыг авсан өдрөөр (УБ) шүүнэ.
+      "update restock_log set created_at = $2, purchased_on = ($2::timestamptz at time zone 'Asia/Ulaanbaatar')::date where product_id = $1",
       [p.id, at("2031-01-07T10:00:00")],
     );
     let r = await report(a, Y.from, Y.to);
@@ -999,7 +1002,8 @@ async function main() {
       [p.id],
     );
     await a.query(
-      "update restock_log set created_at = $2 where product_id = $1",
+      // purchased_on (0156) — тайлан худалдан авалтыг авсан өдрөөр (УБ) шүүнэ.
+      "update restock_log set created_at = $2, purchased_on = ($2::timestamptz at time zone 'Asia/Ulaanbaatar')::date where product_id = $1",
       [p.id, at("2031-01-07T10:00:00")],
     );
     r = await report(a, Y.from, Y.to);
@@ -1237,15 +1241,25 @@ async function main() {
       reserved_ml: number;
       expected: string;
     }>(
-      `select i.product_id, i.reserved_ml, coalesce(x.ml, 0) expected
+      // Нийтэлсэн үлдэгдэлтэй шил ч шингэнийг түгждэг (0145
+      // leftover_liquid_locks) — check-extras-reconcile.ts-тэй ижил дүрэм.
+      `select i.product_id, i.reserved_ml, coalesce(x.ml, 0) + coalesce(l.ml, 0) expected
          from inventory i
          left join (
            select oi.product_id, sum(oi.ml * oi.qty) ml
              from order_items oi join orders o on o.id = oi.order_id
             where o.payment_status = 'unpaid' and o.status <> 'cancelled'
+              and oi.line_kind = 'perfume'
             group by oi.product_id
          ) x on x.product_id = i.product_id
-        where i.reserved_ml <> coalesce(x.ml, 0)`,
+         left join (
+           select p.product_id, sum(lk.locked_ml) ml
+             from leftover_liquid_locks lk
+             join extra_products p on p.id = lk.extra_product_id
+            where lk.state in ('listed', 'reserved')
+            group by p.product_id
+         ) l on l.product_id = i.product_id
+        where i.reserved_ml <> coalesce(x.ml, 0) + coalesce(l.ml, 0)`,
     );
     check(
       "[F11] reserved_ml == төлөгдөөгүй идэвхтэй захиалгын ml",

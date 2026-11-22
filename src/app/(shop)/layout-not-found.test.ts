@@ -26,12 +26,18 @@ let collection: unknown = null;
 vi.mock("@/features/collections/api", () => ({
   getCollectionBySlug: async () => collection,
 }));
+let extra: unknown = null;
+const getShopExtra = vi.fn(async () => extra);
+vi.mock("@/features/extras/api", () => ({
+  getShopExtra: () => getShopExtra(),
+}));
 
 const { default: LuckyWheelLayout } = await import("./lucky-wheel/layout");
 const { default: RequestLayout } = await import("./request/layout");
 const { default: ProductLayout } = await import("./products/[slug]/layout");
 const { default: CollectionLayout } =
   await import("./collections/[slug]/layout");
+const { default: ExtraLayout } = await import("./extras/[slug]/layout");
 const { default: AboutLayout } = await import("./about/layout");
 const { default: BlogLayout } = await import("./blog/layout");
 
@@ -42,6 +48,8 @@ beforeEach(() => {
   enabled.clear();
   product = null;
   collection = null;
+  extra = null;
+  getShopExtra.mockClear();
 });
 
 describe("туг хаалттай → notFound", () => {
@@ -72,6 +80,25 @@ describe("байхгүй slug → notFound", () => {
     await expect(CollectionLayout({ children, params })).resolves.toBe(
       children,
     );
+  });
+});
+
+describe("нэмэлт бараа (extras_shop)", () => {
+  it("туг хаалттай → notFound, санг асуухгүй", async () => {
+    extra = { card: {} };
+    await expect(ExtraLayout({ children, params })).rejects.toBeInstanceOf(
+      NotFound,
+    );
+    expect(getShopExtra).not.toHaveBeenCalled();
+  });
+
+  it("байхгүй slug → notFound, байвал children", async () => {
+    enabled.add("extras_shop");
+    await expect(ExtraLayout({ children, params })).rejects.toBeInstanceOf(
+      NotFound,
+    );
+    extra = { card: {} };
+    await expect(ExtraLayout({ children, params })).resolves.toBe(children);
   });
 });
 

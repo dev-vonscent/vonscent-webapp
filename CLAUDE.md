@@ -27,7 +27,14 @@ Migration нь **dev → prod** гэсэн нэг чиглэлд урсана
 (`pnpm db:migrate-dev` → шалгах → `pnpm db:migrate-prod`); prod дээр гараар
 schema засахыг хориглоно. Дэлгэрэнгүй: README «Migration workflow».
 
-PR-аас өмнө: `pnpm typecheck` + `pnpm lint` + `pnpm test` цэвэр байх ёстой.
+**Preview:** Vercel-ийн Supabase env зөвхөн `dev` branch-д тохируулагдсан тул бусад
+branch-ийн preview DEMO горимд (seed өгөгдөл) ажиллана. Бодит (dev сан) өгөгдлөөр
+тестлэх бол локал (`pnpm build && pnpm start`) эсвэл `dev`-ийн preview.
+
+PR-аас өмнө: `pnpm typecheck` + `pnpm lint` + `pnpm test` + `pnpm build` цэвэр байх ёстой;
+UI-д нөлөөлөх бол `pnpm test:e2e`. Unit тест эх файлынхаа хажууд (`*.test.ts(x)`,
+ганцыг нь: `pnpm test <зам>`), e2e нь `e2e/*.spec.ts`. e2e тугийн утгаас болж хачин
+унавал эхлээд `.next/cache`-ийг устгаад дахин build хий (өмнөх build-ийн туг кэшлэгддэг).
 
 ## Архитектур (дэлгэрэнгүй: docs/spec/development.md)
 
@@ -46,7 +53,8 @@ PR-аас өмнө: `pnpm typecheck` + `pnpm lint` + `pnpm test` цэвэр ба
 - Inventory: эх савны ml дээр **reserve / commit / release** загвар, oversell хориотой.
 - Roles: guest / customer / courier / operator / super_admin — `(admin)` бүлэг middleware + handler дотор давхар шалгалттай.
 - Утасны баталгаажуулалт verify.mn MO-SMS (Supabase phone auth биш).
-- Cron: Supabase pg_cron (оноо нээх, reserve timeout, төлөв авто шилжилт).
+- Cron: DB-ийн ажил (оноо нээх, reserve timeout, төлөв авто шилжилт) → Supabase pg_cron;
+  кэш цэвэрлэх, гадны API → Vercel cron (`vercel.json`, доорх «Vercel-ийн зардал»).
 
 ## Шинэ feature → prod (feature flag)
 
@@ -72,23 +80,51 @@ PR-аас өмнө: `pnpm typecheck` + `pnpm lint` + `pnpm test` цэвэр ба
 - PR тайлбарт: тугийн нэр, migration жагсаалт, хаалттай үед юу ч
   хуримтлагдахгүйг хэрхэн шалгасан.
 
+## Vercel-ийн зардал (ISR, cron, CDN): 2026-11-ийн сургамж
+
+Төлбөр $27-оос $60 болж өссөнийг #279–#282-оор засав (ISR-ийн бичилт −76%). Шинэ код бичихдээ:
+
+- **ISR хуудасны render тогтмол байх.** Сервер дээр (`"use client"` компонентын SSR-ийг оролцуулаад)
+  `Math.random`, `new Date()`/`Date.now()`-ээс хамаарсан текст, санамсаргүй ID бүү гарга. Эс бөгөөс
+  дахин үүсгэлт бүрт хуудас бүтнээрээ Vercel-д дахин бичигдэнэ (ISR Writes).
+  Холих → `dailyRandom(salt)` (`src/lib/seeded-random.ts`), харьцаангуй хугацаа → `RelativeTime`
+  (`src/components/shared/relative-time.tsx`, client дээр бодно).
+- **`revalidate`-ийг богиносгохгүй.** Shop хуудас 3600. Өгөгдөл өөрчлөгдөхөд on-demand цэвэрлэ
+  (`src/lib/cache.ts`): админы бичилт → `revalidatePublic()`, захиалга/нөөц →
+  `revalidateStock({ productSlugs, collectionSlugs, extraSlugs })`, төлбөр → `revalidateLeaderboard()`,
+  hero → `revalidateHero()`. Хамгийн жижиг tag/path-ийг сонго. Захиалгын урсгалд
+  `revalidatePath("/", "layout")` бүү дууд.
+- **Cache tag** (`src/lib/cache-tags.ts`): `catalog` = админы өөрчлөлт (савны түгжээгээр бүх барааны
+  хуудсанд наалддаг тул захиалгаар бүү цэвэрлэ), `stock` = үлдэгдэл, `leaderboard`, `hero`.
+  Шинэ `unstable_cache` бүрт tag өг. Layout-д уншигддаг кэшийн `revalidate` нь бүх shop хуудасны
+  ISR-ийн дээд хязгаар болдог.
+- **Цагаар солигдох агуулга** (хямдрал, арга хэмжээ, hero, улирал) УБ-ын 00:00-д эхэлж 23:59:59-д
+  дуусдаг. Үүнийг `/api/cron/midnight-revalidate` (00:01, 00:04) барина. Минут тутмын cron бүү нэм,
+  шинэ хилийг энэ cron-д нэм. Vercel-ийн cron UTC-аар ажилладаг (УБ = UTC+8).
+- **Байхгүй хуудас 404 буцаах.** `notFound()`-ийг `loading.tsx`-ээс дээш (`layout.tsx`) шалга.
+  Эс бөгөөс 200 статустайгаар ISR-д кэшлэгдэнэ.
+- **CDN request** (Flat Rate 1M/сар-аас давбал +$20): polling, cache-гүй route, хэрэггүй prefetch-ээс
+  зайлсхий. Sentry-ийн `tunnelRoute` болон `next.config.ts`-ийн trace meta шүүлтүүрийг бүү буцаа.
+- **Preview build:** `vercel.json`-ийн `ignoreCommand` (`scripts/vercel-ignore-build.sh`)-ийн дагуу
+  PR-гүй branch build хийгдэхгүй (push → PR нээх → дахин push).
+
 ## Styling
 
 - Tailwind utility, theme token — өнгө/зай hardcode хийхгүй. **Gradient хэрэглэхгүй** (design.md).
 - Mobile-first responsive, dark mode-д бэлэн (next-themes).
 - Themed scrollbar нь `html` дээр өгөгдмөл, бүх гүйдэг элементэд удамшина — элемент
   бүрт класс нэмэхгүй. Нуух шаардлагатай ховор тохиолдолд л `no-scrollbar` (design.md §6.1).
-- **Сонгогдсон chip/tab-д `transition-colors` хэрэглэхгүй**, хэрэв сонголт нь URL
-  солиж серверийн render өдөөдөг бол (шүүлт, хугацааны chip г.м.). Өнгөний transition
-  main thread дээр явдаг тул render давхцахад хуучин chip хагас гэрэлтсэн чигээрээ
-  гацаж «анивчина» (тайлангийн хугацааны chip — Playwright-аар frame бүрээр баталсан).
-  Сонгогдсон төлөвт `bg-cta text-cta-foreground`: хар theme-д `bg-primary` нь
-  `bg-secondary`-оос бараг ялгагдахгүй. Үлдсэн газрууд (`FilterChip`,
-  `products-toolbar` chip, `calendar`) — анзаарагдвал засна.
+- Сонгогдсон chip/tab-д (URL солиж серверийн render өдөөдөг бол) `transition-colors` бүү
+  хэрэглэ; сонгогдсон төлөвт `bg-cta text-cta-foreground` (design.md §7.1).
 
 ## Git
 
-- `main` = production, PR-аар л орно. Feature: `feat/<name>`, fix: `fix/<name>`. Conventional Commits.
+- `main` = production, `dev` = интеграц (клиент dev-ийн preview дээр туршина). Хоёулаа PR-аар л орно.
+- Branch: `feat/`, `fix/`, `perf/`, `chore/`, `docs/` + `<name>`. Conventional Commits.
+- Feature/fix PR → **Squash and merge**. main ↔ dev нэгтгэл (`chore/sync-main-to-dev-*`) болон
+  dev → main release → **Create a merge commit** (squash хийвэл түүхийн холбоо алдагдаж
+  дараагийн нэгтгэлд conflict давтагдана).
+- main руу яаралтай засвар: `origin/main`-аас салгаж PR → main, дараа нь main-ийг dev руу нэгтгэ.
 
 ## Баримт (хэрэгтэй үедээ л унш)
 

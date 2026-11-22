@@ -19,7 +19,18 @@ export interface CollectionMember {
    */
   variantByMl: Record<
     number,
-    { variantId: string; price: number; inStock: boolean }
+    {
+      variantId: string;
+      /** Бодитоор төлөх (хямдарсан) үнэ — угсарсан (custom) багц үүгээр. */
+      price: number;
+      /**
+       * Үндсэн үнэ (хямдралгүй). Бэлэн багц ҮҮГЭЭР бодогдоно — барааны
+       * хямдрал (гар, арга хэмжээ) нөлөөлөхгүй (Тайлан11.11.pptx сл.2,
+       * docs/campaigns/plan.md §5.3). Байхгүй бол `price`.
+       */
+      basePrice?: number;
+      inStock: boolean;
+    }
   >;
 }
 
@@ -31,16 +42,15 @@ export interface CollectionPriceAtMl {
   /** Эцсийн үнэ: тогтмол үнэ, эсвэл нийлбэрээс хувь хассан дүн. */
   price: number;
   /**
-   * Бодит хэмнэлтийн хувь (`memberSum` → `price`). Админы бичсэн хувь биш —
-   * тогтмол үнэтэй хэмжээнд тэр хувь худал болно. Нэг ТОДОРХОЙ хэмжээг
+   * Бодит хэмнэлтийн хувь (`memberSum` → `price`, 100₮-т тэгшлэсний дараах).
+   * Нэг ТОДОРХОЙ хэмжээг
    * харуулах газарт (сагс, дэлгэрэнгүй хуудас) үүнийг ашигла.
    */
   discountPct: number;
   /**
    * Зар сурталчилгааны (badge) хувь: admin-ий амласан ХУВЬ өөрөө
    * (`discountForMl`-ийн үр дүн), ₮-т 100-д тэгшлэхээс гарах ойролцоо
-   * зөрүүг жинхэнэ ялгаа мэт үзүүлэхгүйн тулд. Тогтмол үнэтэй хэмжээнд
-   * (`MlPrices`) ийм амлалт байхгүй тул `discountPct`-тай адил.
+   * зөрүүг жинхэнэ ялгаа мэт үзүүлэхгүйн тулд.
    *
    * Хэд хэдэн хэмжээг НЭГ дор харьцуулах газарт (`discountRange`) үүнийг
    * ашигла — эс бөгөөс 100₮-т тэгшлэхэд гарах 1пп-ийн зөрүү бодит ялгаа мэт
@@ -49,8 +59,28 @@ export interface CollectionPriceAtMl {
   nominalDiscountPct: number;
   /** memberSum − price. */
   saved: number;
+  /**
+   * LIVE арга хэмжээний НЭМЭЛТ хэмнэлт (16.7): суурь хувиар бодсон үнэ −
+   * `price`. `saved`-ийн нэг хэсэг; задаргаанд «<Event нэр>» мөр болно.
+   * Event-гүй / туг хаалттай бол байхгүй.
+   */
+  eventSaving?: number;
   /** Every member has an active, in-stock variant at this ml. */
   available: boolean;
+}
+
+/** Багцын LIVE арга хэмжээ (16.7, 0190 `live_event_collection_discounts`). */
+export interface CollectionEvent {
+  slug: string;
+  /** Хэрэглэгчид харагдах нэр — задаргааны мөр. */
+  name: string;
+  /** ml → event-ийн хувь (суурь хувийг орлоно, greatest). */
+  pcts: Record<number, number>;
+  /**
+   * Арга хэмжээ дуусах мөч (ISO, exclusive) — картын тоолуур (task 2.2).
+   * Туг `sale_display` хаалттай бол server өгөхгүй.
+   */
+  endsAt?: string;
 }
 
 /** A base or saved-custom collection resolved with live member data. */
@@ -71,11 +101,6 @@ export interface Collection {
   discountPct: number;
   /** Per-size overrides, keyed by ml (0051). Empty when the default rules all. */
   mlDiscounts: Record<number, number>;
-  /**
-   * Хэмжээ бүрийн тогтмол үнэ (0054, B6). Тухайн хэмжээ энд байвал хувийн
-   * тооцоо огт хийгдэхгүй — админы бичсэн үнэ нь эцсийн үнэ.
-   */
-  mlPrices: Record<number, number>;
   /** Span of the discounts actually on offer — «5-10%» on a card. */
   discountRange: { min: number; max: number };
   /** Customer-facing badges, shared with products. */
@@ -99,6 +124,11 @@ export interface Collection {
   /** True once no ml is fully in stock / any member is inactive. */
   soldOut: boolean;
   createdAt: string;
+  /**
+   * LIVE арга хэмжээ, аль нэг хэмжээнд хэмнэлт өгч байвал (16.7) — каталогийн
+   * `?event=`, badge. Туг хаалттай / event-гүй бол null эсвэл байхгүй.
+   */
+  event?: CollectionEvent | null;
 }
 
 /**

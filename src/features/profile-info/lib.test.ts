@@ -9,6 +9,7 @@ import {
   isFieldFilled,
   nextMissingField,
   profileCompletion,
+  showProgressCard,
 } from "./lib";
 import type { ProfileInfo } from "./types";
 
@@ -134,5 +135,33 @@ describe("ageOn", () => {
 
   it("is one less before this year's birthday", () => {
     expect(ageOn("1995-03-14", "2026-03-13")).toBe(30);
+  });
+});
+
+describe("showProgressCard", () => {
+  it("shows while fields are missing", () => {
+    expect(showProgressCard(empty)).toBe(true);
+    expect(
+      showProgressCard({
+        ...empty,
+        reward: { points: 0, claimedPoints: null },
+      }),
+    ).toBe(true);
+  });
+
+  it("stays while a complete profile still has a reward to claim", () => {
+    expect(showProgressCard(full)).toBe(true);
+  });
+
+  it("hides once complete and the reward is claimed or off", () => {
+    expect(
+      showProgressCard({
+        ...full,
+        reward: { points: 1000, claimedPoints: 1000 },
+      }),
+    ).toBe(false);
+    expect(
+      showProgressCard({ ...full, reward: { points: 0, claimedPoints: null } }),
+    ).toBe(false);
   });
 });

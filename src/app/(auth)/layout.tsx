@@ -15,17 +15,14 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div
-      className="relative flex min-h-svh flex-col items-center justify-center overflow-hidden px-4 pt-14 transition-[padding-bottom] duration-300 ease-out"
-      style={{ paddingBottom: "calc(3.5rem + var(--kb-inset, 0px))" }}
-    >
+    <div className="relative flex min-h-svh flex-col items-center justify-center overflow-hidden px-4 pt-14 pb-[calc(3.5rem+var(--kb-inset,0px))] transition-[padding-bottom] duration-300 ease-out sm:pt-8 sm:pb-[calc(2rem+var(--kb-inset,0px))]">
       {/* iOS: lift the form above the on-screen keyboard */}
       <KeyboardInset />
 
       {/* ── Backdrop: drifting glass orbs + fade to the page background ── */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <div
-          className="absolute -left-24 top-24 size-72 rounded-full blur-[2px] sm:-left-36 sm:size-104"
+          className="absolute top-24 -left-24 size-72 rounded-full blur-[2px] sm:-left-36 sm:size-104"
           style={{
             backgroundImage: ORB_A,
             animation: "drift 9s ease-in-out infinite",
@@ -39,7 +36,7 @@ export default function AuthLayout({
           }}
         />
         <div
-          className="absolute right-16 top-16 hidden size-32 rounded-full blur-[1px] sm:block"
+          className="absolute top-16 right-16 hidden size-32 rounded-full blur-[1px] sm:block"
           style={{
             backgroundImage: ORB_A,
             animation: "drift 7s ease-in-out infinite",
@@ -57,9 +54,9 @@ export default function AuthLayout({
       <AuthBackPill />
 
       {/* ── Brand mark + tagline ── */}
-      <div className="animate-fade-up relative z-10 mb-8 flex flex-col items-center gap-3">
+      <div className="animate-fade-up relative z-10 mb-8 flex flex-col items-center gap-3 sm:mb-6">
         <Logo className="text-3xl" />
-        <div className="text-muted-foreground flex items-center gap-3 text-[11px] tracking-[0.35em] uppercase">
+        <div className="text-muted-foreground flex items-center gap-3 text-[11px] tracking-[0.35em] uppercase [@media(max-height:700px)]:hidden">
           <span className="gold-rule w-8" />
           {SITE.tagline}
           <span className="gold-rule w-8" />
@@ -73,7 +70,7 @@ export default function AuthLayout({
           aria-hidden
           className="bg-foreground/5 absolute -inset-6 -z-10 rounded-[2.5rem] blur-2xl"
         />
-        <div className="glass shadow-lift ring-foreground/10 relative rounded-3xl p-6 ring-1 sm:p-8">
+        <div className="glass shadow-lift ring-foreground/10 relative rounded-3xl p-6 ring-1 sm:p-7">
           {/* hairline shine along the top edge */}
           <div
             aria-hidden
@@ -83,8 +80,8 @@ export default function AuthLayout({
         </div>
       </main>
 
-      {/* ── Footnote ── */}
-      <p className="text-muted-foreground/70 animate-fade-up relative z-10 mt-8 text-center text-[11px] tracking-[0.3em] uppercase [animation-delay:300ms]">
+      {/* ── Footnote — намхан дэлгэцэнд нууна, auth хуудас scroll-гүй багтана ── */}
+      <p className="text-muted-foreground/70 animate-fade-up relative z-10 mt-8 text-center text-[11px] tracking-[0.3em] uppercase [animation-delay:300ms] sm:mt-6 [@media(max-height:700px)]:hidden">
         {SITE.name} · Est. Ulaanbaatar
       </p>
     </div>

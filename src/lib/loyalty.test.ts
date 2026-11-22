@@ -3,6 +3,7 @@ import {
   DEFAULT_LOYALTY_RULES,
   parseLoyaltyRules,
   pointsEarnedFor,
+  rewardBaseOf,
   reviewPointsOf,
   DEFAULT_REVIEW_POINTS,
   profilePointsOf,
@@ -76,5 +77,33 @@ describe("profilePointsOf", () => {
     expect(profilePointsOf({ profilePoints: -5 })).toBe(0);
     expect(profilePointsOf({ profilePoints: "x" })).toBe(0);
     expect(profilePointsOf({ profilePoints: 300.7 })).toBe(300);
+  });
+});
+
+describe("rewardBaseOf — QPay-ээр төлсөн дүн (0189, task 8.4 / 9.1 / 9.2)", () => {
+  /**
+   * §1 жишээ: барааны дүн 270,000₮ (багц, арга хэмжээний дараа), купон
+   * 27,000₮, V point 10,000₮, хүргэлт 7,000₮ → QPay 240,000₮.
+   * Өмнөх суурь: оноо/купон 243,000₮ (subtotal − discount), хүрд 250,000₮.
+   */
+  const total = 270_000 - 27_000 - 10_000 + 7_000;
+
+  it("суурь = orders.total (хүргэлттэй, V point хассан)", () => {
+    expect(rewardBaseOf(total)).toBe(240_000);
+    expect(pointsEarnedFor(total, DEFAULT_LOYALTY_RULES)).toBe(2_400);
+    // Хүрд: 100,000₮ тутамд 1 (grant_order_spins) → 2.
+    expect(Math.floor(rewardBaseOf(total) / 100_000)).toBe(2);
+  });
+
+  it("бэлгийн картын V point-оор барааг бүтэн төлсөн бол зөвхөн хүргэлт үлдэнэ", () => {
+    // 95,000₮ бараа бүгд V point-оор, хүргэлт 7,000₮ QPay-ээр.
+    const paid = 95_000 - 95_000 + 7_000;
+    expect(rewardBaseOf(paid)).toBe(7_000);
+    // 100,000₮ босготой автомат купон, хүрдний эрх олгогдохгүй.
+    expect(rewardBaseOf(paid) >= 100_000).toBe(false);
+  });
+
+  it("сөрөг дүн 0", () => {
+    expect(rewardBaseOf(-1)).toBe(0);
   });
 });

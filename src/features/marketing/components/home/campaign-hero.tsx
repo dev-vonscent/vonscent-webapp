@@ -3,14 +3,9 @@ import Link from "next/link";
 import { preload } from "react-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getBaseCollections } from "@/features/collections/api";
-import {
-  EVERGREEN_HERO,
-  liveCampaigns,
-  type HomeCampaign,
-} from "../../home-content";
+import type { HomeCampaign } from "../../home-content";
 
-interface HeroImage {
+export interface HeroImage {
   src: string;
   alt: string;
   position: string;
@@ -24,55 +19,16 @@ interface HeroImage {
   dark?: boolean;
 }
 
-interface ResolvedHero {
+export interface ResolvedHero {
   campaign: HomeCampaign;
   image: HeroImage;
 }
 
 /**
- * The first live campaign whose image actually resolves — a campaign that
- * points at a deleted/hidden bundle falls through to the next one, and in the
- * end to the evergreen hero, so the slot is never empty or broken.
+ * Статик зурагтай кампанит ажил → `CampaignHero`-д өгөх хэлбэр. Цэвэр функц:
+ * сервер (нүүр, `hero-resolve.ts`) ба client (админы урьдчилж харах) хоёулаа.
  */
-export async function resolveHero(now = new Date()): Promise<ResolvedHero> {
-  const candidates = [...liveCampaigns(now), EVERGREEN_HERO];
-  let collections: Awaited<ReturnType<typeof getBaseCollections>> | null = null;
-  for (const campaign of candidates) {
-    const img = campaign.image;
-    if (img.kind === "static") return staticHero(campaign, img);
-    collections ??= await getBaseCollections();
-    const found = collections.find((c) => c.slug === img.slug);
-    if (found?.image) {
-      return {
-        campaign,
-        image: {
-          src: found.image,
-          alt: img.alt,
-          position: img.position ?? "50% 50%",
-        },
-      };
-    }
-  }
-  // EVERGREEN_HERO is static, so the loop always returns — this satisfies TS.
-  throw new Error("unreachable: evergreen hero must be static");
-}
-
-/**
- * The hero without any data fetch, when the first candidate is a static
- * photo; `null` when it needs a bundle cover (then `resolveHero`).
- *
- * The page renders this hero outside its own `<Suspense>`: a nested boundary
- * is revealed by React's batched `$RC` (rAF + 300ms steps), which a busy
- * phone main thread pushes past hydration — Lighthouse mobile LCP was ~11s
- * with the image itself downloaded in 0.3s.
- */
-export function resolveStaticHero(now = new Date()): ResolvedHero | null {
-  const campaign = liveCampaigns(now)[0] ?? EVERGREEN_HERO;
-  const img = campaign.image;
-  return img.kind === "static" ? staticHero(campaign, img) : null;
-}
-
-function staticHero(
+export function staticHero(
   campaign: HomeCampaign,
   img: Extract<HomeCampaign["image"], { kind: "static" }>,
 ): ResolvedHero {
@@ -131,29 +87,43 @@ function HeroCopy({
       : "text-muted-foreground";
   return (
     <>
-      <p className={`${muted} text-xs font-medium sm:text-sm`}>
+      {/* `data-hero-field` — админы баннерын засвар (studio-ux.md §6.3)
+          текстийг олоход. Дэлгүүрт зан төлөв, төрх өөрчлөгдөхгүй. */}
+      <p
+        data-hero-field="eyebrow"
+        className={`${muted} text-xs font-medium sm:text-sm`}
+      >
         {campaign.eyebrow}
       </p>
       <h1
         id="home-hero-title"
-        className={`text-[clamp(1.125rem,5.6vw,1.375rem)]/[1.15] font-bold tracking-tight text-balance sm:text-2xl md:text-3xl lg:text-[2.75rem]/[1.1] ${
+        data-hero-field="title"
+        className={`text-[clamp(1.125rem,5.6vw,1.375rem)]/[1.15] font-bold tracking-tight text-balance min-[440px]:text-2xl md:text-3xl lg:text-[2.75rem]/[1.1] ${
           tone === "photo" ? (dark ? "text-white" : "text-neutral-950") : ""
         }`}
       >
         {campaign.title}
       </h1>
-      <p className={`${muted} hidden max-w-md text-base md:block`}>
+      <p
+        data-hero-field="description"
+        className={`${muted} hidden max-w-md text-base md:block`}
+      >
         {campaign.description}
       </p>
       {/* 380px-ээс нарийн утсан дээр 4:3 картанд гарчиг + товч л багтана. */}
-      <p className={`${muted} text-sm max-[380px]:hidden md:hidden`}>
+      <p
+        data-hero-field="mobileDescription"
+        className={`${muted} text-sm max-[380px]:hidden md:hidden`}
+      >
         {campaign.mobileDescription ?? campaign.description}
       </p>
       {/* Утсан дээрх гэрэл зурган hero-д товч картын зүүн доод буланд
           (`mt-auto`) — эрхий хуруунд ойр, гарчгийн уртаас үл хамаарна. */}
       <div
         className={`flex flex-wrap items-center gap-x-5 gap-y-2 sm:mt-3 ${
-          tone === "photo" ? "mt-auto pt-2" : "mt-2"
+          tone === "photo"
+            ? "mt-auto pt-2 min-[440px]:mt-3 min-[440px]:pt-0"
+            : "mt-2"
         }`}
       >
         {/* Гэрэл зураг дээр ч theme-ийн primary — хоёр theme-д (black/white)
@@ -167,7 +137,8 @@ function HeroCopy({
           }`}
         >
           <Link href={campaign.primary.href}>
-            {campaign.primary.label} <ArrowRight className="size-4" />
+            <span data-hero-field="primary">{campaign.primary.label}</span>{" "}
+            <ArrowRight className="size-4" />
           </Link>
         </Button>
         {campaign.secondary && (
@@ -183,7 +154,9 @@ function HeroCopy({
             }`}
           >
             <Link href={campaign.secondary.href}>
-              {campaign.secondary.label}
+              <span data-hero-field="secondary">
+                {campaign.secondary.label}
+              </span>
             </Link>
           </Button>
         )}
@@ -242,7 +215,7 @@ function PhotoHero({
   return (
     <section
       aria-labelledby="home-hero-title"
-      className={`relative isolate flex aspect-4/3 min-h-64 w-full overflow-hidden rounded-2xl sm:aspect-14/5 sm:max-h-[58svh] sm:min-h-64 md:min-h-80 lg:min-h-88 ${
+      className={`relative isolate flex aspect-4/3 min-h-64 w-full overflow-hidden rounded-2xl min-[440px]:aspect-video sm:aspect-14/5 sm:max-h-[58svh] sm:min-h-64 md:min-h-80 lg:min-h-88 ${
         image.dark ? "bg-[#1c1a1c]" : "bg-[#e8dccd]"
       }`}
     >
@@ -264,9 +237,12 @@ function PhotoHero({
         />
       </picture>
       {/* Утас: 4:3 намхан карт (дэлгэцийн ~⅓) — бичиг зүүн 56%-д, бараа
-          баруун талд, товч зүүн доод буланд. Desktop-той ижил «зүүн талд
+          баруун талд, товч зүүн доод буланд. 440–639px (том утас, нугалдаг
+          утас, жижиг tablet) дээр 4:3 карт ~480px өндөр болж, бичиг дээд,
+          товч доод буланд хол тасарч дунд нь хоосон үлддэг байсан — тэнд
+          16:9 карт, бичиг+товч нэг бүлгээр босоо голд. Desktop-той ижил «зүүн талд
           хоосон хана» зохиомж, тиймээс зураг нь ч мөн адил: prompts/hero-mobile.md. */}
-      <div className="flex w-[56%] flex-col justify-start gap-1.5 p-4 sm:w-[52%] sm:justify-center sm:gap-3 sm:p-8 md:p-10 lg:px-14">
+      <div className="flex w-[56%] flex-col justify-start gap-1.5 p-4 min-[440px]:justify-center min-[440px]:gap-2 min-[440px]:p-6 sm:w-[52%] sm:gap-3 sm:p-8 md:p-10 lg:px-14">
         <HeroCopy campaign={campaign} tone="photo" dark={image.dark} />
       </div>
     </section>

@@ -1,0 +1,324 @@
+"use client";
+
+import * as React from "react";
+import { cn } from "@/lib/utils";
+import { SPRAYS_PER_ML } from "@/lib/constants";
+import {
+  Luggage,
+  Maximize2,
+  PiggyBank,
+  Pocket,
+  TestTube,
+  type LucideIcon,
+} from "lucide-react";
+import {
+  sizeHint,
+  type SizeHintKind,
+  type SizeOption,
+} from "@/features/products/size-options";
+
+const NAV_KEYS = [
+  "ArrowRight",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowUp",
+  "Home",
+  "End",
+] as const;
+
+/**
+ * Хэмжээ сонгогч (task 15, 4, 2.6) — барааны дэлгэрэнгүй, бэлэн багцын
+ * хуудас, хоёр quick-add бүгд ЭНЭ нэг компонент.
+ *
+ * - Карт дээр зөвхөн хэмжээ + «75 цацалт» (эсвэл төлөв: «Дууссан»,
+ *   «Түр байхгүй», «Зарахгүй»). Үнэ нь дээрх `SizePrice`-д.
+ * - Дууссан / савгүй хэмжээ СОНГОГДОНО (task 4): үнэ нь дээр харагдана,
+ *   худалдан авах товчийг дуудагч идэвхгүй болгоно. Зөвхөн «Зарахгүй»
+ *   (админы хаасан, багцад бүрэн бус) сонгогдохгүй.
+ * - Хямдралтай хэмжээ (2.6): картын баруун дээд буланд бодит хувь «−15%» —
+ *   `sale` token-ий жижиг starburst (эсвэл pill), картын ирмэгээс
+ *   гарсан тул сонгогдсон (`bg-cta`) ч, сонгогдоогүй ч ижил харагдана.
+ * - «Туршиж үзэх» / «Хамгийн ашигтай» тэмдэг картаас авагдаж, сонгогчийн
+ *   ДООР нэг мөр болсон (`SIZE_HINTS`).
+ * - radiogroup: сум / Home / End товчоор нүүж сонгоно, фокус бүлэгт ганц
+ *   зогсоолтой (roving tabindex), сонгогдохгүй картыг алгасна.
+ * - Сонгогдсон нь `bg-cta text-cta-foreground`, `transition-colors` үгүй
+ *   (design.md §7.1).
+ */
+export function SizeSelector({
+  options,
+  value,
+  onChange,
+  heading = "Хэмжээ сонгох",
+  saleMarker = "burst",
+  hintLook = "plain",
+}: {
+  options: readonly SizeOption[];
+  value: string;
+  onChange: (id: string) => void;
+  heading?: string;
+  /** Хямдралын тэмдгийн хэлбэр (2.6): `burst` анхдагч, `pill` нөөц. */
+  saleMarker?: "burst" | "pill";
+  /** Зөвлөмжийн мөрийн харагдац: `plain` анхдагч, `bordered` нөөц. */
+  hintLook?: "plain" | "bordered";
+}) {
+  const labelId = React.useId();
+  const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
+  const selected = options.find((o) => o.id === value) ?? null;
+  const hint = sizeHint(options, selected);
+  const hasMarker = options.some((o) => o.salePct > 0);
+  // Өндрийн хэмжүүр: энэ хуудасны бүх сонгож болох хэмжээний текст.
+  const allHints = [
+    ...new Set(
+      options
+        .filter((o) => o.selectable)
+        .map((o) => sizeHint(options, o)?.text)
+        .filter((t): t is string => Boolean(t)),
+    ),
+  ];
+  // Фокусын ганц зогсоол: сонгогдсон карт, эс бөгөөс сонгож болох эхнийх.
+  const tabStop =
+    selected?.selectable === true
+      ? selected.id
+      : options.find((o) => o.selectable)?.id;
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (!(NAV_KEYS as readonly string[]).includes(e.key)) return;
+    e.preventDefault();
+    const n = options.length;
+    if (!n) return;
+    const from = options.findIndex((o) => o.id === value);
+    const back =
+      e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "End";
+    const step = back ? -1 : 1;
+    let next =
+      e.key === "Home"
+        ? 0
+        : e.key === "End"
+          ? n - 1
+          : (Math.max(from, 0) + step + n) % n;
+    // Сонгож болохгүй картыг алгасна — фокус тэр дээр зогсохгүй.
+    for (let i = 0; i < n && !options[next].selectable; i += 1) {
+      next = (next + step + n) % n;
+    }
+    if (!options[next].selectable) return;
+    onChange(options[next].id);
+    refs.current[next]?.focus();
+  }
+
+  return (
+    <div className="space-y-3">
+      <p id={labelId} className="text-sm font-medium">
+        {heading}
+      </p>
+      {/* Хэмжээ хаалттай жагсаалт (ML_SIZES = 4) — утсан дээр ч нэг мөрөнд
+          багтахаар тэнцүү 4 багана. */}
+      <div
+        role="radiogroup"
+        aria-labelledby={labelId}
+        onKeyDown={onKeyDown}
+        data-marked={hasMarker || undefined}
+        className={cn(
+          "grid grid-cols-4 gap-2",
+          // Тэмдэг картын дээд ирмэгээс 20px гадагш гардаг; гарчгийн доорх
+          // 12px зай дээр 10px нэмж гарчигтай хэзээ ч давхцахгүй. Тэмдэггүй
+          // бараанд нэмэлт зай үгүй.
+          hasMarker && "pt-2.5",
+        )}
+      >
+        {options.map((o, i) => {
+          const active = o.id === value;
+          return (
+            <button
+              key={o.id}
+              ref={(el) => {
+                refs.current[i] = el;
+              }}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              aria-disabled={o.selectable ? undefined : true}
+              tabIndex={o.id === tabStop ? 0 : -1}
+              aria-label={[
+                o.label,
+                o.note,
+                o.salePct > 0 ? `${o.salePct}% хямдралтай` : null,
+              ]
+                .filter(Boolean)
+                .join(" — ")}
+              data-sale={o.salePct > 0 || undefined}
+              onClick={() => o.selectable && onChange(o.id)}
+              className={cn(
+                // justify-start: нарийн өргөнд (quick-add, 320px) «300 цацалт»
+                // 2 мөр болоход ч хэмжээний гарчиг бүх картад нэг шугамд;
+                // grid-ийн stretch-ээр картууд ижил өндөр.
+                // `@container`: цацалтын мөр картын өргөнөөр бүтэн/товч (доор).
+                "@container relative flex min-h-14 min-w-0 flex-col items-center justify-start gap-0.5 rounded-lg px-0.5 py-2",
+                !o.selectable
+                  ? "bg-secondary/40 text-muted-foreground cursor-not-allowed opacity-60"
+                  : active
+                    ? "bg-cta text-cta-foreground"
+                    : "bg-secondary hover:bg-accent",
+              )}
+            >
+              {o.salePct > 0 && (
+                <SaleMarker pct={o.salePct} shape={saleMarker} />
+              )}
+              {/* Зураас зөвхөн хэмжээн дээр: «Дууссан» гэдэг үгийг
+                  зурвал уншигдахгүй. */}
+              <span
+                className={cn(
+                  "text-sm font-semibold whitespace-nowrap",
+                  !o.buyable && "line-through",
+                )}
+              >
+                {o.label}
+              </span>
+              <span
+                className={cn(
+                  "text-center text-xs/tight text-balance",
+                  active ? "text-cta-foreground/75" : "text-muted-foreground",
+                )}
+              >
+                {o.note ?? <Sprays ml={o.totalMl} />}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {/* Нэг тогтсон газар — сонгосон хэмжээгээр icon + текст солигдоно.
+          Өндөр нь тогтмол (хоосон үед ч) — layout үсрэхгүй. */}
+      <SizeHintRow hint={hint} sizers={allHints} look={hintLook} />
+    </div>
+  );
+}
+
+const HINT_ICON: Record<SizeHintKind, LucideIcon> = {
+  trial: TestTube,
+  pocket: Pocket,
+  travel: Luggage,
+  value: PiggyBank,
+  largest: Maximize2,
+};
+
+/**
+ * Хэмжээний зөвлөмж (task 15) — дарагддаггүй МЭДЭЭЛЭЛ: хэмжээний картуудтай
+ * адил дэвсгэр өгвөл бас нэг товч мэт харагддаг байв. Дэвсгэргүй, cursor /
+ * hover үгүй. `plain` (анхдагч) — зөвхөн icon + текст; `bordered` — нимгэн
+ * хүрээтэй. Icon `gold-strong` (theme-ийн өнгөт accent: navy/pink-д өнгөтэй,
+ * монохром black/white-д foreground), текст `foreground/80`.
+ * `transition-colors` үгүй — сонголтоор шууд солигдоно.
+ */
+function SizeHintRow({
+  hint,
+  sizers,
+  look,
+}: {
+  hint: { text: string; kind: SizeHintKind } | null;
+  /** Бүх хэмжээний текст — мөрийн өндөр хамгийн уртаар тогтмол. */
+  sizers: readonly string[];
+  look: "plain" | "bordered";
+}) {
+  const Icon = hint ? HINT_ICON[hint.kind] : null;
+  const box = cn(
+    "col-start-1 row-start-1 flex min-h-10 items-center gap-2 text-sm font-medium",
+    look === "bordered"
+      ? "ring-foreground/15 rounded-lg px-3 py-2 ring-1 ring-inset"
+      : "px-0.5 py-2",
+  );
+  return (
+    // Бүх текстийг нэг grid нүдэнд үл үзэгдэх байдлаар давхарлана — өндөр нь
+    // хамгийн урт текстийнх (утсан дээр 2 мөр, desktop-д багтвал 1 мөр).
+    // Хэмжээ солиход доорх «Захиалах» / «Сагсанд нэмэх» хөдлөхгүй; таслахгүй.
+    <div className="grid" data-testid="size-hint-box">
+      {sizers.map((t) => (
+        <span key={t} aria-hidden className={cn(box, "invisible")}>
+          <span className="size-4 shrink-0" />
+          <span>{t}</span>
+        </span>
+      ))}
+      <p
+        aria-live="polite"
+        data-testid="size-hint"
+        data-kind={hint?.kind}
+        data-look={look}
+        className={cn(
+          box,
+          "text-foreground/80 cursor-default",
+          !hint && "invisible",
+        )}
+      >
+        {Icon && (
+          <Icon aria-hidden className="text-gold-strong size-4 shrink-0" />
+        )}
+        <span>{hint?.text}</span>
+      </p>
+    </div>
+  );
+}
+
+/**
+ * 14 хошуут зууван starburst (viewBox 100×60): «−30%» шиг 4 тэмдэгт
+ * дотроо багтана, өндөр нь намхан тул картын хэмжээний шошгыг хаахгүй.
+ */
+const BURST_POINTS = Array.from({ length: 28 }, (_, i) => {
+  const r = i % 2 === 0 ? 1 : 0.84;
+  const a = (Math.PI * i) / 14 - Math.PI / 2;
+  return `${(50 + 50 * r * Math.cos(a)).toFixed(2)},${(30 + 30 * r * Math.sin(a)).toFixed(2)}`;
+}).join(" ");
+
+/**
+ * Картын хямдралын тэмдэг «−15%» (2.6). Өнгө нь `sale` / `sale-foreground`
+ * token — БҮХ theme-д ижил бараан улаан + цагаан тоо (6.5:1). Дэлгэц
+ * уншигчид картын aria-label
+ * «15% хямдралтай» хэлнэ — энд aria-hidden.
+ */
+function SaleMarker({ pct, shape }: { pct: number; shape: "burst" | "pill" }) {
+  if (shape === "pill") {
+    return (
+      <span
+        aria-hidden
+        data-marker="pill"
+        className="bg-sale text-sale-foreground absolute -top-2 -right-1.5 rounded-full px-1.5 py-0.5 text-[11px] leading-none font-bold tabular-nums"
+      >
+        −{pct}%
+      </span>
+    );
+  }
+  return (
+    <span
+      aria-hidden
+      data-marker="burst"
+      className="absolute -top-5 -right-1.5 flex h-7 w-12 items-center justify-center"
+    >
+      <svg
+        viewBox="0 0 100 60"
+        preserveAspectRatio="none"
+        className="text-sale absolute inset-0 size-full"
+      >
+        <polygon points={BURST_POINTS} fill="currentColor" />
+      </svg>
+      <span className="text-sale-foreground relative text-[11px] leading-none font-bold tracking-tight tabular-nums">
+        −{pct}%
+      </span>
+    </span>
+  );
+}
+
+/**
+ * Картын цацалтын мөр — үргэлж НЭГ мөр, бүх карт ижил өндөр (dev QA, G).
+ * «300 цацалт» (12px-д ~66px) нь 320px-ийн quick-add-ийн картад (~54px)
+ * багтахгүй тул картын өргөн (`@container`) хүрэхгүй үед л «300 цац.».
+ * Багцад нийт тоо (`totalMl`, «5ml ×4» → «300 цацалт») — нэг мөр.
+ */
+function Sprays({ ml }: { ml: number }) {
+  return (
+    <>
+      <span className="whitespace-nowrap">
+        {ml * SPRAYS_PER_ML} цац
+        <span className="hidden @min-[4.15rem]:inline">алт</span>
+        <span className="@min-[4.15rem]:hidden">.</span>
+      </span>
+    </>
+  );
+}

@@ -8,6 +8,7 @@ import {
   selectCheckoutCollections,
   selectCheckoutSubtotal,
   selectCheckoutGross,
+  selectCheckoutExtras,
   type CartCollectionMember,
 } from "./store";
 
@@ -259,6 +260,50 @@ describe("buy now", () => {
     expect(state.items.map((i) => [i.key, i.qty])).toEqual([["v1", 1]]);
   });
 
+  it("carries gift packaging with the «Захиалах» line, cart untouched", () => {
+    const box = {
+      extraVariantId: "box-s",
+      extraId: "box",
+      slug: "box",
+      name: "Бэлгийн хайрцаг",
+      label: "Жижиг",
+      categoryName: "Бэлгийн сав",
+      mode: "local_quantity" as const,
+      unitPrice: 5000,
+      image: null,
+      requiresConsent: false,
+    };
+    useCart.getState().startBuyNow(line("v2", 20000), 1, [box]);
+
+    let state = useCart.getState();
+    expect(selectCheckoutExtras(state)).toMatchObject([
+      { key: "box-s", qty: 1 },
+    ]);
+    expect(selectCheckoutSubtotal(state)).toBe(25000);
+    expect(state.extras).toEqual([]);
+
+    // Хэмжээ солиход боодол үлдэнэ; checkout-оос хасахад зөвхөн боодол.
+    useCart.getState().setBuyNowQty(2);
+    expect(selectCheckoutExtras(useCart.getState())).toHaveLength(1);
+    useCart.getState().removeExtra("box-s");
+    state = useCart.getState();
+    expect(selectCheckoutExtras(state)).toEqual([]);
+    expect(selectCheckoutItems(state)).toHaveLength(1);
+
+    // Төлбөрийн хуудаснаас нэмэх: давхар нэмэгдэхгүй (нэг захиалга — 1).
+    useCart.getState().addBuyNowAddOn(box);
+    useCart.getState().addBuyNowAddOn(box);
+    expect(selectCheckoutExtras(useCart.getState())).toMatchObject([
+      { key: "box-s", qty: 1 },
+    ]);
+    expect(useCart.getState().extras).toEqual([]);
+
+    // Дараагийн «Захиалах» өмнөх боодлыг дагуулахгүй.
+    useCart.getState().startBuyNow(line("v2", 20000), 1, [box]);
+    useCart.getState().startBuyNow(line("v3", 20000));
+    expect(selectCheckoutExtras(useCart.getState())).toEqual([]);
+  });
+
   it("clamps the «Захиалах» qty to [1, max]", () => {
     useCart.getState().startBuyNow(line("v2", 5000));
     useCart.getState().setBuyNowQty(0);
@@ -345,6 +390,27 @@ describe("хямдралын өмнөх дүн", () => {
     const state = useCart.getState();
     expect(selectCheckoutGross(state)).toBe(60000);
     expect(selectCheckoutSubtotal(state)).toBe(54000);
+  });
+
+  it("event-д орсон багц (16.7): gross = үндсэн − event хэсэг → «Багцын хямдрал» зөвхөн суурь", () => {
+    // 100,000₮, суурь 5% (95,000), Black Friday 10% → 90,000; event хэсэг 5,000.
+    const b = {
+      ...bundle("c1", 90000),
+      saleLabel: "Black Friday",
+      saleAmount: 5000,
+    };
+    b.members = [
+      { ...member("m1"), price: 40000 },
+      { ...member("m2"), price: 60000 },
+    ];
+    useCart.getState().addCollection(b, 1);
+    const state = useCart.getState();
+    expect(selectCheckoutGross(state)).toBe(95000);
+    expect(selectCheckoutSubtotal(state)).toBe(90000);
+    // Задаргаа: 100,000 − 5,000 (Багцын хямдрал) − 5,000 (Black Friday).
+    expect(selectCheckoutGross(state) - selectCheckoutSubtotal(state)).toBe(
+      5000,
+    );
   });
 
   it("багцгүй сагсанд хоёр дүн тэнцүү", () => {
@@ -440,5 +506,28 @@ describe("засах dialog-ийн хадгалалт", () => {
     expect(useCart.getState().items).toEqual([
       expect.objectContaining({ key: "v1", qty: 1 }),
     ]);
+  });
+});
+
+describe("applyLivePrices (D7)", () => {
+  beforeEach(() => useCart.getState().clear());
+
+  it("хямдрал дууссан мөрийг одоогийн үнээр шинэчилж, нэрийг нь буцаана", () => {
+    useCart.getState().add({ ...line("a", 15_300), basePrice: 18_000 }, 2);
+    const changed = useCart.getState().applyLivePrices({
+      variants: { a: { price: 18_000, basePrice: 18_000 } },
+    });
+    expect(changed).toEqual(["N a 5ml"]);
+    expect(selectCheckoutSubtotal(useCart.getState())).toBe(36_000);
+  });
+
+  it("өөр хэмжээ рүү шилжихэд хуучин хэмжээний үндсэн үнэ дагахгүй", () => {
+    useCart.getState().add({ ...line("a", 15_300), basePrice: 18_000 });
+    useCart
+      .getState()
+      .setVariant("a", { variantId: "b", ml: 10, unitPrice: 60_000 });
+    const item = useCart.getState().items[0];
+    expect(item.basePrice).toBeUndefined();
+    expect(item.saleLabel).toBeNull();
   });
 });

@@ -3,7 +3,6 @@
 import * as React from "react";
 import Image from "next/image";
 import { ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
@@ -12,6 +11,11 @@ import { GENDERS, GENDER_LABEL, SEASON_LABEL, SEASONS } from "@/lib/constants";
 import { useFilterQuery } from "./use-filter-query";
 import type { ScentFamilyOption } from "@/lib/types";
 import type { BrandLogos } from "@/features/products/components/brand-marquee";
+import { EventFilterChip } from "@/features/sale-events/components/event-filter-chip";
+import {
+  useBundleSaleEvents,
+  useLiveSaleEvents,
+} from "@/features/sale-events/components/sale-events-provider";
 
 const PRICE_STEP = 1000;
 
@@ -32,22 +36,28 @@ const KINDS: { value: string | undefined; label: string }[] = [
 const TAGS: { value: string; label: string }[] = [
   { value: "new", label: "Шинэ" },
   { value: "hot", label: "Эрэлттэй" },
-  { value: "sale", label: "Хямдрал" },
+  { value: "sale", label: "Хямдралтай" },
 ];
 
 /** «Бүх улирал» тусдаа явна — доорх дөрөв нь дан улирлын сонголт. */
 const SINGLE_SEASONS = SEASONS.filter((s) => s !== "all");
 
-function Group({
+export function Group({
   title,
+  action,
   children,
 }: {
   title: string;
+  /** Гарчгийн мөрийн баруун талд (жишээ нь «Цэвэрлэх») — тусдаа мөр эзлэхгүй. */
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold">{title}</h3>
+      <div className="flex min-h-5 items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {action}
+      </div>
       {children}
     </div>
   );
@@ -60,7 +70,7 @@ function Group({
  * эсрэг чиглэлд шилждэг тул шилжилтийн дунд хоёулаа ижил саарал болж бичиг
  * анивчин алга болдог байв. Өнгө шууд солигдоно.
  */
-function Chip({
+export function Chip({
   active,
   onClick,
   className,
@@ -96,6 +106,8 @@ export function CatalogFilters({
   families,
   showClear = true,
   showKind = true,
+  showTags = true,
+  showSale = true,
 }: {
   brands: string[];
   /**
@@ -115,6 +127,16 @@ export function CatalogFilters({
    * can't go inside a bundle — so there the toggle has nothing to switch.
    */
   showKind?: boolean;
+  /**
+   * «Таг» (онцлох, шинэ, эрэлттэй, хямдрал) — үнэртний тэмдэглэгээ.
+   * «Үнэртний шил» хуудсанд шил өөрөө тэр тэмдэглэгээгүй тул нуугдана.
+   */
+  showTags?: boolean;
+  /**
+   * Хямдралын шүүлт (арга хэмжээний chip, «Хямдралтай»). «Багц үүсгэх»-д
+   * нуугдана: угсарсан багц үндсэн үнээр бодогддог (8.2).
+   */
+  showSale?: boolean;
 }) {
   const {
     values,
@@ -145,6 +167,11 @@ export function CatalogFilters({
   }
 
   const featured = searchParams.get("featured") === "1";
+  // Одоо явж буй арга хэмжээ (0181) — дуусмагц chip өөрөө алга болно.
+  const liveEvents = useLiveSaleEvents();
+  // «Багц» таб: бэлэн багцтай арга хэмжээ л (16.7; туг хаалттай бол хоосон).
+  const bundleEvents = useBundleSaleEvents();
+  const event = searchParams.get("event") ?? undefined;
 
   // Багцад брэнд / үнэрийн төрөл / улирал байхгүй (клиент, 2026-10-26) —
   // «Багц» дээр эдгээр бүлэг нуугдаж, шилжихэд сонголт нь цэвэрлэгдэнэ
@@ -160,6 +187,12 @@ export function CatalogFilters({
             brand: undefined,
             family: undefined,
             season: undefined,
+            // Арга хэмжээ: тэр event-д багц байвал хадгална (16.7), эс бөгөөс
+            // хаягдана — туг хаалттай үед өмнөх шигээ үргэлж хаягдана.
+            event:
+              event && bundleEvents.some((e) => e.slug === event)
+                ? event
+                : undefined,
           }
         : { kind: value },
     );
@@ -194,25 +227,31 @@ export function CatalogFilters({
     });
   }
 
+  const clear =
+    showClear && activeCount > 0 ? (
+      <button
+        type="button"
+        onClick={clearAll}
+        className="text-muted-foreground hover:text-foreground -my-1 rounded-sm p-1 text-xs font-medium underline-offset-4 hover:underline"
+      >
+        Цэвэрлэх ({activeCount})
+      </button>
+    ) : null;
+
   return (
     <div className="space-y-4">
       {/*
         No «Шүүлтүүр» heading: the chips say what this is, and on desktop the
         heading only pushed the filters down. The mobile sheet titles itself
         (and carries its own clear button next to the close button).
+        «Цэвэрлэх» нь эхний бүлгийн гарчгийн мөрөнд — тусдаа мөр нь хайлт ба
+        шүүлтүүрийн хооронд ~60px хоосон зай үүсгэдэг байв.
       */}
-      {showClear && activeCount > 0 && (
-        <div className="flex justify-end">
-          <Button variant="ghost" size="sm" onClick={clearAll}>
-            Цэвэрлэх ({activeCount})
-          </Button>
-        </div>
-      )}
 
       {/* Ус, багц хоёулаа нэг жагсаалтад холилддог — нэгийг нь л харах. */}
       {showKind && (
         <>
-          <Group title="Төрөл">
+          <Group title="Төрөл" action={clear}>
             <div className="grid grid-cols-3 gap-2">
               {KINDS.map((k) => (
                 <Chip
@@ -229,7 +268,7 @@ export function CatalogFilters({
         </>
       )}
 
-      <Group title="Хүйс">
+      <Group title="Хүйс" action={showKind ? null : clear}>
         <div className="grid grid-cols-3 gap-2">
           {GENDERS.map((g) => (
             <Chip
@@ -243,6 +282,53 @@ export function CatalogFilters({
         </div>
       </Group>
       <Separator />
+
+      {/* Таг (арга хэмжээ орно) хүйсийн доор — доош нь орхивол хэрэглэгч
+          гүйлгэхгүйгээр хардаггүй байв. */}
+      {showTags && (
+        <>
+          <Group title="Таг">
+            <div className="grid grid-cols-2 gap-2">
+              {/* Арга хэмжээ (Black Friday …) — тагуудын ХАМГИЙН ЭХЭНД, хоёр
+                  тагийн өргөнтэй бүтэн мөр (task 6). Нэг л сонгогдоно.
+                  «Багц» таб дээр зөвхөн бэлэн багцтай арга хэмжээ (16.7). */}
+              {(showSale ? (isBundle ? bundleEvents : liveEvents) : []).map(
+                (e) => (
+                  <EventFilterChip
+                    key={e.slug}
+                    theme={e.tickerTheme}
+                    active={event === e.slug}
+                    onClick={() =>
+                      setSingle("event", event === e.slug ? undefined : e.slug)
+                    }
+                    className="col-span-2"
+                  >
+                    {e.name}
+                  </EventFilterChip>
+                ),
+              )}
+              <Chip
+                active={featured}
+                onClick={() =>
+                  setSingle("featured", featured ? undefined : "1")
+                }
+              >
+                Онцлох
+              </Chip>
+              {TAGS.filter((t) => showSale || t.value !== "sale").map((t) => (
+                <Chip
+                  key={t.value}
+                  active={values("tags").includes(t.value)}
+                  onClick={() => toggle("tags", t.value)}
+                >
+                  {t.label}
+                </Chip>
+              ))}
+            </div>
+          </Group>
+          <Separator />
+        </>
+      )}
 
       {!isBundle && (
         <>
@@ -297,27 +383,6 @@ export function CatalogFilters({
           <Separator />
         </>
       )}
-
-      <Group title="Таг">
-        <div className="grid grid-cols-2 gap-2">
-          <Chip
-            active={featured}
-            onClick={() => setSingle("featured", featured ? undefined : "1")}
-          >
-            Онцлох
-          </Chip>
-          {TAGS.map((t) => (
-            <Chip
-              key={t.value}
-              active={values("tags").includes(t.value)}
-              onClick={() => toggle("tags", t.value)}
-            >
-              {t.label}
-            </Chip>
-          ))}
-        </div>
-      </Group>
-      <Separator />
 
       {hasPriceRange && (
         <>

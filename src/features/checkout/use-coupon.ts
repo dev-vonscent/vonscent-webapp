@@ -122,6 +122,7 @@ export function useCoupon(
           setCoupon({
             code: data.code ?? value.toUpperCase(),
             discount: data.discount,
+            pct: data.pct ?? null,
           });
           setCode("");
           writeDismissed(false);
@@ -141,7 +142,11 @@ export function useCoupon(
   /** Санал болгосон купоныг сонгох — дүн нь серверээс шалгагдсан. */
   const pick = React.useCallback(
     (offer: AvailableCoupon) => {
-      setCoupon({ code: offer.code, discount: offer.discount });
+      setCoupon({
+        code: offer.code,
+        discount: offer.discount,
+        pct: offer.type === "percent" ? offer.value : null,
+      });
       setMessage(null);
       writeDismissed(false);
     },
@@ -194,7 +199,11 @@ export function useCoupon(
     if (useCart.getState().coupon || readDismissed()) return;
     const best = bestOffer(offers);
     if (!best) return;
-    setCoupon({ code: best.code, discount: best.discount });
+    setCoupon({
+      code: best.code,
+      discount: best.discount,
+      pct: best.type === "percent" ? best.value : null,
+    });
     setAutoCode(best.code);
     autoCodeRef.current = best.code;
   }, [
@@ -226,8 +235,13 @@ export function useCoupon(
         // Хооронд өөр купон тавьсан байвал хуучин хариуг хэрэглэхгүй.
         if (current?.code !== appliedCode) return;
         if (data.valid) {
-          if (data.discount !== current.discount) {
-            setCoupon({ code: current.code, discount: data.discount });
+          const pct: number | null = data.pct ?? null;
+          // Хуучин (pct-гүй) хадгалсан купон ч «Купон (10%)» болно.
+          if (
+            data.discount !== current.discount ||
+            pct !== (current.pct ?? null)
+          ) {
+            setCoupon({ ...current, discount: data.discount, pct });
           }
           setMessage(null);
         } else {

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRoutePathname } from "@/lib/route-pathname";
 import {
   ArrowRight,
   Gift,
@@ -20,7 +20,10 @@ import {
   STORE_NAV_PRIMARY,
   STORE_NAV_SECONDARY,
   isNavActive,
+  visibleNavItems,
+  type StoreNavItem,
 } from "./store-nav";
+import { NavNewBadge } from "./nav-new-badge";
 import { ThemeSwitcher } from "./theme-switcher";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,7 +39,7 @@ import { useSignOutConfirm } from "@/features/account/components/use-sign-out-co
 import { cn } from "@/lib/utils";
 import { useNewBadge } from "@/features/account/use-new-badge";
 import { COUPONS_NEW_BADGE_UNTIL } from "@/lib/constants";
-import { useFeatureFlag } from "@/components/feature-flags";
+import { useFeatureFlag, useFeatureFlagSet } from "@/components/feature-flags";
 import { MenuAvatar } from "@/features/account/components/profile-menu";
 
 /**
@@ -46,13 +49,12 @@ import { MenuAvatar } from "@/features/account/components/profile-menu";
  * IntentCards-д бий.
  */
 const MENU_HIDDEN = new Set(["/catalog", "/collections", "/quiz"]);
-const PRIMARY: { href: string; label: string; hint: string }[] = [
-  ...STORE_NAV_PRIMARY,
-  ...STORE_NAV_SECONDARY,
-].filter((item) => !MENU_HIDDEN.has(item.href));
+const PRIMARY = [...STORE_NAV_PRIMARY, ...STORE_NAV_SECONDARY].filter(
+  (item) => !MENU_HIDDEN.has(item.href),
+);
 
 /** `PRIMARY`-ийн сүүлд — feature flag `lucky_wheel` нээлттэй үед л. */
-const WHEEL_LINK = {
+const WHEEL_LINK: StoreNavItem = {
   href: "/lucky-wheel",
   label: "Азын хүрд",
   hint: "Эргүүлээд бэлгээ аваарай",
@@ -93,14 +95,15 @@ export function MobileMenu({
   /** Сошиал холбоосууд — server slot (social-links.tsx), өөрийн гарчигтай хэсэг. */
   social?: React.ReactNode;
 }) {
-  const pathname = usePathname();
+  const pathname = useRoutePathname();
   const [askSignOut, signOutDialog] = useSignOutConfirm();
   const isStaff = useIsStaff();
   const { profile, loading, configured } = useProfileSummary();
   const couponsNew = useNewBadge("coupons", COUPONS_NEW_BADGE_UNTIL);
+  const visiblePrimary = visibleNavItems(PRIMARY, useFeatureFlagSet());
   const primary = useFeatureFlag("lucky_wheel")
-    ? [...PRIMARY, WHEEL_LINK]
-    : PRIMARY;
+    ? [...visiblePrimary, WHEEL_LINK]
+    : visiblePrimary;
   const secondary = [
     ...SECONDARY,
     ...(useFeatureFlag("perfume_requests") ? [REQUEST_LINK] : []),
@@ -136,7 +139,7 @@ export function MobileMenu({
             e.preventDefault();
             (e.currentTarget as HTMLElement).focus();
           }}
-          className="bg-popover/95 shadow-lift flex w-[86vw] max-w-sm flex-col gap-0 p-0 outline-none backdrop-blur-xl"
+          className="bg-popover/95 shadow-lift flex w-[86vw] max-w-sm flex-col gap-0 p-0 backdrop-blur-xl outline-none"
         >
           {/* Толгой: лого БАЙХГҮЙ (дэлгүүрийн header-т аль хэдийн бий) —
             зөвхөн Sheet-ийн өөрийн хаах товч баруун дээд буланд. «Цэс» гэдэг
@@ -242,6 +245,7 @@ export function MobileMenu({
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2 text-xl font-semibold tracking-tight">
                           {item.label}
+                          {item.newBadge && <NavNewBadge item={item} />}
                           {active && (
                             <span className="bg-foreground size-1.5 shrink-0 rounded-full" />
                           )}

@@ -31,8 +31,10 @@ export default function AdminLayout({
       <AdminSidebar />
       {/* max-w-5xl is a reading measure borrowed from the storefront; this is a
           table surface, so on a wide operator monitor it squeezed 7 columns
-          into 1024px and left the rest of the screen empty. */}
-      <main id="main" className="bg-muted/30 flex-1 px-4 py-8 lg:px-8">
+          into 1024px and left the rest of the screen empty.
+          `min-w-0`: lg-ийн мөр layout-д flex item нь агуулгын min-content-оос
+          нарийсдаггүй — өргөн хүснэгт main-ийг дэлгэцнээс түлхэж гаргадаг байв. */}
+      <main id="main" className="bg-muted/30 min-w-0 flex-1 px-4 py-8 lg:px-8">
         <div className="mx-auto max-w-7xl">{children}</div>
       </main>
     </div>

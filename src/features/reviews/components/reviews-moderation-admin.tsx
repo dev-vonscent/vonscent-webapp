@@ -141,7 +141,7 @@ function ReviewCard({ review }: { review: AdminReview }) {
         </div>
 
         <Stars rating={review.rating} size={14} />
-        <p className="text-sm/relaxed wrap-break-word whitespace-pre-line">
+        <p className="text-sm/relaxed wrap-anywhere whitespace-pre-line">
           {review.body}
         </p>
 

@@ -35,10 +35,42 @@ export type BulkSaleInput = z.infer<typeof bulkSaleSchema>;
 export const clearSaleSchema = z.object({ productIds });
 
 /**
- * Хувиас хямдарсан үнэ — `apply_bulk_sale`-ийн толь (100₮-д дугуйрна,
+ * Хувиас хямдарсан үнэ — `apply_bulk_sale`-ийн толь (100₮-д тоймлоно,
  * үндсэн үнээс давахгүй). Админы урьдчилан харах мөрөнд.
  */
 export function bulkSalePrice(price: number, pct: number): number {
   // price × (100 − pct) нь бүхэл тоо — нэг хуваалтаар float-ийн алдаагүй.
   return roundSalePrice((price * (100 - pct)) / 100, price);
 }
+
+/** Нэртэй хямдралын нэрийн дээд урт — DB `sales.name` check (0188). */
+export const NAMED_SALE_NAME_MAX = 60;
+
+const dayKey = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/u, "Огноо буруу байна.");
+
+/**
+ * Нэртэй хямдрал (0188, task 16.2–16.5) үүсгэх / засах. Өдрүүд нь УБ-ын
+ * `YYYY-MM-DD` — сервер `dayStartIso` / `dayEndIso`-оор хил болгоно.
+ * `adoptUnnamed` — «Нэргүй» бүлгийг нэрлэж шинэ хямдрал болгох (16.6).
+ */
+export const namedSaleSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, "Хямдралын нэр оруулна уу.")
+      .max(NAMED_SALE_NAME_MAX, `Нэр ${NAMED_SALE_NAME_MAX} тэмдэгтээс ихгүй.`),
+    pcts: bulkSaleSchema.innerType().shape.pcts,
+    startsOn: dayKey.or(z.literal("")),
+    endsOn: dayKey,
+    productIds,
+    adoptUnnamed: z.boolean().default(false),
+  })
+  .refine((v) => !v.startsOn || v.endsOn >= v.startsOn, {
+    message: "Дуусах өдөр эхлэхээс өмнө байж болохгүй.",
+    path: ["endsOn"],
+  });
+
+export type NamedSaleInput = z.infer<typeof namedSaleSchema>;

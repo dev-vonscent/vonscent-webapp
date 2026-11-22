@@ -125,6 +125,16 @@ theme дээр хуудасны хажуугаар тод судал татаж,
 - Хурдан (богино хугацаа), бүгд нэг хэмнэлтэй.
 - `prefers-reduced-motion`-ийг хүндэлнэ.
 
+### 7.1 Сонгогдсон chip/tab-ийн шилжилт
+
+**Сонгогдсон chip/tab-д `transition-colors` хэрэглэхгүй**, хэрэв сонголт нь URL
+солиж серверийн render өдөөдөг бол (шүүлт, хугацааны chip г.м.). Өнгөний transition
+main thread дээр явдаг тул render давхцахад хуучин chip хагас гэрэлтсэн чигээрээ
+гацаж «анивчина» (тайлангийн хугацааны chip — Playwright-аар frame бүрээр баталсан).
+Сонгогдсон төлөвт `bg-cta text-cta-foreground`: хар theme-д `bg-primary` нь
+`bg-secondary`-оос бараг ялгагдахгүй. Үлдсэн газрууд (`FilterChip`,
+`products-toolbar` chip, `calendar`) — анзаарагдвал засна.
+
 ---
 
 ## 8. Responsive ба dark mode

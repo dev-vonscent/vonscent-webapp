@@ -18,7 +18,9 @@ export function FilterChip({
       className={cn(
         // Inactive chips had only a (transparent) border, so five of the six
         // read as bare floating words. Every chip now carries a surface.
-        "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+        // Гүйдэг мөрөнд агшиж олон мөр болохгүй (`shrink-0`, nowrap). URL
+        // солих сонголт тул `transition-colors` хэрэглэхгүй (CLAUDE.md).
+        "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap",
         active
           ? "bg-cta text-cta-foreground"
           : "bg-secondary text-muted-foreground hover:text-foreground",

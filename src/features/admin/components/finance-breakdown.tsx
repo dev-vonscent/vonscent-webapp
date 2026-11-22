@@ -57,6 +57,34 @@ export function FinanceBreakdown({
           Хүргэлтийн төлбөр {formatPrice(finance.shipping)} — хүргэлтийн
           компанид тэр чигээр нь төлөгддөг тул тооцоонд ороогүй.
         </li>
+        {finance.extrasGoods > 0 && (
+          <li>
+            Барааны нийт дүнгийн {formatPrice(finance.extrasGoods)} нь нэмэлт
+            бараа (хайрцаг, сав, шил г.м.), үлдсэн{" "}
+            {formatPrice(
+              finance.goods - finance.extrasGoods - finance.giftCardGoods,
+            )}{" "}
+            нь үнэртэн.
+          </li>
+        )}
+        {(finance.giftCardGoods > 0 ||
+          finance.giftCardOutstanding > 0 ||
+          finance.giftCardRedeemed > 0) && (
+          <li>
+            Бэлгийн карт: зарагдсан сардаа бүтэн дүнгээр орлого
+            {finance.giftCardSold > 0
+              ? ` (энэ мужид ${finance.giftCardSold} карт)`
+              : ""}
+            , хожим оноогоор авсан бараа «V-point» мөрөөр хасагдана.
+            Захиалгын тоонд ордоггүй. Энэ мужид{" "}
+            {formatPrice(finance.giftCardRedeemed)} оноо болсон
+            {finance.giftCardExpired > 0
+              ? `, ${formatPrice(finance.giftCardExpired)}-ийн хугацаа дууссан`
+              : ""}
+            . Одоогийн ашиглагдаагүй үлдэгдэл{" "}
+            {formatPrice(finance.giftCardOutstanding)}.
+          </li>
+        )}
         <li>
           Буцаалтыг буцаасан өдрөөр нь хасна, өнгөрсөн сарын тоо өөрчлөгдөхгүй.
         </li>

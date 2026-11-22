@@ -7,7 +7,9 @@ import {
   type EmailItem,
 } from "@/lib/email";
 import { env } from "@/lib/env";
-import { formatPrice, formatMl } from "@/lib/format";
+import { formatPrice } from "@/lib/format";
+import { loadBundleInfo } from "@/lib/orders/bundle-info";
+import { orderEmailItems, type OrderEmailRow } from "./order-email-items";
 import { orderSummaryRows, summarySource } from "@/lib/orders/summary";
 import { RESERVE_TIMEOUT_MINUTES } from "@/lib/constants";
 import {
@@ -36,13 +38,39 @@ export async function sendOrderCustomerEmail(
   orderId: string,
   kind: "placed" | "paid" | "cancelled",
 ): Promise<void> {
+  const mail = await buildOrderCustomerEmail(orderId, kind);
+  if (!mail) return;
+  await sendEmail({
+    ...mail,
+    // Sent from no-reply@, which receives nothing — a customer who hits Reply
+    // reaches the store rather than the void.
+    replyTo: STORE_INBOX,
+  });
+}
+
+/**
+ * Захиалгын имэйлийг бэлдэнэ (илгээхгүй) — `sendOrderCustomerEmail` ба
+ * урьдчилан харах script (`scripts/preview-order-email.ts`). `recipient`-ийг
+ * өгвөл хүлээн авагчийг сангаас хайхгүй.
+ */
+export async function buildOrderCustomerEmail(
+  orderId: string,
+  kind: "placed" | "paid" | "cancelled",
+  opts: { recipient?: { email: string; unsubscribeUrl?: string } } = {},
+): Promise<{
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+  headers?: Record<string, string>;
+} | null> {
   const supabase = createAdminClient();
-  if (!supabase) return;
+  if (!supabase) return null;
 
   const { data } = await supabase
     .from("orders")
     .select(
-      "order_no, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, user_id, payment_status, created_at, deliver_on, contact_email, pay_token, status",
+      "order_no, subtotal, gross_subtotal, sale_breakdown, coupon_code, coupon_pct, shipping_fee, discount, loyalty_used, total, user_id, payment_status, created_at, deliver_on, contact_email, pay_token, status, order_type",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -50,7 +78,10 @@ export async function sendOrderCustomerEmail(
     order_no: string;
     subtotal: number;
     gross_subtotal: number | null;
+    /** 0189 — арга хэмжээ / хямдралын мөрүүд; хуучин захиалгад null. */
+    sale_breakdown?: unknown;
     coupon_code: string | null;
+    coupon_pct?: number | null;
     shipping_fee: number;
     discount: number;
     loyalty_used: number;
@@ -62,11 +93,15 @@ export async function sendOrderCustomerEmail(
     contact_email: string | null;
     pay_token: string | null;
     status: string;
+    order_type: string;
   } | null;
-  if (!order) return;
+  if (!order) return null;
+  // Бэлгийн картын захиалга (0179) өөрийн имэйлтэй — хүргэлт, нөөцийн тухай
+  // энэ текстүүд түүнд хамаарахгүй (`features/gift-cards/email.ts`).
+  if (order.order_type === "gift_card") return null;
 
-  const recipient = await resolveRecipient(supabase, order);
-  if (!recipient) return;
+  const recipient = opts.recipient ?? (await resolveRecipient(supabase, order));
+  if (!recipient) return null;
 
   // Урамшууллын купон — `orders_reward_coupon` trigger (0025/0041) нь
   // төлбөр баталгаажих мөчид үүсгэчихсэн байдаг. Үүсгэх нь бүрэн ажиллаж
@@ -161,7 +196,7 @@ export async function sendOrderCustomerEmail(
           };
 
   const { html, text } = renderEmail(doc);
-  await sendEmail({
+  return {
     to: recipient.email,
     subject:
       kind === "placed"
@@ -171,9 +206,6 @@ export async function sendOrderCustomerEmail(
           : `Захиалга цуцлагдлаа — ${order.order_no}`,
     text,
     html,
-    // Sent from no-reply@, which receives nothing — a customer who hits Reply
-    // reaches the store rather than the void.
-    replyTo: STORE_INBOX,
     // Зөвхөн бүртгэлийн имэйл дээр: зочны гүйлгээний имэйлд unsubscribe
     // гэсэн ойлголт байхгүй (жагсаалтад ороогүй).
     headers: unsubscribeUrl
@@ -182,7 +214,7 @@ export async function sendOrderCustomerEmail(
           "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
         }
       : undefined,
-  });
+  };
 }
 
 /**
@@ -190,7 +222,7 @@ export async function sendOrderCustomerEmail(
  * хаягаас давуу: захиалгаа тэр хаягаар хүлээж байгаа бөгөөд зочны хувьд өөр
  * зам байхгүй. Бүртгэлийн хаяг руу явахдаа л unsubscribe линк хамт явна.
  */
-async function resolveRecipient(
+export async function resolveRecipient(
   supabase: NonNullable<ReturnType<typeof createAdminClient>>,
   order: { user_id: string | null; contact_email: string | null },
 ): Promise<{ email: string; unsubscribeUrl?: string } | null> {
@@ -251,33 +283,23 @@ async function loadItems(
 ): Promise<EmailItem[] | undefined> {
   const { data } = await supabase
     .from("order_items")
-    .select("product_name, brand, ml, qty, unit_price, list_price, line_total")
+    .select(
+      "id, line_no, product_name, brand, ml, qty, unit_price, list_price, base_price, sale_label, line_kind, variant_label, is_gift, is_sample, spin_id, collection_id, collection_name",
+    )
     .eq("order_id", orderId);
-  const rows = data as
-    | {
-        product_name: string;
-        brand: string;
-        ml: number;
-        qty: number;
-        unit_price: number;
-        list_price: number | null;
-        line_total: number;
-      }[]
-    | null;
+  const rows = data as OrderEmailRow[] | null;
   if (!rows?.length) return undefined;
-
-  return rows.map((r) => ({
-    name: r.brand ? `${r.brand} — ${r.product_name}` : r.product_name,
-    meta: `${formatMl(r.ml)} × ${r.qty}`,
-    // Үндсэн үнээр — багцын хямдрал тоймд тусдаа мөр болно (0097).
-    amount: formatPrice((r.list_price ?? r.unit_price) * r.qty),
-  }));
+  const { baseIds } = await loadBundleInfo(supabase, rows);
+  return orderEmailItems(rows, baseIds);
 }
 
 function summaryLines(order: {
   subtotal: number;
   gross_subtotal: number | null;
+  /** 0189 — арга хэмжээ / хямдралын мөрүүд; хуучин захиалгад null. */
+  sale_breakdown?: unknown;
   coupon_code?: string | null;
+  coupon_pct?: number | null;
   shipping_fee: number;
   discount: number;
   loyalty_used: number;

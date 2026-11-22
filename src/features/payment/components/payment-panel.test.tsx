@@ -4,6 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PaymentPanel } from "./payment-panel";
 import { formatDeliveryDay } from "@/lib/time";
 import type { PaymentView } from "../types";
+import { buildPaymentRecap } from "../recap";
+import {
+  VS2247_BASE_TOTAL,
+  VS2247_ITEMS,
+  VS2247_NIGHT_OUT,
+  VS2247_ORDER,
+} from "@/lib/orders/vs2247.fixture";
 
 /**
  * The payment page's three states.
@@ -58,46 +65,59 @@ const DEEPLINKS = [
 ];
 
 function view(over: Partial<PaymentView> = {}): PaymentView {
-  return {
-    orderNo: "VS-1042",
-    total: 45000,
-    lines: [
-      {
-        productId: "p-floral",
-        name: "Floral",
-        brand: "Coach",
-        ml: 5,
-        qty: 2,
-        lineTotal: 36000,
-        baseTotal: 36000,
-        isSample: false,
-        collectionName: null,
-        image: null,
+  const v: Omit<PaymentView, "entries"> & { entries?: PaymentView["entries"] } =
+    {
+      orderNo: "VS-1042",
+      total: 45000,
+      omittedGifts: [],
+      lines: [
+        {
+          productId: "p-floral",
+          name: "Floral",
+          brand: "Coach",
+          ml: 5,
+          variantLabel: null,
+          isExtra: false,
+          qty: 2,
+          lineTotal: 36000,
+          baseTotal: 36000,
+          isSample: false,
+          isGift: false,
+          collectionName: null,
+          image: null,
+        },
+      ],
+      subtotal: 36000,
+      grossSubtotal: 36000,
+      couponCode: null,
+      shippingFee: 9000,
+      discount: 0,
+      loyaltyUsed: 0,
+      pointsEarned: 0,
+      reviewPoints: 0,
+      paymentMethod: "qpay",
+      paid: false,
+      cancelled: false,
+      canSaveForLater: true,
+      deliverOn: "2026-09-09",
+      giftCard: null,
+      invoice: {
+        invoiceId: "inv_42",
+        amount: 45000,
+        qrText: "0002010102121531…",
+        qrImage: "data:image/png;base64,AAAA",
+        shortUrl: "https://s.qpay.mn/abc",
+        deeplinks: DEEPLINKS,
       },
-    ],
-    subtotal: 36000,
-    grossSubtotal: 36000,
-    couponCode: null,
-    shippingFee: 9000,
-    discount: 0,
-    loyaltyUsed: 0,
-    pointsEarned: 0,
-    reviewPoints: 0,
-    paymentMethod: "qpay",
-    paid: false,
-    cancelled: false,
-    canSaveForLater: true,
-    deliverOn: "2026-09-09",
-    invoice: {
-      invoiceId: "inv_42",
-      amount: 45000,
-      qrText: "0002010102121531…",
-      qrImage: "data:image/png;base64,AAAA",
-      shortUrl: "https://s.qpay.mn/abc",
-      deeplinks: DEEPLINKS,
-    },
-    mock: false,
-    ...over,
+      mock: false,
+      ...over,
+    };
+  // Тоймын мөрүүд — өгөөгүй бол задгай мөр бүр нэг мөр.
+  return {
+    ...v,
+    entries:
+      over.entries ??
+      v.lines.map((line, i) => ({ kind: "item" as const, key: `l${i}`, line })),
   };
 }
 
@@ -383,8 +403,71 @@ describe("the order recap", () => {
     expect(screen.getByText("−210₮")).toBeTruthy();
   });
 
+  it("VS-2247: багц нэг мөр, гишүүд, бэлэг доор, нийлбэр = «Нийт үндсэн үнэ»", () => {
+    const recap = buildPaymentRecap(
+      VS2247_ITEMS.map((i) => ({ ...i })),
+      { baseIds: new Set([VS2247_NIGHT_OUT]), images: new Map() },
+      new Map(),
+    );
+    const o = VS2247_ORDER;
+    const { container } = render(
+      <PaymentPanel
+        view={view({
+          ...recap,
+          subtotal: o.subtotal,
+          grossSubtotal: o.gross_subtotal,
+          saleBreakdown: [...o.sale_breakdown],
+          shippingFee: o.shipping_fee,
+          total: o.total,
+        })}
+        token="tok"
+      />,
+    );
+
+    const rows = [...container.querySelectorAll("#order-recap-body > ul > li")];
+    expect(rows.map((li) => li.querySelector("p")?.textContent)).toEqual([
+      "Blanche",
+      "Aventus",
+      "Goddess EDP",
+      "Oud Wood",
+      "NIGHT OUT багц",
+      "NIGHT OUT багц",
+      "Glacial Essence",
+      "Homme intense",
+      "My Way",
+    ]);
+    // Багцын гишүүд нэрийн доор, ml давтахгүй.
+    expect(rows[4].textContent).toContain("2ml × 1");
+    expect(rows[4].textContent).toContain(
+      "• Rabanne — Invictus Victory elixir",
+    );
+    expect(rows[4].textContent).toContain("69,000₮");
+    expect(rows[5].textContent).toContain("260,000₮");
+    // Хямдралтай дан бараа үндсэн үнээр.
+    expect(rows[2].textContent).toContain("78,000₮");
+    // Бэлэг — дүнгийн оронд «Бэлэг».
+    for (const li of rows.slice(6)) {
+      expect(li.textContent).toContain("Бэлэг");
+      expect(li.textContent).not.toContain("₮");
+    }
+    // Мөрүүдийн нийлбэр = «Нийт үндсэн үнэ».
+    const amount = (li: Element) =>
+      Number(
+        [...li.querySelectorAll("span")]
+          .map((s) => s.textContent ?? "")
+          .find((t) => /^[\d,]+₮$/.test(t))
+          ?.replace(/[^\d]/g, "") ?? 0,
+      );
+    expect(rows.reduce((n, li) => n + amount(li), 0)).toBe(VS2247_BASE_TOTAL);
+    expect(screen.getByText("Нийт үндсэн үнэ").nextSibling?.textContent).toBe(
+      "776,000₮",
+    );
+  });
+
   it("stays out of the way for an order with no lines on file", () => {
-    render(<PaymentPanel view={view({ lines: [] })} token="tok" />);
+    render(
+      <PaymentPanel view={view({ lines: [], entries: [] })} token="tok" />,
+    );
     expect(screen.queryByText("Захиалга")).toBeNull();
   });
 });
@@ -421,7 +504,9 @@ describe("PaymentPanel — leaving an unpaid order (0124)", () => {
     const { unmount } = render(<PaymentPanel view={view()} token="tok" />);
     expect(screen.getByRole("button", { name: "Дараа захиалах" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Устгах" })).toBeTruthy();
-    expect(screen.getByText(/автоматаар «Дараа захиалах» руу шилжинэ/)).toBeTruthy();
+    expect(
+      screen.getByText(/автоматаар «Дараа захиалах» руу шилжинэ/),
+    ).toBeTruthy();
     unmount();
 
     render(
@@ -433,9 +518,11 @@ describe("PaymentPanel — leaving an unpaid order (0124)", () => {
   });
 
   it("moves the order to saved checkouts and leaves for the order list", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true }), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
     vi.stubGlobal("fetch", fetchMock);
     render(<PaymentPanel view={view()} token="tok" />);
 
@@ -453,9 +540,11 @@ describe("PaymentPanel — leaving an unpaid order (0124)", () => {
   });
 
   it("deletes after the confirmation dialog", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true }), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
     vi.stubGlobal("fetch", fetchMock);
     render(<PaymentPanel view={view()} token="tok" />);
 

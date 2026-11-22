@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useRoutePathname } from "@/lib/route-pathname";
 import { ArrowLeft, ChevronDown, Heart } from "lucide-react";
 import { Logo } from "./logo";
 import { MobileMenu } from "./mobile-menu";
@@ -16,6 +17,7 @@ import {
 import { NotificationCenter } from "@/features/notifications/components/notification-center";
 import { selectWishCount, useWishlist } from "@/features/wishlist/store";
 import { GlobalSearch } from "./global-search";
+import { useFeatureFlagSet } from "@/components/feature-flags";
 import { cn } from "@/lib/utils";
 import { DARK_STAGE_ROUTES } from "@/lib/constants";
 import { usePublishScrollHidden } from "@/components/shared/bottom-nav-store";
@@ -23,9 +25,11 @@ import {
   STORE_NAV_PRIMARY,
   STORE_NAV_SECONDARY,
   isNavActive,
+  visibleNavItems,
   type StoreMenuKey,
   type StoreNavItem,
 } from "./store-nav";
+import { NavNewBadge } from "./nav-new-badge";
 
 /** Page titles for the mobile compact header (exact path or longest prefix). */
 /** Доод төгсгөлөөс энэ px дотор бол «төгсгөлд хүрсэн» — доод цэс дахин гарна. */
@@ -33,6 +37,8 @@ const PAGE_END_THRESHOLD = 40;
 
 const TITLES: Record<string, string> = {
   "/catalog": "Каталог",
+  "/bottles": "Үнэртний шил",
+  "/accessories": "Дагалдах хэрэгсэл",
   "/collections": "Багц",
   "/collections/build": "Багц үүсгэх",
   "/account/collections": "Миний багцууд",
@@ -42,12 +48,15 @@ const TITLES: Record<string, string> = {
   "/faq": "Тусламж",
   "/lucky-wheel": "", // the dark stage runs up behind the bar — no title
   "/quiz": "Үнэрээ олох",
+  "/gift-cards": "Бэлгийн карт",
+  "/gift": "Бэлгийн карт",
   "/wishlist": "Хүслийн жагсаалт",
   "/account": "Миний бүртгэл",
   "/account/orders": "Миний захиалга",
   "/account/loyalty": "Урамшуулал",
   "/account/addresses": "Хаягууд",
   "/account/coupons": "Миний купон",
+  "/account/gift-cards": "Бэлгийн карт",
   "/account/info": "Миний мэдээлэл",
   "/account/notifications": "Мэдэгдэл",
   "/account/tier": "Түвшин",
@@ -62,6 +71,9 @@ function getTitle(pathname: string): string {
   // `in`, not truthiness: an exact "" means "no title" (the wheel's stage),
   // not "unknown page — fall back to the brand name".
   if (pathname in TITLES) return TITLES[pathname];
+  // Багцын дэлгэрэнгүй — барааны хуудас шиг full-bleed зураг, гарчиггүй.
+  // («/collections/build» дээрх exact match-аар түрүүлж барина.)
+  if (/^\/collections\/[^/]+$/.test(pathname)) return "";
   const match = Object.keys(TITLES)
     .filter((k) => pathname.startsWith(`${k}/`))
     .sort((a, b) => b.length - a.length)[0];
@@ -115,7 +127,7 @@ export function SiteHeader({
    */
   menus?: Partial<Record<StoreMenuKey, React.ReactNode>>;
 }) {
-  const pathname = usePathname();
+  const pathname = useRoutePathname();
   const router = useRouter();
   const isHome = pathname === "/";
   const pageTitleVisible = usePageTitleVisible(pathname);
@@ -344,6 +356,7 @@ function DesktopNav({
   // click нь panel-ийг зүгээр л тогтооно, дараагийн click л хаана.
   const openedByHover = React.useRef(false);
   const panelId = React.useId();
+  const flags = useFeatureFlagSet();
 
   const schedule = React.useCallback(
     (next: StoreMenuKey | null, delay: number) => {
@@ -400,15 +413,17 @@ function DesktopNav({
 
   const renderItems = (items: readonly StoreNavItem[], muted = false) => (
     <ul className="flex items-center gap-1">
-      {items.map((item) => {
+      {visibleNavItems(items, flags).map((item) => {
         const panel = item.menu ? menus[item.menu] : undefined;
         const active = isNavActive(item.href, pathname);
         const expanded = Boolean(item.menu && open === item.menu);
         const highlighted =
           active || expanded || Boolean(item.menu && landing === item.menu);
         const itemClass = cn(
-          "relative flex h-11 items-center gap-1 px-3 text-sm transition-colors",
-          "after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors",
+          // 768px-д зургаан мөр нэг эгнээнд багтахын тулд md-д нарийн зай;
+          // шошго хэзээ ч хоёр мөр болж хугарахгүй.
+          "relative flex h-11 items-center gap-1 px-2 text-sm whitespace-nowrap transition-colors lg:px-3",
+          "after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors lg:after:inset-x-3",
           highlighted
             ? "text-foreground after:bg-primary font-semibold"
             : cn(
@@ -451,6 +466,9 @@ function DesktopNav({
                 className={itemClass}
               >
                 {item.label}
+                {item.newBadge && (
+                  <NavNewBadge item={item} className="mt-2 -ml-0.5" />
+                )}
               </Link>
             )}
           </li>
@@ -467,7 +485,12 @@ function DesktopNav({
       aria-label="Дэлгүүрийн цэс"
       className="chrome-rule-t relative hidden md:block"
     >
-      <div className="mx-auto flex h-11 max-w-420 items-center justify-between gap-6 px-5">
+      {/* Туг бүгд асаалттай үед 7 цэс md (768–1023px, iPad босоо) дээр
+          ~950px болж, бүх хуудсыг хажуу тийш гүйлгэдэг байсан. Мөр өөрөө
+          хажуу тийш гүйнэ — тасарсан сүүлийн шошго нь «цааш бий» гэдгийг
+          илтгэнэ. lg-ээс дээш бүгд багтана. Dropdown panel энэ div-ийн
+          гадна (nav-ийн хүүхэд) тул overflow-д тасрахгүй. */}
+      <div className="no-scrollbar mx-auto flex h-11 max-w-420 items-center justify-between gap-4 overflow-x-auto overscroll-x-contain px-3 lg:gap-6 lg:px-5">
         {renderItems(STORE_NAV_PRIMARY)}
         {renderItems(STORE_NAV_SECONDARY, true)}
       </div>

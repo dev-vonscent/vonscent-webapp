@@ -9,6 +9,7 @@ import {
   XCircle,
   ChevronRight,
   MessageSquarePlus,
+  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,7 @@ import { settleExpiredOrders } from "@/features/account/settle-expired";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { lifetimeSpendOf, tierProgress } from "@/features/tiers/lib";
 import { TierBadge } from "@/features/tiers/components/tier-frame";
+import { isExtraLine, orderLineVariant } from "@/lib/order-lines";
 
 const STATUS_ICON: Record<
   OrderStatus,
@@ -62,8 +64,11 @@ type OrderItemPreview = {
   product_id: string | null;
   product_name: string;
   brand: string;
-  ml: number;
+  ml: number | null;
   qty: number;
+  line_kind: "perfume" | "extra" | "gift_card";
+  variant_label: string | null;
+  image_url: string | null;
   is_gift: boolean | null;
   is_sample: boolean | null;
   collection_id: string | null;
@@ -182,7 +187,7 @@ export default async function OrdersPage({
       const { data } = await supabase
         .from("orders")
         .select(
-          "*, order_items(product_id, product_name, brand, ml, qty, is_gift, is_sample, collection_id)",
+          "*, order_items(product_id, product_name, brand, ml, qty, line_kind, variant_label, image_url, is_gift, is_sample, collection_id)",
         )
         .eq("user_id", user.id)
         // Төлөгдөөгүй цуцлалт захиалга биш (0124) — устгасан нь хаана ч
@@ -408,19 +413,39 @@ function OrderCard({
   /** null — сэтгэгдэл бичих бараагүй; undefined — хуучин урилга (туг хаалттай). */
   reviewState?: OrderReviewState | null;
 }) {
-  const StatusIcon = STATUS_ICON[o.status];
+  // Бэлгийн карт (0179): хүргэлтгүй, сэтгэгдэлгүй — төлөгдмөгц идэвхжинэ.
+  // Карт өөрөө «Бэлгийн карт» хуудсанд (код, хуваалцах) — тийшээ заана.
+  const isGiftCard = o.order_type === "gift_card";
+  // Төлөгдөөгүй карт «Бэлгийн карт»-д харагддаггүй — захиалга руугаа.
+  const href =
+    isGiftCard && o.payment_status === "paid"
+      ? "/account/gift-cards"
+      : `/account/orders/${o.id}`;
+  const StatusIcon =
+    isGiftCard && o.status === "delivered" ? Gift : STATUS_ICON[o.status];
+  const statusLabel =
+    isGiftCard && o.status === "delivered"
+      ? "Идэвхжсэн"
+      : ORDER_STATUS_LABEL[o.status];
   const items = o.order_items ?? [];
   const itemCount = items.reduce((n, i) => n + (i.qty ?? 0), 0);
   const thumbs = items.slice(0, 4);
   const extraCount = items.length - thumbs.length;
-  const firstName = items[0]
-    ? `${items[0].brand} ${items[0].product_name}`
+  // Нэр/хэмжээ зөвхөн бараа цөөн (≤ 2) үед — олон үед зураг ба «+N»
+  // хангалттай, текст нь утсан дээр тасардаг байв.
+  const showName = items.length > 0 && items.length <= 2;
+  // Нэмэлт барааны `brand` нь ангиллын нэр (0146) — нэрийн өмнө тавихгүй.
+  const firstName = showName
+    ? isExtraLine(items[0]) || isGiftCard
+      ? items[0].product_name
+      : `${items[0].brand} ${items[0].product_name}`
     : "";
-  const firstMl = items[0]?.ml;
+  const firstVariant = showName ? orderLineVariant(items[0]) : "";
   // `pay_token` байхгүй (демо/хуучин мөр) бол төлөх зам ч байхгүй.
   const awaitingPayment = isAwaitingPayment(o);
   // Сэтгэгдлийн урилга (0117) — төлөгдсөн, явж буй/хүргэгдсэн захиалгад.
   const reviewInvite =
+    !isGiftCard &&
     (reviewState === undefined || reviewState?.kind === "invite") &&
     reviewPoints > 0 &&
     o.payment_status === "paid" &&
@@ -433,7 +458,7 @@ function OrderCard({
       key={o.id}
       className="group hover:border-gold-strong hover:shadow-lift overflow-hidden transition-all"
     >
-      <Link href={`/account/orders/${o.id}`} className="block">
+      <Link href={href} className="block">
         <CardContent className="p-5 pb-0">
           {/* Header: order no + date · status */}
           <div className="flex items-start justify-between gap-3">
@@ -447,7 +472,7 @@ function OrderCard({
             <div className="flex shrink-0 flex-col items-end gap-1.5">
               <Badge className={cn("gap-1", ORDER_STATUS_STYLE[o.status])}>
                 <StatusIcon className="size-3.5" />
-                {ORDER_STATUS_LABEL[o.status]}
+                {statusLabel}
               </Badge>
               {/* Төлбөрийн төлөв: «төлсөн pending» ба «төлөөгүй
                     pending» хоёр өмнө нь ялгагдахгүй байв. */}
@@ -466,15 +491,18 @@ function OrderCard({
             </div>
           </div>
 
-          {/* Item thumbnails */}
+          {/* Item thumbnails — 4 зураг + «+N» 320px дээр багтахаар утсан дээр
+              44px. Нэр нь зөвхөн цөөн бараатай үед (`showName`). */}
           {thumbs.length > 0 && (
-            <div className="mt-4 flex items-center gap-2">
+            <div className="mt-4 flex items-center gap-1.5 sm:gap-2">
               {thumbs.map((i, idx) => {
-                const url = i.product_id ? imageById.get(i.product_id) : null;
+                const url =
+                  i.image_url ??
+                  (i.product_id ? imageById.get(i.product_id) : null);
                 return (
                   <div
                     key={idx}
-                    className="border-border bg-secondary relative size-14 shrink-0 overflow-hidden rounded-xl border"
+                    className="border-border bg-secondary relative size-11 shrink-0 overflow-hidden rounded-lg border sm:size-14"
                   >
                     {url ? (
                       <Image
@@ -493,7 +521,7 @@ function OrderCard({
                 );
               })}
               {extraCount > 0 && (
-                <div className="border-border bg-secondary text-muted-foreground flex size-14 shrink-0 items-center justify-center rounded-xl border border-dashed text-sm font-medium">
+                <div className="border-border bg-secondary text-muted-foreground flex size-11 shrink-0 items-center justify-center rounded-lg border border-dashed text-sm font-medium sm:size-14">
                   +{extraCount}
                 </div>
               )}
@@ -503,8 +531,10 @@ function OrderCard({
                     {firstName}
                     {items.length > 1 && ` ба бусад ${items.length - 1}`}
                   </p>
-                  {firstMl != null && (
-                    <p className="text-muted-foreground text-xs">{firstMl}ml</p>
+                  {firstVariant && (
+                    <p className="text-muted-foreground text-xs">
+                      {firstVariant}
+                    </p>
                   )}
                 </div>
               )}
@@ -512,7 +542,7 @@ function OrderCard({
           )}
 
           {/* Progress stepper (hidden for cancelled orders) */}
-          {o.status !== "cancelled" && (
+          {o.status !== "cancelled" && !isGiftCard && (
             <Stepper status={o.status} paid={o.payment_status !== "unpaid"} />
           )}
         </CardContent>
@@ -523,7 +553,7 @@ function OrderCard({
       <div className="px-5 pb-5">
         <Separator className="my-3" />
 
-        {reviewState && reviewState.kind !== "invite" && (
+        {!isGiftCard && reviewState && reviewState.kind !== "invite" && (
           <ReviewStateNote orderId={o.id} state={reviewState} />
         )}
 
@@ -557,10 +587,12 @@ function OrderCard({
             </Button>
           ) : (
             <Link
-              href={`/account/orders/${o.id}`}
+              href={href}
               className="text-muted-foreground group-hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
             >
-              Дэлгэрэнгүй
+              {isGiftCard && o.payment_status === "paid"
+                ? "Карт харах"
+                : "Дэлгэрэнгүй"}
               <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
           )}

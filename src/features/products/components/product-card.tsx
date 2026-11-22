@@ -2,28 +2,40 @@ import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { ProductListItem } from "@/lib/types";
 import { WishlistButton } from "@/features/wishlist/components/wishlist-button";
 import { QuickAdd } from "./quick-add";
 import { GenderBadge } from "./gender-badge";
+import { SaleBadge } from "@/features/sale-events/components/sale-badge";
+import { CardSaleBand } from "./card-sale-band";
 
 import { CARD_STATUS_LABEL, cardStatus, type CardStatus } from "../card-status";
+import { salePctText } from "../sale";
 
 export function ProductCard({
   product,
   matchPct,
   prefer,
+  eager,
 }: {
   product: ProductListItem;
   /** Quiz match percentage — shows a corner badge when set (3b). */
   matchPct?: number;
   /** Харж буй жагсаалтын төлөв түрүүлнэ (`cardStatus`). */
   prefer?: CardStatus[];
+  /**
+   * Эхний дэлгэцэнд харагдах карт (grid/rail-ийн эхний хэдэн нүд) — зураг нь
+   * LCP болдог тул lazy биш, шууд татна.
+   */
+  eager?: boolean;
 }) {
   const status = cardStatus(product, prefer);
   // «Тун удахгүй» (0125): «Дууссан» биш — ирэхийг хүлээж буй ус. Нүүрний
   // хэсэг, хүслийн жагсаалтад л гарна (каталог эдгээрийг алгасдаг).
   const comingSoon = product.comingSoon === true;
+  // `sale.endsAt` нь зөвхөн туг `sale_display` нээлттэй үед ирнэ (getSaleSummaries).
+  const hasBand = !product.soldOut && !!product.sale?.endsAt;
   const statusLabel = comingSoon
     ? "Тун удахгүй"
     : status && CARD_STATUS_LABEL[status];
@@ -33,18 +45,24 @@ export function ProductCard({
           харлуулдаг — гүйлгэх гэж хуруугаа тавихад ч идэвхждэг байв. */}
       <Link
         href={`/products/${product.slug}`}
-        className="group-hover:shadow-lift relative aspect-4/5 overflow-hidden rounded-2xl bg-none transition-all duration-300 [-webkit-touch-callout:none]"
+        className="group-hover:shadow-lift relative isolate aspect-4/5 overflow-hidden rounded-2xl bg-none transition-all duration-300 [-webkit-touch-callout:none]"
       >
         {product.image && (
           <Image
             src={product.image.url}
             alt={product.image.alt || product.name}
             fill
+            loading={eager ? "eager" : undefined}
             sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 280px"
             className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           />
         )}
-        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
+        {/* right-12: баруун дээд буланд зүрх/сагсны icon (size-8 + 10px) —
+            chip доогуур нь орохгүй. `@container/chip`: арга хэмжээний chip
+            энэ өргөнд «Black Friday ~30%» багтахгүй бол зөвхөн «~30%». */}
+        {/* `[data-ticker]` = арга хэмжээний chip (SaleChip) — байвал үргэлж
+            хамгийн дээр, «Шинэ» г.м. төлөвийн тэмдгээс өмнө. */}
+        <div className="@container/chip absolute top-2.5 right-12 left-2.5 flex flex-col items-start gap-1 *:data-ticker:order-first">
           {/* Нэг төлөв + хямдрал — хамгийн ихдээ хоёр badge. */}
           {statusLabel && (
             <Badge
@@ -54,17 +72,32 @@ export function ProductCard({
               {statusLabel}
             </Badge>
           )}
-          {product.tags.includes("sale") && (
-            <Badge
-              variant="sale"
-              className="bg-background/85! w-fit backdrop-blur-sm"
-            >
-              Хямдрал
-            </Badge>
-          )}
+          {/* «Black Friday» (арга хэмжээ, 0181) эсвэл «Хямдралтай». */}
+          <SaleBadge
+            productId={product.id}
+            onSale={product.tags.includes("sale")}
+            salePct={product.sale ? salePctText(product.sale) : undefined}
+            byEvent={product.sale?.byEvent}
+          />
         </div>
+        {/* Хямдрал дуусах тоолуур (2.2, туг `sale_display`) — зургийн ёроолд
+            тууз; булангийг энэ Link-ийн overflow-hidden тайрна. Хугацаагүй
+            хямдрал, дууссан бараанд гарахгүй. */}
+        {hasBand && (
+          <CardSaleBand
+            productId={product.id}
+            endsAt={product.sale?.endsAt}
+            byEvent={product.sale?.byEvent}
+          />
+        )}
         {matchPct !== undefined && (
-          <span className="bg-foreground text-background absolute bottom-2.5 left-2.5 rounded-full px-2 py-0.5 text-[11px] font-semibold">
+          <span
+            className={cn(
+              "bg-foreground text-background absolute left-2.5 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+              // Хямдралын тууз (h-7) байвал түүний дээр.
+              hasBand ? "bottom-9.5" : "bottom-2.5",
+            )}
+          >
             {matchPct}% тохирол
           </span>
         )}
@@ -100,17 +133,40 @@ export function ProductCard({
         >
           {product.name}
         </Link>
-        <span className="text-foreground/70 mt-1.5 flex items-baseline gap-1.5 text-sm font-semibold tracking-tight">
-          {formatPrice(product.startingPrice)}
-          {/* Зөвхөн үндсэн үнэ (зураастай) — хувь харуулахгүй (backlog B4). */}
-          {product.startingBasePrice > product.startingPrice && (
-            <span className="text-muted-foreground text-xs font-normal line-through">
-              {formatPrice(product.startingBasePrice)}
-            </span>
-          )}
-        </span>
+        <CardPrice product={product} />
       </div>
     </div>
   );
 }
 
+/**
+ * Картын үнэ. Хямдарсан хэмжээ байвал хамгийн их хувьтай хэмжээний
+ * (`cardPrice`, task 2.5) үнэ + зураастай үндсэн үнэ, хэмжээгүйгээр
+ * (клиентийн засвар 2026-11-21 сл.4); эс бөгөөс хамгийн бага үнэ.
+ */
+export function CardPrice({
+  product,
+}: {
+  product: Pick<
+    ProductListItem,
+    "startingPrice" | "startingBasePrice" | "cardPrice"
+  >;
+}) {
+  const card = product.cardPrice;
+  const price = card ? card.price : product.startingPrice;
+  const base = card ? card.basePrice : product.startingBasePrice;
+  return (
+    <span
+      data-testid="card-price"
+      className="text-foreground/70 mt-1.5 flex flex-wrap items-baseline gap-x-1.5 text-sm font-semibold tracking-tight"
+    >
+      {formatPrice(price)}
+      {/* Зөвхөн үндсэн үнэ (зураастай) — хувь нь chip дээр. */}
+      {base > price && (
+        <span className="text-muted-foreground text-xs font-normal line-through">
+          {formatPrice(base)}
+        </span>
+      )}
+    </span>
+  );
+}

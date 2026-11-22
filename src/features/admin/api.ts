@@ -4,6 +4,7 @@ import { callRpc } from "@/lib/supabase/rpc";
 import type {
   OrderRow,
   OrderItemRow,
+  VialRow,
   OrderRefundAccountRow,
   OrderStatusHistoryRow,
   ProfileRow,
@@ -52,7 +53,9 @@ import {
   EMPTY_FINANCE,
   financeFromRow,
   type FinanceRow,
+  type ReportExtraCategory,
   type ReportFinance,
+  type ReportVial,
 } from "./lib/report-finance";
 import {
   getBottleLocks,
@@ -60,13 +63,10 @@ import {
   NO_BOTTLE_LOCKS,
   type BottleLockState,
 } from "@/features/products/bottle-stock";
-import { collectionIdsOf } from "@/lib/orders/bundle-lines";
+import { collectionIdsOf } from "@/lib/orders/order-lines";
 import { getBaseCollections } from "@/features/collections/api";
 import { grandPrizeState } from "@/features/lucky-wheel/prize-state";
-import type {
-  GrandPrizeState,
-  MissTip,
-} from "@/features/lucky-wheel/types";
+import type { GrandPrizeState, MissTip } from "@/features/lucky-wheel/types";
 import { GRAND_BUNDLE_ML } from "@/lib/constants";
 import { effectivePrice } from "@/features/products/sale";
 
@@ -290,6 +290,10 @@ export async function getOrderDetail(id: string): Promise<{
   payments: QpayPaymentRecord[];
   /** Хэрэглэгчийн бичсэн буцаалтын данс (0108) — буцаагдмагц устгагдана. */
   refundAccount: OrderRefundAccountRow | null;
+  /** Мөрүүдэд түгжсэн хоосон сав (0146): vial_id → өнгө, хэмжээ. */
+  vials: Map<string, Pick<VialRow, "style" | "ml">>;
+  /** Хасагдсан бэлгийн барааны нэр: product_id → «Брэнд Нэр». */
+  omittedGiftNames: Map<string, string>;
   /** Мөрүүдийн бэлэн (`base`) багцын id — нэг мөр болж харагдана. */
   baseCollectionIds: string[];
   /** Админы дотоод тэмдэглэл (0145) — хэрэглэгчид харагдахгүй. */
@@ -337,9 +341,24 @@ export async function getOrderDetail(id: string): Promise<{
       .maybeSingle(),
   ]);
 
-  const itemRows = (items as OrderItemRow[] | null) ?? [];
-  const collectionIds = collectionIdsOf(itemRows);
-  const [{ data: baseRows }, { data: noteRow }] = await Promise.all([
+  const rows = (items as OrderItemRow[] | null) ?? [];
+  const vialIds = [
+    ...new Set(rows.map((i) => i.vial_id).filter((v): v is string => !!v)),
+  ];
+  const giftIds = (order.omitted_gifts ?? []).map((g) => g.product_id);
+  const collectionIds = collectionIdsOf(rows);
+  const [
+    { data: vialRows },
+    { data: giftRows },
+    { data: baseRows },
+    { data: noteRow },
+  ] = await Promise.all([
+    vialIds.length
+      ? supabase.from("vials").select("id, style, ml").in("id", vialIds)
+      : Promise.resolve({ data: [] }),
+    giftIds.length
+      ? supabase.from("products").select("id, brand, name").in("id", giftIds)
+      : Promise.resolve({ data: [] }),
     collectionIds.length
       ? supabase
           .from("collections")
@@ -357,7 +376,7 @@ export async function getOrderDetail(id: string): Promise<{
 
   return {
     order,
-    items: itemRows,
+    items: rows,
     baseCollectionIds: ((baseRows as { id: string }[] | null) ?? []).map(
       (r) => r.id,
     ),
@@ -366,6 +385,16 @@ export async function getOrderDetail(id: string): Promise<{
     customer: (customer.data as ProfileRow | null) ?? null,
     payments: (payments as QpayPaymentRecord[] | null) ?? [],
     refundAccount: (refundAccount as OrderRefundAccountRow | null) ?? null,
+    vials: new Map(
+      ((vialRows as Pick<VialRow, "id" | "style" | "ml">[] | null) ?? []).map(
+        (v) => [v.id, { style: v.style, ml: v.ml }],
+      ),
+    ),
+    omittedGiftNames: new Map(
+      (
+        (giftRows as { id: string; brand: string; name: string }[] | null) ?? []
+      ).map((p) => [p.id, `${p.brand} ${p.name}`]),
+    ),
   };
 }
 
@@ -569,7 +598,7 @@ const ADMIN_PRODUCT_SELECT = `
   bottle_ml, is_active, status, launched_at, coming_soon_note,
   is_featured,
   product_images ( id, url, alt, sort_order, is_visible ),
-  product_variants ( id, ml, price, sale_price, sale_starts_at, sale_ends_at, is_active ),
+  product_variants ( id, ml, price, sale_price, sale_starts_at, sale_ends_at, is_active, variant_price ),
   inventory ( on_hand_ml, reserved_ml, low_stock_ml ),
   product_tags ( tags ( slug ) ),
   product_image_generations ( id, status, result_url, prompt, error, created_at )
@@ -622,6 +651,8 @@ interface AdminProductRow {
     sale_starts_at: string | null;
     sale_ends_at: string | null;
     is_active: boolean;
+    /** SQL-ийн бодит үнэ (0181) — гар хямдрал + арга хэмжээ. */
+    variant_price?: number | null;
   }[];
   inventory:
     | { on_hand_ml: number; reserved_ml: number; low_stock_ml: number }
@@ -637,10 +668,15 @@ function mapAdminProduct(
   locks: BottleLockState = NO_BOTTLE_LOCKS,
 ): AdminProduct {
   const inv = Array.isArray(r.inventory) ? r.inventory[0] : r.inventory;
-  // Жагсаалтын «-аас» үнэ нь бодитоор төлөх дүнгээр (хямдрал орсон, 0054).
+  // Жагсаалтын «-аас» үнэ нь бодитоор төлөх дүнгээр (хямдрал орсон, 0054;
+  // арга хэмжээ 0181 — SQL-ийн `variant_price`, байхгүй бол гар хямдралын толь).
   const prices = r.product_variants
     .filter((v) => v.is_active)
-    .map((v) => effectivePrice(v));
+    .map((v) =>
+      typeof v.variant_price === "number"
+        ? Math.min(v.variant_price, v.price)
+        : effectivePrice(v),
+    );
   const tags = r.product_tags
     .map((pt) => (Array.isArray(pt.tags) ? pt.tags[0] : pt.tags)?.slug)
     .filter((s): s is string => Boolean(s));
@@ -693,9 +729,17 @@ function mapAdminProduct(
     isFeatured: r.is_featured === true,
     startingPrice: prices.length ? Math.min(...prices) : 0,
     // Чөлөөлсөн хэмжээ ч ЭНД ОРНО: мөрөн дээр «чөлөөлсөн» гэж харуулж,
-    // цуцлах үйлдлийг санал болгох ёстой (variantId дамжуулахгүй).
+    // цуцлах үйлдлийг санал болгох ёстой (variantId дамжуулахгүй). Савны
+    // тоон горимд (0152) хувилбар бүр өөрийн савтай — id-аар шийднэ.
     bottleLockedMls: r.product_variants
-      .filter((v) => isBottleLocked(locks, r.gender as Gender, v.ml))
+      .filter((v) =>
+        isBottleLocked(
+          locks,
+          r.gender as Gender,
+          v.ml,
+          locks.vialMode ? v.id : undefined,
+        ),
+      )
       .map((v) => v.ml)
       .sort((a, b) => a - b),
     availableMl: inv ? inv.on_hand_ml - inv.reserved_ml : 0,
@@ -829,6 +873,7 @@ export async function getProductOptions({
       is_active: boolean;
       available_ml: number;
       price_by_ml: Record<string, number> | null;
+      base_price_by_ml?: Record<string, number> | null;
     }[]
   >(supabase, "admin_product_options", {
     p_terms: !ids && q?.trim() ? searchTerms(q) : null,
@@ -853,6 +898,11 @@ export async function getProductOptions({
         Number(ml),
         Number(price),
       ]),
+    ),
+    basePriceByMl: Object.fromEntries(
+      Object.entries(r.base_price_by_ml ?? r.price_by_ml ?? {}).map(
+        ([ml, price]) => [Number(ml), Number(price)],
+      ),
     ),
   }));
 }
@@ -1354,10 +1404,15 @@ export interface ReportData {
   }[];
   /** Графикийн бүлэглэлт — мужийн уртаас гарна. */
   bucket: "day" | "month";
+  /** «Нэмэлт бараа» (0156) — туг хаалттай бол хоосон. */
+  extras: ReportExtraCategory[];
+  vials: ReportVial[];
 }
 
 export async function getReportData(
   range: ReportRange = {},
+  /** `extras_shop` / `vial_inventory` нээлттэй үед л хэсгийг уншина. */
+  opts: { extras?: boolean; vials?: boolean } = {},
 ): Promise<ReportData> {
   const supabase = await createClient();
   const bucket = seriesBucket(range.from, range.to);
@@ -1368,6 +1423,8 @@ export async function getReportData(
     statusCounts: {},
     series: [],
     bucket,
+    extras: [],
+    vials: [],
   };
   if (!supabase) return empty;
 
@@ -1390,6 +1447,8 @@ export async function getReportData(
     { data: products },
     { data: brands },
     { data: statuses },
+    { data: extraRows },
+    { data: vialRows },
   ] = await Promise.all([
     callRpc<FinanceRow[]>(supabase, "admin_report_finance", {
       p_from,
@@ -1416,6 +1475,34 @@ export async function getReportData(
       "admin_report_status",
       { p_from, p_to },
     ),
+    opts.extras
+      ? callRpc<
+          {
+            category_slug: string;
+            category_name: string;
+            sales: number;
+            sold_qty: number;
+            purchases: number;
+            purchased_qty: number;
+          }[]
+        >(supabase, "admin_report_extras", { p_from, p_to })
+      : Promise.resolve({ data: null }),
+    opts.vials
+      ? callRpc<
+          {
+            vial_id: string;
+            style: ReportVial["style"];
+            ml: number;
+            purchased_qty: number;
+            purchases: number;
+            used_perfume: number;
+            used_gift: number;
+            sold_standalone: number;
+            on_hand: number | null;
+            reserved: number;
+          }[]
+        >(supabase, "admin_report_vials", { p_from, p_to })
+      : Promise.resolve({ data: null }),
   ]);
 
   const t = totals?.[0];
@@ -1438,6 +1525,26 @@ export async function getReportData(
     statusCounts,
     series: series ?? [],
     bucket,
+    extras: (extraRows ?? []).map((r) => ({
+      slug: r.category_slug,
+      name: r.category_name,
+      sales: Number(r.sales),
+      soldQty: Number(r.sold_qty),
+      purchases: Number(r.purchases),
+      purchasedQty: Number(r.purchased_qty),
+    })),
+    vials: (vialRows ?? []).map((r) => ({
+      id: r.vial_id,
+      style: r.style,
+      ml: r.ml,
+      purchasedQty: Number(r.purchased_qty),
+      purchases: Number(r.purchases),
+      usedPerfume: Number(r.used_perfume),
+      usedGift: Number(r.used_gift),
+      soldStandalone: Number(r.sold_standalone),
+      onHand: r.on_hand,
+      reserved: r.reserved,
+    })),
   };
 }
 

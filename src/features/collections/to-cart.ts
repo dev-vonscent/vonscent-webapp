@@ -1,5 +1,6 @@
 import type { CartCollection } from "@/features/cart/store";
 import type { CollectionCardData, CollectionPriceAtMl } from "./types";
+import { memberUnitPrice } from "./pricing";
 
 /**
  * Багцыг нэг хэмжээгээр сагсны мөр болгоно — багцын хуудас ба нүүрний
@@ -30,9 +31,15 @@ export function toCartCollection(
         name: m.name,
         brand: m.brand,
         image: m.image?.url ?? null,
-        price: v.price,
+        // Багц үндсэн үнээр бодогддог тул «хэмнэлт» (гишүүдийн нийлбэр −
+        // багцын үнэ) ч үндсэн үнээс (plan §5.3, task 8.2).
+        price: memberUnitPrice(v),
       };
     }),
     unitPrice: priceRow.price,
+    // 16.7: LIVE арга хэмжээний хэсэг — задаргааны «<Event нэр>» мөр.
+    ...(priceRow.eventSaving && collection.event
+      ? { saleLabel: collection.event.name, saleAmount: priceRow.eventSaving }
+      : {}),
   };
 }

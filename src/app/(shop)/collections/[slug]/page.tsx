@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
+import { GenderBadge } from "@/features/products/components/gender-badge";
 import { notFound } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { DeliveryReturnsText } from "@/components/shared/delivery-returns-text";
+import {
+  DeliveryText,
+  ReturnsText,
+} from "@/components/shared/delivery-returns-text";
 import { ReviewSection } from "@/features/reviews/components/review-section";
 import { WishlistButton } from "@/features/wishlist/components/wishlist-button";
 import {
@@ -21,12 +24,11 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { getCollectionBySlug } from "@/features/collections/api";
+import { CollectionSaleBadge } from "@/features/sale-events/components/collection-sale-badge";
 import { CollectionDetail } from "@/features/collections/components/collection-detail";
 import { ProductGallery } from "@/features/products/components/product-gallery";
 import { TrackViewItem } from "@/features/products/components/track-view-item";
 import type { ProductImage } from "@/lib/types";
-import { GENDER_LABEL } from "@/lib/constants";
-import { formatDiscountRange } from "@/features/collections/pricing";
 
 /**
  * ISR — admin writes, orders (revalidateStock) and the sale-boundary cron
@@ -95,36 +97,38 @@ export default async function CollectionPage({
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="grid gap-6 sm:gap-10 lg:grid-cols-2 lg:items-start">
-        {/* Cover */}
-        <div className="lg:sticky lg:top-(--header-offset) lg:self-start">
-          <div className="relative">
-            {images.length > 0 ? (
-              <ProductGallery
-                images={images}
-                name={collection.name}
-                bleed={false}
-              />
-            ) : (
-              <div className="border-border bg-muted aspect-square rounded-2xl border" />
-            )}
-            <div className="pointer-events-none absolute top-3 left-3 flex flex-col gap-1.5">
-              {collection.discountRange.max > 0 && (
-                <Badge variant="sale" className="w-fit backdrop-blur-sm">
-                  −{formatDiscountRange(collection.discountRange)}
-                </Badge>
-              )}
-            </div>
-          </div>
+      <div className="grid grid-cols-1 gap-0 max-sm:block sm:gap-10 lg:grid-cols-2 lg:items-start">
+        {/* Cover — барааны хуудастай ижил: утсан дээр толгойн доогуур бүтэн
+            өргөнөөр (bleed), desktop-д хүрээтэй. */}
+        {/* Утсан дээр зураг байрандаа (sticky top-0) үлдэж, доорх самбар
+            түүний дээгүүр гулсаж гарна. Grid item-ийн sticky нь өөрийн
+            мөрөөсөө гарахгүй тул < sm үед grid биш block (`max-sm:block`) —
+            тэгвэл зураг бүх grid-ийн туршид наалдана. */}
+        <div className="max-sm:sticky max-sm:top-0 lg:sticky lg:top-(--header-offset) lg:self-start">
+          {images.length > 0 ? (
+            <ProductGallery images={images} name={collection.name} />
+          ) : (
+            <div className="border-border bg-muted -mx-4 -mt-20 aspect-square border sm:mx-0 sm:mt-0 sm:rounded-2xl" />
+          )}
         </div>
 
-        <div className="space-y-6">
+        {/* Барааны хуудас шиг: утсан дээр самбар зургийн доод хэсгийг дугуй
+            оройгоор давхарлана; sm+-д энгийн багана. */}
+        <div className="bg-background relative z-10 -mx-4 -mt-8 space-y-6 rounded-t-4xl px-4 pt-8 sm:mx-0 sm:mt-0 sm:rounded-none sm:bg-transparent sm:px-0 sm:pt-0">
           <div className="space-y-2">
-            <span className="text-muted-foreground text-sm tracking-wide uppercase">
-              {GENDER_LABEL[collection.gender]} багц
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-muted-foreground text-sm tracking-wide uppercase">
+                Багц
+              </span>
+              {/* Арга хэмжээний chip — барааны хуудастай ижил байрлал (нэрийн
+                  дээрх мөр, event-ийн өнгө, туг sale_event_bundles). */}
+              <CollectionSaleBadge collection={collection} surface="detail" />
+              {/* Хүйс — барааны хуудас шиг chip. */}
+              <GenderBadge gender={collection.gender} />
+            </div>
             <div className="flex items-start justify-between gap-3">
-              <h1 className="font-serif text-3xl font-semibold tracking-tight">
+              {/* Нэр үнээс (SizePrice lg, 32/36px) жижиг — нүд эхлээд үнэ дээр. */}
+              <h1 className="font-serif text-2xl font-semibold tracking-tight">
                 {collection.name}
               </h1>
               <WishlistButton
@@ -147,7 +151,7 @@ export default async function CollectionPage({
           {/* Дан усных шиг accordion (клиент, 2026-09 UG; 0106). Тайлбар нь
               өмнө нь хэмжээний доор эвхэгддэг догол мөр байсан — одоо
               «Дэлгэрэнгүй тайлбар». Хоосон хэсэг нээгдэхгүй, харин
-              «Хүргэлт ба буцаалт» нь бүх барааны нийтлэг текст тул үргэлж. */}
+              «Хүргэлт», «Буцаалт» нь бүх барааны нийтлэг текст тул үргэлж. */}
           <Accordion
             type="single"
             collapsible
@@ -169,10 +173,17 @@ export default async function CollectionPage({
                 </AccordionContent>
               </AccordionItem>
             )}
+            {/* «Хүргэлт» ба «Буцаалт» тусдаа (task 5). */}
             <AccordionItem value="ship">
-              <AccordionTrigger>Хүргэлт ба буцаалт</AccordionTrigger>
+              <AccordionTrigger>Хүргэлт</AccordionTrigger>
               <AccordionContent>
-                <DeliveryReturnsText />
+                <DeliveryText />
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="returns">
+              <AccordionTrigger>Буцаалт</AccordionTrigger>
+              <AccordionContent>
+                <ReturnsText />
               </AccordionContent>
             </AccordionItem>
           </Accordion>

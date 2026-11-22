@@ -6,6 +6,7 @@ import type {
   Sillage,
   TagKind,
 } from "@/db/types";
+import type { CardSalePrice, SaleSummary } from "@/features/products/sale";
 
 /** A priced decant size for a product. */
 export interface Variant {
@@ -23,6 +24,12 @@ export interface Variant {
    * crossed-out figure the storefront shows.
    */
   basePrice: number;
+  /**
+   * Энэ үнийг тогтоож буй арга хэмжээний нэр (`Black Friday`, 0189). Гар
+   * хямдрал эсвэл хямдралгүй бол null — задаргаанд гар хямдрал «Хямдрал»
+   * гэж нэгтгэгдэнэ. Нэртэй хямдралын нэр энд ХЭЗЭЭ Ч ирэхгүй.
+   */
+  saleLabel?: string | null;
   isActive: boolean;
   /**
    * Can this size actually be filled from the remaining source ml?
@@ -49,6 +56,14 @@ export interface Variant {
    * `inactive` → админ зориуд хаасан (ихэвчлэн UI-д огт харуулахгүй).
    */
   unavailableReason: null | "inactive" | "stock" | "bottle";
+  /**
+   * Энэ хэмжээний одоогийн хямдрал дуусах мөч (ISO, exclusive) — барааны
+   * дэлгэрэнгүйн тоолуур (task 2.6). `saleEndsAt()`-ийн дүрмээр (арга
+   * хэмжээ давамгайлна, дууссан/эхлээгүй `sale_price` эх үүсвэр биш).
+   * Хямдралгүй / хугацаагүй бол null; туг `sale_display` хаалттай эсвэл
+   * каталогийн жагсаалтад байхгүй (undefined).
+   */
+  saleEndsAt?: string | null;
 }
 
 export interface ProductImage {
@@ -97,6 +112,17 @@ export interface ProductListItem {
    * газрууд «Дууссан»-ы оронд «Тун удахгүй» гэж бичнэ.
    */
   comingSoon?: boolean;
+  /**
+   * Хямдралын товч (task 2.2, 2.4) — `sale` тагтай бараанд л. Картын
+   * «Хямдралтай 10–30%» ба тоолуур. Server тооцоолно (`getCatalog`).
+   */
+  sale?: SaleSummary;
+  /**
+   * Картын үнийн хэмжээ (task 2.5, `cardSalePrice`): хямдарсан хэмжээ
+   * байвал хамгийн их хувьтай нь. Байхгүй бол карт `startingPrice`-ийг
+   * харуулна.
+   */
+  cardPrice?: CardSalePrice;
 }
 
 /** Full product detail page payload. */
@@ -190,6 +216,11 @@ export interface CatalogFilters {
   kind?: "perfume" | "bundle";
   /** Зөвхөн эдгээр id — нүүрийн эрэмбэлэгдсэн жагсаалт, хүслийн жагсаалт. */
   ids?: string[];
+  /**
+   * Арга хэмжээний slug (`?event=black-friday`, 0181) — зөвхөн LIVE үеийн
+   * гишүүд. Ус л; багц хамаарахгүй.
+   */
+  event?: string;
   ml?: number[];
   minPrice?: number;
   maxPrice?: number;
@@ -205,6 +236,8 @@ export interface CatalogFilters {
     | "price_desc"
     | "name"
     | "popular"
+    /** «Хямдрал: их → бага» (task 2.7) — барааны хамгийн их хувиар. */
+    | "discount"
     | "featured";
   page?: number;
   perPage?: number;

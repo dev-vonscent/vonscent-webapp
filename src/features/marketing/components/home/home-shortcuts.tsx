@@ -1,11 +1,13 @@
 import { PhotoTile } from "@/components/shared/photo-tile";
 import { GENDERS, GENDER_LABEL } from "@/lib/constants";
+import { HomeTypeLinks } from "./home-type-links";
 
 /**
  * Hero-гийн доорх хүйсний товчлол — ЗӨВХӨН УТСАН ДЭЭР. Desktop-д ижил
  * сонголт каталог цэсэнд (`CatalogMenu`) байгаа тул давтахгүй; утсан дээр
  * тэр цэс байхгүй. Каталог цэстэй ижил зураг, хар цагаан (`revealColor`).
- * Product card БИШ — дарахад жагсаалт руу орно.
+ * Product card БИШ — дарахад жагсаалт руу орно. Доор нь багц / нэмэлт
+ * барааны мөр (`HomeTypeLinks`).
  */
 export function HomeShortcuts() {
   return (
@@ -25,6 +27,7 @@ export function HomeShortcuts() {
           </li>
         ))}
       </ul>
+      <HomeTypeLinks />
     </nav>
   );
 }

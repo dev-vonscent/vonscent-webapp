@@ -2,12 +2,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/format";
+import { bundleCardPrice } from "../pricing";
 import { GENDER_LABEL } from "@/lib/constants";
 import type { CollectionCardData } from "../types";
-import { formatDiscountRange } from "@/features/collections/pricing";
 import { GenderBadge } from "@/features/products/components/gender-badge";
 import { WishlistButton } from "@/features/wishlist/components/wishlist-button";
 import { CollectionQuickAdd } from "./collection-quick-add";
+import { CollectionSaleBadge } from "@/features/sale-events/components/collection-sale-badge";
+import { CollectionSaleBand } from "@/features/sale-events/components/collection-sale-countdown";
 
 import {
   CARD_STATUS_LABEL,
@@ -32,13 +34,14 @@ export function CollectionCard({
   if (variant === "rail")
     return <RailCollectionCard collection={collection} prefer={prefer} />;
   const start = collection.startingPrice;
-  const startMl = collection.availableMls[0];
+  // 2.5: хамгийн их хувьтай хэмжээний үнэ (хэмжээг бичихгүй).
+  const card = bundleCardPrice(collection.prices);
 
   return (
     <div className="group flex flex-col">
       <Link
         href={`/collections/${collection.slug}`}
-        className="group-hover:shadow-lift bg-muted relative block aspect-4/5 overflow-hidden rounded-2xl transition-all duration-300 active:scale-[0.99]"
+        className="group-hover:shadow-lift bg-muted relative isolate block aspect-4/5 overflow-hidden rounded-2xl transition-all duration-300 active:scale-[0.99]"
       >
         {collection.image && (
           <Image
@@ -51,15 +54,8 @@ export function CollectionCard({
         )}
 
         {/* Badges */}
-        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
-          {collection.discountRange.max > 0 && (
-            <Badge
-              variant="sale"
-              className="bg-background/85! w-fit backdrop-blur-sm"
-            >
-              −{formatDiscountRange(collection.discountRange)}
-            </Badge>
-          )}
+        <div className="@container/chip absolute inset-x-2.5 top-2.5 flex flex-col items-start gap-1">
+          <CollectionSaleBadge collection={collection} />
         </div>
 
         {/* Мэдээлэл зурагны доод хэсэгт, доороос дээш бүдгэрэх хар
@@ -69,25 +65,33 @@ export function CollectionCard({
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-black/75 via-black/30 to-transparent" />
         {/* Card нь барааны card шиг нарийн (утсан дээр 2 багана) тул нэр,
             үнэ хоёр хажуу биш, дээрээс доош давхарлана. */}
-        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 p-3 sm:p-4">
-          <span className="text-[11px] leading-none tracking-[0.15em] text-white/75 uppercase sm:text-xs">
-            {GENDER_LABEL[collection.gender]}
-          </span>
-          <span className="block truncate font-serif text-base/tight font-medium text-white sm:text-xl/tight">
-            {collection.name}
-          </span>
-          {/* «109,300₮» дангаараа «2ml нь 109,300₮» гэж уншигдана — хажуух
-              хэсэг нь тэр дүн юуны үнэ болохыг хэлнэ (үнэртний тоо × хэмжээ). */}
-          {!collection.soldOut && start > 0 && (
-            <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-              <span className="text-sm leading-none font-semibold tracking-tight text-white sm:text-base">
-                {formatPrice(start)}-өөс
-              </span>
-              <span className="text-xs leading-none text-white/75 sm:text-sm">
-                {collection.members.length} × {startMl}ml
-              </span>
+        <div className="absolute inset-x-0 bottom-0 flex flex-col">
+          <div className="flex flex-col gap-1.5 p-3 sm:p-4">
+            <span className="text-[11px] leading-none tracking-[0.15em] text-white/75 uppercase sm:text-xs">
+              {GENDER_LABEL[collection.gender]}
             </span>
-          )}
+            <span className="block truncate font-serif text-base/tight font-medium text-white sm:text-xl/tight">
+              {collection.name}
+            </span>
+            {/* Хямдарсан үнэ + зураастай үндсэн үнэ — «-өөс», «4 × 2ml»
+              байхгүй (клиентийн засвар 2026-11-21 сл.4). */}
+            {!collection.soldOut && start > 0 && (
+              <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                <span className="text-sm leading-none font-semibold tracking-tight text-white sm:text-base">
+                  {formatPrice(card ? card.price : start)}
+                </span>
+                {card && (
+                  <span className="text-xs leading-none text-white/75 line-through sm:text-sm">
+                    {formatPrice(card.memberSum)}
+                  </span>
+                )}
+              </span>
+            )}
+          </div>
+          {/* Арга хэмжээний тоолуур (2.2) — барааны карттай ижил тууз, энд
+              текстийн доор урсгал дотор (absolute биш) тул нэр/үнийг
+              халхлахгүй. */}
+          <CollectionSaleBand collection={collection} className="static" />
         </div>
 
         {collection.soldOut && (
@@ -115,7 +119,8 @@ function RailCollectionCard({
   prefer?: CardStatus[];
 }) {
   const start = collection.startingPrice;
-  const startMl = collection.availableMls[0];
+  // 2.5: хамгийн их хувьтай хэмжээний үнэ (хэмжээг бичихгүй).
+  const card = bundleCardPrice(collection.prices);
   const href = `/collections/${collection.slug}`;
   const status = cardStatus(collection, prefer);
 
@@ -123,7 +128,7 @@ function RailCollectionCard({
     <div className="group relative flex flex-col">
       <Link
         href={href}
-        className="group-hover:shadow-lift bg-muted relative aspect-4/5 overflow-hidden rounded-2xl transition-all duration-300 [-webkit-touch-callout:none]"
+        className="group-hover:shadow-lift bg-muted relative isolate aspect-4/5 overflow-hidden rounded-2xl transition-all duration-300 [-webkit-touch-callout:none]"
       >
         {collection.image && (
           <Image
@@ -135,7 +140,11 @@ function RailCollectionCard({
           />
         )}
         {/* Барааны card шиг: нэг төлөв + хөнгөлөлт — хамгийн ихдээ хоёр. */}
-        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
+        {/* right-12: зүрхний icon-ы зай — chip доогуур нь орохгүй.
+            `@container/chip`: нарийн үед арга хэмжээний chip зөвхөн хувь. */}
+        {/* `[data-ticker]` = арга хэмжээний chip (SaleChip) — байвал үргэлж
+            хамгийн дээр, «Шинэ» г.м. төлөвийн тэмдгээс өмнө. */}
+        <div className="@container/chip absolute top-2.5 right-12 left-2.5 flex flex-col items-start gap-1 *:data-ticker:order-first">
           {status && (
             <Badge
               variant="outline"
@@ -144,15 +153,10 @@ function RailCollectionCard({
               {CARD_STATUS_LABEL[status]}
             </Badge>
           )}
-          {collection.discountRange.max > 0 && (
-            <Badge
-              variant="sale"
-              className="bg-background/85! w-fit backdrop-blur-sm"
-            >
-              −{formatDiscountRange(collection.discountRange)}
-            </Badge>
-          )}
+          <CollectionSaleBadge collection={collection} />
         </div>
+        {/* Барааны карттай ижил тууз (2.2). */}
+        <CollectionSaleBand collection={collection} />
         {collection.soldOut && (
           <div className="bg-background/70 absolute inset-0 flex items-center justify-center">
             <span className="bg-card rounded-full px-3 py-1 text-xs font-medium tracking-wide uppercase">
@@ -183,14 +187,18 @@ function RailCollectionCard({
         >
           {collection.name}
         </Link>
-        {/* «-өөс» ба «4 × 2ml» — тэр дүн хамгийн бага хэмжээний бүтэн багцын
-            үнэ гэдгийг хэлнэ. */}
+        {/* Барааны карттай ижил формат (клиентийн засвар 2026-11-21 сл.4). */}
         {!collection.soldOut && start > 0 && (
-          <span className="text-foreground/70 mt-1.5 flex items-baseline gap-1.5 text-sm font-semibold tracking-tight">
-            {formatPrice(start)}-өөс
-            <span className="text-muted-foreground text-xs font-normal">
-              {collection.members.length} × {startMl}ml
-            </span>
+          <span
+            data-testid="card-price"
+            className="text-foreground/70 mt-1.5 flex flex-wrap items-baseline gap-x-1.5 text-sm font-semibold tracking-tight"
+          >
+            {formatPrice(card ? card.price : start)}
+            {card && (
+              <span className="text-muted-foreground text-xs font-normal line-through">
+                {formatPrice(card.memberSum)}
+              </span>
+            )}
           </span>
         )}
       </div>

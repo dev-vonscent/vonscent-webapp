@@ -51,7 +51,8 @@ const REQUIRED_PRODUCTS = 4;
  * Багцын гишүүн болох боломжтой бараа.
  *
  * `ProductOption`-ийн нэр дэвшүүлсэн хувилбар — үнийн хүснэгт нь гишүүдийн
- * `priceByMl`-ээс гардаг тул тэр талбар нь энэ формын гол хэрэгцээ.
+ * ҮНДСЭН үнээс (`basePriceByMl`) гардаг тул тэр талбар нь энэ формын гол
+ * хэрэгцээ.
  */
 export type AdminProduct = ProductOption;
 
@@ -218,26 +219,6 @@ export function CollectionForm({
     return seed;
   });
 
-  /**
-   * Хэмжээ бүрийн ТОГТМОЛ үнэ (0054, B6). `""` бол «нийлбэрээс хувиар бод».
-   *
-   * Гишүүн барааны үнэ (эсвэл түүний хямдрал) өөрчлөгдөхөд багцын үнэ
-   * чимээгүйхэн хөдөлдөг байсныг зогсоох гол хэрэгсэл — энд үнэ бичсэн бол
-   * хувь ямар ч байсан тэр үнэ л эцсийн үнэ болно.
-   */
-  const [mlPrices, setMlPrices] = React.useState<Record<number, number | "">>(
-    () => {
-      const seed: Record<number, number | ""> = {};
-      for (const ml of BUNDLE_ML_SIZES) {
-        const own = (collection?.collection_ml_discounts ?? []).find(
-          (d) => d.ml === ml,
-        );
-        seed[ml] = own && own.price != null ? Number(own.price) : "";
-      }
-      return seed;
-    },
-  );
-
   const [customTags, toggleCustomTag] = useToggleList(
     (collection?.collection_custom_tags ?? [])
       .map((t) => t.custom_tags?.slug)
@@ -277,7 +258,9 @@ export function CollectionForm({
       .map((id) => byId(id))
       .filter((p): p is AdminProduct => Boolean(p));
     return BUNDLE_ML_SIZES.map((ml) => {
-      const prices = members.map((m) => m.priceByMl[ml]);
+      // ҮНДСЭН үнэ (task 17): гишүүн хямдарсан ч багцын «Нийлбэр»
+      // өөрчлөгдөхгүй — захиалгын тооцоо (`priceCollectionLines`)-тэй ижил.
+      const prices = members.map((m) => (m.basePriceByMl ?? m.priceByMl)[ml]);
       // Every member must sell this size, or the bundle cannot be bought at it.
       const complete =
         members.length === REQUIRED_PRODUCTS &&
@@ -292,28 +275,15 @@ export function CollectionForm({
             .map(([k, v]) => [Number(k), Number(v)]),
         ),
       );
-      const fixed = mlPrices[ml];
-      const price =
-        fixed === "" || fixed == null
-          ? bundlePrice(memberSum, pct, roundTo)
-          : Number(fixed);
       return {
         ml,
         complete,
         memberSum,
-        // Тогтмол үнэтэй үед харуулах хувь нь бодит хэмнэлтээс гарна — админы
-        // бичсэн хувь тэр үед үйлчлэхгүй.
-        pct:
-          fixed === "" || fixed == null
-            ? pct
-            : memberSum > 0
-              ? Math.max(0, Math.round(((memberSum - price) / memberSum) * 100))
-              : 0,
-        fixed: fixed !== "" && fixed != null,
-        price,
+        pct,
+        price: bundlePrice(memberSum, pct, roundTo),
       };
     });
-  }, [form.productIds, form.discountPct, mlDiscounts, mlPrices, byId, roundTo]);
+  }, [form.productIds, form.discountPct, mlDiscounts, byId, roundTo]);
 
   function toggleProduct(id: string) {
     setForm((f) => {
@@ -374,17 +344,15 @@ export function CollectionForm({
         usageDescription: form.usageDescription,
         discountPct: Number(form.discountPct),
         // Only the sizes actually overridden travel; the rest fall back to the
-        // default on the server exactly as they do here.
-        // Only the sizes actually overridden travel; the rest fall back to the
-        // default on the server exactly as they do here. Нэг мөр нь хувь,
-        // тогтмол үнэ, эсвэл хоёуланг нь авч явж болно.
-        mlDiscounts: BUNDLE_ML_SIZES.filter(
-          (ml) => mlDiscounts[ml] !== "" || mlPrices[ml] !== "",
-        ).map((ml) => ({
-          ml,
-          discountPct: mlDiscounts[ml] === "" ? null : Number(mlDiscounts[ml]),
-          price: mlPrices[ml] === "" ? null : Number(mlPrices[ml]),
-        })),
+        // default on the server exactly as they do here. «Тогтмол үнэ» (0054)
+        // хасагдсан (task 17) — хадгалахад тэр утга дахин бичигдэхгүй.
+        mlDiscounts: BUNDLE_ML_SIZES.filter((ml) => mlDiscounts[ml] !== "").map(
+          (ml) => ({
+            ml,
+            discountPct: Number(mlDiscounts[ml]),
+            price: null,
+          }),
+        ),
         imageUrl: form.imageUrl || null,
         bottleStyle: form.bottleStyle,
         isActive: form.isActive,
@@ -620,13 +588,10 @@ export function CollectionForm({
                     Хэмжээ
                   </th>
                   <th scope="col" className="px-3 py-2 font-medium">
-                    Нийлбэр
+                    Үндсэн үнийн нийлбэр
                   </th>
                   <th scope="col" className="px-3 py-2 font-medium">
                     Хямдрал %
-                  </th>
-                  <th scope="col" className="px-3 py-2 font-medium">
-                    Тогтмол үнэ (₮)
                   </th>
                   <th scope="col" className="px-3 py-2 font-medium">
                     Багцын үнэ
@@ -671,36 +636,13 @@ export function CollectionForm({
                         }
                       />
                     </td>
-                    <td className="px-3 py-2">
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        min={0}
-                        step={100}
-                        className="h-11 w-32 md:h-8 md:w-32"
-                        aria-label={`${r.ml}ml-ийн тогтмол үнэ`}
-                        placeholder="—"
-                        value={mlPrices[r.ml]}
-                        onChange={(e) =>
-                          setMlPrices((d) => ({
-                            ...d,
-                            [r.ml]:
-                              e.target.value === ""
-                                ? ""
-                                : Math.max(0, Number(e.target.value) || 0),
-                          }))
-                        }
-                      />
-                    </td>
                     <td className="px-3 py-2 tabular-nums">
-                      {r.complete || r.fixed ? (
+                      {r.complete ? (
                         <>
                           {formatPrice(r.price)}
-                          {r.complete && (
-                            <span className="text-muted-foreground ml-1 text-xs">
-                              −{r.pct}%
-                            </span>
-                          )}
+                          <span className="text-muted-foreground ml-1 text-xs">
+                            −{r.pct}%
+                          </span>
                         </>
                       ) : (
                         "—"
@@ -712,11 +654,12 @@ export function CollectionForm({
             </table>
           </div>
           <p className="text-muted-foreground text-xs">
-            «Тогтмол үнэ» бичвэл тухайн хэмжээний багц яг тэр үнээр зарагдана —
-            гишүүн барааны үнэ, хямдрал өөрчлөгдсөн ч хөдлөхгүй. Хоосон орхивол
-            үнэ нь нийлбэрээс хувиар бодогдоно (хэмжээний хувийг ч хоосон
-            орхивол үндсэн хямдрал үйлчилнэ). «—» гэдэг нь тухайн хэмжээгээр аль
-            нэг үнэртэн зарагддаггүй гэсэн үг.
+            Багцын үнэ = гишүүдийн <strong>үндсэн</strong> үнийн нийлбэр − хувь
+            (100₮-т тэгшилнэ). Гишүүн бараа түр хямдарсан ч багцын үнэ
+            өөрчлөгдөхгүй; үндсэн үнэ эсвэл хувь өөрчлөгдвөл шинэчлэгдэнэ.
+            Хэмжээний хувийг хоосон орхивол үндсэн хямдрал үйлчилнэ, 0 бичвэл
+            тухайн хэмжээ хямдралгүй. «—» гэдэг нь тухайн хэмжээгээр аль нэг
+            үнэртэн зарагддаггүй гэсэн үг.
           </p>
         </CardContent>
       </Card>
@@ -734,7 +677,7 @@ export function CollectionForm({
             <span>Онцлох багц</span>
           </label>
           <p className="text-muted-foreground -mt-2 text-xs">
-            Нүүрний «Онцлох»-д ус, багц нийлээд сүүлд онцлох болгосон{" "}
+            Нүүрний «Онцлох»-д үнэртэн, багц нийлээд сүүлд онцлох болгосон{" "}
             {FEATURED_LIMIT} гарна. Хэтэрвэл хамгийн эрт онцлох болсон нь
             автоматаар хасагдана.
           </p>
@@ -756,7 +699,7 @@ export function CollectionForm({
       </Card>
 
       {/* Sticky on a phone, matching the product form. */}
-      <div className="bg-background/85 pb-safe sticky bottom-0 -mx-4 flex gap-3 px-4 py-3 backdrop-blur md:static md:mx-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+      <div className="bg-background/85 sticky bottom-0 -mx-4 flex gap-3 px-4 py-3 backdrop-blur max-md:-mb-8 max-md:pb-[max(env(safe-area-inset-bottom),0.75rem)] md:static md:mx-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
         <LoadingButton
           loading={pending}
           type="submit"

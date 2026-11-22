@@ -1,11 +1,20 @@
 import { describe, it, expect } from "vitest";
+import { salePctText } from "@/features/products/sale";
 import {
+  bundleEventSale,
+  bundleCardPrice,
   roundTo,
   bundlePrice,
   memberPrices,
+  memberUnitPrice,
   discountForMl,
   discountRange,
   formatDiscountRange,
+  withEventPcts,
+  bundleEventSaving,
+  spreadBundleTotal,
+  priceWithBundleEvent,
+  bundleSaleEndsAt,
 } from "./pricing";
 import type { CollectionMember } from "./types";
 
@@ -200,55 +209,243 @@ describe("formatDiscountRange", () => {
   });
 });
 
-/**
- * Preset багцын тогтмол үнэ (0054, backlog B6). Гишүүн барааны үнэ хөдөлсөн ч
- * багцын үнэ хөдлөхгүй байх нь энэ шаардлагын гол утга — тиймээс тэрийг
- * шууд тестээр барина.
- */
-describe("memberPrices — тогтмол үнэ", () => {
-  const members = [
-    member({ 5: 20000, 10: 35000, 20: 60000 }),
-    member({ 5: 25000, 10: 40000, 20: 70000 }),
-  ];
+describe("memberPrices — үнийн суурь: ҮНДСЭН үнэ (plan §5.3, task 8.2)", () => {
+  // Гишүүн бүр 5ml: үндсэн 40,000; эхнийх нь арга хэмжээгээр 32,000.
+  const withBase = (price: number, basePrice: number): CollectionMember => ({
+    ...member({ 5: price }),
+    variantByMl: {
+      5: { variantId: "v5", price, basePrice, inStock: true },
+    },
+  });
+  const members = [withBase(32000, 40000), withBase(40000, 40000)];
 
-  it("тогтмол үнэ өгсөн хэмжээнд хувийн тооцоог бүрэн орлоно", () => {
-    const at10 = memberPrices(members, 5, 100, {}, { 10: 60000 }).find(
-      (p) => p.ml === 10,
-    )!;
-    expect(at10.price).toBe(60000);
-    expect(at10.memberSum).toBe(75000);
-    expect(at10.saved).toBe(15000);
-    // Харуулах хувь нь бодит хэмнэлтээс: 15000 / 75000 = 20%.
-    expect(at10.discountPct).toBe(20);
-    // Тогтмол үнэтэй хэмжээнд амласан % огт байхгүй тул badge-д ч бодит
-    // хувиараа л орлуулна (`discountPct`-тай адил).
-    expect(at10.nominalDiscountPct).toBe(20);
+  it("бэлэн ба угсарсан багц — үндсэн үнийн нийлбэрээс, хямдрал дамжихгүй", () => {
+    const at5 = memberPrices(members, 10, 100).find((p) => p.ml === 5)!;
+    // (40,000 + 40,000) × 0.9 = 72,000 — өмнөх B5 «давхарлах» дүрмээр
+    // (32,000 + 40,000) × 0.9 = 64,800 болдог байсан.
+    expect(at5.memberSum).toBe(80000);
+    expect(at5.price).toBe(72000);
   });
 
-  it("тогтмол үнэгүй хэмжээ хуучин дүрмээрээ бодогдоно", () => {
-    const at5 = memberPrices(members, 5, 100, {}, { 10: 60000 }).find(
+  it("basePrice байхгүй (хуучин өгөгдөл) бол price", () => {
+    const at5 = memberPrices([member({ 5: 30000 })], 10, 100).find(
       (p) => p.ml === 5,
     )!;
-    expect(at5.price).toBe(bundlePrice(45000, 5, 100));
+    expect(at5.memberSum).toBe(30000);
   });
 
-  it("гишүүний үнэ өөрчлөгдсөн ч тогтмол үнэ хөдлөхгүй", () => {
-    const dearer = [
-      member({ 5: 20000, 10: 50000, 20: 60000 }),
-      member({ 5: 25000, 10: 55000, 20: 70000 }),
-    ];
-    const before = memberPrices(members, 5, 100, {}, { 10: 60000 });
-    const after = memberPrices(dearer, 5, 100, {}, { 10: 60000 });
-    expect(after.find((p) => p.ml === 10)!.price).toBe(
-      before.find((p) => p.ml === 10)!.price,
+  it("override нь суурь хувийг орлоно, нэмэгдэхгүй (16.7-д өргөтгөх загвар)", () => {
+    // 100,000₮, суурь 5% → 95,000₮; хэмжээний хувь 10% → 90,000₮.
+    const one = [withBase(50000, 50000), withBase(50000, 50000)];
+    expect(memberPrices(one, 5, 100).find((p) => p.ml === 5)!.price).toBe(
+      95000,
+    );
+    expect(
+      memberPrices(one, 5, 100, { 5: 10 }).find((p) => p.ml === 5)!.price,
+    ).toBe(90000);
+  });
+
+  it("memberUnitPrice: үргэлж үндсэн үнэ", () => {
+    expect(memberUnitPrice({ price: 32000, basePrice: 40000 })).toBe(40000);
+    expect(memberUnitPrice({ price: 30000 })).toBe(30000);
+  });
+});
+
+describe("арга хэмжээнд орсон багц (task 16.7)", () => {
+  // 2 гишүүн × 10ml, үндсэн 50,000 → нийлбэр 100,000₮.
+  const at10 = (price: number, basePrice: number): CollectionMember => ({
+    ...member({ 10: price }),
+    variantByMl: {
+      10: { variantId: "v10", price, basePrice, inStock: true },
+    },
+  });
+  const bundle = [at10(50000, 50000), at10(50000, 50000)];
+  const priceAt = (defaultPct: number, overrides = {}) =>
+    memberPrices(bundle, defaultPct, 100, overrides).find((p) => p.ml === 10)!;
+
+  it("event хувь суурийг ОРЛОНО: 100,000₮, суурь 5% → 95,000₮, Black Friday 10% → 90,000₮", () => {
+    expect(priceAt(5).price).toBe(95000);
+    const o = withEventPcts(5, {}, { 10: 10 });
+    expect(o).toEqual({ 10: 10 });
+    expect(priceAt(5, o).price).toBe(90000);
+    // Задаргаа: «Багцын хямдрал» 5,000 + «Black Friday» 5,000.
+    expect(bundleEventSaving(100000, 5, 90000, 100)).toBe(5000);
+    expect(100000 - 90000 - bundleEventSaving(100000, 5, 90000, 100)).toBe(
+      5000,
     );
   });
 
-  it("сөрөг үнэ гаргахгүй", () => {
-    const at5 = memberPrices(members, 5, 100, {}, { 5: -100 }).find(
-      (p) => p.ml === 5,
-    )!;
-    expect(at5.price).toBe(0);
-    expect(at5.saved).toBe(45000);
+  it("greatest хамгаалалт: суурь 15% / event 10% → 15% хэвээр (үнэтэй болохгүй)", () => {
+    const o = withEventPcts(15, {}, { 10: 10 });
+    expect(o).toEqual({ 10: 15 });
+    expect(priceAt(15, o).price).toBe(85000);
+    expect(bundleEventSaving(100000, 15, 85000, 100)).toBe(0);
+  });
+
+  it("хэмжээний override-той: суурь 5%, 10ml-д 12% → event 10% нь 12%-ийг давж чадахгүй", () => {
+    expect(withEventPcts(5, { 10: 12 }, { 10: 10 })).toEqual({ 10: 12 });
+    expect(withEventPcts(5, { 10: 12 }, { 10: 20 })).toEqual({ 10: 20 });
+  });
+
+  it("event-д ороогүй хэмжээ суурь хувиараа үлдэнэ", () => {
+    const o = withEventPcts(5, { 2: 8 }, { 10: 10 });
+    expect(o).toEqual({ 2: 8, 10: 10 });
+    expect(discountForMl(5, 5, o)).toBe(5);
+  });
+
+  it("гишүүн үнэртэн мөн event-д орсон ч давхар хямдрахгүй (үндсэн үнээс)", () => {
+    // Гишүүн бүр event-ээр 40,000 болсон — багц үндсэн 100,000-аас бодно.
+    const discounted = [at10(40000, 50000), at10(40000, 50000)];
+    const p = memberPrices(
+      discounted,
+      5,
+      100,
+      withEventPcts(5, {}, { 10: 10 }),
+    ).find((x) => x.ml === 10)!;
+    expect(p.memberSum).toBe(100000);
+    expect(p.price).toBe(90000); // 72,000 биш (80,000 × 0.9)
+  });
+
+  it("event хоосон (туг хаалттай) бол overrides өөрчлөгдөхгүй", () => {
+    expect(withEventPcts(5, { 2: 8 }, {})).toEqual({ 2: 8 });
+    expect(priceAt(5, withEventPcts(5, {}, {})).price).toBe(95000);
+  });
+
+  it("тэгшлэлт: 123,400₮, суурь 5% → 117,200; event 10% → 111,100 (зөрүү 6,100)", () => {
+    expect(bundlePrice(123400, 5, 100)).toBe(117200);
+    expect(bundlePrice(123400, 10, 100)).toBe(111100);
+    expect(bundleEventSaving(123400, 5, 111100, 100)).toBe(6100);
+  });
+});
+
+describe("spreadBundleTotal — гишүүдийн unit_price", () => {
+  it("4 × 25,000, багц 90,000 → 22,500 бүр, нийлбэр яг 90,000", () => {
+    expect(spreadBundleTotal([25000, 25000, 25000, 25000], 90000)).toEqual([
+      22500, 22500, 22500, 22500,
+    ]);
+  });
+  it("тэгшлэлтийн үлдэгдлийг сүүлийн гишүүн авна", () => {
+    const u = spreadBundleTotal([30000, 33000, 40100], 98000);
+    expect(u.reduce((s, x) => s + x, 0)).toBe(98000);
+    expect(u).toEqual([28516, 31368, 38116]);
+  });
+});
+
+describe("багцын тоолуурын мөч — priceWithBundleEvent + bundleSaleEndsAt (2.2)", () => {
+  const members = [
+    member({ 5: 40000, 10: 70000 }),
+    member({ 5: 60000, 10: 90000 }),
+  ];
+  const bf = {
+    slug: "black-friday",
+    name: "Black Friday",
+    pcts: { 5: 10, 10: 10 },
+    endsAt: "2026-11-21T16:00:00Z",
+  };
+
+  it("event-д орсон (хувь > суурь) багц → event-ийн дуусах мөч", () => {
+    const { prices, event } = priceWithBundleEvent(members, 5, {}, 100, bf);
+    expect(prices.find((p) => p.ml === 5)?.price).toBe(90000);
+    expect(event).toBe(bf);
+    expect(bundleSaleEndsAt({ event })).toBe("2026-11-21T16:00:00Z");
+  });
+
+  it("зөвхөн суурь хувьтай (event-гүй) багц → хугацаагүй", () => {
+    const { prices, event } = priceWithBundleEvent(members, 5, {}, 100, null);
+    expect(prices.find((p) => p.ml === 5)?.price).toBe(95000);
+    expect(event).toBeNull();
+    expect(bundleSaleEndsAt({ event })).toBeNull();
+  });
+
+  it("event хувь ≤ суурь хувь (greatest — үйлчлэхгүй) → хугацаагүй", () => {
+    const low = { ...bf, pcts: { 5: 10, 10: 10 } };
+    const { prices, event } = priceWithBundleEvent(members, 15, {}, 100, low);
+    expect(prices.find((p) => p.ml === 5)?.price).toBe(85000);
+    expect(event).toBeNull();
+    expect(bundleSaleEndsAt({ event })).toBeNull();
+    // Тэнцүү хувь ч мөн адил.
+    expect(priceWithBundleEvent(members, 10, {}, 100, low).event).toBeNull();
+  });
+});
+
+describe("bundleCardPrice (task 2.5, сл.4–6)", () => {
+  const row = (ml: number, pct: number, available = true) => {
+    const memberSum = ml * 10_000;
+    return {
+      ml,
+      memberSum,
+      price: Math.round(memberSum * (1 - pct / 100)),
+      nominalDiscountPct: pct,
+      available,
+    };
+  };
+
+  it("хамгийн их хувьтай хэмжээ (суурь 5%, event 10ml-д 10%) → 10ml", () => {
+    expect(bundleCardPrice([row(2, 5), row(5, 5), row(10, 10)])).toEqual({
+      ml: 10,
+      price: 90_000,
+      memberSum: 100_000,
+      pct: 10,
+    });
+  });
+
+  it("хувь тэнцвэл жижиг хэмжээ (энгийн 5% багц → 2ml)", () => {
+    expect(bundleCardPrice([row(5, 5), row(2, 5)])).toMatchObject({
+      ml: 2,
+      pct: 5,
+    });
+  });
+
+  it("хямдралгүй (0%) багц → null", () => {
+    expect(bundleCardPrice([row(2, 0), row(5, 0)])).toBeNull();
+  });
+
+  it("дууссан хэмжээг тооцохгүй", () => {
+    expect(bundleCardPrice([row(2, 5), row(5, 20, false)])).toMatchObject({
+      ml: 2,
+    });
+  });
+});
+
+describe("bundleEventSale — багцын event chip-ийн хувь (2.4 дүрэм)", () => {
+  const prices = [2, 5, 10, 20].map((ml) => ({ ml, available: true }));
+  const base = { prices, discountPct: 5, mlDiscounts: {} };
+
+  it("event бүх хэмжээнд 10% → «10%»", () => {
+    const s = bundleEventSale({
+      ...base,
+      event: { pcts: { 2: 10, 5: 10, 10: 10, 20: 10 } },
+    });
+    expect(salePctText(s)).toBe("10%");
+  });
+
+  it("суурь 5% нь хямдралгүйд тооцогдоно → «~10%»", () => {
+    const s = bundleEventSale({ ...base, event: { pcts: { 2: 10, 5: 10 } } });
+    expect(salePctText(s)).toBe("~10%");
+  });
+
+  it("хэмжээний суурь хувь (mlDiscounts) event-ээс их бол тэр хэмжээ хямдралгүй", () => {
+    const s = bundleEventSale({
+      ...base,
+      mlDiscounts: { 20: 12 },
+      event: { pcts: { 2: 10, 5: 10, 10: 10, 20: 10 } },
+    });
+    expect(salePctText(s)).toBe("~10%");
+  });
+
+  it("зарагдахгүй хэмжээг тооцохгүй", () => {
+    const s = bundleEventSale({
+      ...base,
+      prices: prices.map((p) => ({ ...p, available: p.ml !== 20 })),
+      event: { pcts: { 2: 10, 5: 10, 10: 10, 20: 30 } },
+    });
+    expect(salePctText(s)).toBe("10%");
+  });
+
+  it("event хувь ≤ суурь, эсвэл event-гүй → null", () => {
+    expect(
+      bundleEventSale({ ...base, event: { pcts: { 2: 5, 5: 4 } } }),
+    ).toBeNull();
+    expect(bundleEventSale({ ...base, event: null })).toBeNull();
   });
 });

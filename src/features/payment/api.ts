@@ -1,4 +1,5 @@
 import "server-only";
+import { parseSaleBreakdown } from "@/lib/orders/price-breakdown";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getProductsByIds } from "@/features/products/api";
@@ -10,9 +11,13 @@ import { pointsAtTierRate, tierForSpend } from "@/features/tiers/lib";
 import {
   parseLoyaltyRules,
   pointsEarnedFor,
+  rewardBaseOf,
   reviewPointsOf,
 } from "@/lib/loyalty";
-import type { PaymentLine, PaymentView } from "./types";
+import { getOrderGiftCard } from "@/features/gift-cards/server";
+import type { PaymentEntry, PaymentLine, PaymentView } from "./types";
+import { loadBundleInfo } from "@/lib/orders/bundle-info";
+import { buildPaymentRecap, type PaymentItemRow } from "./recap";
 import type { PaymentMethod } from "@/db/types";
 
 /**
@@ -35,7 +40,11 @@ interface OrderRow {
   user_id: string | null;
   subtotal: number;
   gross_subtotal: number | null;
+  /** 0189 — арга хэмжээ / хямдралын мөрүүд; хуучин захиалгад null. */
+  sale_breakdown?: unknown;
   coupon_code: string | null;
+  /** 0199 — хувийн купоны хувь. */
+  coupon_pct?: number | null;
   shipping_fee: number;
   discount: number;
   loyalty_used: number;
@@ -46,29 +55,24 @@ interface OrderRow {
   deliver_on: string | null;
   /** «Дараа захиалах»-ын хуулбар (0124) — байгаа эсэх нь л хэрэгтэй. */
   checkout_snapshot: unknown;
-}
-
-interface ItemRow {
-  product_id: string | null;
-  product_name: string;
-  brand: string;
-  ml: number;
-  qty: number;
-  unit_price: number;
-  list_price: number | null;
-  line_total: number;
-  is_sample: boolean;
-  collection_name: string | null;
+  omitted_gifts:
+    | { product_id: string; reason: "threshold" | "vial" | "stock" }[]
+    | null;
+  order_type: "goods" | "gift_card";
 }
 
 const SELECT =
-  "id, order_no, user_id, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, status, payment_method, payment_status, deliver_on, checkout_snapshot";
+  "id, order_no, user_id, subtotal, gross_subtotal, sale_breakdown, coupon_code, coupon_pct, shipping_fee, discount, loyalty_used, total, status, payment_method, payment_status, deliver_on, checkout_snapshot, omitted_gifts, order_type";
 
 const ITEM_SELECT =
-  "product_id, product_name, brand, ml, qty, unit_price, list_price, line_total, is_sample, collection_name";
+  "id, line_no, product_id, product_name, brand, ml, qty, unit_price, list_price, line_total, is_sample, is_gift, spin_id, base_price, sale_label, collection_id, collection_name, line_kind, variant_label, image_url";
 
 /**
  * The order's lines, with a product image where the product still exists.
+ *
+ * `lines` — задгай мөрүүд (Purchase analytics), `entries` — тоймд харагдах
+ * мөрүүд: «Миний захиалга»-тай ижил `buildOrderLines` (дан ml ↑ → нэмэлт →
+ * багц → бэлэг), багц нэг мөр.
  *
  * Exported because `/order/[token]` (features/order-lookup) renders the same
  * lines under the same privacy rule — one reader, one shape.
@@ -76,35 +80,24 @@ const ITEM_SELECT =
 export async function paymentLines(
   supabase: NonNullable<ReturnType<typeof createAdminClient>>,
   orderId: string,
-): Promise<PaymentLine[]> {
+): Promise<{ lines: PaymentLine[]; entries: PaymentEntry[] }> {
   const { data } = await supabase
     .from("order_items")
     .select(ITEM_SELECT)
     .eq("order_id", orderId);
-  const rows = (data as ItemRow[] | null) ?? [];
-  if (rows.length === 0) return [];
+  const rows = (data as PaymentItemRow[] | null) ?? [];
+  if (rows.length === 0) return { lines: [], entries: [] };
 
   // Зураг нь `products`-д байгаа — order_items дээр хуулагддаггүй. Бараа
   // хожим устсан бол мөр зурагггүй л харагдана (нэр, дүн нь захиалга дээрээ).
   const ids = [...new Set(rows.map((r) => r.product_id).filter(Boolean))];
-  const products = ids.length ? await getProductsByIds(ids as string[]) : [];
+  const [products, bundles] = await Promise.all([
+    ids.length ? getProductsByIds(ids as string[]) : Promise.resolve([]),
+    loadBundleInfo(supabase, rows),
+  ]);
   const imageById = new Map(products.map((p) => [p.id, p.image?.url ?? null]));
 
-  return rows.map((r) => ({
-    productId: r.product_id,
-    name: r.product_name,
-    brand: r.brand,
-    ml: r.ml,
-    qty: r.qty,
-    lineTotal: r.line_total,
-    // Мөр нь үндсэн үнээрээ бичигдэнэ — багцын хямдрал доор тусдаа мөр
-    // болж гарах тул. 0097-оос өмнөх захиалгад `list_price` алга: тэр үед
-    // хямдарсан дүн нь өөрөө цорын ганц мэдэгдэж буй үнэ.
-    baseTotal: (r.list_price ?? r.unit_price) * r.qty,
-    isSample: r.is_sample,
-    collectionName: r.collection_name,
-    image: r.product_id ? (imageById.get(r.product_id) ?? null) : null,
-  }));
+  return buildPaymentRecap(rows, bundles, imageById);
 }
 
 /**
@@ -126,7 +119,12 @@ async function loyaltyFor(
     .eq("key", "loyalty")
     .maybeSingle();
   const value = (data as { value?: unknown } | null)?.value;
-  const base = Math.max(order.subtotal - order.discount, 0);
+  // Оноо QPay-ээр төлсөн дүнгээс (`orders.total`, 0189).
+  const base = rewardBaseOf(order.total);
+  // Түвшний зарцуулалт (`user_lifetime_spend`) нь купоны дараах барааны
+  // дүнгээр хэвээр — «энэ захиалгын ӨМНӨХ» нийт дүнг олохдоо ижил суурийг
+  // хасна.
+  const spend = Math.max(order.subtotal - order.discount, 0);
   // Туг асаалттай бол сан түвшний хувиар бодно (0143) — «энэ захиалгын
   // ӨМНӨХ» нийт дүнгээр: төлөгдсөн бол өөрийг нь хасна.
   if (await isFeatureEnabled("user_tiers")) {
@@ -134,18 +132,22 @@ async function loyaltyFor(
       () => null,
     );
     if (lifetime != null) {
+      // Бэлгийн картын захиалга зарцуулалтад тоологддоггүй (0179).
       const counted =
-        order.payment_status === "paid" && order.status !== "cancelled";
-      const before = Math.max(lifetime - (counted ? base : 0), 0);
+        order.payment_status === "paid" &&
+        order.status !== "cancelled" &&
+        order.order_type === "goods";
+      const before = Math.max(lifetime - (counted ? spend : 0), 0);
       return {
         pointsEarned: pointsAtTierRate(base, tierForSpend(before).rate),
-        reviewPoints: reviewPointsOf(value),
+        reviewPoints:
+          order.order_type === "gift_card" ? 0 : reviewPointsOf(value),
       };
     }
   }
   return {
     pointsEarned: pointsEarnedFor(base, parseLoyaltyRules(value)),
-    reviewPoints: reviewPointsOf(value),
+    reviewPoints: order.order_type === "gift_card" ? 0 : reviewPointsOf(value),
   };
 }
 
@@ -166,8 +168,19 @@ export async function getPaymentByToken(
 
   const paid = order.payment_status === "paid";
   const cancelled = order.status === "cancelled";
-  const lines = await paymentLines(supabase, order.id);
+  const { lines, entries } = await paymentLines(supabase, order.id);
+  const omitted = order.omitted_gifts ?? [];
+  const giftNames = omitted.length
+    ? new Map(
+        (await getProductsByIds(omitted.map((g) => g.product_id))).map((p) => [
+          p.id,
+          `${p.brand} ${p.name}`,
+        ]),
+      )
+    : new Map<string, string>();
   const { pointsEarned, reviewPoints } = await loyaltyFor(supabase, order);
+  const giftCard =
+    order.order_type === "gift_card" ? await getOrderGiftCard(order.id) : null;
 
   // An invoice is only worth having while the order can still be paid. Asking
   // QPay for one on a cancelled or already-paid order would create a live
@@ -191,9 +204,16 @@ export async function getPaymentByToken(
     orderNo: order.order_no,
     total: order.total,
     lines,
+    entries,
+    omittedGifts: omitted.map((g) => ({
+      name: giftNames.get(g.product_id) ?? "Бэлгийн дээж",
+      reason: g.reason,
+    })),
     subtotal: order.subtotal,
     grossSubtotal: order.gross_subtotal,
+    saleBreakdown: parseSaleBreakdown(order.sale_breakdown),
     couponCode: order.coupon_code,
+    couponPct: order.coupon_pct ?? null,
     shippingFee: order.shipping_fee,
     discount: order.discount,
     loyaltyUsed: order.loyalty_used,
@@ -206,6 +226,7 @@ export async function getPaymentByToken(
     // юу ч үлдэхгүй (VS-1086/1087, 2026-10-12).
     canSaveForLater: order.user_id !== null && order.checkout_snapshot !== null,
     deliverOn: order.deliver_on,
+    giftCard,
     invoice,
     mock: isQpayMockMode(),
   };

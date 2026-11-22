@@ -8,9 +8,11 @@ import { cn } from "@/lib/utils";
 import {
   collectionBasePrice,
   type CartCollection,
+  type CartExtra,
   type CartItem,
 } from "@/features/cart/store";
 import { useCartAvailability } from "@/features/cart/use-cart-availability";
+import { useExtrasAvailability } from "@/features/extras/use-extras-availability";
 import { OrderLineEditor } from "@/features/checkout/components/order-line-editor";
 
 /** Хураасан үед харагдах мөрийн тоо. */
@@ -35,12 +37,15 @@ type EditTarget = React.ComponentProps<typeof OrderLineEditor>["target"];
 export function OrderLines({
   items,
   collections,
+  extras = [],
   editable = false,
   buyNow = false,
   onUnavailable,
 }: {
   items: CartItem[];
   collections: CartCollection[];
+  /** Нэмэлт бараа (0149) — тоо, хувилбарыг сагснаас засна. */
+  extras?: CartExtra[];
   editable?: boolean;
   /** Мөрүүд нь «Захиалах» замаас ирсэн эсэх (`useCheckoutLines`). */
   buyNow?: boolean;
@@ -62,6 +67,9 @@ export function OrderLines({
     buyNow,
     onDeselect: onUnavailable,
   });
+  // Нэмэлт бараа: зарагдсан шил, хасагдсан бараа сонголтоос гарч, үнэ
+  // шинэчлэгдэнэ — серверт хүрэхээс өмнө тоймд харагдана.
+  useExtrasAvailability({ enabled: editable, buyNow });
 
   function edit(target: EditTarget) {
     setEditing(target);
@@ -71,6 +79,7 @@ export function OrderLines({
   const lines = [
     ...collections.map((c) => ({ kind: "collection" as const, c })),
     ...items.map((i) => ({ kind: "item" as const, i })),
+    ...extras.map((e) => ({ kind: "extra" as const, e })),
   ];
   // Засах горимд гишүүдийн жагсаалт dialog-д — тоймд давтахгүй.
   const hasMembers = !editable && collections.some((c) => c.members.length > 0);
@@ -82,7 +91,18 @@ export function OrderLines({
     <div className="space-y-3">
       <div id={listId} className="space-y-4">
         {shown.map((line) =>
-          line.kind === "collection" ? (
+          line.kind === "extra" ? (
+            <Line
+              key={line.e.key}
+              image={line.e.image}
+              name={line.e.name}
+              qty={line.e.qty}
+              meta={[line.e.categoryName, line.e.label]
+                .filter(Boolean)
+                .join(" · ")}
+              price={line.e.unitPrice * line.e.qty}
+            />
+          ) : line.kind === "collection" ? (
             <Line
               key={line.c.key}
               image={line.c.image}

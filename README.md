@@ -178,6 +178,28 @@ prod-д ажилласан, шинэ санд ажиллахгүй зөрүү ү
 дугаар авсан бол дарааллыг хадгалахаар `a`/`b` үсэг залгаад `RENAMED`-д
 бүртгэнэ.
 
+**5. Шинэ migration-ийг эхлээд локал Supabase дээр турш.**
+Dev сан хуваалцсан тул merge хийгээгүй migration-ийг тэнд ажиллуулбал өөр
+инженерийн ажилтай зөрчилдөнө. Docker + Supabase CLI
+(`brew install supabase/tap/supabase`)-тай:
+
+```bash
+pnpm db:local start          # 127.0.0.1:54322, Studio :54323
+pnpm db:migrate-local        # бүх migration хоосон сан дээр
+pnpm db:test-gift-cards-local  # жишээ: SQL integration тест
+pnpm db:local reset          # өгөгдлийг устгаж эхнээс
+```
+
+`.env.localdb`-г скрипт өөрөө үүсгэнэ. Dev руу зөвхөн салбар merge хийхэд
+бэлэн болсон үед (`pnpm db:migrate-dev`).
+
+Апп-ыг локал сан руу: `pnpm db:seed-local` (демо каталог),
+`pnpm db:dev-signup-local 99001122 1234` (SMS-гүй нэвтрэлт), дараа нь
+`pnpm dev:local`. Туг локал санд тусдаа: `update feature_flags set enabled = true where key = '...'`
+(эсвэл super_admin-аар Админ → Feature flag). `pnpm dev` нь dev сан руу хэвээр.
+Локал дээр имэйл Resend рүү биш Mailpit рүү очно (`EMAIL_MAILPIT_URL`) —
+http://127.0.0.1:54324-д нээж харна, гадагш юу ч илгээгдэхгүй.
+
 **5. PR бүр preview дээр эхлээд хэрэгжинэ.**
 
 ```bash

@@ -27,15 +27,21 @@ const remotePatterns: NonNullable<
   // NEXT_PUBLIC_SUPABASE_URL байдаг тул fallback шаардлагагүй.
 ];
 
+/** `pnpm dev:local` — Storage нь 127.0.0.1 дээр (Next 16 local IP-г хаадаг). */
+let localSupabase = false;
+
 if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
   try {
     const url = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL);
     // Supabase public objects: <project>.supabase.co/storage/v1/object/public/...
     remotePatterns.push({
-      protocol: "https",
+      // Локал Supabase (`pnpm dev:local`) нь http://127.0.0.1:54321.
+      protocol: url.protocol === "http:" ? "http" : "https",
       hostname: url.hostname,
+      ...(url.port ? { port: url.port } : {}),
       pathname: "/storage/v1/object/public/**",
     });
+    localSupabase = ["127.0.0.1", "localhost"].includes(url.hostname);
   } catch {
     // ignore malformed NEXT_PUBLIC_SUPABASE_URL
   }
@@ -77,7 +83,15 @@ const nextConfig: NextConfig = {
    * them into `@img/`; only the routes that actually touch sharp are listed,
    * since libvips is tens of megabytes per function.
    */
-  outputFileTracingIncludes: Object.fromEntries(
+  outputFileTracingIncludes: {
+    // AI hero-гийн reference (одоогийн hero-гийн мастер, prompts/hero.md §2) —
+    // lambda-д файлаар орж, storage-д нэг удаа хуулагдана (preview-ийн
+    // Vercel хамгаалалт өөрийн public файлыг HTTP-ээр татахыг хаадаг).
+    "/api/admin/heroes/generations": [
+      "./public/desktop.webp",
+      "./public/mobile.png",
+    ],
+    ...Object.fromEntries(
     [
       "/api/upload",
       "/api/admin/upload",
@@ -85,6 +99,8 @@ const nextConfig: NextConfig = {
       "/api/admin/products/[id]/images",
       "/api/admin/products/[id]/generate-image",
       "/api/admin/products/[id]/regenerate-image",
+      // Нүүрний hero (0182–0183): upload, AI мастерыг webp болгох.
+      "/api/admin/heroes",
       // OG cards re-encode WebP photos to JPEG (lib/og.tsx). Keys are matched
       // with picomatch `contains`, where `[slug]` would be a character class —
       // the bare segment name matches all three routes reliably.
@@ -101,7 +117,8 @@ const nextConfig: NextConfig = {
         "./node_modules/@img/sharp-libvips-linux-x64/**/*",
       ],
     ]),
-  ),
+    ),
+  },
   /**
    * Router cache — хуудас хооронд буцаж явахад дахин татахгүй (backlog H2).
    *
@@ -133,6 +150,8 @@ const nextConfig: NextConfig = {
      * боловсруулдаг тул энэ замыг e2e-д шалгах шаардлагагүй.
      */
     unoptimized: process.env.E2E_UNOPTIMIZED_IMAGES === "1",
+    // Зөвхөн локал Supabase-тай үед — dev/prod-ийн хост нь *.supabase.co.
+    dangerouslyAllowLocalIP: localSupabase,
     /**
      * Vercel bills a transformation on every cache MISS/STALE, so the knobs
      * below all aim at fewer variants and longer-lived cache entries.

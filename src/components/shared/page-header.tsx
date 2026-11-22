@@ -25,24 +25,24 @@ export function PageHeader({
   actions?: React.ReactNode;
   className?: string;
 }) {
+  // Тайлбар нь гарчиг + үйлдлийн мөрийн ДООР: өмнө нь тайлбар гарчигтай нэг
+  // блокт байсан тул утсан дээр урт тайлбар өргөнийг бүхэлд нь эзэлж,
+  // «Бараа нэмэх» г.м. товч тусдаа мөрөнд унадаг байв.
   return (
-    <div
-      className={cn(
-        "flex flex-wrap items-start justify-between gap-3",
-        className,
-      )}
-    >
-      <div className="min-w-0 space-y-1">
-        <div className="flex items-center gap-2.5">
+    <div className={cn("space-y-1.5", className)}>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <div className="flex min-w-0 items-center gap-2.5">
           <h1 className="font-serif text-2xl font-semibold">{title}</h1>
           {count !== undefined && <CountBadge value={count} />}
         </div>
-        {description && (
-          <p className="text-muted-foreground text-sm">{description}</p>
+        {actions && (
+          <div className="flex flex-wrap items-center gap-2">{actions}</div>
         )}
       </div>
-      {actions && (
-        <div className="flex flex-wrap items-center gap-2">{actions}</div>
+      {description && (
+        <p className="text-muted-foreground max-w-prose text-sm text-pretty">
+          {description}
+        </p>
       )}
     </div>
   );

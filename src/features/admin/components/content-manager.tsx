@@ -17,6 +17,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Field } from "@/components/ui/field";
 import { DatePicker } from "@/features/admin/components/date-picker";
+import { PeriodHint } from "@/features/admin/components/period-hint";
+import {
+  dayEndIso,
+  dayStartIso,
+  isoEndToDay,
+  isoToDay,
+} from "@/features/admin/lib/date-range";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -261,28 +268,32 @@ function PopupSection({ initial }: { initial: PopupSettings }) {
                 «Бүртгүүлээд купон аваарай» гэх мэт зарыг «Зөвхөн зочин»
                 болговол нэвтэрсэн хэрэглэгчид харагдахгүй.
               </div>
+              {/* Өдрийг УБ-ын 00:00 / дараагийн 00:00 (exclusive) болгож
+                  хадгална (task 7). Өмнө нь `new Date(day).toISOString()` нь
+                  UTC шөнө дунд = УБ 08:00 байсан тул «16» гэж сонгосон зар
+                  16-ны 08:00-д дуусдаг байв. Хуучин утгыг isoToDay /
+                  isoEndToDay зөв өдрөөр нь уншина. */}
               <Field label="Эхлэх огноо">
                 <DatePicker
-                  value={s.startsAt ? s.startsAt.slice(0, 10) : ""}
+                  value={isoToDay(s.startsAt)}
                   placeholder="Хязгааргүй"
-                  onChange={(v) =>
-                    setSlide(i, {
-                      startsAt: v ? new Date(v).toISOString() : null,
-                    })
-                  }
+                  onChange={(v) => setSlide(i, { startsAt: dayStartIso(v) })}
                 />
               </Field>
               <Field label="Дуусах огноо">
                 <DatePicker
-                  value={s.endsAt ? s.endsAt.slice(0, 10) : ""}
+                  value={isoEndToDay(s.endsAt)}
                   placeholder="Хязгааргүй"
-                  onChange={(v) =>
-                    setSlide(i, {
-                      endsAt: v ? new Date(v).toISOString() : null,
-                    })
-                  }
+                  min={isoToDay(s.startsAt) || undefined}
+                  onChange={(v) => setSlide(i, { endsAt: dayEndIso(v) })}
                 />
               </Field>
+              <PeriodHint
+                className="sm:col-span-2"
+                startsOn={isoToDay(s.startsAt)}
+                endsOn={isoEndToDay(s.endsAt)}
+                fallback="Хугацаа сонгоогүй — идэвхтэй үед байнга харагдана."
+              />
             </div>
           </div>
         ))}

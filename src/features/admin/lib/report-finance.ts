@@ -4,7 +4,12 @@
  * Бүх тоог SQL бодно — энд зөвхөн мөр, шошго, тэмдгийг нэг газар тогтооно,
  * ингэснээр дэлгэц, хэвлэх хуудас хоёр нэг задаргаа харуулна.
  *
- *   Барааны нийт дүн − Купон − V-point − Буцаалт = Цэвэр борлуулалт
+ *   Барааны нийт дүн + Бэлгийн карт − Купон − V-point − Буцаалт = Цэвэр борлуулалт
+ *
+ * Бэлгийн карт (0180, gift-cards-plan §7) зарагдсан сардаа бүтэн дүнгээр
+ * орлого; хожим оноогоор авсан бараа «V-point» мөрөөр хасагдана — нийлбэр нь
+ * дансанд орсон мөнгөтэй таарна, давхар тоологдохгүй. SQL-ийн `goods` картыг
+ * агуулдаг; энд л мөр болгон салгана.
  *   Цэвэр борлуулалт − QPay шимтгэл + Буцаалтын шимтгэл − Бараа = Ашиг
  *
  * Хүргэлт нь дамжин өнгөрөх мөнгө (клиент хүргэлтийн компанид тэр чигээр
@@ -25,7 +30,10 @@ export interface ReportFinance {
   qpayFee: number;
   /** Буцаалтаас суутгаж, дэлгүүрт үлдсэн шимтгэл. */
   refundFee: number;
-  /** Эх сав + restock-ийн худалдан авалт. */
+  /**
+   * Бүх худалдан авалт авсан өдрөөр (0156): үнэртний эх сав + restock,
+   * нэмэлт бараа, сав (1/2ml-ийг оруулаад).
+   */
   purchases: number;
   profit: number;
   saleOrders: number;
@@ -33,6 +41,19 @@ export interface ReportFinance {
   /** Цуцлагдсан боловч мөнгө нь хараахан буцаагдаагүй. */
   pendingRefundOrders: number;
   pendingRefundAmount: number;
+  /** `goods`-ийн нэмэлт барааны хэсэг (0146) — үлдсэн нь үнэртэн. */
+  extrasGoods: number;
+  /** `purchases`-ийн задаргаа (0156). */
+  perfumePurchases: number;
+  extrasPurchases: number;
+  vialPurchases: number;
+  /** `goods`-ийн бэлгийн картын хэсэг (0180). */
+  giftCardGoods: number;
+  giftCardSold: number;
+  /** Мэдээлэл: мужид оноо болсон / хугацаа дууссан, одоогийн үлдэгдэл. */
+  giftCardRedeemed: number;
+  giftCardExpired: number;
+  giftCardOutstanding: number;
 }
 
 export const EMPTY_FINANCE: ReportFinance = {
@@ -50,6 +71,15 @@ export const EMPTY_FINANCE: ReportFinance = {
   refundOrders: 0,
   pendingRefundOrders: 0,
   pendingRefundAmount: 0,
+  extrasGoods: 0,
+  perfumePurchases: 0,
+  extrasPurchases: 0,
+  vialPurchases: 0,
+  giftCardGoods: 0,
+  giftCardSold: 0,
+  giftCardRedeemed: 0,
+  giftCardExpired: 0,
+  giftCardOutstanding: 0,
 };
 
 /** `admin_report_finance`-ийн мөр. PostgREST bigint-ийг number-оор өгнө. */
@@ -68,6 +98,18 @@ export interface FinanceRow {
   refund_orders: number;
   pending_refund_orders: number;
   pending_refund_amount: number;
+  /** 0146-аас өмнөх сан дээр байхгүй. */
+  extras_goods?: number | null;
+  /** 0156-аас өмнөх сан дээр байхгүй — тэр үед бүх худалдан авалт үнэртнийх. */
+  perfume_purchases?: number | null;
+  extras_purchases?: number | null;
+  vial_purchases?: number | null;
+  /** 0180-аас өмнөх сан дээр байхгүй. */
+  gift_card_goods?: number | null;
+  gift_card_sold?: number | null;
+  gift_card_redeemed?: number | null;
+  gift_card_expired?: number | null;
+  gift_card_outstanding?: number | null;
 }
 
 export function financeFromRow(r: FinanceRow): ReportFinance {
@@ -86,6 +128,15 @@ export function financeFromRow(r: FinanceRow): ReportFinance {
     refundOrders: Number(r.refund_orders),
     pendingRefundOrders: Number(r.pending_refund_orders),
     pendingRefundAmount: Number(r.pending_refund_amount),
+    extrasGoods: Number(r.extras_goods ?? 0),
+    perfumePurchases: Number(r.perfume_purchases ?? r.purchases),
+    extrasPurchases: Number(r.extras_purchases ?? 0),
+    vialPurchases: Number(r.vial_purchases ?? 0),
+    giftCardGoods: Number(r.gift_card_goods ?? 0),
+    giftCardSold: Number(r.gift_card_sold ?? 0),
+    giftCardRedeemed: Number(r.gift_card_redeemed ?? 0),
+    giftCardExpired: Number(r.gift_card_expired ?? 0),
+    giftCardOutstanding: Number(r.gift_card_outstanding ?? 0),
   };
 }
 
@@ -99,8 +150,16 @@ export interface FinanceLine {
 
 /** Ашгийн задаргаа — дээрээс доош нэмэхэд `total` мөр бүр гарна. */
 export function financeLines(f: ReportFinance): FinanceLine[] {
+  // Карт зарагдаагүй мужид мөр нэмэгдэхгүй — хуучин задаргаа яг хэвээр.
+  const goodsLines: FinanceLine[] =
+    f.giftCardGoods > 0
+      ? [
+          { label: "Барааны нийт дүн", amount: f.goods - f.giftCardGoods },
+          { label: "Бэлгийн карт", amount: f.giftCardGoods },
+        ]
+      : [{ label: "Барааны нийт дүн", amount: f.goods }];
   return [
-    { label: "Барааны нийт дүн", amount: f.goods },
+    ...goodsLines,
     { label: "Купон", amount: -f.coupon },
     { label: "V-point", amount: -f.points },
     { label: "Буцаалт", amount: -f.refunds },
@@ -110,4 +169,32 @@ export function financeLines(f: ReportFinance): FinanceLine[] {
     { label: "Бараа худалдан авалт", amount: -f.purchases },
     { label: "Ашиг", amount: f.profit, total: true },
   ];
+}
+
+/** «Нэмэлт бараа» хэсэг — ангилал бүрээр (0156 `admin_report_extras`). */
+export interface ReportExtraCategory {
+  slug: string;
+  name: string;
+  /** Мужид төлсөн захиалгын мөрийн дүн, купоноос өмнө. */
+  sales: number;
+  soldQty: number;
+  /** Авсан өдрөөр. */
+  purchases: number;
+  purchasedQty: number;
+}
+
+/** Сав — өнгө × хэмжээ (0156 `admin_report_vials`). */
+export interface ReportVial {
+  id: string;
+  style: "black" | "pink" | "silver" | null;
+  ml: number;
+  purchasedQty: number;
+  purchases: number;
+  /** Мужид хүргэгдсэн: үнэртний декант, бэлгийн дээж, дангаар зарсан. */
+  usedPerfume: number;
+  usedGift: number;
+  soldStandalone: number;
+  /** Одоогийнх; null = тоолж эхлээгүй. */
+  onHand: number | null;
+  reserved: number;
 }

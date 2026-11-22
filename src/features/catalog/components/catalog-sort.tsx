@@ -12,21 +12,25 @@ import { DEFAULT_CATALOG_SORT } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useFilterQuery } from "./use-filter-query";
 
-const OPTIONS: { value: string; label: string }[] = [
+export const CATALOG_SORT_OPTIONS: { value: string; label: string }[] = [
   { value: "recommended", label: "Санал болгох" },
   { value: "name", label: "Нэрээр (А-Я)" },
   { value: "new", label: "Шинэ эхэндээ" },
   { value: "popular", label: "Эрэлттэй" },
   { value: "price_asc", label: "Үнэ: бага → их" },
   { value: "price_desc", label: "Үнэ: их → бага" },
+  { value: "discount", label: "Хямдрал: их → бага" },
 ];
 
 export function CatalogSort({
   iconOnly = false,
   className,
+  options = CATALOG_SORT_OPTIONS,
 }: {
   iconOnly?: boolean;
   className?: string;
+  /** Нэмэлт барааны таб өөрийн эрэмбийн жагсаалттай. */
+  options?: { value: string; label: string }[];
 }) {
   const { setSingle, searchParams } = useFilterQuery();
   const current = searchParams.get("sort") ?? DEFAULT_CATALOG_SORT;
@@ -42,7 +46,7 @@ export function CatalogSort({
         aria-label="Эрэмбэлэх"
         className={cn(
           iconOnly
-            ? "size-10 shrink-0 justify-center p-0 [&>svg:last-child]:hidden"
+            ? "relative size-10 shrink-0 justify-center p-0 before:absolute before:-inset-0.5 before:content-[''] [&>svg:last-child]:hidden"
             : "w-45",
           className,
         )}
@@ -54,7 +58,7 @@ export function CatalogSort({
         )}
       </SelectTrigger>
       <SelectContent>
-        {OPTIONS.map((o) => (
+        {options.map((o) => (
           <SelectItem key={o.value} value={o.value}>
             {o.label}
           </SelectItem>

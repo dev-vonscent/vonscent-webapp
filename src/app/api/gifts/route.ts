@@ -2,6 +2,22 @@ import { NextResponse } from "next/server";
 import { fetchProducts } from "@/features/products/api";
 import { getGiftSettings } from "@/features/content/api";
 import { GIFT_SAMPLE_ML, GIFT_THRESHOLD } from "@/lib/constants";
+import { isFeatureEnabled } from "@/lib/feature-flags";
+import { createPublicClient } from "@/lib/supabase/public";
+import { callRpc } from "@/lib/supabase/rpc";
+
+/**
+ * Савны тоон нөөц (0152) нээлттэй бөгөөд 1ml сав дууссан / хаалттай бол
+ * бэлэг цутгах сав алга — сонгох хэсэг урьдчилан идэвхгүй (plan §10).
+ * `vials` RLS-тэй тул anon-оор шууд уншихгүй — definer RPC (0157).
+ */
+async function giftVialOut(): Promise<boolean> {
+  if (!(await isFeatureEnabled("vial_inventory"))) return false;
+  const supabase = createPublicClient();
+  if (!supabase) return false;
+  const { data } = await callRpc<boolean>(supabase, "gift_vial_available", {});
+  return data === false;
+}
 
 /**
  * Бэлгийн санд буй уснууд — сагс, checkout хоёулаа эндээс уншина (backlog A2).
@@ -14,6 +30,16 @@ export async function GET() {
       enabled: false,
       threshold: GIFT_THRESHOLD,
       products: [],
+    });
+  }
+
+  if (await giftVialOut()) {
+    return NextResponse.json({
+      enabled: true,
+      threshold: GIFT_THRESHOLD,
+      sampleMl: GIFT_SAMPLE_ML,
+      products: [],
+      vialOut: true,
     });
   }
 

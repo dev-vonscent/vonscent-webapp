@@ -34,6 +34,10 @@ const FOLDERS = {
   marketing: "staff",
   /** Мэдэгдлийн thumbnail (0138) — panel-д 48px, toast-д 40px. */
   notifications: "staff",
+  /** Нэмэлт барааны зураг (0145) — каталогийн 4:5 карт, барааны галерей. */
+  extras: "staff",
+  /** Бэлгийн картын дэвсгэр (0179) — текстгүй, 1200×756 харьцаа. */
+  "gift-cards": "staff",
 } as const;
 
 type Folder = keyof typeof FOLDERS;

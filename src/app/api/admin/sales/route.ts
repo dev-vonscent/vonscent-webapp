@@ -5,6 +5,7 @@ import { getStaffUser } from "@/lib/auth/guard";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bulkSaleSchema, clearSaleSchema } from "@/lib/validators/sale";
+import { eventSaleConflictResponse } from "@/features/sales/event-conflict";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,19 @@ async function guard() {
   if (!(await isFeatureEnabled("sale_page"))) {
     return {
       response: NextResponse.json({ error: "NOT_FOUND" }, { status: 404 }),
+    };
+  }
+  // Нэртэй хямдрал (0188) нээлттэй үед хуучин нэргүй бичилт хаалттай —
+  // хуучин таб нээлттэй үлдсэн ч «Нэргүй» мөр шинээр хуримтлагдахгүй.
+  if (await isFeatureEnabled("named_sales")) {
+    return {
+      response: NextResponse.json(
+        {
+          error:
+            "Хямдрал одоо нэртэй болсон. Хуудсаа сэргээгээд «Шинэ хямдрал»-аар үүсгэнэ үү.",
+        },
+        { status: 409 },
+      ),
     };
   }
   if (!isSupabaseConfigured)
@@ -57,7 +71,7 @@ export async function POST(req: Request) {
     p_starts: startsAt,
     p_ends: endsAt,
   });
-  if (error) return failed();
+  if (error) return eventSaleConflictResponse(error) ?? failed();
   revalidatePublic();
   return NextResponse.json({ updated: data as number });
 }

@@ -1,5 +1,10 @@
 import { BUNDLE_ML_SIZES } from "@/lib/constants";
-import type { CollectionMember, CollectionPriceAtMl } from "./types";
+import { summarizePcts, type SaleSummary } from "@/features/products/sale";
+import type {
+  CollectionEvent,
+  CollectionMember,
+  CollectionPriceAtMl,
+} from "./types";
 
 /** Round to the nearest `step` (₮). step ≤ 1 rounds to the nearest whole ₮. */
 export function roundTo(value: number, step: number): number {
@@ -14,16 +19,6 @@ export function roundTo(value: number, step: number): number {
  */
 export type MlDiscounts = Record<number, number>;
 
-/**
- * Хэмжээ бүрийн ТОГТМОЛ үнэ (0054, backlog B6), ml-ээр түлхүүрлэсэн.
- *
- * Багцын үнэ өмнө нь гишүүдийн үнийн нийлбэрээс хувь хасаж амьдаар бодогддог
- * байсан тул гишүүн барааны хямдрал багцын үнийг чимээгүйхэн өөрчилдөг байв.
- * Тогтмол үнэ өгсөн хэмжээнд тэр тооцоо огт хийгдэхгүй: админы бичсэн үнэ нь
- * эцсийн үнэ, гишүүдийн нийлбэр нь зөвхөн «хэмнэлт»-ийг харуулахад үлдэнэ.
- */
-export type MlPrices = Record<number, number>;
-
 /** The discount that applies at one size: the override, else the default. */
 export function discountForMl(
   ml: number,
@@ -32,6 +27,68 @@ export function discountForMl(
 ): number {
   const own = overrides[ml];
   return Number.isFinite(own) ? (own as number) : defaultPct;
+}
+
+/**
+ * Арга хэмжээний хувь (task 16.7, 0190): багцын хэмжээ бүрийн LIVE event
+ * хувь, ml → %. Туг хаалттай / event-гүй бол хоосон.
+ */
+export type EventPcts = Record<number, number>;
+
+/**
+ * Event-ийн хувийг суурь хувийн ОРОНД тавина (нэмэгдэхгүй), гэхдээ
+ * `greatest(суурь, event)` — суурь хувийг админ дараа нь өсгөсөн ч арга
+ * хэмжээний үеэр багц хэзээ ч үнэтэй болохгүй. Буцаасан map нь
+ * `memberPrices`/`discountForMl`-ийн `overrides` болно.
+ *
+ * Жишээ: суурь 5%, Black Friday 10% → 10%; суурь 15%, event 10% → 15%.
+ */
+export function withEventPcts(
+  defaultPct: number,
+  overrides: MlDiscounts = {},
+  eventPcts: EventPcts = {},
+): MlDiscounts {
+  const out: MlDiscounts = { ...overrides };
+  for (const [key, pct] of Object.entries(eventPcts)) {
+    const ml = Number(key);
+    if (!Number.isFinite(pct)) continue;
+    out[ml] = Math.max(discountForMl(ml, defaultPct, overrides), pct);
+  }
+  return out;
+}
+
+/**
+ * Event-ийн нэмэлт хэмнэлт (₮, 1 ширхэг): суурь хувиар бодсон үнэ − бодит
+ * үнэ. SQL `order_bundle_event_rows` (0190)-тэй ижил томьёо — задаргаанд
+ * «Багцын хямдрал» (суурь хэсэг) ба «<Event нэр>» (энэ) мөр болж хуваагдана.
+ */
+export function bundleEventSaving(
+  memberSum: number,
+  basePct: number,
+  price: number,
+  step = 100,
+): number {
+  return Math.max(0, bundlePrice(memberSum, basePct, step) - price);
+}
+
+/**
+ * Багцын эцсийн үнийг гишүүдэд үндсэн үнийн жингээр хуваарилна; сүүлийн
+ * гишүүн тэгшлэлтийн үлдэгдлийг авч нийлбэр нь яг `total` болно.
+ * `priceCollectionLines`-ийн `unit_price` — SQL задаргаа (0190) ба
+ * integration тест (scripts/test-event-bundles.ts) ижил дүрмээр.
+ */
+export function spreadBundleTotal(
+  memberUnits: readonly number[],
+  total: number,
+): number[] {
+  const memberSum = memberUnits.reduce((s, u) => s + u, 0);
+  let assigned = 0;
+  return memberUnits.map((u, i) => {
+    if (i === memberUnits.length - 1) return Math.max(0, total - assigned);
+    const unit = memberSum > 0 ? Math.round((u / memberSum) * total) : 0;
+    assigned += unit;
+    return unit;
+  });
 }
 
 /**
@@ -48,38 +105,61 @@ export function bundlePrice(
 }
 
 /**
+ * Багцын гишүүний нэг хэмжээний үнэ — ҮРГЭЛЖ ҮНДСЭН үнэ.
+ *
+ * Бэлэн багц (Тайлан11.11 сл.2, plan §5.3) ба хэрэглэгчийн угсарсан багц
+ * (task 8.2, клиентийн шийдвэр 2026-11-17) хоёулаа гишүүдийн ҮНДСЭН үнийн
+ * нийлбэрээс багцын хувийг хасна. Гишүүн бараа түр хямдарсан (гар хямдрал,
+ * арга хэмжээ) ч багцын үнэ өөрчлөгдөхгүй, хямдрал давхарлахгүй.
+ *
+ * ⚠ Өмнөх B5 шийдвэр («угсарсан багц хямдарсан үнээс дахин хувь хасна —
+ * давхарлана») ЦУЦЛАГДСАН. `basePrice` байхгүй (хуучин өгөгдөл) бол `price`.
+ */
+export function memberUnitPrice(v: {
+  price: number;
+  basePrice?: number;
+}): number {
+  return v.basePrice ?? v.price;
+}
+
+/**
  * Compute the bundle price for every ml the shop sells. A size is `available`
  * only when *every* member has an active, in-stock variant of it (§3.2).
+ *
+ * Хувь нь `discountForMl(ml, default, overrides)`-оор шийдэгдэнэ — override
+ * нь суурь хувийг ОРЛОНО (нэмэгдэхгүй). Арга хэмжээнд орсон багц (16.7)
+ * `withEventPcts(default, mlDiscounts, eventPcts)`-ийг `overrides` болгон
+ * дамжуулна: «100,000₮, суурь 5% → Black Friday 10% = 90,000₮».
  */
 export function memberPrices(
   members: CollectionMember[],
   defaultDiscountPct: number,
   step = 100,
   overrides: MlDiscounts = {},
-  fixedPrices: MlPrices = {},
 ): CollectionPriceAtMl[] {
   return BUNDLE_ML_SIZES.map((ml) => {
     const rows = members.map((m) => m.variantByMl[ml]);
     const available =
       members.length > 0 && rows.every((r) => r != null && r.inStock);
-    // Гишүүдийн үнэ нь БОДИТООР төлөх (хямдарсан) үнэ — тиймээс custom багц
-    // ч хямдарсан үнээр бодогдоно (backlog B5).
-    const memberSum = rows.reduce((sum, r) => sum + (r?.price ?? 0), 0);
-    const hasFixedPrice = Number.isFinite(fixedPrices[ml]);
+    // Гишүүдийн ҮНДСЭН үнийн нийлбэр — хямдрал дамжихгүй (task 8.1, 8.2).
+    const memberSum = rows.reduce(
+      (sum, r) => sum + (r ? memberUnitPrice(r) : 0),
+      0,
+    );
+    // «Тогтмол үнэ» (0054, B6) хасагдсан (task 17, 2026-11-17): бэлэн багц
+    // гишүүдийн ҮНДСЭН үнээр бодогддог тул гишүүний хямдрал багцын үнийг
+    // хөдөлгөхгүй — тогтмол үнийн шалтгаан алга. Багана (`price`) санд
+    // үлдсэн ч тооцоонд орохгүй.
     const nominalPct = discountForMl(ml, defaultDiscountPct, overrides);
-    const price = hasFixedPrice
-      ? Math.max(0, fixedPrices[ml] as number)
-      : bundlePrice(memberSum, nominalPct, step);
-    // Харуулах хувь нь ҮРГЭЛЖ бодит үнээс гарна. Тогтмол үнэтэй хэмжээнд
-    // админы бичсэн хувь нь худал болох тул түүнийг давтаж болохгүй.
+    const price = bundlePrice(memberSum, nominalPct, step);
+    // Харуулах хувь нь бодит үнээс (100₮-т тэгшлэсний дараах).
     const discountPct =
       memberSum > 0
         ? Math.max(0, Math.round(((memberSum - price) / memberSum) * 100))
         : 0;
     // Зар сурталчилгаанд ашиглах хувь: admin-ий амласан хувь өөрөө, ₮-т
     // тэгшлэхээс гарах 1пп-ийн зөрүүгүйгээр (`nominalDiscountPct`, types.ts).
-    // Тогтмол үнэтэй хэмжээнд амлалт байхгүй тул бодит хувиараа орлуулна.
-    const nominalDiscountPct = hasFixedPrice ? discountPct : nominalPct;
+    const nominalDiscountPct = nominalPct;
     return {
       ml,
       memberSum,
@@ -132,4 +212,109 @@ export function formatDiscountRange({
 }): string {
   if (max <= 0) return "";
   return min === max ? `${max}%` : `${max}% хүртэл`;
+}
+
+/**
+ * Багцын хэмжээ бүрийн үнэ + LIVE арга хэмжээ (16.7). Event-ийн хувь суурь
+ * хувийг орлоно (`withEventPcts`, greatest); хэмжээ бүрийн нэмэлт хэмнэлт
+ * `eventSaving`. Event нь ядаж нэг хэмжээнд хэмнэлт өгч байвал л буцна —
+ * event хувь ≤ суурь хувь бол үйлчлэхгүй тул null (тэмдэг, тоолуур гарахгүй).
+ */
+export function priceWithBundleEvent(
+  members: CollectionMember[],
+  defaultPct: number,
+  mlDiscounts: MlDiscounts,
+  step: number,
+  event: CollectionEvent | null,
+): { prices: CollectionPriceAtMl[]; event: CollectionEvent | null } {
+  const prices = memberPrices(
+    members,
+    defaultPct,
+    step,
+    event ? withEventPcts(defaultPct, mlDiscounts, event.pcts) : mlDiscounts,
+  ).map((p) => {
+    if (!event) return p;
+    const eventSaving = bundleEventSaving(
+      p.memberSum,
+      discountForMl(p.ml, defaultPct, mlDiscounts),
+      p.price,
+      step,
+    );
+    return eventSaving > 0 ? { ...p, eventSaving } : p;
+  });
+  return {
+    prices,
+    event: event && prices.some((p) => p.eventSaving) ? event : null,
+  };
+}
+
+/**
+ * Багцын картын хямдрал дуусах мөч (task 2.2): ЗӨВХӨН хэмнэлт өгч буй LIVE
+ * арга хэмжээнийх. Суурь хувь (анхдагч 5%, `collection_ml_discounts`)
+ * хугацаагүй тул null.
+ */
+export function bundleSaleEndsAt(c: {
+  event?: Pick<CollectionEvent, "endsAt"> | null;
+}): string | null {
+  return c.event?.endsAt ?? null;
+}
+
+/**
+ * Багцын картын үнийн хэмжээ (task 2.5, барааны `cardSalePrice`-ийн ихэр;
+ * клиентийн засвар 2026-11-21 сл.4–6). Авах боломжтой хэмжээнүүдээс
+ * ХАМГИЙН ИХ ХУВЬТАЙ (`nominalDiscountPct` — суурь багцын хувь ч, арга
+ * хэмжээний хувь ч) хэмжээний үнэ + зураастай гишүүдийн нийлбэр; хувь
+ * тэнцвэл жижиг хэмжээ. Карт хэмжээг бичихгүй — дэлгэрэнгүй / quick-add тэр
+ * хэмжээгээр нээгдэнэ. Хямдралгүй (0%) багц бол null — карт хамгийн бага
+ * үнийг (`startingPrice`) зураасгүй харуулна.
+ */
+export function bundleCardPrice(
+  prices: readonly Pick<
+    CollectionPriceAtMl,
+    "ml" | "price" | "memberSum" | "available" | "nominalDiscountPct"
+  >[],
+): { ml: number; price: number; memberSum: number; pct: number } | null {
+  let best: {
+    ml: number;
+    price: number;
+    memberSum: number;
+    pct: number;
+  } | null = null;
+  for (const p of prices) {
+    if (!p.available || !(p.price < p.memberSum)) continue;
+    const pct = p.nominalDiscountPct;
+    if (!(pct > 0)) continue;
+    if (best == null || pct > best.pct || (pct === best.pct && p.ml < best.ml))
+      best = { ml: p.ml, price: p.price, memberSum: p.memberSum, pct };
+  }
+  return best;
+}
+
+/**
+ * Бэлэн багцын арга хэмжээний chip-ийн товч (16.7) — барааны 2.4-ийн
+ * `summarizePcts` → `salePctText` дүрмээр («10%», «10–15%», «~10%»).
+ *
+ * Хэмжээ бүрийн хувь: `event.pcts[ml]` (0190 `live_event_collection_discounts`)
+ * нь тэр хэмжээний суурь хувиас (`discountForMl` — анхдагч 5% эсвэл
+ * `collection_ml_discounts`) ИХ бол event-ийн хувь, эс бөгөөс 0 —
+ * `withEventPcts`-ийн greatest-ээр event үйлчлэхгүй. Суурь хувь өөрөө
+ * «хямдралгүй» гэж тооцогдоно (зөвхөн event-ийн хувь харьцуулагдана).
+ * Зарагдах хэмжээнүүд (`prices`) дээр, `available`-аар — `discountRange`-тэй
+ * ижил: зарагдах хэмжээ байхгүй бол бүгд. Event хаана ч үйлчлэхгүй бол null.
+ */
+export function bundleEventSale(c: {
+  event?: Pick<CollectionEvent, "pcts"> | null;
+  prices: readonly Pick<CollectionPriceAtMl, "ml" | "available">[];
+  discountPct: number;
+  mlDiscounts: MlDiscounts;
+}): Omit<SaleSummary, "endsAt"> | null {
+  if (!c.event) return null;
+  const avail = c.prices.filter((p) => p.available);
+  const scope = avail.length ? avail : c.prices;
+  const pcts = scope.map((p) => {
+    const ev = c.event!.pcts[p.ml];
+    const base = discountForMl(p.ml, c.discountPct, c.mlDiscounts);
+    return Number.isFinite(ev) && ev > base ? ev : 0;
+  });
+  return summarizePcts(pcts);
 }

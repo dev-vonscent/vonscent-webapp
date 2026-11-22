@@ -9,6 +9,7 @@ import { useConfirm } from "@/components/shared/confirm-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatDateTime, formatPrice } from "@/lib/format";
+import { GIFT_CARD_DRAFT_KEY } from "@/features/gift-cards/lib";
 import {
   resumeSavedCheckout,
   savedSubtotal,
@@ -35,6 +36,20 @@ export function SavedCheckouts({ emptyState }: { emptyState?: ReactNode }) {
   // хүний хадгалсан захиалга алга болдог байв. Захиалга үүсэх, эсвэл
   // checkout дотор «Устгах» дарах үед л устна (saved-checkouts.ts).
   function resume(entry: SavedCheckout) {
+    // Бэлгийн карт (0179 §8b): checkout биш — маягтаа сэргээгээд шинэ
+    // захиалгаар төлнө. Захиалга үүсмэгц `savedId`-аар энэ мөр устна.
+    if (entry.giftCard) {
+      try {
+        sessionStorage.setItem(
+          GIFT_CARD_DRAFT_KEY,
+          JSON.stringify({ ...entry.giftCard, savedId: entry.id }),
+        );
+      } catch {
+        // Хувийн цонх — хоосон маягтаар нээгдэнэ.
+      }
+      router.push("/gift-cards");
+      return;
+    }
     resumeSavedCheckout(entry);
     router.push("/checkout");
   }
@@ -79,21 +94,41 @@ function SavedCard({
       key: i.key,
       name: `${i.brand} ${i.name}`,
       image: i.image,
-      ml: i.ml,
+      meta: `${i.ml}ml`,
       qty: i.qty,
     })),
     ...entry.collections.map((c) => ({
       key: c.key,
       name: c.name,
       image: c.image,
-      ml: c.ml,
+      meta: `${c.ml}ml`,
       qty: c.qty,
     })),
+    ...entry.extras.map((e) => ({
+      key: e.key,
+      name: e.name,
+      image: e.image,
+      meta: e.label || e.categoryName,
+      qty: e.qty,
+    })),
+    ...(entry.giftCard
+      ? [
+          {
+            key: "gift-card",
+            name: "Бэлгийн карт",
+            image: `/api/gift-cards/designs/${entry.giftCard.designId}/thumb`,
+            meta: `${entry.giftCard.recipientName}-д`,
+            qty: 1,
+          },
+        ]
+      : []),
   ];
   const count = lines.reduce((n, l) => n + l.qty, 0);
   const thumbs = lines.slice(0, 4);
   const extra = lines.length - thumbs.length;
-  const first = lines[0];
+  // Нэр/хэмжээ зөвхөн бараа цөөн (≤ 2) үед — олон үед зураг ба «+N»
+  // хангалттай, текст нь утсан дээр тасардаг байв («Миний захиалга»-тай ижил).
+  const first = lines.length <= 2 ? lines[0] : undefined;
 
   return (
     <Card className="overflow-hidden">
@@ -107,11 +142,12 @@ function SavedCard({
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-2">
+        {/* 4 зураг + «+N» 320px дээр багтахаар утсан дээр 44px. */}
+        <div className="mt-4 flex items-center gap-1.5 sm:gap-2">
           {thumbs.map((l) => (
             <div
               key={l.key}
-              className="bg-secondary relative size-14 shrink-0 overflow-hidden rounded-xl"
+              className="bg-secondary relative size-11 shrink-0 overflow-hidden rounded-lg sm:size-14"
             >
               {l.image ? (
                 <Image
@@ -129,7 +165,7 @@ function SavedCard({
             </div>
           ))}
           {extra > 0 && (
-            <div className="bg-secondary text-muted-foreground flex size-14 shrink-0 items-center justify-center rounded-xl text-sm font-medium">
+            <div className="bg-secondary text-muted-foreground flex size-11 shrink-0 items-center justify-center rounded-lg text-sm font-medium sm:size-14">
               +{extra}
             </div>
           )}
@@ -139,7 +175,7 @@ function SavedCard({
                 {first.name}
                 {lines.length > 1 && ` ба бусад ${lines.length - 1}`}
               </p>
-              <p className="text-muted-foreground text-xs">{first.ml}ml</p>
+              <p className="text-muted-foreground text-xs">{first.meta}</p>
             </div>
           )}
         </div>
@@ -152,7 +188,9 @@ function SavedCard({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             {/* Хадгалах үеийн үнэ — захиалахад checkout одоогийн үнээр бодно. */}
-            <p className="text-muted-foreground text-xs">Барааны дүн</p>
+            <p className="text-muted-foreground text-xs">
+              {entry.giftCard ? "Картын дүн" : "Барааны дүн"}
+            </p>
             <p className="text-lg font-semibold">
               {formatPrice(savedSubtotal(entry))}
             </p>

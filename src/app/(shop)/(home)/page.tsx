@@ -1,9 +1,11 @@
+import { ExtraCard } from "@/features/extras/components/extra-card";
 import { Suspense, cache } from "react";
 import { preload } from "react-dom";
 import type { Metadata } from "next";
 import {
   getBestSellers,
   getBrands,
+  getCatalog,
   getComingSoonProducts,
   getNewArrivals,
 } from "@/features/products/api";
@@ -21,14 +23,14 @@ import {
 import {
   fillRail,
   mixRandom,
+  newestRail,
   scatterCollections,
+  sortSaleRail,
+  type RailItem,
 } from "@/features/products/rail";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 import { dailyRandom } from "@/lib/seeded-random";
-import {
-  HOT_RAIL_COLLECTIONS,
-  NEW_COLLECTIONS_COUNT,
-  SITE,
-} from "@/lib/constants";
+import { HOT_RAIL_COLLECTIONS, SALE_RAIL_POOL, SITE } from "@/lib/constants";
 import {
   JsonLd,
   homePageJsonLd,
@@ -41,17 +43,13 @@ import { ProductCarousel } from "@/features/products/components/product-carousel
 import { TopCustomersSection } from "@/features/tiers/components/top-customers-section";
 import { PromoPopup } from "@/features/marketing/components/promo-popup";
 import { firstPopupImage } from "@/features/marketing/popup-schedule";
-import { liveCampaigns } from "@/features/marketing/home-content";
-import {
-  CampaignHero,
-  resolveHero,
-  resolveStaticHero,
-} from "@/features/marketing/components/home/campaign-hero";
+import { CampaignHero } from "@/features/marketing/components/home/campaign-hero";
+import { resolveHomeHero } from "@/features/marketing/hero-resolve";
+import { normalizePromoHref } from "@/features/heroes/lib";
 import { HomeShortcuts } from "@/features/marketing/components/home/home-shortcuts";
 import { IntentCards } from "@/features/marketing/components/home/intent-cards";
 import { ReviewsSection } from "@/features/marketing/components/home/reviews-section";
 import {
-  HeroSkeleton,
   CarouselSkeleton,
   MarqueeSkeleton,
   ReviewsSkeleton,
@@ -81,9 +79,6 @@ const RAIL_SIZE = 12;
  * lists, so each list is fetched once per render.
  */
 const hotProducts = cache(() => getBestSellers(RAIL_SIZE));
-const newProducts = cache(async () =>
-  sellableFirst(await getNewArrivals(RAIL_SIZE)),
-);
 
 /**
  * Stable: orderable products keep their order and come first, sold-out ones
@@ -98,39 +93,45 @@ function sellableFirst<T extends { soldOut: boolean }>(list: T[]): T[] {
  * биш: ISR-ийн дахин үүсгэлт бүрт HTML өөрчлөгдөж Vercel кэшэд бүтэн хуудсыг
  * дахин бичихээс сэргийлнэ. Холилт өдөрт нэг удаа солигдоно.
  *
- * Home — storefront order (2026-10 refresh):
- *   campaign hero → shortcuts → Эрэлттэй → quiz / bundle cards → admin
- *   curated blocks → Шинээр ирсэн → Брэндээр → Тун удахгүй →
+ * Home — storefront order (task 3, 2026-11): rail-ууд Эрэлттэй →
+ * Хямдралтай → Шинээр ирсэн → Онцлох (админы хэсгүүд):
+ *   campaign hero → shortcuts → Эрэлттэй → quiz / bundle cards →
+ *   Хямдралтай (туг `sale_display`) → Шинээр ирсэн → admin curated blocks
+ *   («Онцлох» г.м., админы дарааллаар) → Брэндээр → Тун удахгүй →
  *   reviews → (footer, parallel slot).
+ * Эрэлттэй / Хямдралтай / Шинээр ирсэн нь кодын хэсэг (`home_sections`-д
+ * бүртгэлгүй); санд зөвхөн админы хэсгүүдийн хоорондын дараалал хадгалагдана.
  *
  * No 3D runtime is imported here: the old DecantPlayground stays in the
  * codebase but is no longer reachable from this page. Gender / season /
  * family / brand stay as catalog filters, not home sections.
  *
- * The page function is not async: each data block streams behind its own
- * `<Suspense>` with a skeleton of its own shape (no layout shift).
+ * Each data block streams behind its own `<Suspense>` with a skeleton of its
+ * own shape (no layout shift). The hero alone is awaited up front: it is the
+ * LCP, and a nested boundary is revealed late on a busy phone (see
+ * `resolveStaticHero`). Its DB read (`live_heroes`, 0184) is one cached RPC;
+ * any failure falls back to the code hero (plan §7.1, §7.5).
  */
-export default function HomePage() {
-  const staticHero = resolveStaticHero();
+export default async function HomePage() {
+  const hero = await resolveHomeHero();
   return (
     <>
       {/* An overlay with nothing to reserve, so it streams with no fallback. */}
       <Suspense fallback={null}>
-        <PromoSlot />
+        <PromoSlot
+          heroHrefs={[
+            hero.campaign.primary.href,
+            ...(hero.campaign.secondary ? [hero.campaign.secondary.href] : []),
+          ]}
+        />
       </Suspense>
       <Suspense fallback={null}>
         <SiteJsonLd />
       </Suspense>
 
       <div className="mx-auto max-w-420 space-y-8 px-4 pt-4 pb-10 sm:space-y-12 sm:pb-14 md:px-8 md:pt-8">
-        {/* LCP: статик hero өөрийн Suspense-гүй (resolveStaticHero-г үз). */}
-        {staticHero ? (
-          <CampaignHero hero={staticHero} />
-        ) : (
-          <Suspense fallback={<HeroSkeleton />}>
-            <HeroSlot />
-          </Suspense>
-        )}
+        {/* LCP: hero өөрийн Suspense-гүй (resolveStaticHero-г үз). */}
+        <CampaignHero hero={hero} />
         <HomeShortcuts />
 
         <Suspense fallback={<CarouselSkeleton action />}>
@@ -139,12 +140,17 @@ export default function HomePage() {
 
         <IntentCards />
 
-        <Suspense fallback={<CarouselSkeleton action />}>
-          <CuratedSections />
+        {/* Туг хаалттай бол юу ч гаргахгүй (fallback ч үгүй). */}
+        <Suspense fallback={null}>
+          <SaleSection />
         </Suspense>
 
         <Suspense fallback={<CarouselSkeleton action />}>
           <NewArrivalsSection />
+        </Suspense>
+
+        <Suspense fallback={<CarouselSkeleton action />}>
+          <CuratedSections />
         </Suspense>
 
         <Suspense fallback={<MarqueeSkeleton />}>
@@ -183,22 +189,22 @@ async function SiteJsonLd() {
  * same place as the live hero campaign is dropped — the visitor would see
  * the same promotion twice.
  */
-async function PromoSlot() {
+async function PromoSlot({ heroHrefs }: { heroHrefs: string[] }) {
   const raw = await getPopupSettings();
-  const heroHrefs = new Set(liveCampaigns().map((c) => c.primary.href));
+  // Шийдэгдсэн hero-гийн хоёр товчны холбоос (DB эсвэл кодын, plan §7.2).
+  // `/sale/x` ба `/catalog?event=x`, origin, query-ийн дараалал ялгаагүй.
+  const taken = new Set(heroHrefs.map(normalizePromoHref));
   const settings = {
     ...raw,
-    slides: raw.slides.filter((s) => !s.href || !heroHrefs.has(s.href)),
+    slides: raw.slides.filter(
+      (s) => !s.href || !taken.has(normalizePromoHref(s.href)),
+    ),
   };
   // Popup нээгдэхэд түүний зураг LCP болж болно — HTML parse хийх үед
   // JS-тэй зэрэг татаж эхэлнэ. Priority-г өсгөхгүй (hero-той өрсөлдөхгүй).
   const first = firstPopupImage(settings);
   if (first) preload(first, { as: "image" });
   return <PromoPopup settings={settings} />;
-}
-
-async function HeroSlot() {
-  return <CampaignHero hero={await resolveHero()} />;
 }
 
 /**
@@ -234,6 +240,8 @@ async function BestSellersSection() {
           dailyRandom("home-hot"),
         )}
         prefer={["hot"]}
+        // Hero-гийн дараах эхний rail — утсан дээр эхний дэлгэцэнд орж LCP болдог.
+        eagerCount={4}
       />
     </section>
   );
@@ -261,7 +269,23 @@ async function CuratedSections() {
             />
             {/* «Онцлох» (featured) хэсэг ус, багцыг онцлох болгосон
               дарааллаар (`items`); бусад хэсэг админы дарааллаараа. */}
-            {s.items ? (
+            {s.extras.length > 0 ? (
+              <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-4 md:gap-5 md:overflow-visible md:px-0">
+                {s.extras.map((e) => (
+                  <li
+                    key={e.id}
+                    className="w-[40%] shrink-0 snap-start md:w-auto"
+                  >
+                    <ExtraCard
+                      extra={e}
+                      href={`/extras/${e.slug}`}
+                      quickAdd
+                      showKind
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : s.items ? (
               <ProductCarousel items={s.items} prefer={prefer} />
             ) : s.collections.length > 0 ? (
               <ProductCarousel
@@ -305,27 +329,56 @@ async function BrandsSection() {
 }
 
 /**
- * Шинээр ирсэн = 9 ус + 3 багц (клиент, 2026-10). Ус үүссэн дарааллаараа
- * (шинэ нь) эхнээсээ, дууссан нь ардаа; хамгийн сүүлийн 3 багц усны дунд
- * санамсаргүй байранд — «Эрэлттэй»-тэй ижил дүрмээр (`scatterCollections`).
- * Багц дутвал ус нөхнө. Нэг мөр дүүрэхгүй бол нуугдана.
+ * «Хямдралтай» (task 2.1, туг `sale_display`) — зөвхөн хямдралтай ДАН ус
+ * (бэлэн багц орохгүй; `getCatalog` ус л буцаана). Дуусах мөч ойр → хувь
+ * их → ижил бол өдрийн seed-ээр (`sortSaleRail`); хугацаагүй нь ард, дууссан
+ * ус хамгийн ард (`sellableFirst`). «Бүгдийг үзэх» → каталог «Бүгд» +
+ * «Хямдралтай» таг (багц ч орно, сонгосон эрэмбээр).
+ *
+ * Өгөгдөл: `catalog_search` (кэш, tag `catalog`/`stock`) + хямдралын товч
+ * (`getSaleSummaries`, tag `catalog`) — шинэ кэш/cron үгүй. Хил (УБ 00:00)
+ * дээр шөнийн cron цэвэрлэнэ.
+ */
+async function SaleSection() {
+  if (!(await isFeatureEnabled("sale_display"))) return null;
+  const { items } = await getCatalog({
+    tags: ["sale"],
+    sort: "new",
+    perPage: SALE_RAIL_POOL,
+  });
+  const products = sellableFirst(
+    sortSaleRail(
+      items.filter((p) => p.sale),
+      dailyRandom("home-sale"),
+    ),
+  ).slice(0, RAIL_SIZE);
+  if (products.length === 0) return null;
+  return (
+    <section aria-labelledby="home-sale-title">
+      <SectionHeading
+        id="home-sale-title"
+        compact
+        title="Хямдралтай"
+        href="/catalog?tags=sale"
+      />
+      <ProductCarousel products={products} />
+    </section>
+  );
+}
+
+/**
+ * Шинээр ирсэн (task 1): ус, бэлэн багц холилдож үүссэн огноогоор буурах
+ * (шинэ нь эхэнд), хамгийн ихдээ 12 — 13 дахь нь автоматаар гарна
+ * (`newestRail`). Ус нь «Шинэ» тагтай хамгийн сүүлийн 12, багц нь зарагдаж
+ * буй хамгийн сүүлийн 12 — нийлүүлээд огноогоор тасална. Дууссан ус тэр 12
+ * дотроо ардаа. Нэг мөр дүүрэхгүй бол нуугдана.
  */
 async function NewArrivalsSection() {
   const [products, collections] = await Promise.all([
-    newProducts(),
-    getNewestCollections(NEW_COLLECTIONS_COUNT),
+    getNewArrivals(RAIL_SIZE),
+    getNewestCollections(RAIL_SIZE),
   ]);
-  const rail = fillRail(
-    products,
-    collections,
-    RAIL_SIZE,
-    NEW_COLLECTIONS_COUNT,
-  );
-  const items = scatterCollections(
-    rail.products,
-    rail.collections,
-    dailyRandom("home-new"),
-  );
+  const items = soldOutLast(newestRail(products, collections, RAIL_SIZE));
   if (items.length < 4) return null;
   return (
     <section>
@@ -337,6 +390,12 @@ async function NewArrivalsSection() {
       <ProductCarousel items={items} prefer={["new"]} />
     </section>
   );
+}
+
+/** `sellableFirst`-ийн rail хэлбэр — багц энд аль хэдийн зарагдаж буй. */
+function soldOutLast(items: RailItem[]): RailItem[] {
+  const out = (it: RailItem) => it.kind === "product" && it.product.soldOut;
+  return [...items.filter((it) => !out(it)), ...items.filter(out)];
 }
 
 /**

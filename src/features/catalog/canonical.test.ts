@@ -38,3 +38,12 @@ describe("catalogCanonical", () => {
     );
   });
 });
+
+describe("catalogCanonical — арга хэмжээ", () => {
+  it("?event= нь бусад шүүлтүүр шиг /catalog руу", () => {
+    expect(catalogCanonical({ event: "black-friday" }, 5)).toBe("/catalog");
+    expect(catalogCanonical({ event: "black-friday", page: "2" }, 5)).toBe(
+      "/catalog",
+    );
+  });
+});

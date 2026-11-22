@@ -18,13 +18,19 @@ import { LoadingButton } from "@/components/shared/loading-button";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { mutateJson } from "@/features/admin/lib/mutate";
 import { DatePicker } from "@/features/admin/components/date-picker";
+import { PeriodHint } from "@/features/admin/components/period-hint";
 import { Field } from "@/components/ui/field";
 import {
   dayEndIso,
   dayStartIso,
   ubToday,
 } from "@/features/admin/lib/date-range";
-import { isSaleActive } from "@/features/products/sale";
+import {
+  isOnSale,
+  productSalePhase,
+  variantPhase,
+  type SalePhase,
+} from "@/features/products/sale";
 import { GENDERS, GENDER_LABEL, ML_SIZES } from "@/lib/constants";
 import type { Gender } from "@/db/types";
 import { formatDateTime, formatPrice } from "@/lib/format";
@@ -48,29 +54,11 @@ export interface SaleProduct {
   variants: SaleVariant[];
 }
 
-type Phase = "active" | "scheduled" | "ended";
-
-const PHASE_LABEL: Record<Phase, string> = {
+const PHASE_LABEL: Record<SalePhase, string> = {
   active: "Хүчинтэй",
   scheduled: "Эхлээгүй",
   ended: "Дууссан",
 };
-
-/** Барааны хямдралын төлөв — аль нэг хэмжээ хүчинтэй бол «Хүчинтэй». */
-function phaseOf(p: SaleProduct, now: number): Phase | null {
-  const sale = p.variants.filter((v) => v.salePrice != null);
-  if (!sale.length) return null;
-  const row = (v: SaleVariant) => ({
-    price: v.price,
-    sale_price: v.salePrice,
-    sale_starts_at: v.saleStartsAt,
-    sale_ends_at: v.saleEndsAt,
-  });
-  if (sale.some((v) => isSaleActive(row(v), new Date(now)))) return "active";
-  if (sale.some((v) => v.saleStartsAt && Date.parse(v.saleStartsAt) > now))
-    return "scheduled";
-  return "ended";
-}
 
 /** Хугацааны текст — хэмжээнүүд ижил хугацаатай байх нь хэвийн тул эхнийхээр. */
 function periodOf(p: SaleProduct): string {
@@ -87,7 +75,7 @@ function periodOf(p: SaleProduct): string {
 type Filter = "all" | "on_sale" | "no_sale";
 
 /**
- * Админ → Каталог → Хямдрал (0166). Бараагаа шүүж сонгоод (бүгд / эрэгтэй /
+ * Админ → Маркетинг → Хямдрал (0166). Бараагаа шүүж сонгоод (бүгд / эрэгтэй /
  * брэнд …) хэмжээ бүрт хувь, хугацаа өгнө — бараа бүрийг нэг бүрчлэн нээх
  * шаардлагагүй. Хямдарсан үнэ нь тухайн хэмжээний үндсэн үнээс бодогдоно.
  */
@@ -117,12 +105,12 @@ export function SaleManager({ products }: { products: SaleProduct[] }) {
     return products.filter((p) => {
       if (gender !== "all" && p.gender !== gender) return false;
       if (brand !== "all" && p.brand !== brand) return false;
-      const onSale = p.variants.some((v) => v.salePrice != null);
+      const onSale = isOnSale(p, now);
       if (filter === "on_sale" && !onSale) return false;
       if (filter === "no_sale" && onSale) return false;
       return !term || `${p.brand} ${p.name}`.toLowerCase().includes(term);
     });
-  }, [products, q, gender, brand, filter]);
+  }, [products, q, gender, brand, filter, now]);
 
   const filtersActive =
     q.trim() !== "" || gender !== "all" || brand !== "all" || filter !== "all";
@@ -287,8 +275,15 @@ export function SaleManager({ products }: { products: SaleProduct[] }) {
             Сонгосон {selected.size} бараанд тавих
           </LoadingButton>
         </div>
-        {(pctError || periodError) && (
+        {pctError || periodError ? (
           <p className="text-destructive text-sm">{pctError ?? periodError}</p>
+        ) : (
+          <PeriodHint
+            startsOn={startsAt}
+            endsOn={endsAt}
+            today={ubToday()}
+            fallback="Эхлэх өдрийн 00:00-оос дуусах өдрийн 23:59 хүртэл, Улаанбаатарын цагаар."
+          />
         )}
       </section>
 
@@ -399,7 +394,7 @@ export function SaleManager({ products }: { products: SaleProduct[] }) {
             </thead>
             <tbody>
               {visible.map((p) => {
-                const phase = phaseOf(p, now);
+                const phase = productSalePhase(p, now);
                 const isSelected = selected.has(p.id);
                 return (
                   <tr
@@ -430,10 +425,15 @@ export function SaleManager({ products }: { products: SaleProduct[] }) {
                             const pct = isSelected
                               ? pctValues[String(v.ml)]
                               : undefined;
+                            // Дууссан хямдралын `sale_price` санд үлддэг —
+                            // энгийн үнээр зарагдаж буй тул харуулахгүй (16.1).
+                            const vPhase = variantPhase(v, now);
                             const next =
                               pct && pct <= BULK_SALE_MAX_PCT
                                 ? bulkSalePrice(v.price, pct)
-                                : v.salePrice;
+                                : vPhase === "ended"
+                                  ? null
+                                  : v.salePrice;
                             return (
                               <span key={v.ml}>
                                 <span className="text-muted-foreground">
@@ -448,7 +448,9 @@ export function SaleManager({ products }: { products: SaleProduct[] }) {
                                       className={
                                         pct
                                           ? "text-primary font-semibold"
-                                          : "text-destructive font-medium"
+                                          : vPhase === "scheduled"
+                                            ? "text-muted-foreground font-medium"
+                                            : "text-destructive font-medium"
                                       }
                                     >
                                       {formatPrice(next)}

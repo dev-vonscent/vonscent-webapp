@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { eventSaleConflictResponse } from "@/features/sales/event-conflict";
 import { revalidatePublic } from "@/lib/cache";
 import { productEditSchema } from "@/lib/validators/product";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -17,7 +18,11 @@ import {
   hasVisibleImage,
   statusConflict,
 } from "@/features/admin/lib/product-status";
-import { variantSaleColumns } from "@/features/products/sale";
+import {
+  saleLinkPatch,
+  variantSaleColumns,
+  type StoredSaleColumns,
+} from "@/features/products/sale";
 
 async function guard() {
   if (!isSupabaseConfigured) return { demo: true as const };
@@ -100,6 +105,7 @@ export async function PATCH(
     productUpdate.concentration = concentration;
   }
   if (input.sillage !== undefined) productUpdate.sillage = input.sillage;
+  if (input.vialStyle !== undefined) productUpdate.vial_style = input.vialStyle;
   if (input.longevity !== undefined)
     productUpdate.longevity = input.longevity || null;
   if (input.scentFamilies !== undefined)
@@ -157,13 +163,27 @@ export async function PATCH(
   // price above never moves them. Upsert so a size the product didn't have
   // yet (e.g. the 2ml sample tier on an older product) can be added here.
   if (input.variants !== undefined) {
+    // Нэртэй хямдралаас салгах (0188): хямдралын баганыг гараар өөрчилсөн
+    // хэмжээ л. Уншилт бүтэлгүйтвэл (0188-аас өмнөх сан) салгахгүй — хадгалалт
+    // үргэлжилнэ.
+    const { data: stored } = await supabase
+      .from("product_variants")
+      .select("ml, sale_price, sale_starts_at, sale_ends_at, sale_id")
+      .eq("product_id", id);
+    const prevByMl = new Map(
+      ((stored as (StoredSaleColumns & { ml: number })[] | null) ?? []).map(
+        (r) => [r.ml, r],
+      ),
+    );
     for (const v of input.variants) {
+      const sale = variantSaleColumns(v);
       const { error } = await supabase.from("product_variants").upsert(
         {
           product_id: id,
           ml: v.ml,
           price: v.price,
-          ...variantSaleColumns(v),
+          ...sale,
+          ...saleLinkPatch(prevByMl.get(v.ml), sale),
           is_active: v.active,
         },
         { onConflict: "product_id,ml" },
@@ -172,6 +192,16 @@ export async function PATCH(
       // зарагдсаар байна. Өмнөх хэмжээнүүд бичигдсэн байж болно — бүхэлд нь
       // transaction-д оруулах нь тусдаа ажил (PLAN «Шийдвэрүүд»).
       if (error) {
+        // 0200: хугацаа давхцсан арга хэмжээнд орсон бараанд гар хямдрал.
+        // Барааны талбар, өмнөх хэмжээнүүд аль хэдийн бичигдсэн (давталт
+        // transaction-гүй) — кэшийг цэвэрлээд админд хэлнэ.
+        const eventConflict = eventSaleConflictResponse(error, {
+          suffix: ` Барааны мэдээлэл ба ${v.ml}ml-ээс өмнөх хэмжээ хадгалагдсан; ${v.ml}ml болон түүнээс хойших хэмжээ хадгалагдаагүй.`,
+        });
+        if (eventConflict) {
+          revalidatePublic();
+          return eventConflict;
+        }
         return NextResponse.json(
           { error: "VARIANT_UPDATE_FAILED", ml: v.ml },
           { status: 500 },

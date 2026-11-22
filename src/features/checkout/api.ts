@@ -1,18 +1,20 @@
 import "server-only";
 import { getProductById, fetchProducts } from "@/features/products/api";
 import { maxUnits } from "@/features/products/sellable";
-import {
-  BUNDLE_ML_SIZES,
-  GIFT_SAMPLE_ML,
-  SHIPPING_ZONES,
-} from "@/lib/constants";
-import { giftAllowanceFor, limitGiftPicks } from "@/lib/gift";
-import { getGiftSettings, getShippingSettings } from "@/features/content/api";
+import { BUNDLE_ML_SIZES, SHIPPING_ZONES } from "@/lib/constants";
+import { getShippingSettings } from "@/features/content/api";
 import {
   getCollectionSettings,
   getCollectionOrderInfo,
 } from "@/features/collections/api";
-import { bundlePrice, discountForMl } from "@/features/collections/pricing";
+import {
+  bundleEventSaving,
+  bundlePrice,
+  discountForMl,
+  memberUnitPrice,
+  spreadBundleTotal,
+  withEventPcts,
+} from "@/features/collections/pricing";
 import { resolveZone, zoneKey } from "@/lib/geo/zone";
 import type {
   CheckoutInput,
@@ -33,6 +35,17 @@ export interface PricedLine {
   collectionId?: string | null;
   collectionName?: string;
   isGift?: boolean;
+}
+
+/**
+ * Үнэлэгдсэн багц бүрийн арга хэмжээний хэсэг (16.7) — задаргааны
+ * «<Event нэр>» мөр. Event-гүй бол null. `priceCollectionLines`-ийн
+ * `bundleEvents`-ийн дараалал нь үнэлэгдсэн багцуудын дараалал.
+ */
+export interface BundleEventPart {
+  label: string;
+  /** 1 ширхэгт ногдох нэмэлт хэмнэлт, ₮. */
+  saving: number;
 }
 
 export interface OrderSummary {
@@ -109,9 +122,12 @@ export async function priceCollectionLines(
 ): Promise<{
   lines: PricedLine[];
   pricedBundles: number;
+  /** Үнэлэгдсэн багц бүрийн event хэсэг (16.7), null = event-гүй. */
+  bundleEvents: (BundleEventPart | null)[];
   stock: StockMap;
 }> {
-  if (!cols.length) return { lines: [], pricedBundles: 0, stock: new Map() };
+  if (!cols.length)
+    return { lines: [], pricedBundles: 0, bundleEvents: [], stock: new Map() };
   const [products, settings] = await Promise.all([
     fetchProducts(),
     getCollectionSettings(),
@@ -121,6 +137,8 @@ export async function priceCollectionLines(
     {
       product: (typeof products)[number];
       price: number;
+      /** Үндсэн үнэ — бэлэн багц үүгээр (plan §5.3). */
+      basePrice: number;
       ml: number;
       active: boolean;
     }
@@ -132,6 +150,7 @@ export async function priceCollectionLines(
       variantIndex.set(v.id, {
         product: p,
         price: v.price,
+        basePrice: v.basePrice,
         ml: v.ml,
         // Багцын гишүүн ч мөн адил: савгүй хэмжээ бүхий багц захиалагдахгүй.
         active: v.sellable,
@@ -140,6 +159,7 @@ export async function priceCollectionLines(
   }
 
   const out: PricedLine[] = [];
+  const bundleEvents: (BundleEventPart | null)[] = [];
   let pricedBundles = 0;
   for (const col of cols) {
     // A bundle prices over the sizes the shop sells.
@@ -160,9 +180,9 @@ export async function priceCollectionLines(
     if (members.some((m) => !m.active || m.ml !== col.ml)) continue;
 
     let discountPct = settings.customDiscountPct;
-    // Preset багцын тогтмол үнэ (0054, B6) — байвал гишүүдийн нийлбэрээс
-    // хамаарахгүй эцсийн үнэ.
-    let fixedPrice: number | null = null;
+    /** Event-гүй үеийн хувь — задаргааны «Багцын хямдрал» хэсэг. */
+    let basePct = discountPct;
+    let eventName: string | null = null;
     let name = "Миний багц";
     if (col.type === "base" && col.collectionId) {
       const info = await getCollectionOrderInfo(col.collectionId);
@@ -180,9 +200,17 @@ export async function priceCollectionLines(
       // Priced at the size actually ordered: a bundle may discount 20ml harder
       // than 2ml (0051), so taking the bundle default here would charge the
       // wrong total for every overridden size.
-      discountPct = discountForMl(col.ml, info.discountPct, info.mlDiscounts);
-      const fixed = info.mlPrices[col.ml];
-      fixedPrice = Number.isFinite(fixed) ? Math.max(0, fixed) : null;
+      basePct = discountForMl(col.ml, info.discountPct, info.mlDiscounts);
+      // 16.7: LIVE арга хэмжээний хувь суурийг ОРЛОНО, greatest хамгаалалттай.
+      // Туг хаалттай бол `info.event` null → `discountPct === basePct`.
+      discountPct = info.event
+        ? discountForMl(
+            col.ml,
+            info.discountPct,
+            withEventPcts(info.discountPct, info.mlDiscounts, info.event.pcts),
+          )
+        : basePct;
+      eventName = info.event?.name ?? null;
       name = info.name;
     } else {
       // Custom bundles obey the shop-wide builder rules even when the payload
@@ -193,25 +221,21 @@ export async function priceCollectionLines(
         continue;
     }
 
-    // Гишүүний `price` нь хямдарсан (бодитоор төлөх) үнэ — custom багц ч
-    // тиймээс хямдарсан үнээр бодогдоно (B5).
-    const memberSum = members.reduce((s, m) => s + m.price, 0);
-    const total =
-      fixedPrice != null
-        ? fixedPrice
-        : bundlePrice(memberSum, discountPct, settings.roundTo);
+    // Бэлэн ба угсарсан багц хоёулаа гишүүний ҮНДСЭН үнээс — барааны
+    // хямдрал (гар, арга хэмжээ) нөлөөлөхгүй (plan §5.3, task 8.2; B5
+    // «давхарлах» шийдвэр цуцлагдсан). Харагдах үнэ (`memberPrices`) ба
+    // захиалгын `unit_price` нэг дүрмээр — эс бөгөөс зөрнө.
+    const unitOf = (m: (typeof members)[number]) => memberUnitPrice(m);
+    const memberSum = members.reduce((s, m) => s + unitOf(m), 0);
+    // «Тогтмол үнэ» (0054) тооцоонд орохгүй (task 17) — багц үргэлж
+    // гишүүдийн нийлбэрээс хувиар.
+    const total = bundlePrice(memberSum, discountPct, settings.roundTo);
 
     // Spread the discounted total across members; the last line absorbs the
     // rounding remainder so the parts sum exactly to `total`.
-    let assigned = 0;
+    const units = spreadBundleTotal(members.map(unitOf), total);
     members.forEach((m, i) => {
-      const last = i === members.length - 1;
-      const unit = last
-        ? Math.max(0, total - assigned)
-        : memberSum > 0
-          ? Math.round((m.price / memberSum) * total)
-          : 0;
-      if (!last) assigned += unit;
+      const unit = units[i];
       out.push({
         productId: m.product.id,
         variantId: m.variantId,
@@ -227,9 +251,15 @@ export async function priceCollectionLines(
       });
     });
 
+    const saving = eventName
+      ? bundleEventSaving(memberSum, basePct, total, settings.roundTo)
+      : 0;
+    bundleEvents.push(
+      eventName && saving > 0 ? { label: eventName, saving } : null,
+    );
     pricedBundles += 1;
   }
-  return { lines: out, pricedBundles, stock };
+  return { lines: out, pricedBundles, bundleEvents, stock };
 }
 
 /** Багцын нэг хэмжээний үнэ — захиалгын үеийн тооцоотой яг ижил. */
@@ -242,6 +272,10 @@ export interface BundleSizeQuote {
   /** Гишүүдийн үнийн нийлбэр (хямдралын өмнөх). */
   memberSum: number;
   discountPct: number;
+  /** Арга хэмжээний нэр (16.7), event-гүй бол null. */
+  saleLabel: string | null;
+  /** Event-ийн нэмэлт хэмнэлт, 1 ширхэг (₮). */
+  saleAmount: number;
   /** Тухайн хэмжээний гишүүн variant-ууд, багцын гишүүдийн дарааллаар. */
   members: { productId: string; variantId: string; price: number }[];
 }
@@ -273,7 +307,10 @@ export async function quoteBundleSizes(input: {
     BUNDLE_ML_SIZES.map(async (ml): Promise<BundleSizeQuote> => {
       const members = input.productIds.map((id) => {
         const v = byId.get(id)?.variants.find((x) => x.ml === ml);
-        return v ? { productId: id, variantId: v.id, price: v.price } : null;
+        // «Хэмнэлт» үндсэн үнээс (priceCollectionLines-тэй ижил, task 8.2).
+        return v
+          ? { productId: id, variantId: v.id, price: memberUnitPrice(v) }
+          : null;
       });
       const empty = {
         ml,
@@ -281,11 +318,13 @@ export async function quoteBundleSizes(input: {
         price: 0,
         memberSum: 0,
         discountPct: 0,
+        saleLabel: null,
+        saleAmount: 0,
         members: [],
       };
       if (members.some((m) => m == null)) return empty;
       const resolved = members as NonNullable<(typeof members)[number]>[];
-      const { lines } = await priceCollectionLines([
+      const { lines, bundleEvents } = await priceCollectionLines([
         {
           collectionId: input.collectionId,
           type: input.type,
@@ -306,77 +345,13 @@ export async function quoteBundleSizes(input: {
           memberSum > 0
             ? Math.max(0, Math.round(((memberSum - price) / memberSum) * 100))
             : 0,
+        saleLabel: bundleEvents[0]?.label ?? null,
+        saleAmount: bundleEvents[0]?.saving ?? 0,
         members: resolved,
       };
     }),
   );
   return { sizes, stock };
-}
-
-/**
- * Validate the buyer's 1ml gift picks and turn them into 0₮ lines.
- * `goodsAfterDiscount` is subtotal − coupon discount (shipping excluded) —
- * see giftAllowanceFor() in src/lib/gift.ts. Picks outside the admin's pool, picks past the
- * per-product limit, or picks beyond the allowance are silently dropped — the
- * order still goes through, just without the invalid gift.
- *
- * Нэг ус олон удаа орж болно (`GIFT_PER_PRODUCT_LIMIT` хүртэл): сан 4 устай
- * байхад 5 эрхтэй хэрэглэгчийн сүүлчийн эрх үрэгдэхгүй байх нь зорилго.
- * Ижил ус нь нэг мөр болж qty-гаараа нэгдэнэ — order_items, савлалтын хуудсанд
- * «1мл × 2» гэж нэг мөрөөр гарах нь ойлгомжтой.
- *
- * Энэ бол бэлгийн ЦОРЫН ГАНЦ эх сурвалж: багц дотроос ирсэн бэлэг байхгүй,
- * сан хоосон / унтраалттай бол бэлэг огт олгогдохгүй.
- */
-export async function priceGiftLines(
-  giftProductIds: string[],
-  goodsAfterDiscount: number,
-  /**
-   * Төлбөртэй мөрүүд тухайн бараанаас аль хэдийн авсан ml (`mlByProduct`).
-   * Бэлэг нь эх савны ҮЛДСЭН хэсгээс гарна: сагс савыг бүрэн дуусгасан
-   * байхад бэлэг нэмбэл `place_order` нөөц түгжихдээ бүхэл захиалгыг унагана.
-   */
-  usedMl: ReadonlyMap<string, number> = new Map(),
-): Promise<PricedLine[]> {
-  if (!giftProductIds.length) return [];
-  const allowance = giftAllowanceFor(goodsAfterDiscount);
-  if (allowance <= 0) return [];
-
-  const settings = await getGiftSettings();
-  if (!settings.enabled || settings.productIds.length === 0) return [];
-  const pool = new Set(settings.productIds);
-
-  const products = await fetchProducts();
-  // `taken` нь тухайн уснаас энэ захиалгад аль хэдийн өгсөн бэлгийн тоо —
-  // хоёр дахь ширхэгт нь эх савнаас дахин 1мл үлдсэн байх ёстой.
-  const picks = limitGiftPicks(giftProductIds, allowance, (id, taken) => {
-    if (!pool.has(id)) return false;
-    const p = products.find((x) => x.id === id);
-    if (!p || p.soldOut) return false;
-    const left =
-      p.availableMl - (usedMl.get(p.id) ?? 0) - taken * GIFT_SAMPLE_ML;
-    return left >= GIFT_SAMPLE_ML;
-  });
-
-  const out: PricedLine[] = [];
-  for (const [id, qty] of picks) {
-    const p = products.find((x) => x.id === id);
-    if (!p) continue;
-    out.push({
-      productId: p.id,
-      variantId: "",
-      name: p.name,
-      brand: p.brand,
-      ml: GIFT_SAMPLE_ML,
-      qty,
-      unitPrice: 0,
-      lineTotal: 0,
-      collectionId: null,
-      collectionName: undefined,
-      isGift: true,
-    });
-  }
-  return out;
 }
 
 /** productId → эх савны үлдэгдэл ml (`inventory.available_ml`). */

@@ -142,6 +142,38 @@ describe("DEMO mode (no Supabase env): seed catalogue", () => {
     expect(r.total).toBe(SEED_PRODUCTS.length);
   });
 
+  it("«Таг» бүлэг дотроо OR, хүйстэй AND (0194, `catalog_search`-ийн толь)", async () => {
+    const { getCatalog, SEED_PRODUCTS } = await load(false);
+    const count = (pred: (p: (typeof SEED_PRODUCTS)[number]) => boolean) =>
+      SEED_PRODUCTS.filter(pred).length;
+    const featOrNew = await getCatalog({
+      featured: true,
+      tags: ["new"],
+      perPage: 1000,
+    });
+    expect(featOrNew.total).toBe(
+      count((p) => p.isFeatured || p.tags.includes("new")),
+    );
+    expect(featOrNew.total).toBeGreaterThan(0);
+    const hotOrNew = await getCatalog({ tags: ["hot", "new"], perPage: 1000 });
+    expect(hotOrNew.total).toBe(
+      count((p) => p.tags.includes("hot") || p.tags.includes("new")),
+    );
+    const female = await getCatalog({
+      featured: true,
+      tags: ["new"],
+      gender: ["female"],
+      perPage: 1000,
+    });
+    expect(female.total).toBe(
+      count(
+        (p) =>
+          (p.isFeatured || p.tags.includes("new")) &&
+          (p.gender === "female" || p.gender === "unisex"),
+      ),
+    );
+  });
+
   it("getRelated ranks within the seed catalogue", async () => {
     const { getRelated, SEED_PRODUCTS } = await load(false);
     const r = await getRelated(SEED_PRODUCTS[0]!.slug, 3);

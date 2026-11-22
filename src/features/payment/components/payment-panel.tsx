@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { Check, ChevronDown, QrCode, RefreshCw, XCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/shared/loading-button";
 import { formatPrice } from "@/lib/format";
@@ -25,6 +26,7 @@ import {
 import { clearPendingOrder } from "@/features/checkout/pending-order";
 import { requestAbandon } from "../abandon";
 import type { PaymentView } from "../types";
+import { formatSendAt as formatGiftSendAt } from "@/features/gift-cards/email-docs";
 import { BankApps } from "./bank-apps";
 import { CopyRow } from "./copy-row";
 
@@ -328,6 +330,8 @@ export function PaymentPanel({
   }
 
   if (cancelled) return <CancelledState token={token} />;
+  if (paid && view.giftCard)
+    return <GiftCardPaidState view={view} giftCard={view.giftCard} />;
   if (paid)
     return <PaidState view={view} deliverOn={deliverOn} token={token} />;
 
@@ -454,7 +458,7 @@ function OrderRecap({ view }: { view: PaymentView }) {
    */
   const collapsible = !useMediaQuery("(min-width: 768px)", false);
   const count = view.lines.reduce((n, l) => n + l.qty, 0);
-  if (view.lines.length === 0) return null;
+  if (view.entries.length === 0) return null;
   const Head = collapsible ? "button" : "div";
   return (
     <div className="bg-card mt-6 rounded-2xl p-4 md:p-5">
@@ -496,53 +500,96 @@ function OrderRecap({ view }: { view: PaymentView }) {
             харагдахгүй (globals.css → бүх border тунгалаг). Мөр хоорондын
             зай нь өөрөө хангалттай тусгаарлагч; жинхэнэ зураас хэрэгтэй
             ганц газар бол тооцооны блокийн дээд тал — тэнд `gold-rule`. */}
+        {/* «Миний захиалга»-тай ижил дараалал ба бүлэглэлт (`buildOrderLines`):
+            дан (ml ↑) → нэмэлт → багц → бэлэг. Мөрийн дүн нь үндсэн үнэ —
+            хямдрал доорх тооцоонд тусдаа мөр (нийлбэр = «Нийт үндсэн үнэ»). */}
         <ul className="mt-3">
-          {view.lines.map((line, i) => (
-            <li
-              key={`${line.name}-${line.ml}-${i}`}
-              className="flex items-center gap-3 py-2.5"
-            >
-              <div className="relative size-11 shrink-0">
-                <div className="bg-muted size-full overflow-hidden rounded-lg">
-                  {line.image && (
-                    <Image
-                      src={line.image}
-                      alt={line.name}
-                      fill
-                      sizes="44px"
-                      className="object-cover"
-                    />
+          {view.entries.map((entry) => {
+            const bundle = entry.kind === "bundle";
+            const image = bundle ? entry.image : entry.line.image;
+            const qty = bundle ? entry.qty : entry.line.qty;
+            const gift = bundle ? entry.isGift : entry.line.isGift;
+            const total = bundle ? entry.baseTotal : entry.line.baseTotal;
+            const name = bundle ? entry.title : entry.line.name;
+            return (
+              <li
+                key={entry.key}
+                className={cn(
+                  "flex gap-3 py-2.5",
+                  bundle ? "items-start" : "items-center",
+                )}
+              >
+                <div className="relative size-11 shrink-0">
+                  <div className="bg-muted relative size-full overflow-hidden rounded-lg">
+                    {image && (
+                      <Image
+                        src={image}
+                        alt={name}
+                        fill
+                        sizes="44px"
+                        className="object-cover"
+                      />
+                    )}
+                  </div>
+                  {qty > 1 && (
+                    <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">
+                      {qty}
+                    </span>
                   )}
                 </div>
-                {line.qty > 1 && (
-                  <span className="bg-foreground text-background absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">
-                    {line.qty}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm/tight font-medium">{name}</p>
+                  <p className="text-muted-foreground truncate text-xs">
+                    {bundle
+                      ? `${entry.ml}ml × ${entry.qty}`
+                      : [
+                          // Нэмэлт барааны `brand` нь ангиллын нэр (0146).
+                          entry.line.brand,
+                          entry.line.isExtra
+                            ? entry.line.variantLabel || null
+                            : entry.line.ml != null
+                              ? `${entry.line.ml}ml`
+                              : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                  </p>
+                  {bundle && (
+                    <ul className="text-muted-foreground mt-1 space-y-0.5 text-xs">
+                      {entry.members.map((m, i) => (
+                        <li key={`${m.brand}-${m.name}-${i}`}>
+                          • {m.brand} — {m.name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {gift ? (
+                  <Badge variant="secondary" className="shrink-0">
+                    Бэлэг
+                  </Badge>
+                ) : (
+                  <span className="text-sm font-medium tabular-nums">
+                    {formatPrice(total)}
                   </span>
                 )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm/tight font-medium">
-                  {line.name}
-                </p>
-                <p className="text-muted-foreground truncate text-xs">
-                  {[
-                    line.brand,
-                    `${line.ml}ml`,
-                    line.collectionName ?? null,
-                    line.isSample ? "бэлэг" : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              </div>
-              {/* Үндсэн үнэ — багцын хямдрал нь мөр бүрт тараагдахын оронд
-                  доорх тооцоонд ганц мөр болж гарна (0097). */}
-              <span className="text-sm font-medium tabular-nums">
-                {formatPrice(line.baseTotal)}
-              </span>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
+        {/* Захиалах мөчид ороогүй бэлэг (0149) — сангаас, reload хийсэн ч. */}
+        {view.omittedGifts.length > 0 && (
+          <ul className="bg-secondary mt-2 space-y-1 rounded-xl px-3 py-2.5 text-xs">
+            {view.omittedGifts.map((g, i) => (
+              <li key={`${g.name}-${i}`}>
+                {g.name} —{" "}
+                {g.reason === "threshold"
+                  ? "Захиалгын дүн өөрчлөгдсөн тул бэлгийн дээж ороогүй."
+                  : "Бэлгийн дээж дууссан тул энэ удаа ороогүй."}
+              </li>
+            ))}
+          </ul>
+        )}
 
         {/*
         Тоог тайлбарлах бүтэц — «яагаад 22,790₮ болов?» гэсэн асуулт хуудсан
@@ -556,9 +603,12 @@ function OrderRecap({ view }: { view: PaymentView }) {
       */}
         <div className="gold-rule mt-3" />
         <div className="mt-3 space-y-1.5 text-xs">
-          {orderSummaryRows(view).map((row) => (
-            <RecapRow key={row.label} {...row} />
-          ))}
+          {orderSummaryRows(view)
+            // Бэлгийн карт хүргэлтгүй (0179) — «Хүргэлт: Үнэгүй» төөрөгдүүлнэ.
+            .filter((row) => !(view.giftCard && row.label === "Хүргэлт"))
+            .map((row) => (
+              <RecapRow key={row.label} {...row} />
+            ))}
           {/* Тооцооны эцсийн мөр. Хэмжээний алхам нь checkout-ийн тоймтой нэг
               хэмжээст: жагсаалтын мөр → дүн нь ~1.7 дахин том, шошго нь дүнгээс
               нэг зэрэг жижиг. Урьд нь 12px мөрийн дараа 14px байсан тул «бага
@@ -590,12 +640,18 @@ function OrderRecap({ view }: { view: PaymentView }) {
         {/* Төлбөр хоцорсон бол сонгосон өдөр аль хэдийн өнгөрсөн байж мэднэ —
           `mark_order_paid` (0069) төлөх мөчид өдрийг ахиулна. Тиймээс энд
           хадгалсан өдрийг биш, одоо төлөхөд хүргэгдэх өдрийг харуулна. */}
-        <p className="text-muted-foreground mt-3 text-xs">
-          <strong className="text-foreground font-medium">
-            {formatDeliveryDay(projectedDeliveryDay(view.deliverOn))}
-          </strong>{" "}
-          {DISPATCH_HOUR}:00–{DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.
-        </p>
+        {view.giftCard ? (
+          <p className="text-muted-foreground mt-3 text-xs">
+            Төлбөр орсон даруйд бэлгийн карт идэвхжинэ — хүргэлтгүй.
+          </p>
+        ) : (
+          <p className="text-muted-foreground mt-3 text-xs">
+            <strong className="text-foreground font-medium">
+              {formatDeliveryDay(projectedDeliveryDay(view.deliverOn))}
+            </strong>{" "}
+            {DISPATCH_HOUR}:00–{DELIVERY_END_HOUR}:00 цагийн хооронд хүргэгдэнэ.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -1057,6 +1113,78 @@ function PaidState({
           <Link href={`/order/${token}`}>Захиалгаа харах</Link>
         </Button>
         <Button asChild className="flex-1">
+          <Link href="/catalog">Дэлгүүр үзэх</Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Бэлгийн картын төлбөр орлоо (0179). Хүргэлтгүй — хүргэх өдөр, «Захиалгаа
+ * харах»-ын оронд картаа хуваалцах газар руу. Худалдан авагчийн оноо карт
+ * ашиглагдах эсвэл 7 хоногийн дараа нээгдэнэ (gift-cards-plan §12-Q4).
+ */
+function GiftCardPaidState({
+  view,
+  giftCard,
+}: {
+  view: PaymentView;
+  giftCard: NonNullable<PaymentView["giftCard"]>;
+}) {
+  return (
+    <div className="mx-auto max-w-lg px-4 py-16 text-center md:py-24">
+      <motion.span
+        initial={{ scale: 0.85, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.35, delay: 0.05, ease: "easeOut" }}
+        className="bg-success/12 text-success mx-auto flex size-16 items-center justify-center rounded-full"
+      >
+        <Check className="size-8" strokeWidth={2.5} />
+      </motion.span>
+      <h1 className="mt-6 text-3xl font-semibold tracking-tight">
+        Бэлгийн карт бэлэн боллоо
+      </h1>
+      <p className="text-muted-foreground mt-2">
+        Хүлээн авагч:{" "}
+        <span className="text-foreground font-medium">
+          {giftCard.recipientName}
+        </span>{" "}
+        · {formatPrice(view.total)}
+      </p>
+      <div className="bg-card mt-8 rounded-2xl p-5 text-left">
+        <p className="text-sm">
+          {giftCard.recipientEmail ? (
+            <>
+              Код, заавар{" "}
+              <strong className="font-medium">{giftCard.recipientEmail}</strong>{" "}
+              хаяг руу{" "}
+              {giftCard.sendAt && new Date(giftCard.sendAt) > new Date()
+                ? `${formatGiftSendAt(giftCard.sendAt)}-д илгээгдэнэ.`
+                : "илгээгдэнэ."}
+            </>
+          ) : (
+            "Картаа «Бэлгийн карт» хэсгээс холбоосоор хуваалцах эсвэл кодыг нь өгөөрэй."
+          )}
+        </p>
+        {view.pointsEarned > 0 && (
+          <>
+            <div className="gold-rule mt-3" />
+            <p className="text-muted-foreground mt-3 text-xs">
+              <strong className="text-foreground font-medium tabular-nums">
+                +{view.pointsEarned.toLocaleString("mn-MN")} V point
+              </strong>{" "}
+              хуримтлагдлаа — карт ашиглагдмагц эсвэл 7 хоногийн дараа зарцуулах
+              боломжтой болно.
+            </p>
+          </>
+        )}
+      </div>
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <Button asChild className="flex-1">
+          <Link href="/account/gift-cards">Картаа харах</Link>
+        </Button>
+        <Button asChild variant="secondary" className="flex-1">
           <Link href="/catalog">Дэлгүүр үзэх</Link>
         </Button>
       </div>

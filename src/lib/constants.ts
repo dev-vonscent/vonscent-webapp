@@ -60,7 +60,8 @@ export type MlSize = (typeof ML_SIZES)[number];
 export const BUNDLE_ML_SIZES = ML_SIZES;
 
 /**
- * Нүүрний decant visualizer-т «≈ N шүршилт» гэж харуулах ойролцоо тоо.
+ * «≈ N цацалт» — нүүрний decant visualizer ба хэмжээ сонгогчийн карт
+ * (task 15) дээр харуулах ойролцоо тоо.
  * 1мл ≈ 15 шүршилт (клиентийн тоо: 2/5/10/20мл → 30/75/150/300) —
  * маркетингийн тооцоо, захиалга/үнэд оролцохгүй.
  */
@@ -94,10 +95,27 @@ export const POPUP_AUDIENCES = {
 export type PopupAudience = keyof typeof POPUP_AUDIENCES;
 
 /**
- * «Туршиж үзэх» шошготой хэмжээ (ус ба багцын хэмжээний товч дээр). Зөвхөн
- * UI санал — 2ml нь sample биш, бусадтай адил энгийн хэмжээ.
+ * Хэмжээ сонгогчийн ДООР, сонгосон хэмжээнээс хамаарч гарах нэг мөр
+ * (task 15, клиентийн текст 2026-11-18). Хэрэглэгчид яг ингэж харагдана.
+ * `{sprays}` = ml × `SPRAYS_PER_ML` — хэмжээний картын цацалтын тоотой
+ * үргэлж ижил (`sizeHint` орлуулна). 2ml нь sample биш, энгийн хэмжээ.
  */
-export const TRIAL_SIZE_ML: MlSize = 2;
+export const SIZE_HINTS: Record<MlSize, string> = {
+  2: "{sprays} цацалт, эрсдэлгүй туршилт",
+  5: "Цүнхэнд багтах, өдөр бүрийн хэмжээ",
+  10: "Аялалд, онгоцонд ч зөвшөөрөгдөнө",
+  // 20ml-ийн 1ml-ийн үнэ бүх зарах хэмжээнээс бага/тэнцүү үед л.
+  20: "Дуртай үнэртнээ хамгийн хямдаар, удаан хэрэглэ",
+};
+
+/** Бэлэн багцын 2ml — `{sprays}` нь бүх үнэртний нийт цацалт. */
+export const SIZE_HINT_TRIAL_BUNDLE = "Нийт {sprays} цацалт, эрсдэлгүй туршилт";
+
+/**
+ * 20ml-ийн 1ml-ийн үнэ (одоогийн бодит үнээр) бусад зарах хэмжээнээс бага
+ * БИШ үед «хамгийн хямдаар» гэвэл худал — оронд нь энэ.
+ */
+export const SIZE_HINT_LARGEST = "Дуртай үнэртнээ удаан хэрэглэ";
 
 /**
  * «Шинэ» таг автомат: хамгийн сүүлд ХУДАЛДААНД ГАРСАН (`launched_at`, 0125)
@@ -165,6 +183,20 @@ export const HOT_COLLECTIONS_COUNT = 6;
  * (клиент, 2026-10). Зарагдсан багц дутвал бусдаас санамсаргүй нөхнө.
  */
 export const HOT_RAIL_COLLECTIONS = 3;
+
+/**
+ * Нүүрний «Хямдралтай» rail (task 2.1) — эрэмбэлэхээс өмнө уншиж авах
+ * хямдралтай усны дээд тоо (rail өөрөө 12). Дуусах мөчөөр эрэмбэлдэг тул
+ * бүгдийг нь авах ёстой; каталог ~100 ус.
+ */
+export const SALE_RAIL_POOL = 200;
+
+/**
+ * Хямдралын тоолуур (task 2.2) энэ хугацаанаас бага үлдсэн үед л улаан
+ * (`text-destructive`); түүнээс өмнө саармаг (`text-muted-foreground`) — олон
+ * карт зэрэг улаанаар гүйж алдааны мессеж шиг харагдахгүй.
+ */
+export const SALE_COUNTDOWN_URGENT_MS = 24 * 60 * 60 * 1000;
 
 /**
  * «Онцлох» — ус, багц нийлээд хамгийн ихдээ ийм тоо (0144_featured_rolling).
@@ -689,7 +721,7 @@ export const RATE_LIMITS = {
   /**
    * verify.mn MO-SMS сесс нээх — нэг дугаарт. Гадны үйлчилгээ рүү залгадаг
    * цорын ганц нээлттэй цэг тул хоёр тэнхлэгээр хэмжинэ. Сесс ~5 минут амьдардаг
-   * бөгөөд хэрэглэгч СМС-ээ өөрөө илгээдэг: 10 минутад 3 удаа эхлүүлэх нь
+   * бөгөөд хэрэглэгч SMS-ээ өөрөө илгээдэг: 10 минутад 3 удаа эхлүүлэх нь
    * «код ирсэнгүй, дахин эхлүүлье» гэсэн жинхэнэ урсгалд хангалттай.
    */
   verifyStartPhone: { limit: 3, windowSec: 10 * 60 },
@@ -726,6 +758,15 @@ export const RATE_LIMITS = {
   broadcastSend: { limit: 10, windowSec: 60 * 60 },
   /** «Надад туршиж илгээх» — зөвхөн өөртөө, засах явцад хэд хэдэн удаа. */
   broadcastTest: { limit: 30, windowSec: 10 * 60 },
+  /**
+   * Бэлгийн код оруулах (0179) — хэрэглэгчээр. Код 32^8 хувилбартай, гэхдээ
+   * таах оролдлогыг утгагүй болгох нь энэ хязгаар: жинхэнэ хүн 1–2 удаа.
+   */
+  giftCardRedeem: { limit: 5, windowSec: 10 * 60 },
+  /** Мөн IP-ээр — олон бүртгэлээр ээлжлэн таахаас. */
+  giftCardRedeemIp: { limit: 20, windowSec: 60 * 60 },
+  /** Бэлгийн картыг имэйлээр (дахин) илгээх — хүний хаяг руу спам болохоос. */
+  giftCardSend: { limit: 5, windowSec: 60 * 60 },
 } as const;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;
@@ -790,6 +831,16 @@ export const FEATURE_FLAGS = {
     description:
       "Standard/Gold/Platinum/Sapphire/Ruby: /account/tier хуудас, профайл ба цэсний түвшний хүрээ, сэтгэгдлийн зургийн хүрээ, нүүр хуудасны «Top 3 хэрэглэгч», «Миний захиалга»-ын нийт дүн, /api/account/tier, mark_order_paid-ийн түвшний V point хувь (0143). Унтраалттай үед оноо хуучин settings.loyalty дүрмээр бодогдоно.",
   },
+  extras_shop: {
+    label: "Нэмэлт бараа",
+    description:
+      "Бэлгийн хайрцаг, грамын сав, үлдэгдэлтэй шил, шприц г.м.: каталогийн «Нэмэлт бараа» таб, /extras/*, хайлт, сагс ба checkout, place_order-ийн нэмэлт барааны салаа, үлдэгдэлтэй шилний түгжээ (0145–). Админ → Каталог → Нэмэлт бараа (/admin/extras, /api/admin/extras) мөн тугаар хаагдана (plan §14).",
+  },
+  vial_inventory: {
+    label: "Савны тоон нөөц",
+    description:
+      "Хоосон декант савыг ширхэгээр тоолох: /admin/bottles-ийн тоон горим, «Грамын сав» ангилал, хэмжээ зарагдах эсэх (variant_sellable) савны тоогоор, захиалгад савны reserve (0145–). Унтраалттай үед хуучин асаах/унтраах түгжээ (0095) хэвээр.",
+  },
   review_moderation: {
     label: "Сэтгэгдлийн хяналт",
     description:
@@ -803,14 +854,216 @@ export const FEATURE_FLAGS = {
   sale_page: {
     label: "Хямдрал",
     description:
-      "Админ → Каталог → Хямдрал (/admin/sales, /api/admin/sales): олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал тавих/цуцлах ба барааны үнийн хүснэгтэд эхлэх/дуусах хугацаа (0166: apply_bulk_sale, clear_bulk_sale). Хугацаа дуусмагц үнэ өөрөө энгийн болно. Багц хамаарахгүй, хэрэглэгчийн талд шинэ хуудас байхгүй.",
+      "Админ → Маркетинг → Хямдрал (/admin/sales, /api/admin/sales): олон бараанд нэг дор хэмжээ бүрийн хувиар хугацаатай хямдрал тавих/цуцлах ба барааны үнийн хүснэгтэд эхлэх/дуусах хугацаа (0166: apply_bulk_sale, clear_bulk_sale). Хугацаа дуусмагц үнэ өөрөө энгийн болно. Багц хамаарахгүй, хэрэглэгчийн талд шинэ хуудас байхгүй.",
+  },
+  named_sales: {
+    label: "Нэртэй хямдрал",
+    description:
+      "Админ → Маркетинг → Хямдрал-ыг нэртэй хямдралуудын жагсаалт + шинэ/засах хуудас болгоно (/admin/sales/new, /admin/sales/[id], /api/admin/sales/named). Бараа нэг зэрэг зөвхөн нэг дуусаагүй хямдралд; хуучин нэргүй хямдрал «Нэргүй» бүлэг болж харагдана (0188: sales, product_variants.sale_id, save_sale/end_sale/delete_sale). «Хямдрал» (sale_page) тугтай хамт асаана. Хаалттай үед хуучин «Хямдрал» хуудас хэвээр, бичих RPC FEATURE_DISABLED.",
+  },
+  sale_events: {
+    label: "Арга хэмжээ (хугацаат хямдрал)",
+    description:
+      "Black Friday, Цагаан сар г.м. нэртэй, хугацаатай хямдрал: Админ → Маркетинг → Арга хэмжээ (/admin/sale-events, /api/admin/sale-events), каталогийн «?event=» шүүлтүүр, chip, зурвас, тоолуур, барааны картын badge, /sale/[slug] богино хаяг, шөнийн /api/cron/midnight-revalidate (хил нь УБ 00:00). Үнэ variant_price()-д тооцоологдоно (0181) — sale_price-д бичигдэхгүй, гар хямдрал дарагдахгүй. Хаалттай үед үнэ, каталогт ямар ч нөлөөгүй, бичих RPC FEATURE_DISABLED.",
+  },
+  sale_event_bundles: {
+    label: "Арга хэмжээнд бэлэн багц",
+    description:
+      "Арга хэмжээний студид (/admin/sale-events) бэлэн багц сонгож хэмжээ бүрт хувь бичих (task 16.7). Event-ийн хувь багцын суурь хувийг орлоно (greatest — хэзээ ч үнэтэй болохгүй), дуусахад өөрөө буцна (0190 live_event_collection_discounts). Каталогийн «?event=», chip, badge-д багц гарна; захиалгын задаргаанд «Багцын хямдрал» + «<Event нэр>» мөр. «Арга хэмжээ» (sale_events) тугтай хамт асаана. Хаалттай үед багцын үнэ, каталог, захиалга өмнөх шигээ, багцын бичилт FEATURE_DISABLED.",
+  },
+  hero_admin: {
+    label: "Нүүрний баннер (админ)",
+    description:
+      "Нүүрний hero-гийн текст, товч, холбоос, зураг, хуваарийг админ бичнэ: Админ → Сайт → Нүүрний баннер (/admin/heroes, /api/admin/heroes), арга хэмжээтэй холбох, 390/768/1440 урьдчилж харах (/hero-preview), live_hero() (0182). Хаалттай үед нүүр кодын hero-г (HOME_CAMPAIGNS) харуулна, бичилт FEATURE_DISABLED.",
   },
   meta_capi: {
     label: "Meta Conversions API",
     description:
       "Төлбөр баталгаажих мөчид (QPay болон гараар баталсан) Purchase event-ийг серверээс Meta руу илгээнэ — browser pixel-ийн алдагдсан худалдан авалтыг нөхнө (lib/meta/capi.ts). Захиалга үүсэхэд _fbp/_fbc cookie, IP, user agent-ийг захиалга дээр хадгална (0171). Утас, имэйлийг SHA-256 hash хийж явуулна. META_CAPI_ACCESS_TOKEN env шаардлагатай.",
   },
+  sale_display: {
+    label: "Хямдралын харагдац (rail, тоолуур)",
+    description:
+      "Нүүрний «Хямдралтай» rail (Эрэлттэй-н дараа; зөвхөн хямдралтай дан бараа, дуусах хугацаа ойр → хувь их) ба барааны картын хямдрал дуусах тоолуур «7 өдөр 16:45:32» (task 2.1, 2.2). Тоолуур зөвхөн браузер дээр гүйнэ. Хаалттай үед нүүр, каталог өмнөх шигээ (rail, тоолуур байхгүй). Өгөгдөл хуримтлуулдаггүй.",
+  },
+  gift_cards: {
+    label: "Бэлгийн карт",
+    description:
+      "100k/200k/300k/500k₮-ийн бэлгийн карт: /gift-cards (зочин харна, худалдан авахад нэвтрэлт), /gift/[token] хүлээн авагчийн хуудас, /account/gift-cards, кодыг V point болгох, имэйлээр илгээх; place_gift_card_order, mark_order_paid-ийн картын салаа, redeem_gift_card, хугацаа дуусгах cron (0179). Админ → Бэлгийн карт мөн тугаар хаагдана (gift-cards-plan). АНХААР: карт зарагдсаны дараа хаавал хүлээн авагч кодоо оруулж чадахгүй ч 1 жилийн хугацаа нь үргэлжлэн тоологдоно — нээгдсэний дараа хаахгүй байх.",
+  },
 } as const satisfies Record<string, FeatureFlagMeta>;
+
+/** Арга хэмжээний талбарын урт (0181 check-тэй ижил). */
+export const SALE_EVENT_LIMITS = {
+  name: 60,
+  badgeLabel: 24,
+  headline: 80,
+  description: 200,
+  slugMin: 2,
+  slugMax: 60,
+  /** Нэг арга хэмжээнд хамгийн олон бараа — каталог ~100 бараатай. */
+  products: 500,
+} as const;
+
+/** Арга хэмжээний хувь (0181 `sale_event_discounts.pct` check). */
+export const SALE_EVENT_MAX_PCT = 90;
+
+/** Badge хоосон үед картан дээр — «Хямдралтай» тэмдэг (task 2.3). */
+export const SALE_EVENT_DEFAULT_BADGE = "Хямдралтай";
+
+/**
+ * Сайтын дээд гүйдэг зурвасын өнгө (0187 `sale_events.ticker_theme` check-тэй
+ * ижил). Өнгө нь globals.css-ийн `[data-ticker=…]` — дурын өнгө биш, бэлэн
+ * хослол тул бичиг үргэлж уншигдана. null → `navy`.
+ */
+export const SALE_EVENT_TICKER_THEMES = [
+  "navy",
+  "black",
+  "gold",
+  "red",
+  "ivory",
+  "blue",
+] as const;
+export type SaleEventTickerTheme = (typeof SALE_EVENT_TICKER_THEMES)[number];
+export const SALE_EVENT_TICKER_DEFAULT: SaleEventTickerTheme = "navy";
+export const SALE_EVENT_TICKER_LABEL: Record<SaleEventTickerTheme, string> = {
+  navy: "Navy",
+  black: "Хар",
+  gold: "Алт",
+  red: "Улаан",
+  ivory: "Цайвар",
+  blue: "Хөх",
+};
+
+/** Hero-гийн талбарын урт (0182 check-тэй ижил, plan §4.5). */
+export const HERO_LIMITS = {
+  name: 60,
+  eyebrow: 40,
+  title: 48,
+  description: 140,
+  mobileDescription: 70,
+  buttonLabel: 22,
+  imageAlt: 200,
+  catalogQuery: 300,
+  path: 300,
+} as const;
+
+/** Улирлын баннер (0185) — `heroes.season`. */
+export const HERO_SEASONS = ["spring", "summer", "autumn", "winter"] as const;
+export type HeroSeason = (typeof HERO_SEASONS)[number];
+
+/**
+ * Улирлын баннерын өгөгдмөл эхлэх өдөр 'MM-DD' (УБ, studio-ux.md D9). Админ
+ * өөрчилж болно; дуусах өдөр байхгүй — дараагийн бэлэн улирал хүртэл.
+ */
+export const SEASON_HERO_STARTS: Record<HeroSeason, string> = {
+  spring: "03-01",
+  summer: "06-01",
+  autumn: "09-01",
+  winter: "12-01",
+};
+
+/**
+ * Арга хэмжээний студид үүссэн баннерын эрэмбэ (studio-ux.md D6) — тусгай
+ * өдрийн баннераас (0) дээгүүр. Админд харагдахгүй.
+ */
+export const HERO_EVENT_PRIORITY = 10;
+
+/**
+ * Баннерын товчны «Дарахад хаашаа очих вэ?» сонголт (studio-ux.md D5). «Энэ
+ * арга хэмжээний бараанууд» нь slug-аас хамаарах тул сонгогч өөрөө нэмнэ;
+ * «Өөр хуудас…» нь дотоод хаягийн input. `flag` — тэр тугийн ард байгаа
+ * хуудас, туг хаалттай бол жагсаалтад гарахгүй.
+ */
+export const HERO_LINK_PRESETS = [
+  {
+    key: "catalog",
+    label: "Бүх каталог",
+    target: { type: "path", href: "/catalog" },
+  },
+  {
+    key: "season-spring",
+    label: "Хаврын үнэртэн",
+    group: "season",
+    target: { type: "season", value: "spring" },
+  },
+  {
+    key: "season-summer",
+    label: "Зуны үнэртэн",
+    group: "season",
+    target: { type: "season", value: "summer" },
+  },
+  {
+    key: "season-autumn",
+    label: "Намрын үнэртэн",
+    group: "season",
+    target: { type: "season", value: "autumn" },
+  },
+  {
+    key: "season-winter",
+    label: "Өвлийн үнэртэн",
+    group: "season",
+    target: { type: "season", value: "winter" },
+  },
+  {
+    key: "new",
+    label: "Шинэ бараа",
+    target: { type: "catalog", query: "tags=new" },
+  },
+  {
+    key: "build",
+    label: "Багц үүсгэх",
+    target: { type: "path", href: "/collections/build" },
+  },
+  {
+    key: "gift-cards",
+    label: "Бэлгийн карт",
+    flag: "gift_cards",
+    target: { type: "path", href: "/gift-cards" },
+  },
+] as const;
+
+/**
+ * Hero-гийн зургийн хэмжээ (prompts/hero.md, plan §7.6). Desktop эх 2.8:1
+ * (3584×1280), утас 4:3 (2048×1536). Харьцаа ±2%.
+ */
+export const HERO_IMAGE = {
+  desktop: {
+    ratio: 2.8,
+    minWidth: 2400,
+    widths: [1600, 2400, 3200],
+    quality: 80,
+  },
+  // 1536 — AI-ийн «хурдан» хэмжээ (1536×1152) ч орно; том бол 1600 хүртэл.
+  mobile: { ratio: 4 / 3, minWidth: 1536, width: 1600, quality: 85 },
+  ratioTolerance: 0.02,
+} as const;
+
+/**
+ * AI hero зураг (0183, plan §8.3) — санамсаргүй зардлаас хамгаалах. Нэг hero-д
+ * зэрэг 2 ажил, бүх админд өдөрт 30. `generating` төлөвт `staleMinutes`-ээс
+ * удсан ажлыг (функц `maxDuration`-д тасарсан) амжилтгүй гэж үзнэ.
+ */
+export const HERO_AI_LIMITS = {
+  concurrentPerHero: 2,
+  perDay: 30,
+  staleMinutes: 6,
+  extraMax: 500,
+} as const;
+
+/** Бэлгийн картын дүн, ₮ (0179 check-тэй ижил). */
+export const GIFT_CARD_AMOUNTS = [100000, 200000, 300000, 500000] as const;
+export type GiftCardAmount = (typeof GIFT_CARD_AMOUNTS)[number];
+
+/** Талбарын урт (0179 check-тэй ижил). */
+export const GIFT_CARD_LIMITS = {
+  recipientName: 40,
+  fromName: 40,
+  message: 120,
+} as const;
+
+/** Худалдан авагчийн оноо карт ашиглагдаагүй бол хэдэн хоногийн дараа нээгдэх (0179). */
+export const GIFT_CARD_BUYER_POINTS_LOCK_DAYS = 7;
 
 /**
  * Meta Graph API-ийн хувилбар (Conversions API). v26.0 нь 2026-07-29-нд
@@ -860,6 +1113,29 @@ export type UserTierKey = (typeof USER_TIERS)[number]["key"];
 /** Түвшний хуудасны топ жагсаалтын урт (7 хоног / сар). */
 export const TIER_LEADERBOARD_SIZE = 3;
 
+/**
+ * Нэмэлт бараа (0145): энгийн барааны зарах боломжтой тоо үүнээс бага
+ * буюу тэнцүү бол админд «Цөөхөн» гэж анхааруулна.
+ */
+export const EXTRAS_LOW_STOCK_QTY = 3;
+
+/**
+ * Хэрэглэсэн барааны зөвшөөрөл (extras-shop-plan §18.5) — хоосон шил,
+ * үлдэгдэлтэй шил сагсанд байвал checkout дээр заавал. Бүтэн, лацтай шилэнд
+ * үгүй. Аль ангилал+горимд хамаарахыг `extra_category_modes.requires_consent`.
+ */
+export const USED_GOODS_CONSENT_TEXT =
+  "Энэ бараа үйлдвэрээс шинээр гарсан биш, хэрэглэсэн бараа юм. Шил зурагдсан, " +
+  "өнцөг булан нь бага зэрэг цуурсан, шүршигч муу ажилладаг, таг сайн " +
+  "барьдаггүй, бичиг наалт нь элэгдэж бүдгэрсэн, тестер савлагаатай, гадна " +
+  "хуулганы өнгө бүдгэрсэн байж болно. Зөвхөн цуглуулга болон хувийн " +
+  "хэрэгцээнд худалдан авч байна. Цааш дамлан зарах, арилжаа хийх зорилгоор " +
+  "авсан, манайхаас аваагүй бараагаар сольсон эсвэл худал мэдээлэл тараасан " +
+  "нь нотлогдвол хэрэглэгчийн бүртгэлийг түр хаах, цаашлаад устгах бөгөөд " +
+  "үүнээс үүдэх хохирлыг манайх хариуцахгүй.";
+export const USED_GOODS_CONSENT_LABEL =
+  "Хэрэглэсэн бараа гэдгийг ойлгож, нөхцөлийг зөвшөөрч байна";
+
 /** «Миний мэдээлэл» (0163) — хязгаарууд SQL-ийн check-тэй таарна. */
 export const PROFILE_GENDERS = ["female", "male", "other"] as const;
 export type ProfileGender = (typeof PROFILE_GENDERS)[number];
@@ -868,6 +1144,19 @@ export const PROFILE_GENDER_LABEL: Record<ProfileGender, string> = {
   male: "Эрэгтэй",
   other: "Бусад",
 };
+/**
+ * Сэтгэгдлийн зохиогчийн насны ангилал (0198 `review_author_age_group`-тэй
+ * таарах ёстой): доод хил орно, дээд хил орохгүй; 13-аас доош бол харуулахгүй.
+ */
+export const REVIEW_AGE_GROUPS = [
+  "13-18",
+  "18-25",
+  "25-30",
+  "30-40",
+  "40-50",
+  "50+",
+] as const;
+export type ReviewAgeGroup = (typeof REVIEW_AGE_GROUPS)[number];
 export const PROFILE_NAME_MAX = 80;
 export const PROFILE_JOB_MAX = 80;
 /**
@@ -890,8 +1179,12 @@ export const PROFILE_JOB_OPTIONS = [
 export const PROFILE_FAVORITE_PERFUMES_MAX = 3;
 export const PROFILE_PERFUME_NAME_MAX = 80;
 export const PROFILE_SCENT_PREFS_MAX = 10;
-/** `settings.loyalty.profilePoints` байхгүй үеийн утга (0163-ийн seed). */
-export const DEFAULT_PROFILE_POINTS = 500;
+/**
+ * `settings.loyalty.profilePoints` байхгүй үеийн утга. 0163-ийн seed 500,
+ * 0195 санд 1,000 болгосон (task 8.4, 2026-11-17). Бодит утга нь
+ * тохиргоонд — Админ → V point → «Мэдээлэл бөглөсний урамшуулал».
+ */
+export const DEFAULT_PROFILE_POINTS = 1000;
 
 /**
  * Хар «тайзтай» хуудсууд: агуулга нь бүх темд хар (`.force-black`), тиймээс

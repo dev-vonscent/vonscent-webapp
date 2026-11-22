@@ -1,3 +1,4 @@
+import { parseSaleBreakdown } from "@/lib/orders/price-breakdown";
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -29,7 +30,10 @@ interface OrderRow {
   deliver_on: string | null;
   subtotal: number;
   gross_subtotal: number | null;
+  /** 0189 — арга хэмжээ / хямдралын мөрүүд; хуучин захиалгад null. */
+  sale_breakdown?: unknown;
   coupon_code: string | null;
+  coupon_pct?: number | null;
   shipping_fee: number;
   discount: number;
   loyalty_used: number;
@@ -38,7 +42,7 @@ interface OrderRow {
 }
 
 const SELECT =
-  "id, order_no, status, payment_status, created_at, deliver_on, subtotal, gross_subtotal, coupon_code, shipping_fee, discount, loyalty_used, total, pay_token";
+  "id, order_no, status, payment_status, created_at, deliver_on, subtotal, gross_subtotal, sale_breakdown, coupon_code, coupon_pct, shipping_fee, discount, loyalty_used, total, pay_token";
 
 export async function getOrderStatusByToken(
   token: string,
@@ -55,7 +59,7 @@ export async function getOrderStatusByToken(
   const order = data as OrderRow | null;
   if (!order) return null;
 
-  const [lines, { data: historyData }] = await Promise.all([
+  const [{ lines, entries }, { data: historyData }] = await Promise.all([
     paymentLines(supabase, order.id),
     supabase
       .from("order_status_history")
@@ -87,9 +91,12 @@ export async function getOrderStatusByToken(
     createdAt: order.created_at,
     deliverOn: order.deliver_on,
     lines,
+    entries,
     subtotal: order.subtotal,
     grossSubtotal: order.gross_subtotal,
+    saleBreakdown: parseSaleBreakdown(order.sale_breakdown),
     couponCode: order.coupon_code,
+    couponPct: order.coupon_pct ?? null,
     shippingFee: order.shipping_fee,
     discount: order.discount,
     loyaltyUsed: order.loyalty_used,

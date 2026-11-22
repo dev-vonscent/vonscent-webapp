@@ -63,7 +63,15 @@
   /* destructive must stay legible as text on black — not a gray surface */
   --destructive: #f87171;
   --destructive-foreground: #450a0a;
+  /* Хямдралын тэмдэг («−15%», тоолуур ≤24ц): БҮХ theme-д ижил — бараан улаан
+     дэвсгэр + цагаан тоо (6.5:1). Theme-ийн class-ууд дахин тодорхойлохгүй тул
+     :root-оос удамшина. destructive-аас тусдаа (тэр нь theme бүрт өөр). */
+  --sale: #b91c1c;
+  --sale-foreground: #ffffff;
   --success: #d4d4d4;
+  /* «Идэвхтэй» төлөв (арга хэмжээ) — монохром систем дэх цорын ганц
+     ногоон; зөвхөн PhaseBadge-д. */
+  --live: #4ade80;
   /* Warning is the one place the monochrome palette has to break: "энэ мөр
      анхаар" cannot be said in the same grey as "энэ мөр хэвийн". Amber is the
      only hue in the system besides destructive red, and it reads at 8.77:1 on
@@ -147,6 +155,7 @@
   --destructive: #c02626;
   --destructive-foreground: #ffffff;
   --success: #4b5563;
+  --live: #15803d;
   --warning: #8a5200; /* 6.12:1 on card */
 
   --border: transparent;
@@ -207,6 +216,7 @@
   --destructive: #c02626;
   --destructive-foreground: #ffffff;
   --success: #3b5578;
+  --live: #15803d;
   --warning: #8a5200; /* 6.01:1 on card */
 
   --border: transparent;
@@ -260,6 +270,54 @@
   background-color: var(--admin-page);
 }
 
+/* ── Дээд гүйдэг зурвас (SaleEventTicker) ──────────────────────────────────
+   Өнгө нь theme-ээс биш, арга хэмжээ бүрийн сонголтоос (0187 `ticker_theme`,
+   constants `SALE_EVENT_TICKER_THEMES`). Дурын өнгө биш, бэлэн хослол:
+   `--announce` дэвсгэр, `-foreground` гарчиг, `-accent` тоолуур. Бичиг том
+   (≥18px) тод тул хослол бүр ≥3:1 (WCAG large text). Цул өнгө, gradient-гүй. */
+[data-ticker="navy"] {
+  --announce: #0e1b3b;
+  --announce-foreground: #ffffff;
+  --announce-accent: #c9a96e;
+}
+/* Хар–улаан–цагаан (клиентийн засвар 2026-11-21 сл.7: шар → улаан).
+   #ef4444 нь #0a0a0a дээр ≈5:1 — жижиг chip-ийн бичигт ч хүрэлцэнэ. */
+[data-ticker="black"] {
+  --announce: #0a0a0a;
+  --announce-foreground: #ffffff;
+  --announce-accent: #ef4444;
+}
+[data-ticker="gold"] {
+  --announce: #c9a96e;
+  --announce-foreground: #0e1b3b;
+  --announce-accent: #5b3a0a;
+}
+[data-ticker="red"] {
+  --announce: #b3121f;
+  --announce-foreground: #ffffff;
+  --announce-accent: #fde68a;
+}
+[data-ticker="ivory"] {
+  --announce: #f3ede2;
+  --announce-foreground: #0e1b3b;
+  --announce-accent: #b3121f;
+}
+[data-ticker="blue"] {
+  --announce: #6f86d9;
+  --announce-foreground: #ffffff;
+  --announce-accent: #0e1b3b;
+}
+/* Барааны картын тэмдэг (SaleChip) — жижиг (12px) бичиг тул ≥4.5:1 хэрэгтэй.
+   Ихэнх хослолд зурвасынхтай ижил; хөхөд цагаан 3.45:1 тул navy (4.92:1). */
+[data-ticker] {
+  --announce-chip: var(--announce-foreground);
+  --announce-chip-accent: var(--announce-accent);
+}
+[data-ticker="blue"] {
+  --announce-chip: #0e1b3b;
+  --announce-chip-accent: #0e1b3b;
+}
+
 /* ── Pink ─────────────────────────────────────────────────────────────── */
 .pink {
   --background: #fff5f8;
@@ -294,6 +352,7 @@
   --destructive: #b3213f;
   --destructive-foreground: #ffffff;
   --success: #7d4457;
+  --live: #15803d;
   --warning: #8a4a12; /* 5.92:1 on card */
 
   --border: transparent;
@@ -360,7 +419,15 @@
   --shadow-gold: var(--shadow-gold);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-sale: var(--sale);
+  --color-sale-foreground: var(--sale-foreground);
   --color-success: var(--success);
+  --color-live: var(--live);
+  --color-announce: var(--announce);
+  --color-announce-foreground: var(--announce-foreground);
+  --color-announce-accent: var(--announce-accent);
+  --color-announce-chip: var(--announce-chip);
+  --color-announce-chip-accent: var(--announce-chip-accent);
   --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--input);
@@ -373,6 +440,8 @@
   --color-phone: #34c759;
 
   --font-sans: var(--font-sans);
+  /* Зөвхөн дээд гүйдэг зурвас — нарийссан тод том үсэг (Oswald, кирилл). */
+  --font-condensed: var(--font-condensed), var(--font-sans), sans-serif;
   /* single minimalist font everywhere — serif utilities resolve to sans */
   --font-serif: var(--font-sans);
 
@@ -388,9 +457,35 @@
   --animate-fade-up: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-marquee: marquee 28s linear infinite;
   --animate-shimmer: shimmer 2.2s linear infinite;
+  --animate-chip-sweep: chip-sweep 4.5s ease-in-out 1s infinite;
   --animate-sheen: sheen-rotate 80s linear infinite;
   --animate-nudge-up: nudge-up 2s ease-in-out infinite;
   --animate-search-open: search-open 0.2s ease-out;
+  /* Үнийн мөрийн тоолуурын pill: гарч ирэх (opacity + 4px), цагны icon-ы
+     секунд тутмын зөөлөн хөдөлгөөн. Зөвхөн `motion-safe:`-ээр хэрэглэнэ. */
+  --animate-sale-pill-in: sale-pill-in 0.2s ease-out both;
+  --animate-sale-clock: sale-clock 1s ease-in-out infinite;
+}
+
+@keyframes sale-pill-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes sale-clock {
+  0%,
+  30%,
+  100% {
+    transform: rotate(0deg);
+  }
+  12% {
+    transform: rotate(14deg);
+  }
 }
 
 @keyframes accordion-down {
@@ -449,6 +544,18 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee {
     animation: none;
+  }
+}
+/* Арга хэмжээний шүүлтүүрийн chip (EventFilterChip): цайвар туяа зүүнээс
+   баруун тийш нэг гүйгээд түр зогсоно. Gradient биш — цул, хагас тунгалаг,
+   ташуу зурвас blur-тай (design.md). Transform-only; reduced-motion-д унтарна. */
+@keyframes chip-sweep {
+  0% {
+    transform: translateX(0) skewX(-20deg);
+  }
+  35%,
+  100% {
+    transform: translateX(560%) skewX(-20deg);
   }
 }
 @keyframes shimmer {

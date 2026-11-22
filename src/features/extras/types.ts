@@ -1,0 +1,199 @@
+import type {
+  ExtraInventoryMode,
+  ExtraProductStatus,
+  LeftoverLockState,
+  VialStyle,
+} from "@/db/types";
+
+/**
+ * Нэмэлт бараа (extras-shop-plan §4, §18). Нөөцийн горим нь барааны
+ * ангилал+горимоос ирж, UI, checkout, нөөцийн код бүгд үүгээр салбарлана —
+ * ангиллын slug-аар биш.
+ */
+export type ExtraMode = ExtraInventoryMode;
+
+/** Ангилалд зөвшөөрөгдсөн горим (0153). */
+export interface ExtraCategoryMode {
+  mode: ExtraMode;
+  /** Барааны хуудсанд «Сагсанд нэмэх»-ийн дээр гарах анхааруулга. */
+  notice: string;
+  /** Checkout дээр хэрэглэсэн барааны зөвшөөрөл заавал. */
+  requiresConsent: boolean;
+}
+
+export interface ExtraCategory {
+  id: string;
+  slug: string;
+  name: string;
+  /** Ихэнх ангилал нэг горимтой; «Шилтэй ус» хоёр (үлдэгдэлтэй, бүтэн шил). */
+  modes: ExtraCategoryMode[];
+  imageUrl: string | null;
+  sort: number;
+}
+
+/** Нийтлэхэд дутуу зүйлийн код — SQL `extras_readiness()`-тэй ижил. */
+export type ExtraReadinessCode =
+  | "NO_VARIANT"
+  | "PRICE_MISSING"
+  | "VIAL_NOT_COUNTED"
+  | "VIAL_FLAG_OFF"
+  | "LEFTOVER_SOLD";
+
+/** Хоосон декант сав (0145). `onHand` null = тоолж эхлээгүй. */
+export interface VialOption {
+  id: string;
+  style: VialStyle | null;
+  ml: number;
+  onHand: number | null;
+  reserved: number;
+  /** null = хязгааргүй (тоолж эхлээгүй); идэвхгүй бол 0. */
+  available: number | null;
+  lowThreshold: number;
+  isActive: boolean;
+  note: string;
+  updatedAt: string;
+}
+
+export interface AdminExtraVariant {
+  id: string;
+  label: string;
+  price: number;
+  /** Энгийн бараанд «Нийт тоо», грамын савд савны нийт. */
+  onHand: number | null;
+  reserved: number;
+  /** null = хязгааргүй. */
+  available: number | null;
+  vialId: string | null;
+  isActive: boolean;
+  sort: number;
+  updatedAt: string;
+  /** Хоосон/бүтэн шилний batch code (0153). */
+  batchCode: string | null;
+  /** Гоёмсог бэлгийн савны чөлөөт хэмжээ/тохирох тайлбар (0153). */
+  sizeNote: string | null;
+  imageUrl: string | null;
+}
+
+export interface AdminLeftover {
+  productId: string;
+  productName: string;
+  productBrand: string;
+  productImage: string | null;
+  /** Эх үнэртний декантад үлдсэн (түгжээгүй) ml. */
+  productAvailableMl: number;
+  remainingMl: number;
+  fullMl: number;
+  lockState: LeftoverLockState | null;
+  lockedMl: number | null;
+}
+
+export interface AdminExtra {
+  id: string;
+  categoryId: string;
+  categoryName: string;
+  categorySlug: string;
+  mode: ExtraMode;
+  slug: string;
+  name: string;
+  description: string;
+  images: string[];
+  status: ExtraProductStatus;
+  /** Хоосон/бүтэн шилний бүтэн хэмжээ (ml) — «0/125ml» (attrs.bottle_ml). */
+  bottleMl: number | null;
+  sort: number;
+  variants: AdminExtraVariant[];
+  leftover: AdminLeftover | null;
+  /**
+   * Хоосон / бүтэн шилний эх үнэртэн (0159) — заавал биш. Үлдэгдэлтэй
+   * шилнийх `leftover`-т.
+   */
+  perfume: { id: string; name: string; brand: string } | null;
+  /** Идэвхтэй хувилбаруудын хамгийн бага үнэ. */
+  fromPrice: number | null;
+  readiness: ExtraReadinessCode[];
+  updatedAt: string;
+}
+
+/** Нөөцийн товч төлөв — жагсаалтын badge. */
+export type ExtraStockBadge =
+  | { kind: "ok"; available: number | null }
+  | { kind: "low"; available: number }
+  | { kind: "out" }
+  | { kind: "leftover"; state: LeftoverLockState | null };
+
+/** Дэлгүүрийн жагсаалтын нэг карт (каталогийн таб, ангилал, хайлт). */
+export interface ShopExtraCard {
+  id: string;
+  slug: string;
+  name: string;
+  categoryName: string;
+  categorySlug: string;
+  mode: ExtraMode;
+  image: string | null;
+  /** Зарагдах хувилбаруудын хамгийн бага үнэ; бүгд дууссан бол бүх идэвхтэйнх. */
+  fromPrice: number;
+  soldOut: boolean;
+  /** Үлдэгдэлтэй шил: эх үнэртэн ба ml. */
+  leftover: {
+    brand: string;
+    productName: string;
+    remainingMl: number;
+    fullMl: number;
+  } | null;
+  /**
+   * Эх үнэртэн (0159): үлдэгдэлтэй, хоосон, бүтэн шил `product_id`-аар
+   * холбогдоно — «Үнэртний шил» хуудасны брэнд шүүлт, картын eyebrow.
+   * Холбоогүй (дагалдах хэрэгсэл) бол null.
+   */
+  perfume: { brand: string; name: string } | null;
+  /** Хоосон/бүтэн шилний бүтэн хэмжээ (ml) — «0/125ml», «100/100ml». */
+  bottleMl: number | null;
+  /** Хэрэглэгчид харагдах нийт үлдэгдэл; null = хязгааргүй (тоолоогүй сав). */
+  stock: number | null;
+  /** Ангилал+горимын анхааруулга (0153) — «Сагсанд нэмэх»-ийн дээр. */
+  notice: string;
+  /** Checkout дээр хэрэглэсэн барааны зөвшөөрөл заавал (PR14). */
+  requiresConsent: boolean;
+}
+
+/** Барааны хуудасны нэг хувилбар (сонгох товч). */
+export interface ShopExtraVariant {
+  id: string;
+  /** «Хар», «Ягаан 10ml»; ганц хувилбартай бол хоосон байж болно. */
+  label: string;
+  price: number;
+  /** null = хязгааргүй; 0 = дууссан. */
+  available: number | null;
+  /** Хоосон/бүтэн шил. */
+  batchCode: string | null;
+  /** Гоёмсог бэлгийн савны чөлөөт хэмжээ/тохирох тайлбар. */
+  sizeNote: string | null;
+  imageUrl: string | null;
+  /** Грамын сав: хэмжээ → өнгө сонголтод. */
+  vialStyle: VialStyle | null;
+  vialMl: number | null;
+}
+
+export interface ShopExtraDetail {
+  card: ShopExtraCard;
+  description: string;
+  images: string[];
+  variants: ShopExtraVariant[];
+  /** Үлдэгдэлтэй шилний эх үнэртний хуудас. */
+  productSlug: string | null;
+  productId: string | null;
+  /** Эх үнэртэн (0159) — тайлбар, ноот, хуудасны холбоос. */
+  perfume: ShopExtraPerfume | null;
+  updatedAt: string;
+}
+
+export interface ShopExtraPerfume {
+  /** Нийтлэгдээгүй / архивласан үнэртэнд null — холбоос гаргахгүй. */
+  slug: string | null;
+  name: string;
+  brand: string;
+  description: string;
+  notesTop: string[];
+  notesHeart: string[];
+  notesBase: string[];
+}

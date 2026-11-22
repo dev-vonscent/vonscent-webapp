@@ -279,7 +279,9 @@ async function main() {
     );
     const o = await placeOrder(a, f, f.owner, "");
     await a.query(
-      "update orders set subtotal = $2, discount = $3 where id = $1",
+      // `total`-ийг хамт — `orders_total_chk` (0149) мөнгөний invariant.
+      `update orders set subtotal = $2, discount = $3,
+         total = $2 + shipping_fee - $3 - loyalty_used where id = $1`,
       [o.id, subtotal, discount],
     );
     const g = await a.query<{ code: string | null }>(
@@ -427,7 +429,10 @@ async function main() {
       [JSON.stringify(ladder)],
     );
     const o = await placeOrder(a, f, null, "");
-    await a.query("update orders set subtotal = 500000 where id = $1", [o.id]);
+    await a.query(
+      "update orders set subtotal = 500000, total = 500000 + shipping_fee - discount - loyalty_used where id = $1",
+      [o.id],
+    );
     const g = await a.query("select grant_reward_coupon($1) as code", [o.id]);
     check("null", g.rows[0].code === null);
   });

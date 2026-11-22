@@ -250,9 +250,7 @@ function Paytable({ prizes }: { prizes: WheelPrize[] }) {
               <span className="block text-sm/tight font-bold">
                 {prize.label}
               </span>
-              {(grand ||
-                prize.kind === "product" ||
-                prize.minSubtotal > 0) && (
+              {(grand || prize.kind === "product" || prize.minSubtotal > 0) && (
                 <span
                   className={cn(
                     "block text-xs",

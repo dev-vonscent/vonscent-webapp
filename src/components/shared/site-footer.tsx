@@ -16,7 +16,7 @@ const COLUMNS = [
       { href: "/catalog?featured=1", label: "Онцлох" },
       { href: "/catalog?tags=new&sort=new", label: "Шинэ" },
       { href: "/catalog?tags=hot", label: "Эрэлттэй" },
-      { href: "/catalog?tags=sale", label: "Хямдрал" },
+      { href: "/catalog?tags=sale", label: "Хямдралтай" },
     ],
   },
   {
@@ -125,7 +125,7 @@ export async function SiteFooter() {
           </div>
         </div>
 
-        <p className="text-muted-foreground/70 mt-4 text-xs sm:mt-6">
+        <p className="text-muted-foreground mt-4 text-xs sm:mt-6">
           © {new Date().getFullYear()} {SITE.name}. Бүх эрх хуулиар
           хамгаалагдсан.
         </p>

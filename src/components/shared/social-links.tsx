@@ -36,7 +36,7 @@ async function links() {
  * хуудас руу биш, яриа руу шууд оруулна. Задлах боломжгүй бол (profile.php?id=
  * г.м) анхны хаягаа буцаана.
  */
-function messengerHref(facebook: string) {
+export function messengerHref(facebook: string) {
   try {
     const slug = new URL(facebook).pathname.split("/").filter(Boolean)[0];
     return slug && slug !== "profile.php" ? `https://m.me/${slug}` : facebook;

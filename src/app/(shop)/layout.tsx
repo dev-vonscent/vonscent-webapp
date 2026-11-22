@@ -7,6 +7,15 @@ import { WishlistSync } from "@/features/wishlist/sync";
 import { ScrollReset } from "@/components/shared/scroll-reset";
 import { SkipLink } from "@/components/shared/skip-link";
 import { CatalogMenu } from "@/features/catalog/components/catalog-menu";
+import {
+  getLiveEventPcts,
+  getLiveSaleEvents,
+} from "@/features/sale-events/api";
+import { eventBadgeMap, eventThemeMap } from "@/features/sale-events/lib";
+import { SALE_EVENT_TICKER_DEFAULT } from "@/lib/constants";
+import { SaleEventsProvider } from "@/features/sale-events/components/sale-events-provider";
+import { getLiveBundleEvents } from "@/features/collections/api";
+import { SaleEventTicker } from "@/features/sale-events/components/sale-event-ticker";
 
 /**
  * The footer arrives through a parallel route slot rather than being rendered
@@ -23,18 +32,50 @@ import { CatalogMenu } from "@/features/catalog/components/catalog-menu";
  * nested it inside `<main>`, where `<footer>` loses its `contentinfo` landmark
  * and screen-reader users lose the jump target.
  */
-export default function ShopLayout({
+export default async function ShopLayout({
   children,
   footer,
 }: {
   children: React.ReactNode;
   footer: React.ReactNode;
 }) {
+  // Арга хэмжээ (0181): каталогийн chip, картын badge. Кэштэй (60с), туг
+  // хаалттай / алдаатай үед хоосон — хуудсыг хэзээ ч унагахгүй.
+  // 16.7: бэлэн багцтай арга хэмжээ («Багц» табын chip) — `catalog` tag,
+  // 3600с кэш (`getLiveBundleEvents`); туг хаалттай бол хоосон.
+  const [live, pcts, bundleEvents] = await Promise.all([
+    getLiveSaleEvents(),
+    getLiveEventPcts(),
+    getLiveBundleEvents(),
+  ]);
   return (
-    <>
+    <SaleEventsProvider
+      events={live.map((e) => ({
+        slug: e.slug,
+        name: e.name,
+        tickerTheme: e.tickerTheme ?? SALE_EVENT_TICKER_DEFAULT,
+        badgeLabel: e.badgeLabel,
+      }))}
+      badges={eventBadgeMap(live)}
+      pcts={pcts}
+      themes={eventThemeMap(live)}
+      bundleEventSlugs={bundleEventSlugsOf(bundleEvents)}
+    >
       <ScrollReset />
       {/* Хамгийн эхний фокус авах элемент байх ёстой тул толгойн ӨМНӨ. */}
       <SkipLink />
+      {/* Явж буй арга хэмжээний гүйдэг зурвас — толгойн дээр, хуудастай хамт
+          гүйлгэгдэнэ (толгой нь өөрөө sticky). Туг хаалттай бол `live` хоосон. */}
+      <SaleEventTicker
+        events={live.map((e) => ({
+          slug: e.slug,
+          name: e.name,
+          headline: e.headline,
+          endsAt: e.endsAt,
+          showCountdown: e.showCountdown,
+          tickerTheme: e.tickerTheme,
+        }))}
+      />
       <SiteHeader
         menuSocial={
           <Suspense fallback={null}>
@@ -68,6 +109,13 @@ export default function ShopLayout({
       </Suspense>
       <WishlistSync />
       <WelcomeGiftDialog />
-    </>
+    </SaleEventsProvider>
   );
+}
+
+/** collectionId → event map → давхардалгүй, эрэмбэлсэн slug-ууд (тогтмол render). */
+function bundleEventSlugsOf(
+  events: Record<string, { slug: string }>,
+): string[] {
+  return [...new Set(Object.values(events).map((e) => e.slug))].sort();
 }

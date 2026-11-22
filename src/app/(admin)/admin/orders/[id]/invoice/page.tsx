@@ -7,6 +7,13 @@ import {
   type OrderSummaryRow,
 } from "@/lib/orders/summary";
 import { PrintButton } from "@/features/admin/components/print-button";
+import { orderLineTitle, orderLineVariant } from "@/lib/order-lines";
+import {
+  buildOrderLines,
+  flattenOrderLines,
+  lineBase,
+  lineUnitBase,
+} from "@/lib/orders/order-lines";
 
 export default async function InvoicePage({
   params,
@@ -16,7 +23,12 @@ export default async function InvoicePage({
   const { id } = await params;
   const detail = await getOrderDetail(id);
   if (!detail) notFound();
-  const { order, items } = detail;
+  const { order, items, baseCollectionIds } = detail;
+  // Захиалгын дэлгэрэнгүйтэй ижил дараалал (дан ml ↑ → нэмэлт → багц →
+  // бэлэг), гэхдээ задгай мөрөөр — баганын нийлбэр «Барааны дүн»-тэй таарна.
+  const rows = flattenOrderLines(
+    buildOrderLines(items, new Set(baseCollectionIds)),
+  );
 
   return (
     <div className="print-sheet mx-auto max-w-2xl space-y-6 p-2 text-sm">
@@ -53,20 +65,20 @@ export default async function InvoicePage({
           </tr>
         </thead>
         <tbody>
-          {items.map((i) => (
+          {rows.map((i) => (
             <tr key={i.id} className="border-border/60 border-b">
               <td className="py-2">
-                {i.brand} {i.product_name} ({i.ml}ml)
+                {i.line_kind === "extra"
+                  ? orderLineTitle(i)
+                  : `${i.brand} ${i.product_name} (${orderLineVariant(i)})`}
               </td>
               <td className="py-2 text-center">{i.qty}</td>
               {/* Үндсэн үнээр — багцын хямдрал доорх тоймд ганц мөр болно,
                   ингэснээр баганын нийлбэр «Нийт үндсэн үнэ»-тэй таарна. */}
               <td className="py-2 text-right">
-                {formatPrice(i.list_price ?? i.unit_price)}
+                {formatPrice(lineUnitBase(i))}
               </td>
-              <td className="py-2 text-right">
-                {formatPrice((i.list_price ?? i.unit_price) * i.qty)}
-              </td>
+              <td className="py-2 text-right">{formatPrice(lineBase(i))}</td>
             </tr>
           ))}
         </tbody>

@@ -1,5 +1,11 @@
 import "server-only";
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
+import {
+  CACHE_TAG_CATALOG,
+  CACHE_TAG_FEATURE_FLAGS,
+  CACHE_TAG_STOCK,
+} from "@/lib/cache-tags";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
   HOT_COLLECTIONS_COUNT,
@@ -22,13 +28,16 @@ import {
   filterCatalogCollections,
   sortCatalogCollections,
 } from "./catalog-filter";
-import { memberPrices, discountRange } from "./pricing";
+import { discountRange, priceWithBundleEvent } from "./pricing";
+import { isFeatureEnabled } from "@/lib/feature-flags";
+import { getLiveSaleEvents } from "@/features/sale-events/api";
 import { topUpRandom } from "@/features/products/rail";
 import { dailyRandom } from "@/lib/seeded-random";
 import { DEFAULT_COLLECTION_SETTINGS } from "./types";
 import type {
   BuilderProduct,
   Collection,
+  CollectionEvent,
   CollectionMember,
   CollectionSettings,
 } from "./types";
@@ -85,15 +94,6 @@ function toMlDiscounts(row: DbCollection): Record<number, number> {
   return out;
 }
 
-/** Хэмжээ бүрийн тогтмол үнэ (0054) — байгаа мөр нь хувийг гүйцээж дарна. */
-function toMlPrices(row: DbCollection): Record<number, number> {
-  const out: Record<number, number> = {};
-  for (const d of row.collection_ml_discounts ?? []) {
-    if (d.price != null) out[d.ml] = Number(d.price);
-  }
-  return out;
-}
-
 export const getCollectionSettings = cache(
   async (): Promise<CollectionSettings> => {
     if (!isSupabaseConfigured) return DEFAULT_COLLECTION_SETTINGS;
@@ -120,6 +120,7 @@ function toMember(p: ProductDetail): CollectionMember {
       variantByMl[v.ml] = {
         variantId: v.id,
         price: v.price,
+        basePrice: v.basePrice,
         // Савны түгжээ (0095) орсон эсэх нь багцад ЧУХАЛ: эрэгтэй гишүүнтэй
         // багцын 10ml нь эрэгтэй 10ml сав дуусахад бүхэлдээ боломжгүй болно.
         inStock: v.sellable,
@@ -142,6 +143,7 @@ function build(
   row: DbCollection,
   productById: Map<string, ProductDetail>,
   settings: CollectionSettings,
+  event: CollectionEvent | null = null,
 ): Collection {
   const items = [...row.collection_items].sort(
     (a, b) => a.sort_order - b.sort_order,
@@ -156,13 +158,14 @@ function build(
   const complete = members.length === items.length && members.length > 0;
   const discountPct = Number(row.discount_pct);
   const mlDiscounts = toMlDiscounts(row);
-  const mlPrices = toMlPrices(row);
-  const prices = memberPrices(
+  // 16.7: LIVE арга хэмжээний хувь суурь хувийг ОРЛОНО (greatest) — туг
+  // хаалттай / event-гүй бол `event` null → өмнөх шигээ.
+  const { prices, event: liveEvent } = priceWithBundleEvent(
     members,
     discountPct,
-    settings.roundTo,
     mlDiscounts,
-    mlPrices,
+    settings.roundTo,
+    event,
   );
   const availableMls = complete
     ? prices.filter((p) => p.available).map((p) => p.ml)
@@ -184,7 +187,6 @@ function build(
     ratingCount: row.rating_count ?? 0,
     discountPct,
     mlDiscounts,
-    mlPrices,
     discountRange: discountRange(prices, availableMls),
     tags: (row.collection_tags ?? [])
       .map((t) => t.tags?.kind)
@@ -201,7 +203,104 @@ function build(
     startingPrice,
     soldOut: availableMls.length === 0,
     createdAt: row.created_at,
+    // Хэмнэлт өгч буй хэмжээ байвал л — суурь хувь нь илүү бол event-гүй.
+    event: liveEvent,
   };
+}
+
+// ── Арга хэмжээнд орсон багц (task 16.7, 0190) ───────────────────────────
+
+interface LiveBundleRow {
+  collection_id: string;
+  ml: number;
+  pct: number;
+  event_slug: string;
+  event_name: string;
+}
+
+function toBundleEvents(
+  rows: readonly LiveBundleRow[],
+): Record<string, CollectionEvent> {
+  const out: Record<string, CollectionEvent> = {};
+  for (const r of rows) {
+    const e = (out[r.collection_id] ??= {
+      slug: r.event_slug,
+      name: r.event_name,
+      pcts: {},
+    });
+    e.pcts[r.ml] = Number(r.pct);
+  }
+  return out;
+}
+
+async function readLiveBundleRows(): Promise<LiveBundleRow[]> {
+  const supabase = createPublicClient();
+  if (!supabase) return [];
+  const { data, error } = await callRpc<LiveBundleRow[]>(
+    supabase,
+    "live_event_collection_discounts",
+    {},
+  );
+  // Шиднэ (#284): хоосон хариу кэшлэгдвэл event-ийн үнэ нэг цаг алга болно.
+  if (error)
+    throw new Error(`live_event_collection_discounts: ${error.message}`);
+  return data ?? [];
+}
+
+/**
+ * Каталог / багцын хуудсанд: кэштэй (1 цаг, `catalog` — админы бичилт ба
+ * шөнийн `midnight-revalidate` цэвэрлэнэ). Event-ийн хил УБ 00:00.
+ */
+const fetchLiveBundleRows = unstable_cache(
+  readLiveBundleRows,
+  ["live-event-collection-discounts"],
+  { revalidate: 3600, tags: [CACHE_TAG_CATALOG, CACHE_TAG_FEATURE_FLAGS] },
+);
+
+async function bundleEventsEnabled(): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  const [events, bundles] = await Promise.all([
+    isFeatureEnabled("sale_events"),
+    isFeatureEnabled("sale_event_bundles"),
+  ]);
+  return events && bundles;
+}
+
+/**
+ * collectionId → LIVE арга хэмжээ (нэр, slug, хэмжээ бүрийн хувь). Туг
+ * хаалттай / demo → хоосон. Кэш хоцрогдлыг `getLiveSaleEvents()` (одоогийн
+ * цагаар шүүдэг)-ээр давхар шүүнэ — дууссан event-ийн хувь үлдэхгүй.
+ */
+export async function getLiveBundleEvents(): Promise<
+  Record<string, CollectionEvent>
+> {
+  if (!(await bundleEventsEnabled())) return {};
+  const [rows, live, showEnds] = await Promise.all([
+    fetchLiveBundleRows(),
+    getLiveSaleEvents(),
+    isFeatureEnabled("sale_display"),
+  ]);
+  const endsBySlug = new Map(live.map((e) => [e.slug, e.endsAt]));
+  const events = toBundleEvents(
+    rows.filter((r) => endsBySlug.has(r.event_slug)),
+  );
+  // Картын тоолуур (task 2.2): дуусах мөч нь `live_sale_events`-ээс (ижил
+  // кэш, `catalog` tag). Туг хаалттай бол HTML-д огт орохгүй.
+  if (showEnds) {
+    for (const e of Object.values(events)) e.endsAt = endsBySlug.get(e.slug);
+  }
+  return events;
+}
+
+/** Захиалгын мөчийн (кэшгүй) нэг багцын event — `priceCollectionLines`. */
+async function getLiveBundleEventFresh(
+  collectionId: string,
+): Promise<CollectionEvent | null> {
+  if (!(await bundleEventsEnabled())) return null;
+  const rows = (await readLiveBundleRows()).filter(
+    (r) => r.collection_id === collectionId,
+  );
+  return toBundleEvents(rows)[collectionId] ?? null;
 }
 
 /** All active base collections, resolved with live member data. */
@@ -228,38 +327,62 @@ async function membersById(
 
 export const getBaseCollections = cache(async (): Promise<Collection[]> => {
   if (!isSupabaseConfigured) return [];
-  const supabase = createPublicClient();
-  if (!supabase) return [];
-
-  const [{ data, error }, settings, newIds, hotIds] = await Promise.all([
-    supabase
-      .from("collections")
-      .select(SELECT)
-      .eq("type", "base")
-      .eq("is_active", true)
-      .order("is_featured", { ascending: false })
-      .order("name"),
-    getCollectionSettings(),
-    newestCollectionIds(),
-    bestSellerCollectionIds(),
-  ]);
-  if (error) throw new Error(`base collections failed: ${error.message}`);
-  if (!data) return [];
-
-  const rows = data as unknown as DbCollection[];
-  const productById = await membersById(rows);
-  const newSet = new Set(newIds.slice(0, NEW_COLLECTIONS_COUNT));
-  const hotSet = new Set(hotIds.slice(0, HOT_COLLECTIONS_COUNT));
-  return rows.map((row) => {
-    const c = build(row, productById, settings);
-    // «Шинэ»/«Эрэлттэй» нь устай адил автомат — админы хуучин сонголтыг
-    // (collection_tags) үл тооно; «Хямдрал»-ыг хөнгөлөлтийн badge хэлнэ.
-    const tags: TagKind[] = [];
-    if (hotSet.has(c.id)) tags.push("hot");
-    if (newSet.has(c.id)) tags.push("new");
-    return { ...c, tags };
-  });
+  // Шидэнэ (#284): `[]` буцаавал «багц алга» хуудас ISR-д нэг цаг үлдэнэ.
+  return fetchBaseCollections();
 });
+
+/**
+ * Хуудас бүр (каталог, нүүр) энийг уншдаг бөгөөд 3–4 дараалсан round-trip
+ * (багц → гишүүд → савны түгжээ → таг) — React `cache()` ганцаараа нэг
+ * хүсэлтийн дотор л хадгалдаг тул каталог нээх бүрт ~0.6с зарцуулдаг байв.
+ * `catalogSearch`-тэй ижил цонх, tag: гишүүн усны үлдэгдэл тул `stock` —
+ * захиалга бүр (`revalidateStock()`), админы засвар `catalog`-оор
+ * (`revalidatePublic()`). Алдаа ШИДНЭ — хоосон жагсаалт cache-д үлдэж
+ * «багц алга» болохгүйн тулд.
+ */
+const fetchBaseCollections = unstable_cache(
+  async (): Promise<Collection[]> => {
+    const supabase = createPublicClient();
+    if (!supabase) throw new Error("base collections: no supabase client");
+
+    const [{ data, error }, settings, newIds, hotIds, events] =
+      await Promise.all([
+        supabase
+          .from("collections")
+          .select(SELECT)
+          .eq("type", "base")
+          .eq("is_active", true)
+          .order("is_featured", { ascending: false })
+          .order("name"),
+        getCollectionSettings(),
+        newestCollectionIds(),
+        bestSellerCollectionIds(),
+        getLiveBundleEvents(),
+      ]);
+    if (error || !data) {
+      throw new Error(`base collections: ${error?.message ?? "no rows"}`);
+    }
+
+    const rows = data as unknown as DbCollection[];
+    const productById = await membersById(rows);
+    const newSet = new Set(newIds.slice(0, NEW_COLLECTIONS_COUNT));
+    const hotSet = new Set(hotIds.slice(0, HOT_COLLECTIONS_COUNT));
+    return rows.map((row) => {
+      const c = build(row, productById, settings, events[row.id] ?? null);
+      // «Шинэ»/«Эрэлттэй» нь устай адил автомат — админы хуучин сонголтыг
+      // (collection_tags) үл тооно; «Хямдрал»-ыг хөнгөлөлтийн badge хэлнэ.
+      const tags: TagKind[] = [];
+      if (hotSet.has(c.id)) tags.push("hot");
+      if (newSet.has(c.id)) tags.push("new");
+      return { ...c, tags };
+    });
+  },
+  ["base-collections"],
+  {
+    revalidate: 3600,
+    tags: [CACHE_TAG_CATALOG, CACHE_TAG_FEATURE_FLAGS, CACHE_TAG_STOCK],
+  },
+);
 
 /** Идэвхтэй багцын id-ууд, шинэ нь эхэндээ. */
 const newestCollectionIds = cache(async (): Promise<string[]> => {
@@ -340,6 +463,9 @@ export async function getCatalogCollections(
   filters: CatalogFilters,
 ): Promise<{ items: Collection[]; total: number }> {
   if (filters.kind === "perfume") return { items: [], total: 0 };
+  // Арга хэмжээ (`?event=`): зөвхөн тэр LIVE арга хэмжээнд орсон бэлэн багц
+  // (16.7). Туг `sale_event_bundles` хаалттай бол `event` хэзээ ч бөглөгдөхгүй
+  // → өмнөх шигээ хоосон (`filterCatalogCollections`).
   const matched = sortCatalogCollections(
     filterCatalogCollections(await getBaseCollections(), {
       ...filters,
@@ -380,7 +506,7 @@ export const getCollectionBySlug = cache(async function getCollectionBySlug(
   const supabase = createPublicClient();
   if (!supabase) return null;
 
-  const [{ data, error }, settings] = await Promise.all([
+  const [{ data, error }, settings, events] = await Promise.all([
     supabase
       .from("collections")
       .select(SELECT)
@@ -388,13 +514,14 @@ export const getCollectionBySlug = cache(async function getCollectionBySlug(
       .eq("is_active", true)
       .maybeSingle(),
     getCollectionSettings(),
+    getLiveBundleEvents(),
   ]);
   // Алдаа ≠ «байхгүй»: null нь notFound() болж 404 кэшлэгдэнэ.
   if (error) throw new Error(`collection by slug failed: ${error.message}`);
   if (!data) return null;
 
   const row = data as unknown as DbCollection;
-  return build(row, await membersById([row]), settings);
+  return build(row, await membersById([row]), settings, events[row.id] ?? null);
 });
 
 /** The signed-in user's saved custom collections (owner-scoped via RLS). */
@@ -429,10 +556,10 @@ export async function getCollectionOrderInfo(id: string): Promise<{
   discountPct: number;
   /** Per-size overrides (0051) — the ordered ml is priced from these. */
   mlDiscounts: Record<number, number>;
-  /** Тогтмол үнэтэй хэмжээнүүд (0054) — байвал хувийн тооцоог бүрэн орлоно. */
-  mlPrices: Record<number, number>;
   /** Product ids of the collection's roster — the order must match it. */
   memberProductIds: string[];
+  /** LIVE арга хэмжээ (16.7) — захиалгын мөчөөр, кэшгүй. Туг хаалттай → null. */
+  event: CollectionEvent | null;
 } | null> {
   if (!isSupabaseConfigured) return null;
   const supabase = createPublicClient();
@@ -440,7 +567,7 @@ export async function getCollectionOrderInfo(id: string): Promise<{
   const { data } = await supabase
     .from("collections")
     .select(
-      "name, discount_pct, collection_items ( product_id ), collection_ml_discounts ( ml, discount_pct, price )",
+      "name, discount_pct, collection_items ( product_id ), collection_ml_discounts ( ml, discount_pct )",
     )
     .eq("id", id)
     .eq("is_active", true)
@@ -454,22 +581,19 @@ export async function getCollectionOrderInfo(id: string): Promise<{
       | {
           ml: number;
           discount_pct: number | string | null;
-          price: number | null;
         }[]
       | null;
   };
   const mlDiscounts: Record<number, number> = {};
-  const mlPrices: Record<number, number> = {};
   for (const d of row.collection_ml_discounts ?? []) {
     if (d.discount_pct != null) mlDiscounts[d.ml] = Number(d.discount_pct);
-    if (d.price != null) mlPrices[d.ml] = Number(d.price);
   }
   return {
     name: row.name,
     discountPct: Number(row.discount_pct),
     mlDiscounts,
-    mlPrices,
     memberProductIds: (row.collection_items ?? []).map((i) => i.product_id),
+    event: await getLiveBundleEventFresh(id),
   };
 }
 

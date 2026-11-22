@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Bookmark } from "lucide-react";
 import { AccountBackButton } from "@/features/account/components/account-page-header";
 import { Badge } from "@/components/ui/badge";
@@ -45,9 +45,17 @@ import {
 import type {
   OrderRow,
   OrderItemRow,
+  PerfumeOrderItemRow,
   OrderRefundAccountRow,
   OrderStatusHistoryRow,
 } from "@/db/types";
+import { orderLineMeta } from "@/lib/order-lines";
+import {
+  buildOrderLines,
+  bundleTitle,
+  collectionIdsOf,
+  lineBase,
+} from "@/lib/orders/order-lines";
 
 export default async function OrderDetailPage({
   params,
@@ -77,6 +85,11 @@ export default async function OrderDetailPage({
     .maybeSingle();
   const order = orderData as OrderRow | null;
   if (!order) notFound();
+  // Бэлгийн карт (0179): хүргэлт, сэтгэгдэлгүй — төлөгдсөн бол карт нь
+  // өөрийн хуудсанд (код, хуваалцах). Төлөгдөөгүй нь доорх төлбөрийн урсгал.
+  if (order.order_type === "gift_card" && order.payment_status === "paid") {
+    redirect("/account/gift-cards");
+  }
   // Төлөгдөөгүй цуцлалт захиалга болж үлдэхгүй (0124, клиент 2026-10).
   // «Дараа захиалах» руу шилжсэн бол хуучин линкээр ирсэн хүнд «Цуцлагдсан»
   // биш, хаана очсоныг нь хэлнэ; устгасан бол юу ч үлдээгүй — 404.
@@ -119,6 +132,22 @@ export default async function OrderDetailPage({
   const items = (itemData as OrderItemRow[] | null) ?? [];
   const history = (historyData as OrderStatusHistoryRow[] | null) ?? [];
 
+  // Багцаар захиалсныг багцаар нь (task 11), админтай ижил дараалал (12).
+  // Бэлэн/угсарсан ялгаа энд харагдацад нөлөөлөхгүй ч бүлэглэх түлхүүрт
+  // хэрэгтэй.
+  const collectionIds = collectionIdsOf(items);
+  const { data: baseData } = collectionIds.length
+    ? await supabase
+        .from("collections")
+        .select("id")
+        .in("id", collectionIds)
+        .eq("type", "base")
+    : { data: [] };
+  const lines = buildOrderLines(
+    items,
+    new Set(((baseData as { id: string }[] | null) ?? []).map((c) => c.id)),
+  );
+
   // Resolve slugs/images for the reorder action. Дахин захиалах нь зөвхөн
   // амжилттай хүргэгдсэн захиалгад, бэлгийн мөргүйгээр — бэлэг сар бүр
   // өөрчлөгддөг тул дахин захиалахад тэр сарынх нь бэлэг ирэхгүй.
@@ -128,12 +157,15 @@ export default async function OrderDetailPage({
   const products = await getProductsByIds(productIds);
   const byId = new Map(products.map((p) => [p.id, p]));
 
+  // Нэмэлт барааны мөр (0146) дахин захиалахад орохгүй — хувилбар, үнэ нь
+  // сагсанд тусдаа урсгалтай.
   const reorderItems: ReorderItem[] = items
     .filter(
-      (i) =>
+      (i): i is PerfumeOrderItemRow =>
         order.status === "delivered" &&
-        i.product_id &&
-        i.variant_id &&
+        i.line_kind === "perfume" &&
+        Boolean(i.product_id) &&
+        Boolean(i.variant_id) &&
         !i.is_gift &&
         !i.is_sample,
     )
@@ -167,7 +199,8 @@ export default async function OrderDetailPage({
     // бүрт биш, багцад нэг сэтгэгдэл; тусад нь авсан ус бол усанд.
     const moderated = await isFeatureEnabled("review_moderation");
     const bought = items.filter(
-      (i) => i.product_id && !i.is_gift && !i.is_sample,
+      (i) =>
+        i.line_kind === "perfume" && i.product_id && !i.is_gift && !i.is_sample,
     );
     const purchased = [
       ...new Set(
@@ -350,27 +383,56 @@ export default async function OrderDetailPage({
           {/* Items */}
           <Card>
             <CardContent className="divide-border divide-y p-0">
-              {items.map((i) => (
-                <div
-                  key={i.id}
-                  className="flex justify-between gap-3 p-4 text-sm"
-                >
-                  <span>
-                    {i.brand} {i.product_name} · {i.ml}ml × {i.qty}
-                    {/* «Sample» БИШ: 2ml бол энэ дэлгүүрт энгийн төлбөртэй
-                        хэмжээ. `is_sample` нь сар бүрийн 1мл бэлгийн дээжийг
-                        л тэмдэглэдэг. Админы хуудсанд аль хэдийн «Бэлэг». */}
-                    {i.is_sample && (
-                      <Badge variant="secondary" className="ml-2">
-                        Бэлэг
-                      </Badge>
-                    )}
-                  </span>
-                  <span className="font-medium">
-                    {formatPrice((i.list_price ?? i.unit_price) * i.qty)}
-                  </span>
-                </div>
-              ))}
+              {/* Үнэ нь ҮНДСЭН үнэ (`list_price × qty`), багцынх гишүүдийн
+                  нийлбэр — хямдрал «Дүн» задаргаанд тусдаа мөр тул мөрүүдийн
+                  нийлбэр «Барааны дүн»-тэй таарна. */}
+              {lines.map((l) =>
+                l.kind === "bundle" ? (
+                  <div key={l.key} className="space-y-1.5 p-4 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <span>
+                        {bundleTitle(l)} · {l.ml}ml × {l.qty}
+                        {l.gift && (
+                          <Badge variant="secondary" className="ml-2">
+                            Бэлэг
+                          </Badge>
+                        )}
+                      </span>
+                      <span className="font-medium">{formatPrice(l.base)}</span>
+                    </div>
+                    {/* Сагсны багцтай ижил: «• Брэнд — Нэр». */}
+                    <ul className="text-muted-foreground space-y-0.5 text-xs">
+                      {l.members.map((m) => (
+                        <li key={m.id}>
+                          • {m.brand} — {m.product_name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div
+                    key={l.item.id}
+                    className="flex justify-between gap-3 p-4 text-sm"
+                  >
+                    <span>
+                      {l.item.line_kind === "extra"
+                        ? `${l.item.product_name} · ${orderLineMeta(l.item)}`
+                        : `${l.item.brand} ${l.item.product_name} · ${orderLineMeta(l.item)}`}
+                      {/* «Sample» БИШ: 2ml бол энэ дэлгүүрт энгийн төлбөртэй
+                          хэмжээ. `is_sample` нь сар бүрийн 1мл бэлгийн дээжийг
+                          л тэмдэглэдэг. Админы хуудсанд аль хэдийн «Бэлэг». */}
+                      {l.item.is_sample && (
+                        <Badge variant="secondary" className="ml-2">
+                          Бэлэг
+                        </Badge>
+                      )}
+                    </span>
+                    <span className="font-medium">
+                      {formatPrice(lineBase(l.item))}
+                    </span>
+                  </div>
+                ),
+              )}
             </CardContent>
           </Card>
 

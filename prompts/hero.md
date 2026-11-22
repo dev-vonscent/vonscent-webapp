@@ -7,8 +7,17 @@ Hero-гийн гэрэл зургийг (desktop / утас) шинээр genera
 
 ## 0. Текст, зураг хаана, яаж гарах
 
-Админ UI **байхгүй** — hero-гийн текст ба зураг хоёулаа кодод, солих нь
-PR → `main` → deploy (Vercel). Feature flag хэрэггүй (feature биш, агуулга).
+> **2026-11-13-аас:** feature flag `hero_admin` нээлттэй үед hero-г **Админ → Сайт →
+> Нүүрний hero**-оос бичнэ (текст, товч, хуваарь, зураг upload эсвэл AI үүсгэх —
+> docs/campaigns/plan.md §7–§8, 0182–0183). AI нь энэ баримтын бүсийн дүрэм,
+> хэмжээг `src/lib/ai/hero-prompt.ts`-д хэрэгжүүлсэн; upload/AI-ийн зураг энд
+> бичсэн §4-ийн sharp алхмыг автоматаар хийнэ. Доорх кодын зам (`HOME_CAMPAIGNS`)
+> нь **нөөц** — DB-д идэвхтэй hero байхгүй, туг хаалттай эсвэл demo үед гарна.
+> AI-ийн суурь reference нь `public/desktop.webp` / `mobile.png` — тэдгээрийг
+> солибол `src/lib/ai/hero-references.ts`-ийн `REFERENCE_VERSION`-ийг ахиул.
+
+Кодын hero: текст ба зураг хоёулаа кодод, солих нь
+PR → `main` → deploy (Vercel).
 
 - Текст: `home-content.ts` → `HOME_CAMPAIGNS`-ийн мөр (`eyebrow`, `title`,
   `description`, утсанд богино `mobileDescription`, `primary`/`secondary` холбоос).
@@ -45,8 +54,9 @@ PR → `main` → deploy (Vercel). Feature flag хэрэггүй (feature биш
 **Тайрахаар бус, эцсийн харьцаагаар шууд** generate хий. 3:2 дээр барааг жижиг
 зураад тайрвал бараа цөөн пикселтэй болж бүдгэрдэг (v1-ийн сургамж).
 
-- Model: `gpt-image-2` (playground: *Size → Custom*), **edits** endpoint, quality **high**,
-  `input_fidelity=high`, output **PNG**, 2–4 хувилбар гаргаж сонго.
+- Model: `gpt-image-2.6-sunburst` (админы AI самбар үүнийг ашиглана; playground: *Size → Custom*),
+  **edits** endpoint, quality **high**, output **PNG**, 2–4 хувилбар гаргаж сонго.
+  `input_fidelity` API-д бүү өг — gpt-image-2 татгалздаг.
 - Хэмжээ: 16-ын үржвэр, харьцаа ≤3:1, урт тал <3840.
   - Desktop: **3584×1280** (артефакт гарвал 2688×960)
   - Утас: **2048×1536** (эсвэл 1536×1152)

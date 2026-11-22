@@ -17,7 +17,7 @@ const target = {
 };
 const oneTarget = (v: { productId?: string; collectionId?: string }) =>
   Boolean(v.productId) !== Boolean(v.collectionId);
-const ONE_TARGET = { message: "Ус эсвэл багцын аль нэг нь" };
+const ONE_TARGET = { message: "Үнэртэн эсвэл багцын аль нэг нь" };
 
 export const reviewInputSchema = z
   .object({
