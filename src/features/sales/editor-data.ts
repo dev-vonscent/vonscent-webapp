@@ -6,6 +6,7 @@ import {
   busyProducts,
   commonPeriod,
   derivePcts,
+  isUnnamed,
   memberIds,
   periodPhase,
   type SaleProductRow,
@@ -43,11 +44,11 @@ export function editorInitial(
   }
 
   if (id === UNNAMED_SALE_ID) {
-    const ids = memberIds(products, UNNAMED_SALE_ID);
+    const ids = memberIds(products, UNNAMED_SALE_ID, now);
     if (ids.length === 0) return null;
     const rows = products
       .flatMap((p) => p.variants)
-      .filter((v) => v.saleId == null && v.salePrice != null && v.salePrice < v.price);
+      .filter((v) => isUnnamed(v, now));
     const period = commonPeriod(rows);
     return {
       initial: {
@@ -72,7 +73,7 @@ export function editorInitial(
       pcts: sale.pcts,
       startsOn: isoToDay(sale.startsAt),
       endsOn: isoEndToDay(sale.endsAt),
-      productIds: memberIds(products, id),
+      productIds: memberIds(products, id, now),
       phase: periodPhase(sale.startsAt, sale.endsAt, now),
     },
     busy: busy(id),

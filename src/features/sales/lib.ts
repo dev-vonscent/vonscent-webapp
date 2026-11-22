@@ -75,9 +75,19 @@ function variantPhase(v: SaleVariantRow, now: number): SalePhase | null {
   );
 }
 
-/** Нэргүй (хуучин, 0166) хямдралын хэмжээ — `sale_id`-гүй `sale_price`. */
-function isUnnamed(v: SaleVariantRow): boolean {
-  return v.saleId == null && v.salePrice != null && v.salePrice < v.price;
+/**
+ * Нэргүй (хуучин, 0166) хямдралын ДУУСААГҮЙ хэмжээ — `sale_id`-гүй
+ * `sale_price`. Дууссан хямдралын `sale_price` санд үлддэг (хугацаа нь л
+ * өнгөрнө) тул тэдгээрийг «Нэргүй» бүлэгт оруулбал засварлагч дууссан
+ * барааг урьдчилан сонгож, «Хадгалах» нь тэдний хямдралыг сэргээнэ.
+ */
+export function isUnnamed(v: SaleVariantRow, now: number): boolean {
+  return (
+    v.saleId == null &&
+    v.salePrice != null &&
+    v.salePrice < v.price &&
+    isOpen(v, now)
+  );
 }
 
 /** Дуусаагүй (хүчинтэй эсвэл эхлээгүй) хямдралын хэмжээ. */
@@ -110,7 +120,7 @@ export function summarizeSales(
         const set = counts.get(v.saleId) ?? new Set<string>();
         set.add(p.id);
         counts.set(v.saleId, set);
-      } else if (isUnnamed(v)) unnamed.push({ product: p.id, v });
+      } else if (isUnnamed(v, now)) unnamed.push({ product: p.id, v });
     }
   }
 
@@ -206,11 +216,12 @@ export function derivePcts(vs: SaleVariantRow[]): SalePcts {
 export function memberIds(
   products: SaleProductRow[],
   saleId: string,
+  now: number,
 ): string[] {
   return products
     .filter((p) =>
       p.variants.some((v) =>
-        saleId === UNNAMED_SALE_ID ? isUnnamed(v) : v.saleId === saleId,
+        saleId === UNNAMED_SALE_ID ? isUnnamed(v, now) : v.saleId === saleId,
       ),
     )
     .map((p) => p.id);
@@ -235,7 +246,7 @@ export function busyProducts(
       if (v.saleId) {
         if (v.saleId === currentId) continue;
         busy.set(p.id, names.get(v.saleId) ?? UNNAMED_SALE_NAME);
-      } else if (isUnnamed(v) && currentId !== UNNAMED_SALE_ID) {
+      } else if (isUnnamed(v, now) && currentId !== UNNAMED_SALE_ID) {
         busy.set(p.id, UNNAMED_SALE_NAME);
       }
     }
