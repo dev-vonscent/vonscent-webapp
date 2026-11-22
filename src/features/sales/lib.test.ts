@@ -65,15 +65,20 @@ describe("summarizeSales", () => {
     const rows = summarizeSales([march], products, now);
     expect(rows.map((r) => [r.name, r.phase, r.productCount])).toEqual([
       ["Март 8", "active", 1],
-      ["Нэргүй", "active", 2],
+      ["Нэргүй", "active", 1],
     ]);
     const unnamed = rows.find((r) => r.unnamed);
     expect(unnamed?.id).toBe(UNNAMED_SALE_ID);
-    expect(unnamed?.pcts).toEqual({ "2": 10, "5": 10 });
+    // Дууссан «wanted»-ийн 2ml хувь орохгүй.
+    expect(unnamed?.pcts).toEqual({ "5": 10 });
   });
 
   it("нэргүй мөргүй бол «Нэргүй» мөр гарахгүй", () => {
     expect(summarizeSales([march], [products[0]], now)).toHaveLength(1);
+  });
+
+  it("зөвхөн дууссан нэргүй мөр бол «Нэргүй» мөр гарахгүй", () => {
+    expect(summarizeSales([], [products[1], products[3]], now)).toEqual([]);
   });
 });
 
@@ -96,8 +101,9 @@ describe("busyProducts (16.3)", () => {
 
 describe("memberIds", () => {
   it("нэрт / нэргүй", () => {
-    expect(memberIds(products, "s1")).toEqual(["aventus"]);
-    expect(memberIds(products, UNNAMED_SALE_ID)).toEqual(["wanted", "sauvage"]);
+    expect(memberIds(products, "s1", now)).toEqual(["aventus"]);
+    // Дууссан «wanted» нь «Нэргүй»-д орохгүй — засварлагч урьдчилан сонгохгүй.
+    expect(memberIds(products, UNNAMED_SALE_ID, now)).toEqual(["sauvage"]);
   });
 });
 
