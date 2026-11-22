@@ -1,4 +1,5 @@
 import type { EmailDoc } from "@/lib/email/layout";
+import { emailAssetUrl } from "@/lib/email/asset-url";
 import { formatDate } from "@/lib/format";
 import type { GiftCardRow } from "@/db/types";
 import { formatGiftAmount, giftUrl } from "./lib";
@@ -34,13 +35,12 @@ export function recipientEmail(
 ): { subject: string; doc: EmailDoc } {
   const link = giftUrl(card.token, siteUrl);
   const amount = formatGiftAmount(card.amount);
-  const base = siteUrl.replace(/\/+$/u, "");
   return {
     subject: `${card.from_name} танд Vonscent-ийн бэлгийн карт илгээлээ`,
     doc: {
       preheader: `${amount}-ийн үнэрийн бэлэг таныг хүлээж байна`,
       hero: {
-        src: `${base}/api/gift-cards/${card.token}/image`,
+        src: emailAssetUrl(siteUrl, `/api/gift-cards/${card.token}/image`),
         alt: `Vonscent бэлгийн карт — ${amount}`,
         width: 504,
         height: 318,
@@ -56,7 +56,7 @@ export function recipientEmail(
       code: { label: "Эсвэл кодоо гараар оруулна", value: card.code },
       steps: { title: "Хэрхэн ашиглах вэ", items: STEPS },
       qr: {
-        src: `${base}/api/gift-cards/${card.token}/qr`,
+        src: emailAssetUrl(siteUrl, `/api/gift-cards/${card.token}/qr`),
         alt: "Бэлгийн холбоосын QR",
         caption:
           "Имэйлээ компьютерээс нээсэн бол утсаараа уншуулаад шууд нээгээрэй.",
