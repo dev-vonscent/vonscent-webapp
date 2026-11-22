@@ -2,6 +2,7 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { renderEmail, sendEmail, STORE_INBOX } from "@/lib/email";
+import { emailAssetUrl } from "@/lib/email/asset-url";
 import { env } from "@/lib/env";
 import { formatPrice } from "@/lib/format";
 import { resolveRecipient } from "@/lib/notify/customer-email";
@@ -185,7 +186,7 @@ async function sendBuyerReceipt(
   const { html, text } = renderEmail({
     preheader: `${order.order_no} — бэлгийн карт идэвхжлээ`,
     hero: {
-      src: `${base}/api/gift-cards/${card.token}/image`,
+      src: emailAssetUrl(env.siteUrl, `/api/gift-cards/${card.token}/image`),
       alt: `Бэлгийн карт — ${formatGiftAmount(card.amount)}`,
       width: 504,
       height: 318,
