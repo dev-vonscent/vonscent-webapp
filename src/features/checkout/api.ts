@@ -44,7 +44,7 @@ export interface PricedLine {
  */
 export interface BundleEventPart {
   label: string;
-  /** 1 ширхэгт ногдох нэмэлт хэмнэлт, ₮. */
+  /** 1 ширхэгт ногдох хэмнэлт (багцынх бүхэлдээ, 0201), ₮. */
   saving: number;
 }
 
@@ -180,7 +180,7 @@ export async function priceCollectionLines(
     if (members.some((m) => !m.active || m.ml !== col.ml)) continue;
 
     let discountPct = settings.customDiscountPct;
-    /** Event-гүй үеийн хувь — задаргааны «Багцын хямдрал» хэсэг. */
+    /** Event-гүй үеийн хувь — event үйлчилж буй эсэхийг шалгана. */
     let basePct = discountPct;
     let eventName: string | null = null;
     let name = "Миний багц";
@@ -274,7 +274,7 @@ export interface BundleSizeQuote {
   discountPct: number;
   /** Арга хэмжээний нэр (16.7), event-гүй бол null. */
   saleLabel: string | null;
-  /** Event-ийн нэмэлт хэмнэлт, 1 ширхэг (₮). */
+  /** Event-ийн хэмнэлт, 1 ширхэг (₮) — багцынх бүхэлдээ (0201). */
   saleAmount: number;
   /** Тухайн хэмжээний гишүүн variant-ууд, багцын гишүүдийн дарааллаар. */
   members: { productId: string; variantId: string; price: number }[];

@@ -132,7 +132,7 @@ export interface CartCollection {
    * «<Event нэр>» мөр. Event-гүй / туг хаалттай / хуучин сагс бол байхгүй.
    */
   saleLabel?: string | null;
-  /** Event-ийн нэмэлт хэмнэлт, 1 ширхэг (₮) — «Багцын хямдрал»-аас тусдаа. */
+  /** Event-ийн хэмнэлт, 1 ширхэг (₮) — багцын хэмнэлт бүхэлдээ (0201). */
   saleAmount?: number;
 }
 
@@ -960,9 +960,9 @@ export const collectionBasePrice = (c: CartCollection) =>
 
 /** Төлбөрийн хуудасны хямдралгүй дүн (багц бүр задарсан үнээрээ). */
 /**
- * Багцын «хямдралын өмнөх» дүн — задаргааны `gross_subtotal`-тай ижил (0190):
- * гишүүдийн үндсэн нийлбэр − event-ийн хэсэг. Ингэснээр gross − subtotal нь
- * зөвхөн суурь «Багцын хямдрал», event-ийн хэсэг тусдаа мөр.
+ * Багцын «хямдралын өмнөх» дүн — задаргааны `gross_subtotal`-тай ижил (0201):
+ * гишүүдийн үндсэн нийлбэр − event-ийн хэмнэлт. Event үйлчилж буй багцад
+ * gross − subtotal = 0 → зөвхөн «<Event нэр>» мөр; event-гүй бол «Багцын хямдрал».
  */
 export const collectionGrossPrice = (c: CartCollection) =>
   collectionBasePrice(c) - (c.saleAmount ?? 0);

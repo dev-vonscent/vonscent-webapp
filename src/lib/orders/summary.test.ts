@@ -207,11 +207,11 @@ describe("orderSummaryRows — арга хэмжээ (0189)", () => {
 });
 
 describe("§5 жишээ — арга хэмжээнд орсон багц (16.7)", () => {
-  it("туг нээлттэй: 100,000 → −5,000 багц → −5,000 Black Friday → −9,000 купон → −5,000 V point → +6,000", () => {
+  it("туг нээлттэй (0201): 100,000 → −10,000 Black Friday → −9,000 купон → −5,000 V point → +6,000", () => {
     const rows = orderSummaryRows({
       subtotal: 90000,
-      grossSubtotal: 95000,
-      saleBreakdown: [{ label: "Black Friday", amount: 5000 }],
+      grossSubtotal: 90000,
+      saleBreakdown: [{ label: "Black Friday", amount: 10000 }],
       discount: 9000,
       couponCode: "BF10",
       loyaltyUsed: 5000,
@@ -219,8 +219,7 @@ describe("§5 жишээ — арга хэмжээнд орсон багц (16.7
     });
     expect(rows.map((r) => [r.label, r.value])).toEqual([
       ["Нийт үндсэн үнэ", formatPrice(100000)],
-      ["Багцын хямдрал", `−${formatPrice(5000)}`],
-      ["Black Friday", `−${formatPrice(5000)}`],
+      ["Black Friday", `−${formatPrice(10000)}`],
       ["Нийт барааны үнэ", formatPrice(90000)],
       ["Купон · BF10", `−${formatPrice(9000)}`],
       ["V point", `−${formatPrice(5000)}`],

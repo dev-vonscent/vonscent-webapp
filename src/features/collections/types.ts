@@ -60,9 +60,9 @@ export interface CollectionPriceAtMl {
   /** memberSum − price. */
   saved: number;
   /**
-   * LIVE арга хэмжээний НЭМЭЛТ хэмнэлт (16.7): суурь хувиар бодсон үнэ −
-   * `price`. `saved`-ийн нэг хэсэг; задаргаанд «<Event нэр>» мөр болно.
-   * Event-гүй / туг хаалттай бол байхгүй.
+   * LIVE арга хэмжээний хэмнэлт (16.7, 0201): event үйлчилж байвал `saved`
+   * бүхэлдээ — задаргаанд ганц «<Event нэр>» мөр, «Багцын хямдрал» гарахгүй.
+   * Event-гүй / үйлчлэхгүй / туг хаалттай бол байхгүй.
    */
   eventSaving?: number;
   /** Every member has an active, in-stock variant at this ml. */
