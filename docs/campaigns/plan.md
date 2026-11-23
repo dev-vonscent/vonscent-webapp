@@ -53,7 +53,7 @@ TS тал үнийг **дахин бодохгүй** — мөн л `variant_pric
 |-------|-------------|------|
 | Hero хуваарь | `HOME_CAMPAIGNS` — `startsOn/endsOn` (УБ огноо), текст, 2 товч, зураг. Кодод hardcode, солиход PR → deploy | `src/features/marketing/home-content.ts`, `components/home/campaign-hero.tsx`, `prompts/hero.md` |
 | Hero LCP | `resolveStaticHero()` Suspense-гүй, preload-той (LCP) | `src/app/(shop)/page.tsx` |
-| Popup дедуп | Hero-гийн `primary.href`-тэй ижил popup слайдыг хасна (`liveCampaigns()`) | `page.tsx` → `PromoSlot` |
+| Popup дедуп | ~~Hero-гийн `primary.href`-тэй ижил popup слайдыг хасна~~ — 2026-11-д болиулсан: hero ба popup хоёр CTA-аар зэрэг гарна | `page.tsx` → `PromoSlot` |
 | Хугацаат хямдрал | `sale_price` + `sale_starts_at/ends_at` хэмжээ бүрт, `apply_bulk_sale(product_ids, pcts, starts, ends)` | `0166_sale_period.sql`, `/admin/sales`, `sale-manager.tsx`, `/api/admin/sales` |
 | Үнийн цорын ганц цэг (SQL) | `variant_price(v)` → `variant_sale_active(v)` | 0166; `place_order`, `catalog_search`, хайлт, багц бүгд үүнийг дууддаг |
 | Үнийн толь (TS) | `isSaleActive`, `effectivePrice` | `src/features/products/sale.ts`; хэрэглэгч: `products/api.ts:153` (барааны хуудас), `admin/api.ts:675`, `sale-manager.tsx` |

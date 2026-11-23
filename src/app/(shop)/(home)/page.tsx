@@ -45,7 +45,6 @@ import { PromoPopup } from "@/features/marketing/components/promo-popup";
 import { firstPopupImage } from "@/features/marketing/popup-schedule";
 import { CampaignHero } from "@/features/marketing/components/home/campaign-hero";
 import { resolveHomeHero } from "@/features/marketing/hero-resolve";
-import { normalizePromoHref } from "@/features/heroes/lib";
 import { HomeShortcuts } from "@/features/marketing/components/home/home-shortcuts";
 import { IntentCards } from "@/features/marketing/components/home/intent-cards";
 import { ReviewsSection } from "@/features/marketing/components/home/reviews-section";
@@ -118,12 +117,7 @@ export default async function HomePage() {
     <>
       {/* An overlay with nothing to reserve, so it streams with no fallback. */}
       <Suspense fallback={null}>
-        <PromoSlot
-          heroHrefs={[
-            hero.campaign.primary.href,
-            ...(hero.campaign.secondary ? [hero.campaign.secondary.href] : []),
-          ]}
-        />
+        <PromoSlot />
       </Suspense>
       <Suspense fallback={null}>
         <SiteJsonLd />
@@ -185,21 +179,12 @@ async function SiteJsonLd() {
 }
 
 /**
- * The admin popup stays (home only, as before). A slide that links to the
- * same place as the live hero campaign is dropped — the visitor would see
- * the same promotion twice.
+ * The admin popup (home only). Slides are shown even when they link to the
+ * same place as the live hero — hero and popup are two CTAs for one campaign
+ * (client, 2026-11); the admin decides what the popup shows.
  */
-async function PromoSlot({ heroHrefs }: { heroHrefs: string[] }) {
-  const raw = await getPopupSettings();
-  // Шийдэгдсэн hero-гийн хоёр товчны холбоос (DB эсвэл кодын, plan §7.2).
-  // `/sale/x` ба `/catalog?event=x`, origin, query-ийн дараалал ялгаагүй.
-  const taken = new Set(heroHrefs.map(normalizePromoHref));
-  const settings = {
-    ...raw,
-    slides: raw.slides.filter(
-      (s) => !s.href || !taken.has(normalizePromoHref(s.href)),
-    ),
-  };
+async function PromoSlot() {
+  const settings = await getPopupSettings();
   // Popup нээгдэхэд түүний зураг LCP болж болно — HTML parse хийх үед
   // JS-тэй зэрэг татаж эхэлнэ. Priority-г өсгөхгүй (hero-той өрсөлдөхгүй).
   const first = firstPopupImage(settings);

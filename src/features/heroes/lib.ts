@@ -262,33 +262,6 @@ export function heroSchedule(
   return out;
 }
 
-/**
- * Popup-ийн слайд hero-той ижил газар заасан эсэхийг харьцуулах хэлбэр
- * (fixes F3): өөрийн домэйны origin хасна, `/sale/x` → `/catalog?event=x`,
- * query эрэмбэлнэ, төгсгөлийн `/` хасна. Гадаад хаяг хэвээр.
- */
-export function normalizePromoHref(href: string): string {
-  let u: URL;
-  try {
-    u = new URL(href, "http://self.invalid");
-  } catch {
-    return href;
-  }
-  const own =
-    u.host === "self.invalid" || /(^|\.)vonscent\.mn$/u.test(u.hostname);
-  if (!own) return u.href;
-  let path = u.pathname.replace(/\/+$/u, "") || "/";
-  const params = new URLSearchParams(u.search);
-  const sale = /^\/sale\/([^/]+)$/u.exec(path);
-  if (sale) {
-    path = "/catalog";
-    params.set("event", decodeURIComponent(sale[1]));
-  }
-  params.sort();
-  const q = params.toString();
-  return q ? `${path}?${q}` : path;
-}
-
 /** `live_heroes()`-ийн кэшээс одоо гарах эхний hero (fixes F5). */
 export function pickLiveHero<T extends { startsAt: string; endsAt: string }>(
   rows: readonly T[],

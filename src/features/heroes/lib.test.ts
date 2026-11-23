@@ -7,7 +7,6 @@ import {
   heroTargetHref,
   heroToCampaign,
   isInternalPath,
-  normalizePromoHref,
   pickLiveHero,
   targetOutsidePeriod,
 } from "./lib";
@@ -231,28 +230,6 @@ describe("targetOutsidePeriod", () => {
     expect(targetOutsidePeriod({ startsAt: bf.startsAt, endsAt: bf.endsAt }, t, [bf])).toBeNull();
     expect(targetOutsidePeriod(null, t, [{ ...bf, isActive: false }])?.id).toBe("e-bf");
     expect(targetOutsidePeriod(null, { type: "path", href: "/" }, [bf])).toBeNull();
-  });
-});
-
-describe("normalizePromoHref (fixes F3)", () => {
-  it("/sale/x ба /catalog?event=x, origin, query дараалал — тэнцүү", () => {
-    const want = normalizePromoHref("/catalog?event=x");
-    for (const h of [
-      "/sale/x",
-      "/sale/x/",
-      "https://vonscent.mn/sale/x",
-      "https://www.vonscent.mn/catalog?event=x",
-    ])
-      expect(normalizePromoHref(h)).toBe(want);
-    expect(normalizePromoHref("/catalog?tags=new&event=x")).toBe(
-      normalizePromoHref("/catalog?event=x&tags=new"),
-    );
-  });
-  it("өөр газар / гадаад хаяг тэнцэхгүй", () => {
-    expect(normalizePromoHref("/catalog?event=y")).not.toBe(normalizePromoHref("/sale/x"));
-    expect(normalizePromoHref("https://evil.example/sale/x")).not.toBe(
-      normalizePromoHref("/sale/x"),
-    );
   });
 });
 
