@@ -58,9 +58,17 @@ export function withEventPcts(
 }
 
 /**
- * Event-ийн нэмэлт хэмнэлт (₮, 1 ширхэг): суурь хувиар бодсон үнэ − бодит
- * үнэ. SQL `order_bundle_event_rows` (0190)-тэй ижил томьёо — задаргаанд
- * «Багцын хямдрал» (суурь хэсэг) ба «<Event нэр>» (энэ) мөр болж хуваагдана.
+ * Event-ийн хэмнэлт (₮, 1 ширхэг) — задаргааны «<Event нэр>» мөр.
+ *
+ * Event хувь суурийг ОРЛОДОГ тул хэмнэлт БҮХЭЛДЭЭ event-ийнх: гишүүдийн
+ * нийлбэр − бодит үнэ. «Багцын хямдрал» мөр гарахгүй (барааны
+ * `variant_sale_label`-тай ижил — ялсан хямдрал ганц мөр). Хуучин загвар
+ * (0190) суурь 5% + event-ийн нэмэлт 5% гэж хувааж давхарласан мэт харуулдаг
+ * байв (0201).
+ *
+ * Event үйлчилж байгаа эсэх: суурь хувиар бодсон үнээс ХЯМД бол л (greatest
+ * / 100₮-т тэгшлэлтээр ялгаагүй бол 0 → энгийн «Багцын хямдрал»).
+ * SQL `order_bundle_event_rows` (0201)-тэй ижил томьёо.
  */
 export function bundleEventSaving(
   memberSum: number,
@@ -68,7 +76,8 @@ export function bundleEventSaving(
   price: number,
   step = 100,
 ): number {
-  return Math.max(0, bundlePrice(memberSum, basePct, step) - price);
+  if (!(price < bundlePrice(memberSum, basePct, step))) return 0;
+  return Math.max(0, memberSum - price);
 }
 
 /**
@@ -216,8 +225,8 @@ export function formatDiscountRange({
 
 /**
  * Багцын хэмжээ бүрийн үнэ + LIVE арга хэмжээ (16.7). Event-ийн хувь суурь
- * хувийг орлоно (`withEventPcts`, greatest); хэмжээ бүрийн нэмэлт хэмнэлт
- * `eventSaving`. Event нь ядаж нэг хэмжээнд хэмнэлт өгч байвал л буцна —
+ * хувийг орлоно (`withEventPcts`, greatest); хэмжээ бүрийн event-ийн хэмнэлт
+ * `eventSaving` (= `saved`, 0201). Event нь ядаж нэг хэмжээнд хэмнэлт өгч байвал л буцна —
  * event хувь ≤ суурь хувь бол үйлчлэхгүй тул null (тэмдэг, тоолуур гарахгүй).
  */
 export function priceWithBundleEvent(

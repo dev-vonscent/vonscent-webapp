@@ -217,6 +217,7 @@ interface OrderRow {
   shipping_fee: number;
   total: number;
   coupon_code: string | null;
+  coupon_pct: number | null;
 }
 
 async function placeOrder(
@@ -261,7 +262,8 @@ async function placeOrder(
   );
   const o = await c.query<OrderRow>(
     `select o.id, o.subtotal, o.gross_subtotal, o.sale_discount, o.sale_breakdown,
-            o.discount, o.loyalty_used, o.shipping_fee, o.total, o.coupon_code
+            o.discount, o.loyalty_used, o.shipping_fee, o.total, o.coupon_code,
+            o.coupon_pct
        from orders o where o.id = $1`,
     [rows[0].r.order_id],
   );
@@ -469,16 +471,16 @@ async function main() {
         o.total,
       );
       check(
-        "gross_subtotal = 95,000 (Багцын хямдрал 5,000)",
-        o.gross_subtotal === 95000,
+        "gross_subtotal = 90,000 (Багцын хямдрал мөргүй, 0201)",
+        o.gross_subtotal === 90000,
         o.gross_subtotal,
       );
-      check("sale_discount = 5,000", o.sale_discount === 5000, o.sale_discount);
+      check("sale_discount = 10,000", o.sale_discount === 10000, o.sale_discount);
       check(
-        "sale_breakdown = [Black Friday 5,000] = TS bundleEventSaving",
+        "sale_breakdown = [Black Friday 10,000] = TS bundleEventSaving",
         JSON.stringify(o.sale_breakdown) ===
           JSON.stringify([{ label: "Black Friday", amount: ts.eventSaving }]) &&
-          ts.eventSaving === 5000,
+          ts.eventSaving === 10000,
         o.sale_breakdown,
       );
       check(
@@ -650,14 +652,14 @@ async function main() {
       });
       check("subtotal 110,000", o.subtotal === 110000, o.subtotal);
       check(
-        "sale_breakdown = [Black Friday 10,000] (дан 5,000 + багц 5,000)",
+        "sale_breakdown = [Black Friday 15,000] (дан 5,000 + багц 10,000)",
         JSON.stringify(o.sale_breakdown) ===
-          JSON.stringify([{ label: "Black Friday", amount: 10000 }]),
+          JSON.stringify([{ label: "Black Friday", amount: 15000 }]),
         o.sale_breakdown,
       );
       check(
-        "gross 115,000 → Нийт үндсэн үнэ 125,000",
-        o.gross_subtotal === 115000 &&
+        "gross 110,000 → Нийт үндсэн үнэ 125,000",
+        o.gross_subtotal === 110000 &&
           o.gross_subtotal + o.sale_discount === 125000,
         o,
       );
