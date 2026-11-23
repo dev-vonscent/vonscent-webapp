@@ -392,12 +392,12 @@ describe("хямдралын өмнөх дүн", () => {
     expect(selectCheckoutSubtotal(state)).toBe(54000);
   });
 
-  it("event-д орсон багц (16.7): gross = үндсэн − event хэсэг → «Багцын хямдрал» зөвхөн суурь", () => {
-    // 100,000₮, суурь 5% (95,000), Black Friday 10% → 90,000; event хэсэг 5,000.
+  it("event-д орсон багц (16.7, 0201): gross = төлөх дүн → «Багцын хямдрал» гарахгүй", () => {
+    // 100,000₮, суурь 5% (95,000), Black Friday 10% → 90,000; event 10,000 бүхэлдээ.
     const b = {
       ...bundle("c1", 90000),
       saleLabel: "Black Friday",
-      saleAmount: 5000,
+      saleAmount: 10000,
     };
     b.members = [
       { ...member("m1"), price: 40000 },
@@ -405,12 +405,10 @@ describe("хямдралын өмнөх дүн", () => {
     ];
     useCart.getState().addCollection(b, 1);
     const state = useCart.getState();
-    expect(selectCheckoutGross(state)).toBe(95000);
+    expect(selectCheckoutGross(state)).toBe(90000);
     expect(selectCheckoutSubtotal(state)).toBe(90000);
-    // Задаргаа: 100,000 − 5,000 (Багцын хямдрал) − 5,000 (Black Friday).
-    expect(selectCheckoutGross(state) - selectCheckoutSubtotal(state)).toBe(
-      5000,
-    );
+    // Задаргаа: 100,000 − 10,000 (Black Friday) — багцын мөр 0.
+    expect(selectCheckoutGross(state) - selectCheckoutSubtotal(state)).toBe(0);
   });
 
   it("багцгүй сагсанд хоёр дүн тэнцүү", () => {

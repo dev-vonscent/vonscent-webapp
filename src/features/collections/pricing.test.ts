@@ -268,11 +268,9 @@ describe("арга хэмжээнд орсон багц (task 16.7)", () => {
     const o = withEventPcts(5, {}, { 10: 10 });
     expect(o).toEqual({ 10: 10 });
     expect(priceAt(5, o).price).toBe(90000);
-    // Задаргаа: «Багцын хямдрал» 5,000 + «Black Friday» 5,000.
-    expect(bundleEventSaving(100000, 5, 90000, 100)).toBe(5000);
-    expect(100000 - 90000 - bundleEventSaving(100000, 5, 90000, 100)).toBe(
-      5000,
-    );
+    // Задаргаа: зөвхөн «Black Friday» 10,000 — «Багцын хямдрал» 0 (0201).
+    expect(bundleEventSaving(100000, 5, 90000, 100)).toBe(10000);
+    expect(100000 - 90000 - bundleEventSaving(100000, 5, 90000, 100)).toBe(0);
   });
 
   it("greatest хамгаалалт: суурь 15% / event 10% → 15% хэвээр (үнэтэй болохгүй)", () => {
@@ -311,10 +309,17 @@ describe("арга хэмжээнд орсон багц (task 16.7)", () => {
     expect(priceAt(5, withEventPcts(5, {}, {})).price).toBe(95000);
   });
 
-  it("тэгшлэлт: 123,400₮, суурь 5% → 117,200; event 10% → 111,100 (зөрүү 6,100)", () => {
+  it("тэгшлэлт: 123,400₮, суурь 5% → 117,200; event 10% → 111,100 (хэмнэлт 12,300)", () => {
     expect(bundlePrice(123400, 5, 100)).toBe(117200);
     expect(bundlePrice(123400, 10, 100)).toBe(111100);
-    expect(bundleEventSaving(123400, 5, 111100, 100)).toBe(6100);
+    expect(bundleEventSaving(123400, 5, 111100, 100)).toBe(12300);
+  });
+
+  it("event-гүй (суурь үнэтэй тэнцүү) бол 0 → энгийн «Багцын хямдрал»", () => {
+    expect(bundleEventSaving(100000, 5, 95000, 100)).toBe(0);
+    // 100₮-т тэгшлэхэд суурь 5% ба event 6% ижил үнэ → event үйлчлэхгүй.
+    expect(bundlePrice(2000, 5, 100)).toBe(bundlePrice(2000, 6, 100));
+    expect(bundleEventSaving(2000, 5, bundlePrice(2000, 6, 100), 100)).toBe(0);
   });
 });
 
