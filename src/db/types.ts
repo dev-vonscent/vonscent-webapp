@@ -243,6 +243,10 @@ export interface OrderRow {
   /** Ажилтан бэлдсэн (грамлаж, уутласан) цаг — 0099. NULL = бэлдэгдээгүй. */
   prepared_at: string | null;
   prepared_by: string | null;
+  /** Хаягийн шошгыг сүүлд хэвлэсэн цаг — 0202. NULL = хэвлээгүй. */
+  label_printed_at?: string | null;
+  /** Усны шошгыг сүүлд хэвлэсэн цаг — 0202. NULL = хэвлээгүй. */
+  perfume_label_printed_at?: string | null;
   qpay_invoice_id: string | null;
   /**
    * Opaque key for /pay/<token> — 0068. `order_no` is a sequence, so it can

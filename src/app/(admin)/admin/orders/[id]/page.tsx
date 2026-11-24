@@ -7,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getOrderDetail } from "@/features/admin/api";
 import { getStaffUser } from "@/lib/auth/guard";
+import { isFeatureEnabled } from "@/lib/feature-flags";
+import { OrderLabelPanel } from "@/features/admin/components/order-label-panel";
 import {
   buildOrderLines,
   bundleTitle,
@@ -45,9 +47,10 @@ export default async function AdminOrderDetail({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [detail, staff] = await Promise.all([
+  const [detail, staff, labelPrint] = await Promise.all([
     getOrderDetail(id),
     getStaffUser(),
+    isFeatureEnabled("label_print"),
   ]);
   if (!detail) notFound();
   const {
@@ -404,6 +407,14 @@ export default async function AdminOrderDetail({
               )}
             </CardContent>
           </Card>
+
+          {labelPrint && (
+            <Card>
+              <CardContent className="p-5">
+                <OrderLabelPanel order={order} />
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 
