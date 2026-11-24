@@ -16,7 +16,7 @@
  */
 import { AIMAGS, ULAANBAATAR_CODE, getAimag } from "./locations";
 
-const UB_NAME = getAimag(ULAANBAATAR_CODE)?.name ?? "Улаанбаатар";
+export const UB_NAME = getAimag(ULAANBAATAR_CODE)?.name ?? "Улаанбаатар";
 
 export interface ZoneAreaRule {
   /** Stable id (A/B/C/R/X); absent on legacy rows saved before codes existed. */

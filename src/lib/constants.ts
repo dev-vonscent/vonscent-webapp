@@ -383,6 +383,14 @@ export const PREPARABLE_ORDER_STATUSES = [
   "shipping",
 ] as const satisfies readonly OrderStatus[];
 
+/** Хүргэлтийн шошго хэвлэж болох төлөв (0202, `label_print`) — клиент 2026-11. */
+export const LABEL_PRINTABLE_ORDER_STATUSES = [
+  "confirmed",
+] as const satisfies readonly OrderStatus[];
+
+/** Нэг удаад хэвлэх шошгоны дээд тоо — жагсаалтын нэг хуудас (50). */
+export const LABEL_PRINT_MAX = 50;
+
 /** `/admin/orders?status=` дээрх төлөв биш шүүлт: баталгаажсан + бэлдээгүй. */
 export const UNPREPARED_FILTER = "unprepared";
 
@@ -890,6 +898,11 @@ export const FEATURE_FLAGS = {
     label: "Бэлгийн карт",
     description:
       "100k/200k/300k/500k₮-ийн бэлгийн карт: /gift-cards (зочин харна, худалдан авахад нэвтрэлт), /gift/[token] хүлээн авагчийн хуудас, /account/gift-cards, кодыг V point болгох, имэйлээр илгээх; place_gift_card_order, mark_order_paid-ийн картын салаа, redeem_gift_card, хугацаа дуусгах cron (0179). Админ → Бэлгийн карт мөн тугаар хаагдана (gift-cards-plan). АНХААР: карт зарагдсаны дараа хаавал хүлээн авагч кодоо оруулж чадахгүй ч 1 жилийн хугацаа нь үргэлжлэн тоологдоно — нээгдсэний дараа хаахгүй байх.",
+  },
+  label_print: {
+    label: "Хүргэлтийн шошго хэвлэх",
+    description:
+      "Админ → Захиалга: баталгаажсан захиалгуудыг сонгоод Niimbot хэвлэгчээр (Web Bluetooth, Chrome/Edge/Android) хаягийн шошго (45×60, утас, хаяг, тэмдэглэл, лого) ба усны шошго (40×15, брэнд + нэр, сав бүрт) хэвлэх (/api/admin/orders/label-items); хэвлэсэн цагийг orders.label_printed_at (хаяг) ба perfume_label_printed_at (ус, 0202)-д тэмдэглэнэ (/api/admin/orders/label-printed); захиалгын дэлгэрэнгүйд «Шошго» хэсэг, хэвлэлтийг «Зогсоох». iPhone/Safari дэмжихгүй. Хаалттай үед товч, багана харагдахгүй, юу ч бичигдэхгүй.",
   },
 } as const satisfies Record<string, FeatureFlagMeta>;
 

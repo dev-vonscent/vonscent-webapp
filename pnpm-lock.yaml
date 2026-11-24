@@ -29,6 +29,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^3.9.1
         version: 3.10.0(react-hook-form@7.80.0(react@19.2.4))
+      '@mmote/niimbluelib':
+        specifier: 0.49.1
+        version: 0.49.1
       '@next/third-parties':
         specifier: ^16.3.2
         version: 16.3.2(next@16.2.9(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@20.19.43)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
@@ -395,6 +398,14 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  '@capacitor-community/bluetooth-le@8.4.0':
+    resolution: {integrity: sha512-3LL3BlEdPsImgL+Ttmr4meZ5rNwjPZsdhaebhQJ1xzqsQURoD7OrW/LGuEvwgyhxqaT+ogIQMpkH7VU3ivBeLg==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+
+  '@capacitor/core@8.6.2':
+    resolution: {integrity: sha512-UEb9crRuqEAe2Iu2eGOEuQ8rLQxpwg7ZZIpl17UJoytEpnV1e4oXXW0K7yYS2NsCOGmJjyLeKjNlgG7tkAoX8g==}
 
   '@csstools/color-helpers@5.1.0':
     resolution: {integrity: sha512-S11EXWJyy0Mz5SYvRmY8nJYTFFd1LCNV+7cXyAgQtOOuzb4EsgfqDufL+9esx72/eLhsRdGZwaldu/h+E4t4BA==}
@@ -1079,6 +1090,9 @@ packages:
 
   '@mediapipe/tasks-vision@0.10.17':
     resolution: {integrity: sha512-CZWV/q6TTe8ta61cZXjfnnHsfWIdFhms03M9T7Cnd5y2mdpylJM0rF1qRq+wsQVRMLz1OYPVEBU9ph2Bx8cxrg==}
+
+  '@mmote/niimbluelib@0.49.1':
+    resolution: {integrity: sha512-3OSJCmSDQenkPEHPJA3ybuFLKcrv7J0QEnVeS2rKoli54q5OXzrPgUw4pghUN9YKgK2xTx0WKA/3Y8wC9GZouQ==}
 
   '@monogrid/gainmap-js@3.4.0':
     resolution: {integrity: sha512-2Z0FATFHaoYJ8b+Y4y4Hgfn3FRFwuU5zRrk+9dFWp4uGAdHGqVEdP7HP+gLA3X469KXHmfupJaUbKo1b/aDKIg==}
@@ -2488,6 +2502,9 @@ packages:
   '@types/use-sync-external-store@0.0.6':
     resolution: {integrity: sha512-zFDAD+tlpf2r4asuHEj0XH6pY6i0g5NeAHPn+15wk3BV6JA69eERFXC1gyGThDkVa1zCyKr5jox1+2LbV/AMLg==}
 
+  '@types/web-bluetooth@0.0.20':
+    resolution: {integrity: sha512-g9gZnnXVq7gM7v3tJCWV/qw7w+KeOlSHAhgF9RytFyifW6AF61hdT2ucrYhPq9hLs5JIryeupHV3qGk95dH9ow==}
+
   '@types/webxr@0.5.24':
     resolution: {integrity: sha512-h8fgEd/DpoS9CBrjEQXR+dIDraopAEfu4wYVNY2tEPwk60stPWhvZMf4Foo5FakuQ7HFZoa8WceaWFervK2Ovg==}
 
@@ -2890,6 +2907,9 @@ packages:
   async-function@1.0.0:
     resolution: {integrity: sha512-hsU18Ae8CDTR6Kgu9DYf0EbCr/a5iGL0rytQDobUcdpYOKokk8LEjVphnXkDkgpi0wYVsqrXuP0bZxJaTqdgoA==}
     engines: {node: '>= 0.4'}
+
+  async-mutex@0.5.0:
+    resolution: {integrity: sha512-1A94B18jkJ3DYq284ohPxoXbfTA5HsQ7/Mf4DEhcyLx3Bz27Rh59iScbB6EPiP+B+joue6YCxcMXSbFC1tZKwA==}
 
   async@3.2.6:
     resolution: {integrity: sha512-htCUDlxyyCLMgaM3xXg0C0LW2xqfuQ6p05pCEIsXuyQ+a1koYKTuBMzRNwmybfLgvJDMd0r1LTn4+E0Ti6C2AA==}
@@ -6011,6 +6031,15 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.17
 
+  '@capacitor-community/bluetooth-le@8.4.0(@capacitor/core@8.6.2)':
+    dependencies:
+      '@capacitor/core': 8.6.2
+      '@types/web-bluetooth': 0.0.20
+
+  '@capacitor/core@8.6.2':
+    dependencies:
+      tslib: 2.8.1
+
   '@csstools/color-helpers@5.1.0': {}
 
   '@csstools/css-calc@2.1.4(@csstools/css-parser-algorithms@3.0.5(@csstools/css-tokenizer@3.0.4))(@csstools/css-tokenizer@3.0.4)':
@@ -6510,6 +6539,14 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.5.5
 
   '@mediapipe/tasks-vision@0.10.17': {}
+
+  '@mmote/niimbluelib@0.49.1':
+    dependencies:
+      '@capacitor-community/bluetooth-le': 8.4.0(@capacitor/core@8.6.2)
+      '@capacitor/core': 8.6.2
+      async-mutex: 0.5.0
+      crc-32: 1.2.2
+      eventemitter3: 5.0.4
 
   '@monogrid/gainmap-js@3.4.0(three@0.186.1)':
     dependencies:
@@ -7906,6 +7943,8 @@ snapshots:
 
   '@types/use-sync-external-store@0.0.6': {}
 
+  '@types/web-bluetooth@0.0.20': {}
+
   '@types/webxr@0.5.24': {}
 
   '@typescript-eslint/eslint-plugin@8.62.0(@typescript-eslint/parser@8.62.0(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3)':
@@ -8380,6 +8419,10 @@ snapshots:
   astring@1.9.0: {}
 
   async-function@1.0.0: {}
+
+  async-mutex@0.5.0:
+    dependencies:
+      tslib: 2.8.1
 
   async@3.2.6: {}
 
