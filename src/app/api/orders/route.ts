@@ -26,6 +26,7 @@ import {
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getUserRetrying } from "@/lib/supabase/auth-errors";
 import { callRpc } from "@/lib/supabase/rpc";
 import { RESERVE_TIMEOUT_MINUTES, SHIPPING_ZONES } from "@/lib/constants";
 import { isQpayMockMode } from "@/lib/payments/qpay";
@@ -195,12 +196,19 @@ export async function POST(req: Request) {
 
   // Resolve the signed-in user (if any) so the order attaches to their account
   // and loyalty earn/redeem applies. Guests place orders with a null user_id.
+  //
+  // Auth түр унавал (сүлжээ, 5xx) дахин оролдоно. Бүгд бүтэлгүйтвэл зочин
+  // гэж ҮЗЭХГҮЙ — нэвтэрсэн хэрэглэгчийн захиалга чимээгүй зочных болж V point
+  // нь алга болдог байв. Түр алдаа зөвхөн session-тэй үед гардаг (cookie-гүй
+  // зочин шууд `null`), тиймээс 503 нь жинхэнэ зочинд хүрэхгүй. Идемпотентын
+  // эзэмшлээс өмнө буцаадаг тул дахин дарахад давхар захиалга үүсэхгүй.
   let userId: string | null = null;
   const sessionClient = await createClient();
   if (sessionClient) {
-    const {
-      data: { user },
-    } = await sessionClient.auth.getUser();
+    const user = await getUserRetrying(sessionClient, { delayMs: 300 });
+    if (user === undefined) {
+      return NextResponse.json({ error: "AUTH_UNAVAILABLE" }, { status: 503 });
+    }
     userId = user?.id ?? null;
   }
 
