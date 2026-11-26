@@ -1,5 +1,5 @@
 import "server-only";
-import { unstable_cache } from "next/cache";
+import { safeCache } from "@/lib/safe-cache";
 import * as Sentry from "@sentry/nextjs";
 import { CACHE_TAG_CATALOG } from "@/lib/cache-tags";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -63,7 +63,7 @@ function tickerTheme(v: string | null | undefined): SaleEventTickerTheme | null 
     : null;
 }
 
-const fetchLive = unstable_cache(
+const fetchLive = safeCache(
   async (): Promise<LiveSaleEvent[]> => {
     const supabase = createPublicClient();
     if (!supabase) return [];
@@ -106,7 +106,7 @@ export async function getLiveSaleEvents(): Promise<LiveSaleEvent[]> {
   );
 }
 
-const fetchPcts = unstable_cache(
+const fetchPcts = safeCache(
   async (): Promise<Record<string, number>> => {
     const supabase = createPublicClient();
     if (!supabase) return {};
@@ -135,7 +135,7 @@ export async function getLiveEventPcts(): Promise<Record<string, number>> {
   return fetchPcts();
 }
 
-const fetchPublic = unstable_cache(
+const fetchPublic = safeCache(
   async (slug: string): Promise<SaleEventPublic | null> => {
     const supabase = createPublicClient();
     if (!supabase) return null;
