@@ -53,7 +53,11 @@ function watchAuth() {
   watching = true;
   supabase.auth.onAuthStateChange((event) => {
     // INITIAL_SESSION fires on subscribe; re-reading then is a wasted trip.
-    if (event === "INITIAL_SESSION") return;
+    // TOKEN_REFRESHED never changes who the user is — and re-reading on it
+    // calls `getUser()`, which refreshes again whenever the device clock makes
+    // a fresh token look expired: a refresh loop that hit the auth rate limit
+    // (429) and signed a customer out mid-checkout (2026-11-26).
+    if (event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") return;
     pending = null;
     current = null;
     void load();

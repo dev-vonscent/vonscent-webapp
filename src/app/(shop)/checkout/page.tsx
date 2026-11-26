@@ -121,6 +121,7 @@ import {
 } from "@/features/cart/use-cart-selection";
 import { trackBeginCheckout } from "@/lib/analytics";
 import { createClient } from "@/lib/supabase/browser";
+import { getUserRetrying } from "@/lib/supabase/auth-errors";
 import type { AddressRow } from "@/db/types";
 import { useMyTier } from "@/features/tiers/use-tier";
 import { pointsAtTierRate, tierByKey } from "@/features/tiers/lib";
@@ -817,9 +818,11 @@ export default function CheckoutPage() {
       return;
     }
     (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      // Түр алдаа (4G тасрах, auth 5xx) дээр дахин оролдоно — нэг удаагийн
+      // `user: null`-ээс болж нэвтэрсэн хэрэглэгч «зочин» болж, купон, V point
+      // нь алга болдог байв. Бүх оролдлого түр алдаагаар дуусвал (`undefined`)
+      // зочин гэж үзнэ: захиалгын API нэвтрэлтийг cookie-оос өөрөө дахин шалгадаг.
+      const user = await getUserRetrying(supabase);
       setAuthChecked(true);
       if (!user) return;
       setAuthed(true);
@@ -870,6 +873,41 @@ export default function CheckoutPage() {
       );
     })();
   }, [setValue, getValues, applyAddress]);
+
+  const keepDraftRef = React.useRef(keepDraft);
+  keepDraftRef.current = keepDraft;
+  const authedRef = React.useRef(authed);
+  authedRef.current = authed;
+
+  // Энэ хуудсан дээр байх үед session алдагдвал (токен сэргээлт 429 г.м.)
+  // чимээгүй «зочин» болгохгүй, дахин нэвтрэхийг санал болгоно. Хэрэглэгч
+  // өөрөө гарах нь формын POST-оор бүтэн шилжилт тул энд SIGNED_OUT ирэхгүй.
+  React.useEffect(() => {
+    const supabase = createClient();
+    if (!supabase) return;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "SIGNED_OUT" || !authedRef.current) return;
+      authedRef.current = false;
+      setAuthed(false);
+      setLoyaltyPoints(0);
+      toast.errorWithActions(
+        "Купон, V point ашиглах бол дахин нэвтэрнэ үү. Бөглөсөн мэдээлэл хадгалагдана.",
+        "Нэвтрэлтийн хугацаа дууссан",
+        [
+          {
+            label: "Нэвтрэх",
+            onClick: () => {
+              keepDraftRef.current();
+              router.push(LOGIN_HREF);
+            },
+          },
+        ],
+      );
+    });
+    return () => subscription.unsubscribe();
+  }, [router]);
 
   const zone = watch("shipZone");
   const city = watch("shipCity");
