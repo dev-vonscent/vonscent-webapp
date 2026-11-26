@@ -94,7 +94,11 @@ export function NewsletterForm() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "INITIAL_SESSION") return;
+      // TOKEN_REFRESHED нь хэрэглэгчийг солихгүй — түүн дээр бичиж буй имэйлийг
+      // арилгаж, /api/newsletter/me-г (Vercel function) дахин дуудах ёсгүй.
+      // Refresh loop-той төхөөрөмж дээр энэ нь минутад хэдэн арван дуудлага
+      // болдог (2026-11-26, use-is-staff-ийн засвартай ижил).
+      if (event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") return;
       setEditing(false);
       setEmail("");
       setState("idle");
