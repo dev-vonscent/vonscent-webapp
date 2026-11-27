@@ -85,6 +85,18 @@ describe("orderLabelLines", () => {
     expect(only[0].icon).toBe("gift");
     expect(only.map(text).some((t) => t.includes("Тэмдэглэл"))).toBe(false);
   });
+
+  it("manual label: no number line unless gift wrap; blank fields dropped", () => {
+    const manual = { ...base, order_no: " ", contact_name: "", note: null };
+    expect(orderLabelLines(manual).map(text)).toEqual([
+      "*Утас:* 80023759",
+      "*Хаяг:* Улаанбаатар, СБД, 1-р хороо, 5-р байр 12 тоот",
+    ]);
+    expect(orderLabelLines(manual, { giftWrap: true })[0]).toEqual({
+      icon: "gift",
+      segments: [],
+    });
+  });
 });
 
 describe("wrapSegments", () => {

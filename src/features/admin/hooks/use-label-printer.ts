@@ -268,6 +268,27 @@ export function useLabelPrinter({
     [connect, run],
   );
 
+  /**
+   * Захиалгагүй, бэлэн шошгууд (/admin/orders/labels) — санд «хэвлэсэн»
+   * тэмдэглэхгүй. Зогсоох / үргэлжлүүлэх нь захиалгын хэвлэлттэй адил.
+   */
+  const printJobs = React.useCallback(
+    async (kind: LabelKind, jobs: PrintJob[]) => {
+      if (jobs.length === 0) return;
+      if (!printerName() && !(await connect())) return;
+      await run({
+        kind,
+        jobs,
+        next: 0,
+        printed: [],
+        marked: new Set(),
+        ordersOf: () => [],
+        error: null,
+      });
+    },
+    [connect, run],
+  );
+
   return {
     supported,
     printer,
@@ -277,6 +298,7 @@ export function useLabelPrinter({
     paused,
     connect,
     print,
+    printJobs,
     stop,
     resume,
     discard,
@@ -324,21 +346,16 @@ function perfumeJobs(
         orderNo: orderNo.get(it.order_id) ?? "",
       })),
     );
-  // Хос цаас — нэг хуудсанд хоёр ус (LABEL_PAPERS.perfume.perPage).
-  const { perPage } = LABEL_PAPERS.perfume;
-  const jobs: PrintJob[] = [];
+  const { jobs, pages } = perfumePageJobs(
+    labels,
+    logo,
+    (l) => `${l.orderNo} ${l.brand} ${l.name}`,
+  );
   /** Захиалга бүрийн сүүлчийн шошго аль хуудсанд. */
   const lastPage = new Map<string, string>();
-  for (let i = 0; i < labels.length; i += perPage) {
-    const page = labels.slice(i, i + perPage);
-    const key = String(i / perPage);
-    for (const l of page) lastPage.set(l.orderId, key);
-    jobs.push({
-      key,
-      label: page.map((l) => `${l.orderNo} ${l.brand} ${l.name}`).join(", "),
-      draw: (dpi) => drawPerfumePage(page, dpi, logo),
-    });
-  }
+  pages.forEach((page, i) => {
+    for (const l of page) lastPage.set(l.orderId, String(i));
+  });
   return {
     jobs,
     // Хуудас дарааллаар хэвлэгддэг тул сүүлчийн хуудас нь хэвлэгдсэн бол
@@ -350,4 +367,25 @@ function perfumeJobs(
         .map(([orderId]) => orderId);
     },
   };
+}
+
+/**
+ * Усны шошгыг хос цаасны хуудсуудад хуваана (LABEL_PAPERS.perfume.perPage):
+ * нэг хуудсанд хоёр ус, сондгой бол сүүлийн доод шошго хоосон. Job-ийн
+ * түлхүүр нь хуудасны индекс.
+ */
+export function perfumePageJobs<
+  T extends { brand: string; name: string; ml?: number | null },
+>(labels: readonly T[], logo: LabelLogo | null, describe: (l: T) => string) {
+  const { perPage } = LABEL_PAPERS.perfume;
+  const pages: T[][] = [];
+  for (let i = 0; i < labels.length; i += perPage) {
+    pages.push(labels.slice(i, i + perPage));
+  }
+  const jobs = pages.map<PrintJob>((page, i) => ({
+    key: String(i),
+    label: page.map(describe).join(", "),
+    draw: (dpi) => drawPerfumePage(page, dpi, logo),
+  }));
+  return { jobs, pages };
 }

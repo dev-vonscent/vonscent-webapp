@@ -31,6 +31,7 @@ import {
   Package,
   PanelLeftClose,
   PanelLeftOpen,
+  Printer,
   Settings,
   Receipt,
   ShoppingCart,
@@ -107,6 +108,13 @@ const GROUPS: NavGroup[] = [
         label: "Захиалга",
         icon: ShoppingCart,
         badge: "newOrders",
+      },
+      // Вэбээс бус захиалгын шошго гараар (0202) — санд хадгалахгүй.
+      {
+        href: "/admin/orders/labels",
+        label: "Шошго хэвлэх",
+        icon: Printer,
+        flag: "label_print",
       },
       { href: "/admin/customers", label: "Хэрэглэгч", icon: Users },
       { href: "/admin/reports", label: "Тайлан", icon: BarChart3 },
@@ -414,8 +422,18 @@ function RailGroup({
   );
 }
 
+/** Хуудас өөрөө цэсэнд байгаа дэд зам (`/admin/orders/labels`) — эцэг
+ *  «Захиалга» нь тэнд идэвхтэй болохгүй. */
+const NESTED_HREFS = GROUPS.flatMap((g) => g.links.map((l) => l.href)).filter(
+  (href, _, all) => all.some((o) => o !== href && href.startsWith(`${o}/`)),
+);
+
 function isActive(pathname: string, href: string): boolean {
-  return href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+  if (href === "/admin") return pathname === "/admin";
+  if (!pathname.startsWith(href)) return false;
+  return !NESTED_HREFS.some(
+    (n) => n !== href && n.startsWith(href) && pathname.startsWith(n),
+  );
 }
 
 const NO_BADGES: SidebarBadges = { newOrders: 0, outOfStock: 0 };

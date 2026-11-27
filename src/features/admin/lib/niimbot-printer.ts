@@ -253,9 +253,16 @@ export function drawAddressLabel(
       ctx.font = font(px, bold);
       return ctx.measureText(s).width;
     };
-    return paragraphs.map((p) =>
-      wrapSegments(p.segments, maxW, measure, p.icon ? px + iconGap(px) : 0),
-    );
+    return paragraphs.map((p) => {
+      const lines = wrapSegments(
+        p.segments,
+        maxW,
+        measure,
+        p.icon ? px + iconGap(px) : 0,
+      );
+      // Дугааргүй, бэлгийн боолттой — дүрс ганцаараа мөр эзэлнэ.
+      return lines.length ? lines : [[]];
+    });
   };
   const heightOf = (blocks: unknown[][], px: number) =>
     blocks.reduce((s, b) => s + b.length * px * LINE_GAP, 0) +

@@ -70,15 +70,32 @@ export function orderLabelLines(
     .join(", ");
   const { giftWrap: chip, note } = splitGiftWrapNote(o.note);
   const giftWrap = Boolean(opts.giftWrap) || chip;
+  // Гараар оруулсан шошгонд (/admin/orders/labels) дугааргүй байж болно —
+  // бэлгийн боолтгүй бол хоосон мөр үлдээхгүй.
+  const orderNo = o.order_no.trim();
+  const fields = (
+    [
+      ["Нэр", o.contact_name],
+      ["Утас", o.contact_phone],
+      [opts.remote ? "Орон нутаг" : "Хаяг", address],
+      ["Тэмдэглэл", note],
+    ] as const
+  )
+    .map(([label, value]) => [label, value?.trim() ?? ""] as const)
+    // Захиалгад нэр/утас/хаяг үргэлж байдаг; хоосон талбар (гараар оруулсанд)
+    // «Нэр:» гэж дангаараа үлдэхгүй.
+    .filter(([, value]) => value)
+    .map(([label, value]) => field(label, value));
   return [
-    {
-      segments: [{ text: o.order_no, bold: true }],
-      ...(giftWrap ? { icon: "gift" as const } : {}),
-    },
-    field("Нэр", o.contact_name.trim()),
-    field("Утас", o.contact_phone.trim()),
-    field(opts.remote ? "Орон нутаг" : "Хаяг", address),
-    ...(note ? [field("Тэмдэглэл", note)] : []),
+    ...(orderNo || giftWrap
+      ? [
+          {
+            segments: orderNo ? [{ text: orderNo, bold: true }] : [],
+            ...(giftWrap ? { icon: "gift" as const } : {}),
+          },
+        ]
+      : []),
+    ...fields,
   ];
 }
 
