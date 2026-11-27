@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { PencilLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLabelPrinter } from "@/features/admin/hooks/use-label-printer";
 import {
@@ -75,7 +77,16 @@ export function LabelPrintBar({
         </div>
       </div>
       <PrintResumeNotice p={p} />
-      <LabelPaperNote />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <LabelPaperNote />
+        {/* Вэбээс бус (FB, IG, утас) захиалгын шошго — гараар оруулна. */}
+        <Button asChild variant="link" size="sm" className="h-auto p-0">
+          <Link href="/admin/orders/labels">
+            <PencilLine className="size-3.5" aria-hidden />
+            Гараар шошго хэвлэх
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 }
