@@ -40,8 +40,12 @@ export const SelectContent = React.forwardRef<
       position={position}
       className={cn(
         "border-border bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 relative z-50 max-h-96 min-w-32 overflow-hidden rounded-md border shadow-md",
+        // Popper: өндрийг дэлгэцэд үлдсэн зайгаар хязгаарлана. Тогтмол
+        // max-h-96 нь жижиг утсан дээр (sheet доторх аймгийн сонголт) дээш
+        // нээгдэхдээ дэлгэцээс гарч, эхний мөр («Улаанбаатар») харагдахгүй,
+        // гүйлгэж ч хүрэхгүй болдог байв. combobox.tsx-тэй ижил загвар.
         position === "popper" &&
-          "min-w-(--radix-select-trigger-width) translate-y-1",
+          "max-h-[min(24rem,var(--radix-select-content-available-height))] min-w-(--radix-select-trigger-width) translate-y-1",
         className,
       )}
       {...props}

@@ -74,3 +74,6 @@ vitest*.config.*.timestamp-*.mjs
 
 # Локал Supabase-ийн ажлын хавтас (scripts/local-db.sh)
 .local-supabase/
+
+# Kiro IDE
+.kiro/
